@@ -296,7 +296,11 @@ const PicksValidator: React.FC = () => {
             <TabsTrigger key={s} value={s} className="gap-1">
               {s === 'DRAFT' ? 'Draft' : s === 'APPROVED' ? 'Approved' : s === 'PUBLISHED' ? 'Published' : 'Rejected'}
               <Badge variant="secondary" className="ml-1 rounded-sm px-1.5 py-0 text-[10px]">
-                {loading ? '—' : counts?.[s] ?? 0}
+                {loading
+                  ? '—'
+                  : typeof counts === 'object' && counts != null && typeof counts[s] === 'number'
+                    ? counts[s]
+                    : '—'}
               </Badge>
             </TabsTrigger>
           ))}

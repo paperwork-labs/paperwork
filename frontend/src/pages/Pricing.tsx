@@ -90,7 +90,7 @@ const Pricing: React.FC = () => {
     return (
       <div className="space-y-8">
         <section>
-          <h2 className="mb-4 text-xl font-semibold">Featured</h2>
+          <h2 className="mb-4 text-xl font-semibold">Recommended</h2>
           <TierCard
             tier={featured}
             variant="featured"
@@ -121,6 +121,12 @@ const Pricing: React.FC = () => {
               currency={catalogQuery.data.currency}
               onCtaClick={() => handleCtaClick(enterprise)}
             />
+            <p className="text-center text-sm text-muted-foreground">
+              Prefer email?{' '}
+              <a className="font-mono text-foreground underline-offset-4 hover:underline" href={`mailto:${CONTACT_SALES_EMAIL}`}>
+                {CONTACT_SALES_EMAIL}
+              </a>
+            </p>
           </section>
         ) : null}
         <ComparisonTable catalog={catalogQuery.data} />

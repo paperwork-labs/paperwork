@@ -1381,7 +1381,7 @@ const SettingsConnections: React.FC = () => {
             <div className="mb-1 flex flex-row items-center gap-3">
               <div className="rounded-md bg-muted/60 p-1.5"><BarChart2 className="size-[18px]" aria-hidden /></div>
               <div className="text-lg font-bold">TradingView</div>
-              <Badge variant="outline" className="border-[rgb(var(--status-success)/0.4)] text-xs font-normal text-[rgb(var(--status-success)/1)]">Active</Badge>
+              <Badge variant="outline" className="border-[rgb(var(--status-success)/0.4)] text-xs font-normal text-[rgb(var(--status-success)/1)]">Embed</Badge>
             </div>
             <div className="mb-3 pl-[42px] text-sm text-muted-foreground">
               Charting preferences for the embedded TradingView widget. Charts appear in Market Dashboard and Portfolio Workspace.

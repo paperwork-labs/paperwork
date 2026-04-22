@@ -405,6 +405,7 @@ const PortfolioTaxCenter: React.FC = () => {
       )}
 
       {activeTab === 'unrealized' && summary && (
+        <>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
           <StatCard label="Total Lots" value={summary.total_lots} sub={`${summary.lt_lots} LT · ${summary.st_lots} ST`} />
           <StatCard
@@ -439,6 +440,11 @@ const PortfolioTaxCenter: React.FC = () => {
             color="status.danger"
           />
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Estimated tax uses flat US federal placeholders ({TAX_RATE_SHORT_TERM_PCT}% short-term, {TAX_RATE_LONG_TERM_PCT}%
+          long-term). Not tax advice; confirm with a qualified professional.
+        </p>
+        </>
       )}
 
       {activeTab === 'unrealized' && insightsQuery.isPending && (

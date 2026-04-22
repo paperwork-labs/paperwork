@@ -369,7 +369,7 @@ const DashboardLayout: React.FC = () => {
                 onEscapeKeyDown={() => setIsMobileNavOpen(false)}
               >
                 <Dialog.Title className="border-b border-border px-4 py-3 font-heading text-base font-semibold text-foreground">
-                  Main navigation
+                  AxiomFolio
                 </Dialog.Title>
                 <Dialog.Description className="sr-only">
                   Application sections and links

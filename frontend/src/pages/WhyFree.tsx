@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, X } from 'lucide-react';
+import { Check, ExternalLink, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { MarketingFooter } from '@/components/layout/MarketingFooter';
@@ -77,7 +77,10 @@ const WhyFree: React.FC = () => {
             <ul className="mt-8 flex flex-col gap-4">
               {freeForeverItems.map((feature) => (
                 <li key={feature.key} className="flex gap-3 text-sm sm:text-base">
-                  <Check className="mt-0.5 size-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                  <Check
+                    className="mt-0.5 size-5 shrink-0 text-[rgb(var(--status-success)/1)]"
+                    aria-hidden
+                  />
                   <span>{feature.title}</span>
                 </li>
               ))}
@@ -93,11 +96,12 @@ const WhyFree: React.FC = () => {
                 Plaid charges portfolio aggregators per connected account per month. Source:{' '}
                 <a
                   href="https://plaid.com/docs/account/billing"
-                  className="font-medium text-primary underline-offset-4 hover:underline"
+                  className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   Plaid billing docs
+                  <ExternalLink className="size-3.5 shrink-0" aria-hidden />
                 </a>
                 .
               </p>

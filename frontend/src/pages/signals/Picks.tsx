@@ -112,7 +112,7 @@ const Picks: React.FC = () => {
             </Card>
           ) : (
             q.data.items.map((row) => {
-              const isOpen = expanded[row.id];
+              const isOpen = expanded[row.id] ?? false;
               const thesis = row.thesis ?? '';
               const body = isOpen ? thesis : truncate(thesis, 220);
               return (
@@ -138,11 +138,12 @@ const Picks: React.FC = () => {
                         type="button"
                         variant="link"
                         className="h-auto px-0 py-0"
+                        aria-expanded={isOpen}
                         onClick={() =>
                           setExpanded((m) => ({ ...m, [row.id]: !isOpen }))
                         }
                       >
-                        {isOpen ? 'Show less' : 'Read full thesis'}
+                        {isOpen ? 'Show less' : 'Show more'}
                       </Button>
                     ) : null}
                     <div className="flex flex-wrap gap-3 text-muted-foreground">

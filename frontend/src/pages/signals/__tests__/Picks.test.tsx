@@ -1,11 +1,14 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import { cleanup, screen, waitFor } from '@/test/testing-library';
 
 import { renderWithProviders } from '@/test/render';
 import Picks from '../Picks';
 
-type Scenario = 'loading' | 'error' | 'preview' | 'full' | 'empty';
+const LONG_THESIS = 'A'.repeat(250);
+
+type Scenario = 'loading' | 'error' | 'preview' | 'full' | 'empty' | 'longThesis';
 
 const { get, scenarioRef } = vi.hoisted(() => {
   const scenarioRef = { mode: 'preview' as Scenario };
@@ -21,6 +24,25 @@ const { get, scenarioRef } = vi.hoisted(() => {
     if (scenarioRef.mode === 'empty') {
       return Promise.resolve({
         data: { is_preview: false, items: [] },
+      });
+    }
+    if (scenarioRef.mode === 'longThesis') {
+      return Promise.resolve({
+        data: {
+          is_preview: false,
+          items: [
+            {
+              id: 42,
+              ticker: 'TSLA',
+              action: 'BUY',
+              thesis: LONG_THESIS,
+              target_price: null,
+              stop_loss: null,
+              source: 's-long',
+              published_at: null,
+            },
+          ],
+        },
       });
     }
     if (scenarioRef.mode === 'preview') {
@@ -130,5 +152,20 @@ describe('signals/Picks', () => {
     });
     expect(await screen.findByText('ZZZ')).toBeInTheDocument();
     expect(screen.getByText('QQQ')).toBeInTheDocument();
+  });
+
+  it('toggles long thesis: Show more / Show less, aria-expanded, and full text', async () => {
+    const user = userEvent.setup();
+    scenarioRef.mode = 'longThesis';
+    renderWithProviders(<Picks />);
+    const toggle = await screen.findByRole('button', { name: /show more/i });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText(LONG_THESIS)).not.toBeInTheDocument();
+
+    await user.click(toggle);
+
+    const collapse = screen.getByRole('button', { name: /show less/i });
+    expect(collapse).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(LONG_THESIS)).toBeInTheDocument();
   });
 });

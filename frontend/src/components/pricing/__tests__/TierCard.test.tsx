@@ -38,7 +38,7 @@ const baseTier: PricingTier = {
 describe('TierCard variants', () => {
   it('renders featured variant', () => {
     render(<TierCard tier={baseTier} variant="featured" currency="USD" />);
-    expect(screen.getByText('Featured')).toBeInTheDocument();
+    expect(screen.getByText('Most popular')).toBeInTheDocument();
     expect(screen.getByText('Pro')).toBeInTheDocument();
   });
 

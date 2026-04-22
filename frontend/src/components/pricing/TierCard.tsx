@@ -74,7 +74,9 @@ export const TierCard: React.FC<TierCardProps> = ({
           <h3 className="font-heading text-xl font-semibold tracking-tight">
             {tier.name}
           </h3>
-          {variant === 'featured' ? <span className="text-xs text-primary">Featured</span> : null}
+          {variant === 'featured' ? (
+            <span className="text-xs text-primary">Most popular</span>
+          ) : null}
           {isCurrent ? (
             <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
               Current plan
@@ -133,7 +135,7 @@ export const TierCard: React.FC<TierCardProps> = ({
                   aria-hidden
                   className={cn(
                     'mt-0.5 size-4 shrink-0',
-                    isNew ? 'text-primary' : 'text-emerald-600 dark:text-emerald-400',
+                    isNew ? 'text-primary' : 'text-[rgb(var(--status-success)/1)]',
                   )}
                 />
                 <span>
