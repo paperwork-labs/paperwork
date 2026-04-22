@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_portfolio_user
+from backend.api.dependencies import get_current_user
 from backend.database import get_db
 from backend.models.broker_account import BrokerAccount
 from backend.models.position import Position, PositionStatus
@@ -99,7 +99,7 @@ async def get_allocation(
         description="How to bucket positions: sector | asset_class | account",
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_portfolio_user),
+    current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Return the user's open positions aggregated by the requested grouping.
 

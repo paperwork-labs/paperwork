@@ -13,7 +13,6 @@ Base = declarative_base()
 
 # Essential Core Models (verified to exist)
 from .user import User, UserRole
-from .app_settings import AppSettings
 from .user_invite import UserInvite
 from .entitlement import Entitlement, EntitlementStatus, SubscriptionTier
 from .broker_account import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
@@ -173,7 +172,6 @@ __all__ = [
     "Base",
     "User",
     "UserRole",
-    "AppSettings",
     "UserInvite",
     "Entitlement",
     "EntitlementStatus",

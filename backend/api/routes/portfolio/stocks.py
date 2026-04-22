@@ -9,7 +9,7 @@ import csv
 import io
 import logging
 
-from backend.api.dependencies import get_current_user, get_portfolio_user
+from backend.api.dependencies import get_current_user
 from backend.api.middleware.response_cache import redis_response_cache
 from backend.database import get_db
 from backend.models.position import Position
@@ -236,7 +236,7 @@ async def get_tax_lots_for_stock(
 @router.get("/tax-lots/tax-summary", response_model=Dict[str, Any])
 async def get_tax_summary(
     db: Session = Depends(get_db),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
 ):
     """Aggregate all tax lots into LT vs ST buckets with estimated tax impact."""
     try:
@@ -340,7 +340,7 @@ def get_realized_gains(
     year: Optional[int] = Query(None),
     account_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
 ):
     """Aggregate realized gains from CLOSED_LOT trade records by symbol and year.
 
@@ -458,7 +458,7 @@ def get_realized_gains(
 def get_closed_positions(
     account_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
 ):
     """Return symbols the user has sold but no longer holds."""
     try:
@@ -511,7 +511,7 @@ def get_closed_positions(
 def export_tax_report(
     year: int = Query(..., description="Tax year"),
     db: Session = Depends(get_db),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
 ):
     """Generate Schedule D-ready CSV from realized gains."""
     try:

@@ -153,9 +153,9 @@ def build_anomaly_from_dimension(
 ) -> Optional[Anomaly]:
     """Return an :class:`Anomaly` for one composite-health dimension, or None if green.
 
-    Treats ``advisory: True`` (broker dimensions in ``market_only_mode``)
-    as worth still surfacing -- operators want the explanation even when
-    the failure isn't pulled into the composite score.
+    Treats ``advisory: True`` broker dimensions as worth still surfacing when
+    present — operators want the explanation even when the failure is not
+    pulled into the composite score.
     """
     status = (dim_data.get("status") or "").strip().lower()
     if status in _GREEN_STATES:

@@ -34,121 +34,41 @@ def _register_and_login(client: TestClient, username: str, password: str, email:
     return login.json()["access_token"]
 
 
-def _login(client: TestClient, email: str, password: str) -> str:
-    login = client.post(
-        "/api/v1/auth/login",
-        json={"email": email, "password": password},
-    )
-    assert login.status_code == 200
-    return login.json()["access_token"]
-
-
 def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-def _elevate_user_to_admin(username: str) -> None:
-    from backend.database import SessionLocal
-    from backend.models.user import User, UserRole
-
-    db = SessionLocal()
-    try:
-        user = db.query(User).filter(User.username == username).first()
-        assert user is not None
-        user.role = UserRole.OWNER
-        db.commit()
-    finally:
-        db.close()
-
-
-def _set_app_settings(
-    client: TestClient,
-    admin_token: str,
-    *,
-    market_only_mode: bool,
-    portfolio_enabled: bool,
-) -> None:
-    res = client.patch(
-        "/api/v1/admin/app-settings",
-        json={
-            "market_only_mode": market_only_mode,
-            "portfolio_enabled": portfolio_enabled,
-        },
-        headers=_auth(admin_token),
-    )
-    assert res.status_code == 200
-
-
-def test_release_policy_matrix_non_admin_rules():
-    app_settings = SimpleNamespace(
-        market_only_mode=True,
-        portfolio_enabled=False,
-    )
+def test_release_policy_authenticated_non_admin_portfolio_allowed():
     user = SimpleNamespace(role=UserRole.ANALYST)
     admin = SimpleNamespace(role=UserRole.OWNER)
 
-    # Admin always allowed.
-    assert evaluate_release_access("market", admin, app_settings)[0] is True
-    assert evaluate_release_access("portfolio", admin, app_settings)[0] is True
+    assert evaluate_release_access("market", admin)[0] is True
+    assert evaluate_release_access("portfolio", admin)[0] is True
 
-    # Non-admin market is always allowed (authenticated).
-    assert evaluate_release_access("market", user, app_settings)[0] is True
-
-    # Non-admin portfolio blocked by market-only.
-    ok, reason = evaluate_release_access("portfolio", user, app_settings)
-    assert ok is False
-    assert reason == "Market-only mode: access restricted"
-
-    # "other" section (including strategies) always allowed for authenticated users.
-    assert evaluate_release_access("other", user, app_settings)[0] is True
-
-    # Flip market_only off; section flags decide.
-    app_settings.market_only_mode = False
-    app_settings.portfolio_enabled = True
-    assert evaluate_release_access("portfolio", user, app_settings)[0] is True
+    assert evaluate_release_access("market", user)[0] is True
+    assert evaluate_release_access("portfolio", user)[0] is True
+    assert evaluate_release_access("other", user)[0] is True
 
 
-def test_authenticated_non_admin_market_allowed_and_portfolio_locked_by_default(client: TestClient):
-    admin_username = f"admin_{uuid.uuid4().hex[:8]}"
-    admin_password = "AdminPassw0rd!"
-    _register_and_login(client, admin_username, admin_password, f"{admin_username}@example.com")
-    _elevate_user_to_admin(admin_username)
-    admin_token = _login(client, f"{admin_username}@example.com", admin_password)
-
+def test_authenticated_non_admin_portfolio_api_allowed(client: TestClient):
     user_username = f"user_{uuid.uuid4().hex[:8]}"
     user_token = _register_and_login(client, user_username, "Passw0rd!", f"{user_username}@example.com")
 
-    try:
-        _set_app_settings(
-            client,
-            admin_token,
-            market_only_mode=True,
-            portfolio_enabled=False,
-        )
+    market_res = client.get(
+        "/api/v1/market-data/universe/tracked",
+        headers=_auth(user_token),
+    )
+    assert market_res.status_code == 200
 
-        market_res = client.get(
-            "/api/v1/market-data/universe/tracked",
-            headers=_auth(user_token),
-        )
-        assert market_res.status_code == 200
-
-        portfolio_res = client.get(
-            "/api/v1/portfolio/stocks",
-            headers=_auth(user_token),
-        )
-        assert portfolio_res.status_code == 403
-        assert portfolio_res.json().get("detail") == "Market-only mode: access restricted"
-    finally:
-        _set_app_settings(
-            client,
-            admin_token,
-            market_only_mode=True,
-            portfolio_enabled=False,
-        )
+    portfolio_res = client.get(
+        "/api/v1/portfolio/stocks",
+        headers=_auth(user_token),
+    )
+    assert portfolio_res.status_code == 200
 
 
 @pytest.mark.asyncio
-async def test_require_non_market_access_admin_bypass_without_app_settings():
+async def test_require_non_market_access_admin_bypass():
     scope = {
         "type": "http",
         "method": "GET",
@@ -164,7 +84,26 @@ async def test_require_non_market_access_admin_bypass_without_app_settings():
     result = await require_non_market_access(
         request=request,
         current_user=admin_user,
-        db=None,  # must not be dereferenced for admin bypass
     )
     assert result is admin_user
 
+
+@pytest.mark.asyncio
+async def test_require_non_market_access_non_admin_portfolio_path():
+    scope = {
+        "type": "http",
+        "method": "GET",
+        "path": "/api/v1/portfolio/stocks",
+        "headers": [],
+        "query_string": b"",
+        "client": ("testclient", 123),
+        "server": ("testserver", 80),
+        "scheme": "http",
+    }
+    request = Request(scope)
+    user = SimpleNamespace(role=UserRole.ANALYST)
+    result = await require_non_market_access(
+        request=request,
+        current_user=user,
+    )
+    assert result is user

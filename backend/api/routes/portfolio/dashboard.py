@@ -17,7 +17,7 @@ from backend.models.broker_account import BrokerAccount
 from backend.models.account_balance import AccountBalance
 from backend.models.margin_interest import MarginInterest
 from backend.models.options import Option
-from backend.api.dependencies import get_portfolio_user
+from backend.api.dependencies import get_current_user
 from backend.api.middleware.response_cache import redis_response_cache
 from backend.services.portfolio.portfolio_analytics_service import portfolio_analytics_service
 
@@ -38,7 +38,7 @@ def _datetime_as_utc_aware(dt: datetime) -> datetime:
 async def get_dashboard(
     request: Request,
     days: int = Query(365, ge=1, le=3650),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Simple dashboard summary until full analytics ready."""
@@ -184,7 +184,7 @@ async def get_performance_history(
     request: Request,
     account_id: Optional[str] = Query(None, description="Filter by account number"),
     period: str = Query("1y", description="30d, 90d, 1y, all"),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return portfolio_snapshots time series for the performance chart (aggregate total_value per day)."""
@@ -271,7 +271,7 @@ async def get_performance_history(
 @router.get("/balances", response_model=Dict[str, Any])
 async def get_account_balances(
     account_id: Optional[int] = Query(None, description="Filter by broker account ID"),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return latest account balance snapshot per broker account."""
@@ -336,7 +336,7 @@ async def get_account_balances(
 
 @router.get("/dashboard/margin-health", response_model=Dict[str, Any])
 async def get_margin_health(
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return margin health metrics from latest account balance: cushion, leverage, buying power, and warning flags."""
@@ -420,7 +420,7 @@ async def get_pnl_summary(
         None,
         description="Filter by broker account number; if numeric-only, also matches broker_accounts.id",
     ),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return P&L summary: unrealized_pnl, realized_pnl, total_dividends, total_fees, total_return."""
@@ -531,7 +531,7 @@ async def get_pnl_summary(
 async def get_margin_interest(
     account_id: Optional[int] = Query(None, description="Filter by broker account ID"),
     period: str = Query("90d", description="30d, 90d, 1y, all"),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return margin/interest accrual records for the user's accounts."""
@@ -590,7 +590,7 @@ async def get_margin_interest(
 @router.get("/dividends/summary")
 async def get_dividend_summary(
     account_id: Optional[str] = Query(None),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Dividend income analytics: trailing 12m, forward yield, top payers, upcoming ex-dates."""
@@ -695,7 +695,7 @@ async def get_dividend_summary(
 
 @router.get("/live-summary")
 async def get_live_summary(
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Live account summary from IB Gateway, falling back to DB."""
@@ -740,7 +740,7 @@ async def get_live_summary(
 
 @router.get("/risk-metrics")
 async def get_risk_metrics(
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Computed risk metrics: beta, volatility, sharpe, concentration."""
@@ -755,7 +755,7 @@ async def get_risk_metrics(
 @router.get("/twr")
 async def get_twr(
     period: str = Query("1y", description="1y, ytd, all"),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Time-Weighted Return."""
@@ -774,7 +774,7 @@ async def get_twr(
 
 @router.get("/sector-attribution")
 async def get_sector_attribution(
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Performance attribution by sector."""

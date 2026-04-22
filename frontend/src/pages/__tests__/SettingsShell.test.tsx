@@ -8,8 +8,6 @@ vi.mock('../../context/AuthContext', async () => {
   return {
     useAuth: () => ({
       user: { role: 'admin' },
-      appSettings: { market_only_mode: true },
-      appSettingsReady: true,
       ready: true,
     }),
   };

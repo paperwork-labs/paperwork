@@ -5,7 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_db, get_portfolio_user
+from backend.api.dependencies import get_db, get_current_user
 from backend.models.user import User
 from backend.services.execution.slippage_tracker import (
     SlippageTracker,
@@ -20,7 +20,7 @@ async def get_slippage_stats(
     symbol: Optional[str] = Query(None, description="Filter by symbol"),
     broker: Optional[str] = Query(None, description="Filter by broker type"),
     days: int = Query(30, ge=1, le=365, description="Lookback period in days"),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get aggregated slippage statistics for filled orders.
@@ -42,7 +42,7 @@ async def get_slippage_stats(
 async def get_worst_slippage_orders(
     limit: int = Query(10, ge=1, le=50, description="Number of orders to return"),
     days: int = Query(30, ge=1, le=365, description="Lookback period in days"),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get orders with the worst slippage for analysis."""
@@ -57,7 +57,7 @@ async def get_worst_slippage_orders(
 @router.get("/slippage-by-symbol")
 async def get_slippage_by_symbol(
     days: int = Query(30, ge=1, le=365, description="Lookback period in days"),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get slippage breakdown by symbol."""

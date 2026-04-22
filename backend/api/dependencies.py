@@ -15,7 +15,6 @@ from backend.database import get_db
 from backend.models.user import User
 from backend.models.user import UserRole
 from backend.api.security import decode_token
-from backend.services.core.app_settings_service import get_or_create_app_settings
 from backend.config import settings
 
 logger = logging.getLogger(__name__)
@@ -98,17 +97,6 @@ async def get_current_user(
         )
 
 
-async def get_portfolio_user(
-    current_user: User = Depends(get_current_user),
-) -> User:
-    """Resolve the authenticated user for portfolio endpoints.
-
-    Previously fell back to db.query(User).first() when no auth was provided.
-    Now requires proper JWT authentication on all portfolio routes.
-    """
-    return current_user
-
-
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     """
     Dependency to ensure current user has operator (platform admin) privileges.
@@ -133,7 +121,7 @@ def require_feature(feature_key: str):
     """
     # Local import keeps backend/api/dependencies.py free of a hard import
     # on the billing package at module load (the billing package imports
-    # the User model, which transitively imports app settings, etc.).
+    # the User model, etc.).
     from backend.services.billing.entitlement_service import EntitlementService
 
     async def check_feature(
@@ -254,49 +242,24 @@ def _section_from_path(path: str) -> SectionName:
     return "other"
 
 
-def _non_admin_section_decision(section: SectionName, app_settings) -> tuple[bool, Optional[str]]:
-    """
-    Centralized release-policy decision for non-admin users.
-
-    Policy:
-    - Market: available to all authenticated users.
-    - Portfolio: requires market_only_mode=false and portfolio_enabled=true.
-    - Other sections: unaffected by these release flags.
-    """
-    if section == "market":
-        return True, None
-
-    if section == "portfolio" and bool(app_settings.market_only_mode):
-        return False, "Market-only mode: access restricted"
-
-    if section == "portfolio" and not bool(app_settings.portfolio_enabled):
-        return False, "Portfolio section is not enabled"
-
-    return True, None
-
-
 def evaluate_release_access(
-    section: SectionName, current_user: Optional[User], app_settings=None
+    section: SectionName, current_user: Optional[User]
 ) -> tuple[bool, Optional[str]]:
     """
     Evaluate rollout policy for a section with role-aware rules.
 
     Notes:
     - Unauthenticated access is left to route-level auth dependencies.
-    - Market access is allowed for any authenticated user.
-    - Portfolio requires app_settings for non-admin decisions.
+    - Market, portfolio, and other authenticated sections are available to
+      all approved users (no global feature flags).
     """
     if current_user is None:
         return False, "Authentication required"
     if current_user.role == UserRole.OWNER:
         return True, None
-    if section == "market":
+    if section in ("market", "portfolio", "other"):
         return True, None
-    if section == "other":
-        return True, None
-    if app_settings is None:
-        return False, "App settings required for section policy"
-    return _non_admin_section_decision(section, app_settings)
+    return True, None
 
 
 def market_visibility_scope() -> str:
@@ -312,14 +275,8 @@ def market_exposed_to_all() -> bool:
 async def require_non_market_access(
     request: Request,
     current_user: Optional[User] = Depends(get_optional_user),
-    db: Session = Depends(get_db),
 ) -> Optional[User]:
-    """Block non-admin access when market-only mode is enabled.
-
-    When market-only mode is disabled, use per-section release flags for
-    non-admin users:
-    - portfolio/account APIs -> portfolio_enabled
-    """
+    """Enforce section rollout policy for optional-auth routes (portfolio vs market)."""
     if current_user is None:
         return None
 
@@ -327,17 +284,7 @@ async def require_non_market_access(
         return current_user
 
     section = _section_from_path(request.url.path or "")
-    app_settings = None
-    if section == "portfolio":
-        try:
-            app_settings = get_or_create_app_settings(db)
-        except Exception as e:
-            logger.error("App settings unavailable for section policy: %s", e)
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="App settings are unavailable; retry shortly",
-            )
-    allowed, reason = evaluate_release_access(section, current_user, app_settings)
+    allowed, reason = evaluate_release_access(section, current_user)
     if not allowed:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=reason or "Access denied")
     return current_user

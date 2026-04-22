@@ -210,7 +210,6 @@ export interface TaskRunEntry {
 export interface AdminHealthResponse {
   composite_status: 'green' | 'yellow' | 'red';
   composite_reason: string;
-  market_only_mode: boolean;
   dimensions: {
     coverage: CoverageDimension;
     stage_quality: StageQualityDimension;

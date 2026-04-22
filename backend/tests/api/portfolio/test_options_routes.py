@@ -8,7 +8,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api.dependencies import get_current_user, get_portfolio_user
+from backend.api.dependencies import get_current_user
 from backend.api.main import app
 from backend.database import get_db
 from backend.models.broker_account import AccountStatus, AccountType, BrokerAccount, BrokerType
@@ -102,7 +102,7 @@ def test_unified_portfolio_includes_long_and_short_open_quantity(
         return u
 
     app.dependency_overrides[get_db] = _get_db
-    app.dependency_overrides[get_portfolio_user] = _get_user
+    app.dependency_overrides[get_current_user] = _get_user
     app.dependency_overrides[get_current_user] = _get_user
     try:
         res = client.get("/api/v1/portfolio/options/unified/portfolio")
@@ -111,7 +111,7 @@ def test_unified_portfolio_includes_long_and_short_open_quantity(
         positions = payload.get("data", {}).get("positions", [])
     finally:
         app.dependency_overrides.pop(get_db, None)
-        app.dependency_overrides.pop(get_portfolio_user, None)
+        app.dependency_overrides.pop(get_current_user, None)
         app.dependency_overrides.pop(get_current_user, None)
 
     assert len(positions) == 2

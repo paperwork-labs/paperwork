@@ -20,7 +20,7 @@ from backend.models.user import User
 from backend.models import BrokerAccount
 
 # Auth dependency (to be implemented)
-from backend.api.dependencies import get_current_user, get_portfolio_user
+from backend.api.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -671,7 +671,7 @@ async def get_performance_metrics(
 
 @router.get("/insights")
 async def get_portfolio_insights(
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Lightweight portfolio insights from local DB data.

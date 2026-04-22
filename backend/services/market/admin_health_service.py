@@ -3,9 +3,6 @@ Admin Health Service -- Composite health aggregation.
 
 Composes coverage, stage quality, jobs, audit, fundamentals, regime, data accuracy,
 and task-run data into a single response so the Admin Dashboard needs only one fetch.
-
-Mode-aware: when market_only_mode is true (AppSettings), broker dimensions
-(portfolio_sync, ibkr_gateway) are advisory and excluded from composite scoring.
 """
 
 from __future__ import annotations
@@ -59,7 +56,7 @@ MARKET_DIMS = {"coverage", "stage_quality", "jobs", "audit", "regime", "fundamen
 BROKER_DIMS = {"portfolio_sync", "ibkr_gateway"}
 # G28: deploys dim is infra-level — not part of the market/broker split.
 # It still counts toward composite; a red deploy dim must surface regardless
-# of market_only_mode (a stuck API deploy breaks everything).
+# of broker sync health (a stuck API deploy breaks everything).
 INFRA_DIMS = {"deploys"}
 
 _COMPOSITE_HEALTH_CACHE_KEY = "admin:composite_health"
@@ -164,8 +161,6 @@ class AdminHealthService:
         payload["rss_observability"] = ro
 
     def _compute_composite_health(self, db: Session) -> Dict[str, Any]:
-        from backend.services.core.app_settings_service import get_or_create_app_settings
-
         coverage = self._build_coverage_dimension(db)
         stage = self._build_stage_dimension(db)
         jobs = self._build_jobs_dimension(db)
@@ -177,13 +172,6 @@ class AdminHealthService:
         data_accuracy = self._build_data_accuracy_dimension()
         deploys = self._build_deploys_dimension(db)
         task_runs = self._build_task_runs()
-
-        market_only = True
-        try:
-            app_settings = get_or_create_app_settings(db)
-            market_only = bool(app_settings.market_only_mode)
-        except Exception as e:
-            logger.warning("Failed to read app_settings for market_only_mode: %s", e)
 
         dims: Dict[str, Any] = {
             "coverage": coverage,
@@ -206,18 +194,8 @@ class AdminHealthService:
             else:
                 dims[name]["category"] = "broker"
 
-        if market_only:
-            for name in BROKER_DIMS:
-                dims[name]["advisory"] = True
-
-        # Composite scoring: always include market + infra dims; broker dims
-        # are excluded in market_only_mode. Deploys must never be advisory —
-        # a stuck build pipeline breaks market AND broker syncs alike.
-        scored_dims = (
-            dims
-            if not market_only
-            else {k: v for k, v in dims.items() if k in MARKET_DIMS or k in INFRA_DIMS}
-        )
+        # Composite scoring: all dimensions including broker sync / gateway.
+        scored_dims = dims
         failures = [name for name, dim in scored_dims.items() if not _composite_dimension_ok(dim.get("status"))]
 
         if not failures:
@@ -233,7 +211,6 @@ class AdminHealthService:
         return {
             "composite_status": composite_status,
             "composite_reason": composite_reason,
-            "market_only_mode": market_only,
             "dimensions": dims,
             "task_runs": task_runs,
             "thresholds": dict(HEALTH_THRESHOLDS),

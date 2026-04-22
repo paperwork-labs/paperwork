@@ -9,8 +9,8 @@
  *   4. Open positions vs plan (top 5)
  *
  * Missing plan fields (stop distance, days held) render as "—", never 0.
- * Portfolio sections are gated on `appSettings.portfolio_enabled`; market-
- * only users see a "Connect a broker" empty state instead of an API call.
+ * Portfolio sections load only when `useAccountBalances` shows at least one
+ * broker account; otherwise a "Connect a broker" empty state is shown.
  */
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -33,6 +33,7 @@ import apiClient, {
 } from '@/services/api';
 import type { DashboardResponse, DashboardSummary } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import { useAccountBalances } from '@/hooks/usePortfolio';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -410,36 +411,19 @@ function pickTotalValue(payload: DashboardResponse | undefined): number | null {
 
 function PortfolioSnapshotSection() {
   const navigate = useNavigate();
-  const { appSettings, appSettingsReady, user } = useAuth();
+  const { user } = useAuth();
   const currency =
     typeof user?.currency_preference === 'string' && user.currency_preference.trim() !== ''
       ? user.currency_preference
       : 'USD';
-  const portfolioEnabled = Boolean(appSettings?.portfolio_enabled);
+  const balancesQuery = useAccountBalances();
+  const hasBrokers = (balancesQuery.data?.length ?? 0) > 0;
 
   const dashboardQuery = useQuery({
     queryKey: ['home-portfolio-dashboard'],
     queryFn: () => portfolioApi.getDashboard(),
-    enabled: appSettingsReady && portfolioEnabled,
+    enabled: hasBrokers,
     staleTime: 20_000,
-  });
-
-  const balancesQuery = useQuery<BalanceRow[]>({
-    queryKey: ['home-portfolio-balances'],
-    queryFn: async () => {
-      const raw = (await portfolioApi.getBalances()) as Record<string, unknown> | undefined;
-      const nested = (raw?.data as Record<string, unknown> | undefined)?.data as
-        | Record<string, unknown>
-        | undefined;
-      const list =
-        (nested?.balances as BalanceRow[] | undefined) ??
-        ((raw?.data as Record<string, unknown> | undefined)?.balances as BalanceRow[] | undefined) ??
-        (raw?.balances as BalanceRow[] | undefined) ??
-        [];
-      return Array.isArray(list) ? list : [];
-    },
-    enabled: appSettingsReady && portfolioEnabled,
-    staleTime: 60_000,
   });
 
   const action = (
@@ -451,7 +435,34 @@ function PortfolioSnapshotSection() {
     </Button>
   );
 
-  if (appSettingsReady && !portfolioEnabled) {
+  if (balancesQuery.isPending) {
+    return (
+      <SectionShell title="Portfolio snapshot" icon={Wallet}>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-20 w-full" />
+          ))}
+        </div>
+      </SectionShell>
+    );
+  }
+
+  if (balancesQuery.isError) {
+    return (
+      <SectionShell title="Portfolio snapshot" icon={Wallet}>
+        <ErrorState
+          title="Couldn't load accounts"
+          description="We couldn't determine whether any brokers are connected."
+          error={balancesQuery.error}
+          retry={() => {
+            void balancesQuery.refetch();
+          }}
+        />
+      </SectionShell>
+    );
+  }
+
+  if (!hasBrokers) {
     return (
       <SectionShell title="Portfolio snapshot" icon={Wallet}>
         <EmptyState
@@ -475,14 +486,9 @@ function PortfolioSnapshotSection() {
     );
   }
 
-  const isLoading =
-    !appSettingsReady || dashboardQuery.isPending || balancesQuery.isPending;
-  const hasError = dashboardQuery.isError || balancesQuery.isError;
-  const portfolioError = dashboardQuery.isError
-    ? dashboardQuery.error
-    : balancesQuery.isError
-      ? balancesQuery.error
-      : undefined;
+  const isLoading = dashboardQuery.isPending;
+  const hasError = dashboardQuery.isError;
+  const portfolioError = dashboardQuery.isError ? dashboardQuery.error : undefined;
 
   if (isLoading) {
     return (
@@ -505,7 +511,6 @@ function PortfolioSnapshotSection() {
           error={portfolioError}
           retry={() => {
             void dashboardQuery.refetch();
-            void balancesQuery.refetch();
           }}
         />
       </SectionShell>
@@ -525,7 +530,7 @@ function PortfolioSnapshotSection() {
     toNumberOrNull(summary?.positions_count) ??
     toNumberOrNull((dashboard?.data as Record<string, unknown> | undefined)?.holdings_count);
 
-  const balances = balancesQuery.data ?? [];
+  const balances: BalanceRow[] = balancesQuery.data ?? [];
   const cash = balances.reduce<number | null>((acc, b) => {
     const v = toNumberOrNull(b.cash_balance) ?? toNumberOrNull(b.total_cash_value);
     if (v == null) return acc;
@@ -636,8 +641,8 @@ function SnapshotTile({
 
 function OpenPositionsSection() {
   const navigate = useNavigate();
-  const { appSettings, appSettingsReady } = useAuth();
-  const portfolioEnabled = Boolean(appSettings?.portfolio_enabled);
+  const balancesQuery = useAccountBalances();
+  const hasBrokers = (balancesQuery.data?.length ?? 0) > 0;
 
   const positionsQuery = useQuery<EnrichedPosition[]>({
     queryKey: ['home-open-positions'],
@@ -645,7 +650,7 @@ function OpenPositionsSection() {
       const r = await portfolioApi.getStocks();
       return unwrapResponse<EnrichedPosition>(r, 'stocks');
     },
-    enabled: appSettingsReady && portfolioEnabled,
+    enabled: hasBrokers,
     staleTime: 60_000,
   });
 
@@ -658,7 +663,31 @@ function OpenPositionsSection() {
     </Button>
   );
 
-  if (appSettingsReady && !portfolioEnabled) {
+  if (balancesQuery.isPending) {
+    return (
+      <SectionShell title="Open positions vs plan" icon={Briefcase} action={action}>
+        <div className="flex flex-col gap-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} className="h-10 w-full" />
+          ))}
+        </div>
+      </SectionShell>
+    );
+  }
+
+  if (balancesQuery.isError) {
+    // Portfolio snapshot section above surfaces the account-check error with a
+    // retry. Render a quiet placeholder here to avoid duplicating the error UI.
+    return (
+      <SectionShell title="Open positions vs plan" icon={Briefcase} action={action}>
+        <p className="text-sm text-muted-foreground">
+          Waiting on account data — see the portfolio snapshot above to retry.
+        </p>
+      </SectionShell>
+    );
+  }
+
+  if (!hasBrokers) {
     return (
       <SectionShell title="Open positions vs plan" icon={Briefcase}>
         <EmptyState
@@ -676,7 +705,7 @@ function OpenPositionsSection() {
     );
   }
 
-  if (!appSettingsReady || positionsQuery.isPending) {
+  if (positionsQuery.isPending) {
     return (
       <SectionShell title="Open positions vs plan" icon={Briefcase} action={action}>
         <div className="flex flex-col gap-2">

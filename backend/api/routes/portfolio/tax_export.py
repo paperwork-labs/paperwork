@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_portfolio_user
+from backend.api.dependencies import get_current_user
 from backend.database import get_db
 from backend.models.user import User
 from backend.services.tax.filefree_exporter import FileFreeExporter
@@ -62,7 +62,7 @@ def export_filefree(
         description="If true, include IRA/Roth/HSA accounts (audit dump). Default excludes them.",
     ),
     db: Session = Depends(get_db),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
 ):
     """Return the FileFree.ai tax package as JSON or CSV.
 

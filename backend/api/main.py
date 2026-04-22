@@ -702,7 +702,7 @@ app.include_router(
 app.include_router(
     historical_import, dependencies=[Depends(require_non_market_access)]
 )
-app.include_router(app_settings, prefix="/api/v1", tags=["App Settings"])
+app.include_router(app_settings, prefix="/api/v1", tags=["Settings"])
 app.include_router(market_router, prefix="/api/v1/market-data", tags=["Market Data & Technicals"])
 app.include_router(
     activity,

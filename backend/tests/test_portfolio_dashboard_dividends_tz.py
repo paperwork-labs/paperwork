@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api.dependencies import get_current_user, get_portfolio_user
+from backend.api.dependencies import get_current_user
 from backend.api.main import app
 from backend.database import get_db
 from backend.models import BrokerAccount, Dividend, User
@@ -83,13 +83,13 @@ def _wire_overrides(db_session, auth_user):
 
     app.dependency_overrides[get_db] = _get_db
     app.dependency_overrides[get_current_user] = _get_user
-    app.dependency_overrides[get_portfolio_user] = _get_user
+    app.dependency_overrides[get_current_user] = _get_user
     try:
         yield
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
-        app.dependency_overrides.pop(get_portfolio_user, None)
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_dividend_summary_naive_pay_date_returns_200(client, db_session, primary_account):

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { authApi, appSettingsApi } from '../services/api';
+import { authApi } from '../services/api';
 import { useColorMode } from '../theme/colorMode';
 
 export type User = {
@@ -17,18 +17,10 @@ export type User = {
   has_password?: boolean;
 };
 
-export type AppSettings = {
-  market_only_mode: boolean;
-  portfolio_enabled: boolean;
-  strategy_enabled: boolean;
-};
-
 export type AuthContextValue = {
   user: User | null;
   token: string | null;
   ready: boolean;
-  appSettings: AppSettings | null;
-  appSettingsReady: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (
     username: string,
@@ -38,7 +30,6 @@ export type AuthContextValue = {
   ) => Promise<{ pendingApproval: boolean }>;
   logout: () => void;
   refreshMe: () => Promise<void>;
-  refreshAppSettings: () => Promise<void>;
 };
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -55,40 +46,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
   const [ready, setReady] = useState(false);
-  const [appSettings, setAppSettings] = useState<AppSettings | null>(null);
-  const [appSettingsReady, setAppSettingsReady] = useState(false);
 
   useEffect(() => {
     const sync = async () => {
       try {
         if (token) {
-          const [meResult, appResult] = await Promise.allSettled([
-            authApi.me(),
-            appSettingsApi.get(),
-          ]);
-          if (meResult.status === 'rejected') {
-            throw meResult.reason;
-          }
-          const me = meResult.value;
+          const me = await authApi.me();
           setUser(me as User);
           const pref = (me as any)?.ui_preferences?.color_mode_preference;
           if (pref === 'system' || pref === 'light' || pref === 'dark') {
             setColorModePreference(pref);
-          }
-          if (appResult.status === 'fulfilled') {
-            setAppSettings(appResult.value as AppSettings);
-          } else {
-            setAppSettings(null);
           }
         }
       } catch {
         try { localStorage.removeItem('qm_token'); } catch { }
         setToken(null);
         setUser(null);
-        setAppSettings(null);
       } finally {
         setReady(true);
-        setAppSettingsReady(true);
       }
     };
     sync();
@@ -102,27 +77,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     localStorage.setItem('qm_token', t);
     setToken(t);
-    const [meResult, appResult] = await Promise.allSettled([
-      authApi.me(),
-      appSettingsApi.get(),
-    ]);
-    if (meResult.status === 'rejected') {
-      throw meResult.reason instanceof Error
-        ? meResult.reason
-        : new Error('Failed to load user profile');
-    }
-    const me = meResult.value;
+    const me = await authApi.me();
     setUser(me as User);
     const pref = (me as any)?.ui_preferences?.color_mode_preference;
     if (pref === 'system' || pref === 'light' || pref === 'dark') {
       setColorModePreference(pref);
     }
-    if (appResult.status === 'fulfilled') {
-      setAppSettings(appResult.value as AppSettings);
-    } else {
-      setAppSettings(null);
-    }
-    setAppSettingsReady(true);
   };
 
   const register = async (username: string, email: string, password: string, full_name?: string) => {
@@ -138,8 +98,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try { localStorage.removeItem('qm_token'); } catch { /* ignore */ }
     setToken(null);
     setUser(null);
-    setAppSettings(null);
-    setAppSettingsReady(false);
   }, []);
 
   // Listen for forced logout from the API interceptor (e.g. 401 on expired token)
@@ -162,25 +120,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setToken(t);
       void (async () => {
         try {
-          const [meResult, appResult] = await Promise.allSettled([
-            authApi.me(),
-            appSettingsApi.get(),
-          ]);
-          if (meResult.status === 'rejected') {
-            throw meResult.reason;
-          }
-          const me = meResult.value;
+          const me = await authApi.me();
           setUser(me as User);
           const pref = (me as any)?.ui_preferences?.color_mode_preference;
           if (pref === 'system' || pref === 'light' || pref === 'dark') {
             setColorModePreference(pref);
           }
-          if (appResult.status === 'fulfilled') {
-            setAppSettings(appResult.value as AppSettings);
-          } else {
-            setAppSettings(null);
-          }
-          setAppSettingsReady(true);
         } catch {
           try {
             localStorage.removeItem('qm_token');
@@ -189,8 +134,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }
           setToken(null);
           setUser(null);
-          setAppSettings(null);
-          setAppSettingsReady(true);
         }
       })();
     };
@@ -207,24 +150,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const refreshAppSettings = async () => {
-    const app = await appSettingsApi.get();
-    setAppSettings(app as AppSettings);
-    setAppSettingsReady(true);
-  };
-
   const value = useMemo<AuthContextValue>(() => ({
     user,
     token,
     ready,
-    appSettings,
-    appSettingsReady,
     login,
     register,
     logout,
     refreshMe,
-    refreshAppSettings,
-  }), [user, token, ready, appSettings, appSettingsReady]);
+  }), [user, token, ready]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
@@ -239,5 +173,4 @@ export const useAuth = () => {
 export const useAuthOptional = () => {
   return useContext(AuthContext);
 };
-
 

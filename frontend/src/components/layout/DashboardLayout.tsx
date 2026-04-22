@@ -33,6 +33,7 @@ import { isPlatformAdminRole } from '../../utils/userRole';
 import AppDivider from '../ui/AppDivider';
 import AppLogo from '../ui/AppLogo';
 import useAdminHealth from '../../hooks/useAdminHealth';
+import { useAccountBalances } from '@/hooks/usePortfolio';
 import { CompactAccountSelector as AccountSelector } from '../shared/CompactAccountSelector';
 import { ChatProvider } from '@/components/chat/ChatProvider';
 import { ChatBubble } from '@/components/chat/ChatBubble';
@@ -160,7 +161,7 @@ const DashboardLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { accounts, loading: accountsLoading, selected, setSelected } = useAccountContext();
-  const { user, logout, appSettings, appSettingsReady } = useAuth();
+  const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     try {
       const raw = window.localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY);
@@ -190,9 +191,10 @@ const DashboardLayout: React.FC = () => {
       })
     );
   }, []);
-  const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
+  const balancesQuery = useAccountBalances();
+  const hasBrokers = (balancesQuery.data?.length ?? 0) > 0;
   const isAdmin = isPlatformAdminRole(user?.role);
-  const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
+  const portfolioNavVisible = isAdmin || hasBrokers;
   const marketItems = useMemo(() => buildMarketItems(), []);
   const settingsNavItems = useMemo(() => buildSettingsItems(), []);
 
@@ -287,7 +289,7 @@ const DashboardLayout: React.FC = () => {
     return (
       <div className={cn('flex flex-col gap-2 py-4', opts.pxClass)}>
         {renderSection('MARKET', marketItems, opts.showLabel, next())}
-        {portfolioEnabled ? renderSection('PORTFOLIO', portfolioItems, opts.showLabel, next()) : null}
+        {portfolioNavVisible ? renderSection('PORTFOLIO', portfolioItems, opts.showLabel, next()) : null}
         {isAdmin ? renderSection('SETTINGS', settingsNavItems, opts.showLabel, next()) : null}
       </div>
     );
@@ -413,7 +415,7 @@ const DashboardLayout: React.FC = () => {
                   </TooltipContent>
                 </Tooltip>
               ) : null}
-              {portfolioEnabled && accounts.length > 0 ? (
+              {portfolioNavVisible && accounts.length > 0 ? (
                 <AccountSelector
                   value={selected}
                   onChange={setSelected}

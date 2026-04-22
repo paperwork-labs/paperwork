@@ -10,9 +10,21 @@ import DashboardLayout from '../DashboardLayout';
 let mockedAuth: any = {
   user: { username: 'tester', role: 'user' },
   logout: vi.fn(),
-  appSettings: { market_only_mode: true, portfolio_enabled: false, strategy_enabled: false },
-  appSettingsReady: true,
   ready: true,
+};
+
+let mockedBalances: {
+  data: unknown[] | undefined;
+  isPending: boolean;
+  isError: boolean;
+  isSuccess: boolean;
+  refetch: ReturnType<typeof vi.fn>;
+} = {
+  data: [],
+  isPending: false,
+  isError: false,
+  isSuccess: true,
+  refetch: vi.fn(),
 };
 
 vi.mock('../../../context/AuthContext', () => {
@@ -20,6 +32,10 @@ vi.mock('../../../context/AuthContext', () => {
     useAuth: () => mockedAuth,
   };
 });
+
+vi.mock('@/hooks/usePortfolio', () => ({
+  useAccountBalances: () => mockedBalances,
+}));
 
 let mockedAccountContext = {
   accounts: [] as Array<{ account_number: string; account_name?: string }>,
@@ -64,9 +80,14 @@ describe('DashboardLayout sidebar persistence', () => {
     mockedAuth = {
       user: { username: 'tester', role: 'user' },
       logout: vi.fn(),
-      appSettings: { market_only_mode: true, portfolio_enabled: false, strategy_enabled: false },
-      appSettingsReady: true,
       ready: true,
+    };
+    mockedBalances = {
+      data: [],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      refetch: vi.fn(),
     };
   });
 
@@ -84,7 +105,7 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(localStorage.getItem('qm.ui.sidebar_open')).toBe('1');
   });
 
-  it('hides portfolio and strategy sections for non-admin market-only defaults', () => {
+  it('hides portfolio section for non-admin users with no broker accounts', () => {
     renderWithProviders(<DashboardLayout />);
     expect(screen.getAllByText('MARKET').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Tracked').length).toBeGreaterThan(0);
@@ -94,13 +115,13 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(screen.queryByRole('button', { name: /account filter/i })).toBeNull();
   });
 
-  it('shows portfolio and Strategies under MARKET when section flags are enabled', () => {
-    mockedAuth = {
-      user: { username: 'tester', role: 'user' },
-      logout: vi.fn(),
-      appSettings: { market_only_mode: false, portfolio_enabled: true, strategy_enabled: true },
-      appSettingsReady: true,
-      ready: true,
+  it('shows portfolio and Strategies under MARKET when user has broker balances', () => {
+    mockedBalances = {
+      data: [{ id: 1, broker: 'IBKR' }],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      refetch: vi.fn(),
     };
     mockedAccountContext = {
       accounts: [{ account_number: 'U123', account_name: 'Test Account' }],
@@ -119,12 +140,12 @@ describe('DashboardLayout sidebar persistence', () => {
   });
 
   it('does not keep portfolio dashboard active on portfolio categories route', () => {
-    mockedAuth = {
-      user: { username: 'tester', role: 'user' },
-      logout: vi.fn(),
-      appSettings: { market_only_mode: false, portfolio_enabled: true, strategy_enabled: true },
-      appSettingsReady: true,
-      ready: true,
+    mockedBalances = {
+      data: [{ id: 1, broker: 'IBKR' }],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      refetch: vi.fn(),
     };
     const { container } = renderWithProviders(<DashboardLayout />, { route: '/portfolio/categories' });
     const portfolioOverview = container.querySelector('[data-nav-path="/portfolio"]');
@@ -134,12 +155,12 @@ describe('DashboardLayout sidebar persistence', () => {
   });
 
   it('highlights Strategies nav on strategy detail route', () => {
-    mockedAuth = {
-      user: { username: 'tester', role: 'user' },
-      logout: vi.fn(),
-      appSettings: { market_only_mode: false, portfolio_enabled: true, strategy_enabled: true },
-      appSettingsReady: true,
-      ready: true,
+    mockedBalances = {
+      data: [{ id: 1, broker: 'IBKR' }],
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+      refetch: vi.fn(),
     };
     const { container } = renderWithProviders(<DashboardLayout />, {
       route: '/lab/strategies/strat-1',

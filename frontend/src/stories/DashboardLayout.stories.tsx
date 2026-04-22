@@ -74,17 +74,10 @@ const MockedProviders: React.FC<{ children: React.ReactNode }> = ({ children }) 
       },
       token: "storybook-token",
       ready: true,
-      appSettings: {
-        market_only_mode: false,
-        portfolio_enabled: true,
-        strategy_enabled: true,
-      },
-      appSettingsReady: true,
       login: async () => {},
       register: async () => ({ pendingApproval: false }),
       logout: () => {},
       refreshMe: async () => {},
-      refreshAppSettings: async () => {},
     }),
     []
   );

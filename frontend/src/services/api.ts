@@ -1088,12 +1088,6 @@ export const authApi = {
   },
 };
 
-export const appSettingsApi = {
-  get: async () => makeOptimizedRequest(() => api.get('/app-settings')),
-  update: async (payload: { market_only_mode?: boolean; portfolio_enabled?: boolean; strategy_enabled?: boolean }) =>
-    makeOptimizedRequest(() => api.patch('/admin/app-settings', payload)),
-};
-
 export const adminUsersApi = {
   list: async (params?: { q?: string; role?: string }): Promise<UsersListResponse> =>
     makeOptimizedRequest<UsersListResponse>(() => api.get('/admin/users', { params })),

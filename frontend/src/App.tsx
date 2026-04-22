@@ -17,7 +17,6 @@ import { ColorModeProvider } from './theme/colorMode';
 import ErrorBoundary from './components/ErrorBoundary';
 
 import RequireAuth from './components/auth/RequireAuth';
-import RequireNonMarketAccess from './components/auth/RequireNonMarketAccess';
 import RequireAdmin from './components/auth/RequireAdmin';
 import AuthLogoutListener from './components/auth/AuthLogoutListener';
 import { AppCommandLayer } from './components/cmdk/AppCommandLayer';
@@ -240,25 +239,20 @@ function App() {
                         />
 
                         {/* Portfolio section */}
-                        <Route element={<RequireNonMarketAccess section="portfolio" />}>
-                          <Route path="portfolio" element={<PortfolioTabShell />} />
-                          <Route path="portfolio/holdings" element={<PortfolioHoldings />} />
-                          <Route path="holding/:symbol" element={<HoldingDetail />} />
-                          <Route path="portfolio/options" element={<PortfolioOptions />} />
-                          <Route path="portfolio/transactions" element={<PortfolioTransactions />} />
-                          <Route path="portfolio/categories" element={<PortfolioCategories />} />
-                          <Route path="portfolio/tax" element={<PortfolioTaxCenter />} />
-                          <Route path="portfolio/orders" element={<PortfolioOrders />} />
-                          <Route path="portfolio/workspace" element={<PreserveRedirect toPath="/market/workspace" />} />
-                          <Route path="portfolio/allocation" element={<PortfolioAllocationRedirect />} />
-                          <Route path="portfolio/income" element={<PortfolioIncome />} />
-                          <Route path="portfolio/import" element={<PortfolioImport />} />
-                          {/* Connect hub (3h): unified broker connection UX. Routes
-                              live under the same access gate as other portfolio
-                              pages because the underlying API requires it. */}
-                          <Route path="connect" element={<ConnectAccounts />} />
-                          <Route path="accounts/manage" element={<AccountsManagement />} />
-                        </Route>
+                        <Route path="portfolio" element={<PortfolioTabShell />} />
+                        <Route path="portfolio/holdings" element={<PortfolioHoldings />} />
+                        <Route path="holding/:symbol" element={<HoldingDetail />} />
+                        <Route path="portfolio/options" element={<PortfolioOptions />} />
+                        <Route path="portfolio/transactions" element={<PortfolioTransactions />} />
+                        <Route path="portfolio/categories" element={<PortfolioCategories />} />
+                        <Route path="portfolio/tax" element={<PortfolioTaxCenter />} />
+                        <Route path="portfolio/orders" element={<PortfolioOrders />} />
+                        <Route path="portfolio/workspace" element={<PreserveRedirect toPath="/market/workspace" />} />
+                        <Route path="portfolio/allocation" element={<PortfolioAllocationRedirect />} />
+                        <Route path="portfolio/income" element={<PortfolioIncome />} />
+                        <Route path="portfolio/import" element={<PortfolioImport />} />
+                        <Route path="connect" element={<ConnectAccounts />} />
+                        <Route path="accounts/manage" element={<AccountsManagement />} />
 
                         {/* Legacy /admin/agent → canonical /settings/admin/agent */}
                         <Route

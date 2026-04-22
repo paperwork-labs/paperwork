@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_portfolio_user
+from backend.api.dependencies import get_current_user
 from backend.database import SessionLocal, get_db
 from backend.models.narrative import PortfolioNarrative
 from backend.models.user import User
@@ -71,7 +71,7 @@ def _pending_payload() -> Dict[str, Any]:
 
 @router.get("/narrative/latest")
 async def get_latest_narrative(
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
 ):
     try:
         row = await asyncio.wait_for(
@@ -99,7 +99,7 @@ async def get_latest_narrative(
 async def get_narrative_by_date(
     narrative_date: date = Query(..., alias="date", description="Calendar date (YYYY-MM-DD)"),
     db: Session = Depends(get_db),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
 ):
     row = (
         db.query(PortfolioNarrative)

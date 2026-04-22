@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from backend.api.dependencies import get_db, get_portfolio_user
+from backend.api.dependencies import get_db, get_current_user
 from backend.models.account_balance import AccountBalance
 from backend.models.broker_account import BrokerAccount
 from backend.models.user import User
@@ -172,7 +172,7 @@ async def get_discipline_trajectory(
         description="Broker account primary key; defaults to primary (else lowest id) enabled account.",
     ),
     aggregate: bool = Query(False, description="Sum across all enabled accounts (requires Pro+)."),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     as_of = datetime.now(timezone.utc)

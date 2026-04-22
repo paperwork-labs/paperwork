@@ -264,11 +264,8 @@ def auto_remediate_health() -> dict:
 
 def _rule_based_remediation(health: dict) -> dict:
     """Rule-based remediation fallback."""
-    from backend.services.market.admin_health_service import BROKER_DIMS
-
     composite = health.get("composite_status", "unknown")
     dimensions = health.get("dimensions", {})
-    market_only = health.get("market_only_mode", True)
 
     actions_taken = []
     skipped = []
@@ -280,11 +277,6 @@ def _rule_based_remediation(health: dict) -> dict:
             continue
         if status in ("warning", "yellow") and dim_name not in ("fundamentals", "coverage", "stage_quality"):
             _clear_retries(dim_name)
-            continue
-
-        if market_only and dim_name in BROKER_DIMS:
-            _clear_retries(dim_name)
-            skipped.append({"dimension": dim_name, "reason": "not_in_scope"})
             continue
 
         if _is_on_cooldown(dim_name):

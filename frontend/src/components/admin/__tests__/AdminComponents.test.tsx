@@ -19,7 +19,6 @@ afterEach(() => cleanup());
 const MOCK_HEALTH: AdminHealthResponse = {
   composite_status: 'yellow',
   composite_reason: 'Degraded: jobs.',
-  market_only_mode: true,
   dimensions: {
     coverage: {
       status: 'green',

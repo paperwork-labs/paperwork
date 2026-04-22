@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 import { useAuth } from './AuthContext';
-import { isPlatformAdminRole } from '../utils/userRole';
 
 export type SelectedAccount = 'all' | 'taxable' | 'ira' | string; // string = concrete account id like U12345678
 
@@ -50,10 +49,7 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedAccount>('all');
   const [refetchVersion, setRefetchVersion] = useState(0);
-  const { token, ready, user, appSettings, appSettingsReady } = useAuth();
-  const marketOnly = appSettingsReady ? Boolean(appSettings?.market_only_mode) : true;
-  const isAdmin = isPlatformAdminRole(user?.role);
-  const portfolioEnabled = isAdmin || (!marketOnly && Boolean(appSettings?.portfolio_enabled));
+  const { token, ready } = useAuth();
 
   // Bootstrap selected from URL or localStorage
   useEffect(() => {
@@ -89,12 +85,6 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setLoading(false);
         return;
       }
-      if (!appSettingsReady || !portfolioEnabled) {
-        setAccounts([]);
-        setError(null);
-        setLoading(false);
-        return;
-      }
       setLoading(true);
       setError(null);
       try {
@@ -115,7 +105,6 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setAccounts(normalized);
       } catch (e: any) {
         const status = e?.status || e?.response?.status;
-        // Access can be intentionally denied in market-only mode.
         if (status === 401 || status === 403) {
           setAccounts([]);
           setError(null);
@@ -127,7 +116,7 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     };
     load();
-  }, [token, ready, appSettingsReady, portfolioEnabled, refetchVersion]);
+  }, [token, ready, refetchVersion]);
 
   // Reset selection when the selected account is no longer in the enabled list
   useEffect(() => {

@@ -15,7 +15,7 @@ from decimal import Decimal
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.api.dependencies import get_current_user, get_portfolio_user
+from backend.api.dependencies import get_current_user
 from backend.api.main import app
 from backend.database import get_db
 from backend.models import BrokerAccount, User
@@ -127,13 +127,11 @@ def _wire_overrides(db_session, auth_user):
 
     app.dependency_overrides[get_db] = _get_db
     app.dependency_overrides[get_current_user] = _get_user
-    app.dependency_overrides[get_portfolio_user] = _get_user
     try:
         yield
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_current_user, None)
-        app.dependency_overrides.pop(get_portfolio_user, None)
 
 
 # ---------------------------------------------------------------------------
@@ -159,13 +157,12 @@ def test_requires_auth_when_overrides_dropped(client, db_session, primary_accoun
     We don't use the shared module-scoped client (which has overrides wired in
     by the autouse fixture); we instantiate a fresh one *after* dropping the
     user override. This proves the route's auth dependency is wired through to
-    `get_portfolio_user` and not just relying on the test override to admit
+    `get_current_user` and not just relying on the test override to admit
     every caller.
     """
     if db_session is None:
         pytest.skip("database not configured")
     app.dependency_overrides.pop(get_current_user, None)
-    app.dependency_overrides.pop(get_portfolio_user, None)
     unauth_client = TestClient(app, raise_server_exceptions=False)
     res = unauth_client.get("/api/v1/portfolio/allocation?group_by=sector")
     assert res.status_code in (401, 403), res.text

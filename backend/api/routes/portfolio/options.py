@@ -7,7 +7,7 @@ from typing import List, Dict, Any, Optional
 import logging
 
 from backend.database import get_db
-from backend.api.dependencies import get_admin_user, get_portfolio_user
+from backend.api.dependencies import get_admin_user, get_current_user
 from backend.api.middleware.response_cache import redis_response_cache
 from backend.models import BrokerAccount, Option
 from backend.models.broker_account import BrokerType
@@ -22,7 +22,7 @@ router = APIRouter()
 @redis_response_cache(ttl_seconds=30)
 async def get_option_accounts(
     request: Request,
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return list of the user's broker accounts that currently hold or allow options.
@@ -86,7 +86,7 @@ async def get_unified_options_portfolio(
     account_id: Optional[str] = Query(
         None, description="Filter by account number (e.g., IBKR_ACCOUNT)"
     ),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Return unified options positions with optional account filtering, shaped for the frontend."""
@@ -235,7 +235,7 @@ async def get_unified_options_summary(
     account_id: Optional[str] = Query(
         None, description="Filter by account number (e.g., IBKR_ACCOUNT)"
     ),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
     """Aggregate summary for options positions."""
@@ -297,7 +297,7 @@ async def get_unified_options_summary(
 @router.get("/chain/{symbol}", response_model=Dict[str, Any])
 async def get_option_chain(
     symbol: str,
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Fetch live option chain for a symbol. Requires IB Gateway connection."""
@@ -324,7 +324,7 @@ async def get_option_chain(
 async def get_options_history(
     account_id: Optional[str] = Query(None, description="Filter by account number"),
     db: Session = Depends(get_db),
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """Return exercised/assigned/expired options history for the authenticated user."""
     try:
@@ -399,7 +399,7 @@ async def get_options_history(
 
 @router.get("/gateway-status", response_model=Dict[str, Any])
 async def get_gateway_status(
-    user: User = Depends(get_portfolio_user),
+    user: User = Depends(get_current_user),
 ):
     """Check IB Gateway connection status."""
     try:

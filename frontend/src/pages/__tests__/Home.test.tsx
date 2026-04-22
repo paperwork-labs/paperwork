@@ -6,13 +6,13 @@ import { cleanup, screen, waitFor } from '@/test/testing-library';
 import { renderWithProviders } from '@/test/render';
 import Home from '../Home';
 
-const { apiGetMock, getCurrentRegimeMock, getDashboardMock, getBalancesMock, getStocksMock } =
+const { apiGetMock, getCurrentRegimeMock, getDashboardMock, getStocksMock, useAccountBalancesMock } =
   vi.hoisted(() => ({
     apiGetMock: vi.fn(),
     getCurrentRegimeMock: vi.fn(),
     getDashboardMock: vi.fn(),
-    getBalancesMock: vi.fn(),
     getStocksMock: vi.fn(),
+    useAccountBalancesMock: vi.fn(),
   }));
 
 const { mockAuthValue } = vi.hoisted(() => ({
@@ -20,13 +20,10 @@ const { mockAuthValue } = vi.hoisted(() => ({
     user: { id: 1, username: 'alice', email: 'a@b.com', full_name: 'Alice', is_active: true },
     token: 'tok',
     ready: true,
-    appSettings: { market_only_mode: false, portfolio_enabled: true, strategy_enabled: true },
-    appSettingsReady: true,
     login: vi.fn(),
     register: vi.fn(),
     logout: vi.fn(),
     refreshMe: vi.fn(),
-    refreshAppSettings: vi.fn(),
   } as unknown as ReturnType<typeof import('@/context/AuthContext').useAuth>,
 }));
 
@@ -35,13 +32,17 @@ vi.mock('@/context/AuthContext', () => ({
   useAuth: () => mockAuthValue,
 }));
 
+vi.mock('@/hooks/usePortfolio', () => ({
+  __esModule: true,
+  useAccountBalances: () => useAccountBalancesMock(),
+}));
+
 vi.mock('@/services/api', () => ({
   __esModule: true,
   default: { get: apiGetMock },
   marketDataApi: { getCurrentRegime: getCurrentRegimeMock },
   portfolioApi: {
     getDashboard: getDashboardMock,
-    getBalances: getBalancesMock,
     getStocks: getStocksMock,
   },
   unwrapResponse: <T = unknown>(response: unknown, key: string): T[] => {
@@ -59,14 +60,26 @@ function makeAxios404(): AxiosError {
   return err;
 }
 
+function mockBalancesOk(rows: unknown[]) {
+  useAccountBalancesMock.mockReturnValue({
+    data: rows,
+    isPending: false,
+    isError: false,
+    isSuccess: true,
+    error: null,
+    refetch: vi.fn(),
+  });
+}
+
 describe('Home page', () => {
   beforeEach(() => {
     cleanup();
     apiGetMock.mockReset();
     getCurrentRegimeMock.mockReset();
     getDashboardMock.mockReset();
-    getBalancesMock.mockReset();
     getStocksMock.mockReset();
+    useAccountBalancesMock.mockReset();
+    mockBalancesOk([{ account_id: 1, broker: 'IBKR', cash_balance: 5_000 }]);
   });
 
   afterEach(() => {
@@ -104,9 +117,6 @@ describe('Home page', () => {
           positions_count: 7,
         },
       },
-    });
-    getBalancesMock.mockResolvedValue({
-      data: { balances: [{ account_id: 1, broker: 'IBKR', cash_balance: 5_000 }] },
     });
     getStocksMock.mockResolvedValue({
       data: {
@@ -161,7 +171,7 @@ describe('Home page', () => {
     getDashboardMock.mockResolvedValue({
       data: { total_value: 0, summary: { total_market_value: 0, positions_count: 0 } },
     });
-    getBalancesMock.mockResolvedValue({ data: { balances: [] } });
+    mockBalancesOk([]);
     getStocksMock.mockResolvedValue({ data: { stocks: [] } });
 
     renderWithProviders(<Home />);
@@ -184,13 +194,20 @@ describe('Home page', () => {
     getDashboardMock.mockResolvedValue({
       data: { total_value: 100, summary: { total_market_value: 100, positions_count: 1 } },
     });
-    getBalancesMock.mockRejectedValue(new Error('balances 500'));
+    useAccountBalancesMock.mockReturnValue({
+      data: undefined,
+      isPending: false,
+      isError: true,
+      isSuccess: false,
+      error: new Error('balances 500'),
+      refetch: vi.fn(),
+    });
     getStocksMock.mockResolvedValue({ data: { stocks: [] } });
 
     renderWithProviders(<Home />);
 
     await waitFor(() => {
-      expect(screen.getByText("Couldn't load portfolio")).toBeInTheDocument();
+      expect(screen.getByText("Couldn't load accounts")).toBeInTheDocument();
     });
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument();
   });
@@ -199,7 +216,7 @@ describe('Home page', () => {
     getCurrentRegimeMock.mockRejectedValue(new Error('network down'));
     apiGetMock.mockResolvedValue({ data: { items: [] } });
     getDashboardMock.mockResolvedValue({ data: { summary: {} } });
-    getBalancesMock.mockResolvedValue({ data: { balances: [] } });
+    mockBalancesOk([]);
     getStocksMock.mockResolvedValue({ data: { stocks: [] } });
 
     renderWithProviders(<Home />);
@@ -215,8 +232,15 @@ describe('Home page', () => {
     getCurrentRegimeMock.mockReturnValue(new Promise(() => {}));
     apiGetMock.mockReturnValue(new Promise(() => {}));
     getDashboardMock.mockReturnValue(new Promise(() => {}));
-    getBalancesMock.mockReturnValue(new Promise(() => {}));
     getStocksMock.mockReturnValue(new Promise(() => {}));
+    useAccountBalancesMock.mockReturnValue({
+      data: undefined,
+      isPending: true,
+      isError: false,
+      isSuccess: false,
+      error: null,
+      refetch: vi.fn(),
+    });
 
     const { container } = renderWithProviders(<Home />);
 

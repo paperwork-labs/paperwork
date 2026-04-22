@@ -9,8 +9,6 @@ let mockedAuth: any = {
   token: 'token',
   ready: true,
   user: { role: 'user' },
-  appSettings: { market_only_mode: true, portfolio_enabled: false, strategy_enabled: false },
-  appSettingsReady: true,
 };
 
 vi.mock('../AuthContext', () => ({
@@ -34,7 +32,7 @@ const Probe: React.FC = () => {
   );
 };
 
-describe('AccountProvider access gating', () => {
+describe('AccountProvider', () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
@@ -43,12 +41,11 @@ describe('AccountProvider access gating', () => {
       token: 'token',
       ready: true,
       user: { role: 'user' },
-      appSettings: { market_only_mode: true, portfolio_enabled: false, strategy_enabled: false },
-      appSettingsReady: true,
     };
   });
 
-  it('does not call /accounts for non-admin market-only users', async () => {
+  it('does not call /accounts when logged out', async () => {
+    mockedAuth = { token: null, ready: true, user: null };
     render(
       <AccountProvider>
         <Probe />
@@ -58,22 +55,14 @@ describe('AccountProvider access gating', () => {
     await waitFor(() => {
       expect(screen.getByTestId('accounts').textContent).toBe('0');
       expect(screen.getByTestId('loading').textContent).toBe('no');
-      expect(screen.getByTestId('error').textContent).toBe('');
     });
     expect(mockApiGet).not.toHaveBeenCalled();
   });
 
-  it('calls /accounts when portfolio access is enabled', async () => {
+  it('calls /accounts when authenticated', async () => {
     mockApiGet.mockResolvedValue({
       data: [{ id: 1, account_number: 'U123', account_name: 'IBKR Main' }],
     });
-    mockedAuth = {
-      token: 'token',
-      ready: true,
-      user: { role: 'user' },
-      appSettings: { market_only_mode: false, portfolio_enabled: true, strategy_enabled: false },
-      appSettingsReady: true,
-    };
 
     render(
       <AccountProvider>
