@@ -18,6 +18,8 @@ from typing import List, Sequence
 import pytest
 from sqlalchemy import event
 
+import backend.services.picks.generators  # noqa: F401
+from backend.services.picks.generators import stage2a_rs_strong_kell  # noqa: F401
 from backend.models.market_data import MarketRegime, MarketSnapshot
 from backend.models.picks import Candidate, CandidateQueueState, PickAction
 from backend.services.picks.candidate_generator import (
@@ -87,6 +89,7 @@ class TestRegistry:
     def test_concrete_generators_are_registered(self):
         names = {c.name for c in registered_generators()}
         assert "stage2a_rs_strong" in names
+        assert "stage2a_rs_strong_kell" in names
 
     def test_duplicate_name_raises(self):
         with pytest.raises(RuntimeError, match="Duplicate"):

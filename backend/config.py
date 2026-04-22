@@ -192,6 +192,10 @@ class Settings(BaseSettings):
     MAX_SINGLE_POSITION_PCT: float = 0.15
     ENABLE_ACCOUNT_AWARE_RISK: bool = False
 
+    # Candidate generators: Stage 2A/2B + RS quintile (Kell) variant in
+    # ``stage2a_rs_strong_kell``. Legacy ``stage2a_rs_strong`` always runs.
+    ENABLE_STAGE2A_GENERATOR: bool = False
+
     # Trade approval settings (Tier 3 / human-in-the-loop)
     TRADE_APPROVAL_MODE: str = "all"  # all | threshold | analyst_only | none
     TRADE_APPROVAL_THRESHOLD: float = 5000.0  # USD value threshold
