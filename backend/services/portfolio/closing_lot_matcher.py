@@ -30,10 +30,8 @@ call on every successful sync.
 Non-goals in v1
 ---------------
 
-- Options closed-lot reconciliation. Tracking option open/close correctly
-  requires strike/expiry/right matching; deferred to Phase 3 PR J
-  (OptionsChainSurface). Options-category FILLED trades are currently
-  skipped with a structured warning rather than silently included.
+- Options closed-lot reconciliation builds :class:`~backend.models.option_tax_lot.OptionTaxLot`
+  rows (FIFO on ``(broker_account_id, symbol)``) instead of synthetic ``Trade`` rows.
 - IRS-compliant §1091 wash-sale detection. We implement a conservative
   "loss + same-symbol replacement within ±30 days" heuristic and label it
   explicitly in the emitted metadata. A true per-lot adjustment is
@@ -53,15 +51,17 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
-from typing import Deque, Dict, Iterable, List, Optional
+from typing import Deque, Dict, Iterable, List, Optional, cast
 
 from sqlalchemy.orm import Session
 
 from backend.models import BrokerAccount, Trade
+from backend.models.option_tax_lot import OptionTaxLot
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +82,13 @@ _SYNTH_MAX_LEN = 50
 # hits it — we stream to avoid materialising the full history in RAM.
 _STREAM_CHUNK_SIZE = 500
 
+_OCC_RE = re.compile(
+    r"^(?P<underlying>[A-Z]{1,6})"
+    r"(?P<year>\d{2})(?P<month>\d{2})(?P<day>\d{2})"
+    r"(?P<cp>[CP])"
+    r"(?P<strike>\d{8})$"
+)
+
 
 @dataclass
 class _OpenLot:
@@ -92,6 +99,18 @@ class _OpenLot:
     cost_per_share: Decimal
     commission_per_share: Decimal
     source_trade_id: int
+
+
+@dataclass
+class _OptionOpenLot:
+    """FIFO queue entry for option contracts (signed quantity)."""
+
+    opened_at: object
+    quantity: Decimal
+    cost_basis_per_contract: Decimal
+    source_trade_id: int
+    multiplier: int
+    original_quantity: Decimal
 
 
 @dataclass
@@ -109,6 +128,50 @@ class MatchResult:
     @property
     def total(self) -> int:
         return self.created + self.updated + self.skipped + self.errors
+
+
+def _parse_occ_option_symbol(symbol: str) -> Optional[Dict[str, object]]:
+    """Parse OCC/OSI option symbol into contract fields."""
+    cleaned = symbol.strip().replace(" ", "")
+    m = _OCC_RE.match(cleaned)
+    if not m:
+        return None
+    try:
+        expiry = date(
+            2000 + int(m.group("year")),
+            int(m.group("month")),
+            int(m.group("day")),
+        )
+    except ValueError:
+        return None
+    strike = Decimal(m.group("strike")) / Decimal("1000")
+    cp = m.group("cp")
+    return {
+        "underlying": m.group("underlying"),
+        "expiry": expiry,
+        "option_type": "call" if cp == "C" else "put",
+        "strike": strike,
+    }
+
+
+def _option_multiplier(trade: Trade) -> int:
+    meta = trade.trade_metadata
+    if isinstance(meta, dict):
+        raw = meta.get("multiplier")
+        if raw is not None:
+            try:
+                return int(raw)
+            except (TypeError, ValueError):
+                pass
+    return 100
+
+
+def _option_holding_class(opened_at: object, closed_at: object) -> str:
+    """Classify like equity CLOSED_LOT metadata: long-term when held *more than* 365 days."""
+    if opened_at is None or closed_at is None:
+        return "short_term"
+    days = _holding_days(opened_at, closed_at)
+    return "long_term" if days > LONG_TERM_HOLDING_DAYS else "short_term"
 
 
 def reconcile_closing_lots(
@@ -170,6 +233,15 @@ def reconcile_closing_lots(
     ):
         existing_synth[t.execution_id] = t
 
+    existing_option_lots: Dict[tuple[int, int], OptionTaxLot] = {}
+    for otl in (
+        db.query(OptionTaxLot)
+        .filter(OptionTaxLot.broker_account_id == broker_account.id)
+        .yield_per(_STREAM_CHUNK_SIZE)
+    ):
+        if otl.closing_trade_id is not None:
+            existing_option_lots[(otl.opening_trade_id, otl.closing_trade_id)] = otl
+
     # Pre-index BUYs for wash-sale replacement lookups across the account's
     # full history (not just within a given symbol's queue).
     buy_log_by_symbol: Dict[str, List[Trade]] = defaultdict(list)
@@ -180,19 +252,32 @@ def reconcile_closing_lots(
 
     for sym, trades in by_symbol.items():
         lot_queue: Deque[_OpenLot] = deque()
+        option_lot_queue: Deque[_OptionOpenLot] = deque()
 
         for trade in trades:
             try:
-                _apply_trade(
-                    trade=trade,
-                    symbol=sym,
-                    lot_queue=lot_queue,
-                    buy_log=buy_log_by_symbol.get(sym, []),
-                    broker_account=broker_account,
-                    db=db,
-                    existing_synth=existing_synth,
-                    result=result,
-                )
+                if _asset_category(trade) == ASSET_OPTION:
+                    _apply_option_trade(
+                        trade=trade,
+                        symbol=sym,
+                        lot_queue=option_lot_queue,
+                        broker_account=broker_account,
+                        db=db,
+                        existing_option_lots=existing_option_lots,
+                        result=result,
+                        user_id=broker_account.user_id,
+                    )
+                else:
+                    _apply_equity_trade(
+                        trade=trade,
+                        symbol=sym,
+                        lot_queue=lot_queue,
+                        buy_log=buy_log_by_symbol.get(sym, []),
+                        broker_account=broker_account,
+                        db=db,
+                        existing_synth=existing_synth,
+                        result=result,
+                    )
             except Exception as exc:  # noqa: BLE001 — we log + count + continue
                 result.errors += 1
                 logger.warning(
@@ -216,7 +301,279 @@ def reconcile_closing_lots(
     return result
 
 
-def _apply_trade(
+def _persist_option_tax_slice(
+    *,
+    db: Session,
+    broker_account: BrokerAccount,
+    user_id: int,
+    symbol: str,
+    parsed: Dict[str, object],
+    mult: int,
+    open_snapshot_qty: Decimal,
+    cost_basis_per_contract: Decimal,
+    opened_at: object,
+    opening_trade_id: int,
+    quantity_closed: Decimal,
+    proceeds_per_contract: Optional[Decimal],
+    closed_at: object,
+    closing_trade_id: int,
+    existing_option_lots: Dict[tuple[int, int], OptionTaxLot],
+    result: MatchResult,
+) -> None:
+    holding = _option_holding_class(opened_at, closed_at)
+    realized: Optional[Decimal] = None
+    if proceeds_per_contract is not None:
+        realized = (proceeds_per_contract - cost_basis_per_contract) * quantity_closed * Decimal(
+            mult
+        )
+
+    key = (opening_trade_id, closing_trade_id)
+    existing = existing_option_lots.get(key)
+    underlying = str(parsed["underlying"])
+    expiry_raw = parsed["expiry"]
+    strike_raw = parsed["strike"]
+    if not isinstance(expiry_raw, date) or not isinstance(strike_raw, Decimal):
+        raise TypeError("OCC parse payload has unexpected types")
+    expiry = expiry_raw
+    strike = strike_raw
+    opt_type = str(parsed["option_type"])
+    if existing is not None:
+        existing.symbol = symbol
+        existing.underlying = underlying
+        existing.option_type = opt_type
+        existing.strike = strike
+        existing.expiry = expiry
+        existing.multiplier = mult
+        existing.quantity_opened = open_snapshot_qty
+        existing.cost_basis_per_contract = cost_basis_per_contract
+        existing.opened_at = opened_at  # type: ignore[assignment]
+        existing.closed_at = closed_at  # type: ignore[assignment]
+        existing.quantity_closed = quantity_closed
+        existing.proceeds_per_contract = proceeds_per_contract
+        existing.realized_pnl = realized
+        existing.holding_class = holding
+        existing.closing_trade_id = closing_trade_id
+        result.updated += 1
+        return
+
+    row = OptionTaxLot(
+        user_id=user_id,
+        broker_account_id=broker_account.id,
+        symbol=symbol,
+        underlying=underlying,
+        option_type=opt_type,
+        strike=strike,
+        expiry=expiry,
+        multiplier=mult,
+        quantity_opened=open_snapshot_qty,
+        cost_basis_per_contract=cost_basis_per_contract,
+        opened_at=opened_at,  # type: ignore[arg-type]
+        closed_at=closed_at,  # type: ignore[arg-type]
+        quantity_closed=quantity_closed,
+        proceeds_per_contract=proceeds_per_contract,
+        realized_pnl=realized,
+        holding_class=holding,
+        opening_trade_id=opening_trade_id,
+        closing_trade_id=closing_trade_id,
+    )
+    db.add(row)
+    existing_option_lots[key] = row
+    result.created += 1
+
+
+def _apply_option_trade(
+    *,
+    trade: Trade,
+    symbol: str,
+    lot_queue: Deque[_OptionOpenLot],
+    broker_account: BrokerAccount,
+    db: Session,
+    existing_option_lots: Dict[tuple[int, int], OptionTaxLot],
+    result: MatchResult,
+    user_id: int,
+) -> None:
+    parsed = _parse_occ_option_symbol(symbol)
+    if parsed is None:
+        result.skipped += 1
+        result.warnings.append(
+            f"{symbol}: could not parse OCC option symbol for trade_id={trade.id}"
+        )
+        return
+
+    mult = _option_multiplier(trade)
+    side = (trade.side or "").upper()
+    is_open = bool(trade.is_opening)
+    qty = Decimal(str(trade.quantity or 0))
+    if qty <= 0:
+        result.skipped += 1
+        return
+    if trade.execution_time is None:
+        result.skipped += 1
+        return
+
+    commission = Decimal(str(trade.commission or 0))
+    price = Decimal(str(trade.price or 0))
+
+    if side == "BUY" and is_open:
+        signed = qty
+        if lot_queue and lot_queue[0].quantity < 0:
+            result.skipped += 1
+            result.warnings.append(
+                f"{symbol}: conflicting option open (long) trade_id={trade.id} "
+                f"while short lots are open"
+            )
+            return
+        cpc = commission / qty if qty else Decimal("0")
+        cost_basis = price + cpc
+        lot_queue.append(
+            _OptionOpenLot(
+                opened_at=trade.execution_time,
+                quantity=signed,
+                cost_basis_per_contract=cost_basis,
+                source_trade_id=trade.id,
+                multiplier=mult,
+                original_quantity=signed,
+            )
+        )
+        return
+
+    if side == "SELL" and is_open:
+        signed = -qty
+        if lot_queue and lot_queue[0].quantity > 0:
+            result.skipped += 1
+            result.warnings.append(
+                f"{symbol}: conflicting option open (short) trade_id={trade.id} "
+                f"while long lots are open"
+            )
+            return
+        cpc = commission / qty if qty else Decimal("0")
+        cost_basis = price - cpc
+        lot_queue.append(
+            _OptionOpenLot(
+                opened_at=trade.execution_time,
+                quantity=signed,
+                cost_basis_per_contract=cost_basis,
+                source_trade_id=trade.id,
+                multiplier=mult,
+                original_quantity=signed,
+            )
+        )
+        return
+
+    if side == "SELL" and not is_open:
+        remaining = qty
+        close_comm_per = commission / qty if qty else Decimal("0")
+        while remaining > 0 and lot_queue:
+            lot = lot_queue[0]
+            if lot.quantity <= 0:
+                break
+            take = remaining if remaining <= lot.quantity else lot.quantity
+            open_snapshot_qty = lot.original_quantity
+            proceeds = price - close_comm_per
+            qty_closed = take
+            _persist_option_tax_slice(
+                db=db,
+                broker_account=broker_account,
+                user_id=user_id,
+                symbol=symbol,
+                parsed=parsed,
+                mult=lot.multiplier,
+                open_snapshot_qty=open_snapshot_qty,
+                cost_basis_per_contract=lot.cost_basis_per_contract,
+                opened_at=lot.opened_at,
+                opening_trade_id=lot.source_trade_id,
+                quantity_closed=qty_closed,
+                proceeds_per_contract=proceeds,
+                closed_at=trade.execution_time,
+                closing_trade_id=trade.id,
+                existing_option_lots=existing_option_lots,
+                result=result,
+            )
+            remaining -= take
+            if take >= lot.quantity:
+                lot_queue.popleft()
+            else:
+                lot.quantity -= take
+
+        if remaining > 0:
+            result.unmatched_quantity += remaining
+            result.warnings.append(
+                f"{symbol}: {remaining} contracts on trade_id={trade.id} "
+                f"could not be matched (insufficient long inventory)"
+            )
+        return
+
+    if side == "BUY" and not is_open:
+        remaining = qty
+        close_comm_per = commission / qty if qty else Decimal("0")
+        short_covers: Dict[int, Dict[str, object]] = {}
+        while remaining > 0 and lot_queue:
+            lot = lot_queue[0]
+            if lot.quantity >= 0:
+                break
+            cover = min(remaining, abs(lot.quantity))
+            proceeds = price + close_comm_per
+            oid = lot.source_trade_id
+            bucket = short_covers.get(oid)
+            if bucket is None:
+                bucket = {
+                    "initial_qty": abs(lot.original_quantity),
+                    "cost_basis_per_contract": lot.cost_basis_per_contract,
+                    "opened_at": lot.opened_at,
+                    "mult": lot.multiplier,
+                    "weighted_proceeds": Decimal("0"),
+                    "total_cover": Decimal("0"),
+                }
+                short_covers[oid] = bucket
+            bucket["weighted_proceeds"] = cast(Decimal, bucket["weighted_proceeds"]) + (
+                proceeds * cover
+            )
+            bucket["total_cover"] = cast(Decimal, bucket["total_cover"]) + cover
+            remaining -= cover
+            if cover >= abs(lot.quantity):
+                lot_queue.popleft()
+            else:
+                lot.quantity += cover
+
+        for oid, bucket in short_covers.items():
+            total_cover = cast(Decimal, bucket["total_cover"])
+            wproc = cast(Decimal, bucket["weighted_proceeds"])
+            vwap = wproc / total_cover if total_cover else Decimal("0")
+            _persist_option_tax_slice(
+                db=db,
+                broker_account=broker_account,
+                user_id=user_id,
+                symbol=symbol,
+                parsed=parsed,
+                mult=int(bucket["mult"]),
+                open_snapshot_qty=cast(Decimal, bucket["initial_qty"]),
+                cost_basis_per_contract=cast(Decimal, bucket["cost_basis_per_contract"]),
+                opened_at=bucket["opened_at"],
+                opening_trade_id=oid,
+                quantity_closed=-total_cover,
+                proceeds_per_contract=vwap,
+                closed_at=trade.execution_time,
+                closing_trade_id=trade.id,
+                existing_option_lots=existing_option_lots,
+                result=result,
+            )
+
+        if remaining > 0:
+            result.unmatched_quantity += remaining
+            result.warnings.append(
+                f"{symbol}: {remaining} contracts on trade_id={trade.id} "
+                f"could not be matched (insufficient short inventory)"
+            )
+        return
+
+    result.skipped += 1
+    result.warnings.append(
+        f"{symbol}: skipped option trade_id={trade.id} side={side!r} "
+        f"is_opening={is_open!r}"
+    )
+
+
+def _apply_equity_trade(
     *,
     trade: Trade,
     symbol: str,
@@ -229,14 +586,6 @@ def _apply_trade(
 ) -> None:
     side = (trade.side or "").upper()
     asset_category = _asset_category(trade)
-    if asset_category == ASSET_OPTION:
-        # Options require strike/expiry/right tracking; deferred to Phase 3.
-        result.skipped += 1
-        result.warnings.append(
-            f"{symbol}: skipped option trade_id={trade.id} "
-            f"(options closed-lot matching is Phase 3 / PR J)"
-        )
-        return
 
     if side == "BUY" and bool(trade.is_opening):
         qty = Decimal(str(trade.quantity or 0))

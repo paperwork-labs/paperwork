@@ -149,6 +149,21 @@ CATALOG: List[JobTemplate] = [
         enabled=False,
     ),
     JobTemplate(
+        id="backfill-option-tax-lots",
+        display_name="Backfill Option Tax Lots (FIFO)",
+        group="portfolio",
+        task="backend.tasks.portfolio.reconciliation.backfill_option_tax_lots",
+        description=(
+            "Replay closing-lot matcher for all enabled accounts of a user to populate "
+            "OptionTaxLot rows (manual / operator trigger only)."
+        ),
+        default_cron="0 0 1 1 *",
+        default_tz="UTC",
+        timeout_s=3600,
+        queue="account_sync",
+        enabled=False,
+    ),
+    JobTemplate(
         id="daily_portfolio_narrative_fanout",
         display_name="Daily Portfolio Narrative (Fanout)",
         group="portfolio",

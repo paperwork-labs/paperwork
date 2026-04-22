@@ -399,6 +399,49 @@ export const useOpenOptionsTaxSummary = () => {
   });
 };
 
+export interface RealizedOptionTaxItem {
+  id: number;
+  symbol: string;
+  underlying: string;
+  option_type: string;
+  strike: string;
+  expiry: string;
+  multiplier: number;
+  quantity_opened: string;
+  quantity_closed: string;
+  cost_basis_per_contract: string | null;
+  proceeds_per_contract: string | null;
+  realized_pnl: string | null;
+  holding_class: 'short_term' | 'long_term' | null;
+  closed_at: string | null;
+  opening_trade_id: number;
+  closing_trade_id: number | null;
+}
+
+export interface RealizedOptionsTaxData {
+  items: RealizedOptionTaxItem[];
+  total_realized_pnl_short: string | null;
+  total_realized_pnl_long: string | null;
+  counts: { short_term: number; long_term: number; total: number };
+}
+
+export const useRealizedOptionsTax = (year: number) => {
+  return useQuery({
+    queryKey: ['portfolio-realized-options-tax', year],
+    queryFn: async (): Promise<RealizedOptionsTaxData> => {
+      const r = await api.get<{ status: string; data: RealizedOptionsTaxData }>('/portfolio/options/realized', {
+        params: { year },
+      });
+      const body = r.data;
+      if (body?.status !== 'success' || body.data == null) {
+        throw new Error('Unexpected realized options tax response');
+      }
+      return body.data;
+    },
+    staleTime: 60_000,
+  });
+};
+
 export const useClosedPositions = (accountId?: string) => {
   return useQuery({
     queryKey: ['portfolio-closed-positions', accountId],

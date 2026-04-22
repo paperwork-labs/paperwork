@@ -461,3 +461,65 @@ def monitor_portfolio_drawdown(
         return {"status": "error", "error": str(e)}
     finally:
         db.close()
+
+
+@celery_app.task(
+    bind=True,
+    name="backend.tasks.portfolio.reconciliation.backfill_option_tax_lots",
+    soft_time_limit=3300,
+    time_limit=3600,
+)
+def backfill_option_tax_lots(self, user_id: int) -> Dict[str, Any]:
+    """Replay FIFO closing-lot matcher (equity CLOSED_LOT + option OptionTaxLot) per account."""
+    from backend.database import SessionLocal
+    from backend.models.broker_account import BrokerAccount
+    from backend.services.portfolio.closing_lot_matcher import reconcile_closing_lots
+
+    list_db = SessionLocal()
+    try:
+        account_ids = [
+            aid
+            for (aid,) in list_db.query(BrokerAccount.id)
+            .filter(
+                BrokerAccount.user_id == user_id,
+                BrokerAccount.is_enabled == True,
+            )
+            .all()
+        ]
+    finally:
+        list_db.close()
+
+    details: List[Dict[str, Any]] = []
+    for account_id in account_ids:
+        account_db = SessionLocal()
+        try:
+            acct = account_db.query(BrokerAccount).filter(BrokerAccount.id == account_id).one()
+            res = reconcile_closing_lots(account_db, acct)
+            details.append(
+                {
+                    "account_id": acct.id,
+                    "created": res.created,
+                    "updated": res.updated,
+                    "skipped": res.skipped,
+                    "errors": res.errors,
+                    "unmatched_quantity": str(res.unmatched_quantity),
+                }
+            )
+            account_db.commit()
+        except Exception:
+            account_db.rollback()
+            logger.exception(
+                "backfill_option_tax_lots failed for user_id=%s account_id=%s",
+                user_id,
+                account_id,
+            )
+            raise
+        finally:
+            account_db.close()
+
+    return {
+        "status": "ok",
+        "user_id": user_id,
+        "accounts_processed": len(account_ids),
+        "details": details,
+    }

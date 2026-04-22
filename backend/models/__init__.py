@@ -83,6 +83,7 @@ from .portfolio import PortfolioHistory, PortfolioSnapshot, Category, PositionCa
 
 # Tax Lots & Cost Basis
 from .tax_lot import TaxLot, TaxLotMethod, TaxLotSource
+from .option_tax_lot import OptionTaxLot
 
 # Account Balances & Margin
 from .account_balance import AccountBalance, AccountBalanceType
@@ -225,6 +226,7 @@ __all__ = [
     "TaxLot",
     "TaxLotMethod",
     "TaxLotSource",
+    "OptionTaxLot",
     "AccountBalance",
     "AccountBalanceType",
     "MarginInterest",

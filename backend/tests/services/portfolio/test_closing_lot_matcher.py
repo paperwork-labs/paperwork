@@ -321,9 +321,11 @@ def test_unmatched_sell_emits_warning_and_counter(db_session):
     assert "GOOG" in result.warnings[0]
 
 
-def test_options_are_skipped_not_misclassified(db_session):
+def test_options_create_option_tax_lots_not_equity_closed_lot(db_session):
     if db_session is None:
         pytest.skip("DB session unavailable")
+    from backend.models.option_tax_lot import OptionTaxLot
+
     user = _make_user(db_session, username="lotmatch_user_7")
     acct = _make_account(db_session, user=user, account_number="LM007")
 
@@ -339,14 +341,18 @@ def test_options_are_skipped_not_misclassified(db_session):
         db_session, account=acct, symbol=opt_symbol, side="SELL",
         quantity=Decimal("2"), price=Decimal("8"),
         execution_id="OPT-S", execution_time=datetime(2024, 2, 1, tzinfo=timezone.utc),
+        is_opening=False,
         trade_metadata={"asset_category": "OPT"},
     )
 
     result = reconcile_closing_lots(db_session, acct)
-    assert result.created == 0
-    assert result.skipped >= 2
+    assert result.created == 1
     lots = _closed_lots(db_session, acct)
     assert len(lots) == 0
+    opt_rows = db_session.query(OptionTaxLot).filter(OptionTaxLot.broker_account_id == acct.id).all()
+    assert len(opt_rows) == 1
+    assert opt_rows[0].symbol == opt_symbol
+    assert opt_rows[0].quantity_closed == Decimal("2")
 
 
 def test_cross_tenant_isolation(db_session):
