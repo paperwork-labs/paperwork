@@ -17,6 +17,7 @@ from .base import (
     OAuthInitiateResult,
     OAuthTokens,
 )
+from .coinbase import CoinbaseOAuthAdapter
 from .etrade import ETradeSandboxAdapter
 from .tradier import TradierOAuth2Adapter, TradierSandboxOAuth2Adapter
 
@@ -25,6 +26,7 @@ _REGISTRY: Dict[str, Type[OAuthBrokerAdapter]] = {
     ETradeSandboxAdapter.broker_id: ETradeSandboxAdapter,
     TradierOAuth2Adapter.broker_id: TradierOAuth2Adapter,
     TradierSandboxOAuth2Adapter.broker_id: TradierSandboxOAuth2Adapter,
+    CoinbaseOAuthAdapter.broker_id: CoinbaseOAuthAdapter,
 }
 
 

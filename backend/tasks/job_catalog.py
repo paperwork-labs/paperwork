@@ -93,6 +93,20 @@ CATALOG: List[JobTemplate] = [
         timeout_s=960,
     ),
     JobTemplate(
+        id="coinbase-daily-sync",
+        display_name="Coinbase Daily Sync",
+        group="portfolio",
+        task="backend.tasks.account_sync.sync_all_coinbase_accounts",
+        description=(
+            "Sync all enabled Coinbase accounts (crypto wallets, transactions, "
+            "trades, FIFO closing lots) via the v2 OAuth 2.0 wallet API."
+        ),
+        default_cron="15 3 * * *",
+        default_tz="UTC",
+        queue="account_sync",
+        timeout_s=960,
+    ),
+    JobTemplate(
         id="recover-stale-syncs",
         display_name="Recover Stale Syncs",
         group="portfolio",

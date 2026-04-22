@@ -45,6 +45,7 @@ DIRECT_CONNECT_BROKERS_LIVE: Tuple[str, ...] = (
     "tastytrade",  # OAuth 2.0
     "etrade",      # OAuth 1.0a (sandbox in v1)
     "tradier",     # OAuth 2.0 (live + sandbox tokens)
+    "coinbase",    # OAuth 2.0 (consumer wallet read-only)
 )
 
 # Deprecated alias. Kept so existing imports
@@ -52,9 +53,7 @@ DIRECT_CONNECT_BROKERS_LIVE: Tuple[str, ...] = (
 # don't break during the rename. Remove once external callers migrate.
 DIRECT_OAUTH_BROKERS_LIVE: Tuple[str, ...] = DIRECT_CONNECT_BROKERS_LIVE
 
-DIRECT_OAUTH_BROKERS_PLANNED: Tuple[str, ...] = (
-    "coinbase",  # OAuth 2.0 (crypto) — not yet connected in app
-)
+DIRECT_OAUTH_BROKERS_PLANNED: Tuple[str, ...] = ()
 
 IMPORT_CATALOG_BROKERS_COUNT: int = 14
 

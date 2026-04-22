@@ -39,6 +39,7 @@ celery_app = Celery(
         # so new brokers add a module without editing shared sync tasks.
         "backend.tasks.portfolio.etrade_sync",
         "backend.tasks.portfolio.tradier_sync",
+        "backend.tasks.portfolio.coinbase_sync",
         # Strategy
         "backend.tasks.strategy.tasks",
         "backend.tasks.strategy.exit_evaluation",

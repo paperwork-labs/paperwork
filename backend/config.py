@@ -137,6 +137,12 @@ class Settings(BaseSettings):
     TRADIER_OAUTH_CALLBACK_URL: Optional[str] = None
     TRADIER_OAUTH_REQUEST_TIMEOUT_S: float = 15.0
 
+    # Coinbase OAuth 2.0 (consumer wallet API, read-only scopes).
+    COINBASE_CLIENT_ID: Optional[str] = None
+    COINBASE_CLIENT_SECRET: Optional[str] = None
+    COINBASE_OAUTH_CALLBACK_URL: Optional[str] = None
+    COINBASE_OAUTH_REQUEST_TIMEOUT_S: float = 15.0
+
     # Schwab (optional) - comma-separated account numbers for seeding
     SCHWAB_ACCOUNTS: Optional[str] = None
     SCHWAB_CLIENT_ID: Optional[str] = None

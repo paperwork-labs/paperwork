@@ -46,6 +46,8 @@ class BrokerType(enum.Enum):
     # ``BrokerOAuthConnection.broker`` so sync picks the matching token
     # (``TRADIER_SANDBOX`` in ``brokertype`` from migration 0062).
     TRADIER_SANDBOX = "tradier_sandbox"
+    # Coinbase consumer wallet API (OAuth slug ``coinbase``; migration 0063).
+    COINBASE = "coinbase"
     # Allow tests to persist unknown brokers without schema errors
     UNKNOWN_BROKER = "unknown_broker"
 

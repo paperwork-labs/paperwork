@@ -49,6 +49,13 @@ def _import_tradier_service():
     return TradierSyncService()
 
 
+def _import_coinbase_service():
+    """Lazy import for the Coinbase bronze sync service."""
+
+    from backend.services.bronze.coinbase import CoinbaseSyncService
+    return CoinbaseSyncService()
+
+
 def _build_partial_sync_message(completeness: Dict) -> str:
     """Build a user-facing message for SyncStatus.PARTIAL (G22).
 
@@ -114,6 +121,7 @@ class BrokerSyncService:
             BrokerType.ETRADE,
             BrokerType.TRADIER,
             BrokerType.TRADIER_SANDBOX,
+            BrokerType.COINBASE,
         ]
 
     def _get_broker_service(self, broker_type):
@@ -134,6 +142,7 @@ class BrokerSyncService:
             BrokerType.ETRADE: _import_etrade_service,
             BrokerType.TRADIER: _import_tradier_service,
             BrokerType.TRADIER_SANDBOX: _import_tradier_service,
+            BrokerType.COINBASE: _import_coinbase_service,
         }
 
         factory = factories.get(broker_type)

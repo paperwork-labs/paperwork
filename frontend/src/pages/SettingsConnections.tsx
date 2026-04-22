@@ -43,6 +43,7 @@ import TastytradeLogo from '../assets/logos/tastytrade.svg';
 import IbkrLogo from '../assets/logos/interactive-brokers.svg';
 import EtradeLogo from '../assets/logos/etrade.svg';
 import TradierLogo from '../assets/logos/tradier.svg';
+import CoinbaseLogo from '../assets/logos/coinbase.svg';
 import IBGatewayLogo from '../assets/logos/ib-gateway.svg';
 import TradingViewLogo from '../assets/logos/tradingview.svg';
 import FmpLogo from '../assets/logos/fmp.svg';
@@ -75,7 +76,7 @@ const SettingsConnections: React.FC = () => {
   // Wizard
   const [wizardOpen, setWizardOpen] = useState(false);
   const [step, setStep] = useState<number>(1);
-  const [broker, setBroker] = useState<'SCHWAB' | 'TASTYTRADE' | 'IBKR' | 'ETRADE' | 'TRADIER' | ''>('');
+  const [broker, setBroker] = useState<'SCHWAB' | 'TASTYTRADE' | 'IBKR' | 'ETRADE' | 'TRADIER' | 'COINBASE' | ''>('');
   const [schwabForm, setSchwabForm] = useState({ account_number: '', account_name: '' });
   const [ibkrForm, setIbkrForm] = useState({ flex_token: '', query_id: '', account_number: '' });
   // E*TRADE OAuth 1.0a uses an out-of-band verifier code: the user authorizes
@@ -89,6 +90,10 @@ const SettingsConnections: React.FC = () => {
   // verifier paste (unlike E*TRADE OAuth 1.0a in this wizard).
   const [tradierForm, setTradierForm] = useState({
     env: 'sandbox' as 'sandbox' | 'live',
+    state: '',
+    account_name: '',
+  });
+  const [coinbaseForm, setCoinbaseForm] = useState({
     state: '',
     account_name: '',
   });
@@ -129,6 +134,7 @@ const SettingsConnections: React.FC = () => {
     if (key === 'ETRADE') return 'E*TRADE';
     if (key === 'TRADIER') return 'Tradier';
     if (key === 'TRADIER_SANDBOX') return 'Tradier (sandbox)';
+    if (key === 'COINBASE') return 'Coinbase';
     return b;
   };
 
@@ -283,6 +289,65 @@ const SettingsConnections: React.FC = () => {
         }
       })();
     }
+    const coinbaseStatus = params.get('coinbase');
+    const coinbaseCode = params.get('code');
+    const coinbaseState = params.get('state');
+    if (coinbaseStatus === 'linked' && coinbaseCode && coinbaseState) {
+      (async () => {
+        const notifyOtherTabs = () => {
+          const msg = { broker: 'coinbase' as const, status: 'ok' as const };
+          if (typeof BroadcastChannel !== 'undefined') {
+            const bc = new BroadcastChannel('axf-oauth');
+            bc.postMessage(msg);
+            bc.close();
+          }
+          try {
+            localStorage.setItem('axf-oauth-ping', JSON.stringify({ ...msg, ts: Date.now() }));
+          } catch { /* private mode / blocked */ }
+        };
+        const defaultName = 'Coinbase';
+        let placeAccountName = defaultName;
+        try {
+          const p = sessionStorage.getItem('axf-coinbase-pending');
+          if (p) {
+            const o = JSON.parse(p) as { account_name?: string };
+            if (o?.account_name?.trim()) placeAccountName = o.account_name.trim();
+          }
+        } catch { /* invalid JSON */ }
+        try {
+          sessionStorage.removeItem('axf-coinbase-pending');
+        } catch { /* */ }
+        try {
+          await oauthApi.callback('coinbase', coinbaseState, coinbaseCode);
+          try {
+            await accountsApi.add({
+              broker: 'COINBASE',
+              account_number: 'COINBASE_OAUTH',
+              account_name: placeAccountName || defaultName,
+              account_type: 'TAXABLE',
+            });
+          } catch (e) {
+            const msg = handleApiError(e).toLowerCase();
+            if (!msg.includes('exists') && !msg.includes('duplicate')) throw e;
+          }
+          toast({ title: 'Coinbase connected', status: 'success' });
+          await loadAccounts();
+          await loadSyncHistory();
+          notifyOtherTabs();
+        } catch (e) {
+          toast({
+            title: 'Coinbase callback failed',
+            description: handleApiError(e),
+            status: 'error',
+          });
+        } finally {
+          window.history.replaceState({}, '', window.location.pathname);
+          try {
+            window.close();
+          } catch { /* not a script-opened window */ }
+        }
+      })();
+    }
   }, []);
 
   // Tradier popup uses ``noopener`` (so ``window.opener`` is null). The
@@ -297,14 +362,14 @@ const SettingsConnections: React.FC = () => {
     const ch = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('axf-oauth') : null;
     const onBc = (ev: MessageEvent) => {
       const d = ev.data as { broker?: string; status?: string } | null;
-      if (d && d.broker === 'tradier' && d.status === 'ok') refresh();
+      if (d && (d.broker === 'tradier' || d.broker === 'coinbase') && d.status === 'ok') refresh();
     };
     ch?.addEventListener('message', onBc);
     const onStorage = (e: StorageEvent) => {
       if (e.key !== 'axf-oauth-ping' || !e.newValue) return;
       try {
         const d = JSON.parse(e.newValue) as { broker?: string; status?: string };
-        if (d && d.broker === 'tradier' && d.status === 'ok') refresh();
+        if (d && (d.broker === 'tradier' || d.broker === 'coinbase') && d.status === 'ok') refresh();
       } catch { /* */ }
     };
     window.addEventListener('storage', onStorage);
@@ -485,6 +550,41 @@ const SettingsConnections: React.FC = () => {
 
   // Same popup pre-open pattern as E*TRADE. Tradier returns with
   // ``?tradier=linked&code=...`` (see page-load useEffect) — no verifier paste.
+  const handleCoinbaseAuthorize = async () => {
+    const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
+    try {
+      setBusy(true);
+      const brokerId = 'coinbase';
+      const callbackUrl =
+        `${window.location.origin}/settings/connections?coinbase=linked`;
+      try {
+        sessionStorage.setItem(
+          'axf-coinbase-pending',
+          JSON.stringify({ account_name: coinbaseForm.account_name.trim() })
+        );
+      } catch { /* */ }
+      const res = await oauthApi.initiate(brokerId, callbackUrl);
+      if (!res?.authorize_url || !res?.state) {
+        throw new Error('Coinbase did not return an authorization URL');
+      }
+      setCoinbaseForm((prev) => ({ ...prev, state: res.state }));
+      if (popup && !popup.closed) {
+        popup.location.href = res.authorize_url;
+      } else {
+        window.open(res.authorize_url, '_blank', 'noopener,noreferrer');
+      }
+      toast({
+        title: 'Authorize in the new tab — we\u2019ll finish when Coinbase redirects back',
+        status: 'info',
+      });
+    } catch (e) {
+      try { popup?.close(); } catch { /* noop */ }
+      toast({ title: 'Coinbase authorize failed', description: handleApiError(e), status: 'error' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleTradierAuthorize = async (env: 'sandbox' | 'live') => {
     const popup = window.open('about:blank', '_blank', 'noopener,noreferrer');
     try {
@@ -601,6 +701,11 @@ const SettingsConnections: React.FC = () => {
           throw new Error('Click Authorize first to complete Tradier OAuth');
         }
         toast({ title: 'Tradier connection in progress', status: 'info' });
+      } else if (broker === 'COINBASE') {
+        if (!coinbaseForm.state) {
+          throw new Error('Click Authorize first to complete Coinbase OAuth');
+        }
+        toast({ title: 'Coinbase connection in progress', status: 'info' });
       } else if (broker === 'IBKR') {
         if (!ibkrForm.flex_token || !ibkrForm.query_id) throw new Error('Enter Flex Token and Query ID');
         const res: any = await aggregatorApi.ibkrFlexConnect({
@@ -819,6 +924,7 @@ const SettingsConnections: React.FC = () => {
                 { key: 'TASTYTRADE', name: 'Tastytrade', logo: TastytradeLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'TASTYTRADE') },
                 { key: 'ETRADE', name: 'E*TRADE', logo: EtradeLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'ETRADE') },
                 { key: 'TRADIER', name: 'Tradier', logo: TradierLogo, connected: accounts.some((a) => { const b = String(a.broker).toUpperCase(); return b === 'TRADIER' || b === 'TRADIER_SANDBOX'; }) },
+                { key: 'COINBASE', name: 'Coinbase', logo: CoinbaseLogo, connected: accounts.some(a => String(a.broker).toUpperCase() === 'COINBASE') },
               ];
               return brokerConfigs.map(bc => {
                 const brokerAccounts = accounts.filter(a => String(a.broker).toUpperCase() === bc.key);
@@ -1466,6 +1572,7 @@ const SettingsConnections: React.FC = () => {
                   <LogoTile label="Interactive Brokers" srcs={[IbkrLogo]} selected={broker === 'IBKR'} onClick={() => { setBroker('IBKR'); setStep(2); }} wide />
                   <LogoTile label="E*TRADE" srcs={[EtradeLogo]} selected={broker === 'ETRADE'} onClick={() => { setBroker('ETRADE'); setStep(2); }} wide />
                   <LogoTile label="Tradier" srcs={[TradierLogo]} selected={broker === 'TRADIER'} onClick={() => { setBroker('TRADIER'); setStep(2); }} wide />
+                  <LogoTile label="Coinbase" srcs={[CoinbaseLogo]} selected={broker === 'COINBASE'} onClick={() => { setBroker('COINBASE'); setStep(2); }} wide />
                 </div>
                 <div className="text-sm text-muted-foreground">More brokers coming soon (Fidelity, Robinhood, Public)</div>
               </div>
@@ -1518,6 +1625,48 @@ const SettingsConnections: React.FC = () => {
                   Note: The FlexQuery API may return fewer sections than a manual download.
                   If dividends or transactions are missing, verify the sections above are included in your query.
                 </div>
+              </div>
+            )}
+            {step === 2 && broker === 'COINBASE' && (
+              <div className="flex flex-col gap-3 items-stretch">
+                <div className="font-semibold">Coinbase (OAuth 2.0)</div>
+                <div className="text-xs text-muted-foreground">
+                  Read-only wallet access (accounts and transactions). A new tab opens
+                  Coinbase to approve access; this page continues automatically when
+                  Coinbase redirects back.
+                </div>
+                <Input
+                  placeholder="Account Name (optional)"
+                  value={coinbaseForm.account_name}
+                  onChange={(e) => setCoinbaseForm({ ...coinbaseForm, account_name: e.target.value })}
+                />
+                {!coinbaseForm.state ? (
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => void handleCoinbaseAuthorize()}
+                    >
+                      {busy ? <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden /> : <ExternalLink className="mr-1.5 size-3.5" aria-hidden />}
+                      Authorize on Coinbase
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <div className="text-xs text-muted-foreground">
+                      Waiting for Coinbase to redirect back with the authorization code.
+                    </div>
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="ghost"
+                      onClick={() => setCoinbaseForm({ state: '', account_name: coinbaseForm.account_name })}
+                    >
+                      Start over
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
             {step === 2 && broker === 'TRADIER' && (
@@ -1638,7 +1787,7 @@ const SettingsConnections: React.FC = () => {
             )}
           </div>
           <DialogFooter>
-            {step === 2 && broker !== 'ETRADE' && broker !== 'TRADIER' && (
+            {step === 2 && broker !== 'ETRADE' && broker !== 'TRADIER' && broker !== 'COINBASE' && (
               <Button type="button" disabled={busy} onClick={() => void submitWizard()}>
                 {busy ? <Loader2 className="mr-1 size-3.5 animate-spin" aria-hidden /> : null}
                 Connect
@@ -1651,6 +1800,11 @@ const SettingsConnections: React.FC = () => {
               </Button>
             )}
             {step === 2 && broker === 'TRADIER' && (
+              <Button type="button" variant="ghost" onClick={() => setWizardOpen(false)}>
+                Close
+              </Button>
+            )}
+            {step === 2 && broker === 'COINBASE' && (
               <Button type="button" variant="ghost" onClick={() => setWizardOpen(false)}>
                 Close
               </Button>

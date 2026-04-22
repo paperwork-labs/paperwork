@@ -39,9 +39,9 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
         Because most "free" portfolio apps still charge a monthly fee to look
         at your own data, and we don't want to be that. Snowball-class
         visualization, direct connections to Schwab, IBKR, Tastytrade,
-        E*TRADE, and Tradier today (Schwab + Tastytrade + Tradier via
-        OAuth, IBKR via FlexQuery + IB Gateway, E*TRADE via OAuth
-        sandbox; Coinbase OAuth planned),
+        E*TRADE, Tradier, and Coinbase today (Schwab + Tastytrade + Tradier
+        + Coinbase via OAuth, IBKR via FlexQuery + IB Gateway, E*TRADE via
+        OAuth sandbox),
         CSV import for every other broker, real-time prices, public
         sharing — all free, forever. The full reasoning lives on{' '}
         <Link
