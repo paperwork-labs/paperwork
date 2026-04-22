@@ -9,7 +9,7 @@ import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useAccountContext } from '../../context/AccountContext';
 import { formatMoney } from '../../utils/format';
-import { toStartEnd } from '../../utils/portfolio';
+import { brokerAccountRowKey, toStartEnd } from '../../utils/portfolio';
 import type { ActivityRow } from '../../types/portfolio';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -63,7 +63,7 @@ const PortfolioTransactions: React.FC = () => {
   const accountIdForApi = useMemo(() => {
     if (selected === 'all') return undefined;
     const acc = (rawAccounts as { id?: number; account_number?: string }[]).find(
-      (a) => (a.account_number ?? String(a.id)) === selected,
+      (a) => brokerAccountRowKey(a) === selected,
     );
     return acc?.id as number | undefined;
   }, [selected, rawAccounts]);
@@ -119,7 +119,9 @@ const PortfolioTransactions: React.FC = () => {
   const accountLookup = useMemo(() => {
     const map: Record<number, string> = {};
     for (const a of rawAccounts as Array<{ id?: number; broker?: string; account_number?: string }>) {
-      if (a.id) map[a.id] = a.broker ?? a.account_number ?? String(a.id);
+      if (Number.isFinite(a.id)) {
+        map[a.id as number] = a.broker ?? a.account_number ?? String(a.id);
+      }
     }
     return map;
   }, [rawAccounts]);

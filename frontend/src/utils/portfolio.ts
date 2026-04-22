@@ -16,6 +16,58 @@ export interface BrokerAccountLike {
   last_successful_sync?: string;
 }
 
+/** Loose API / broker payload before normalization. */
+export interface RawBrokerAccountInput {
+  id?: number;
+  account_number?: string;
+  broker?: string;
+  account_name?: string;
+  account_type?: string;
+  last_successful_sync?: string | null;
+}
+
+/**
+ * Keep only rows with a finite numeric id (required for balance joins and stable identity).
+ * Normalizes account_number so we never emit the literal string "undefined".
+ */
+export function normalizeBrokerAccountsForPositions(
+  raw: ReadonlyArray<RawBrokerAccountInput>,
+): BrokerAccountLike[] {
+  return raw
+    .filter((a) => Number.isFinite(a.id))
+    .map((a) => {
+      const id = a.id as number;
+      const account_number =
+        typeof a.account_number === 'string' && a.account_number.length > 0
+          ? a.account_number
+          : String(id);
+      return {
+        id,
+        account_number,
+        broker: a.broker ?? 'Unknown',
+        account_name: a.account_name,
+        account_type: a.account_type,
+        last_successful_sync: a.last_successful_sync ?? undefined,
+      };
+    });
+}
+
+/** Match key for account filter selection (account_number, else string id). Empty if unusable. */
+export function brokerAccountRowKey(a: { id?: number; account_number?: string }): string {
+  if (typeof a.account_number === 'string' && a.account_number.length > 0) {
+    return a.account_number;
+  }
+  if (Number.isFinite(a.id)) {
+    return String(a.id as number);
+  }
+  return '';
+}
+
+/** React list key for a normalized broker row. */
+export function brokerAccountStableReactKey(broker: string, accountNumber: string, id: number): string {
+  return `${broker.toLowerCase()}-${accountNumber}-${id}`;
+}
+
 /** Build AccountData[] from broker accounts list + positions aggregate. */
 export function buildAccountsFromPositions(
   brokerAccounts: BrokerAccountLike[],
@@ -50,10 +102,11 @@ export function buildAccountsFromPositions(
 }
 
 /** Build AccountData[] from raw broker account list (no position values). */
-export function buildAccountsFromBroker(rawAccounts: BrokerAccountLike[]): AccountData[] {
-  if (!rawAccounts?.length) return [];
-  return rawAccounts.map((a) => ({
-    account_id: a.account_number ?? String(a.id),
+export function buildAccountsFromBroker(rawAccounts: ReadonlyArray<RawBrokerAccountInput>): AccountData[] {
+  const rows = normalizeBrokerAccountsForPositions(rawAccounts);
+  if (!rows.length) return [];
+  return rows.map((a) => ({
+    account_id: a.account_number,
     account_name: a.account_name ?? a.account_number ?? '',
     account_type: a.account_type ?? 'Unknown',
     broker: a.broker ?? 'Unknown',

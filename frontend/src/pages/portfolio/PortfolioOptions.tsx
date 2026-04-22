@@ -113,7 +113,7 @@ const PortfolioOptions: React.FC = () => {
 
   const rawAccounts = accountsQuery.data ?? [];
   const accounts: AccountData[] = useMemo(
-    () => buildAccountsFromBroker(rawAccounts as import('../../utils/portfolio').BrokerAccountLike[]),
+    () => buildAccountsFromBroker(rawAccounts ?? []),
     [rawAccounts],
   );
 

@@ -27,11 +27,15 @@ import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { formatMoney } from '../../../utils/format';
 import {
   buildAccountsFromPositions,
+  brokerAccountRowKey,
+  brokerAccountStableReactKey,
+  normalizeBrokerAccountsForPositions,
   stageCountsFromPositions,
   sectorAllocationFromPositions,
   topMoversFromPositions,
   timeAgo,
 } from '../../../utils/portfolio';
+import type { RawBrokerAccountInput } from '../../../utils/portfolio';
 import { StatCardSkeleton } from '../../../components/shared/Skeleton';
 import { DailyNarrative } from '../../../components/portfolio/DailyNarrative';
 import type { AccountData } from '../../../hooks/useAccountFilter';
@@ -61,30 +65,15 @@ const OverviewTab: React.FC = () => {
   const positionRows = (positionsQuery.data as EnrichedPosition[] | undefined) ?? [];
   const dashboard = overview.summary.data as DashboardResponse | undefined;
   const rawAccounts = Array.isArray(overview.accountsData) ? overview.accountsData : [];
+  const sanitizedBrokerRows = useMemo(
+    () =>
+      normalizeBrokerAccountsForPositions(rawAccounts as RawBrokerAccountInput[]),
+    [rawAccounts],
+  );
 
   const accounts: AccountData[] = useMemo(
-    () =>
-      buildAccountsFromPositions(
-        rawAccounts.map(
-          (a: {
-            id?: number;
-            account_number?: string;
-            broker?: string;
-            account_name?: string;
-            account_type?: string;
-            last_successful_sync?: string | null;
-          }) => ({
-            id: a.id ?? 0,
-            account_number: a.account_number ?? String(a.id),
-            broker: a.broker ?? 'Unknown',
-            account_name: a.account_name,
-            account_type: a.account_type,
-            last_successful_sync: a.last_successful_sync ?? undefined,
-          }),
-        ),
-        positionRows,
-      ),
-    [rawAccounts, positionRows],
+    () => buildAccountsFromPositions(sanitizedBrokerRows, positionRows),
+    [sanitizedBrokerRows, positionRows],
   );
 
   const filterState = useAccountFilter(positionRows as import('../../../hooks/useAccountFilter').FilterableItem[], accounts);
@@ -167,11 +156,11 @@ const OverviewTab: React.FC = () => {
               filterState.selectedAccount === 'all'
                 ? balanceRows
                 : balanceRows.filter((b: Record<string, unknown>) => {
-                    const raw = rawAccounts.find((a: { id?: number }) => a.id === b.account_id);
+                    const raw = sanitizedBrokerRows.find((a) => a.id === b.account_id);
                     return (
                       raw &&
-                      ((raw as { account_number?: string }).account_number === filterState.selectedAccount ||
-                        String((raw as { id?: unknown }).id) === filterState.selectedAccount)
+                      (raw.account_number === filterState.selectedAccount ||
+                        String(raw.id) === filterState.selectedAccount)
                     );
                   });
             const nlvTotal = filteredBalances.reduce(
@@ -311,15 +300,9 @@ const OverviewTab: React.FC = () => {
                     </div>
                   )}
 
-                {rawAccounts.length > 0 && (
+                {sanitizedBrokerRows.length > 0 && (
                   <div className="flex flex-wrap items-center gap-4 rounded-md bg-muted/50 px-3 py-2">
-                    {rawAccounts.map(
-                      (a: {
-                        id?: number;
-                        account_number?: string;
-                        broker?: string;
-                        last_successful_sync?: string | null;
-                      }) => {
+                    {sanitizedBrokerRows.map((a) => {
                         const syncTime = a.last_successful_sync ? new Date(a.last_successful_sync) : null;
                         const ageMs = syncTime ? Date.now() - syncTime.getTime() : Infinity;
                         const ageHours = ageMs / (1000 * 60 * 60);
@@ -330,7 +313,10 @@ const OverviewTab: React.FC = () => {
                               ? 'bg-[rgb(var(--status-warning))]'
                               : 'bg-[rgb(var(--status-danger))]';
                         return (
-                          <div key={a.id} className="flex items-center gap-1">
+                          <div
+                            key={brokerAccountStableReactKey(a.broker, a.account_number, a.id)}
+                            className="flex items-center gap-1"
+                          >
                             <span className={cn('size-1.5 shrink-0 rounded-full', dotClass)} aria-hidden />
                             <span className="text-xs text-muted-foreground">
                               {(a.broker || '').toUpperCase()} ···{(a.account_number || '').slice(-4)} ·{' '}
@@ -338,8 +324,7 @@ const OverviewTab: React.FC = () => {
                             </span>
                           </div>
                         );
-                      },
-                    )}
+                      })}
                     <Button
                       size="xs"
                       variant="outline"
@@ -415,9 +400,8 @@ const OverviewTab: React.FC = () => {
                           )}
                         >
                           {accounts.map((acc) => {
-                            const raw = rawAccounts.find(
-                              (a: { account_number?: string; id?: unknown }) =>
-                                (a.account_number ?? String(a.id)) === acc.account_id,
+                            const raw = sanitizedBrokerRows.find(
+                              (a) => brokerAccountRowKey(a) === acc.account_id,
                             );
                             const bal = balanceRows.find((b: { account_id?: number }) => b.account_id === raw?.id);
                             const nlv = Number(bal?.net_liquidation ?? 0);
@@ -426,7 +410,7 @@ const OverviewTab: React.FC = () => {
                             return (
                               <button
                                 type="button"
-                                key={acc.account_id}
+                                key={`${acc.broker}-${acc.account_id}`}
                                 className={cn(
                                   'cursor-pointer rounded-lg border p-3 text-left transition-colors',
                                   isSelected

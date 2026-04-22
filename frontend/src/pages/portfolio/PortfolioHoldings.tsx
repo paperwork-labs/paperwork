@@ -13,7 +13,8 @@ import PnlText from '../../components/shared/PnlText';
 import { usePositions, usePortfolioSync, usePortfolioAccounts } from '../../hooks/usePortfolio';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { formatMoney, formatDateShort } from '../../utils/format';
-import { buildAccountsFromPositions } from '../../utils/portfolio';
+import { buildAccountsFromPositions, normalizeBrokerAccountsForPositions } from '../../utils/portfolio';
+import type { RawBrokerAccountInput } from '../../utils/portfolio';
 import type { AccountData } from '../../hooks/useAccountFilter';
 import type { EnrichedPosition } from '../../types/portfolio';
 import TradeModal from '../../components/orders/TradeModal';
@@ -118,13 +119,15 @@ const PortfolioHoldings: React.FC = () => {
   const accounts: AccountData[] = useMemo(
     () =>
       buildAccountsFromPositions(
-        rawAccounts.map((a: Record<string, unknown>) => ({
-          id: a.id as number | undefined,
-          account_number: (a.account_number as string) ?? String(a.id),
-          broker: (a.broker as string) ?? 'Unknown',
-          account_name: a.account_name as string | undefined,
-          account_type: a.account_type as string | undefined,
-        })),
+        normalizeBrokerAccountsForPositions(
+          rawAccounts.map((a: Record<string, unknown>) => ({
+            id: typeof a.id === 'number' && Number.isFinite(a.id) ? a.id : undefined,
+            account_number: typeof a.account_number === 'string' ? a.account_number : undefined,
+            broker: typeof a.broker === 'string' ? a.broker : undefined,
+            account_name: typeof a.account_name === 'string' ? a.account_name : undefined,
+            account_type: typeof a.account_type === 'string' ? a.account_type : undefined,
+          })) as RawBrokerAccountInput[],
+        ),
         positions,
       ),
     [rawAccounts, positions],
