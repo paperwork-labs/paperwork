@@ -224,17 +224,23 @@ const DashboardLayout: React.FC = () => {
     }
   }, [location.hash, location.pathname, location.search]);
 
+  // Cmd+, is a role-aware power shortcut: admins hop to the system-status
+  // page they live in; everyone else lands on Connections, the surface
+  // non-admins most often want to reach fast. The avatar "Settings" entry
+  // stays aimed at /settings/profile (muscle memory) even though the
+  // shortcut jumps elsewhere.
+  const commaShortcutTarget = isAdmin ? '/settings/admin/system' : '/settings/connections';
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!(e.metaKey || e.ctrlKey)) return;
       if (e.key !== ',' && e.code !== 'Comma') return;
       if (isTypingTarget(e.target)) return;
       e.preventDefault();
-      navigate('/settings/profile');
+      navigate(commaShortcutTarget);
     };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [navigate]);
+  }, [navigate, commaShortcutTarget]);
 
   const sidebarWidthClass = isSidebarOpen ? 'w-64' : 'w-16';
 
@@ -452,23 +458,30 @@ const DashboardLayout: React.FC = () => {
               {portfolioNavVisible && accounts.length > 0 ? (
                 <TopBarAccountSelector compact={!isDesktop} />
               ) : null}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={cn(
-                  'h-8 gap-1.5 px-2.5 font-sans text-xs',
-                  'border-transparent bg-muted/70 hover:bg-muted',
-                  'focus-visible:ring-2 focus-visible:ring-ring'
-                )}
-                aria-label="Open command palette"
-                onClick={() => openCommandPalette()}
-              >
-                <Command className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-                <kbd className="pointer-events-none inline-flex min-h-5 items-center rounded border border-border bg-background/80 px-1.5 font-mono text-[10px] font-medium tabular-nums text-foreground">
-                  {cmdKLabel}
-                </kbd>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      'h-8 gap-1.5 px-2.5 font-sans text-xs',
+                      'border-transparent bg-muted/70 hover:bg-muted',
+                      'focus-visible:ring-2 focus-visible:ring-ring'
+                    )}
+                    aria-label="Open command palette"
+                    onClick={() => openCommandPalette()}
+                  >
+                    <Command className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                    <kbd className="pointer-events-none inline-flex min-h-5 items-center rounded border border-border bg-background/80 px-1.5 font-mono text-[10px] font-medium tabular-nums text-foreground">
+                      {cmdKLabel}
+                    </kbd>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs">
+                  Command Palette ({cmdKLabel})
+                </TooltipContent>
+              </Tooltip>
             </div>
 
             <div className="flex items-center gap-4">
