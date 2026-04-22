@@ -7,6 +7,7 @@ import {
   History,
   SkipForward,
   RotateCcw,
+  ChevronDown,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -15,6 +16,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type {
@@ -29,16 +31,38 @@ import type { AdminHealthResponse, ProviderMetrics } from '@/types/adminHealth';
 import { formatDateFriendly, formatDateTimeFriendly } from '@/utils/format';
 
 // ---------------------------------------------------------------------------
-// Vertical grid layout — 4 rows, top-to-bottom pipeline flow
+// Vertical grid layout — 4 node rows, top-to-bottom pipeline flow
 //
-// Row 0  Ingestion:   constituents → tracked_cache → daily_bars → mv_refresh
+// Row 0  Ingestion:   constituents → tracked_cache → daily_bars
 // Row 1  Compute:     [gap]          regime          indicators        exit_cascade
 // Row 2  Downstream:  [gap]          scan_overlay    strategy_eval     snapshot_history
-// Row 3  Reporting:   digest         health_check    audit             warm_dashboard
+// Row 3  Reporting:   digest         health_check    audit             warm_dashboard  mv_refresh
 //
-// Pure grid — no per-node y-offsets. Row spacing is generous enough that edges
-// read cleanly without overlapping neighbours.
+// Pure grid — no per-node y-offsets. mv_refresh is terminal materialization (views
+// after indicators + snapshot_history); placed with reporting steps, not ingestion.
+// Row spacing + extra bottom band keep edges readable without overlapping neighbours.
 // ---------------------------------------------------------------------------
+
+const DETAIL_PANEL_OPEN_KEY = 'axf.pipelineDag.detailOpen';
+
+function readDetailPanelOpenPreference(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = window.localStorage.getItem(DETAIL_PANEL_OPEN_KEY);
+    if (raw === null) return false;
+    return raw === 'true';
+  } catch {
+    return false;
+  }
+}
+
+function writeDetailPanelOpenPreference(open: boolean): void {
+  try {
+    window.localStorage.setItem(DETAIL_PANEL_OPEN_KEY, open ? 'true' : 'false');
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
 
 interface NodePos {
   col: number;
@@ -49,7 +73,6 @@ const NODE_POSITIONS: Record<string, NodePos> = {
   constituents:     { row: 0, col: 0 },
   tracked_cache:    { row: 0, col: 1 },
   daily_bars:       { row: 0, col: 2 },
-  mv_refresh:       { row: 0, col: 3 },
   regime:           { row: 1, col: 1 },
   indicators:       { row: 1, col: 2 },
   exit_cascade:     { row: 1, col: 3 },
@@ -60,6 +83,7 @@ const NODE_POSITIONS: Record<string, NodePos> = {
   health_check:     { row: 3, col: 1 },
   audit:            { row: 3, col: 2 },
   warm_dashboard:   { row: 3, col: 3 },
+  mv_refresh:       { row: 3, col: 4 },
 };
 
 const NODE_W = 160;
@@ -67,6 +91,8 @@ const NODE_H = 64;
 const COL_GAP = 44;
 const ROW_GAP = 56;
 const PAD = 16;
+/** Extra empty grid band below the last node row for vertical breathing room. */
+const EXTRA_BOTTOM_GRID_ROWS = 1;
 
 // ---------------------------------------------------------------------------
 // Health dimension mapping — connects DAG nodes to health data
@@ -419,6 +445,8 @@ interface DetailPanelProps {
   retrying: boolean;
   canRetry: boolean;
   onClose: () => void;
+  detailOpen: boolean;
+  onDetailOpenChange: (open: boolean) => void;
   healthDimensions?: HealthDims | null;
   providerMetrics?: ProviderMetrics | null;
   timezone?: string;
@@ -535,20 +563,53 @@ function getHealthDetail(name: string, dims: HealthDims | null | undefined, pm?:
   return pairs;
 }
 
-function DetailPanel({ name, displayName, state, depsOk, onRetry, retrying, canRetry, onClose, healthDimensions, providerMetrics, timezone }: DetailPanelProps) {
+function DetailPanel({
+  name,
+  displayName,
+  state,
+  depsOk,
+  onRetry,
+  retrying,
+  canRetry,
+  onClose,
+  detailOpen,
+  onDetailOpenChange,
+  healthDimensions,
+  providerMetrics,
+  timezone,
+}: DetailPanelProps) {
   const healthDetail = getHealthDetail(name, healthDimensions, providerMetrics);
+  const summaryDuration =
+    state.duration_s != null ? formatDuration(state.duration_s) : '—';
+  const headerSummary = `${displayName} — ${state.status} — ${summaryDuration}`;
 
   return (
-    <div className="mt-4 rounded-lg border border-border bg-card p-4" role="region" aria-label={`${displayName} details`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">{displayName}</h3>
-          <p className="text-xs text-muted-foreground">
-            Step: <span className="font-mono">{name}</span> | Status: {state.status}
-            {state.duration_s != null && ` | Duration: ${formatDuration(state.duration_s)}`}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <Collapsible
+      open={detailOpen}
+      onOpenChange={onDetailOpenChange}
+      className="group mt-4 rounded-lg border border-border bg-card"
+      role="region"
+      aria-label={`${displayName} details`}
+    >
+      <div className="flex items-start justify-between gap-2 border-b border-border px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              'flex min-w-0 flex-1 items-center gap-2 rounded-md text-left outline-none',
+              'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+            )}
+            aria-controls={`pipeline-dag-detail-${name}`}
+            id={`pipeline-dag-detail-trigger-${name}`}
+          >
+            <ChevronDown
+              className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180"
+              aria-hidden
+            />
+            <span className="min-w-0 truncate text-sm font-semibold text-foreground">{headerSummary}</span>
+          </button>
+        </CollapsibleTrigger>
+        <div className="flex shrink-0 items-center gap-2">
           {state.status === 'error' && depsOk && canRetry && (
             <Button
               size="xs"
@@ -561,52 +622,58 @@ function DetailPanel({ name, displayName, state, depsOk, onRetry, retrying, canR
               Retry This Step
             </Button>
           )}
-          <Button size="xs" variant="ghost" onClick={onClose}>
+          <Button size="xs" variant="ghost" onClick={onClose} aria-label="Close detail panel">
             Close
           </Button>
         </div>
       </div>
 
-      {state.error && (
-        <div className="mt-3 rounded-md bg-destructive/5 p-2">
-          <p className="text-xs font-medium text-destructive">Error</p>
-          <p className="mt-0.5 font-mono text-xs text-destructive/80 whitespace-pre-wrap break-all">{state.error}</p>
-        </div>
-      )}
+      <CollapsibleContent id={`pipeline-dag-detail-${name}`} className="px-4 pb-4 pt-3">
+        <p className="text-xs text-muted-foreground">
+          Step: <span className="font-mono">{name}</span>
+        </p>
 
-      {state.counters && Object.keys(state.counters).length > 0 && (
-        <div className="mt-3">
-          <p className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Counters</p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 sm:grid-cols-3">
-            {Object.entries(state.counters)
-              .filter(([k, v]) => k !== 'status' && k !== 'error' && v != null && typeof v !== 'object')
-              .map(([k, v]) => (
-                <div key={k} className="text-xs text-muted-foreground">
-                  {shortenCounterKey(k)}: <span className="font-medium text-foreground">{formatCounterValue(v, timezone)}</span>
+        {state.error && (
+          <div className="mt-3 rounded-md bg-destructive/5 p-2">
+            <p className="text-xs font-medium text-destructive">Error</p>
+            <p className="mt-0.5 font-mono text-xs text-destructive/80 whitespace-pre-wrap break-all">{state.error}</p>
+          </div>
+        )}
+
+        {state.counters && Object.keys(state.counters).length > 0 && (
+          <div className="mt-3">
+            <p className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Counters</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 sm:grid-cols-3">
+              {Object.entries(state.counters)
+                .filter(([k, v]) => k !== 'status' && k !== 'error' && v != null && typeof v !== 'object')
+                .map(([k, v]) => (
+                  <div key={k} className="text-xs text-muted-foreground">
+                    {shortenCounterKey(k)}: <span className="font-medium text-foreground">{formatCounterValue(v, timezone)}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {healthDetail.length > 0 && (
+          <div className="mt-3">
+            <p className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Health</p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 sm:grid-cols-3">
+              {healthDetail.map(([label, value]) => (
+                <div key={label} className="text-xs text-muted-foreground">
+                  {label}: <span className="font-medium text-foreground">{value}</span>
                 </div>
               ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {healthDetail.length > 0 && (
-        <div className="mt-3">
-          <p className="mb-1 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">Health</p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 sm:grid-cols-3">
-            {healthDetail.map(([label, value]) => (
-              <div key={label} className="text-xs text-muted-foreground">
-                {label}: <span className="font-medium text-foreground">{value}</span>
-              </div>
-            ))}
-          </div>
+        <div className="mt-3 flex flex-wrap gap-4 text-[10px] text-muted-foreground">
+          {state.started_at && <span>Started: {formatDateTimeFriendly(state.started_at, timezone)}</span>}
+          {state.finished_at && <span>Finished: {formatDateTimeFriendly(state.finished_at, timezone)}</span>}
         </div>
-      )}
-
-      <div className="mt-3 flex gap-4 text-[10px] text-muted-foreground">
-        {state.started_at && <span>Started: {formatDateTimeFriendly(state.started_at, timezone)}</span>}
-        {state.finished_at && <span>Finished: {formatDateTimeFriendly(state.finished_at, timezone)}</span>}
-      </div>
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 
@@ -640,6 +707,12 @@ const DEFAULT_STEP: PipelineStepState = {
 
 export function PipelineDAG({ dag, run, loading, loadError, onRetryLoad, onRetry, retrying, healthDimensions, providerMetrics, activeTasks, ambientSteps, timezone }: PipelineDAGProps) {
   const [selected, setSelected] = React.useState<string | null>(null);
+  const [detailOpen, setDetailOpen] = React.useState(() => readDetailPanelOpenPreference());
+
+  const handleDetailOpenChange = React.useCallback((open: boolean) => {
+    setDetailOpen(open);
+    writeDetailPanelOpenPreference(open);
+  }, []);
 
   const connectedEdgeKeys = React.useMemo(() => {
     if (!selected || !dag) return new Set<string>();
@@ -722,7 +795,8 @@ export function PipelineDAG({ dag, run, loading, loadError, onRetryLoad, onRetry
   const maxCol = dag.nodes.length > 0 ? Math.max(...dag.nodes.map((n) => NODE_POSITIONS[n.name]?.col ?? 0)) : 0;
   const maxRow = dag.nodes.length > 0 ? Math.max(...dag.nodes.map((n) => NODE_POSITIONS[n.name]?.row ?? 0)) : 0;
   const svgW = (maxCol + 1) * (NODE_W + COL_GAP) - COL_GAP + PAD * 2;
-  const svgH = (maxRow + 1) * (NODE_H + ROW_GAP) - ROW_GAP + PAD * 2;
+  const svgH =
+    (maxRow + 1 + EXTRA_BOTTOM_GRID_ROWS) * (NODE_H + ROW_GAP) - ROW_GAP + PAD * 2;
 
   const selectedStep = selected ? steps[selected] ?? DEFAULT_STEP : null;
   const selectedNode = selected ? dag.nodes.find((n) => n.name === selected) : null;
@@ -849,6 +923,8 @@ export function PipelineDAG({ dag, run, loading, loadError, onRetryLoad, onRetry
           retrying={retrying ?? false}
           canRetry={!!run?.run_id}
           onClose={() => setSelected(null)}
+          detailOpen={detailOpen}
+          onDetailOpenChange={handleDetailOpenChange}
           healthDimensions={healthDimensions}
           providerMetrics={providerMetrics}
           timezone={timezone}
