@@ -183,8 +183,13 @@ class SchwabSyncService:
         # Tax Center and /stocks/realized return correct data. Schwab's API
         # does not emit closed-lot records (unlike IBKR FlexQuery), so we
         # derive them ourselves. Idempotent, safe to run every sync.
+        # Run inside a SAVEPOINT: if the matcher blows up mid-flush (IntegrityError,
+        # constraint drift), ``begin_nested()`` rolls back just the savepoint so
+        # the outer transaction stays clean and the positions/options/transactions
+        # already written earlier in the sync still commit downstream.
         try:
-            match_result = reconcile_closing_lots(session, account)
+            with session.begin_nested():
+                match_result = reconcile_closing_lots(session, account)
             results["closed_lots_created"] = match_result.created
             results["closed_lots_updated"] = match_result.updated
             if match_result.unmatched_quantity > 0:

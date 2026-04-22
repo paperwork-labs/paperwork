@@ -389,6 +389,81 @@ def test_cross_tenant_isolation(db_session):
     assert len(_closed_lots(db_session, acct_a)) == 1
 
 
+def test_synth_execution_id_fits_column_limit_for_long_sell_keys(db_session):
+    """Regression (PR 394 follow-up): ``Trade.execution_id`` is
+    ``String(50)``. A prior iteration emitted ``SYNTH:{full_sell_key}:{idx}``
+    which could exceed 50 chars (IBKR/Schwab emit 30-40 char execution
+    ids) and blow up with IntegrityError on flush. The current layout
+    hashes the sell key to a short digest; pin the bound.
+    """
+    if db_session is None:
+        pytest.skip("DB session unavailable")
+    user = _make_user(db_session, username="lotmatch_synthlen")
+    acct = _make_account(db_session, user=user, account_number="LM-SYNTH")
+
+    long_sell_key = "SCHW-" + "X" * 44  # 49 chars — at the column limit
+    _add_trade(
+        db_session, account=acct, symbol="SPY", side="BUY",
+        quantity=Decimal("10"), price=Decimal("400"),
+        execution_id="B-LONG",
+        execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+    )
+    _add_trade(
+        db_session, account=acct, symbol="SPY", side="SELL",
+        quantity=Decimal("10"), price=Decimal("450"),
+        execution_id=long_sell_key,
+        execution_time=datetime(2024, 6, 1, tzinfo=timezone.utc),
+    )
+    r = reconcile_closing_lots(db_session, acct)
+    assert r.created == 1
+    lots = _closed_lots(db_session, acct)
+    assert len(lots) == 1
+    assert lots[0].execution_id is not None
+    assert len(lots[0].execution_id) <= 50
+    # Original sell key is preserved in metadata for traceability.
+    meta = lots[0].trade_metadata or {}
+    assert meta.get("source_sell_execution_id") == long_sell_key
+
+
+def test_matcher_ignores_trades_without_execution_time(db_session):
+    """FIFO is undefined without a timestamp. Previously we loaded every
+    FILLED trade (including rows missing ``execution_time``) and sorted
+    on ``None``, producing unpredictable ordering. The matcher now filters
+    those out and counts them as skipped rather than processing them.
+    """
+    if db_session is None:
+        pytest.skip("DB session unavailable")
+    user = _make_user(db_session, username="lotmatch_no_exec_time")
+    acct = _make_account(db_session, user=user, account_number="LM-NOTIME")
+
+    _add_trade(
+        db_session, account=acct, symbol="AAPL", side="BUY",
+        quantity=Decimal("10"), price=Decimal("100"),
+        execution_id="B-OK",
+        execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+    )
+    # Orphan SELL with no execution_time — must be skipped entirely.
+    orphan = Trade(
+        account_id=acct.id,
+        symbol="AAPL",
+        side="SELL",
+        quantity=Decimal("10"),
+        price=Decimal("200"),
+        execution_id="S-NOTS",
+        execution_time=None,
+        status="FILLED",
+        is_opening=False,
+        is_paper_trade=False,
+    )
+    db_session.add(orphan)
+    db_session.flush()
+
+    r = reconcile_closing_lots(db_session, acct)
+    # The orphan SELL is ignored; the BUY alone produces no closed lots.
+    assert r.created == 0
+    assert r.unmatched_quantity == Decimal("0")
+
+
 def test_unsupported_method_raises(db_session):
     if db_session is None:
         pytest.skip("DB session unavailable")

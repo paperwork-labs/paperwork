@@ -49,12 +49,13 @@ requires. The matcher itself never silently swallows exceptions.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import timedelta
 from decimal import Decimal
-from typing import Deque, Dict, List, Optional
+from typing import Deque, Dict, Iterable, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -67,7 +68,17 @@ ASSET_OPTION = "OPT"
 WASH_SALE_WINDOW_DAYS = 30
 LONG_TERM_HOLDING_DAYS = 365
 _SUPPORTED_METHODS = frozenset({"FIFO"})
-_SYNTH_PREFIX = "SYNTH:"
+_SYNTH_PREFIX = "S:"
+# Trade.execution_id is ``String(50)``. The synthetic id layout is
+# ``S:{8-char hash}:{slice_idx}`` so we fit in ~13-16 characters even
+# with generous slice indices. We include a loud guard below so any
+# future length drift fails the unit test rather than the production
+# sync with an IntegrityError on flush.
+_SYNTH_MAX_LEN = 50
+# Chunk size for the FILLED-trade stream. A 5000-share account still
+# produces well under this cap, but a high-frequency options trader
+# hits it — we stream to avoid materialising the full history in RAM.
+_STREAM_CHUNK_SIZE = 500
 
 
 @dataclass
@@ -121,32 +132,41 @@ def reconcile_closing_lots(
 
     result = MatchResult(account_id=broker_account.id)
 
-    filled_trades: List[Trade] = (
+    # Stream FILLED trades in server-side chunks. ``.all()`` previously
+    # materialised the full account history into RAM every sync — the
+    # exact OOM pattern that took Tax Center down (see R34). We still
+    # need to group by symbol so a per-symbol FIFO queue can walk them
+    # in order; streaming keeps peak memory bounded to
+    # ``_STREAM_CHUNK_SIZE`` Trade rows at a time rather than the whole
+    # trade ledger. ``execution_time IS NOT NULL`` excludes broker rows
+    # that lack an ordering timestamp (FIFO is undefined without it).
+    by_symbol: Dict[str, List[Trade]] = defaultdict(list)
+    streamed: Iterable[Trade] = (
         db.query(Trade)
         .filter(
             Trade.account_id == broker_account.id,
             Trade.status == "FILLED",
+            Trade.execution_time.isnot(None),
         )
         .order_by(Trade.execution_time.asc(), Trade.id.asc())
-        .all()
+        .yield_per(_STREAM_CHUNK_SIZE)
     )
-
-    by_symbol: Dict[str, List[Trade]] = defaultdict(list)
-    for t in filled_trades:
+    for t in streamed:
         if not t.symbol:
             continue
         by_symbol[t.symbol].append(t)
 
-    existing_synth: Dict[str, Trade] = {
-        t.execution_id: t
-        for t in db.query(Trade)
+    existing_synth: Dict[str, Trade] = {}
+    for t in (
+        db.query(Trade)
         .filter(
             Trade.account_id == broker_account.id,
             Trade.status == "CLOSED_LOT",
             Trade.execution_id.like(f"{_SYNTH_PREFIX}%"),
         )
-        .all()
-    }
+        .yield_per(_STREAM_CHUNK_SIZE)
+    ):
+        existing_synth[t.execution_id] = t
 
     # Pre-index BUYs for wash-sale replacement lookups across the account's
     # full history (not just within a given symbol's queue).
@@ -267,7 +287,26 @@ def _apply_trade(
             )
 
             sell_key = trade.execution_id or f"id{trade.id}"
-            synth_exec_id = f"{_SYNTH_PREFIX}{sell_key}:{slice_idx}"
+            # Hash the broker execution_id to a short digest so the
+            # synthetic id comfortably fits inside Trade.execution_id's
+            # 50-char column even when the broker emits long/URL-like
+            # execution ids (Schwab returns 30-40 char ids, IBKR can
+            # return longer). The hash is deterministic so idempotency
+            # on re-sync is preserved. The raw sell key is persisted in
+            # ``trade_metadata.source_sell_execution_id`` for traceability.
+            sell_key_digest = hashlib.blake2b(
+                sell_key.encode("utf-8"), digest_size=4
+            ).hexdigest()
+            synth_exec_id = f"{_SYNTH_PREFIX}{sell_key_digest}:{slice_idx}"
+            if len(synth_exec_id) > _SYNTH_MAX_LEN:
+                # Defence in depth — ``_SYNTH_MAX_LEN`` is 50; the
+                # current layout tops out around 15 chars. If someone
+                # widens the prefix, fail loudly here rather than at
+                # flush time with a psycopg2 IntegrityError.
+                raise ValueError(
+                    f"closing_lot_matcher: synth execution_id {synth_exec_id!r} "
+                    f"exceeds Trade.execution_id({_SYNTH_MAX_LEN}) limit"
+                )
 
             meta: Dict[str, object] = {
                 "cost_basis": float(cost_basis),
@@ -285,10 +324,21 @@ def _apply_trade(
                 "source_sell_trade_id": trade.id,
                 "slice_idx": slice_idx,
                 "asset_category": asset_category,
+                "source_sell_execution_id": sell_key,
             }
             if wash_sale_loss > 0:
+                # Metadata-only wash-sale flag today. The existing tax
+                # export treats wash sales via ``Trade.status="WASH_SALE"``;
+                # we're deliberately not rewriting the export contract
+                # in the closing-lot matcher PR — the tax exporter will
+                # learn to also honour ``meta["wash_sale"]`` in Phase 5
+                # (tax-aware exits, see GAPS_2026Q2 §G27). Until then
+                # this flag is advisory for the UI only.
                 meta["wash_sale"] = True
                 meta["wash_sale_loss"] = float(wash_sale_loss)
+                meta["wash_sale_heuristic"] = (
+                    "same-symbol-30d-replacement"
+                )
 
             existing = existing_synth.get(synth_exec_id)
             if existing is not None:

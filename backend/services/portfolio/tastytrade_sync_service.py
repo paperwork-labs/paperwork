@@ -107,8 +107,14 @@ class TastyTradeSyncService:
 
         # Reconcile synthetic CLOSED_LOT trades so Tax Center / realized-gains
         # endpoints reflect TastyTrade activity (TT only emits FILLED rows).
+        # Use a SAVEPOINT so a matcher failure (IntegrityError, flush drift)
+        # can be rolled back in isolation without poisoning the session for
+        # the final ``db.commit()`` below — without this, a PendingRollback
+        # would take the entire sync down even though positions/options/
+        # transactions already persisted fine.
         try:
-            match_result = reconcile_closing_lots(db, broker_account)
+            with db.begin_nested():
+                match_result = reconcile_closing_lots(db, broker_account)
             counts["closed_lots_created"] = match_result.created
             counts["closed_lots_updated"] = match_result.updated
             if match_result.unmatched_quantity > 0:
@@ -118,6 +124,8 @@ class TastyTradeSyncService:
                     broker_account.id, match_result.unmatched_quantity,
                 )
         except Exception as exc:  # noqa: BLE001
+            # begin_nested() auto-rolls back the SAVEPOINT on exception,
+            # so the outer transaction stays clean.
             logger.warning(
                 "TastyTrade sync: closing-lot reconciliation failed for account %s: %s",
                 broker_account.id, exc,
@@ -382,15 +390,42 @@ class TastyTradeSyncService:
         )
 
     def _trade_to_kwargs(self, t: Dict, ba: BrokerAccount) -> Dict:
+        """Map a TastyTrade trade payload to ``Trade`` column kwargs.
+
+        Fields required by the closing-lot matcher
+        (:mod:`backend.services.portfolio.closing_lot_matcher`):
+
+        * ``execution_time`` — the ordering key. Must be tz-aware; without
+          it FIFO matching can't run and the Tax Center stays empty
+          (observed regression that shipped with PR 394).
+        * ``is_opening`` — ``True`` for BUYs, ``False`` for SELLs. The
+          default on the model is ``True`` which would mis-classify
+          every SELL as an opening trade and the matcher would produce
+          zero ``CLOSED_LOT`` rows.
+        * ``status`` — defaults to ``"FILLED"`` on the model, but we set
+          it explicitly so any future change to the default doesn't
+          silently break reconciliation.
+
+        ``created_at`` is populated by ``server_default=now()`` — we no
+        longer shoehorn the broker timestamp into it.
+        """
+        try:
+            executed_at = dt.fromisoformat(t["executed_at"])
+        except Exception:  # noqa: BLE001 — broker payload oddities
+            executed_at = None
+        side = (t.get("side") or "").upper()
+        is_opening = side == "BUY"
         return dict(
             account_id=ba.id,
             symbol=t["symbol"],
-            side=t["side"],
+            side=side or t.get("side"),
             quantity=t["quantity"],
             price=t["price"],
             order_id=t.get("order_id"),
             execution_id=t.get("execution_id"),
-            created_at=dt.fromisoformat(t["executed_at"]),
+            execution_time=executed_at,
+            is_opening=is_opening,
+            status="FILLED",
         )
 
     def _txn_to_kwargs(self, tx: Dict, ba: BrokerAccount) -> Dict:
