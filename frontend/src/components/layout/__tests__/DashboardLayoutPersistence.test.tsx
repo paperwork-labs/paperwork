@@ -7,7 +7,11 @@ import userEvent from '@testing-library/user-event';
 import DashboardLayout from '../DashboardLayout';
 
 // Mock Auth + Account context dependencies.
-let mockedAuth: any = {
+let mockedAuth: {
+  user: { username: string; role: string };
+  logout: ReturnType<typeof vi.fn>;
+  ready: boolean;
+} = {
   user: { username: 'tester', role: 'user' },
   logout: vi.fn(),
   ready: true,
@@ -107,15 +111,15 @@ describe('DashboardLayout sidebar persistence', () => {
 
   it('hides portfolio section for non-admin users with no broker accounts', () => {
     renderWithProviders(<DashboardLayout />);
-    expect(screen.getAllByText('MARKET').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Tracked').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('TODAY').length).toBeGreaterThan(0);
+    expect(screen.getByText('Watchlist')).toBeInTheDocument();
     expect(screen.queryByText('PORTFOLIO')).toBeNull();
     expect(screen.queryByText('Agent Guru')).toBeNull();
     expect(screen.queryByText('Overview')).toBeNull();
     expect(screen.queryByRole('button', { name: /account filter/i })).toBeNull();
   });
 
-  it('shows portfolio and Strategies under MARKET when user has broker balances', () => {
+  it('shows portfolio and Strategies under LAB when user has broker balances', () => {
     mockedBalances = {
       data: [{ id: 1, broker: 'IBKR' }],
       isPending: false,
@@ -131,6 +135,7 @@ describe('DashboardLayout sidebar persistence', () => {
     };
     renderWithProviders(<DashboardLayout />);
     expect(screen.getByText('PORTFOLIO')).toBeInTheDocument();
+    expect(screen.getByText('LAB')).toBeInTheDocument();
     expect(screen.queryByText('STRATEGY')).toBeNull();
     expect(screen.getByText('Workspace')).toBeInTheDocument();
     expect(screen.getAllByText('Strategies').length).toBeGreaterThanOrEqual(1);

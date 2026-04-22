@@ -35,8 +35,8 @@ export default function AuthLayout({ children, className, style, ...props }: Pro
           to="/"
           aria-label="AxiomFolio home"
           className={cn(
-            'mb-6 flex items-center justify-center gap-3.5 rounded-md',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--auth-gradient-bg))]'
+            'mb-6 flex items-center justify-center gap-3.5 rounded-sm',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--auth-gradient-bg))]'
           )}
         >
           <AppLogo size={72} />

@@ -3,17 +3,20 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity,
   BarChart2,
-  BookOpen,
-  Brain,
   CalendarDays,
+  ClipboardList,
+  Command,
   Compass,
   FileText,
-  Gauge,
+  FlaskConical,
   Home,
   LayoutGrid,
+  Link2,
   List,
   Menu,
   PieChart,
+  Scale,
+  Search,
   Settings,
   Shield,
   ShoppingBag,
@@ -21,7 +24,6 @@ import {
   Tag,
   Target,
   Layers,
-  ClipboardList,
   type LucideIcon,
 } from 'lucide-react';
 import * as Dialog from "@radix-ui/react-dialog";
@@ -37,6 +39,8 @@ import { useAccountBalances } from '@/hooks/usePortfolio';
 import { CompactAccountSelector as AccountSelector } from '../shared/CompactAccountSelector';
 import { ChatProvider } from '@/components/chat/ChatProvider';
 import { ChatBubble } from '@/components/chat/ChatBubble';
+import { openCommandPalette } from '@/components/cmdk/openCommandPalette';
+import { isTypingTarget } from '@/components/cmdk/CommandPalette';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -71,41 +75,46 @@ function displayName(user: { full_name?: string | null; username?: string } | nu
   return raw || 'Guest';
 }
 
+const todayNavItems: { label: string; icon: LucideIcon; path: string }[] = [
+  { label: 'Home', icon: Home, path: '/' },
+  { label: "Today's Cards", icon: ClipboardList, path: '/trade-cards/today' },
+];
+
 const portfolioItems = [
   { label: 'Overview', icon: PieChart, path: '/portfolio' },
+  { label: 'Allocation', icon: Scale, path: '/portfolio/allocation' },
   { label: 'Holdings', icon: List, path: '/portfolio/holdings' },
   { label: 'Options', icon: Layers, path: '/portfolio/options' },
   { label: 'Transactions', icon: FileText, path: '/portfolio/transactions' },
   { label: 'Categories', icon: Tag, path: '/portfolio/categories' },
   { label: 'Tax Center', icon: Shield, path: '/portfolio/tax' },
+  { label: 'Income', icon: CalendarDays, path: '/portfolio/income' },
   { label: 'Orders', icon: ShoppingBag, path: '/portfolio/orders' },
   { label: 'Workspace', icon: LayoutGrid, path: '/portfolio/workspace' },
-  { label: 'Income', icon: CalendarDays, path: '/portfolio/income' },
+  { label: 'Connections', icon: Link2, path: '/settings/connections' },
 ];
 
-function buildSettingsItems(): { label: string; icon: typeof Settings; path: string }[] {
-  return [{ label: 'Settings', icon: Settings, path: '/settings' }];
-}
+const signalsNavItems: { label: string; icon: LucideIcon; path: string }[] = [
+  { label: 'Candidates', icon: Sparkles, path: '/signals/candidates' },
+  { label: 'Stage Scan', icon: Compass, path: '/signals/stage-scan' },
+  { label: 'Watchlist', icon: List, path: '/market/tracked' },
+];
 
-function buildMarketItems() {
-  type Item = { label: string; icon: LucideIcon; path: string };
-  const items: Item[] = [
-    { label: 'Home', icon: Home, path: '/' },
-    { label: 'Markets', icon: BarChart2, path: '/market' },
-    { label: 'Tracked', icon: List, path: '/market/tracked' },
-    { label: 'Strategies', icon: Target, path: '/lab/strategies' },
-    { label: 'Backtest', icon: Activity, path: '/lab/monte-carlo' },
-    { label: 'Intelligence', icon: Brain, path: '/lab/intelligence' },
-    { label: 'Walk-Forward', icon: Activity, path: '/lab/walk-forward' },
-    { label: 'Education', icon: BookOpen, path: '/learn/education' },
-    { label: 'Candidates', icon: Sparkles, path: '/signals/candidates' },
-    { label: 'Regime', icon: Gauge, path: '/signals/regime' },
-    { label: 'Stage Scan', icon: Compass, path: '/signals/stage-scan' },
-    { label: 'Picks', icon: ClipboardList, path: '/signals/picks' },
-    { label: 'Today\'s Cards', icon: ClipboardList, path: '/trade-cards/today' },
-  ];
-  return items;
-}
+const marketsNavItems: { label: string; icon: LucideIcon; path: string }[] = [
+  { label: 'Markets', icon: BarChart2, path: '/market' },
+  { label: 'Symbol lookup', icon: Search, path: '/market/scanner' },
+];
+
+const labNavItems: { label: string; icon: LucideIcon; path: string }[] = [
+  { label: 'Strategies', icon: Target, path: '/lab/strategies' },
+  { label: 'Backtest', icon: Activity, path: '/lab/monte-carlo' },
+  { label: 'Walk-Forward', icon: Activity, path: '/lab/walk-forward' },
+  { label: 'Shadow (paper)', icon: FlaskConical, path: '/shadow-trades' },
+];
+
+const settingsNavItems: { label: string; icon: typeof Settings; path: string }[] = [
+  { label: 'Settings', icon: Settings, path: '/settings' },
+];
 
 type MarketNavItem = { label: string; icon: LucideIcon; path: string };
 
@@ -178,25 +187,15 @@ const DashboardLayout: React.FC = () => {
     return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '⌘K' : 'Ctrl+K';
   }, []);
 
-  const openCommandPalette = useCallback(() => {
-    const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', {
-        key: 'k',
-        code: 'KeyK',
-        metaKey: isMac,
-        ctrlKey: !isMac,
-        bubbles: true,
-        cancelable: true,
-      })
-    );
+  const commaShortcutLabel = useMemo(() => {
+    if (typeof navigator === 'undefined') return 'Ctrl+,';
+    return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '⌘,' : 'Ctrl+,';
   }, []);
+
   const balancesQuery = useAccountBalances();
-  const hasBrokers = (balancesQuery.data?.length ?? 0) > 0;
+  const hasBrokers = Boolean(balancesQuery.data && balancesQuery.data.length > 0);
   const isAdmin = isPlatformAdminRole(user?.role);
   const portfolioNavVisible = isAdmin || hasBrokers;
-  const marketItems = useMemo(() => buildMarketItems(), []);
-  const settingsNavItems = useMemo(() => buildSettingsItems(), []);
 
   const { health: adminHealth, loading: healthLoading } = useAdminHealth();
   const healthStatus = adminHealth?.composite_status ?? 'red';
@@ -225,23 +224,55 @@ const DashboardLayout: React.FC = () => {
     }
   }, [location.hash, location.pathname, location.search]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key !== ',' && e.code !== 'Comma') return;
+      if (isTypingTarget(e.target)) return;
+      e.preventDefault();
+      navigate('/settings/profile');
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [navigate]);
+
   const sidebarWidthClass = isSidebarOpen ? 'w-64' : 'w-16';
 
   const isPathActive = useCallback(
     (itemPath: string) => {
       const currentPath = location.pathname || '/';
+      const params = new URLSearchParams(location.search);
       if (itemPath === '/') {
         return currentPath === '/';
       }
+      if (itemPath === '/portfolio/allocation') {
+        return (
+          currentPath.startsWith('/portfolio/allocation') ||
+          (currentPath === '/portfolio' && params.get('tab') === 'allocation')
+        );
+      }
       if (itemPath === '/market') {
-        return currentPath === '/market' || currentPath.startsWith('/market/');
+        if (currentPath === '/market') return true;
+        if (currentPath.startsWith('/market/tracked')) return false;
+        if (currentPath.startsWith('/market/scanner')) return false;
+        return currentPath.startsWith('/market/');
+      }
+      if (itemPath === '/market/tracked') {
+        return currentPath === '/market/tracked' || currentPath.startsWith('/market/tracked/');
+      }
+      if (itemPath === '/market/scanner') {
+        return currentPath === '/market/scanner' || currentPath.startsWith('/market/scanner/');
       }
       if (itemPath === '/portfolio') {
-        return currentPath === '/portfolio';
+        const tab = params.get('tab');
+        return currentPath === '/portfolio' && (!tab || tab === 'overview');
+      }
+      if (itemPath === '/settings') {
+        return currentPath === '/settings' || currentPath.startsWith('/settings/');
       }
       return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
     },
-    [location.pathname]
+    [location.pathname, location.search]
   );
 
   const renderSection = (
@@ -288,9 +319,12 @@ const DashboardLayout: React.FC = () => {
     const next = () => idx++;
     return (
       <div className={cn('flex flex-col gap-2 py-4', opts.pxClass)}>
-        {renderSection('MARKET', marketItems, opts.showLabel, next())}
+        {renderSection('TODAY', todayNavItems, opts.showLabel, next())}
         {portfolioNavVisible ? renderSection('PORTFOLIO', portfolioItems, opts.showLabel, next()) : null}
-        {isAdmin ? renderSection('SETTINGS', settingsNavItems, opts.showLabel, next()) : null}
+        {renderSection('SIGNALS', signalsNavItems, opts.showLabel, next())}
+        {renderSection('MARKETS', marketsNavItems, opts.showLabel, next())}
+        {renderSection('LAB', labNavItems, opts.showLabel, next())}
+        {renderSection('SETTINGS', settingsNavItems, opts.showLabel, next())}
       </div>
     );
   };
@@ -308,7 +342,7 @@ const DashboardLayout: React.FC = () => {
             to="/"
             aria-label="AxiomFolio home"
             className={cn(
-              'flex items-center gap-2.5 rounded-md',
+              'flex items-center gap-2.5 rounded-sm',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar'
             )}
           >
@@ -388,7 +422,7 @@ const DashboardLayout: React.FC = () => {
                   to="/"
                   aria-label="AxiomFolio home"
                   className={cn(
-                    'flex items-center gap-2.5 rounded-md',
+                    'flex items-center gap-2.5 rounded-sm',
                     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--bg-header))]'
                   )}
                 >
@@ -428,12 +462,16 @@ const DashboardLayout: React.FC = () => {
                 type="button"
                 variant="outline"
                 size="sm"
-                className="hidden h-8 gap-1.5 px-2.5 font-sans text-xs sm:inline-flex"
-                aria-label="Toggle command palette"
-                onClick={openCommandPalette}
+                className={cn(
+                  'h-8 gap-1.5 px-2.5 font-sans text-xs',
+                  'border-transparent bg-muted/70 hover:bg-muted',
+                  'focus-visible:ring-2 focus-visible:ring-ring'
+                )}
+                aria-label="Open command palette"
+                onClick={() => openCommandPalette()}
               >
-                <span className="text-muted-foreground">Search</span>
-                <kbd className="pointer-events-none inline-flex min-h-5 items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-foreground">
+                <Command className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                <kbd className="pointer-events-none inline-flex min-h-5 items-center rounded border border-border bg-background/80 px-1.5 font-mono text-[10px] font-medium tabular-nums text-foreground">
                   {cmdKLabel}
                 </kbd>
               </Button>
@@ -494,6 +532,15 @@ const DashboardLayout: React.FC = () => {
                       onSelect={() => navigate('/settings/profile')}
                     >
                       Profile
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      className="flex cursor-default items-center gap-2 rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
+                      onSelect={() => navigate('/settings/profile')}
+                    >
+                      <span>Settings</span>
+                      <kbd className="ml-auto inline-flex min-h-5 items-center rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium tabular-nums text-muted-foreground">
+                        {commaShortcutLabel}
+                      </kbd>
                     </DropdownMenu.Item>
                     <DropdownMenu.Item
                       className="cursor-default rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
