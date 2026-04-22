@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 
 import { useColorMode } from '../../theme/colorMode';
+import { cssVarToCanvasColor } from '../../lib/chartColors';
 
 interface TradingViewChartProps {
   symbol: string;
@@ -54,16 +55,8 @@ function getStoredInterval(): string {
   } catch { return 'D'; }
 }
 
-const getCssColor = (token: string, fallback: string) => {
-  if (typeof document === 'undefined') return fallback;
-  const varName = token.replace(/\./g, '-');
-  const v = getComputedStyle(document.documentElement).getPropertyValue(`--${varName}`).trim();
-  if (v) {
-    if (v.match(/^\d/)) return `rgb(${v})`;
-    return v;
-  }
-  return fallback;
-};
+const getCssColor = (token: string, fallback: string) =>
+  cssVarToCanvasColor(`--${token.replace(/\./g, '-')}`, fallback);
 
 const TradingViewChart: React.FC<TradingViewChartProps> = ({
   symbol,

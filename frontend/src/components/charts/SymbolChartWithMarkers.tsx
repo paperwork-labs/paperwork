@@ -28,6 +28,7 @@ import {
 } from '../../utils/indicators';
 import type { OHLCBar, TrendLine, SRLevel, GapZone, TDLabel, EMAResult, StageInfo } from '../../utils/indicators';
 import { STAGE_COLORS, RSI_HEX, MACD_HEX, BOLLINGER_HEX } from '../../constants/chart';
+import { cssVarToCanvasColor } from '../../lib/chartColors';
 
 type Bar = { time: string; open: number; high: number; low: number; close: number; volume?: number };
 
@@ -103,16 +104,8 @@ interface Props {
   priceLinesExtra?: Array<{ price: number; color: string; title: string; lineStyle?: number }>;
 }
 
-const getCssColor = (token: string, fallback: string) => {
-  if (typeof document === 'undefined') return fallback;
-  const varName = token.replace(/\./g, '-');
-  const v = getComputedStyle(document.documentElement).getPropertyValue(`--${varName}`).trim();
-  if (v) {
-    if (v.match(/^\d/)) return `rgb(${v})`;
-    return v;
-  }
-  return fallback;
-};
+const getCssColor = (token: string, fallback: string) =>
+  cssVarToCanvasColor(`--${token.replace(/\./g, '-')}`, fallback);
 
 const toDaySec = (iso: string): UTCTimestamp => {
   const d = new Date(iso);

@@ -21,6 +21,8 @@
  * stay trivially unit-testable without a JSDOM crutch.
  */
 
+import { canvasSafeColor } from "@/lib/chartColors";
+
 /** Hard fallbacks used when running outside a browser (SSR / unit tests). */
 const FALLBACK_TEXT = "rgba(15, 23, 42, 0.85)";
 const FALLBACK_GRID = "rgba(15, 23, 42, 0.08)";
@@ -35,16 +37,22 @@ export interface ChartThemeColors {
 }
 
 /**
- * Apply a 0–1 alpha to an arbitrary CSS color via `color-mix(in oklch, …)`.
+ * Apply a 0–1 alpha to an arbitrary CSS color by composing with
+ * `color-mix(in oklch, …)`, then normalizing to a canvas-parseable
+ * `rgb` / `rgba` string (lightweight-charts v5 rejects raw `color-mix`).
  * Works uniformly for `#rrggbb`, `rgb(r g b)`, `oklch(…)`, and named
- * colors. `color-mix` is supported in every browser we target (Safari 16.4+,
- * Chrome 111+, Firefox 113+).
+ * colors in modern browsers; when the mix cannot be resolved, returns a
+ * neutral grey with the requested alpha.
  */
 export function withAlpha(color: string, alpha: number): string {
   const clamped = Math.min(1, Math.max(0, alpha));
   if (clamped === 0) return "transparent";
   const pct = Math.round(clamped * 100);
-  return `color-mix(in oklch, ${color} ${pct}%, transparent)`;
+  const mix = `color-mix(in oklch, ${color} ${pct}%, transparent)`;
+  return canvasSafeColor(
+    mix,
+    `rgba(128, 128, 128, ${clamped})`,
+  );
 }
 
 /**
@@ -66,8 +74,17 @@ export function resolveThemeColors(): ChartThemeColors {
   const cs = getComputedStyle(document.documentElement);
   const fg = cs.getPropertyValue("--foreground").trim() || FALLBACK_FOREGROUND;
   const border = cs.getPropertyValue("--border").trim() || FALLBACK_BORDER;
+  // NOTE: must return canvas-parseable strings (rgb/rgba) — lightweight-charts
+  // v5 rejects both `oklch(...)` AND `color-mix(...)`. We compose with
+  // `color-mix` for correctness, then normalize via DOM probe.
   return {
-    text: `color-mix(in oklch, ${fg} 85%, transparent)`,
-    gridLine: `color-mix(in oklch, ${border} 40%, transparent)`,
+    text: canvasSafeColor(
+      `color-mix(in oklch, ${fg} 85%, transparent)`,
+      FALLBACK_TEXT,
+    ),
+    gridLine: canvasSafeColor(
+      `color-mix(in oklch, ${border} 40%, transparent)`,
+      FALLBACK_GRID,
+    ),
   };
 }

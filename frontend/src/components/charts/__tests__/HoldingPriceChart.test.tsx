@@ -308,14 +308,16 @@ describe("HoldingPriceChart", () => {
         horzLines?: { color?: string };
       };
     };
-    // Regression guard: the textColor / grid.color must NEVER contain
-    // `var(--…)` — lightweight-charts paints to a canvas and cannot
-    // resolve CSS variables, so anything but a concrete color string
-    // silently falls back to the library default.
-    expect(chartOpts.layout?.textColor).toMatch(/^color-mix\(/);
+    // Regression guard: textColor / grid.color must be a canvas-parseable
+    // `rgb(...)` / `rgba(...)` string. lightweight-charts v5 rejects both
+    // `var(--…)` (never resolved inside a canvas) and `oklch(...)` /
+    // `color-mix(...)` (its parser doesn't support them), so we normalize
+    // via DOM probe in `resolveThemeColors()`.
+    expect(chartOpts.layout?.textColor).toMatch(/^rgba?\(/);
     expect(chartOpts.layout?.textColor).not.toContain("var(");
-    expect(chartOpts.grid?.vertLines?.color).toMatch(/^color-mix\(/);
-    expect(chartOpts.grid?.horzLines?.color).toMatch(/^color-mix\(/);
+    expect(chartOpts.layout?.textColor).not.toMatch(/oklch|color-mix/);
+    expect(chartOpts.grid?.vertLines?.color).toMatch(/^rgba?\(/);
+    expect(chartOpts.grid?.horzLines?.color).toMatch(/^rgba?\(/);
   });
 
   it("re-skins chart + series colors when the palette change event fires", async () => {
@@ -343,8 +345,8 @@ describe("HoldingPriceChart", () => {
         horzLines?: { color?: string };
       };
     };
-    expect(chartCall.layout?.textColor).toMatch(/^color-mix\(/);
-    expect(chartCall.grid?.vertLines?.color).toMatch(/^color-mix\(/);
+    expect(chartCall.layout?.textColor).toMatch(/^rgba?\(/);
+    expect(chartCall.grid?.vertLines?.color).toMatch(/^rgba?\(/);
     const areaCalls = seriesApplyOptionsByKind.Area.mock.calls;
     const areaCall = areaCalls[areaCalls.length - 1]?.[0] as {
       lineColor?: string;
@@ -352,7 +354,10 @@ describe("HoldingPriceChart", () => {
       bottomColor?: string;
     };
     expect(areaCall.lineColor).toBeTruthy();
-    expect(areaCall.topColor).toMatch(/^color-mix\(/);
+    // withAlpha() composes then normalizes to canvas-safe rgb/rgba (same
+    // invariant as resolveThemeColors / layout options).
+    expect(areaCall.topColor).toMatch(/^rgba?\(/);
+    expect(areaCall.topColor).not.toMatch(/oklch|color-mix/);
     expect(areaCall.bottomColor).toBe("transparent");
   });
 
