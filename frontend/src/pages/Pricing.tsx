@@ -30,6 +30,7 @@ import { Button } from '@/components/ui/button';
 import { TierCard } from '@/components/pricing/TierCard';
 import { ComparisonTable } from '@/components/pricing/ComparisonTable';
 import { PricingFAQ } from '@/components/pricing/PricingFAQ';
+import { PageContainer } from '@/components/ui/Page';
 import type { PricingCatalogResponse, PricingTier } from '@/types/pricing';
 
 // Contact-sales mailto target for Enterprise / other high-touch tiers.
@@ -137,7 +138,8 @@ const Pricing: React.FC = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <MarketingHeader />
-      <main className="mx-auto max-w-6xl space-y-8 px-4 py-12 sm:px-6">
+      <main>
+        <PageContainer width="wide" className="space-y-8 py-12">
         <header className="space-y-3 text-center">
           <h1 className="font-heading text-4xl font-semibold tracking-tight">Simple, honest pricing</h1>
           <p className="text-muted-foreground">
@@ -150,6 +152,7 @@ const Pricing: React.FC = () => {
         </header>
         {renderBody()}
         <PricingFAQ />
+        </PageContainer>
       </main>
       <MarketingFooter />
     </div>

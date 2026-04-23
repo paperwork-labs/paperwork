@@ -5,7 +5,7 @@ import { adminUsersApi, approveUser, deleteUser } from '../services/api';
 import { formatDate } from '../utils/format';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useAuth } from '../context/AuthContext';
-import { PageHeader } from '../components/ui/Page';
+import { PageContainer, PageHeader } from '../components/ui/Page';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -159,7 +159,8 @@ const SettingsUsers: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto w-full max-w-[960px]">
+    <>
+    <PageContainer width="default">
       <PageHeader title="Users" subtitle="Invite users via email and manage roles." />
 
       <div className="mt-6 flex flex-col gap-6">
@@ -370,6 +371,7 @@ const SettingsUsers: React.FC = () => {
           </div>
         )}
       </div>
+    </PageContainer>
 
       <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <DialogContent showCloseButton className="max-w-[400px]">
@@ -391,7 +393,7 @@ const SettingsUsers: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 

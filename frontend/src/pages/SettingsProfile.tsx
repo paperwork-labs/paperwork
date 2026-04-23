@@ -1,6 +1,6 @@
 import React from 'react';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
-import { PageHeader } from '../components/ui/Page';
+import { PageContainer, PageHeader } from '../components/ui/Page';
 import hotToast from 'react-hot-toast';
 import { authApi, handleApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -83,7 +83,7 @@ const SettingsProfile: React.FC = () => {
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full">
-      <div className="mx-auto w-full max-w-[960px]">
+      <PageContainer width="default">
         <PageHeader title="Profile" subtitle="Update your personal info and security settings." />
         <div className="flex flex-col gap-4">
           <Card>
@@ -254,7 +254,7 @@ const SettingsProfile: React.FC = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </PageContainer>
     </div>
     </TooltipProvider>
   );

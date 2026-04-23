@@ -2,7 +2,7 @@ import React from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import hotToast from 'react-hot-toast';
 
-import { PageHeader } from '@/components/ui/Page';
+import { PageContainer, PageHeader } from '@/components/ui/Page';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -127,7 +127,7 @@ const SettingsAIKeys: React.FC = () => {
 
   return (
     <div className="w-full">
-      <div className="mx-auto w-full max-w-[860px]">
+      <PageContainer width="default">
         <PageHeader
           title="AI Keys"
           subtitle="Paste your OpenAI or Anthropic API key. Keys are encrypted at rest and never displayed again after save."
@@ -171,7 +171,7 @@ const SettingsAIKeys: React.FC = () => {
             {renderStatus()}
           </CardContent>
         </Card>
-      </div>
+      </PageContainer>
     </div>
   );
 };

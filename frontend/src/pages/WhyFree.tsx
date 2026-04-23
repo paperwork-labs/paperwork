@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { MarketingFooter } from '@/components/layout/MarketingFooter';
 import { MarketingHeader } from '@/components/layout/MarketingHeader';
+import { PageContainer } from '@/components/ui/Page';
 import PublicStatsStrip from '@/components/transparency/PublicStatsStrip';
 import { cn } from '@/lib/utils';
 import api from '@/services/api';
@@ -35,7 +36,7 @@ const Section: React.FC<{ id?: string; className?: string; children: React.React
   className,
   children,
 }) => (
-  <section id={id} className={cn('mx-auto max-w-4xl px-4 py-16 sm:px-6 sm:py-20', className)}>
+  <section id={id} className={cn('w-full py-16 sm:py-20', className)}>
     {children}
   </section>
 );
@@ -56,7 +57,8 @@ const WhyFree: React.FC = () => {
         <MarketingHeader />
 
         <main>
-          <Section className="pt-12 pb-8 sm:pt-16 sm:pb-12">
+          <PageContainer width="default">
+            <Section className="pt-12 pb-8 sm:pt-16 sm:pb-12">
             <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">Transparency</p>
             <h1 className="mt-3 font-heading text-4xl font-semibold tracking-tight sm:text-5xl">
               AxiomFolio is free because we want it to be.
@@ -188,6 +190,7 @@ const WhyFree: React.FC = () => {
               holdings.
             </p>
           </Section>
+          </PageContainer>
         </main>
         <MarketingFooter />
       </div>

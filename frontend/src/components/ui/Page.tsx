@@ -1,6 +1,41 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
+export type PageContainerWidth = 'narrow' | 'default' | 'wide' | 'full';
+
+const PAGE_CONTAINER_MAX: Record<Exclude<PageContainerWidth, 'full'>, string> = {
+  /** UX audit G-11 — 640px narrow column. */
+  narrow: 'max-w-[640px]',
+  /** UX audit G-11: one canonical reading width for in-app and marketing copy. */
+  default: 'max-w-[960px]',
+  wide: 'max-w-[1200px]',
+};
+
+export function PageContainer({
+  width = 'default',
+  className,
+  children,
+  ...rest
+}: {
+  width?: PageContainerWidth;
+  className?: string;
+  children: React.ReactNode;
+} & React.ComponentProps<'div'>) {
+  return (
+    <div
+      className={cn(
+        'mx-auto w-full px-4 md:px-6',
+        width !== 'full' && PAGE_CONTAINER_MAX[width as Exclude<PageContainerWidth, 'full'>],
+        width === 'full' && 'max-w-none',
+        className,
+      )}
+      {...rest}
+    >
+      {children}
+    </div>
+  );
+}
+
 export interface PageProps extends React.ComponentProps<'div'> {
   children: React.ReactNode;
   fullWidth?: boolean;

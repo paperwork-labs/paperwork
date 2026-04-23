@@ -54,6 +54,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { PageContainer } from '@/components/ui/Page';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
@@ -580,7 +581,7 @@ const SystemStatus: React.FC = () => {
       : null;
 
   return (
-    <div className="mx-auto flex max-w-[1040px] flex-col gap-5">
+    <PageContainer width="wide" className="flex flex-col gap-5">
       {/* 0. Recent AutoOps Explanations — admin-only, self-gates */}
       <RecentExplanationsPanel />
 
@@ -910,7 +911,7 @@ const SystemStatus: React.FC = () => {
         onOpenChange={setExplainOpen}
         trigger={explainTrigger}
       />
-    </div>
+    </PageContainer>
   );
 };
 

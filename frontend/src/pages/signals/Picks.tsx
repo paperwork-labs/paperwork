@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { actionChipClass } from '@/lib/picks';
+import { PageContainer } from '@/components/ui/Page';
 import { cn } from '@/lib/utils';
 import {
   ExternalSignalsChip,
@@ -75,7 +76,7 @@ const Picks: React.FC = () => {
   });
 
   return (
-    <div className="mx-auto max-w-3xl space-y-4 p-4">
+    <PageContainer width="default" className="space-y-4 py-4">
       <header className="space-y-1">
         <div className="flex items-center gap-2">
           <ClipboardList className="size-5 text-primary" aria-hidden />
@@ -203,7 +204,7 @@ const Picks: React.FC = () => {
           )}
         </>
       )}
-    </div>
+    </PageContainer>
   );
 };
 

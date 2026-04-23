@@ -30,7 +30,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AppCard from '../components/ui/AppCard';
-import { PageHeader } from '../components/ui/Page';
+import { PageContainer, PageHeader } from '../components/ui/Page';
 import { cn } from '@/lib/utils';
 import hotToast from 'react-hot-toast';
 import { accountsApi, aggregatorApi, handleApiError } from '../services/api';
@@ -1005,7 +1005,7 @@ const SettingsConnections: React.FC = () => {
   return (
     <TooltipProvider delayDuration={200}>
     <div className="w-full">
-      <div className="mx-auto w-full max-w-[960px]">
+      <PageContainer width="default">
         <PageHeader
           title="Connections"
           subtitle="Manage brokerages, live data, charting, and data provider integrations."
@@ -1484,7 +1484,7 @@ const SettingsConnections: React.FC = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
+      </PageContainer>
       <Dialog
         open={editOpen}
         onOpenChange={(open) => {

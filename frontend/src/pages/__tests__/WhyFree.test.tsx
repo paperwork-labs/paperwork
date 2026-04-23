@@ -6,6 +6,23 @@ import { renderWithProviders } from '../../test/render';
 import WhyFree from '../WhyFree';
 import api from '@/services/api';
 
+function mockDesktopViewport(): void {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
+
 vi.mock('@/services/api', () => ({
   __esModule: true,
   default: {
@@ -26,6 +43,7 @@ vi.mock('@/components/transparency/PublicStatsStrip', () => ({
 
 describe('WhyFree', () => {
   beforeEach(() => {
+    mockDesktopViewport();
     cleanup();
     vi.mocked(api.get).mockResolvedValue({
       data: {
