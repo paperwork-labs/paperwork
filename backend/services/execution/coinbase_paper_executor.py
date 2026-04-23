@@ -1,13 +1,14 @@
 """Coinbase paper-mode executor.
 
-Wave F Phase 0 (issue #473). Coinbase is our first crypto broker; F0 ships
-paper-only so the full trading path (OrderManager → RiskGate → BrokerRouter)
-can be exercised end-to-end without any real crypto custody risk.
+Coinbase is our first crypto broker and currently ships paper-only so the
+full trading path (OrderManager → RiskGate → BrokerRouter) can be
+exercised end-to-end without any real crypto custody risk.
 
-Live Coinbase Advanced Trade integration lands in a later phase. Until then
-any attempt to place a real-money Coinbase order routes through this class
-and is clearly tagged ``paper_mode=True`` in the ``OrderResult.raw`` payload
-so downstream accounting cannot confuse it with a live fill.
+Live Coinbase Advanced Trade integration lands in a follow-up. Until
+then any attempt to place a real-money Coinbase order routes through
+this class and is clearly tagged ``paper_mode=True`` in the
+``OrderResult.raw`` payload so downstream accounting cannot confuse it
+with a live fill.
 
 Symbol enforcement
 ------------------

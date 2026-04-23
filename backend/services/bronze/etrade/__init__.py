@@ -1,6 +1,6 @@
-"""E*TRADE bronze-layer ingestion (Phase 1 / PR D2).
+"""E*TRADE bronze-layer ingestion.
 
-Sandbox-only in v1. The live adapter is a sibling that requires E*TRADE to
+Sandbox-only currently. The live adapter is a sibling that requires E*TRADE to
 approve the application first; adding it is a broker-id flip plus a base
 URL swap, not a rewrite.
 

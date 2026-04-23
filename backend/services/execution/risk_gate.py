@@ -53,13 +53,14 @@ STAGE_CAPS = {
 
 DEFAULT_STOP_MULTIPLIER = 2.0
 
-# Wave F Phase 0 (issue #473) — crypto recognition for the risk-gate branch.
+# Crypto recognition for the risk-gate branch.
 # Weinstein Stage Analysis does not apply to crypto (no fundamentals,
 # 24/7 markets, no earnings/sector context), so crypto orders skip the
-# stage/regime sizing path and instead enforce a tighter CRYPTO_MAX_POSITION_PCT
-# cap. This list is intentionally conservative — crypto assets that aren't
-# recognized here will fall through to the equity path and be blocked by
-# missing MarketSnapshot/stage data, which is the safer failure mode.
+# stage/regime sizing path and instead enforce a tighter
+# CRYPTO_MAX_POSITION_PCT cap. This list is intentionally conservative —
+# crypto assets not recognized here fall through to the equity path and
+# are blocked by missing MarketSnapshot/stage data, which is the safer
+# failure mode.
 CRYPTO_SYMBOLS_CORE = frozenset({
     "BTC", "ETH", "ADA", "SOL", "MATIC", "DOGE", "LTC", "XRP", "DOT", "AVAX",
     "LINK", "UNI", "ATOM", "BCH",
@@ -195,11 +196,11 @@ class RiskGate:
                 f"${self.max_order_value:,.0f} maximum"
             )
 
-        # Wave F Phase 0: crypto orders use a tighter, Weinstein-agnostic path.
-        # Rationale: Stage Analysis relies on SMA150/sector/regime context that
-        # does not apply to 24/7 crypto markets. We enforce
-        # CRYPTO_MAX_POSITION_PCT (default 5%) in lieu of the 15% equity cap
-        # and skip the stage/regime sizing path entirely. See issue #473.
+        # Crypto orders use a tighter, Weinstein-agnostic path. Rationale:
+        # Stage Analysis relies on SMA150 / sector / regime context that does
+        # not apply to 24/7 crypto markets. Enforce CRYPTO_MAX_POSITION_PCT
+        # (default 5%) in lieu of the 15% equity cap and skip the
+        # stage/regime sizing path entirely.
         if _is_crypto_symbol(req.symbol):
             self._check_crypto_sizing(req, price_estimate, portfolio_equity)
             return warnings

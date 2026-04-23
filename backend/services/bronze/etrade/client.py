@@ -9,9 +9,8 @@ Responsibilities:
   :class:`backend.services.oauth.etrade.ETradeSandboxAdapter`. **No HMAC
   logic is duplicated here** — if it needs to change, it changes in one
   place. We intentionally call ``adapter._signed_request`` (a "protected"
-  method); the seam is documented in
-  ``.cursor/plans/broker_parity_medallion_v1_7ca0fcb3.plan.md`` and
-  validated by the unit tests in ``backend/tests/services/bronze/etrade``.
+  method); the seam is validated by the unit tests in
+  ``backend/tests/services/bronze/etrade``.
 * Classify HTTP errors into permanent (reauth needed) vs transient
   (retry). Callers never see raw ``requests.Response`` objects.
 
@@ -108,8 +107,9 @@ class ETradeBronzeClient:
         fix) and ``permanent=False`` on 5xx / network errors.
         """
 
-        # Intentional protected-member access: we're the sanctioned
-        # second caller of the adapter's signing helper, per PR D2 plan.
+        # Intentional protected-member access: this client is the sanctioned
+        # second caller of the adapter's signing helper. Keeping the HMAC
+        # logic in one place is more important than the lint warning.
         try:
             resp = self._adapter._signed_request(  # noqa: SLF001
                 "GET",

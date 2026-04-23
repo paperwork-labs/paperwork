@@ -545,7 +545,7 @@ def test_deprecated_snapshots_rejects_over_200():
         app.dependency_overrides.pop(get_market_data_viewer, None)
 
 
-# ---------- Phase 1: action_labels / preset / index_name filter tests ----------
+# ---------- action_labels / preset / index_name filter tests ----------
 
 
 def test_snapshot_table_accepts_action_labels_filter(monkeypatch):

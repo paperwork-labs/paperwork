@@ -1,4 +1,4 @@
-"""Integration tests for SchwabExecutor (Wave F Phase F3).
+"""Integration tests for SchwabExecutor.
 
 These tests stub the network transport at :meth:`SchwabClient._request_with_meta`
 and :meth:`SchwabClient.resolve_account_hash_fresh` so we can assert the

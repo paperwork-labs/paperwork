@@ -4,8 +4,7 @@ These tests use the shared ``db_session`` fixture from ``backend/tests/conftest.
 so they run against the real SQLAlchemy schema (nothing is mocked out from
 the ORM layer).
 
-The matcher is the fix for the Tax Center being empty on Schwab accounts —
-see ``docs/plans/broker_parity_medallion_v1_*.plan.md`` Phase 2 / PR E.
+The matcher is the fix for the Tax Center being empty on Schwab accounts.
 """
 
 from __future__ import annotations

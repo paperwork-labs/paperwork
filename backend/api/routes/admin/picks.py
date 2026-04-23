@@ -1,4 +1,4 @@
-"""Admin API: validator queue for ``Candidate`` rows (Phase 1 picks)."""
+"""Admin API: validator queue for ``Candidate`` rows."""
 
 from __future__ import annotations
 

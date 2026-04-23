@@ -361,7 +361,7 @@ class TradierBronzeClient:
         return []
 
     # ------------------------------------------------------------------
-    # Order write-path (Wave F Phase 1, issue #273 family).
+    # Order write-path.
     #
     # These helpers stay additive — they do not change the signatures of
     # the read-only sync methods above. Each returns the raw

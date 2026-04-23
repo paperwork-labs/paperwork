@@ -1,7 +1,7 @@
 """
 Tests for backend.services.backtest.monte_carlo
 
-Covers the acceptance criteria from the master plan Phase 6b:
+Acceptance criteria:
 
 * Reproducibility: same ``seed`` ⇒ identical result.
 * Known-distribution test: when fed a sample with known mean, the

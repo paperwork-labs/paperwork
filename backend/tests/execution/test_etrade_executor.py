@@ -1,4 +1,4 @@
-"""Wave F Phase 2 — E*TRADE live executor tests.
+"""E*TRADE live executor tests.
 
 Coverage:
 
@@ -11,8 +11,8 @@ Coverage:
 * ``ETRADE_ALLOW_LIVE=True`` allows prod registration.
 * Constructing an ``ETradeExecutor(environment="prod")`` with the flag off
   raises ``RuntimeError`` at import time (fail-early per the safety contract).
-* Token refresh is exercised via the F0 mixin; a failure surfaces as
-  ``OrderResult.error`` (no silent fallback).
+* Token refresh is exercised via ``ensure_broker_token``; a failure
+  surfaces as ``OrderResult.error`` (no silent fallback).
 
 We never hit the real E*TRADE sandbox. ``responses`` mocks the HTTP layer
 and a fake ``BrokerOAuthConnection`` / ``ensure_broker_token`` stand in for
@@ -370,7 +370,7 @@ class TestGetOrderStatus:
 
 
 # ---------------------------------------------------------------------------
-# Token refresh — F0 mixin
+# Token refresh — ``ensure_broker_token``
 # ---------------------------------------------------------------------------
 
 

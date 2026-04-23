@@ -1,9 +1,8 @@
 """OAuth executor helpers — per-connection token-refresh lock.
 
-Wave F Phase 0 foundation (issue #473). Used by the new OAuth-backed broker
-executors (Tradier, E*TRADE, Schwab, TastyTrade, Coinbase) to guarantee that
-concurrent order operations for the same ``BrokerOAuthConnection`` cannot
-race the token refresh path.
+Used by the OAuth-backed broker executors (Tradier, E*TRADE, Schwab,
+TastyTrade, Coinbase) to guarantee that concurrent order operations for
+the same ``BrokerOAuthConnection`` cannot race the token-refresh path.
 
 The existing ``backend.tasks.portfolio.oauth_token_refresh._refresh_one``
 already owns the refresh mechanics (decrypt, call adapter.refresh, rotate

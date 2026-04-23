@@ -1,10 +1,10 @@
-"""Schwab live executor (Wave F Phase F3).
+"""Schwab live executor.
 
 Adapts :class:`~backend.services.clients.schwab_client.SchwabClient` to the
 :class:`~backend.services.execution.broker_base.BrokerExecutor` protocol.
-Together with the write-path methods added to ``SchwabClient`` this replaces
-the ``not_implemented`` stub that was the only trading path to Schwab before
-F3.
+Together with the write-path methods on ``SchwabClient`` this replaces
+the ``not_implemented`` stub that was previously the only trading path
+to Schwab.
 
 Schwab-specific behavior
 ------------------------
@@ -15,10 +15,10 @@ Schwab-specific behavior
   Every ``place_order`` / ``cancel_order`` / ``get_order_status`` /
   ``preview_order`` hits :meth:`SchwabClient.resolve_account_hash_fresh` so
   one ``GET /accounts/accountNumbers`` lookup occurs per write.
-* **``ensure_broker_token`` runs first.** Every write path uses the F0
-  mixin so the OAuth access token is refreshed under a Redis lock before
-  any Schwab HTTPS call. A failed refresh is surfaced as
-  ``OrderResult.error`` (never silently swallowed).
+* **``ensure_broker_token`` runs first.** Every write path uses the
+  shared OAuth-refresh helper so the access token is refreshed under a
+  Redis lock before any Schwab HTTPS call. A failed refresh is surfaced
+  as ``OrderResult.error`` (never silently swallowed).
 * **Status is polled, not pushed.** Schwab does not send async order status
   updates, so :meth:`SchwabExecutor.get_order_status` hits the order
   endpoint each call; callers that need live updates must poll.

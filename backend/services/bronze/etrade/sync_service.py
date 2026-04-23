@@ -1,4 +1,4 @@
-"""E*TRADE bronze-layer sync service (Phase 1 / PR D2).
+"""E*TRADE bronze-layer sync service.
 
 Mirrors the shape of :class:`backend.services.portfolio.schwab_sync_service.SchwabSyncService`:
 
@@ -57,10 +57,10 @@ logger = logging.getLogger(__name__)
 # accepting ``"etrade"`` (live) on the connection row would call the
 # sandbox API with a live access token and silently fetch wrong / 401
 # data. Restrict to ``"etrade_sandbox"`` until the live adapter ships;
-# promoting to live is an explicit code change + a matching broker-id
+# promoting to live is an explicit code change plus a matching broker-id
 # flip, which is the whole point of this guardrail. See docs/KNOWLEDGE.md
-# D130 — "Fidelity (PR D3) and Tradier (PR D4) follow this same
-# (narrow) pattern".
+# D130 — future broker-specific bronze sync services follow this same
+# narrow pattern.
 _ETRADE_BROKER_IDS: Tuple[str, ...] = ("etrade_sandbox",)
 
 

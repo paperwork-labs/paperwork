@@ -77,9 +77,9 @@ class ConvictionThresholds:
     min_stage_days: int = 20
     max_results: int = 25
 
-    # Score weights — must sum to ~1.0. Mirrors the spec weights in
-    # docs/plans/GAPS_2026Q2.md G19 (adjusted for what's available in
-    # MarketSnapshot today; the fundamentals-heavy path is G19 Phase 2).
+    # Score weights — must sum to ~1.0. Adjusted for the metrics
+    # currently surfaced on ``MarketSnapshot``; a fundamentals-heavy
+    # rebalance lands when the EPS-growth and valuation feeds widen.
     w_stage_posture: float = 0.25
     w_rs: float = 0.25
     w_eps_growth: float = 0.20

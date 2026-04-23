@@ -3,7 +3,7 @@
 Background: production v0 ran a single worker with concurrency=1. A single
 ``repair_stage_history`` job would block the worker for an hour, starving
 dashboard warming and triggering the "Queued but never started" failure
-mode (R36, MASTER_PLAN_2026.md Phase 0).
+mode (regression R36).
 
 This test guards the routing rules in ``backend/tasks/celery_app.py`` so a
 future contributor cannot accidentally route a long-running job to the

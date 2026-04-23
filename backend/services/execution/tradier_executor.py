@@ -1,7 +1,6 @@
 """Tradier live executor — satisfies the :class:`BrokerExecutor` protocol.
 
-Wave F Phase 1 (issue #273 family). This is the first OAuth-backed live
-executor to land on top of the Phase 0 foundation (PR #479). It uses the
+The first OAuth-backed live executor in the codebase. It uses the
 per-connection token-refresh lock from
 :mod:`backend.services.execution.oauth_executor_mixin` and the extended
 Tradier HTTP helpers from :mod:`backend.services.bronze.tradier.client`.

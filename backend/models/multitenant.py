@@ -4,8 +4,6 @@ Tables that enforce per-tenant isolation across rate limiting, GDPR
 data-subject rights, and cost attribution. All tables include a
 ``user_id`` foreign key that is the unit of isolation; ``TenantRateLimit``
 allows ``user_id IS NULL`` for the global default bucket.
-
-See ``docs/plans/MASTER_PLAN_2026.md`` Phase 8d for context.
 """
 
 from __future__ import annotations

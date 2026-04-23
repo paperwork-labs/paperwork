@@ -1,6 +1,6 @@
-"""Wave F Phase 1 — integration tests for :class:`TradierExecutor`.
+"""Integration tests for :class:`TradierExecutor`.
 
-Scope (issue #273 family):
+Scope:
 
 * Preview / place / cancel / status happy paths against the 4 Tradier
   REST endpoints mocked with the ``responses`` library.
@@ -9,8 +9,8 @@ Scope (issue #273 family):
   ``OrderResult.error`` / ``PreviewResult.error``, never as silent empty
   success.
 * Token refresh — a connection whose ``access_token`` has already expired
-  drives the F0 mixin (``ensure_broker_token``) through a real refresh
-  stub. The subsequent Tradier request must carry the *new* bearer token.
+  drives ``ensure_broker_token`` through a real refresh stub. The
+  subsequent Tradier request must carry the *new* bearer token.
 
 These tests never hit the network (``responses`` intercepts at the
 ``requests`` adapter layer) and never hit Postgres (the executor's
@@ -536,12 +536,12 @@ class TestErrorSurface:
 
 
 # ---------------------------------------------------------------------------
-# Token refresh — exercises the F0 mixin end-to-end
+# Token refresh — exercises ``ensure_broker_token`` end-to-end
 # ---------------------------------------------------------------------------
 
 
 class TestTokenRefresh:
-    """When the stored access token is stale the F0 mixin refreshes it.
+    """When the stored access token is stale ``ensure_broker_token`` refreshes it.
 
     This test exercises the real ``ensure_broker_token`` code path. We
     stub only the Redis lock (fakeredis-style in-process dict) and the

@@ -1,4 +1,4 @@
-"""Celery fan-out for E*TRADE account sync (Phase 1 / PR D2).
+"""Celery fan-out for E*TRADE account sync.
 
 Mirrors the ``sync_all_schwab_accounts`` / ``sync_all_ibkr_accounts`` tasks
 defined in ``backend/tasks/portfolio/sync.py``: walks every
@@ -8,15 +8,14 @@ summary. The per-account task handles Redis locking, status updates, and
 routes into :class:`backend.services.bronze.etrade.ETradeSyncService` via
 the generic ``BrokerSyncService`` dispatcher.
 
-Why its own module? The plan (``broker_parity_medallion_v1_7ca0fcb3``) asks
-for one file per broker fan-out so that Phase 1 PR D3 (Fidelity) and D4
-(Tradier) drop in alongside without touching the existing
-``sync.py`` module. Existing Schwab / IBKR fan-outs stay in ``sync.py`` —
-we're not doing a big-bang rename (KNOWLEDGE.md D127).
+Why its own module? Each broker fan-out lives in its own file so future
+broker additions drop in alongside without touching ``sync.py``.
+Pre-existing Schwab / IBKR fan-outs stay in ``sync.py`` — no big-bang
+rename (decision D127).
 
-Timing contract (Copilot review on PR #395 flagged a doc/code mismatch —
-the authoritative values live here and in ``job_catalog.py``; PR
-descriptions must quote these, not the other way around):
+Timing contract — the authoritative values live here and in
+``job_catalog.py``. PR descriptions and runbooks must quote these, not
+the other way around:
 
 * ``time_limit=960`` and ``soft_time_limit=900`` match
   :data:`backend.tasks.portfolio.sync.sync_account_task` hard/soft limits;

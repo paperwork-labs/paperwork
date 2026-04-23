@@ -136,13 +136,13 @@ class Settings(BaseSettings):
     # When non-empty, client callback_url must match one entry exactly.
     OAUTH_ALLOWED_CALLBACK_URLS: Optional[str] = None
     ETRADE_OAUTH_REQUEST_TIMEOUT_S: float = 15.0
-    # Wave F Phase 2 live-order feature flag. When False (default), the
-    # BrokerRouter refuses to register the production E*TRADE executor so a
-    # misconfigured `broker_type="etrade"` cannot accidentally route real
-    # orders. Flipping to True requires explicit founder action and must be
-    # paired with valid production consumer credentials provisioned out-of-
-    # band. Sandbox (`etrade_sandbox`) is always registered and ignores this
-    # flag.
+    # Live-order kill switch for the production E*TRADE executor. When
+    # False (default), the BrokerRouter refuses to register the prod
+    # executor so a misconfigured ``broker_type="etrade"`` cannot
+    # accidentally route real orders. Flipping to True requires explicit
+    # operator action and must be paired with valid production consumer
+    # credentials provisioned out-of-band. Sandbox (``etrade_sandbox``)
+    # is always registered and ignores this flag.
     ETRADE_ALLOW_LIVE: bool = False
 
     # Tradier OAuth 2.0 — live and sandbox credential pairs.
@@ -220,10 +220,10 @@ class Settings(BaseSettings):
     MAX_SINGLE_POSITION_PCT: float = 0.15
     ENABLE_ACCOUNT_AWARE_RISK: bool = False
 
-    # Crypto-specific position cap (Wave F Phase 0, issue #473).
-    # Crypto is higher-vol and lacks the Weinstein stage framework, so we cap
-    # individual crypto positions tighter than the generic equity MAX_SINGLE_POSITION_PCT.
-    # Expressed as a fraction of portfolio equity (0.05 = 5%).
+    # Crypto-specific position cap. Crypto is higher-vol and lacks the
+    # Weinstein stage framework, so we cap individual crypto positions
+    # tighter than the generic equity MAX_SINGLE_POSITION_PCT. Expressed
+    # as a fraction of portfolio equity (0.05 = 5%).
     CRYPTO_MAX_POSITION_PCT: float = 0.05
 
     # Candidate generators: Stage 2A/2B + RS quintile (Kell) variant in

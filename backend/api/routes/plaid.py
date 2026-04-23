@@ -323,9 +323,9 @@ def exchange_public_token(
         connection = existing
         db.flush()
 
-    # Fetch accounts to create BrokerAccount rows. Investments-only for
-    # Phase 1 — depository (checking/savings) is silently skipped because
-    # we don't model it; log each skip so ops can see reality.
+    # Fetch accounts to create BrokerAccount rows. Investments-only —
+    # depository (checking/savings) is silently skipped because we do
+    # not model it. Log each skip so ops can see reality.
     try:
         accounts_meta = client.get_accounts(connection.access_token_encrypted)
     except PlaidAPIError as exc:
@@ -521,9 +521,9 @@ async def plaid_webhook(
 
     Auth is the JWT in ``Plaid-Verification`` — we MUST NOT accept
     bearer tokens here (Plaid cannot send one). We return 401 for any
-    verification failure. Payload handling is intentionally minimal in
-    Phase 1: we log the event and enqueue a sync for the item; full
-    resync logic lives in the Celery task.
+    verification failure. Payload handling is intentionally minimal:
+    we log the event and enqueue a sync for the item; full resync
+    logic lives in the Celery task.
     """
     body = await request.body()
     try:
@@ -570,10 +570,10 @@ async def plaid_webhook(
         item_id,
     )
 
-    # Phase 1: acknowledge immediately. The daily cron already picks up
-    # new holdings; a later wave will dispatch an on-demand sync task
-    # here. Noting the ``payload`` variable satisfies the linter without
-    # leaking it into the response.
+    # Acknowledge immediately. The daily cron already picks up new
+    # holdings; an on-demand sync dispatch will be added here in a
+    # follow-up. Noting the ``payload`` variable satisfies the linter
+    # without leaking it into the response.
     _ = payload
 
     return WebhookAckResponse(

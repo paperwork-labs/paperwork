@@ -3,8 +3,6 @@
 Provides per-user isolation primitives shared across the API:
 rate limiting, redis key namespacing, GDPR job orchestration, and
 cost attribution rollups.
-
-See ``docs/plans/MASTER_PLAN_2026.md`` Phase 8d.
 """
 
 from backend.services.multitenant.rate_limiter import (

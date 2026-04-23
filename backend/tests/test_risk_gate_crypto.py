@@ -1,4 +1,4 @@
-"""Tests for RiskGate crypto branch (Wave F Phase 0, issue #473).
+"""Tests for the RiskGate crypto branch.
 
 Covers:
 

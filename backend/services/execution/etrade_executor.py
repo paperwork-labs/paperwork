@@ -1,4 +1,4 @@
-"""E*TRADE live executor — Wave F Phase 2.
+"""E*TRADE live executor.
 
 Implements :class:`~backend.services.execution.broker_base.BrokerExecutor` for
 E*TRADE's 2-step ``preview`` → ``place`` order flow. Signed with OAuth 1.0a
@@ -458,7 +458,7 @@ class ETradeExecutor:
         return self._require_context(synthetic)
 
     # ------------------------------------------------------------------
-    # Token freshness (F0 mixin)
+    # Token freshness (per-connection OAuth refresh lock)
     # ------------------------------------------------------------------
     async def _ensure_token_async(
         self, db: Session, conn: BrokerOAuthConnection

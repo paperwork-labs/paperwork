@@ -195,14 +195,13 @@ class PlaidSyncService:
     ) -> Optional[PlaidConnection]:
         """Find the PlaidConnection backing a BrokerAccount.
 
-        Phase 1 association: the ``BrokerAccount.account_number`` stores
-        the Plaid ``account_id``, and Plaid ``account_id``s are
-        globally unique, so we find the connection via the PlaidAccount
-        mapping table... in this phase we don't have one. Instead, we
-        look up by ``user_id`` and ``status != revoked`` and pick the
-        single ACTIVE/NEEDS_REAUTH/ERROR one. If more than one is
-        present (multi-Item users in phase 2), caller must attach a
-        ``plaid_connection_id`` to the account — raise loudly here.
+        Single-Item association (current scope): the
+        ``BrokerAccount.account_number`` stores the Plaid ``account_id``,
+        and Plaid ``account_id``\\ s are globally unique, so we look up the
+        single ACTIVE/NEEDS_REAUTH/ERROR connection for this user. When
+        multi-Item support lands the caller must attach a
+        ``plaid_connection_id`` to the account; raise loudly here if we
+        ever see >1 candidate connection without that disambiguator.
         """
         connections: List[PlaidConnection] = (
             session.query(PlaidConnection)
@@ -236,9 +235,9 @@ class PlaidSyncService:
     ) -> Dict[str, BrokerAccount]:
         """Map ``plaid_account_id`` -> :class:`BrokerAccount` for this user.
 
-        Phase 1 stores the Plaid ``account_id`` in
-        ``BrokerAccount.account_number`` for connection_source='plaid'
-        rows (created by the exchange route). That's the join key.
+        The Plaid ``account_id`` is stored in
+        ``BrokerAccount.account_number`` for ``connection_source='plaid'``
+        rows (populated by the exchange route). That's the join key.
         """
         ids = [a.get("account_id") for a in plaid_accounts if a.get("account_id")]
         if not ids:

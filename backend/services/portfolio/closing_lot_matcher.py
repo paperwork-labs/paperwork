@@ -35,7 +35,7 @@ Non-goals in v1
 - IRS-compliant §1091 wash-sale detection. We implement a conservative
   "loss + same-symbol replacement within ±30 days" heuristic and label it
   explicitly in the emitted metadata. A true per-lot adjustment is
-  tracked under Phase 5 PR N-ish tax-aware exits.
+  deferred to the tax-aware exits work.
 - Lot methods other than FIFO. Schwab/TT/ETRADE all default to FIFO for
   US taxable accounts; SpecificID support lands later when we can surface
   it in the UI.
@@ -686,12 +686,11 @@ def _apply_equity_trade(
             }
             if wash_sale_loss > 0:
                 # Metadata-only wash-sale flag today. The existing tax
-                # export treats wash sales via ``Trade.status="WASH_SALE"``;
-                # we're deliberately not rewriting the export contract
-                # in the closing-lot matcher PR — the tax exporter will
-                # learn to also honour ``meta["wash_sale"]`` in Phase 5
-                # (tax-aware exits, see GAPS_2026Q2 §G27). Until then
-                # this flag is advisory for the UI only.
+                # export treats wash sales via ``Trade.status="WASH_SALE"``
+                # and we are deliberately not rewriting that contract in
+                # the closing-lot matcher; the tax exporter will learn to
+                # also honour ``meta["wash_sale"]`` when tax-aware exits
+                # land. Until then this flag is advisory for the UI only.
                 meta["wash_sale"] = True
                 meta["wash_sale_loss"] = float(wash_sale_loss)
                 meta["wash_sale_heuristic"] = (

@@ -1,7 +1,8 @@
 """Inbound newsletter email parsing (Celery entry point).
 
-Phase 1 stub: marks rows as ready for the LLM parser (implemented in a
-follow-up PR). The webhook persists ``EmailInbox`` and dispatches this task.
+Currently a stub: marks rows as ready for the LLM parser (implemented
+in a follow-up). The webhook persists ``EmailInbox`` and dispatches
+this task.
 """
 
 from __future__ import annotations

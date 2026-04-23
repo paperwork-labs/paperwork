@@ -1,4 +1,4 @@
-"""Wave F Phase 0 smoke tests (issue #473).
+"""Trading-parity foundation smoke tests.
 
 Verifies the foundational trading-parity wiring is in place:
 
@@ -24,7 +24,7 @@ from backend.services.execution.coinbase_paper_executor import (
 
 
 class TestBrokerTypeEnum:
-    """BrokerType enum must expose the Wave F broker identifiers."""
+    """BrokerType enum must expose the live-broker identifiers."""
 
     @pytest.mark.parametrize(
         "name, value",
