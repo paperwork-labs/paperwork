@@ -4,7 +4,8 @@ export type BrokerSlug =
   | 'tastytrade'
   | 'etrade'
   | 'tradier'
-  | 'coinbase';
+  | 'coinbase'
+  | 'plaid';
 
 export type WizardBrokerKey =
   | 'SCHWAB'
@@ -12,9 +13,29 @@ export type WizardBrokerKey =
   | 'IBKR'
   | 'ETRADE'
   | 'TRADIER'
-  | 'COINBASE';
+  | 'COINBASE'
+  | 'PLAID';
 
-export type ConnectionMethodKind = 'OAuth' | 'OAuth 1.0a' | 'FlexQuery' | 'Manual';
+export type ConnectionMethodKind =
+  | 'OAuth'
+  | 'OAuth 1.0a'
+  | 'FlexQuery'
+  | 'Manual'
+  | 'Aggregator';
+
+/**
+ * Capability matrix for a tile. Used by the UI to decide what the CTA
+ * offers and by the tax-lot table to surface aggregator-sourced lots
+ * as "—" rather than "$0.00" (plan §Frontend, tax-lot rendering rule).
+ */
+export interface BrokerCapabilities {
+  /** True when AxiomFolio can pull positions/balances for this connection. */
+  sync: boolean;
+  /** Order-entry capability: 'full' | 'read' | 'none'. */
+  trade: 'full' | 'read' | 'none';
+  /** Data source attribution — 'direct' from broker API, 'aggregator' via Plaid. */
+  source: 'direct' | 'aggregator';
+}
 
 export interface BrokerTileDefinition {
   slug: BrokerSlug;
@@ -22,7 +43,14 @@ export interface BrokerTileDefinition {
   displayName: string;
   tagline: string;
   method: ConnectionMethodKind;
-  category: 'brokerage' | 'crypto';
+  category: 'brokerage' | 'crypto' | 'aggregator';
+  /** Tile-level capability hint. Only 'aggregator' category rows vary. */
+  capabilities?: BrokerCapabilities;
+  /**
+   * Optional feature gate key. When present, the tile is wrapped in
+   * <TierGate feature={...}> upstream so Free users see a locked state.
+   */
+  featureKey?: string;
 }
 
 /** Live direct-connect brokers shown in the picker (order within category). */
@@ -75,6 +103,20 @@ export const LIVE_BROKER_TILES: BrokerTileDefinition[] = [
     method: 'OAuth',
     category: 'crypto',
   },
+  // Plaid Investments — read-only aggregator covering 401(k), 403(b), IRA,
+  // and held-away brokerage accounts via plaid.com Link flow. No order
+  // entry. See plan `docs/plans/PLAID_FIDELITY_401K.md` and feature
+  // catalog key `broker.plaid_investments` (Pro tier).
+  {
+    slug: 'plaid',
+    wizardBroker: 'PLAID',
+    displayName: 'Plaid (401k / IRA / held-away)',
+    tagline: 'Read-only via Plaid — positions and balances only',
+    method: 'Aggregator',
+    category: 'aggregator',
+    capabilities: { sync: true, trade: 'none', source: 'aggregator' },
+    featureKey: 'broker.plaid_investments',
+  },
 ];
 
 export const SLUG_TO_WIZARD: Record<BrokerSlug, WizardBrokerKey> = LIVE_BROKER_TILES.reduce(
@@ -93,4 +135,7 @@ export const OAUTH_KEYS_BY_SLUG: Record<BrokerSlug, string[]> = {
   etrade: ['etrade_sandbox', 'etrade'],
   tradier: ['tradier', 'tradier_sandbox'],
   coinbase: ['coinbase'],
+  // Plaid is not an OAuth broker row — connections live in the separate
+  // ``plaid_connections`` table, so the OAuth revoke/detail path is empty.
+  plaid: [],
 };

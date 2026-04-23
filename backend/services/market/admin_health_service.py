@@ -74,7 +74,7 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
 }
 
 MARKET_DIMS = {"coverage", "stage_quality", "jobs", "audit", "regime", "fundamentals", "data_accuracy", "iv_coverage"}
-BROKER_DIMS = {"portfolio_sync", "ibkr_gateway"}
+BROKER_DIMS = {"portfolio_sync", "ibkr_gateway", "plaid"}
 # G28: deploys dim is infra-level — not part of the market/broker split.
 # It still counts toward composite; a red deploy dim must surface regardless
 # of broker sync health (a stuck API deploy breaks everything).
@@ -213,6 +213,7 @@ class AdminHealthService:
         fundamentals = self._build_fundamentals_dimension(db)
         portfolio_sync = self._build_portfolio_sync_dimension(db)
         ibkr_gateway = self._build_ibkr_gateway_dimension()
+        plaid = self._build_plaid_dimension(db)
         data_accuracy = self._build_data_accuracy_dimension()
         deploys = self._build_deploys_dimension(db)
         universe_coverage = self._build_universe_coverage_dimension()
@@ -230,6 +231,7 @@ class AdminHealthService:
             "iv_coverage": iv_coverage,
             "portfolio_sync": portfolio_sync,
             "ibkr_gateway": ibkr_gateway,
+            "plaid": plaid,
             "deploys": deploys,
             "universe_coverage": universe_coverage,
         }
@@ -963,6 +965,86 @@ class AdminHealthService:
             }
         except Exception as exc:
             logger.exception("portfolio_sync dimension failed: %s", exc)
+            return {"status": "error", "error": str(exc)}
+
+    def _build_plaid_dimension(self, db: Session) -> Dict[str, Any]:
+        """Plaid aggregator health: connection statuses + last sync age.
+
+        Status buckets:
+
+        * ``ok``      — no connections, OR all ACTIVE and last sync < 26h
+        * ``yellow``  — at least one ERROR or NEEDS_REAUTH row
+        * ``red``     — more than half of non-revoked rows stale (>26h)
+          OR Plaid is not configured on this instance (so Pro users
+          paying for the feature cannot use it).
+        * ``error``   — the dimension itself failed to compute; surfaces
+          as red in the composite.
+
+        Plaid configuration absence does NOT get silently coerced to "ok"
+        (no-silent-fallback); we report ``configured=false`` and let the
+        composite mark the system degraded.
+        """
+        try:
+            from backend.models.plaid_connection import (
+                PlaidConnection,
+                PlaidConnectionStatus,
+            )
+
+            configured = bool(
+                getattr(settings, "PLAID_CLIENT_ID", None)
+                and getattr(settings, "PLAID_SECRET", None)
+            )
+
+            rows: List[PlaidConnection] = (
+                db.query(PlaidConnection)
+                .filter(
+                    PlaidConnection.status != PlaidConnectionStatus.REVOKED.value
+                )
+                .all()
+            )
+
+            total = len(rows)
+            status_counts: Dict[str, int] = {}
+            for r in rows:
+                status_counts[r.status] = status_counts.get(r.status, 0) + 1
+
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=26)
+            stale = [
+                r
+                for r in rows
+                if r.last_sync_at is None
+                or _datetime_as_utc_aware(r.last_sync_at) < cutoff
+            ]
+
+            error_count = status_counts.get(
+                PlaidConnectionStatus.ERROR.value, 0
+            )
+            reauth_count = status_counts.get(
+                PlaidConnectionStatus.NEEDS_REAUTH.value, 0
+            )
+
+            if not configured and total > 0:
+                status = "red"
+            elif total == 0:
+                status = "ok"
+            elif len(stale) * 2 > total:
+                status = "red"
+            elif error_count > 0 or reauth_count > 0:
+                status = "yellow"
+            else:
+                status = "green"
+
+            return {
+                "status": status,
+                "configured": configured,
+                "total_connections": total,
+                "stale_connections": len(stale),
+                "status_counts": status_counts,
+                "error_count": error_count,
+                "needs_reauth_count": reauth_count,
+            }
+        except Exception as exc:
+            logger.exception("plaid dimension failed: %s", exc)
             return {"status": "error", "error": str(exc)}
 
     def _build_ibkr_gateway_dimension(self) -> Dict[str, Any]:

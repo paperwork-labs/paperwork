@@ -30,12 +30,18 @@ function pickCta(args: {
   return 'manage';
 }
 
-const SECTIONS: { title: string; key: 'brokerage' | 'crypto'; tiles: BrokerTileDefinition[] }[] = (() => {
+type SectionKey = 'brokerage' | 'crypto' | 'aggregator';
+
+const SECTIONS: { title: string; key: SectionKey; tiles: BrokerTileDefinition[] }[] = (() => {
   const brokerage = LIVE_BROKER_TILES.filter((t) => t.category === 'brokerage');
   const crypto = LIVE_BROKER_TILES.filter((t) => t.category === 'crypto');
+  const aggregator = LIVE_BROKER_TILES.filter((t) => t.category === 'aggregator');
   return [
     { title: 'Brokerage (equities and options)', key: 'brokerage', tiles: brokerage },
     { title: 'Crypto', key: 'crypto', tiles: crypto },
+    // Read-only aggregator connections (Plaid). Shown last because they
+    // expose less than a direct broker link (no cost basis, no trade).
+    { title: 'Held-away / 401(k) via aggregator', key: 'aggregator', tiles: aggregator },
   ];
 })();
 

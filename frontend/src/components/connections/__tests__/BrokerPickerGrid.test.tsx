@@ -23,6 +23,7 @@ const emptySlug = (): Record<BrokerSlug, boolean> => ({
   etrade: false,
   tradier: false,
   coinbase: false,
+  plaid: false,
 });
 
 const emptyRel = (): Record<BrokerSlug, string | null> => ({
@@ -32,6 +33,7 @@ const emptyRel = (): Record<BrokerSlug, string | null> => ({
   etrade: null,
   tradier: null,
   coinbase: null,
+  plaid: null,
 });
 
 describe('BrokerPickerGrid', () => {

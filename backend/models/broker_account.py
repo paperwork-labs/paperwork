@@ -103,6 +103,18 @@ class BrokerAccount(Base):
     account_type = Column(SQLEnum(AccountType), nullable=False)
     auto_discovered = Column(Boolean, nullable=False, default=False)
 
+    # How this account's data gets into AxiomFolio. ``'direct'`` (default) is
+    # the broker's own API/OAuth/FlexQuery path. ``'plaid'`` means the
+    # account is wired through the Plaid aggregator — read-only, no trading,
+    # no per-lot cost basis. Downstream code MUST check ``is_aggregator``
+    # before rendering cost-basis / P&L fields so we never silently show
+    # $0.00 for unknown basis (see ``.cursor/rules/no-silent-fallback.mdc``).
+    # Enforced by CHECK constraint on (``'direct'``,``'plaid'``) —
+    # migration ``0075``.
+    connection_source = Column(
+        String(16), nullable=False, default="direct", server_default="direct"
+    )
+
     # Status
     status = Column(
         SQLEnum(AccountStatus), default=AccountStatus.ACTIVE, nullable=False
@@ -197,6 +209,17 @@ class BrokerAccount(Base):
         if self.account_name:
             return f"{self.account_name} ({self.account_number})"
         return f"{self.broker.value.upper()} {self.account_type.value.title()} ({self.account_number})"
+
+    @property
+    def is_aggregator(self) -> bool:
+        """True when positions/balances come from an aggregator (Plaid).
+
+        Aggregator-sourced accounts do not support trading and usually
+        lack per-lot cost basis, so UI and execution paths must gate on
+        this flag rather than on broker type (Fidelity direct and
+        Fidelity-via-Plaid share ``BrokerType.FIDELITY``).
+        """
+        return (self.connection_source or "").lower() == "plaid"
 
     @property
     def is_tax_advantaged(self) -> bool:

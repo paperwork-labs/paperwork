@@ -133,6 +133,29 @@ CATALOG: List[JobTemplate] = [
         retries=0,
         queue="account_sync",
     ),
+    # Plaid Investments aggregator — single daily holdings sync at 05:00 UTC.
+    # Runs on the ``heavy`` queue because the per-Item call pulls all
+    # holdings and securities; real-world users have dozens of
+    # connections on Pro. ``timeout_s`` (660s) MUST match ``time_limit``
+    # in ``backend/tasks/portfolio/plaid_sync.py`` per the iron law in
+    # ``AGENTS.md``.
+    JobTemplate(
+        id="plaid_daily_sync",
+        display_name="Plaid Daily Sync",
+        group="portfolio",
+        task="backend.tasks.portfolio.plaid_sync.daily_sync",
+        description=(
+            "Pull latest positions and balances for every active Plaid "
+            "connection (read-only aggregator, Pro-tier feature "
+            "broker.plaid_investments). Emits structured counters "
+            "written / skipped_no_holdings / errors."
+        ),
+        default_cron="0 5 * * *",
+        default_tz="UTC",
+        job_run_label="plaid_daily_sync",
+        queue="heavy",
+        timeout_s=660,
+    ),
     JobTemplate(
         id="historical-import-backfill",
         display_name="Historical Portfolio Import Backfill",

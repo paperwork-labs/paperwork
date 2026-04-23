@@ -67,6 +67,11 @@ resend>=2.0.0
 # Billing
 stripe==15.0.1
 
+# Plaid Investments aggregator (Pro-tier broker.plaid_investments feature).
+# Used for read-only 401k / held-away sync; no order entry. See
+# backend/services/portfolio/plaid/.
+plaid-python==39.1.0
+
 # Backtest hyperparameter optimization
 optuna==4.8.0
 

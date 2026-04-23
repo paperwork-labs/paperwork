@@ -53,6 +53,8 @@ import { useUserPreferences } from '../hooks/useUserPreferences';
 import { oauthApi } from '../services/oauth';
 import { connectionsApi } from '../services/connectionsHealth';
 import { BrokerPickerGrid } from '../components/connections/BrokerPickerGrid';
+import PlaidLink from '../components/connections/PlaidLink';
+import TierGate from '../components/billing/TierGate';
 import { HealthCard } from '../components/connections/HealthCard';
 import { FirstRunHero } from '../components/connections/FirstRunHero';
 import {
@@ -132,6 +134,9 @@ const SettingsConnections: React.FC = () => {
   const [pickerEngaged, setPickerEngaged] = useState(false);
   const [detailWizardBroker, setDetailWizardBroker] = useState<WizardBrokerKey | null>(null);
   const [oauthBusy, setOauthBusy] = useState(false);
+  // Plaid Link dialog state — gated by `broker.plaid_investments` Pro
+  // feature via TierGate inside the dialog. See plan §Frontend.
+  const [plaidDialogOpen, setPlaidDialogOpen] = useState(false);
 
   const connectionsHealthQuery = useQuery({
     queryKey: ['connectionsHealth'],
@@ -178,6 +183,7 @@ const SettingsConnections: React.FC = () => {
       etrade: false,
       tradier: false,
       coinbase: false,
+      plaid: false,
     };
     for (const t of LIVE_BROKER_TILES) {
       m[t.slug] = accounts.some((a) => {
@@ -197,6 +203,7 @@ const SettingsConnections: React.FC = () => {
       etrade: null,
       tradier: null,
       coinbase: null,
+      plaid: null,
     };
     const rows = connectionsHealthQuery.data?.by_broker ?? [];
     for (const row of rows) {
@@ -938,6 +945,12 @@ const SettingsConnections: React.FC = () => {
   });
 
   const openWizardForBroker = (wb: WizardBrokerKey) => {
+    if (wb === 'PLAID') {
+      // Plaid is not wired through the OAuth wizard — callers should
+      // route to the Plaid dialog instead. This guard keeps TS honest.
+      setPlaidDialogOpen(true);
+      return;
+    }
     setBroker(wb);
     setStep(2);
     setWizardOpen(true);
@@ -946,6 +959,13 @@ const SettingsConnections: React.FC = () => {
 
   const onTileConnect = (def: BrokerTileDefinition) => {
     setPickerEngaged(true);
+    if (def.wizardBroker === 'PLAID') {
+      // Plaid is not an OAuth wizard broker — open the dedicated Link
+      // dialog instead. TierGate inside the dialog renders the locked
+      // state for Free users.
+      setPlaidDialogOpen(true);
+      return;
+    }
     openWizardForBroker(def.wizardBroker);
   };
 
@@ -962,10 +982,18 @@ const SettingsConnections: React.FC = () => {
       else openWizardForBroker('SCHWAB');
       return;
     }
+    if (wb === 'PLAID') {
+      setPlaidDialogOpen(true);
+      return;
+    }
     openWizardForBroker(wb);
   };
 
   const onTileManage = (def: BrokerTileDefinition) => {
+    if (def.wizardBroker === 'PLAID') {
+      setPlaidDialogOpen(true);
+      return;
+    }
     setDetailWizardBroker(def.wizardBroker);
   };
 
@@ -1135,6 +1163,57 @@ const SettingsConnections: React.FC = () => {
               schwabConfigured={cfg?.schwabConfigured}
             />
           ) : null}
+
+          {/*
+            Plaid Link dialog. Gated via <TierGate feature="broker.plaid_investments">
+            so Free users see the upgrade fallback, not the Connect button.
+            Backend routes are independently gated with require_feature — this
+            UI gate is visual hygiene only (see TierGate.tsx rationale).
+          */}
+          <Dialog
+            open={plaidDialogOpen}
+            onOpenChange={(open) => setPlaidDialogOpen(open)}
+          >
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Connect a Plaid account</DialogTitle>
+                <DialogDescription>
+                  Connect your 401(k), IRA, or held-away brokerage via
+                  Plaid. This is read-only — no trading, and cost basis
+                  is not available for aggregator-sourced lots.
+                </DialogDescription>
+              </DialogHeader>
+              <TierGate feature="broker.plaid_investments">
+                <div className="flex flex-col gap-3 py-2">
+                  <PlaidLink
+                    onConnected={(_connectionId, institutionName) => {
+                      toast({
+                        title: 'Plaid account connected',
+                        description: `Linked ${institutionName}. Positions will sync shortly.`,
+                        status: 'success',
+                      });
+                      setPlaidDialogOpen(false);
+                      void loadAccounts();
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Aggregator-sourced holdings show a dash (—) where cost
+                    basis is unavailable. Switch to a direct broker link
+                    (e.g. Interactive Brokers or Schwab) for full lot data.
+                  </p>
+                </div>
+              </TierGate>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setPlaidDialogOpen(false)}
+                >
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {detailWizardBroker ? (
             <ConnectionDetailSheet

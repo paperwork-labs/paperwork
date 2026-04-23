@@ -64,6 +64,7 @@ from backend.api.routes import (
     oauth,
 )
 from backend.api.routes import connections as connections_routes
+from backend.api.routes import plaid as plaid_routes
 # Market data (from market/ package)
 from backend.api.routes.market import router as market_router
 # Webhooks
@@ -779,6 +780,16 @@ app.include_router(
     connections_routes.router,
     prefix="/api/v1/connections",
     tags=["Connections"],
+    dependencies=[Depends(require_non_market_access)],
+)
+# Plaid Investments (Pro-tier). Per-route auth is `require_feature` /
+# JWT-webhook; the router-level `require_non_market_access` returns
+# None for unauthenticated calls so the ``/webhook`` path (which Plaid
+# hits without bearer auth) still reaches its signature verifier.
+app.include_router(
+    plaid_routes.router,
+    prefix="/api/v1/plaid",
+    tags=["Plaid"],
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(

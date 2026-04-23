@@ -46,6 +46,12 @@ class TaxLotSource(enum.Enum):
     REALTIME_API = "realtime_api"  # Real-time API data
     MANUAL_ENTRY = "manual_entry"  # Manual user entry
     CALCULATED = "calculated"  # Calculated from trades
+    # Read-only aggregator (e.g. Plaid Investments). Aggregators typically
+    # return holdings/quantities/institution_value but NOT per-lot cost
+    # basis, so tax_lots with source=AGGREGATOR have ``cost_per_share`` and
+    # ``cost_basis`` set to NULL and must NEVER render as "$0.00" in UI
+    # (see ``.cursor/rules/no-silent-fallback.mdc``).
+    AGGREGATOR = "aggregator"
 
 
 class TaxLot(Base):
@@ -137,15 +143,43 @@ class TaxLot(Base):
         return self.holding_period_days > 365
 
     @property
+    def gain_loss_available(self) -> bool:
+        """True when gain/loss can be computed meaningfully.
+
+        Aggregator-sourced lots (e.g. Plaid) do not expose per-lot cost
+        basis, so ``cost_per_share`` may be ``None``. Callers must gate on
+        this flag before displaying a numeric value — rendering ``$0.00``
+        for "unknown" is a silent fallback bug (see
+        ``.cursor/rules/no-silent-fallback.mdc``). The frontend should
+        render ``—`` with an explanatory tooltip instead.
+        """
+        return (
+            self.current_price is not None
+            and self.cost_per_share is not None
+            and self.quantity is not None
+        )
+
+    @property
     def gain_loss(self) -> float:
-        """Calculate realized gain/loss if sold at current price."""
-        if self.current_price:
-            return (self.current_price - self.cost_per_share) * self.quantity
-        return 0.0
+        """Realized gain/loss if sold at current price.
+
+        Returns ``0.0`` when inputs are missing; callers MUST check
+        :attr:`gain_loss_available` first to distinguish "break-even" from
+        "unknown because the aggregator didn't report cost basis".
+        """
+        if not self.gain_loss_available:
+            return 0.0
+        return (self.current_price - self.cost_per_share) * self.quantity
 
     @property
     def gain_loss_pct(self) -> float:
-        """Calculate gain/loss percentage."""
+        """Gain/loss percentage, or 0.0 when inputs are missing.
+
+        See :attr:`gain_loss_available` for how to distinguish this from
+        a true zero return.
+        """
+        if not self.gain_loss_available:
+            return 0.0
         if self.cost_basis and self.cost_basis != 0:
             return (self.gain_loss / self.cost_basis) * 100
         return 0.0

@@ -212,6 +212,21 @@ _FEATURES: tuple[Feature, ...] = (
         description="Trim/add to hit target weights without round-trips.",
         category="execution",
     ),
+    # Pro-tier read-only aggregator (Plaid Investments). Covers all of
+    # Plaid Link: minting link_token, exchanging public_token, disconnecting
+    # a connection, and daily holdings sync. Webhook receipt itself is NOT
+    # feature-gated — Plaid authenticates via JWT+JWKS, not our tier system.
+    # See plan docs/plans/PLAID_FIDELITY_401K.md and decision D130.
+    Feature(
+        key="broker.plaid_investments",
+        min_tier=SubscriptionTier.PRO,
+        title="Investments via Plaid",
+        description=(
+            "Connect 401k and brokerage accounts via Plaid aggregator "
+            "(read-only sync of positions and balances)."
+        ),
+        category="execution",
+    ),
     # ---- Research kit (research) -------------------------------------------
     Feature(
         key="research.backtest_api",

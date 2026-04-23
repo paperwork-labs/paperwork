@@ -246,6 +246,21 @@ class Settings(BaseSettings):
     STRIPE_PRICE_ENTERPRISE_MONTHLY: Optional[str] = None
     STRIPE_PRICE_ENTERPRISE_ANNUAL: Optional[str] = None
 
+    # Plaid Investments aggregator (Pro-tier broker.plaid_investments feature).
+    # Read-only sync of 401k / held-away investment accounts. Credentials are
+    # issued by Plaid in the dashboard; ``PLAID_ENV`` selects the base URL
+    # (``sandbox`` for dev/CI, ``production`` once founder authorizes go-live).
+    # All values are optional at import time so the app still boots when
+    # Plaid is unconfigured; the routes return HTTP 503 in that case rather
+    # than crashing at startup. ``PLAID_WEBHOOK_URL`` is the public URL
+    # Plaid will POST async notifications to (must match JWT ``iss`` /
+    # ``aud`` expectations in webhook signature verification).
+    PLAID_CLIENT_ID: Optional[str] = None
+    PLAID_SECRET: Optional[str] = None
+    PLAID_ENV: str = "sandbox"  # sandbox | production
+    PLAID_PRODUCTS: str = "investments,transactions"
+    PLAID_WEBHOOK_URL: Optional[str] = None
+
     # Postmark inbound (picks newsletter forwarding)
     POSTMARK_INBOUND_SECRET: Optional[str] = None
     PICKS_INBOUND_ALLOWLIST: List[str] = Field(default_factory=list)

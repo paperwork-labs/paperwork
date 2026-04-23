@@ -22,6 +22,7 @@ from .broker_oauth_connection import (
     OAuthBrokerType,
     OAuthConnectionStatus,
 )
+from .plaid_connection import PlaidConnection, PlaidConnectionStatus
 
 # Picks pipeline (validator-curated buy/sell/trim/add)
 from .picks import (
@@ -201,6 +202,8 @@ __all__ = [
     "BrokerOAuthConnection",
     "OAuthBrokerType",
     "OAuthConnectionStatus",
+    "PlaidConnection",
+    "PlaidConnectionStatus",
     "Instrument",
     "InstrumentType",
     "PriceData",

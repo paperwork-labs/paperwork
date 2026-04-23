@@ -56,6 +56,22 @@ def _import_coinbase_service():
     return CoinbaseSyncService()
 
 
+def _import_plaid_service():
+    """Lazy import for the Plaid aggregator sync service.
+
+    Plaid is NOT a broker — it's a read-only aggregator wired to
+    ``BrokerAccount.connection_source == "plaid"`` — so it is NOT
+    keyed by :class:`BrokerType` in the factory registry. It's
+    dispatched from :meth:`BrokerSyncService._route_to_service`
+    before the BrokerType switch. Lazy import avoids pulling the
+    Plaid SDK into processes that don't need it (e.g. Celery
+    workers restricted to ``market`` queue).
+    """
+
+    from backend.services.portfolio.plaid.sync_service import PlaidSyncService
+    return PlaidSyncService()
+
+
 def _build_partial_sync_message(completeness: Dict) -> str:
     """Build a user-facing message for SyncStatus.PARTIAL (G22).
 
@@ -124,6 +140,30 @@ class BrokerSyncService:
             BrokerType.COINBASE,
         ]
 
+    def _route_to_service(self, broker_account: "BrokerAccount"):
+        """Pick the sync service for a BrokerAccount.
+
+        Plaid aggregator-sourced accounts are routed before the
+        BrokerType switch because Plaid is a connection-method, not
+        a broker — a ``FIDELITY + direct`` and ``FIDELITY + plaid``
+        row must take different service paths even though they share
+        :class:`BrokerType`. Plan §5.
+
+        The routed service is cached on ``self._broker_services``
+        under a pseudo-key ``"__plaid__"`` so repeated calls within
+        a request don't re-import the SDK.
+        """
+
+        source = (getattr(broker_account, "connection_source", "direct") or "direct").lower()
+        if source == "plaid":
+            cached = self._broker_services.get("__plaid__")
+            if cached is not None:
+                return cached
+            instance = _import_plaid_service()
+            self._broker_services["__plaid__"] = instance
+            return instance
+        return self._get_broker_service(broker_account.broker)
+
     def _get_broker_service(self, broker_type):
         from backend.models.broker_account import BrokerType
 
@@ -190,8 +230,10 @@ class BrokerSyncService:
                 f"Starting {sync_type} sync for {broker_account.broker} account {broker_account.account_number}"
             )
 
-            # Route to appropriate broker service
-            service = self._get_broker_service(broker_account.broker)
+            # Route to appropriate broker service. Checks connection_source
+            # first so Plaid-sourced accounts are dispatched before the
+            # BrokerType switch (plan §5).
+            service = self._route_to_service(broker_account)
 
             # Unified adapter for broker-specific implementations (sync or async)
             def _run(maybe_coro_or_value):
@@ -310,7 +352,9 @@ class BrokerSyncService:
                 f"Starting {sync_type} sync for {broker_account.broker} account {broker_account.account_number}"
             )
 
-            service = self._get_broker_service(broker_account.broker)
+            # See note in sync_account(): dispatch Plaid-sourced accounts
+            # on connection_source before broker_type (plan §5).
+            service = self._route_to_service(broker_account)
 
             if not hasattr(service, "sync_account_comprehensive"):
                 raise ValueError(

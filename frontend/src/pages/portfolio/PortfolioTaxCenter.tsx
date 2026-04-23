@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { semanticTextColorClass } from '@/lib/semantic-text-color';
 
@@ -27,8 +28,11 @@ interface TaxLotRow {
   symbol: string;
   shares: number;
   purchase_date: string | null;
-  cost_per_share: number;
-  cost_basis?: number;
+  // Aggregator-sourced lots (Plaid) can arrive without cost basis —
+  // treat both cost_per_share and cost_basis as optional/null and render
+  // em-dash with tooltip rather than $0.00. See PLAID_FIDELITY_401K plan.
+  cost_per_share: number | null;
+  cost_basis?: number | null;
   market_value: number;
   unrealized_pnl: number;
   unrealized_pnl_pct: number;
@@ -36,6 +40,7 @@ interface TaxLotRow {
   days_held: number;
   approaching_lt: boolean;
   source?: string;
+  gain_loss_available?: boolean;
   commission?: number;
 }
 
@@ -669,11 +674,41 @@ const PortfolioTaxCenter: React.FC = () => {
                         </td>
                         <td className="p-2">{formatDateFriendly(l.purchase_date, timezone)}</td>
                         <td className="p-2 text-end">{l.shares.toLocaleString()}</td>
-                        <td className="p-2 text-end">{formatMoney(l.cost_per_share, currency)}</td>
                         <td className="p-2 text-end">
-                          {l.cost_basis != null
-                            ? formatMoney(l.cost_basis, currency, { maximumFractionDigits: 0 })
-                            : '—'}
+                          {l.cost_per_share != null ? (
+                            formatMoney(l.cost_per_share, currency)
+                          ) : (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help text-muted-foreground">—</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {l.source === 'aggregator'
+                                    ? 'Cost basis not available from aggregator (Plaid). Link this broker directly for full tax-lot data.'
+                                    : 'Cost basis unavailable for this lot.'}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </td>
+                        <td className="p-2 text-end">
+                          {l.cost_basis != null ? (
+                            formatMoney(l.cost_basis, currency, { maximumFractionDigits: 0 })
+                          ) : (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help text-muted-foreground">—</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {l.source === 'aggregator'
+                                    ? 'Cost basis not available from aggregator (Plaid).'
+                                    : 'Cost basis unavailable for this lot.'}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
                         </td>
                         <td className="p-2 text-end">
                           {formatMoney(l.market_value, currency, { maximumFractionDigits: 0 })}
@@ -681,18 +716,39 @@ const PortfolioTaxCenter: React.FC = () => {
                         <td
                           className={cn(
                             'p-2 text-end',
-                            semanticTextColorClass(l.unrealized_pnl >= 0 ? 'fg.success' : 'fg.error'),
+                            l.gain_loss_available === false
+                              ? 'text-muted-foreground'
+                              : semanticTextColorClass(l.unrealized_pnl >= 0 ? 'fg.success' : 'fg.error'),
                           )}
                         >
-                          {formatMoney(l.unrealized_pnl, currency, { maximumFractionDigits: 0 })}
+                          {l.gain_loss_available === false || l.cost_per_share == null ? (
+                            <TooltipProvider delayDuration={200}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="cursor-help">—</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {l.source === 'aggregator'
+                                    ? 'Unrealized gain/loss unavailable — Plaid does not expose cost basis.'
+                                    : 'Unrealized gain/loss unavailable for this lot.'}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            formatMoney(l.unrealized_pnl, currency, { maximumFractionDigits: 0 })
+                          )}
                         </td>
                         <td
                           className={cn(
                             'p-2 text-end',
-                            semanticTextColorClass(l.unrealized_pnl_pct >= 0 ? 'fg.success' : 'fg.error'),
+                            l.gain_loss_available === false
+                              ? 'text-muted-foreground'
+                              : semanticTextColorClass(l.unrealized_pnl_pct >= 0 ? 'fg.success' : 'fg.error'),
                           )}
                         >
-                          {l.unrealized_pnl_pct.toFixed(1)}%
+                          {l.gain_loss_available === false || l.cost_per_share == null
+                            ? '—'
+                            : `${l.unrealized_pnl_pct.toFixed(1)}%`}
                         </td>
                         <td className="p-2">
                           {l.source && (
@@ -702,10 +758,16 @@ const PortfolioTaxCenter: React.FC = () => {
                                 'h-5 text-[10px]',
                                 l.source === 'official_statement'
                                   ? 'border-primary/40 bg-primary/10'
-                                  : 'border-border bg-muted/50',
+                                  : l.source === 'aggregator'
+                                    ? 'border-amber-400/40 bg-amber-400/10'
+                                    : 'border-border bg-muted/50',
                               )}
                             >
-                              {l.source === 'official_statement' ? 'Official' : 'Estimated'}
+                              {l.source === 'official_statement'
+                                ? 'Official'
+                                : l.source === 'aggregator'
+                                  ? 'Aggregator'
+                                  : 'Estimated'}
                             </Badge>
                           )}
                         </td>
@@ -719,7 +781,7 @@ const PortfolioTaxCenter: React.FC = () => {
                                 symbol: l.symbol,
                                 currentPrice: l.shares > 0 ? l.market_value / l.shares : 0,
                                 sharesHeld: l.shares,
-                                averageCost: l.cost_per_share,
+                                averageCost: l.cost_per_share ?? undefined,
                               })
                             }
                           >
@@ -732,20 +794,48 @@ const PortfolioTaxCenter: React.FC = () => {
                 </tbody>
                 {filteredLots.length > 0 &&
                   (() => {
+                    // Aggregator (Plaid) lots may be missing cost_basis / cost_per_share.
+                    // Skip those from cost-basis and PnL totals rather than treating them
+                    // as 0 (which would silently understate unrealized losses).
+                    let skippedCostBasis = 0;
+                    let skippedPnl = 0;
                     const totals = filteredLots.reduce(
-                      (acc, l) => ({
-                        shares: acc.shares + l.shares,
-                        cost_basis: acc.cost_basis + (l.cost_basis ?? 0),
-                        market_value: acc.market_value + l.market_value,
-                        unrealized_pnl: acc.unrealized_pnl + l.unrealized_pnl,
-                      }),
+                      (acc, l) => {
+                        const hasCostBasis = l.cost_basis != null;
+                        const hasPnl = l.gain_loss_available !== false && l.cost_per_share != null;
+                        if (!hasCostBasis) skippedCostBasis += 1;
+                        if (!hasPnl) skippedPnl += 1;
+                        return {
+                          shares: acc.shares + l.shares,
+                          cost_basis: acc.cost_basis + (hasCostBasis ? (l.cost_basis as number) : 0),
+                          market_value: acc.market_value + l.market_value,
+                          unrealized_pnl: acc.unrealized_pnl + (hasPnl ? l.unrealized_pnl : 0),
+                        };
+                      },
                       { shares: 0, cost_basis: 0, market_value: 0, unrealized_pnl: 0 },
                     );
                     const totalPnlPct = totals.cost_basis ? (totals.unrealized_pnl / totals.cost_basis) * 100 : 0;
+                    const partial = skippedCostBasis > 0 || skippedPnl > 0;
                     return (
                       <tfoot>
                         <tr className="border-t border-border bg-muted/40 font-semibold">
-                          <td className="p-2">Total</td>
+                          <td className="p-2">
+                            Total
+                            {partial && (
+                              <TooltipProvider delayDuration={200}>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="ml-1 cursor-help text-[10px] font-normal text-amber-500">
+                                      (partial)
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {`${skippedCostBasis} lot(s) missing cost basis, ${skippedPnl} lot(s) missing P/L — excluded from totals.`}
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            )}
+                          </td>
                           <td className="p-2" />
                           <td className="p-2" />
                           <td className="p-2" />
