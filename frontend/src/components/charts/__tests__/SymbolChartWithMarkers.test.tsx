@@ -87,4 +87,38 @@ describe('SymbolChartWithMarkers', () => {
     unmount();
     expect(removeMock).toHaveBeenCalled();
   });
+
+  // Regression: PR A1. AMZN was showing "Stage 2B" on the workspace chart
+  // (client-computed from weekly MA30) while Holdings showed "3A" (server
+  // MarketSnapshot.stage_label). Banner must now track the server label.
+  it('renders server stage_label in the banner (no client recomputation)', () => {
+    const bar = { time: '2024-06-01', open: 100, high: 105, low: 99, close: 103 };
+    renderWithTheme(
+      <SymbolChartWithMarkers
+        height={200}
+        bars={[bar]}
+        events={[]}
+        symbol="AMZN"
+        stageLabel="3A"
+        currentStageDays={44}
+      />,
+    );
+    expect(screen.getByText(/Stage 3A · 44d/)).toBeInTheDocument();
+    expect(screen.queryByText(/Stage 2B/)).not.toBeInTheDocument();
+  });
+
+  it('omits the stage banner entirely when stageLabel is null (no silent fallback)', () => {
+    const bar = { time: '2024-06-01', open: 100, high: 105, low: 99, close: 103 };
+    renderWithTheme(
+      <SymbolChartWithMarkers
+        height={200}
+        bars={[bar]}
+        events={[]}
+        symbol="AMZN"
+        stageLabel={null}
+        snapshotLoading={false}
+      />,
+    );
+    expect(screen.queryByText(/^Stage /)).not.toBeInTheDocument();
+  });
 });

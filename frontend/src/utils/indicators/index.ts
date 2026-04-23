@@ -7,7 +7,7 @@ export type { GapZone } from './gaps';
 export { computeTDSequential } from './tdSequential';
 export type { TDLabel } from './tdSequential';
 
-export { computeEMA, computeWeinsteinStage } from './emaStage';
-export type { EMAResult, StageInfo } from './emaStage';
+export { computeEMA } from './ema';
+export type { EMAResult } from './ema';
 
 export type { OHLCBar } from './trendLines';

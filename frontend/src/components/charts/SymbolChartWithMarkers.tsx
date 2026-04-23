@@ -25,9 +25,8 @@ import {
   detectGaps,
   computeTDSequential,
   computeEMA,
-  computeWeinsteinStage,
 } from '../../utils/indicators';
-import type { OHLCBar, TrendLine, SRLevel, GapZone, TDLabel, EMAResult, StageInfo } from '../../utils/indicators';
+import type { OHLCBar, TrendLine, SRLevel, GapZone, TDLabel, EMAResult } from '../../utils/indicators';
 import { useChartColors } from '../../hooks/useChartColors';
 import { STAGE_COLORS, RSI_HEX, MACD_HEX, BOLLINGER_HEX, TD_HEX } from '../../constants/chart';
 import { cssVarToCanvasColor } from '../../lib/chartColors';
@@ -136,6 +135,15 @@ interface Props {
   tradeSegments?: ChartTradeSegment[];
   /** Pro+ unlocks full Kell rationale in the crosshair tooltip. */
   proPlusRationale?: boolean;
+  /**
+   * Stage banner prop contract — drive from server MarketSnapshot (IRON LAW:
+   * all indicator computation via compute_full_indicator_series). When null,
+   * render a muted placeholder only if snapshotLoading is true; otherwise
+   * render nothing (no silent fallback to client-side math).
+   */
+  stageLabel?: string | null;
+  currentStageDays?: number | null;
+  snapshotLoading?: boolean;
 }
 
 const getCssColor = (token: string, fallback: string) =>
@@ -219,6 +227,9 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   kellPatterns,
   tradeSegments = [],
   proPlusRationale = false,
+  stageLabel = null,
+  currentStageDays = null,
+  snapshotLoading = false,
 }) => {
   const ref = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -275,11 +286,6 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
   const ema200: EMAResult[] = useMemo(
     () => (ind.emas ? computeEMA(ohlcBars, 200) : []),
     [ohlcBars, ind.emas],
-  );
-
-  const stageInfo: StageInfo | null = useMemo(
-    () => (ind.stage && ohlcBars.length > 60 ? computeWeinsteinStage(ohlcBars) : null),
-    [ohlcBars, ind.stage],
   );
 
   const srLevels: SRLevel[] = useMemo(
@@ -800,18 +806,24 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
     );
   }
 
-  const stagePalette = STAGE_COLORS[stageInfo?.stage ?? ''] ?? 'gray';
+  const stagePalette = STAGE_COLORS[stageLabel ?? ''] ?? 'gray';
   const stageBadgeClass = STAGE_SUBTLE_BADGE[stagePalette] ?? STAGE_SUBTLE_BADGE.gray;
+  const hasStageData = ind.stage && typeof stageLabel === 'string' && stageLabel.length > 0;
+  const showStageLoading = ind.stage && !hasStageData && snapshotLoading;
 
   return (
     <div className="relative">
-      {stageInfo && ind.stage && (
+      {hasStageData && (
         <div className="absolute top-2 left-2 z-10 flex flex-wrap gap-2">
           <Badge variant="outline" className={cn('px-2 py-1', stageBadgeClass)}>
-            Stage {stageInfo.stage}
+            Stage {stageLabel}{typeof currentStageDays === 'number' ? ` · ${currentStageDays}d` : ''}
           </Badge>
-          <Badge variant="outline" className="px-2 py-1">
-            SATA {stageInfo.sataScore}/10
+        </div>
+      )}
+      {showStageLoading && (
+        <div className="absolute top-2 left-2 z-10 flex flex-wrap gap-2">
+          <Badge variant="outline" className="px-2 py-1 text-muted-foreground">
+            Stage —
           </Badge>
         </div>
       )}

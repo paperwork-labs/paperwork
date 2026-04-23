@@ -878,6 +878,11 @@ const PortfolioWorkspace: React.FC = () => {
                     kellPatterns={canChartAnn ? (chartAnnQuery.isLoading ? null : (chartAnnQuery.data?.kell_patterns ?? [])) : null}
                     tradeSegments={canChartAnn ? tradeSegmentsForSymbol : []}
                     proPlusRationale={canKellRationale}
+                    stageLabel={typeof snapshot?.stage_label === 'string' ? snapshot.stage_label : null}
+                    currentStageDays={
+                      typeof snapshot?.current_stage_days === 'number' ? snapshot.current_stage_days : null
+                    }
+                    snapshotLoading={snapshotQuery.isLoading}
                   />
                     <TierGate
                       feature={FEATURE_CHART_RS_RIBBON}
