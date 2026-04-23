@@ -68,7 +68,7 @@ export function registerDefaultCommandActions(deps: RegisterCommandActionsDeps):
       section: 'navigation',
       icon: ScanSearch,
       keywords: ['scanner', 'scan', 'market'],
-      run: (ctx) => ctx.navigate('/market/scanner'),
+      run: (ctx) => ctx.navigate('/market/universe'),
     })
   );
 

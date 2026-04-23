@@ -1,14 +1,115 @@
 import React from 'react';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import {
+  Activity,
+  Bell,
+  ChevronRight,
+  ClipboardList,
+  Cpu,
+  Database,
+  KeyRound,
+  Link2,
+  Lock,
+  ShieldAlert,
+  Sliders,
+  User,
+  type LucideIcon,
+} from 'lucide-react';
+
 import { useAuth } from '../context/AuthContext';
 import { isPlatformAdminRole } from '../utils/userRole';
-import { Bell, Cpu, KeyRound, Sliders, User, Shield, Activity, ClipboardList, Lock, Database, ShieldAlert } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
+
+// ── Cluster model ──────────────────────────────────────────────────────────
+//
+// Flat rail replaced by seven clusters. Order reflects expected frequency of
+// use, not alphabetical (Account → Connections → Trading → Notifications →
+// AI → Privacy → Admin). Admin is the founder's most-visited cluster, so
+// within Admin the first entry is System Status (per founder feedback —
+// "founder only checks in on system status often"). Keeps the study in
+// docs/plans/SETTINGS_NAV_STUDY_2026Q2.md in lockstep with the code.
+
+type SettingsLink = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+type SettingsCluster = {
+  id: string;
+  label: string;
+  items: readonly SettingsLink[];
+  adminOnly?: boolean;
+};
+
+const CLUSTERS: readonly SettingsCluster[] = [
+  {
+    id: 'account',
+    label: 'Account',
+    items: [
+      { to: '/settings/profile', label: 'Profile', icon: User },
+      { to: '/settings/preferences', label: 'Preferences', icon: Sliders },
+      { to: '/settings/notifications', label: 'Notifications', icon: Bell },
+    ],
+  },
+  {
+    id: 'connections',
+    label: 'Connections',
+    items: [
+      { to: '/settings/connections', label: 'Brokers', icon: Link2 },
+      {
+        to: '/settings/connections/historical-import',
+        label: 'Historical import',
+        icon: Database,
+      },
+    ],
+  },
+  {
+    id: 'trading',
+    label: 'Trading',
+    items: [
+      { to: '/settings/trading/account-risk', label: 'Account risk', icon: ShieldAlert },
+    ],
+  },
+  {
+    id: 'ai',
+    label: 'AI',
+    items: [
+      { to: '/settings/ai-keys', label: 'AI keys', icon: KeyRound },
+      { to: '/settings/mcp', label: 'MCP tokens', icon: KeyRound },
+    ],
+  },
+  {
+    id: 'privacy',
+    label: 'Privacy',
+    items: [
+      { to: '/settings/data-privacy', label: 'Data privacy', icon: Lock },
+    ],
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    adminOnly: true,
+    // Operator Actions + Pipeline + Health all live on the System Status
+    // page today. The Admin cluster only exposes distinct routes, so the
+    // founder-asked "Operator Actions / Pipeline / Health / Flags" are
+    // folded into System Status rather than duplicating four links to the
+    // same URL. When those pages split out we'll add them here.
+    items: [
+      // System Status is intentionally the first item — founder feedback:
+      // "founder only checks in on system status often".
+      { to: '/settings/admin/system', label: 'System Status', icon: Activity },
+      { to: '/settings/admin/users', label: 'Users', icon: User },
+      { to: '/settings/admin/agent', label: 'Agent', icon: Cpu },
+      { to: '/settings/admin/picks', label: 'Picks validator', icon: ClipboardList },
+    ],
+  },
+];
 
 const MenuLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, children }) => (
-  <NavLink to={to} className="block no-underline">
+  <NavLink to={to} end className="block no-underline">
     {({ isActive }) => (
       <Button
         type="button"
@@ -26,8 +127,49 @@ const MenuLink: React.FC<{ to: string; children: React.ReactNode }> = ({ to, chi
   </NavLink>
 );
 
+// Resolve the current route to "Settings / <Cluster> / <Page>" for the
+// breadcrumb row. Kept as a pure helper for testing.
+function resolveBreadcrumb(
+  pathname: string,
+  clusters: readonly SettingsCluster[],
+): { cluster: string; page: string } | null {
+  for (const cluster of clusters) {
+    for (const item of cluster.items) {
+      if (pathname === item.to || pathname.startsWith(`${item.to}/`)) {
+        return { cluster: cluster.label, page: item.label };
+      }
+    }
+  }
+  return null;
+}
+
+const SettingsBreadcrumb: React.FC<{ clusters: readonly SettingsCluster[] }> = ({ clusters }) => {
+  const location = useLocation();
+  const crumb = resolveBreadcrumb(location.pathname, clusters);
+  return (
+    <nav
+      aria-label="Settings breadcrumb"
+      className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground"
+      data-testid="settings-breadcrumb"
+    >
+      <NavLink to="/settings/profile" className="hover:text-foreground">
+        Settings
+      </NavLink>
+      {crumb ? (
+        <>
+          <ChevronRight className="size-3 shrink-0" aria-hidden />
+          <span>{crumb.cluster}</span>
+          <ChevronRight className="size-3 shrink-0" aria-hidden />
+          <span className="text-foreground">{crumb.page}</span>
+        </>
+      ) : null}
+    </nav>
+  );
+};
+
 const SettingsShell: React.FC = () => {
   const { user } = useAuth();
+  const isAdmin = isPlatformAdminRole(user?.role);
   const [isDesktop, setIsDesktop] = React.useState(
     typeof window !== 'undefined' ? window.matchMedia('(min-width: 48em)').matches : true,
   );
@@ -39,8 +181,10 @@ const SettingsShell: React.FC = () => {
     return () => mq.removeEventListener('change', handler);
   }, []);
 
-  const iconNav = (to: string, label: string, icon: React.ReactNode) => (
-    <NavLink to={to} className="no-underline">
+  const visibleClusters = CLUSTERS.filter((c) => !c.adminOnly || isAdmin);
+
+  const iconNav = (to: string, label: string, Icon: LucideIcon) => (
+    <NavLink to={to} end className="no-underline">
       {({ isActive }) => (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -55,7 +199,7 @@ const SettingsShell: React.FC = () => {
               )}
               aria-label={label}
             >
-              <span aria-hidden>{icon}</span>
+              <Icon className="size-4" aria-hidden />
               <span className="max-w-full truncate leading-tight">{label}</span>
             </Button>
           </TooltipTrigger>
@@ -71,67 +215,40 @@ const SettingsShell: React.FC = () => {
     <TooltipProvider delayDuration={200}>
       <div className="flex min-w-0 gap-2 overflow-x-hidden p-0">
         {isDesktop ? (
-          <nav className="w-40 shrink-0" aria-label="Settings">
+          <nav className="w-44 shrink-0" aria-label="Settings">
             <div className="flex flex-col gap-1">
-              <p className="px-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                Account
-              </p>
-              <MenuLink to="/settings/profile">Profile</MenuLink>
-              <MenuLink to="/settings/preferences">Preferences</MenuLink>
-              <MenuLink to="/settings/connections">Connections</MenuLink>
-              <MenuLink to="/settings/account-risk">Account risk</MenuLink>
-              <MenuLink to="/settings/ai-keys">AI Keys</MenuLink>
-              <MenuLink to="/settings/historical-import">Historical import</MenuLink>
-              <MenuLink to="/settings/mcp">MCP Tokens</MenuLink>
-              <MenuLink to="/settings/notifications">Notifications</MenuLink>
-              <MenuLink to="/settings/data-privacy">Data privacy</MenuLink>
-              {isPlatformAdminRole(user?.role) && (
-                <>
-                  <p className="mt-4 px-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                    Admin
-                  </p>
-                  <MenuLink to="/settings/admin/system">System Status</MenuLink>
-                  <MenuLink to="/settings/admin/users">Users</MenuLink>
-                  <MenuLink to="/settings/admin/agent">Agent</MenuLink>
-                  <Button
-                    asChild
-                    type="button"
-                    variant="ghost"
+              {visibleClusters.map((cluster, clusterIdx) => (
+                <div
+                  key={cluster.id}
+                  data-testid={`settings-cluster-${cluster.id}`}
+                  data-cluster-id={cluster.id}
+                >
+                  <p
                     className={cn(
-                      'h-9 w-full justify-start rounded-md border-l-2 border-transparent px-3 font-medium transition-colors',
-                      'text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+                      'px-2 text-[10px] font-semibold tracking-wider text-muted-foreground uppercase',
+                      clusterIdx > 0 && 'mt-4',
                     )}
                   >
-                    <Link to="/admin/picks" className="inline-flex w-full items-center justify-between gap-1 no-underline">
-                      Picks validator
-                    </Link>
-                  </Button>
-                </>
-              )}
+                    {cluster.label}
+                  </p>
+                  {cluster.items.map((item) => (
+                    <MenuLink key={item.to} to={item.to}>
+                      {item.label}
+                    </MenuLink>
+                  ))}
+                </div>
+              ))}
             </div>
           </nav>
         ) : (
           <nav className="flex w-20 shrink-0 flex-col gap-1" aria-label="Settings">
-            {iconNav('/settings/profile', 'Profile', <User className="size-4" />)}
-            {iconNav('/settings/preferences', 'Preferences', <Sliders className="size-4" />)}
-            {iconNav('/settings/connections', 'Connections', <Shield className="size-4" />)}
-            {iconNav('/settings/account-risk', 'Account risk', <ShieldAlert className="size-4" />)}
-            {iconNav('/settings/ai-keys', 'AI Keys', <KeyRound className="size-4" />)}
-            {iconNav('/settings/historical-import', 'Historical import', <Database className="size-4" />)}
-            {iconNav('/settings/mcp', 'MCP Tokens', <KeyRound className="size-4" />)}
-            {iconNav('/settings/notifications', 'Notifications', <Bell className="size-4" />)}
-            {iconNav('/settings/data-privacy', 'Data privacy', <Lock className="size-4" />)}
-            {isPlatformAdminRole(user?.role) ? (
-              <>
-                {iconNav('/settings/admin/system', 'System Status', <Activity className="size-4" />)}
-                {iconNav('/settings/admin/users', 'Users', <User className="size-4" />)}
-                {iconNav('/settings/admin/agent', 'Agent', <Cpu className="size-4" />)}
-                {iconNav('/admin/picks', 'Picks validator', <ClipboardList className="size-4" />)}
-              </>
-            ) : null}
+            {visibleClusters.flatMap((cluster) =>
+              cluster.items.map((item) => iconNav(item.to, item.label, item.icon)),
+            )}
           </nav>
         )}
         <div className="min-w-0 flex-1 overflow-x-hidden">
+          <SettingsBreadcrumb clusters={CLUSTERS} />
           <Outlet />
         </div>
       </div>
@@ -139,4 +256,5 @@ const SettingsShell: React.FC = () => {
   );
 };
 
+export { resolveBreadcrumb };
 export default SettingsShell;

@@ -83,6 +83,13 @@ vi.mock('../../../services/api', () => {
   };
 });
 
+// The sidebar status dot polls /admin/health — return an idle hook so the
+// component never fires a real request in this (non-MSW) test.
+vi.mock('../../../hooks/useAdminHealth', () => ({
+  __esModule: true,
+  default: () => ({ health: null, loading: false, isError: false, refresh: vi.fn() }),
+}));
+
 describe('DashboardLayout sidebar persistence', () => {
   beforeEach(() => {
     mockDesktopViewport();
@@ -118,7 +125,9 @@ describe('DashboardLayout sidebar persistence', () => {
   it('hides portfolio section for non-admin users with no broker accounts', () => {
     renderWithProviders(<DashboardLayout />);
     expect(screen.getAllByText('TODAY').length).toBeGreaterThan(0);
-    expect(screen.getByText('Watchlist')).toBeInTheDocument();
+    // Markets sidebar points to /market/universe for free users; PORTFOLIO
+    // is hidden until a broker is linked.
+    expect(screen.getByText('Universe')).toBeInTheDocument();
     expect(screen.queryByText('PORTFOLIO')).toBeNull();
     expect(screen.queryByText('Agent Guru')).toBeNull();
     expect(screen.queryByText('Overview')).toBeNull();
@@ -150,7 +159,7 @@ describe('DashboardLayout sidebar persistence', () => {
     expect(screen.getByRole('button', { name: /account filter/i })).toBeInTheDocument();
   });
 
-  it('does not keep portfolio dashboard active on portfolio categories route', () => {
+  it('lights the Positions hub nav item on the legacy /portfolio/holdings route', () => {
     mockedBalances = {
       data: [{ id: 1, broker: 'IBKR' }],
       isPending: false,
@@ -158,11 +167,13 @@ describe('DashboardLayout sidebar persistence', () => {
       isSuccess: true,
       refetch: vi.fn(),
     };
-    const { container } = renderWithProviders(<DashboardLayout />, { route: '/portfolio/categories' });
+    const { container } = renderWithProviders(<DashboardLayout />, {
+      route: '/portfolio/holdings',
+    });
     const portfolioOverview = container.querySelector('[data-nav-path="/portfolio"]');
-    const portfolioCategories = container.querySelector('[data-nav-path="/portfolio/categories"]');
+    const positions = container.querySelector('[data-nav-path="/portfolio/positions"]');
     expect(portfolioOverview?.getAttribute('data-active')).toBe('false');
-    expect(portfolioCategories?.getAttribute('data-active')).toBe('true');
+    expect(positions?.getAttribute('data-active')).toBe('true');
   });
 
   it('highlights Strategies nav on strategy detail route', () => {

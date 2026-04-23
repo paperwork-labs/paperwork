@@ -25,6 +25,8 @@ import useUpgradePrompt from './hooks/useUpgradePrompt';
 
 const DashboardLayout = React.lazy(() => import('./components/layout/DashboardLayout'));
 const PortfolioTabShell = React.lazy(() => import('./pages/portfolio/PortfolioTabShell'));
+const PositionsTabShell = React.lazy(() => import('./pages/portfolio/PositionsTabShell'));
+const ActivityTabShell = React.lazy(() => import('./pages/portfolio/ActivityTabShell'));
 const PortfolioHoldings = React.lazy(() => import('./pages/portfolio/PortfolioHoldings'));
 const HoldingDetail = React.lazy(() => import('./pages/HoldingDetail'));
 const PortfolioOptions = React.lazy(() => import('./pages/portfolio/PortfolioOptions'));
@@ -32,6 +34,7 @@ const PortfolioCategories = React.lazy(() => import('./pages/portfolio/Portfolio
 const PortfolioTransactions = React.lazy(() => import('./pages/portfolio/PortfolioTransactions'));
 const PortfolioTaxCenter = React.lazy(() => import('./pages/portfolio/PortfolioTaxCenter'));
 const PortfolioOrders = React.lazy(() => import('./pages/portfolio/PortfolioOrders'));
+const MarketUniverse = React.lazy(() => import('./pages/market/Universe'));
 const Strategies = React.lazy(() => import('./pages/Strategies'));
 const StrategiesManager = React.lazy(() => import('./pages/StrategiesManager'));
 const StrategyDetail = React.lazy(() => import('./pages/StrategyDetail'));
@@ -185,8 +188,11 @@ function App() {
                         {/* Market */}
                         <Route path="market" element={<MarketDashboard />} />
                         <Route path="market/dashboard" element={<PreserveRedirect toPath="/market" />} />
+                        <Route path="market/universe" element={<MarketUniverse />} />
+                        {/* Watchlist + Symbol Lookup collapsed into /market/universe (Wave B). */}
                         <Route path="market/tracked" element={<MarketTracked />} />
                         <Route path="market/scanner" element={<Scanner />} />
+                        <Route path="watchlist" element={<PreserveRedirect toPath="/market/universe" />} />
                         <Route path="market/workspace" element={<PortfolioWorkspace />} />
                         <Route path="market/strategies" element={<PreserveRedirect toPath="/lab/strategies" />} />
                         <Route path="market/intelligence" element={<PreserveRedirect toPath="/lab/intelligence" />} />
@@ -199,6 +205,8 @@ function App() {
                         <Route path="signals" element={<SignalsHub />} />
                         <Route path="signals/candidates" element={<SignalsCandidates />} />
                         <Route path="signals/regime" element={<SignalsRegime />} />
+                        {/* Stage Scan is kept as a deep link but no longer lives in the sidebar — the
+                            Candidates page absorbs the Stage 2 RS-strong preset used by this scan. */}
                         <Route path="signals/stage-scan" element={<SignalsStageScan />} />
                         <Route
                           path="signals/scan"
@@ -220,13 +228,10 @@ function App() {
                         <Route path="backtest/walk-forward" element={<PreserveRedirect toPath="/lab/walk-forward" />} />
                         <Route path="backtest/monte-carlo" element={<PreserveRedirect toPath="/lab/monte-carlo" />} />
 
+                        {/* Legacy /admin/picks → canonical /settings/admin/picks. */}
                         <Route
                           path="admin/picks"
-                          element={
-                            <RequireAdmin>
-                              <PicksValidator />
-                            </RequireAdmin>
-                          }
+                          element={<Navigate to="/settings/admin/picks" replace />}
                         />
                         <Route path="terminal" element={<TerminalRedirect />} />
 
@@ -238,8 +243,12 @@ function App() {
                           element={<Navigate to="/lab/strategies/manage" replace />}
                         />
 
-                        {/* Portfolio section */}
+                        {/* Portfolio section — 4-item hub after Wave B (Overview / Positions /
+                            Activity / Workspace). Standalone pages remain reachable via their old
+                            paths for deep links, but the sidebar surfaces only the hubs. */}
                         <Route path="portfolio" element={<PortfolioTabShell />} />
+                        <Route path="portfolio/positions" element={<PositionsTabShell />} />
+                        <Route path="portfolio/activity" element={<ActivityTabShell />} />
                         <Route path="portfolio/holdings" element={<PortfolioHoldings />} />
                         <Route path="holding/:symbol" element={<HoldingDetail />} />
                         <Route path="portfolio/options" element={<PortfolioOptions />} />
@@ -251,6 +260,8 @@ function App() {
                         <Route path="portfolio/allocation" element={<PortfolioAllocationRedirect />} />
                         <Route path="portfolio/income" element={<PortfolioIncome />} />
                         <Route path="portfolio/import" element={<PortfolioImport />} />
+                        {/* Legacy top-level /connections preserved but points at the Settings-owned canonical URL. */}
+                        <Route path="connections" element={<PreserveRedirect toPath="/settings/connections" />} />
                         <Route path="connect" element={<ConnectAccounts />} />
                         <Route path="accounts/manage" element={<AccountsManagement />} />
 
@@ -264,22 +275,38 @@ function App() {
                           element={<Navigate to="/settings/admin/agent" replace />}
                         />
 
-                        {/* Settings */}
+                        {/* Settings — cluster-based IA (Wave B / J4C). Old flat paths stay
+                            reachable via <Navigate replace> for one release so existing
+                            bookmarks don't 404. */}
                         <Route path="settings" element={<SettingsShell />}>
                           <Route index element={<Navigate to="profile" replace />} />
                           <Route path="profile" element={<SettingsProfile />} />
                           <Route path="preferences" element={<SettingsPreferences />} />
                           <Route path="notifications" element={<SettingsNotifications />} />
                           <Route path="connections" element={<SettingsConnections />} />
-                          <Route path="historical-import" element={<HistoricalImportWizard />} />
+                          <Route
+                            path="connections/historical-import"
+                            element={<HistoricalImportWizard />}
+                          />
+                          <Route
+                            path="historical-import"
+                            element={
+                              <Navigate to="/settings/connections/historical-import" replace />
+                            }
+                          />
+                          <Route path="trading/account-risk" element={<SettingsAccountRisk />} />
+                          <Route
+                            path="account-risk"
+                            element={<Navigate to="/settings/trading/account-risk" replace />}
+                          />
                           <Route path="data-privacy" element={<SettingsDataPrivacy />} />
                           <Route path="mcp" element={<SettingsMCP />} />
                           <Route path="ai-keys" element={<SettingsAIKeys />} />
-                          <Route path="account-risk" element={<SettingsAccountRisk />} />
                           <Route element={<RequireAdmin />}>
                             <Route path="admin/system" element={<SystemStatus />} />
                             <Route path="admin/users" element={<SettingsUsers />} />
                             <Route path="admin/agent" element={<AdminAgent />} />
+                            <Route path="admin/picks" element={<PicksValidator />} />
                             <Route
                               path="admin/agent/capabilities"
                               element={<Navigate to="/settings/admin/agent" replace />}

@@ -3,27 +3,21 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity,
   BarChart2,
-  CalendarDays,
   ClipboardList,
   Command,
   Compass,
-  FileText,
   FlaskConical,
+  Globe,
   Home,
   LayoutGrid,
-  Link2,
   List,
   Menu,
   PieChart,
-  Scale,
-  Search,
   Settings,
-  Shield,
-  ShoppingBag,
   Sparkles,
-  Tag,
   Target,
-  Layers,
+  TrendingUp,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import * as Dialog from "@radix-ui/react-dialog";
@@ -37,6 +31,7 @@ import AppLogo from '../ui/AppLogo';
 import useAdminHealth from '../../hooks/useAdminHealth';
 import { useAccountBalances } from '@/hooks/usePortfolio';
 import TopBarAccountSelector from './TopBarAccountSelector';
+import SidebarStatusDot from './SidebarStatusDot';
 import { ChatProvider } from '@/components/chat/ChatProvider';
 import { ChatBubble } from '@/components/chat/ChatBubble';
 import { openCommandPalette } from '@/components/cmdk/openCommandPalette';
@@ -75,48 +70,101 @@ function displayName(user: { full_name?: string | null; username?: string } | nu
   return raw || 'Guest';
 }
 
-const todayNavItems: { label: string; icon: LucideIcon; path: string }[] = [
+// ── Nav data model ──────────────────────────────────────────────────────────
+//
+// Sections climb the tier ladder: free-for-all at the top (TODAY, PORTFOLIO),
+// Pro in the middle (SIGNALS, MARKETS), Pro+ at the bottom (LAB), then the
+// universal SETTINGS rail. Chips are purely informational — click-through is
+// never gated at the sidebar, the underlying page handles upsell.
+
+type TierChip = 'pro' | 'pro_plus';
+
+type NavItem = {
+  label: string;
+  icon: LucideIcon;
+  path: string;
+};
+
+type NavSection = {
+  id: string;
+  title: string;
+  items: readonly NavItem[];
+  tier?: TierChip;
+  /** Hide the whole section when this returns false. */
+  visible?: (ctx: { isAdmin: boolean; portfolioNavVisible: boolean }) => boolean;
+};
+
+/**
+ * Section-level tier chip classes. Muted enough to feel informational, not
+ * pushy — aim is to communicate "this cluster graduates you to a paid tier"
+ * without stamping a lock icon on every row.
+ */
+const TIER_CHIP_STYLES: Record<TierChip, { chipClass: string; label: string; srLabel: string }> = {
+  pro: {
+    // Amber / gold — low-sat background + darker amber foreground. Works
+    // in both themes because Tailwind `amber-*/**` is token-friendly.
+    chipClass:
+      'border border-amber-400/30 bg-amber-400/10 text-amber-700 dark:text-amber-300',
+    label: 'Pro',
+    srLabel: 'Pro tier',
+  },
+  pro_plus: {
+    // Violet — distinct enough from amber to signal a different tier at
+    // a glance without raising visual weight.
+    chipClass:
+      'border border-violet-400/30 bg-violet-400/10 text-violet-700 dark:text-violet-300',
+    label: 'Pro+',
+    srLabel: 'Pro Plus tier',
+  },
+};
+
+const TODAY_ITEMS: readonly NavItem[] = [
   { label: 'Home', icon: Home, path: '/' },
   { label: "Today's Cards", icon: ClipboardList, path: '/trade-cards/today' },
 ];
 
-const portfolioItems = [
+const PORTFOLIO_ITEMS: readonly NavItem[] = [
   { label: 'Overview', icon: PieChart, path: '/portfolio' },
-  { label: 'Allocation', icon: Scale, path: '/portfolio/allocation' },
-  { label: 'Holdings', icon: List, path: '/portfolio/holdings' },
-  { label: 'Options', icon: Layers, path: '/portfolio/options' },
-  { label: 'Transactions', icon: FileText, path: '/portfolio/transactions' },
-  { label: 'Categories', icon: Tag, path: '/portfolio/categories' },
-  { label: 'Tax Center', icon: Shield, path: '/portfolio/tax' },
-  { label: 'Income', icon: CalendarDays, path: '/portfolio/income' },
-  { label: 'Orders', icon: ShoppingBag, path: '/portfolio/orders' },
-  { label: 'Workspace', icon: LayoutGrid, path: '/portfolio/workspace' },
-  { label: 'Connections', icon: Link2, path: '/settings/connections' },
+  { label: 'Positions', icon: Wallet, path: '/portfolio/positions' },
+  { label: 'Activity', icon: Activity, path: '/portfolio/activity' },
+  { label: 'Workspace', icon: LayoutGrid, path: '/market/workspace' },
 ];
 
-const signalsNavItems: { label: string; icon: LucideIcon; path: string }[] = [
+const SIGNALS_ITEMS: readonly NavItem[] = [
   { label: 'Candidates', icon: Sparkles, path: '/signals/candidates' },
-  { label: 'Stage Scan', icon: Compass, path: '/signals/stage-scan' },
-  { label: 'Watchlist', icon: List, path: '/market/tracked' },
+  { label: 'Picks', icon: TrendingUp, path: '/signals/picks' },
+  { label: 'Regime', icon: Compass, path: '/signals/regime' },
 ];
 
-const marketsNavItems: { label: string; icon: LucideIcon; path: string }[] = [
+const MARKETS_ITEMS: readonly NavItem[] = [
   { label: 'Markets', icon: BarChart2, path: '/market' },
-  { label: 'Symbol lookup', icon: Search, path: '/market/scanner' },
+  { label: 'Universe', icon: Globe, path: '/market/universe' },
 ];
 
-const labNavItems: { label: string; icon: LucideIcon; path: string }[] = [
+const LAB_ITEMS: readonly NavItem[] = [
   { label: 'Strategies', icon: Target, path: '/lab/strategies' },
   { label: 'Backtest', icon: Activity, path: '/lab/monte-carlo' },
-  { label: 'Walk-Forward', icon: Activity, path: '/lab/walk-forward' },
+  { label: 'Walk-Forward', icon: List, path: '/lab/walk-forward' },
   { label: 'Shadow (paper)', icon: FlaskConical, path: '/shadow-trades' },
 ];
 
-const settingsNavItems: { label: string; icon: typeof Settings; path: string }[] = [
+const SETTINGS_ITEMS: readonly NavItem[] = [
   { label: 'Settings', icon: Settings, path: '/settings' },
 ];
 
-type MarketNavItem = { label: string; icon: LucideIcon; path: string };
+const NAV_SECTIONS: readonly NavSection[] = [
+  { id: 'today', title: 'TODAY', items: TODAY_ITEMS },
+  {
+    id: 'portfolio',
+    title: 'PORTFOLIO',
+    items: PORTFOLIO_ITEMS,
+    visible: ({ portfolioNavVisible }) => portfolioNavVisible,
+  },
+  { id: 'signals', title: 'SIGNALS', items: SIGNALS_ITEMS, tier: 'pro' },
+  { id: 'markets', title: 'MARKETS', items: MARKETS_ITEMS, tier: 'pro' },
+  { id: 'lab', title: 'LAB', items: LAB_ITEMS, tier: 'pro_plus' },
+  { id: 'settings', title: 'SETTINGS', items: SETTINGS_ITEMS },
+];
 
 interface NavItemProps {
   icon: LucideIcon;
@@ -128,43 +176,60 @@ interface NavItemProps {
   showLabel?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({
-  icon: Icon,
-  label,
-  path,
-  isActive,
-  onClick,
-  badge,
-  showLabel = true,
-}) => (
-  <Button
-    type="button"
-    variant="ghost"
-    className={cn(
-      'relative h-auto w-full rounded-lg py-2.5 font-medium transition-colors',
-      showLabel ? 'justify-start px-4 text-left' : 'justify-center px-2',
-      showLabel && isActive && 'border-l-2 border-primary bg-muted text-foreground',
-      showLabel && !isActive && 'border-l-2 border-transparent text-muted-foreground hover:bg-muted/80 hover:text-foreground',
-      !showLabel && isActive && 'bg-muted text-foreground',
-      !showLabel && !isActive && 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'
-    )}
-    aria-current={isActive ? 'page' : undefined}
-    onClick={onClick}
-    data-nav-path={path}
-    data-active={isActive ? 'true' : 'false'}
-  >
-    <Icon className="size-[17px] shrink-0" strokeWidth={2} />
-    {showLabel ? <span className="ml-3 text-sm">{label}</span> : null}
-    {badge && badge > 0 ? (
-      <Badge
-        variant="destructive"
-        className="ml-auto min-h-5 min-w-5 shrink-0 rounded-full px-1.5 text-[10px]"
-      >
-        {badge > 99 ? '99+' : badge}
-      </Badge>
-    ) : null}
-  </Button>
+const NavItemButton: React.FC<NavItemProps> = React.memo(
+  ({ icon: Icon, label, path, isActive, onClick, badge, showLabel = true }) => (
+    <Button
+      type="button"
+      variant="ghost"
+      className={cn(
+        'relative h-auto w-full rounded-lg py-2.5 font-medium transition-colors',
+        showLabel ? 'justify-start px-4 text-left' : 'justify-center px-2',
+        showLabel && isActive && 'border-l-2 border-primary bg-muted text-foreground',
+        showLabel && !isActive && 'border-l-2 border-transparent text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+        !showLabel && isActive && 'bg-muted text-foreground',
+        !showLabel && !isActive && 'text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+      )}
+      aria-current={isActive ? 'page' : undefined}
+      onClick={onClick}
+      data-nav-path={path}
+      data-active={isActive ? 'true' : 'false'}
+    >
+      <Icon className="size-[17px] shrink-0" strokeWidth={2} />
+      {showLabel ? <span className="ml-3 text-sm">{label}</span> : null}
+      {badge && badge > 0 ? (
+        <Badge
+          variant="destructive"
+          className="ml-auto min-h-5 min-w-5 shrink-0 rounded-full px-1.5 text-[10px]"
+        >
+          {badge > 99 ? '99+' : badge}
+        </Badge>
+      ) : null}
+    </Button>
+  ),
 );
+NavItemButton.displayName = 'NavItemButton';
+
+interface TierChipProps {
+  tier: TierChip;
+}
+
+const TierChipBadge: React.FC<TierChipProps> = React.memo(({ tier }) => {
+  const { chipClass, label, srLabel } = TIER_CHIP_STYLES[tier];
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded px-1.5 py-px',
+        'text-[10px] font-medium uppercase tracking-wide',
+        chipClass,
+      )}
+      aria-label={srLabel}
+      data-tier-chip={tier}
+    >
+      {label}
+    </span>
+  );
+});
+TierChipBadge.displayName = 'TierChipBadge';
 
 const DashboardLayout: React.FC = () => {
   const location = useLocation();
@@ -251,58 +316,96 @@ const DashboardLayout: React.FC = () => {
       if (itemPath === '/') {
         return currentPath === '/';
       }
-      if (itemPath === '/portfolio/allocation') {
-        return (
-          currentPath.startsWith('/portfolio/allocation') ||
-          (currentPath === '/portfolio' && params.get('tab') === 'allocation')
-        );
-      }
       if (itemPath === '/market') {
         if (currentPath === '/market') return true;
         if (currentPath.startsWith('/market/tracked')) return false;
         if (currentPath.startsWith('/market/scanner')) return false;
+        if (currentPath.startsWith('/market/universe')) return false;
+        if (currentPath.startsWith('/market/workspace')) return false;
         return currentPath.startsWith('/market/');
       }
-      if (itemPath === '/market/tracked') {
-        return currentPath === '/market/tracked' || currentPath.startsWith('/market/tracked/');
+      if (itemPath === '/market/universe') {
+        // The Universe hub absorbed the former /market/tracked and
+        // /market/scanner entries — keep the nav item lit on any of them.
+        return (
+          currentPath === '/market/universe' ||
+          currentPath.startsWith('/market/universe/') ||
+          currentPath.startsWith('/market/tracked') ||
+          currentPath.startsWith('/market/scanner')
+        );
       }
-      if (itemPath === '/market/scanner') {
-        return currentPath === '/market/scanner' || currentPath.startsWith('/market/scanner/');
+      if (itemPath === '/market/workspace') {
+        return (
+          currentPath === '/market/workspace' ||
+          currentPath.startsWith('/market/workspace/') ||
+          currentPath === '/portfolio/workspace' ||
+          currentPath.startsWith('/portfolio/workspace/')
+        );
       }
       if (itemPath === '/portfolio') {
         const tab = params.get('tab');
         return currentPath === '/portfolio' && (!tab || tab === 'overview');
+      }
+      if (itemPath === '/portfolio/positions') {
+        return (
+          currentPath === '/portfolio/positions' ||
+          currentPath.startsWith('/portfolio/positions/') ||
+          currentPath === '/portfolio/holdings' ||
+          currentPath.startsWith('/portfolio/holdings/') ||
+          currentPath === '/portfolio/options' ||
+          currentPath.startsWith('/portfolio/options/') ||
+          currentPath === '/portfolio/tax' ||
+          currentPath.startsWith('/portfolio/tax/')
+        );
+      }
+      if (itemPath === '/portfolio/activity') {
+        return (
+          currentPath === '/portfolio/activity' ||
+          currentPath.startsWith('/portfolio/activity/') ||
+          currentPath === '/portfolio/orders' ||
+          currentPath.startsWith('/portfolio/orders/') ||
+          currentPath === '/portfolio/transactions' ||
+          currentPath.startsWith('/portfolio/transactions/') ||
+          currentPath === '/portfolio/income' ||
+          currentPath.startsWith('/portfolio/income/')
+        );
       }
       if (itemPath === '/settings') {
         return currentPath === '/settings' || currentPath.startsWith('/settings/');
       }
       return currentPath === itemPath || currentPath.startsWith(`${itemPath}/`);
     },
-    [location.pathname, location.search]
+    [location.pathname, location.search],
   );
 
-  const renderSection = (
-    title: string,
-    items: MarketNavItem[] | typeof portfolioItems,
-    showLabel: boolean,
-    sectionIndex: number
-  ) => (
-    <div>
-      {showLabel ? (
-        <p
-          className={cn(
-            'mb-1.5 px-4 text-[10px] font-semibold tracking-[0.08em] text-muted-foreground uppercase',
-            sectionIndex > 0 && 'mt-4'
-          )}
-        >
-          {title}
+  const renderSectionHeader = (section: NavSection, sectionIndex: number, showLabel: boolean) => {
+    if (!showLabel) return null;
+    const chip = section.tier ? <TierChipBadge tier={section.tier} /> : null;
+    const dot = section.id === 'settings' ? <SidebarStatusDot isAdmin={isAdmin} /> : null;
+    return (
+      <div
+        className={cn(
+          'mb-1.5 flex items-center gap-2 px-4',
+          sectionIndex > 0 && 'mt-4',
+        )}
+      >
+        <p className="text-[10px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
+          {section.title}
         </p>
-      ) : null}
+        {chip}
+        {dot}
+      </div>
+    );
+  };
+
+  const renderSection = (section: NavSection, sectionIndex: number, showLabel: boolean) => (
+    <div data-testid={`nav-section-${section.id}`} data-section-id={section.id}>
+      {renderSectionHeader(section, sectionIndex, showLabel)}
       <div className="flex flex-col gap-1">
-        {items.map((item) => {
+        {section.items.map((item) => {
           const active = isPathActive(item.path);
           return (
-            <NavItem
+            <NavItemButton
               key={item.path}
               icon={item.icon}
               label={item.label}
@@ -322,15 +425,16 @@ const DashboardLayout: React.FC = () => {
 
   const renderNav = (opts: { showLabel: boolean; pxClass: string }) => {
     let idx = 0;
-    const next = () => idx++;
     return (
       <div className={cn('flex flex-col gap-2 py-4', opts.pxClass)}>
-        {renderSection('TODAY', todayNavItems, opts.showLabel, next())}
-        {portfolioNavVisible ? renderSection('PORTFOLIO', portfolioItems, opts.showLabel, next()) : null}
-        {renderSection('SIGNALS', signalsNavItems, opts.showLabel, next())}
-        {renderSection('MARKETS', marketsNavItems, opts.showLabel, next())}
-        {renderSection('LAB', labNavItems, opts.showLabel, next())}
-        {renderSection('SETTINGS', settingsNavItems, opts.showLabel, next())}
+        {NAV_SECTIONS.map((section) => {
+          if (section.visible && !section.visible({ isAdmin, portfolioNavVisible })) {
+            return null;
+          }
+          const el = renderSection(section, idx, opts.showLabel);
+          idx += 1;
+          return <React.Fragment key={section.id}>{el}</React.Fragment>;
+        })}
       </div>
     );
   };
@@ -340,7 +444,7 @@ const DashboardLayout: React.FC = () => {
       <div
         className={cn(
           'flex shrink-0 items-center border-b border-border py-4',
-          opts.showLabel ? 'justify-start px-5' : 'justify-center px-3'
+          opts.showLabel ? 'justify-start px-5' : 'justify-center px-3',
         )}
       >
         {opts.showLabel ? (
@@ -349,7 +453,7 @@ const DashboardLayout: React.FC = () => {
             aria-label="AxiomFolio home"
             className={cn(
               'flex items-center gap-2.5 rounded-sm',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar'
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
             )}
           >
             <AppLogo size={52} />
@@ -388,7 +492,7 @@ const DashboardLayout: React.FC = () => {
           <aside
             className={cn(
               'flex h-screen shrink-0 flex-col overflow-y-auto border-r border-border transition-[width] duration-200 ease-out',
-              sidebarWidthClass
+              sidebarWidthClass,
             )}
           >
             {sidebarShell({
@@ -429,7 +533,7 @@ const DashboardLayout: React.FC = () => {
                   aria-label="AxiomFolio home"
                   className={cn(
                     'flex items-center gap-2.5 rounded-sm',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--bg-header))]'
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--bg-header))]',
                   )}
                 >
                   <AppLogo size={36} />
@@ -467,7 +571,7 @@ const DashboardLayout: React.FC = () => {
                     className={cn(
                       'h-8 gap-1.5 px-2.5 font-sans text-xs',
                       'border-transparent bg-muted/70 hover:bg-muted',
-                      'focus-visible:ring-2 focus-visible:ring-ring'
+                      'focus-visible:ring-2 focus-visible:ring-ring',
                     )}
                     aria-label="Open command palette"
                     onClick={() => openCommandPalette()}
@@ -500,7 +604,7 @@ const DashboardLayout: React.FC = () => {
                       <span
                         className={cn(
                           'absolute top-1.5 right-1.5 size-2.5 rounded-full border-2 border-[rgb(var(--bg-header))]',
-                          healthDotClass
+                          healthDotClass,
                         )}
                       />
                     </Button>
@@ -526,7 +630,7 @@ const DashboardLayout: React.FC = () => {
                     sideOffset={8}
                     className={cn(
                       'z-50 min-w-[240px] rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-md',
-                      'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2'
+                      'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2',
                     )}
                   >
                     <div className="px-2 py-1">

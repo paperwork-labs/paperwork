@@ -24,12 +24,16 @@ vi.mock('../../services/api', () => {
 describe('SettingsShell', () => {
   it('renders sidebar sections', () => {
     renderWithProviders(<SettingsShell />, { route: '/settings' });
-    // On small screens SettingsShell collapses to an icon rail, so links are aria-labels.
+    // Buttons inside the Settings rail carry the item label; cluster headings
+    // (Account / Connections / Trading / AI / Privacy / Admin) are plain
+    // <p> text, not buttons. See SETTINGS_NAV_STUDY_2026Q2.md for the IA.
     expect(screen.getByRole('button', { name: /Profile/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Preferences/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Notifications/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Connections/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Brokers/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Historical import/i })).toBeInTheDocument();
+    // Breadcrumb row renders above the outlet for every settings page.
+    expect(screen.getByTestId('settings-breadcrumb')).toBeInTheDocument();
   });
 });
 
