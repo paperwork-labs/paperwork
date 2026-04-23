@@ -525,6 +525,15 @@ class AdminHealthService:
                 "stage_days_drift_count": stage_days_drift_count,
                 "stage_days_drift_pct": drift_pct,
                 "stage_history_rows_checked": rows_checked,
+                # Surfaced for ops visibility (no-silent-fallback): history rows
+                # where stage_label is valid but current_stage_days is null are
+                # treated as "unknown" (not drift) and counted here. High
+                # values during warmup are expected; persistent high values
+                # indicate a write-path gap in the snapshot pipeline.
+                "unknown_stage_days_count": int(
+                    data.get("unknown_stage_days_count") or 0
+                ),
+                "empty_label_count": int(data.get("empty_label_count") or 0),
                 "stale_stage_count": int(data.get("stale_stage_count") or 0),
                 "total_symbols": total_symbols,
                 "stage_counts": data.get("stage_counts", {}),

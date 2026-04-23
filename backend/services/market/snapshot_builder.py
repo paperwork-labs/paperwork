@@ -13,6 +13,7 @@ from backend.database import SessionLocal
 from backend.models import MarketSnapshot
 from backend.models.market_data import (
     EarningsCalendarEvent,
+    MarketRegime,
     PriceData,
     MarketSnapshotHistory,
 )
@@ -703,6 +704,41 @@ class SnapshotBuilder:
             except Exception as e:
                 logger.warning("fundamentals_fetch failed for %s: %s", symbol, e)
 
+        # ``MarketRegime`` is authoritative for regime_state. Pulling it here keeps
+        # every fresh snapshot row stamped with the real regime from the regime engine
+        # rather than inheriting whatever the prior snapshot row had (which, if that
+        # prior row was itself built before the regime engine ran, would be stale).
+        # Scan overlay also updates this column post-build; this ensures the row is
+        # correct at creation time, not just after the next scan_overlay tick.
+        try:
+            latest_regime = (
+                db.query(MarketRegime)
+                .order_by(MarketRegime.as_of_date.desc())
+                .first()
+            )
+            if latest_regime is not None and getattr(latest_regime, "regime_state", None):
+                snapshot["regime_state"] = latest_regime.regime_state
+                if recompute_metrics is not None:
+                    recompute_metrics["regime_state_written"] = (
+                        recompute_metrics.get("regime_state_written", 0) + 1
+                    )
+            else:
+                if recompute_metrics is not None:
+                    recompute_metrics["regime_state_missing"] = (
+                        recompute_metrics.get("regime_state_missing", 0) + 1
+                    )
+        except Exception as e:
+            logger.warning(
+                "latest_market_regime_lookup failed for %s: %s: %s",
+                symbol,
+                type(e).__name__,
+                e,
+            )
+            if recompute_metrics is not None:
+                recompute_metrics["regime_state_lookup_errors"] = (
+                    recompute_metrics.get("regime_state_lookup_errors", 0) + 1
+                )
+
         # ``earnings_calendar`` is authoritative for next_earnings (overrides FMP / stale copy).
         try:
             cal_ne: Optional[datetime] = next_earnings_utc_from_calendar(db, symbol)
@@ -831,6 +867,13 @@ class SnapshotBuilder:
         snapshot_json = dict(snapshot)
         if isinstance(as_of_ts, datetime):
             snapshot_json["as_of_timestamp"] = as_of_ts.replace(tzinfo=None).isoformat()
+        # JSON column does not accept ``datetime``; every datetime value in the
+        # snapshot dict (e.g. ``next_earnings`` from the earnings calendar) must
+        # be serialized to an ISO string before write. The typed column copy
+        # below still gets the raw ``datetime``.
+        for _k, _v in list(snapshot_json.items()):
+            if isinstance(_v, datetime):
+                snapshot_json[_k] = _v.isoformat()
 
         row = (
             db.query(MarketSnapshot)

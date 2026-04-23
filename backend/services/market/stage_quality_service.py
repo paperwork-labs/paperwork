@@ -83,17 +83,27 @@ class StageQualityService:
         stage_counter: Counter[str] = Counter()
         invalid_stage_count = 0
         unknown_count = 0
+        empty_label_count = 0
         for label_val, cnt in (
             db.query(lab, func.count()).filter(snap_type).group_by(lab).all()
         ):
             stage_raw = str(label_val or "").strip().upper()
             n = int(cnt)
-            if stage_raw in VALID_STAGE_LABELS:
+            if stage_raw == "":
+                # Null / empty label means "not yet computed" — an unknown state,
+                # not an invalid one. Per ``no-silent-fallback.mdc`` we still
+                # surface the count via ``empty_label_count`` so ops can see
+                # the warmup / gap explicitly; we do NOT count it as invalid
+                # (which would pin the dim to critical forever while warmups
+                # populate) nor as silently green.
+                empty_label_count += n
+                unknown_count += n
+            elif stage_raw in VALID_STAGE_LABELS:
                 stage_counter[stage_raw] += n
+                if stage_raw == "UNKNOWN":
+                    unknown_count += n
             else:
                 invalid_stage_count += n
-            if stage_raw == "UNKNOWN":
-                unknown_count += n
 
         invalid_current_days_count = int(
             db.query(func.count())
@@ -150,6 +160,7 @@ class StageQualityService:
 
         monotonicity_issues = 0
         history_rows_checked = 0
+        unknown_stage_days_count = 0
         by_symbol: Dict[str, List[tuple[datetime, Any, Any]]] = {}
         for symbol, as_of_date, stage_label, current_days in recent_rows:
             by_symbol.setdefault(str(symbol or "").upper(), []).append(
@@ -165,8 +176,22 @@ class StageQualityService:
                 if norm is None:
                     continue
                 history_rows_checked += 1
+                # Distinguish three input states for ``current_stage_days``:
+                #   None           -> "not yet populated" (warmup / write gap) — NOT drift
+                #   int < 1        -> actual corruption (0, negative) — drift
+                #   int >= 1       -> valid counter, used for continuity check
+                # Per ``no-silent-fallback.mdc``: nulls surface as
+                # ``unknown_stage_days_count`` so ops can see the gap, but they
+                # don't falsely trigger a "critical" drift verdict — a missing
+                # counter is an unknown state, not a broken one.
+                if current_days is None:
+                    unknown_stage_days_count += 1
+                    prev_norm = norm
+                    prev_days_val = None
+                    prev_dt = dt
+                    continue
                 try:
-                    cur_days = int(current_days) if current_days is not None else 0
+                    cur_days = int(current_days)
                 except Exception:
                     cur_days = 0
                 if cur_days < 1:
@@ -206,12 +231,14 @@ class StageQualityService:
             "total_symbols": total,
             "known_count": known_count,
             "unknown_count": unknown_count,
+            "empty_label_count": empty_label_count,
             "known_rate": round(known_rate, 4),
             "unknown_rate": round(unknown_rate, 4),
             "invalid_stage_count": invalid_stage_count,
             "invalid_current_days_count": invalid_current_days_count,
             "invalid_previous_link_count": invalid_previous_link_count,
             "monotonicity_issues": monotonicity_issues,
+            "unknown_stage_days_count": unknown_stage_days_count,
             "stage_history_rows_checked": history_rows_checked,
             "stale_stage_count": stale_stage_count,
             "stage_counts": {
