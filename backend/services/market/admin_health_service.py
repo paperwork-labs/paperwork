@@ -19,7 +19,13 @@ from backend.config import settings
 
 # Not cached: refreshed every /admin/health read (per-request RSS is fast to read)
 _RSS_OBSERVABILITY_KEYS = frozenset(
-    {"top_rss_endpoints", "worker_request_count_last_hour", "rss_observability"}
+    {
+        "top_rss_endpoints",
+        "worker_request_count_last_hour",
+        "rss_observability",
+        "hottest_endpoints",
+        "hottest_endpoints_error",
+    }
 )
 from backend.services.market.market_data_service import coverage_analytics, infra, stage_quality
 
@@ -138,7 +144,30 @@ class AdminHealthService:
                 logger.warning("composite health cache write failed: %s", e)
 
         self._merge_rss_observability_fields(payload, r)
+        self._merge_peak_hottest_endpoints(payload, r)
         return payload
+
+    def _merge_peak_hottest_endpoints(self, payload: Dict[str, Any], r: Any) -> None:
+        """S2: top-10 endpoints by recent sampled peak-RSS; explicit null + error on failure."""
+        if not getattr(settings, "ENABLE_PEAK_RSS_MIDDLEWARE", True):
+            payload["hottest_endpoints"] = None
+            payload["hottest_endpoints_error"] = "disabled"
+            return
+        try:
+            from backend.services.observability.peak_rss_store import get_hottest_endpoints_aggregated
+
+            rows, err = get_hottest_endpoints_aggregated(r)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("peak_rss: hottest merge failed: %s", e, exc_info=True)
+            payload["hottest_endpoints"] = None
+            payload["hottest_endpoints_error"] = "error"
+            return
+        if err is not None:
+            payload["hottest_endpoints"] = None
+            payload["hottest_endpoints_error"] = err
+            return
+        payload["hottest_endpoints"] = rows
+        payload["hottest_endpoints_error"] = None
 
     def _merge_rss_observability_fields(self, payload: Dict[str, Any], r: Any) -> None:
         """Add ``top_rss_endpoints`` + counts; never from composite cache (always fresh from Redis)."""

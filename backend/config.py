@@ -85,6 +85,8 @@ class Settings(BaseSettings):
     # Per-request process max-RSS (ru_maxrss) logging to Redis; default off under pytest
     # unless ENABLE_RSS_OBSERVABILITY is set explicitly. See D138.
     ENABLE_RSS_OBSERVABILITY: bool = True
+    # Wave E: sampled peak-RSS + tracemalloc; default off under pytest unless set. See D142.
+    ENABLE_PEAK_RSS_MIDDLEWARE: bool = True
     BRAIN_WEBHOOK_URL: Optional[str] = None
     BRAIN_WEBHOOK_SECRET: Optional[str] = None
     # Agent autonomy level: "full" (auto-execute all), "safe" (auto-execute safe only), "ask" (always ask)
@@ -363,6 +365,8 @@ class Settings(BaseSettings):
     def _rss_observability_default_in_tests(self) -> "Settings":
         if os.getenv("AXIOMFOLIO_TESTING") == "1" and "ENABLE_RSS_OBSERVABILITY" not in os.environ:
             object.__setattr__(self, "ENABLE_RSS_OBSERVABILITY", False)
+        if os.getenv("AXIOMFOLIO_TESTING") == "1" and "ENABLE_PEAK_RSS_MIDDLEWARE" not in os.environ:
+            object.__setattr__(self, "ENABLE_PEAK_RSS_MIDDLEWARE", False)
         return self
 
     @field_validator("PICKS_INBOUND_ALLOWLIST", mode="before")
