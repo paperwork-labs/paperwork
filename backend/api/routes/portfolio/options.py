@@ -12,10 +12,204 @@ from backend.api.middleware.response_cache import redis_response_cache
 from backend.models import BrokerAccount, Option
 from backend.models.broker_account import BrokerType
 from backend.models.user import User
+from backend.services.market.options_chain_service import (
+    get_chain as get_options_chain,
+    probe_sources as probe_chain_sources,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+# ---------------------------------------------------------------------------
+# Shared options-portfolio builder
+# ---------------------------------------------------------------------------
+#
+# This pure helper is called by both the /unified/portfolio and
+# /unified/summary endpoints. Previously the summary endpoint called the
+# portfolio endpoint function directly, which triggered a TypeError
+# ("missing 1 required positional argument: 'request'") because the
+# portfolio endpoint's signature starts with ``request: Request``. That
+# surfaced as HTTP 500 on ``GET /portfolio/options/unified/summary`` —
+# the root cause of the founder-reported "Failed to load options" card
+# on the Positions subtab.
+#
+# Positions are read ONCE, filtered only by ``user_id`` and optional
+# ``account_number``. The filter is broker-agnostic: any broker whose
+# sync service wrote an ``Option`` row for the user is surfaced.
+
+
+def _compute_options_portfolio(
+    db: Session, user_id: int, account_id: Optional[str]
+) -> Dict[str, Any]:
+    """Build the unified options portfolio payload for a single user.
+
+    Returns a dict with ``positions``, ``underlyings``, ``filtering``,
+    plus per-broker ``counters`` (``success``, ``skipped_no_config``,
+    ``failed``) for observability (per `no-silent-fallback.mdc`).
+    """
+
+    query = (
+        db.query(Option)
+        .join(BrokerAccount, Option.account_id == BrokerAccount.id)
+        .filter(Option.user_id == user_id, Option.open_quantity != 0)
+    )
+    if account_id:
+        query = query.filter(BrokerAccount.account_number == account_id)
+
+    positions_models = query.all()
+
+    opt_acct_ids = {p.account_id for p in positions_models}
+    opt_accounts_map = {
+        a.id: a
+        for a in db.query(BrokerAccount)
+        .filter(BrokerAccount.id.in_(opt_acct_ids))
+        .all()
+    }
+
+    def _days_to_expiry(exp: Optional[date]) -> int:
+        try:
+            if not exp:
+                return 0
+            return (exp - date.today()).days
+        except Exception as e:
+            logger.warning("days_to_expiry calculation failed: %s", e)
+            return 0
+
+    positions: List[Dict[str, Any]] = []
+    underlyings: Dict[str, Dict[str, Any]] = {}
+    per_broker_counters: Dict[str, Dict[str, int]] = {}
+    for p in positions_models:
+        acc = opt_accounts_map.get(p.account_id)
+        account_number = acc.account_number if acc else None
+        broker_value = acc.broker.value if acc and acc.broker else None
+        qty = int(p.open_quantity or 0)
+        abs_qty = abs(qty) or 1
+        mult = float(p.multiplier or 100)
+        cur_price = float(p.current_price or 0)
+        total_cost = float(p.total_cost or 0)
+        mv = cur_price * abs_qty * mult
+        try:
+            if mv == 0 and p.total_cost is not None:
+                mv = float(abs(p.total_cost))
+                if cur_price == 0:
+                    cur_price = mv / (abs_qty * mult)
+        except Exception as e:
+            logger.warning(
+                "Options position market value / price derivation failed "
+                "(position id=%s): %s",
+                getattr(p, "id", None),
+                e,
+            )
+        u_pnl = float(p.unrealized_pnl or 0)
+        if u_pnl == 0 and total_cost:
+            try:
+                u_pnl = mv - abs(total_cost)
+            except Exception as e:
+                logger.warning(
+                    "Options unrealized PnL fallback failed "
+                    "(position id=%s): %s",
+                    getattr(p, "id", None),
+                    e,
+                )
+        avg_cost = abs(total_cost) / (abs_qty * mult) if qty else 0.0
+        sym_value = p.symbol or ""
+        if not sym_value:
+            try:
+                exp = p.expiry_date.isoformat() if p.expiry_date else ""
+                sym_value = (
+                    f"{p.underlying_symbol or ''} "
+                    f"{str(p.option_type or '').upper()} "
+                    f"${float(p.strike_price or 0)} {exp}"
+                )
+            except Exception as e:
+                logger.warning(
+                    "Could not compose OCC-like symbol for option id=%s: %s",
+                    getattr(p, "id", None),
+                    e,
+                )
+                sym_value = p.underlying_symbol or "UNKNOWN"
+        pos: Dict[str, Any] = {
+            "id": p.id,
+            "symbol": sym_value,
+            "underlying_symbol": p.underlying_symbol or "",
+            "strike_price": float(p.strike_price or 0),
+            "expiration_date": (
+                p.expiry_date.isoformat() if p.expiry_date else None
+            ),
+            "option_type": (p.option_type or "").lower(),
+            "quantity": qty,
+            "average_open_price": avg_cost,
+            "current_price": cur_price,
+            "market_value": mv,
+            "unrealized_pnl": u_pnl,
+            "unrealized_pnl_pct": (
+                (u_pnl / (float(p.total_cost or 0)) * 100)
+                if (p.total_cost and float(p.total_cost) != 0)
+                else 0.0
+            ),
+            "day_pnl": 0.0,
+            "account_id": p.account_id,
+            "account_number": account_number,
+            "broker": broker_value,
+            "days_to_expiration": _days_to_expiry(p.expiry_date),
+            "multiplier": mult,
+            "delta": float(p.delta) if p.delta is not None else None,
+            "gamma": float(p.gamma) if p.gamma is not None else None,
+            "theta": float(p.theta) if p.theta is not None else None,
+            "vega": float(p.vega) if p.vega is not None else None,
+            "implied_volatility": (
+                float(p.implied_volatility)
+                if p.implied_volatility is not None
+                else None
+            ),
+            "underlying_price": (
+                float(p.underlying_price) if p.underlying_price is not None else None
+            ),
+            "cost_basis": float(p.total_cost) if p.total_cost else None,
+            "realized_pnl": (
+                float(p.realized_pnl) if p.realized_pnl is not None else None
+            ),
+            "commission": (
+                float(p.commission) if p.commission is not None else None
+            ),
+            "last_updated": (
+                p.updated_at or p.last_updated or datetime.now(timezone.utc)
+            ).isoformat(),
+        }
+        positions.append(pos)
+        if broker_value:
+            bucket = per_broker_counters.setdefault(
+                broker_value, {"success": 0, "skipped_no_config": 0, "failed": 0}
+            )
+            bucket["success"] += 1
+
+        u_sym = pos["underlying_symbol"] or "UNKNOWN"
+        if u_sym not in underlyings:
+            underlyings[u_sym] = {
+                "calls": [],
+                "puts": [],
+                "total_value": 0.0,
+                "total_pnl": 0.0,
+            }
+        (
+            underlyings[u_sym]["calls"]
+            if pos["option_type"] == "call"
+            else underlyings[u_sym]["puts"]
+        ).append(pos)
+        underlyings[u_sym]["total_value"] += pos["market_value"]
+        underlyings[u_sym]["total_pnl"] += pos["unrealized_pnl"]
+
+    return {
+        "positions": positions,
+        "underlyings": underlyings,
+        "filtering": {
+            "applied": bool(account_id),
+            "account_id": account_id,
+        },
+        "broker_counters": per_broker_counters,
+    }
 
 
 @router.get("/accounts", response_model=Dict[str, Any])
@@ -89,144 +283,12 @@ async def get_unified_options_portfolio(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    """Return unified options positions with optional account filtering, shaped for the frontend."""
+    """Unified options positions (all brokers) with optional account filter."""
     try:
-
-        # base query: any non-zero position (long or short)
-        query = (
-            db.query(Option)
-            .join(BrokerAccount, Option.account_id == BrokerAccount.id)
-            .filter(Option.user_id == user.id, Option.open_quantity != 0)
-        )
-        if account_id:
-            query = query.filter(BrokerAccount.account_number == account_id)
-
-        positions_models = query.all()
-
-        opt_acct_ids = {p.account_id for p in positions_models}
-        opt_accounts_map = {
-            a.id: a
-            for a in db.query(BrokerAccount).filter(
-                BrokerAccount.id.in_(opt_acct_ids)
-            ).all()
-        }
-
-        def _days_to_expiry(exp: Optional[date]) -> int:
-            try:
-                if not exp:
-                    return 0
-                return (exp - date.today()).days
-            except Exception as e:
-                logger.warning("days_to_expiry calculation failed: %s", e)
-                return 0
-
-        positions: List[Dict[str, Any]] = []
-        underlyings: Dict[str, Dict[str, Any]] = {}
-        for p in positions_models:
-            acc = opt_accounts_map.get(p.account_id)
-            account_number = acc.account_number if acc else None
-            qty = int(p.open_quantity or 0)
-            abs_qty = abs(qty) or 1
-            mult = float(p.multiplier or 100)
-            cur_price = float(p.current_price or 0)
-            total_cost = float(p.total_cost or 0)
-            mv = cur_price * abs_qty * mult
-            try:
-                if mv == 0 and p.total_cost is not None:
-                    mv = float(abs(p.total_cost))
-                    if cur_price == 0:
-                        cur_price = mv / (abs_qty * mult)
-            except Exception as e:
-                logger.warning(
-                    "Options position market value / price derivation failed (position id=%s): %s",
-                    getattr(p, "id", None),
-                    e,
-                )
-            u_pnl = float(p.unrealized_pnl or 0)
-            if u_pnl == 0 and total_cost:
-                try:
-                    u_pnl = mv - abs(total_cost)
-                except Exception as e:
-                    logger.warning(
-                        "Options unrealized PnL fallback failed (position id=%s): %s",
-                        getattr(p, "id", None),
-                        e,
-                    )
-            avg_cost = abs(total_cost) / (abs_qty * mult) if qty else 0.0
-            sym_value = p.symbol or ""
-            if not sym_value:
-                try:
-                    # Compose a readable OCC-like label if symbol missing
-                    exp = p.expiry_date.isoformat() if p.expiry_date else ""
-                    sym_value = f"{p.underlying_symbol or ''} {str(p.option_type or '').upper()} ${float(p.strike_price or 0)} {exp}"
-                except Exception as e:
-                    logger.warning(
-                        "Could not compose OCC-like symbol for option id=%s: %s",
-                        getattr(p, "id", None),
-                        e,
-                    )
-                    sym_value = p.underlying_symbol or "UNKNOWN"
-            pos: Dict[str, Any] = {
-                "id": p.id,
-                "symbol": sym_value,
-                "underlying_symbol": p.underlying_symbol or "",
-                "strike_price": float(p.strike_price or 0),
-                "expiration_date": p.expiry_date.isoformat() if p.expiry_date else None,
-                "option_type": (p.option_type or "").lower(),
-                "quantity": qty,
-                "average_open_price": avg_cost,
-                "current_price": cur_price,
-                "market_value": mv,
-                "unrealized_pnl": u_pnl,
-                "unrealized_pnl_pct": (
-                    (u_pnl / (float(p.total_cost or 0)) * 100)
-                    if (p.total_cost and float(p.total_cost) != 0)
-                    else 0.0
-                ),
-                "day_pnl": 0.0,
-                "account_number": account_number,
-                "days_to_expiration": _days_to_expiry(p.expiry_date),
-                "multiplier": mult,
-                "delta": float(p.delta) if p.delta is not None else None,
-                "gamma": float(p.gamma) if p.gamma is not None else None,
-                "theta": float(p.theta) if p.theta is not None else None,
-                "vega": float(p.vega) if p.vega is not None else None,
-                "implied_volatility": float(p.implied_volatility) if p.implied_volatility is not None else None,
-                "underlying_price": float(p.underlying_price) if p.underlying_price is not None else None,
-                "cost_basis": float(p.total_cost) if p.total_cost else None,
-                "realized_pnl": float(p.realized_pnl) if p.realized_pnl is not None else None,
-                "commission": float(p.commission) if p.commission is not None else None,
-                "last_updated": (
-                    p.updated_at or p.last_updated or datetime.now(timezone.utc)
-                ).isoformat(),
-            }
-            positions.append(pos)
-
-            # build underlyings map
-            u_sym = pos["underlying_symbol"] or "UNKNOWN"
-            if u_sym not in underlyings:
-                underlyings[u_sym] = {
-                    "calls": [],
-                    "puts": [],
-                    "total_value": 0.0,
-                    "total_pnl": 0.0,
-                }
-            (
-                underlyings[u_sym]["calls"]
-                if pos["option_type"] == "call"
-                else underlyings[u_sym]["puts"]
-            ).append(pos)
-            underlyings[u_sym]["total_value"] += pos["market_value"]
-            underlyings[u_sym]["total_pnl"] += pos["unrealized_pnl"]
-
-        data = {
-            "positions": positions,
-            "underlyings": underlyings,
-            "filtering": {"applied": bool(account_id), "account_id": account_id},
-        }
+        data = _compute_options_portfolio(db, user.id, account_id)
         return {"status": "success", "data": data}
     except Exception as e:
-        logger.error(f"❌ Options unified portfolio error: {e}")
+        logger.error("Options unified portfolio error: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -238,12 +300,17 @@ async def get_unified_options_summary(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    """Aggregate summary for options positions."""
+    """Aggregate summary for options positions (all brokers)."""
     try:
-        portfolio = await get_unified_options_portfolio(
-            account_id=account_id, user=user, db=db,
-        )
-        positions: List[Dict[str, Any]] = portfolio["data"]["positions"]
+        # Build the portfolio payload directly from the shared helper. This
+        # replaces the previous call to ``get_unified_options_portfolio``
+        # (the decorated FastAPI handler) which raised TypeError because the
+        # Request argument could not be supplied from Python code. That bug
+        # manifested as HTTP 500 on this endpoint, which bubbled up to the
+        # frontend as the "Failed to load options" card on the Positions
+        # subtab — the screenshot bug reported by the founder.
+        portfolio = _compute_options_portfolio(db, user.id, account_id)
+        positions: List[Dict[str, Any]] = portfolio["positions"]
         total_value = sum(abs(p.get("market_value", 0.0)) for p in positions)
         total_pnl = sum(p.get("unrealized_pnl", 0.0) for p in positions)
         calls = [p for p in positions if p.get("option_type") == "call"]
@@ -266,7 +333,7 @@ async def get_unified_options_summary(
             "expiring_this_month": sum(
                 1 for p in positions if (p.get("days_to_expiration", 0) <= 30)
             ),
-            "underlyings_count": len(portfolio["data"]["underlyings"]),
+            "underlyings_count": len(portfolio["underlyings"]),
             "avg_days_to_expiration": (
                 (
                     sum(p.get("days_to_expiration", 0) for p in positions)
@@ -283,14 +350,44 @@ async def get_unified_options_summary(
                 (p.get("theta") or 0) * p.get("quantity", 0) * p.get("multiplier", 100)
                 for p in positions
             ),
-            "underlyings": list(portfolio["data"]["underlyings"].keys()),
+            "underlyings": list(portfolio["underlyings"].keys()),
         }
         return {
             "status": "success",
-            "data": {"summary": summary, "filtering": portfolio["data"]["filtering"]},
+            "data": {
+                "summary": summary,
+                "filtering": portfolio["filtering"],
+                "broker_counters": portfolio["broker_counters"],
+            },
         }
     except Exception as e:
-        logger.error(f"❌ Options summary error: {e}")
+        logger.error("Options summary error: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/chain/sources", response_model=Dict[str, Any])
+async def get_option_chain_sources(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """Report which option-chain data sources are available for this user.
+
+    Used by the frontend to decide whether the chain tab should render data,
+    an empty state, or a broker-connection CTA — without hardcoding any
+    single broker (e.g., IBKR) into the UI.
+    """
+    try:
+        sources = probe_chain_sources(db=db, user_id=user.id)
+        any_available = any(s["available"] for s in sources)
+        return {
+            "status": "success",
+            "data": {
+                "sources": sources,
+                "any_available": any_available,
+            },
+        }
+    except Exception as e:
+        logger.error("Option chain sources probe failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -300,19 +397,16 @@ async def get_option_chain(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Fetch live option chain for a symbol. Requires IB Gateway connection."""
+    """Fetch an option chain from the first available source.
+
+    Source priority: IBKR gateway (if connected), then Yahoo Finance
+    (yfinance; free, broker-agnostic). Never returns a silent empty — if
+    no source is available we return an explicit ``source: "none"``
+    payload so the frontend can render a broker-honest empty state.
+    """
     try:
-        from backend.services.clients.ibkr_client import ibkr_client
-
-        if not ibkr_client.is_connected():
-            raise HTTPException(
-                status_code=503,
-                detail="IB Gateway is not connected. Start it with `make ib-up` and configure credentials.",
-            )
-
-        chain = await ibkr_client.get_option_chain(symbol)
-        return {"status": "success", "data": chain}
-
+        result = await get_options_chain(symbol, user_id=user.id, db=db)
+        return {"status": "success", "data": result}
     except HTTPException:
         raise
     except Exception as e:

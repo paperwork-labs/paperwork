@@ -3,12 +3,15 @@ import {
   ChevronDown,
   ChevronRight,
   LayoutGrid,
+  Link2,
   List,
   Loader2,
+  Plug,
   RefreshCw,
   Wifi,
   WifiOff,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,12 +25,15 @@ import StatCard from '../../components/shared/StatCard';
 import { StatCardSkeleton, TableSkeleton } from '../../components/shared/Skeleton';
 import PnlText from '../../components/shared/PnlText';
 import PageHeader from '../../components/ui/PageHeader';
+import { BrokerBadge } from '../../components/shared/BrokerBadge';
 import { useAccountFilter } from '../../hooks/useAccountFilter';
 import SortableTable from '../../components/SortableTable';
 import type { Column, FilterGroup } from '../../components/SortableTable';
 import { useOptions, usePortfolioSync, usePortfolioAccounts } from '../../hooks/usePortfolio';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
 import { useAccountContext } from '../../context/AccountContext';
+import { useAuthOptional } from '../../context/AuthContext';
+import { isPlatformAdminRole } from '@/utils/userRole';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { formatMoney, formatDateShort } from '../../utils/format';
 import { buildAccountsFromBroker } from '../../utils/portfolio';
@@ -35,6 +41,15 @@ import { detectStrategies } from '../../utils/optionStrategies';
 import type { OptionPos, StrategyGroup } from '../../utils/optionStrategies';
 import type { AccountData, FilterableItem } from '../../hooks/useAccountFilter';
 import api from '../../services/api';
+
+/** Shape returned by `/portfolio/options/chain/sources` — broker-agnostic. */
+type ChainSource = {
+  name: string;
+  label: string;
+  available: boolean;
+  reason?: string;
+  kind: 'broker' | 'provider';
+};
 
 const EXPIRING_SOON_DAYS = 7;
 
@@ -82,6 +97,8 @@ const PortfolioOptions: React.FC = () => {
   const optionsQuery = useOptions(selected === 'all' ? undefined : selected);
   const accountsQuery = usePortfolioAccounts();
   const syncMutation = usePortfolioSync();
+  const auth = useAuthOptional();
+  const isAdmin = isPlatformAdminRole(auth?.user?.role);
 
   const gatewayQuery = useQuery({
     queryKey: ['ibGatewayStatus'],
@@ -264,7 +281,15 @@ const PortfolioOptions: React.FC = () => {
           {activeTab === 'positions' && (optionsQuery.isPending || accountsQuery.isPending ? (
             <TableSkeleton rows={5} cols={4} />
           ) : (optionsQuery.error || accountsQuery.error) ? (
-            <p className="text-sm text-[rgb(var(--status-danger)/1)]">Failed to load options</p>
+            <OptionsErrorCard
+              error={(optionsQuery.error || accountsQuery.error) as unknown}
+              isAdmin={isAdmin}
+              onRetry={() => {
+                optionsQuery.portfolio.refetch();
+                optionsQuery.summary.refetch();
+                accountsQuery.refetch();
+              }}
+            />
           ) : (() => {
                 const typed = optionsFilterState.filteredData as OptionPos[];
                 const filteredSet = new Set(typed.map(p => p.id));
@@ -407,12 +432,11 @@ const PortfolioOptions: React.FC = () => {
 
           {activeTab === 'chain' && (
             <OptionChainTab
-              gwConnected={gwConnected}
-              gwLoading={gatewayQuery.isPending}
               chainSymbol={chainSymbol}
               setChainSymbol={setChainSymbol}
               underlyingOptions={uniqueUnderlyings}
               positions={positions}
+              isAdmin={isAdmin}
             />
           )}
 
@@ -475,6 +499,27 @@ const positionColumns: Column<OptionPos>[] = [
         })()}
       </div>
     ),
+  },
+  {
+    key: 'broker',
+    header: 'Broker',
+    accessor: (p) => p.broker ?? '',
+    sortable: true,
+    sortType: 'string',
+    filterable: true,
+    filterType: 'select',
+    filterOptions: [
+      { label: 'Schwab', value: 'schwab' },
+      { label: 'IBKR', value: 'ibkr' },
+      { label: 'Tastytrade', value: 'tastytrade' },
+    ],
+    render: (_v, p) =>
+      p.broker ? (
+        <BrokerBadge broker={p.broker} accountNumber={p.account_number ?? null} />
+      ) : (
+        <span className="text-xs text-muted-foreground">—</span>
+      ),
+    width: '90px',
   },
   {
     key: 'type',
@@ -866,6 +911,13 @@ const PositionRow: React.FC<{ pos: OptionPos; currency: string; gwConnected: boo
               {mPct.toFixed(1)}%
             </span>
           ) : null}
+          {pos.broker ? (
+            <BrokerBadge
+              broker={pos.broker}
+              accountNumber={pos.account_number ?? null}
+              className="shrink-0"
+            />
+          ) : null}
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -968,47 +1020,73 @@ const PositionRow: React.FC<{ pos: OptionPos; currency: string; gwConnected: boo
 };
 
 /* ------------------------------------------------------------------ */
-/* Option Chain Tab (enhanced with ATM highlight + position indicators) */
+/* Option Chain Tab (broker-agnostic; any available source renders)    */
 /* ------------------------------------------------------------------ */
+
+type ChainEntry = {
+  strike: number;
+  last?: number;
+  bid?: number;
+  ask?: number;
+  iv?: number;
+  delta?: number;
+  gamma?: number;
+  theta?: number;
+  vega?: number;
+  volume?: number;
+  open_interest?: number;
+};
+
 const OptionChainTab: React.FC<{
-  gwConnected: boolean;
-  gwLoading: boolean;
   chainSymbol: string;
   setChainSymbol: (s: string) => void;
   underlyingOptions: string[];
   positions: OptionPos[];
-}> = ({ gwConnected, gwLoading, chainSymbol, setChainSymbol, underlyingOptions, positions }) => {
+  isAdmin: boolean;
+}> = ({ chainSymbol, setChainSymbol, underlyingOptions, positions, isAdmin }) => {
   const [selectedExp, setSelectedExp] = useState<string | null>(null);
+
+  // Probe which chain sources are wired for the current user. The UI uses
+  // this to decide between "render data", "empty state with CTA", and
+  // (admin-only) dev-mode hints — never hardcoding a single broker.
+  const sourcesQuery = useQuery<{ sources: ChainSource[]; any_available: boolean }>({
+    queryKey: ['optionChainSources'],
+    queryFn: async () => {
+      const res = await api.get('/portfolio/options/chain/sources');
+      return (
+        res.data?.data ?? { sources: [] as ChainSource[], any_available: false }
+      );
+    },
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+  const anyAvailable = sourcesQuery.data?.any_available ?? false;
 
   const chainQuery = useQuery({
     queryKey: ['optionChain', chainSymbol],
     queryFn: async () => {
       const res = await api.get(`/portfolio/options/chain/${encodeURIComponent(chainSymbol)}`);
-      return res.data?.data ?? { expirations: [], chains: {} };
+      return (
+        res.data?.data ?? { source: 'none', expirations: [], chains: {}, attempts: [] }
+      );
     },
-    enabled: !!chainSymbol && gwConnected,
+    enabled: !!chainSymbol && anyAvailable,
     staleTime: 30000,
   });
 
-  const chainData = chainQuery.data as { expirations: string[]; chains: Record<string, { calls: ChainEntry[]; puts: ChainEntry[] }> } | undefined;
-
-  type ChainEntry = {
-    strike: number;
-    last?: number;
-    bid?: number;
-    ask?: number;
-    iv?: number;
-    delta?: number;
-    gamma?: number;
-    theta?: number;
-    vega?: number;
-    volume?: number;
-    open_interest?: number;
-  };
+  const chainData = chainQuery.data as
+    | {
+        source: string;
+        expirations: string[];
+        chains: Record<string, { calls: ChainEntry[]; puts: ChainEntry[] }>;
+        attempts?: Array<{ name: string; available: boolean; succeeded: boolean; error?: string }>;
+      }
+    | undefined;
 
   const expirations = chainData?.expirations ?? [];
   const activeExp = selectedExp ?? expirations[0] ?? null;
   const activeChain = activeExp ? chainData?.chains?.[activeExp] : null;
+  const chainSource = chainData?.source ?? null;
 
   const heldStrikes = useMemo(() => {
     const set = new Set<string>();
@@ -1025,40 +1103,30 @@ const OptionChainTab: React.FC<{
     return Number(match?.underlying_price ?? 0);
   }, [positions, chainSymbol]);
 
-  if (gwLoading) {
+  if (sourcesQuery.isPending) {
     return (
       <Card className="gap-0 py-0">
         <CardContent className="py-8">
           <div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
             <Loader2 className="size-6 animate-spin" aria-hidden />
-            <p className="text-sm">Checking IB Gateway connection…</p>
+            <p className="text-sm">Checking option chain sources…</p>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  if (!gwConnected) {
-    return (
-      <Card className="gap-0 py-0">
-        <CardContent className="py-8">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <WifiOff className="size-8 text-muted-foreground" aria-hidden />
-            <p className="font-bold text-foreground">IB Gateway Required</p>
-            <p className="max-w-md text-sm text-muted-foreground">
-              Option chain data requires a live connection to IB Gateway. Start it with{' '}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">make ib-up</code> and configure your IBKR
-              credentials in <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">infra/env.dev</code>.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
+  // Honest, broker-agnostic empty state. We never mention a single broker
+  // by name here — the user may be on Schwab/Tastytrade and have no IBKR
+  // at all. The admin-only footer keeps the `make ib-up` dev instruction
+  // accessible without leaking it into the non-admin UI.
+  if (!anyAvailable) {
+    return <ChainEmptyState sources={sourcesQuery.data?.sources ?? []} isAdmin={isAdmin} />;
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Input
           placeholder="Enter symbol..."
           value={chainSymbol}
@@ -1070,9 +1138,31 @@ const OptionChainTab: React.FC<{
             {sym}
           </Button>
         ))}
+        {chainSource ? <ChainSourceBadge source={chainSource} /> : null}
       </div>
 
-      {chainQuery.isPending ? <p className="text-sm text-muted-foreground">Loading chain...</p> : null}
+      {chainQuery.isPending && chainSymbol ? (
+        <p className="text-sm text-muted-foreground">Loading chain...</p>
+      ) : null}
+
+      {chainSymbol && chainData && chainSource === 'none' ? (
+        <Card className="gap-0 border-amber-500/40 py-0">
+          <CardContent className="py-4">
+            <p className="text-sm font-bold text-foreground">
+              No chain data available for {chainSymbol}.
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Every configured source declined (most common: symbol not listed,
+              provider rate-limited, or market closed with no cached quotes).
+            </p>
+            {isAdmin && chainData.attempts && chainData.attempts.length > 0 ? (
+              <pre className="mt-2 overflow-x-auto rounded bg-muted/60 p-2 text-[11px] leading-4 text-muted-foreground">
+                {JSON.stringify(chainData.attempts, null, 2)}
+              </pre>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {activeChain ? (
         <>
@@ -1199,10 +1289,154 @@ const OptionChainTab: React.FC<{
         </>
       ) : null}
 
-      {!chainQuery.isPending && !activeChain && chainSymbol ? (
-        <p className="text-sm text-muted-foreground">No chain data available for {chainSymbol}.</p>
-      ) : null}
     </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Option-chain empty state (broker-honest, CTA to Connections)        */
+/* ------------------------------------------------------------------ */
+const ChainEmptyState: React.FC<{ sources: ChainSource[]; isAdmin: boolean }> = ({
+  sources,
+  isAdmin,
+}) => {
+  const brokerSources = sources.filter((s) => s.kind === 'broker');
+  const providerSources = sources.filter((s) => s.kind === 'provider');
+  return (
+    <Card className="gap-0 py-0">
+      <CardContent className="py-10">
+        <div className="mx-auto flex max-w-xl flex-col items-center gap-3 text-center">
+          <Plug className="size-8 text-muted-foreground" aria-hidden />
+          <p className="text-base font-bold text-foreground">
+            Option chain data isn't available right now.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            To enable option chains, either connect a broker with options access
+            (Schwab, Tastytrade, IBKR) <span className="whitespace-nowrap">or</span>{' '}
+            add a market-data provider key (Polygon, Tradier, or Alpha Vantage)
+            in{' '}
+            <span className="font-medium text-foreground">
+              Settings &rarr; Connections &rarr; Market Data
+            </span>
+            .
+          </p>
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+            <Button asChild size="sm">
+              <Link to="/settings/connections">
+                <Link2 className="size-4" aria-hidden />
+                Open Connections
+              </Link>
+            </Button>
+          </div>
+          {sources.length > 0 ? (
+            <div className="mt-3 w-full rounded-md border border-border bg-muted/30 p-3 text-left text-xs text-muted-foreground">
+              <p className="mb-1 font-medium text-foreground">Available sources</p>
+              <ul className="flex flex-col gap-0.5">
+                {[...brokerSources, ...providerSources].map((s) => (
+                  <li key={s.name} className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'inline-block size-1.5 rounded-full',
+                        s.available
+                          ? 'bg-[rgb(var(--status-success)/1)]'
+                          : 'bg-muted-foreground/50',
+                      )}
+                      aria-hidden
+                    />
+                    <span className="font-medium">{s.label}</span>
+                    <span className="text-muted-foreground">
+                      {s.available ? 'ready' : s.reason ?? 'not configured'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {isAdmin ? (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Dev tip: run{' '}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[11px]">
+                make ib-up
+              </code>{' '}
+              to connect to an IB Gateway on localhost (admins only).
+            </p>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+const ChainSourceBadge: React.FC<{ source: string }> = ({ source }) => {
+  if (!source || source === 'none') return null;
+  const label =
+    source === 'ibkr_gateway'
+      ? 'IB Gateway'
+      : source === 'yfinance'
+        ? 'Yahoo Finance'
+        : source;
+  return (
+    <Badge
+      variant="outline"
+      className="border-muted-foreground/30 text-[10px] uppercase tracking-wide text-muted-foreground"
+      title={`Chain data served from ${label}`}
+    >
+      <Wifi className="size-3" aria-hidden />
+      {label}
+    </Badge>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Positions error card (admin sees HTTP status + request path)        */
+/* ------------------------------------------------------------------ */
+const OptionsErrorCard: React.FC<{
+  error: unknown;
+  isAdmin: boolean;
+  onRetry: () => void;
+}> = ({ error, isAdmin, onRetry }) => {
+  const status = (error as { response?: { status?: number } } | null)?.response?.status ?? null;
+  const detail =
+    (error as { response?: { data?: { detail?: string } } } | null)?.response?.data?.detail ??
+    (error as { message?: string } | null)?.message ??
+    null;
+  const cfg = (error as { config?: { url?: string; method?: string } } | null)?.config ?? null;
+  const reqPath = cfg?.url ?? null;
+  const reqMethod = (cfg?.method ?? 'get').toUpperCase();
+  return (
+    <Card className="gap-0 border-destructive/40 py-0">
+      <CardContent className="py-6">
+        <div className="flex flex-col gap-2">
+          <p className="text-sm font-bold text-[rgb(var(--status-danger)/1)]">
+            Failed to load options.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            We couldn't fetch your options positions. This is usually a transient
+            backend issue — retry below. If it keeps happening, check{' '}
+            <Link to="/settings/connections" className="underline">
+              Connections
+            </Link>{' '}
+            and make sure at least one broker is synced.
+          </p>
+          {isAdmin && (status || detail || reqPath) ? (
+            <pre className="overflow-x-auto rounded bg-muted/60 p-2 text-[11px] leading-4 text-muted-foreground">
+              {[
+                reqPath ? `${reqMethod} ${reqPath}` : null,
+                status != null ? `status: ${status}` : null,
+                detail ? `detail: ${detail}` : null,
+              ]
+                .filter(Boolean)
+                .join('\n')}
+            </pre>
+          ) : null}
+          <div>
+            <Button size="sm" variant="outline" onClick={onRetry}>
+              <RefreshCw className="size-4" aria-hidden /> Retry
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

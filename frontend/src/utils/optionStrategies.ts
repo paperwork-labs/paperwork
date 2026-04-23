@@ -23,6 +23,8 @@ export type OptionPos = {
   commission?: number;
   currency?: string;
   account_id?: number;
+  account_number?: string | null;
+  broker?: string | null;
 };
 
 export type StrategyLabel =
