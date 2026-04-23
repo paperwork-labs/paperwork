@@ -133,18 +133,30 @@ describe('DashboardLayout tier chips + section structure', () => {
     }
   });
 
-  it('renders the collapsed Portfolio hub (4 items) rather than the legacy 11-item list', () => {
+  it('renders the collapsed Portfolio hub (5 items incl. Tax Center) rather than the legacy 11-item list', () => {
     const { container } = renderWithProviders(<DashboardLayout />);
     const section = container.querySelector<HTMLElement>('[data-section-id="portfolio"]');
     const items = section?.querySelectorAll('[data-nav-path]') ?? [];
-    expect(items.length).toBe(4);
+    // Wave B collapsed 11 → 4. The Positions-IA correction adds Tax Center
+    // back as a primary destination (founder uses it quarterly for
+    // LT/ST separation + tax-loss harvesting), taking the count to 5.
+    expect(items.length).toBe(5);
     const paths = Array.from(items).map((el) => el.getAttribute('data-nav-path'));
     expect(paths).toEqual([
       '/portfolio',
       '/portfolio/positions',
       '/portfolio/activity',
+      '/portfolio/tax',
       '/market/workspace',
     ]);
+  });
+
+  it('surfaces Tax Center with its human label under PORTFOLIO', () => {
+    const { container } = renderWithProviders(<DashboardLayout />);
+    const section = container.querySelector<HTMLElement>('[data-section-id="portfolio"]');
+    const taxEntry = section?.querySelector<HTMLElement>('[data-nav-path="/portfolio/tax"]');
+    expect(taxEntry).not.toBeNull();
+    expect(taxEntry?.textContent ?? '').toMatch(/Tax Center/i);
   });
 
   it('points the Markets hub at /market/universe (merged Watchlist + Lookup)', () => {

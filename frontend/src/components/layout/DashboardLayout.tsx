@@ -13,6 +13,7 @@ import {
   List,
   Menu,
   PieChart,
+  Receipt,
   Settings,
   Sparkles,
   Target,
@@ -115,10 +116,17 @@ const TODAY_ITEMS: readonly NavItem[] = [
   { label: "Today's Cards", icon: ClipboardList, path: '/trade-cards/today' },
 ];
 
+// Wave B capped each section at 4 items. PORTFOLIO graduates to 5 here
+// because the founder called out Tax Center as a quarterly-use destination
+// (LT/ST lot separation, tax-loss harvesting) — too rich to demote to a
+// sub-tab, too important to hide in a command-palette-only entry. The
+// 4-item guideline tolerates a 5th row when the slot is a demonstrably
+// used primary feature; see the PR body for the rationale.
 const PORTFOLIO_ITEMS: readonly NavItem[] = [
   { label: 'Overview', icon: PieChart, path: '/portfolio' },
   { label: 'Positions', icon: Wallet, path: '/portfolio/positions' },
   { label: 'Activity', icon: Activity, path: '/portfolio/activity' },
+  { label: 'Tax Center', icon: Receipt, path: '/portfolio/tax' },
   { label: 'Workspace', icon: LayoutGrid, path: '/market/workspace' },
 ];
 

@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Lock, MinusCircle, Pencil, RefreshCw, Search, Trash2, Unlock } from 'lucide-react';
+import { AlertTriangle, Lock, MinusCircle, Pencil, Plus, RefreshCw, Search, Trash2, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { semanticTextColorClass } from '@/lib/semantic-text-color';
 import toast from 'react-hot-toast';
@@ -916,32 +917,118 @@ const PortfolioWorkspace: React.FC = () => {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[2fr_1fr]">
-            {/* Tax Lots panel */}
-            <Card
-              className={cn(
-                'gap-0 overflow-hidden border border-border py-0',
-                lotEditMode ? 'max-h-[70vh] md:max-h-[520px]' : 'max-h-[50vh] md:max-h-[400px]',
-              )}
-            >
-              <CardHeader className="flex-row items-center justify-between gap-2 px-4 pb-2">
-                <div className="flex items-center gap-2">
-                  <p className="font-bold">Tax Lots</p>
+          {/* Tax Lots for {SYMBOL} — full-width below the chart.
+              Root cause of the founder's "we dont see that" report: this
+              card previously lived in a 2/3-width grid cell beside
+              Dividends, which pushed it below the fold on a 1080p screen
+              (chart ~520px + summary + badges + indicator controls). The
+              old empty-state also silently swallowed query errors — a lot
+              that failed to load looked identical to "nothing synced yet".
+              Now: promoted to full width, titled with the selected symbol,
+              and a strict loading / error / empty / data split so no
+              ambiguity is possible. */}
+          <Card
+            className={cn(
+              'gap-0 overflow-hidden border border-border py-0',
+              lotEditMode ? 'max-h-[75vh] md:max-h-[560px]' : 'max-h-[60vh] md:max-h-[440px]',
+            )}
+            data-testid="workspace-tax-lots"
+          >
+            <CardHeader className="flex-row items-center justify-between gap-2 px-4 pb-2">
+              <div className="flex items-center gap-2">
+                <p className="font-bold">
+                  {selectedSymbol ? `Tax Lots for ${selectedSymbol}` : 'Tax Lots'}
+                </p>
+                {lotsQuery.isSuccess && lots.length > 0 ? (
                   <Badge variant="outline" className="font-normal">{lots.length}</Badge>
+                ) : null}
+              </div>
+              <Button
+                type="button"
+                size="icon-xs"
+                variant={lotEditMode ? 'default' : 'ghost'}
+                className={lotEditMode ? 'bg-violet-600/15 text-violet-900 hover:bg-violet-600/25 dark:text-violet-200' : ''}
+                aria-label={lotEditMode ? 'Lock tax lots' : 'Unlock to add/edit lots'}
+                onClick={() => { setLotEditMode(v => !v); setEditingLotId(null); setLotForm(emptyLotForm); }}
+              >
+                {lotEditMode ? <Unlock className="size-3.5" /> : <Lock className="size-3.5" />}
+              </Button>
+            </CardHeader>
+            <CardContent className="px-0 pb-0">
+              {!selectedSymbol ? (
+                <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Select a holding from the list to view its tax lots.
+                  </p>
                 </div>
-                <Button
-                  type="button"
-                  size="icon-xs"
-                  variant={lotEditMode ? 'default' : 'ghost'}
-                  className={lotEditMode ? 'bg-violet-600/15 text-violet-900 hover:bg-violet-600/25 dark:text-violet-200' : ''}
-                  aria-label={lotEditMode ? 'Lock tax lots' : 'Unlock to add/edit lots'}
-                  onClick={() => { setLotEditMode(v => !v); setEditingLotId(null); setLotForm(emptyLotForm); }}
+              ) : !selectedHolding?.id ? (
+                <div className="flex flex-col items-center gap-3 px-4 py-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No open position for {selectedSymbol}. Add a manual lot to start
+                    tracking one.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setLotEditMode(true); setEditingLotId(null); setLotForm(emptyLotForm); }}
+                  >
+                    <Plus className="size-3.5" aria-hidden />
+                    Add a lot
+                  </Button>
+                </div>
+              ) : lotsQuery.isPending ? (
+                <div
+                  className="flex flex-col gap-2 px-4 py-4"
+                  aria-busy="true"
+                  aria-label={`Loading tax lots for ${selectedSymbol}`}
+                  data-testid="workspace-tax-lots-loading"
                 >
-                  {lotEditMode ? <Unlock className="size-3.5" /> : <Lock className="size-3.5" />}
-                </Button>
-              </CardHeader>
-              <CardContent className="px-0 pb-0">
-                <div className="max-h-[250px] overflow-auto md:max-h-[340px]">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                  <Skeleton className="h-8 w-full" />
+                </div>
+              ) : lotsQuery.isError ? (
+                <div
+                  className="flex flex-col items-center gap-3 px-4 py-8 text-center"
+                  role="alert"
+                  data-testid="workspace-tax-lots-error"
+                >
+                  <AlertTriangle className="size-5 text-destructive" aria-hidden />
+                  <p className="text-sm text-destructive">
+                    Couldn't load lots for {selectedSymbol}.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void lotsQuery.refetch()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : lots.length === 0 ? (
+                <div
+                  className="flex flex-col items-center gap-3 px-4 py-8 text-center"
+                  data-testid="workspace-tax-lots-empty"
+                >
+                  <p className="text-sm text-muted-foreground">
+                    No lots tracked for {selectedSymbol}. Sync your brokerage or add
+                    a manual lot below.
+                  </p>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => { setLotEditMode(true); setEditingLotId(null); setLotForm(emptyLotForm); }}
+                  >
+                    <Plus className="size-3.5" aria-hidden />
+                    Add a lot
+                  </Button>
+                </div>
+              ) : (
+                <div className="max-h-[250px] overflow-auto md:max-h-[340px]" data-testid="workspace-tax-lots-table">
                   <table className="w-full min-w-[640px] border-collapse text-left text-xs">
                     <thead>
                       <tr className="border-b border-border bg-muted/50">
@@ -956,13 +1043,6 @@ const PortfolioWorkspace: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {lots.length === 0 && (
-                        <tr>
-                          <td colSpan={8} className="px-2 py-4 text-center text-muted-foreground">
-                            {lotsQuery.isPending ? 'Loading tax lots…' : `No tax lots synced for ${selectedSymbol ?? 'this symbol'}. Sync your brokerage to populate.`}
-                          </td>
-                        </tr>
-                      )}
                       {lots
                         .slice()
                         .sort((a: LotRow, b: LotRow) => new Date(b.purchase_date || '').getTime() - new Date(a.purchase_date || '').getTime())
@@ -1125,11 +1205,12 @@ const PortfolioWorkspace: React.FC = () => {
                     </tbody>
                   </table>
                 </div>
-                {lotEditMode && (
-                  <div className="border-t border-border bg-muted/40 px-3 py-2">
-                    <p className="mb-1 text-xs font-semibold text-muted-foreground">
-                      {editingLotId ? 'Edit Lot' : 'Add Manual Lot'}
-                    </p>
+              )}
+              {lotEditMode && selectedSymbol && (
+                <div className="border-t border-border bg-muted/40 px-3 py-2">
+                  <p className="mb-1 text-xs font-semibold text-muted-foreground">
+                    {editingLotId ? 'Edit Lot' : 'Add Manual Lot'}
+                  </p>
                     <div className="flex flex-wrap items-end gap-2">
                       <div>
                         <p className="text-[10px] text-muted-foreground">Date</p>
@@ -1247,7 +1328,6 @@ const PortfolioWorkspace: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
-          </div>
         </div>
       </div>
 

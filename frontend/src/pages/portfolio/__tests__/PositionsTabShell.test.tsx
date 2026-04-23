@@ -18,9 +18,9 @@ vi.mock('../PortfolioOptions', () => ({
   __esModule: true,
   default: () => <div data-testid="tab-options">options body</div>,
 }));
-vi.mock('../PortfolioTaxCenter', () => ({
+vi.mock('../PortfolioCategories', () => ({
   __esModule: true,
-  default: () => <div data-testid="tab-lots">lots body</div>,
+  default: () => <div data-testid="tab-categories">categories body</div>,
 }));
 
 function renderShell(route: string = '/portfolio/positions') {
@@ -59,10 +59,27 @@ describe('PositionsTabShell', () => {
     });
   });
 
-  it('honours the ?tab=lots query parameter on initial mount', async () => {
+  it('mounts the Categories tab (not Lots) when ?tab=categories is in the URL', async () => {
+    renderShell('/portfolio/positions?tab=categories');
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-categories')).toBeInTheDocument();
+    });
+  });
+
+  it('exposes Categories in the tab strip and hides the old "Lots" label', async () => {
+    renderShell();
+    await waitFor(() => screen.getByTestId('tab-holdings'));
+    expect(screen.getByRole('tab', { name: /Categories/i })).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /^Lots$/i })).toBeNull();
+  });
+
+  // Old bookmark preservation: `?tab=lots` predates the IA correction
+  // (Tax Center moved to /portfolio/tax; Categories took its slot). Rewrite
+  // the alias in place so the user lands on Categories, not a blank tab.
+  it('redirects the legacy ?tab=lots bookmark to Categories', async () => {
     renderShell('/portfolio/positions?tab=lots');
     await waitFor(() => {
-      expect(screen.getByTestId('tab-lots')).toBeInTheDocument();
+      expect(screen.getByTestId('tab-categories')).toBeInTheDocument();
     });
   });
 });
