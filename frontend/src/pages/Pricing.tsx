@@ -141,6 +141,7 @@ const Pricing: React.FC = () => {
       <main>
         <PageContainer width="wide" className="space-y-8 py-12">
         <header className="space-y-3 text-center">
+          {/* Ladder 3 — internal Phase 0.5 tier-ladder label for analytics/spec cross-reference only. */}
           <h1 className="font-heading text-4xl font-semibold tracking-tight">Simple, honest pricing</h1>
           <p className="text-muted-foreground">
             Free forever for core visuals. Upgrade when you need BYOK, advanced MCP scopes, and research tooling.

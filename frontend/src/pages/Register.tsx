@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -10,15 +10,12 @@ import AppCard from '../components/ui/AppCard';
 import FormField from '../components/ui/FormField';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { TIER_LABEL, type SubscriptionTier } from '@/types/entitlement';
 
-const TIER_LABELS: Record<string, string> = {
-  free: 'Free',
-  core: 'Core',
-  pro: 'Pro',
-  premium: 'Premium',
-  elite: 'Elite',
-  enterprise: 'Enterprise',
-};
+const PENDING_UPGRADE_KEY = 'pending_upgrade_tier';
+
+const tierKeys = Object.keys(TIER_LABEL) as SubscriptionTier[];
+const SUBSCRIPTION_TIER_SET = new Set<SubscriptionTier>(tierKeys);
 
 const Register: React.FC = () => {
   const { register } = useAuth();
@@ -31,12 +28,23 @@ const Register: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const upgradeTierLabel = useMemo(() => {
+  const upgradeTierSlug = useMemo((): SubscriptionTier | null => {
     const raw = new URLSearchParams(location.search).get('upgrade');
     if (!raw) return null;
-    const key = raw.trim().toLowerCase();
-    return TIER_LABELS[key] ?? null;
+    const key = raw.trim().toLowerCase() as SubscriptionTier;
+    return SUBSCRIPTION_TIER_SET.has(key) ? key : null;
   }, [location.search]);
+
+  const upgradeTierLabel = upgradeTierSlug ? TIER_LABEL[upgradeTierSlug] : null;
+
+  useEffect(() => {
+    if (!upgradeTierSlug) return;
+    try {
+      localStorage.setItem(PENDING_UPGRADE_KEY, upgradeTierSlug);
+    } catch {
+      // Storage unavailable — checkout handoff can still read the query string on this session.
+    }
+  }, [upgradeTierSlug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,9 +71,8 @@ const Register: React.FC = () => {
           <div>
             <h2 className="text-xl font-semibold tracking-tight text-card-foreground">Create account</h2>
             {upgradeTierLabel ? (
-              <p className="mt-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm text-foreground">
-                You&apos;re upgrading to <span className="font-semibold">{upgradeTierLabel}</span>. Create your
-                account first — we&apos;ll hand you off to checkout next.
+              <p className="mt-2 text-sm text-foreground">
+                You&apos;re upgrading to <span className="font-semibold">{upgradeTierLabel}</span>.
               </p>
             ) : null}
             <p className="mt-1 text-sm text-muted-foreground">
@@ -110,7 +117,7 @@ const Register: React.FC = () => {
                 {showPw ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
               </Button>
             </div>
-            <PasswordStrengthMeter password={password} />
+            {password.length > 0 ? <PasswordStrengthMeter password={password} /> : null}
           </FormField>
           <Button type="submit" disabled={loading} className="h-11 rounded-lg" variant="default">
             {loading ? 'Creating account…' : 'Register'}

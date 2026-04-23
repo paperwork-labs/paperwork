@@ -2,7 +2,20 @@ import React from 'react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 
-import PasswordStrengthMeter, { computePasswordStrengthScore } from '../PasswordStrengthMeter';
+import PasswordStrengthMeter, {
+  computePasswordStrengthScore,
+  passwordFilledBarCount,
+} from '../PasswordStrengthMeter';
+
+describe('passwordFilledBarCount', () => {
+  it('shows one bar for a short password with no criteria met (e.g. abc)', () => {
+    expect(passwordFilledBarCount('abc')).toBe(1);
+  });
+
+  it('shows three bars when length, mixed case, and digit are all met (e.g. abcDef12)', () => {
+    expect(passwordFilledBarCount('abcDef12')).toBe(3);
+  });
+});
 
 describe('computePasswordStrengthScore', () => {
   it('caps at too-short when length < 8 even with mixed case and digit', () => {
@@ -81,5 +94,20 @@ describe('PasswordStrengthMeter', () => {
     const { container } = render(<PasswordStrengthMeter password="x" />);
     expect(screen.queryByRole('status')).toBeNull();
     expect(container.firstChild).not.toHaveAttribute('role');
+  });
+
+  it('renders one non-muted bar for abc', () => {
+    const { container } = render(<PasswordStrengthMeter password="abc" />);
+    const bars = container.querySelectorAll('span.h-1.flex-1.rounded-full');
+    expect(bars.length).toBe(3);
+    const filled = [...bars].filter((el) => !el.classList.contains('bg-muted'));
+    expect(filled.length).toBe(1);
+  });
+
+  it('renders three non-muted bars for abcDef12', () => {
+    const { container } = render(<PasswordStrengthMeter password="abcDef12" />);
+    const bars = container.querySelectorAll('span.h-1.flex-1.rounded-full');
+    const filled = [...bars].filter((el) => !el.classList.contains('bg-muted'));
+    expect(filled.length).toBe(3);
   });
 });

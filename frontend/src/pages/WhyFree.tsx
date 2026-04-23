@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Check, ExternalLink, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 import { MarketingFooter } from '@/components/layout/MarketingFooter';
 import { MarketingHeader } from '@/components/layout/MarketingHeader';
 import { PageContainer } from '@/components/ui/Page';
 import PublicStatsStrip from '@/components/transparency/PublicStatsStrip';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import api from '@/services/api';
 import type { PricingCatalogResponse } from '@/types/pricing';
@@ -18,11 +21,9 @@ import type { PricingCatalogResponse } from '@/types/pricing';
 // renders loading/error/empty states explicitly per
 // ``no-silent-fallback.mdc``.
 
-// ``neverItems`` intentionally stays hard-coded. These are founder
-// commitments — not a tier feature list — and the pricing catalog is
-// not the right source of truth for them. A change here is a
-// deliberate content update reviewed as part of the PR, not a
-// configuration knob in the backend.
+// ``neverItems`` intentionally stays hard-coded (legal/policy-style
+// founder commitments, not product features). Backend catalog is the wrong
+// source of truth; see KNOWLEDGE.md D143.
 const neverItems = [
   'Sell your data, ever',
   'Show ads',
@@ -41,7 +42,10 @@ const Section: React.FC<{ id?: string; className?: string; children: React.React
   </section>
 );
 
+const SHARE_URL = 'https://axiomfolio.com';
+
 const WhyFree: React.FC = () => {
+  const [copied, setCopied] = useState(false);
   const catalogQuery = useQuery<PricingCatalogResponse>({
     queryKey: ['pricing', 'catalog'],
     queryFn: async () => {
@@ -51,6 +55,16 @@ const WhyFree: React.FC = () => {
   });
   const freeTier = catalogQuery.data?.tiers.find((tier) => tier.tier === 'free');
   const freeForeverItems = freeTier?.features ?? [];
+
+  const copyShareLink = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(SHARE_URL);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Could not copy link. You can copy axiomfolio.com from the address bar.');
+    }
+  }, []);
 
   return (
       <div className="min-h-screen bg-background text-foreground">
@@ -67,6 +81,14 @@ const WhyFree: React.FC = () => {
               Most portfolio apps charge a monthly fee to look at your own data. Here&apos;s why we don&apos;t charge for
               that.
             </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button asChild>
+                <Link to="/register">Start free — no credit card</Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link to="/pricing">See pricing</Link>
+              </Button>
+            </div>
           </Section>
 
           <Section className="border-t border-border bg-muted/20">
@@ -183,12 +205,17 @@ const WhyFree: React.FC = () => {
           </Section>
 
           <Section className="border-t border-border pb-24">
-            <h2 className="font-heading text-2xl font-semibold tracking-tight sm:text-3xl">Like it? Tell a friend.</h2>
-            <p className="mt-3 max-w-2xl text-sm text-muted-foreground sm:text-base">
-              Tips will open once our Stripe Checkout integration lands. Until then, the single best thing you can do
-              is share AxiomFolio with another investor who&apos;s paying a subscription just to look at their own
-              holdings.
-            </p>
+            <div className="max-w-2xl rounded-xl border border-border bg-card p-6 shadow-sm">
+              <h2 className="font-heading text-xl font-semibold tracking-tight sm:text-2xl">Tips &amp; sharing</h2>
+              <p className="mt-3 text-sm text-muted-foreground sm:text-base">
+                Tips open when Stripe Checkout lands — meanwhile, share AxiomFolio with someone who&apos;d benefit.
+              </p>
+              <div className="mt-5">
+                <Button type="button" onClick={() => void copyShareLink()}>
+                  {copied ? 'Copied!' : 'Copy site link'}
+                </Button>
+              </div>
+            </div>
           </Section>
           </PageContainer>
         </main>

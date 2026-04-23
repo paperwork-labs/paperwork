@@ -18,6 +18,24 @@ const evaluatePassword = (value: string): PasswordChecks => ({
   digitOrSymbol: /[0-9]/.test(value) || /[^A-Za-z0-9]/.test(value),
 });
 
+/** How many of the three checks (length 8+, mixed case, digit/symbol) are satisfied. */
+export function countPasswordCriteriaMet(value: string): number {
+  if (!value.length) return 0;
+  const checks = evaluatePassword(value);
+  return Object.values(checks).filter(Boolean).length;
+}
+
+/**
+ * Filled segment count for the 3-bar meter (visual only).
+ * Any non-empty password shows at least one bar so typing feels responsive; once
+ * criteria pass, the fill count matches how many checks are satisfied (capped at 3).
+ */
+export function passwordFilledBarCount(value: string): number {
+  if (!value.length) return 0;
+  const n = countPasswordCriteriaMet(value);
+  return n === 0 ? 1 : Math.min(3, n);
+}
+
 /** 0 = too short (under 8 chars); 1–3 = weak through strong once length is met. */
 export function computePasswordStrengthScore(value: string): number {
   if (value.length < 8) {
@@ -43,6 +61,8 @@ const A11Y_DEBOUNCE_MS = 300;
 export const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({ password }) => {
   const score = computePasswordStrengthScore(password);
   const meta = STRENGTH_META[score];
+  const filled = passwordFilledBarCount(password);
+  const barColorMeta = STRENGTH_META[filled === 0 ? 0 : filled];
 
   const [debouncedPassword, setDebouncedPassword] = React.useState('');
   React.useEffect(() => {
@@ -71,7 +91,7 @@ export const PasswordStrengthMeter: React.FC<PasswordStrengthMeterProps> = ({ pa
             key={i}
             className={cn(
               'h-1 flex-1 rounded-full transition-colors',
-              i < score ? meta.barClass : 'bg-muted',
+              i < filled ? barColorMeta.barClass : 'bg-muted',
             )}
           />
         ))}
