@@ -47,6 +47,7 @@ def create_default_router() -> BrokerRouter:
     from backend.services.execution.paper_executor import PaperExecutor
     from backend.services.execution.coinbase_paper_executor import CoinbasePaperExecutor
     from backend.services.execution.schwab_executor import SchwabExecutor
+    from backend.services.execution.tradier_executor import TradierExecutor
 
     router = BrokerRouter()
     router.register("ibkr", IBKRExecutor())
@@ -61,6 +62,11 @@ def create_default_router() -> BrokerRouter:
     # Until then, any write call raises a clear "not bound" error via
     # OrderResult.error -- never a silent fallback.
     router.register("schwab", SchwabExecutor())
+    # Wave F Phase 1: Tradier live + sandbox share one executor class,
+    # parameterized by environment. Both registrations use the same OAuth
+    # token-refresh lock from the F0 mixin.
+    router.register("tradier", TradierExecutor(environment="prod"))
+    router.register("tradier_sandbox", TradierExecutor(environment="sandbox"))
     return router
 
 

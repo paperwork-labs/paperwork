@@ -140,21 +140,57 @@ class TradierBronzeClient:
         *,
         params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        return self._request_json("GET", path, params=params)
+
+    def _post_json(
+        self,
+        path: str,
+        *,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Form-encoded POST returning parsed JSON.
+
+        Tradier's order-write endpoints accept ``application/x-www-form-
+        urlencoded`` payloads (not JSON) and return JSON responses. The
+        ``requests`` library handles form-encoding automatically when
+        ``data=`` is a dict.
+        """
+
+        return self._request_json("POST", path, data=data)
+
+    def _delete_json(self, path: str) -> Dict[str, Any]:
+        """HTTP DELETE returning parsed JSON (order cancellation)."""
+
+        return self._request_json("DELETE", path)
+
+    def _request_json(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
         url = f"{self._base_url}{path}"
         headers = {
             "Authorization": f"Bearer {self._token}",
             "Accept": self._JSON_ACCEPT,
         }
         try:
-            resp = self._session.get(
-                url, headers=headers, params=params, timeout=self._timeout_s
+            resp = self._session.request(
+                method,
+                url,
+                headers=headers,
+                params=params,
+                data=data,
+                timeout=self._timeout_s,
             )
         except requests.RequestException as exc:
             logger.warning(
-                "tradier client: network failure on %s: %s", path, exc
+                "tradier client: network failure on %s %s: %s", method, path, exc
             )
             raise TradierAPIError(
-                f"network failure calling Tradier {path}: {exc}",
+                f"network failure calling Tradier {method} {path}: {exc}",
                 permanent=False,
                 path=path,
             ) from exc
@@ -162,11 +198,11 @@ class TradierBronzeClient:
         status = resp.status_code
         if status >= 400:
             logger.warning(
-                "tradier client: HTTP %s on %s body=%s",
-                status, path, (resp.text or "")[:200],
+                "tradier client: HTTP %s on %s %s body=%s",
+                status, method, path, (resp.text or "")[:200],
             )
             raise TradierAPIError(
-                f"Tradier {path} returned HTTP {status}: "
+                f"Tradier {method} {path} returned HTTP {status}: "
                 f"{(resp.text or '')[:200]}",
                 permanent=_classify_permanent(status),
                 status=status,
@@ -177,7 +213,7 @@ class TradierBronzeClient:
             body = resp.json() if resp.content else {}
         except ValueError as exc:
             raise TradierAPIError(
-                f"Tradier {path} returned non-JSON body: "
+                f"Tradier {method} {path} returned non-JSON body: "
                 f"{(resp.text or '')[:200]}",
                 permanent=True,
                 status=status,
@@ -186,7 +222,7 @@ class TradierBronzeClient:
 
         if not isinstance(body, dict):
             raise TradierAPIError(
-                f"Tradier {path} returned unexpected root type "
+                f"Tradier {method} {path} returned unexpected root type "
                 f"{type(body).__name__}",
                 permanent=True,
                 status=status,
@@ -324,5 +360,166 @@ class TradierBronzeClient:
             return _as_list(gainloss.get("closed_position"))
         return []
 
+    # ------------------------------------------------------------------
+    # Order write-path (Wave F Phase 1, issue #273 family).
+    #
+    # These helpers stay additive — they do not change the signatures of
+    # the read-only sync methods above. Each returns the raw
+    # ``{"order": {...}}`` envelope so the executor can extract provider-
+    # specific context (commission, margin, fill price) without the client
+    # hiding it.
+    # ------------------------------------------------------------------
+    def preview_order(
+        self,
+        *,
+        account_id: str,
+        payload: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """POST ``/v1/accounts/{id}/orders`` with ``preview=true``.
 
-__all__ = ["TradierAPIError", "TradierBronzeClient"]
+        ``payload`` is the form-encoded shape built by
+        :func:`build_tradier_order_payload`. This helper injects
+        ``preview=true`` so callers can reuse the same payload for preview
+        and place.
+        """
+
+        if not account_id:
+            raise TradierAPIError(
+                "preview_order requires a non-empty account_id",
+                permanent=True,
+            )
+        body = dict(payload)
+        body["preview"] = "true"
+        return self._post_json(
+            f"/v1/accounts/{account_id}/orders",
+            data=body,
+        )
+
+    def place_order(
+        self,
+        *,
+        account_id: str,
+        payload: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """POST ``/v1/accounts/{id}/orders`` (no preview).
+
+        The Tradier-assigned order identifier lives at ``order.id`` in the
+        response; the executor stringifies it into
+        ``OrderResult.broker_order_id``.
+        """
+
+        if not account_id:
+            raise TradierAPIError(
+                "place_order requires a non-empty account_id",
+                permanent=True,
+            )
+        body = {k: v for k, v in payload.items() if k != "preview"}
+        return self._post_json(
+            f"/v1/accounts/{account_id}/orders",
+            data=body,
+        )
+
+    def cancel_order(
+        self,
+        *,
+        account_id: str,
+        order_id: str,
+    ) -> Dict[str, Any]:
+        """DELETE ``/v1/accounts/{id}/orders/{order_id}``.
+
+        Tradier returns ``{"order": {"id": ..., "status": "ok"}}`` on a
+        successful cancellation request. The executor normalizes that into
+        ``status="cancelled"`` for the caller.
+        """
+
+        if not account_id:
+            raise TradierAPIError(
+                "cancel_order requires a non-empty account_id",
+                permanent=True,
+            )
+        if not order_id:
+            raise TradierAPIError(
+                "cancel_order requires a non-empty order_id",
+                permanent=True,
+            )
+        return self._delete_json(
+            f"/v1/accounts/{account_id}/orders/{order_id}"
+        )
+
+    def get_order(
+        self,
+        *,
+        account_id: str,
+        order_id: str,
+    ) -> Dict[str, Any]:
+        """GET ``/v1/accounts/{id}/orders/{order_id}``.
+
+        Returns the raw ``{"order": {...}}`` envelope. The executor maps
+        ``status`` / ``exec_quantity`` / ``avg_fill_price`` onto the
+        ``OrderResult`` fields.
+        """
+
+        if not account_id:
+            raise TradierAPIError(
+                "get_order requires a non-empty account_id",
+                permanent=True,
+            )
+        if not order_id:
+            raise TradierAPIError(
+                "get_order requires a non-empty order_id",
+                permanent=True,
+            )
+        return self._get_json(
+            f"/v1/accounts/{account_id}/orders/{order_id}"
+        )
+
+
+def build_tradier_order_payload(
+    *,
+    symbol: str,
+    side: str,
+    quantity: float,
+    order_type: str,
+    duration: str = "day",
+    limit_price: Optional[float] = None,
+    stop_price: Optional[float] = None,
+    order_class: str = "equity",
+) -> Dict[str, Any]:
+    """Build the form-encoded payload Tradier's order endpoint expects.
+
+    Kept as a module-level helper so the executor can test payload shaping
+    without hitting the network. Tradier's ``side`` values for equity are
+    ``buy|buy_to_cover|sell|sell_short``; ``order_type`` is
+    ``market|limit|stop|stop_limit``; ``duration`` is ``day|gtc|pre|post``.
+    """
+
+    if not symbol:
+        raise TradierAPIError("order payload requires a symbol", permanent=True)
+    if quantity <= 0:
+        raise TradierAPIError(
+            f"order payload requires positive quantity; got {quantity}",
+            permanent=True,
+        )
+    qty_float = float(quantity)
+    payload: Dict[str, Any] = {
+        "class": order_class,
+        "symbol": symbol.upper(),
+        "side": side.lower(),
+        "quantity": (
+            str(int(qty_float)) if qty_float.is_integer() else str(qty_float)
+        ),
+        "type": order_type.lower(),
+        "duration": duration.lower(),
+    }
+    if limit_price is not None:
+        payload["price"] = str(limit_price)
+    if stop_price is not None:
+        payload["stop"] = str(stop_price)
+    return payload
+
+
+__all__ = [
+    "TradierAPIError",
+    "TradierBronzeClient",
+    "build_tradier_order_payload",
+]

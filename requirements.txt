@@ -54,6 +54,11 @@ pytest==9.0.3
 pytest-asyncio==1.3.0
 pytest-timeout==2.4.0
 fakeredis==2.35.1
+# HTTP mocking for broker-executor tests (Wave F). Intercepts requests
+# library calls without opening a real socket; used by
+# backend/tests/execution/test_tradier_executor.py and future executor
+# test suites (F2 E*TRADE, F4 TastyTrade).
+responses==0.25.3
 
 # Auth deps
 passlib[bcrypt]==1.7.4
