@@ -147,9 +147,9 @@ function AccountRow({
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <BrokerLogo
-          src={brokerLogoUrl(account.broker)}
-          alt={`${brokerLabel(account.broker)} logo`}
-          monogram={brokerLabel(account.broker)}
+          slug={String(account.broker || "ibkr").toLowerCase()}
+          name={brokerLabel(account.broker)}
+          remoteLogoUrl={brokerLogoUrl(account.broker)}
           size={40}
         />
 

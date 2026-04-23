@@ -46,9 +46,9 @@ export default function PortfolioImport() {
       <ChartGlassCard level="resting" padding="lg">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
           <BrokerLogo
-            src={`/broker-logos/${slug}.svg`}
-            alt={`${brokerName} logo`}
-            monogram={brokerName}
+            slug={slug}
+            name={brokerName}
+            remoteLogoUrl={`/broker-logos/${slug}.svg`}
             size={56}
           />
           <div className="min-w-0 flex-1">

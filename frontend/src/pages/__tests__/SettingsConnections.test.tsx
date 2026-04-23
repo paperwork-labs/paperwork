@@ -93,10 +93,10 @@ describe('Brokerages wizard', () => {
       expect(
         await within(dialog).findByText(/Choose a broker to connect/i, {}, { timeout: 10_000 }),
       ).toBeInTheDocument();
-      // Wizard step 1: three broker tiles (Chakra Image → native img + alt)
-      expect(within(dialog).getByRole('img', { name: 'Charles Schwab' })).toBeInTheDocument();
-      expect(within(dialog).getByRole('img', { name: 'Tastytrade' })).toBeInTheDocument();
-      expect(within(dialog).getByRole('img', { name: 'Interactive Brokers' })).toBeInTheDocument();
+      // Wizard step 1: three broker tiles (local SVG + " logo" in accessible name)
+      expect(within(dialog).getByRole('img', { name: 'Charles Schwab logo' })).toBeInTheDocument();
+      expect(within(dialog).getByRole('img', { name: 'Tastytrade logo' })).toBeInTheDocument();
+      expect(within(dialog).getByRole('img', { name: 'Interactive Brokers logo' })).toBeInTheDocument();
     },
     15_000,
   );

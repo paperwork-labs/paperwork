@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { BrokerLogo } from '@/components/brokers/BrokerLogo';
 import { cn } from '@/lib/utils';
 import type { BrokerTileDefinition } from './brokerCatalog';
 import type { ConnectionsBrokerHealthStatus } from '@/services/connectionsHealth';
@@ -54,11 +55,11 @@ export function BrokerTile({
     >
       <CardContent className="flex h-full flex-col gap-3 p-4">
         <div className="flex flex-row items-start gap-3">
-          <img
-            src={definition.logo}
-            alt={definition.displayName}
-            className="size-10 shrink-0 rounded-md bg-muted/60 object-contain p-0.5"
-            decoding="async"
+          <BrokerLogo
+            slug={definition.slug}
+            name={definition.displayName}
+            size={32}
+            className="h-8 w-8 p-0.5"
           />
           <div className="min-w-0 flex-1">
             <div className="text-sm font-semibold leading-tight text-foreground">{definition.displayName}</div>

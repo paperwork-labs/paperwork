@@ -227,7 +227,7 @@ const SettingsConnections: React.FC = () => {
         >
           <img
             src={src}
-            alt={label}
+            alt={`${label} logo`}
             className={cn('object-contain', wide ? 'h-10 w-[150px]' : 'h-14 w-14')}
             onError={() => {
               if (idx < srcs.length - 1) setIdx(idx + 1);

@@ -205,10 +205,11 @@ export function BrokerCard(props: BrokerCardProps) {
       <div className="flex h-full flex-col gap-4">
         <div className="flex items-start gap-3">
           <BrokerLogo
-            src={broker.logo_url}
-            alt={`${broker.name} logo`}
-            monogram={broker.name}
-            size={44}
+            slug={broker.slug}
+            name={broker.name}
+            remoteLogoUrl={broker.logo_url}
+            size={40}
+            className="h-10 w-10 p-0.5"
           />
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">

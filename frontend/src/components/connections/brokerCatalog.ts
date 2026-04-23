@@ -1,10 +1,3 @@
-import SchwabLogo from '@/assets/logos/schwab.svg';
-import TastytradeLogo from '@/assets/logos/tastytrade.svg';
-import IbkrLogo from '@/assets/logos/interactive-brokers.svg';
-import EtradeLogo from '@/assets/logos/etrade.svg';
-import TradierLogo from '@/assets/logos/tradier.svg';
-import CoinbaseLogo from '@/assets/logos/coinbase.svg';
-
 export type BrokerSlug =
   | 'ibkr'
   | 'schwab'
@@ -29,7 +22,6 @@ export interface BrokerTileDefinition {
   displayName: string;
   tagline: string;
   method: ConnectionMethodKind;
-  logo: string;
   category: 'brokerage' | 'crypto';
 }
 
@@ -41,7 +33,6 @@ export const LIVE_BROKER_TILES: BrokerTileDefinition[] = [
     displayName: 'Interactive Brokers',
     tagline: 'Equities, options, futures, forex',
     method: 'FlexQuery',
-    logo: IbkrLogo,
     category: 'brokerage',
   },
   {
@@ -50,7 +41,6 @@ export const LIVE_BROKER_TILES: BrokerTileDefinition[] = [
     displayName: 'Charles Schwab',
     tagline: 'Equities and options',
     method: 'OAuth',
-    logo: SchwabLogo,
     category: 'brokerage',
   },
   {
@@ -59,7 +49,6 @@ export const LIVE_BROKER_TILES: BrokerTileDefinition[] = [
     displayName: 'Tastytrade',
     tagline: 'Equities and options',
     method: 'Manual',
-    logo: TastytradeLogo,
     category: 'brokerage',
   },
   {
@@ -68,7 +57,6 @@ export const LIVE_BROKER_TILES: BrokerTileDefinition[] = [
     displayName: 'E*TRADE',
     tagline: 'Equities and options (sandbox)',
     method: 'OAuth 1.0a',
-    logo: EtradeLogo,
     category: 'brokerage',
   },
   {
@@ -77,7 +65,6 @@ export const LIVE_BROKER_TILES: BrokerTileDefinition[] = [
     displayName: 'Tradier',
     tagline: 'Equities and options',
     method: 'OAuth',
-    logo: TradierLogo,
     category: 'brokerage',
   },
   {
@@ -86,7 +73,6 @@ export const LIVE_BROKER_TILES: BrokerTileDefinition[] = [
     displayName: 'Coinbase',
     tagline: 'Crypto spot',
     method: 'OAuth',
-    logo: CoinbaseLogo,
     category: 'crypto',
   },
 ];
