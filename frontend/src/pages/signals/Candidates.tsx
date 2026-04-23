@@ -113,12 +113,13 @@ const Candidates: React.FC = () => {
           <CardHeader className="flex flex-row items-start gap-3 pb-2">
             <TrendingUp className="mt-0.5 size-5 text-muted-foreground" aria-hidden />
             <div className="space-y-2">
-              <p className="font-medium text-foreground">No candidates today</p>
+              <p className="font-medium text-foreground">The scanner is resting — nothing cleared the bar today.</p>
               <p className="text-sm text-muted-foreground">
-                The generator runs once per trading day after the market close. If the scan
-                finished but nothing cleared the bar, come back tomorrow. You can also explore
-                strategies that generate candidates on different triggers.
+                Fresh candidates usually land right after the close (around 4:15 PM ET) once
+                the daily run finishes. If you are early, check back then — or open Strategies
+                to see how new names get picked.
               </p>
+              <p className="text-xs text-muted-foreground/90">Tip: Most feeds refresh after market close (16:15 ET).</p>
               <Button asChild size="sm" variant="outline">
                 <Link to="/lab/strategies">Browse strategies</Link>
               </Button>

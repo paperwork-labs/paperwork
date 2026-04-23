@@ -38,7 +38,7 @@ const StatCard: React.FC<StatCardProps> = ({
         </div>
         <p
           className={cn(
-            "font-mono text-2xl leading-tight font-semibold tracking-tight text-foreground",
+            "font-mono text-2xl leading-tight font-semibold tracking-tight text-foreground tabular-nums",
             valueColorClass
           )}
           aria-label={`${label}: ${value}`}
@@ -73,7 +73,7 @@ const StatCard: React.FC<StatCardProps> = ({
         <span className="text-xs text-muted-foreground">{label}</span>
         <span
           className={cn(
-            "font-mono text-lg leading-tight font-bold tracking-tight text-foreground",
+            "font-mono text-lg leading-tight font-bold tracking-tight text-foreground tabular-nums",
             valueColorClass
           )}
           aria-label={`${label}: ${value}`}

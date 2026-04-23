@@ -1,6 +1,6 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { AlertTriangle, Info, ShieldAlert, Target } from 'lucide-react';
+import { AlertTriangle, ClipboardList, Info, ShieldAlert, Target } from 'lucide-react';
 
 import api from '@/services/api';
 import { Badge } from '@/components/ui/badge';
@@ -476,11 +476,14 @@ const TradeCardsToday: React.FC = () => {
           </p>
         </div>
         <Card>
-          <CardContent className="space-y-2 py-8 text-center text-sm text-muted-foreground">
-            <p>No tradeable setups today.</p>
-            <p className="text-xs">
-              The candidate generator either produced zero rows or the quality screen suppressed
-              all of them. Check back after the next pipeline run.
+          <CardContent className="flex flex-col items-center gap-3 py-8 text-center text-sm text-muted-foreground">
+            <ClipboardList className="size-8 text-muted-foreground" aria-hidden />
+            <p className="max-w-md font-medium text-foreground">
+              No trade cards today — the market did not hand us a plan worth printing.
+            </p>
+            <p className="max-w-md text-xs">
+              The list stays empty when there are no scored candidates, or the quality gate
+              quieted all of them. The next run may tell a different story.
             </p>
           </CardContent>
         </Card>

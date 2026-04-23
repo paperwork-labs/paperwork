@@ -1,4 +1,6 @@
 import React from 'react';
+import { Coins, Landmark, Shield, Wallet } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -133,7 +135,13 @@ const RiskTab: React.FC = () => {
               />
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No risk metrics available yet.</p>
+            <div className="flex flex-col items-center gap-2 py-2 text-center">
+              <Shield className="size-7 text-muted-foreground" aria-hidden />
+              <p className="text-sm text-foreground">
+                Risk metrics are still warming up — we need a longer history before the profile
+                is meaningful.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -175,7 +183,14 @@ const RiskTab: React.FC = () => {
               />
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No dividend data recorded yet.</p>
+            <div className="flex flex-col items-center gap-2 py-2 text-center">
+              <Coins className="size-7 text-muted-foreground" aria-hidden />
+              <p className="text-sm text-foreground">
+                Dividend income has not shown up on the tape yet — your payers will land here
+                first.
+              </p>
+              <p className="text-xs text-muted-foreground">Tip: Figures sync with your connected brokerage.</p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -207,7 +222,12 @@ const RiskTab: React.FC = () => {
               ))}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No margin interest entries for this period.</p>
+            <div className="flex flex-col items-center gap-2 py-2 text-center">
+              <Landmark className="size-7 text-muted-foreground" aria-hidden />
+              <p className="text-sm text-foreground">
+                Nothing borrowed, nothing due — you have no margin interest this window.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -274,7 +294,10 @@ const RiskTab: React.FC = () => {
           ) : balances.length > 0 ? (
             <p className="text-sm text-muted-foreground">No margin accounts — health metrics appear when margin is enabled.</p>
           ) : (
-            <p className="text-sm text-muted-foreground">No balance rows returned yet.</p>
+            <div className="flex flex-col items-center gap-2 py-2 text-center">
+              <Wallet className="size-7 text-muted-foreground" aria-hidden />
+              <p className="text-sm text-foreground">No account balances in view — connect a broker to see the full picture.</p>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -118,10 +118,10 @@ const SidebarStatusDot: React.FC<SidebarStatusDotProps> = ({ isAdmin }) => {
   const { color, breakdown } = summary;
   const colorClass =
     color === 'red'
-      ? 'bg-rose-500/80 hover:bg-rose-500'
+      ? 'bg-[rgb(var(--status-danger))] hover:opacity-90'
       : color === 'amber'
-        ? 'bg-amber-400/80 hover:bg-amber-400'
-        : 'bg-emerald-500/80 hover:bg-emerald-500';
+        ? 'bg-[rgb(var(--status-warning))] hover:opacity-90'
+        : 'bg-[rgb(var(--status-success))] hover:opacity-90';
 
   const label =
     color === 'green'

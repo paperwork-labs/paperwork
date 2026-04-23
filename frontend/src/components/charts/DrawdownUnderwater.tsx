@@ -9,13 +9,13 @@ import {
   type IChartApi,
   type ISeriesApi,
   type Time,
-  type UTCTimestamp,
 } from "lightweight-charts";
 
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cssVarToCanvasColor } from "@/lib/chartColors";
 import { resolveThemeColors, withAlpha } from "@/lib/holdingChart/themeColors";
+import { formatLightweightTimeTick } from "@/lib/chartAxisFormat";
 import { computeDrawdownUnderwaterSeries } from "@/lib/portfolioDrawdownMath";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +42,7 @@ const PCT = new Intl.NumberFormat(undefined, {
 
 function formatDd(fraction: number): string {
   if (!Number.isFinite(fraction)) return "—";
+  if (Math.abs(fraction) < 1e-12) return "0%";
   return PCT.format(fraction);
 }
 
@@ -88,6 +89,16 @@ export function DrawdownUnderwater({
     () => computeDrawdownUnderwaterSeries(sorted.times, sorted.values),
     [sorted.times, sorted.values],
   );
+
+  const multiYear = React.useMemo(() => {
+    const pts = stats.points;
+    if (pts.length < 2) return false;
+    const t0 = pts[0].timeUtc as number;
+    const t1 = pts[pts.length - 1].timeUtc as number;
+    const y0 = new Date(t0 * 1000).getUTCFullYear();
+    const y1 = new Date(t1 * 1000).getUTCFullYear();
+    return y0 !== y1;
+  }, [stats.points]);
 
   const applyColors = React.useCallback(() => {
     const s = seriesRef.current;
@@ -144,8 +155,19 @@ export function DrawdownUnderwater({
         vertLines: { color: t.gridLine, style: LineStyle.Dotted },
         horzLines: { color: t.gridLine, style: LineStyle.Dotted },
       },
+      localization: {
+        priceFormatter: (p: number) => {
+          if (Math.abs(p) < 1e-12) return "0%";
+          return PCT.format(p);
+        },
+      },
       rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.05, bottom: 0.12 } },
-      timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false },
+      timeScale: {
+        borderVisible: false,
+        timeVisible: true,
+        secondsVisible: false,
+        tickMarkFormatter: (time: Time) => formatLightweightTimeTick(time, multiYear),
+      },
       crosshair: { mode: 0 },
     });
     chartRef.current = chart;
@@ -192,7 +214,7 @@ export function DrawdownUnderwater({
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, [isPending, isError, data, stats.points, height, w, applyColors]);
+  }, [isPending, isError, data, stats.points, height, w, applyColors, multiYear]);
 
   const rw = w > 0 ? w : containerRef.current?.clientWidth ?? 0;
   React.useEffect(() => {
@@ -271,7 +293,11 @@ export function DrawdownUnderwater({
       className={cn("relative w-full", className)}
       data-testid="drawdown-underwater-data"
     >
-      <div className="pointer-events-none absolute right-2 top-1 z-10 flex flex-col items-end gap-0.5 text-[10px] tabular-nums text-muted-foreground">
+      <p className="mb-0.5 flex w-full items-center justify-between gap-2 px-0.5 text-[10px] text-muted-foreground">
+        <span>Time</span>
+        <span>Drawdown (%)</span>
+      </p>
+      <div className="pointer-events-none absolute right-2 top-5 z-10 flex flex-col items-end gap-0.5 text-[10px] tabular-nums text-muted-foreground">
         <span>Max {formatDd(stats.maxDrawdown)}</span>
         <span>Current {formatDd(stats.currentDrawdown)}</span>
       </div>

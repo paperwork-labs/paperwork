@@ -175,7 +175,9 @@ describe('TradeCardsToday', () => {
     await waitFor(() => {
       expect(screen.getByTestId('trade-cards-empty')).toBeInTheDocument();
     });
-    expect(screen.getByText(/No tradeable setups today/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/No trade cards today — the market did not hand us a plan worth printing/i),
+    ).toBeInTheDocument();
   });
 
   it('renders a card with sizing, contract and limit tiers in the data state', async () => {

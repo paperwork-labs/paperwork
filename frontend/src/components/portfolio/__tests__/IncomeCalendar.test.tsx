@@ -102,10 +102,10 @@ describe('IncomeCalendar', () => {
     mockGetIncomeCalendar.mockResolvedValue(fakeEmptyResponse());
     renderWithProviders(<IncomeCalendar />);
     expect(
-      await screen.findByText(/No dividends recorded yet/i),
+      await screen.findByText(/Your income calendar is quiet — no pay dates on the books yet/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Add positions or import history/i),
+      screen.getByText(/Add positions or import history and sync/i),
     ).toBeInTheDocument();
   });
 

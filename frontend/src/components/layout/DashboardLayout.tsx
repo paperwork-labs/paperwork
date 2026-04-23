@@ -40,6 +40,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { formatUserDisplayName } from '@/utils/userDisplayName';
 
 const SIDEBAR_OPEN_STORAGE_KEY = 'qm.ui.sidebar_open';
 const LAST_ROUTE_STORAGE_KEY = 'qm.ui.last_route';
@@ -59,15 +60,6 @@ function useMediaQueryMinWidth(query: string): boolean {
     return () => mql.removeEventListener('change', handler);
   }, [query]);
   return matches;
-}
-
-function displayName(user: { full_name?: string | null; username?: string } | null): string {
-  // Display the stored name verbatim (trim-only). Global title-casing mangled
-  // legitimate names like "McDonald" -> "Mcdonald" and "de la Rosa" ->
-  // "De La Rosa". Respect whatever the user typed in Settings > Profile.
-  if (!user) return 'Guest';
-  const raw = (user.full_name?.trim() || user.username?.trim() || 'Guest').trim();
-  return raw || 'Guest';
 }
 
 // ── Nav data model ──────────────────────────────────────────────────────────
@@ -619,9 +611,9 @@ const DashboardLayout: React.FC = () => {
                 <DropdownMenu.Trigger asChild>
                   <Button type="button" variant="ghost" size="sm" className="gap-2 px-2 font-normal">
                     <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                      {displayName(user).slice(0, 1).toUpperCase()}
+                      {formatUserDisplayName(user).slice(0, 1).toUpperCase()}
                     </span>
-                    <span className="text-sm">{displayName(user)}</span>
+                    <span className="text-sm">{formatUserDisplayName(user)}</span>
                   </Button>
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Portal>
@@ -635,7 +627,7 @@ const DashboardLayout: React.FC = () => {
                   >
                     <div className="px-2 py-1">
                       <p className="text-xs tracking-wide text-muted-foreground uppercase">Account</p>
-                      <p className="mt-1 text-sm font-semibold">{displayName(user)}</p>
+                      <p className="mt-1 text-sm font-semibold">{formatUserDisplayName(user)}</p>
                     </div>
                     <AppDivider />
                     <DropdownMenu.Item

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Download, Loader2, Search } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download, Loader2, Receipt, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import PageHeader from '../../components/ui/PageHeader';
 import { portfolioApi } from '../../services/api';
@@ -399,8 +399,15 @@ const PortfolioTaxCenter: React.FC = () => {
 
           {realizedReady && realizedGains.length === 0 && (
             <Card className="gap-0 border border-border shadow-none ring-0">
-              <CardContent className="py-6 text-center text-sm text-muted-foreground">
-                No realized gains data. Sell trades from IBKR FlexQuery will appear here after sync.
+              <CardContent className="flex flex-col items-center gap-2 py-8 text-center">
+                <Receipt className="size-8 text-muted-foreground" aria-hidden />
+                <p className="text-sm font-medium text-foreground">
+                  No closed lots on the ledger — your P&amp;L is still all unrealized.
+                </p>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  Realized rows appear after IBKR FlexQuery shows a sell. Sync your portfolio, then
+                  check back.
+                </p>
               </CardContent>
             </Card>
           )}

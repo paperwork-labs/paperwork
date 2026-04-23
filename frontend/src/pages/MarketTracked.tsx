@@ -941,7 +941,11 @@ const MarketTracked: React.FC = () => {
               rowClassName={cn('even:bg-muted/30', compact ? 'py-1 text-xs' : 'py-2 text-sm')}
               maxHeight="70vh"
               filtersEnabled
-              emptyMessage={loading ? 'Loading…' : 'No tracked symbols yet.'}
+              emptyMessage={
+                loading
+                  ? 'Loading…'
+                  : 'Your watchlist is a clean slate — add a symbol when something deserves a seat.'
+              }
               serverSorted
               onSortChange={handleSortChange}
               serverTotal={total}

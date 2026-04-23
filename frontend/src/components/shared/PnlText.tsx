@@ -72,7 +72,7 @@ const PnlText: React.FC<PnlTextProps> = ({
         (Number.isFinite(Number(fontWeight)) ? Number(fontWeight) : fontWeight);
   return (
     <span
-      className={cn('inline-flex items-center gap-1', colorClass)}
+      className={cn('inline-flex items-center gap-1 tabular-nums', colorClass)}
       style={{
         fontSize: resolvedFontSize,
         fontWeight: resolvedFontWeight as React.CSSProperties['fontWeight'] | undefined,

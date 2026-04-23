@@ -130,11 +130,12 @@ const Picks: React.FC = () => {
               <CardHeader className="flex flex-row items-start gap-3 pb-2">
                 <ClipboardList className="mt-0.5 size-5 text-muted-foreground" aria-hidden />
                 <div className="space-y-2">
-                  <p className="font-medium text-foreground">No published picks yet</p>
+                  <p className="font-medium text-foreground">The picks desk is quiet — validators have not published yet.</p>
                   <p className="text-sm text-muted-foreground">
-                    Picks are published after validator runs — check back in a few hours, or
-                    explore the strategies feeding the validator.
+                    We will light this up as soon as a run posts; meanwhile, your strategy list
+                    is the best place to see what the pipeline is watching.
                   </p>
+                  <p className="text-xs text-muted-foreground/90">Tip: Published picks appear after each validator pass.</p>
                   <Button asChild size="sm" variant="outline">
                     <Link to="/lab/strategies">Browse strategies</Link>
                   </Button>
@@ -191,7 +192,7 @@ const Picks: React.FC = () => {
                         {isOpen ? 'Show less' : 'Show more'}
                       </Button>
                     ) : null}
-                    <div className="flex flex-wrap gap-3 text-muted-foreground">
+                    <div className="flex flex-wrap gap-3 tabular-nums text-muted-foreground">
                       {row.target_price ? <span>Target {row.target_price}</span> : null}
                       {row.stop_loss ? <span>Stop {row.stop_loss}</span> : null}
                     </div>

@@ -18,6 +18,7 @@
 import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, useReducedMotion } from "framer-motion";
+import { CalendarDays } from "lucide-react";
 
 import { ChartGlassCard } from "@/components/ui/ChartGlassCard";
 import { RichTooltip } from "@/components/ui/RichTooltip";
@@ -416,12 +417,13 @@ const ErrorPanel: React.FC<{ onRetry: () => void; message?: string }> = ({
 );
 
 const EmptyPanel: React.FC = () => (
-  <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border/70 bg-muted/20 p-10 text-center">
+  <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border/70 bg-muted/20 p-10 text-center">
+    <CalendarDays className="size-8 text-muted-foreground" aria-hidden />
     <div className="text-sm font-medium text-foreground">
-      No dividends recorded yet
+      Your income calendar is quiet — no pay dates on the books yet.
     </div>
     <div className="max-w-sm text-xs text-muted-foreground">
-      Add positions or import history to see your income calendar.
+      Add positions or import history and sync; checks will start landing on the grid.
     </div>
   </div>
 );

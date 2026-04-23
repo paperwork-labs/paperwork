@@ -14,9 +14,11 @@ import {
   type IChartApi,
   type ISeriesApi,
   type SeriesType,
+  type Time,
   type UTCTimestamp,
 } from 'lightweight-charts';
 
+import { formatLightweightPriceUsd, formatLightweightTimeTick } from '@/lib/chartAxisFormat';
 import { useColorMode } from '../../theme/colorMode';
 import type { ChartColors } from '../../hooks/useChartColors';
 import {
@@ -308,12 +310,27 @@ const SymbolChartWithMarkers: React.FC<Props> = ({
       : getCssColor('fg.default', 'rgb(17 24 39)');
 
     ref.current.innerHTML = '';
+    const nb = ohlcBars.length;
+    const multiYear =
+      nb >= 2
+        ? new Date(ohlcBars[0].time * 1000).getUTCFullYear() !==
+          new Date(ohlcBars[nb - 1].time * 1000).getUTCFullYear()
+        : false;
     const chart: IChartApi = createChart(ref.current, {
       height,
       rightPriceScale: { borderVisible: false },
       layout: { background: { color: bg }, textColor: text },
       grid: { vertLines: { color: c.grid }, horzLines: { color: c.grid } },
-      timeScale: { rightOffset: 8, barSpacing: 6, fixLeftEdge: false, lockVisibleTimeRangeOnResize: false },
+      localization: {
+        priceFormatter: formatLightweightPriceUsd,
+      },
+      timeScale: {
+        rightOffset: 8,
+        barSpacing: 6,
+        fixLeftEdge: false,
+        lockVisibleTimeRangeOnResize: false,
+        tickMarkFormatter: (time: Time) => formatLightweightTimeTick(time, multiYear),
+      },
       crosshair: { mode: 1 },
       ...(readOnly ? READ_ONLY_CHART : {}),
     });

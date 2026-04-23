@@ -46,7 +46,11 @@ function useAnimatedInt(target: number, { enabled = true } = {}): number {
 }
 
 function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
+  const [reduced, setReduced] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false,
+  );
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mql = window.matchMedia('(prefers-reduced-motion: reduce)');

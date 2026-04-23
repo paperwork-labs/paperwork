@@ -735,11 +735,11 @@ function SortableTable<T = any>({
                       <th
                         key={column.key}
                         scope="col"
-                        className={cn(
+                          className={cn(
                           cellPad,
                           'font-medium text-muted-foreground',
                           column.sortable && 'cursor-pointer select-none hover:bg-muted/60',
-                          column.isNumeric ? 'text-end' : 'text-start',
+                          column.isNumeric ? 'text-end tabular-nums' : 'text-start',
                         )}
                         style={column.width ? { width: column.width } : undefined}
                         onClick={() => column.sortable && handleSort(column.key)}
@@ -799,7 +799,10 @@ function SortableTable<T = any>({
                       return (
                         <td
                           key={column.key}
-                          className={cn(cellPad, column.isNumeric ? 'text-end' : 'text-start')}
+                          className={cn(
+                            cellPad,
+                            column.isNumeric ? 'text-end tabular-nums' : 'text-start',
+                          )}
                         >
                           {renderedValue as React.ReactNode}
                         </td>

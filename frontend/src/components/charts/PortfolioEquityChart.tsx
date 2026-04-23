@@ -20,6 +20,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cssVarToCanvasColor } from "@/lib/chartColors";
 import { resolveThemeColors, withAlpha } from "@/lib/holdingChart/themeColors";
 import { cn } from "@/lib/utils";
+import {
+  formatLightweightEquityPercentDisplay,
+  formatLightweightPriceUsd,
+  formatLightweightTimeTick,
+} from "@/lib/chartAxisFormat";
 
 import { PriceChartSkeleton } from "./skeletons/PriceChartSkeleton";
 
@@ -75,6 +80,15 @@ export function PortfolioEquityChart({
   const emptyMessage =
     "No performance history yet. First snapshot lands after your next sync.";
 
+  const multiYear = React.useMemo(() => {
+    if (chartPoints.length < 2) return false;
+    const t0 = chartPoints[0].time as number;
+    const t1 = chartPoints[chartPoints.length - 1].time as number;
+    const y0 = new Date(t0 * 1000).getUTCFullYear();
+    const y1 = new Date(t1 * 1000).getUTCFullYear();
+    return y0 !== y1;
+  }, [chartPoints]);
+
   const applySeriesColors = React.useCallback(() => {
     const area = areaRef.current;
     const ben = benchRef.current;
@@ -128,8 +142,19 @@ export function PortfolioEquityChart({
         vertLines: { color: t.gridLine, style: LineStyle.Dotted },
         horzLines: { color: t.gridLine, style: LineStyle.Dotted },
       },
+      localization: {
+        priceFormatter: (price: number) =>
+          valueMode === "pct"
+            ? formatLightweightEquityPercentDisplay(price)
+            : formatLightweightPriceUsd(price),
+      },
       rightPriceScale: { borderVisible: false, scaleMargins: { top: 0.12, bottom: 0.08 } },
-      timeScale: { borderVisible: false, timeVisible: true, secondsVisible: false },
+      timeScale: {
+        borderVisible: false,
+        timeVisible: true,
+        secondsVisible: false,
+        tickMarkFormatter: (time: Time) => formatLightweightTimeTick(time, multiYear),
+      },
       crosshair: { mode: 0 },
     });
     chartRef.current = chart;
@@ -187,7 +212,18 @@ export function PortfolioEquityChart({
       areaRef.current = null;
       benchRef.current = null;
     };
-  }, [isPending, isError, data, chartPoints, hasBenchmark, height, w, applySeriesColors]);
+  }, [
+    isPending,
+    isError,
+    data,
+    chartPoints,
+    hasBenchmark,
+    height,
+    w,
+    applySeriesColors,
+    valueMode,
+    multiYear,
+  ]);
 
   const rw = w > 0 ? w : containerRef.current?.clientWidth ?? 0;
   React.useEffect(() => {
@@ -276,7 +312,7 @@ export function PortfolioEquityChart({
       className={cn("flex flex-col gap-2", className)}
       data-testid="portfolio-equity-chart-data"
     >
-      <div className="flex justify-end">
+      <div className="flex flex-col items-end gap-1">
         <SegmentedPeriodSelector<"usd" | "pct">
           size="sm"
           ariaLabel="Value scale"
@@ -284,6 +320,12 @@ export function PortfolioEquityChart({
           value={valueMode}
           onChange={onValueModeChange}
         />
+        <p className="flex w-full items-center justify-between gap-2 px-0.5 text-[10px] text-muted-foreground">
+          <span>Time</span>
+          <span>
+            {valueMode === "usd" ? "Value (USD)" : "Change from first day (%)"}
+          </span>
+        </p>
       </div>
       <div
         ref={containerRef}

@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { semanticTextColorClass } from '@/lib/semantic-text-color';
 import { useQuery } from '@tanstack/react-query';
 import { ChartContext, SymbolLink, ChartSlidePanel } from '../../components/market/SymbolChartUI';
 import StatCard from '../../components/shared/StatCard';
@@ -526,11 +527,21 @@ const positionColumns: Column<OptionPos>[] = [
     isNumeric: true,
     render: (v) => {
       const dte = Number(v);
-      const colorClass =
-        dte <= 3 ? 'text-red-500' : dte <= 7 ? 'text-orange-500' : dte <= 30 ? 'text-amber-500' : 'text-muted-foreground';
+      const colorClass = cn(
+        dte <= 3 && semanticTextColorClass('status.danger'),
+        dte > 3 && dte <= 7 && semanticTextColorClass('status.warning'),
+        dte > 7 && dte <= 30 && semanticTextColorClass('status.warning'),
+        dte > 7 && dte <= 30 && 'opacity-80',
+        dte > 30 && 'text-muted-foreground',
+      );
       return (
         <div className="flex items-center gap-1">
-          {dte <= 3 ? <span className="size-1.5 animate-pulse rounded-full bg-red-500" aria-hidden /> : null}
+          {dte <= 3 ? (
+            <span
+              className="size-1.5 animate-pulse rounded-full bg-[rgb(var(--status-danger)/1)]"
+              aria-hidden
+            />
+          ) : null}
           <span className={cn('font-mono', colorClass, dte <= 7 && 'font-bold')}>{dte}d</span>
         </div>
       );
@@ -816,7 +827,14 @@ const PositionRow: React.FC<{ pos: OptionPos; currency: string; gwConnected: boo
   const hasGreeks = pos.delta != null || pos.theta != null;
   const dte = pos.days_to_expiration ?? 0;
   const dtePct = Math.min(100, Math.max(0, (dte / 90) * 100));
-  const dteBarClass = dte <= 3 ? 'bg-red-600' : dte <= 7 ? 'bg-orange-500' : dte > 30 ? 'bg-green-600' : 'bg-amber-500';
+  const dteBarClass =
+    dte <= 3
+      ? 'bg-[rgb(var(--status-danger)/1)]'
+      : dte <= 7
+        ? 'bg-[rgb(var(--status-warning)/1)]'
+        : dte > 30
+          ? 'bg-[rgb(var(--status-success)/1)]'
+          : 'bg-[rgb(var(--status-warning)/0.5)]';
   const m = moneyness(pos);
   const mPct = moneynessPct(pos);
 
@@ -855,11 +873,22 @@ const PositionRow: React.FC<{ pos: OptionPos; currency: string; gwConnected: boo
             <div className={cn('h-full rounded-full transition-[width] duration-300', dteBarClass)} style={{ width: `${dtePct}%` }} />
           </div>
           <div className="flex items-center gap-1">
-            {dte <= 3 ? <span className="size-1.5 rounded-full bg-red-500" aria-hidden /> : null}
+            {dte <= 3 ? (
+              <span
+                className="size-1.5 rounded-full bg-[rgb(var(--status-danger)/1)]"
+                aria-hidden
+              />
+            ) : null}
             <span
               className={cn(
                 'w-[35px] text-right text-xs',
-                dte <= 3 ? 'font-bold text-red-500' : dte <= 7 ? 'font-bold text-orange-500' : 'text-muted-foreground',
+                dte <= 3 && 'font-bold',
+                dte > 3 && dte <= 7 && 'font-bold',
+                dte <= 3 && semanticTextColorClass('status.danger'),
+                dte > 3 && dte <= 7 && semanticTextColorClass('status.warning'),
+                dte > 7 && dte <= 30 && semanticTextColorClass('status.warning'),
+                dte > 7 && dte <= 30 && 'opacity-80',
+                dte > 30 && 'text-muted-foreground',
               )}
             >
               {dte}d
@@ -1411,7 +1440,13 @@ const PnlTab: React.FC<{
 /* Analytics Tab                                                       */
 /* ------------------------------------------------------------------ */
 
-const GREEKS_COLORS = { delta: '#3B82F6', gamma: '#10B981', theta: '#EF4444', vega: '#8B5CF6' };
+/** Semantic token strokes for Recharts (no raw hex). */
+const GREEKS_STROKE = {
+  delta: 'rgb(var(--chart-neutral) / 1)',
+  gamma: 'rgb(var(--chart-success) / 1)',
+  theta: 'rgb(var(--chart-danger) / 1)',
+  vega: 'rgb(var(--status-info) / 1)',
+} as const;
 
 const GreeksDashboard: React.FC<{ positions: OptionPos[]; currency: string }> = ({ positions, currency }) => {
   const byUnderlying = useMemo(() => {
@@ -1449,16 +1484,26 @@ const GreeksDashboard: React.FC<{ positions: OptionPos[]; currency: string }> = 
         {byUnderlying.length > 0 ? (
           <div className="h-[250px]">
             <ResponsiveContainer>
-              <BarChart data={byUnderlying} layout="vertical" margin={{ left: 60, right: 20, top: 5, bottom: 5 }}>
-                <XAxis type="number" tick={{ fontSize: 10 }} />
-                <YAxis type="category" dataKey="symbol" tick={{ fontSize: 11, fontFamily: 'mono' }} width={50} />
+              <BarChart data={byUnderlying} layout="vertical" margin={{ left: 40, right: 20, top: 8, bottom: 28 }}>
+                <XAxis
+                  type="number"
+                  tick={{ fontSize: 10 }}
+                  label={{ value: 'Delta exposure', position: 'bottom', fontSize: 10, className: 'fill-muted-foreground' }}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="symbol"
+                  tick={{ fontSize: 11, fontFamily: 'mono' }}
+                  width={50}
+                  label={{ value: 'Symbol', angle: -90, position: 'insideLeft', fontSize: 10, className: 'fill-muted-foreground' }}
+                />
                 <RechartsTooltip
                   formatter={(value: any, name: any) => [
                     name === 'theta' ? formatMoney(Number(value), currency) : (Number(value) ?? 0).toFixed(3),
                     String(name ?? '').charAt(0).toUpperCase() + String(name ?? '').slice(1),
                   ] as React.ReactNode}
                 />
-                <Bar dataKey="delta" fill={GREEKS_COLORS.delta} barSize={8} radius={[0, 4, 4, 0]} />
+                <Bar dataKey="delta" fill={GREEKS_STROKE.delta} barSize={8} radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -1495,13 +1540,23 @@ const ThetaCalendar: React.FC<{ positions: OptionPos[]; currency: string; timezo
         <p className="mb-3 font-bold text-foreground">Theta Decay Projection (30 days)</p>
         <div className="h-[200px]">
           <ResponsiveContainer>
-            <LineChart data={projections} margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
+            <LineChart data={projections} margin={{ left: 8, right: 10, top: 5, bottom: 5 }}>
               <XAxis dataKey="label" tick={{ fontSize: 9 }} interval={4} />
-              <YAxis tick={{ fontSize: 10 }} />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                width={68}
+                label={{ value: 'Cumulative theta ($)', angle: -90, position: 'insideLeft', fontSize: 10, className: 'fill-muted-foreground' }}
+              />
               <RechartsTooltip
                 formatter={(value: any) => [formatMoney(Number(value), currency), 'Cumulative Theta'] as React.ReactNode}
               />
-              <Line type="monotone" dataKey="cumTheta" stroke="#EF4444" strokeWidth={2} dot={false} />
+              <Line
+                type="monotone"
+                dataKey="cumTheta"
+                stroke="rgb(var(--chart-danger) / 1)"
+                strokeWidth={2}
+                dot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -1543,14 +1598,29 @@ const IVSkewChart: React.FC<{ positions: OptionPos[] }> = ({ positions }) => {
         <p className="mb-3 font-bold text-foreground">IV Skew</p>
         <div className="h-[200px]">
           <ResponsiveContainer>
-            <LineChart data={skewData} margin={{ left: 10, right: 10, top: 5, bottom: 5 }}>
-              <XAxis dataKey="strike" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} unit="%" />
+            <LineChart data={skewData} margin={{ left: 8, right: 10, top: 5, bottom: 5 }}>
+              <XAxis
+                dataKey="strike"
+                tick={{ fontSize: 10 }}
+                label={{ value: 'Strike', position: 'bottom', fontSize: 10, className: 'fill-muted-foreground' }}
+              />
+              <YAxis
+                tick={{ fontSize: 10 }}
+                unit="%"
+                width={48}
+                label={{ value: 'Implied vol.', angle: -90, position: 'insideLeft', fontSize: 10, className: 'fill-muted-foreground' }}
+              />
               <RechartsTooltip
                 formatter={(value: any) => [`${(Number(value) ?? 0).toFixed(1)}%`, 'IV'] as React.ReactNode}
                 labelFormatter={(label) => `Strike: ${label}`}
               />
-              <Line type="monotone" dataKey="iv" stroke="#8B5CF6" strokeWidth={2} dot={{ r: 3 }} />
+              <Line
+                type="monotone"
+                dataKey="iv"
+                stroke="rgb(var(--status-info) / 1)"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -1608,7 +1678,13 @@ const PayoffDiagram: React.FC<{ positions: OptionPos[]; currency: string }> = ({
                 formatter={(value: any) => [formatMoney(Number(value), currency), 'P/L at Expiration'] as React.ReactNode}
                 labelFormatter={(label) => `Price: $${label}`}
               />
-              <Line type="monotone" dataKey="pnl" stroke="#3B82F6" strokeWidth={2} dot={false} />
+              <Line
+                type="monotone"
+                dataKey="pnl"
+                stroke="rgb(var(--chart-neutral) / 1)"
+                strokeWidth={2}
+                dot={false}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
