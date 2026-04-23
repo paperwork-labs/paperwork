@@ -43,11 +43,13 @@ class BrokerRouter:
 
 def create_default_router() -> BrokerRouter:
     """Factory that wires up all available broker executors."""
+    from backend.config import settings
     from backend.services.execution.ibkr_executor import IBKRExecutor
     from backend.services.execution.paper_executor import PaperExecutor
     from backend.services.execution.coinbase_paper_executor import CoinbasePaperExecutor
     from backend.services.execution.schwab_executor import SchwabExecutor
     from backend.services.execution.tradier_executor import TradierExecutor
+    from backend.services.execution.etrade_executor import ETradeExecutor
 
     router = BrokerRouter()
     router.register("ibkr", IBKRExecutor())
@@ -67,6 +69,20 @@ def create_default_router() -> BrokerRouter:
     # token-refresh lock from the F0 mixin.
     router.register("tradier", TradierExecutor(environment="prod"))
     router.register("tradier_sandbox", TradierExecutor(environment="sandbox"))
+    # Wave F Phase 2: E*TRADE live executor. Sandbox is always registered so
+    # the rest of the stack can exercise the 2-step preview → place flow
+    # against the provider sandbox. Prod is gated behind ETRADE_ALLOW_LIVE
+    # so an accidental `broker_type="etrade"` cannot route real orders until
+    # a founder explicitly flips the flag. See etrade_executor.py docstring.
+    router.register("etrade_sandbox", ETradeExecutor(environment="sandbox"))
+    if bool(getattr(settings, "ETRADE_ALLOW_LIVE", False)):
+        router.register("etrade", ETradeExecutor(environment="prod"))
+    else:
+        logger.info(
+            "E*TRADE prod executor NOT registered (ETRADE_ALLOW_LIVE=%s); "
+            "sandbox remains available as 'etrade_sandbox'",
+            bool(getattr(settings, "ETRADE_ALLOW_LIVE", False)),
+        )
     return router
 
 

@@ -130,6 +130,14 @@ class Settings(BaseSettings):
     # When non-empty, client callback_url must match one entry exactly.
     OAUTH_ALLOWED_CALLBACK_URLS: Optional[str] = None
     ETRADE_OAUTH_REQUEST_TIMEOUT_S: float = 15.0
+    # Wave F Phase 2 live-order feature flag. When False (default), the
+    # BrokerRouter refuses to register the production E*TRADE executor so a
+    # misconfigured `broker_type="etrade"` cannot accidentally route real
+    # orders. Flipping to True requires explicit founder action and must be
+    # paired with valid production consumer credentials provisioned out-of-
+    # band. Sandbox (`etrade_sandbox`) is always registered and ignores this
+    # flag.
+    ETRADE_ALLOW_LIVE: bool = False
 
     # Tradier OAuth 2.0 — live and sandbox credential pairs.
     # Used by backend.services.oauth.tradier.{TradierOAuth2Adapter,
