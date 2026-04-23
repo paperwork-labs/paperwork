@@ -82,16 +82,22 @@ export const useAccountFilter = <T extends FilterableItem>(
       return data;
     }
 
-    // Category filters using provided accounts metadata
+    // Category filters using provided accounts metadata.
+    // HSA is split out of "taxable" so HSA dollars don't leak into a
+    // taxable-brokerage view — they belong to a tax-advantaged bucket that
+    // just happens not to be a retirement account. (Founder pain #2.)
     const selectedLower = selectedAccount.toLowerCase();
-    if (selectedLower === 'taxable' || selectedLower === 'ira') {
+    if (selectedLower === 'taxable' || selectedLower === 'ira' || selectedLower === 'hsa') {
       const allowedIds = new Set(
         accounts
           .filter((acc) => {
             const t = (acc.account_type || '').toLowerCase();
-            if (selectedLower === 'ira') return t.includes('ira') || t.includes('retire');
-            // taxable
-            return !t.includes('ira') && !t.includes('retire');
+            const isIra = t.includes('ira') || t.includes('retire') || t.includes('401');
+            const isHsa = t.includes('hsa') || t.includes('health_savings');
+            if (selectedLower === 'ira') return isIra;
+            if (selectedLower === 'hsa') return isHsa;
+            // taxable: everything that is neither retirement nor HSA
+            return !isIra && !isHsa;
           })
           .map((acc) => acc.account_id)
       );

@@ -13,9 +13,11 @@ import {
   useDividendSummary,
   useLiveSummary,
   useMarginInterest,
+  usePortfolioAccounts,
   useRiskMetrics,
 } from '../../../hooks/usePortfolio';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { useAccountContext } from '../../../context/AccountContext';
 import { formatMoney } from '../../../utils/format';
 
 function SectionError({ message, onRetry }: { message: string; onRetry: () => void }) {
@@ -34,10 +36,41 @@ function SectionError({ message, onRetry }: { message: string; onRetry: () => vo
 
 const RiskTab: React.FC = () => {
   const { currency } = useUserPreferences();
-  const balancesQuery = useAccountBalances();
-  const dividendQuery = useDividendSummary();
-  const marginQuery = useMarginInterest();
-  const liveQuery = useLiveSummary();
+  const { selected: globalSelected } = useAccountContext();
+  const accountsQuery = usePortfolioAccounts();
+
+  // Resolve the global account selector into a numeric BrokerAccount.id for
+  // balance/margin (backend keys those by numeric id) and a string account
+  // number for live/dividend (they key by broker account number). Bucket
+  // selections ('all' / 'taxable' / 'ira' / 'hsa') do not scope these
+  // hooks today — Risk metrics here are margin/balance-centric, which are
+  // per-account concepts, not per-bucket. (Founder pain #3 — Margin tab
+  // previously ignored the selector entirely and always showed the joint
+  // margin account.)
+  const { numericAccountId, stringAccountId } = React.useMemo(() => {
+    const isBucket =
+      globalSelected === 'all' ||
+      globalSelected === 'taxable' ||
+      globalSelected === 'ira' ||
+      globalSelected === 'hsa';
+    if (isBucket) return { numericAccountId: undefined, stringAccountId: undefined };
+    const list = (Array.isArray(accountsQuery.data) ? accountsQuery.data : []) as Array<{
+      id?: number;
+      account_number?: string;
+    }>;
+    const match = list.find(
+      (a) => a.account_number === globalSelected || String(a.id) === globalSelected,
+    );
+    return {
+      numericAccountId: typeof match?.id === 'number' ? match.id : undefined,
+      stringAccountId: match?.account_number ?? (globalSelected as string),
+    };
+  }, [globalSelected, accountsQuery.data]);
+
+  const balancesQuery = useAccountBalances(numericAccountId);
+  const dividendQuery = useDividendSummary(stringAccountId);
+  const marginQuery = useMarginInterest(numericAccountId);
+  const liveQuery = useLiveSummary(stringAccountId);
   const riskQuery = useRiskMetrics();
 
   const liveData = liveQuery.data;

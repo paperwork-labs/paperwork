@@ -25,6 +25,7 @@ import {
   usePnlSummary,
   usePortfolioPerformanceHistory,
 } from '../../../hooks/usePortfolio';
+import { useAccountContext } from '../../../context/AccountContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { formatMoney } from '../../../utils/format';
 import {
@@ -68,20 +69,40 @@ import {
 const OverviewTab: React.FC = () => {
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const { currency } = useUserPreferences();
-  const overview = usePortfolioOverview();
+  const { selected: globalSelected } = useAccountContext();
+  // Thread the global account selector into the dashboard summary so the
+  // top KPIs (value, day P&L) scope to the selected account. When "all" or
+  // a bucket category ('taxable'/'ira'/'hsa') is chosen, leave summary
+  // portfolio-wide — bucket scoping happens client-side via useAccountFilter.
+  const overviewAccountId =
+    globalSelected === 'all' ||
+    globalSelected === 'taxable' ||
+    globalSelected === 'ira' ||
+    globalSelected === 'hsa'
+      ? undefined
+      : globalSelected;
+  const overview = usePortfolioOverview(overviewAccountId);
   const positionsQuery = usePositions();
   const insightsQuery = usePortfolioInsights();
   const insights = insightsQuery.data;
   const balancesQuery = useAccountBalances();
   const balances = balancesQuery.data;
-  const liveQuery = useLiveSummary();
+  const liveQuery = useLiveSummary(overviewAccountId);
   const liveData = liveQuery.data;
   const positionRows = (positionsQuery.data as EnrichedPosition[] | undefined) ?? [];
   const dashboard = overview.summary.data as DashboardResponse | undefined;
   const rawAccounts = Array.isArray(overview.accountsData) ? overview.accountsData : [];
+  // Only tracked/enabled broker accounts render on the overview. The backend
+  // returns both enabled and disabled rows from GET /accounts; untracked ones
+  // previously leaked into the Accounts card as $0 tiles and skewed the
+  // positions count. (Audit 2026-04-22 — founder pain #1.)
   const sanitizedBrokerRows = useMemo(
-    () =>
-      normalizeBrokerAccountsForPositions(rawAccounts as RawBrokerAccountInput[]),
+    () => {
+      const enabledOnly = (rawAccounts as Array<RawBrokerAccountInput & { is_enabled?: boolean }>).filter(
+        (a) => a.is_enabled !== false,
+      );
+      return normalizeBrokerAccountsForPositions(enabledOnly as RawBrokerAccountInput[]);
+    },
     [rawAccounts],
   );
 

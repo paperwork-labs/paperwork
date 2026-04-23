@@ -180,17 +180,59 @@ function triggerDisplayName(selected: string, accounts: BrokerAccount[]): string
   if (!selected || selected === 'all') return 'All accounts';
   if (selected === 'taxable') return 'Taxable';
   if (selected === 'ira') return 'Retirement';
+  if (selected === 'hsa') return 'HSA';
   const a = accounts.find((x) => x.account_number === selected || String(x.id) === selected);
   if (!a) return 'All accounts';
   const raw = a.account_name?.trim() || a.account_number || 'Account';
   return truncate(raw, 20);
 }
 
+function isBucketSelection(selected: string): boolean {
+  return selected === 'all' || selected === 'taxable' || selected === 'ira' || selected === 'hsa';
+}
+
+interface BucketInfo {
+  id: 'taxable' | 'ira' | 'hsa';
+  label: string;
+  predicate: (accountType: string) => boolean;
+}
+
+const BUCKETS: BucketInfo[] = [
+  {
+    id: 'taxable',
+    label: 'Taxable',
+    // Taxable is "everything that is not retirement and not HSA" so the
+    // sum across buckets covers every tracked account exactly once.
+    predicate: (t) =>
+      !t.includes('ira') &&
+      !t.includes('retire') &&
+      !t.includes('401') &&
+      !t.includes('hsa') &&
+      !t.includes('health_savings'),
+  },
+  {
+    id: 'ira',
+    label: 'Retirement',
+    predicate: (t) => t.includes('ira') || t.includes('retire') || t.includes('401'),
+  },
+  {
+    id: 'hsa',
+    label: 'HSA',
+    predicate: (t) => t.includes('hsa') || t.includes('health_savings'),
+  },
+];
+
+function availableBuckets(accounts: BrokerAccount[]): BucketInfo[] {
+  return BUCKETS.filter((bucket) =>
+    accounts.some((a) => bucket.predicate((a.account_type || '').toLowerCase())),
+  );
+}
+
 function TriggerLabel({ selected, accounts, isCompact, accountCount }: TriggerLabelProps) {
   const label = triggerDisplayName(selected, accounts);
   const showCount = accountCount > 1;
   const selectedBroker = useMemo(() => {
-    if (!selected || selected === 'all' || selected === 'taxable' || selected === 'ira') return null;
+    if (isBucketSelection(selected)) return null;
     return accounts.find((x) => x.account_number === selected || String(x.id) === selected)?.broker ?? null;
   }, [selected, accounts]);
 
@@ -314,6 +356,7 @@ export const TopBarAccountSelector: React.FC<TopBarAccountSelectorProps> = ({ co
 
   const filtered = useMemo(() => accounts.filter((a) => matchesSearch(a, query)), [accounts, query]);
   const groups = useMemo(() => groupByBroker(filtered), [filtered]);
+  const buckets = useMemo(() => availableBuckets(accounts), [accounts]);
 
   const isAllSelected = !selected || selected === 'all';
   const triggerAriaLabel = `Account filter: ${triggerDisplayName(selected, accounts)}`;
@@ -451,6 +494,40 @@ export const TopBarAccountSelector: React.FC<TopBarAccountSelectorProps> = ({ co
                 </Badge>
               ) : null}
             </DropdownMenu.Item>
+
+            {buckets.length > 1 && !loading && !error && accounts.length > 0 ? (
+              <div
+                className="mt-0.5 flex flex-wrap gap-1 px-1 pb-1"
+                role="group"
+                aria-label="Filter by account category"
+              >
+                {buckets.map((bucket) => {
+                  const isSelected = selected === bucket.id;
+                  return (
+                    <DropdownMenu.Item
+                      key={bucket.id}
+                      data-testid={`tbas-bucket-${bucket.id}`}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        setSelected(bucket.id);
+                        setIsOpen(false);
+                      }}
+                      className={cn(
+                        'inline-flex cursor-default select-none items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] outline-none transition-colors',
+                        'focus:bg-accent focus:text-accent-foreground',
+                        'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0',
+                        isSelected
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border/80 bg-transparent text-muted-foreground hover:border-border hover:text-foreground',
+                      )}
+                      aria-current={isSelected ? 'true' : undefined}
+                    >
+                      {bucket.label}
+                    </DropdownMenu.Item>
+                  );
+                })}
+              </div>
+            ) : null}
 
             {loading ? (
               <div

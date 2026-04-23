@@ -2,7 +2,10 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import api from '../services/api';
 import { useAuth } from './AuthContext';
 
-export type SelectedAccount = 'all' | 'taxable' | 'ira' | string; // string = concrete account id like U12345678
+// Bucket categories expose fast "all my taxable / retirement / health-savings"
+// scopes without needing to pick each individual account. `string` is a
+// concrete account id like U12345678 (or numeric id stringified).
+export type SelectedAccount = 'all' | 'taxable' | 'ira' | 'hsa' | string;
 
 export interface BrokerAccount {
   id: number;
@@ -120,7 +123,13 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Reset selection when the selected account is no longer in the enabled list
   useEffect(() => {
-    if (!accounts.length || selected === 'all' || selected === 'taxable' || selected === 'ira') return;
+    if (
+      !accounts.length ||
+      selected === 'all' ||
+      selected === 'taxable' ||
+      selected === 'ira' ||
+      selected === 'hsa'
+    ) return;
     const exists = accounts.some(
       (a) => a.account_number === selected || String(a.id) === selected,
     );

@@ -13,6 +13,7 @@ import AllocationTab from '../tabs/AllocationTab';
 
 const mockUsePortfolio = vi.hoisted(() => ({
   usePortfolioOverview: vi.fn(),
+  usePortfolioAccounts: vi.fn(),
   usePositions: vi.fn(),
   usePortfolioSync: vi.fn(),
   usePortfolioInsights: vi.fn(),
@@ -77,6 +78,22 @@ vi.mock('../../../hooks/useUserPreferences', () => ({
   useUserPreferences: () => ({ currency: 'USD' as const }),
 }));
 
+// OverviewTab / RiskTab now consume AccountContext to scope queries to the
+// selected account. The test harness (`renderWithProviders`) intentionally
+// stays lean and does NOT wrap with AccountProvider (which would require
+// AuthContext + a real /accounts fetch). Stub the hook with an "all" scope
+// so the components render the portfolio-wide code path.
+vi.mock('../../../context/AccountContext', () => ({
+  useAccountContext: () => ({
+    accounts: [],
+    loading: false,
+    error: null,
+    selected: 'all' as const,
+    setSelected: vi.fn(),
+    refetch: vi.fn(),
+  }),
+}));
+
 vi.mock('../../../hooks/usePortfolio', async () => {
   const actual = await vi.importActual<typeof import('../../../hooks/usePortfolio')>(
     '../../../hooks/usePortfolio',
@@ -95,6 +112,12 @@ vi.mock('../../../hooks/usePortfolioAllocation', () => ({
 
 function setOverviewDefaultMocks() {
   const refetch = vi.fn();
+  mockUsePortfolio.usePortfolioAccounts.mockReturnValue({
+    data: [{ id: 1, account_number: 'U1234567', broker: 'IBKR' }],
+    isPending: false,
+    isError: false,
+    refetch: vi.fn(),
+  } as any);
   mockUsePortfolio.usePortfolioOverview.mockReturnValue({
     summary: {
       data: { data: { summary: { day_change: 0, day_change_pct: 0 } } },
@@ -233,6 +256,12 @@ describe('RiskTab', () => {
     const refetchDiv = vi.fn();
     const refetchMargin = vi.fn();
     const refetchBal = vi.fn();
+    mockUsePortfolio.usePortfolioAccounts.mockReturnValue({
+      data: [],
+      isPending: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as any);
     mockUsePortfolio.useRiskMetrics.mockReturnValue({
       isPending: false,
       isError: true,
