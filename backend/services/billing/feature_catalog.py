@@ -144,6 +144,13 @@ _FEATURES: tuple[Feature, ...] = (
         description="Source emails, X threads, indicator deltas, regime context.",
         category="picks",
     ),
+    Feature(
+        key="picks.candidates",
+        min_tier=SubscriptionTier.PRO_PLUS,
+        title="Algorithmic trade candidates",
+        description="Daily candidate generation from market snapshots (system generators).",
+        category="picks",
+    ),
     # ---- Native AgentBrain chat (brain) ------------------------------------
     Feature(
         key="brain.native_chat",

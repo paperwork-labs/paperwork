@@ -615,6 +615,21 @@ CATALOG: List[JobTemplate] = [
         timeout_s=600,
     ),
     JobTemplate(
+        id="generate_candidates_daily",
+        display_name="Generate Trade Candidates (Pro+ / per-user)",
+        group="picks",
+        task="backend.tasks.candidates.generate_candidates_daily",
+        description=(
+            "Weekdays after US cash close: run registered candidate generators once per "
+            "Pro+ user (picks.candidates) with per-tenant quality scoring; heavy queue"
+        ),
+        default_cron="15 16 * * 1-5",
+        default_tz="America/New_York",
+        job_run_label="generate_candidates_daily",
+        queue="heavy",
+        timeout_s=600,
+    ),
+    JobTemplate(
         id="parse_inbound_email",
         display_name="Parse Inbound Newsletter (Postmark)",
         group="picks",

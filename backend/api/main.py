@@ -447,6 +447,27 @@ def _sync_deferred_startup() -> None:
                 "OptionTaxLot backfill disabled (BACKFILL_OPTION_TAX_LOTS_ON_STARTUP=false)"
             )
 
+        # G11: log held-vs-tracked universe gaps; persist for /admin/health (non-fatal)
+        try:
+            from backend.services.market.market_data_service import infra as _uc_infra
+            from backend.services.ops.universe_coverage import (
+                persist_universe_coverage_to_redis,
+                run_universe_coverage_check,
+            )
+
+            _uc_db = SessionLocal()
+            try:
+                _uc_payload = run_universe_coverage_check(_uc_db)
+                persist_universe_coverage_to_redis(_uc_payload, r=_uc_infra.redis_client)
+            finally:
+                _uc_db.close()
+        except Exception as uc_e:
+            logger.warning(
+                "Universe coverage startup check failed (non-fatal): %s",
+                uc_e,
+                exc_info=True,
+            )
+
     finally:
         if _got_lock:
             _startup_conn.execute(_sa_text("SELECT pg_advisory_unlock(42)"))

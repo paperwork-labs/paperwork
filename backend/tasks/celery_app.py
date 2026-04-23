@@ -57,6 +57,7 @@ celery_app = Celery(
         # Nightly pipeline orchestrator (step-tracked 10-step run)
         "backend.tasks.pipeline.orchestrator",
         "backend.tasks.picks.generate_candidates",
+        "backend.tasks.candidates",
         "backend.tasks.picks.parse_inbound",
         "backend.tasks.picks.external_signals",
         # Multi-tenant hardening (GDPR + cost rollup)
@@ -121,6 +122,7 @@ celery_app.conf.task_routes = {
     "backtest.walk_forward_run": {"queue": "heavy"},
     # Corporate-action engine (full universe + per-user position rewrite).
     "backend.tasks.corporate_actions.*": {"queue": "heavy"},
+    "backend.tasks.candidates.*": {"queue": "heavy"},
 }
 
 def _build_beat_schedule():

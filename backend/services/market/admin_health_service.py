@@ -72,7 +72,7 @@ BROKER_DIMS = {"portfolio_sync", "ibkr_gateway"}
 # G28: deploys dim is infra-level — not part of the market/broker split.
 # It still counts toward composite; a red deploy dim must surface regardless
 # of broker sync health (a stuck API deploy breaks everything).
-INFRA_DIMS = {"deploys"}
+INFRA_DIMS = {"deploys", "universe_coverage"}
 
 _COMPOSITE_HEALTH_CACHE_KEY = "admin:composite_health"
 _COMPOSITE_HEALTH_TTL_S = 60
@@ -209,6 +209,7 @@ class AdminHealthService:
         ibkr_gateway = self._build_ibkr_gateway_dimension()
         data_accuracy = self._build_data_accuracy_dimension()
         deploys = self._build_deploys_dimension(db)
+        universe_coverage = self._build_universe_coverage_dimension()
         task_runs = self._build_task_runs()
 
         dims: Dict[str, Any] = {
@@ -222,6 +223,7 @@ class AdminHealthService:
             "portfolio_sync": portfolio_sync,
             "ibkr_gateway": ibkr_gateway,
             "deploys": deploys,
+            "universe_coverage": universe_coverage,
         }
 
         for name in dims:
@@ -1015,6 +1017,57 @@ class AdminHealthService:
                 "services": [],
                 "consecutive_failures_max": 0,
                 "failures_24h_total": 0,
+            }
+
+    def _build_universe_coverage_dimension(self) -> Dict[str, Any]:
+        """G11: last startup snapshot of held symbols vs tracked universe (Redis)."""
+        try:
+            from backend.services.ops import universe_coverage as uc
+
+            raw = uc.read_universe_coverage_for_admin_health()
+            if not raw:
+                return {
+                    "state": "unknown",
+                    "status": "yellow",
+                    "users_checked": None,
+                    "positions_total": None,
+                    "gaps_total": None,
+                    "errors": None,
+                    "reason": "No snapshot yet (API startup has not written Redis, or read failed).",
+                }
+            st_raw = str(raw.get("state") or "")
+            if st_raw == "healthy":
+                status = "green"
+            elif st_raw == "degraded":
+                status = "yellow"
+            else:
+                status = "red"
+            out: Dict[str, Any] = {
+                "state": st_raw,
+                "status": status,
+                "users_checked": raw.get("users_checked"),
+                "positions_total": raw.get("positions_total"),
+                "gaps_total": raw.get("gaps_total"),
+                "errors": raw.get("errors"),
+                "checked_at": raw.get("checked_at"),
+            }
+            if raw.get("error_detail"):
+                out["error_detail"] = raw.get("error_detail")
+            if st_raw == "degraded" and raw.get("gaps_total") is not None:
+                out["reason"] = (
+                    f"Universe gap: {raw.get('gaps_total')} open position(s) "
+                    "not in tracked set (see API logs for \"universe gap\")."
+                )
+            elif st_raw == "error":
+                out["reason"] = "Startup universe coverage check failed or reported errors (see error_detail and API logs)."
+            return out
+        except Exception as exc:
+            logger.exception("universe_coverage dimension failed: %s", exc)
+            return {
+                "state": "error",
+                "status": "red",
+                "errors": 1,
+                "reason": str(exc)[:2000],
             }
 
     def _build_task_runs(self) -> Dict[str, Any]:

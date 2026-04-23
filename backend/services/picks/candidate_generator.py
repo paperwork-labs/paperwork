@@ -369,6 +369,7 @@ def run_all_generators(
     db: Session,
     *,
     only: Optional[Sequence[str]] = None,
+    quality_score_user_id: int = 0,
 ) -> List[GeneratorRunReport]:
     """Run every registered generator (or only the named subset).
 
@@ -389,7 +390,9 @@ def run_all_generators(
         try:
             with db.begin_nested():
                 items = list(gen.generate(db))
-                counts = persist_candidates(db, gen, items, quality_score_user_id=0)
+                counts = persist_candidates(
+                    db, gen, items, quality_score_user_id=quality_score_user_id
+                )
         except Exception as e:  # noqa: BLE001 - per-generator isolation
             logger.exception(
                 "candidate generator %s/%s failed: %s",
