@@ -71,6 +71,12 @@ class ScanInput:
     pass_count: int = 0
     current_price: Optional[float] = None
     atr_30: Optional[float] = None
+    # Daily snapshot of ``HistoricalIV.iv_rank_252`` for the symbol. ``None``
+    # during the 252-day warm-up (see G5 / ``docs/plans/G5_IV_RANK_SURFACE.md``).
+    # ``None`` is meaningful: filters using :func:`apply_iv_rank_filter`
+    # EXCLUDE null-rank rows rather than coercing to 0 (same R29 pattern
+    # as ``rs_mansfield``).
+    iv_rank_252: Optional[float] = None
 
 
 def _safe(val: Optional[float], default: float = 0.0) -> float:
@@ -294,3 +300,60 @@ def compute_sector_divergence_pct(
     total = len(sector_confirmations)
     denying = sum(1 for v in sector_confirmations.values() if v == "DENYING")
     return (denying / total) * 100.0
+
+
+# ── IV-rank filter (G5) ──
+
+# Supported comparison operators for the ``iv_rank_252`` filter.
+IV_RANK_OPS = ("lt", "lte", "gt", "gte", "between")
+
+
+def apply_iv_rank_filter(
+    rows: Sequence[ScanInput],
+    op: str,
+    value: float,
+    *,
+    value2: Optional[float] = None,
+) -> list[ScanInput]:
+    """Filter scan inputs by ``iv_rank_252``.
+
+    Operators: ``lt``, ``lte``, ``gt``, ``gte``, ``between``.
+
+    Null-rank rows are **always excluded** -- a symbol with no IV history
+    is NOT "iv_rank = 0", and conflating the two would silently pass
+    ramping/un-covered symbols through a "cheap options" filter that
+    depends on rank < 20 semantics. This mirrors the R29 convention for
+    ``rs_mansfield``.
+
+    Raises ``ValueError`` for unknown ops or a missing ``value2`` on
+    ``between``.
+    """
+    op_l = (op or "").lower()
+    if op_l not in IV_RANK_OPS:
+        raise ValueError(f"unknown iv_rank operator: {op!r} (allowed: {IV_RANK_OPS})")
+    if op_l == "between" and value2 is None:
+        raise ValueError("'between' operator requires value2")
+
+    lo = min(value, value2) if op_l == "between" and value2 is not None else None
+    hi = max(value, value2) if op_l == "between" and value2 is not None else None
+
+    out: list[ScanInput] = []
+    for r in rows:
+        v = r.iv_rank_252
+        if v is None:  # R29 -- never treat absent as 0
+            continue
+        ok = False
+        if op_l == "lt":
+            ok = v < value
+        elif op_l == "lte":
+            ok = v <= value
+        elif op_l == "gt":
+            ok = v > value
+        elif op_l == "gte":
+            ok = v >= value
+        elif op_l == "between":
+            # both bounds inclusive -- standard "between x and y" semantics
+            ok = lo is not None and hi is not None and lo <= v <= hi
+        if ok:
+            out.append(r)
+    return out

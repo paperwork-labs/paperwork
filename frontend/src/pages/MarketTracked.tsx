@@ -17,6 +17,7 @@ import { usePortfolioSymbols } from '../hooks/usePortfolioSymbols';
 import { useUserPreferences } from '../hooks/useUserPreferences';
 import { useSnapshotTable } from '../hooks/useSnapshotTable';
 import { useSnapshotAggregates, formatAggregateCount } from '../hooks/useSnapshotAggregates';
+import { useIvCoverageBatch, type IvCoverage } from '../hooks/useIvCoverage';
 import api from '../services/api';
 import { formatDateTime, formatMoney } from '../utils/format';
 import { Badge } from '@/components/ui/badge';
@@ -452,6 +453,15 @@ const MarketTracked: React.FC = () => {
   const rows = tableData?.rows ?? [];
   const total = tableData?.total ?? 0;
 
+  // G5: fetch IV-rank coverage for every visible symbol. The hook
+  // dedupes + sorts symbols internally so we can hand it ``rows`` as-is.
+  const ivSymbols = React.useMemo(
+    () => rows.map((r: any) => String(r?.symbol || '')).filter(Boolean),
+    [rows],
+  );
+  const ivCoverageQuery = useIvCoverageBatch(ivSymbols);
+  const ivCoverageMap: Record<string, IvCoverage> = ivCoverageQuery.data ?? {};
+
   const aggregateParams = React.useMemo<SnapshotAggregateParams>(() => {
     const p: SnapshotAggregateParams = {};
     if (tableParams.filter_stage) p.filter_stage = tableParams.filter_stage;
@@ -603,6 +613,47 @@ const MarketTracked: React.FC = () => {
       { key: 'dividend_yield', header: 'Div Yield %', accessor: (r) => r.dividend_yield, sortable: true, sortType: 'number', isNumeric: true, hidden: isColHidden('dividend_yield'), render: (v) => fmtPct(v) },
       { key: 'beta', header: 'Beta', accessor: (r) => r.beta, sortable: true, sortType: 'number', isNumeric: true, hidden: isColHidden('beta'), render: (v) => fmtNum(v) },
       { key: 'rs_mansfield_pct', header: 'RS (Mansfield)', accessor: (r) => r.rs_mansfield_pct, sortable: true, sortType: 'number', isNumeric: true, hidden: isColHidden('rs_mansfield_pct'), render: (v) => typeof v === 'number' && Number.isFinite(v) ? (v > 0 ? `+${v.toFixed(1)}` : v.toFixed(1)) : '—' },
+      {
+        key: 'iv_rank_252',
+        header: 'IV Rank',
+        // G5: source-of-truth is ``HistoricalIV.iv_rank_252`` via the
+        // batch hook above. We distinguish four states: numeric (rank
+        // present), ramping (<252 samples), absent (no history), and
+        // loading (query still in flight). NEVER render 0 for a missing
+        // value -- that would hide a coverage gap.
+        accessor: (r) => {
+          const cov = ivCoverageMap[String(r?.symbol || '')];
+          return cov?.hasRank && typeof cov.ivRank === 'number' ? cov.ivRank : null;
+        },
+        sortable: true,
+        sortType: 'number',
+        isNumeric: true,
+        hidden: isColHidden('iv_rank_252'),
+        render: (_v, r) => {
+          const sym = String(r?.symbol || '');
+          const cov = ivCoverageMap[sym];
+          if (ivCoverageQuery.isPending && !cov) {
+            return <span className="text-xs text-muted-foreground" aria-label="Loading IV rank">…</span>;
+          }
+          if (!cov) {
+            return <span className="text-xs text-muted-foreground">—</span>;
+          }
+          if (cov.isRamping) {
+            return (
+              <span
+                className="text-xs text-muted-foreground"
+                title="IV rank requires 1 year of history; ramping."
+              >
+                N/A
+              </span>
+            );
+          }
+          if (cov.hasRank && typeof cov.ivRank === 'number') {
+            return <span className="font-mono text-xs">{Math.round(cov.ivRank)}</span>;
+          }
+          return <span className="text-xs text-muted-foreground">—</span>;
+        },
+      },
       { key: 'ext_pct', header: 'Ext %', accessor: (r) => r.ext_pct, sortable: true, sortType: 'number', isNumeric: true, hidden: isColHidden('ext_pct'), render: (v) => fmtPct(v) },
       { key: 'vol_ratio', header: 'Vol Ratio', accessor: (r) => r.vol_ratio, sortable: true, sortType: 'number', isNumeric: true, hidden: isColHidden('vol_ratio'), render: (v) => fmtX(v) },
       { key: 'range_pos_20d', header: 'Range 20d%', accessor: (r) => r.range_pos_20d, sortable: true, sortType: 'number', isNumeric: true, hidden: isColHidden('range_pos_20d'), render: (v) => fmtPct(v) },
@@ -692,7 +743,7 @@ const MarketTracked: React.FC = () => {
         },
       },
     ];
-  }, [currency, timezone, canEditPlan, updateTrackedPlan, portfolioSymbols, isColHidden, mode]);
+  }, [currency, timezone, canEditPlan, updateTrackedPlan, portfolioSymbols, isColHidden, mode, ivCoverageMap, ivCoverageQuery.isPending]);
 
   /* ─── Client-side row filtering ─── */
 

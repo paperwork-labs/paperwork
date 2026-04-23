@@ -348,6 +348,20 @@ class Settings(BaseSettings):
     # SPY has ~8,400 trading days since 1993; 10,000 gives headroom for growth.
     RECOMPUTE_HISTORY_MAX_DAYS: int = 10000
 
+    # ── Options: IV / IV-rank ingest (G5) ─────────────────────────
+    # Controls which symbols get their ATM IV snapshotted daily by
+    # ``backend.tasks.market.iv.sync_gateway``. Keep "tracked" unless
+    # the watchlist needs to be narrowed temporarily (e.g. Yahoo rate
+    # limiting). See docs/plans/G5_IV_RANK_SURFACE.md.
+    IV_SNAPSHOT_UNIVERSE: str = "tracked"  # one of: "tracked", "watchlist", "all_snapshots"
+    # Safety cap; if the universe exceeds this the snapshot task logs
+    # a warning and truncates (never raises -- the task is best-effort).
+    IV_SNAPSHOT_MAX_SYMBOLS: int = 1000
+    # Window for Yahoo ATM-IV lookup. 7-45 DTE brackets the front-month
+    # plus the next expiry to give the 30-DTE picker a real target.
+    YAHOO_IV_DTE_MIN: int = 7
+    YAHOO_IV_DTE_MAX: int = 45
+
     # Weinstein Stage thresholds (percent units)
     # - slope thresholds are % change of 30W SMA vs 5 weeks ago
     # - distance thresholds are % from 30W SMA

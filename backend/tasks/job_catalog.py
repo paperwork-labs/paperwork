@@ -787,6 +787,43 @@ CATALOG: List[JobTemplate] = [
         queue="celery",
         enabled=False,
     ),
+    # ── Options: IV / IV-rank surface (G5) ───────────────────────
+    # Snapshot daily ATM IV for the tracked universe (IBKR primary,
+    # Yahoo fallback). Runs ~30 minutes after US equity close on
+    # weekdays. The `compute_iv_rank` task consumes the ledger once
+    # >=20 daily samples exist for a symbol.
+    JobTemplate(
+        id="iv-snapshot-gateway",
+        display_name="IV Snapshot (ATM, free providers)",
+        group="market_data",
+        task="backend.tasks.market.iv.sync_gateway",
+        description=(
+            "Snapshot ATM IV for tracked symbols. IBKR gateway primary, "
+            "Yahoo fallback. Writes one HistoricalIV row per symbol "
+            "per trading day. Timeout 660s (IRON LAW soft<hard=lock TTL)."
+        ),
+        default_cron="30 21 * * 1-5",
+        default_tz="UTC",
+        job_run_label="snapshot_iv_from_gateway",
+        timeout_s=660,
+        queue="heavy",
+    ),
+    JobTemplate(
+        id="iv-rank-compute",
+        display_name="IV Rank (252d) compute",
+        group="market_data",
+        task="backend.tasks.market.iv.compute_rank",
+        description=(
+            "Compute iv_rank_252 / iv_high_252 / iv_low_252 / iv_hv_spread "
+            "for symbols with >=20 daily IV samples. Runs after the daily "
+            "IV snapshot."
+        ),
+        default_cron="45 21 * * 1-5",
+        default_tz="UTC",
+        job_run_label="compute_iv_rank",
+        timeout_s=180,
+        queue="celery",
+    ),
     # ── Shadow (paper) autotrading ──────────────────────────────
     # Refreshes simulated P&L for every open ``ShadowOrder`` row using the
     # latest ``MarketSnapshot.current_price`` for its symbol. Never calls a

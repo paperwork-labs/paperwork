@@ -65,9 +65,15 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
     "fundamentals_fill_pct_warn": 50.0,
     "data_accuracy_mismatch_max": 5,
     "data_accuracy_max_age_days": 10,
+    # G5: IV coverage warm-up and floors. Below 95% we emit a warning
+    # pointing ops at docs/plans/G5_IV_RANK_SURFACE.md (paid-provider
+    # escalation). During the 30-day warm-up we do not degrade the
+    # composite -- the pipeline ingests incrementally.
+    "iv_coverage_pct_warn": 95.0,
+    "iv_coverage_warmup_days": 30,
 }
 
-MARKET_DIMS = {"coverage", "stage_quality", "jobs", "audit", "regime", "fundamentals", "data_accuracy"}
+MARKET_DIMS = {"coverage", "stage_quality", "jobs", "audit", "regime", "fundamentals", "data_accuracy", "iv_coverage"}
 BROKER_DIMS = {"portfolio_sync", "ibkr_gateway"}
 # G28: deploys dim is infra-level — not part of the market/broker split.
 # It still counts toward composite; a red deploy dim must surface regardless
@@ -210,6 +216,7 @@ class AdminHealthService:
         data_accuracy = self._build_data_accuracy_dimension()
         deploys = self._build_deploys_dimension(db)
         universe_coverage = self._build_universe_coverage_dimension()
+        iv_coverage = self._build_iv_coverage_dimension(db)
         task_runs = self._build_task_runs()
 
         dims: Dict[str, Any] = {
@@ -220,6 +227,7 @@ class AdminHealthService:
             "regime": regime,
             "fundamentals": fundamentals,
             "data_accuracy": data_accuracy,
+            "iv_coverage": iv_coverage,
             "portfolio_sync": portfolio_sync,
             "ibkr_gateway": ibkr_gateway,
             "deploys": deploys,
@@ -1026,6 +1034,138 @@ class AdminHealthService:
                 "services": [],
                 "consecutive_failures_max": 0,
                 "failures_24h_total": 0,
+            }
+
+    def _build_iv_coverage_dimension(self, db: Session) -> Dict[str, Any]:
+        """G5: daily IV-coverage stats over the tracked universe.
+
+        Six sub-metrics required by ``docs/plans/G5_IV_RANK_SURFACE.md`` §6:
+
+        - ``tracked_symbols``: size of today's scanned universe.
+        - ``with_iv_30d_today``: how many have a ``HistoricalIV.iv_30d``
+          row stamped for today's last trading day.
+        - ``with_hv_20d_today``: how many of those carry a 20-day
+          realized-vol reading (requires ≥21 contiguous daily closes).
+        - ``with_iv_rank_252``: populated by the ``compute_iv_rank`` task
+          after ≥20 daily samples.
+        - ``coverage_pct_iv_30d`` = ``with_iv_30d_today / tracked_symbols``.
+        - ``source_breakdown`` (IBKR vs Yahoo) + ``last_successful_snapshot_at``.
+
+        Status: green when ``coverage_pct_iv_30d >= 95`` OR we're still
+        inside the 30-day warm-up. Yellow with the paid-provider pointer
+        otherwise. Never flips red on its own (broker-independent feature).
+        """
+        try:
+            from backend.models.historical_iv import HistoricalIV
+            from backend.services.market.historical_iv_service import (
+                iv_source_breakdown,
+                last_trading_day,
+            )
+            from backend.services.market.market_data_service import infra as _infra
+            from backend.services.market.universe import tracked_symbols
+
+            today = last_trading_day()
+            try:
+                universe = tracked_symbols(db, redis_client=_infra.redis_client) or []
+            except Exception as e:
+                logger.warning("iv_coverage: tracked symbols lookup failed: %s", e)
+                universe = []
+            n_tracked = len(universe)
+
+            # Row counts for today.
+            q_today = db.query(HistoricalIV).filter(HistoricalIV.date == today)
+            with_iv_30d_today = int(
+                q_today.filter(HistoricalIV.iv_30d.isnot(None)).count() or 0
+            )
+            with_hv_20d_today = int(
+                q_today.filter(HistoricalIV.hv_20d.isnot(None)).count() or 0
+            )
+            with_iv_rank_252 = int(
+                db.query(HistoricalIV)
+                .filter(HistoricalIV.iv_rank_252.isnot(None))
+                .count()
+                or 0
+            )
+
+            coverage_pct: Optional[float] = None
+            if n_tracked > 0:
+                coverage_pct = round(100.0 * with_iv_30d_today / n_tracked, 2)
+
+            last_row = (
+                db.query(func.max(HistoricalIV.date))
+                .filter(HistoricalIV.iv_30d.isnot(None))
+                .scalar()
+            )
+            last_successful_snapshot_at = str(last_row) if last_row is not None else None
+
+            source_breakdown = iv_source_breakdown(db, as_of=today)
+
+            # Status / reason logic. Warm-up: if the most-recent snapshot
+            # is within 30 days of "first ever" snapshot we still hold
+            # green so the dim doesn't scream during the initial ramp.
+            first_row = (
+                db.query(func.min(HistoricalIV.date))
+                .filter(HistoricalIV.iv_30d.isnot(None))
+                .scalar()
+            )
+            warmup_days = int(HEALTH_THRESHOLDS.get("iv_coverage_warmup_days", 30))
+            warn_pct = float(HEALTH_THRESHOLDS.get("iv_coverage_pct_warn", 95.0))
+            in_warmup = False
+            if first_row is not None and last_row is not None:
+                in_warmup = (last_row - first_row).days < warmup_days
+            elif first_row is None:
+                # Never snapshotted -- call this a "pre-warmup" state.
+                in_warmup = True
+
+            status: str
+            reason: Optional[str] = None
+            if n_tracked == 0:
+                status = "yellow"
+                reason = "Tracked universe empty; IV coverage cannot be evaluated."
+            elif coverage_pct is not None and coverage_pct >= warn_pct:
+                status = "green"
+            elif in_warmup:
+                status = "green"
+                reason = (
+                    f"IV coverage at {coverage_pct}% (warm-up ≤ {warmup_days}d; "
+                    "ingest still ramping)."
+                )
+            else:
+                status = "yellow"
+                reason = (
+                    f"IV coverage below {warn_pct:.0f}% (at {coverage_pct}%) — "
+                    "consider paid provider (see docs/plans/G5_IV_RANK_SURFACE.md)."
+                )
+
+            return {
+                "status": status,
+                "reason": reason,
+                "tracked_symbols": n_tracked,
+                "with_iv_30d_today": with_iv_30d_today,
+                "with_hv_20d_today": with_hv_20d_today,
+                "with_iv_rank_252": with_iv_rank_252,
+                "coverage_pct_iv_30d": coverage_pct,
+                "source_breakdown": source_breakdown,
+                "last_successful_snapshot_at": last_successful_snapshot_at,
+                "as_of": str(today),
+                "in_warmup": in_warmup,
+            }
+        except Exception as exc:
+            logger.warning("iv_coverage dimension failed: %s", exc)
+            # Never flip composite red on iv-coverage alone -- it's a
+            # feature dim, not a gate. Yellow + explicit `available=False`
+            # so ops can still differentiate "zero" from "unavailable".
+            return {
+                "status": "yellow",
+                "reason": f"iv_coverage unavailable: {exc}",
+                "tracked_symbols": None,
+                "with_iv_30d_today": None,
+                "with_hv_20d_today": None,
+                "with_iv_rank_252": None,
+                "coverage_pct_iv_30d": None,
+                "source_breakdown": {"available": False},
+                "last_successful_snapshot_at": None,
+                "available": False,
             }
 
     def _build_universe_coverage_dimension(self) -> Dict[str, Any]:

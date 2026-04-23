@@ -697,13 +697,45 @@ const positionColumns: Column<OptionPos>[] = [
   {
     key: 'iv',
     header: 'IV',
-    accessor: (p) => Number(p.implied_volatility ?? 0),
+    // G5: explicit absent vs numeric -- NEVER ?? 0. A missing IV is a
+    // data-coverage signal ("provider returned nothing"), not the
+    // number zero. Silently coercing to 0 used to hide ~40% of options
+    // positions as fake "$0.00 IV" readings (R-IV01).
+    accessor: (p) => {
+      const v = p.implied_volatility;
+      if (v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    },
     sortable: true,
     sortType: 'number',
     isNumeric: true,
-    render: (v) => (
-      <span className="font-mono text-xs">{Number(v) > 0 ? `${(Number(v) * 100).toFixed(0)}%` : '—'}</span>
-    ),
+    render: (v) => {
+      if (v === null || v === undefined) {
+        return (
+          <span
+            className="font-mono text-xs text-muted-foreground"
+            title="IV unavailable from provider"
+            aria-label="Implied volatility unavailable"
+          >
+            —
+          </span>
+        );
+      }
+      const n = Number(v);
+      if (!Number.isFinite(n)) {
+        return (
+          <span
+            className="font-mono text-xs text-muted-foreground"
+            title="IV unavailable from provider"
+            aria-label="Implied volatility unavailable"
+          >
+            —
+          </span>
+        );
+      }
+      return <span className="font-mono text-xs">{`${(n * 100).toFixed(0)}%`}</span>;
+    },
     width: '50px',
   },
   {
