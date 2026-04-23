@@ -46,6 +46,7 @@ def create_default_router() -> BrokerRouter:
     from backend.services.execution.ibkr_executor import IBKRExecutor
     from backend.services.execution.paper_executor import PaperExecutor
     from backend.services.execution.coinbase_paper_executor import CoinbasePaperExecutor
+    from backend.services.execution.schwab_executor import SchwabExecutor
 
     router = BrokerRouter()
     router.register("ibkr", IBKRExecutor())
@@ -54,6 +55,12 @@ def create_default_router() -> BrokerRouter:
     # rejects non-crypto symbols at the edge (issue #473). Live Coinbase lands
     # in a later phase.
     router.register("coinbase", CoinbasePaperExecutor())
+    # Wave F Phase F3: Schwab live executor. The singleton is registered
+    # without a context_resolver; the order_manager integration (wiring the
+    # per-request Session + BrokerOAuthConnection) lands in a follow-up PR.
+    # Until then, any write call raises a clear "not bound" error via
+    # OrderResult.error -- never a silent fallback.
+    router.register("schwab", SchwabExecutor())
     return router
 
 

@@ -191,6 +191,111 @@ class SchwabClient:
             return None
         return data
 
+    async def _request_with_meta(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Optional[Dict[str, Any]] = None,
+        json_body: Optional[Dict[str, Any]] = None,
+        expected_statuses: Optional[tuple[int, ...]] = None,
+    ) -> Dict[str, Any]:
+        """
+        Perform authenticated request returning full response metadata.
+
+        Returns a dict with keys:
+          - ``status``: HTTP status code (int; ``0`` if the transport failed).
+          - ``data``: parsed JSON body or ``None``.
+          - ``headers``: lowercased-key dict of response headers.
+          - ``error``: Optional[str]; populated when the call fails or the
+            status is outside ``expected_statuses``. Never silently swallowed
+            (per ``no-silent-fallback.mdc``) -- callers inspect this and
+            surface as ``OrderResult.error``.
+
+        Used by the write-path order methods (``place_order`` /
+        ``cancel_order`` / ``get_order_status`` / ``preview_order``) that need
+        the ``Location`` header (for the broker order id) and the HTTP status
+        separately from the JSON body.
+        """
+        if not self.connected or not self._access_token:
+            return {
+                "status": 0,
+                "data": None,
+                "headers": {},
+                "error": "schwab client not connected; call connect_with_credentials() first",
+            }
+
+        url = f"{BASE_URL}{path}"
+        ok_statuses = expected_statuses or (200, 201, 204)
+
+        async def _do_request(token: str) -> tuple[int, Any, Dict[str, str]]:
+            headers_req = {
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json",
+            }
+            if json_body is not None:
+                headers_req["Content-Type"] = "application/json"
+            async with aiohttp.ClientSession(timeout=DEFAULT_TIMEOUT) as session:
+                async with session.request(
+                    method, url,
+                    headers=headers_req,
+                    params=params,
+                    json=json_body,
+                ) as resp:
+                    try:
+                        data = await resp.json(content_type=None)
+                    except Exception:
+                        data = None
+                    out_headers = {str(k).lower(): str(v) for k, v in resp.headers.items()}
+                    return resp.status, data, out_headers
+
+        try:
+            status, data, resp_headers = await _do_request(self._access_token)
+            if status == 401:
+                logger.info(
+                    "Schwab API %s %s: 401, attempting token refresh", method, path,
+                )
+                refreshed = await self._ensure_token()
+                if refreshed and self._access_token:
+                    status, data, resp_headers = await _do_request(self._access_token)
+        except Exception as exc:
+            logger.warning("Schwab API %s %s: transport error: %s", method, path, exc)
+            return {
+                "status": 0,
+                "data": None,
+                "headers": {},
+                "error": f"transport error: {exc}",
+            }
+
+        err: Optional[str] = None
+        if status not in ok_statuses:
+            body_preview = str(data)[:300] if data is not None else ""
+            logger.warning(
+                "Schwab API %s %s: status=%s body=%s", method, path, status, body_preview,
+            )
+            err = f"HTTP {status}: {body_preview}" if body_preview else f"HTTP {status}"
+        return {
+            "status": status,
+            "data": data,
+            "headers": resp_headers,
+            "error": err,
+        }
+
+    async def resolve_account_hash_fresh(self, account_number: str) -> Optional[str]:
+        """Resolve ``account_number`` -> ``hashValue`` without reusing a cached hash.
+
+        The sync-path ``_resolve_account_hash`` caches for the lifetime of the
+        ``SchwabClient``. Schwab rotates account hashes when a user re-auths
+        or their linked accounts change, so the trading executor MUST NOT
+        reuse a stale hash across re-auth events (F3 acceptance criterion).
+
+        This helper pops the cached entry for ``account_number`` (and any
+        other entries older than this call) and re-runs the resolver so every
+        write call hits ``GET /accounts/accountNumbers`` exactly once.
+        """
+        self._account_hash_map.pop(account_number, None)
+        return await self._resolve_account_hash(account_number)
+
     def _get_account_hash(self, account_number: str, account_list: List[Dict]) -> Optional[str]:
         """
         Resolve account_number to hashValue from GET accounts/accountNumbers response.
@@ -503,9 +608,316 @@ class SchwabClient:
         logger.info("Schwab API: get_options_positions returned %d option positions", len(results))
         return results
 
-    async def place_order(
-        self, account_number: str, order: Dict[str, Any]
+    # ------------------------------------------------------------------
+    # Write-path (F3) — order methods used by SchwabExecutor.
+    #
+    # These talk to Schwab Trader API v1 order endpoints, which are keyed by
+    # ``accountHash`` (NOT the account number). Callers must resolve the hash
+    # via :meth:`resolve_account_hash_fresh` immediately before every write
+    # call so a rotated hash after a re-auth is never reused.
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def build_order_payload(
+        *,
+        symbol: str,
+        side: str,
+        quantity: float,
+        order_type: str,
+        limit_price: Optional[float] = None,
+        stop_price: Optional[float] = None,
+        duration: str = "DAY",
+        session_type: str = "NORMAL",
+        asset_type: str = "EQUITY",
     ) -> Dict[str, Any]:
-        """Place order - not implemented (read-only client)."""
-        logger.warning("Schwab API: place_order not implemented (read-only)")
-        return {"status": "not_implemented"}
+        """Construct a Schwab Trader API order payload.
+
+        Schwab expects ``orderType`` in MARKET / LIMIT / STOP / STOP_LIMIT
+        and ``instruction`` in BUY / SELL (plus BUY_TO_COVER / SELL_SHORT
+        variants we do not currently emit). Numeric prices must be JSON
+        numbers, not strings, even though Schwab accepts both — keeping
+        them numeric matches our internal ``Decimal`` convention.
+        """
+        normalized_type = order_type.upper().replace("-", "_")
+        side_upper = side.upper()
+        if side_upper not in ("BUY", "SELL"):
+            raise ValueError(f"unsupported Schwab side: {side!r}")
+        if normalized_type not in ("MARKET", "LIMIT", "STOP", "STOP_LIMIT"):
+            raise ValueError(f"unsupported Schwab orderType: {order_type!r}")
+        if normalized_type in ("LIMIT", "STOP_LIMIT") and limit_price is None:
+            raise ValueError(f"{normalized_type} order requires limit_price")
+        if normalized_type in ("STOP", "STOP_LIMIT") and stop_price is None:
+            raise ValueError(f"{normalized_type} order requires stop_price")
+
+        payload: Dict[str, Any] = {
+            "orderType": normalized_type,
+            "session": session_type,
+            "duration": duration,
+            "orderStrategyType": "SINGLE",
+            "orderLegCollection": [
+                {
+                    "instruction": side_upper,
+                    "quantity": float(quantity),
+                    "instrument": {
+                        "symbol": symbol.upper(),
+                        "assetType": asset_type.upper(),
+                    },
+                }
+            ],
+        }
+        if limit_price is not None:
+            payload["price"] = float(limit_price)
+        if stop_price is not None:
+            payload["stopPrice"] = float(stop_price)
+        return payload
+
+    @staticmethod
+    def _extract_order_id_from_location(location: str) -> Optional[str]:
+        """Parse the trailing order id out of Schwab's ``Location`` header.
+
+        Schwab returns ``Location: https://.../accounts/{hash}/orders/{id}``
+        on 201 Created. We trust only the final path segment and strip any
+        trailing slash.
+        """
+        if not location:
+            return None
+        tail = location.rstrip("/").rsplit("/", 1)[-1]
+        return tail or None
+
+    async def place_order(
+        self, account_hash: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """POST ``/accounts/{accountHash}/orders``.
+
+        Returns a dict with keys:
+          - ``broker_order_id``: string from ``Location`` header (Schwab 201).
+          - ``status``: ``"submitted"`` on success, ``"error"`` on failure.
+          - ``http_status``: raw HTTP status code.
+          - ``raw``: parsed response body (usually ``None`` on 201).
+          - ``error``: Optional[str] — populated on non-2xx or transport error.
+        """
+        if not account_hash:
+            return {
+                "broker_order_id": None,
+                "status": "error",
+                "http_status": 0,
+                "raw": None,
+                "error": "place_order requires a non-empty account_hash",
+            }
+        resp = await self._request_with_meta(
+            "POST",
+            f"/accounts/{account_hash}/orders",
+            json_body=payload,
+            expected_statuses=(200, 201),
+        )
+        if resp["error"]:
+            return {
+                "broker_order_id": None,
+                "status": "error",
+                "http_status": resp["status"],
+                "raw": resp["data"],
+                "error": resp["error"],
+            }
+        location = resp["headers"].get("location", "")
+        order_id = self._extract_order_id_from_location(location)
+        if not order_id and isinstance(resp["data"], dict):
+            # Some Schwab responses include {"orderId": ...} in the body.
+            raw_id = resp["data"].get("orderId") or resp["data"].get("order_id")
+            if raw_id:
+                order_id = str(raw_id)
+        if not order_id:
+            return {
+                "broker_order_id": None,
+                "status": "error",
+                "http_status": resp["status"],
+                "raw": resp["data"],
+                "error": "Schwab accepted the order but did not return an order id",
+            }
+        return {
+            "broker_order_id": str(order_id),
+            "status": "submitted",
+            "http_status": resp["status"],
+            "raw": resp["data"],
+            "error": None,
+        }
+
+    async def cancel_order(
+        self, account_hash: str, broker_order_id: str
+    ) -> Dict[str, Any]:
+        """DELETE ``/accounts/{accountHash}/orders/{orderId}``.
+
+        Schwab returns 200/204 when accepted. If the order already filled
+        Schwab returns 400/422 with a descriptive body — we surface that as
+        ``error`` so the caller can distinguish "cancel accepted" from
+        "cancel rejected" (required by `.cursor/rules/no-silent-fallback.mdc`).
+        """
+        if not account_hash or not broker_order_id:
+            return {
+                "status": "error",
+                "http_status": 0,
+                "raw": None,
+                "error": "cancel_order requires account_hash and broker_order_id",
+            }
+        resp = await self._request_with_meta(
+            "DELETE",
+            f"/accounts/{account_hash}/orders/{broker_order_id}",
+            expected_statuses=(200, 204),
+        )
+        if resp["error"]:
+            return {
+                "status": "error",
+                "http_status": resp["status"],
+                "raw": resp["data"],
+                "error": resp["error"],
+            }
+        return {
+            "status": "cancelled",
+            "http_status": resp["status"],
+            "raw": resp["data"],
+            "error": None,
+        }
+
+    async def get_order_status(
+        self, account_hash: str, broker_order_id: str
+    ) -> Dict[str, Any]:
+        """GET ``/accounts/{accountHash}/orders/{orderId}``.
+
+        Schwab does not push order status updates, so the executor polls
+        this endpoint per :meth:`BrokerExecutor.get_order_status` call.
+
+        Maps Schwab's ``status`` enum (``WORKING``, ``FILLED``,
+        ``CANCELED``, ``REJECTED``, ``ACCEPTED``, ...) into our internal
+        lowercase vocabulary consumed by ``OrderManager``.
+        """
+        if not account_hash or not broker_order_id:
+            return {
+                "status": "error",
+                "filled_quantity": 0.0,
+                "avg_fill_price": None,
+                "http_status": 0,
+                "raw": None,
+                "error": "get_order_status requires account_hash and broker_order_id",
+            }
+        resp = await self._request_with_meta(
+            "GET",
+            f"/accounts/{account_hash}/orders/{broker_order_id}",
+            expected_statuses=(200,),
+        )
+        if resp["error"]:
+            return {
+                "status": "error",
+                "filled_quantity": 0.0,
+                "avg_fill_price": None,
+                "http_status": resp["status"],
+                "raw": resp["data"],
+                "error": resp["error"],
+            }
+        data = resp["data"] if isinstance(resp["data"], dict) else {}
+        raw_status = str(data.get("status") or "").upper()
+        status_map = {
+            "FILLED": "filled",
+            "CANCELED": "cancelled",
+            "CANCELLED": "cancelled",
+            "REJECTED": "rejected",
+            "EXPIRED": "expired",
+            "WORKING": "working",
+            "ACCEPTED": "working",
+            "QUEUED": "working",
+            "PENDING_ACTIVATION": "working",
+            "AWAITING_PARENT_ORDER": "working",
+            "REPLACED": "replaced",
+        }
+        mapped = status_map.get(raw_status, raw_status.lower() or "unknown")
+        filled_qty = float(data.get("filledQuantity") or 0.0)
+        avg_price = data.get("orderActivityCollection") or []
+        avg_fill_price: Optional[float] = None
+        if isinstance(avg_price, list) and avg_price:
+            exec_legs = []
+            for activity in avg_price:
+                if not isinstance(activity, dict):
+                    continue
+                legs = activity.get("executionLegs") or []
+                if isinstance(legs, list):
+                    exec_legs.extend(leg for leg in legs if isinstance(leg, dict))
+            if exec_legs:
+                qty_sum = sum(float(leg.get("quantity") or 0.0) for leg in exec_legs)
+                if qty_sum > 0:
+                    avg_fill_price = (
+                        sum(
+                            float(leg.get("price") or 0.0) * float(leg.get("quantity") or 0.0)
+                            for leg in exec_legs
+                        )
+                        / qty_sum
+                    )
+        return {
+            "status": mapped,
+            "filled_quantity": filled_qty,
+            "avg_fill_price": avg_fill_price,
+            "http_status": resp["status"],
+            "raw": data,
+            "error": None,
+        }
+
+    async def preview_order(
+        self, account_hash: str, payload: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """POST ``/accounts/{accountHash}/previewOrder``.
+
+        Schwab returns an estimate for commission, margin impact, and buying
+        power. The endpoint is documented as ``Coming Soon`` in some Schwab
+        API versions; we surface a populated ``error`` when Schwab responds
+        with a non-2xx so callers can decide whether to skip the preview or
+        abort. Never a silent fallback.
+        """
+        if not account_hash:
+            return {
+                "estimated_commission": None,
+                "estimated_margin_impact": None,
+                "http_status": 0,
+                "raw": None,
+                "error": "preview_order requires a non-empty account_hash",
+            }
+        resp = await self._request_with_meta(
+            "POST",
+            f"/accounts/{account_hash}/previewOrder",
+            json_body=payload,
+            expected_statuses=(200, 201),
+        )
+        if resp["error"]:
+            return {
+                "estimated_commission": None,
+                "estimated_margin_impact": None,
+                "http_status": resp["status"],
+                "raw": resp["data"],
+                "error": resp["error"],
+            }
+        data = resp["data"] if isinstance(resp["data"], dict) else {}
+        order_balance = data.get("orderBalance") or {}
+        commission_info = data.get("commissionAndFee") or data.get("commission") or {}
+
+        def _opt_float(d: Dict[str, Any], *keys: str) -> Optional[float]:
+            for key in keys:
+                val = d.get(key)
+                if val is not None:
+                    try:
+                        return float(val)
+                    except (TypeError, ValueError):
+                        continue
+            return None
+
+        est_commission = _opt_float(
+            commission_info if isinstance(commission_info, dict) else {},
+            "totalCommission", "commission", "total",
+        )
+        return {
+            "estimated_commission": est_commission,
+            "estimated_margin_impact": _opt_float(
+                order_balance, "orderValue", "projectedBalance", "projectedAvailableFunds",
+            ),
+            "estimated_equity_with_loan": _opt_float(
+                order_balance, "projectedAvailableFunds",
+            ),
+            "http_status": resp["status"],
+            "raw": data,
+            "error": None,
+        }
