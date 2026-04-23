@@ -31,16 +31,17 @@ import type { AdminHealthResponse, ProviderMetrics } from '@/types/adminHealth';
 import { formatDateFriendly, formatDateTimeFriendly } from '@/utils/format';
 
 // ---------------------------------------------------------------------------
-// Vertical grid layout — 4 node rows, top-to-bottom pipeline flow
+// Vertical grid layout — 5 node rows, top-to-bottom pipeline flow
 //
 // Row 0  Ingestion:   constituents → tracked_cache → daily_bars
 // Row 1  Compute:     [gap]          regime          indicators        exit_cascade
 // Row 2  Downstream:  [gap]          scan_overlay    strategy_eval     snapshot_history
-// Row 3  Reporting:   digest         health_check    audit             warm_dashboard  mv_refresh
+// Row 3  Reporting:   digest         health_check    [gap]             mv_refresh
+// Row 4  Audit/warm:  [gap]          [gap]           audit             warm_dashboard
 //
-// Pure grid — no per-node y-offsets. mv_refresh is terminal materialization (views
-// after indicators + snapshot_history); placed with reporting steps, not ingestion.
-// Row spacing + extra bottom band keep edges readable without overlapping neighbours.
+// Pure grid — no per-node y-offsets. Audit + warm_dashboard moved to their own row
+// so heavy downstream materialization (MV Refresh) doesn't sit next to the
+// snapshot/health cluster and distract from the day-to-day read.
 // ---------------------------------------------------------------------------
 
 const DETAIL_PANEL_OPEN_KEY = 'axf.pipelineDag.detailOpen';
@@ -81,9 +82,9 @@ const NODE_POSITIONS: Record<string, NodePos> = {
   snapshot_history: { row: 2, col: 3 },
   digest:           { row: 3, col: 0 },
   health_check:     { row: 3, col: 1 },
-  audit:            { row: 3, col: 2 },
-  warm_dashboard:   { row: 3, col: 3 },
-  mv_refresh:       { row: 3, col: 4 },
+  mv_refresh:       { row: 3, col: 3 },
+  audit:            { row: 4, col: 2 },
+  warm_dashboard:   { row: 4, col: 3 },
 };
 
 const NODE_W = 160;
