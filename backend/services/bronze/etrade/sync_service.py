@@ -47,6 +47,7 @@ from backend.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
+from backend.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 
 logger = logging.getLogger(__name__)
 
@@ -486,6 +487,7 @@ class ETradeSyncService:
         errors = 0
         options_seen = 0
         total = len(raw)
+        touched_rows: List[Position] = []
 
         for pos_raw in raw:
             try:
@@ -533,10 +535,18 @@ class ETradeSyncService:
                     fields["current_price"] = current_price
                 elif market_value is not None and qty != 0:
                     fields["current_price"] = market_value / abs(qty)
-                if day_gain is not None:
-                    fields["day_pnl"] = day_gain
-                if day_gain_pct is not None:
-                    fields["day_pnl_pct"] = day_gain_pct
+                # Broker day_gain / day_gain_pct are advisory only (D141).
+                # Log at debug for drift measurement; NEVER persist: the
+                # broker baseline silently corrupts across splits and
+                # cross-session refreshes.
+                if day_gain is not None or day_gain_pct is not None:
+                    logger.debug(
+                        "etrade day_pnl advisory: symbol=%s broker_days_gain=%s "
+                        "broker_days_gain_pct=%s",
+                        symbol,
+                        day_gain,
+                        day_gain_pct,
+                    )
 
                 existing: Optional[Position] = (
                     session.query(Position)
@@ -550,16 +560,17 @@ class ETradeSyncService:
                 if existing is not None:
                     for k, v in fields.items():
                         setattr(existing, k, v)
+                    touched_rows.append(existing)
                 else:
-                    session.add(
-                        Position(
-                            user_id=account.user_id,
-                            account_id=account.id,
-                            symbol=symbol,
-                            currency=account.currency or "USD",
-                            **fields,
-                        )
+                    new_pos = Position(
+                        user_id=account.user_id,
+                        account_id=account.id,
+                        symbol=symbol,
+                        currency=account.currency or "USD",
+                        **fields,
                     )
+                    session.add(new_pos)
+                    touched_rows.append(new_pos)
                 written += 1
             except Exception as exc:  # noqa: BLE001 — per-row isolation
                 errors += 1
@@ -577,10 +588,15 @@ class ETradeSyncService:
             "errors=%d options_in_portfolio=%d",
             account.user_id, account.id, written, skipped, errors, options_seen,
         )
+
+        # Server-side day P&L recompute (D141).
+        day_pnl_stats = recompute_day_pnl_for_rows(session, touched_rows, "etrade")
+
         return {
             "positions_synced": written,
             "positions_skipped": skipped,
             "positions_errors": errors,
+            **day_pnl_stats,
         }
 
     def _sync_options(

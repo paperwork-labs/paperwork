@@ -17,8 +17,11 @@ export interface Position {
   average_cost: number;
   unrealized_pnl: number;
   unrealized_pnl_pct: number;
-  day_pnl?: number;
-  day_pnl_pct?: number;
+  // day_pnl / day_pnl_pct are explicitly nullable. `null` means "unknown"
+  // (missing prior_close or split-drift window — D141). Never render null
+  // as 0 — loading / error / empty / data states must be distinct.
+  day_pnl?: number | null;
+  day_pnl_pct?: number | null;
   sector?: string;
   industry?: string;
   last_updated?: string | null;

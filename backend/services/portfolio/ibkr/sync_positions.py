@@ -17,6 +17,7 @@ from backend.models.portfolio import PositionCategory
 from backend.models.position import Position, PositionStatus, PositionType
 from backend.models.tax_lot import TaxLotSource
 from backend.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
+from backend.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 
 from .helpers import coerce_date, safe_float, DEFAULT_CURRENCY, DEFAULT_ASSET_CATEGORY
 
@@ -394,6 +395,7 @@ async def sync_positions_from_tax_lots(
         _clear_positions(db, broker_account)
 
         synced_count = 0
+        touched_rows: list[Position] = []
         for symbol, data in position_data.items():
             if data["quantity"] == 0:
                 continue
@@ -401,7 +403,7 @@ async def sync_positions_from_tax_lots(
             unrealized_pnl = data["total_value"] - data["total_cost"]
             unrealized_pnl_pct = (unrealized_pnl / data["total_cost"] * 100) if data["total_cost"] != 0 else 0
 
-            db.add(Position(
+            new_pos = Position(
                 user_id=broker_account.user_id,
                 account_id=broker_account.id,
                 symbol=symbol,
@@ -416,11 +418,16 @@ async def sync_positions_from_tax_lots(
                 unrealized_pnl=Decimal(str(unrealized_pnl)),
                 unrealized_pnl_pct=Decimal(str(unrealized_pnl_pct)),
                 position_updated_at=datetime.now(timezone.utc),
-            ))
+            )
+            db.add(new_pos)
+            touched_rows.append(new_pos)
             synced_count += 1
 
         db.flush()
-        return {"synced": synced_count}
+        # Server-side day P&L recompute (D141) — IBKR FlexQuery does not
+        # carry day P&L; this is the canonical place for day_pnl to land.
+        day_pnl_stats = recompute_day_pnl_for_rows(db, touched_rows, "ibkr_taxlots")
+        return {"synced": synced_count, **day_pnl_stats}
     except Exception as exc:
         logger.error("Error syncing positions from tax lots: %s", exc)
         # Do not rollback: runs inside multi-step IBKR sync; rollback would discard
@@ -448,6 +455,7 @@ async def sync_positions_from_open_positions(
         _clear_positions(db, broker_account)
 
         synced_count = 0
+        touched_rows: list[Position] = []
         for sp in stock_positions:
             try:
                 qty = Decimal(str(sp["quantity"]))
@@ -457,7 +465,7 @@ async def sync_positions_from_open_positions(
                 pnl = Decimal(str(sp["unrealized_pnl"]))
                 pnl_pct = (pnl / cost_basis * 100) if cost_basis else Decimal("0")
 
-                db.add(Position(
+                new_pos = Position(
                     user_id=broker_account.user_id,
                     account_id=broker_account.id,
                     symbol=sp["symbol"],
@@ -472,7 +480,9 @@ async def sync_positions_from_open_positions(
                     unrealized_pnl=pnl,
                     unrealized_pnl_pct=pnl_pct,
                     position_updated_at=datetime.now(timezone.utc),
-                ))
+                )
+                db.add(new_pos)
+                touched_rows.append(new_pos)
                 synced_count += 1
             except Exception as e:
                 logger.warning(
@@ -485,7 +495,8 @@ async def sync_positions_from_open_positions(
 
         db.flush()
         logger.info("Synced %d positions from OpenPositions for %s", synced_count, account_number)
-        return {"synced": synced_count}
+        day_pnl_stats = recompute_day_pnl_for_rows(db, touched_rows, "ibkr_openpositions")
+        return {"synced": synced_count, **day_pnl_stats}
     except Exception as exc:
         logger.error("Error syncing positions from OpenPositions: %s", exc)
         # Do not rollback: runs inside multi-step IBKR sync; rollback would discard
@@ -698,6 +709,7 @@ async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
             symbol_to_price[sym] = float(price)
 
     updated_positions = 0
+    touched_rows: list[Position] = []
     for p in positions:
         price = symbol_to_price.get(p.symbol)
         if price is None:
@@ -713,6 +725,7 @@ async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
             p.unrealized_pnl = unrealized
             p.unrealized_pnl_pct = unrealized_pct
             updated_positions += 1
+            touched_rows.append(p)
         except Exception as e:
             logger.warning(
                 "refresh_prices: failed updating position metrics for symbol %s: %s",
@@ -720,6 +733,8 @@ async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
                 e,
             )
             continue
+    # Server-side day P&L recompute (D141).
+    recompute_day_pnl_for_rows(db, touched_rows, "ibkr_refresh_prices")
 
     lots = db.query(TaxLot).filter(TaxLot.account_id == broker_account.id).all()
     updated_lots = 0

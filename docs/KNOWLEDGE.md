@@ -1,6 +1,6 @@
 # Knowledge — Decision Log
 
-Architectural decisions with rationale. Grouped by domain; within each decision table, rows are sorted by decision ID. Decision IDs are globally unique through **D140** (V1 Greenfield implementation rows **D95–D102** were renumbered from a duplicate D81–D88 block that collided with Strategic Direction **D81–D88**). Decision IDs are append-only — never reused. Resolved issues use R-prefixed IDs.
+Architectural decisions with rationale. Grouped by domain; within each decision table, rows are sorted by decision ID. Decision IDs are globally unique through **D141** (V1 Greenfield implementation rows **D95–D102** were renumbered from a duplicate D81–D88 block that collided with Strategic Direction **D81–D88**). Decision IDs are append-only — never reused. Resolved issues use R-prefixed IDs.
 
 ---
 
@@ -50,6 +50,12 @@ Architectural decisions with rationale. Grouped by domain; within each decision 
 | D16 | 2026-03-23 | **No alternative execution paths** — all orders through OrderManager |
 | D18 | 2026-03-23 | **IBKR is primary execution broker** — Schwab/TastyTrade read-only for now |
 | D137 | 2026-04-21 | **Shadow (paper) autotrading default-ON** — `SHADOW_TRADING_MODE` defaults to `True` in `backend/config.py`; when set, `OrderManager.submit` diverts to `ShadowOrderRecorder.record` (no broker call) and persists an intent row in `shadow_orders`. A 15-min Celery task (`backend.services.execution.shadow_mark_to_market.run`) refreshes simulated P&L from `MarketSnapshot.current_price`. Live trading is opt-out, not opt-in: an admin must flip `SHADOW_TRADING_MODE=False` after sign-off. Rollback = re-set the flag back to `True`; table + service are fully additive. See Decision Details below. |
+
+### Portfolio & P&L
+
+| ID | Date | Decision |
+|----|------|----------|
+| D141 | 2026-04-22 | **Day P&L is server-recomputed, NULL on ambiguity** — `positions.day_pnl*` is always recomputed from `(current_price, prior_close, qty)` via `backend/services/portfolio/day_pnl_service.py`. Broker fields (`currentDayProfitLoss`, `daysGain`) are advisory only (debug-logged, not persisted). Every broker sync + the `refresh_prices` endpoint routes through `recompute_day_pnl_for_rows`, which asserts `recomputed + nulled_split + nulled_missing + errors == len(rows)`. On missing `prior_close` or split-window (`SPLIT` / `REVERSE_SPLIT` / `STOCK_DIVIDEND` `ex_date` in `(prior_close_date, today]`), both fields are `NULL` and the UI renders `'—'` — no silent `0`. Fixes RIVN showing `-$55,691 (-47.82%)` Day P&L from stale pre-split broker baseline. See Decision Details below. |
 
 ### Frontend & UX
 
@@ -191,6 +197,16 @@ Implementation decisions that shipped in PRs #326–#334 were previously logged 
 ---
 
 ## Decision Details
+
+### D141 [2026-04-22] Day P&L is server-recomputed, NULL on ambiguity
+
+**Decision:** `positions.day_pnl` and `positions.day_pnl_pct` are now always computed server-side from `(current_price, prior_close, quantity)` via the new single-source-of-truth module `backend/services/portfolio/day_pnl_service.py`. Broker-reported `currentDayProfitLoss` (Schwab), `daysGain` (E*TRADE), and any other broker day fields are **advisory only** — logged at debug level for drift measurement, never persisted. Every broker sync path (`schwab_sync_service`, `bronze/etrade/sync_service`, `portfolio/ibkr/sync_positions`, `tastytrade_sync_service`) and the intraday `refresh_prices` endpoint now route through `recompute_day_pnl_for_rows`, which emits structured counters (`day_pnl_recomputed`, `day_pnl_nulled_due_to_split`, `day_pnl_nulled_due_to_missing_prior_close`, `day_pnl_errors`) that MUST sum to `len(rows)` — enforced by an `assert` inside the helper per `.cursor/rules/no-silent-fallback.mdc`. When `prior_close` is missing, or a `SPLIT` / `REVERSE_SPLIT` / `STOCK_DIVIDEND` `ex_date` falls in `(prior_close_date, today]`, both fields are written as `NULL`. The API response (`/api/v1/portfolio/stocks`) and frontend types (`Position.day_pnl*: number | null`) now propagate `null` through to the UI, which renders `'—'` (tabular-nums dash) for unknowns — never a misleading `0` and never a silent `p.perf_1d` fallback. The Holdings heatmap maps `null` to `change = 0` so `heatMapColor` renders it as the neutral midpoint colour, visually distinct from red/green extremes.
+
+**Rationale:** Founder screenshot surfaced RIVN showing Day P&L `-$55,691 (-47.82%)` on a 3,500-share position whose total unrealized P&L was only `+$3,284`. `-$55,691 / 3,500 ≈ -$15.91/sh` implied a reference price near `$32.9` vs the current `$17.15` — a classic pre-split / cross-session broker baseline that never gets refreshed. AMZN "looked correct" in the same screenshot only because its broker day field happened to align with its current session close; the code path was identical. Price-refresh (`backend/api/routes/settings/account.py`) used to update `current_price`, `market_value`, `unrealized_pnl`, and `unrealized_pnl_pct` but **leaved `day_pnl` untouched** — so after any intraday refresh, `unrealized_pnl` tracked reality while `day_pnl` silently lied using whatever baseline the broker had reported at last sync. This is the same failure class as R34/R38: a silently wrong number is more expensive than a missing one. Recomputing from the same `prior_close` we already trust for indicators removes the broker-drift failure mode entirely; `NULL` on ambiguity (no prior close, split window) surfaces "we don't know" instead of inventing a number.
+
+**Alternatives considered:** (1) **Apply split factor when a split is detected** — rejected for this PR: correct split-factor application requires reconciling back-adjusted OHLCV with the live position's cost basis and the `AppliedCorporateAction` ledger; doing it piecemeal in the day-P&L path would invite exactly the silent-drift bug we're fixing. `NULL` is the honest signal; the `HistoricalOhlcvAdjuster` / `CorporateActionApplier` path remains the place to resolve splits authoritatively. A future PR can drop `NULL` handling once back-adjustment is on by default. (2) **Keep broker day field as fallback when our recompute can't resolve** — rejected: the broker field is the actual failure source; a fallback would keep the RIVN bug alive and violate `no-silent-fallback.mdc`. (3) **Default to `0` when inputs are missing** — rejected: zero is a valid market outcome (a flat day), distinct from "unknown". Collapsing both into `0` is the frontend equivalent of the same lie.
+
+**Reversible?** Yes. The service is additive; every broker sync path's original write-broker-field code was simply replaced with a recompute call, and reverting the commit restores the prior (broken) behaviour. No migration, no schema change. The frontend `null` rendering is backward-compatible — the backend could return `0` again tomorrow and the UI would render it as a green zero exactly as before. The decision log entry, the RIVN regression fixture in `backend/tests/services/portfolio/test_day_pnl_service.py`, and the counter assertions are the load-bearing artifacts: if anyone re-introduces a silent `?? 0` fallback, the RIVN fixture will fail.
 
 ### D136 [2026-04-22] BYOK fallback paths are observable, not silent
 

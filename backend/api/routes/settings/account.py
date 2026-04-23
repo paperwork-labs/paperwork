@@ -31,6 +31,11 @@ from typing import Dict, Any
 from backend.api.dependencies import get_current_user
 from backend.models.user import User
 from backend.services.execution.runner_state_service import compute_runner_state
+from backend.services.portfolio.day_pnl_service import (
+    has_ambiguous_corporate_action,
+    recompute_position_day_pnl,
+    resolve_prior_close,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -700,6 +705,11 @@ async def refresh_prices(
 
         # Update positions
         updated_positions = 0
+        day_pnl_recomputed = 0
+        day_pnl_nulled_split = 0
+        day_pnl_nulled_no_prior = 0
+        day_pnl_errors = 0
+        refreshed_positions: List[Position] = []
         for p in positions:
             price = symbol_to_price.get(p.symbol)
             if price is None:
@@ -728,8 +738,64 @@ async def refresh_prices(
                             getattr(p, "initial_risk_pct", None),
                         )
                 updated_positions += 1
-            except Exception:
+                refreshed_positions.append(p)
+            except Exception as e:
+                logger.warning(
+                    "refresh_prices: failed updating metrics for position %s (%s): %s",
+                    getattr(p, "id", "?"),
+                    getattr(p, "symbol", "?"),
+                    e,
+                )
                 continue
+
+        # Server-side day P&L recompute (D141). Broker day fields silently drift
+        # across splits / session boundaries; we always recompute from the same
+        # (current_price, prior_close) pair we trust for indicators.
+        for p in refreshed_positions:
+            try:
+                resolved = resolve_prior_close(db, p.symbol)
+                if resolved is None:
+                    p.day_pnl = None
+                    p.day_pnl_pct = None
+                    day_pnl_nulled_no_prior += 1
+                    continue
+                _, prior_close_date = resolved
+                if has_ambiguous_corporate_action(db, p.symbol, prior_close_date):
+                    p.day_pnl = None
+                    p.day_pnl_pct = None
+                    day_pnl_nulled_split += 1
+                    continue
+                recompute_position_day_pnl(db, p)
+                day_pnl_recomputed += 1
+            except Exception as e:
+                day_pnl_errors += 1
+                logger.warning(
+                    "refresh_prices: day_pnl recompute failed for position %s (%s): %s",
+                    getattr(p, "id", "?"),
+                    getattr(p, "symbol", "?"),
+                    e,
+                )
+
+        total_day_pnl_touched = (
+            day_pnl_recomputed
+            + day_pnl_nulled_split
+            + day_pnl_nulled_no_prior
+            + day_pnl_errors
+        )
+        assert total_day_pnl_touched == len(refreshed_positions), (
+            f"day_pnl counter drift: {day_pnl_recomputed}+{day_pnl_nulled_split}+"
+            f"{day_pnl_nulled_no_prior}+{day_pnl_errors} != {len(refreshed_positions)}"
+        )
+        logger.info(
+            "refresh_prices day_pnl: user=%s account=%s recomputed=%d "
+            "nulled_due_to_split=%d nulled_due_to_missing_prior_close=%d errors=%d",
+            current_user.id,
+            account_id,
+            day_pnl_recomputed,
+            day_pnl_nulled_split,
+            day_pnl_nulled_no_prior,
+            day_pnl_errors,
+        )
 
         # Update tax lots for same scope (only this user's accounts)
         tq = (
@@ -770,6 +836,12 @@ async def refresh_prices(
             "updated_positions": updated_positions,
             "updated_tax_lots": updated_lots,
             "symbols": list(symbol_to_price.keys()),
+            "day_pnl": {
+                "recomputed": day_pnl_recomputed,
+                "nulled_due_to_split": day_pnl_nulled_split,
+                "nulled_due_to_missing_prior_close": day_pnl_nulled_no_prior,
+                "errors": day_pnl_errors,
+            },
         }
     except Exception as e:
         db.rollback()

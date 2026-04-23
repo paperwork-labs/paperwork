@@ -160,13 +160,24 @@ const PortfolioHoldings: React.FC = () => {
 
   const heatmap = useMemo((): FinvizData[] => {
     return filtered
-      .map((p) => ({
-        name: String(p.symbol ?? '').toUpperCase() || '—',
-        size: Math.max(1, Math.round(Number(p.market_value ?? 0) / 1000)),
-        change: Number(p.day_pnl_pct ?? p.perf_1d ?? 0),
-        sector: String(p.sector ?? '—'),
-        value: Number.isFinite(Number(p.market_value)) ? Number(p.market_value) : 0,
-      }))
+      .map((p) => {
+        // day_pnl_pct is nullable (D141): NULL means unknown (missing
+        // prior_close or split-drift window), NOT zero. Render unknowns
+        // as neutral grey (change=0 sits at the midpoint of HEAT_MAP_STOPS,
+        // visually distinct from green/red extremes). Do NOT fall back
+        // to ``perf_1d`` — it's a different quantity and that fallback
+        // silently hid the RIVN regression.
+        const rawDay = p.day_pnl_pct;
+        const dayPct =
+          typeof rawDay === 'number' && Number.isFinite(rawDay) ? rawDay : 0;
+        return {
+          name: String(p.symbol ?? '').toUpperCase() || '—',
+          size: Math.max(1, Math.round(Number(p.market_value ?? 0) / 1000)),
+          change: dayPct,
+          sector: String(p.sector ?? '—'),
+          value: Number.isFinite(Number(p.market_value)) ? Number(p.market_value) : 0,
+        };
+      })
       .filter((x): x is FinvizData => x.name !== '—')
       .slice(0, 40);
   }, [filtered]);
@@ -270,11 +281,26 @@ const PortfolioHoldings: React.FC = () => {
       {
         key: 'day_pnl_pct',
         header: 'Day P&L %',
-        accessor: (p) => Number(p.day_pnl_pct ?? p.perf_1d ?? 0),
+        // Nullable (D141): NULL = unknown (missing prior_close / split drift).
+        // Sort-accessor: put nulls at the bottom on descending sorts, top on
+        // ascending — represent by ``Number.NEGATIVE_INFINITY`` which the
+        // SortableTable numeric comparator handles cleanly. NEVER ?? 0.
+        accessor: (p) =>
+          p.day_pnl_pct == null || !Number.isFinite(Number(p.day_pnl_pct))
+            ? Number.NEGATIVE_INFINITY
+            : Number(p.day_pnl_pct),
         sortable: true,
         sortType: 'number',
         isNumeric: true,
-        render: (v) => <PnlText value={Number(v)} format="percent" fontSize="sm" />,
+        render: (_v, row) => {
+          const raw = row.day_pnl_pct;
+          if (raw == null || !Number.isFinite(Number(raw))) {
+            return (
+              <span className="text-sm text-muted-foreground tabular-nums">—</span>
+            );
+          }
+          return <PnlText value={Number(raw)} format="percent" fontSize="sm" />;
+        },
         width: '100px',
       },
       {

@@ -153,8 +153,13 @@ async def get_stocks(
                 "unrealized_pnl": float(p.unrealized_pnl or 0),
                 "unrealized_pnl_pct": float(p.unrealized_pnl_pct or 0),
                 "runner_since": p.runner_since.isoformat() if p.runner_since else None,
-                "day_pnl": float(p.day_pnl or 0),
-                "day_pnl_pct": float(p.day_pnl_pct or 0),
+                # day_pnl / day_pnl_pct are explicitly nullable: NULL means
+                # "unknown" (missing prior_close or split-drift window). Coercing
+                # to 0 would hide the bug (D141; no-silent-fallback rule).
+                "day_pnl": float(p.day_pnl) if p.day_pnl is not None else None,
+                "day_pnl_pct": (
+                    float(p.day_pnl_pct) if p.day_pnl_pct is not None else None
+                ),
                 "sector": sector,
                 "industry": p.industry or "",
                 "market_cap": snap.get("market_cap"),

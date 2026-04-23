@@ -30,6 +30,7 @@ from backend.services.portfolio.account_credentials_service import (
     CredentialsNotFoundError,
 )
 from backend.services.portfolio.closing_lot_matcher import reconcile_closing_lots
+from backend.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 from backend.models.position import PositionType
 from backend.models.transaction import TransactionType
 from backend.models.account_balance import AccountBalanceType
@@ -202,6 +203,7 @@ class TastyTradeSyncService:
         dropped_no_expiry = 0
         dropped_parse_error = 0
         seen_option_keys = set()
+        touched_rows: list[Position] = []
         for pos in data:
             try:
                 qty = float(pos.get("quantity", 0) or 0)
@@ -246,7 +248,9 @@ class TastyTradeSyncService:
                 else:
                     kwargs = self._equity_position_kwargs(pos, ba)
                     if kwargs:
-                        db.add(Position(**kwargs))
+                        new_pos = Position(**kwargs)
+                        db.add(new_pos)
+                        touched_rows.append(new_pos)
                         count += 1
             except Exception as exc:
                 logger.warning("Skipping TastyTrade position %s: %s", pos.get("symbol", "?"), exc)
@@ -256,11 +260,16 @@ class TastyTradeSyncService:
             ba.options_enabled = True
 
         db.flush()
+        # Server-side day P&L recompute (D141) — TastyTrade's
+        # ``get_current_positions`` does not surface day P&L; this is the
+        # canonical place for it to land.
+        day_pnl_stats = recompute_day_pnl_for_rows(db, touched_rows, "tastytrade")
         out: Dict[str, Any] = {
             "positions": count,
             "options_dropped_no_underlying": dropped_no_underlying,
             "options_dropped_no_expiry": dropped_no_expiry,
             "options_dropped_parse_error": dropped_parse_error,
+            **day_pnl_stats,
         }
         dropped_total = dropped_no_underlying + dropped_no_expiry + dropped_parse_error
         if raw_option_rows > 0 and options_added == 0:

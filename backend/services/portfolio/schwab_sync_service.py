@@ -26,6 +26,10 @@ from backend.services.portfolio.closing_lot_matcher import (
     MatchResult,
     reconcile_closing_lots,
 )
+from backend.services.portfolio.day_pnl_service import (
+    recompute_day_pnl_for_rows,
+    recompute_position_day_pnl,
+)
 from backend.models.options import Option
 from backend.config import settings
 
@@ -324,14 +328,17 @@ class SchwabSyncService:
                 price_map[sym] = float(res)
 
         updated = 0
+        touched: list[Position] = []
         for p in positions:
             price = price_map.get(p.symbol)
             if price:
                 p.update_market_data(price)
                 updated += 1
+                touched.append(p)
         session.flush()
         logger.info("Schwab sync: refreshed prices for %d/%d positions", updated, len(positions))
-        return {"prices_refreshed": updated}
+        day_pnl_stats = recompute_day_pnl_for_rows(session, touched, "schwab_refresh_prices")
+        return {"prices_refreshed": updated, **day_pnl_stats}
 
     @staticmethod
     def _enrich_positions_from_snapshots(account: BrokerAccount, session: Session) -> None:
@@ -377,6 +384,7 @@ class SchwabSyncService:
         positions = await self._client.get_positions(account_number=account.account_number)
         created = 0
         updated = 0
+        touched_rows: list[Position] = []
         for p in positions:
             sym = (p.get("symbol") or "").upper()
             if not sym:
@@ -400,10 +408,17 @@ class SchwabSyncService:
                 fields["market_value"] = mkt_val
                 if qty != 0:
                     fields["current_price"] = mkt_val / abs(qty)
+            # Broker day_pnl / day_pnl_pct are advisory only (D141). We log
+            # at debug level so drift vs server recompute is observable, but
+            # we do NOT persist the broker value: it silently corrupts across
+            # splits and cross-session refreshes (RIVN -$55,691 regression).
             if day_pnl is not None:
-                fields["day_pnl"] = day_pnl
-            if day_pnl_pct is not None:
-                fields["day_pnl_pct"] = day_pnl_pct
+                logger.debug(
+                    "schwab day_pnl advisory: symbol=%s broker_day_pnl=%s broker_day_pnl_pct=%s",
+                    sym,
+                    day_pnl,
+                    day_pnl_pct,
+                )
             if avg_cost and total_cost is None and qty != 0:
                 fields["total_cost_basis"] = avg_cost * abs(qty)
             elif total_cost and avg_cost is None and qty != 0:
@@ -418,6 +433,7 @@ class SchwabSyncService:
                 for k, v in fields.items():
                     setattr(existing, k, v)
                 updated += 1
+                touched_rows.append(existing)
             else:
                 new_pos = Position(
                     user_id=account.user_id,
@@ -428,8 +444,16 @@ class SchwabSyncService:
                 )
                 session.add(new_pos)
                 created += 1
+                touched_rows.append(new_pos)
         session.flush()
-        return {"positions_created": created, "positions_updated": updated}
+
+        # Server-side day P&L recompute (D141).
+        day_pnl_stats = recompute_day_pnl_for_rows(session, touched_rows, "schwab")
+        return {
+            "positions_created": created,
+            "positions_updated": updated,
+            **day_pnl_stats,
+        }
 
     async def _sync_options(self, account: BrokerAccount, session: Session) -> Dict:
         """Sync option positions from Schwab API."""
