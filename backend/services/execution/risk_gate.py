@@ -53,6 +53,42 @@ STAGE_CAPS = {
 
 DEFAULT_STOP_MULTIPLIER = 2.0
 
+# Wave F Phase 0 (issue #473) — crypto recognition for the risk-gate branch.
+# Weinstein Stage Analysis does not apply to crypto (no fundamentals,
+# 24/7 markets, no earnings/sector context), so crypto orders skip the
+# stage/regime sizing path and instead enforce a tighter CRYPTO_MAX_POSITION_PCT
+# cap. This list is intentionally conservative — crypto assets that aren't
+# recognized here will fall through to the equity path and be blocked by
+# missing MarketSnapshot/stage data, which is the safer failure mode.
+CRYPTO_SYMBOLS_CORE = frozenset({
+    "BTC", "ETH", "ADA", "SOL", "MATIC", "DOGE", "LTC", "XRP", "DOT", "AVAX",
+    "LINK", "UNI", "ATOM", "BCH",
+})
+
+
+def _is_crypto_symbol(symbol: str) -> bool:
+    """Return True if ``symbol`` should route through the crypto risk branch.
+
+    Recognizes:
+      * Bare crypto tickers in ``CRYPTO_SYMBOLS_CORE`` (e.g. ``"BTC"``)
+      * Coinbase-style pair notation with USD/USDT quote (``"BTC-USD"``,
+        ``"ETH-USDT"``, ``"SOL/USD"``) where the base is in the core set.
+
+    Intentionally conservative: unknown aliases fall through to the equity
+    path, which fails closed for lack of MarketSnapshot data.
+    """
+    s = (symbol or "").upper().strip()
+    if not s:
+        return False
+    if s in CRYPTO_SYMBOLS_CORE:
+        return True
+    for sep in ("-", "/"):
+        if sep in s:
+            base, _, quote = s.partition(sep)
+            if quote in ("USD", "USDT", "USDC") and base in CRYPTO_SYMBOLS_CORE:
+                return True
+    return False
+
 
 @dataclass
 class PositionSizeResult:
@@ -159,6 +195,15 @@ class RiskGate:
                 f"${self.max_order_value:,.0f} maximum"
             )
 
+        # Wave F Phase 0: crypto orders use a tighter, Weinstein-agnostic path.
+        # Rationale: Stage Analysis relies on SMA150/sector/regime context that
+        # does not apply to 24/7 crypto markets. We enforce
+        # CRYPTO_MAX_POSITION_PCT (default 5%) in lieu of the 15% equity cap
+        # and skip the stage/regime sizing path entirely. See issue #473.
+        if _is_crypto_symbol(req.symbol):
+            self._check_crypto_sizing(req, price_estimate, portfolio_equity)
+            return warnings
+
         if portfolio_equity and portfolio_equity > 0:
             pct = est_value / portfolio_equity
             if pct > self.max_position_pct:
@@ -177,6 +222,41 @@ class RiskGate:
                 warnings.append(sizing_warning)
 
         return warnings
+
+    def _check_crypto_sizing(
+        self,
+        req: OrderRequest,
+        price_estimate: float,
+        portfolio_equity: Optional[float],
+    ) -> None:
+        """Crypto-specific sizing: enforce CRYPTO_MAX_POSITION_PCT as a hard cap.
+
+        Skips Weinstein stage / Market Regime gating (those are equity concepts).
+        Still applies the global ``max_order_value`` check — that is handled
+        upstream in :meth:`check` before this method is called.
+
+        Raises :class:`RiskViolation` if the order exceeds the crypto cap.
+        Returns ``None`` silently when no equity context is available — the
+        upstream ``max_order_value`` check remains the fail-safe in that case,
+        matching how the equity path treats missing ``portfolio_equity``.
+        """
+        if portfolio_equity is None or portfolio_equity <= 0:
+            return
+
+        est_value = req.quantity * price_estimate
+        cap_pct = float(
+            getattr(app_settings, "CRYPTO_MAX_POSITION_PCT", 0.05) or 0.05
+        )
+        cap_value = portfolio_equity * cap_pct
+        if est_value > cap_value:
+            logger.warning(
+                "Crypto sizing cap BLOCKED: %s est_value=$%.0f cap=$%.0f (%.1f%%)",
+                req.symbol, est_value, cap_value, cap_pct * 100,
+            )
+            raise RiskViolation(
+                f"Crypto position ${est_value:,.0f} exceeds "
+                f"{cap_pct:.0%} of equity cap (${cap_value:,.0f}) for {req.symbol}"
+            )
 
     def _check_stage_regime_sizing(
         self,

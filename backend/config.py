@@ -206,6 +206,12 @@ class Settings(BaseSettings):
     MAX_SINGLE_POSITION_PCT: float = 0.15
     ENABLE_ACCOUNT_AWARE_RISK: bool = False
 
+    # Crypto-specific position cap (Wave F Phase 0, issue #473).
+    # Crypto is higher-vol and lacks the Weinstein stage framework, so we cap
+    # individual crypto positions tighter than the generic equity MAX_SINGLE_POSITION_PCT.
+    # Expressed as a fraction of portfolio equity (0.05 = 5%).
+    CRYPTO_MAX_POSITION_PCT: float = 0.05
+
     # Candidate generators: Stage 2A/2B + RS quintile (Kell) variant in
     # ``stage2a_rs_strong_kell``. Legacy ``stage2a_rs_strong`` always runs.
     ENABLE_STAGE2A_GENERATOR: bool = False

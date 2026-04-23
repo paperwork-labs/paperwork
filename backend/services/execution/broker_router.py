@@ -45,10 +45,15 @@ def create_default_router() -> BrokerRouter:
     """Factory that wires up all available broker executors."""
     from backend.services.execution.ibkr_executor import IBKRExecutor
     from backend.services.execution.paper_executor import PaperExecutor
+    from backend.services.execution.coinbase_paper_executor import CoinbasePaperExecutor
 
     router = BrokerRouter()
     router.register("ibkr", IBKRExecutor())
     router.register("paper", PaperExecutor())
+    # Wave F Phase 0: crypto goes through a dedicated paper executor that
+    # rejects non-crypto symbols at the edge (issue #473). Live Coinbase lands
+    # in a later phase.
+    router.register("coinbase", CoinbasePaperExecutor())
     return router
 
 

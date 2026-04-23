@@ -55,6 +55,10 @@ class BrokerType(enum.Enum):
     IBKR = "ibkr"
     TASTYTRADE = "tastytrade"
     SCHWAB = "schwab"
+    ETRADE = "etrade"
+    TRADIER = "tradier"
+    TRADIER_SANDBOX = "tradier_sandbox"
+    COINBASE = "coinbase"
 
 
 class Order(Base):
