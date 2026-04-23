@@ -97,6 +97,12 @@ class Settings(BaseSettings):
     TASTYTRADE_CLIENT_SECRET: Optional[str] = None
     TASTYTRADE_REFRESH_TOKEN: Optional[str] = None
     TASTYTRADE_IS_TEST: bool = False
+    # Hard kill switch for live (prod) TastyTrade order execution. Mirrors
+    # ETRADE_ALLOW_LIVE — TASTYTRADE_IS_TEST controls the SDK base URL but is
+    # not a capital-protection gate on its own. The "tastytrade" (live)
+    # executor refuses to construct unless this flag is True; the
+    # "tastytrade_sandbox" executor is always registered.
+    TASTYTRADE_ALLOW_LIVE: bool = False
     # Legacy credentials (ignored by SDK v12+; kept for backward-compat env files)
     TASTYTRADE_USERNAME: Optional[str] = None
     TASTYTRADE_PASSWORD: Optional[str] = None
