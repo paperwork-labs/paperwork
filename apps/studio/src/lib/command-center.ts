@@ -370,6 +370,72 @@ async function checkTokenApi(
   });
 }
 
+// Slack Web API returns HTTP 200 with { ok: false } on auth failure, so the
+// generic token probe reports green falsely. Use auth.test and parse the body.
+async function checkSlackBot(token: string | undefined): Promise<InfraStatus> {
+  const dashboardUrl = "https://app.slack.com/manage";
+  if (!token) {
+    return {
+      service: "Slack (paperwork bot)",
+      category: "ops",
+      configured: false,
+      healthy: false,
+      detail: "SLACK_BOT_TOKEN not set",
+      latencyMs: null,
+      dashboardUrl,
+    };
+  }
+  const start = Date.now();
+  try {
+    const res = await fetch("https://slack.com/api/auth.test", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      cache: "no-store",
+    });
+    const latencyMs = Date.now() - start;
+    const body = (await res.json()) as {
+      ok?: boolean;
+      error?: string;
+      team?: string;
+      user?: string;
+      bot_id?: string;
+    };
+    if (!body.ok) {
+      return {
+        service: "Slack (paperwork bot)",
+        category: "ops",
+        configured: true,
+        healthy: false,
+        detail: `auth.test failed: ${body.error ?? "unknown"}`,
+        latencyMs,
+        dashboardUrl,
+      };
+    }
+    return {
+      service: "Slack (paperwork bot)",
+      category: "ops",
+      configured: true,
+      healthy: true,
+      detail: `Bot ${body.user ?? "?"} @ ${body.team ?? "?"} (${body.bot_id ?? ""})`,
+      latencyMs,
+      dashboardUrl,
+    };
+  } catch (err) {
+    return {
+      service: "Slack (paperwork bot)",
+      category: "ops",
+      configured: true,
+      healthy: false,
+      detail: err instanceof Error ? err.message : "Slack probe failed",
+      latencyMs: null,
+      dashboardUrl,
+    };
+  }
+}
+
 export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
   const n8nUrl = normalizeBaseUrl(process.env.N8N_API_URL || process.env.N8N_HOST);
   const socialUrl = normalizeBaseUrl(process.env.POSTIZ_URL) || "https://social.paperworklabs.com";
@@ -378,6 +444,7 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
   const neonApiKey = process.env.NEON_API_KEY?.trim();
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+  const slackToken = process.env.SLACK_BOT_TOKEN?.trim();
 
   const checks: Promise<InfraStatus>[] = [
     // Core services
@@ -408,6 +475,8 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
     checkTokenApi("Vercel", "hosting", "https://api.vercel.com/v2/user", vercelToken, "https://vercel.com/paperwork-labs"),
     checkTokenApi("Neon", "data", "https://console.neon.tech/api/v2/projects", neonApiKey, "https://console.neon.tech"),
   ];
+
+  checks.push(checkSlackBot(slackToken));
 
   if (upstashUrl && upstashToken) {
     checks.push(
