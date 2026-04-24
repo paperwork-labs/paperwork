@@ -146,7 +146,7 @@ jobs:
     if: needs.changes.outputs.sharedPackages == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -221,7 +221,7 @@ jobs:
     if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.launchfreeWeb == 'true' || needs.changes.outputs.studioWeb == 'true' || needs.changes.outputs.trinketsWeb == 'true' || needs.changes.outputs.distillWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -240,7 +240,7 @@ jobs:
     if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 20
@@ -270,7 +270,7 @@ jobs:
     if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.launchfreeWeb == 'true' || needs.changes.outputs.studioWeb == 'true' || needs.changes.outputs.trinketsWeb == 'true' || needs.changes.outputs.distillWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
           node-version: 20
