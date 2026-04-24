@@ -41,6 +41,13 @@ The event-driven `auto-merge.yaml` merges on approval when CI is already green;
 the scheduled `auto-merge-sweep.yaml` catches the race where a PR gets approved
 first and CI finishes later.
 
+**Why the event-driven workflow defers bot PRs to the sweep.** Dependabot-authored
+PRs run workflows with a read-only `GITHUB_TOKEN` — `pull_request_review` and
+`check_suite` events inherit that reduced permission set, so `github.rest.pulls.merge`
+403s. The scheduled sweep (a first-party `schedule` event) runs with full repo
+permissions, which is why it's the source of truth for Dependabot merges.
+Human-authored PRs still merge instantly via the event-driven path.
+
 ## Files
 
 | Path | Purpose |
@@ -97,24 +104,23 @@ Already present in the repo (verified via `gh label list`):
 
 ## Backlog drain
 
-To process the existing Dependabot backlog (~40 PRs as of 2026-04-23) without
-waiting for Dependabot to push a new commit and re-trigger the workflows, re-run
-the auto-approve workflow for each open bot PR:
+To process an existing Dependabot backlog without waiting for Dependabot to push a
+new commit and re-trigger the workflows, use `scripts/dependabot/drain-backlog.sh`
+— it classifies open bot PRs (patch/minor/group vs. major), approves safe ones,
+and labels majors to trigger the Haiku triage workflow.
 
 ```bash
-# Bulk-approve the currently-open safe dependabot PRs.
-for pr in $(gh pr list --author "app/dependabot" --state open --limit 100 --json number,title \
-  | jq -r '.[] | select(.title | test("^chore\\(deps.*(patch|minor)|^chore\\(deps.*group")) | .number'); do
-  gh pr review "$pr" --approve --body "Drain-backlog approval (patch/minor/group)."
-  gh pr merge  "$pr" --auto --squash
-done
+./scripts/dependabot/drain-backlog.sh
 ```
 
-Majors in the backlog get a label + re-trigger of the triage:
+After draining, re-run Haiku triage for every major (in case the first pass ran
+without `ANTHROPIC_API_KEY` set and fell back to `risk:medium`):
+
 ```bash
-for pr in $(gh pr list --author "app/dependabot" --state open --limit 100 --json number,title \
-  | jq -r '.[] | select(.title | test("major|-> ?[0-9]+\\.0\\.0|v2\\.0|v3\\.0")) | .number'); do
-  gh pr edit "$pr" --add-label "deps:major,dependencies"
+gh pr list --author "app/dependabot" --label "deps:major" --state open --limit 50 \
+  --json number --jq '.[].number' | while IFS= read -r n; do
+  gh workflow run dependabot-major-triage.yaml -F pr_number=$n
+  sleep 2
 done
 ```
 

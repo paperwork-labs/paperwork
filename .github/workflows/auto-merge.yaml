@@ -85,12 +85,23 @@ jobs:
             const eventName = context.eventName;
             const summaries = [];
 
+            // Dependabot-authored PRs run with a read-only GITHUB_TOKEN on
+            // review/check_suite events, so API calls 403. auto-merge-sweep.yaml
+            // (schedule event, full perms) handles those.
+            const isBotPR = (pr) =>
+              pr?.user?.login === 'dependabot[bot]' ||
+              pr?.user?.login === 'dependabot-preview[bot]';
+
             if (eventName === 'pull_request_review') {
               if (context.payload.review.state !== 'approved') {
                 core.info('review not approved, skipping');
                 return;
               }
               const pr = context.payload.pull_request;
+              if (isBotPR(pr)) {
+                core.info(`#${pr.number}: bot PR — deferring to scheduled sweep`);
+                return;
+              }
               const r = await tryMerge(pr);
               summaries.push(`#${pr.number}: ${r.action}${r.reason ? ' — ' + r.reason : ''}`);
             } else if (eventName === 'check_suite') {
@@ -108,6 +119,10 @@ jobs:
                 const { data: pr } = await github.rest.pulls.get({
                   owner, repo, pull_number: prStub.number,
                 });
+                if (isBotPR(pr)) {
+                  core.info(`#${pr.number}: bot PR — deferring to scheduled sweep`);
+                  continue;
+                }
                 const r = await tryMerge(pr);
                 summaries.push(`#${pr.number}: ${r.action}${r.reason ? ' — ' + r.reason : ''}`);
               }
