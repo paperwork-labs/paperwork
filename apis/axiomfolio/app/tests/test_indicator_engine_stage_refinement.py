@@ -1,6 +1,6 @@
 import pandas as pd
 
-from app.services.market.indicator_engine import compute_weinstein_stage_from_daily
+from app.services.silver.indicators.indicator_engine import compute_weinstein_stage_from_daily
 
 
 def _make_daily_from_weekly(weekly_closes: list[float]) -> pd.DataFrame:

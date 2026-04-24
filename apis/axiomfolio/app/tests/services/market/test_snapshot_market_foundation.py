@@ -11,9 +11,9 @@ import pytest
 
 from app.models.market_data import EarningsCalendarEvent, MarketRegime, MarketSnapshot
 from app.services.silver.math.constants import CURATED_MARKET_SYMBOLS
-from app.services.market.indicator_engine import compute_full_indicator_series, extract_latest_values
-from app.services.market.market_data_service import price_bars, snapshot_builder
-from app.services.market.snapshot_builder import next_earnings_utc_from_calendar
+from app.services.silver.indicators.indicator_engine import compute_full_indicator_series, extract_latest_values
+from app.services.silver.market.market_data_service import price_bars, snapshot_builder
+from app.services.silver.market.snapshot_builder import next_earnings_utc_from_calendar
 
 
 @pytest.fixture(autouse=True)

@@ -8,7 +8,7 @@ from app.tasks.market import backfill as market_backfill_tasks
 @pytest.mark.destructive
 def test_refresh_index_constituents_records_counters(monkeypatch, db_session):
     # Monkeypatch service to return a small set deterministically
-    from app.services.market.market_data_service import index_universe
+    from app.services.silver.market.market_data_service import index_universe
 
     async def fake_get_index_constituents(name: str):
         if name == "SP500":

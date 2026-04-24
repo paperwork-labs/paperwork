@@ -34,7 +34,7 @@ _SECTOR_PERF_CACHE_TTL = 300
 
 
 def _redis():
-    from app.services.market.market_data_service import infra
+    from app.services.silver.market.market_data_service import infra
     return infra.redis_client
 
 

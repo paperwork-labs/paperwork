@@ -274,7 +274,7 @@ def atm_iv_from_yahoo(
 
     if chain_fetcher is None:
         try:
-            from app.services.market.yfinance_options_chain import (
+            from app.services.silver.market.yfinance_options_chain import (
                 fetch_yfinance_options_chain,
             )
 

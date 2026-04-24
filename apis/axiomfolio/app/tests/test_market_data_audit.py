@@ -3,8 +3,8 @@
 import json
 from unittest.mock import MagicMock
 
-from app.services.market.admin_health_service import AdminHealthService
-import app.services.market.admin_health_service as ahs_mod
+from app.services.silver.market.admin_health_service import AdminHealthService
+import app.services.silver.market.admin_health_service as ahs_mod
 
 
 def test_audit_green_from_pct_fields(monkeypatch):

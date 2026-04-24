@@ -14,7 +14,7 @@ import pandas as pd
 import pytest
 
 from app.models.market_data import EarningsCalendarEvent, MarketSnapshot
-from app.services.market.market_data_service import price_bars, snapshot_builder
+from app.services.silver.market.market_data_service import price_bars, snapshot_builder
 
 
 @pytest.fixture(autouse=True)

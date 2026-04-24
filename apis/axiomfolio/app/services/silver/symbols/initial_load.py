@@ -21,7 +21,7 @@ the point (per ``no-silent-fallback.mdc``).
 
 Operational use::
 
-    docker-compose exec api python -m app.services.symbols.initial_load --commit
+    docker-compose exec api python -m app.services.silver.symbols.initial_load --commit
 
 The ``--commit`` flag is required to actually persist; without it the
 script runs in dry-run / rollback mode so you can inspect counter
@@ -46,7 +46,7 @@ from app.models.symbol_master import (
     AssetClass,
     SymbolStatus,
 )
-from app.services.symbols.symbol_master_service import SymbolMasterService
+from app.services.silver.symbols.symbol_master_service import SymbolMasterService
 
 
 logger = logging.getLogger(__name__)

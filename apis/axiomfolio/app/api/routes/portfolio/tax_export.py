@@ -28,9 +28,9 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.database import get_db
 from app.models.user import User
-from app.services.tax.filefree_exporter import FileFreeExporter
-from app.services.tax.schemas import SCHEMA_VERSION
-from app.services.tax.serialization import package_to_csv
+from app.services.silver.tax.filefree_exporter import FileFreeExporter
+from app.services.silver.tax.schemas import SCHEMA_VERSION
+from app.services.silver.tax.serialization import package_to_csv
 
 logger = logging.getLogger(__name__)
 

@@ -228,7 +228,7 @@ async def get_chain(
     yf_available, yf_reason = _yfinance_availability()
     if yf_available:
         try:
-            from app.services.market.yfinance_options_chain import (
+            from app.services.silver.market.yfinance_options_chain import (
                 fetch_yfinance_options_chain,
             )
 

@@ -26,7 +26,7 @@ from app.models.corporate_action import (
     CorporateActionStatus,
     CorporateActionType,
 )
-from app.services.corporate_actions.fetcher import CorporateActionFetcher
+from app.services.silver.corporate_actions.fetcher import CorporateActionFetcher
 
 
 @pytest.fixture(autouse=True)

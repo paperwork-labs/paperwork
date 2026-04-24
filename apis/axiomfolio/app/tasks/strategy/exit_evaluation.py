@@ -22,7 +22,7 @@ from app.services.execution.exit_cascade import (
     ExitAction,
     CascadeResult,
 )
-from app.services.market.regime_engine import get_current_and_previous_regime
+from app.services.silver.regime.regime_engine import get_current_and_previous_regime
 from app.services.strategy.exit_cascade_planner import build_exit_planner_context
 
 logger = logging.getLogger(__name__)

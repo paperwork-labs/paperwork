@@ -25,15 +25,15 @@ from typing import Any, Dict, List, Optional
 import pytest
 from pydantic import ValidationError
 
-from app.services.tax.filefree_exporter import FileFreeExporter
-from app.services.tax.mapper import build_package
-from app.services.tax.schemas import (
+from app.services.silver.tax.filefree_exporter import FileFreeExporter
+from app.services.silver.tax.mapper import build_package
+from app.services.silver.tax.schemas import (
     SCHEMA_VERSION,
     DataQuality,
     InstrumentType,
     LotTerm,
 )
-from app.services.tax.serialization import CSV_COLUMNS, package_to_csv
+from app.services.silver.tax.serialization import CSV_COLUMNS, package_to_csv
 
 
 # ---------------------------------------------------------------------------
@@ -526,7 +526,7 @@ class TestPackageValidation:
         # We use ConfigDict(extra='forbid') on lots/accounts/summary so a
         # downstream consumer's malformed payload can never silently pass
         # round-trip validation.
-        from app.services.tax.schemas import FileFreeAccount
+        from app.services.silver.tax.schemas import FileFreeAccount
 
         with pytest.raises(ValidationError):
             FileFreeAccount(

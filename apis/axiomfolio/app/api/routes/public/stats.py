@@ -17,7 +17,7 @@ from app.api.rate_limit import limiter
 from app.constants.public_stats import BROKERS_SUPPORTED
 from app.database import get_db
 from app.models.position import Position, PositionStatus
-from app.services.market.market_data_service import infra
+from app.services.silver.market.market_data_service import infra
 
 logger = logging.getLogger(__name__)
 

@@ -450,7 +450,7 @@ def _sync_deferred_startup() -> None:
 
         # G11: log held-vs-tracked universe gaps; persist for /admin/health (non-fatal)
         try:
-            from app.services.market.market_data_service import infra as _uc_infra
+            from app.services.silver.market.market_data_service import infra as _uc_infra
             from app.services.ops.universe_coverage import (
                 persist_universe_coverage_to_redis,
                 run_universe_coverage_check,

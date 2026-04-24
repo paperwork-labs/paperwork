@@ -7,7 +7,7 @@ import json
 import pytest
 
 from app.models import BrokerAccount
-from app.services.market.admin_health_service import (
+from app.services.silver.market.admin_health_service import (
     AdminHealthService,
     HEALTH_THRESHOLDS,
     _dim_status,
@@ -392,7 +392,7 @@ def test_audit_red_when_db_fails():
 
 def test_task_runs_loads_from_redis():
     svc = _mock_service()
-    from app.services.market.admin_health_service import _TASK_STATUS_KEYS
+    from app.services.silver.market.admin_health_service import _TASK_STATUS_KEYS
 
     def _mock_mget(keys):
         return [

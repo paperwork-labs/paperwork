@@ -44,7 +44,7 @@ from app.services.gold.pick_quality_scorer import (
     PickQualityScore,
     PickQualityScorer,
 )
-from app.services.market.regime_engine import get_current_regime
+from app.services.silver.regime.regime_engine import get_current_regime
 
 logger = logging.getLogger(__name__)
 

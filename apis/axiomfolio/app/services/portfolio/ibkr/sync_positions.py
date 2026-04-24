@@ -696,8 +696,8 @@ async def sync_option_positions(
 
 async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
     """Refresh current prices for positions and tax lots."""
-    # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.market.market_data_service moves during Phase 0.C
-    from app.services.market.market_data_service import quote
+    # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.market.market_data_service moves during Phase 0.C
+    from app.services.silver.market.market_data_service import quote
 
     positions = db.query(Position).filter(Position.account_id == broker_account.id).all()
     positions = [p for p in positions if p.quantity != 0 and p.symbol]

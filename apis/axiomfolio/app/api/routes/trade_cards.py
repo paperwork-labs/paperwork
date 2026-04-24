@@ -25,7 +25,7 @@ from app.services.gold.trade_card_composer import (
     _sum_user_account_value,
     trade_card_to_payload,
 )
-from app.services.market.regime_engine import get_current_regime
+from app.services.silver.regime.regime_engine import get_current_regime
 
 logger = logging.getLogger(__name__)
 

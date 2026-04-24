@@ -29,7 +29,7 @@ _RSS_OBSERVABILITY_KEYS = frozenset(
         "hottest_endpoints_error",
     }
 )
-from app.services.market.market_data_service import coverage_analytics, infra, stage_quality
+from app.services.silver.market.market_data_service import coverage_analytics, infra, stage_quality
 
 logger = logging.getLogger(__name__)
 
@@ -296,7 +296,7 @@ class AdminHealthService:
 
     def _build_reconcile_anomaly(self) -> Dict[str, Any]:
         """Schwab (and similar) closing-lot reconciliation failure counter (Redis)."""
-        from app.services.market.market_data_service import infra
+        from app.services.silver.market.market_data_service import infra
         from app.services.portfolio.schwab_sync_service import (
             RECONCILE_ANOMALY_KEY,
         )
@@ -317,7 +317,7 @@ class AdminHealthService:
     def _build_hot_path_cache_metrics(self) -> Dict[str, Any]:
         """Portfolio response-cache bypass + narrative timeout counters (Redis)."""
         from app.api.middleware.response_cache import REDIS_BYPASS_COUNTER_KEY
-        from app.services.market.market_data_service import infra
+        from app.services.silver.market.market_data_service import infra
 
         try:
             r = getattr(infra, "redis_client", None)
@@ -356,7 +356,7 @@ class AdminHealthService:
         - Indicators recomputed (snapshot age < 12 hours)
         - Regime computed (age < 48 hours)
         """
-        from app.services.market.market_data_service import _last_n_trading_sessions
+        from app.services.silver.market.market_data_service import _last_n_trading_sessions
 
         gaps: List[str] = []
         sessions = _last_n_trading_sessions(1)
@@ -660,7 +660,7 @@ class AdminHealthService:
         Celery task (cache-warmer).
         """
         from app.models.market_data import PriceData, MarketSnapshotHistory
-        from app.services.market.universe import tracked_symbols_with_source
+        from app.services.silver.market.universe import tracked_symbols_with_source
 
         tracked_list, _ = tracked_symbols_with_source(
             db, redis_client=infra.redis_client
@@ -796,7 +796,7 @@ class AdminHealthService:
     def _build_fundamentals_dimension(self, db: Session) -> Dict[str, Any]:
         try:
             from app.models.market_data import MarketSnapshot
-            from app.services.market.universe import tracked_symbols_with_source
+            from app.services.silver.market.universe import tracked_symbols_with_source
 
             tracked_list, _ = tracked_symbols_with_source(
                 db, redis_client=infra.redis_client
@@ -1141,12 +1141,12 @@ class AdminHealthService:
         """
         try:
             from app.models.historical_iv import HistoricalIV
-            from app.services.market.historical_iv_service import (
+            from app.services.silver.market.historical_iv_service import (
                 iv_source_breakdown,
                 last_trading_day,
             )
-            from app.services.market.market_data_service import infra as _infra
-            from app.services.market.universe import tracked_symbols
+            from app.services.silver.market.market_data_service import infra as _infra
+            from app.services.silver.market.universe import tracked_symbols
 
             today = last_trading_day()
             try:

@@ -14,7 +14,7 @@ from app.api.dependencies import get_current_user
 from app.database import SessionLocal, get_db
 from app.models.narrative import PortfolioNarrative
 from app.models.user import User
-from app.services.market.market_data_service import infra
+from app.services.silver.market.market_data_service import infra
 
 logger = logging.getLogger(__name__)
 

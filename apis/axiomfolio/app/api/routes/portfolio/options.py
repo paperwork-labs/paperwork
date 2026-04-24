@@ -12,7 +12,7 @@ from app.api.middleware.response_cache import redis_response_cache
 from app.models import BrokerAccount, Option
 from app.models.broker_account import BrokerType
 from app.models.user import User
-from app.services.market.options_chain_service import (
+from app.services.silver.market.options_chain_service import (
     get_chain as get_options_chain,
     probe_sources as probe_chain_sources,
 )

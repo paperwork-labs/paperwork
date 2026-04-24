@@ -38,8 +38,8 @@ from celery import shared_task
 
 from app.database import SessionLocal
 from app.models.market_data import MarketSnapshot
-from app.services.data_quality import QuorumService
-from app.services.data_quality.tolerances import DEFAULT_QUORUM_THRESHOLD
+from app.services.silver.data_quality import QuorumService
+from app.services.silver.data_quality.tolerances import DEFAULT_QUORUM_THRESHOLD
 from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)

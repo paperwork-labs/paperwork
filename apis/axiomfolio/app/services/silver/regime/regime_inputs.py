@@ -19,7 +19,7 @@ from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session
 
 from app.models.market_data import MarketSnapshot
-from app.services.market.regime_engine import RegimeInputs
+from app.services.silver.regime.regime_engine import RegimeInputs
 
 logger = logging.getLogger(__name__)
 

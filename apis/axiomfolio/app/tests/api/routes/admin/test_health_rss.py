@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-from app.services.market.admin_health_service import AdminHealthService, _RSS_OBSERVABILITY_KEYS
+from app.services.silver.market.admin_health_service import AdminHealthService, _RSS_OBSERVABILITY_KEYS
 from app.services.observability import rss_store
 
 

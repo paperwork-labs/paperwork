@@ -174,7 +174,7 @@ def record_daily_snapshot_history(
     # Get current regime if needed
     regime = None
     if include_regime:
-        from app.services.market.regime_engine import get_current_regime
+        from app.services.silver.regime.regime_engine import get_current_regime
         regime = get_current_regime(db)
 
     # Get all valid snapshots

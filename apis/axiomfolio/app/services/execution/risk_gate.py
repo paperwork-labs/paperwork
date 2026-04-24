@@ -23,7 +23,7 @@ from app.config import settings as app_settings
 from app.models.broker_account import BrokerAccount
 from app.models.market_data import MarketSnapshot
 from app.services.execution.broker_base import OrderRequest
-from app.services.market.regime_engine import (
+from app.services.silver.regime.regime_engine import (
     REGIME_R1,
     REGIME_R2,
     REGIME_R3,
@@ -273,7 +273,7 @@ class RiskGate:
         Raises RiskViolation if requested quantity exceeds stage cap.
         Returns None if sizing is within limits.
         """
-        from app.services.market.regime_engine import get_current_regime
+        from app.services.silver.regime.regime_engine import get_current_regime
 
         snap = (
             db.query(MarketSnapshot)

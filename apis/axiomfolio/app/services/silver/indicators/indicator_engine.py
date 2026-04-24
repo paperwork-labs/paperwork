@@ -595,7 +595,7 @@ def compute_atr_matrix_metrics(
 # names from indicator_engine; see app/services/market/__init__.py for the
 # preferred package-level re-export path once imports are migrated.
 # ---------------------------------------------------------------------------
-from app.services.market.stage_classifier import (  # noqa: E402, F401
+from app.services.silver.regime.stage_classifier import (  # noqa: E402, F401
     weekly_from_daily,
     classify_stage_for_timeframe,
     classify_stage_scalar,
@@ -961,7 +961,7 @@ def compute_rs_mansfield(
         benchmark_close: Benchmark closes on the same index (caller should
             ``reindex(..., method='ffill')`` to the symbol's calendar).
         ma_window: Rolling window for the RS baseline. Default **252** matches
-            :mod:`app.services.market.stage_classifier` / ``MarketSnapshot``
+            :mod:`app.services.silver.regime.stage_classifier` / ``MarketSnapshot``
             (approximately 52 trading weeks).
 
     Returns:

@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from starlette.responses import Response
 
 from app.models.user import User
-from app.services.market.market_data_service import infra
+from app.services.silver.market.market_data_service import infra
 
 logger = logging.getLogger(__name__)
 

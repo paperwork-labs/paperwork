@@ -147,7 +147,7 @@ def _get_sync_redis():
     if not getattr(settings, "ENABLE_PEAK_RSS_MIDDLEWARE", True):
         return None
     try:
-        from app.services.market.market_data_service import infra
+        from app.services.silver.market.market_data_service import infra
         return infra.redis_client
     except Exception as e:  # noqa: BLE001
         global _redis_fail_open_logged

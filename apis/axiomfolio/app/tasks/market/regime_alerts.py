@@ -12,7 +12,7 @@ from celery import shared_task
 from app.config import settings
 from app.database import SessionLocal
 from app.models.market_data import MarketRegime
-from app.services.market.regime_monitor import RegimeMonitor
+from app.services.silver.regime.regime_monitor import RegimeMonitor
 from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ _REGIME_STATE_TTL_S = 172800  # 48h — covers holiday gaps
 
 def _regime_redis() -> Optional[redis.Redis]:
     try:
-        from app.services.market.market_data_service import infra
+        from app.services.silver.market.market_data_service import infra
 
         return infra.redis_client
     except Exception as e:

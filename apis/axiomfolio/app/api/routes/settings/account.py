@@ -661,7 +661,7 @@ async def refresh_prices(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    from app.services.market.market_data_service import quote
+    from app.services.silver.market.market_data_service import quote
 
     try:
         if account_id is not None:

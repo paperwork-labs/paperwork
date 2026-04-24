@@ -20,7 +20,7 @@ from app.models.market_data import (
     MarketSnapshotHistory,
 )
 from app.models.index_constituent import IndexConstituent
-from app.services.market.indicator_engine import (
+from app.services.silver.indicators.indicator_engine import (
     calculate_performance_windows,
     classify_ma_bucket_from_ma,
     compute_atr_matrix_metrics,
@@ -38,14 +38,14 @@ from app.services.silver.math.dataframe_utils import (
 )
 from app.services.silver.math.constants import FUNDAMENTAL_FIELDS
 from app.services.silver.math.stage_utils import compute_stage_run_lengths
-from app.services.market.stage_quality_service import normalize_stage_label
-from app.services.market.snapshot_history_writer import upsert_snapshot_history_row
-from app.services.market.fundamentals_service import needs_fundamentals
+from app.services.silver.regime.stage_quality_service import normalize_stage_label
+from app.services.silver.market.snapshot_history_writer import upsert_snapshot_history_row
+from app.services.silver.market.fundamentals_service import needs_fundamentals
 
 if TYPE_CHECKING:
-    from app.services.market.provider_router import ProviderRouter
-    from app.services.market.quote_service import QuoteService
-    from app.services.market.fundamentals_service import FundamentalsService
+    from app.services.silver.market.provider_router import ProviderRouter
+    from app.services.silver.market.quote_service import QuoteService
+    from app.services.silver.market.fundamentals_service import FundamentalsService
 
 logger = logging.getLogger(__name__)
 

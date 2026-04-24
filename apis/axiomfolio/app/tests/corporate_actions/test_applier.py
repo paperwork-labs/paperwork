@@ -51,8 +51,8 @@ from app.models.corporate_action import (
     CorporateActionType,
 )
 from app.models.position import PositionStatus, PositionType
-from app.services.corporate_actions.applier import CorporateActionApplier
-from app.services.corporate_actions.historical_ohlcv_adjuster import (
+from app.services.silver.corporate_actions.applier import CorporateActionApplier
+from app.services.silver.corporate_actions.historical_ohlcv_adjuster import (
     HistoricalOhlcvAdjuster,
 )
 

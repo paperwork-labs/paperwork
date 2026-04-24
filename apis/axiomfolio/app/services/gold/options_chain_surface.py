@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.models.market.options_chain_snapshot import OptionsChainSnapshot
-from app.services.market.yfinance_options_chain import fetch_yfinance_options_chain
+from app.services.silver.market.yfinance_options_chain import fetch_yfinance_options_chain
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from app.api.middleware import response_cache as rc_mod
 from app.api.middleware.response_cache import redis_response_cache
 from app.models.user import User, UserRole
-from app.services.market.market_data_service import infra
+from app.services.silver.market.market_data_service import infra
 
 
 class _FakeRedis:

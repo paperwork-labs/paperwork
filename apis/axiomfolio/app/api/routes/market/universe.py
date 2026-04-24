@@ -17,7 +17,7 @@ from app.database import get_db
 from app.models.user import User
 from app.models.index_constituent import IndexConstituent
 from app.models.market_tracked_plan import MarketTrackedPlan
-from app.services.market.market_data_service import infra, snapshot_builder
+from app.services.silver.market.market_data_service import infra, snapshot_builder
 from app.api.dependencies import get_market_data_viewer, get_admin_user
 from app.tasks.market.backfill import constituents, tracked_cache
 from app.tasks.market import backfill as market_backfill_tasks

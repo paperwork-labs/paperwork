@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from app.services.silver.math.dataframe_utils import ensure_newest_first, ensure_oldest_first
-from app.services.market.market_data_service import snapshot_builder
+from app.services.silver.market.market_data_service import snapshot_builder
 
 pytestmark = pytest.mark.no_db
 

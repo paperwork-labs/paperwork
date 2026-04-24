@@ -12,13 +12,13 @@ import yfinance as yf
 from app.config import settings
 from app.database import SessionLocal
 from app.models.market_data import PriceData
-from app.services.market.provider_router import APIProvider
+from app.services.silver.market.provider_router import APIProvider
 from app.services.silver.math.rate_limiter import provider_rate_limiter
 
 if TYPE_CHECKING:
-    from app.services.market.market_infra import MarketInfra
-    from app.services.market.provider_router import ProviderRouter
-    from app.services.market.fundamentals_service import FundamentalsService
+    from app.services.silver.market.market_infra import MarketInfra
+    from app.services.silver.market.provider_router import ProviderRouter
+    from app.services.silver.market.fundamentals_service import FundamentalsService
 
 logger = logging.getLogger(__name__)
 

@@ -4,8 +4,8 @@ def test_coverage_snapshot_uses_snapshot_history(db_session, monkeypatch):
     from datetime import datetime, timezone
 
     from app.models.market_data import MarketSnapshotHistory
-    from app.services.market.market_data_service import coverage_analytics, infra
-    from app.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
+    from app.services.silver.market.market_data_service import coverage_analytics, infra
+    from app.services.silver.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 
     # Ensure coverage_snapshot sees a stable universe
     def _redis_get(key):

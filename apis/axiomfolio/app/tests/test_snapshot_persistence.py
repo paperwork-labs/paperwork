@@ -24,7 +24,7 @@ from app.models.market_data import (
     MarketSnapshot,
     MarketSnapshotHistory,
 )
-from app.services.market.market_data_service import (
+from app.services.silver.market.market_data_service import (
     price_bars,
     snapshot_builder,
 )

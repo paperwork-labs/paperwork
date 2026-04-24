@@ -20,7 +20,7 @@ from app.models.market_data import MarketSnapshotHistory
 from app.models.portfolio import PortfolioHistory
 from app.models.position import Position, PositionStatus
 from app.models.transaction import Dividend
-from app.services.market.regime_engine import get_regime_for_date
+from app.services.silver.regime.regime_engine import get_regime_for_date
 from app.services.narrative.provider import (
     NarrativeProvider,
     NarrativeProviderError,

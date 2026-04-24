@@ -22,8 +22,8 @@ from decimal import Decimal
 import pytest
 
 from app.models.provider_quorum import QuorumAction, QuorumStatus
-from app.services.data_quality import QuorumService
-from app.services.data_quality.tolerances import (
+from app.services.silver.data_quality import QuorumService
+from app.services.silver.data_quality.tolerances import (
     EXACT_TOLERANCE,
     PRICE_TOLERANCE_PCT,
     VOLUME_TOLERANCE_PCT,

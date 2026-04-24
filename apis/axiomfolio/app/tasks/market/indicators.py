@@ -18,7 +18,7 @@ from app.models import Position, PriceData
 from app.models.market_data import JobRun, MarketSnapshot, MarketSnapshotHistory
 from app.observability import traced
 from app.services.silver.math.dataframe_utils import price_data_rows_to_dataframe
-from app.services.market.market_data_service import (
+from app.services.silver.market.market_data_service import (
     coverage_analytics,
     snapshot_builder,
     stage_quality,

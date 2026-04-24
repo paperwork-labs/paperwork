@@ -13,7 +13,7 @@ from app.services.execution.exit_cascade import (
     _tier6_regime_transition,
     _tier7_regime_trail,
 )
-from app.services.market.regime_engine import REGIME_R1, REGIME_R3, REGIME_R4
+from app.services.silver.regime.regime_engine import REGIME_R1, REGIME_R3, REGIME_R4
 
 pytestmark = pytest.mark.no_db
 

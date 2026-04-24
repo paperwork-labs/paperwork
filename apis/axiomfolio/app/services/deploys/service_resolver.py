@@ -3,7 +3,7 @@
 Shared by:
     * ``app.tasks.deploys.poll_deploy_health`` (Beat poller)
     * ``app.api.routes.admin.deploy_health`` (admin API)
-    * ``app.services.market.admin_health_service`` (composite health)
+    * ``app.services.silver.market.admin_health_service`` (composite health)
 
 Kept in the service layer so the admin-health composite does NOT need to
 import a Celery task module (which would drag in ``celery.shared_task`` +

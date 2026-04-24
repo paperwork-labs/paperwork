@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 import pandas as pd
 
-from app.services.market.indicator_engine import (
+from app.services.silver.indicators.indicator_engine import (
     compute_rs_mansfield,
     compute_weinstein_stage_from_daily,
 )

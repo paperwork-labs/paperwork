@@ -29,14 +29,14 @@ from app.models.market_data import (
     PriceData,
     JobRun,
 )
-from app.services.market.market_data_service import (
+from app.services.silver.market.market_data_service import (
     coverage_analytics,
     infra,
     price_bars,
     stage_quality,
 )
-from app.services.market.universe import tracked_symbols_async
-from app.services.market.admin_health_service import AdminHealthService
+from app.services.silver.market.universe import tracked_symbols_async
+from app.services.silver.market.admin_health_service import AdminHealthService
 from app.services.brain.webhook_client import brain_webhook
 from app.api.dependencies import get_admin_user
 from app.api.rate_limit import limiter

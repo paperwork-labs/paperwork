@@ -19,8 +19,8 @@ from app.services.silver.math.constants import (
     SECTOR_ETF_PROXY_SYMBOLS,
     SECTOR_ETF_SYMBOLS_ORDER,
 )
-from app.services.market.market_data_service import coverage_analytics, infra
-from app.services.market.universe import tracked_symbols
+from app.services.silver.market.market_data_service import coverage_analytics, infra
+from app.services.silver.market.universe import tracked_symbols
 
 logger = logging.getLogger(__name__)
 
@@ -317,7 +317,7 @@ class MarketDashboardService:
         breadth is intentionally computed over all snapshot symbols so
         MV and raw paths produce identical results.
         """
-        from app.services.market.market_mv_service import market_mv_service
+        from app.services.silver.market.market_mv_service import market_mv_service
         return market_mv_service.get_breadth_series(db, days=120)
 
     def _build_rrg_sectors(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:

@@ -1,4 +1,4 @@
-"""Unit tests for ``app.services.market.historical_iv_service``.
+"""Unit tests for ``app.services.silver.market.historical_iv_service``.
 
 Covers the three moving parts of the G5 ingest:
 
@@ -20,7 +20,7 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
-from app.services.market.historical_iv_service import (
+from app.services.silver.market.historical_iv_service import (
     IVSample,
     _normalize_ibkr_chain,
     _pair_rows_by_expiry_strike,

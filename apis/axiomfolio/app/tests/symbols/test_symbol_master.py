@@ -30,7 +30,7 @@ from app.models.symbol_master import (
     SymbolMaster,
     SymbolStatus,
 )
-from app.services.symbols.symbol_master_service import (
+from app.services.silver.symbols.symbol_master_service import (
     HISTORICAL_FLOOR_DATE,
     SymbolMasterError,
     SymbolMasterService,

@@ -15,7 +15,7 @@ The fix:
 from datetime import date, datetime, timedelta, timezone
 
 from app.models.market_data import MarketSnapshotHistory
-from app.services.market.stage_quality_service import (
+from app.services.silver.regime.stage_quality_service import (
     StageQualityService,
 )
 

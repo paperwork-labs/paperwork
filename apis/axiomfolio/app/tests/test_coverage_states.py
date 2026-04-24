@@ -9,7 +9,7 @@ from app.database import get_db
 from app.models.market_data import PriceData
 from app.models.user import UserRole
 from app.config import settings
-from app.services.market.coverage_analytics import CoverageAnalytics
+from app.services.silver.market.coverage_analytics import CoverageAnalytics
 
 client = TestClient(app, raise_server_exceptions=False)
 

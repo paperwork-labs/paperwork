@@ -14,7 +14,7 @@ from sqlalchemy import or_
 from app.services.silver.math.dataframe_utils import price_data_rows_to_dataframe
 
 if TYPE_CHECKING:
-    from app.services.market.provider_router import ProviderRouter
+    from app.services.silver.market.provider_router import ProviderRouter
 
 logger = logging.getLogger(__name__)
 

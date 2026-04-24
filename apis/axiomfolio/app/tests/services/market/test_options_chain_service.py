@@ -1,4 +1,4 @@
-"""Tests for ``app.services.market.options_chain_service``.
+"""Tests for ``app.services.silver.market.options_chain_service``.
 
 Covers the broker-agnostic fallback chain:
 
@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.market import options_chain_service as svc
+from app.services.silver.market import options_chain_service as svc
 
 # Pure-unit suite: no DB, no network. Skips the heavy conftest DB fixture.
 pytestmark = pytest.mark.no_db
@@ -122,7 +122,7 @@ class TestGetChain:
                 "app.services.clients.ibkr_client": MagicMock(
                     IBKR_AVAILABLE=True, ibkr_client=fake_client
                 ),
-                "app.services.market.yfinance_options_chain": MagicMock(
+                "app.services.silver.market.yfinance_options_chain": MagicMock(
                     fetch_yfinance_options_chain=yf_stub
                 ),
             },
@@ -162,7 +162,7 @@ class TestGetChain:
         with patch.dict(
             "sys.modules",
             {
-                "app.services.market.yfinance_options_chain": MagicMock(
+                "app.services.silver.market.yfinance_options_chain": MagicMock(
                     fetch_yfinance_options_chain=yf_stub
                 ),
             },
@@ -202,7 +202,7 @@ class TestGetChain:
                 "app.services.clients.ibkr_client": MagicMock(
                     IBKR_AVAILABLE=True, ibkr_client=fake_client
                 ),
-                "app.services.market.yfinance_options_chain": MagicMock(
+                "app.services.silver.market.yfinance_options_chain": MagicMock(
                     fetch_yfinance_options_chain=yf_stub
                 ),
             },
@@ -241,7 +241,7 @@ class TestGetChain:
         with patch.dict(
             "sys.modules",
             {
-                "app.services.market.yfinance_options_chain": MagicMock(
+                "app.services.silver.market.yfinance_options_chain": MagicMock(
                     fetch_yfinance_options_chain=yf_stub
                 ),
             },

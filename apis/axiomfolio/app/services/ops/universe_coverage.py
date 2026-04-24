@@ -42,8 +42,8 @@ def run_universe_coverage_check(db: Session) -> Dict[str, Any]:
     ``healthy`` / ``degraded`` / ``error`` (and ``gaps_total`` for degraded).
     Does not commit — read-only.
     """
-    from app.services.market.market_data_service import infra
-    from app.services.market.universe import tracked_symbols_with_source
+    from app.services.silver.market.market_data_service import infra
+    from app.services.silver.market.universe import tracked_symbols_with_source
 
     try:
         tracked_list, _src = tracked_symbols_with_source(
@@ -142,7 +142,7 @@ def persist_universe_coverage_to_redis(payload: Dict[str, Any], *, r: object) ->
 
 def read_universe_coverage_for_admin_health() -> Optional[Dict[str, Any]]:
     """Load last startup check from Redis. Returns None if missing or parse error."""
-    from app.services.market.market_data_service import infra
+    from app.services.silver.market.market_data_service import infra
 
     r = getattr(infra, "redis_client", None)
     if r is None:

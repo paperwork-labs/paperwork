@@ -6,7 +6,7 @@ structured counters that sum back to the universe size. This test file is
 the regression guard against "silent zero" coverage drift (the R38 class of
 bug that hid partial coverage as success).
 """
-from app.services.market.market_data_service import infra
+from app.services.silver.market.market_data_service import infra
 from app.tasks.market import indicators as market_indicators_tasks
 
 

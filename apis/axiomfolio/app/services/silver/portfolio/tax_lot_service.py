@@ -17,7 +17,7 @@ from app.models.broker_account import BrokerAccount
 from app.database import SessionLocal
 
 # Service imports
-from app.services.market.market_data_service import quote
+from app.services.silver.market.market_data_service import quote
 
 logger = logging.getLogger(__name__)
 

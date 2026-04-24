@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.market.regime_engine import REGIME_R1, REGIME_R3, REGIME_R4, REGIME_R5
-from app.services.market.scan_engine import (
+from app.services.silver.regime.regime_engine import REGIME_R1, REGIME_R3, REGIME_R4, REGIME_R5
+from app.services.silver.market.scan_engine import (
     TIER_BREAKDOWN_ELITE,
     TIER_BREAKOUT_ELITE,
     TIER_BREAKOUT_STANDARD,

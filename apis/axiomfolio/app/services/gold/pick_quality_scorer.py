@@ -28,7 +28,7 @@ from app.services.gold.pick_scorer_config import (
     regime_alignment_raw_score,
     regime_multiplier,
 )
-from app.services.market.regime_engine import get_current_regime
+from app.services.silver.regime.regime_engine import get_current_regime
 
 logger = logging.getLogger(__name__)
 

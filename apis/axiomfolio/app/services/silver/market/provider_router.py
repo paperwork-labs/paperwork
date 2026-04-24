@@ -23,8 +23,8 @@ from app.services.silver.math.dataframe_utils import ensure_newest_first
 from app.services.silver.math.rate_limiter import provider_rate_limiter
 
 if TYPE_CHECKING:
-    from app.services.market.market_infra import MarketInfra
-    from app.services.market.price_bar_writer import PriceBarWriter
+    from app.services.silver.market.market_infra import MarketInfra
+    from app.services.silver.market.price_bar_writer import PriceBarWriter
 
 logger = logging.getLogger(__name__)
 

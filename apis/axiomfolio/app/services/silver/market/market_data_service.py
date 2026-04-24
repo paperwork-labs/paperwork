@@ -2,7 +2,7 @@
 
 Callers import the specific sub-service they need:
 
-    from app.services.market.market_data_service import snapshot_builder
+    from app.services.silver.market.market_data_service import snapshot_builder
     snap = await snapshot_builder.get_snapshot(symbol)
 
 Construction order is linear and acyclic:
@@ -15,9 +15,9 @@ from __future__ import annotations
 
 import logging
 
-from app.services.market.market_infra import MarketInfra
-from app.services.market.price_bar_writer import PriceBarWriter
-from app.services.market.provider_router import (
+from app.services.silver.market.market_infra import MarketInfra
+from app.services.silver.market.price_bar_writer import PriceBarWriter
+from app.services.silver.market.provider_router import (
     ProviderRouter,
     APIProvider,
     _last_n_trading_sessions,
@@ -27,12 +27,12 @@ from app.services.market.provider_router import (
     _cb_open_until,
     _cb_lock,
 )
-from app.services.market.fundamentals_service import FundamentalsService, needs_fundamentals
-from app.services.market.quote_service import QuoteService
-from app.services.market.index_universe_service import IndexUniverseService
-from app.services.market.snapshot_builder import SnapshotBuilder
-from app.services.market.coverage_analytics import CoverageAnalytics
-from app.services.market.stage_quality_service import (
+from app.services.silver.market.fundamentals_service import FundamentalsService, needs_fundamentals
+from app.services.silver.market.quote_service import QuoteService
+from app.services.silver.market.index_universe_service import IndexUniverseService
+from app.services.silver.market.snapshot_builder import SnapshotBuilder
+from app.services.silver.market.coverage_analytics import CoverageAnalytics
+from app.services.silver.regime.stage_quality_service import (
     StageQualityService,
     normalize_stage_label,
     VALID_STAGE_LABELS,

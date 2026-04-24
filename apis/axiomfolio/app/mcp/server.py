@@ -27,7 +27,7 @@ from typing import Any, Callable, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.mcp.tools import TOOL_DEFINITIONS, TOOL_HANDLERS, TOOL_REQUIRED_SCOPE
-from app.services.market.market_data_service import infra
+from app.services.silver.market.market_data_service import infra
 
 logger = logging.getLogger(__name__)
 

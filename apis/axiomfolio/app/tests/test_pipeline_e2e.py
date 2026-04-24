@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.services.market.indicator_engine import (
+from app.services.silver.indicators.indicator_engine import (
     calculate_atr_series,
     compute_full_indicator_series,
     compute_weinstein_stage_from_daily,

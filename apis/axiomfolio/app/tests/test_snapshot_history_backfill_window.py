@@ -4,7 +4,7 @@ def test_snapshot_last_n_days_writes_rows(db_session, monkeypatch):
     from datetime import datetime
 
     import app.tasks.market.history as history_tasks
-    from app.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
+    from app.services.silver.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 
     monkeypatch.setattr(history_tasks, "SessionLocal", lambda: db_session)
     monkeypatch.setattr(history_tasks, "_set_task_status", lambda *args, **kwargs: None)

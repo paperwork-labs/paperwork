@@ -113,7 +113,7 @@ def get_regime_context(db: Session) -> Dict[str, Any]:
         Dict with regime_state, regime_multiplier, and related fields
     """
     try:
-        from app.services.market.regime_engine import get_current_regime
+        from app.services.silver.regime.regime_engine import get_current_regime
 
         regime = get_current_regime(db)
         if regime is None:

@@ -53,7 +53,7 @@ from app.services.gold.pick_quality_scorer import (
     PickQualityScorer,
     pick_quality_to_payload,
 )
-from app.services.market.regime_engine import get_current_regime
+from app.services.silver.regime.regime_engine import get_current_regime
 from app.services.signals.external_aggregator import external_context_bonus_points_map
 
 logger = logging.getLogger(__name__)

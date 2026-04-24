@@ -18,7 +18,7 @@ from typing import Any, List, Optional
 
 import pytest
 
-from app.services.market.historical_iv_service import IVSample
+from app.services.silver.market.historical_iv_service import IVSample
 from app.tasks.market import iv as iv_tasks
 
 pytestmark = pytest.mark.no_db
@@ -57,7 +57,7 @@ def stub_session(monkeypatch: pytest.MonkeyPatch) -> _StubSession:
     # Replace the compute_hv / persist_iv_sample touchpoints that run
     # inside the per-symbol loop. These are imported locally inside
     # ``sync_gateway`` via the service module, so patch at the source.
-    import app.services.market.historical_iv_service as svc
+    import app.services.silver.market.historical_iv_service as svc
 
     monkeypatch.setattr(svc, "compute_hv", lambda *a, **kw: None)
     monkeypatch.setattr(

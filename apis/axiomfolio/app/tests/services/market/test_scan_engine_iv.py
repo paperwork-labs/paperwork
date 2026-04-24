@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.market.scan_engine import (
+from app.services.silver.market.scan_engine import (
     IV_RANK_OPS,
     ScanInput,
     apply_iv_rank_filter,

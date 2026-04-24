@@ -26,7 +26,7 @@ async def get_current_regime(
     _viewer: User = Depends(get_market_data_viewer),
 ) -> Dict[str, Any]:
     """Get the most recent market regime state."""
-    from app.services.market.regime_engine import get_current_regime as _get_regime
+    from app.services.silver.regime.regime_engine import get_current_regime as _get_regime
 
     regime = _get_regime(db)
     if regime is None:

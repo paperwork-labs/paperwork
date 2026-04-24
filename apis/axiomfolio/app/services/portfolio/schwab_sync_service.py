@@ -49,8 +49,8 @@ _RECONCILE_ANOMALY_TTL_S = 60 * 60 * 24 * 7
 
 def _record_reconcile_closing_lots_anomaly() -> None:
     try:
-        # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.market.market_data_service moves during Phase 0.C
-        from app.services.market.market_data_service import infra
+        # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.market.market_data_service moves during Phase 0.C
+        from app.services.silver.market.market_data_service import infra
 
         r = getattr(infra, "redis_client", None)
         if r is None:
@@ -309,8 +309,8 @@ class SchwabSyncService:
 
     async def _refresh_prices(self, account: BrokerAccount, session: Session) -> Dict:
         """Fetch current prices concurrently and update position market data."""
-        # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.market.market_data_service moves during Phase 0.C
-        from app.services.market.market_data_service import quote
+        # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.market.market_data_service moves during Phase 0.C
+        from app.services.silver.market.market_data_service import quote
 
         positions = (
             session.query(Position)

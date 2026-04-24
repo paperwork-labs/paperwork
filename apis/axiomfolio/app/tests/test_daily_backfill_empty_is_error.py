@@ -15,7 +15,7 @@ def test_backfill_last_bars_counts_empty_as_error(db_session, monkeypatch):
     )
 
     # Avoid real DB writes for price bars (task_utils uses price_bars singleton).
-    from app.services.market.market_data_service import price_bars, provider_router
+    from app.services.silver.market.market_data_service import price_bars, provider_router
 
     monkeypatch.setattr(price_bars, "persist_price_bars", lambda *args, **kwargs: 1)
 
@@ -82,13 +82,13 @@ def test_record_daily_history_defaults_to_tracked_universe(db_session, monkeypat
 @pytest.mark.no_db
 def test_fmp_error_dict_raises(monkeypatch):
     """Ensure FMP error payloads raise so retry/backoff can kick in."""
-    from app.services.market import provider_router as pr_mod
+    from app.services.silver.market import provider_router as pr_mod
 
     def fake_historical_price_full(*args, **kwargs):
         return {"Error Message": "Rate Limit Exceeded"}
 
     monkeypatch.setattr(pr_mod.fmpsdk, "historical_price_full", fake_historical_price_full)
-    from app.services.market.market_data_service import provider_router
+    from app.services.silver.market.market_data_service import provider_router
 
     with pytest.raises(RuntimeError):
         provider_router._get_historical_fmp_sync("AAA", "1y", "1d")

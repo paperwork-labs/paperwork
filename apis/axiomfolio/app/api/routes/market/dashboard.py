@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.api.rate_limit import limiter
 from app.database import get_db
 from app.models.user import User
-from app.services.market.market_data_service import infra
+from app.services.silver.market.market_data_service import infra
 from app.api.dependencies import get_market_data_viewer
 from app.api.schemas.market import MarketDashboardResponse
 from app.config import settings
@@ -77,7 +77,7 @@ async def get_volatility_dashboard(
     _viewer: User = Depends(get_market_data_viewer),
 ) -> Dict[str, Any]:
     """VIX/VVIX/VIX3M volatility regime dashboard."""
-    from app.services.market.volatility_service import VolatilityService
+    from app.services.silver.market.volatility_service import VolatilityService
 
     vol_svc = VolatilityService(
         redis_client=infra.redis_client,

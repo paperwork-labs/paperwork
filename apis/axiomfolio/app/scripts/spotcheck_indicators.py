@@ -19,7 +19,7 @@ import requests
 from app.config import settings
 from app.database import SessionLocal
 from app.models.market_data import PriceData
-from app.services.market.indicator_engine import compute_full_indicator_series
+from app.services.silver.indicators.indicator_engine import compute_full_indicator_series
 
 logger = logging.getLogger(__name__)
 

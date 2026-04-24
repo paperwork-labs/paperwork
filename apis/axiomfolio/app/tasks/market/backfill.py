@@ -14,8 +14,8 @@ from celery.exceptions import SoftTimeLimitExceeded
 from app.database import SessionLocal
 from app.models import IndexConstituent
 from app.services.silver.math.backfill_params import daily_backfill_params
-from app.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
-from app.services.market.market_data_service import (
+from app.services.silver.market.universe import TRACKED_ALL_UPDATED_AT_KEY
+from app.services.silver.market.market_data_service import (
     coverage_analytics,
     index_universe,
     infra,

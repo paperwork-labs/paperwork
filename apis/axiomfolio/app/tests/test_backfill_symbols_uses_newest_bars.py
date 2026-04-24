@@ -8,7 +8,7 @@ def test_backfill_symbols_passes_max_bars_to_provider(monkeypatch):
 
     We enforce that tasks call get_historical_data(max_bars=270).
     """
-    from app.services.market.market_data_service import provider_router
+    from app.services.silver.market.market_data_service import provider_router
     from app.tasks.market.backfill import symbols
 
     calls = []

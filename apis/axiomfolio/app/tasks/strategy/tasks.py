@@ -391,7 +391,7 @@ def _compute_position_size(db, strategy: Strategy, signal: Signal) -> float:
     Falls back to strategy parameters or defaults if sizing data unavailable.
     """
     from app.services.execution.risk_gate import compute_position_size
-    from app.services.market.regime_engine import get_current_regime
+    from app.services.silver.regime.regime_engine import get_current_regime
     from app.models.market_data import MarketSnapshot
     
     params = strategy.parameters or {}

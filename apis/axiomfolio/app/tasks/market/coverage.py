@@ -23,7 +23,7 @@ from app.models import Position
 from app.models.market_data import MarketSnapshot
 from app.models.position import PositionStatus
 from app.observability import traced
-from app.services.market.market_data_service import coverage_analytics, infra
+from app.services.silver.market.market_data_service import coverage_analytics, infra
 from app.tasks.utils.task_utils import _resolve_history_days, task_run
 
 logger = logging.getLogger(__name__)
@@ -38,8 +38,8 @@ def _run_scan_overlay() -> dict:
     """Run scan overlay engine: assign scan_tier + action_label to all snapshots."""
     session = SessionLocal()
     try:
-        from app.services.market.regime_engine import get_current_regime
-        from app.services.market.scan_engine import (
+        from app.services.silver.regime.regime_engine import get_current_regime
+        from app.services.silver.market.scan_engine import (
             ScanInput,
             classify_scan_tier,
             derive_action_label,
@@ -174,7 +174,7 @@ def _evaluate_exit_cascade_all() -> dict:
             PositionContext,
             evaluate_exit_cascade,
         )
-        from app.services.market.regime_engine import get_current_regime
+        from app.services.silver.regime.regime_engine import get_current_regime
 
         regime = get_current_regime(session)
         regime_state = regime.regime_state if regime else "R3"

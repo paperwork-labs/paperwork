@@ -11,7 +11,7 @@ from typing import Optional
 from celery import shared_task
 
 from app.database import SessionLocal
-from app.services.market.earnings_calendar_service import earnings_calendar_service
+from app.services.silver.market.earnings_calendar_service import earnings_calendar_service
 from app.tasks.utils.task_utils import _get_tracked_symbols_safe, _set_task_status, task_run
 
 logger = logging.getLogger(__name__)

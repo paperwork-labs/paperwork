@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_market_data_viewer
 from app.database import get_db
 from app.models.user import User
-from app.services.market.earnings_calendar_service import earnings_calendar_service
+from app.services.silver.market.earnings_calendar_service import earnings_calendar_service
 
 logger = logging.getLogger(__name__)
 

@@ -19,7 +19,7 @@ from typing import List
 
 import pytest
 
-from app.services.data_quality import DriftDetector
+from app.services.silver.data_quality import DriftDetector
 
 
 @pytest.fixture

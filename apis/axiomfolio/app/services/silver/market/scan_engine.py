@@ -14,14 +14,14 @@ import logging
 from dataclasses import dataclass
 from typing import Optional, Sequence
 
-from app.services.market.regime_engine import (
+from app.services.silver.regime.regime_engine import (
     REGIME_R1,
     REGIME_R2,
     REGIME_R3,
     REGIME_R4,
     REGIME_R5,
 )
-from app.services.market.quad_engine import get_sector_action
+from app.services.silver.regime.quad_engine import get_sector_action
 
 logger = logging.getLogger(__name__)
 
