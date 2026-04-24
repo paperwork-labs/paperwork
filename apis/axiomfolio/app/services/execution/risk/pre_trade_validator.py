@@ -1,7 +1,7 @@
 """
 Pre-trade validation - all checks must pass before order reaches broker.
 
-medallion: gold
+medallion: execution
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from app.config import settings
 from app.models.order import Order
 from app.models.position import Position
 from app.models.market_data import MarketSnapshot
-from app.services.risk.circuit_breaker import circuit_breaker
+from app.services.gold.risk.circuit_breaker import circuit_breaker
 
 logger = logging.getLogger(__name__)
 

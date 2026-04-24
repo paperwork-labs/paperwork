@@ -23,11 +23,11 @@ from app.models.user import User, UserRole
 from app.services.execution.order_manager import OrderManager
 from app.services.execution.broker_base import OrderRequest
 from app.services.execution.risk_gate import RiskViolation
-from app.services.risk.account_risk_profile import (
+from app.services.gold.risk.account_risk_profile import (
     AccountNotFoundError,
     get_effective_limits,
 )
-from app.services.risk.firm_caps import FirmCapsUnavailable
+from app.services.gold.risk.firm_caps import FirmCapsUnavailable
 
 logger = logging.getLogger(__name__)
 

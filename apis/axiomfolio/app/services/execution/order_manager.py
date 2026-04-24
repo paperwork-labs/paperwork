@@ -23,8 +23,8 @@ from app.models.trade import Trade
 from app.services.execution.broker_base import OrderRequest, OrderResult, PreviewResult
 from app.services.execution.broker_router import broker_router
 from app.services.execution.risk_gate import RiskGate, RiskViolation
-from app.services.risk.circuit_breaker import circuit_breaker
-from app.services.risk.pre_trade_validator import PreTradeValidator
+from app.services.gold.risk.circuit_breaker import circuit_breaker
+from app.services.execution.risk.pre_trade_validator import PreTradeValidator
 
 logger = logging.getLogger(__name__)
 

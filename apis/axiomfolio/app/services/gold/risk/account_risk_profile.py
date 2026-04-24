@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from app.models.account_risk_profile import BrokerAccountRiskProfile
 from app.models.broker_account import BrokerAccount
-from app.services.risk.firm_caps import (
+from app.services.gold.risk.firm_caps import (
     FIRM_CAP_FIELDS,
     FirmCaps,
     FirmCapsUnavailable,

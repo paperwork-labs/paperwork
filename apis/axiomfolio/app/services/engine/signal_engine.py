@@ -23,7 +23,7 @@ from app.database import SessionLocal
 from app.models.strategy import Strategy, StrategyStatus
 from app.models.signals import Signal, SignalType, SignalStatus
 from app.models.market_data import MarketSnapshot
-from app.services.risk.circuit_breaker import circuit_breaker
+from app.services.gold.risk.circuit_breaker import circuit_breaker
 from app.services.gold.strategy.rule_evaluator import RuleEvaluator, ConditionGroup
 
 logger = logging.getLogger(__name__)
