@@ -1,0 +1,97 @@
+name: Dependabot auto-approve
+
+# Auto-approve + enable automerge for "safe" Dependabot bumps:
+#   - patch and minor bumps (any language)
+#   - grouped bumps with update-type `minor` or `patch`
+#   - GitHub Actions pinned-SHA or pinned-tag bumps
+#
+# Majors go through dependabot-major-triage.yaml (Claude Haiku review).
+#
+# Security: uses pull_request_target so the workflow runs with repo secrets
+# even for bot-authored PRs, but we explicitly DO NOT check out untrusted code —
+# we only call the GitHub API.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: write       # for automerge API
+  pull-requests: write  # for review + labels
+
+jobs:
+  classify-and-approve:
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Classify bump
+        id: classify
+        env:
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          DEPENDENCY_NAME: ${{ steps.meta.outputs.dependency-names }}
+          PACKAGE_ECOSYSTEM: ${{ steps.meta.outputs.package-ecosystem }}
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          echo "update-type=$UPDATE_TYPE"
+          echo "dependencies=$DEPENDENCY_NAME"
+          echo "ecosystem=$PACKAGE_ECOSYSTEM"
+          echo "title=$TITLE"
+
+          # Grouped PRs ship "version-update:semver-<type>" per dependency. The
+          # outer update-type is the highest bump of the group. fetch-metadata
+          # returns update-type="version-update:semver-minor" for the group as
+          # a whole if all members are minor/patch.
+          case "$UPDATE_TYPE" in
+            version-update:semver-patch|version-update:semver-minor)
+              echo "decision=safe" >> "$GITHUB_OUTPUT"
+              ;;
+            version-update:semver-major)
+              echo "decision=major" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              # Unknown / empty — be conservative, flag for human.
+              echo "decision=unknown" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Approve safe PR
+        if: steps.classify.outputs.decision == 'safe'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr review "$PR_URL" --approve --body "Auto-approved: ${{ steps.meta.outputs.update-type }} bump of ${{ steps.meta.outputs.dependency-names }} (${{ steps.meta.outputs.package-ecosystem }}).
+
+          Rules: dependabot-auto-approve.yaml — patch/minor/group bumps approve automatically."
+
+      - name: Enable automerge (squash)
+        if: steps.classify.outputs.decision == 'safe'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr merge "$PR_URL" --auto --squash
+
+      - name: Label majors for LLM triage
+        if: steps.classify.outputs.decision == 'major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr edit "$PR_URL" --add-label "deps:major,dependencies"
+          gh pr comment "$PR_URL" --body "Major version bump detected — routing to Claude Haiku for risk assessment (see dependabot-major-triage.yaml)."
+
+      - name: Label unknown cases for human
+        if: steps.classify.outputs.decision == 'unknown'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          gh pr edit "$PR_URL" --add-label "dependencies,needs-human-review"

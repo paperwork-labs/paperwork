@@ -211,13 +211,30 @@ python3 scripts/medallion/generate_move_map.py > medallion_move_map.yaml
 | Phase | Target date | Status | Notes |
 |---|---|---|---|
 | 0.A — Tags + audit | 2026-04-23 | ✅ DONE | 268 files tagged, this doc produced |
-| 0.A — DAG swimlanes | 2026-04-24 | ⏳ pending | `PipelineDAG.tsx` bands + legend (frontend) |
+| 0.A — DAG swimlanes | 2026-04-23 | ✅ DONE | `PipelineDAG.tsx` bands + legend shipped in PR #127 (bronze/silver/gold/ops colored bands behind node grid, inline legend). Also added a company-wide medallion DAG to `infra/portal/index.html`. |
 | 0.A — Prose sweep | 2026-04-23 | ✅ DONE | `ARCHITECTURE.md` + `AGENTS.md` updated with 4-layer medallion + pillar cross-map. PRD.md unchanged (historically frozen; MASTER_PLAN is source of truth) |
 | 0.B — Silver scaffold + CI rule | 2026-04-23 | ✅ DONE | `silver/__init__.py`, `scripts/medallion/check_imports.py`, `make medallion-check`, CI job added. 21 known-debt violations auto-captured as waivers. |
 | 0.C prep — per-file move map + blocker resolution | 2026-04-23 | ✅ DONE | `medallion_move_map.yaml` generated (145 moves / 124 stays); B2/B3/B4 blockers resolved in-doc; `task_path` attack surface = 2 dead refs in `models/strategy.py`. |
-| 0.C — File migrations (split into 2 PRs) | 2026-04-26–28 | ⏳ pending | Founder freeze window no longer needed (no parallel agents writing PRs yet). Next: write `scripts/medallion_migrate.py` consuming the yaml. |
-| 0.D — Shim removal + strict CI | ~2026-05-13 | ⏳ pending | 2 weeks after 0.C lands |
+| 0.C — File migrations | 2026-04-23 | ✅ DONE | PR [#116](https://github.com/paperwork-labs/paperwork/pull/116) merged (Medallion Wave 0.C). 145 files moved via `scripts/medallion_migrate.py`; 2085 backend tests passing; stale re-exports in `silver/market/__init__.py`, `silver/portfolio/__init__.py`, `gold/risk/__init__.py`, `gold/__init__.py` removed to break circular imports; 38 test-file string literals rewritten. |
+| 0.D — Shim removal + strict CI | ~2026-05-07 | ⏳ pending | 2 weeks after 0.C landed (0.C merged 2026-04-23). Remove D88-era shims, flip `scripts/medallion/check_imports.py` from warn-mode to strict, drain 21 inherited-debt waivers. See §0.D Checklist below. |
 
 ---
 
 Closing this document at Phase 0.D: mark every row `Verified at target path: <path>`.
+
+---
+
+## Phase 0.D checklist
+
+**Target**: ~2026-05-07 (2 weeks after 0.C landed).
+
+1. Drain the 21 inherited-debt waivers captured by `scripts/medallion/check_imports.py` at 0.B. Each waiver must either:
+   - Move the importer or importee to the correct layer, or
+   - Add a permanent `# medallion: allow <layer> for <reason>` with a tracked reason.
+2. Flip `check_imports.py` from warn-mode to strict — no new waivers accepted without PR-level approval.
+3. Remove remaining D88-era shims in `app/services/__init__.py` (the silver/bronze re-export fallbacks left for Wave 0.C safety).
+4. Sweep `from app.services.{market,portfolio,tax,risk,strategy,picks,backtest,ml,narrative,signals}` imports outside tests — each must either be rewritten to the canonical medallion path or declared ops.
+5. Audit `mock.patch("app.services.*")` string literals one more time (see B3) now that 0.C has settled.
+6. Update this doc's Status tracker: all rows → ✅ Verified.
+
+Tracking: when 0.D opens, spin a single tracking issue on `paperwork-labs/paperwork` labelled `infrastructure`, `epic` referencing this checklist.
