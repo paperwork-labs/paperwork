@@ -1,0 +1,89 @@
+# AxiomFolio opt-in dev services.
+#
+# Mount alongside the unified dev compose:
+#   docker compose \
+#     -f infra/compose.dev.yaml \
+#     -f infra/axiomfolio/compose.profiles.yaml \
+#     --profile ibkr up
+#
+# Profiles:
+#   ibkr    - Interactive Brokers gateway (live/paper trading API)
+#   tunnel  - Cloudflare tunnel (OAuth testing against dev backend)
+#   ops     - Celery Flower UI (task monitor)
+#
+# See docs/INFRA.md for the full architecture.
+
+services:
+  ib-gateway:
+    image: ghcr.io/extrange/ibkr:stable
+    platform: linux/amd64
+    container_name: axiomfolio-ib-gateway
+    env_file:
+      - axiomfolio/env.examples/env.dev.example
+      - ../.env.secrets
+    environment:
+      USERNAME: ${IBKR_USERNAME:-}
+      PASSWORD: "${IBKR_PASSWORD:-}"
+      GATEWAY_OR_TWS: gateway
+      IBC_TradingMode: ${IBKR_TRADING_MODE:-paper}
+      # Default to read-only for safety; set IBC_READONLY_API=no to enable live orders.
+      IBC_ReadOnlyApi: "${IBC_READONLY_API:-yes}"
+      IBC_ExistingSessionDetectedAction: primary
+      IBC_AcceptIncomingConnectionAction: accept
+      TWS_SETTINGS_PATH: /settings
+      TWOFA_TIMEOUT_ACTION: restart
+      JAVA_TOTP_SECRET: ${IBKR_TOTP_SECRET:-}
+    volumes:
+      - ibkr-settings:/settings
+    ulimits:
+      nofile: 10000
+    ports:
+      - "6080:6080"   # VNC web interface
+      - "8888:8888"   # IB Gateway API (redirect to 4001/4002)
+      - "4001:4001"   # Live trading
+      - "4002:4002"   # Paper trading
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 4001 || nc -z 127.0.0.1 4002 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    restart: unless-stopped
+    profiles: [ibkr]
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: axiomfolio-cloudflared
+    env_file:
+      - axiomfolio/env.examples/env.dev.example
+      - ../.env.secrets
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
+    depends_on:
+      - api-axiomfolio
+    restart: unless-stopped
+    profiles: [tunnel]
+
+  flower:
+    build:
+      context: ../apis/axiomfolio
+      dockerfile: Dockerfile
+    container_name: axiomfolio-flower
+    env_file:
+      - env.dev.defaults
+      - ../.env.secrets
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery-axiomfolio-worker
+    command: bash -lc "export FLOWER_UNAUTHENTICATED_API=1; celery -A app.tasks.celery_app flower --address=0.0.0.0 --port=5555"
+    profiles: [ops]
+
+volumes:
+  ibkr-settings:
+    driver: local

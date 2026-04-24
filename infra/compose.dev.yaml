@@ -1,12 +1,19 @@
-name: filefree
+name: paperwork
 
 services:
   postgres:
-    container_name: filefree-postgres
-    image: postgres:15-alpine
+    container_name: paperwork-postgres
+    # postgres 17-alpine is the newest stable release with broad ecosystem
+    # support (Render, Supabase, managed providers all run 15-17). 18 was
+    # released Oct 2025 and tripped "container exited (1)" in GitHub Actions
+    # runners — revisit once the alpine image stabilizes in CI.
+    image: postgres:17-alpine
     environment:
-      POSTGRES_USER: filefree
-      POSTGRES_PASSWORD: filefree_dev
+      # Shared role owns every per-product DB (filefree_dev, axiomfolio_dev,
+      # brain_dev, launchfree_dev). Dev-only — prod Render deploys provision
+      # managed databases per-service with scoped credentials.
+      POSTGRES_USER: paperwork
+      POSTGRES_PASSWORD: paperwork_dev
       POSTGRES_DB: filefree_dev
     ports:
       - "5433:5432"
@@ -14,13 +21,13 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./init-test-db.sh:/docker-entrypoint-initdb.d/init-test-db.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U filefree -d filefree_dev"]
+      test: ["CMD-SHELL", "pg_isready -U paperwork -d filefree_dev"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
-    container_name: filefree-redis
+    container_name: paperwork-redis
     image: redis:7-alpine
     ports:
       - "6380:6379"
@@ -29,6 +36,26 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # ─── Dev portal ────────────────────────────────────────────────────
+  # Single landing page at http://localhost:3000 linking to every
+  # frontend, API /docs, ops tool, and philosophy doc in the monorepo.
+  # Static HTML served by nginx-alpine; rebuild-free (hot-reload via
+  # volume mount). See infra/portal/index.html.
+  portal:
+    container_name: paperwork-portal
+    image: nginx:alpine
+    ports:
+      - "3000:80"
+    volumes:
+      - ./portal:/usr/share/nginx/html:ro
+      - ./portal/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
 
   api-filefree:
     container_name: filefree-api
@@ -45,8 +72,8 @@ services:
       - ../.env.secrets
     environment:
       PORT: 8001
-      DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/filefree_dev
-      TEST_DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/filefree_test
+      DATABASE_URL: postgresql+asyncpg://paperwork:paperwork_dev@postgres:5432/filefree_dev
+      TEST_DATABASE_URL: postgresql+asyncpg://paperwork:paperwork_dev@postgres:5432/filefree_test
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
     depends_on:
       postgres:
@@ -75,7 +102,7 @@ services:
     environment:
       PORT: 8002
       FRONTEND_URL: http://localhost:3002
-      DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/launchfree_dev
+      DATABASE_URL: postgresql+asyncpg://paperwork:paperwork_dev@postgres:5432/launchfree_dev
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
     depends_on:
       postgres:
@@ -102,7 +129,7 @@ services:
       - env.dev.defaults
       - ../.env.secrets
     environment:
-      DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/brain_dev
+      DATABASE_URL: postgresql+asyncpg://paperwork:paperwork_dev@postgres:5432/brain_dev
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     depends_on:
       postgres:
@@ -115,6 +142,144 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  api-axiomfolio:
+    container_name: axiomfolio-api
+    build:
+      context: ../apis/axiomfolio
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    volumes:
+      - ../apis/axiomfolio:/app
+    env_file:
+      - env.dev.defaults
+      - ../.env.secrets
+    environment:
+      PORT: 8000
+      PYTHONPATH: /app
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      # AxiomFolio speaks sync SQLAlchemy; plain postgresql:// scheme (not +asyncpg).
+      DATABASE_URL: postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_dev
+      REDIS_URL: redis://redis:6379/3
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      WORKER_ROLE: api
+      # Observability: OTel is wired up in app/observability/tracing.py.
+      # Set OTEL_EXPORTER_OTLP_ENDPOINT in .env.secrets to ship spans to
+      # Grafana Tempo / Honeycomb / Jaeger. Unset = no-op (dev default).
+    command: ["python", "-m", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info", "--reload", "--reload-dir", "/app/app"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/health'); assert r.status_code == 200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # Fast celery worker — matches Render's axiomfolio-worker (queues:
+  # celery, account_sync, orders). Handles short tasks and Beat scheduling.
+  celery-axiomfolio-worker:
+    container_name: axiomfolio-celery-worker
+    build:
+      context: ../apis/axiomfolio
+      dockerfile: Dockerfile
+    volumes:
+      - ../apis/axiomfolio:/app
+    env_file:
+      - env.dev.defaults
+      - ../.env.secrets
+    environment:
+      PYTHONPATH: /app
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      DATABASE_URL: postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_dev
+      REDIS_URL: redis://redis:6379/3
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      WORKER_ROLE: fast
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-axiomfolio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.tasks.celery_app inspect ping --timeout 5 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    command: ["celery", "-A", "app.tasks.celery_app", "worker", "-Q", "celery,account_sync,orders", "--loglevel=info", "--concurrency=2"]
+    restart: unless-stopped
+
+  # Heavy celery worker — matches Render's axiomfolio-worker-heavy (queue:
+  # heavy). Long-running market-data jobs (snapshot backfills, fundamentals
+  # fills, repair_stage_history). Concurrency=1 to match prod memory behavior.
+  celery-axiomfolio-worker-heavy:
+    container_name: axiomfolio-celery-worker-heavy
+    build:
+      context: ../apis/axiomfolio
+      dockerfile: Dockerfile
+    volumes:
+      - ../apis/axiomfolio:/app
+    env_file:
+      - env.dev.defaults
+      - ../.env.secrets
+    environment:
+      PYTHONPATH: /app
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      DATABASE_URL: postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_dev
+      REDIS_URL: redis://redis:6379/3
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      WORKER_ROLE: heavy
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-axiomfolio:
+        condition: service_started
+    command: ["celery", "-A", "app.tasks.celery_app", "worker", "-Q", "heavy", "--loglevel=info", "--concurrency=1"]
+    restart: unless-stopped
+
+  celery-axiomfolio-beat:
+    container_name: axiomfolio-celery-beat
+    build:
+      context: ../apis/axiomfolio
+      dockerfile: Dockerfile
+    volumes:
+      - ../apis/axiomfolio:/app
+    env_file:
+      - env.dev.defaults
+      - ../.env.secrets
+    environment:
+      PYTHONPATH: /app
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      DATABASE_URL: postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_dev
+      REDIS_URL: redis://redis:6379/3
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      WORKER_ROLE: beat
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-axiomfolio:
+        condition: service_started
+    command: ["celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
+    restart: unless-stopped
 
   web-filefree:
     container_name: filefree-web

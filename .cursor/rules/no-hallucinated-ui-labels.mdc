@@ -1,0 +1,29 @@
+---
+description: Never invent UI labels, button names, page names, or feature names. Always verify against the actual codebase.
+alwaysApply: true
+---
+
+# No Hallucinated UI Labels or Feature Names
+
+When writing user-facing text, documentation, runbooks, error messages, or instructions that reference UI elements:
+
+1. **Always read the actual component source** before referencing any button label, page name, menu item, or feature name. Never guess or infer from task/function names.
+2. **Search the codebase** for the exact rendered text using Grep before writing it into strings, comments, or docs.
+3. **Quote exact labels** as they appear in the JSX/TSX render output (e.g., `"Backfill Daily Coverage (Tracked)"` not `"Backfill Daily"`).
+4. **Backend task names are not UI labels.** A Celery task called `admin_indicators_recompute_universe` maps to a button labeled "Recompute Indicators (Market Snapshot)" — always check the frontend, not the backend.
+
+## How to Verify
+
+```
+# Find the actual button label for a backend task
+Grep for the task endpoint in AdminOperatorActions.tsx or similar
+Read the surrounding JSX to find the <Button> text
+```
+
+## Examples
+
+- BAD: `Run "Recalc Stages" from Operator Actions` (made up — no such button exists)
+- GOOD: `Click "Recompute Indicators (Market Snapshot)" under Show Advanced > Maintenance` (verified from AdminOperatorActions.tsx line 418-419)
+
+- BAD: `Go to the Performance tab` (assumed — might not exist)
+- GOOD: Read `SettingsShell.tsx` nav items first, then reference the exact label

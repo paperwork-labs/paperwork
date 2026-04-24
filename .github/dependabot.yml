@@ -1,0 +1,181 @@
+version: 2
+updates:
+  # ─── GitHub Actions ────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "ci"
+
+  # ─── pnpm workspace root ──────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "workspace-root"
+    groups:
+      workspace-root-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  # ─── Backend APIs (pip) ───────────────────────────────────────────────
+  - package-ecosystem: "pip"
+    directory: "/apis/axiomfolio"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "axiomfolio"
+      - "backend"
+    groups:
+      axiomfolio-backend-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "pip"
+    directory: "/apis/brain"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+    open-pull-requests-limit: 3
+    labels:
+      - "deps"
+      - "brain"
+      - "backend"
+    groups:
+      brain-backend-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "pip"
+    directory: "/apis/filefree"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+    open-pull-requests-limit: 3
+    labels:
+      - "deps"
+      - "filefree"
+      - "backend"
+    groups:
+      filefree-backend-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "pip"
+    directory: "/apis/launchfree"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+    open-pull-requests-limit: 3
+    labels:
+      - "deps"
+      - "launchfree"
+      - "backend"
+    groups:
+      launchfree-backend-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  # ─── Frontend apps (npm / pnpm workspaces) ────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/apps/axiomfolio"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "06:00"
+    open-pull-requests-limit: 5
+    labels:
+      - "deps"
+      - "axiomfolio"
+      - "frontend"
+    ignore:
+      # React 19 major bumps handled manually
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+    groups:
+      axiomfolio-frontend-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      axiomfolio-frontend-devdeps:
+        applies-to: version-updates
+        dependency-type: "development"
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/apps/studio"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 3
+    labels: ["deps", "studio", "frontend"]
+    groups:
+      studio-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/apps/distill"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 3
+    labels: ["deps", "distill", "frontend"]
+    groups:
+      distill-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/apps/filefree"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 3
+    labels: ["deps", "filefree", "frontend"]
+    groups:
+      filefree-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/apps/launchfree"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 3
+    labels: ["deps", "launchfree", "frontend"]
+    groups:
+      launchfree-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+
+  - package-ecosystem: "npm"
+    directory: "/apps/trinkets"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+    open-pull-requests-limit: 3
+    labels: ["deps", "trinkets", "frontend"]
+    groups:
+      trinkets-minor-and-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]

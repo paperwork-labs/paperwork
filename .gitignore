@@ -9,7 +9,7 @@ cursor-context-backup/
 cursor-context-backup.zip
 CURSOR_BACKUP_README.md
 
-# Python
+# ─── Python ───────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
@@ -21,9 +21,27 @@ build/
 .eggs/
 venv/
 .venv/
+env/
+ENV/
+env.bak/
+venv.bak/
 *.whl
+*.Python
+develop-eggs/
+downloads/
+eggs/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+.installed.cfg
+MANIFEST
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
 
-# Node
+# ─── Node ─────────────────────────────────────────────────────────────
 node_modules/
 .next/
 out/
@@ -31,10 +49,22 @@ out/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
 *.tsbuildinfo
+.npm
+.eslintcache
+.yarn-integrity
+jspm_packages/
+.parcel-cache
+.cache
+.nuxt
+.storybook-out
+.out
+dist-ssr/
+*.local
 
-# === Secrets & Environment ===
+# ─── Secrets & Environment ───────────────────────────────────────────
 # Vault-first architecture: Studio Vault → sync-secrets.sh → .env.secrets
 # .env.local holds only SECRETS_API_KEY (your one key)
 # infra/env.dev.defaults is tracked (non-secret Docker networking)
@@ -42,37 +72,95 @@ yarn-error.log*
 infra/env.dev
 infra/env.test
 infra/env.prod
+infra/.env
+infra/.env.prod
+infra/*.local
+infra/axiomfolio/env.dev
+infra/axiomfolio/env.test
+infra/axiomfolio/env.prod
 .env
 .env.local
 .env.*.local
 .env.secrets
+.env.bak*
+env.txt
 apps/*/.env.local
 apis/*/.env
 
-# IDE
+# ─── IDE / Editors ───────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Docker
+# ─── Docker / Volumes ────────────────────────────────────────────────
 docker-volumes/
+postgres_data/
+redis_data/
+.docker/
 
-# Uploads (temporary file storage)
+# ─── Uploads / Runtime ───────────────────────────────────────────────
 uploads/
+pids/
+*.pid
+*.seed
+*.pid.lock
+tmp/
+temp/
 
-# Data pipeline fixtures (large binary source files, not version-controlled)
+# ─── Data pipeline fixtures (large binary source files) ──────────────
 packages/data/scripts/fixtures/
 
-# Test / Coverage
+# ─── Test / Coverage ────────────────────────────────────────────────
 .coverage
 htmlcov/
 .pytest_cache/
 .mypy_cache/
+.dmypy.json
+dmypy.json
 .ruff_cache/
+/coverage/
+.nyc_output
 
-# OS
-Thumbs.db
+# ─── Certificates & secrets files ────────────────────────────────────
+*.pem
+*.key
+*.crt
+secrets.json
+credentials.json
+
+# ─── Databases / Dumps ───────────────────────────────────────────────
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql.gz
+*.tar.gz
+
+# ─── Trading / market data caches ────────────────────────────────────
+trading_data/
+historical_data/
+market_data/
+
+# ─── AxiomFolio large assets (broker CSVs, postgres dumps) ──────────
+# Pre-reorg 2026-04-23. These do not belong in git.
+other_assets/
+apis/axiomfolio/other_assets/
+
+# ─── Backups ────────────────────────────────────────────────────────
+*.bak
+*.backup
+*.tmp
+.git_backup/
+*.pdf
+
+# ─── OS / reports ────────────────────────────────────────────────────
 gitleaks-report.json

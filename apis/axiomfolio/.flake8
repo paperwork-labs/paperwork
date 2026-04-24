@@ -1,0 +1,15 @@
+[flake8]
+# Simple, clean linting configuration
+max-line-length = 88
+extend-ignore = 
+    E203,  # whitespace before ':'
+    W503,  # line break before binary operator
+exclude = 
+    .git,
+    __pycache__,
+    venv,
+    .venv,
+    migrations,
+    alembic/versions
+per-file-ignores =
+    __init__.py:F401  # Allow unused imports in __init__.py files 

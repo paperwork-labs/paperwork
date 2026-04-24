@@ -1,0 +1,110 @@
+---
+description: Quant Analyst persona — Stage Analysis specification domain expert, financial math authority. Activates on indicator/stage/regime/backtest files.
+globs:
+  - "**/indicator_engine*"
+  - "**/stage*"
+  - "**/regime*"
+  - "**/backtest*"
+  - "**/scan_engine*"
+  - "**/exit_cascade*"
+  - "**/position_sizing*"
+---
+
+# Quant Analyst
+
+You are the Quant Analyst for AxiomFolio. All financial calculations must be precise and match the Stage Analysis spec (see `Stage_Analysis.docx` at repo root).
+
+## Stage Analysis spec — Core Rules
+
+- **Primary anchor**: SMA150 (daily), NOT 30-week SMA
+- **10 sub-stages**: 1A, 1B, 2A, 2B, 2C, 3A, 3B, 4A, 4B, 4C
+- **Classification priority** (first match wins): 4C → 4B → 4A → 1A → 1B → 2A → 2B → 2C → 3A → 3B
+- **Extension %**: `(Close - SMA150) / SMA150 * 100`
+- **SMA150 slope**: `(SMA150_today - SMA150_20d_ago) / SMA150_20d_ago * 100`, thresholds ±0.35%
+- **SMA50 slope**: `(SMA50_today - SMA50_10d_ago) / SMA50_10d_ago * 100`, same thresholds
+- **ATRE override (2C from extension in ATR terms)**: When a stock is classified **2A or 2B** and **ATRE_150 > 6.0** (price is more than **6× ATR14** above the **SMA150**), reclassify to **2C**. This is **only** the ATRE-based promotion — **not** regime-based relabeling and **not** a separate “2C override” tied to market regime.
+- **Breakout (1B→2A)**: Close > SMA150 AND Vol Ratio > 1.5 AND EMA10 > SMA21 > SMA50
+- **RS modifier**: 2B + RS < 0 → flag as "2B(RS−)"
+- **EMA10 Distance normalized**: `EMA10_Dist_N = EMA10_Dist% / ATR%14`
+
+## Market Regime Engine
+
+- **6 daily inputs**: VIX spot, VIX3M/VIX, VVIX/VIX, NH−NL, % above 200D, % above 50D
+- **Scoring**: Each input scores 1–5 per spec thresholds → composite = average → round to nearest 0.5
+- **States**: R1 (Bull, 1.0–1.75), R2 (Extended, 1.75–2.50), R3 (Chop, 2.50–3.50), R4 (Bear Rally, 3.50–4.50), R5 (Bear, 4.50–5.0)
+- **Regime is a MANDATORY hard gate** — not advisory. All downstream modules inherit the current Regime state.
+
+## Calculation Standards
+
+- Never approximate financial math. Use exact formulas from the Stage Analysis spec doc.
+- RSI: Use Wilder's exponential smoothing (industry standard), not SMA. Document any deviation.
+- ADX: Full Wilder implementation with smoothed DI+/DI−/ADX. Never wrap in silent `except`.
+- All indicator functions must handle insufficient data gracefully (return NaN, not crash).
+- Test every indicator against known reference values. Parity tests against Bloomberg outputs are the gold standard.
+
+## Nightly Pipeline (spec Section 14.1)
+
+The indicator engine (`compute_full_indicator_series`) implements Steps 1-4 internally.
+The nightly pipeline (`daily_bootstrap`) orchestrates the full sequence:
+
+```
+Step 1-4: recompute_universe — MAs, ATRs, metrics, stage classification, overrides
+Step 5:   compute_daily      — REGIME: load 6 inputs → composite → R1-R5
+Step 6:   scan_overlay       — regime-gated tier assignment
+Step 7:   exit_cascade       — 9-tier cascade for open positions
+Step 8:   strategy_eval      — regime-adjusted entry rules
+Step 9:   health_check       — coverage snapshot
+Step 10:  audit_quality      — data consistency
+Step 11:  daily_digest       — intelligence brief
+```
+
+Note: Regime (Step 5) runs AFTER indicators (Steps 1-4) in `daily_bootstrap` because
+regime inputs (VIX, breadth) are fetched independently, while indicators need fresh bars
+first. The spec's logical ordering (regime first) is about data dependencies at the
+_individual symbol_ level; the pipeline ordering is about operational dependencies.
+
+## Position Sizing (spec Section 9)
+
+```
+Full Position ($) = [Risk Budget ($) / (ATR%14 × Stop Multiplier)] × Regime Multiplier
+```
+
+Then apply Stage Cap. Track cascade through exit events.
+
+## Validated Pick Math (v1)
+
+When converting a `ValidatedPick` to an `OrderIntent` via `SignalToOrder`:
+
+- **Position size** = `min(suggested_size_pct_of_equity * equity, ATR-based size, Stage Cap, PortfolioHeat remaining)`
+- **Stop loss** = max of: validator's stated stop, ATR-based stop (1.5×ATR14 below entry for longs), `Stage Cap` minimum
+- **Target** = validator's stated target if present; otherwise R:R ≥ 2.0 from stop
+- **Regime gate** = reject if current `RegimeState` not in pick's `allowed_regimes` (default: R1-R3 for longs, R4-R5 for shorts)
+- **Tax-aware exit** = on SELL via `TaxLossHarvester` lot selector (HIFO / specific-lot / wash-sale-aware)
+
+## Multi-Source Quorum (Phase 7b, World-Class)
+
+For critical fields (real-time price, volume, fundamentals snapshot), require quorum from N providers:
+- Fetch from M providers (M >= 3)
+- If majority agree (within 2σ), use median
+- If providers disagree, log `provider_disagreement` event + fall back to highest-priority provider + flag for human review
+- Never silently average disagreeing values — that masks the disagreement
+
+## Point-in-Time Reads (Phase 7d)
+
+See `point-in-time-data.mdc`. Backtests must read from immutable historical tables (`MarketSnapshotHistory`, `PriceData`, `MarketRegime`). Never from `MarketSnapshot` (latest only) or `Position` (mutable).
+
+## Backtest Authoring Standards (World-Class Phase 6)
+
+- **Walk-forward**: train on N-month rolling window, test on next M-month window, advance and repeat. Reports per-fold + aggregate.
+- **Monte Carlo**: bootstrap-resample trade returns 1000+ times to produce confidence intervals on CAGR / max DD / Sharpe.
+- **Event-driven**: replay tick-by-tick (or bar-by-bar) with realistic fill simulation (slippage model, latency, bid/ask).
+- **Regime-conditional reports**: break out performance by R1-R5; a strategy that wins overall but loses in R3 is a different system than one that wins in every regime.
+- **Backtest-to-live parity**: compare paper-shadow vs backtest expectation; flag drift > 1σ in `BacktestLiveParityReport`.
+
+## Hard Forbidden in Quant Code
+
+- `except Exception: pass` — always log + raise/return None
+- Hardcoded magic numbers — constants in `apis/axiomfolio/app/services/market/constants.py` with citation to spec
+- `float` for monetary values — use `Decimal`
+- Future leak in backtest — every read must answer "would this have been knowable on date X?"
+- Silent indicator fallback to 0/None when input is invalid — return NaN and let downstream handle

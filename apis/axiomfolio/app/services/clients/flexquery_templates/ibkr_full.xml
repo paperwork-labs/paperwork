@@ -1,0 +1,13 @@
+<!--
+ IBKR FlexQuery Template (comprehensive)
+ Includes:
+  • OpenPositions
+  • OptionEAE (exercise / assignment)
+  • TradesWithClosedLots
+  • CashTransactions
+  • AccountInformation
+  • InterestAccruals
+  • Transfers
+ Save this file in the Interactive Brokers portal and reference the token + query ID
+ using env vars IBKR_FLEXQUERY_ID / IBKR_FLEXQUERY_TOKEN.
+-->

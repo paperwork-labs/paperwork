@@ -1,0 +1,47 @@
+---
+description: Self-healing market data platform invariants — single source of truth, provider router, drift detection, point-in-time correctness.
+globs: apis/axiomfolio/app/services/market/**, apis/axiomfolio/app/tasks/market/**, apis/axiomfolio/app/services/data/**
+alwaysApply: false
+---
+
+# Market Data Platform Invariants
+
+The market data platform is the foundation. If it lies, every downstream system (picks, signals, orders, risk gate, backtest) is wrong.
+
+## Iron laws
+
+1. **Single source of truth**: `MarketSnapshot` = latest indicator state. `MarketSnapshotHistory` = immutable daily ledger. Never compute indicators ad-hoc in routes/tasks; always via `compute_full_indicator_series()` in `indicator_engine.py`.
+2. **Provider router fronts every external call**: `ProviderRouter` enforces rate limits, budgets, failover. Direct provider client calls from services are forbidden; route through `ProviderRouter`.
+3. **Wilder smoothing for ATR/ADX, population std for Bollinger** (D46, D48). Don't second-guess.
+4. **SMA150 is the stage anchor** (D1). 175-bar minimum for reliable classification (D50).
+5. **Half-up rounding for regime composite** (D52). Not banker's.
+6. **Skip UNKNOWN in run-length computation** (D51). UNKNOWN is "insufficient data", not a stage.
+7. **Coverage assertions in every loop**: `assert written + skipped + errors == total` at end of any per-symbol loop (R38).
+8. **Heavy queue for long-running jobs**: `repair_stage_history`, `fundamentals.fill_missing`, `snapshot_history.*`, `full_historical`, `prune_old_bars` route to `heavy` queue (D81).
+
+## When adding a new indicator
+
+1. Add to `compute_full_indicator_series()` in `indicator_engine.py`
+2. Add columns to both `MarketSnapshot` and `MarketSnapshotHistory` via Alembic migration
+3. Add unit test that compares output to a hand-computed reference for one known symbol
+4. Update `Stage_Analysis.docx` references if it changes stage classification
+5. Add to `KNOWLEDGE.md` as a `D##` entry with formula + alternatives considered
+
+## When adding a new provider
+
+1. Implement `Provider` interface in `apis/axiomfolio/app/services/market/providers/<name>.py`
+2. Register in `ProviderRouter` priority list
+3. Add to `ProviderPolicy` (free/starter/paid/unlimited tiers in `provider_policy.py`)
+4. Document budget + rate limits in `MARKET_DATA_RUNBOOK.md` tier table
+5. Add `ProviderDriftReport` baseline so drift detector has reference
+
+## Drift detection (v1+)
+
+When a provider's value diverges from quorum (>2σ), `DriftDetector` should:
+- Emit `provider_drift` webhook to Brain
+- Auto-failover to next priority in `ProviderRouter`
+- Open `AutoOpsAction` for human review if drift persists >1h
+
+## Point-in-time correctness (Phase 7d)
+
+Historical indicator reads must return values as they were known on that date. No look-ahead. This is critical for backtest validity. Implementation: `MarketSnapshotHistory` is **treated as immutable in normal operation**. The only exception is the explicit `repair_stage_history` task (heavy queue, manually invoked or scheduled), which may overwrite rows; every overwrite must write a `DataMutation` audit row capturing before/after/reason/actor.

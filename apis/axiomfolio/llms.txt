@@ -1,0 +1,64 @@
+# AxiomFolio
+
+> Quantitative portfolio intelligence platform for swing trading using Stage Analysis (Oliver Kell / Weinstein refined).
+
+## IRON LAWS (Never Violate)
+
+- Monetary values use `Decimal`, never `float`
+- All indicator computation via `compute_full_indicator_series()` in `indicator_engine.py`
+- Single execution path: OrderManager → RiskGate → BrokerRouter. Never bypass.
+- DB sessions passed as parameters. Never create sessions inside services.
+- Always set explicit `time_limit` on Celery tasks matching `job_catalog.py`
+- SMA150 is the primary stage anchor per Stage_Analysis.docx
+- Lock TTL must be >= task hard_time_limit
+
+## DANGER ZONES (Ask Before Modifying)
+
+- `app/services/execution/risk_gate.py` — Capital protection, position sizing
+- `app/services/execution/order_manager.py` — Order execution path
+- `app/api/routes/auth.py` — Authentication/authorization
+- `backend/config.py` — Environment configuration
+- `app/alembic/versions/*.py` — Database migrations
+- `app/services/market/indicator_engine.py` — Core indicator calculations
+- `app/services/market/stage_classifier.py` — Stage Analysis classification
+
+## Key Entry Points
+
+- [Indicator Engine](app/services/market/indicator_engine.py): All indicator computation
+- [Stage Classifier](app/services/market/stage_classifier.py): Weinstein 10 sub-stages
+- [Order Manager](app/services/execution/order_manager.py): Single execution path
+- [Risk Gate](app/services/execution/risk_gate.py): Position sizing, limits
+- [Market Data Service](app/services/market/market_data_service.py): Provider facade
+
+## Tech Stack
+
+| Layer | Stack |
+|-------|-------|
+| Backend | Python 3.11, FastAPI, Celery, PostgreSQL 18, Redis, SQLAlchemy 2.0, Alembic |
+| Frontend | React 19, TypeScript 5, Vite, Radix UI, Tailwind CSS, React Query |
+| Infra | Docker Compose (dev), Render (prod), Cloudflare, GitHub Actions |
+| Brokers | IBKR (FlexQuery + Gateway), TastyTrade (SDK), Schwab (OAuth) |
+
+## Quick Commands
+
+```bash
+make up          # Start dev stack
+make test        # Backend tests
+make test-all    # Backend + frontend tests
+npm run type-check  # TypeScript check
+make task-run TASK=module.task  # Run Celery task
+```
+
+## Docs
+
+- [Architecture](docs/ARCHITECTURE.md): System overview, data models, pipelines
+- [Knowledge](docs/KNOWLEDGE.md): Decision log with rationale
+- [Trading Principles](docs/TRADING_PRINCIPLES.md): 14 non-negotiable rules
+- [Market Data Runbook](docs/MARKET_DATA_RUNBOOK.md): Operational procedures
+- [Audit Findings](docs/AUDIT_FINDINGS.md): Current issues being fixed
+
+## Three Pillars
+
+1. **Portfolio** — Read-only broker sync (positions, trades, tax lots, options, balances)
+2. **Intelligence** — Market data pipeline: OHLCV → indicators → MarketSnapshot
+3. **Strategy** — Rule evaluator, backtester, signal generator, order engine with risk gates

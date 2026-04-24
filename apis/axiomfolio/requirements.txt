@@ -1,0 +1,95 @@
+# Core
+fastapi==0.136.0
+uvicorn[standard]==0.44.0
+sqlalchemy==2.0.49
+psycopg2-binary==2.9.11
+pydantic==2.13.2
+pydantic-settings==2.13.1
+python-dotenv==1.2.2
+loguru==0.7.3
+alembic==1.18.4
+Mako==1.3.11
+slowapi==0.1.9
+python-json-logger==4.1.0
+
+# Data & Utils
+# Chart share OG (Open Graph) PNG cards — 1200x630 social previews (C1 / #360)
+Pillow==10.4.0
+pandas==3.0.2
+numpy==2.4.4
+requests==2.33.1
+aiohttp==3.13.5
+ta==0.11.0
+python-dateutil==2.9.0.post0
+
+# Market Data APIs
+alpha-vantage==3.0.0
+yfinance==1.3.0
+finnhub-python==2.4.27
+twelvedata==1.3.0
+fmpsdk==20250102.0
+
+# Broker SDKs
+ib_insync==0.9.86
+tastytrade==12.3.2
+
+# Scheduling
+schedule==1.2.2
+
+# Task queue / async
+celery==5.6.3
+flower==2.0.1
+redis==7.4.0
+
+
+# Linters & Dev
+black==26.3.1
+ruff==0.15.11
+
+# Observability — OpenTelemetry stack pinned below handles APM/tracing.
+# New Relic was previously bundled but never activated (no newrelic-admin
+# wrapper, no license key in render.yaml). Removed 2026-04-24 — OTel via
+# app/observability/tracing.py covers the same ground vendor-neutrally.
+
+# Testing
+pytest==9.0.3
+pytest-asyncio==1.3.0
+pytest-timeout==2.4.0
+fakeredis==2.35.1
+# HTTP mocking for broker-executor tests (Wave F). Intercepts requests
+# library calls without opening a real socket; used by
+# backend/tests/execution/test_tradier_executor.py and future executor
+# test suites (F2 E*TRADE, F4 TastyTrade).
+responses==0.25.3
+
+# Auth deps
+passlib[bcrypt]==1.7.4
+PyJWT==2.12.1
+email-validator==2.3.0
+cryptography==46.0.7
+httpx==0.28.1
+croniter==6.2.2
+resend>=2.0.0
+
+# Billing
+stripe==15.0.1
+
+# Plaid Investments aggregator (Pro-tier broker.plaid_investments feature).
+# Used for read-only 401k / held-away sync; no order entry. See
+# app/services/portfolio/plaid/.
+plaid-python==39.1.0
+
+# Backtest hyperparameter optimization
+optuna==4.8.0
+
+# OpenTelemetry — distributed tracing + metrics.
+# `*-api` and `*-sdk` track the same MAJOR.MINOR; instrumentation packages
+# follow a separate 0.x line tied to that release. Keep them lock-stepped.
+opentelemetry-api==1.41.0
+opentelemetry-sdk==1.41.0
+opentelemetry-exporter-otlp-proto-http==1.41.0
+opentelemetry-instrumentation-fastapi==0.62b0
+opentelemetry-instrumentation-sqlalchemy==0.62b0
+opentelemetry-instrumentation-celery==0.62b0
+opentelemetry-instrumentation-httpx==0.62b0
+opentelemetry-instrumentation-redis==0.62b0

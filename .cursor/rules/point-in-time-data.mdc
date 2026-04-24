@@ -1,0 +1,66 @@
+---
+description: Point-in-time correctness for historical reads. Backtest validity depends on this.
+globs: apis/axiomfolio/app/services/strategy/**, apis/axiomfolio/app/services/backtest/**, apis/axiomfolio/app/services/market/snapshot_service.py
+alwaysApply: false
+---
+
+# Point-in-Time Data
+
+When reading historical data for backtest, signal evaluation, or any "what did we know on date X?" query, the answer must reflect data as it was known on date X — not data as we know it now.
+
+## The trap
+
+```python
+# BAD: leaks future information into a backtest
+positions = db.query(Position).filter(Position.opened_on <= as_of_date).all()
+# BUG: positions table reflects all corrections/restatements made AFTER as_of_date
+```
+
+## The fix
+
+```python
+# GOOD: read from the historical ledger (treated as immutable for normal reads)
+snapshots = db.query(MarketSnapshotHistory).filter(
+    MarketSnapshotHistory.as_of_date == as_of_date,
+    MarketSnapshotHistory.symbol.in_(symbols),
+).all()
+```
+
+## Tables to use for point-in-time reads
+
+| Question | Read from |
+|----------|-----------|
+| What were the indicators on date X? | `MarketSnapshotHistory` |
+| What was the OHLCV on date X? | `PriceData` (immutable) |
+| What was the regime on date X? | `MarketRegime` (immutable, indexed by `as_of_date`) |
+| What was the validator's pick on date X? | `ValidatedPick` filtered by `published_at <= as_of_date` |
+| What corporate actions had occurred by date X? | `CorporateEvent` filtered by `effective_date <= as_of_date` |
+
+## Tables NOT safe for point-in-time
+
+| Table | Why |
+|-------|-----|
+| `MarketSnapshot` | Only holds latest; no historical depth |
+| `Position` | Reflects current state, not historical |
+| `Strategy` | Mutated as users tune |
+| `User.tier` | Changes over time; pin to date if needed via `entitlement_history` (Phase 8d) |
+
+## Backtest authors
+
+Every read in a backtester must answer: "if I were running this backtest on date X live, would this query have returned the same data?" If no, fix the query.
+
+## Repair operations
+
+The intended guarantee is: `MarketSnapshotHistory` is **immutable for all normal reads and writes**. Explicit repair mutations are allowed via the `repair_stage_history` task only and must be fully audited.
+
+`repair_stage_history` overwrites `MarketSnapshotHistory` rows. Every overwrite must:
+1. Insert a `DataMutation` audit row with `before_value`, `after_value`, `reason`, `actor`
+2. Be triggered explicitly (no auto-repair in production hot path)
+3. Be visible in admin audit trail
+
+## Corporate actions
+
+When a stock splits 2:1 retroactively, **do not** mutate historical OHLCV in place. Instead:
+- Store split as `CorporateEvent` with `effective_date`
+- `PriceData` reads compose adjusted prices on read, not on write
+- This keeps point-in-time correctness intact

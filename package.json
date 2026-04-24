@@ -14,11 +14,13 @@
     "dev:launchfree": "turbo run dev --filter=@paperwork-labs/launchfree",
     "dev:trinkets": "turbo run dev --filter=@paperwork-labs/trinkets",
     "dev:distill": "turbo run dev --filter=@paperwork-labs/distill",
+    "dev:axiomfolio": "turbo run dev --filter=@paperwork-labs/axiomfolio",
     "build:filefree": "turbo run build --filter=@paperwork-labs/filefree",
     "build:launchfree": "turbo run build --filter=@paperwork-labs/launchfree",
     "build:studio": "turbo run build --filter=@paperwork-labs/studio",
     "build:trinkets": "turbo run build --filter=@paperwork-labs/trinkets",
     "build:distill": "turbo run build --filter=@paperwork-labs/distill",
+    "build:axiomfolio": "turbo run build --filter=@paperwork-labs/axiomfolio",
     "format": "pnpm -r --if-present format",
     "clean": "pnpm -r exec rm -rf node_modules .next out dist"
   },

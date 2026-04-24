@@ -1,0 +1,75 @@
+---
+description: Validator persona (Twisted Slice) workflow — pseudonym enforcement, source attribution, picks pipeline.
+globs: apis/axiomfolio/app/services/picks/**, apis/axiomfolio/app/api/routes/picks/**, apis/axiomfolio/app/models/picks/**, apps/axiomfolio/src/pages/picks/**, apps/axiomfolio/src/pages/Validator*.tsx
+alwaysApply: false
+---
+
+# Validator / Curator
+
+Validators are humans who turn raw market intelligence into actionable picks for subscribers. The platform's core differentiator is human + AI hybrid — not pure algorithmic, not pure newsletter.
+
+## Personas
+
+| Validator | Persona | Scope |
+|-----------|---------|-------|
+| Founder | `founder` | Self; can publish anything |
+| Twisted Slice | `twisted_slice` | Hedge fund analyst; primary external validator for v1 |
+| (future) | `marketplace_validator` | Year 2 — multiple validators, revenue share |
+
+## Pseudonym enforcement (HARD RULE)
+
+- **Real names/emails of validators are NEVER exposed in user-facing artifacts** (UI, marketing copy, public scorecards, RSS feeds, exported PDFs, webhooks to subscribers).
+- Real identifiers live ONLY in:
+  - `PICKS_TRUSTED_SENDERS` env var (server-side, never read by client code)
+  - A new encrypted `validator_identity` table for the v1 picks pipeline (admin-only access via `OWNER` role + audit log; **to be implemented**)
+- All UI references use the validator pseudonym/display handle (`twisted_slice`, "Twisted Slice").
+- Code review checklist: grep for any real validator email, name, or other identifier in any user-facing output (UI strings, marketing copy, exports, public scorecards, RSS, webhooks to subscribers). Use the `PICKS_TRUSTED_SENDERS` env-var values as the canonical denylist. If any match is found, block the PR.
+
+## Picks pipeline state machine
+
+```
+DRAFT -> APPROVED -> PUBLISHED
+  |          |
+REJECTED   REJECTED (post-approve, withdrawn)
+```
+
+- `DRAFT`: parser output, awaiting validator review
+- `APPROVED`: validator clicked approve; queued for publish
+- `PUBLISHED`: visible to subscribers per their tier; webhook fired
+- `REJECTED`: not for publication
+
+State transitions are audited in a dedicated audit table (planned name: `pick_audit_log`; **to be implemented as part of the v1 picks pipeline**) with actor, timestamp, before/after.
+
+## Source attribution
+
+Every published item carries:
+
+| Field | Required | Purpose |
+|-------|----------|---------|
+| `validator` | yes | Who curated it (`twisted_slice`, `founder`) |
+| `original_author` | when forwarded | Original analyst (e.g., "Keith McCullough / Hedgeye") |
+| `source_type` | yes | `ORIGINAL_ANALYSIS` / `FORWARDED_RECAP` / `EDITED_FORWARD` / `LLM_DRAFT_VALIDATED` |
+| `inbound_email_id` | when from email | Foreign key to `inbound_email` table for traceability |
+| `attribution_required` | when quoting | If `true`, UI must show source badge prominently |
+
+## LLM parser behavior
+
+- **Polymorphic schema selection** by gpt-4o-mini at parse time; full extraction by gpt-4o
+- Templates: `single_stock_bullets`, `single_stock_research_note`, `macro_recap_with_position_changes`, `daily_market_recap_narrative`, `mixed`
+- Vision (gpt-4o vision) for chart captioning ONLY for trusted senders (cost gate)
+- Cross-email signal linking: vector similarity + symbolic level matching; surfaces "this reinforces email X from Y days ago" but does NOT auto-merge — validator decides
+
+## Tier-gated publish
+
+| Tier | What they see |
+|------|---------------|
+| Free | Picks 24h after publish; watchlist add only |
+| Pro | Real-time picks; email/SMS alerts; one-click execute (paper or live); autotrade per `feature_catalog` |
+| Pro+ | + `SignalToOrder` auto-execute where enabled; bracket orders; tax-aware exits; native chat |
+| Quant Desk | + Trade Copy (mirror Twisted Slice's published picks automatically) |
+
+## Costs
+
+- Per-tier LLM budget caps (D87) enforced via `LLMGateway`
+- Vision calls degraded first when budget tight
+- Postmortem budget overruns logged in `KNOWLEDGE.md` as `R##` entries

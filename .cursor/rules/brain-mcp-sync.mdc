@@ -1,0 +1,44 @@
+---
+description: Enforces tool parity between AxiomFolio brain_tools.py and Paperwork Brain MCP registration
+globs:
+  - "**/brain_tools.py"
+  - "**/mcp_server.py"
+  - "**/axiomfolio_tools.yaml"
+  - "**/axiomfolio.py"
+alwaysApply: false
+---
+
+# Brain MCP Tool Sync
+
+When editing any file that defines, registers, or documents tools exposed to Paperwork Brain:
+
+## Checklist
+
+1. **Any new tool in `brain_tools.py`** must also be:
+   - Registered in Paperwork's `apis/brain/app/mcp_server.py`
+   - Added to `docs/brain/axiomfolio_tools.yaml` manifest
+   - Added to the proxy client in `paperwork/apis/brain/app/tools/axiomfolio.py`
+
+2. **Any removed tool** must be deregistered from all three locations above.
+
+3. **Schema changes** (parameter renames, type changes, new required fields) must be reflected in:
+   - The YAML manifest (`axiomfolio_tools.yaml`)
+   - The MCP server registration
+   - The proxy client function signature
+
+4. **Risk classification**: Every Brain-exposed tool must have an entry in `apis/axiomfolio/app/services/agent/taxonomy.py` `ACTION_RISK_MAP`.
+
+## Key Files
+
+| Side | File | Purpose |
+|------|------|---------|
+| AxiomFolio | `apis/axiomfolio/app/api/routes/brain_tools.py` | HTTP endpoints Brain calls |
+| AxiomFolio | `docs/brain/axiomfolio_tools.yaml` | Tool manifest |
+| Paperwork | `apis/brain/app/tools/axiomfolio.py` | Proxy client |
+| Paperwork | `apis/brain/app/mcp_server.py` | MCP registration |
+
+## Important
+
+- Internal agent tools (`apis/axiomfolio/app/services/agent/tools.py`) are NOT automatically exposed to Brain
+- Adding a tool to the internal agent does NOT require Brain registration
+- Brain tools are a curated, security-reviewed subset of capabilities

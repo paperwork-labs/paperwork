@@ -13,7 +13,7 @@ from app.models.base import Base
 
 TEST_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL",
-    "postgresql+asyncpg://filefree:filefree_dev@localhost:5432/filefree_test",
+    "postgresql+asyncpg://paperwork:paperwork_dev@localhost:5432/filefree_test",
 )
 
 

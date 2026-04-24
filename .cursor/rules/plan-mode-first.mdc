@@ -1,0 +1,41 @@
+---
+description: Use plan mode for any non-trivial change. Edits without a plan are forbidden for >2-file or architecture-touching work.
+alwaysApply: true
+---
+
+# Plan Mode First
+
+Use plan mode (read-only, plan-then-confirm) before any change that meets ANY of:
+
+1. Touches >2 files
+2. Touches a danger zone (see `protected-regions.mdc`)
+3. Adds a new model, route, or Celery task
+4. Modifies billing, auth, multi-tenancy, or risk gate code
+5. Modifies indicator math (anything in `apis/axiomfolio/app/services/market/indicator_engine.py`)
+6. Refactors a module that other modules import from
+
+## Why
+
+The 4-month v0 incident pattern (D76-D80, R34-R39) was largely "well-intentioned edit lacked context, broke prod". A 60-second plan-mode check would have caught most of them.
+
+## What goes in a plan
+
+- Files to be modified (full paths) and what changes in each
+- New files with one-sentence purpose
+- Schema changes (model + Alembic migration) if any
+- Test additions if any
+- Acceptance criteria — what does success look like?
+- Reversibility — can this be reverted cleanly?
+- Reference to related KNOWLEDGE.md entry if architectural
+
+## When plan mode is NOT needed
+
+- Single-file typo fix
+- Adding a comment
+- Updating one log message
+- Editing a doc file
+- Renaming an unused variable
+
+## Master plan reference
+
+For multi-PR sprint work, link your plan to the relevant phase in `docs/plans/MASTER_PLAN_2026.md`. Don't invent new milestones; use what's there.
