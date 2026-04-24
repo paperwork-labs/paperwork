@@ -70,6 +70,7 @@ export default function ArchitectureClient({
   const [checkedAt, setCheckedAt] = useState(initialCheckedAt);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
   const [askingId, setAskingId] = useState<string | null>(null);
   const [askResponse, setAskResponse] = useState<string>("");
 
@@ -112,12 +113,16 @@ export default function ArchitectureClient({
     setRefreshing(true);
     try {
       const res = await fetch("/api/admin/architecture", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as {
         health: NodeHealth[];
         checkedAt: string;
       };
       setHealth(data.health);
       setCheckedAt(data.checkedAt);
+      setRefreshError(null);
+    } catch (err) {
+      setRefreshError(err instanceof Error ? err.message : "Refresh failed");
     } finally {
       setRefreshing(false);
     }
@@ -194,6 +199,11 @@ export default function ArchitectureClient({
             Checked {formatRelative(checkedAt)} · commit{" "}
             <span className="font-mono text-zinc-400">{graph.commit_sha}</span>
           </div>
+          {refreshError && (
+            <div className="rounded-full border border-rose-800/40 bg-rose-950/20 px-2 py-0.5 text-xs text-rose-300">
+              Health probe failed: {refreshError}
+            </div>
+          )}
         </div>
       </header>
 

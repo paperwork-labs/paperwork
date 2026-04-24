@@ -135,22 +135,25 @@ const fadeUp = {
 export default function OverviewClient({ initial }: { initial: OverviewData }) {
   const [data, setData] = useState(initial);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
       const res = await fetch("/api/admin/overview");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);
-    } catch {
-      // keep stale
+      setRefreshError(null);
+    } catch (err) {
+      setRefreshError(err instanceof Error ? err.message : "Refresh failed");
     } finally {
       setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(refresh, 60000);
+    const interval = setInterval(refresh, 60_000);
     return () => clearInterval(interval);
   }, [refresh]);
 
@@ -272,14 +275,21 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
             Venture-wide health at a glance.
           </p>
         </div>
-        <button
-          onClick={refresh}
-          disabled={refreshing}
-          className="flex items-center gap-2 rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          {refreshError && (
+            <span className="rounded-full border border-rose-800/40 bg-rose-950/20 px-2 py-0.5 text-xs text-rose-300">
+              Refresh failed: {refreshError}
+            </span>
+          )}
+          <button
+            onClick={refresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Traffic Light */}
