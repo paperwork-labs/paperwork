@@ -56,8 +56,21 @@ jobs:
               echo "decision=major" >> "$GITHUB_OUTPUT"
               ;;
             *)
-              # Unknown / empty — be conservative, flag for human.
-              echo "decision=unknown" >> "$GITHUB_OUTPUT"
+              # fetch-metadata can't classify "update X requirement from >=A to >=B"
+              # style bumps (setup.py/pyproject constraint relaxations). Fall back
+              # to title heuristics — if we can detect a major jump, treat as major,
+              # otherwise treat as safe (these are just minimum-version floors).
+              if echo "$TITLE" | grep -qiE 'from\s+>?=?\s*([0-9]+)[^0-9]*\s+to\s+>?=?\s*([0-9]+)' ; then
+                FROM_MAJ=$(echo "$TITLE" | sed -nE 's/.*from[[:space:]]+>?=?[[:space:]]*([0-9]+).*/\1/p')
+                TO_MAJ=$(echo "$TITLE" | sed -nE 's/.*[[:space:]]to[[:space:]]+>?=?[[:space:]]*([0-9]+).*/\1/p')
+                if [ -n "$FROM_MAJ" ] && [ -n "$TO_MAJ" ] && [ "$FROM_MAJ" != "$TO_MAJ" ]; then
+                  echo "decision=major" >> "$GITHUB_OUTPUT"
+                else
+                  echo "decision=safe" >> "$GITHUB_OUTPUT"
+                fi
+              else
+                echo "decision=unknown" >> "$GITHUB_OUTPUT"
+              fi
               ;;
           esac
 

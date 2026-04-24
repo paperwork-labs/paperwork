@@ -51,6 +51,17 @@ jobs:
             exit 0
           fi
 
+          # Defensive: the URL must start with https:// and contain no shell-
+          # splitting surprises. This prevents `curl: option --...: is unknown`
+          # errors if a malformed secret value is ever pushed in by accident.
+          case "$BRAIN_WEBHOOK_URL" in
+            https://*) ;;
+            *)
+              echo "::warning::BRAIN_WEBHOOK_URL does not start with https:// — refusing to call. Set a valid URL and re-run."
+              exit 0
+              ;;
+          esac
+
           PAYLOAD=$(jq -nc \
             --arg pr "$PR_NUMBER" \
             --arg action "$ACTION" \
@@ -62,8 +73,11 @@ jobs:
 
           echo "Calling Brain: ${BRAIN_WEBHOOK_URL%%/api*}/api/v1/webhooks/github/pr-review (PR #$PR_NUMBER, action=$ACTION)"
 
+          # Pass the URL via --url (not positional) so curl never mistakes a
+          # leading `-` in the secret value for an option.
           HTTP_CODE=$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
-            -X POST "$BRAIN_WEBHOOK_URL" \
+            --url "$BRAIN_WEBHOOK_URL" \
+            -X POST \
             -H "Content-Type: application/json" \
             -H "X-Brain-Signature: sha256=$SIG" \
             --data "$PAYLOAD" \
