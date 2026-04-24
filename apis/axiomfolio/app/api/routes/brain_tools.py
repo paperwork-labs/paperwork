@@ -30,7 +30,7 @@ from app.services.execution.approval_service import ApprovalService
 from app.services.execution.broker_base import OrderRequest
 from app.services.execution.order_manager import OrderManager
 from app.services.market.regime_engine import get_current_regime as fetch_current_regime
-from app.services.portfolio.portfolio_analytics_service import PortfolioAnalyticsService
+from app.services.silver.portfolio.analytics import PortfolioAnalyticsService
 from app.services.risk.circuit_breaker import circuit_breaker
 
 logger = logging.getLogger(__name__)

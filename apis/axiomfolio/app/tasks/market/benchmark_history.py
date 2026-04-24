@@ -25,7 +25,7 @@ from celery import shared_task
 from app.database import SessionLocal
 from app.models.market_data import MarketSnapshotHistory, PriceData
 from app.services.market.snapshot_history_writer import upsert_snapshot_history_row
-from app.services.portfolio.portfolio_analytics_service import BENCHMARK_ANALYSIS_TYPE
+from app.services.silver.portfolio.analytics import BENCHMARK_ANALYSIS_TYPE
 from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)

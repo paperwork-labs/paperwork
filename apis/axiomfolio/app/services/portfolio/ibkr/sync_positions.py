@@ -20,8 +20,8 @@ from app.models.portfolio import PositionCategory
 from app.models.position import Position, PositionStatus, PositionType
 from app.models.tax_lot import TaxLotSource
 from app.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.day_pnl_service moves during Phase 0.C
-from app.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
+# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.day_pnl_service moves during Phase 0.C
+from app.services.silver.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 
 from .helpers import coerce_date, safe_float, DEFAULT_CURRENCY, DEFAULT_ASSET_CATEGORY
 

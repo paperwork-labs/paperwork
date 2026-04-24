@@ -492,7 +492,7 @@ def backfill_option_tax_lots(
     """
     from app.database import SessionLocal
     from app.models.broker_account import BrokerAccount
-    from app.services.portfolio.closing_lot_matcher import reconcile_closing_lots
+    from app.services.silver.portfolio.closing_lot_matcher import reconcile_closing_lots
 
     list_db = SessionLocal()
     try:

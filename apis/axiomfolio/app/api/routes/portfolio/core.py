@@ -127,7 +127,7 @@ async def get_tax_lots(
     CLEAN: Only tax lot data, optionally filtered by symbol.
     """
     try:
-        from app.services.portfolio.tax_lot_service import TaxLotService
+        from app.services.silver.portfolio.tax_lot_service import TaxLotService
 
         tls = TaxLotService(db)
         tax_lots_models = []
@@ -400,7 +400,7 @@ async def sync_official_tax_lots(
             }
 
         # Persist to DB
-        from app.services.portfolio.tax_lot_service import TaxLotService
+        from app.services.silver.portfolio.tax_lot_service import TaxLotService
         from app.models.broker_account import BrokerAccount
 
         broker_account = (
@@ -466,7 +466,7 @@ async def get_portfolio_analytics(
         if not acct:
             raise HTTPException(status_code=404, detail="Account not found")
 
-        from app.services.portfolio.portfolio_analytics_service import (
+        from app.services.silver.portfolio.analytics import (
             portfolio_analytics_service,
         )
 

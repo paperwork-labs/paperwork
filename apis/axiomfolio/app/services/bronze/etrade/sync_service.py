@@ -49,8 +49,8 @@ from app.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.day_pnl_service moves during Phase 0.C
-from app.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
+# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.day_pnl_service moves during Phase 0.C
+from app.services.silver.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 
 logger = logging.getLogger(__name__)
 

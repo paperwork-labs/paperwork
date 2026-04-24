@@ -14,7 +14,7 @@ from app.models.account_balance import AccountBalance
 from app.models.broker_account import BrokerAccount
 from app.models.user import User
 from app.services.billing.entitlement_service import EntitlementService
-from app.services.portfolio.discipline_trajectory_service import (
+from app.services.silver.portfolio.discipline_trajectory_service import (
     TrajectoryAnchors,
     compute_anchors,
     compute_projected_year_end,

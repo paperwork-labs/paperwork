@@ -34,8 +34,8 @@ from app.services.portfolio.account_credentials_service import (
     CredentialsNotFoundError,
     account_credentials_service,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.closing_lot_matcher moves during Phase 0.C
-from app.services.portfolio.closing_lot_matcher import (
+# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.closing_lot_matcher moves during Phase 0.C
+from app.services.silver.portfolio.closing_lot_matcher import (
     MatchResult,
     reconcile_closing_lots,
 )
@@ -392,8 +392,8 @@ class IBKRSyncService:
     @staticmethod
     def _refresh_activity_views(db: Session) -> None:
         try:
-            # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.activity_aggregator moves during Phase 0.C
-            from app.services.portfolio.activity_aggregator import activity_aggregator
+            # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.activity_aggregator moves during Phase 0.C
+            from app.services.silver.portfolio.activity_aggregator import activity_aggregator
             activity_aggregator.refresh_materialized_views(db)
         except Exception as exc:
             logger.warning("Activity MV refresh skipped: %s", exc)

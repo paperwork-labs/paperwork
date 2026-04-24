@@ -32,10 +32,10 @@ from app.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.closing_lot_matcher moves during Phase 0.C
-from app.services.portfolio.closing_lot_matcher import reconcile_closing_lots
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.day_pnl_service moves during Phase 0.C
-from app.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
+# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.closing_lot_matcher moves during Phase 0.C
+from app.services.silver.portfolio.closing_lot_matcher import reconcile_closing_lots
+# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.day_pnl_service moves during Phase 0.C
+from app.services.silver.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 from app.models.position import PositionType
 from app.models.transaction import TransactionType
 from app.models.account_balance import AccountBalanceType
@@ -156,8 +156,8 @@ class TastyTradeSyncService:
         db.commit()
 
         try:
-            # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.activity_aggregator moves during Phase 0.C
-            from app.services.portfolio.activity_aggregator import activity_aggregator
+            # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.activity_aggregator moves during Phase 0.C
+            from app.services.silver.portfolio.activity_aggregator import activity_aggregator
             activity_aggregator.refresh_materialized_views(db)
         except Exception as e:
             logger.warning("Activity MV refresh skipped: %s", e)
@@ -543,7 +543,7 @@ class TastyTradeSyncService:
         """Map a TastyTrade trade payload to ``Trade`` column kwargs.
 
         Fields required by the closing-lot matcher
-        (:mod:`app.services.portfolio.closing_lot_matcher`):
+        (:mod:`app.services.silver.portfolio.closing_lot_matcher`):
 
         * ``execution_time`` — the ordering key. Must be tz-aware; without
           it FIFO matching can't run and the Tax Center stays empty

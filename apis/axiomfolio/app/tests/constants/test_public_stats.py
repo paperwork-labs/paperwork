@@ -21,7 +21,7 @@ from app.constants.public_stats import (
     IMPORT_CATALOG_BROKERS_COUNT,
 )
 from app.models.broker_account import BrokerType
-from app.services.portfolio.broker_catalog import get_catalog
+from app.services.silver.portfolio.broker_catalog import get_catalog
 
 
 def test_direct_oauth_alias_points_at_direct_connect() -> None:

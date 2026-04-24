@@ -69,8 +69,8 @@ from app.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.closing_lot_matcher moves during Phase 0.C
-from app.services.portfolio.closing_lot_matcher import reconcile_closing_lots
+# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.closing_lot_matcher moves during Phase 0.C
+from app.services.silver.portfolio.closing_lot_matcher import reconcile_closing_lots
 
 logger = logging.getLogger(__name__)
 
@@ -741,7 +741,7 @@ class TradierSyncService:
         from ``date + type + amount +`` nested subfields, then blake2b-hash to
         ``tra_<8 hex>`` so ``Trade.execution_id`` (``String(50)`` unique) never
         exceeds the limit — same pattern as
-        :mod:`app.services.portfolio.closing_lot_matcher`.
+        :mod:`app.services.silver.portfolio.closing_lot_matcher`.
         """
 
         parts = [

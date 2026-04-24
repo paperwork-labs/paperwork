@@ -25,13 +25,13 @@ from app.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.closing_lot_matcher moves during Phase 0.C
-from app.services.portfolio.closing_lot_matcher import (
+# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.closing_lot_matcher moves during Phase 0.C
+from app.services.silver.portfolio.closing_lot_matcher import (
     MatchResult,
     reconcile_closing_lots,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.day_pnl_service moves during Phase 0.C
-from app.services.portfolio.day_pnl_service import (
+# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.day_pnl_service moves during Phase 0.C
+from app.services.silver.portfolio.day_pnl_service import (
     recompute_day_pnl_for_rows,
     recompute_position_day_pnl,
 )

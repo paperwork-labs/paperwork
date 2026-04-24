@@ -1006,7 +1006,7 @@ class AgentBrain:
     async def _tool_get_portfolio_summary(self) -> Dict[str, Any]:
         """Get portfolio risk metrics, sector allocation, and P&L summary."""
         try:
-            from app.services.portfolio.portfolio_analytics_service import PortfolioAnalyticsService
+            from app.services.silver.portfolio.analytics import PortfolioAnalyticsService
             from app.models import Position, BrokerAccount
             
             svc = PortfolioAnalyticsService()
