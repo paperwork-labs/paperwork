@@ -27,12 +27,12 @@ You are the Revenue Engineer for AxiomFolio. Your job is making sure the right u
 
 | Piece | File | Purpose |
 |-------|------|---------|
-| `User.tier` enum | `backend/models/user.py` | Source of truth for current tier |
-| `Entitlement` model | `backend/models/entitlement.py` | Per-user, per-feature grants (override tier defaults) |
-| `Stripe client` | `backend/services/billing/stripe_client.py` | Test-mode wrapper; idempotency keys; signature verify |
-| `Webhook receiver` | `backend/api/routes/billing/webhooks.py` | Stripe events update `User.tier` + `Entitlement` |
-| `TierGate` decorator | `backend/api/dependencies/tier_gate.py` | `@require_tier(Tier.PRO)`; 402 on insufficient |
-| `Feature catalog` | `backend/services/billing/feature_catalog.py` | Maps feature_key -> tier requirements |
+| `User.tier` enum | `apis/axiomfolio/app/models/user.py` | Source of truth for current tier |
+| `Entitlement` model | `apis/axiomfolio/app/models/entitlement.py` | Per-user, per-feature grants (override tier defaults) |
+| `Stripe client` | `apis/axiomfolio/app/services/billing/stripe_client.py` | Test-mode wrapper; idempotency keys; signature verify |
+| `Webhook receiver` | `apis/axiomfolio/app/api/routes/billing/webhooks.py` | Stripe events update `User.tier` + `Entitlement` |
+| `TierGate` decorator | `apis/axiomfolio/app/api/dependencies/tier_gate.py` | `@require_tier(Tier.PRO)`; 402 on insufficient |
+| `Feature catalog` | `apis/axiomfolio/app/services/billing/feature_catalog.py` | Maps feature_key -> tier requirements |
 
 ## Stripe handling rules
 

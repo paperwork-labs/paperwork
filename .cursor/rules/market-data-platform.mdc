@@ -1,6 +1,6 @@
 ---
 description: Self-healing market data platform invariants — single source of truth, provider router, drift detection, point-in-time correctness.
-globs: backend/services/market/**, backend/tasks/market/**, backend/services/data/**
+globs: apis/axiomfolio/app/services/market/**, apis/axiomfolio/app/tasks/market/**, apis/axiomfolio/app/services/data/**
 alwaysApply: false
 ---
 
@@ -29,7 +29,7 @@ The market data platform is the foundation. If it lies, every downstream system 
 
 ## When adding a new provider
 
-1. Implement `Provider` interface in `backend/services/market/providers/<name>.py`
+1. Implement `Provider` interface in `apis/axiomfolio/app/services/market/providers/<name>.py`
 2. Register in `ProviderRouter` priority list
 3. Add to `ProviderPolicy` (free/starter/paid/unlimited tiers in `provider_policy.py`)
 4. Document budget + rate limits in `MARKET_DATA_RUNBOOK.md` tier table

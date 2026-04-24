@@ -63,7 +63,7 @@ Targeted repair task for symbols with stale/missing daily bars:
 
 ## Auto-Ops Agent
 
-Self-remediating health agent (`backend/tasks/ops/auto_ops.py`) runs every 15 minutes.
+Self-remediating health agent (`apis/axiomfolio/app/tasks/ops/auto_ops.py`) runs every 15 minutes.
 
 ### Remediation Map
 
@@ -88,9 +88,16 @@ All provider budgets, rate limits, and concurrency are controlled by a single kn
 
 ## Docker / Compose
 
-- Dev: `infra/compose.dev.yaml` with profiles: `ui` (frontend+ladle), `ibkr` (IB Gateway), `tunnel` (Cloudflare)
-- Test: `infra/compose.test.yaml` — isolated DB, always `down -v` before/after
-- Services: postgres, redis, backend (uvicorn), celery_worker, celery_beat, flower, frontend
+- Unified dev stack: `infra/compose.dev.yaml` at the monorepo root. Boots
+  postgres 18, redis 7, and every product backend+frontend.
+- AxiomFolio services in the root compose: `api-axiomfolio`,
+  `celery-axiomfolio-worker`, `celery-axiomfolio-beat`.
+- Opt-in services (overlay via `-f infra/axiomfolio/compose.profiles.yaml`
+  and `--profile`): `ibkr` (IB Gateway), `tunnel` (Cloudflare),
+  `ops` (Celery Flower).
+- Tests: pytest against the `axiomfolio_test` DB on the shared postgres
+  (created by `infra/init-test-db.sh`). No separate test compose.
+- Full architecture: `docs/INFRA.md`.
 
 ## Makefile
 

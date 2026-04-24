@@ -11,7 +11,7 @@ Use plan mode (read-only, plan-then-confirm) before any change that meets ANY of
 2. Touches a danger zone (see `protected-regions.mdc`)
 3. Adds a new model, route, or Celery task
 4. Modifies billing, auth, multi-tenancy, or risk gate code
-5. Modifies indicator math (anything in `backend/services/market/indicator_engine.py`)
+5. Modifies indicator math (anything in `apis/axiomfolio/app/services/market/indicator_engine.py`)
 6. Refactors a module that other modules import from
 
 ## Why

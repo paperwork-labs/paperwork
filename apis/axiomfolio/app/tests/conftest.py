@@ -49,8 +49,8 @@ def _in_ci() -> bool:
     Belt-and-suspenders detection using **OR** semantics across ``CI``,
     ``GITHUB_ACTIONS``, and ``GITHUB_RUN_ID``: if *any* of these signals
     indicates CI, ``_in_ci()`` returns ``True``. GitHub Actions sets all three
-    on the runner, but only the values we forward in
-    ``infra/compose.test.yaml`` reach the test container. Reading more than
+    on the runner, but only the values we forward in the root compose
+    (``infra/compose.dev.yaml``) reach the test container. Reading more than
     one signal protects against a future env-file change accidentally
     re-introducing the failure mode this guard exists to prevent: broken
     migrations producing silent skips and a green CI badge (the same hole

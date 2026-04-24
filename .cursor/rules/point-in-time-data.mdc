@@ -1,6 +1,6 @@
 ---
 description: Point-in-time correctness for historical reads. Backtest validity depends on this.
-globs: backend/services/strategy/**, backend/services/backtest/**, backend/services/market/snapshot_service.py
+globs: apis/axiomfolio/app/services/strategy/**, apis/axiomfolio/app/services/backtest/**, apis/axiomfolio/app/services/market/snapshot_service.py
 alwaysApply: false
 ---
 

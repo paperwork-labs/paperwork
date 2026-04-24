@@ -17,9 +17,9 @@ AxiomFolio is a **standalone product** with its own subscription model and its o
 
 | Component | Where it lives | Direction |
 |-----------|---------------|-----------|
-| Native chat (Pro+ feature) | `frontend/src/components/chat/AgentBrainChat.tsx` + `backend/services/agent/brain.py` | In-app only |
-| Brain HTTP tools | `backend/api/routes/brain_tools.py` | Brain calls in |
-| Brain webhooks | `backend/services/brain/webhook_client.py` | AxiomFolio calls out |
+| Native chat (Pro+ feature) | `apps/axiomfolio/src/components/chat/AgentBrainChat.tsx` + `apis/axiomfolio/app/services/agent/brain.py` | In-app only |
+| Brain HTTP tools | `apis/axiomfolio/app/api/routes/brain_tools.py` | Brain calls in |
+| Brain webhooks | `apis/axiomfolio/app/services/brain/webhook_client.py` | AxiomFolio calls out |
 
 Internal `AgentBrain` is the source of intelligence. Brain HTTP tools are a curated wrapper exposed externally.
 

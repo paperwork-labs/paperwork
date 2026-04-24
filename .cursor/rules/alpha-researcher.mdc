@@ -24,7 +24,7 @@ Every new factor, scanner tier, or candidate-generation rule must answer:
 
 ## Required artifacts for any new factor
 
-- Factor implementation in `backend/services/strategy/alpha_engine.py`
+- Factor implementation in `apis/axiomfolio/app/services/strategy/alpha_engine.py`
 - Walk-forward backtest with regime-conditional report (see `quant-analyst.mdc`)
 - Comparison to baseline (SPY buy-and-hold + already-shipped factors)
 - Decay analysis (rolling 6mo Sharpe over the test period)

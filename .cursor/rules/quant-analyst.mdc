@@ -104,7 +104,7 @@ See `point-in-time-data.mdc`. Backtests must read from immutable historical tabl
 ## Hard Forbidden in Quant Code
 
 - `except Exception: pass` — always log + raise/return None
-- Hardcoded magic numbers — constants in `backend/services/market/constants.py` with citation to spec
+- Hardcoded magic numbers — constants in `apis/axiomfolio/app/services/market/constants.py` with citation to spec
 - `float` for monetary values — use `Decimal`
 - Future leak in backtest — every read must answer "would this have been knowable on date X?"
 - Silent indicator fallback to 0/None when input is invalid — return NaN and let downstream handle

@@ -1,9 +1,9 @@
 ---
 description: Market data pipeline invariants and red lines
 globs:
-  - backend/services/market/**
-  - backend/tasks/market/**
-  - backend/api/routes/market/**
+  - apis/axiomfolio/app/services/market/**
+  - apis/axiomfolio/app/tasks/market/**
+  - apis/axiomfolio/app/api/routes/market/**
 alwaysApply: false
 ---
 
@@ -51,17 +51,17 @@ Hard invariants for the market data pipeline. Violating any of these will break 
 1. Add entry to `job_catalog.py` with `timeout_s`
 2. Set `soft_time_limit` and `time_limit` on the `@shared_task` decorator matching `timeout_s`
 3. Register in `celery_app.py` include list if in a new module
-4. Test locally via `make task-run TASK=backend.tasks.market.<module>.<function>`
+4. Test locally via `make task-run TASK=app.tasks.market.<module>.<function>`
 
 ## Key Files
 
 | File | Responsibility |
 |------|---------------|
-| `backend/config.py` | `ProviderPolicy` dataclass, tier definitions |
-| `backend/services/market/market_data_service.py` | Provider routing, caching, budget checks |
-| `backend/services/market/rate_limiter.py` | Per-provider token bucket rate limiting |
-| `backend/services/market/indicator_engine.py` | All indicator computation from OHLCV |
-| `backend/services/market/universe.py` | Tracked symbol resolution |
-| `backend/services/market/volatility_service.py` | VIX/VVIX/VIX3M regime dashboard |
-| `backend/services/market/market_dashboard_service.py` | Dashboard aggregation with universe filter |
-| `backend/tasks/job_catalog.py` | Task schedules, timeouts, metadata |
+| `apis/axiomfolio/app/config.py` | `ProviderPolicy` dataclass, tier definitions |
+| `apis/axiomfolio/app/services/market/market_data_service.py` | Provider routing, caching, budget checks |
+| `apis/axiomfolio/app/services/market/rate_limiter.py` | Per-provider token bucket rate limiting |
+| `apis/axiomfolio/app/services/market/indicator_engine.py` | All indicator computation from OHLCV |
+| `apis/axiomfolio/app/services/market/universe.py` | Tracked symbol resolution |
+| `apis/axiomfolio/app/services/market/volatility_service.py` | VIX/VVIX/VIX3M regime dashboard |
+| `apis/axiomfolio/app/services/market/market_dashboard_service.py` | Dashboard aggregation with universe filter |
+| `apis/axiomfolio/app/tasks/job_catalog.py` | Task schedules, timeouts, metadata |

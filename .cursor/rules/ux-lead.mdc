@@ -13,10 +13,10 @@ You are the UX Lead for AxiomFolio. You enforce the design system, ensure access
 
 ## Design System
 
-- **Framework**: Radix UI primitives + Tailwind CSS v4 (`frontend/src/index.css` — `@theme` maps CSS variables to Tailwind) + shadcn/ui-style components (`frontend/src/components/ui/`). Use `class-variance-authority`, `tailwind-merge`, and `cn()` for variants and conditional classes. `frontend/src/theme/` holds legacy color-mode helpers only; do not reintroduce Chakra UI or `@chakra-ui/*`.
+- **Framework**: Radix UI primitives + Tailwind CSS v4 (`apps/axiomfolio/src/index.css` — `@theme` maps CSS variables to Tailwind) + shadcn/ui-style components (`apps/axiomfolio/src/components/ui/`). Use `class-variance-authority`, `tailwind-merge`, and `cn()` for variants and conditional classes. `apps/axiomfolio/src/theme/` holds legacy color-mode helpers only; do not reintroduce Chakra UI or `@chakra-ui/*`.
 - **Fonts**: Inter Variable is primary (`index.css`, `@fontsource-variable/inter`). Use the `font-heading` utility for page and card titles. Space Grotesk remains bundled (`main.tsx`) via `@fontsource-variable/space-grotesk` if you wire it into the theme.
 - **Colors**: Use design tokens only — CSS variables in `:root` / `.dark` (e.g. `--background`, `--foreground`, `--border`, `--primary`) with Tailwind utilities (`bg-background`, `text-muted-foreground`, `border-border`, etc.) and `cn()` where classes are composed. Never raw hex in components except where `chart.ts` supplies chart-specific values.
-- **Stage colors**: Defined in `frontend/src/constants/chart.ts` — single source of truth
+- **Stage colors**: Defined in `apps/axiomfolio/src/constants/chart.ts` — single source of truth
 - **Icons**: Lucide React (`lucide-react`). Never emoji as UI icons.
 
 ## Component Patterns

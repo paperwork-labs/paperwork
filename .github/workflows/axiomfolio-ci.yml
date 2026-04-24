@@ -1,21 +1,31 @@
 name: AxiomFolio CI
 
-# Runs on any change under apis/axiomfolio/. Ported from the standalone
-# axiomfolio repo (apis/axiomfolio/.github/workflows/ci.yml, which is now
-# inert — GitHub Actions only reads .github/workflows/ at repo root). All
-# steps run with working-directory: apis/axiomfolio so relative paths inside
-# the Makefile and docker compose files continue to work unchanged.
+# Runs on changes under apis/axiomfolio/ or apps/axiomfolio/ (or the shared
+# dev-stack compose). Uses the unified root compose (infra/compose.dev.yaml)
+# for backend tests; frontend checks run natively via npm.
+#
+# See docs/INFRA.md for the architecture.
 
 "on":
   pull_request:
     branches: [main]
     paths:
       - "apis/axiomfolio/**"
+      - "apps/axiomfolio/**"
+      - "infra/compose.dev.yaml"
+      - "infra/init-test-db.sh"
+      - "infra/env.dev.defaults"
+      - "infra/axiomfolio/**"
       - ".github/workflows/axiomfolio-ci.yml"
   push:
     branches: [main]
     paths:
       - "apis/axiomfolio/**"
+      - "apps/axiomfolio/**"
+      - "infra/compose.dev.yaml"
+      - "infra/init-test-db.sh"
+      - "infra/env.dev.defaults"
+      - "infra/axiomfolio/**"
       - ".github/workflows/axiomfolio-ci.yml"
   workflow_dispatch:
 
@@ -44,15 +54,15 @@ jobs:
           filters: |
             backend:
               - 'apis/axiomfolio/app/**'
-              - 'apis/axiomfolio/infra/**'
               - 'apis/axiomfolio/Dockerfile.backend'
-              - 'apis/axiomfolio/docker-compose.test.yml'
-              - 'apis/axiomfolio/infra/compose.test.yaml'
               - 'apis/axiomfolio/requirements*.txt'
               - 'apis/axiomfolio/pyproject.toml'
-              - 'apis/axiomfolio/alembic.ini'
-              - 'apis/axiomfolio/app/alembic.ini'
               - 'apis/axiomfolio/Makefile'
+              - 'apis/axiomfolio/scripts/**'
+              - 'infra/compose.dev.yaml'
+              - 'infra/init-test-db.sh'
+              - 'infra/env.dev.defaults'
+              - 'infra/axiomfolio/**'
               - '.github/workflows/axiomfolio-ci.yml'
             frontend:
               - 'apps/axiomfolio/**'
@@ -71,35 +81,43 @@ jobs:
           fi
 
   backend-tests:
-    name: AxiomFolio backend (pytest in docker)
+    name: AxiomFolio backend (pytest against shared stack)
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    defaults:
-      run:
-        working-directory: apis/axiomfolio
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
-      - name: Prepare test env
-        run: cp infra/env.test.example infra/env.test
+      - name: Stub .env.secrets (compose expects the file to exist)
+        run: touch .env.secrets
 
-      - name: Start test stack (postgres_test, redis_test)
-        run: make test-up
+      - name: Boot shared postgres + redis
+        working-directory: infra
+        run: |
+          docker compose -f compose.dev.yaml up -d postgres redis
+          # Wait for postgres to accept connections and init-test-db.sh to run.
+          for i in $(seq 1 30); do
+            if docker compose -f compose.dev.yaml exec -T postgres \
+                pg_isready -U filefree -d axiomfolio_test >/dev/null 2>&1; then
+              echo "postgres ready"; break
+            fi
+            echo "waiting for postgres... ($i/30)"; sleep 2
+          done
 
-      - name: Python syntax check
-        run: make test-syntax
-
-      - name: Run backend tests (isolated postgres_test)
+      - name: Run axiomfolio backend tests (axiomfolio_test DB)
+        working-directory: apis/axiomfolio
         run: make test
 
       - name: Migration chain integrity
+        working-directory: apis/axiomfolio
         run: |
-          docker compose --project-name axiomfolio_test --env-file infra/env.test \
-            -f infra/compose.test.yaml run --rm --no-deps backend_test \
-            python -c "
+          docker compose --project-name paperwork \
+            -f ../../infra/compose.dev.yaml \
+            run --rm --no-deps \
+            -e DATABASE_URL=postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_test \
+            api-axiomfolio python -c "
           from alembic.config import Config
           from alembic.script import ScriptDirectory
           import os, sys
@@ -114,12 +132,13 @@ jobs:
           print(f'OK: {len(revs)} migrations, single head: {heads[0]}')
           "
 
-      - name: Tear down test stack
+      - name: Tear down
         if: always()
-        run: make test-down
+        working-directory: infra
+        run: docker compose -f compose.dev.yaml down -v || true
 
   backend-tests-skipped:
-    name: AxiomFolio backend (pytest in docker)
+    name: AxiomFolio backend (pytest against shared stack)
     needs: changes
     if: needs.changes.outputs.backend != 'true'
     runs-on: ubuntu-latest

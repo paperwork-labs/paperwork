@@ -1,0 +1,34 @@
+# Cursor AI context exclusions (monorepo-wide)
+node_modules/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.turbo/
+dist/
+build/
+.next/
+out/
+coverage/
+*.log
+*.db
+*.sqlite
+*.dump
+package-lock.json
+pnpm-lock.yaml
+.venv/
+venv/
+.env.secrets
+.env.local
+docker-volumes/
+postgres_data/
+redis_data/
+
+# Large binary fixtures
+packages/data/scripts/fixtures/
+other_assets/
+apis/axiomfolio/other_assets/
+
+# Build artifacts
+apps/*/.next/
+apis/*/dist/

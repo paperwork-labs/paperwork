@@ -3,15 +3,15 @@
 ## Activation
 
 Activates when editing:
-- backend/services/market/regime_engine.py
-- backend/services/market/stage_classifier.py
-- backend/services/market/scan_engine.py
-- backend/services/market/quad_engine.py
-- backend/services/execution/exit_cascade.py
-- backend/services/execution/risk_gate.py
-- frontend/src/pages/MarketEducation.tsx
-- frontend/src/data/glossary.json
-- frontend/src/components/education/StageChartExample.tsx
+- apis/axiomfolio/app/services/market/regime_engine.py
+- apis/axiomfolio/app/services/market/stage_classifier.py
+- apis/axiomfolio/app/services/market/scan_engine.py
+- apis/axiomfolio/app/services/market/quad_engine.py
+- apis/axiomfolio/app/services/execution/exit_cascade.py
+- apis/axiomfolio/app/services/execution/risk_gate.py
+- apps/axiomfolio/src/pages/MarketEducation.tsx
+- apps/axiomfolio/src/data/glossary.json
+- apps/axiomfolio/src/components/education/StageChartExample.tsx
 - docs/STAGE_ANALYSIS_SPEC.md
 
 ## When Editing Backend Engine Files

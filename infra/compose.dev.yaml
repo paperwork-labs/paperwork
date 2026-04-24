@@ -2,8 +2,8 @@ name: filefree
 
 services:
   postgres:
-    container_name: filefree-postgres
-    image: postgres:15-alpine
+    container_name: paperwork-postgres
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: filefree
       POSTGRES_PASSWORD: filefree_dev
@@ -20,7 +20,7 @@ services:
       retries: 5
 
   redis:
-    container_name: filefree-redis
+    container_name: paperwork-redis
     image: redis:7-alpine
     ports:
       - "6380:6379"
@@ -115,6 +115,106 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  api-axiomfolio:
+    container_name: axiomfolio-api
+    build:
+      context: ../apis/axiomfolio
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8004:8000"
+    volumes:
+      - ../apis/axiomfolio:/app
+      - ../infra/axiomfolio/observability:/opt/observability:ro
+      - /app/app/__pycache__
+    env_file:
+      - env.dev.defaults
+      - ../.env.secrets
+    environment:
+      PORT: 8000
+      PYTHONPATH: /app
+      # AxiomFolio speaks sync SQLAlchemy; plain postgresql:// scheme (not +asyncpg).
+      DATABASE_URL: postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_dev
+      REDIS_URL: redis://redis:6379/3
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      NEW_RELIC_CONFIG_FILE: /opt/observability/newrelic.ini
+      NEW_RELIC_APP_NAME: AxiomFolio Backend (dev)
+      NEW_RELIC_LOG: stdout
+      NEW_RELIC_LOG_LEVEL: info
+    command: ["python", "-m", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info", "--reload", "--reload-dir", "/app/app"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r = httpx.get('http://localhost:8000/api/v1/health'); assert r.status_code == 200"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  celery-axiomfolio-worker:
+    container_name: axiomfolio-celery-worker
+    build:
+      context: ../apis/axiomfolio
+      dockerfile: Dockerfile.backend
+    volumes:
+      - ../apis/axiomfolio:/app
+      - /app/app/__pycache__
+    env_file:
+      - env.dev.defaults
+      - ../.env.secrets
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_dev
+      REDIS_URL: redis://redis:6379/3
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-axiomfolio:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A app.tasks.celery_app inspect ping --timeout 5 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    command: ["celery", "-A", "app.tasks.celery_app", "worker", "-Q", "celery,account_sync,orders", "--loglevel=info"]
+    restart: unless-stopped
+
+  celery-axiomfolio-beat:
+    container_name: axiomfolio-celery-beat
+    build:
+      context: ../apis/axiomfolio
+      dockerfile: Dockerfile.backend
+    volumes:
+      - ../apis/axiomfolio:/app
+      - /app/app/__pycache__
+    env_file:
+      - env.dev.defaults
+      - ../.env.secrets
+    environment:
+      PYTHONPATH: /app
+      DATABASE_URL: postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_dev
+      REDIS_URL: redis://redis:6379/3
+      CELERY_BROKER_URL: redis://redis:6379/3
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api-axiomfolio:
+        condition: service_started
+    command: ["celery", "-A", "app.tasks.celery_app", "beat", "--loglevel=info"]
+    restart: unless-stopped
 
   web-filefree:
     container_name: filefree-web

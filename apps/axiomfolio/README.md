@@ -69,23 +69,37 @@ Key features:
 | `VITE_API_BASE_URL` | API base path used by Axios | `/api/v1` |
 | `VITE_PROXY_TARGET` | Vite dev-server proxy target (local dev only) | `http://backend:8000` |
 
-In Docker, the Vite proxy forwards `/api` requests to the `backend` service. For local (non-Docker) development, set `VITE_PROXY_TARGET=http://localhost:8000`.
+The Vite dev server runs host-side (not in Docker). It proxies `/api` to
+`http://localhost:8004` which is where the `api-axiomfolio` container
+exposes its backend in the unified dev stack.
 
-## Docker
+## Running locally
 
-The frontend runs as a service in `infra/compose.dev.yaml`:
-
-```bash
-docker compose -f infra/compose.dev.yaml up frontend
-```
-
-- Builds from `Dockerfile.frontend` (target `dev`)
-- Mounts `frontend/` into the container for hot reload (`CHOKIDAR_USEPOLLING=true`)
-- Exposes port 3000 (mapped via `WEB_HOST_PORT` env var)
-- Depends on the `backend` service
-
-A separate **Ladle** service is available under the `ui` profile:
+The frontend is a pnpm workspace member (`@paperwork-labs/axiomfolio`) and
+runs via pnpm directly — no Docker container for the frontend. This
+matches the house pattern (filefree, launchfree, studio, distill, trinkets
+all run their dev servers host-side).
 
 ```bash
-docker compose -f infra/compose.dev.yaml --profile ui up ladle
+# From repo root:
+pnpm install
+pnpm dev:axiomfolio          # Vite dev server on :3006
+pnpm build:axiomfolio        # Production build
+
+# From this directory:
+pnpm dev
+pnpm run ladle               # Component workshop
+pnpm run ladle:build
 ```
+
+The backend stack (postgres, redis, api-axiomfolio, celery workers)
+boots via the root compose:
+
+```bash
+# From apis/axiomfolio/:
+make up                      # backend + celery worker + celery beat
+make up-ibkr                 # + IB Gateway (optional profile)
+make down
+```
+
+See `docs/INFRA.md` for the full architecture.

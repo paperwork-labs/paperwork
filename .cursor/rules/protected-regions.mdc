@@ -10,25 +10,25 @@ alwaysApply: true
 These files affect capital, security, or system integrity. **Get explicit approval before modifying.**
 
 ### Capital Protection (Risk of Financial Loss)
-- `backend/services/execution/risk_gate.py` — Position sizing, max order value, stage caps
-- `backend/services/execution/order_manager.py` — Order execution path, broker routing
-- `backend/services/execution/exit_cascade.py` — Stop loss, trailing stops
-- `backend/services/risk/circuit_breaker.py` — Drawdown protection, kill switch
+- `apis/axiomfolio/app/services/execution/risk_gate.py` — Position sizing, max order value, stage caps
+- `apis/axiomfolio/app/services/execution/order_manager.py` — Order execution path, broker routing
+- `apis/axiomfolio/app/services/execution/exit_cascade.py` — Stop loss, trailing stops
+- `apis/axiomfolio/app/services/risk/circuit_breaker.py` — Drawdown protection, kill switch
 
 ### Authentication/Authorization (Security)
-- `backend/api/routes/auth.py` — Login, tokens, password reset
-- `backend/api/security.py` — JWT encoding/decoding
-- `backend/api/dependencies.py` — Auth dependencies, role checks
+- `apis/axiomfolio/app/api/routes/auth.py` — Login, tokens, password reset
+- `apis/axiomfolio/app/api/security.py` — JWT encoding/decoding
+- `apis/axiomfolio/app/api/dependencies.py` — Auth dependencies, role checks
 
 ### Core Financial Calculations (Data Integrity)
-- `backend/services/market/indicator_engine.py` — RSI, ATR, MACD, ADX, Stage Analysis
-- `backend/services/market/stage_classifier.py` — Weinstein stage classification (10 sub-stages)
-- `backend/services/market/regime_engine.py` — Market Regime R1-R5
+- `apis/axiomfolio/app/services/market/indicator_engine.py` — RSI, ATR, MACD, ADX, Stage Analysis
+- `apis/axiomfolio/app/services/market/stage_classifier.py` — Weinstein stage classification (10 sub-stages)
+- `apis/axiomfolio/app/services/market/regime_engine.py` — Market Regime R1-R5
 
 ### Configuration (System Stability)
-- `backend/config.py` — Environment variables, feature flags
-- `backend/alembic/versions/*.py` — Database migrations
-- `backend/tasks/job_catalog.py` — Celery schedules, timeouts
+- `apis/axiomfolio/app/config.py` — Environment variables, feature flags
+- `apis/axiomfolio/app/alembic/versions/*.py` — Database migrations
+- `apis/axiomfolio/app/tasks/job_catalog.py` — Celery schedules, timeouts
 
 ## Before Modifying Any DANGER ZONE File
 

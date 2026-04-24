@@ -1,126 +1,143 @@
-.PHONY: up up-all down down-reset ps logs build health-check warm ladle ladle-build \
-	test-up test-syntax test test-frontend test-all test-down \
-	backend-shell frontend-shell task-run \
+# AxiomFolio — workspace Makefile (monorepo edition).
+#
+# Dev infrastructure lives at the repo root: infra/compose.dev.yaml boots
+# postgres + redis + all product backends + all product frontends in one
+# shared stack. See docs/INFRA.md for the architecture.
+#
+# This Makefile offers AxiomFolio-scoped shortcuts that wrap the root
+# compose. Run it from apis/axiomfolio/ (which is where CI invokes it).
+
+.PHONY: up up-ibkr up-tunnel up-ops down down-reset ps logs build health-check \
+	test test-shell task-run warm \
+	backend-shell \
 	migrate-create migrate-up migrate-down migrate-stamp-head \
 	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check \
+	ladle ladle-build \
 	ib-up ib-down ib-logs ib-verify \
 	tunnel-up tunnel-down tunnel-logs tunnel-on tunnel-off \
-	backup-db \
+	backup-db restore-db \
 	medallion-check medallion-tag medallion-check-sql medallion-lint
 
+# ─── Paths (resolved relative to this file) ───────────────────────────
+REPO_ROOT := $(CURDIR)/../..
+FRONTEND_DIR := $(REPO_ROOT)/apps/axiomfolio
+
 DOCKER ?= docker
-PROJECT ?= axiomfolio
-PROJECT_TEST ?= axiomfolio_test
+PROJECT ?= paperwork
 
-ENV_DEV ?= infra/env.dev
-ENV_TEST ?= infra/env.test
+# Env files (order matters: defaults first, then vault-synced secrets).
+ENV_DEFAULTS := $(REPO_ROOT)/infra/env.dev.defaults
+ENV_SECRETS  := $(REPO_ROOT)/.env.secrets
 
-COMPOSE_DEV = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml
-COMPOSE_DEV_UI = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile ui
-COMPOSE_DEV_IBKR = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile ibkr
-COMPOSE_DEV_TUNNEL = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile tunnel
-COMPOSE_DEV_ALL = $(DOCKER) compose --project-name $(PROJECT) --env-file $(ENV_DEV) -f infra/compose.dev.yaml --profile ui --profile ibkr --profile tunnel
-COMPOSE_TEST = $(DOCKER) compose --project-name $(PROJECT_TEST) --env-file $(ENV_TEST) -f infra/compose.test.yaml
+# Compose invocations.
+COMPOSE      := $(DOCKER) compose --project-name $(PROJECT) -f $(REPO_ROOT)/infra/compose.dev.yaml
+COMPOSE_IBKR := $(COMPOSE) -f $(REPO_ROOT)/infra/axiomfolio/compose.profiles.yaml --profile ibkr
+COMPOSE_TUN  := $(COMPOSE) -f $(REPO_ROOT)/infra/axiomfolio/compose.profiles.yaml --profile tunnel
+COMPOSE_OPS  := $(COMPOSE) -f $(REPO_ROOT)/infra/axiomfolio/compose.profiles.yaml --profile ops
+COMPOSE_ALL  := $(COMPOSE) -f $(REPO_ROOT)/infra/axiomfolio/compose.profiles.yaml --profile ibkr --profile tunnel --profile ops
 
+# Axiomfolio service names in the shared compose.
+API_SVC    := api-axiomfolio
+WORKER_SVC := celery-axiomfolio-worker
+BEAT_SVC   := celery-axiomfolio-beat
+
+# ─── Default dev stack (shared postgres + redis + all products) ───────
 up:
-	$(COMPOSE_DEV_ALL) up -d --build
-	$(MAKE) health-check
+	$(COMPOSE) up -d --build $(API_SVC) $(WORKER_SVC) $(BEAT_SVC)
+	@$(MAKE) health-check
 
-up-ui:
-	$(COMPOSE_DEV_UI) up -d --build
-	$(MAKE) health-check
+up-ibkr: ## Boot axiomfolio + IB Gateway profile
+	$(COMPOSE_IBKR) up -d --build $(API_SVC) $(WORKER_SVC) $(BEAT_SVC) ib-gateway
+	@$(MAKE) health-check
+
+up-tunnel: ## Boot axiomfolio + Cloudflare tunnel profile
+	$(COMPOSE_TUN) up -d --build $(API_SVC) $(WORKER_SVC) $(BEAT_SVC) cloudflared
+	@$(MAKE) health-check
+
+up-ops: ## Boot axiomfolio + Flower (Celery task monitor)
+	$(COMPOSE_OPS) up -d --build $(API_SVC) $(WORKER_SVC) $(BEAT_SVC) flower
+	@$(MAKE) health-check
 
 down:
-	$(COMPOSE_DEV_ALL) down
+	$(COMPOSE_ALL) stop $(API_SVC) $(WORKER_SVC) $(BEAT_SVC) ib-gateway cloudflared flower 2>/dev/null; true
 
 down-reset:
-	@echo "⚠️  WARNING: This will DELETE ALL DATA including the PostgreSQL database, Redis, and all volumes."
-	@echo "   This action is IRREVERSIBLE."
+	@echo "⚠️  This destroys axiomfolio containers AND shared postgres+redis data."
+	@echo "   Other products (filefree/brain/launchfree) will lose their dev DBs."
 	@printf "   Type 'yes' to confirm: " && read ans && [ "$$ans" = "yes" ] || (echo "Aborted."; exit 1)
-	$(COMPOSE_DEV_ALL) down -v
+	$(COMPOSE) down -v
 
 ps:
-	$(COMPOSE_DEV_UI) ps
+	$(COMPOSE_ALL) ps
 
 logs:
-	$(COMPOSE_DEV_UI) logs --tail=200 backend celery_worker celery_beat
+	$(COMPOSE) logs --tail=200 $(API_SVC) $(WORKER_SVC) $(BEAT_SVC)
 
 build:
-	$(COMPOSE_DEV_UI) build
+	$(COMPOSE) build $(API_SVC) $(WORKER_SVC) $(BEAT_SVC)
 
 health-check:
-	./scripts/health_check.sh $(ENV_DEV)
+	@./scripts/health_check.sh $(ENV_DEFAULTS)
 
-# Ladle now runs out of the pnpm workspace (apps/axiomfolio/), not docker.
-# Use `pnpm --filter @paperwork-labs/axiomfolio run ladle` from repo root.
-ladle:
-	cd ../../apps/axiomfolio && pnpm run ladle
-
-ladle-build:
-	cd ../../apps/axiomfolio && pnpm run ladle:build
-
-test-up:
-	$(COMPOSE_TEST) up -d postgres_test redis_test
-
-# Check all backend Python files for syntax errors (SyntaxError/IndentationError).
-# Uses ast.parse() to avoid writing .pyc/__pycache__ (fails in Docker as non-root).
-test-syntax:
-	$(COMPOSE_TEST) run --rm backend_test python scripts/check_syntax.py
-
-test:
-	@# Always use a fresh isolated test DB volume to prevent migration drift.
-	@# This never touches dev DB; it only resets the axiomfolio_test project volumes.
-	-$(COMPOSE_TEST) down -v
-	$(COMPOSE_TEST) up -d postgres_test redis_test
-	$(COMPOSE_TEST) run --rm backend_test
-	$(COMPOSE_TEST) down -v
-
-test-frontend: frontend-check
-
-# Run both suites
-test-all: test test-frontend
-
-test-down:
-	$(COMPOSE_TEST) down -v
-
+# ─── Backend shell & task runner ──────────────────────────────────────
 backend-shell:
-	$(COMPOSE_DEV) exec backend bash
+	$(COMPOSE) exec $(API_SVC) bash
 
-frontend-shell:
-	@echo "frontend-shell is retired. The frontend lives at apps/axiomfolio/ as a pnpm workspace member."
-	@echo "Use: cd ../../apps/axiomfolio && pnpm dev"
-	@echo "Or from repo root: pnpm dev:axiomfolio"
-	@exit 1
+# Enqueue a task via Celery (dev). Examples:
+#   make task-run TASK=app.tasks.market.coverage.health_check
+#   make task-run TASK=app.tasks.market.coverage.daily_bootstrap TASK_KWARGS='{"history_days":5,"history_batch_size":25}'
+TASK ?=
+TASK_ARGS ?= []
+TASK_KWARGS ?= {}
+task-run:
+	@if [ -z "$(TASK)" ]; then echo "Usage: make task-run TASK=module.task"; exit 2; fi
+	$(COMPOSE) exec $(API_SVC) python -m app.scripts.run_task "$(TASK)" --args '$(TASK_ARGS)' --kwargs '$(TASK_KWARGS)'
 
-# Alembic migrations (dev DB only; tests run migrations against postgres_test via pytest)
-# Usage:
-# - make migrate-create MSG="add foo table"
-# - make migrate-up
-# - make migrate-down REV=-1
-# - make migrate-stamp-head
+warm:
+	@echo "Queuing nightly pipeline (backfill + indicators + regime + scan)..."
+	$(COMPOSE) exec $(API_SVC) python -m app.scripts.run_task "app.tasks.market.coverage.daily_bootstrap" --kwargs '{"history_days":5,"history_batch_size":25}'
+
+# ─── Tests (against axiomfolio_test DB on shared postgres) ────────────
+# The test DB is auto-created by infra/init-test-db.sh when postgres first boots.
+# This target runs pytest inside the api-axiomfolio container and points
+# DATABASE_URL at axiomfolio_test. It NEVER touches axiomfolio_dev.
+test:
+	$(COMPOSE) up -d postgres redis
+	$(COMPOSE) run --rm \
+		-e DATABASE_URL=postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_test \
+		-e REDIS_URL=redis://redis:6379/3 \
+		-e CELERY_BROKER_URL=redis://redis:6379/3 \
+		-e CELERY_RESULT_BACKEND=redis://redis:6379/3 \
+		-e CI=$${CI:-} \
+		-e GITHUB_ACTIONS=$${GITHUB_ACTIONS:-} \
+		$(API_SVC) python -m pytest -c app/pytest.ini app/tests -v
+
+test-shell:
+	$(COMPOSE) run --rm \
+		-e DATABASE_URL=postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_test \
+		-e REDIS_URL=redis://redis:6379/3 \
+		$(API_SVC) bash
+
+# ─── Alembic migrations ───────────────────────────────────────────────
 MSG ?=
 REV ?=
 migrate-create:
 	@if [ -z "$(MSG)" ]; then echo "Usage: make migrate-create MSG=\"message\""; exit 2; fi
-	$(COMPOSE_DEV) exec backend alembic -c app/alembic.ini revision --autogenerate -m "$(MSG)"
+	$(COMPOSE) exec $(API_SVC) alembic -c app/alembic.ini revision --autogenerate -m "$(MSG)"
 
 migrate-up:
-	$(COMPOSE_DEV) exec backend alembic -c app/alembic.ini upgrade head
+	$(COMPOSE) exec $(API_SVC) alembic -c app/alembic.ini upgrade head
 
 migrate-down:
-	@if [ -z "$(REV)" ]; then echo "Usage: make migrate-down REV=<revision| -1>"; exit 2; fi
-	$(COMPOSE_DEV) exec backend alembic -c app/alembic.ini downgrade "$(REV)"
+	@if [ -z "$(REV)" ]; then echo "Usage: make migrate-down REV=<revision|-1>"; exit 2; fi
+	$(COMPOSE) exec $(API_SVC) alembic -c app/alembic.ini downgrade "$(REV)"
 
 migrate-stamp-head:
 	@echo "WARNING: stamp-head marks the DB as current WITHOUT running migrations."
-	@echo "This is destructive and should only be used during initial provisioning."
 	@printf "Type 'CONFIRM' to proceed: "; read confirm; [ "$$confirm" = "CONFIRM" ] || { echo "Aborted."; exit 1; }
-	$(COMPOSE_DEV) exec backend alembic -c app/alembic.ini stamp head
+	$(COMPOSE) exec $(API_SVC) alembic -c app/alembic.ini stamp head
 
-# Frontend targets delegate to the pnpm workspace at apps/axiomfolio/.
-# These run LOCALLY (not in docker), matching every other paperwork app.
-FRONTEND_DIR := $(CURDIR)/../../apps/axiomfolio
-
+# ─── Frontend (runs host-side via pnpm workspace) ─────────────────────
 frontend-install:
 	cd $(FRONTEND_DIR) && pnpm install --frozen-lockfile
 
@@ -135,80 +152,67 @@ frontend-test:
 
 frontend-check: frontend-install frontend-lint frontend-typecheck frontend-test
 
-# Enqueue a task via Celery (dev). Example:
-# make task-run TASK=app.tasks.market.coverage.health_check
-# make task-run TASK=app.tasks.market.coverage.daily_bootstrap TASK_KWARGS='{"history_days":5,"history_batch_size":25}'
-TASK ?=
-TASK_ARGS ?= []
-TASK_KWARGS ?= {}
-task-run:
-	@if [ -z "$(TASK)" ]; then echo "Usage: make task-run TASK=module.task"; exit 2; fi
-	$(COMPOSE_DEV) exec backend python -m app.scripts.run_task "$(TASK)" --args '$(TASK_ARGS)' --kwargs '$(TASK_KWARGS)'
+ladle:
+	cd $(FRONTEND_DIR) && pnpm run ladle
 
-warm:
-	@echo "Queuing nightly pipeline (backfill + indicators + regime + scan)..."
-	$(COMPOSE_DEV) exec backend python -m app.scripts.run_task "app.tasks.market.coverage.daily_bootstrap" --kwargs '{"history_days":5,"history_batch_size":25}'
+ladle-build:
+	cd $(FRONTEND_DIR) && pnpm run ladle:build
 
-# IB Gateway (requires IBKR_USERNAME and IBKR_PASSWORD in env.dev)
+# ─── IB Gateway profile ───────────────────────────────────────────────
 ib-up:
-	$(COMPOSE_DEV_IBKR) up -d ib-gateway
+	$(COMPOSE_IBKR) up -d ib-gateway
 
 ib-down:
-	$(COMPOSE_DEV_IBKR) stop ib-gateway
+	$(COMPOSE_IBKR) stop ib-gateway
 
 ib-logs:
-	$(COMPOSE_DEV_IBKR) logs --tail=200 -f ib-gateway
-
-# Cloudflare Tunnel (routes api-dev.axiomfolio.com to local backend for OAuth testing)
-# Uses a dedicated dev subdomain so production (api.axiomfolio.com) is never affected.
-# Prereq: Cloudflare Zero Trust tunnel public hostname must be set to api-dev.axiomfolio.com
-tunnel-up:
-	$(COMPOSE_DEV_TUNNEL) up -d cloudflared
-
-tunnel-down:
-	$(COMPOSE_DEV_TUNNEL) stop cloudflared
-
-tunnel-logs:
-	$(COMPOSE_DEV_TUNNEL) logs --tail=200 -f cloudflared
-
-backup-db:
-	./scripts/backup_db.sh
-
-restore-db:
-	@echo "Usage: make restore-db BACKUP=~/axiomfolio-backups/axiomfolio_YYYYMMDD_HHMMSS.sql.gz"
-	@test -n "$(BACKUP)" || (echo "ERROR: Set BACKUP=<path>"; exit 1)
-	./scripts/restore_db.sh "$(BACKUP)"
-
-tunnel-on: tunnel-up
-	@echo "✓ api-dev.axiomfolio.com → local backend:8000. Verify: make tunnel-logs"
-
-tunnel-off: tunnel-down
-	@echo "✓ Tunnel stopped (prod api.axiomfolio.com was never affected)"
+	$(COMPOSE_IBKR) logs --tail=200 -f ib-gateway
 
 ib-verify: ## Verify IB Gateway connectivity end-to-end
 	@echo "Starting IB Gateway..."
-	docker compose -f infra/compose.dev.yaml --profile ib up -d ib-gateway
+	$(COMPOSE_IBKR) up -d ib-gateway
 	@echo "Waiting for login (60s timeout)..."
 	@for i in $$(seq 1 60); do \
-		if docker compose -f infra/compose.dev.yaml logs ib-gateway 2>&1 | grep -q "login accepted"; then \
+		if $(COMPOSE_IBKR) logs ib-gateway 2>&1 | grep -q "login accepted"; then \
 			echo "✓ IB Gateway login accepted"; \
 			break; \
 		fi; \
 		if [ $$i -eq 60 ]; then \
-			echo "✗ Timeout waiting for login. Check credentials in infra/env.dev"; \
-			echo "  Logs: docker compose -f infra/compose.dev.yaml logs ib-gateway"; \
+			echo "✗ Timeout waiting for login. Check credentials in .env.secrets"; \
 			exit 1; \
 		fi; \
 		sleep 1; \
 	done
 	@echo "Checking API connectivity..."
-	@curl -sf http://localhost:8000/api/v1/portfolio/options/gateway-status > /dev/null 2>&1 && \
+	@curl -sf http://localhost:8004/api/v1/portfolio/options/gateway-status > /dev/null 2>&1 && \
 		echo "✓ Gateway API reachable" || \
-		echo "⚠ Backend not running or gateway-status endpoint unreachable (start backend first)"
+		echo "⚠ Backend not running or gateway-status endpoint unreachable"
 
+# ─── Cloudflare tunnel profile ────────────────────────────────────────
+tunnel-up:
+	$(COMPOSE_TUN) up -d cloudflared
 
-# ---------- Medallion architecture (Wave 0) ----------
+tunnel-down:
+	$(COMPOSE_TUN) stop cloudflared
 
+tunnel-logs:
+	$(COMPOSE_TUN) logs --tail=200 -f cloudflared
+
+tunnel-on: tunnel-up
+	@echo "✓ api-dev.axiomfolio.com → local backend. Verify: make tunnel-logs"
+
+tunnel-off: tunnel-down
+	@echo "✓ Tunnel stopped (prod api.axiomfolio.com was never affected)"
+
+# ─── DB backup/restore ────────────────────────────────────────────────
+backup-db:
+	./scripts/backup_db.sh
+
+restore-db:
+	@test -n "$(BACKUP)" || (echo "Usage: make restore-db BACKUP=<path/to/dump.sql.gz>"; exit 1)
+	./scripts/restore_db.sh "$(BACKUP)"
+
+# ─── Medallion architecture (Wave 0) ──────────────────────────────────
 medallion-check:
 	@python3 scripts/medallion/check_imports.py --stats
 
@@ -218,5 +222,4 @@ medallion-check-sql:
 medallion-tag:
 	@python3 scripts/medallion/tag_files.py --apply
 
-# Run all medallion lint gates at once (used by pre-commit + CI).
 medallion-lint: medallion-check medallion-check-sql

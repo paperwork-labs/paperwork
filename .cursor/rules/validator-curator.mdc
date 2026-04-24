@@ -1,6 +1,6 @@
 ---
 description: Validator persona (Twisted Slice) workflow — pseudonym enforcement, source attribution, picks pipeline.
-globs: backend/services/picks/**, backend/api/routes/picks/**, backend/models/picks/**, frontend/src/pages/picks/**, frontend/src/pages/Validator*.tsx
+globs: apis/axiomfolio/app/services/picks/**, apis/axiomfolio/app/api/routes/picks/**, apis/axiomfolio/app/models/picks/**, apps/axiomfolio/src/pages/picks/**, apps/axiomfolio/src/pages/Validator*.tsx
 alwaysApply: false
 ---
 
