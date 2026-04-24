@@ -307,6 +307,99 @@ async def commit_github_file(path: str, content: str, message: str, branch: str 
     return _scrub(f"Commit SHA: {commit_sha}")
 
 
+async def review_github_pr(
+    number: int,
+    body: str,
+    event: str = "COMMENT",
+    comments: list[dict[str, Any]] | None = None,
+) -> str:
+    """Post a PR review: summary body + inline comments.
+
+    event: COMMENT | APPROVE | REQUEST_CHANGES
+    comments: optional list of {"path": str, "line": int, "body": str}
+        (GitHub also accepts "position" for unified-diff offset; we use line+side=RIGHT
+        for simplicity. Callers should supply a line that exists on the PR head.)
+
+    Returns "Review #<id>: <html_url>".
+    """
+    if event not in ("COMMENT", "APPROVE", "REQUEST_CHANGES"):
+        return _scrub("event must be COMMENT, APPROVE, or REQUEST_CHANGES")
+    owner, repo = _repo_parts()
+    payload: dict[str, Any] = {
+        "body": (body or "").strip()[:65_000],
+        "event": event,
+    }
+    if comments:
+        clean: list[dict[str, Any]] = []
+        for c in comments[:40]:
+            if not isinstance(c, dict):
+                continue
+            path = str(c.get("path", "")).strip()
+            body_c = str(c.get("body", "")).strip()
+            line = c.get("line")
+            if not path or not body_c or not isinstance(line, int) or line <= 0:
+                continue
+            clean.append({
+                "path": path,
+                "line": line,
+                "side": "RIGHT",
+                "body": body_c[:8000],
+            })
+        if clean:
+            payload["comments"] = clean
+    try:
+        async with _gh_client() as client:
+            r = await client.post(
+                f"/repos/{owner}/{repo}/pulls/{number}/reviews",
+                json=payload,
+            )
+            r.raise_for_status()
+            data: dict[str, Any] = r.json()
+    except httpx.HTTPStatusError as e:
+        logger.warning("review_github_pr failed: #%s %s", number, e)
+        return _error_message("review_github_pr", e.response)
+    except (httpx.RequestError, ValueError) as e:
+        logger.warning("review_github_pr failed: #%s %s", number, e)
+        return _scrub(f"review_github_pr error: {e}")
+
+    rid = data.get("id", "?")
+    url = data.get("html_url", "")
+    return _scrub(f"Review #{rid}: {url}")
+
+
+async def get_github_pr_diff(number: int, max_chars: int = 60000) -> str:
+    """Fetch the raw unified diff for a PR.
+
+    Capped at max_chars (default 60k) to avoid token blowups. The raw diff is
+    what Brain's reviewer feeds to the LLM — patched hunks, not full files.
+    """
+    owner, repo = _repo_parts()
+    try:
+        async with httpx.AsyncClient(
+            base_url=GH_API,
+            headers={
+                "Authorization": f"token {settings.GITHUB_TOKEN}",
+                "Accept": "application/vnd.github.v3.diff",
+            },
+            timeout=httpx.Timeout(60.0),
+        ) as client:
+            r = await client.get(f"/repos/{owner}/{repo}/pulls/{number}")
+            if r.status_code == 404:
+                return _scrub(f"PR #{number} not found")
+            r.raise_for_status()
+            raw = r.text
+    except httpx.HTTPStatusError as e:
+        logger.warning("get_github_pr_diff failed: #%s %s", number, e)
+        return _error_message("get_github_pr_diff", e.response)
+    except (httpx.RequestError, ValueError) as e:
+        logger.warning("get_github_pr_diff failed: #%s %s", number, e)
+        return _scrub(f"get_github_pr_diff error: {e}")
+
+    if len(raw) > max_chars:
+        raw = raw[:max_chars] + f"\n… diff truncated ({max_chars} chars)"
+    return _scrub(raw)
+
+
 async def merge_github_pr(number: int, merge_method: str = "squash") -> str:
     """Merge a PR (merge, squash, or rebase); returns merge SHA when present."""
     if merge_method not in ("merge", "squash", "rebase"):

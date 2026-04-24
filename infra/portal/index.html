@@ -22,6 +22,16 @@
       --purple: #a855f7;
       --yellow: #eab308;
       --pink: #ec4899;
+
+      /* Medallion layer palette — used by the system DAG. */
+      --bronze: #b45309;
+      --bronze-soft: rgba(180, 83, 9, 0.15);
+      --silver: #94a3b8;
+      --silver-soft: rgba(148, 163, 184, 0.12);
+      --gold: #eab308;
+      --gold-soft: rgba(234, 179, 8, 0.14);
+      --exec: #ef4444;
+      --exec-soft: rgba(239, 68, 68, 0.14);
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -219,6 +229,165 @@
     .status-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
     .status-dot.offline { background: var(--border); }
 
+    /* ---- Medallion DAG ---- */
+    .medallion-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background:
+        radial-gradient(circle at 15% 20%, var(--bronze-soft), transparent 40%),
+        radial-gradient(circle at 40% 80%, var(--silver-soft), transparent 40%),
+        radial-gradient(circle at 65% 20%, var(--gold-soft), transparent 40%),
+        radial-gradient(circle at 90% 80%, var(--exec-soft), transparent 40%),
+        var(--surface);
+      padding: 1.25rem;
+    }
+
+    .medallion {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.75rem;
+      position: relative;
+    }
+
+    .lane {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.875rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      min-width: 0;
+    }
+
+    .lane-bronze { border-top: 2px solid var(--bronze); }
+    .lane-silver { border-top: 2px solid var(--silver); }
+    .lane-gold   { border-top: 2px solid var(--gold); }
+    .lane-exec   { border-top: 2px solid var(--exec); }
+
+    .lane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 0.25rem;
+    }
+
+    .lane-name {
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .lane-tag {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.62rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+    .lane-bronze .lane-tag { background: var(--bronze-soft); color: #fbbf24; }
+    .lane-silver .lane-tag { background: var(--silver-soft); color: #cbd5e1; }
+    .lane-gold   .lane-tag { background: var(--gold-soft);   color: #facc15; }
+    .lane-exec   .lane-tag { background: var(--exec-soft);   color: #fca5a5; }
+
+    .lane-contract {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-bottom: 0.25rem;
+      line-height: 1.4;
+    }
+
+    .lane-nodes {
+      display: flex;
+      flex-direction: column;
+      gap: 0.375rem;
+    }
+
+    .node {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.625rem;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 0.78rem;
+      transition: all 0.12s ease;
+      min-width: 0;
+    }
+    .node:hover {
+      border-color: var(--border-hover);
+      background: var(--surface-hover);
+      transform: translateX(2px);
+    }
+    .node-name {
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .node-kind {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      flex-shrink: 0;
+    }
+
+    .flow-arrows {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      pointer-events: none;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      transform: translateY(-12px);
+    }
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      color: var(--text-dim);
+      opacity: 0.6;
+    }
+
+    .medallion-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .medallion-legend code {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: var(--text);
+    }
+
+    @media (max-width: 900px) {
+      .medallion { grid-template-columns: 1fr; }
+      .flow-arrows { display: none; }
+    }
+
     footer {
       margin-top: 4rem;
       padding-top: 1.5rem;
@@ -249,6 +418,24 @@
         Services are reachable on <code>localhost</code> only. See <a href="https://github.com/paperwork-labs/paperwork/blob/main/docs/INFRA.md" style="color:var(--accent);text-decoration:none;">docs/INFRA.md</a> for the full architecture.
       </div>
     </header>
+
+    <section>
+      <div class="section-header">
+        <div class="section-title">System architecture — medallion</div>
+        <div class="section-meta">bronze → silver → gold → execution · CI-enforced</div>
+      </div>
+      <div class="medallion-wrap">
+        <div class="medallion" id="medallion-dag">
+          <!-- populated by script below -->
+        </div>
+        <div class="medallion-legend">
+          <span>Each layer only reads from its left. Enforced by <code>scripts/medallion/check_imports.py</code>.</span>
+          <span style="margin-left:auto;">
+            <a href="https://github.com/paperwork-labs/paperwork/blob/main/docs/DATA_PHILOSOPHY.md" style="color:var(--accent);text-decoration:none;">DATA_PHILOSOPHY.md →</a>
+          </span>
+        </div>
+      </div>
+    </section>
 
     <section>
       <div class="section-header">
@@ -485,6 +672,107 @@
         summary.textContent = `${online}/${total} services responding`;
       }
     })();
+
+    // ---- Medallion DAG ---------------------------------------------------
+    // Data-driven so nodes can be added/edited without touching layout.
+    // Paths point at the canonical modules on main. Adding a product? Add a
+    // second `lanes` array below and render into another <div class="medallion">.
+    const GH_BASE = "https://github.com/paperwork-labs/paperwork/blob/main";
+
+    const axiomfolioLanes = [
+      {
+        id: "bronze",
+        name: "Bronze",
+        tag: "ingest",
+        contract: "raw data, as received. no transforms, no business logic.",
+        nodes: [
+          { name: "schwab/sync",       kind: "service", path: "apis/axiomfolio/app/services/bronze/schwab/sync_service.py" },
+          { name: "schwab/oauth",      kind: "service", path: "apis/axiomfolio/app/services/bronze/schwab/oauth.py" },
+          { name: "ibkr/gateway",      kind: "service", path: "apis/axiomfolio/app/services/bronze/ibkr" },
+          { name: "market/providers",  kind: "service", path: "apis/axiomfolio/app/services/bronze/market" },
+        ],
+      },
+      {
+        id: "silver",
+        name: "Silver",
+        tag: "enrich",
+        contract: "clean + enriched. indicators, regime, tax lots, analytics.",
+        nodes: [
+          { name: "portfolio/analytics",    kind: "service", path: "apis/axiomfolio/app/services/silver/portfolio/analytics.py" },
+          { name: "portfolio/tax_lots",     kind: "service", path: "apis/axiomfolio/app/services/silver/portfolio/tax_lot_service.py" },
+          { name: "portfolio/harvester",    kind: "service", path: "apis/axiomfolio/app/services/silver/portfolio/tax_loss_harvester.py" },
+          { name: "regime/regime_engine",   kind: "service", path: "apis/axiomfolio/app/services/silver/regime/regime_engine.py" },
+          { name: "regime/stage_classifier",kind: "service", path: "apis/axiomfolio/app/services/silver/regime/stage_classifier.py" },
+          { name: "market/indicators",      kind: "service", path: "apis/axiomfolio/app/services/silver/market/indicators" },
+          { name: "market/multi_timeframe", kind: "service", path: "apis/axiomfolio/app/services/silver/market/indicators/multi_timeframe.py" },
+          { name: "market/universe",        kind: "service", path: "apis/axiomfolio/app/services/silver/market/universe" },
+        ],
+      },
+      {
+        id: "gold",
+        name: "Gold",
+        tag: "decide",
+        contract: "business-ready picks, trade cards, backtests, conviction.",
+        nodes: [
+          { name: "trade_card_composer", kind: "service", path: "apis/axiomfolio/app/services/gold/trade_card_composer.py" },
+          { name: "strategy/*",          kind: "pkg",     path: "apis/axiomfolio/app/services/gold/strategy" },
+          { name: "conviction",          kind: "service", path: "apis/axiomfolio/app/services/gold/conviction" },
+          { name: "winner_exits",        kind: "service", path: "apis/axiomfolio/app/services/gold/winner_exits" },
+          { name: "peak_signals",        kind: "service", path: "apis/axiomfolio/app/services/gold/peak_signals" },
+          { name: "backtest",            kind: "service", path: "apis/axiomfolio/app/services/gold/backtest" },
+          { name: "risk/circuit_breaker",kind: "service", path: "apis/axiomfolio/app/services/gold/risk/circuit_breaker.py" },
+        ],
+      },
+      {
+        id: "exec",
+        name: "Execution",
+        tag: "act",
+        contract: "write to reality: orders, approvals, stops, risk gates.",
+        nodes: [
+          { name: "risk_gate",               kind: "service", path: "apis/axiomfolio/app/services/execution/risk_gate.py" },
+          { name: "risk/pre_trade_validator",kind: "service", path: "apis/axiomfolio/app/services/execution/risk/pre_trade_validator.py" },
+          { name: "order_placer",            kind: "service", path: "apis/axiomfolio/app/services/execution/orders" },
+          { name: "approval_queue",          kind: "service", path: "apis/axiomfolio/app/services/execution/approvals" },
+          { name: "stop_manager",            kind: "service", path: "apis/axiomfolio/app/services/execution/stops" },
+        ],
+      },
+    ];
+
+    function renderMedallion(rootId, lanes) {
+      const root = document.getElementById(rootId);
+      if (!root) return;
+      const html = lanes.map((lane, idx) => {
+        const nodesHTML = lane.nodes
+          .map((n) => `
+            <a class="node" href="${GH_BASE}/${n.path}" target="_blank" rel="noopener">
+              <span class="node-name" title="${n.name}">${n.name}</span>
+              <span class="node-kind">${n.kind}</span>
+            </a>
+          `)
+          .join("");
+        return `
+          <div class="lane lane-${lane.id}">
+            <div class="lane-header">
+              <div class="lane-name">${lane.name}</div>
+              <div class="lane-tag">${lane.tag}</div>
+            </div>
+            <div class="lane-contract">${lane.contract}</div>
+            <div class="lane-nodes">${nodesHTML}</div>
+          </div>
+        `;
+      }).join("");
+
+      const arrows = `
+        <div class="flow-arrows" aria-hidden="true">
+          <div class="flow-arrow">→</div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-arrow">→</div>
+        </div>
+      `;
+      root.innerHTML = html + arrows;
+    }
+
+    renderMedallion("medallion-dag", axiomfolioLanes);
   </script>
 </body>
 </html>
