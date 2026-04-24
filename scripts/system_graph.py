@@ -489,13 +489,14 @@ def main() -> int:
             print(f"{OUTPUT_PATH} missing — run: python scripts/system_graph.py")
             return 1
         current = OUTPUT_PATH.read_text()
-        # `generated_at` changes every run; compare without that field.
+        # `generated_at` and `commit_sha` change every run; compare the structural
+        # payload (nodes + layers) by ignoring both. Otherwise CI would fail any
+        # PR that doesn't also regenerate the snapshot — a bandaid that turns
+        # every single PR into a two-step ritual.
         def _strip(text: str) -> str:
-            return re.sub(
-                r'"generated_at":\s*"[^"]*",?',
-                "",
-                text,
-            )
+            text = re.sub(r'"generated_at":\s*"[^"]*",?\s*', "", text)
+            text = re.sub(r'"commit_sha":\s*"[^"]*",?\s*', "", text)
+            return text
         if _strip(current) != _strip(rendered):
             print(
                 f"{OUTPUT_PATH} is stale — run: python scripts/system_graph.py",
