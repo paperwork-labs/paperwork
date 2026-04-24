@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from app.services import llm
+from app.services.errors import LLMUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -174,10 +175,18 @@ def _provider_for_model(model: str) -> str:
 
 
 class PersonaPinnedRoute:
-    """Skip Gemini classifier when a persona has a typed spec. Saves ~1
-    classifier call per request and gives the persona owner explicit control.
-    Escalates to spec.escalation_model when tools are needed or heuristics
-    (e.g. token threshold, escalate_if mentions) fire."""
+    """Route a request using a PersonaSpec's pinned model contract.
+
+    No Gemini classifier call (the spec already declares the model). No
+    keyword heuristics for "does this need tools" (the spec declares
+    `requires_tools`). Escalation is driven by three deterministic
+    signals: compliance, exact token count (via tiktoken), and mention
+    keywords.
+
+    On every-provider failure this raises `LLMUnavailableError` so the
+    agent layer can return an honest error response rather than silently
+    handing the user mock content.
+    """
 
     def __init__(
         self,
@@ -185,40 +194,41 @@ class PersonaPinnedRoute:
         *,
         model: str,
         escalation_model: str | None,
-        escalate_on_tools: bool,
+        escalate_on_compliance: bool,
         escalate_on_tokens_over: int | None,
         escalate_on_mentions: list[str],
+        input_tokens: int,
+        requires_tools: bool,
     ):
         self.cb = circuit_breaker
         self.model = model
         self.escalation_model = escalation_model
-        self.escalate_on_tools = escalate_on_tools
+        self.escalate_on_compliance = escalate_on_compliance
         self.escalate_on_tokens_over = escalate_on_tokens_over
         self.escalate_on_mentions = [m.lower() for m in escalate_on_mentions]
+        self.input_tokens = input_tokens
+        self.requires_tools = requires_tools
 
     async def execute(self, context: ChainContext) -> ChainResult:
-        message_lower = context.message.lower()
-        # Cheap heuristic for "tools likely needed" without calling a classifier:
-        # question words + infra/code/repo nouns or explicit tool-ish phrases.
-        tools_hint_keywords = (
-            "pr ", "prs", "pull request", "deploy", "commit", "render", "vercel",
-            "github", "workflow", "portfolio", "position", "trade",
-            "memory", "remember ", "know about",
-        )
-        tools_needed = any(k in message_lower for k in tools_hint_keywords)
-
         model = self.model
         escalated = False
+        escalation_reason: str | None = None
         if self.escalation_model:
-            if self.escalate_on_tools and tools_needed:
-                model, escalated = self.escalation_model, True
-            elif any(m in message_lower for m in self.escalate_on_mentions):
-                model, escalated = self.escalation_model, True
+            if self.escalate_on_compliance:
+                model, escalated, escalation_reason = (
+                    self.escalation_model, True, "compliance",
+                )
+            elif any(m in context.message.lower() for m in self.escalate_on_mentions):
+                model, escalated, escalation_reason = (
+                    self.escalation_model, True, "mention",
+                )
             elif (
                 self.escalate_on_tokens_over is not None
-                and len(context.message) // 4 > self.escalate_on_tokens_over
+                and self.input_tokens > self.escalate_on_tokens_over
             ):
-                model, escalated = self.escalation_model, True
+                model, escalated, escalation_reason = (
+                    self.escalation_model, True, "tokens",
+                )
 
         provider = _provider_for_model(model)
 
@@ -234,13 +244,13 @@ class PersonaPinnedRoute:
             )
 
         try:
-            if tools_needed and provider == "anthropic":
+            if self.requires_tools and provider == "anthropic":
                 result = await llm.complete_with_mcp(
                     system_prompt=context.system_prompt,
                     messages=context.messages,
                     model=model,
                 )
-            elif tools_needed and provider == "openai":
+            elif self.requires_tools and provider == "openai":
                 result = await llm.complete_openai_with_mcp(
                     system_prompt=context.system_prompt,
                     messages=context.messages,
@@ -254,13 +264,15 @@ class PersonaPinnedRoute:
                     provider=provider,
                 )
             await self.cb.record_success(provider)
-        except Exception:
+        except Exception as exc:
             logger.error(
                 "PersonaPinnedRoute LLM call failed for %s/%s",
                 provider, model, exc_info=True,
             )
             await self.cb.record_failure(provider)
-            result = llm._mock_response(context.messages)
+            raise LLMUnavailableError(
+                provider=provider, model=model, reason=str(exc),
+            ) from exc
 
         cost = calculate_cost(
             result.get("model", model),
@@ -278,7 +290,9 @@ class PersonaPinnedRoute:
             classification={
                 "strategy": "persona_pinned",
                 "escalated": escalated,
-                "tools_needed": tools_needed,
+                "escalation_reason": escalation_reason,
+                "requires_tools": self.requires_tools,
+                "input_tokens_measured": self.input_tokens,
             },
             cost=cost,
         )
@@ -347,10 +361,12 @@ class ClassifyAndRoute:
 
             await self.cb.record_success(provider)
 
-        except Exception:
+        except Exception as exc:
             logger.error("LLM call failed for %s/%s", provider, model, exc_info=True)
             await self.cb.record_failure(provider)
-            result = llm._mock_response(context.messages)
+            raise LLMUnavailableError(
+                provider=provider, model=model, reason=str(exc),
+            ) from exc
 
         cost = calculate_cost(
             result.get("model", model),

@@ -206,7 +206,7 @@ export type BrainPersonaSpec = {
   default_model: string;
   escalation_model: string | null;
   escalate_if: string[];
-  allowed_tools: string[] | null;
+  requires_tools: boolean;
   daily_cost_ceiling_usd: number | null;
   confidence_floor: number | null;
   compliance_flagged: boolean;

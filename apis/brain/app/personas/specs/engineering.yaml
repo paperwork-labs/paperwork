@@ -5,12 +5,7 @@ escalation_model: claude-opus-4-20250618
 escalate_if:
   - tokens>8000
   - mention:architecture
-allowed_tools:
-  - read_github_file
-  - search_github_code
-  - search_memory
-  - list_prs
-  - review_pr
+requires_tools: true
 daily_cost_ceiling_usd: 10.00
 owner_channel: engineering
 mode: chat

@@ -49,17 +49,18 @@ class PersonaSpec(BaseModel):
         default_factory=list,
         description=(
             "Ordered list of tags that force escalation. Supported tags: "
-            "'tools_required' — classifier says tools are needed; "
             "'compliance' — persona is compliance-flagged; "
-            "'tokens>N' — input tokens exceed N; "
+            "'tokens>N' — input tokens exceed N (counted with tiktoken); "
             "'mention:<slug>' — message mentions a slug (case-insensitive)."
         ),
     )
-    allowed_tools: list[str] | None = Field(
-        default=None,
+    requires_tools: bool = Field(
+        default=False,
         description=(
-            "Whitelist of MCP tool names this persona may call. None means no "
-            "restriction (LLM defaults apply). Empty list means no tools."
+            "If True, route every call through the provider's MCP path (so the "
+            "LLM can invoke tools). If False, use the plain text-completion "
+            "path. Set True for personas that must read the repo, list PRs, "
+            "or query infra (engineering, trading, agent-ops)."
         ),
     )
     daily_cost_ceiling_usd: float | None = Field(
@@ -116,7 +117,7 @@ class PersonaSpec(BaseModel):
     @classmethod
     def _validate_escalate_if(cls, v: list[str]) -> list[str]:
         for tag in v:
-            if tag in {"tools_required", "compliance"}:
+            if tag == "compliance":
                 continue
             if tag.startswith(("tokens>", "mention:")):
                 continue

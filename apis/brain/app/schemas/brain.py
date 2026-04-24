@@ -38,3 +38,19 @@ class ProcessResponse(BaseModel):
             "trace back to the source exchange."
         ),
     )
+    needs_human_review: bool = Field(
+        default=False,
+        description=(
+            "True when the persona is compliance_flagged and has a "
+            "confidence_floor — downstream UIs should surface a review "
+            "badge. Enforcement of blocking on low confidence is D7."
+        ),
+    )
+    error: str | None = Field(
+        default=None,
+        description=(
+            "Structured error code when the pipeline short-circuited "
+            "(e.g. 'cost_ceiling_exceeded', 'llm_unavailable'). Null on "
+            "a normal response."
+        ),
+    )

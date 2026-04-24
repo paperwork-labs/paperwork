@@ -12,8 +12,6 @@ import hashlib
 import hmac
 import json
 
-import pytest
-
 from app.services.pr_review import (
     BIG_MODEL,
     DEFAULT_MODEL,

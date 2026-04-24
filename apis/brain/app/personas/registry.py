@@ -59,7 +59,6 @@ def list_specs() -> list[PersonaSpec]:
 def resolve_model(
     spec: PersonaSpec,
     *,
-    tools_required: bool = False,
     input_tokens: int = 0,
     message: str = "",
 ) -> tuple[str, bool]:
@@ -71,8 +70,6 @@ def resolve_model(
         return spec.default_model, False
 
     for tag in spec.escalate_if:
-        if tag == "tools_required" and tools_required:
-            return spec.escalation_model, True
         if tag == "compliance" and spec.compliance_flagged:
             return spec.escalation_model, True
         if tag.startswith("tokens>"):

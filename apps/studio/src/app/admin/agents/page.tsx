@@ -103,8 +103,19 @@ function BrainPersonaRegistry({ personas }: { personas: BrainPersonaSpec[] }) {
                 </>
               )}
               {p.daily_cost_ceiling_usd !== null && (
-                <span className="rounded-full bg-zinc-700/30 px-2 py-0.5 text-zinc-500">
+                <span
+                  className="rounded-full bg-zinc-700/30 px-2 py-0.5 text-zinc-500"
+                  title="Enforced per-organization via Redis; requests past this cap return a structured error."
+                >
                   cap ${p.daily_cost_ceiling_usd.toFixed(2)}/day
+                </span>
+              )}
+              {p.requires_tools && (
+                <span
+                  className="rounded-full bg-emerald-900/30 px-2 py-0.5 text-emerald-300"
+                  title="Routes through MCP so the LLM can call tools (read_github_file, search_memory, etc)."
+                >
+                  tools
                 </span>
               )}
             </div>

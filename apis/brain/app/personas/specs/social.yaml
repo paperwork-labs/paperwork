@@ -4,9 +4,7 @@ default_model: gpt-4o-mini
 escalation_model: claude-sonnet-4-20250514
 escalate_if:
   - tokens>3000
-allowed_tools:
-  - read_github_file
-  - search_memory
+requires_tools: false
 daily_cost_ceiling_usd: 3.00
 owner_channel: social
 mode: chat

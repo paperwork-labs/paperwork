@@ -4,7 +4,13 @@ channel context (weighted, not absolute), content keywords, and explicit mention
 Channel context adds a +3 score boost to the channel's default persona but does
 NOT override strong content signals. This means "what's the project status" in
 #alerts still routes to EA (content wins) while a vague "hey" in #engineering
-routes to Engineering (channel wins)."""
+routes to Engineering (channel wins).
+
+Keyword matching is intentionally stem-aware: a keyword like "position"
+will match "position" and "positions" (trailing "s") so we don't have to
+curate every plural. Long-term (D2) this file will be replaced by
+semantic routing through Brain itself, at which point this heuristic
+retires. Until then: add roots, not plurals."""
 
 import re
 
@@ -105,7 +111,10 @@ def route_persona(
 
     for persona, keywords in SINGLE_WORD_KEYWORDS.items():
         for kw in keywords:
-            if re.search(rf"\b{re.escape(kw)}\b", lower):
+            # Match the keyword and its trailing-s plural with a word
+            # boundary. Avoids curating every plural by hand while keeping
+            # false positives low (we still require \b and a fixed prefix).
+            if re.search(rf"\b{re.escape(kw)}s?\b", lower):
                 scores[persona] = scores.get(persona, 0) + 1
 
     if scores:

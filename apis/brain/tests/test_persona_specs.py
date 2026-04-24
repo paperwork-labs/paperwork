@@ -66,21 +66,33 @@ def test_resolve_model_no_escalation_stays_on_default():
     assert escalated is False
 
 
-def test_resolve_model_escalates_on_tools_required():
+def test_resolve_model_rejects_deprecated_tools_required_tag():
+    """tools_required was removed; requires_tools is now a first-class field."""
+    with pytest.raises(Exception):
+        PersonaSpec(
+            name="x",
+            description="y",
+            default_model="gpt-4o-mini",
+            escalation_model="claude-sonnet-4-20250514",
+            escalate_if=["tools_required"],
+        )
+
+
+def test_requires_tools_field_defaults_false():
+    spec = PersonaSpec(
+        name="x", description="y", default_model="gpt-4o-mini",
+    )
+    assert spec.requires_tools is False
+
+
+def test_requires_tools_field_is_honored():
     spec = PersonaSpec(
         name="x",
         description="y",
         default_model="gpt-4o-mini",
-        escalation_model="claude-sonnet-4-20250514",
-        escalate_if=["tools_required"],
+        requires_tools=True,
     )
-    model, escalated = resolve_model(spec, tools_required=True)
-    assert model == "claude-sonnet-4-20250514"
-    assert escalated is True
-
-    model, escalated = resolve_model(spec, tools_required=False)
-    assert model == "gpt-4o-mini"
-    assert escalated is False
+    assert spec.requires_tools is True
 
 
 def test_resolve_model_escalates_on_token_threshold():

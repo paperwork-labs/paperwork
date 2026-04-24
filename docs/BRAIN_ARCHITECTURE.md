@@ -155,6 +155,17 @@ The wow is "Brain knows my LIFE and I didn't tell it anything." Not "Brain knows
 
 Per-org customizable personality injected as cached prefix. Identity, voice (tone, formality, brevity, humor, emoji), values with behaviors, communication rules, forbidden zones, knowledge priorities. Customized during onboarding. Per-user adaptation within org personality. Voice selection for TTS (D29).
 
+**Persona Platform (Phase D, 2026Q2)** — formalizes persona contracts as typed YAML specs (`apis/brain/app/personas/specs/<name>.yaml`) paired 1:1 with `.cursor/rules/<name>.mdc` written instructions. Each spec declares `default_model`, `escalation_model`, `escalate_if` rules (compliance, tokens>N, mention:<slug>), `requires_tools`, `daily_cost_ceiling_usd`, `compliance_flagged`, `confidence_floor`, `owner_channel`, and `mode`. Enforcement at runtime:
+
+- `PersonaPinnedRoute` skips the Gemini-Flash classifier when a spec exists and routes straight to the spec's model (saves a classifier call per request, makes the routing deterministic).
+- `daily_cost_ceiling_usd` is enforced via a Redis-backed `CostTracker` that increments atomically and fails fast with a structured `cost_ceiling_exceeded` error before hitting the provider.
+- Input tokens counted with `tiktoken` (not the old `len//4` heuristic) so `tokens>N` escalation is accurate.
+- LLM failures raise `LLMUnavailableError` and produce a structured `llm_unavailable` response — no silent mock fallbacks.
+- `compliance_flagged` + `confidence_floor` combine to stamp `needs_human_review: true` on the episode metadata and response payload; Studio surfaces the flag, and D7 will turn it into a blocking review queue.
+- CI enforces three-way coverage (`apis/brain/scripts/check_persona_coverage.py`): every router-producible persona must have a YAML spec and an `.mdc` file.
+
+Studio renders the live registry at `/admin/agents` via Brain's `GET /api/v1/admin/personas` endpoint. Full details: [docs/BRAIN_PERSONAS.md](./BRAIN_PERSONAS.md).
+
 **Consumer Brain Personality (F225):** `personality_mode: consumer` variant — warm but not sycophantic, slightly witty, celebrates without judging, remembers like a best friend, gets noticeably better over time:
 
 | Trait | Example | Anti-Pattern |
