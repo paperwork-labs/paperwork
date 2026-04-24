@@ -39,10 +39,11 @@ jobs:
               if (stub.draft) continue;
 
               const labels = stub.labels.map((l) => l.name);
-              // Never auto-merge majors or human-review-required PRs.
-              if (labels.includes('deps:major')) continue;
+              // Never merge human-review or do-not-merge PRs.
               if (labels.includes('needs-human-review')) continue;
               if (labels.includes('do-not-merge')) continue;
+              // Majors only allowed when explicitly triaged as risk:low by LLM.
+              if (labels.includes('deps:major') && !labels.includes('risk:low')) continue;
 
               const { data: pr } = await github.rest.pulls.get({
                 owner, repo, pull_number: stub.number,

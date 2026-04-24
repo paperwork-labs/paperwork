@@ -144,10 +144,14 @@ services:
   - type: web
     name: axiomfolio-frontend
     runtime: static
-    # Frontend lives at apps/axiomfolio/ (pnpm workspace member).
+    # Frontend lives at apps/axiomfolio/ (pnpm workspace member). There is no
+    # per-app lockfile; dependencies are resolved by pnpm from the monorepo
+    # root. Build runs in rootDir (apps/axiomfolio) then cd's back to the
+    # repo root to invoke pnpm with a workspace filter — mirrors the pattern
+    # used by every Vercel app in this repo.
     rootDir: apps/axiomfolio
     autoDeploy: true
-    buildCommand: npm ci && npm run build
+    buildCommand: "cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && pnpm install --frozen-lockfile --filter=@paperwork-labs/axiomfolio... && pnpm --filter=@paperwork-labs/axiomfolio build"
     staticPublishPath: dist
     routes:
       - type: rewrite
