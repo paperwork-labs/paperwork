@@ -96,6 +96,41 @@ const PAD = 16;
 const EXTRA_BOTTOM_GRID_ROWS = 1;
 
 // ---------------------------------------------------------------------------
+// Medallion swimlanes (Wave 0.A — DAG bands + legend)
+//
+// Row-to-layer mapping honest about today's structure (see
+// docs/axiomfolio/plans/MEDALLION_AUDIT_2026Q2.md §3.5): some rows mix layers
+// by intent (e.g. row 2 has both gold strategy_eval and silver snapshot_history).
+// The bands show the PRIMARY layer of each row so the DAG visually communicates
+// the bronze → silver → gold → ops flow. Wave 0.D tightens the per-node
+// alignment once shims are removed.
+// ---------------------------------------------------------------------------
+
+type MedallionLayer = 'bronze' | 'silver' | 'gold' | 'ops';
+
+const ROW_MEDALLION: Record<number, MedallionLayer> = {
+  0: 'bronze',
+  1: 'silver',
+  2: 'gold',
+  3: 'ops',
+  4: 'ops',
+};
+
+const MEDALLION_BAND: Record<MedallionLayer, { fill: string; stroke: string; label: string }> = {
+  bronze: { fill: 'rgba(180, 83, 9, 0.08)',   stroke: 'rgba(180, 83, 9, 0.22)',   label: 'Bronze · ingest' },
+  silver: { fill: 'rgba(148, 163, 184, 0.07)', stroke: 'rgba(148, 163, 184, 0.22)', label: 'Silver · enrich' },
+  gold:   { fill: 'rgba(234, 179, 8, 0.09)',   stroke: 'rgba(234, 179, 8, 0.25)',   label: 'Gold · decide' },
+  ops:    { fill: 'rgba(113, 113, 122, 0.07)', stroke: 'rgba(113, 113, 122, 0.18)', label: 'Ops · observe' },
+};
+
+const MEDALLION_LEGEND_DOT: Record<MedallionLayer, string> = {
+  bronze: '#b45309',
+  silver: '#94a3b8',
+  gold: '#eab308',
+  ops: '#71717a',
+};
+
+// ---------------------------------------------------------------------------
 // Health dimension mapping — connects DAG nodes to health data
 // ---------------------------------------------------------------------------
 
@@ -854,6 +889,30 @@ export function PipelineDAG({ dag, run, loading, loadError, onRetryLoad, onRetry
                 />
               </marker>
             </defs>
+            {/* Medallion swimlane bands — rendered behind edges + nodes.
+                Each band covers one visual row (NODE_H + ROW_GAP) so the flow
+                reads bronze → silver → gold → ops top-to-bottom. */}
+            <g aria-hidden>
+              {Array.from({ length: maxRow + 1 }, (_, rowIdx) => {
+                const layer = ROW_MEDALLION[rowIdx] ?? 'ops';
+                const band = MEDALLION_BAND[layer];
+                const y = PAD + rowIdx * (NODE_H + ROW_GAP) - ROW_GAP / 2;
+                const h = NODE_H + ROW_GAP;
+                return (
+                  <rect
+                    key={`medallion-band-${rowIdx}`}
+                    x={0}
+                    y={y}
+                    width={svgW}
+                    height={h}
+                    fill={band.fill}
+                    stroke={band.stroke}
+                    strokeWidth={1}
+                    rx={6}
+                  />
+                );
+              })}
+            </g>
             {dag.edges.map((e) => {
               const edgeKey = `${e.source}-${e.target}`;
               return (
@@ -900,6 +959,27 @@ export function PipelineDAG({ dag, run, loading, loadError, onRetryLoad, onRetry
             );
           })}
         </div>
+      </div>
+
+      {/* Medallion legend — mirrors the colored swimlane bands above. */}
+      <div
+        className="mx-auto mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 px-2 text-xs text-muted-foreground"
+        role="list"
+        aria-label="Medallion data layers"
+      >
+        {(Object.keys(MEDALLION_BAND) as MedallionLayer[]).map((layer) => (
+          <div key={layer} role="listitem" className="flex items-center gap-1.5">
+            <span
+              aria-hidden
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ backgroundColor: MEDALLION_LEGEND_DOT[layer] }}
+            />
+            <span className="font-medium">{MEDALLION_BAND[layer].label}</span>
+          </div>
+        ))}
+        <span className="ml-auto opacity-60">
+          bronze → silver → gold → ops · layer contracts enforced in CI
+        </span>
       </div>
 
       {healthDimensions && !selected && (() => {
