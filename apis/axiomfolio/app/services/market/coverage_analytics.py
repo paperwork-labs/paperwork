@@ -14,7 +14,7 @@ from app.config import settings
 from app.models.market_data import PriceData, MarketSnapshotHistory
 from app.models.index_constituent import IndexConstituent
 from app.services.market.universe import tracked_symbols_with_source
-from app.services.market.coverage_utils import compute_coverage_status
+from app.services.silver.math.coverage_utils import compute_coverage_status
 
 if TYPE_CHECKING:
     from app.services.market.market_infra import MarketInfra

@@ -31,13 +31,13 @@ from app.services.market.indicator_engine import (
     compute_trendline_counts,
     compute_weinstein_stage_from_daily,
 )
-from app.services.market.dataframe_utils import (
+from app.services.silver.math.dataframe_utils import (
     ensure_newest_first,
     ensure_oldest_first,
     price_data_rows_to_dataframe,
 )
-from app.services.market.constants import FUNDAMENTAL_FIELDS
-from app.services.market.stage_utils import compute_stage_run_lengths
+from app.services.silver.math.constants import FUNDAMENTAL_FIELDS
+from app.services.silver.math.stage_utils import compute_stage_run_lengths
 from app.services.market.stage_quality_service import normalize_stage_label
 from app.services.market.snapshot_history_writer import upsert_snapshot_history_row
 from app.services.market.fundamentals_service import needs_fundamentals

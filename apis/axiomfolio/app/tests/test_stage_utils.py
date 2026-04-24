@@ -1,4 +1,4 @@
-from app.services.market.stage_utils import compute_stage_run_lengths
+from app.services.silver.math.stage_utils import compute_stage_run_lengths
 
 
 def test_compute_stage_run_lengths_basic():

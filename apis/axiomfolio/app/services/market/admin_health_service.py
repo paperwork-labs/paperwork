@@ -405,7 +405,7 @@ class AdminHealthService:
 
     def _build_coverage_dimension(self, db: Session) -> Dict[str, Any]:
         try:
-            from app.services.market.coverage_utils import compute_coverage_status
+            from app.services.silver.math.coverage_utils import compute_coverage_status
 
             snapshot = coverage_analytics.coverage_snapshot(db)
             status_info = compute_coverage_status(snapshot)
@@ -435,7 +435,7 @@ class AdminHealthService:
 
             curated_etf_count = 0
             try:
-                from app.services.market.constants import CURATED_MARKET_SYMBOLS
+                from app.services.silver.math.constants import CURATED_MARKET_SYMBOLS
                 curated_etf_count = len(CURATED_MARKET_SYMBOLS)
             except Exception:
                 logger.debug("Failed to read CURATED_MARKET_SYMBOLS for ETF count")

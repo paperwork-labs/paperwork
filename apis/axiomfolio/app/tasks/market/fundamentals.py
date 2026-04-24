@@ -12,7 +12,7 @@ from sqlalchemy import or_
 
 from app.database import SessionLocal
 from app.models import IndexConstituent
-from app.services.market.constants import FUNDAMENTAL_FIELDS
+from app.services.silver.math.constants import FUNDAMENTAL_FIELDS
 from app.services.market.market_data_service import quote, snapshot_builder
 from app.tasks.utils.task_utils import (
     _set_task_status,

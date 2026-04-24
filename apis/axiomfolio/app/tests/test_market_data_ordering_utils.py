@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from app.services.market.dataframe_utils import ensure_newest_first, ensure_oldest_first
+from app.services.silver.math.dataframe_utils import ensure_newest_first, ensure_oldest_first
 from app.services.market.market_data_service import snapshot_builder
 
 pytestmark = pytest.mark.no_db

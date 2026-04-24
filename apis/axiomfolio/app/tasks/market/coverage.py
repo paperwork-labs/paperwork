@@ -575,7 +575,7 @@ def daily_bootstrap(
 @task_run("admin_coverage_refresh")
 def health_check() -> dict:
     """Snapshot coverage health into Redis so the Admin UI can show stale counts."""
-    from app.services.market.coverage_utils import compute_coverage_status
+    from app.services.silver.math.coverage_utils import compute_coverage_status
 
     session = SessionLocal()
     try:

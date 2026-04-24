@@ -11,7 +11,7 @@ from app.services.market.indicator_engine import (
     compute_full_indicator_series,
     compute_weinstein_stage_from_daily,
 )
-from app.services.market.stage_utils import compute_stage_run_lengths
+from app.services.silver.math.stage_utils import compute_stage_run_lengths
 
 pytestmark = pytest.mark.no_db
 

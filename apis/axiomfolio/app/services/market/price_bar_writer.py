@@ -11,7 +11,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
-from app.services.market.dataframe_utils import price_data_rows_to_dataframe
+from app.services.silver.math.dataframe_utils import price_data_rows_to_dataframe
 
 if TYPE_CHECKING:
     from app.services.market.provider_router import ProviderRouter

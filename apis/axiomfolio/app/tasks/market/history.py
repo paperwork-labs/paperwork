@@ -16,8 +16,8 @@ from sqlalchemy import func
 from app.database import SessionLocal
 from app.models import PriceData
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
-from app.services.market.constants import WEINSTEIN_WARMUP_CALENDAR_DAYS
-from app.services.market.dataframe_utils import price_data_rows_to_dataframe
+from app.services.silver.math.constants import WEINSTEIN_WARMUP_CALENDAR_DAYS
+from app.services.silver.math.dataframe_utils import price_data_rows_to_dataframe
 from app.services.market.indicator_engine import (
     classify_ma_bucket_from_ma,
     compute_core_indicators_series,
@@ -29,7 +29,7 @@ from app.services.market.snapshot_history_writer import (
     build_snapshot_history_pg_upsert_stmt,
     upsert_snapshot_history_row,
 )
-from app.services.market.stage_utils import compute_stage_run_lengths
+from app.services.silver.math.stage_utils import compute_stage_run_lengths
 from app.tasks.utils.task_utils import _get_tracked_symbols_safe, _set_task_status, task_run
 
 logger = logging.getLogger(__name__)

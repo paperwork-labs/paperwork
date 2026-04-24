@@ -9,7 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from app.services.market import market_dashboard_service as mds_module
-from app.services.market.constants import SECTOR_ETF_SYMBOLS_ORDER
+from app.services.silver.math.constants import SECTOR_ETF_SYMBOLS_ORDER
 from app.services.market.market_dashboard_service import MarketDashboardService, _SummaryRow
 
 pytestmark = pytest.mark.no_db
@@ -176,7 +176,7 @@ def test_range_histogram(monkeypatch):
 
 
 def test_rrg_sectors(monkeypatch):
-    from app.services.market.constants import SECTOR_ETF_SYMBOLS_ORDER
+    from app.services.silver.math.constants import SECTOR_ETF_SYMBOLS_ORDER
     sym = SECTOR_ETF_SYMBOLS_ORDER[0]
     rows = [_mock_snapshot(sym, rs=4.5, perf_5d=1.2)]
     result = _dashboard_helper(monkeypatch, rows, tracked=[sym])

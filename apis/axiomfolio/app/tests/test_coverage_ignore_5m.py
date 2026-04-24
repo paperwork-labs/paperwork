@@ -1,4 +1,4 @@
-from app.services.market.coverage_utils import compute_coverage_status
+from app.services.silver.math.coverage_utils import compute_coverage_status
 
 
 def test_coverage_status_ignores_5m_when_disabled():

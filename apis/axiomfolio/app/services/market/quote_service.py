@@ -13,7 +13,7 @@ from app.config import settings
 from app.database import SessionLocal
 from app.models.market_data import PriceData
 from app.services.market.provider_router import APIProvider
-from app.services.market.rate_limiter import provider_rate_limiter
+from app.services.silver.math.rate_limiter import provider_rate_limiter
 
 if TYPE_CHECKING:
     from app.services.market.market_infra import MarketInfra

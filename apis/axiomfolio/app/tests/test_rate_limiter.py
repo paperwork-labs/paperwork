@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from app.services.market.rate_limiter import TokenBucketLimiter, ProviderRateLimiter
+from app.services.silver.math.rate_limiter import TokenBucketLimiter, ProviderRateLimiter
 
 
 pytestmark = pytest.mark.no_db

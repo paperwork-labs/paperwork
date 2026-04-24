@@ -19,7 +19,7 @@ from redis.asyncio import Redis as AsyncRedis
 
 from app.models import Position
 from app.models.index_constituent import IndexConstituent
-from app.services.market.constants import CURATED_MARKET_SYMBOLS
+from app.services.silver.math.constants import CURATED_MARKET_SYMBOLS
 
 logger = logging.getLogger(__name__)
 

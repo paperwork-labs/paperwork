@@ -17,13 +17,13 @@ from app.database import SessionLocal
 from app.models import Position, PriceData
 from app.models.market_data import JobRun, MarketSnapshot, MarketSnapshotHistory
 from app.observability import traced
-from app.services.market.dataframe_utils import price_data_rows_to_dataframe
+from app.services.silver.math.dataframe_utils import price_data_rows_to_dataframe
 from app.services.market.market_data_service import (
     coverage_analytics,
     snapshot_builder,
     stage_quality,
 )
-from app.services.market.stage_utils import compute_stage_run_lengths
+from app.services.silver.math.stage_utils import compute_stage_run_lengths
 from app.tasks.utils.task_utils import (
     _fetch_daily_for_symbols,
     _get_tracked_symbols_safe,
@@ -32,7 +32,7 @@ from app.tasks.utils.task_utils import (
     setup_event_loop,
     task_run,
 )
-from app.services.market.backfill_params import daily_backfill_params
+from app.services.silver.math.backfill_params import daily_backfill_params
 
 logger = logging.getLogger(__name__)
 

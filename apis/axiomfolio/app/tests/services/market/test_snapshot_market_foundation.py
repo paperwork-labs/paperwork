@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 
 from app.models.market_data import EarningsCalendarEvent, MarketRegime, MarketSnapshot
-from app.services.market.constants import CURATED_MARKET_SYMBOLS
+from app.services.silver.math.constants import CURATED_MARKET_SYMBOLS
 from app.services.market.indicator_engine import compute_full_indicator_series, extract_latest_values
 from app.services.market.market_data_service import price_bars, snapshot_builder
 from app.services.market.snapshot_builder import next_earnings_utc_from_calendar
@@ -272,7 +272,7 @@ def test_compute_full_indicator_volume_avg_matches_rolling_volume_mean():
         },
         index=idx,
     )
-    from app.services.market.dataframe_utils import ensure_newest_first, ensure_oldest_first
+    from app.services.silver.math.dataframe_utils import ensure_newest_first, ensure_oldest_first
 
     df_oldest = ensure_oldest_first(ensure_newest_first(df))
     series = compute_full_indicator_series(df_oldest)

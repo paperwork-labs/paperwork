@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session, load_only
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from app.models.market_tracked_plan import MarketTrackedPlan
 from app.models import Position
-from app.services.market.constants import (
+from app.services.silver.math.constants import (
     SECTOR_ETF_DISPLAY_NAMES,
     SECTOR_ETF_PROXY_SYMBOLS,
     SECTOR_ETF_SYMBOLS_ORDER,

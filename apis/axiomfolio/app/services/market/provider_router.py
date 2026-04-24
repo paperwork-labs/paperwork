@@ -19,8 +19,8 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import SessionLocal
-from app.services.market.dataframe_utils import ensure_newest_first
-from app.services.market.rate_limiter import provider_rate_limiter
+from app.services.silver.math.dataframe_utils import ensure_newest_first
+from app.services.silver.math.rate_limiter import provider_rate_limiter
 
 if TYPE_CHECKING:
     from app.services.market.market_infra import MarketInfra

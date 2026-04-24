@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from app.observability import traced
-from app.services.market.atr_series import calculate_atr_series
+from app.services.silver.math.atr_series import calculate_atr_series
 
 logger = logging.getLogger(__name__)
 

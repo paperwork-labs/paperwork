@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.market_data import EarningsCalendarEvent
-from app.services.market.rate_limiter import provider_rate_limiter
+from app.services.silver.math.rate_limiter import provider_rate_limiter
 
 logger = logging.getLogger(__name__)
 

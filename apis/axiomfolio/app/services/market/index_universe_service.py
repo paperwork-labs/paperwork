@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, TYPE_CHECKING
 import fmpsdk
 
 from app.config import settings
-from app.services.market.rate_limiter import provider_rate_limiter
+from app.services.silver.math.rate_limiter import provider_rate_limiter
 
 if TYPE_CHECKING:
     from app.services.market.market_infra import MarketInfra

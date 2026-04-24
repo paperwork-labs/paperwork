@@ -14,7 +14,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.services.market.constants import WEINSTEIN_WARMUP_CALENDAR_DAYS
+from app.services.silver.math.constants import WEINSTEIN_WARMUP_CALENDAR_DAYS
 
 
 # ---------------------------------------------------------------------------

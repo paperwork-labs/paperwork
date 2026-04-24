@@ -92,7 +92,7 @@ class VolatilityService:
             return result
 
         import aiohttp
-        from app.services.market.rate_limiter import provider_rate_limiter
+        from app.services.silver.math.rate_limiter import provider_rate_limiter
 
         symbols = {"vix": "^VIX", "vvix": "^VVIX", "vix3m": "^VIX3M"}
         quotes: Dict[str, float] = {}

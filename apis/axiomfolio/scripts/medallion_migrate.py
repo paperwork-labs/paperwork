@@ -69,7 +69,7 @@ def _path_to_module(rel: str) -> str:
     """Convert a services-relative path to a dotted module name.
 
     ``market/providers/__init__.py`` -> ``app.services.market.providers``
-    ``market/atr_series.py``         -> ``app.services.market.atr_series``
+    ``market/atr_series.py``         -> ``app.services.silver.math.atr_series``
     ``market/providers``             -> ``app.services.market.providers``
     """
     if rel.endswith("/__init__.py"):

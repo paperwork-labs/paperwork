@@ -10,7 +10,7 @@ import fmpsdk
 import yfinance as yf
 
 from app.config import settings
-from app.services.market.constants import FUNDAMENTAL_FIELDS, ETF_SECTOR_INDUSTRY
+from app.services.silver.math.constants import FUNDAMENTAL_FIELDS, ETF_SECTOR_INDUSTRY
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class FundamentalsService:
         Provider order: FMP -> Finnhub -> yfinance -> Alpha Vantage.
         Each subsequent provider only fills fields still missing.
         """
-        from app.services.market.rate_limiter import provider_rate_limiter
+        from app.services.silver.math.rate_limiter import provider_rate_limiter
 
         info: Dict[str, Any] = {}
 
