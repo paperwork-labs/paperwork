@@ -10,7 +10,7 @@ alembic>=1.14.0
 
 # Validation & settings
 pydantic>=2.10.0
-pydantic-settings>=2.6.0
+pydantic-settings>=2.14.0
 pydantic[email]>=2.10.0
 python-multipart>=0.0.17
 
