@@ -71,13 +71,10 @@ jobs:
 
           Rules: dependabot-auto-approve.yaml — patch/minor/group bumps approve automatically."
 
-      - name: Enable automerge (squash)
-        if: steps.classify.outputs.decision == 'safe'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_URL: ${{ github.event.pull_request.html_url }}
-        run: |
-          gh pr merge "$PR_URL" --auto --squash
+      # Note: we do NOT call `gh pr merge --auto` here. The repo is on GitHub
+      # Free which blocks auto-merge + branch protection. Instead, auto-merge.yaml
+      # (event-driven on review + check_suite) and auto-merge-sweep.yaml
+      # (10-min scheduled poll) handle the actual merge once CI is green.
 
       - name: Label majors for LLM triage
         if: steps.classify.outputs.decision == 'major'

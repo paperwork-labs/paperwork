@@ -10,32 +10,45 @@ majors go through a cheap Claude Haiku triage before they need human eyes.
 dependabot opens PR
   │
   ▼
-dependabot-auto-approve.yaml
-  ├── patch | minor | grouped-minor  ──►  approve + automerge (squash)
-  ├── major                           ──►  label "deps:major" + comment
-  └── unknown                         ──►  label "dependencies, needs-human-review"
+dependabot-auto-approve.yaml                           dependabot-major-triage.yaml
+  ├── patch | minor | grouped-minor  ──►  approve                  ▲
+  ├── major                          ──►  label `deps:major` ─────┘
+  └── unknown                        ──►  label `needs-human-review`
                                           (fetch-metadata couldn't classify)
-                            │
-                            ▼
-              dependabot-major-triage.yaml
-                (triggered by label = deps:major)
-                            │
-                            ▼
-               .github/scripts/dependabot_triage.py
-                            │
-                            ▼
-                 Anthropic Claude Haiku
-                            │
-                            ▼
-       PR comment + label: risk:low | risk:medium | risk:high
+  │                                           │
+  │                                           ▼
+  │                              .github/scripts/dependabot_triage.py
+  │                                           │
+  │                                           ▼
+  │                                 Anthropic Claude Haiku
+  │                                           │
+  │                                           ▼
+  │              PR comment + label: risk:low | risk:medium | risk:high
+  │
+  ▼
+auto-merge.yaml   (event-driven: on review + on check_suite completed)
+  │
+  ▼
+auto-merge-sweep.yaml   (scheduled every 10 min — catches races)
+  │
+  ▼
+squash-merge when APPROVED + all CI green + no deps:major / needs-human-review / do-not-merge labels
 ```
+
+**Why two merge workflows?** GitHub Free + private repo doesn't support the
+native auto-merge feature (`allow_auto_merge: false` is enforced by the plan).
+The event-driven `auto-merge.yaml` merges on approval when CI is already green;
+the scheduled `auto-merge-sweep.yaml` catches the race where a PR gets approved
+first and CI finishes later.
 
 ## Files
 
 | Path | Purpose |
 |---|---|
-| `.github/workflows/dependabot-auto-approve.yaml` | Classifier + approver + automerger for safe bumps. |
+| `.github/workflows/dependabot-auto-approve.yaml` | Classifier + approver for safe bumps. Labels majors `deps:major`. |
 | `.github/workflows/dependabot-major-triage.yaml` | LLM triage for `deps:major` PRs. |
+| `.github/workflows/auto-merge.yaml` | Merges approved + green PRs on review or check_suite events. |
+| `.github/workflows/auto-merge-sweep.yaml` | Scheduled poll (10m) — catches approval-before-CI-done races. |
 | `.github/scripts/dependabot_triage.py` | Python script: calls Claude Haiku, renders markdown comment. |
 
 ## Risk tiering (from the LLM prompt)

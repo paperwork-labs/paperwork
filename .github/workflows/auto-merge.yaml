@@ -1,45 +1,127 @@
 name: Auto-merge on approval
 
+# Merges an approved PR when CI is green.
+#
+# Two triggers:
+#   1. pull_request_review: when a review hits APPROVED, try immediate merge
+#      (works if CI is already green).
+#   2. check_suite: completed — when the last failing/pending check flips to
+#      success, sweep all open approved PRs on the head SHA and merge the
+#      ready ones. This covers the "approved before CI finished" race.
+#
+# Uses github.rest.pulls.merge (immediate merge), not auto-merge. The repo is
+# on GitHub Free which blocks the auto-merge feature, so we poll-merge via
+# Actions events instead.
+
 on:
   pull_request_review:
     types: [submitted]
+  check_suite:
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to attempt merge on
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
 
 jobs:
-  auto-merge:
-    if: github.event.review.state == 'approved'
+  maybe-merge:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    timeout-minutes: 5
     steps:
       - uses: actions/github-script@v7
         with:
           script: |
-            const pr = context.payload.pull_request;
-            const { data: checks } = await github.rest.checks.listForRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: pr.head.sha,
-            });
-            const notReady = checks.check_runs.filter(
-              (c) => c.name !== 'auto-merge' &&
-                !(c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion))
-            );
-            if (notReady.length > 0) {
-              const blockers = notReady.map((c) =>
-                c.status !== 'completed' ? `${c.name} (${c.status})` : `${c.name} (${c.conclusion})`
-              );
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: pr.number,
-                body: `:x: Auto-merge blocked \u2014 waiting on: ${blockers.join(', ')}`,
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            async function allChecksPass(sha) {
+              const { data: checks } = await github.rest.checks.listForRef({
+                owner, repo, ref: sha, per_page: 100,
               });
-              return;
+              const notReady = checks.check_runs.filter(
+                (c) => c.name !== 'auto-merge' &&
+                  !(c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion))
+              );
+              return { ok: notReady.length === 0, notReady };
             }
-            await github.rest.pulls.merge({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number,
-              merge_method: 'squash',
-            });
+
+            async function tryMerge(pull) {
+              if (pull.state !== 'open' || pull.draft) return { action: 'skip', reason: 'not open / draft' };
+              if (!pull.mergeable && pull.mergeable !== null) {
+                return { action: 'skip', reason: 'not mergeable (conflicts?)' };
+              }
+              // Require an approving review (non-bot).
+              const { data: reviews } = await github.rest.pulls.listReviews({
+                owner, repo, pull_number: pull.number, per_page: 100,
+              });
+              const latestByUser = new Map();
+              for (const r of reviews) {
+                if (r.user && r.user.login) latestByUser.set(r.user.login, r.state);
+              }
+              const approved = [...latestByUser.values()].some((s) => s === 'APPROVED');
+              if (!approved) return { action: 'skip', reason: 'no approving review' };
+
+              const { ok, notReady } = await allChecksPass(pull.head.sha);
+              if (!ok) {
+                return { action: 'skip', reason: `CI pending: ${notReady.map(c => c.name).slice(0, 5).join(', ')}` };
+              }
+
+              try {
+                await github.rest.pulls.merge({
+                  owner, repo, pull_number: pull.number, merge_method: 'squash',
+                });
+                return { action: 'merged' };
+              } catch (e) {
+                return { action: 'error', reason: e.message };
+              }
+            }
+
+            const eventName = context.eventName;
+            const summaries = [];
+
+            if (eventName === 'pull_request_review') {
+              if (context.payload.review.state !== 'approved') {
+                core.info('review not approved, skipping');
+                return;
+              }
+              const pr = context.payload.pull_request;
+              const r = await tryMerge(pr);
+              summaries.push(`#${pr.number}: ${r.action}${r.reason ? ' — ' + r.reason : ''}`);
+            } else if (eventName === 'check_suite') {
+              if (context.payload.check_suite.conclusion !== 'success') {
+                core.info('check_suite not success, skipping');
+                return;
+              }
+              const headSha = context.payload.check_suite.head_sha;
+              // Find all open PRs with this head SHA.
+              const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner, repo, commit_sha: headSha,
+              });
+              for (const prStub of prs) {
+                if (prStub.state !== 'open') continue;
+                const { data: pr } = await github.rest.pulls.get({
+                  owner, repo, pull_number: prStub.number,
+                });
+                const r = await tryMerge(pr);
+                summaries.push(`#${pr.number}: ${r.action}${r.reason ? ' — ' + r.reason : ''}`);
+              }
+            } else if (eventName === 'workflow_dispatch') {
+              const num = parseInt(core.getInput('pr_number') || context.payload.inputs?.pr_number || '0', 10);
+              if (!num) {
+                core.setFailed('pr_number required for workflow_dispatch');
+                return;
+              }
+              const { data: pr } = await github.rest.pulls.get({
+                owner, repo, pull_number: num,
+              });
+              const r = await tryMerge(pr);
+              summaries.push(`#${pr.number}: ${r.action}${r.reason ? ' — ' + r.reason : ''}`);
+            }
+
+            core.info(summaries.join('\n') || 'no action taken');

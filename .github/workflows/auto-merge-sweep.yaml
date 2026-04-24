@@ -1,0 +1,86 @@
+name: Auto-merge sweep (scheduled)
+
+# Safety net for the event-driven auto-merge.yaml. Every 10 minutes, look at
+# all open PRs, and if any are APPROVED + green + mergeable, squash-merge them.
+#
+# Why: GitHub Free + private repos don't support auto-merge or branch
+# protection, and event-driven workflows occasionally miss the moment the
+# last check flips to green (race conditions, rate limits). A cheap 10-min
+# poll ensures nothing sits in "approved, waiting on CI" forever.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const { data: prs } = await github.rest.pulls.list({
+              owner, repo, state: 'open', per_page: 100, sort: 'updated', direction: 'desc',
+            });
+
+            const mergeable = [];
+
+            for (const stub of prs) {
+              if (stub.draft) continue;
+
+              const labels = stub.labels.map((l) => l.name);
+              // Never auto-merge majors or human-review-required PRs.
+              if (labels.includes('deps:major')) continue;
+              if (labels.includes('needs-human-review')) continue;
+              if (labels.includes('do-not-merge')) continue;
+
+              const { data: pr } = await github.rest.pulls.get({
+                owner, repo, pull_number: stub.number,
+              });
+
+              if (pr.mergeable === false) continue;
+
+              const { data: reviews } = await github.rest.pulls.listReviews({
+                owner, repo, pull_number: pr.number, per_page: 100,
+              });
+              const latestByUser = new Map();
+              for (const r of reviews) {
+                if (r.user && r.user.login) latestByUser.set(r.user.login, r.state);
+              }
+              const approved = [...latestByUser.values()].some((s) => s === 'APPROVED');
+              if (!approved) continue;
+
+              const { data: checks } = await github.rest.checks.listForRef({
+                owner, repo, ref: pr.head.sha, per_page: 100,
+              });
+              const notReady = checks.check_runs.filter(
+                (c) => c.name !== 'auto-merge' && c.name !== 'Auto-merge sweep (scheduled)' &&
+                  !(c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion))
+              );
+              if (notReady.length > 0) continue;
+
+              try {
+                await github.rest.pulls.merge({
+                  owner, repo, pull_number: pr.number, merge_method: 'squash',
+                });
+                mergeable.push(pr.number);
+              } catch (e) {
+                core.warning(`#${pr.number}: ${e.message}`);
+              }
+            }
+
+            if (mergeable.length > 0) {
+              core.info(`Merged: ${mergeable.join(', ')}`);
+            } else {
+              core.info('No PRs ready to merge.');
+            }
