@@ -1,7 +1,7 @@
 """Optuna-driven walk-forward hyperparameter optimization.
 
 This is a *new* optimizer that complements (does not replace) the existing
-:class:`app.services.strategy.walk_forward.WalkForwardAnalyzer`. The
+:class:`app.services.gold.strategy.walk_forward.WalkForwardAnalyzer`. The
 older analyzer runs a single parameter set across multiple folds and
 applies veto gates; this module *searches* a parameter space with Optuna,
 scores each trial on out-of-sample windows, and reports per-regime
@@ -12,7 +12,7 @@ Architecture
 
 1. The caller supplies a ``StrategyBuilder`` callable that turns a
    ``params`` dict into ``(entry_rules, exit_rules)`` for the existing
-   :class:`app.services.strategy.backtest_engine.BacktestEngine`. We
+   :class:`app.services.gold.strategy.backtest_engine.BacktestEngine`. We
    never modify the engine — the optimizer is a thin shell that asks the
    engine to run on each train/test window.
 2. The dataset is described by a list of symbols + date range. Splits are

@@ -90,7 +90,7 @@ def _schwab_filled_is_opening_and_metadata(
 
     Schwab's Trader API provides ``positionEffect`` (OPENING/CLOSING) on transfer
     items. When present, it must drive ``is_opening`` so short options and
-    covers match :func:`~app.services.portfolio.closing_lot_matcher.reconcile_closing_lots`.
+    covers match :func:`~app.services.silver.portfolio.closing_lot_matcher.reconcile_closing_lots`.
     When absent, we fall back to the equity-style heuristic (BUY opens, SELL closes),
     which is correct for long options only.
     """

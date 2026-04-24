@@ -10,7 +10,7 @@ only (no trading — Plaid Investments doesn't expose order entry).
 * :class:`PlaidClient` — thin SDK wrapper that also handles Fernet
   encrypt/decrypt of access tokens.
 * :class:`PlaidSyncService` — implements the ``sync_account_comprehensive``
-  protocol consumed by :class:`app.services.portfolio.broker_sync_service.BrokerSyncService`.
+  protocol consumed by :class:`app.services.bronze.broker_sync_service.BrokerSyncService`.
 * :func:`persist_holdings` — pipeline that upserts :class:`Position` +
   :class:`TaxLot` rows from a holdings payload.
 

@@ -35,11 +35,11 @@ def _mock_service():
     mock_coverage_analytics = MagicMock()
     mock_stage_quality = MagicMock()
     patchers = [
-        patch("app.services.market.admin_health_service.infra", mock_infra),
-        patch("app.services.market.admin_health_service.coverage_analytics", mock_coverage_analytics),
-        patch("app.services.market.admin_health_service.stage_quality", mock_stage_quality),
+        patch("app.services.silver.market.admin_health_service.infra", mock_infra),
+        patch("app.services.silver.market.admin_health_service.coverage_analytics", mock_coverage_analytics),
+        patch("app.services.silver.market.admin_health_service.stage_quality", mock_stage_quality),
         patch(
-            "app.services.market.admin_health_service.AdminHealthService.__init__",
+            "app.services.silver.market.admin_health_service.AdminHealthService.__init__",
             lambda self: None,
         ),
     ]
@@ -172,7 +172,7 @@ def test_coverage_green_when_above_threshold():
         },
     }
     with patch(
-        "app.services.market.coverage_utils.compute_coverage_status",
+        "app.services.silver.math.coverage_utils.compute_coverage_status",
         return_value={
             "daily_pct": 98.0,
             "stale_daily": 0,
@@ -195,7 +195,7 @@ def test_coverage_red_when_stale():
     db = MagicMock()
     svc._svc.coverage_analytics.coverage_snapshot.return_value = {}
     with patch(
-        "app.services.market.coverage_utils.compute_coverage_status",
+        "app.services.silver.math.coverage_utils.compute_coverage_status",
         return_value={"daily_pct": 50.0, "stale_daily": 5, "m5_pct": 0, "stale_m5": 0, "tracked_count": 500},
     ):
         dim = svc._build_coverage_dimension(db)
@@ -215,7 +215,7 @@ def test_coverage_red_when_index_has_zero_constituents():
         },
     }
     with patch(
-        "app.services.market.coverage_utils.compute_coverage_status",
+        "app.services.silver.math.coverage_utils.compute_coverage_status",
         return_value={"daily_pct": 98.0, "stale_daily": 0, "m5_pct": 90.0, "stale_m5": 0, "tracked_count": 500},
     ):
         dim = svc._build_coverage_dimension(db)
@@ -414,7 +414,7 @@ def test_fundamentals_ok_at_pass_threshold():
     q.scalar.return_value = 80
 
     with patch(
-        "app.services.market.universe.tracked_symbols_with_source",
+        "app.services.silver.market.universe.tracked_symbols_with_source",
         return_value=(["S" + str(i) for i in range(100)], True),
     ):
         dim = svc._build_fundamentals_dimension(db)
@@ -432,7 +432,7 @@ def test_fundamentals_warning_between_warn_and_pass():
     q.scalar.return_value = 60
 
     with patch(
-        "app.services.market.universe.tracked_symbols_with_source",
+        "app.services.silver.market.universe.tracked_symbols_with_source",
         return_value=(["S" + str(i) for i in range(100)], True),
     ):
         dim = svc._build_fundamentals_dimension(db)
@@ -448,7 +448,7 @@ def test_fundamentals_error_below_warn():
     q.scalar.return_value = 10
 
     with patch(
-        "app.services.market.universe.tracked_symbols_with_source",
+        "app.services.silver.market.universe.tracked_symbols_with_source",
         return_value=(["S" + str(i) for i in range(100)], True),
     ):
         dim = svc._build_fundamentals_dimension(db)

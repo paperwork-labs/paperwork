@@ -96,7 +96,7 @@ def test_next_earnings_utc_today_eod_stays_future_dated(db_session, monkeypatch)
             return stdlib_datetime.datetime.combine(d, t, tzinfo=tzinfo)
 
     monkeypatch.setattr(
-        "app.services.market.snapshot_builder.datetime",
+        "app.services.silver.market.snapshot_builder.datetime",
         _FauxDateTime,
     )
     d_today = fixed.date()
@@ -221,7 +221,7 @@ def test_earnings_calendar_exception_preserves_next_earnings_and_increments_erro
         raise RuntimeError("transient calendar db")
 
     monkeypatch.setattr(
-        "app.services.market.snapshot_builder.next_earnings_utc_from_calendar",
+        "app.services.silver.market.snapshot_builder.next_earnings_utc_from_calendar",
         _raise,
     )
     m: dict[str, int] = {}

@@ -2,7 +2,7 @@
 
 Implements the ``sync_account_comprehensive(account_number, session,
 user_id=...)`` contract consumed by
-:class:`app.services.portfolio.broker_sync_service.BrokerSyncService`.
+:class:`app.services.bronze.broker_sync_service.BrokerSyncService`.
 
 Unlike the IBKR service this one is synchronous — the Plaid SDK is
 blocking and the returned payload is small, so there's no benefit to

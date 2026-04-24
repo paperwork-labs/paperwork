@@ -7,7 +7,7 @@ The landing zone for the medallion architecture (decision D127):
   each exposes a ``SyncService`` with a ``sync_account_comprehensive``
   entry point (synchronous for E*TRADE; async coroutine for TastyTrade
   and IBKR) matching the contract enforced by
-  ``app.services.portfolio.broker_sync_service.BrokerSyncService``
+  ``app.services.bronze.broker_sync_service.BrokerSyncService``
   (the dispatcher awaits awaitables and passes through sync returns).
 * **Silver** (``app/services/silver/*``) — enrichment on top of
   bronze output: indicator engine, stage classification, closing-lot

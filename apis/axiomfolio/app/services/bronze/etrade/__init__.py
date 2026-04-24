@@ -12,7 +12,7 @@ Public surface:
   portfolio, transactions) and never duplicates the OAuth 1.0a HMAC-SHA1
   signing logic.
 * :class:`ETradeSyncService` — mirrors
-  ``app.services.portfolio.schwab_sync_service.SchwabSyncService``:
+  ``app.services.bronze.schwab.sync_service.SchwabSyncService``:
   per-account ``sync_account_comprehensive(account_number, session)`` that
   writes positions, options, transactions, trades, dividends and balances.
   Emits ``written / skipped / errors`` counters per the no-silent-fallback

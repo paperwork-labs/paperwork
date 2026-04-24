@@ -31,7 +31,7 @@ _MAX_ROWS = 50
 _DIM_WEIGHT = Decimal("20")
 
 # Early Stage 2 substages (SMA150 anchor). Matches labels from
-# :func:`app.services.market.stage_classifier.classify_stage_for_timeframe`.
+# :func:`app.services.silver.regime.stage_classifier.classify_stage_for_timeframe`.
 _EARLY_STAGE_2_SUBSTAGES: tuple[str, ...] = ("2A", "2B")
 
 _STAGES_SQL = ", ".join(f"'{s}'" for s in _EARLY_STAGE_2_SUBSTAGES)

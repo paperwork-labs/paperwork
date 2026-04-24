@@ -1,4 +1,4 @@
-"""Tests for :class:`app.services.portfolio.plaid.sync_service.PlaidSyncService`.
+"""Tests for :class:`app.services.bronze.plaid.sync_service.PlaidSyncService`.
 
 These are **integration** tests: they use the `db_session` fixture to
 exercise SQLAlchemy models, but stub the Plaid SDK via a fake

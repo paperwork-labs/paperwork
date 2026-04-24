@@ -2,7 +2,7 @@
 Build :class:`Anomaly` objects from operational signals.
 
 The composite-health JSON returned by
-:meth:`app.services.market.admin_health_service.AdminHealthService.get_composite_health`
+:meth:`app.services.silver.market.admin_health_service.AdminHealthService.get_composite_health`
 is the canonical source of "what's currently broken" in the platform.
 This module turns each non-green dimension into a typed :class:`Anomaly`
 that :class:`AnomalyExplainer` can ground an explanation on.

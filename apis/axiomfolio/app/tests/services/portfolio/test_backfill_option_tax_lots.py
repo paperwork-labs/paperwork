@@ -257,7 +257,7 @@ def test_backfill_account_failure_does_not_poison_batch(
         return real(session, account, **kw)
 
     with patch(
-        "app.services.portfolio.closing_lot_matcher.reconcile_closing_lots",
+        "app.services.silver.portfolio.closing_lot_matcher.reconcile_closing_lots",
         new=_selective,
     ):
         result = backfill_option_tax_lots.run(user_id=user.id)

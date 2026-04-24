@@ -128,7 +128,7 @@ def test_reconcile_error_production_continues_and_records_anomaly(
     )
     fake_r = _FakeRedis()
     monkeypatch.setattr(
-        "app.services.market.market_data_service.infra",
+        "app.services.silver.market.market_data_service.infra",
         SimpleNamespace(redis_client=fake_r),
     )
     monkeypatch.setattr(settings, "ENVIRONMENT", "production", raising=False)
@@ -184,7 +184,7 @@ def test_reconcile_error_development_re_raises(
     )
     fake_r = _FakeRedis()
     monkeypatch.setattr(
-        "app.services.market.market_data_service.infra",
+        "app.services.silver.market.market_data_service.infra",
         SimpleNamespace(redis_client=fake_r),
     )
     monkeypatch.setattr(settings, "ENVIRONMENT", "development", raising=False)

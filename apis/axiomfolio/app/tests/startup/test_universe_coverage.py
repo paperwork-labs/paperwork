@@ -75,7 +75,7 @@ def test_gap_warns_and_counts(db_session) -> None:
     db_session.commit()
 
     with patch(
-        "app.services.market.universe.tracked_symbols_with_source",
+        "app.services.silver.market.universe.tracked_symbols_with_source",
         return_value=(["GOOGL"], True),
     ):
         r = run_universe_coverage_check(db_session)
@@ -94,7 +94,7 @@ def test_no_positions_healthy(db_session) -> None:
     db_session.commit()
 
     with patch(
-        "app.services.market.universe.tracked_symbols_with_source",
+        "app.services.silver.market.universe.tracked_symbols_with_source",
         return_value=(["SPY"], True),
     ):
         r = run_universe_coverage_check(db_session)
@@ -109,7 +109,7 @@ def test_tracked_universe_load_error_surfaces_without_raising(db_session) -> Non
     if db_session is None:
         return
     with patch(
-        "app.services.market.universe.tracked_symbols_with_source",
+        "app.services.silver.market.universe.tracked_symbols_with_source",
         side_effect=RuntimeError("boom"),
     ):
         r = run_universe_coverage_check(db_session)

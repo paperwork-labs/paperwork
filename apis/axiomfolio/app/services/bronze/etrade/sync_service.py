@@ -1,9 +1,9 @@
 """E*TRADE bronze-layer sync service.
 
-Mirrors the shape of :class:`app.services.portfolio.schwab_sync_service.SchwabSyncService`:
+Mirrors the shape of :class:`app.services.bronze.schwab.sync_service.SchwabSyncService`:
 
 * ``sync_account_comprehensive(account_number, session)`` — the single entry
-  point invoked by :class:`app.services.portfolio.broker_sync_service.BrokerSyncService`.
+  point invoked by :class:`app.services.bronze.broker_sync_service.BrokerSyncService`.
 * Credentials live in :class:`app.models.broker_oauth_connection.BrokerOAuthConnection`
   (OAuth broker foundation), not ``AccountCredentials`` — this is the first
   sync service built on top of the new OAuth plumbing and sets the pattern

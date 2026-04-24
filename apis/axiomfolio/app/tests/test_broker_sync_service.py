@@ -92,7 +92,7 @@ class TestBrokerSyncService:
 
         print("✅ Available brokers listing working correctly")
 
-    @patch("app.services.portfolio.broker_sync_service.IBKRSyncService")
+    @patch("app.services.bronze.broker_sync_service.IBKRSyncService")
     def test_sync_ibkr_account(
         self, mock_ibkr_service, broker_sync_service, db_session, test_ibkr_account
     ):
@@ -123,7 +123,7 @@ class TestBrokerSyncService:
 
         print("✅ IBKR account sync routing working correctly")
 
-    @patch("app.services.portfolio.broker_sync_service.TastyTradeSyncService")
+    @patch("app.services.bronze.broker_sync_service.TastyTradeSyncService")
     def test_sync_tastytrade_account(
         self, mock_tt_service, broker_sync_service, db_session, test_tastytrade_account
     ):
@@ -322,8 +322,8 @@ class TestBrokerSyncService:
 
         print("✅ Unknown broker handling working correctly")
 
-    @patch("app.services.portfolio.broker_sync_service.IBKRSyncService")
-    @patch("app.services.portfolio.broker_sync_service.TastyTradeSyncService")
+    @patch("app.services.bronze.broker_sync_service.IBKRSyncService")
+    @patch("app.services.bronze.broker_sync_service.TastyTradeSyncService")
     def test_sync_all_accounts(
         self,
         mock_tt_service,
@@ -366,7 +366,7 @@ class TestBrokerSyncService:
         """Test that account sync status is updated properly."""
         # Mock successful sync
         with patch(
-            "app.services.portfolio.broker_sync_service.IBKRSyncService"
+            "app.services.bronze.broker_sync_service.IBKRSyncService"
         ) as mock_service:
             mock_instance = Mock()
             mock_service.return_value = mock_instance
@@ -392,7 +392,7 @@ class TestBrokerSyncService:
         """Test error handling during sync operations."""
         # Mock sync failure
         with patch(
-            "app.services.portfolio.broker_sync_service.IBKRSyncService"
+            "app.services.bronze.broker_sync_service.IBKRSyncService"
         ) as mock_service:
             mock_instance = Mock()
             mock_service.return_value = mock_instance
