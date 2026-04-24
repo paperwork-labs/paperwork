@@ -50,7 +50,7 @@ services:
       - "${BACKEND_HOST_PORT}:8000"
     volumes:
       - ..:/app
-      - /app/backend/__pycache__
+      - /app/app/__pycache__
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,7 +67,7 @@ services:
       - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
       - NEW_RELIC_LOG=stdout
       - NEW_RELIC_LOG_LEVEL=info
-    command: sh -c "cd /app && python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --log-level info --reload --reload-dir /app/backend"
+    command: sh -c "cd /app && python -m uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --log-level info --reload --reload-dir /app/app"
     networks:
       - axiomfolio_network
     restart: unless-stopped
@@ -86,7 +86,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
       - IBKR_HOST=${IBKR_HOST}
     volumes:
-      - ../backend:/app/backend
+      - ../app:/app/app
       - ../requirements.txt:/app/requirements.txt
     depends_on:
       postgres:
@@ -99,12 +99,12 @@ services:
       - axiomfolio_network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "celery -A backend.tasks.celery_app inspect ping --timeout 5 2>/dev/null || exit 1"]
+      test: ["CMD-SHELL", "celery -A app.tasks.celery_app inspect ping --timeout 5 2>/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
-    command: bash -lc "celery -A backend.tasks.celery_app worker -Q celery,account_sync,orders --loglevel=info"
+    command: bash -lc "celery -A app.tasks.celery_app worker -Q celery,account_sync,orders --loglevel=info"
 
   celery_beat:
     build:
@@ -120,7 +120,7 @@ services:
       - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
       - IBKR_HOST=${IBKR_HOST}
     volumes:
-      - ../backend:/app/backend
+      - ../app:/app/app
       - ../requirements.txt:/app/requirements.txt
     depends_on:
       postgres:
@@ -132,7 +132,7 @@ services:
     networks:
       - axiomfolio_network
     restart: unless-stopped
-    command: bash -lc "celery -A backend.tasks.celery_app beat --loglevel=info"
+    command: bash -lc "celery -A app.tasks.celery_app beat --loglevel=info"
 
   flower:
     build:
@@ -151,49 +151,14 @@ services:
       - celery_worker
     networks:
       - axiomfolio_network
-    command: bash -lc "export FLOWER_UNAUTHENTICATED_API=1; celery -A backend.tasks.celery_app flower --address=0.0.0.0 --port=5555"
+    command: bash -lc "export FLOWER_UNAUTHENTICATED_API=1; celery -A app.tasks.celery_app flower --address=0.0.0.0 --port=5555"
 
-  frontend:
-    build:
-      context: ..
-      dockerfile: Dockerfile.frontend
-      target: dev
-    container_name: frontend
-    environment:
-      - VITE_API_BASE_URL=/api/v1
-      - CHOKIDAR_USEPOLLING=true
-    volumes:
-      - ../frontend:/app
-      - /app/node_modules
-    ports:
-      - "${WEB_HOST_PORT}:3000"
-    depends_on:
-      - backend
-    networks:
-      - axiomfolio_network
-    command: npm run dev
-
-  ladle:
-    build:
-      context: ..
-      dockerfile: Dockerfile.frontend
-      target: dev
-    container_name: ladle
-    environment:
-      - VITE_API_BASE_URL=/api/v1
-      - CHOKIDAR_USEPOLLING=true
-    volumes:
-      - ../frontend:/app
-      - /app/node_modules
-    ports:
-      - "${LADLE_HOST_PORT:-61000}:61000"
-    depends_on:
-      - backend
-    networks:
-      - axiomfolio_network
-    command: npm run ladle -- --host 0.0.0.0 --port 61000
-    profiles:
-      - ui
+  # Frontend (Vite) and Ladle have moved out of docker. The frontend now lives
+  # at apps/axiomfolio/ as a pnpm workspace member and is driven via:
+  #   pnpm dev:axiomfolio       (from repo root)
+  #   pnpm --filter @paperwork-labs/axiomfolio run ladle
+  # This matches the house pattern (FileFree, LaunchFree, Studio, Distill,
+  # Trinkets — none of them live in docker compose).
 
   ib-gateway:
     image: ghcr.io/extrange/ibkr:stable

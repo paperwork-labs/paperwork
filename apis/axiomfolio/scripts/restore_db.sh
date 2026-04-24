@@ -80,7 +80,7 @@ fi
 echo "Step 3/3: Running Alembic migrations (catch up if backup is older)..."
 cd "$(dirname "$0")/.."
 if command -v alembic &>/dev/null; then
-    alembic -c backend/alembic.ini upgrade head 2>&1 | tail -3
+    alembic -c app/alembic.ini upgrade head 2>&1 | tail -3
 else
     echo "  (alembic not found locally; migrations will run on next 'make up')"
 fi

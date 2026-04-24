@@ -52,12 +52,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-SERVICES = REPO / "backend" / "services"
+SERVICES = REPO / "app" / "services"
 MAP_PATH = REPO / "medallion_move_map.yaml"
 
 # Directories to scan for import/string-literal rewrites. Anything
 # outside these is considered ineligible (e.g. node_modules, .venv).
-SCAN_DIRS = ["backend", "scripts", "tests"]
+SCAN_DIRS = ["app", "scripts"]
 
 
 # -------------------------------------------------------------------
@@ -68,21 +68,21 @@ SCAN_DIRS = ["backend", "scripts", "tests"]
 def _path_to_module(rel: str) -> str:
     """Convert a services-relative path to a dotted module name.
 
-    ``market/providers/__init__.py`` -> ``backend.services.market.providers``
-    ``market/atr_series.py``         -> ``backend.services.market.atr_series``
-    ``market/providers``             -> ``backend.services.market.providers``
+    ``market/providers/__init__.py`` -> ``app.services.market.providers``
+    ``market/atr_series.py``         -> ``app.services.market.atr_series``
+    ``market/providers``             -> ``app.services.market.providers``
     """
     if rel.endswith("/__init__.py"):
         rel = rel[: -len("/__init__.py")]
     elif rel.endswith(".py"):
         rel = rel[:-3]
-    return "backend.services." + rel.replace("/", ".")
+    return "app.services." + rel.replace("/", ".")
 
 
 @dataclass(frozen=True)
 class Move:
-    source: str          # relative to backend/services/
-    target: str          # relative to backend/services/
+    source: str          # relative to app/services/
+    target: str          # relative to app/services/
     pass_name: str
 
     @property
@@ -266,7 +266,7 @@ def ensure_clean_tree() -> None:
 
 
 def ensure_init_pys(target_dirs: set[Path], apply: bool) -> int:
-    """Ensure each new package dir under backend/services/ has __init__.py.
+    """Ensure each new package dir under app/services/ has __init__.py.
 
     Does not overwrite an existing __init__.py — it only creates missing
     ones. The medallion tag is deliberately minimal; check_imports.py

@@ -206,3 +206,8 @@ cache/
 *.pdf
 *.tar.gz
 *.sql.gz
+
+# Retired directory (pre-reorg 2026-04-23). User broker CSVs and large
+# postgres dumps do not belong in git — keep ignored.
+other_assets/
+*.dump

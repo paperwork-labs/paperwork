@@ -36,28 +36,28 @@ These paths match `.cursor/rules/protected-regions.mdc`. Get explicit approval b
 
 ### Capital protection (financial loss)
 
-- `backend/services/execution/risk_gate.py` — Position sizing, max order value, stage caps
-- `backend/services/execution/order_manager.py` — Order execution path, broker routing
-- `backend/services/execution/exit_cascade.py` — Stop loss, trailing stops
-- `backend/services/risk/circuit_breaker.py` — Drawdown protection, kill switch
+- `app/services/execution/risk_gate.py` — Position sizing, max order value, stage caps
+- `app/services/execution/order_manager.py` — Order execution path, broker routing
+- `app/services/execution/exit_cascade.py` — Stop loss, trailing stops
+- `app/services/risk/circuit_breaker.py` — Drawdown protection, kill switch
 
 ### Authentication / authorization
 
-- `backend/api/routes/auth.py` — Login, tokens, password reset
-- `backend/api/security.py` — JWT encoding/decoding
-- `backend/api/dependencies.py` — Auth dependencies, role checks
+- `app/api/routes/auth.py` — Login, tokens, password reset
+- `app/api/security.py` — JWT encoding/decoding
+- `app/api/dependencies.py` — Auth dependencies, role checks
 
 ### Core financial calculations (data integrity)
 
-- `backend/services/market/indicator_engine.py` — RSI, ATR, MACD, ADX, Stage Analysis
-- `backend/services/market/stage_classifier.py` — Weinstein stage classification (10 sub-stages)
-- `backend/services/market/regime_engine.py` — Market Regime R1–R5
+- `app/services/market/indicator_engine.py` — RSI, ATR, MACD, ADX, Stage Analysis
+- `app/services/market/stage_classifier.py` — Weinstein stage classification (10 sub-stages)
+- `app/services/market/regime_engine.py` — Market Regime R1–R5
 
 ### Configuration (system stability)
 
 - `backend/config.py` — Environment variables, feature flags
-- `backend/alembic/versions/*.py` — Database migrations
-- `backend/tasks/job_catalog.py` — Celery schedules, timeouts
+- `app/alembic/versions/*.py` — Database migrations
+- `app/tasks/job_catalog.py` — Celery schedules, timeouts
 
 ### Dependency manifests (supply chain / reproducible builds)
 
@@ -71,7 +71,7 @@ These paths match `.cursor/rules/protected-regions.mdc`. Get explicit approval b
 2. **Intelligence** — Market data pipeline: OHLCV → indicators → MarketSnapshot (latest) + MarketSnapshotHistory (daily ledger). Stage Analysis with SMA150 anchor, 10 sub-stages, Market Regime Engine.
 3. **Strategy** — Rule evaluator, backtester, signal generator, order engine with risk gates and exit cascade.
 
-**Medallion layers (D127, D145, Wave 0):** `backend/services/` is described in four layers plus an ops escape hatch:
+**Medallion layers (D127, D145, Wave 0):** `app/services/` is described in four layers plus an ops escape hatch:
 
 - **bronze** — raw broker and market ingestion (read-only to external world)
 - **silver** — indicators, regime, stage, enriched portfolio analytics
@@ -79,9 +79,9 @@ These paths match `.cursor/rules/protected-regions.mdc`. Get explicit approval b
 - **execution** — order placement, broker router, risk gates, approval workflow
 - **ops** — cross-cutting infra (auth, notifications, billing, observability); escape hatch, no layer rules
 
-Every file under `backend/services/` carries a `medallion: <layer>` docstring tag (Phase 0.A). CI enforces import-layer rules via `make medallion-check` (Phase 0.B): bronze → (ops only), silver → (bronze + ops), gold → (silver + bronze + ops), execution → (gold + silver + bronze + ops). Cross-layer exceptions require a `# medallion: allow <reason>` waiver.
+Every file under `app/services/` carries a `medallion: <layer>` docstring tag (Phase 0.A). CI enforces import-layer rules via `make medallion-check` (Phase 0.B): bronze → (ops only), silver → (bronze + ops), gold → (silver + bronze + ops), execution → (gold + silver + bronze + ops). Cross-layer exceptions require a `# medallion: allow <reason>` waiver.
 
-New code must be created under `backend/services/<layer>/` from the first commit. Some existing files are still at grandfathered paths (e.g. `market/*` files are tagged `silver` but not yet under `silver/`); Phase 0.C of Wave 0 completes the rename pass. See [Medallion Architecture](docs/ARCHITECTURE.md#medallion-architecture) in `docs/ARCHITECTURE.md`, decision **D127** / **D145** in `docs/KNOWLEDGE.md`, and the live audit in `docs/plans/MEDALLION_AUDIT_2026Q2.md`.
+New code must be created under `app/services/<layer>/` from the first commit. Some existing files are still at grandfathered paths (e.g. `market/*` files are tagged `silver` but not yet under `silver/`); Phase 0.C of Wave 0 completes the rename pass. See [Medallion Architecture](docs/ARCHITECTURE.md#medallion-architecture) in `docs/ARCHITECTURE.md`, decision **D127** / **D145** in `docs/KNOWLEDGE.md`, and the live audit in `docs/plans/MEDALLION_AUDIT_2026Q2.md`.
 
 ## Trading North Star
 
@@ -136,13 +136,13 @@ Context-specific AI rules activate based on which files you're editing:
 
 | Area | Path | Notes |
 |------|------|-------|
-| Indicator engine | `backend/services/market/indicator_engine.py` | All indicator computation — stages, RS, TD Sequential, ATR |
-| Regime engine | `backend/services/market/regime_engine.py` | Market Regime R1–R5 (when built) |
-| Stage classifier | `backend/services/market/stage_classifier.py` | SMA150 anchor, 10 sub-stages |
-| IBKR sync pipeline | `backend/services/portfolio/ibkr/pipeline.py` | Orchestrates FlexQuery sync |
-| Order manager | `backend/services/execution/order_manager.py` | Single execution path |
-| Risk gate | `backend/services/execution/risk_gate.py` | Position sizing, limits |
-| Job catalog | `backend/tasks/job_catalog.py` | All scheduled tasks with metadata |
+| Indicator engine | `app/services/market/indicator_engine.py` | All indicator computation — stages, RS, TD Sequential, ATR |
+| Regime engine | `app/services/market/regime_engine.py` | Market Regime R1–R5 (when built) |
+| Stage classifier | `app/services/market/stage_classifier.py` | SMA150 anchor, 10 sub-stages |
+| IBKR sync pipeline | `app/services/portfolio/ibkr/pipeline.py` | Orchestrates FlexQuery sync |
+| Order manager | `app/services/execution/order_manager.py` | Single execution path |
+| Risk gate | `app/services/execution/risk_gate.py` | Position sizing, limits |
+| Job catalog | `app/tasks/job_catalog.py` | All scheduled tasks with metadata |
 | Market dashboard | `frontend/src/pages/MarketDashboard.tsx` | Main market view |
 | Theme | `frontend/src/styles/` | Tailwind config, design tokens |
 | Chart constants | `frontend/src/constants/chart.ts` | Stage colors, heat scales |

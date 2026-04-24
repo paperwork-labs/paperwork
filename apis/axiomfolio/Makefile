@@ -1,4 +1,4 @@
-.PHONY: up up-all down down-reset ps logs build health-check warm ladle-up ladle-down ladle-logs ladle-build \
+.PHONY: up up-all down down-reset ps logs build health-check warm ladle ladle-build \
 	test-up test-syntax test test-frontend test-all test-down \
 	backend-shell frontend-shell task-run \
 	migrate-create migrate-up migrate-down migrate-stamp-head \
@@ -43,7 +43,7 @@ ps:
 	$(COMPOSE_DEV_UI) ps
 
 logs:
-	$(COMPOSE_DEV_UI) logs --tail=200 backend celery_worker celery_beat frontend ladle
+	$(COMPOSE_DEV_UI) logs --tail=200 backend celery_worker celery_beat
 
 build:
 	$(COMPOSE_DEV_UI) build
@@ -51,17 +51,13 @@ build:
 health-check:
 	./scripts/health_check.sh $(ENV_DEV)
 
-ladle-up:
-	$(COMPOSE_DEV_UI) up -d --build ladle
-
-ladle-down:
-	$(COMPOSE_DEV_UI) down
-
-ladle-logs:
-	$(COMPOSE_DEV_UI) logs --tail=200 ladle
+# Ladle now runs out of the pnpm workspace (apps/axiomfolio/), not docker.
+# Use `pnpm --filter @paperwork-labs/axiomfolio run ladle` from repo root.
+ladle:
+	cd ../../apps/axiomfolio && pnpm run ladle
 
 ladle-build:
-	$(COMPOSE_DEV_UI) run --rm ladle npm run ladle:build --silent
+	cd ../../apps/axiomfolio && pnpm run ladle:build
 
 test-up:
 	$(COMPOSE_TEST) up -d postgres_test redis_test
@@ -91,7 +87,10 @@ backend-shell:
 	$(COMPOSE_DEV) exec backend bash
 
 frontend-shell:
-	$(COMPOSE_DEV) exec frontend sh
+	@echo "frontend-shell is retired. The frontend lives at apps/axiomfolio/ as a pnpm workspace member."
+	@echo "Use: cd ../../apps/axiomfolio && pnpm dev"
+	@echo "Or from repo root: pnpm dev:axiomfolio"
+	@exit 1
 
 # Alembic migrations (dev DB only; tests run migrations against postgres_test via pytest)
 # Usage:
@@ -103,48 +102,52 @@ MSG ?=
 REV ?=
 migrate-create:
 	@if [ -z "$(MSG)" ]; then echo "Usage: make migrate-create MSG=\"message\""; exit 2; fi
-	$(COMPOSE_DEV) exec backend alembic -c backend/alembic.ini revision --autogenerate -m "$(MSG)"
+	$(COMPOSE_DEV) exec backend alembic -c app/alembic.ini revision --autogenerate -m "$(MSG)"
 
 migrate-up:
-	$(COMPOSE_DEV) exec backend alembic -c backend/alembic.ini upgrade head
+	$(COMPOSE_DEV) exec backend alembic -c app/alembic.ini upgrade head
 
 migrate-down:
 	@if [ -z "$(REV)" ]; then echo "Usage: make migrate-down REV=<revision| -1>"; exit 2; fi
-	$(COMPOSE_DEV) exec backend alembic -c backend/alembic.ini downgrade "$(REV)"
+	$(COMPOSE_DEV) exec backend alembic -c app/alembic.ini downgrade "$(REV)"
 
 migrate-stamp-head:
 	@echo "WARNING: stamp-head marks the DB as current WITHOUT running migrations."
 	@echo "This is destructive and should only be used during initial provisioning."
 	@printf "Type 'CONFIRM' to proceed: "; read confirm; [ "$$confirm" = "CONFIRM" ] || { echo "Aborted."; exit 1; }
-	$(COMPOSE_DEV) exec backend alembic -c backend/alembic.ini stamp head
+	$(COMPOSE_DEV) exec backend alembic -c app/alembic.ini stamp head
+
+# Frontend targets delegate to the pnpm workspace at apps/axiomfolio/.
+# These run LOCALLY (not in docker), matching every other paperwork app.
+FRONTEND_DIR := $(CURDIR)/../../apps/axiomfolio
 
 frontend-install:
-	$(COMPOSE_DEV) exec -T frontend npm ci
+	cd $(FRONTEND_DIR) && pnpm install --frozen-lockfile
 
 frontend-lint:
-	$(COMPOSE_DEV) exec -T frontend npm run lint
+	cd $(FRONTEND_DIR) && pnpm run lint
 
 frontend-typecheck:
-	$(COMPOSE_DEV) exec -T frontend npm run type-check
+	cd $(FRONTEND_DIR) && pnpm run type-check
 
 frontend-test:
-	$(COMPOSE_DEV) exec -T frontend npm run test
+	cd $(FRONTEND_DIR) && pnpm run test
 
 frontend-check: frontend-install frontend-lint frontend-typecheck frontend-test
 
 # Enqueue a task via Celery (dev). Example:
-# make task-run TASK=backend.tasks.market.coverage.health_check
-# make task-run TASK=backend.tasks.market.coverage.daily_bootstrap TASK_KWARGS='{"history_days":5,"history_batch_size":25}'
+# make task-run TASK=app.tasks.market.coverage.health_check
+# make task-run TASK=app.tasks.market.coverage.daily_bootstrap TASK_KWARGS='{"history_days":5,"history_batch_size":25}'
 TASK ?=
 TASK_ARGS ?= []
 TASK_KWARGS ?= {}
 task-run:
 	@if [ -z "$(TASK)" ]; then echo "Usage: make task-run TASK=module.task"; exit 2; fi
-	$(COMPOSE_DEV) exec backend python -m backend.scripts.run_task "$(TASK)" --args '$(TASK_ARGS)' --kwargs '$(TASK_KWARGS)'
+	$(COMPOSE_DEV) exec backend python -m app.scripts.run_task "$(TASK)" --args '$(TASK_ARGS)' --kwargs '$(TASK_KWARGS)'
 
 warm:
 	@echo "Queuing nightly pipeline (backfill + indicators + regime + scan)..."
-	$(COMPOSE_DEV) exec backend python -m backend.scripts.run_task "backend.tasks.market.coverage.daily_bootstrap" --kwargs '{"history_days":5,"history_batch_size":25}'
+	$(COMPOSE_DEV) exec backend python -m app.scripts.run_task "app.tasks.market.coverage.daily_bootstrap" --kwargs '{"history_days":5,"history_batch_size":25}'
 
 # IB Gateway (requires IBKR_USERNAME and IBKR_PASSWORD in env.dev)
 ib-up:

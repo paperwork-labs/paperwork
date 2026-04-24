@@ -3,7 +3,7 @@
 Phase 0.A — Medallion docstring tagger.
 
 Applies `medallion: <layer>` module-level docstring to every .py file under
-backend/services/ based on a directory-to-layer mapping.
+app/services/ based on a directory-to-layer mapping.
 
 Zero behavior change. Idempotent: re-running updates the layer tag but doesn't
 break existing docstrings. Safe to run while services are deployed.
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SERVICES = REPO_ROOT / "backend" / "services"
+SERVICES = REPO_ROOT / "app" / "services"
 
 # Directory → medallion layer mapping.
 # Based on docs/handoffs/2026-04-22-medallion-wave-0-stage-setting.md §3-4.

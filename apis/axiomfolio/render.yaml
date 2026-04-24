@@ -95,7 +95,7 @@ services:
     # 750,000 KiB ≈ 732 MiB per child. With concurrency=2 that's ~1.46 GiB
     # peak across both children, leaving ~550 MiB for Beat + scheduler +
     # overhead on the 2 GiB Standard plan.
-    dockerCommand: celery -A backend.tasks.celery_app worker --beat -Q celery,account_sync,orders --loglevel=info --max-memory-per-child=750000 --concurrency=2
+    dockerCommand: celery -A app.tasks.celery_app worker --beat -Q celery,account_sync,orders --loglevel=info --max-memory-per-child=750000 --concurrency=2
 
   - type: worker
     name: axiomfolio-worker-heavy
@@ -139,15 +139,16 @@ services:
     # 1,500,000 KiB ≈ 1.46 GiB child cap on 2 GiB Standard plan. Concurrency=1
     # so peak per-process memory matches what we measured for the worst
     # historical job (snapshot_last_n_days over 2,500 symbols ~ 1.2 GiB).
-    dockerCommand: celery -A backend.tasks.celery_app worker -Q heavy --loglevel=info --max-memory-per-child=1500000 --concurrency=1
+    dockerCommand: celery -A app.tasks.celery_app worker -Q heavy --loglevel=info --max-memory-per-child=1500000 --concurrency=1
 
   - type: web
     name: axiomfolio-frontend
     runtime: static
-    rootDir: apis/axiomfolio
+    # Frontend lives at apps/axiomfolio/ (pnpm workspace member).
+    rootDir: apps/axiomfolio
     autoDeploy: true
-    buildCommand: cd frontend && npm ci && npm run build
-    staticPublishPath: frontend/dist
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
     routes:
       - type: rewrite
         source: /*
@@ -165,7 +166,7 @@ services:
   # All scheduling is via Celery Beat (beat_schedule in celery_app.py).
   # Render cron jobs have been retired — they added cost (3 extra Docker builds)
   # and provided zero additional resilience (they just called .delay() to the worker).
-  # Default schedules are seeded from backend/tasks/job_catalog.py.
+  # Default schedules are seeded from app/tasks/job_catalog.py.
 
 databases:
   - name: axiomfolio-db

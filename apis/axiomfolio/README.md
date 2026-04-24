@@ -79,7 +79,7 @@ API Map (v1)
 Market Data (dev vs prod)
 -------------------------
 - Dev: Docker Compose stack with optional Celery Beat/RedBeat; trigger tasks with `make task-run`.
-- Prod: Provider cron (Render/Fly) enqueues tasks via `backend/scripts/run_task.py`; workers consume from Redis.
+- Prod: Provider cron (Render/Fly) enqueues tasks via `app/scripts/run_task.py`; workers consume from Redis.
 - Diagrams + flow details: `docs/MARKET_DATA.md`.
 
 Naming
@@ -90,7 +90,7 @@ Naming
 
 Task Flow (Celery)
 ------------------
-- See `backend/tasks/market/README.md` for market task details; `backend/tasks/README.md` for package layout.
+- See `app/tasks/market/README.md` for market task details; `app/tasks/README.md` for package layout.
 - Daily pipeline (high level):
   - Portfolio backfill (delta-only, ~270 bars) → `price_data`
   - Indicator refresh (portfolio + indices) → `market_analysis_cache`

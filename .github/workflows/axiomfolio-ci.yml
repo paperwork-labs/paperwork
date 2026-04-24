@@ -43,7 +43,7 @@ jobs:
         with:
           filters: |
             backend:
-              - 'apis/axiomfolio/backend/**'
+              - 'apis/axiomfolio/app/**'
               - 'apis/axiomfolio/infra/**'
               - 'apis/axiomfolio/Dockerfile.backend'
               - 'apis/axiomfolio/docker-compose.test.yml'
@@ -51,11 +51,11 @@ jobs:
               - 'apis/axiomfolio/requirements*.txt'
               - 'apis/axiomfolio/pyproject.toml'
               - 'apis/axiomfolio/alembic.ini'
-              - 'apis/axiomfolio/backend/alembic.ini'
+              - 'apis/axiomfolio/app/alembic.ini'
               - 'apis/axiomfolio/Makefile'
               - '.github/workflows/axiomfolio-ci.yml'
             frontend:
-              - 'apis/axiomfolio/frontend/**'
+              - 'apps/axiomfolio/**'
               - '.github/workflows/axiomfolio-ci.yml'
 
       - name: Decide which jobs need real work
@@ -103,8 +103,8 @@ jobs:
           from alembic.config import Config
           from alembic.script import ScriptDirectory
           import os, sys
-          cfg = Config(os.path.join('backend', 'alembic.ini'))
-          cfg.set_main_option('script_location', os.path.join('backend', 'alembic'))
+          cfg = Config(os.path.join('app', 'alembic.ini'))
+          cfg.set_main_option('script_location', os.path.join('app', 'alembic'))
           script = ScriptDirectory.from_config(cfg)
           heads = script.get_heads()
           if len(heads) != 1:
@@ -135,7 +135,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: apis/axiomfolio/frontend
+        working-directory: apps/axiomfolio
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
@@ -145,7 +145,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: apis/axiomfolio/frontend/package-lock.json
+          cache-dependency-path: apps/axiomfolio/package-lock.json
 
       - name: Install
         run: npm ci

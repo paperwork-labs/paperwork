@@ -14,21 +14,21 @@
 
 ## DANGER ZONES (Ask Before Modifying)
 
-- `backend/services/execution/risk_gate.py` — Capital protection, position sizing
-- `backend/services/execution/order_manager.py` — Order execution path
-- `backend/api/routes/auth.py` — Authentication/authorization
+- `app/services/execution/risk_gate.py` — Capital protection, position sizing
+- `app/services/execution/order_manager.py` — Order execution path
+- `app/api/routes/auth.py` — Authentication/authorization
 - `backend/config.py` — Environment configuration
-- `backend/alembic/versions/*.py` — Database migrations
-- `backend/services/market/indicator_engine.py` — Core indicator calculations
-- `backend/services/market/stage_classifier.py` — Stage Analysis classification
+- `app/alembic/versions/*.py` — Database migrations
+- `app/services/market/indicator_engine.py` — Core indicator calculations
+- `app/services/market/stage_classifier.py` — Stage Analysis classification
 
 ## Key Entry Points
 
-- [Indicator Engine](backend/services/market/indicator_engine.py): All indicator computation
-- [Stage Classifier](backend/services/market/stage_classifier.py): Weinstein 10 sub-stages
-- [Order Manager](backend/services/execution/order_manager.py): Single execution path
-- [Risk Gate](backend/services/execution/risk_gate.py): Position sizing, limits
-- [Market Data Service](backend/services/market/market_data_service.py): Provider facade
+- [Indicator Engine](app/services/market/indicator_engine.py): All indicator computation
+- [Stage Classifier](app/services/market/stage_classifier.py): Weinstein 10 sub-stages
+- [Order Manager](app/services/execution/order_manager.py): Single execution path
+- [Risk Gate](app/services/execution/risk_gate.py): Position sizing, limits
+- [Market Data Service](app/services/market/market_data_service.py): Provider facade
 
 ## Tech Stack
 

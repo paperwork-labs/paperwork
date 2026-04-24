@@ -2,7 +2,7 @@
 """
 Phase 0.B — Medallion import-layer CI gate.
 
-Parses every .py file under backend/services/, reads its `medallion: <layer>`
+Parses every .py file under app/services/, reads its `medallion: <layer>`
 docstring tag, walks all imports, and asserts every cross-module import
 respects the layer hierarchy.
 
@@ -37,8 +37,8 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-SERVICES = REPO_ROOT / "backend" / "services"
-SERVICES_IMPORT_PREFIX = "backend.services."
+SERVICES = REPO_ROOT / "app" / "services"
+SERVICES_IMPORT_PREFIX = "app.services."
 
 # Import rules: layer → set of layers it may import from.
 # "stdlib" (anything not under services_import_prefix) is always allowed.
@@ -76,7 +76,7 @@ def read_layer(path: Path) -> str | None:
 
 
 def module_to_file(module: str) -> Path | None:
-    """Resolve `backend.services.foo.bar` → filesystem Path to foo/bar.py or foo/bar/__init__.py."""
+    """Resolve `app.services.foo.bar` → filesystem Path to foo/bar.py or foo/bar/__init__.py."""
     if not module.startswith(SERVICES_IMPORT_PREFIX):
         return None
     rel = module[len(SERVICES_IMPORT_PREFIX):].replace(".", "/")
@@ -144,7 +144,7 @@ def main() -> int:
             file_layer[py] = layer
 
     if untagged:
-        print(f"error: {len(untagged)} .py files under backend/services/ missing "
+        print(f"error: {len(untagged)} .py files under app/services/ missing "
               f"medallion tag. Run scripts/medallion/tag_files.py --apply.",
               file=sys.stderr)
         for p in untagged[:10]:

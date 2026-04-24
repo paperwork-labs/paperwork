@@ -13,8 +13,10 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code
-COPY backend/ ./backend/
+# Copy application code. Matches the paperwork house pattern (see apis/brain/
+# Dockerfile): WORKDIR /app + COPY app/ ./app/ yields /app/app/ so absolute
+# imports like `app.api.main:app` resolve against PYTHONPATH=/app.
+COPY app/ ./app/
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app \
@@ -28,4 +30,4 @@ EXPOSE 8000
 # Two uvicorn workers on Standard (2 GiB). Heavy synchronous work was moved out of
 # the web process in commit 291f2e0 (build_dashboard moved to Celery). API peak RAM
 # observed at ~255 MiB / 2 GiB, so two workers easily fit and double request capacity.
-CMD ["uvicorn", "backend.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--timeout-keep-alive", "30"]
+CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--timeout-keep-alive", "30"]

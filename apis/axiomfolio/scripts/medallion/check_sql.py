@@ -61,16 +61,16 @@ from pathlib import Path
 from typing import Iterable
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-BACKEND = REPO_ROOT / "backend"
+APP = REPO_ROOT / "app"
 
 # Scan scope: services + tasks + api. Exclude tests (they legitimately need
 # cleanup fixtures) and alembic (migrations have different rules handled by
 # a separate check_migrations.py — planned).
 SCAN_DIRS = [
-    BACKEND / "services",
-    BACKEND / "tasks",
-    BACKEND / "api",
-    BACKEND / "models",
+    APP / "services",
+    APP / "tasks",
+    APP / "api",
+    APP / "models",
 ]
 EXCLUDE_DIRS = {"tests", "alembic", "__pycache__", ".mypy_cache"}
 
