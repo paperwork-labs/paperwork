@@ -113,7 +113,7 @@ def test_reconcile_error_production_continues_and_records_anomaly(
     if db_session is None:
         pytest.skip("database not configured")
 
-    from app.services.silver.portfolio import schwab_sync_service
+    from app.services.bronze.schwab import sync_service as schwab_sync_service
 
     def _fake_get_decrypted(_account_id: int, _session: Any) -> dict[str, str]:
         return {"access_token": "fake", "refresh_token": "fake"}
@@ -169,7 +169,7 @@ def test_reconcile_error_development_re_raises(
     if db_session is None:
         pytest.skip("database not configured")
 
-    from app.services.silver.portfolio import schwab_sync_service
+    from app.services.bronze.schwab import sync_service as schwab_sync_service
 
     def _fake_get_decrypted(_account_id: int, _session: Any) -> dict[str, str]:
         return {"access_token": "fake", "refresh_token": "fake"}

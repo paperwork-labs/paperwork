@@ -105,7 +105,7 @@ def test_schwab_sync_creates_option_tax_lot_with_pnl(
 ) -> None:
     if db_session is None:
         pytest.skip("no db")
-    from app.services.silver.portfolio import schwab_sync_service
+    from app.services.bronze.schwab import sync_service as schwab_sync_service
 
     monkeypatch.setattr(
         schwab_sync_service.account_credentials_service,
@@ -141,7 +141,7 @@ def test_schwab_option_tax_lots_idempotent_second_sync(
 ) -> None:
     if db_session is None:
         pytest.skip("no db")
-    from app.services.silver.portfolio import schwab_sync_service
+    from app.services.bronze.schwab import sync_service as schwab_sync_service
 
     monkeypatch.setattr(
         schwab_sync_service.account_credentials_service,

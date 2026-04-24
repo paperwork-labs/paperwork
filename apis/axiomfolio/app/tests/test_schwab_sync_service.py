@@ -68,7 +68,7 @@ def _create_account(session) -> BrokerAccount:
 
 
 def test_schwab_sync_positions_only(db_session, monkeypatch):
-    from app.services.silver.portfolio import schwab_sync_service
+    from app.services.bronze.schwab import sync_service as schwab_sync_service
 
     def _fake_get_decrypted(account_id, session):
         return {"access_token": "fake_at", "refresh_token": "fake_rt"}
