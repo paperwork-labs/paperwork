@@ -3,7 +3,11 @@ name: paperwork
 services:
   postgres:
     container_name: paperwork-postgres
-    image: postgres:18-alpine
+    # postgres 17-alpine is the newest stable release with broad ecosystem
+    # support (Render, Supabase, managed providers all run 15-17). 18 was
+    # released Oct 2025 and tripped "container exited (1)" in GitHub Actions
+    # runners — revisit once the alpine image stabilizes in CI.
+    image: postgres:17-alpine
     environment:
       # Shared role owns every per-product DB (filefree_dev, axiomfolio_dev,
       # brain_dev, launchfree_dev). Dev-only — prod Render deploys provision

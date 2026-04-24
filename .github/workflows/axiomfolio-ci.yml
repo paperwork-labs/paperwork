@@ -105,17 +105,28 @@ jobs:
         run: |
           docker compose -f compose.dev.yaml up -d postgres redis
           # Wait for postgres to accept connections and init-test-db.sh to run.
+          ready=false
           for i in $(seq 1 30); do
             if docker compose -f compose.dev.yaml exec -T postgres \
                 pg_isready -U paperwork -d axiomfolio_test >/dev/null 2>&1; then
-              echo "postgres ready"; break
+              echo "postgres ready"; ready=true; break
             fi
             echo "waiting for postgres... ($i/30)"; sleep 2
           done
+          if [ "$ready" != "true" ]; then
+            echo "::error::postgres never became ready; dumping logs"
+            docker compose -f compose.dev.yaml logs postgres
+            exit 1
+          fi
 
       - name: Run axiomfolio backend tests (axiomfolio_test DB)
         working-directory: apis/axiomfolio
         run: make test
+
+      - name: Postgres logs on failure
+        if: failure()
+        working-directory: infra
+        run: docker compose -f compose.dev.yaml logs postgres redis || true
 
       - name: Migration chain integrity
         working-directory: apis/axiomfolio
