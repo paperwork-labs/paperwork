@@ -78,35 +78,52 @@ flowchart LR
 
 ## Medallion Architecture
 
-**Decision:** D127 (`docs/KNOWLEDGE.md`).
+**Decision:** D127 (`docs/KNOWLEDGE.md`). **Wave 0 migration status:** in flight as of 2026-04-23; see `docs/plans/MEDALLION_AUDIT_2026Q2.md`.
 
-AxiomFolio uses **bronze / silver / gold** as the naming convention for how data and logic are layered in `backend/services/`. The names match common data-mesh "medallion" language: raw at the base, refined in the middle, and consumer-oriented at the top.
+AxiomFolio uses **bronze / silver / gold / execution** as the naming convention for how data and logic are layered in `backend/services/`. The first three names match common data-mesh "medallion" language: raw at the base, refined in the middle, consumer-oriented at the top. The fourth, **execution**, is AxiomFolio-specific and sits *outside* the standard medallion stack — it's the layer that turns gold signals into real broker orders.
 
 | Layer | Role |
 |-------|------|
 | **Bronze** | Raw broker and market-data ingestion. Provider-shaped payloads, HTTP or file pulls, broker APIs. Produces or updates durable rows (positions, prices, tax lots) without applying AxiomFolio indicator or stage semantics. |
 | **Silver** | Enriched, analysis-grade state: indicators, Stage Analysis, Market Regime, and portfolio-level analytics that combine positions with market snapshots. Assumes bronze inputs exist. |
 | **Gold** | User- and app-facing strategy and signal surfaces: rules, backtests, candidate and pick generation, scoring—outputs meant for decisions, queues, and APIs on top of silver state. |
+| **Execution** | Order placement, broker router, risk gates, approval workflows, shadow vs live trading, slippage tracking. Reads gold outputs and writes to real brokers. Safety-critical; strictest testing + audit requirements. |
+| **Ops (escape hatch)** | Cross-cutting infra: auth, notifications, billing, observability, admin, deploy helpers. Not part of the data flow; may be imported by any layer. |
 
 **Dependency boundaries**
 
-- **Bronze must not** import or call into silver or gold (no `indicator_engine`, `rule_evaluator`, etc.).
-- **Silver may** depend on bronze outputs (e.g. DB rows written by sync) and shared utilities; it **must not** depend on gold (strategies, picks orchestration, signal generators that assume product workflows).
-- **Gold may** depend on silver and bronze (typically through services and models, not by bypassing the intelligence pipeline for indicator truth).
+- **Bronze must not** import or call into silver, gold, or execution (no `indicator_engine`, `rule_evaluator`, `order_manager`, etc.).
+- **Silver may** depend on bronze outputs (e.g. DB rows written by sync) and shared utilities; it **must not** depend on gold or execution.
+- **Gold may** depend on silver and bronze (typically through services and models, not by bypassing the intelligence pipeline for indicator truth); **must not** depend on execution (execution reads gold, not the other way around).
+- **Execution may** depend on gold, silver, and bronze (it's the sink for the full data flow).
+- **Ops** is free to import from or be imported by anywhere; it's the escape hatch for cross-cutting concerns like logging, credentials, and Stripe webhooks.
 
 Vocabulary is *directional*: higher layers read lower layers' data; lower layers are not "aware" of product features above them.
 
-A few existing sync call sites import shared portfolio helpers (for example lot reconciliation) that are tagged silver in D127. Treat that as **technical debt to unwind** (orchestrate from the task layer, or split a tiny bronze-only helper) — **new bronze modules must not** add further upward imports into analysis code.
+**CI enforcement (Phase 0.B):** `make medallion-check` (and the "Medallion import-layer gate" CI job) parses every `.py` under `backend/services/`, reads its `medallion: <layer>` docstring tag, and asserts each `backend.services.*` import respects the hierarchy. Violations fail CI. Waive a specific import with `# medallion: allow <reason>` on the import line.
 
-**Current module placement (grandfathered paths)**
+### Three pillars ↔ four layers
 
-These paths are not all physically under `backend/services/bronze/`, `silver/`, and `gold/` yet. The table records *layer by convention* until a move PR. New modules must be created under `backend/services/<layer>/` from day one (for example `backend/services/silver/technicals/`, `backend/services/gold/trade_cards/`). Existing modules are tagged at module level in code (see D127).
+The three product pillars (Portfolio / Intelligence / Strategy) *span* medallion layers; they don't align one-to-one:
 
-| Layer | Purpose | Current locations (representative) |
-|-------|---------|----------------------------------|
-| Bronze | Raw broker and market ingestion | `backend/services/bronze/<broker>/` (E\*TRADE, Tradier, …), `backend/services/portfolio/ibkr/`, `backend/services/portfolio/*_sync_service.py` (Schwab, TastyTrade, etc.), `backend/services/market/providers/` (FMP, yfinance, …) |
-| Silver | Indicators, regime, stage, enriched portfolio math | `backend/services/market/indicator_engine.py`, `stage_classifier.py`, `regime_engine.py`, `backend/services/portfolio/portfolio_analytics_service.py`, `closing_lot_matcher.py` |
-| Gold | Strategies, candidates, picks, app-facing signal flows | `backend/services/strategy/`, `backend/services/picks/` (including `candidate_generator.py`), future `scoring/`, `trade_cards/` |
+| Pillar | Primary layer(s) | Representative modules |
+|--------|------------------|------------------------|
+| **Portfolio (read-only)** | bronze (broker sync) + silver (analytics, tax lots) | `bronze/<broker>/sync_service.py`, `portfolio/*_sync_service.py` (bronze), `portfolio/portfolio_analytics_service.py`, `portfolio/closing_lot_matcher.py` (silver) |
+| **Intelligence (brain)** | bronze (market data providers) + silver (indicators, regime) + gold (narratives, pick scoring) | `market/providers/*` (bronze), `market/indicator_engine.py`, `market/regime_engine.py`, `market/stage_classifier.py` (silver), `gold/conviction_pick_generator.py`, `narrative/*` (gold) |
+| **Strategy (execution)** | gold (signals, picks, rules) + execution (order placement, broker router) | `strategy/signal_generator.py`, `picks/candidate_generator.py` (gold), `execution/order_manager.py`, `execution/broker_router.py`, `execution/risk_gate.py` (execution) |
+
+So the flow is: pillar describes *what the product does for the user*; layer describes *where in the data-mesh hierarchy the code sits*. A single pillar may touch all four layers; a single layer is shared across pillars.
+
+### Current module placement (grandfathered paths)
+
+During **Wave 0** (underway as of 2026-Q2), every `.py` file under `backend/services/` carries a `medallion: <layer>` docstring tag. Not every file is yet at its target filesystem path — Phase 0.C of Wave 0 performs the rename pass. Until then, the tag is authoritative and CI enforces layer rules based on the tag, not the folder.
+
+| Layer | Purpose | Current locations (grandfathered) | Target locations (post-0.C) |
+|-------|---------|-----------------------------------|------------------------------|
+| Bronze | Raw broker + market ingestion | `bronze/<broker>/`, `portfolio/ibkr/`, `portfolio/*_sync_service.py`, `aggregator/`, `market/providers/` | `bronze/<broker>/`, `bronze/ibkr/`, `bronze/schwab/`, `bronze/tastytrade/`, `bronze/aggregator/`, `bronze/market/providers/` |
+| Silver | Indicators, regime, stage, enriched portfolio math | `market/*`, `portfolio/portfolio_analytics_service.py`, `closing_lot_matcher.py`, `tax/`, `corporate_actions/`, `data_quality/`, `intelligence/`, `symbols/` | `silver/indicators/`, `silver/regime/`, `silver/math/`, `silver/portfolio/`, `silver/tax/`, `silver/corporate_actions/`, `silver/data_quality/`, `silver/intelligence/`, `silver/symbols/` |
+| Gold | Strategies, candidates, picks, narratives, backtests | `gold/`, `strategy/`, `picks/`, `backtest/`, `ml/`, `narrative/`, `signals/`, `risk/` (partial) | `gold/` (expand in place) |
+| Execution | Order placement, broker router, risk gates | `execution/` | `execution/` (stays put — already correct) |
 
 Broker-specific **bronze adapter contracts** for packages under `backend/services/bronze/` (entry points, counters, OAuth usage) are in [Data Pipelines](#data-pipelines) under the **Bronze layer** heading.
 

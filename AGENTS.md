@@ -64,7 +64,17 @@ These paths match `.cursor/rules/protected-regions.mdc`. Get explicit approval b
 2. **Intelligence** — Market data pipeline: OHLCV → indicators → MarketSnapshot (latest) + MarketSnapshotHistory (daily ledger). Stage Analysis with SMA150 anchor, 10 sub-stages, Market Regime Engine.
 3. **Strategy** — Rule evaluator, backtester, signal generator, order engine with risk gates and exit cascade.
 
-**Medallion layers (D127):** `backend/services/` is described in three layers: bronze (raw broker and market ingestion), silver (indicators, regime, stage, enriched portfolio analytics), and gold (strategies, candidates, picks, and other signal flows consumed by the app). New code should live under `backend/services/<layer>/` from the first commit. See the [Medallion Architecture](docs/ARCHITECTURE.md#medallion-architecture) section in `docs/ARCHITECTURE.md` and decision **D127** in `docs/KNOWLEDGE.md` (not repeated here).
+**Medallion layers (D127, D145, Wave 0):** `backend/services/` is described in four layers plus an ops escape hatch:
+
+- **bronze** — raw broker and market ingestion (read-only to external world)
+- **silver** — indicators, regime, stage, enriched portfolio analytics
+- **gold** — strategies, candidates, picks, narratives, backtests
+- **execution** — order placement, broker router, risk gates, approval workflow
+- **ops** — cross-cutting infra (auth, notifications, billing, observability); escape hatch, no layer rules
+
+Every file under `backend/services/` carries a `medallion: <layer>` docstring tag (Phase 0.A). CI enforces import-layer rules via `make medallion-check` (Phase 0.B): bronze → (ops only), silver → (bronze + ops), gold → (silver + bronze + ops), execution → (gold + silver + bronze + ops). Cross-layer exceptions require a `# medallion: allow <reason>` waiver.
+
+New code must be created under `backend/services/<layer>/` from the first commit. Some existing files are still at grandfathered paths (e.g. `market/*` files are tagged `silver` but not yet under `silver/`); Phase 0.C of Wave 0 completes the rename pass. See [Medallion Architecture](docs/ARCHITECTURE.md#medallion-architecture) in `docs/ARCHITECTURE.md`, decision **D127** / **D145** in `docs/KNOWLEDGE.md`, and the live audit in `docs/plans/MEDALLION_AUDIT_2026Q2.md`.
 
 ## Trading North Star
 

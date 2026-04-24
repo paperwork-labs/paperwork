@@ -182,10 +182,10 @@ Per handoff §4, Phase 0.C Pass order:
 | Phase | Target date | Status | Notes |
 |---|---|---|---|
 | 0.A — Tags + audit | 2026-04-23 | ✅ DONE | 268 files tagged, this doc produced |
-| 0.A — DAG swimlanes | 2026-04-24 | ⏳ pending | `PipelineDAG.tsx` bands + legend |
-| 0.A — Prose sweep | 2026-04-24 | ⏳ pending | `ARCHITECTURE.md`, `PRD.md`, `PLATFORM_REVIEW Ch 1.8`, `AGENTS.md` |
-| 0.B — Silver scaffold + CI rule | 2026-04-25 | ⏳ pending | Custom Ruff/pylint check |
-| 0.C — File migrations (split into 2 PRs) | 2026-04-26–28 | ⏳ pending | Founder freeze window required |
+| 0.A — DAG swimlanes | 2026-04-24 | ⏳ pending | `PipelineDAG.tsx` bands + legend (frontend) |
+| 0.A — Prose sweep | 2026-04-23 | ✅ DONE | `ARCHITECTURE.md` + `AGENTS.md` updated with 4-layer medallion + pillar cross-map. PRD.md unchanged (historically frozen; MASTER_PLAN is source of truth) |
+| 0.B — Silver scaffold + CI rule | 2026-04-23 | ✅ DONE | `silver/__init__.py`, `scripts/medallion/check_imports.py`, `make medallion-check`, CI job added. 21 known-debt violations auto-captured as waivers. |
+| 0.C — File migrations (split into 2 PRs) | 2026-04-26–28 | ⏳ pending | Founder freeze window no longer needed (no parallel agents writing PRs yet). |
 | 0.D — Shim removal + strict CI | ~2026-05-13 | ⏳ pending | 2 weeks after 0.C lands |
 
 ---
