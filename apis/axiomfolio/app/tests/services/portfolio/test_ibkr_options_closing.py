@@ -19,7 +19,7 @@ from app.models import BrokerAccount, Trade
 from app.models.broker_account import AccountType, BrokerType
 from app.models.option_tax_lot import OptionTaxLot
 from app.models.user import User
-from app.services.portfolio.ibkr.pipeline import (
+from app.services.bronze.ibkr.pipeline import (
     _run_closing_lot_reconciliation,
 )
 

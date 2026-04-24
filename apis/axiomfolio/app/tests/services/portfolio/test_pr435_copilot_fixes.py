@@ -48,7 +48,7 @@ async def test_ibkr_sync_balance_updates_broker_account_on_repeat_same_day(
     db_session,
 ) -> None:
     """Repeat syncs with an existing AccountBalance row must still refresh BrokerAccount totals."""
-    from app.services.portfolio.ibkr.sync_balances import sync_account_balances
+    from app.services.bronze.ibkr.sync_balances import sync_account_balances
 
     u = User(
         username="ibkr_ba_totals",

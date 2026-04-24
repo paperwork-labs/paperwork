@@ -1,6 +1,6 @@
 """Plaid Investments aggregator — read-only portfolio sync.
 
-Mirror of ``app.services.portfolio.ibkr`` in structure. Exports the
+Mirror of ``app.services.bronze.ibkr`` in structure. Exports the
 service classes used by the broker sync dispatcher and the Plaid API
 routes.
 
@@ -14,19 +14,19 @@ only (no trading — Plaid Investments doesn't expose order entry).
 * :func:`persist_holdings` — pipeline that upserts :class:`Position` +
   :class:`TaxLot` rows from a holdings payload.
 
-medallion: silver
+medallion: bronze
 """
 
-from app.services.portfolio.plaid.client import (  # noqa: F401
+from app.services.bronze.plaid.client import (  # noqa: F401
     PlaidAPIError,
     PlaidClient,
     PlaidConfigurationError,
 )
-from app.services.portfolio.plaid.pipeline import (  # noqa: F401
+from app.services.bronze.plaid.pipeline import (  # noqa: F401
     PipelineResult,
     persist_holdings,
 )
-from app.services.portfolio.plaid.sync_service import PlaidSyncService  # noqa: F401
+from app.services.bronze.plaid.sync_service import PlaidSyncService  # noqa: F401
 
 __all__ = [
     "PlaidAPIError",

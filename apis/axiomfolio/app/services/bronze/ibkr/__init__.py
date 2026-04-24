@@ -3,6 +3,6 @@
 medallion: bronze
 """
 
-from app.services.portfolio.ibkr.pipeline import IBKRSyncService
+from app.services.bronze.ibkr.pipeline import IBKRSyncService
 
 __all__ = ["IBKRSyncService"]

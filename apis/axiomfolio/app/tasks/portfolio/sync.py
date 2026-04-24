@@ -8,7 +8,7 @@ from celery import shared_task
 
 from app.database import SessionLocal
 from app.models.broker_account import BrokerAccount, BrokerType, SyncStatus, AccountSync
-from app.services.portfolio.broker_sync_service import broker_sync_service
+from app.services.bronze.broker_sync_service import broker_sync_service
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
                 # (``pipeline_step_errored``), in which case ``missing_required``
                 # is empty and a message built from it would render misleadingly
                 # as ``[]``.
-                from app.services.portfolio.broker_sync_service import (
+                from app.services.bronze.broker_sync_service import (
                     _build_partial_sync_message,
                 )
 

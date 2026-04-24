@@ -566,6 +566,6 @@ def _audit_option_pnl_discrepancies(
     return discrepancies
 
 
-# Global instance — import path: app.services.portfolio.ibkr.pipeline
+# Global instance — import path: app.services.bronze.ibkr.pipeline
 ibkr_sync_service = IBKRSyncService()
 portfolio_sync_service = ibkr_sync_service  # backward compat alias

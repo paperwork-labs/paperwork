@@ -26,7 +26,7 @@ sync service):
 
 See plan ``docs/plans/PLAID_FIDELITY_401K.md`` §4.
 
-medallion: silver
+medallion: bronze
 """
 
 from __future__ import annotations

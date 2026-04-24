@@ -17,7 +17,7 @@ Design constraints (plan ``docs/plans/PLAID_FIDELITY_401K.md`` §4):
   ``errors`` emitted from every sync, with ``assert sum == total`` so
   counter drift is loud.
 
-medallion: silver
+medallion: bronze
 """
 
 from __future__ import annotations

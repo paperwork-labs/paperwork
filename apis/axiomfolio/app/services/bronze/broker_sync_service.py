@@ -17,8 +17,8 @@ from datetime import datetime, timezone
 
 from app.database import SessionLocal
 from app.models import BrokerAccount
-from app.services.portfolio.ibkr import IBKRSyncService
-from app.services.portfolio.tastytrade_sync_service import TastyTradeSyncService
+from app.services.bronze.ibkr import IBKRSyncService
+from app.services.bronze.tastytrade.sync_service import TastyTradeSyncService
 from app.models.broker_account import BrokerType
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def _import_schwab_service():
     """Lazy import for Schwab to avoid circular dependencies."""
-    from app.services.portfolio.schwab_sync_service import SchwabSyncService
+    from app.services.bronze.schwab.sync_service import SchwabSyncService
     return SchwabSyncService()
 
 
@@ -70,8 +70,8 @@ def _import_plaid_service():
     workers restricted to ``market`` queue).
     """
 
-    # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.plaid.sync_service moves during Phase 0.C
-    from app.services.portfolio.plaid.sync_service import PlaidSyncService
+    # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.bronze.plaid.sync_service moves during Phase 0.C
+    from app.services.bronze.plaid.sync_service import PlaidSyncService
     return PlaidSyncService()
 
 

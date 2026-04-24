@@ -49,12 +49,12 @@ from app.models.plaid_connection import (
     PlaidConnectionStatus,
 )
 from app.models.user import User
-from app.services.portfolio.plaid.client import (
+from app.services.bronze.plaid.client import (
     PlaidAPIError,
     PlaidClient,
     PlaidConfigurationError,
 )
-from app.services.portfolio.plaid.webhook_verify import (
+from app.services.bronze.plaid.webhook_verify import (
     WebhookVerificationError,
     verify_webhook,
 )

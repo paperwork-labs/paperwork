@@ -404,7 +404,7 @@ def _sync_deferred_startup() -> None:
         # Instruments normalization (gated behind account seeding flag)
         if getattr(settings, "SEED_ACCOUNTS_ON_STARTUP", False):
             try:
-                from app.services.portfolio.ibkr_sync_service import portfolio_sync_service
+                from app.services.bronze.ibkr.sync_service import portfolio_sync_service
                 db = SessionLocal()
                 try:
                     norm = portfolio_sync_service.normalize_instruments_from_activity(db)

@@ -297,7 +297,7 @@ class AdminHealthService:
     def _build_reconcile_anomaly(self) -> Dict[str, Any]:
         """Schwab (and similar) closing-lot reconciliation failure counter (Redis)."""
         from app.services.silver.market.market_data_service import infra
-        from app.services.portfolio.schwab_sync_service import (
+        from app.services.bronze.schwab.sync_service import (
             RECONCILE_ANOMALY_KEY,
         )
 

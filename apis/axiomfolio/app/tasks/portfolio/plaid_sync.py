@@ -34,7 +34,7 @@ from app.models.plaid_connection import (
     PlaidConnection,
     PlaidConnectionStatus,
 )
-from app.services.portfolio.plaid.sync_service import PlaidSyncService
+from app.services.bronze.plaid.sync_service import PlaidSyncService
 from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)

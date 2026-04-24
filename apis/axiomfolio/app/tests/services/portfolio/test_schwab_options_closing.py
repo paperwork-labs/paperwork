@@ -13,7 +13,7 @@ import pytest
 from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.models.option_tax_lot import OptionTaxLot
 from app.models.user import User
-from app.services.portfolio.schwab_sync_service import SchwabSyncService
+from app.services.bronze.schwab.sync_service import SchwabSyncService
 
 OPT = "AAPL  250117C00200000"
 

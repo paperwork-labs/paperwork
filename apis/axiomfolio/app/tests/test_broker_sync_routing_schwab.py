@@ -1,7 +1,7 @@
 import uuid
 import pytest
 
-from app.services.portfolio.broker_sync_service import broker_sync_service
+from app.services.bronze.broker_sync_service import broker_sync_service
 from app.models.broker_account import BrokerAccount, BrokerType, AccountType
 
 
@@ -44,7 +44,7 @@ def test_broker_sync_routes_to_schwab(monkeypatch, db_session):
             return {"status": "success", "account_number": account_number}
 
     # Patch the SchwabSyncService used inside the router
-    import app.services.portfolio.schwab_sync_service as schwab_module
+    import app.services.bronze.schwab.sync_service as schwab_module
 
     monkeypatch.setattr(schwab_module, "SchwabSyncService", lambda: DummyService())
 

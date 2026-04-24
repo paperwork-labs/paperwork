@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.portfolio.ibkr.sync_validator import (
+from app.services.bronze.ibkr.sync_validator import (
     EXPECTED_FLEX_SECTIONS,
     SyncCompletenessStatus,
     discover_xml_sections,
@@ -274,7 +274,7 @@ def test_warnings_are_structured_dicts_with_required_keys():
 
 
 def test_partial_message_surfaces_missing_required_sections():
-    from app.services.portfolio.broker_sync_service import (
+    from app.services.bronze.broker_sync_service import (
         _build_partial_sync_message,
     )
 
@@ -290,7 +290,7 @@ def test_partial_message_surfaces_missing_required_sections():
 def test_partial_message_surfaces_pipeline_step_errored_when_no_missing():
     """The Copilot anchor: PARTIAL caused only by a writer error on a present
     section must NOT render as 'missing required broker report sections []'."""
-    from app.services.portfolio.broker_sync_service import (
+    from app.services.bronze.broker_sync_service import (
         _build_partial_sync_message,
     )
 
@@ -312,7 +312,7 @@ def test_partial_message_surfaces_pipeline_step_errored_when_no_missing():
 
 
 def test_partial_message_surfaces_both_missing_and_errored():
-    from app.services.portfolio.broker_sync_service import (
+    from app.services.bronze.broker_sync_service import (
         _build_partial_sync_message,
     )
 
@@ -336,7 +336,7 @@ def test_partial_message_surfaces_both_missing_and_errored():
 
 def test_partial_message_falls_back_to_generic_when_no_signal():
     """Empty completeness dict (defensive): never silently render '[]'."""
-    from app.services.portfolio.broker_sync_service import (
+    from app.services.bronze.broker_sync_service import (
         _build_partial_sync_message,
     )
 
@@ -346,7 +346,7 @@ def test_partial_message_falls_back_to_generic_when_no_signal():
 
 
 def test_partial_message_truncates_to_500_chars():
-    from app.services.portfolio.broker_sync_service import (
+    from app.services.bronze.broker_sync_service import (
         _build_partial_sync_message,
     )
 

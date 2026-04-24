@@ -7,7 +7,7 @@ import pytest
 
 from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.services.silver.portfolio import schwab_sync_service
-from app.services.portfolio.schwab_sync_service import SchwabSyncService
+from app.services.bronze.schwab.sync_service import SchwabSyncService
 from app.models.user import User
 
 

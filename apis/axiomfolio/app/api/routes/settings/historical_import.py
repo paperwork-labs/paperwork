@@ -17,7 +17,7 @@ from app.models.historical_import_run import (
     HistoricalImportSource,
 )
 from app.models.user import User
-from app.services.portfolio.ibkr.historical_import import HistoricalImportService
+from app.services.bronze.ibkr.historical_import import HistoricalImportService
 from app.tasks.portfolio.historical_import import run_historical_import
 
 router = APIRouter(prefix="/api/v1/accounts", tags=["Accounts"])

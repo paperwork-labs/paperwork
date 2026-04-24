@@ -12,7 +12,7 @@ Return shape matches the other broker services:
 ``{"status": "success"|"error"|"partial", "pipeline": {...}, "error": "..."}``
 so the dispatcher can interpret completeness consistently.
 
-medallion: silver
+medallion: bronze
 """
 
 from __future__ import annotations
@@ -28,12 +28,12 @@ from app.models.plaid_connection import (
     PlaidConnection,
     PlaidConnectionStatus,
 )
-from app.services.portfolio.plaid.client import (
+from app.services.bronze.plaid.client import (
     PlaidAPIError,
     PlaidClient,
     PlaidConfigurationError,
 )
-from app.services.portfolio.plaid.pipeline import (
+from app.services.bronze.plaid.pipeline import (
     PipelineResult,
     persist_holdings,
 )

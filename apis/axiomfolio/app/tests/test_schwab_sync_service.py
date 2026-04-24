@@ -1,6 +1,6 @@
 import asyncio
 from decimal import Decimal
-from app.services.portfolio.schwab_sync_service import SchwabSyncService
+from app.services.bronze.schwab.sync_service import SchwabSyncService
 from app.models.broker_account import BrokerAccount, BrokerType, AccountType
 
 
