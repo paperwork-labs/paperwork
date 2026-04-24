@@ -21,6 +21,7 @@ jobs:
     outputs:
       filefreeApi: ${{ steps.filter.outputs.filefreeApi }}
       launchfreeApi: ${{ steps.filter.outputs.launchfreeApi }}
+      brainApi: ${{ steps.filter.outputs.brainApi }}
       filefreeWeb: ${{ steps.filter.outputs.filefreeWeb }}
       launchfreeWeb: ${{ steps.filter.outputs.launchfreeWeb }}
       studioWeb: ${{ steps.filter.outputs.studioWeb }}
@@ -38,6 +39,9 @@ jobs:
               - 'apis/filefree/**'
             launchfreeApi:
               - 'apis/launchfree/**'
+            brainApi:
+              - 'apis/brain/**'
+              - '.cursor/rules/**'
             filefreeWeb:
               - 'apps/filefree/**'
             launchfreeWeb:
@@ -175,6 +179,40 @@ jobs:
       - run: pip install ruff
       - run: ruff check .
       - run: python -m compileall app
+
+  brain-persona-coverage:
+    name: Brain Persona Coverage
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.brainApi == 'true' || needs.changes.outputs.infra == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install pydantic pyyaml
+        working-directory: apis/brain
+      - name: Check persona router / spec / .mdc invariants
+        run: python apis/brain/scripts/check_persona_coverage.py
+
+  brain-test:
+    name: Brain Tests
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.brainApi == 'true' || needs.changes.outputs.infra == 'true'
+    defaults:
+      run:
+        working-directory: apis/brain
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: ruff check .
+      - run: python -m pytest --tb=short -q
 
   web-lint:
     name: Web Type Check

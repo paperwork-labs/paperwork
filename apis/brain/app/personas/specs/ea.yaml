@@ -1,0 +1,10 @@
+name: ea
+description: Executive assistant — daily/weekly briefings, status, scheduling.
+default_model: gpt-4o-mini
+escalation_model: claude-sonnet-4-20250514
+escalate_if:
+  - tokens>4000
+requires_tools: true
+daily_cost_ceiling_usd: 2.00
+owner_channel: ea
+mode: chat

@@ -1,0 +1,11 @@
+name: engineering
+description: Engineering — code review, PR triage, infra debugging, deploys.
+default_model: claude-sonnet-4-20250514
+escalation_model: claude-opus-4-20250618
+escalate_if:
+  - tokens>8000
+  - mention:architecture
+requires_tools: true
+daily_cost_ceiling_usd: 10.00
+owner_channel: engineering
+mode: chat

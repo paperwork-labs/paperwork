@@ -25,7 +25,10 @@ from typing import Any
 import yaml
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services import idempotency, memory
+from app.personas import get_spec as get_persona_spec
+from app.services import cost_tracker, idempotency, memory
+from app.services.cost_tracker import CostCeilingExceeded
+from app.services.errors import LLMUnavailableError
 from app.services.observability import create_trace, flush as flush_traces
 from app.services.pii import scrub_pii
 from app.services.personas import route_persona
@@ -34,7 +37,9 @@ from app.services.router import (
     ChainResult,
     CircuitBreaker,
     ClassifyAndRoute,
+    PersonaPinnedRoute,
 )
+from app.services.tokens import count_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -294,7 +299,77 @@ async def process(
     messages.append({"role": "user", "content": message})
 
     cb = _get_circuit_breaker(redis_client)
-    strategy = ClassifyAndRoute(cb)
+
+    persona_spec = get_persona_spec(persona)
+    input_tokens_measured = count_tokens(message, model="gpt-4o-mini")
+
+    # H3: enforce daily_cost_ceiling_usd BEFORE we spend a cent with the
+    # provider. Fail fast with a structured error; don't silently proceed.
+    if persona_spec is not None and persona_spec.daily_cost_ceiling_usd is not None:
+        try:
+            await cost_tracker.check_ceiling(
+                redis_client,
+                organization_id=organization_id,
+                persona=persona,
+                ceiling_usd=persona_spec.daily_cost_ceiling_usd,
+            )
+        except CostCeilingExceeded as exc:
+            logger.warning(
+                "cost ceiling hit for %s org=%s: $%.4f of $%.4f",
+                persona, organization_id, exc.spent_usd, exc.ceiling_usd,
+            )
+            trace.score(name="cost_ceiling_enforced", value=1.0)
+            flush_traces()
+            return {
+                "response": (
+                    f"The {persona} persona has reached its daily spend cap "
+                    f"(${exc.spent_usd:.2f} of ${exc.ceiling_usd:.2f}). "
+                    "Try again tomorrow or raise the ceiling in the persona spec."
+                ),
+                "persona": persona,
+                "persona_spec": persona_spec.name,
+                "model": "none",
+                "provider": "none",
+                "tokens_in": 0,
+                "tokens_out": 0,
+                "cost": 0.0,
+                "classification": {"error": "cost_ceiling_exceeded"},
+                "tool_calls": [],
+                "constitutional_violations": [],
+                "episode_id": None,
+                "episode_uri": None,
+                "error": "cost_ceiling_exceeded",
+            }
+
+    if persona_spec is not None:
+        tokens_threshold: int | None = None
+        escalate_on_compliance = False
+        mention_targets: list[str] = []
+        for tag in persona_spec.escalate_if:
+            if tag == "compliance" and persona_spec.compliance_flagged:
+                escalate_on_compliance = True
+            elif tag.startswith("tokens>"):
+                try:
+                    tokens_threshold = int(tag.split(">", 1)[1])
+                except ValueError:
+                    pass
+            elif tag.startswith("mention:"):
+                mention_targets.append(tag.split(":", 1)[1])
+        strategy = PersonaPinnedRoute(
+            cb,
+            model=persona_spec.default_model,
+            escalation_model=persona_spec.escalation_model,
+            escalate_on_compliance=escalate_on_compliance,
+            escalate_on_tokens_over=tokens_threshold,
+            escalate_on_mentions=mention_targets,
+            input_tokens=input_tokens_measured,
+            requires_tools=persona_spec.requires_tools,
+        )
+        strategy_name = "persona_pinned_route"
+    else:
+        strategy = ClassifyAndRoute(cb)
+        strategy_name = "classify_and_route"
+
     context = ChainContext(
         message=message,
         system_prompt=system_prompt,
@@ -303,8 +378,37 @@ async def process(
         organization_id=organization_id,
     )
 
-    llm_span = trace.span(name="classify_and_route", input={"message": message[:200]})
-    result: ChainResult = await strategy.execute(context)
+    llm_span = trace.span(name=strategy_name, input={"message": message[:200]})
+    try:
+        result: ChainResult = await strategy.execute(context)
+    except LLMUnavailableError as exc:
+        logger.error(
+            "All providers failed for persona=%s: %s/%s — %s",
+            persona, exc.provider, exc.model, exc.reason,
+        )
+        llm_span.end(output={"error": "llm_unavailable", "provider": exc.provider})
+        trace.score(name="llm_available", value=0.0)
+        flush_traces()
+        return {
+            "response": (
+                "Brain is temporarily unable to reach its model providers. "
+                "Please retry shortly. (If this persists, check "
+                "/admin/infrastructure for provider status.)"
+            ),
+            "persona": persona,
+            "persona_spec": persona_spec.name if persona_spec else None,
+            "model": exc.model,
+            "provider": exc.provider,
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "cost": 0.0,
+            "classification": {"error": "llm_unavailable", "reason": exc.reason},
+            "tool_calls": [],
+            "constitutional_violations": [],
+            "episode_id": None,
+            "episode_uri": None,
+            "error": "llm_unavailable",
+        }
     llm_span.end(output={
         "model": result.model,
         "provider": result.provider,
@@ -321,7 +425,31 @@ async def process(
             [v["principle_id"] for v in violations],
         )
 
-    await memory.store_episode(
+    # H3: record successful spend against the daily counter so subsequent
+    # requests this UTC-rolling-24h see the accumulated total.
+    if persona_spec is not None and result.cost > 0:
+        await cost_tracker.record_spend(
+            redis_client,
+            organization_id=organization_id,
+            persona=persona,
+            amount_usd=result.cost,
+        )
+
+    # H4: for compliance-flagged personas with a confidence_floor, stamp
+    # metadata so downstream UIs (Slack unfurls, Studio) can surface a
+    # "needs human review" badge. D7 will turn this into an actionable
+    # review queue; today it's audit-trail only.
+    episode_metadata: dict[str, object] = {}
+    needs_human_review = bool(
+        persona_spec
+        and persona_spec.compliance_flagged
+        and persona_spec.confidence_floor is not None
+    )
+    if needs_human_review:
+        episode_metadata["needs_human_review"] = True
+        episode_metadata["confidence_floor"] = persona_spec.confidence_floor
+
+    episode = await memory.store_episode(
         db,
         organization_id=organization_id,
         source=f"brain:{channel or 'api'}",
@@ -337,7 +465,16 @@ async def process(
         model_used=result.model,
         tokens_in=result.tokens_in,
         tokens_out=result.tokens_out,
+        metadata=episode_metadata or None,
     )
+
+    # D4: stamp provenance on the response so downstream channels (Slack,
+    # Studio, n8n) can link back to the source episode. Skip for trivial
+    # duplicate/mock responses where content is empty.
+    episode_uri = f"brain://episode/{episode.id}" if episode and episode.id else None
+    stamped_content = result.content
+    if episode_uri and result.content and "brain://episode/" not in result.content:
+        stamped_content = f"{result.content}\n\n_source: {episode_uri}_"
 
     if result.classification:
         await memory.store_episode(
@@ -374,8 +511,9 @@ async def process(
     flush_traces()
 
     return {
-        "response": result.content,
+        "response": stamped_content,
         "persona": persona,
+        "persona_spec": persona_spec.name if persona_spec else None,
         "model": result.model,
         "provider": result.provider,
         "tokens_in": result.tokens_in,
@@ -384,4 +522,7 @@ async def process(
         "classification": result.classification,
         "tool_calls": result.tool_calls,
         "constitutional_violations": violations,
+        "episode_id": episode.id if episode else None,
+        "episode_uri": episode_uri,
+        "needs_human_review": needs_human_review,
     }

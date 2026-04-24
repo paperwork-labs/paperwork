@@ -1,0 +1,12 @@
+name: trading
+description: Trading — portfolio, positions, scans, risk, PnL, execution.
+default_model: claude-sonnet-4-20250514
+escalation_model: claude-opus-4-20250618
+escalate_if:
+  - tokens>5000
+  - mention:execute
+  - mention:live_order
+requires_tools: true
+daily_cost_ceiling_usd: 6.00
+owner_channel: trading
+mode: chat

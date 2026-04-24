@@ -1,0 +1,11 @@
+name: growth
+description: Growth — marketing, SEO, conversion, referral, funnel.
+default_model: gpt-4o-mini
+escalation_model: claude-sonnet-4-20250514
+escalate_if:
+  - tokens>3000
+  - mention:campaign
+requires_tools: false
+daily_cost_ceiling_usd: 3.00
+owner_channel: growth
+mode: chat

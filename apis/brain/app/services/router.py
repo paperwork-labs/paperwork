@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from app.services import llm
+from app.services.errors import LLMUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -164,6 +165,139 @@ FALLBACK_MAP = {
 # -- ClassifyAndRoute Strategy -------------------------------------------------
 
 
+def _provider_for_model(model: str) -> str:
+    """Infer provider from a model slug. Keep in sync with FALLBACK_MAP."""
+    if model.startswith("claude-"):
+        return "anthropic"
+    if model.startswith("gemini-"):
+        return "google"
+    return "openai"
+
+
+class PersonaPinnedRoute:
+    """Route a request using a PersonaSpec's pinned model contract.
+
+    No Gemini classifier call (the spec already declares the model). No
+    keyword heuristics for "does this need tools" (the spec declares
+    `requires_tools`). Escalation is driven by three deterministic
+    signals: compliance, exact token count (via tiktoken), and mention
+    keywords.
+
+    On every-provider failure this raises `LLMUnavailableError` so the
+    agent layer can return an honest error response rather than silently
+    handing the user mock content.
+    """
+
+    def __init__(
+        self,
+        circuit_breaker: CircuitBreaker,
+        *,
+        model: str,
+        escalation_model: str | None,
+        escalate_on_compliance: bool,
+        escalate_on_tokens_over: int | None,
+        escalate_on_mentions: list[str],
+        input_tokens: int,
+        requires_tools: bool,
+    ):
+        self.cb = circuit_breaker
+        self.model = model
+        self.escalation_model = escalation_model
+        self.escalate_on_compliance = escalate_on_compliance
+        self.escalate_on_tokens_over = escalate_on_tokens_over
+        self.escalate_on_mentions = [m.lower() for m in escalate_on_mentions]
+        self.input_tokens = input_tokens
+        self.requires_tools = requires_tools
+
+    async def execute(self, context: ChainContext) -> ChainResult:
+        model = self.model
+        escalated = False
+        escalation_reason: str | None = None
+        if self.escalation_model:
+            if self.escalate_on_compliance:
+                model, escalated, escalation_reason = (
+                    self.escalation_model, True, "compliance",
+                )
+            elif any(m in context.message.lower() for m in self.escalate_on_mentions):
+                model, escalated, escalation_reason = (
+                    self.escalation_model, True, "mention",
+                )
+            elif (
+                self.escalate_on_tokens_over is not None
+                and self.input_tokens > self.escalate_on_tokens_over
+            ):
+                model, escalated, escalation_reason = (
+                    self.escalation_model, True, "tokens",
+                )
+
+        provider = _provider_for_model(model)
+
+        if await self.cb.is_open(provider):
+            fallback = FALLBACK_MAP.get(provider, {})
+            new_provider = fallback.get("provider", "anthropic")
+            model_map = fallback.get("model_map", {})
+            model = model_map.get(model, "claude-sonnet-4-20250514")
+            provider = new_provider
+            logger.warning(
+                "Circuit open for pinned persona route, falling back to %s/%s",
+                provider, model,
+            )
+
+        try:
+            if self.requires_tools and provider == "anthropic":
+                result = await llm.complete_with_mcp(
+                    system_prompt=context.system_prompt,
+                    messages=context.messages,
+                    model=model,
+                )
+            elif self.requires_tools and provider == "openai":
+                result = await llm.complete_openai_with_mcp(
+                    system_prompt=context.system_prompt,
+                    messages=context.messages,
+                    model=model,
+                )
+            else:
+                result = await llm.complete_text(
+                    system_prompt=context.system_prompt,
+                    messages=context.messages,
+                    model=model,
+                    provider=provider,
+                )
+            await self.cb.record_success(provider)
+        except Exception as exc:
+            logger.error(
+                "PersonaPinnedRoute LLM call failed for %s/%s",
+                provider, model, exc_info=True,
+            )
+            await self.cb.record_failure(provider)
+            raise LLMUnavailableError(
+                provider=provider, model=model, reason=str(exc),
+            ) from exc
+
+        cost = calculate_cost(
+            result.get("model", model),
+            result.get("tokens_in", 0),
+            result.get("tokens_out", 0),
+        )
+
+        return ChainResult(
+            content=result.get("content", ""),
+            model=result.get("model", model),
+            provider=result.get("provider", provider),
+            tokens_in=result.get("tokens_in", 0),
+            tokens_out=result.get("tokens_out", 0),
+            tool_calls=result.get("tool_calls", []),
+            classification={
+                "strategy": "persona_pinned",
+                "escalated": escalated,
+                "escalation_reason": escalation_reason,
+                "requires_tools": self.requires_tools,
+                "input_tokens_measured": self.input_tokens,
+            },
+            cost=cost,
+        )
+
+
 class ClassifyAndRoute:
     """D20 Pattern 3 — Gemini Flash classifies, then routes to optimal model."""
 
@@ -227,10 +361,12 @@ class ClassifyAndRoute:
 
             await self.cb.record_success(provider)
 
-        except Exception:
+        except Exception as exc:
             logger.error("LLM call failed for %s/%s", provider, model, exc_info=True)
             await self.cb.record_failure(provider)
-            result = llm._mock_response(context.messages)
+            raise LLMUnavailableError(
+                provider=provider, model=model, reason=str(exc),
+            ) from exc
 
         cost = calculate_cost(
             result.get("model", model),
