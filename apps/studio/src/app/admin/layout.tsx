@@ -11,10 +11,12 @@ import {
   Rocket,
   Bot,
   BarChart3,
+  Workflow,
 } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin/architecture", label: "Architecture", icon: Workflow },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/ops", label: "Ops", icon: Activity },
   { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
