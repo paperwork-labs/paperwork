@@ -1,0 +1,33 @@
+name: System graph
+
+# Keep apps/studio/src/data/system-graph.json in sync with the source of
+# truth in scripts/system_graph.py. If someone adds/removes a node in the
+# Python manifest but forgets to regenerate the JSON, this CI catches it
+# before the stale data ships to Studio's /admin/architecture DAG.
+
+on:
+  pull_request:
+    paths:
+      - "scripts/system_graph.py"
+      - "apps/studio/src/data/system-graph.json"
+      - ".github/workflows/system-graph.yaml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/system_graph.py"
+      - "apps/studio/src/data/system-graph.json"
+
+permissions:
+  contents: read
+
+jobs:
+  check-graph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Assert system-graph.json is up to date
+        run: python scripts/system_graph.py --check

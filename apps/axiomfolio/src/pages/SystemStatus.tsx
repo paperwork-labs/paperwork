@@ -334,6 +334,27 @@ const SystemStatus: React.FC = () => {
   const { timezone } = useUserPreferences();
   const [sanityData, setSanityData] = useState<Record<string, unknown> | null>(null);
   const [operatorExpanded, setOperatorExpanded] = useState(false);
+  // Drill-through from Studio command-center: when opened with
+  // `?focus=<node_id>`, surface a toast + scroll to the relevant section.
+  // Studio's /admin/architecture passes focus ids like
+  // `axiomfolio.silver.features`; we match on the layer suffix.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const focus = params.get('focus');
+    if (!focus) return;
+    const layerMatch = focus.match(/axiomfolio\.(bronze|silver|gold|execution)/);
+    const label = layerMatch
+      ? `${layerMatch[1]} layer (focused from Studio)`
+      : focus;
+    toast.success(`Focused: ${label}`, { id: 'studio-focus', duration: 4000 });
+    const target =
+      document.getElementById(focus) ||
+      (layerMatch && document.querySelector(`[data-layer="${layerMatch[1]}"]`));
+    if (target instanceof HTMLElement) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, []);
 
 
   const [autoFixJobId, setAutoFixJobId] = useState<string | null>(null);

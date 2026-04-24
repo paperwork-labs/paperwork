@@ -406,59 +406,36 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         </motion.div>
       </motion.section>
 
-      {/* Architecture + CI Runs */}
+      {/* Architecture link + CI Runs */}
       <div className="grid gap-4 md:grid-cols-2">
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <p className="mb-4 text-sm font-medium text-zinc-200">System Architecture</p>
-          <div className="space-y-4 text-xs">
-            <div>
-              <p className="mb-1.5 font-medium uppercase tracking-wider text-zinc-600">User Flow</p>
-              <div className="flex flex-wrap items-center gap-1.5 text-zinc-400">
-                <Globe className="h-3.5 w-3.5 text-zinc-300" />
-                <span>User</span>
-                <ArrowRight className="h-3 w-3 text-zinc-600" />
-                <span className="rounded bg-zinc-700/50 px-1.5 py-0.5 text-zinc-300">Vercel (5 apps)</span>
-                <ArrowRight className="h-3 w-3 text-zinc-600" />
-                <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-blue-400">Render API</span>
-                <ArrowRight className="h-3 w-3 text-zinc-600" />
-                <span className="rounded bg-green-500/10 px-1.5 py-0.5 text-green-400">Neon DB</span>
-                <span className="text-zinc-700">+</span>
-                <span className="rounded bg-orange-500/10 px-1.5 py-0.5 text-orange-400">Upstash Redis</span>
-              </div>
+        <Link
+          href="/admin/architecture"
+          className="group flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 transition hover:border-zinc-700 hover:bg-zinc-900/80"
+        >
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <Workflow className="h-4 w-4 text-zinc-500" />
+              <p className="text-sm font-medium text-zinc-200">System architecture</p>
+              <ArrowRight className="ml-auto h-3.5 w-3.5 text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-zinc-300" />
             </div>
-            <div>
-              <p className="mb-1.5 font-medium uppercase tracking-wider text-zinc-600">AI Agents</p>
-              <div className="flex flex-wrap items-center gap-1.5 text-zinc-400">
-                <Workflow className="h-3.5 w-3.5 text-amber-400" />
-                <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-amber-400">n8n (16 workflows)</span>
-                <ArrowRight className="h-3 w-3 text-zinc-600" />
-                <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 text-emerald-400">OpenAI</span>
-                <span className="text-zinc-700">+</span>
-                <span className="text-zinc-400">Slack</span>
-                <span className="text-zinc-700">+</span>
-                <span className="text-zinc-400">GitHub</span>
-              </div>
-            </div>
-            <div>
-              <p className="mb-1.5 font-medium uppercase tracking-wider text-zinc-600">Social</p>
-              <div className="flex flex-wrap items-center gap-1.5 text-zinc-400">
-                <Cpu className="h-3.5 w-3.5 text-pink-400" />
-                <span className="rounded bg-pink-500/10 px-1.5 py-0.5 text-pink-400">Postiz</span>
-                <ArrowRight className="h-3 w-3 text-zinc-600" />
-                <span className="text-zinc-400">TikTok, Instagram, X, YouTube</span>
-              </div>
-            </div>
-            <div>
-              <p className="mb-1.5 font-medium uppercase tracking-wider text-zinc-600">Infra</p>
-              <div className="flex flex-wrap items-center gap-1.5 text-zinc-400">
-                <Server className="h-3.5 w-3.5 text-zinc-300" />
-                <span className="rounded bg-zinc-700/50 px-1.5 py-0.5 text-zinc-300">Hetzner VPS</span>
-                <span className="text-zinc-700">hosts</span>
-                <span className="text-zinc-400">n8n + Postiz + PostgreSQL + Redis</span>
-              </div>
-            </div>
+            <p className="text-sm leading-relaxed text-zinc-400">
+              Live DAG of every production service — bronze, silver, gold, execution,
+              frontend, platform, infra — with health probes, drilldown, and an
+              Ask-Brain drawer. Generated from the monorepo; cannot drift.
+            </p>
           </div>
-        </section>
+          <div className="mt-5 flex items-center gap-3 text-xs text-zinc-500">
+            <span className="rounded-md bg-zinc-800/60 px-2 py-1 font-mono text-zinc-300">
+              {infrastructure.length} infra probes
+            </span>
+            <span className="rounded-md bg-zinc-800/60 px-2 py-1 font-mono text-zinc-300">
+              {healthyInfra}/{infrastructure.length} healthy
+            </span>
+            <span className="ml-auto text-zinc-600 group-hover:text-zinc-400">
+              Open →
+            </span>
+          </div>
+        </Link>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
           <div className="mb-3 flex items-center gap-2">

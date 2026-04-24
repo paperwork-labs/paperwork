@@ -1,0 +1,346 @@
+{
+  "generated_at": "2026-04-24T19:22:49+00:00",
+  "commit_sha": "9369192",
+  "layers": [
+    "bronze",
+    "silver",
+    "gold",
+    "execution",
+    "frontend",
+    "platform",
+    "infra"
+  ],
+  "nodes": [
+    {
+      "id": "axiomfolio.bronze.market_data",
+      "label": "Market Data Clients",
+      "product": "axiomfolio",
+      "layer": "bronze",
+      "kind": "api",
+      "module_path": "apis/axiomfolio/app/services/bronze",
+      "description": "Raw provider clients: price, fundamentals, corporate actions.",
+      "owner_persona": "market-data-guardian",
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze",
+      "medallion_summary": {
+        "bronze": 33
+      }
+    },
+    {
+      "id": "axiomfolio.silver.features",
+      "label": "Features + Indicators",
+      "product": "axiomfolio",
+      "layer": "silver",
+      "kind": "api",
+      "module_path": "apis/axiomfolio/app/services/silver",
+      "description": "Stage analysis, indicators, point-in-time enrichments.",
+      "owner_persona": "quant-analyst",
+      "depends_on": [
+        "axiomfolio.bronze.market_data"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver",
+      "medallion_summary": {
+        "silver": 56
+      }
+    },
+    {
+      "id": "axiomfolio.gold.picks",
+      "label": "Picks + Portfolio",
+      "product": "axiomfolio",
+      "layer": "gold",
+      "kind": "api",
+      "module_path": "apis/axiomfolio/app/services/gold",
+      "description": "Decision surfaces: scanner output, shadow trades, portfolio views.",
+      "owner_persona": "portfolio-manager",
+      "depends_on": [
+        "axiomfolio.silver.features"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold",
+      "medallion_summary": {
+        "gold": 56
+      }
+    },
+    {
+      "id": "axiomfolio.execution.orders",
+      "label": "Execution + Risk",
+      "product": "axiomfolio",
+      "layer": "execution",
+      "kind": "worker",
+      "module_path": "apis/axiomfolio/app/services/execution",
+      "description": "Order routing, risk gate, circuit breakers.",
+      "owner_persona": "risk-manager",
+      "depends_on": [
+        "axiomfolio.gold.picks"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/execution",
+      "medallion_summary": {
+        "execution": 21
+      }
+    },
+    {
+      "id": "axiomfolio.api",
+      "label": "AxiomFolio API",
+      "product": "axiomfolio",
+      "layer": "execution",
+      "kind": "api",
+      "module_path": "apis/axiomfolio",
+      "health_url": "https://api.axiomfolio.com/health",
+      "admin_url": "https://axiomfolio.paperworklabs.com/settings/admin/system",
+      "description": "FastAPI surface for the trading platform (web + workers).",
+      "owner_persona": "trading",
+      "depends_on": [
+        "axiomfolio.gold.picks",
+        "axiomfolio.silver.features",
+        "axiomfolio.bronze.market_data"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio",
+      "medallion_summary": {
+        "ops": 74,
+        "bronze": 33,
+        "gold": 56,
+        "execution": 21,
+        "silver": 59
+      }
+    },
+    {
+      "id": "axiomfolio.frontend",
+      "label": "AxiomFolio Web",
+      "product": "axiomfolio",
+      "layer": "frontend",
+      "kind": "frontend",
+      "module_path": "apps/axiomfolio",
+      "health_url": "https://axiomfolio.paperworklabs.com",
+      "admin_url": "https://axiomfolio.paperworklabs.com/settings/admin/system",
+      "description": "Trading UI \u2014 React 19 + Vite 8. Pending migration to Next.js.",
+      "owner_persona": "ux",
+      "depends_on": [
+        "axiomfolio.api"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apps/axiomfolio"
+    },
+    {
+      "id": "filefree.api",
+      "label": "FileFree API",
+      "product": "filefree",
+      "layer": "execution",
+      "kind": "api",
+      "module_path": "apis/filefree",
+      "health_url": "https://api.filefree.ai/health",
+      "description": "Tax filing backend \u2014 MeF, 1099/W-2 ingest, IRS schemas.",
+      "owner_persona": "cpa",
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/filefree"
+    },
+    {
+      "id": "filefree.frontend",
+      "label": "FileFree Web",
+      "product": "filefree",
+      "layer": "frontend",
+      "kind": "frontend",
+      "module_path": "apps/filefree",
+      "health_url": "https://filefree.ai",
+      "description": "Free AI tax filing \u2014 Next.js 16 on Vercel.",
+      "owner_persona": "ux",
+      "depends_on": [
+        "filefree.api"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apps/filefree"
+    },
+    {
+      "id": "launchfree.api",
+      "label": "LaunchFree API",
+      "product": "launchfree",
+      "layer": "execution",
+      "kind": "api",
+      "module_path": "apis/launchfree",
+      "description": "Business formation backend \u2014 registered agent, state filings.",
+      "owner_persona": "legal",
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/launchfree"
+    },
+    {
+      "id": "launchfree.frontend",
+      "label": "LaunchFree Web",
+      "product": "launchfree",
+      "layer": "frontend",
+      "kind": "frontend",
+      "module_path": "apps/launchfree",
+      "health_url": "https://launchfree.ai",
+      "description": "Business formation UI \u2014 Next.js 16 on Vercel.",
+      "owner_persona": "ux",
+      "depends_on": [
+        "launchfree.api"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apps/launchfree"
+    },
+    {
+      "id": "distill.frontend",
+      "label": "Distill Web",
+      "product": "distill",
+      "layer": "frontend",
+      "kind": "frontend",
+      "module_path": "apps/distill",
+      "health_url": "https://distill.tax",
+      "description": "B2B compliance automation \u2014 Next.js 16 on Vercel.",
+      "owner_persona": "legal",
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apps/distill"
+    },
+    {
+      "id": "trinkets.frontend",
+      "label": "Trinkets Web",
+      "product": "trinkets",
+      "layer": "frontend",
+      "kind": "frontend",
+      "module_path": "apps/trinkets",
+      "description": "Brand merch / misc \u2014 Next.js 16 on Vercel.",
+      "owner_persona": "brand",
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apps/trinkets"
+    },
+    {
+      "id": "brain.api",
+      "label": "Brain API",
+      "product": "brain",
+      "layer": "execution",
+      "kind": "agent",
+      "module_path": "apis/brain",
+      "health_url": "https://brain-api-zo5t.onrender.com/health",
+      "docs_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/brain",
+      "description": "Executive agent: chat, /process, PR review, memory, personas. MCP over SSE.",
+      "owner_persona": "ea",
+      "llm_backed": true,
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/brain"
+    },
+    {
+      "id": "brain.mcp",
+      "label": "Brain MCP Tools",
+      "product": "brain",
+      "layer": "execution",
+      "kind": "mcp",
+      "module_path": "apis/brain/app/mcp_server.py",
+      "description": "32 MCP tools: GitHub, Render, Vercel, Neon, Upstash, n8n, memory, trading.",
+      "owner_persona": "brain-skill-engineer",
+      "llm_backed": true,
+      "depends_on": [
+        "brain.api"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/blob/main/apis/brain/app/mcp_server.py"
+    },
+    {
+      "id": "brain.personas",
+      "label": "Persona Library",
+      "product": "brain",
+      "layer": "execution",
+      "kind": "agent",
+      "module_path": ".cursor/rules",
+      "description": "48 .mdc persona rule files: ea, cpa, qa, cfo, trading, growth, etc.",
+      "owner_persona": "agent-ops",
+      "llm_backed": true,
+      "depends_on": [
+        "brain.api"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/.cursor/rules"
+    },
+    {
+      "id": "studio.frontend",
+      "label": "Studio",
+      "product": "studio",
+      "layer": "platform",
+      "kind": "platform",
+      "module_path": "apps/studio",
+      "health_url": "https://www.paperworklabs.com",
+      "admin_url": "https://www.paperworklabs.com/admin",
+      "description": "Command center \u2014 Next.js 16. This DAG lives here.",
+      "owner_persona": "engineering",
+      "depends_on": [
+        "brain.api",
+        "axiomfolio.api",
+        "filefree.api"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apps/studio"
+    },
+    {
+      "id": "infra.n8n",
+      "label": "n8n",
+      "product": "infra",
+      "layer": "platform",
+      "kind": "workflow",
+      "module_path": "infra/hetzner/workflows",
+      "health_url": "https://n8n.paperworklabs.com",
+      "admin_url": "https://n8n.paperworklabs.com",
+      "description": "Scheduler + shuttle. LLM calls being migrated to Brain personas.",
+      "owner_persona": "workflows",
+      "depends_on": [
+        "brain.api"
+      ],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/infra/hetzner/workflows"
+    },
+    {
+      "id": "infra.postgres",
+      "label": "Postgres (Neon)",
+      "product": "infra",
+      "layer": "infra",
+      "kind": "infra",
+      "module_path": "apis/brain/app/models",
+      "admin_url": "https://console.neon.tech",
+      "description": "Primary data store \u2014 Brain, AxiomFolio, FileFree branches.",
+      "owner_persona": "prod-database",
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/brain/app/models"
+    },
+    {
+      "id": "infra.redis",
+      "label": "Redis (Upstash)",
+      "product": "infra",
+      "layer": "infra",
+      "kind": "infra",
+      "module_path": "apis/brain/app/redis.py",
+      "admin_url": "https://console.upstash.com",
+      "description": "Cache + rate limit + Celery broker + persona fatigue tracking.",
+      "owner_persona": "infra-ops",
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/blob/main/apis/brain/app/redis.py"
+    },
+    {
+      "id": "infra.vercel",
+      "label": "Vercel",
+      "product": "infra",
+      "layer": "infra",
+      "kind": "infra",
+      "module_path": "apps",
+      "admin_url": "https://vercel.com/paperwork-labs",
+      "description": "Frontend hosting: Studio, FileFree, LaunchFree, Distill, Trinkets.",
+      "owner_persona": "infra-ops",
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apps"
+    },
+    {
+      "id": "infra.render",
+      "label": "Render",
+      "product": "infra",
+      "layer": "infra",
+      "kind": "infra",
+      "module_path": "apis",
+      "admin_url": "https://dashboard.render.com",
+      "description": "API + worker hosting: Brain, AxiomFolio, FileFree.",
+      "owner_persona": "infra-ops",
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis"
+    },
+    {
+      "id": "infra.github_actions",
+      "label": "GitHub Actions",
+      "product": "infra",
+      "layer": "platform",
+      "kind": "infra",
+      "module_path": ".github/workflows",
+      "admin_url": "https://github.com/paperwork-labs/paperwork/actions",
+      "description": "CI + Dependabot auto-approve + LLM triage + auto-merge-sweep.",
+      "owner_persona": "infra-ops",
+      "depends_on": [],
+      "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/.github/workflows"
+    }
+  ]
+}
