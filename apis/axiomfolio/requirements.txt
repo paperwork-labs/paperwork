@@ -46,8 +46,10 @@ redis==7.4.0
 black==26.3.1
 ruff==0.15.11
 
-# APM/Monitoring
-newrelic==12.1.0
+# Observability — OpenTelemetry stack pinned below handles APM/tracing.
+# New Relic was previously bundled but never activated (no newrelic-admin
+# wrapper, no license key in render.yaml). Removed 2026-04-24 — OTel via
+# app/observability/tracing.py covers the same ground vendor-neutrally.
 
 # Testing
 pytest==9.0.3

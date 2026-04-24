@@ -148,7 +148,6 @@ services:
       - "8004:8000"
     volumes:
       - ../apis/axiomfolio:/app
-      - ../infra/axiomfolio/observability:/opt/observability:ro
     env_file:
       - env.dev.defaults
       - ../.env.secrets
@@ -163,10 +162,9 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/3
       CELERY_RESULT_BACKEND: redis://redis:6379/3
       WORKER_ROLE: api
-      NEW_RELIC_CONFIG_FILE: /opt/observability/newrelic.ini
-      NEW_RELIC_APP_NAME: AxiomFolio Backend (dev)
-      NEW_RELIC_LOG: stdout
-      NEW_RELIC_LOG_LEVEL: info
+      # Observability: OTel is wired up in app/observability/tracing.py.
+      # Set OTEL_EXPORTER_OTLP_ENDPOINT in .env.secrets to ship spans to
+      # Grafana Tempo / Honeycomb / Jaeger. Unset = no-op (dev default).
     command: ["python", "-m", "uvicorn", "app.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--log-level", "info", "--reload", "--reload-dir", "/app/app"]
     depends_on:
       postgres:

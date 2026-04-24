@@ -66,7 +66,7 @@ Optional:
 - `BRAIN_WEBHOOK_SECRET` (HMAC signing secret shared with Brain for webhook payloads)
 - `RENDER_API_KEY`, `RENDER_OWNER_ID` (legacy — Render cron schedule sync via `render_sync_service.py`; only if re-enabling platform crons)
 - `RATE_LIMIT_STORAGE_URL` (Redis-backed limiter)
-- `NEW_RELIC_LICENSE_KEY`
+- `OTEL_EXPORTER_OTLP_ENDPOINT` + `OTEL_EXPORTER_OTLP_HEADERS` (optional; OTel replaces the dormant NR integration removed 2026-04-24)
 - `ADMIN_SEED_ENABLED` (one-time admin bootstrap)
 - `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` (only if seeding)
 - `CELERY_TASK_SOFT_TIME_LIMIT` (default 300s)

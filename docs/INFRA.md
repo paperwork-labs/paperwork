@@ -40,9 +40,7 @@ infra/
 ├── axiomfolio/
 │   ├── README.md                # product-scoped notes
 │   ├── compose.profiles.yaml    # ib-gateway, cloudflared, flower (opt-in)
-│   ├── env.examples/            # env.dev.example, env.prod.example, env.test.example
-│   └── observability/
-│       └── newrelic.ini         # NewRelic app config for axiomfolio containers
+│   └── env.examples/            # env.dev.example, env.prod.example, env.test.example
 ├── gcp/                         # cross-product: GCP service account keys, runbooks
 ├── hetzner/                     # cross-product: Hetzner host configs
 └── git-hooks/                   # cross-product: shared git hooks
@@ -240,9 +238,12 @@ Performed as part of PR #80 (AxiomFolio monorepo absorption):
    gone — superseded by the root compose.
 4. **Axiomfolio profile overlay added.** `infra/axiomfolio/compose.profiles.yaml`
    holds ib-gateway, cloudflared, flower.
-5. **Observability stays product-scoped.** `infra/axiomfolio/observability/newrelic.ini`
-   is mounted into the axiomfolio containers at `/opt/observability/` and
-   referenced via `NEW_RELIC_CONFIG_FILE=/opt/observability/newrelic.ini`.
+5. **Observability is in-app (OpenTelemetry).** Axiomfolio uses OTel
+   via `app/observability/tracing.py` — FastAPI, SQLAlchemy, Celery,
+   httpx, and Redis auto-instrumentation. Vendor-neutral: set
+   `OTEL_EXPORTER_OTLP_ENDPOINT` to ship spans to Grafana Tempo /
+   Honeycomb / Jaeger. Unset = no-op (dev default). New Relic was
+   previously bundled but never activated; removed 2026-04-24.
 6. **Axiomfolio Makefile slimmed.** Targets that wrapped Docker Compose
    now call the root compose via relative paths; frontend-*, ladle-*,
    and db-* targets delegate to `pnpm` workspace commands.
@@ -367,8 +368,8 @@ on Standard plans; Hetzner worker would be ~$15/mo for equivalent CPU).
 ### Why keep `infra/axiomfolio/` at all if there's one shared compose?
 
 - **Product-specific integrations exist.** IB Gateway, Cloudflare tunnel,
-  NewRelic app config, Flower — these are axiomfolio-specific and don't
-  belong in the shared compose.
+  Flower — these are axiomfolio-specific and don't belong in the shared
+  compose.
 - **Env templates need scoping.** `infra/env.dev.defaults` covers the shared
   stack; `infra/axiomfolio/env.examples/env.dev.example` documents
   axiomfolio-specific required vars (broker OAuth, flex tokens, etc.)

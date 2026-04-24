@@ -14,7 +14,7 @@ See `docs/INFRA.md` for the full architecture.
 | `env.examples/env.dev.example`| Documents AxiomFolio-specific dev env vars (broker tokens, flex query IDs, etc.) |
 | `env.examples/env.prod.example`| Prod template (Render vars set via dashboard, this is for reference)  |
 | `env.examples/env.test.example`| Pytest env template                                                   |
-| `observability/newrelic.ini`  | NewRelic agent config mounted into axiomfolio containers                |
+| _(observability)_             | OTel is in-app (`app/observability/tracing.py`); no external config files needed. Set `OTEL_EXPORTER_OTLP_ENDPOINT` to ship spans. |
 
 ## Quick starts
 
