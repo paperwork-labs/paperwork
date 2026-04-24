@@ -54,7 +54,7 @@ jobs:
           filters: |
             backend:
               - 'apis/axiomfolio/app/**'
-              - 'apis/axiomfolio/Dockerfile.backend'
+              - 'apis/axiomfolio/Dockerfile'
               - 'apis/axiomfolio/requirements*.txt'
               - 'apis/axiomfolio/pyproject.toml'
               - 'apis/axiomfolio/Makefile'

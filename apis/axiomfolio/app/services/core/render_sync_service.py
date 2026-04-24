@@ -27,7 +27,7 @@ from app.models.market_data import CronSchedule
 logger = logging.getLogger(__name__)
 
 RENDER_API_BASE = "https://api.render.com/v1"
-DOCKERFILE_PATH = "./Dockerfile.backend"
+DOCKERFILE_PATH = "./Dockerfile"
 COMMAND_PREFIX = "python -m app.scripts.run_task"
 DEFAULT_PLAN = "starter"
 DEFAULT_REGION = "oregon"

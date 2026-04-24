@@ -68,7 +68,7 @@ services:
   flower:
     build:
       context: ../apis/axiomfolio
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile
     container_name: axiomfolio-flower
     env_file:
       - env.dev.defaults

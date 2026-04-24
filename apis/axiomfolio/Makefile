@@ -36,30 +36,32 @@ COMPOSE_TUN  := $(COMPOSE) -f $(REPO_ROOT)/infra/axiomfolio/compose.profiles.yam
 COMPOSE_OPS  := $(COMPOSE) -f $(REPO_ROOT)/infra/axiomfolio/compose.profiles.yaml --profile ops
 COMPOSE_ALL  := $(COMPOSE) -f $(REPO_ROOT)/infra/axiomfolio/compose.profiles.yaml --profile ibkr --profile tunnel --profile ops
 
-# Axiomfolio service names in the shared compose.
-API_SVC    := api-axiomfolio
-WORKER_SVC := celery-axiomfolio-worker
-BEAT_SVC   := celery-axiomfolio-beat
+# Axiomfolio service names in the shared compose. Must match Render.
+API_SVC          := api-axiomfolio
+WORKER_SVC       := celery-axiomfolio-worker
+WORKER_HEAVY_SVC := celery-axiomfolio-worker-heavy
+BEAT_SVC         := celery-axiomfolio-beat
+AXIOMFOLIO_SVCS  := $(API_SVC) $(WORKER_SVC) $(WORKER_HEAVY_SVC) $(BEAT_SVC)
 
 # ─── Default dev stack (shared postgres + redis + all products) ───────
 up:
-	$(COMPOSE) up -d --build $(API_SVC) $(WORKER_SVC) $(BEAT_SVC)
+	$(COMPOSE) up -d --build $(AXIOMFOLIO_SVCS)
 	@$(MAKE) health-check
 
 up-ibkr: ## Boot axiomfolio + IB Gateway profile
-	$(COMPOSE_IBKR) up -d --build $(API_SVC) $(WORKER_SVC) $(BEAT_SVC) ib-gateway
+	$(COMPOSE_IBKR) up -d --build $(AXIOMFOLIO_SVCS) ib-gateway
 	@$(MAKE) health-check
 
 up-tunnel: ## Boot axiomfolio + Cloudflare tunnel profile
-	$(COMPOSE_TUN) up -d --build $(API_SVC) $(WORKER_SVC) $(BEAT_SVC) cloudflared
+	$(COMPOSE_TUN) up -d --build $(AXIOMFOLIO_SVCS) cloudflared
 	@$(MAKE) health-check
 
 up-ops: ## Boot axiomfolio + Flower (Celery task monitor)
-	$(COMPOSE_OPS) up -d --build $(API_SVC) $(WORKER_SVC) $(BEAT_SVC) flower
+	$(COMPOSE_OPS) up -d --build $(AXIOMFOLIO_SVCS) flower
 	@$(MAKE) health-check
 
 down:
-	$(COMPOSE_ALL) stop $(API_SVC) $(WORKER_SVC) $(BEAT_SVC) ib-gateway cloudflared flower 2>/dev/null; true
+	$(COMPOSE_ALL) stop $(AXIOMFOLIO_SVCS) ib-gateway cloudflared flower 2>/dev/null; true
 
 down-reset:
 	@echo "⚠️  This destroys axiomfolio containers AND shared postgres+redis data."
@@ -71,10 +73,10 @@ ps:
 	$(COMPOSE_ALL) ps
 
 logs:
-	$(COMPOSE) logs --tail=200 $(API_SVC) $(WORKER_SVC) $(BEAT_SVC)
+	$(COMPOSE) logs --tail=200 $(AXIOMFOLIO_SVCS)
 
 build:
-	$(COMPOSE) build $(API_SVC) $(WORKER_SVC) $(BEAT_SVC)
+	$(COMPOSE) build $(AXIOMFOLIO_SVCS)
 
 health-check:
 	@./scripts/health_check.sh $(ENV_DEFAULTS)

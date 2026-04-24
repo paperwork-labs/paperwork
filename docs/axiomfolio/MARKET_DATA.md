@@ -42,8 +42,8 @@ Pipeline overview and scheduling: [ARCHITECTURE.md](ARCHITECTURE.md#data-pipelin
 
 ## Environment configuration (dev)
 
-- **Run dev via Makefile only**: `make up` (or `./run.sh start`) uses `docker compose --env-file infra/env.dev ...` and injects `infra/env.dev` into backend/celery containers.
-- **Source of truth**: put all dev secrets (FMP/Finnhub keys, Brain webhook URL/secret, etc.) into **`infra/env.dev`** (gitignored).
+- **Run dev via Makefile only**: `make up` from `apis/axiomfolio/` drives the root `infra/compose.dev.yaml`; env values come from `infra/env.dev.defaults` + `.env.secrets` at repo root (see `docs/INFRA.md`).
+- **Source of truth**: put all dev secrets (FMP/Finnhub keys, Brain webhook URL/secret, etc.) into repo-root **`.env.secrets`** (gitignored).
 - **Do not rely on root `.env`**: backend settings no longer implicitly load a repo-root `.env`. If you truly need an env file outside Docker, set `QM_ENV_FILE=/path/to/file`.
 - **Frontend safety**: the `frontend` and `ladle` containers do **not** receive `infra/env.dev` (to avoid leaking secrets). Only `VITE_*` variables explicitly passed in compose are available to the browser build.
 
@@ -73,7 +73,7 @@ Responsibilities by layer
 ![Market data scheduling](assets/market_data_scheduling.png)
 
 ## Dev world (local)
-- Use `make up` (or `./run.sh start`) to start Postgres, Redis, backend, workers, and frontend.
+- Use `make up` from `apis/axiomfolio/` to start Postgres, Redis, backend, and workers. Frontend runs host-side via `pnpm dev:axiomfolio` from repo root.
 - Trigger any task manually with `make task-run TASK=app.tasks.market.<module>.<function>` (example: `app.tasks.market.coverage.daily_bootstrap`).
 - Use Admin > Schedules in the UI to create/edit/pause/resume schedules and trigger tasks via "Run Now".
 - Coverage refresh path: run `admin_coverage_refresh`, then check `/api/v1/market-data/coverage`.

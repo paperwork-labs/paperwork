@@ -7,15 +7,18 @@ FastAPI + SQLAlchemy + Alembic backend that unifies multi-broker data (IBKR, Tas
 
 Runbook (Docker)
 ----------------
-- Preferred local entrypoint (from repo root):
-  - Start dev stack: `./run.sh start` (or `make up`)
-  - Logs: `./run.sh logs`
-  - Shell: `make backend-shell`
-  - Tests (safe, isolated DB): `./run.sh test`
-  - Migrations (dev DB):
-    - Apply: `./run.sh migrate`
-    - Autogenerate: `./run.sh makemigration "message"`
-    - Downgrade: `./run.sh downgrade -1`
+Run from `apis/axiomfolio/` via the Makefile (Docker Compose is driven
+from the monorepo-root `infra/compose.dev.yaml`; see `docs/INFRA.md`):
+
+- Start dev stack:            `make up`
+- With IB Gateway:            `make up-ibkr`
+- Logs:                       `make logs`
+- Shell into backend:         `make backend-shell`
+- Tests (axiomfolio_test DB): `make test`
+- Migrations (dev DB):
+  - Apply:                    `make migrate-up`
+  - Autogenerate:             `make migrate-create MSG="message"`
+  - Downgrade:                `make migrate-down REV=-1`
 
 Dependencies: Pydantic vs pydantic-settings
 -------------------------------------------

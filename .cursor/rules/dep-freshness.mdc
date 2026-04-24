@@ -43,7 +43,7 @@ pip list --outdated
 4. Data starts fresh in dev; prod uses Render's managed upgrade
 
 ### Python Major Upgrade
-1. Update `Dockerfile.backend` FROM line
+1. Update `Dockerfile` FROM line
 2. Run `docker compose build --no-cache backend celery_worker celery_beat`
 3. Test all tasks and API endpoints
 4. Update `render.yaml` runtime version if applicable

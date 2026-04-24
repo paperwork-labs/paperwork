@@ -12,7 +12,7 @@ services:
     runtime: docker
     rootDir: apis/axiomfolio
     plan: standard
-    dockerfilePath: ./Dockerfile.backend
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     autoDeploy: true
     # Render Docker services don't reliably inject env vars (fromDatabase/fromService)
@@ -64,7 +64,7 @@ services:
     # daily/intraday backfill, repair_stage_history) route to the heavy
     # queue handled by axiomfolio-worker-heavy.
     plan: standard
-    dockerfilePath: ./Dockerfile.backend
+    dockerfilePath: ./Dockerfile
     autoDeploy: true
     envVars:
       - key: ENVIRONMENT
@@ -108,7 +108,7 @@ services:
     # peak at >1 GiB. Beat runs only on the fast worker to avoid duplicate
     # schedules.
     plan: standard
-    dockerfilePath: ./Dockerfile.backend
+    dockerfilePath: ./Dockerfile
     autoDeploy: true
     envVars:
       - key: ENVIRONMENT

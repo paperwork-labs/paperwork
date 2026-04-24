@@ -99,10 +99,15 @@ databases with scoped roles.
 
 ### Axiomfolio worker stack (always up when axiomfolio backend is up)
 
-| Service                    | Purpose                                         |
-| -------------------------- | ----------------------------------------------- |
-| `celery-axiomfolio-worker` | celery worker (queues: celery, account_sync, orders) |
-| `celery-axiomfolio-beat`   | celery beat scheduler                           |
+Dev compose mirrors Render exactly: same services, same queue routing,
+same concurrency. Only instance sizes differ (dev shares your laptop;
+Render pins Standard 2 GiB per worker).
+
+| Service                          | Queues                             | Concurrency | Matches Render service       |
+| -------------------------------- | ---------------------------------- | ----------- | ---------------------------- |
+| `celery-axiomfolio-worker`       | `celery`, `account_sync`, `orders` | 2           | `axiomfolio-worker`          |
+| `celery-axiomfolio-worker-heavy` | `heavy`                            | 1           | `axiomfolio-worker-heavy`    |
+| `celery-axiomfolio-beat`         | n/a (scheduler)                    | n/a         | (runs inside fast worker in prod via `--beat`; split for dev) |
 
 Other products (filefree, brain, launchfree) can add their own celery
 workers when they need them; today only axiomfolio has scheduled tasks.
@@ -188,6 +193,21 @@ Local dev DBs are re-init-able (`docker compose down -v && docker compose up`);
 no prod risk. Production Render databases are managed per-service and
 unaffected by this bump.
 
+### Upgrading an existing dev environment
+
+If you have an existing `pgdata` volume from before this change, the pg18
+container will refuse to start ("incompatible data directory version").
+Wipe the volume to re-initialize:
+
+```bash
+docker compose -f infra/compose.dev.yaml down -v
+docker compose -f infra/compose.dev.yaml up -d postgres
+# init-test-db.sh creates all *_dev and *_test DBs on first boot.
+```
+
+This destroys local dev data only; production Render DBs are untouched.
+Re-run migrations per product (`make migrate-up` from each `apis/*/`).
+
 ---
 
 ## Migration sequence (2026-04-23)
@@ -214,7 +234,9 @@ Performed as part of PR #80 (AxiomFolio monorepo absorption):
 
 - **`web-axiomfolio` in root compose.** Axiomfolio frontend is Vite + React 19,
   not Next.js. Needs an `apps/axiomfolio/Dockerfile.dev` designed for Vite's
-  dev server + HMR. For now, run `pnpm dev:axiomfolio` directly from host.
+  dev server + HMR. For now, run `pnpm dev:axiomfolio` directly from host —
+  which is also how studio, distill, filefree, launchfree, and trinkets
+  run day-to-day, so it's not an outlier pattern.
 - **Unified test compose.** AxiomFolio tests historically ran in a dedicated
   `compose.test.yaml` container. Migrating to `pytest` against shared
   postgres/redis with `axiomfolio_test` DB requires a conftest audit.
@@ -222,6 +244,92 @@ Performed as part of PR #80 (AxiomFolio monorepo absorption):
 - **Per-product celery workers for brain/filefree/launchfree.** Only
   axiomfolio has scheduled tasks today. Other products add workers on
   demand.
+
+---
+
+## Strategic roadmap (not this PR)
+
+### Axiomfolio frontend → Next.js
+
+Every other paperwork app (studio, distill, filefree, launchfree,
+trinkets) is Next.js. Axiomfolio is the lone Vite + React 19 holdout,
+carried over from its pre-monorepo life. Next.js brings:
+
+- **SSR / RSC** for data-heavy authenticated dashboards (fetch holdings
+  server-side, stream to client).
+- **Shared auth middleware** with the rest of paperwork (no per-app
+  token handling).
+- **Shared UI patterns** (Radix UI + Tailwind + shadcn/ui is already the
+  house kit; axiomfolio uses the same; the diff is routing + data
+  fetching, not components).
+- **SEO-friendly public surface** (landing, pricing, docs) without a
+  separate marketing site.
+
+**Cost**: 1–2 weeks of focused frontend work to port routing, data
+fetching, proxy config, and the Vite-specific env vars. Zero user-
+visible value in the short term.
+
+**When**: After (a) axiomfolio is stable on monorepo Render, and (b)
+Medallion Phase 0.C is shipped. Target: Q3. Tracked in `docs/axiomfolio/`
+as a separate plan.
+
+Until then, the Vite dev server runs host-side (`pnpm dev:axiomfolio`);
+the static build is deployed to Render via `apis/axiomfolio/render.yaml`
+→ `axiomfolio-frontend` service.
+
+### Python tooling consolidation → ruff
+
+The monorepo root `pyproject.toml` defines a full ruff + mypy + pytest
+config. AxiomFolio still carries its own `pyproject.toml` (black + isort)
+and `.flake8`. These should be deleted and axiomfolio should inherit
+root ruff.
+
+**Blocker**: format drift. Axiomfolio has ~500+ Python files formatted
+with black (line-length=88); root ruff targets line-length=100. A
+forced ruff pass would produce a massive diff that drowns review
+signal. Solution: one dedicated PR that runs `ruff format .` on
+axiomfolio, merges with a "format-only" commit trailer, and drops the
+axiomfolio pyproject + .flake8 in the same PR.
+
+**When**: Any calm week. Non-urgent.
+
+### Medallion tooling → cross-product
+
+`apis/axiomfolio/scripts/medallion/` (check_imports, check_sql,
+tag_files, etc.) is axiomfolio-specific today but the *architecture*
+is meant to apply to brain, filefree, launchfree as well. When the
+second product starts using medallion layers, lift the scripts to
+`scripts/medallion/` at repo root and make them parametric over
+`--app-dir`.
+
+**When**: When the second product adopts medallion (probably brain
+after Wave 0 ships on axiomfolio).
+
+### Secrets namespacing convention
+
+`.env.secrets` at repo root is shared across all products. Axiomfolio
+loads `IBKR_USERNAME`, `TASTYTRADE_CLIENT_ID`, etc. without product
+prefixes. This is fine operationally (each container only reads what
+it uses) but makes the file hard to audit.
+
+**Proposed convention**: `AXIOMFOLIO_*` prefix for axiomfolio-only
+secrets; unprefixed for cross-product (e.g. `OPENAI_API_KEY` if
+multiple products use it).
+
+**When**: When a secret collision happens, or when we onboard a
+second developer who needs to reason about the vault.
+
+### Hetzner tier-2 for axiomfolio heavy batch jobs
+
+Per `docs/INFRA_PHILOSOPHY.md`, nightly historical backtests and
+market-data warming (2am–5am, failure-tolerant, compute-heavy) are a
+better fit for Hetzner than paying Render Pro. The dev compose already
+supports this pattern via queue routing — `heavy` queue can be pinned
+to a Hetzner-hosted celery worker by changing `CELERY_BROKER_URL` to
+the Hetzner redis.
+
+**When**: When axiomfolio's Render costs start biting (currently ~$108/mo
+on Standard plans; Hetzner worker would be ~$15/mo for equivalent CPU).
 
 ---
 
