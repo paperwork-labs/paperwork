@@ -41,9 +41,7 @@ class OptionsChainSnapshot(Base):
     gamma = Column(Numeric(8, 6), nullable=True)
     theta = Column(Numeric(8, 4), nullable=True)
     vega = Column(Numeric(6, 4), nullable=True)
-    snapshot_taken_at = Column(
-        DateTime(timezone=True), nullable=False, index=True
-    )  # UTC
+    snapshot_taken_at = Column(DateTime(timezone=True), nullable=False, index=True)  # UTC
     source = Column(String(20), nullable=False)
 
     __table_args__ = (

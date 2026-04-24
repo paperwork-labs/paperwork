@@ -8,12 +8,14 @@ Quad sector filter restricts scans to SCAN sectors per the Quad × Regime matrix
 
 medallion: silver
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Optional, Sequence
 
+from app.services.market.quad_engine import get_sector_action
 from app.services.market.regime_engine import (
     REGIME_R1,
     REGIME_R2,
@@ -21,7 +23,6 @@ from app.services.market.regime_engine import (
     REGIME_R4,
     REGIME_R5,
 )
-from app.services.market.quad_engine import get_sector_action
 
 logger = logging.getLogger(__name__)
 
@@ -60,32 +61,33 @@ REGIME_SHORT_ACCESS = {
 @dataclass
 class ScanInput:
     """Per-stock scan inputs from MarketSnapshot."""
+
     symbol: str
     stage_label: str
-    rs_mansfield: Optional[float]
-    ema10_dist_n: Optional[float]
-    atre_150_pctile: Optional[float]  # ATRE_150 percentile (0-100)
-    range_pos_52w: Optional[float]  # Range position in 52-week range (0-100)
-    ext_pct: Optional[float]
-    atrp_14: Optional[float]
-    sector: Optional[str] = None
-    sub_industry: Optional[str] = None
+    rs_mansfield: float | None
+    ema10_dist_n: float | None
+    atre_150_pctile: float | None  # ATRE_150 percentile (0-100)
+    range_pos_52w: float | None  # Range position in 52-week range (0-100)
+    ext_pct: float | None
+    atrp_14: float | None
+    sector: str | None = None
+    sub_industry: str | None = None
     pass_count: int = 0
-    current_price: Optional[float] = None
-    atr_30: Optional[float] = None
+    current_price: float | None = None
+    atr_30: float | None = None
     # Daily snapshot of ``HistoricalIV.iv_rank_252`` for the symbol. ``None``
     # during the 252-day warm-up (see G5 / ``docs/plans/G5_IV_RANK_SURFACE.md``).
     # ``None`` is meaningful: filters using :func:`apply_iv_rank_filter`
     # EXCLUDE null-rank rows rather than coercing to 0 (same R29 pattern
     # as ``rs_mansfield``).
-    iv_rank_252: Optional[float] = None
+    iv_rank_252: float | None = None
 
 
-def _safe(val: Optional[float], default: float = 0.0) -> float:
+def _safe(val: float | None, default: float = 0.0) -> float:
     return val if val is not None else default
 
 
-def _is_sector_scannable(sector: Optional[str], quad: str, regime: str) -> bool:
+def _is_sector_scannable(sector: str | None, quad: str, regime: str) -> bool:
     """Check if a sector is scannable in the current Quad × Regime."""
     if sector is None:
         return True  # unknown sector: allow through, let other filters decide
@@ -98,7 +100,7 @@ def classify_long_tier(
     regime: str,
     *,
     quad: str = "Q1",
-) -> Optional[str]:
+) -> str | None:
     """Assign a stock to the best matching long tier, or None if no match.
 
     Breakout Elite (highest conviction): 2A/2B stage, RS > 0, tight EMA10, top ATRE percentile, high range
@@ -146,7 +148,7 @@ def classify_long_tier(
     return None
 
 
-def classify_short_tier(inp: ScanInput, regime: str) -> Optional[str]:
+def classify_short_tier(inp: ScanInput, regime: str) -> str | None:
     """Assign a stock to the best matching short tier, or None if no match.
 
     Breakdown Elite: 4A/4B stage, RS < 0, tight EMA10 (below), low range
@@ -178,7 +180,7 @@ def classify_scan_tier(
     regime: str,
     *,
     quad: str = "Q1",
-) -> Optional[str]:
+) -> str | None:
     """Assign a stock to the best matching tier (long or short)."""
     long_tier = classify_long_tier(inp, regime, quad=quad)
     if long_tier:
@@ -186,7 +188,7 @@ def classify_scan_tier(
     return classify_short_tier(inp, regime)
 
 
-def derive_action_label(stage_label: str, scan_tier: Optional[str], regime: str) -> str:
+def derive_action_label(stage_label: str, scan_tier: str | None, regime: str) -> str:
     """Derive the action label (BUY/HOLD/WATCH/REDUCE/SHORT/AVOID) from stage + scan + regime."""
     if scan_tier in (TIER_BREAKDOWN_ELITE, TIER_BREAKDOWN_STANDARD):
         return "SHORT"
@@ -219,12 +221,13 @@ def derive_action_label(stage_label: str, scan_tier: Optional[str], regime: str)
 
 # ── Forward R/R (Spec Section 9.2) ──
 
+
 def compute_forward_rr(
     close: float,
     atr_30: float,
-    stop: Optional[float] = None,
+    stop: float | None = None,
     regime: str = "R1",
-) -> Optional[float]:
+) -> float | None:
     """Compute forward risk/reward ratio.
 
     Target = Close + (multiplier × ATR30).
@@ -249,9 +252,10 @@ def compute_forward_rr(
 
 # ── Correlation Constraint (Spec Section 11.5) ──
 
+
 def check_correlation_constraint(
     positions: Sequence[dict],
-    candidate_sub_industry: Optional[str],
+    candidate_sub_industry: str | None,
     max_same_sub_industry: int = 3,
 ) -> bool:
     """Check if adding a position violates the correlation constraint.
@@ -262,14 +266,12 @@ def check_correlation_constraint(
     if candidate_sub_industry is None:
         return True
 
-    count = sum(
-        1 for p in positions
-        if p.get("sub_industry") == candidate_sub_industry
-    )
+    count = sum(1 for p in positions if p.get("sub_industry") == candidate_sub_industry)
     return count < max_same_sub_industry
 
 
 # ── Sector Confirmation (Spec Section 9.4) ──
+
 
 def compute_sector_confirmation(
     sector_etf_stage: str,
@@ -315,7 +317,7 @@ def apply_iv_rank_filter(
     op: str,
     value: float,
     *,
-    value2: Optional[float] = None,
+    value2: float | None = None,
 ) -> list[ScanInput]:
     """Filter scan inputs by ``iv_rank_252``.
 

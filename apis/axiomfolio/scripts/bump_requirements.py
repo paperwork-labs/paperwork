@@ -17,7 +17,6 @@ from pathlib import Path
 import requests
 from packaging.version import Version
 
-
 PIN_RE = re.compile(r"^\s*([A-Za-z0-9_.-]+)(\[[^\]]+\])?==([^\s#]+)")
 
 
@@ -77,5 +76,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-

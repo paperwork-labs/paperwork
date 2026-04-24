@@ -21,10 +21,9 @@ from __future__ import annotations
 import hashlib
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import List
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, inspect as sa_inspect
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -40,9 +39,7 @@ from app.models.user import User
 logger = logging.getLogger(__name__)
 
 # User-scoped tables that must always be included in GDPR delete cascades.
-GDPR_DELETE_CASCADE_TABLES: tuple[str, ...] = (
-    "historical_import_runs",
-)
+GDPR_DELETE_CASCADE_TABLES: tuple[str, ...] = ("historical_import_runs",)
 
 
 # Tables whose ``user_id`` column is a metadata pointer rather than
@@ -61,16 +58,14 @@ _SHARED_TABLES: frozenset[str] = frozenset(
 # Explicit registry for newly added user-scoped tables. These are still
 # discovered dynamically through Base.metadata, but the set acts as a
 # fail-loud checklist for GDPR coverage regressions.
-_EXPLICIT_USER_SCOPED_TABLES: frozenset[str] = frozenset(
-    GDPR_DELETE_CASCADE_TABLES
-)
+_EXPLICIT_USER_SCOPED_TABLES: frozenset[str] = frozenset(GDPR_DELETE_CASCADE_TABLES)
 
 
 def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def _user_scoped_tables() -> List:
+def _user_scoped_tables() -> list:
     out = []
     seen: set[str] = set()
     for table in Base.metadata.sorted_tables:
@@ -88,9 +83,7 @@ def _user_scoped_tables() -> List:
         seen.add(table.name)
     missing = sorted(_EXPLICIT_USER_SCOPED_TABLES - seen)
     if missing:
-        raise RuntimeError(
-            f"GDPR delete table registry mismatch; missing metadata for: {missing}"
-        )
+        raise RuntimeError(f"GDPR delete table registry mismatch; missing metadata for: {missing}")
     # Reverse so we delete leaves before parents (sorted_tables is
     # parent-first for FK ordering on insert).
     return list(reversed(out))
@@ -124,9 +117,7 @@ class GDPRDeleteService:
         self.db.refresh(job)
         return job, token
 
-    def confirm(
-        self, user_id: int, job_id: int, plaintext_token: str
-    ) -> GDPRDeleteJob:
+    def confirm(self, user_id: int, job_id: int, plaintext_token: str) -> GDPRDeleteJob:
         job = self.db.get(GDPRDeleteJob, job_id)
         if job is None or job.user_id != user_id:
             # Same response for "missing" and "not yours" to avoid
@@ -134,12 +125,10 @@ class GDPRDeleteService:
             raise PermissionError("Delete job not found for this tenant")
 
         if job.status != GDPRJobStatus.PENDING.value:
-            raise ValueError(
-                f"Cannot confirm job in status={job.status}"
-            )
+            raise ValueError(f"Cannot confirm job in status={job.status}")
 
         ttl = timedelta(hours=max(1, settings.GDPR_DELETE_CONFIRM_TTL_HOURS))
-        if datetime.now(timezone.utc) - job.requested_at > ttl:
+        if datetime.now(UTC) - job.requested_at > ttl:
             job.status = GDPRJobStatus.EXPIRED.value
             self.db.commit()
             raise ValueError("Delete confirmation token expired")
@@ -150,7 +139,7 @@ class GDPRDeleteService:
             raise PermissionError("Invalid confirmation token")
 
         job.status = GDPRJobStatus.CONFIRMED.value
-        job.confirmed_at = datetime.now(timezone.utc)
+        job.confirmed_at = datetime.now(UTC)
         # Token is single-use.
         job.confirmation_token_hash = None
         self.db.commit()
@@ -186,9 +175,7 @@ class GDPRDeleteService:
                 tbl = Base.metadata.tables.get(tname)
                 if tbl is not None and "user_id" in tbl.c:
                     self.db.execute(
-                        tbl.update()
-                        .where(tbl.c.user_id == user_id)
-                        .values(user_id=None)
+                        tbl.update().where(tbl.c.user_id == user_id).values(user_id=None)
                     )
 
             # Mark the user record itself anonymised but preserved
@@ -202,7 +189,7 @@ class GDPRDeleteService:
                 user.password_hash = "!"  # disable login
 
             job.status = GDPRJobStatus.COMPLETED.value
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             self.db.commit()
             logger.info("gdpr_delete: job=%s user=%s OK", job_id, user_id)
         except Exception as exc:
@@ -223,9 +210,7 @@ class GDPRDeleteService:
         for table in _user_scoped_tables():
             self.db.execute(delete(table).where(table.c.user_id == user_id))
 
-    def _record_incident(
-        self, user_id: int, job_id: int, exc: Exception
-    ) -> None:
+    def _record_incident(self, user_id: int, job_id: int, exc: Exception) -> None:
         try:
             self.db.add(
                 IncidentRow(

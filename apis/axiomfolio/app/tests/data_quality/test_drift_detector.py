@@ -14,8 +14,8 @@ Iron-law guards:
 from __future__ import annotations
 
 import random
+from datetime import UTC
 from decimal import Decimal
-from typing import List
 
 import pytest
 
@@ -27,9 +27,7 @@ def detector() -> DriftDetector:
     return DriftDetector()
 
 
-def _synthetic_history(
-    mean: float, sigma: float, n: int = 30, seed: int = 1234
-) -> List[Decimal]:
+def _synthetic_history(mean: float, sigma: float, n: int = 30, seed: int = 1234) -> list[Decimal]:
     """Reproducible Gaussian-ish sample as Decimals.
 
     Uses ``random.Random`` rather than NumPy to keep tests dependency-
@@ -38,10 +36,7 @@ def _synthetic_history(
     sigma.
     """
     rng = random.Random(seed)
-    return [
-        Decimal(f"{rng.gauss(mean, sigma):.4f}")
-        for _ in range(n)
-    ]
+    return [Decimal(f"{rng.gauss(mean, sigma):.4f}") for _ in range(n)]
 
 
 # ---------------------------------------------------------------------------
@@ -223,9 +218,9 @@ def test_check_rejects_float_value(detector: DriftDetector) -> None:
 
 def test_window_days_helper_returns_cutoff_in_past(detector: DriftDetector) -> None:
     cutoff = detector.cutoff_for_now()
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    delta = datetime.now(timezone.utc) - cutoff
+    delta = datetime.now(UTC) - cutoff
     assert detector.window_days >= 1
     # Cutoff should be within ~1 second of (now - window_days).
     assert abs(delta.days - detector.window_days) <= 1

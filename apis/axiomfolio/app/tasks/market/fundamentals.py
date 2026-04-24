@@ -3,8 +3,7 @@ Fundamentals enrichment tasks (index constituents + MarketSnapshot fields).
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from datetime import UTC, datetime, timedelta
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -31,9 +30,7 @@ _DEFAULT_HARD = 3600
     time_limit=_DEFAULT_HARD,
 )
 @task_run("market_indices_fundamentals_enrich")
-def enrich_index(
-    indices: Optional[List[str]] = None, limit_per_run: int = 500
-) -> dict:
+def enrich_index(indices: list[str] | None = None, limit_per_run: int = 500) -> dict:
     """Fill sector/industry/market_cap on IndexConstituent using DB-first snapshots."""
     _set_task_status("market_indices_fundamentals_enrich", "running")
     session = SessionLocal()
@@ -122,8 +119,9 @@ def fill_missing(limit_per_run: int = 500) -> dict:
     _set_task_status("market_snapshots_fundamentals_fill", "running")
     session = SessionLocal()
     try:
-        from app.models.market_data import MarketSnapshot as _MS
         from sqlalchemy import case
+
+        from app.models.market_data import MarketSnapshot as _MS
 
         missing_conditions = []
         for k in FUNDAMENTAL_FIELDS:
@@ -167,9 +165,7 @@ def fill_missing(limit_per_run: int = 500) -> dict:
                 if hasattr(_MS, k)
             )
             if has_new:
-                snapshot_builder.persist_snapshot(
-                    session, sym, {**(r.raw_analysis or {}), **snap}
-                )
+                snapshot_builder.persist_snapshot(session, sym, {**(r.raw_analysis or {}), **snap})
                 updated += 1
         res = {"status": "ok", "inspected": len(rows), "updated": updated}
         _set_task_status("market_snapshots_fundamentals_fill", "ok", res)
@@ -190,7 +186,7 @@ def refresh_stale(stale_days: int = 7, limit_per_run: int = 500) -> dict:
     try:
         from app.models.market_data import MarketSnapshot as _MS
 
-        cutoff = datetime.now(timezone.utc) - timedelta(days=stale_days)
+        cutoff = datetime.now(UTC) - timedelta(days=stale_days)
         rows = (
             session.query(_MS)
             .filter(
@@ -223,7 +219,7 @@ def refresh_stale(stale_days: int = 7, limit_per_run: int = 500) -> dict:
                         setattr(r, k, new_val)
                         changed = True
             if changed:
-                r.analysis_timestamp = datetime.now(timezone.utc)
+                r.analysis_timestamp = datetime.now(UTC)
                 updated += 1
         if updated:
             session.commit()

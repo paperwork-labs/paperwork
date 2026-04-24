@@ -49,9 +49,10 @@ medallion: gold
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 import numpy as np
 
@@ -83,13 +84,13 @@ class EquityCurvePercentiles:
     bootstrap-sampled trade; index ``n_trades-1`` is the terminal value.
     """
 
-    p5: List[Decimal]
-    p25: List[Decimal]
-    p50: List[Decimal]
-    p75: List[Decimal]
-    p95: List[Decimal]
+    p5: list[Decimal]
+    p25: list[Decimal]
+    p50: list[Decimal]
+    p75: list[Decimal]
+    p95: list[Decimal]
 
-    def to_dict(self) -> Dict[str, List[str]]:
+    def to_dict(self) -> dict[str, list[str]]:
         return {
             "p5": [str(v) for v in self.p5],
             "p25": [str(v) for v in self.p25],
@@ -116,7 +117,7 @@ class DistributionStats:
     p95: Decimal
     std: Decimal
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         return {
             "mean": str(self.mean),
             "median": str(self.median),
@@ -143,9 +144,9 @@ class MonteCarloResult:
     terminal_value: DistributionStats
     probability_of_loss: Decimal
     probability_of_2x: Decimal
-    params: Dict[str, Any] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "equity_curve": self.equity_curve.to_dict(),
             "max_drawdown_pct": self.max_drawdown_pct.to_dict(),
@@ -187,9 +188,7 @@ def _validate_inputs(
     if n_simulations < 1:
         raise ValueError("n_simulations must be >= 1")
     if n_simulations > MAX_ITERATIONS:
-        raise ValueError(
-            f"n_simulations capped at {MAX_ITERATIONS:,} for synchronous API"
-        )
+        raise ValueError(f"n_simulations capped at {MAX_ITERATIONS:,} for synchronous API")
     if initial_capital <= 0:
         raise ValueError("initial_capital must be > 0")
 
@@ -221,8 +220,8 @@ class MonteCarloSimulator:
         trade_returns: Sequence[Decimal],
         n_simulations: int = 10_000,
         initial_capital: Decimal = Decimal("100000"),
-        seed: Optional[int] = None,
-        weights: Optional[Sequence[float]] = None,
+        seed: int | None = None,
+        weights: Sequence[float] | None = None,
     ) -> MonteCarloResult:
         """Run the simulation.
 
@@ -251,11 +250,7 @@ class MonteCarloSimulator:
         n_trades = returns.shape[0]
         capital_f = float(initial_capital)
 
-        rng = (
-            np.random.default_rng(seed)
-            if seed is not None
-            else np.random.default_rng()
-        )
+        rng = np.random.default_rng(seed) if seed is not None else np.random.default_rng()
 
         if weights is not None:
             w = np.asarray(weights, dtype=np.float64)
@@ -266,13 +261,11 @@ class MonteCarloSimulator:
             total = w.sum()
             if total <= 0:
                 raise ValueError("weights must sum to > 0")
-            probs: Optional[np.ndarray] = w / total
+            probs: np.ndarray | None = w / total
         else:
             probs = None
 
-        sample_idx = rng.choice(
-            n_trades, size=(n_simulations, n_trades), replace=True, p=probs
-        )
+        sample_idx = rng.choice(n_trades, size=(n_simulations, n_trades), replace=True, p=probs)
         sampled_returns = returns[sample_idx]
 
         gross = 1.0 + sampled_returns
@@ -289,17 +282,13 @@ class MonteCarloSimulator:
 
         running_max = np.maximum.accumulate(equity, axis=1)
         with np.errstate(divide="ignore", invalid="ignore"):
-            drawdown = np.where(
-                running_max > 0, 1.0 - equity / running_max, 0.0
-            )
+            drawdown = np.where(running_max > 0, 1.0 - equity / running_max, 0.0)
         max_dd = drawdown.max(axis=1) * 100.0
 
         rf_per_period = float(self.risk_free_rate) / TRADING_DAYS_PER_YEAR
         excess = sampled_returns - rf_per_period
         mean_excess = excess.mean(axis=1)
-        std_excess = (
-            excess.std(axis=1, ddof=1) if n_trades > 1 else np.zeros(n_simulations)
-        )
+        std_excess = excess.std(axis=1, ddof=1) if n_trades > 1 else np.zeros(n_simulations)
         with np.errstate(divide="ignore", invalid="ignore"):
             sharpe = np.where(
                 std_excess > 0,

@@ -11,7 +11,7 @@ for real.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -34,30 +34,30 @@ class FakeETradeClient:
     def __init__(
         self,
         *,
-        accounts: List[Dict[str, Any]],
-        portfolio: List[Dict[str, Any]],
-        transactions: List[Dict[str, Any]],
-        balance: Dict[str, Any],
+        accounts: list[dict[str, Any]],
+        portfolio: list[dict[str, Any]],
+        transactions: list[dict[str, Any]],
+        balance: dict[str, Any],
     ) -> None:
         self._accounts = accounts
         self._portfolio = portfolio
         self._transactions = transactions
         self._balance = balance
-        self.calls: List[str] = []
+        self.calls: list[str] = []
 
-    def list_accounts(self) -> List[Dict[str, Any]]:
+    def list_accounts(self) -> list[dict[str, Any]]:
         self.calls.append("list_accounts")
         return list(self._accounts)
 
-    def get_portfolio(self, key: str) -> List[Dict[str, Any]]:
+    def get_portfolio(self, key: str) -> list[dict[str, Any]]:
         self.calls.append(f"get_portfolio:{key}")
         return list(self._portfolio)
 
-    def get_transactions(self, key: str) -> List[Dict[str, Any]]:
+    def get_transactions(self, key: str) -> list[dict[str, Any]]:
         self.calls.append(f"get_transactions:{key}")
         return list(self._transactions)
 
-    def get_balance(self, key: str) -> Dict[str, Any]:
+    def get_balance(self, key: str) -> dict[str, Any]:
         self.calls.append(f"get_balance:{key}")
         return dict(self._balance)
 
@@ -104,7 +104,7 @@ def _make_oauth_connection(session, user: User) -> BrokerOAuthConnection:
     return conn
 
 
-def _default_payload() -> Dict[str, Any]:
+def _default_payload() -> dict[str, Any]:
     """Canonical minimal payload covering positions, options, txns, balance."""
     return {
         "accounts": [
@@ -255,22 +255,14 @@ def test_sync_is_idempotent_on_second_run(db_session) -> None:
         balance=payload["balance"],
     )
     service = ETradeSyncService(client=fake)
-    service.sync_account_comprehensive(
-        account_number=account.account_number, session=db_session
-    )
+    service.sync_account_comprehensive(account_number=account.account_number, session=db_session)
     # Second run: same payload shouldn't duplicate rows (idempotent on
     # external_id for transactions, symbol for positions).
-    result2 = service.sync_account_comprehensive(
-        account_number="987654321", session=db_session
-    )
+    result2 = service.sync_account_comprehensive(account_number="987654321", session=db_session)
     assert result2["status"] == "success"
     assert result2["transactions_skipped"] == 2
     assert result2["transactions_synced"] == 0
-    pos_count = (
-        db_session.query(Position)
-        .filter(Position.account_id == account.id)
-        .count()
-    )
+    pos_count = db_session.query(Position).filter(Position.account_id == account.id).count()
     assert pos_count == 1
 
 
@@ -342,13 +334,11 @@ def test_sync_requires_user_id_when_account_number_collides(db_session) -> None:
     _make_oauth_connection(db_session, user_a)
     _make_oauth_connection(db_session, user_b)
 
-    service = ETradeSyncService(client=FakeETradeClient(
-        accounts=[], portfolio=[], transactions=[], balance={}
-    ))
+    service = ETradeSyncService(
+        client=FakeETradeClient(accounts=[], portfolio=[], transactions=[], balance={})
+    )
     with pytest.raises(ValueError) as exc:
-        service.sync_account_comprehensive(
-            account_number="SHARED_NUM", session=db_session
-        )
+        service.sync_account_comprehensive(account_number="SHARED_NUM", session=db_session)
     assert "multi-tenancy" in str(exc.value).lower()
 
 
@@ -364,11 +354,13 @@ def test_sync_scopes_to_user_id_kwarg(db_session) -> None:
     _make_oauth_connection(db_session, user_b)
 
     payload = _default_payload()
-    payload["accounts"] = [{
-        "accountId": "SCOPED_NUM",
-        "accountIdKey": "keyABC",
-        "accountStatus": "ACTIVE",
-    }]
+    payload["accounts"] = [
+        {
+            "accountId": "SCOPED_NUM",
+            "accountIdKey": "keyABC",
+            "accountStatus": "ACTIVE",
+        }
+    ]
     fake = FakeETradeClient(
         accounts=payload["accounts"],
         portfolio=payload["portfolio"],
@@ -386,11 +378,7 @@ def test_sync_scopes_to_user_id_kwarg(db_session) -> None:
         .filter(Position.user_id == user_a.id, Position.account_id == acct_a.id)
         .count()
     )
-    user_b_positions = (
-        db_session.query(Position)
-        .filter(Position.user_id == user_b.id)
-        .count()
-    )
+    user_b_positions = db_session.query(Position).filter(Position.user_id == user_b.id).count()
     assert user_a_positions == 1
     assert user_b_positions == 0
 
@@ -420,8 +408,7 @@ def test_sync_fetches_portfolio_once_for_positions_and_options(db_session) -> No
 
     portfolio_calls = [c for c in fake.calls if c.startswith("get_portfolio:")]
     assert len(portfolio_calls) == 1, (
-        f"Expected exactly one /portfolio fetch per sync; observed "
-        f"{portfolio_calls}"
+        f"Expected exactly one /portfolio fetch per sync; observed {portfolio_calls}"
     )
 
 
@@ -432,23 +419,20 @@ def test_sync_skips_cleanly_on_placeholder_collision(db_session) -> None:
     ``status='skipped'`` (not the generic ``status='error'``/
     please-re-link message) and disable the placeholder.
     """
-    from app.models.broker_account import BrokerAccount
 
     user = _make_user(db_session, "etrade_collision_user")
-    real = _make_etrade_account(
-        db_session, user, account_number="REAL_ACCT_123"
-    )
-    placeholder = _make_etrade_account(
-        db_session, user, account_number="ETRADE_OAUTH"
-    )
+    real = _make_etrade_account(db_session, user, account_number="REAL_ACCT_123")
+    placeholder = _make_etrade_account(db_session, user, account_number="ETRADE_OAUTH")
     _make_oauth_connection(db_session, user)
 
     payload = _default_payload()
-    payload["accounts"] = [{
-        "accountId": "REAL_ACCT_123",
-        "accountIdKey": "keyABC",
-        "accountStatus": "ACTIVE",
-    }]
+    payload["accounts"] = [
+        {
+            "accountId": "REAL_ACCT_123",
+            "accountIdKey": "keyABC",
+            "accountStatus": "ACTIVE",
+        }
+    ]
     fake = FakeETradeClient(
         accounts=payload["accounts"],
         portfolio=payload["portfolio"],
@@ -480,7 +464,7 @@ def test_sync_returns_error_on_permanent_api_failure(db_session) -> None:
     _make_oauth_connection(db_session, user)
 
     class FlakyClient(FakeETradeClient):
-        def get_transactions(self, key: str) -> List[Dict[str, Any]]:
+        def get_transactions(self, key: str) -> list[dict[str, Any]]:
             raise ETradeAPIError("401 unauthorized", permanent=True, status=401)
 
     payload = _default_payload()

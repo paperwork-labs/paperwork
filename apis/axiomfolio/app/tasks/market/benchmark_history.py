@@ -17,8 +17,8 @@ actually missing, so scheduling this daily is cheap.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from celery import shared_task
 
@@ -58,7 +58,7 @@ def _latest_history_date(session, symbol: str) -> datetime | None:
 
 
 def _today_utc_naive() -> datetime:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return datetime(now.year, now.month, now.day)
 
 
@@ -67,7 +67,7 @@ def _today_utc_naive() -> datetime:
     time_limit=_HARD_TIME_LIMIT,
 )
 @task_run("market_benchmark_spy_history_backfill")
-def backfill_spy_history(lookback_days: int = _DEFAULT_LOOKBACK_DAYS) -> Dict[str, Any]:
+def backfill_spy_history(lookback_days: int = _DEFAULT_LOOKBACK_DAYS) -> dict[str, Any]:
     """Ensure ``market_snapshot_history`` has daily SPY coverage for the last
     ``lookback_days`` days. When today's row already exists, exits fast.
 

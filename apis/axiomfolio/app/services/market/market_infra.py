@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import finnhub
 import redis
@@ -24,17 +23,15 @@ class MarketInfra:
     """
 
     def __init__(self) -> None:
-        self._redis_sync: Optional[redis.Redis] = None
-        self._redis_async: Optional[aioredis.Redis] = None
+        self._redis_sync: redis.Redis | None = None
+        self._redis_async: aioredis.Redis | None = None
         # Async Redis must not be reused across closed asyncio loops (Celery tasks
         # create a fresh loop per run_until_complete and then close it).
-        self._redis_async_loop: Optional[asyncio.AbstractEventLoop] = None
+        self._redis_async_loop: asyncio.AbstractEventLoop | None = None
         self.cache_ttl_seconds: int = int(getattr(settings, "MARKET_DATA_CACHE_TTL", 300))
 
         self.finnhub_client = (
-            finnhub.Client(api_key=settings.FINNHUB_API_KEY)
-            if settings.FINNHUB_API_KEY
-            else None
+            finnhub.Client(api_key=settings.FINNHUB_API_KEY) if settings.FINNHUB_API_KEY else None
         )
 
         self.twelve_data_client = None
@@ -91,7 +88,7 @@ class MarketInfra:
     async def _record_provider_call(self, provider: str, n: int = 1) -> None:
         try:
             r = await self._get_redis()
-            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date_key = datetime.now(UTC).strftime("%Y-%m-%d")
             hash_key = f"provider:calls:{date_key}"
             await r.hincrby(hash_key, provider, n)
             await r.expire(hash_key, 86400 * 30)
@@ -101,7 +98,7 @@ class MarketInfra:
     def _record_provider_call_sync(self, provider: str, n: int = 1) -> None:
         try:
             r = self._sync_redis
-            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date_key = datetime.now(UTC).strftime("%Y-%m-%d")
             hash_key = f"provider:calls:{date_key}"
             r.hincrby(hash_key, provider, n)
             r.expire(hash_key, 86400 * 30)
@@ -119,9 +116,7 @@ class MarketInfra:
                 raw = raw.decode()
             return str(raw).strip().lower() not in ("0", "false", "off", "disabled")
         except Exception as e:
-            logger.warning(
-                "is_backfill_5m_enabled Redis read failed, defaulting OFF: %s", e
-            )
+            logger.warning("is_backfill_5m_enabled Redis read failed, defaulting OFF: %s", e)
             return False
 
     async def is_backfill_5m_enabled_async(self) -> bool:
@@ -134,7 +129,5 @@ class MarketInfra:
                 raw = raw.decode()
             return str(raw).strip().lower() not in ("0", "false", "off", "disabled")
         except Exception as e:
-            logger.warning(
-                "is_backfill_5m_enabled_async Redis read failed, defaulting OFF: %s", e
-            )
+            logger.warning("is_backfill_5m_enabled_async Redis read failed, defaulting OFF: %s", e)
             return False

@@ -7,21 +7,22 @@ Endpoints for index constituents and tracked universe management.
 
 import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_admin_user, get_market_data_viewer
 from app.database import get_db
-from app.models.user import User
 from app.models.index_constituent import IndexConstituent
 from app.models.market_tracked_plan import MarketTrackedPlan
+from app.models.user import User
 from app.services.market.market_data_service import infra, snapshot_builder
-from app.api.dependencies import get_market_data_viewer, get_admin_user
-from app.tasks.market.backfill import constituents, tracked_cache
 from app.tasks.market import backfill as market_backfill_tasks
-from ._shared import enqueue_task, visibility_scope, tracked_education, tracked_actions
+from app.tasks.market.backfill import constituents, tracked_cache
+
+from ._shared import enqueue_task, tracked_actions, tracked_education, visibility_scope
 
 logger = logging.getLogger(__name__)
 
@@ -29,8 +30,8 @@ router = APIRouter(tags=["universe"])
 
 
 class TrackedPlanUpdateRequest(BaseModel):
-    entry_price: Optional[float] = None
-    exit_price: Optional[float] = None
+    entry_price: float | None = None
+    exit_price: float | None = None
 
 
 @router.get("/indices/constituents")
@@ -39,7 +40,7 @@ async def get_index_constituents(
     active_only: bool = Query(True),
     db: Session = Depends(get_db),
     _viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     index = index.upper()
     if index not in {"SP500", "NASDAQ100", "DOW30", "RUSSELL2000"}:
         raise HTTPException(status_code=400, detail="invalid index")
@@ -53,7 +54,7 @@ async def get_index_constituents(
 @router.post("/indices/constituents/refresh")
 async def post_refresh_constituents(
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return enqueue_task(constituents)
 
 
@@ -62,7 +63,7 @@ async def get_tracked(
     include_details: bool = Query(True),
     db: Session = Depends(get_db),
     _viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     r = infra.redis_client
 
     all_raw = r.get("tracked:all")
@@ -73,6 +74,7 @@ async def get_tracked(
     details = snapshot_builder.get_tracked_details(db, all_symbols) if include_details else {}
 
     from app.api.dependencies import market_exposed_to_all
+
     meta = {
         "visibility": visibility_scope(),
         "exposed_to_all": market_exposed_to_all(),
@@ -91,7 +93,7 @@ async def get_tracked(
 @router.post("/universe/tracked/refresh")
 async def post_update_tracked(
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return enqueue_task(tracked_cache)
 
 
@@ -101,7 +103,7 @@ async def update_tracked_plan(
     body: TrackedPlanUpdateRequest,
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Update entry/exit prices for a tracked symbol plan."""
     sym = symbol.upper()
     plan = db.query(MarketTrackedPlan).filter(MarketTrackedPlan.symbol == sym).first()
@@ -129,6 +131,6 @@ async def update_tracked_plan(
 async def post_refresh_symbol(
     symbol: str,
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Delta backfill and recompute indicators for a single symbol."""
     return enqueue_task(market_backfill_tasks.symbol, symbol.upper())

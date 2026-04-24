@@ -5,9 +5,9 @@ Revises: 0010
 Create Date: 2026-03-28
 
 """
-from alembic import op
-import sqlalchemy as sa
 
+import sqlalchemy as sa
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "0011"
@@ -17,10 +17,10 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column('orders', sa.Column('realized_pnl', sa.Float(), nullable=True))
-    op.add_column('orders', sa.Column('cost_basis', sa.Float(), nullable=True))
+    op.add_column("orders", sa.Column("realized_pnl", sa.Float(), nullable=True))
+    op.add_column("orders", sa.Column("cost_basis", sa.Float(), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column('orders', 'cost_basis')
-    op.drop_column('orders', 'realized_pnl')
+    op.drop_column("orders", "cost_basis")
+    op.drop_column("orders", "realized_pnl")

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -67,8 +67,8 @@ class _ClientOptionRoundTrip:
         return []
 
     async def get_transactions(self, account_number: str) -> list[dict[str, Any]]:
-        t_open = datetime(2025, 1, 10, 16, 0, 0, tzinfo=timezone.utc)
-        t_close = datetime(2025, 3, 10, 16, 0, 0, tzinfo=timezone.utc)
+        t_open = datetime(2025, 1, 10, 16, 0, 0, tzinfo=UTC)
+        t_close = datetime(2025, 3, 10, 16, 0, 0, tzinfo=UTC)
         return [
             {
                 "id": "schwab-exec-open-1",
@@ -153,14 +153,8 @@ def test_schwab_option_tax_lots_idempotent_second_sync(
     svc = SchwabSyncService(client=client)
     for _ in range(2):
         asyncio.run(
-            svc.sync_account_comprehensive(
-                account_number=acct.account_number, session=db_session
-            )
+            svc.sync_account_comprehensive(account_number=acct.account_number, session=db_session)
         )
         db_session.commit()
-    n = (
-        db_session.query(OptionTaxLot)
-        .filter(OptionTaxLot.broker_account_id == acct.id)
-        .count()
-    )
+    n = db_session.query(OptionTaxLot).filter(OptionTaxLot.broker_account_id == acct.id).count()
     assert n == 1

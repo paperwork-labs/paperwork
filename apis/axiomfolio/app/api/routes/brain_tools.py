@@ -11,8 +11,8 @@ the deprecation campaign).
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -23,9 +23,9 @@ from app.api.dependencies import verify_brain_api_key
 from app.config import settings
 from app.database import get_db
 from app.models import BrokerAccount, Option, Position
+from app.models.market_data import MarketSnapshot
 from app.models.order import Order, OrderStatus
 from app.models.user import User
-from app.models.market_data import MarketSnapshot
 from app.services.execution.approval_service import ApprovalService
 from app.services.execution.broker_base import OrderRequest
 from app.services.execution.order_manager import OrderManager
@@ -39,7 +39,7 @@ router = APIRouter(dependencies=[Depends(verify_brain_api_key)])
 
 
 def brain_user_id_dep(
-    x_axiom_user_id: Optional[str] = Header(None, alias="X-Axiom-User-Id"),
+    x_axiom_user_id: str | None = Header(None, alias="X-Axiom-User-Id"),
 ) -> int:
     """Resolve the M2M caller's target user.
 
@@ -76,11 +76,11 @@ def _brain_user_id() -> int:
     return int(settings.BRAIN_TOOLS_USER_ID)
 
 
-def _f(v: Optional[float]) -> Optional[float]:
+def _f(v: float | None) -> float | None:
     return float(v) if v is not None else None
 
 
-def _latest_technical_snapshot(db: Session, symbol: str) -> Optional[MarketSnapshot]:
+def _latest_technical_snapshot(db: Session, symbol: str) -> MarketSnapshot | None:
     sym = symbol.upper()
     return (
         db.query(MarketSnapshot)
@@ -98,10 +98,10 @@ def _latest_technical_snapshot(db: Session, symbol: str) -> Optional[MarketSnaps
 async def tools_portfolio(
     db: Session = Depends(get_db),
     uid: int = Depends(brain_user_id_dep),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Portfolio summary: P&L, exposure, risk and sector attribution."""
     pos_models = db.query(Position).filter(Position.user_id == uid).all()
-    positions: List[Dict[str, Any]] = []
+    positions: list[dict[str, Any]] = []
     long_notional = 0.0
     short_notional = 0.0
     for p in pos_models:
@@ -111,22 +111,20 @@ async def tools_portfolio(
             long_notional += mv
         elif qty < 0:
             short_notional += abs(mv)
-        positions.append({
-            "symbol": p.symbol,
-            "quantity": qty,
-            "market_value": mv,
-            "unrealized_pnl": _f(p.unrealized_pnl),
-            "total_cost_basis": _f(p.total_cost_basis),
-            "sector": (p.sector or "").strip() or None,
-        })
+        positions.append(
+            {
+                "symbol": p.symbol,
+                "quantity": qty,
+                "market_value": mv,
+                "unrealized_pnl": _f(p.unrealized_pnl),
+                "total_cost_basis": _f(p.total_cost_basis),
+                "sector": (p.sector or "").strip() or None,
+            }
+        )
 
-    option_models = db.query(Option).filter(
-        Option.user_id == uid, Option.open_quantity != 0
-    ).all()
+    option_models = db.query(Option).filter(Option.user_id == uid, Option.open_quantity != 0).all()
     options_mv = sum(
-        float(o.current_price or 0)
-        * abs(float(o.open_quantity or 0))
-        * float(o.multiplier or 100)
+        float(o.current_price or 0) * abs(float(o.open_quantity or 0)) * float(o.multiplier or 100)
         for o in option_models
     )
     options_unrealized = sum(float(o.unrealized_pnl or 0) for o in option_models)
@@ -146,19 +144,19 @@ async def tools_portfolio(
     )
     account_rows = []
     for acc in accounts:
-        account_rows.append({
-            "broker": acc.broker,
-            "account_number_suffix": acc.account_number[-4:]
-            if acc.account_number
-            else None,
-            "total_value": _f(acc.total_value),
-            "day_pnl": _f(acc.day_pnl),
-            "total_pnl": _f(acc.total_pnl),
-        })
+        account_rows.append(
+            {
+                "broker": acc.broker,
+                "account_number_suffix": acc.account_number[-4:] if acc.account_number else None,
+                "total_value": _f(acc.total_value),
+                "day_pnl": _f(acc.day_pnl),
+                "total_pnl": _f(acc.total_pnl),
+            }
+        )
 
     return {
         "user_id": uid,
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
         "summary": {
             "total_market_value": total_equity_mv,
             "total_cost_basis": total_cost,
@@ -184,7 +182,7 @@ async def tools_portfolio(
 @router.get("/regime")
 async def tools_regime(
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Latest market regime (R1–R5) and inputs."""
     regime = fetch_current_regime(db)
     if regime is None:
@@ -208,7 +206,7 @@ async def tools_regime(
 async def tools_stage(
     symbol: str,
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Stage Analysis and key indicators for one symbol (latest technical snapshot)."""
     snap = _latest_technical_snapshot(db, symbol)
     if snap is None:
@@ -244,9 +242,9 @@ async def tools_stage(
 @router.get("/scan")
 async def tools_scan(
     db: Session = Depends(get_db),
-    scan_tier: Optional[str] = Query(None, description="Filter by scan tier, e.g. Breakout Elite"),
+    scan_tier: str | None = Query(None, description="Filter by scan tier, e.g. Breakout Elite"),
     limit: int = Query(50, ge=1, le=500),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Scan candidates: latest technical snapshot per symbol with a scan tier."""
     tier_filter = [MarketSnapshot.scan_tier.isnot(None)]
     if scan_tier:
@@ -261,25 +259,21 @@ async def tools_scan(
         .group_by(MarketSnapshot.symbol)
         .subquery()
     )
-    query = db.query(MarketSnapshot).join(
-        latest_ids_sub, MarketSnapshot.id == latest_ids_sub.c.id
-    )
-    rows = (
-        query.order_by(MarketSnapshot.rs_mansfield_pct.desc().nullslast())
-        .limit(limit)
-        .all()
-    )
-    candidates: List[Dict[str, Any]] = []
+    query = db.query(MarketSnapshot).join(latest_ids_sub, MarketSnapshot.id == latest_ids_sub.c.id)
+    rows = query.order_by(MarketSnapshot.rs_mansfield_pct.desc().nullslast()).limit(limit).all()
+    candidates: list[dict[str, Any]] = []
     for r in rows:
-        candidates.append({
-            "symbol": r.symbol,
-            "name": r.name,
-            "stage": r.stage_label,
-            "scan_tier": r.scan_tier,
-            "action_label": r.action_label,
-            "rs_mansfield_pct": _f(r.rs_mansfield_pct),
-            "sector": r.sector,
-        })
+        candidates.append(
+            {
+                "symbol": r.symbol,
+                "name": r.name,
+                "stage": r.stage_label,
+                "scan_tier": r.scan_tier,
+                "action_label": r.action_label,
+                "rs_mansfield_pct": _f(r.rs_mansfield_pct),
+                "sector": r.sector,
+            }
+        )
     return {
         "scan_tier_filter": scan_tier,
         "count": len(candidates),
@@ -288,7 +282,7 @@ async def tools_scan(
 
 
 @router.get("/risk")
-async def tools_risk() -> Dict[str, Any]:
+async def tools_risk() -> dict[str, Any]:
     """Circuit breaker status."""
     return circuit_breaker.get_status()
 
@@ -298,8 +292,8 @@ class PreviewTradeBody(BaseModel):
     side: str = Field(..., description="buy or sell")
     quantity: float = Field(..., gt=0)
     order_type: str = Field(default="market", description="market, limit, stop, stop_limit")
-    limit_price: Optional[float] = None
-    stop_price: Optional[float] = None
+    limit_price: float | None = None
+    stop_price: float | None = None
 
 
 @router.post("/preview-trade")
@@ -307,7 +301,7 @@ async def tools_preview_trade(
     body: PreviewTradeBody,
     db: Session = Depends(get_db),
     uid: int = Depends(brain_user_id_dep),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a PREVIEW order (broker what-if + persisted row)."""
     try:
         req = OrderRequest.from_user_input(
@@ -338,7 +332,7 @@ async def tools_execute_trade(
     body: ExecuteTradeBody,
     db: Session = Depends(get_db),
     uid: int = Depends(brain_user_id_dep),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Submit a preview order via OrderManager, or queue for approval when configured."""
     user = db.query(User).filter(User.id == uid).first()
     if user is None:
@@ -347,11 +341,7 @@ async def tools_execute_trade(
             detail=f"User id {uid} not found",
         )
 
-    order = (
-        db.query(Order)
-        .filter(Order.id == body.order_id, Order.user_id == uid)
-        .first()
-    )
+    order = db.query(Order).filter(Order.id == body.order_id, Order.user_id == uid).first()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
 
@@ -361,9 +351,7 @@ async def tools_execute_trade(
             detail="Order is pending approval; wait for owner approval or reject",
         )
 
-    if order.status == OrderStatus.PREVIEW.value and ApprovalService.requires_approval(
-        order, user
-    ):
+    if order.status == OrderStatus.PREVIEW.value and ApprovalService.requires_approval(order, user):
         return await ApprovalService.request_approval(db, order, user)
 
     manager = OrderManager()
@@ -382,7 +370,7 @@ async def tools_approve_trade(
     body: ApproveTradeBody,
     db: Session = Depends(get_db),
     uid: int = Depends(brain_user_id_dep),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Approve a pending order (owner only); returns to PREVIEW for execute-trade."""
     approver = db.query(User).filter(User.id == uid).first()
     if approver is None:
@@ -390,11 +378,7 @@ async def tools_approve_trade(
             status_code=400,
             detail=f"User id {uid} not found",
         )
-    order = (
-        db.query(Order)
-        .filter(Order.id == body.order_id, Order.user_id == uid)
-        .first()
-    )
+    order = db.query(Order).filter(Order.id == body.order_id, Order.user_id == uid).first()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
     result = await ApprovalService.approve(db, body.order_id, approver)
@@ -405,7 +389,7 @@ async def tools_approve_trade(
 
 class RejectTradeBody(BaseModel):
     order_id: int = Field(..., ge=1)
-    reason: Optional[str] = Field(None, max_length=500)
+    reason: str | None = Field(None, max_length=500)
 
 
 @router.post("/reject-trade")
@@ -413,7 +397,7 @@ async def tools_reject_trade(
     body: RejectTradeBody,
     db: Session = Depends(get_db),
     uid: int = Depends(brain_user_id_dep),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Reject a pending or preview order."""
     rejector = db.query(User).filter(User.id == uid).first()
     if rejector is None:
@@ -421,16 +405,10 @@ async def tools_reject_trade(
             status_code=400,
             detail=f"User id {uid} not found",
         )
-    order = (
-        db.query(Order)
-        .filter(Order.id == body.order_id, Order.user_id == uid)
-        .first()
-    )
+    order = db.query(Order).filter(Order.id == body.order_id, Order.user_id == uid).first()
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
-    result = await ApprovalService.reject(
-        db, body.order_id, rejector, reason=body.reason
-    )
+    result = await ApprovalService.reject(db, body.order_id, rejector, reason=body.reason)
     if result.get("error"):
         raise HTTPException(status_code=400, detail=result["error"])
     return result
@@ -440,19 +418,21 @@ async def tools_reject_trade(
 
 
 class RunTaskBody(BaseModel):
-    task_id: str = Field(..., min_length=1, description="Catalog task ID, e.g. admin_coverage_backfill")
+    task_id: str = Field(
+        ..., min_length=1, description="Catalog task ID, e.g. admin_coverage_backfill"
+    )
 
 
 @router.get("/schedules")
 async def tools_list_schedules(
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List all scheduled tasks from the job catalog with last run status."""
-    from app.tasks.job_catalog import CATALOG
     from app.models.market_data import JobRun
+    from app.tasks.job_catalog import CATALOG
 
     labels = [j.job_run_label for j in CATALOG if j.job_run_label]
-    latest_runs: Dict[str, JobRun] = {}
+    latest_runs: dict[str, JobRun] = {}
     if labels:
         try:
             subq = (
@@ -482,7 +462,7 @@ async def tools_list_schedules(
 
     schedules = []
     for job in CATALOG:
-        entry: Dict[str, Any] = {
+        entry: dict[str, Any] = {
             "id": job.id,
             "display_name": job.display_name,
             "group": job.group,
@@ -513,10 +493,10 @@ async def tools_list_schedules(
 @router.post("/run-task")
 async def tools_run_task(
     body: RunTaskBody,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Trigger a catalog task to run immediately via Celery."""
-    from app.tasks.job_catalog import CATALOG
     from app.tasks.celery_app import celery_app
+    from app.tasks.job_catalog import CATALOG
 
     catalog_map = {j.id: j for j in CATALOG}
     job = catalog_map.get(body.task_id)
@@ -551,7 +531,7 @@ async def tools_run_task(
 async def tools_pending_approvals(
     db: Session = Depends(get_db),
     uid: int = Depends(brain_user_id_dep),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List orders currently awaiting approval with timeout info."""
     pending = ApprovalService.list_pending(db, uid)
     return {"count": len(pending), "orders": pending}

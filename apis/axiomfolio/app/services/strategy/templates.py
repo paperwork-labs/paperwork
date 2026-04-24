@@ -8,10 +8,12 @@ New operators available: in, not_in, starts_with, contains.
 
 medallion: gold
 """
-from __future__ import annotations
-from typing import Any, Dict, List
 
-STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
+from __future__ import annotations
+
+from typing import Any
+
+STRATEGY_TEMPLATES: list[dict[str, Any]] = [
     # ── Long Templates ────────────────────────────────────────────
     {
         "id": "stage2_breakout",
@@ -37,7 +39,11 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
             "exit_rules": {
                 "logic": "or",
                 "conditions": [
-                    {"field": "stage_label", "operator": "in", "value": ["3A", "3B", "4A", "4B", "4C"]},
+                    {
+                        "field": "stage_label",
+                        "operator": "in",
+                        "value": ["3A", "3B", "4A", "4B", "4C"],
+                    },
                     {"field": "regime_state", "operator": "eq", "value": "R5"},
                     {"field": "ext_pct", "operator": "gt", "value": 50},
                 ],
@@ -72,7 +78,11 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
                 "logic": "or",
                 "conditions": [
                     {"field": "action_label", "operator": "in", "value": ["REDUCE", "AVOID"]},
-                    {"field": "scan_tier", "operator": "not_in", "value": ["Breakout Elite", "Breakout Standard"]},
+                    {
+                        "field": "scan_tier",
+                        "operator": "not_in",
+                        "value": ["Breakout Elite", "Breakout Standard"],
+                    },
                     {"field": "regime_state", "operator": "in", "value": ["R4", "R5"]},
                 ],
                 "groups": [],
@@ -131,7 +141,12 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
                 "logic": "and",
                 "conditions": [
                     {"field": "stage_label", "operator": "in", "value": ["2A", "2B", "2C"]},
-                    {"field": "ema10_dist_n", "operator": "between", "value": -2.0, "value_high": -0.3},
+                    {
+                        "field": "ema10_dist_n",
+                        "operator": "between",
+                        "value": -2.0,
+                        "value_high": -0.3,
+                    },
                     {"field": "rs_mansfield_pct", "operator": "gt", "value": 0},
                     {"field": "sma150_slope", "operator": "gt", "value": 0},
                     {"field": "regime_state", "operator": "in", "value": ["R1", "R2", "R3"]},
@@ -488,12 +503,9 @@ STRATEGY_TEMPLATES: List[Dict[str, Any]] = [
 ]
 
 
-def get_template(template_id: str) -> Dict[str, Any] | None:
+def get_template(template_id: str) -> dict[str, Any] | None:
     return next((t for t in STRATEGY_TEMPLATES if t["id"] == template_id), None)
 
 
-def list_templates() -> List[Dict[str, Any]]:
-    return [
-        {k: v for k, v in t.items() if k != "default_config"}
-        for t in STRATEGY_TEMPLATES
-    ]
+def list_templates() -> list[dict[str, Any]]:
+    return [{k: v for k, v in t.items() if k != "default_config"} for t in STRATEGY_TEMPLATES]

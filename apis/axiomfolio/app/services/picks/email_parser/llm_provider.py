@@ -21,17 +21,19 @@ It returns:
 
 medallion: gold
 """
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Mapping, Protocol, Tuple, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
 class LLMRequest:
     system_prompt: str
     user_prompt: str
-    image_data_urls: Tuple[str, ...] = field(default_factory=tuple)
+    image_data_urls: tuple[str, ...] = field(default_factory=tuple)
     json_schema: Mapping[str, Any] = field(default_factory=dict)
     max_tokens: int = 2000
     temperature: float = 0.0  # determinism preferred for parsing

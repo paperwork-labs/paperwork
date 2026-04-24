@@ -6,21 +6,19 @@ wash sale compliance (61-day window: 30 days before + 30 days after sale).
 
 medallion: silver
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from typing import Dict, List, Optional, Set
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
+from app.models.market_data import MarketSnapshot
+from app.models.order import Order, OrderStatus
 from app.models.position import Position
 from app.models.tax_lot import TaxLot
-from app.models.order import Order, OrderStatus
-from app.models.market_data import MarketSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +38,7 @@ class HarvestOpportunity:
     oldest_lot_date: datetime
     is_long_term: bool  # Held > 1 year
     wash_sale_blocked: bool
-    wash_sale_reason: Optional[str]
+    wash_sale_reason: str | None
     suggested_action: str  # "harvest", "wait", "blocked"
     estimated_tax_savings: float  # At estimated tax rate
 
@@ -72,10 +70,10 @@ class WashSaleWindow:
     window_start: datetime  # sale_date - 30 days
     window_end: datetime  # sale_date + 30 days
     shares_sold: float
-    triggered_by_order_id: Optional[int]
+    triggered_by_order_id: int | None
 
-    def is_active(self, check_date: Optional[datetime] = None) -> bool:
-        check = check_date or datetime.now(timezone.utc)
+    def is_active(self, check_date: datetime | None = None) -> bool:
+        check = check_date or datetime.now(UTC)
         return self.window_start <= check <= self.window_end
 
 
@@ -100,14 +98,14 @@ class TaxLossHarvester:
     def __init__(self, db: Session, user_id: int):
         self.db = db
         self.user_id = user_id
-        self._wash_windows: Dict[str, List[WashSaleWindow]] = {}
-        self._substantially_identical: Dict[str, Set[str]] = self._build_identical_map()
+        self._wash_windows: dict[str, list[WashSaleWindow]] = {}
+        self._substantially_identical: dict[str, set[str]] = self._build_identical_map()
 
     def find_opportunities(
         self,
-        min_loss: Optional[float] = None,
-        min_loss_pct: Optional[float] = None,
-    ) -> List[HarvestOpportunity]:
+        min_loss: float | None = None,
+        min_loss_pct: float | None = None,
+    ) -> list[HarvestOpportunity]:
         """
         Find all tax loss harvesting opportunities for the user.
 
@@ -145,8 +143,8 @@ class TaxLossHarvester:
         self,
         symbol: str,
         action: str,  # "buy" or "sell"
-        trade_date: Optional[datetime] = None,
-    ) -> Dict:
+        trade_date: datetime | None = None,
+    ) -> dict:
         """
         Check if a trade would trigger or be affected by wash sale rules.
 
@@ -159,7 +157,7 @@ class TaxLossHarvester:
                 "window_end": datetime | None
             }
         """
-        trade_date = trade_date or datetime.now(timezone.utc)
+        trade_date = trade_date or datetime.now(UTC)
         self._load_wash_windows()
 
         result = {
@@ -176,9 +174,7 @@ class TaxLossHarvester:
                 if window.is_active(trade_date):
                     result["allowed"] = False if action == "buy" else True
                     result["risk_level"] = "blocked" if action == "buy" else "warning"
-                    result["reason"] = (
-                        f"Active wash sale window until {window.window_end.date()}"
-                    )
+                    result["reason"] = f"Active wash sale window until {window.window_end.date()}"
                     result["window_end"] = window.window_end
                     return result
 
@@ -205,9 +201,9 @@ class TaxLossHarvester:
         symbol: str,
         quantity: float,
         sale_date: datetime,
-        order_id: Optional[int] = None,
+        order_id: int | None = None,
         was_loss: bool = True,
-    ) -> Optional[WashSaleWindow]:
+    ) -> WashSaleWindow | None:
         """
         Record a sale and create wash sale window if it was at a loss.
         """
@@ -236,18 +232,14 @@ class TaxLossHarvester:
 
         return window
 
-    def get_portfolio_summary(self) -> Dict:
+    def get_portfolio_summary(self) -> dict:
         """
         Get summary of tax loss harvesting state for the portfolio.
         """
         opportunities = self.find_opportunities()
 
-        total_harvestable = sum(
-            o.unrealized_loss for o in opportunities if not o.wash_sale_blocked
-        )
-        total_blocked = sum(
-            o.unrealized_loss for o in opportunities if o.wash_sale_blocked
-        )
+        total_harvestable = sum(o.unrealized_loss for o in opportunities if not o.wash_sale_blocked)
+        total_blocked = sum(o.unrealized_loss for o in opportunities if o.wash_sale_blocked)
         total_tax_savings = sum(
             o.estimated_tax_savings for o in opportunities if not o.wash_sale_blocked
         )
@@ -267,7 +259,7 @@ class TaxLossHarvester:
         position: Position,
         min_loss: float,
         min_loss_pct: float,
-    ) -> Optional[HarvestOpportunity]:
+    ) -> HarvestOpportunity | None:
         """Evaluate a single position for harvesting opportunity."""
         # Get current price
         price = self._get_price(position.symbol)
@@ -319,7 +311,7 @@ class TaxLossHarvester:
         # Check holding period
         is_long_term = False
         if oldest_date:
-            days_held = (datetime.now(timezone.utc) - oldest_date).days
+            days_held = (datetime.now(UTC) - oldest_date).days
             is_long_term = days_held > 365
 
         # Check wash sale window
@@ -365,7 +357,7 @@ class TaxLossHarvester:
             return  # Already loaded
 
         # Look at orders from last 61 days that resulted in losses
-        cutoff = datetime.now(timezone.utc) - timedelta(days=61)
+        cutoff = datetime.now(UTC) - timedelta(days=61)
 
         loss_orders = (
             self.db.query(Order)
@@ -392,7 +384,7 @@ class TaxLossHarvester:
                 was_loss=True,  # Simplified
             )
 
-    def _get_price(self, symbol: str) -> Optional[float]:
+    def _get_price(self, symbol: str) -> float | None:
         """Get current price for a symbol."""
         snapshot = (
             self.db.query(MarketSnapshot)
@@ -408,7 +400,7 @@ class TaxLossHarvester:
             return float(snapshot.current_price)
         return None
 
-    def _build_identical_map(self) -> Dict[str, Set[str]]:
+    def _build_identical_map(self) -> dict[str, set[str]]:
         """
         Build map of substantially identical securities.
 

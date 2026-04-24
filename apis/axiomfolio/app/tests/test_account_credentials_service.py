@@ -1,14 +1,14 @@
 """Tests for AccountCredentialsService."""
 
+
 import pytest
-from unittest.mock import patch
 
 try:
-    from app.models import User, BrokerAccount
+    from app.models import BrokerAccount, User
     from app.models.broker_account import (
         AccountCredentials,
-        BrokerType,
         AccountType,
+        BrokerType,
     )
     from app.services.portfolio.account_credentials_service import (
         AccountCredentialsService,

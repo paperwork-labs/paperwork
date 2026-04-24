@@ -13,9 +13,9 @@ at the response boundary -- the JSON contract is unchanged.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Literal, Optional, Tuple
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
@@ -37,7 +37,7 @@ GroupBy = Literal["sector", "asset_class", "account"]
 # The Position table is "equity-only" today, but we still map other types so
 # this surface keeps working when options or futures land in the same table
 # without code changes here.
-_ASSET_CLASS_LABELS: Dict[str, str] = {
+_ASSET_CLASS_LABELS: dict[str, str] = {
     "STOCK": "Equity",
     "ETF": "Equity",
     "OPTION": "Option",
@@ -61,7 +61,7 @@ def _asset_class_for(position: Position) -> str:
     return _ASSET_CLASS_LABELS.get(raw, raw.title())
 
 
-def _account_label(account: Optional[BrokerAccount]) -> Tuple[str, str]:
+def _account_label(account: BrokerAccount | None) -> tuple[str, str]:
     """Return ``(group_key, group_label)`` for an account grouping.
 
     The key uses a stable, URL-safe identifier (the account id) so the UI
@@ -79,7 +79,7 @@ def _account_label(account: Optional[BrokerAccount]) -> Tuple[str, str]:
     return (key, f"{broker.upper()} -{last4}")
 
 
-def _group_key_label(position: Position, group_by: GroupBy) -> Tuple[str, str]:
+def _group_key_label(position: Position, group_by: GroupBy) -> tuple[str, str]:
     """Compute the ``(group_key, group_label)`` for a single position."""
     if group_by == "sector":
         sector = (position.sector or "").strip() or "Other"
@@ -92,7 +92,7 @@ def _group_key_label(position: Position, group_by: GroupBy) -> Tuple[str, str]:
     raise ValueError(f"Unsupported group_by: {group_by}")
 
 
-@router.get("/allocation", response_model=Dict[str, Any])
+@router.get("/allocation", response_model=dict[str, Any])
 async def get_allocation(
     group_by: GroupBy = Query(
         "sector",
@@ -100,7 +100,7 @@ async def get_allocation(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return the user's open positions aggregated by the requested grouping.
 
     Tenant scoping: every query joins through ``BrokerAccount`` and filters on
@@ -108,7 +108,7 @@ async def get_allocation(
     as belt-and-suspenders so a stale cross-tenant ``Position`` row cannot
     leak.
     """
-    positions: List[Position] = (
+    positions: list[Position] = (
         db.query(Position)
         .join(BrokerAccount, Position.account_id == BrokerAccount.id)
         .filter(BrokerAccount.user_id == current_user.id)
@@ -120,9 +120,9 @@ async def get_allocation(
     # Aggregate market value per group, and keep a per-group holdings list so
     # the frontend drill-down doesn't need a second roundtrip. Decimal is used
     # throughout to avoid the classic 0.1+0.2 drift on totals.
-    group_totals: Dict[str, Decimal] = {}
-    group_labels: Dict[str, str] = {}
-    group_holdings: Dict[str, List[Tuple[str, Decimal]]] = {}
+    group_totals: dict[str, Decimal] = {}
+    group_labels: dict[str, str] = {}
+    group_holdings: dict[str, list[tuple[str, Decimal]]] = {}
     grand_total = Decimal("0")
 
     for pos in positions:
@@ -137,11 +137,7 @@ async def get_allocation(
                 pos.symbol,
             )
             continue
-        value = (
-            market_value
-            if isinstance(market_value, Decimal)
-            else Decimal(str(market_value))
-        )
+        value = market_value if isinstance(market_value, Decimal) else Decimal(str(market_value))
         # Negatives (short positions) would distort percentages and treemap
         # rectangles. Use absolute exposure for sizing.
         value = abs(value)
@@ -155,24 +151,16 @@ async def get_allocation(
     # Sort groups by descending value so the treemap renders the heaviest
     # bucket top-left without any client-side sort. Holdings sort the same way
     # per group for the drill-down list.
-    groups: List[Dict[str, Any]] = []
-    sorted_keys = sorted(
-        group_totals.keys(), key=lambda k: group_totals[k], reverse=True
-    )
+    groups: list[dict[str, Any]] = []
+    sorted_keys = sorted(group_totals.keys(), key=lambda k: group_totals[k], reverse=True)
     for key in sorted_keys:
         total = group_totals[key]
-        pct = (
-            (total / grand_total * Decimal("100")) if grand_total > 0 else Decimal("0")
-        )
-        holdings_list = sorted(
-            group_holdings[key], key=lambda h: h[1], reverse=True
-        )
-        holdings_payload: List[Dict[str, Any]] = []
+        pct = (total / grand_total * Decimal("100")) if grand_total > 0 else Decimal("0")
+        holdings_list = sorted(group_holdings[key], key=lambda h: h[1], reverse=True)
+        holdings_payload: list[dict[str, Any]] = []
         for symbol, value in holdings_list:
             holding_pct = (
-                (value / grand_total * Decimal("100"))
-                if grand_total > 0
-                else Decimal("0")
+                (value / grand_total * Decimal("100")) if grand_total > 0 else Decimal("0")
             )
             holdings_payload.append(
                 {
@@ -194,6 +182,6 @@ async def get_allocation(
     return {
         "group_by": group_by,
         "total_value": float(grand_total),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "groups": groups,
     }

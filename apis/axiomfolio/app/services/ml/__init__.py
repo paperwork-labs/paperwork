@@ -4,15 +4,15 @@ medallion: gold
 """
 
 from app.services.ml.slippage_predictor import (
-    SlippagePredictor,
     SlippagePrediction,
+    SlippagePredictor,
     TrainingResult,
     get_slippage_prediction_dict,
 )
 
 __all__ = [
-    "SlippagePredictor",
     "SlippagePrediction",
+    "SlippagePredictor",
     "TrainingResult",
     "get_slippage_prediction_dict",
 ]

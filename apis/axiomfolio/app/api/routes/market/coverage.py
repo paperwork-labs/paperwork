@@ -6,17 +6,18 @@ Endpoints for data coverage health monitoring.
 """
 
 import logging
-from typing import Dict, Any
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models.user import User
-from app.models.market_data import PriceData
-from app.services.market.market_data_service import coverage_analytics
 from app.api.dependencies import get_market_data_viewer
-from ._shared import visibility_scope, coverage_education, coverage_actions
+from app.database import get_db
+from app.models.market_data import PriceData
+from app.models.user import User
+from app.services.market.market_data_service import coverage_analytics
+
+from ._shared import coverage_actions, coverage_education, visibility_scope
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ async def get_coverage(
     _viewer: User = Depends(get_market_data_viewer),
     fill_trading_days_window: int | None = Query(None, ge=10, le=300),
     fill_lookback_days: int | None = Query(None, ge=30, le=4000),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return coverage summary across intervals with last bar timestamps and freshness buckets."""
     try:
         snapshot = coverage_analytics.build_coverage_response(
@@ -40,6 +41,7 @@ async def get_coverage(
         meta = snapshot.setdefault("meta", {})
         meta["visibility"] = visibility_scope()
         from app.api.dependencies import market_exposed_to_all
+
         meta["exposed_to_all"] = market_exposed_to_all()
         meta["education"] = coverage_education()
         meta["actions"] = coverage_actions(meta.get("backfill_5m_enabled"))
@@ -54,7 +56,7 @@ async def get_symbol_coverage(
     symbol: str,
     db: Session = Depends(get_db),
     _viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return last bar timestamps for daily and 5m for a symbol."""
     try:
         sym = symbol.upper()

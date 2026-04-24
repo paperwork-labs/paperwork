@@ -24,7 +24,6 @@ must act. The admin health dimension surfaces them separately.
 from __future__ import annotations
 
 import logging
-from typing import Dict, List
 
 from celery import shared_task
 
@@ -40,9 +39,7 @@ from app.tasks.utils.task_utils import task_run
 logger = logging.getLogger(__name__)
 
 
-def _sync_one_connection(
-    session, connection: PlaidConnection, service: PlaidSyncService
-) -> str:
+def _sync_one_connection(session, connection: PlaidConnection, service: PlaidSyncService) -> str:
     """Sync every Plaid-sourced account linked to one connection.
 
     Returns one of ``"written"`` / ``"skipped_no_holdings"`` / ``"errors"``.
@@ -59,7 +56,7 @@ def _sync_one_connection(
         )
         return "skipped_no_holdings"
 
-    accounts: List[BrokerAccount] = (
+    accounts: list[BrokerAccount] = (
         session.query(BrokerAccount)
         .filter(
             BrokerAccount.user_id == connection.user_id,
@@ -83,10 +80,9 @@ def _sync_one_connection(
         except AssertionError:
             # Counter drift inside persist_holdings — abort loudly.
             raise
-        except Exception as exc:  # noqa: BLE001 - structured counter loop
+        except Exception as exc:
             logger.warning(
-                "plaid_daily_sync: unexpected error user_id=%s "
-                "account_id=%s: %s",
+                "plaid_daily_sync: unexpected error user_id=%s account_id=%s: %s",
                 connection.user_id,
                 account.id,
                 exc,
@@ -117,13 +113,13 @@ def _sync_one_connection(
     bind=False,
 )
 @task_run("plaid_daily_sync")
-def daily_sync() -> Dict[str, int]:
+def daily_sync() -> dict[str, int]:
     """Sync every active Plaid connection (run by Beat at 05:00 UTC).
 
     Returns a counter dict so ``task_run`` can persist it to JobRun +
     ``taskstatus:plaid_daily_sync:last`` for the admin health dimension.
     """
-    counters: Dict[str, int] = {
+    counters: dict[str, int] = {
         "total": 0,
         "written": 0,
         "skipped_no_holdings": 0,
@@ -133,7 +129,7 @@ def daily_sync() -> Dict[str, int]:
     service = PlaidSyncService()
     session = SessionLocal()
     try:
-        connections: List[PlaidConnection] = (
+        connections: list[PlaidConnection] = (
             session.query(PlaidConnection)
             .filter(
                 PlaidConnection.status.in_(
@@ -150,10 +146,9 @@ def daily_sync() -> Dict[str, int]:
         for conn in connections:
             try:
                 outcome = _sync_one_connection(session, conn, service)
-            except Exception as exc:  # noqa: BLE001 - structured counter loop
+            except Exception as exc:
                 logger.exception(
-                    "plaid_daily_sync: per-connection loop error user_id=%s "
-                    "conn_id=%s",
+                    "plaid_daily_sync: per-connection loop error user_id=%s conn_id=%s",
                     conn.user_id,
                     conn.id,
                 )
@@ -167,7 +162,7 @@ def daily_sync() -> Dict[str, int]:
 
             try:
                 session.commit()
-            except Exception as commit_exc:
+            except Exception:
                 logger.exception(
                     "plaid_daily_sync: commit failed user_id=%s conn_id=%s",
                     conn.user_id,
@@ -187,15 +182,12 @@ def daily_sync() -> Dict[str, int]:
             counters[outcome] = counters.get(outcome, 0) + 1
 
         assert (
-            counters["written"]
-            + counters["skipped_no_holdings"]
-            + counters["errors"]
+            counters["written"] + counters["skipped_no_holdings"] + counters["errors"]
             == counters["total"]
         ), f"plaid_daily_sync counter drift: {counters}"
 
         logger.info(
-            "plaid_daily_sync complete total=%d written=%d "
-            "skipped_no_holdings=%d errors=%d",
+            "plaid_daily_sync complete total=%d written=%d skipped_no_holdings=%d errors=%d",
             counters["total"],
             counters["written"],
             counters["skipped_no_holdings"],
@@ -206,4 +198,4 @@ def daily_sync() -> Dict[str, int]:
         session.close()
 
 
-__all__ = ["daily_sync", "_sync_one_connection"]
+__all__ = ["_sync_one_connection", "daily_sync"]

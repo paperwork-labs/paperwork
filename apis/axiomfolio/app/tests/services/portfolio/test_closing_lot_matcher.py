@@ -9,9 +9,8 @@ The matcher is the fix for the Tax Center being empty on Schwab accounts.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional
 
 import pytest
 
@@ -26,7 +25,6 @@ from app.services.portfolio.closing_lot_matcher import (
     MatchResult,
     reconcile_closing_lots,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -81,9 +79,9 @@ def _add_trade(
     execution_id: str,
     execution_time: datetime,
     commission: Decimal = Decimal("0"),
-    is_opening: Optional[bool] = None,
+    is_opening: bool | None = None,
     status: str = "FILLED",
-    trade_metadata: Optional[dict] = None,
+    trade_metadata: dict | None = None,
 ) -> Trade:
     if is_opening is None:
         is_opening = side.upper() == "BUY"
@@ -130,8 +128,8 @@ def test_fifo_single_buy_single_sell_same_qty(db_session):
     user = _make_user(db_session, username="lotmatch_user_1")
     acct = _make_account(db_session, user=user, account_number="LM001")
 
-    t0 = datetime(2024, 1, 10, 14, 30, tzinfo=timezone.utc)
-    t1 = datetime(2024, 6, 10, 14, 30, tzinfo=timezone.utc)
+    t0 = datetime(2024, 1, 10, 14, 30, tzinfo=UTC)
+    t1 = datetime(2024, 6, 10, 14, 30, tzinfo=UTC)
     _add_trade(
         db_session,
         account=acct,
@@ -180,17 +178,27 @@ def test_fifo_partial_sell_splits_lot(db_session):
     user = _make_user(db_session, username="lotmatch_user_2")
     acct = _make_account(db_session, user=user, account_number="LM002")
 
-    t0 = datetime(2023, 1, 1, tzinfo=timezone.utc)
-    t1 = datetime(2024, 2, 1, tzinfo=timezone.utc)
+    t0 = datetime(2023, 1, 1, tzinfo=UTC)
+    t1 = datetime(2024, 2, 1, tzinfo=UTC)
     _add_trade(
-        db_session, account=acct, symbol="MSFT", side="BUY",
-        quantity=Decimal("100"), price=Decimal("300"),
-        execution_id="BUY-100", execution_time=t0,
+        db_session,
+        account=acct,
+        symbol="MSFT",
+        side="BUY",
+        quantity=Decimal("100"),
+        price=Decimal("300"),
+        execution_id="BUY-100",
+        execution_time=t0,
     )
     _add_trade(
-        db_session, account=acct, symbol="MSFT", side="SELL",
-        quantity=Decimal("40"), price=Decimal("400"),
-        execution_id="SELL-40", execution_time=t1,
+        db_session,
+        account=acct,
+        symbol="MSFT",
+        side="SELL",
+        quantity=Decimal("40"),
+        price=Decimal("400"),
+        execution_id="SELL-40",
+        execution_time=t1,
     )
 
     result = reconcile_closing_lots(db_session, acct)
@@ -213,19 +221,34 @@ def test_fifo_sell_spans_multiple_lots(db_session):
     acct = _make_account(db_session, user=user, account_number="LM003")
 
     _add_trade(
-        db_session, account=acct, symbol="NVDA", side="BUY",
-        quantity=Decimal("10"), price=Decimal("100"),
-        execution_id="B1", execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        db_session,
+        account=acct,
+        symbol="NVDA",
+        side="BUY",
+        quantity=Decimal("10"),
+        price=Decimal("100"),
+        execution_id="B1",
+        execution_time=datetime(2024, 1, 1, tzinfo=UTC),
     )
     _add_trade(
-        db_session, account=acct, symbol="NVDA", side="BUY",
-        quantity=Decimal("10"), price=Decimal("120"),
-        execution_id="B2", execution_time=datetime(2024, 2, 1, tzinfo=timezone.utc),
+        db_session,
+        account=acct,
+        symbol="NVDA",
+        side="BUY",
+        quantity=Decimal("10"),
+        price=Decimal("120"),
+        execution_id="B2",
+        execution_time=datetime(2024, 2, 1, tzinfo=UTC),
     )
     _add_trade(
-        db_session, account=acct, symbol="NVDA", side="SELL",
-        quantity=Decimal("15"), price=Decimal("200"),
-        execution_id="S1", execution_time=datetime(2024, 6, 1, tzinfo=timezone.utc),
+        db_session,
+        account=acct,
+        symbol="NVDA",
+        side="SELL",
+        quantity=Decimal("15"),
+        price=Decimal("200"),
+        execution_id="S1",
+        execution_time=datetime(2024, 6, 1, tzinfo=UTC),
     )
 
     result = reconcile_closing_lots(db_session, acct)
@@ -247,14 +270,24 @@ def test_matcher_is_idempotent_across_runs(db_session):
     acct = _make_account(db_session, user=user, account_number="LM004")
 
     _add_trade(
-        db_session, account=acct, symbol="TSLA", side="BUY",
-        quantity=Decimal("5"), price=Decimal("200"),
-        execution_id="B", execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        db_session,
+        account=acct,
+        symbol="TSLA",
+        side="BUY",
+        quantity=Decimal("5"),
+        price=Decimal("200"),
+        execution_id="B",
+        execution_time=datetime(2024, 1, 1, tzinfo=UTC),
     )
     _add_trade(
-        db_session, account=acct, symbol="TSLA", side="SELL",
-        quantity=Decimal("5"), price=Decimal("250"),
-        execution_id="S", execution_time=datetime(2024, 6, 1, tzinfo=timezone.utc),
+        db_session,
+        account=acct,
+        symbol="TSLA",
+        side="SELL",
+        quantity=Decimal("5"),
+        price=Decimal("250"),
+        execution_id="S",
+        execution_time=datetime(2024, 6, 1, tzinfo=UTC),
     )
 
     r1 = reconcile_closing_lots(db_session, acct)
@@ -272,24 +305,39 @@ def test_short_term_loss_flags_wash_sale_heuristic(db_session):
     user = _make_user(db_session, username="lotmatch_user_5")
     acct = _make_account(db_session, user=user, account_number="LM005")
 
-    t_buy_original = datetime(2024, 3, 1, tzinfo=timezone.utc)
-    t_sell_loss = datetime(2024, 4, 15, tzinfo=timezone.utc)
+    t_buy_original = datetime(2024, 3, 1, tzinfo=UTC)
+    t_sell_loss = datetime(2024, 4, 15, tzinfo=UTC)
     t_buy_replacement = t_sell_loss + timedelta(days=10)
 
     _add_trade(
-        db_session, account=acct, symbol="META", side="BUY",
-        quantity=Decimal("10"), price=Decimal("500"),
-        execution_id="B-ORIG", execution_time=t_buy_original,
+        db_session,
+        account=acct,
+        symbol="META",
+        side="BUY",
+        quantity=Decimal("10"),
+        price=Decimal("500"),
+        execution_id="B-ORIG",
+        execution_time=t_buy_original,
     )
     _add_trade(
-        db_session, account=acct, symbol="META", side="SELL",
-        quantity=Decimal("10"), price=Decimal("450"),
-        execution_id="S-LOSS", execution_time=t_sell_loss,
+        db_session,
+        account=acct,
+        symbol="META",
+        side="SELL",
+        quantity=Decimal("10"),
+        price=Decimal("450"),
+        execution_id="S-LOSS",
+        execution_time=t_sell_loss,
     )
     _add_trade(
-        db_session, account=acct, symbol="META", side="BUY",
-        quantity=Decimal("10"), price=Decimal("460"),
-        execution_id="B-REPLACE", execution_time=t_buy_replacement,
+        db_session,
+        account=acct,
+        symbol="META",
+        side="BUY",
+        quantity=Decimal("10"),
+        price=Decimal("460"),
+        execution_id="B-REPLACE",
+        execution_time=t_buy_replacement,
     )
 
     reconcile_closing_lots(db_session, acct)
@@ -308,9 +356,14 @@ def test_unmatched_sell_emits_warning_and_counter(db_session):
 
     # SELL without any prior BUY (e.g., transferred-in position)
     _add_trade(
-        db_session, account=acct, symbol="GOOG", side="SELL",
-        quantity=Decimal("7"), price=Decimal("150"),
-        execution_id="ORPHAN", execution_time=datetime(2024, 5, 1, tzinfo=timezone.utc),
+        db_session,
+        account=acct,
+        symbol="GOOG",
+        side="SELL",
+        quantity=Decimal("7"),
+        price=Decimal("150"),
+        execution_id="ORPHAN",
+        execution_time=datetime(2024, 5, 1, tzinfo=UTC),
     )
 
     result = reconcile_closing_lots(db_session, acct)
@@ -331,15 +384,25 @@ def test_options_create_option_tax_lots_not_equity_closed_lot(db_session):
     # Schwab-style OCC option symbol (>15 chars, contains spaces or digits+letters)
     opt_symbol = "AAPL  250117C00200000"
     _add_trade(
-        db_session, account=acct, symbol=opt_symbol, side="BUY",
-        quantity=Decimal("2"), price=Decimal("5"),
-        execution_id="OPT-B", execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        db_session,
+        account=acct,
+        symbol=opt_symbol,
+        side="BUY",
+        quantity=Decimal("2"),
+        price=Decimal("5"),
+        execution_id="OPT-B",
+        execution_time=datetime(2024, 1, 1, tzinfo=UTC),
         trade_metadata={"asset_category": "OPT"},
     )
     _add_trade(
-        db_session, account=acct, symbol=opt_symbol, side="SELL",
-        quantity=Decimal("2"), price=Decimal("8"),
-        execution_id="OPT-S", execution_time=datetime(2024, 2, 1, tzinfo=timezone.utc),
+        db_session,
+        account=acct,
+        symbol=opt_symbol,
+        side="SELL",
+        quantity=Decimal("2"),
+        price=Decimal("8"),
+        execution_id="OPT-S",
+        execution_time=datetime(2024, 2, 1, tzinfo=UTC),
         is_opening=False,
         trade_metadata={"asset_category": "OPT"},
     )
@@ -348,7 +411,9 @@ def test_options_create_option_tax_lots_not_equity_closed_lot(db_session):
     assert result.created == 1
     lots = _closed_lots(db_session, acct)
     assert len(lots) == 0
-    opt_rows = db_session.query(OptionTaxLot).filter(OptionTaxLot.broker_account_id == acct.id).all()
+    opt_rows = (
+        db_session.query(OptionTaxLot).filter(OptionTaxLot.broker_account_id == acct.id).all()
+    )
     assert len(opt_rows) == 1
     assert opt_rows[0].symbol == opt_symbol
     assert opt_rows[0].quantity_closed == Decimal("2")
@@ -366,16 +431,24 @@ def test_cross_tenant_isolation(db_session):
     # Identical symbol + timing in both accounts to stress isolation
     for acct, suffix in ((acct_a, "A"), (acct_b, "B")):
         _add_trade(
-            db_session, account=acct, symbol="SPY", side="BUY",
-            quantity=Decimal("10"), price=Decimal("400"),
+            db_session,
+            account=acct,
+            symbol="SPY",
+            side="BUY",
+            quantity=Decimal("10"),
+            price=Decimal("400"),
             execution_id=f"B-{suffix}",
-            execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            execution_time=datetime(2024, 1, 1, tzinfo=UTC),
         )
         _add_trade(
-            db_session, account=acct, symbol="SPY", side="SELL",
-            quantity=Decimal("10"), price=Decimal("450"),
+            db_session,
+            account=acct,
+            symbol="SPY",
+            side="SELL",
+            quantity=Decimal("10"),
+            price=Decimal("450"),
             execution_id=f"S-{suffix}",
-            execution_time=datetime(2024, 6, 1, tzinfo=timezone.utc),
+            execution_time=datetime(2024, 6, 1, tzinfo=UTC),
         )
 
     r_a = reconcile_closing_lots(db_session, acct_a)
@@ -408,16 +481,24 @@ def test_synth_execution_id_fits_column_limit_for_long_sell_keys(db_session):
 
     long_sell_key = "SCHW-" + "X" * 44  # 49 chars — at the column limit
     _add_trade(
-        db_session, account=acct, symbol="SPY", side="BUY",
-        quantity=Decimal("10"), price=Decimal("400"),
+        db_session,
+        account=acct,
+        symbol="SPY",
+        side="BUY",
+        quantity=Decimal("10"),
+        price=Decimal("400"),
         execution_id="B-LONG",
-        execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        execution_time=datetime(2024, 1, 1, tzinfo=UTC),
     )
     _add_trade(
-        db_session, account=acct, symbol="SPY", side="SELL",
-        quantity=Decimal("10"), price=Decimal("450"),
+        db_session,
+        account=acct,
+        symbol="SPY",
+        side="SELL",
+        quantity=Decimal("10"),
+        price=Decimal("450"),
         execution_id=long_sell_key,
-        execution_time=datetime(2024, 6, 1, tzinfo=timezone.utc),
+        execution_time=datetime(2024, 6, 1, tzinfo=UTC),
     )
     r = reconcile_closing_lots(db_session, acct)
     assert r.created == 1
@@ -442,10 +523,14 @@ def test_matcher_ignores_trades_without_execution_time(db_session):
     acct = _make_account(db_session, user=user, account_number="LM-NOTIME")
 
     _add_trade(
-        db_session, account=acct, symbol="AAPL", side="BUY",
-        quantity=Decimal("10"), price=Decimal("100"),
+        db_session,
+        account=acct,
+        symbol="AAPL",
+        side="BUY",
+        quantity=Decimal("10"),
+        price=Decimal("100"),
         execution_id="B-OK",
-        execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        execution_time=datetime(2024, 1, 1, tzinfo=UTC),
     )
     # Orphan SELL with no execution_time — must be skipped entirely.
     orphan = Trade(

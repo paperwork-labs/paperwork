@@ -2,14 +2,15 @@
 Tests for TastyTrade Client (OAuth / SDK v12+)
 """
 
-import pytest
-from unittest.mock import AsyncMock, Mock, patch
 from datetime import datetime
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 try:
     from app.services.clients.tastytrade_client import (
-        TastyTradeClient,
         TASTYTRADE_AVAILABLE,
+        TastyTradeClient,
     )
 except ImportError:
     TASTYTRADE_AVAILABLE = False
@@ -58,9 +59,7 @@ class TestTastyTradeClient:
                 return_value=[mock_account],
             ),
             patch.object(client, "_verify_connection", new_callable=AsyncMock, return_value=True),
-            patch(
-                "app.services.clients.tastytrade_client.settings"
-            ) as mock_settings,
+            patch("app.services.clients.tastytrade_client.settings") as mock_settings,
         ):
             mock_settings.TASTYTRADE_CLIENT_SECRET = "test_secret"
             mock_settings.TASTYTRADE_REFRESH_TOKEN = "test_refresh"
@@ -76,9 +75,7 @@ class TestTastyTradeClient:
 
     @pytest.mark.asyncio
     async def test_connect_no_credentials(self, client):
-        with patch(
-            "app.services.clients.tastytrade_client.settings"
-        ) as mock_settings:
+        with patch("app.services.clients.tastytrade_client.settings") as mock_settings:
             mock_settings.TASTYTRADE_CLIENT_SECRET = None
             mock_settings.TASTYTRADE_REFRESH_TOKEN = None
 
@@ -90,17 +87,13 @@ class TestTastyTradeClient:
         mock_session = Mock()
 
         with (
-            patch(
-                "app.services.clients.tastytrade_client.Session"
-            ) as mock_session_class,
+            patch("app.services.clients.tastytrade_client.Session") as mock_session_class,
             patch(
                 "app.services.clients.tastytrade_client.Account.get",
                 new_callable=AsyncMock,
             ) as mock_account_get,
             patch.object(client, "_verify_connection", new_callable=AsyncMock, return_value=True),
-            patch(
-                "app.services.clients.tastytrade_client.settings"
-            ) as mock_settings,
+            patch("app.services.clients.tastytrade_client.settings") as mock_settings,
             patch("asyncio.sleep", new_callable=AsyncMock),
         ):
             mock_settings.TASTYTRADE_CLIENT_SECRET = "test_secret"
@@ -414,9 +407,7 @@ class TestTastyTradeClientIntegration:
             assert len(accounts) > 0
 
             first_account = accounts[0]
-            positions = await client.get_current_positions(
-                first_account["account_number"]
-            )
+            positions = await client.get_current_positions(first_account["account_number"])
             assert isinstance(positions, list)
 
             await client.disconnect()

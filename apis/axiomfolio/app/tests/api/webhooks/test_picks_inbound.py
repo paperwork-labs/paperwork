@@ -6,7 +6,8 @@ import base64
 import hashlib
 import hmac
 import json
-from typing import Any, Dict, Generator
+from collections.abc import Generator
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -26,13 +27,11 @@ def _sign_body(body: bytes, secret: str) -> str:
     return base64.b64encode(digest).decode("ascii")
 
 
-def _minimal_payload(**overrides: Any) -> Dict[str, Any]:
-    base: Dict[str, Any] = {
+def _minimal_payload(**overrides: Any) -> dict[str, Any]:
+    base: dict[str, Any] = {
         "From": "Allowed User <allowed@example.com>",
         "To": "inbox <picks@inbound.postmarkapp.com>",
-        "ToFull": [
-            {"Email": "picks@inbound.postmarkapp.com", "Name": "inbox", "MailboxHash": ""}
-        ],
+        "ToFull": [{"Email": "picks@inbound.postmarkapp.com", "Name": "inbox", "MailboxHash": ""}],
         "Subject": "Weekly picks",
         "MessageID": "msg-test-001",
         "Date": "Sat, 18 Apr 2026 12:00:00 +0000",
@@ -119,9 +118,7 @@ def test_signature_skipped_in_dev(client, monkeypatch, picks_allowlist):
     assert r.json().get("status") == "queued"
 
 
-def test_allowlist_blocks_unknown_sender(
-    client, db_session, picks_webhook_secret, monkeypatch
-):
+def test_allowlist_blocks_unknown_sender(client, db_session, picks_webhook_secret, monkeypatch):
     monkeypatch.setattr(
         app_config.settings,
         "PICKS_INBOUND_ALLOWLIST",

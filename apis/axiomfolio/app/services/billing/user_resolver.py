@@ -14,10 +14,12 @@ become known after the user signs up).
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -39,10 +41,10 @@ class DBUserResolver:
     def resolve(
         self,
         *,
-        stripe_customer_id: Optional[str],
-        email: Optional[str],
+        stripe_customer_id: str | None,
+        email: str | None,
         metadata: Mapping[str, Any],
-    ) -> Optional[int]:
+    ) -> int | None:
         # 1. Trust explicit metadata first.
         meta_uid = metadata.get("user_id")
         if meta_uid is not None:
@@ -51,9 +53,7 @@ class DBUserResolver:
                 if uid > 0:
                     return uid
             except (TypeError, ValueError):
-                logger.warning(
-                    "stripe webhook: metadata.user_id not int-coercible: %r", meta_uid
-                )
+                logger.warning("stripe webhook: metadata.user_id not int-coercible: %r", meta_uid)
 
         # 2. stripe_customer_id -> entitlements row (only if entitlements table
         # exists; we soft-import to keep this PR independent of PR #326).
@@ -75,7 +75,7 @@ class DBUserResolver:
 
     # ------------------------------------------------------------------ #
 
-    def _lookup_by_stripe_customer(self, customer_id: str) -> Optional[int]:
+    def _lookup_by_stripe_customer(self, customer_id: str) -> int | None:
         """Look up user_id from entitlements.stripe_customer_id, if the table exists."""
         try:
             from app.models.entitlement import Entitlement  # type: ignore[import-not-found]

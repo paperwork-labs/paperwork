@@ -33,7 +33,8 @@ medallion: ops
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 # Schema version stamped onto every persisted row. Bump when
 # ``OUTPUT_JSON_SCHEMA`` changes shape so old rows can be filtered out
@@ -83,7 +84,7 @@ the audit trail did not preserve a source.
 """
 
 
-_TRIGGER_HINTS: Dict[str, str] = {
+_TRIGGER_HINTS: dict[str, str] = {
     "pick": (
         "The order is linked to a ValidatedPick. Lead the rationale with "
         "the pick's reason_summary and conviction; reference the "
@@ -167,7 +168,7 @@ Respond with a JSON object matching this exact schema:
 # * embedded in the prompt (above)
 # * snapshot-tested so a casual prompt edit doesn't drop a required
 #   field on the floor
-OUTPUT_JSON_SCHEMA: Dict[str, Any] = {
+OUTPUT_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": [
         "trigger",
@@ -247,15 +248,9 @@ def build_user_prompt(
         trigger_hint=trigger_hint(trigger_type),
         trigger_type=trigger_type,
         order_block=json.dumps(order_payload, indent=2, sort_keys=True, default=str),
-        lineage_block=json.dumps(
-            lineage_payload, indent=2, sort_keys=True, default=str
-        ),
-        snapshot_block=json.dumps(
-            market_snapshot_payload, indent=2, sort_keys=True, default=str
-        ),
-        outcome_block=json.dumps(
-            outcome_payload, indent=2, sort_keys=True, default=str
-        ),
+        lineage_block=json.dumps(lineage_payload, indent=2, sort_keys=True, default=str),
+        snapshot_block=json.dumps(market_snapshot_payload, indent=2, sort_keys=True, default=str),
+        outcome_block=json.dumps(outcome_payload, indent=2, sort_keys=True, default=str),
         schema_block=json.dumps(OUTPUT_JSON_SCHEMA, indent=2, sort_keys=True),
     )
 

@@ -38,10 +38,11 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Type
+from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -75,9 +76,9 @@ class GeneratedCandidate:
 
     symbol: str
     action_suggestion: PickAction
-    score: Optional[Decimal] = None
-    rationale_summary: Optional[str] = None
-    signals: Dict[str, Any] = field(default_factory=dict)
+    score: Decimal | None = None
+    rationale_summary: str | None = None
+    signals: dict[str, Any] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
@@ -109,10 +110,10 @@ class CandidateGenerator(ABC):
         """
 
 
-_REGISTRY: Dict[str, Type[CandidateGenerator]] = {}
+_REGISTRY: dict[str, type[CandidateGenerator]] = {}
 
 
-def _register(cls: Type[CandidateGenerator]) -> None:
+def _register(cls: type[CandidateGenerator]) -> None:
     key = cls.name
     if key in _REGISTRY and _REGISTRY[key] is not cls:
         raise RuntimeError(
@@ -122,12 +123,12 @@ def _register(cls: Type[CandidateGenerator]) -> None:
     _REGISTRY[key] = cls
 
 
-def registered_generators() -> Tuple[Type[CandidateGenerator], ...]:
+def registered_generators() -> tuple[type[CandidateGenerator], ...]:
     """Return all registered generator classes (deterministic order)."""
     return tuple(sorted(_REGISTRY.values(), key=lambda c: c.name))
 
 
-def get_generator(name: str) -> Type[CandidateGenerator]:
+def get_generator(name: str) -> type[CandidateGenerator]:
     try:
         return _REGISTRY[name]
     except KeyError as e:
@@ -146,17 +147,13 @@ def _clear_registry_for_tests() -> None:
 
 
 def _today_utc_start() -> datetime:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def _bulk_latest_snapshots(
-    db: Session, symbols: Sequence[str]
-) -> Dict[str, MarketSnapshot]:
+def _bulk_latest_snapshots(db: Session, symbols: Sequence[str]) -> dict[str, MarketSnapshot]:
     """Latest valid technical snapshot per symbol (matches ``_load_snapshot``)."""
-    sym_set = sorted(
-        {(s or "").upper().strip() for s in symbols if (s or "").strip()}
-    )
+    sym_set = sorted({(s or "").upper().strip() for s in symbols if (s or "").strip()})
     if not sym_set:
         return {}
     row_num = (
@@ -190,7 +187,7 @@ def _bulk_latest_snapshots(
 
 def _existing_candidate_today(
     db: Session, *, symbol: str, generator_name: str, generator_version: str
-) -> Optional[Candidate]:
+) -> Candidate | None:
     """Return today's candidate row if one already exists for this
     (symbol, generator, version) — drives idempotency."""
     return (
@@ -212,7 +209,7 @@ def persist_candidates(
     items: Iterable[GeneratedCandidate],
     *,
     quality_score_user_id: int = 0,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Persist candidates idempotently for the calling generator.
 
     Returns counts per outcome; the caller commits the transaction.
@@ -240,13 +237,11 @@ def persist_candidates(
     scorer = PickQualityScorer()
     regime = get_current_regime(db)
     symbols_for_quality = [
-        (i.symbol or "").upper().strip()
-        for i in items_list
-        if (i.symbol or "").strip()
+        (i.symbol or "").upper().strip() for i in items_list if (i.symbol or "").strip()
     ]
     by_symbol = _bulk_latest_snapshots(db, symbols_for_quality)
     bonus_by_sym = external_context_bonus_points_map(db, symbols_for_quality)
-    enriched: List[Tuple[GeneratedCandidate, Optional[PickQualityScore]]] = []
+    enriched: list[tuple[GeneratedCandidate, PickQualityScore | None]] = []
     for item in items_list:
         symbol = (item.symbol or "").upper().strip()
         if not symbol:
@@ -272,9 +267,7 @@ def persist_candidates(
     quality_attempted = (
         counts["quality_scored"] + counts["quality_skipped"] + counts["quality_errored"]
     )
-    expected_quality_attempts = len(
-        [i for i in items_list if (i.symbol or "").strip()]
-    )
+    expected_quality_attempts = len([i for i in items_list if (i.symbol or "").strip()])
     if quality_attempted != expected_quality_attempts:
         logger.error(
             "quality counter drift for generator %s v%s: attempted=%s expected=%s "
@@ -316,9 +309,7 @@ def persist_candidates(
             action_suggestion=item.action_suggestion,
             score=item.score,
             pick_quality_score=pq.total_score if pq is not None else None,
-            pick_quality_breakdown=(
-                pick_quality_to_payload(pq) if pq is not None else None
-            ),
+            pick_quality_breakdown=(pick_quality_to_payload(pq) if pq is not None else None),
             rationale_summary=item.rationale_summary,
             signals=item.signals or None,
             status=CandidateQueueState.DRAFT,
@@ -347,12 +338,12 @@ class GeneratorRunReport:
     created: int
     skipped_duplicate: int
     invalid: int
-    error: Optional[str] = None
+    error: str | None = None
     quality_scored: int = 0
     quality_skipped: int = 0
     quality_errored: int = 0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "generator": self.generator,
             "version": self.version,
@@ -370,9 +361,9 @@ class GeneratorRunReport:
 def run_all_generators(
     db: Session,
     *,
-    only: Optional[Sequence[str]] = None,
+    only: Sequence[str] | None = None,
     quality_score_user_id: int = 0,
-) -> List[GeneratorRunReport]:
+) -> list[GeneratorRunReport]:
     """Run every registered generator (or only the named subset).
 
     Each generator runs in its own SAVEPOINT (``begin_nested``) so a
@@ -380,7 +371,7 @@ def run_all_generators(
     generators in the same batch remain in the outer transaction. The
     caller commits once at the end.
     """
-    reports: List[GeneratorRunReport] = []
+    reports: list[GeneratorRunReport] = []
     selected = registered_generators()
     if only:
         only_set = set(only)
@@ -388,14 +379,14 @@ def run_all_generators(
 
     for cls in selected:
         gen = cls()
-        items: Optional[List[GeneratedCandidate]] = None
+        items: list[GeneratedCandidate] | None = None
         try:
             with db.begin_nested():
                 items = list(gen.generate(db))
                 counts = persist_candidates(
                     db, gen, items, quality_score_user_id=quality_score_user_id
                 )
-        except Exception as e:  # noqa: BLE001 - per-generator isolation
+        except Exception as e:
             logger.exception(
                 "candidate generator %s/%s failed: %s",
                 cls.name,

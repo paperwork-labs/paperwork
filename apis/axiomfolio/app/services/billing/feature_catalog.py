@@ -33,8 +33,8 @@ medallion: ops
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 from app.models.entitlement import SubscriptionTier
 
@@ -165,7 +165,7 @@ _FEATURES: tuple[Feature, ...] = (
         key="brain.nl_query",
         min_tier=SubscriptionTier.PRO_PLUS,
         title="Natural-language screen",
-        description="\"Show me Stage 2A under $50 with insider buying\".",
+        description='"Show me Stage 2A under $50 with insider buying".',
         category="brain",
     ),
     Feature(
@@ -416,8 +416,7 @@ def get_feature(key: str) -> Feature:
     """
     if key not in _CATALOG:
         raise KeyError(
-            f"Unknown feature key '{key}'. "
-            f"Add it to app/services/billing/feature_catalog.py first."
+            f"Unknown feature key '{key}'. Add it to app/services/billing/feature_catalog.py first."
         )
     return _CATALOG[key]
 

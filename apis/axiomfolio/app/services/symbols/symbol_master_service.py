@@ -43,9 +43,9 @@ medallion: silver
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
-from typing import Iterable, Optional
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
@@ -59,7 +59,6 @@ from app.models.symbol_master import (
     SymbolMaster,
     SymbolStatus,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -85,7 +84,7 @@ class UnknownTickerError(SymbolMasterError):
     """Raised by :py:meth:`SymbolMasterService.resolve_strict` when no
     master row matches the given ticker / as_of date."""
 
-    def __init__(self, ticker: str, as_of_date: Optional[date] = None) -> None:
+    def __init__(self, ticker: str, as_of_date: date | None = None) -> None:
         msg = f"Unknown ticker: {ticker!r}"
         if as_of_date is not None:
             msg += f" (as_of={as_of_date.isoformat()})"
@@ -139,9 +138,7 @@ class SymbolMasterService:
         leaking into every call site."""
         return (ticker or "").strip().upper()
 
-    def resolve(
-        self, ticker: str, as_of_date: Optional[date] = None
-    ) -> Optional[SymbolMaster]:
+    def resolve(self, ticker: str, as_of_date: date | None = None) -> SymbolMaster | None:
         """Resolve a ticker (optionally point-in-time) to a master row.
 
         Resolution order:
@@ -160,9 +157,7 @@ class SymbolMasterService:
         if not normalized:
             return None
 
-        alias_q = self.db.query(SymbolAlias).filter(
-            SymbolAlias.alias_ticker == normalized
-        )
+        alias_q = self.db.query(SymbolAlias).filter(SymbolAlias.alias_ticker == normalized)
         if as_of_date is not None:
             alias_q = alias_q.filter(SymbolAlias.valid_from <= as_of_date).filter(
                 or_(
@@ -175,15 +170,11 @@ class SymbolMasterService:
             return self.db.get(SymbolMaster, alias.symbol_master_id)
 
         master = (
-            self.db.query(SymbolMaster)
-            .filter(SymbolMaster.primary_ticker == normalized)
-            .first()
+            self.db.query(SymbolMaster).filter(SymbolMaster.primary_ticker == normalized).first()
         )
         return master
 
-    def resolve_strict(
-        self, ticker: str, as_of_date: Optional[date] = None
-    ) -> SymbolMaster:
+    def resolve_strict(self, ticker: str, as_of_date: date | None = None) -> SymbolMaster:
         """Like :py:meth:`resolve` but raises :class:`UnknownTickerError`
         on no match."""
         master = self.resolve(ticker, as_of_date=as_of_date)
@@ -192,15 +183,15 @@ class SymbolMasterService:
         return master
 
     def bulk_resolve(
-        self, tickers: Iterable[str], as_of_date: Optional[date] = None
-    ) -> dict[str, Optional[SymbolMaster]]:
+        self, tickers: Iterable[str], as_of_date: date | None = None
+    ) -> dict[str, SymbolMaster | None]:
         """Resolve many tickers, preserving caller's normalized keys.
 
         Empty / whitespace-only inputs are dropped so callers don't
         accidentally key on ``""``. The returned dict's keys are the
         *normalized* ticker strings.
         """
-        out: dict[str, Optional[SymbolMaster]] = {}
+        out: dict[str, SymbolMaster | None] = {}
         for raw in tickers:
             normalized = self._normalize(raw)
             if not normalized:
@@ -237,16 +228,16 @@ class SymbolMasterService:
         primary_ticker: str,
         *,
         asset_class: AssetClass = AssetClass.EQUITY,
-        name: Optional[str] = None,
-        exchange: Optional[str] = None,
-        country: Optional[str] = None,
-        currency: Optional[str] = None,
-        sector: Optional[str] = None,
-        industry: Optional[str] = None,
-        gics_code: Optional[str] = None,
-        cik: Optional[str] = None,
-        isin: Optional[str] = None,
-        figi: Optional[str] = None,
+        name: str | None = None,
+        exchange: str | None = None,
+        country: str | None = None,
+        currency: str | None = None,
+        sector: str | None = None,
+        industry: str | None = None,
+        gics_code: str | None = None,
+        cik: str | None = None,
+        isin: str | None = None,
+        figi: str | None = None,
         status: SymbolStatus = SymbolStatus.ACTIVE,
     ) -> tuple[SymbolMaster, bool]:
         """Idempotent upsert keyed on ``primary_ticker``.
@@ -262,9 +253,7 @@ class SymbolMasterService:
             raise SymbolMasterError("primary_ticker must be a non-empty string")
 
         existing = (
-            self.db.query(SymbolMaster)
-            .filter(SymbolMaster.primary_ticker == normalized)
-            .first()
+            self.db.query(SymbolMaster).filter(SymbolMaster.primary_ticker == normalized).first()
         )
         if existing is not None:
             return existing, False
@@ -295,8 +284,8 @@ class SymbolMasterService:
         *,
         valid_from: date,
         source: AliasSource,
-        valid_to: Optional[date] = None,
-        notes: Optional[str] = None,
+        valid_to: date | None = None,
+        notes: str | None = None,
     ) -> SymbolAlias:
         """Add (or fetch existing) alias on
         ``(master_id, alias_ticker, valid_from)``.
@@ -345,8 +334,8 @@ class SymbolMasterService:
         *,
         effective_date: date,
         source: AliasSource = AliasSource.TICKER_CHANGE,
-        notes: Optional[str] = None,
-        new_name: Optional[str] = None,
+        notes: str | None = None,
+        new_name: str | None = None,
     ) -> TickerChangeResult:
         """Record a corporate ticker rename atomically.
 
@@ -369,13 +358,9 @@ class SymbolMasterService:
         old_norm = self._normalize(old_ticker)
         new_norm = self._normalize(new_ticker)
         if not old_norm or not new_norm:
-            raise SymbolMasterError(
-                "old_ticker and new_ticker must be non-empty strings"
-            )
+            raise SymbolMasterError("old_ticker and new_ticker must be non-empty strings")
         if old_norm == new_norm:
-            raise SymbolMasterError(
-                f"old_ticker and new_ticker must differ (got {old_norm!r})"
-            )
+            raise SymbolMasterError(f"old_ticker and new_ticker must differ (got {old_norm!r})")
 
         # Step 1+2: anchor on the new ticker. If a row already exists
         # under the old ticker (e.g. seeded from MarketSnapshot before
@@ -457,7 +442,7 @@ class SymbolMasterService:
         old_norm: str,
         new_norm: str,
         *,
-        new_name: Optional[str],
+        new_name: str | None,
     ) -> tuple[SymbolMaster, bool]:
         """Pick the right master row to anchor a ticker change on.
 
@@ -475,9 +460,7 @@ class SymbolMasterService:
         """
         # Case 1: row already keyed on the new ticker.
         new_existing = (
-            self.db.query(SymbolMaster)
-            .filter(SymbolMaster.primary_ticker == new_norm)
-            .first()
+            self.db.query(SymbolMaster).filter(SymbolMaster.primary_ticker == new_norm).first()
         )
         if new_existing is not None:
             if new_name and not new_existing.name:
@@ -486,9 +469,7 @@ class SymbolMasterService:
 
         # Case 2: legacy row keyed on the old ticker — rotate it.
         old_existing = (
-            self.db.query(SymbolMaster)
-            .filter(SymbolMaster.primary_ticker == old_norm)
-            .first()
+            self.db.query(SymbolMaster).filter(SymbolMaster.primary_ticker == old_norm).first()
         )
         if old_existing is not None:
             old_existing.primary_ticker = new_norm

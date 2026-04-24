@@ -6,25 +6,25 @@ Historical data and tax lots handled by separate FlexQuery client.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Dict, List
 import os
 import sys
 
 try:
     from ib_insync import (
         IB,
-        util,
         Contract,
-        Stock,
-        Option,
-        MarketOrder,
         LimitOrder,
-        StopOrder,
+        MarketOrder,
+        Option,
+        Stock,
         StopLimitOrder,
+        StopOrder,
+        util,
     )
 
     IBKR_AVAILABLE = True
@@ -135,15 +135,14 @@ class IBKRClient:
             await self._cleanup()
 
             try:
-                logger.info("🔄 Connecting to IBKR Gateway at %s:%s ...", connect_host, connect_port)
+                logger.info(
+                    "🔄 Connecting to IBKR Gateway at %s:%s ...", connect_host, connect_port
+                )
 
                 self.ib = IB()
                 self.ib._owner_loop = asyncio.get_running_loop()
 
-                test_mode = (
-                    os.environ.get("AXIOMFOLIO_TESTING") == "1"
-                    or "pytest" in sys.modules
-                )
+                test_mode = os.environ.get("AXIOMFOLIO_TESTING") == "1" or "pytest" in sys.modules
                 timeout_s = 0.2 if test_mode else 15
 
                 util.patchAsyncio()
@@ -174,7 +173,7 @@ class IBKRClient:
 
                     return True
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("⏱️ IBKR Gateway connection timed out after %ss", timeout_s)
                 self.connection_health["consecutive_failures"] = (
                     self.connection_health.get("consecutive_failures", 0) + 1
@@ -228,7 +227,7 @@ class IBKRClient:
             # Keep client_id constant for tests
             self.ib = None
 
-    async def get_positions(self, account_id: str) -> List[Dict]:
+    async def get_positions(self, account_id: str) -> list[dict]:
         """Get current positions for account."""
         if not await self._ensure_connected():
             return []
@@ -244,9 +243,7 @@ class IBKRClient:
                             "account": pos.account,
                             "symbol": pos.contract.symbol,
                             "position": float(pos.position),
-                            "market_value": (
-                                float(pos.marketValue) if pos.marketValue else 0.0
-                            ),
+                            "market_value": (float(pos.marketValue) if pos.marketValue else 0.0),
                             "avg_cost": float(pos.avgCost) if pos.avgCost else 0.0,
                             "unrealized_pnl": (
                                 float(pos.unrealizedPNL) if pos.unrealizedPNL else 0.0
@@ -264,7 +261,7 @@ class IBKRClient:
             logger.error(f"❌ Error getting positions: {e}")
             return []
 
-    async def get_account_summary(self, account_id: str) -> Dict:
+    async def get_account_summary(self, account_id: str) -> dict:
         """Get account summary data for a specific account."""
         if not await self._ensure_connected():
             return {}
@@ -320,15 +317,13 @@ class IBKRClient:
             return await self.connect_with_retry()
         return True
 
-    def get_status(self) -> Dict:
+    def get_status(self) -> dict:
         """Get connection status."""
         return {
             "connected": self.connected,
             "client_id": self.client_id,
             "accounts": self.managed_accounts,
-            "gateway_clients": (
-                len(self.managed_accounts) if self.managed_accounts else 0
-            ),
+            "gateway_clients": (len(self.managed_accounts) if self.managed_accounts else 0),
         }
 
     async def disconnect(self):
@@ -345,14 +340,14 @@ class IBKRClient:
             self.connection_health["status"] = "disconnected"
             logger.info("✅ IBKR disconnected")
 
-    async def discover_managed_accounts(self) -> List[str]:
+    async def discover_managed_accounts(self) -> list[str]:
         """Discover managed accounts from IBKR if connected; safe for tests.
         Returns a list of account ids or empty list on failure.
         """
         try:
             if not await self._ensure_connected():
                 return []
-            accounts: List[str] = []
+            accounts: list[str] = []
             try:
                 accounts = list(self.ib.managedAccounts()) or []
             except Exception as e:
@@ -368,9 +363,7 @@ class IBKRClient:
         """Check if IB Gateway is currently connected."""
         return bool(self.connected and self.ib and self.ib.isConnected())
 
-    async def get_option_greeks(
-        self, contracts: list, timeout: float = 10.0
-    ) -> List[Dict]:
+    async def get_option_greeks(self, contracts: list, timeout: float = 10.0) -> list[dict]:
         """Request market data for option contracts and extract Greeks.
 
         Each contract should be an ib_insync Option or similar Contract object.
@@ -389,9 +382,7 @@ class IBKRClient:
             for contract in batch:
                 try:
                     self.ib.qualifyContracts(contract)
-                    ticker = self.ib.reqMktData(
-                        contract, genericTickList="106,100", snapshot=True
-                    )
+                    ticker = self.ib.reqMktData(contract, genericTickList="106,100", snapshot=True)
                     tickers.append((contract, ticker))
                 except Exception as e:
                     logger.debug("Greeks request failed for %s: %s", contract, e)
@@ -432,9 +423,7 @@ class IBKRClient:
         logger.info("Retrieved Greeks for %d/%d contracts", len(results), len(contracts))
         return results
 
-    async def get_option_chain(
-        self, symbol: str, exchange: str = "SMART"
-    ) -> Dict:
+    async def get_option_chain(self, symbol: str, exchange: str = "SMART") -> dict:
         """Fetch available option chain (expirations and strikes) for a symbol.
 
         Returns: { expirations: [...], chains: { "2026-03-21": { calls: [...], puts: [...] } } }
@@ -445,22 +434,18 @@ class IBKRClient:
         try:
             stock = Stock(symbol, exchange, "USD")
             self.ib.qualifyContracts(stock)
-            chains = self.ib.reqSecDefOptParams(
-                stock.symbol, "", stock.secType, stock.conId
-            )
+            chains = self.ib.reqSecDefOptParams(stock.symbol, "", stock.secType, stock.conId)
 
             if not chains:
                 return {"expirations": [], "chains": {}}
 
             # Use the SMART exchange chain or fallback to first
-            chain = next(
-                (c for c in chains if c.exchange == "SMART"), chains[0]
-            )
+            chain = next((c for c in chains if c.exchange == "SMART"), chains[0])
 
             expirations = sorted(chain.expirations)
             strikes = sorted(chain.strikes)
 
-            result: Dict = {"expirations": expirations, "chains": {}}
+            result: dict = {"expirations": expirations, "chains": {}}
 
             # For each expiration, build Option contracts and fetch Greeks
             for exp in expirations[:5]:  # Limit to 5 nearest expirations
@@ -502,16 +487,14 @@ class IBKRClient:
             logger.error("Option chain fetch failed for %s: %s", symbol, e)
             return {"expirations": [], "chains": {}}
 
-    async def get_realtime_option_data(self, contract) -> Dict:
+    async def get_realtime_option_data(self, contract) -> dict:
         """Get a snapshot of real-time option data for a single contract."""
         if not IBKR_AVAILABLE or not await self._ensure_connected():
             return {}
 
         try:
             self.ib.qualifyContracts(contract)
-            ticker = self.ib.reqMktData(
-                contract, genericTickList="106,100", snapshot=True
-            )
+            ticker = self.ib.reqMktData(contract, genericTickList="106,100", snapshot=True)
             await asyncio.sleep(3)
 
             result = {
@@ -581,9 +564,7 @@ class IBKRClient:
         if order_type in ("STP_LMT", "STP LMT"):
             if limit_price is None or stop_price is None:
                 raise ValueError("limit_price and stop_price required for STP_LMT orders")
-            return StopLimitOrder(
-                action, quantity, float(limit_price), float(stop_price)
-            )
+            return StopLimitOrder(action, quantity, float(limit_price), float(stop_price))
         raise ValueError(f"Unsupported order_type: {order_type}")
 
     def _is_paper_trading(self) -> bool:
@@ -600,9 +581,7 @@ class IBKRClient:
             return True
         if mode == "live":
             return False
-        port = getattr(self, "port", None) or getattr(
-            settings, "IBKR_PORT", 7497
-        )
+        port = getattr(self, "port", None) or getattr(settings, "IBKR_PORT", 7497)
         return int(port) in (7497, 4002)
 
     async def what_if_order(
@@ -613,7 +592,7 @@ class IBKRClient:
         order_type: str,
         limit_price: float | None = None,
         stop_price: float | None = None,
-    ) -> Dict:
+    ) -> dict:
         """Simulated order preview (commission, margin impact). No real order placed.
 
         Returns dict with: estimated_commission, estimated_margin_impact,
@@ -632,14 +611,11 @@ class IBKRClient:
         try:
             contract = self._build_contract(symbol)
             self.ib.qualifyContracts(contract)
-            order = self._build_order(
-                action, quantity, order_type, limit_price, stop_price
-            )
+            order = self._build_order(action, quantity, order_type, limit_price, stop_price)
             state = await self.ib.whatIfOrderAsync(contract, order)
             est_commission = None
-            if (
-                state.commission is not None
-                and state.commission != getattr(util, "UNSET_DOUBLE", float("inf"))
+            if state.commission is not None and state.commission != getattr(
+                util, "UNSET_DOUBLE", float("inf")
             ):
                 try:
                     est_commission = float(state.commission)
@@ -671,7 +647,7 @@ class IBKRClient:
         order_type: str,
         limit_price: float | None = None,
         stop_price: float | None = None,
-    ) -> Dict:
+    ) -> dict:
         """Place a real order. Requires ENABLE_TRADING.
 
         action: 'BUY' or 'SELL'
@@ -707,14 +683,19 @@ class IBKRClient:
                 }
             port = getattr(self, "port", None) or getattr(settings, "IBKR_PORT", "?")
             mode = getattr(settings, "IBKR_TRADING_MODE", "unknown")
-            logger.warning("Placing LIVE order: %s %s %s (port=%s, mode=%s)", action, quantity, symbol, port, mode)
+            logger.warning(
+                "Placing LIVE order: %s %s %s (port=%s, mode=%s)",
+                action,
+                quantity,
+                symbol,
+                port,
+                mode,
+            )
 
         try:
             contract = self._build_contract(symbol)
             self.ib.qualifyContracts(contract)
-            order = self._build_order(
-                action, quantity, order_type, limit_price, stop_price
-            )
+            order = self._build_order(action, quantity, order_type, limit_price, stop_price)
             trade = self.ib.placeOrder(contract, order)
             broker_order_id = trade.order.orderId
             status = trade.orderStatus.status if trade.orderStatus else "Submitted"
@@ -730,7 +711,7 @@ class IBKRClient:
                 "error": str(e),
             }
 
-    async def cancel_order(self, broker_order_id: int | str) -> Dict:
+    async def cancel_order(self, broker_order_id: int | str) -> dict:
         """Cancel an order by its broker order ID."""
         if not IBKR_AVAILABLE:
             return {"status": "error", "error": "ib_insync not available"}
@@ -759,10 +740,14 @@ class IBKRClient:
             logger.error("cancel_order failed for %s: %s", broker_order_id, e)
             return {"broker_order_id": broker_order_id, "status": "error", "error": str(e)}
 
-    async def get_order_status(self, broker_order_id: int | str) -> Dict:
+    async def get_order_status(self, broker_order_id: int | str) -> dict:
         """Return current order status from IB."""
         if not IBKR_AVAILABLE or not await self._ensure_connected():
-            return {"broker_order_id": broker_order_id, "status": "unknown", "error": "Not connected"}
+            return {
+                "broker_order_id": broker_order_id,
+                "status": "unknown",
+                "error": "Not connected",
+            }
 
         try:
             order_id = int(broker_order_id)

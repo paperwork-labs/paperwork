@@ -20,7 +20,6 @@ import hashlib
 import logging
 import resource
 import tracemalloc
-from typing import Optional, Set
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -33,7 +32,7 @@ from app.utils.request_context import get_request_id
 logger = logging.getLogger(__name__)
 
 _EXcluded_PATH_PREFIXES: tuple[str, ...] = ("/docs", "/redoc", "/openapi.json")
-_EXcluded_EXACT: Set[str] = {"/health", "/favicon.ico"}
+_EXcluded_EXACT: set[str] = {"/health", "/favicon.ico"}
 
 
 def _path_template_for_metrics(request: Request) -> str:
@@ -63,7 +62,7 @@ def should_sample_for_request_id(request_id: str) -> bool:
     return (h % 10) == 0
 
 
-def _get_user_id_for_log(request: Request) -> Optional[int]:
+def _get_user_id_for_log(request: Request) -> int | None:
     st = getattr(request, "state", None)
     if st is None:
         return None
@@ -94,7 +93,7 @@ class PeakRssMiddleware(BaseHTTPMiddleware):
         tracemalloc.clear_traces()
         try:
             start_raw = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("peak_rss: getrusage at start failed: %s", e, exc_info=True)
             return await call_next(request)
 
@@ -102,7 +101,7 @@ class PeakRssMiddleware(BaseHTTPMiddleware):
 
         try:
             end_raw = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("peak_rss: getrusage at end failed: %s", e, exc_info=True)
             return response
 
@@ -117,11 +116,13 @@ class PeakRssMiddleware(BaseHTTPMiddleware):
         method = (request.method or "GET").upper()
         r = _get_sync_redis()
         if r is not None:
+
             def _write() -> None:
                 peak_rss_store.record_peak_rss_sample(r, method, path_t, delta_kib)
+
             try:
                 await asyncio.to_thread(_write)
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.warning("peak_rss: async record failed: %s", e, exc_info=True)
 
         if delta_kib > peak_rss_store.PEAK_RSS_WARN_DELTA_KIB:
@@ -148,8 +149,9 @@ def _get_sync_redis():
         return None
     try:
         from app.services.market.market_data_service import infra
+
         return infra.redis_client
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         global _redis_fail_open_logged
         if not _redis_fail_open_logged:
             logger.warning("peak_rss: could not get redis client: %s", e, exc_info=True)

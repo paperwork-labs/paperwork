@@ -3,23 +3,25 @@ Transaction Data Models for Local Persistence
 Enhanced for IBKR FlexQuery Cash Transactions section (45 fields)
 """
 
+import enum
+from datetime import datetime
+
 from sqlalchemy import (
     Column,
-    Integer,
-    String,
-    Float,
+    Date,
     DateTime,
-    Text,
+    Enum,
+    Float,
     ForeignKey,
     Index,
-    Date,
-    Enum,
+    Integer,
+    String,
+    Text,
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
-import enum
+
 from app.models import Base
 
 
@@ -84,15 +86,11 @@ class Transaction(Base):
     id = Column(Integer, primary_key=True)
 
     # Account Information (FlexQuery: accountId, acctAlias)
-    account_id = Column(
-        Integer, ForeignKey("broker_accounts.id"), nullable=False, index=True
-    )
+    account_id = Column(Integer, ForeignKey("broker_accounts.id"), nullable=False, index=True)
     account_alias = Column(String(100), nullable=True)
 
     # Transaction Identification (FlexQuery: transactionID, tradeID, orderID, execID)
-    external_id = Column(
-        String(100), nullable=True, index=True
-    )  # FlexQuery: transactionID
+    external_id = Column(String(100), nullable=True, index=True)  # FlexQuery: transactionID
     trade_id = Column(String(50), nullable=True)  # FlexQuery: tradeID
     order_id = Column(String(50), nullable=True)  # FlexQuery: orderID
     execution_id = Column(String(50), nullable=True)  # FlexQuery: execID
@@ -100,9 +98,7 @@ class Transaction(Base):
     # Instrument Information (FlexQuery: symbol, description, conid, securityID, etc.)
     symbol = Column(String(50), nullable=False, index=True)  # FlexQuery: symbol
     description = Column(Text, nullable=True)  # FlexQuery: description
-    conid = Column(
-        String(50), nullable=True, index=True
-    )  # FlexQuery: conid (IBKR contract ID)
+    conid = Column(String(50), nullable=True, index=True)  # FlexQuery: conid (IBKR contract ID)
     security_id = Column(String(50), nullable=True)  # FlexQuery: securityID
     cusip = Column(String(20), nullable=True)  # FlexQuery: cusip
     isin = Column(String(20), nullable=True)  # FlexQuery: isin
@@ -126,13 +122,9 @@ class Transaction(Base):
 
     # Costs and Fees (FlexQuery: commission, brokerageCommission, clearingCommission, etc.)
     commission = Column(Float, nullable=True)  # FlexQuery: commission
-    brokerage_commission = Column(
-        Float, nullable=True
-    )  # FlexQuery: brokerageCommission
+    brokerage_commission = Column(Float, nullable=True)  # FlexQuery: brokerageCommission
     clearing_commission = Column(Float, nullable=True)  # FlexQuery: clearingCommission
-    third_party_commission = Column(
-        Float, nullable=True
-    )  # FlexQuery: thirdPartyCommission
+    third_party_commission = Column(Float, nullable=True)  # FlexQuery: thirdPartyCommission
     other_fees = Column(Float, nullable=True)  # FlexQuery: otherFees
     net_amount = Column(Float, nullable=False)  # FlexQuery: netCash
 
@@ -141,15 +133,11 @@ class Transaction(Base):
     fx_rate_to_base = Column(Float, nullable=True)  # FlexQuery: fxRateToBase
 
     # Classification (FlexQuery: assetCategory, subCategory)
-    asset_category = Column(
-        String(20), nullable=True
-    )  # FlexQuery: assetCategory (STK, OPT, etc.)
+    asset_category = Column(String(20), nullable=True)  # FlexQuery: assetCategory (STK, OPT, etc.)
     sub_category = Column(String(20), nullable=True)  # FlexQuery: subCategory
 
     # Dates (FlexQuery: dateTime, tradeDate, settleDateTarget, settleDate)
-    transaction_date = Column(
-        DateTime, nullable=False, index=True
-    )  # FlexQuery: dateTime
+    transaction_date = Column(DateTime, nullable=False, index=True)  # FlexQuery: dateTime
     trade_date = Column(Date, nullable=True)  # FlexQuery: tradeDate
     settlement_date_target = Column(Date, nullable=True)  # FlexQuery: settleDateTarget
     settlement_date = Column(Date, nullable=True)  # FlexQuery: settleDate
@@ -160,20 +148,14 @@ class Transaction(Base):
     taxable_amount_base = Column(Float, nullable=True)  # FlexQuery: taxableAmountInBase
 
     # Corporate Actions (FlexQuery: corporateActionFlag, corporateActionId)
-    corporate_action_flag = Column(
-        String(10), nullable=True
-    )  # FlexQuery: corporateActionFlag
-    corporate_action_id = Column(
-        String(50), nullable=True
-    )  # FlexQuery: corporateActionId
+    corporate_action_flag = Column(String(10), nullable=True)  # FlexQuery: corporateActionFlag
+    corporate_action_id = Column(String(50), nullable=True)  # FlexQuery: corporateActionId
 
     # Data Source and Metadata
     source = Column(String(50), nullable=False, default="FLEXQUERY")
     synced_at = Column(DateTime, default=func.now(), nullable=False)
     created_at = Column(DateTime, default=func.now(), nullable=False)
-    updated_at = Column(
-        DateTime, default=func.now(), onupdate=func.now(), nullable=False
-    )
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now(), nullable=False)
 
     # Relationships
     broker_account = relationship("BrokerAccount", back_populates="transactions")
@@ -181,12 +163,8 @@ class Transaction(Base):
     # Indexes for fast queries
     __table_args__ = (
         # Dedupe safety: prefer external_id; fallback execution_id per account
-        UniqueConstraint(
-            "account_id", "external_id", name="uq_transactions_account_external_id"
-        ),
-        UniqueConstraint(
-            "account_id", "execution_id", name="uq_transactions_account_execution_id"
-        ),
+        UniqueConstraint("account_id", "external_id", name="uq_transactions_account_external_id"),
+        UniqueConstraint("account_id", "execution_id", name="uq_transactions_account_execution_id"),
         Index("idx_transactions_symbol", "symbol"),
         Index("idx_transaction_date", "transaction_date"),
         Index("idx_external_id", "external_id"),
@@ -220,9 +198,7 @@ class Dividend(Base):
     # Metadata
     currency = Column(String(10), default="USD")
     frequency = Column(String(20), default="quarterly")  # quarterly, monthly, annual
-    dividend_type = Column(
-        String(20), default="ordinary"
-    )  # ordinary, special, return_of_capital
+    dividend_type = Column(String(20), default="ordinary")  # ordinary, special, return_of_capital
 
     # Data source tracking
     source = Column(String(50), default="ibkr")
@@ -252,9 +228,7 @@ class TransactionSyncStatus(Base):
     # Sync tracking
     last_sync_date = Column(DateTime)
     last_successful_sync = Column(DateTime)
-    sync_status = Column(
-        String(20), default="pending"
-    )  # pending, in_progress, completed, failed
+    sync_status = Column(String(20), default="pending")  # pending, in_progress, completed, failed
 
     # Data ranges
     earliest_transaction_date = Column(DateTime)

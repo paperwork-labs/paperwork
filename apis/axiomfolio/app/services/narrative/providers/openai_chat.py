@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 import os
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:
     import requests
@@ -32,7 +32,7 @@ class OpenAIChatProvider:
     def __init__(
         self,
         *,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         model: str = DEFAULT_MODEL,
         api_url: str = OPENAI_API_URL,
         timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
@@ -60,7 +60,7 @@ class OpenAIChatProvider:
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self._model,
             "messages": [
                 {
@@ -111,7 +111,7 @@ class OpenAIChatProvider:
         except (TypeError, ValueError):
             pt, ct = 0, 0
         tokens_used = pt + ct if (pt or ct) else None
-        cost: Optional[Decimal] = None
+        cost: Decimal | None = None
         if tokens_used:
             cost = (
                 Decimal(pt) * _PRICE_PER_1M_INPUT / Decimal(1_000_000)
@@ -129,7 +129,7 @@ class OpenAIChatProvider:
         )
 
 
-def _extract_content(data: Dict[str, Any]) -> Optional[str]:
+def _extract_content(data: dict[str, Any]) -> str | None:
     try:
         choices = data.get("choices") or []
         if not choices:

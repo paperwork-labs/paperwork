@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 import pandas as pd
+import pytest
 
 from app.services.market.indicator_engine import (
     calculate_atr_series,

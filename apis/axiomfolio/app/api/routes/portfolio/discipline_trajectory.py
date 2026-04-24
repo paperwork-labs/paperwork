@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_current_user
+from app.api.dependencies import get_current_user, get_db
 from app.models.account_balance import AccountBalance
 from app.models.broker_account import BrokerAccount
 from app.models.user import User
@@ -28,13 +28,12 @@ FEATURE_MULTI_BROKER = "execution.multi_broker"
 
 
 def _enabled_accounts_query(db: Session, user_id: int):
-    return (
-        db.query(BrokerAccount)
-        .filter(BrokerAccount.user_id == user_id, BrokerAccount.is_enabled.is_(True))
+    return db.query(BrokerAccount).filter(
+        BrokerAccount.user_id == user_id, BrokerAccount.is_enabled.is_(True)
     )
 
 
-def _resolve_default_account(db: Session, user_id: int) -> Optional[BrokerAccount]:
+def _resolve_default_account(db: Session, user_id: int) -> BrokerAccount | None:
     q = _enabled_accounts_query(db, user_id)
     primary = q.filter(BrokerAccount.is_primary.is_(True)).first()
     if primary:
@@ -45,25 +44,21 @@ def _resolve_default_account(db: Session, user_id: int) -> Optional[BrokerAccoun
 def _get_account_for_user(
     db: Session,
     user_id: int,
-    account_id: Optional[int],
+    account_id: int | None,
 ) -> BrokerAccount:
     if account_id is None:
         acc = _resolve_default_account(db, user_id)
         if acc is None:
             raise HTTPException(status_code=404, detail="No enabled broker account")
         return acc
-    acc = (
-        _enabled_accounts_query(db, user_id)
-        .filter(BrokerAccount.id == account_id)
-        .one_or_none()
-    )
+    acc = _enabled_accounts_query(db, user_id).filter(BrokerAccount.id == account_id).one_or_none()
     if acc is None:
         raise HTTPException(status_code=404, detail="Account not found")
     return acc
 
 
 def _year_start_utc(year: int) -> datetime:
-    return datetime(year, 1, 1, tzinfo=timezone.utc)
+    return datetime(year, 1, 1, tzinfo=UTC)
 
 
 def _starting_equity_for_account(
@@ -72,12 +67,12 @@ def _starting_equity_for_account(
     user_id: int,
     broker_account_id: int,
     as_of: datetime,
-) -> Optional[Decimal]:
+) -> Decimal | None:
     """YTD anchor: first balance on/after 1 Jan; else last balance before year start."""
     if as_of.tzinfo is None:
-        as_of = as_of.replace(tzinfo=timezone.utc)
+        as_of = as_of.replace(tzinfo=UTC)
     else:
-        as_of = as_of.astimezone(timezone.utc)
+        as_of = as_of.astimezone(UTC)
     ys = _year_start_utc(as_of.year)
 
     first_in_year = (
@@ -133,7 +128,7 @@ def _latest_equity_for_account(
     return decimal_from_balance_fields(row.net_liquidation, row.equity)
 
 
-def _serialize_anchors(a: TrajectoryAnchors) -> Dict[str, float]:
+def _serialize_anchors(a: TrajectoryAnchors) -> dict[str, float]:
     return {
         "unleveraged_ceiling": float(a.unleveraged_ceiling),
         "leveraged_ceiling": float(a.leveraged_ceiling),
@@ -147,7 +142,7 @@ def _row_for_account(
     user_id: int,
     account: BrokerAccount,
     as_of: datetime,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     starting = _starting_equity_for_account(
         db, user_id=user_id, broker_account_id=account.id, as_of=as_of
     )
@@ -167,15 +162,15 @@ def _row_for_account(
 
 @router.get("/discipline-trajectory")
 async def get_discipline_trajectory(
-    account_id: Optional[int] = Query(
+    account_id: int | None = Query(
         None,
         description="Broker account primary key; defaults to primary (else lowest id) enabled account.",
     ),
     aggregate: bool = Query(False, description="Sum across all enabled accounts (requires Pro+)."),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
-    as_of = datetime.now(timezone.utc)
+) -> dict[str, Any]:
+    as_of = datetime.now(UTC)
 
     if aggregate:
         decision = EntitlementService.check(db, user, FEATURE_MULTI_BROKER)
@@ -195,7 +190,7 @@ async def get_discipline_trajectory(
         if not accounts:
             raise HTTPException(status_code=404, detail="No enabled broker account")
 
-        by_account: List[Dict[str, Any]] = []
+        by_account: list[dict[str, Any]] = []
         total_starting_eff = Decimal("0")
         total_current = Decimal("0")
         sum_unlev = Decimal("0")
@@ -211,11 +206,7 @@ async def get_discipline_trajectory(
             st_d = Decimal(str(st_raw)) if st_raw is not None else None
             # When YTD baseline is missing but we have NLV, use current as neutral
             # baseline for that slice so consolidated anchors/projection still compute.
-            eff = (
-                st_d
-                if st_d is not None and st_d > 0
-                else (cur_d if cur_d > 0 else None)
-            )
+            eff = st_d if st_d is not None and st_d > 0 else (cur_d if cur_d > 0 else None)
             if eff is None:
                 continue
             total_starting_eff += eff

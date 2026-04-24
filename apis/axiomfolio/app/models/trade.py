@@ -1,19 +1,20 @@
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    DateTime,
-    Boolean,
-    ForeignKey,
-    Float,
-    Numeric,
-    Text,
     JSON,
-    UniqueConstraint,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
     Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from . import Base
 
 
@@ -64,9 +65,7 @@ class Trade(Base):
     pnl_pct = Column(Float)
 
     # Status and flags
-    status = Column(
-        String(20), default="FILLED"
-    )  # PENDING, FILLED, CANCELLED, REJECTED
+    status = Column(String(20), default="FILLED")  # PENDING, FILLED, CANCELLED, REJECTED
     is_opening = Column(Boolean, default=True)  # True for opening, False for closing
     is_paper_trade = Column(Boolean, default=True)
 
@@ -83,12 +82,8 @@ class Trade(Base):
     # Note: position relationship will be added when Position model supports trades
 
     __table_args__ = (
-        UniqueConstraint(
-            "account_id", "execution_id", name="uq_trades_account_execution"
-        ),
-        Index(
-            "idx_trades_account_symbol_time", "account_id", "symbol", "execution_time"
-        ),
+        UniqueConstraint("account_id", "execution_id", name="uq_trades_account_execution"),
+        Index("idx_trades_account_symbol_time", "account_id", "symbol", "execution_time"),
     )
 
 

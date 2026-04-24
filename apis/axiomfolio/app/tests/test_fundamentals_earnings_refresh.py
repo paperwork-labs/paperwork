@@ -7,7 +7,7 @@ through the build + persist pipeline.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -28,7 +28,7 @@ def _stub_fundamentals(monkeypatch):
 
 def _seed_ohlcv(db_session, symbol: str, n: int = 260) -> None:
     rng = np.random.default_rng(1)
-    start = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(days=n + 10)
+    start = datetime.now(UTC).replace(microsecond=0) - timedelta(days=n + 10)
     idx = pd.DatetimeIndex([start + timedelta(days=i) for i in range(n)])
     close = 50.0 + np.cumsum(rng.normal(0, 0.2, n))
     vol = 200_000 + rng.integers(0, 50_000, n)
@@ -46,7 +46,7 @@ def test_earnings_calendar_event_flows_into_snapshot_next_earnings(db_session):
     sym = "EARNFLOW"
     _seed_ohlcv(db_session, sym)
 
-    target = (datetime.now(timezone.utc) + timedelta(days=20)).date()
+    target = (datetime.now(UTC) + timedelta(days=20)).date()
     db_session.add(
         EarningsCalendarEvent(
             symbol=sym,
@@ -57,16 +57,10 @@ def test_earnings_calendar_event_flows_into_snapshot_next_earnings(db_session):
     )
     db_session.commit()
 
-    snap = snapshot_builder.compute_snapshot_from_db(
-        db_session, sym, skip_fundamentals=True
-    )
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym, skip_fundamentals=True)
     snapshot_builder.persist_snapshot(db_session, sym, snap)
 
-    row = (
-        db_session.query(MarketSnapshot)
-        .filter(MarketSnapshot.symbol == sym)
-        .one()
-    )
+    row = db_session.query(MarketSnapshot).filter(MarketSnapshot.symbol == sym).one()
     assert row.next_earnings is not None
     assert row.next_earnings.date() == target
 
@@ -78,14 +72,8 @@ def test_snapshot_next_earnings_clears_when_calendar_empty(db_session):
     sym = "EARNEMPTY"
     _seed_ohlcv(db_session, sym)
 
-    snap = snapshot_builder.compute_snapshot_from_db(
-        db_session, sym, skip_fundamentals=True
-    )
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym, skip_fundamentals=True)
     snapshot_builder.persist_snapshot(db_session, sym, snap)
 
-    row = (
-        db_session.query(MarketSnapshot)
-        .filter(MarketSnapshot.symbol == sym)
-        .one()
-    )
+    row = db_session.query(MarketSnapshot).filter(MarketSnapshot.symbol == sym).one()
     assert row.next_earnings is None

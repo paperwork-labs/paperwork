@@ -64,4 +64,4 @@ def test_module_attr_unknown_raises() -> None:
     import app.services.cache as cache_mod
 
     with pytest.raises(AttributeError):
-        _ = cache_mod.nonexistent_attribute  # noqa: F841
+        _ = cache_mod.nonexistent_attribute

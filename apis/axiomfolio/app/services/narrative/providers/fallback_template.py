@@ -7,19 +7,20 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, List, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 
 from app.services.narrative.provider import NarrativeResult
 
 
-def _pct(v: Optional[float]) -> str:
+def _pct(v: float | None) -> str:
     if v is None:
         return "n/a"
     return f"{v:+.2f}%"
 
 
 def render_summary_text(summary: Mapping[str, Any]) -> str:
-    movers: List[Mapping[str, Any]] = list(summary.get("top_movers") or [])
+    movers: list[Mapping[str, Any]] = list(summary.get("top_movers") or [])
     val = summary.get("n_movers_over_threshold")
     n_movers = int(val) if val is not None else len(movers)
     top = movers[0] if movers else {}
@@ -34,9 +35,7 @@ def render_summary_text(summary: Mapping[str, Any]) -> str:
     transitions = summary.get("stage_transitions") or []
     if transitions:
         t0 = transitions[0]
-        parts.append(
-            f"Stage change: {t0.get('symbol')} {t0.get('from')} → {t0.get('to')}."
-        )
+        parts.append(f"Stage change: {t0.get('symbol')} {t0.get('from')} → {t0.get('to')}.")
     ex = summary.get("ex_dividends") or []
     if ex:
         syms = ", ".join(str(x.get("symbol")) for x in ex[:5])

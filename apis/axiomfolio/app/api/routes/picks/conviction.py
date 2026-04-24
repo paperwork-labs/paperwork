@@ -11,7 +11,7 @@ Read-only: writes are owned by the nightly Celery task
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-def _serialize(row: ConvictionPick) -> Dict[str, Any]:
+def _serialize(row: ConvictionPick) -> dict[str, Any]:
     return {
         "id": row.id,
         "symbol": row.symbol,
@@ -46,9 +46,9 @@ def list_conviction_picks(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     limit: int = Query(25, ge=1, le=100),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return the caller's latest ranked conviction pick batch."""
-    latest_generated_at: Optional[Any] = (
+    latest_generated_at: Any | None = (
         db.query(func.max(ConvictionPick.generated_at))
         .filter(ConvictionPick.user_id == current_user.id)
         .scalar()
@@ -61,7 +61,7 @@ def list_conviction_picks(
             "generator_version": None,
         }
 
-    rows: List[ConvictionPick] = (
+    rows: list[ConvictionPick] = (
         db.query(ConvictionPick)
         .filter(
             ConvictionPick.user_id == current_user.id,

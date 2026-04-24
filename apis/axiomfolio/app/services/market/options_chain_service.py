@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -44,10 +44,10 @@ class _SourceResult:
     available: bool
     tried: bool
     succeeded: bool
-    error: Optional[str] = None
+    error: str | None = None
 
 
-def _empty_chain_payload() -> Dict[str, Any]:
+def _empty_chain_payload() -> dict[str, Any]:
     """Shape expected by the frontend chain renderer."""
     return {"expirations": [], "chains": {}}
 
@@ -57,7 +57,7 @@ def _empty_chain_payload() -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def probe_sources(*, db: Session, user_id: int) -> List[Dict[str, Any]]:
+def probe_sources(*, db: Session, user_id: int) -> list[dict[str, Any]]:
     """Return a list of chain sources + whether each is currently usable.
 
     Shape is intentionally UI-friendly: the frontend iterates the list and
@@ -65,7 +65,7 @@ def probe_sources(*, db: Session, user_id: int) -> List[Dict[str, Any]]:
     not have to hardcode broker names in the frontend.
     """
 
-    sources: List[Dict[str, Any]] = []
+    sources: list[dict[str, Any]] = []
 
     # 1. IBKR gateway — available iff user has an IBKR broker account AND
     # the local gateway reports connected. Dev-only in practice.
@@ -156,9 +156,7 @@ def _yfinance_availability() -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 
 
-async def get_chain(
-    symbol: str, *, user_id: int, db: Session
-) -> Dict[str, Any]:
+async def get_chain(symbol: str, *, user_id: int, db: Session) -> dict[str, Any]:
     """Fetch an options chain from the first available source.
 
     Returns a dict with:
@@ -180,7 +178,7 @@ async def get_chain(
             "attempts": [],
         }
 
-    attempts: List[_SourceResult] = []
+    attempts: list[_SourceResult] = []
 
     # 1. IBKR gateway (broker-specific)
     ibkr_available, ibkr_reason = _ibkr_gateway_status(db=db, user_id=user_id)
@@ -191,14 +189,11 @@ async def get_chain(
             chain = await ibkr_client.get_option_chain(sym)
             if chain and chain.get("expirations"):
                 logger.info(
-                    "options_chain_service: source=ibkr_gateway symbol=%s "
-                    "expirations=%d",
+                    "options_chain_service: source=ibkr_gateway symbol=%s expirations=%d",
                     sym,
                     len(chain.get("expirations") or []),
                 )
-                attempts.append(
-                    _SourceResult("ibkr_gateway", True, True, True)
-                )
+                attempts.append(_SourceResult("ibkr_gateway", True, True, True))
                 return {
                     "source": "ibkr_gateway",
                     "symbol": sym,
@@ -213,16 +208,10 @@ async def get_chain(
             )
             attempts.append(_SourceResult("ibkr_gateway", True, True, False, "empty"))
         except Exception as e:
-            logger.warning(
-                "options_chain_service: ibkr_gateway failed for %s: %s", sym, e
-            )
-            attempts.append(
-                _SourceResult("ibkr_gateway", True, True, False, str(e))
-            )
+            logger.warning("options_chain_service: ibkr_gateway failed for %s: %s", sym, e)
+            attempts.append(_SourceResult("ibkr_gateway", True, True, False, str(e)))
     else:
-        attempts.append(
-            _SourceResult("ibkr_gateway", False, False, False, ibkr_reason)
-        )
+        attempts.append(_SourceResult("ibkr_gateway", False, False, False, ibkr_reason))
 
     # 2. Yahoo Finance (provider; broker-agnostic, no key)
     yf_available, yf_reason = _yfinance_availability()
@@ -236,8 +225,7 @@ async def get_chain(
             if rows:
                 shaped = _shape_yfinance_rows(rows)
                 logger.info(
-                    "options_chain_service: source=yfinance symbol=%s "
-                    "rows=%d expirations=%d",
+                    "options_chain_service: source=yfinance symbol=%s rows=%d expirations=%d",
                     sym,
                     len(rows),
                     len(shaped["expirations"]),
@@ -249,20 +237,12 @@ async def get_chain(
                     **shaped,
                     "attempts": [a.__dict__ for a in attempts],
                 }
-            attempts.append(
-                _SourceResult("yfinance", True, True, False, "empty")
-            )
+            attempts.append(_SourceResult("yfinance", True, True, False, "empty"))
         except Exception as e:
-            logger.warning(
-                "options_chain_service: yfinance failed for %s: %s", sym, e
-            )
-            attempts.append(
-                _SourceResult("yfinance", True, True, False, str(e))
-            )
+            logger.warning("options_chain_service: yfinance failed for %s: %s", sym, e)
+            attempts.append(_SourceResult("yfinance", True, True, False, str(e)))
     else:
-        attempts.append(
-            _SourceResult("yfinance", False, False, False, yf_reason)
-        )
+        attempts.append(_SourceResult("yfinance", False, False, False, yf_reason))
 
     logger.info(
         "options_chain_service: source=none symbol=%s attempts=%s",
@@ -277,10 +257,10 @@ async def get_chain(
     }
 
 
-def _shape_yfinance_rows(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
+def _shape_yfinance_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
     """Reshape flat yfinance rows into { expirations, chains } for the UI."""
 
-    chains: Dict[str, Dict[str, List[Dict[str, Any]]]] = {}
+    chains: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for row in rows:
         exp = row.get("expiry")
         if exp is None:

@@ -25,10 +25,9 @@ medallion: silver
 
 from __future__ import annotations
 
-from typing import Dict, List, Literal, Optional
+from typing import Literal
 
 from pydantic import BaseModel, Field
-
 
 BrokerCategory = Literal["stocks", "crypto", "retirement"]
 ConnectionMethod = Literal["oauth", "import"]
@@ -46,9 +45,7 @@ class BrokerCatalogEntry(BaseModel):
 
     slug: str = Field(..., description="Stable identifier; do not rename.")
     name: str = Field(..., description="Human-readable broker name.")
-    description: str = Field(
-        ..., description="One-sentence pitch; rendered under the logo."
-    )
+    description: str = Field(..., description="One-sentence pitch; rendered under the logo.")
     logo_url: str = Field(
         ...,
         description=(
@@ -59,7 +56,7 @@ class BrokerCatalogEntry(BaseModel):
     category: BrokerCategory
     method: ConnectionMethod
     status: BrokerStatus
-    aum_rank: Optional[int] = Field(
+    aum_rank: int | None = Field(
         default=None,
         description=(
             "Rough US retail AUM ranking (1 = largest). Used by the frontend "
@@ -75,7 +72,7 @@ class BrokerCatalogEntry(BaseModel):
 # so the most-relevant brokers surface first when filters are applied. The
 # frontend may re-sort, but this is the canonical declared order.
 
-_CATALOG: List[BrokerCatalogEntry] = [
+_CATALOG: list[BrokerCatalogEntry] = [
     # ---- Stocks: OAuth available (the three brokers we already integrate) ----
     BrokerCatalogEntry(
         slug="schwab",
@@ -331,7 +328,7 @@ _CATALOG: List[BrokerCatalogEntry] = [
 # Map BrokerCatalogEntry.slug -> BrokerType.value for the brokers we
 # actually persist as ``BrokerAccount`` rows today. Used by the connection-
 # options route to derive ``user_state.connected`` from existing rows.
-SLUG_TO_BROKER_TYPE: Dict[str, str] = {
+SLUG_TO_BROKER_TYPE: dict[str, str] = {
     "schwab": "schwab",
     "ibkr": "ibkr",
     "tastytrade": "tastytrade",
@@ -340,7 +337,7 @@ SLUG_TO_BROKER_TYPE: Dict[str, str] = {
 }
 
 
-def get_catalog() -> List[BrokerCatalogEntry]:
+def get_catalog() -> list[BrokerCatalogEntry]:
     """Return a fresh copy of the broker catalog.
 
     Returns a new list each call so callers cannot mutate the module-level
@@ -351,7 +348,7 @@ def get_catalog() -> List[BrokerCatalogEntry]:
     return list(_CATALOG)
 
 
-def get_broker_by_slug(slug: str) -> Optional[BrokerCatalogEntry]:
+def get_broker_by_slug(slug: str) -> BrokerCatalogEntry | None:
     """Look up a single catalog entry by slug. ``None`` if not present."""
 
     for entry in _CATALOG:

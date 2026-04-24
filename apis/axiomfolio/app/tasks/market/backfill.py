@@ -5,8 +5,7 @@ Daily bar backfill, index constituents, and tracked-universe cache tasks.
 import json
 import logging
 import time
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 from celery import current_task, shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -14,13 +13,13 @@ from celery.exceptions import SoftTimeLimitExceeded
 from app.database import SessionLocal
 from app.models import IndexConstituent
 from app.services.market.backfill_params import daily_backfill_params
-from app.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 from app.services.market.market_data_service import (
     coverage_analytics,
     index_universe,
     infra,
     snapshot_builder,
 )
+from app.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 from app.tasks.utils.task_utils import (
     _daily_backfill_concurrency,
     _fetch_daily_for_symbols,
@@ -98,9 +97,7 @@ def tracked_cache() -> dict:
                 }
                 for idx in ["SP500", "NASDAQ100", "DOW30", "RUSSELL2000"]:
                     try:
-                        cons = loop.run_until_complete(
-                            index_universe.get_index_constituents(idx)
-                        )
+                        cons = loop.run_until_complete(index_universe.get_index_constituents(idx))
                         index_to_symbols[idx].update({s.upper() for s in cons if s})
                     except SoftTimeLimitExceeded:
                         raise
@@ -116,9 +113,7 @@ def tracked_cache() -> dict:
                     for idx, syms in index_to_symbols.items():
                         for sym in syms:
                             session.add(
-                                IndexConstituent(
-                                    index_name=idx, symbol=sym, is_active=True
-                                )
+                                IndexConstituent(index_name=idx, symbol=sym, is_active=True)
                             )
                     session.commit()
                     current = sorted(seed_syms)
@@ -165,10 +160,10 @@ def tracked_cache() -> dict:
 )
 @task_run("admin_backfill_daily_symbols")
 def symbols(
-    symbols: List[str],
+    symbols: list[str],
     days: int = 200,
-    min_bars: Optional[int] = None,
-    buffer_bars: Optional[int] = None,
+    min_bars: int | None = None,
+    buffer_bars: int | None = None,
     skip_l2: bool = False,
 ) -> dict:
     """Delta backfill daily bars for a provided symbol list."""
@@ -253,7 +248,7 @@ def daily_bars(days: int = 200) -> dict:
 @task_run("market_indices_constituents_refresh")
 def constituents(index: str | None = None) -> dict:
     """Refresh index constituents for major US indices.
-    
+
     Args:
         index: Optional specific index to refresh. One of: SP500, NASDAQ100,
                DOW30, RUSSELL2000, or "all". If None or "all", refreshes all indices.
@@ -263,7 +258,7 @@ def constituents(index: str | None = None) -> dict:
     results = {}
     session = SessionLocal()
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         from app.config import settings as _settings
 
         preflight = {
@@ -283,9 +278,7 @@ def constituents(index: str | None = None) -> dict:
                 }
         for idx in indices_to_refresh:
             try:
-                symbols = set(
-                    loop.run_until_complete(index_universe.get_index_constituents(idx))
-                )
+                symbols = set(loop.run_until_complete(index_universe.get_index_constituents(idx)))
             except SoftTimeLimitExceeded:
                 raise
             except Exception as e:
@@ -294,12 +287,15 @@ def constituents(index: str | None = None) -> dict:
             if not symbols:
                 active_count = (
                     session.query(IndexConstituent)
-                    .filter(IndexConstituent.index_name == idx, IndexConstituent.is_active.is_(True))
+                    .filter(
+                        IndexConstituent.index_name == idx, IndexConstituent.is_active.is_(True)
+                    )
                     .count()
                 )
                 logger.warning(
                     "constituents: %s returned 0 symbols — skipping deactivation (%d active rows preserved)",
-                    idx, active_count,
+                    idx,
+                    active_count,
                 )
                 results[idx] = {
                     "fetched": 0,
@@ -321,9 +317,7 @@ def constituents(index: str | None = None) -> dict:
             except Exception as e:
                 logger.warning("redis_meta_read failed for %s: %s", idx, e)
             existing_rows = (
-                session.query(IndexConstituent)
-                .filter(IndexConstituent.index_name == idx)
-                .all()
+                session.query(IndexConstituent).filter(IndexConstituent.index_name == idx).all()
             )
             existing_map = {r.symbol: r for r in existing_rows}
             inserted = 0
@@ -337,9 +331,7 @@ def constituents(index: str | None = None) -> dict:
                         updated_active += 1
                     row.last_refreshed_at = now
                 else:
-                    session.add(
-                        IndexConstituent(index_name=idx, symbol=sym, is_active=True)
-                    )
+                    session.add(IndexConstituent(index_name=idx, symbol=sym, is_active=True))
                     inserted += 1
             inactivated = 0
             for sym, row in existing_map.items():
@@ -384,7 +376,12 @@ def constituents(index: str | None = None) -> dict:
                 logger.warning("ops_alert for constituents health check failed: %s", e)
             logger.warning("Index constituents health check: %s", "; ".join(warnings))
 
-        res = {"status": "ok", "preflight": preflight, "indices": results, "health_warnings": warnings}
+        res = {
+            "status": "ok",
+            "preflight": preflight,
+            "indices": results,
+            "health_warnings": warnings,
+        }
         _set_task_status("market_indices_constituents_refresh", "ok", res)
         return res
     finally:
@@ -398,9 +395,11 @@ def constituents(index: str | None = None) -> dict:
 )
 @task_run(
     "admin_backfill_daily_since_date",
-    lock_key=lambda since_date="", batch_size=25, index=None: f"daily_since:{(index or 'all').upper()}",
+    lock_key=lambda since_date="", batch_size=25, index=None: (
+        f"daily_since:{(index or 'all').upper()}"
+    ),
 )
-def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str] = None) -> dict:
+def daily_since(since_date: str = "", batch_size: int = 25, index: str | None = None) -> dict:
     """Deep backfill of daily bars since a given date.
 
     Args:
@@ -410,16 +409,19 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
                When provided, only backfills that index's active constituents.
     """
     from app.config import settings as _cfg
+
     if not _cfg.ALLOW_DEEP_BACKFILL or not _cfg.provider_policy.deep_backfill_allowed:
         logger.warning("daily_since blocked: ALLOW_DEEP_BACKFILL=False or policy disallows")
-        return {"status": "blocked", "reason": "ALLOW_DEEP_BACKFILL is disabled or policy disallows deep backfill"}
+        return {
+            "status": "blocked",
+            "reason": "ALLOW_DEEP_BACKFILL is disabled or policy disallows deep backfill",
+        }
 
     if not since_date:
         from datetime import timedelta
 
         since_date = (
-            datetime.now(timezone.utc).date()
-            - timedelta(days=_cfg.HISTORY_TARGET_YEARS * 365)
+            datetime.now(UTC).date() - timedelta(days=_cfg.HISTORY_TARGET_YEARS * 365)
         ).isoformat()
 
     _VALID_INDICES = {"DOW30", "NASDAQ100", "SP500", "RUSSELL2000"}
@@ -427,9 +429,14 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
     if idx_upper and idx_upper not in _VALID_INDICES:
         raise ValueError(f"Unknown index: {index!r}. Valid: {', '.join(sorted(_VALID_INDICES))}")
 
-    _set_task_status("admin_backfill_daily_since_date", "running", {
-        "since_date": since_date, "index": idx_upper,
-    })
+    _set_task_status(
+        "admin_backfill_daily_since_date",
+        "running",
+        {
+            "since_date": since_date,
+            "index": idx_upper,
+        },
+    )
     session = SessionLocal()
     try:
         task_id = _celery_task_id_short()
@@ -443,13 +450,17 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
         since_dt = since_dt.tz_convert(None).normalize()
 
         if idx_upper:
-            symbols = sorted({
-                ic.symbol for ic in session.query(IndexConstituent)
-                .filter(
-                    IndexConstituent.index_name == idx_upper,
-                    IndexConstituent.is_active.is_(True),
-                ).all()
-            })
+            symbols = sorted(
+                {
+                    ic.symbol
+                    for ic in session.query(IndexConstituent)
+                    .filter(
+                        IndexConstituent.index_name == idx_upper,
+                        IndexConstituent.is_active.is_(True),
+                    )
+                    .all()
+                }
+            )
             if not symbols:
                 raise ValueError(f"No active constituents for index {idx_upper}")
         else:
@@ -486,7 +497,7 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
             df = item.get("df")
             bars = 0
             if df is not None and not getattr(df, "empty", True):
-                bars = int(len(df))
+                bars = len(df)
             logger.debug(
                 "[%s] daily_since fetched %s (%d/%d) provider=%s bars=%d",
                 task_id,
@@ -539,9 +550,13 @@ def daily_since(since_date: str = "", batch_size: int = 25, index: Optional[str]
     soft_time_limit=10800,
     time_limit=14400,
 )
-@task_run("admin_backfill_since_date", lock_key=lambda since_date, **_: f"admin_backfill_since_date:{since_date}", lock_ttl_seconds=14700)
+@task_run(
+    "admin_backfill_since_date",
+    lock_key=lambda since_date, **_: f"admin_backfill_since_date:{since_date}",
+    lock_ttl_seconds=14700,
+)
 def full_historical(
-    since_date: Optional[str] = None,
+    since_date: str | None = None,
     daily_batch_size: int = 25,
     history_batch_size: int = 50,
 ) -> dict:
@@ -554,19 +569,21 @@ def full_historical(
 
     if not _settings.ALLOW_DEEP_BACKFILL or not _settings.provider_policy.deep_backfill_allowed:
         logger.warning("full_historical blocked: ALLOW_DEEP_BACKFILL=False or policy disallows")
-        return {"status": "blocked", "reason": "ALLOW_DEEP_BACKFILL is disabled or policy disallows deep backfill"}
+        return {
+            "status": "blocked",
+            "reason": "ALLOW_DEEP_BACKFILL is disabled or policy disallows deep backfill",
+        }
 
     if not since_date:
         from datetime import timedelta
 
         since_date = (
-            datetime.now(timezone.utc).date()
-            - timedelta(days=_settings.HISTORY_TARGET_YEARS * 365)
+            datetime.now(UTC).date() - timedelta(days=_settings.HISTORY_TARGET_YEARS * 365)
         ).isoformat()
     from app.tasks.market.history import snapshot_last_n_days
     from app.tasks.market.indicators import recompute_universe
 
-    def _summarize(step: str, payload: Optional[dict]) -> str:
+    def _summarize(step: str, payload: dict | None) -> str:
         data = payload or {}
         if step == "admin_backfill_daily_since_date":
             return f"Daily since {data.get('since_date', '?')}: {data.get('bars_inserted_total', 0)} bars"
@@ -578,7 +595,9 @@ def full_historical(
                 f"{data.get('written_rows', 0)} rows"
             )
         if step == "admin_coverage_refresh":
-            return f"Coverage: {data.get('daily_pct', 0)}% daily; stale={data.get('stale_daily', 0)}"
+            return (
+                f"Coverage: {data.get('daily_pct', 0)}% daily; stale={data.get('stale_daily', 0)}"
+            )
         return data.get("status", "ok")
 
     rollup: dict = {"steps": [], "since_date": since_date}
@@ -629,9 +648,7 @@ def full_historical(
             return True
         return False
 
-    rollup["status"] = (
-        "ok" if all(_rollup_step_ok(s) for s in rollup["steps"]) else "error"
-    )
+    rollup["status"] = "ok" if all(_rollup_step_ok(s) for s in rollup["steps"]) else "error"
     rollup["overall_summary"] = "; ".join(
         step["summary"] for step in rollup["steps"] if step.get("summary")
     )
@@ -643,7 +660,11 @@ def full_historical(
     soft_time_limit=7000,
     time_limit=7200,
 )
-@task_run("admin_coverage_backfill_stale", lock_key=lambda: "admin_coverage_backfill_stale", lock_ttl_seconds=7500)
+@task_run(
+    "admin_coverage_backfill_stale",
+    lock_key=lambda: "admin_coverage_backfill_stale",
+    lock_ttl_seconds=7500,
+)
 def stale_daily() -> dict:
     """Backfill daily bars for stale/missing symbols in the tracked universe."""
     _set_task_status("admin_coverage_backfill_stale", "running")
@@ -654,7 +675,7 @@ def stale_daily() -> dict:
             session,
             symbols=tracked,
             interval="1d",
-            now_utc=datetime.now(timezone.utc),
+            now_utc=datetime.now(UTC),
             return_full_stale=True,
         )
         stale_symbols = stale_full or []
@@ -701,7 +722,7 @@ def stale_daily() -> dict:
     lock_ttl_seconds=21900,
 )
 def safe_recompute(
-    since_date: Optional[str] = None,
+    since_date: str | None = None,
     batch_size: int = 50,
     history_batch_size: int = 25,
 ) -> dict:

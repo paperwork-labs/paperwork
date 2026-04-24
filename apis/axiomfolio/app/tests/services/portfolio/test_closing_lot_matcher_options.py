@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -78,10 +78,30 @@ def test_fifo_long_call_close(db_session):
         pytest.skip("no db")
     u = _user(db_session, "optfifo1")
     a = _acct(db_session, u, "OF1")
-    t0 = datetime(2025, 1, 10, tzinfo=timezone.utc)
-    t1 = datetime(2025, 3, 10, tzinfo=timezone.utc)
-    _trade(db_session, a, symbol=OPT, side="BUY", qty=Decimal("2"), price=Decimal("5"), eid="b1", t=t0, opening=True)
-    _trade(db_session, a, symbol=OPT, side="SELL", qty=Decimal("2"), price=Decimal("8"), eid="s1", t=t1, opening=False)
+    t0 = datetime(2025, 1, 10, tzinfo=UTC)
+    t1 = datetime(2025, 3, 10, tzinfo=UTC)
+    _trade(
+        db_session,
+        a,
+        symbol=OPT,
+        side="BUY",
+        qty=Decimal("2"),
+        price=Decimal("5"),
+        eid="b1",
+        t=t0,
+        opening=True,
+    )
+    _trade(
+        db_session,
+        a,
+        symbol=OPT,
+        side="SELL",
+        qty=Decimal("2"),
+        price=Decimal("8"),
+        eid="s1",
+        t=t1,
+        opening=False,
+    )
     db_session.commit()
 
     reconcile_closing_lots(db_session, a)
@@ -103,10 +123,30 @@ def test_fifo_short_put_close(db_session):
     sym = "XYZ   250220P00050000"
     u = _user(db_session, "optfifo2")
     a = _acct(db_session, u, "OF2")
-    t0 = datetime(2025, 2, 1, tzinfo=timezone.utc)
-    t1 = datetime(2025, 2, 15, tzinfo=timezone.utc)
-    _trade(db_session, a, symbol=sym, side="SELL", qty=Decimal("3"), price=Decimal("4"), eid="os1", t=t0, opening=True)
-    _trade(db_session, a, symbol=sym, side="BUY", qty=Decimal("3"), price=Decimal("2"), eid="cs1", t=t1, opening=False)
+    t0 = datetime(2025, 2, 1, tzinfo=UTC)
+    t1 = datetime(2025, 2, 15, tzinfo=UTC)
+    _trade(
+        db_session,
+        a,
+        symbol=sym,
+        side="SELL",
+        qty=Decimal("3"),
+        price=Decimal("4"),
+        eid="os1",
+        t=t0,
+        opening=True,
+    )
+    _trade(
+        db_session,
+        a,
+        symbol=sym,
+        side="BUY",
+        qty=Decimal("3"),
+        price=Decimal("2"),
+        eid="cs1",
+        t=t1,
+        opening=False,
+    )
     db_session.commit()
 
     reconcile_closing_lots(db_session, a)
@@ -129,16 +169,37 @@ def test_partial_close_cascades_fifo(db_session):
     a = _acct(db_session, u, "OF3")
     sym = "QQQ   250301C00400000"
     _trade(
-        db_session, a, symbol=sym, side="BUY", qty=Decimal("2"), price=Decimal("3"),
-        eid="b1", t=datetime(2025, 1, 1, tzinfo=timezone.utc), opening=True,
+        db_session,
+        a,
+        symbol=sym,
+        side="BUY",
+        qty=Decimal("2"),
+        price=Decimal("3"),
+        eid="b1",
+        t=datetime(2025, 1, 1, tzinfo=UTC),
+        opening=True,
     )
     _trade(
-        db_session, a, symbol=sym, side="BUY", qty=Decimal("3"), price=Decimal("4"),
-        eid="b2", t=datetime(2025, 2, 1, tzinfo=timezone.utc), opening=True,
+        db_session,
+        a,
+        symbol=sym,
+        side="BUY",
+        qty=Decimal("3"),
+        price=Decimal("4"),
+        eid="b2",
+        t=datetime(2025, 2, 1, tzinfo=UTC),
+        opening=True,
     )
     _trade(
-        db_session, a, symbol=sym, side="SELL", qty=Decimal("4"), price=Decimal("6"),
-        eid="s1", t=datetime(2025, 3, 1, tzinfo=timezone.utc), opening=False,
+        db_session,
+        a,
+        symbol=sym,
+        side="SELL",
+        qty=Decimal("4"),
+        price=Decimal("6"),
+        eid="s1",
+        t=datetime(2025, 3, 1, tzinfo=UTC),
+        opening=False,
     )
     db_session.commit()
 
@@ -165,12 +226,26 @@ def test_short_close_merges_multi_slice_same_lot(db_session):
     u = _user(db_session, "optfifo4")
     a = _acct(db_session, u, "OF4")
     _trade(
-        db_session, a, symbol=sym, side="SELL", qty=Decimal("10"), price=Decimal("2"),
-        eid="os", t=datetime(2025, 1, 1, tzinfo=timezone.utc), opening=True,
+        db_session,
+        a,
+        symbol=sym,
+        side="SELL",
+        qty=Decimal("10"),
+        price=Decimal("2"),
+        eid="os",
+        t=datetime(2025, 1, 1, tzinfo=UTC),
+        opening=True,
     )
     _trade(
-        db_session, a, symbol=sym, side="BUY", qty=Decimal("10"), price=Decimal("1"),
-        eid="cs", t=datetime(2025, 2, 1, tzinfo=timezone.utc), opening=False,
+        db_session,
+        a,
+        symbol=sym,
+        side="BUY",
+        qty=Decimal("10"),
+        price=Decimal("1"),
+        eid="cs",
+        t=datetime(2025, 2, 1, tzinfo=UTC),
+        opening=False,
     )
     db_session.commit()
 
@@ -187,11 +262,31 @@ def test_holding_class_long_term_at_365_calendar_days(db_session):
         pytest.skip("no db")
     u = _user(db_session, "optfifo5")
     a = _acct(db_session, u, "OF5")
-    opened = datetime(2023, 1, 1, tzinfo=timezone.utc)
+    opened = datetime(2023, 1, 1, tzinfo=UTC)
     # Must exceed 365 calendar days (same rule as stock CLOSED_LOT is_long_term)
-    closed = datetime(2024, 1, 2, tzinfo=timezone.utc)
-    _trade(db_session, a, symbol=OPT, side="BUY", qty=Decimal("1"), price=Decimal("1"), eid="bl", t=opened, opening=True)
-    _trade(db_session, a, symbol=OPT, side="SELL", qty=Decimal("1"), price=Decimal("2"), eid="sl", t=closed, opening=False)
+    closed = datetime(2024, 1, 2, tzinfo=UTC)
+    _trade(
+        db_session,
+        a,
+        symbol=OPT,
+        side="BUY",
+        qty=Decimal("1"),
+        price=Decimal("1"),
+        eid="bl",
+        t=opened,
+        opening=True,
+    )
+    _trade(
+        db_session,
+        a,
+        symbol=OPT,
+        side="SELL",
+        qty=Decimal("1"),
+        price=Decimal("2"),
+        eid="sl",
+        t=closed,
+        opening=False,
+    )
     db_session.commit()
 
     reconcile_closing_lots(db_session, a)
@@ -206,10 +301,30 @@ def test_holding_class_short_term_under_365_days(db_session):
         pytest.skip("no db")
     u = _user(db_session, "optfifo6")
     a = _acct(db_session, u, "OF6")
-    opened = datetime(2024, 1, 1, tzinfo=timezone.utc)
-    closed = datetime(2024, 12, 31, tzinfo=timezone.utc)
-    _trade(db_session, a, symbol=OPT, side="BUY", qty=Decimal("1"), price=Decimal("1"), eid="bs", t=opened, opening=True)
-    _trade(db_session, a, symbol=OPT, side="SELL", qty=Decimal("1"), price=Decimal("2"), eid="ss", t=closed, opening=False)
+    opened = datetime(2024, 1, 1, tzinfo=UTC)
+    closed = datetime(2024, 12, 31, tzinfo=UTC)
+    _trade(
+        db_session,
+        a,
+        symbol=OPT,
+        side="BUY",
+        qty=Decimal("1"),
+        price=Decimal("1"),
+        eid="bs",
+        t=opened,
+        opening=True,
+    )
+    _trade(
+        db_session,
+        a,
+        symbol=OPT,
+        side="SELL",
+        qty=Decimal("1"),
+        price=Decimal("2"),
+        eid="ss",
+        t=closed,
+        opening=False,
+    )
     db_session.commit()
 
     reconcile_closing_lots(db_session, a)

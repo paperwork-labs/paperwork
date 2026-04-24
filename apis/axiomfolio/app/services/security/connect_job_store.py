@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from app.config import settings
 
@@ -21,9 +21,12 @@ logger = logging.getLogger(__name__)
 def _get_redis():
     """Lazy Redis client. Uses REDIS_URL or CELERY_BROKER_URL fallback."""
     import redis
-    url = getattr(settings, "REDIS_URL", None) or getattr(
-        settings, "CELERY_BROKER_URL", None
-    ) or "redis://:redispassword@redis:6379/0"
+
+    url = (
+        getattr(settings, "REDIS_URL", None)
+        or getattr(settings, "CELERY_BROKER_URL", None)
+        or "redis://:redispassword@redis:6379/0"
+    )
     return redis.from_url(url, decode_responses=True)
 
 
@@ -49,7 +52,7 @@ class ConnectJobStore:
     def _key(self, job_id: str) -> str:
         return f"{_CONNECT_JOB_PREFIX}{job_id}"
 
-    def set(self, job_id: str, data: Dict[str, Any]) -> None:
+    def set(self, job_id: str, data: dict[str, Any]) -> None:
         """Store job status. Data typically: state, error?, started_at, finished_at?, broker?."""
         key = self._key(job_id)
         payload = json.dumps(data)
@@ -58,7 +61,7 @@ class ConnectJobStore:
         except Exception:
             logger.warning("ConnectJobStore.set failed for job %s", job_id, exc_info=True)
 
-    def get(self, job_id: str) -> Optional[Dict[str, Any]]:
+    def get(self, job_id: str) -> dict[str, Any] | None:
         """Retrieve job status. Returns None if not found or expired."""
         key = self._key(job_id)
         try:

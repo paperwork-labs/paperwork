@@ -12,8 +12,6 @@ medallion: silver
 """
 
 import logging
-from datetime import date, datetime
-from typing import Dict, List
 
 from sqlalchemy import func as sqlfunc
 from sqlalchemy.orm import Session
@@ -40,7 +38,7 @@ SECTOR_ETFS = {
 }
 
 
-def fetch_vix_family() -> Dict[str, float]:
+def fetch_vix_family() -> dict[str, float]:
     """Fetch VIX, VIX3M, and VVIX spot values from yfinance.
 
     Returns dict with keys: vix_spot, vix3m, vvix
@@ -92,31 +90,46 @@ def fetch_nh_nl() -> int:
     return 0  # Default to neutral
 
 
-def compute_breadth_from_snapshots(db: Session) -> Dict[str, float]:
+def compute_breadth_from_snapshots(db: Session) -> dict[str, float]:
     """Compute breadth metrics from current MarketSnapshot data.
 
     Returns:
         pct_above_200d: % of symbols above their 200-day SMA
         pct_above_50d: % of symbols above their 50-day SMA
     """
-    total = db.query(sqlfunc.count(MarketSnapshot.id)).filter(
-        MarketSnapshot.analysis_type == "technical_snapshot",
-        MarketSnapshot.is_valid.is_(True),
-    ).scalar() or 1
+    total = (
+        db.query(sqlfunc.count(MarketSnapshot.id))
+        .filter(
+            MarketSnapshot.analysis_type == "technical_snapshot",
+            MarketSnapshot.is_valid.is_(True),
+        )
+        .scalar()
+        or 1
+    )
 
-    above_200 = db.query(sqlfunc.count(MarketSnapshot.id)).filter(
-        MarketSnapshot.analysis_type == "technical_snapshot",
-        MarketSnapshot.is_valid.is_(True),
-        MarketSnapshot.sma_200 > 0,
-        MarketSnapshot.current_price >= MarketSnapshot.sma_200,
-    ).scalar() or 0
+    above_200 = (
+        db.query(sqlfunc.count(MarketSnapshot.id))
+        .filter(
+            MarketSnapshot.analysis_type == "technical_snapshot",
+            MarketSnapshot.is_valid.is_(True),
+            MarketSnapshot.sma_200 > 0,
+            MarketSnapshot.current_price >= MarketSnapshot.sma_200,
+        )
+        .scalar()
+        or 0
+    )
 
-    above_50 = db.query(sqlfunc.count(MarketSnapshot.id)).filter(
-        MarketSnapshot.analysis_type == "technical_snapshot",
-        MarketSnapshot.is_valid.is_(True),
-        MarketSnapshot.sma_50 > 0,
-        MarketSnapshot.current_price >= MarketSnapshot.sma_50,
-    ).scalar() or 0
+    above_50 = (
+        db.query(sqlfunc.count(MarketSnapshot.id))
+        .filter(
+            MarketSnapshot.analysis_type == "technical_snapshot",
+            MarketSnapshot.is_valid.is_(True),
+            MarketSnapshot.sma_50 > 0,
+            MarketSnapshot.current_price >= MarketSnapshot.sma_50,
+        )
+        .scalar()
+        or 0
+    )
 
     return {
         "pct_above_200d": round(100 * above_200 / total, 2) if total > 0 else 50.0,
@@ -155,7 +168,7 @@ def gather_regime_inputs(db: Session) -> RegimeInputs:
     )
 
 
-def compute_sector_rs(db: Session, lookback_days: int = 20) -> Dict[str, float]:
+def compute_sector_rs(db: Session, lookback_days: int = 20) -> dict[str, float]:
     """Compute relative strength of sectors vs SPY.
 
     Returns dict of sector -> RS value (>1 = outperforming, <1 = underperforming)
@@ -164,7 +177,6 @@ def compute_sector_rs(db: Session, lookback_days: int = 20) -> Dict[str, float]:
 
     try:
         import yfinance as yf
-        import pandas as pd
 
         # Fetch SPY as benchmark
         spy_df = yf.download("SPY", period=f"{lookback_days + 5}d", progress=False)
@@ -201,7 +213,7 @@ def compute_sector_rs(db: Session, lookback_days: int = 20) -> Dict[str, float]:
     return sector_rs
 
 
-def get_sector_rotation_signal(sector_rs: Dict[str, float]) -> Dict[str, List[str]]:
+def get_sector_rotation_signal(sector_rs: dict[str, float]) -> dict[str, list[str]]:
     """Identify leading and lagging sectors based on RS values.
 
     Returns:

@@ -21,8 +21,9 @@ from __future__ import annotations
 
 import inspect
 import logging
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -50,14 +51,14 @@ RESERVED_ARG_NAMES = frozenset({"user_id", "db", "session"})
 # time _consume_daily_quota fails open because Redis is unreachable.
 # Keeping this module-level rather than in Redis lets us reliably report
 # Redis outages without a chicken-and-egg problem.
-_MCP_QUOTA_REDIS_UNAVAILABLE: Dict[str, Any] = {
+_MCP_QUOTA_REDIS_UNAVAILABLE: dict[str, Any] = {
     "count": 0,
     "last_error": None,
     "last_at": None,
 }
 
 
-def mcp_quota_degradation_snapshot() -> Dict[str, Any]:
+def mcp_quota_degradation_snapshot() -> dict[str, Any]:
     """Return a copy of the quota-degradation counters for /admin/health."""
     return dict(_MCP_QUOTA_REDIS_UNAVAILABLE)
 
@@ -67,16 +68,16 @@ def _error(
     code: int,
     message: str,
     *,
-    data: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Render a JSON-RPC 2.0 error envelope."""
-    err: Dict[str, Any] = {"code": code, "message": message}
+    err: dict[str, Any] = {"code": code, "message": message}
     if data is not None:
         err["data"] = data
     return {"jsonrpc": JSONRPC_VERSION, "id": request_id, "error": err}
 
 
-def _result(request_id: Any, result: Any) -> Dict[str, Any]:
+def _result(request_id: Any, result: Any) -> dict[str, Any]:
     return {"jsonrpc": JSONRPC_VERSION, "id": request_id, "result": result}
 
 
@@ -85,8 +86,8 @@ class MCPServer:
 
     def __init__(
         self,
-        tool_definitions: List[Dict[str, Any]],
-        tool_handlers: Dict[str, Callable[..., Dict[str, Any]]],
+        tool_definitions: list[dict[str, Any]],
+        tool_handlers: dict[str, Callable[..., dict[str, Any]]],
     ) -> None:
         self._definitions = tool_definitions
         self._handlers = tool_handlers
@@ -103,13 +104,11 @@ class MCPServer:
         db: Session,
         user_id: int,
         allowed_scopes: frozenset[str],
-        daily_limit: Optional[int],
-    ) -> Dict[str, Any]:
+        daily_limit: int | None,
+    ) -> dict[str, Any]:
         """Process one JSON-RPC envelope, returning the response envelope."""
         if not isinstance(payload, dict):
-            return _error(
-                None, ERR_INVALID_REQUEST, "Request must be a JSON object"
-            )
+            return _error(None, ERR_INVALID_REQUEST, "Request must be a JSON object")
 
         request_id = payload.get("id")
         if payload.get("jsonrpc") != JSONRPC_VERSION:
@@ -121,9 +120,7 @@ class MCPServer:
 
         method = payload.get("method")
         if not isinstance(method, str):
-            return _error(
-                request_id, ERR_INVALID_REQUEST, "Missing 'method' string"
-            )
+            return _error(request_id, ERR_INVALID_REQUEST, "Missing 'method' string")
 
         params = payload.get("params") or {}
         if not isinstance(params, dict):
@@ -144,8 +141,7 @@ class MCPServer:
                 required = TOOL_REQUIRED_SCOPE.get(name)
                 if required is None:
                     logger.warning(
-                        "MCP tool %r has no TOOL_REQUIRED_SCOPE entry; "
-                        "hiding from tools/list",
+                        "MCP tool %r has no TOOL_REQUIRED_SCOPE entry; hiding from tools/list",
                         name,
                     )
                     continue
@@ -176,18 +172,16 @@ class MCPServer:
     def _handle_tools_call(
         self,
         request_id: Any,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         *,
         db: Session,
         user_id: int,
         allowed_scopes: frozenset[str],
-        daily_limit: Optional[int],
-    ) -> Dict[str, Any]:
+        daily_limit: int | None,
+    ) -> dict[str, Any]:
         name = params.get("name")
         if not isinstance(name, str) or not name:
-            return _error(
-                request_id, ERR_INVALID_PARAMS, "Missing 'name' for tools/call"
-            )
+            return _error(request_id, ERR_INVALID_PARAMS, "Missing 'name' for tools/call")
         if name not in self._known_tools:
             return _error(
                 request_id,
@@ -259,16 +253,12 @@ class MCPServer:
         try:
             result = handler(db=db, user_id=user_id, **arguments)
         except ValueError as ve:
-            return _error(
-                request_id, ERR_INVALID_PARAMS, str(ve), data={"tool": name}
-            )
+            return _error(request_id, ERR_INVALID_PARAMS, str(ve), data={"tool": name})
         except Exception as e:
             # No silent fallback: log + surface as JSON-RPC internal
             # error. The detail is intentionally generic so we don't
             # leak internals across the wire.
-            logger.exception(
-                "MCP tool '%s' failed for user_id=%s: %s", name, user_id, e
-            )
+            logger.exception("MCP tool '%s' failed for user_id=%s: %s", name, user_id, e)
             return _error(
                 request_id,
                 ERR_INTERNAL,
@@ -279,7 +269,7 @@ class MCPServer:
         return _result(request_id, {"content": result})
 
     def _consume_daily_quota(self, *, user_id: int, limit: int) -> bool:
-        day = datetime.now(timezone.utc).date().isoformat()
+        day = datetime.now(UTC).date().isoformat()
         key = f"mcp:calls:{user_id}:{day}"
         try:
             r = infra.redis_client
@@ -303,10 +293,8 @@ class MCPServer:
                 # effort; if even this counter is wedged we still allow.
                 _MCP_QUOTA_REDIS_UNAVAILABLE["count"] += 1
                 _MCP_QUOTA_REDIS_UNAVAILABLE["last_error"] = str(e)
-                _MCP_QUOTA_REDIS_UNAVAILABLE["last_at"] = (
-                    datetime.now(timezone.utc).isoformat()
-                )
-            except Exception:  # noqa: BLE001 - counter is diagnostic only
+                _MCP_QUOTA_REDIS_UNAVAILABLE["last_at"] = datetime.now(UTC).isoformat()
+            except Exception:
                 pass
             return True
 

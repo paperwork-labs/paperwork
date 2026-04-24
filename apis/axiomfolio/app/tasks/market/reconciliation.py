@@ -9,8 +9,8 @@ from __future__ import annotations
 import json
 import logging
 import random
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy.orm import Session
@@ -40,14 +40,16 @@ def _fetch_yfinance_bars(symbol: str, bars: int = 5) -> list:
         df = df.sort_index(ascending=False).head(bars)
         result = []
         for ts, row in df.iterrows():
-            result.append({
-                "date": ts.strftime("%Y-%m-%d"),
-                "close": float(row.get("Close", 0)),
-                "open": float(row.get("Open", 0)),
-                "high": float(row.get("High", 0)),
-                "low": float(row.get("Low", 0)),
-                "volume": int(row.get("Volume", 0)),
-            })
+            result.append(
+                {
+                    "date": ts.strftime("%Y-%m-%d"),
+                    "close": float(row.get("Close", 0)),
+                    "open": float(row.get("Open", 0)),
+                    "high": float(row.get("High", 0)),
+                    "low": float(row.get("Low", 0)),
+                    "volume": int(row.get("Volume", 0)),
+                }
+            )
         return result
     except Exception as exc:
         logger.warning("yfinance fetch for %s failed: %s", symbol, exc)
@@ -56,8 +58,9 @@ def _fetch_yfinance_bars(symbol: str, bars: int = 5) -> list:
 
 def _get_db_bars(db: Session, symbol: str, dates: list) -> dict:
     """Get price_data rows for specific dates."""
-    from app.models import PriceData
     from sqlalchemy import func
+
+    from app.models import PriceData
 
     result = {}
     for date_str in dates:
@@ -82,7 +85,7 @@ def _get_db_bars(db: Session, symbol: str, dates: list) -> dict:
     return result
 
 
-def run_reconciliation(db: Session) -> Dict[str, Any]:
+def run_reconciliation(db: Session) -> dict[str, Any]:
     """Run spot-check reconciliation against yfinance reference data."""
     from app.tasks.utils.task_utils import get_tracked_symbols_safe
 
@@ -96,7 +99,7 @@ def run_reconciliation(db: Session) -> Dict[str, Any]:
     sample_set.update(random.sample(non_etf, sample_count))
     sample = sorted(sample_set)
 
-    mismatches: List[Dict[str, Any]] = []
+    mismatches: list[dict[str, Any]] = []
     checked = 0
     matched = 0
     missing_in_db = 0
@@ -119,26 +122,30 @@ def run_reconciliation(db: Session) -> Dict[str, Any]:
 
                 if not db_bar:
                     missing_in_db += 1
-                    mismatches.append({
-                        "symbol": symbol,
-                        "date": date_str,
-                        "type": "missing_in_db",
-                        "ref_close": ref["close"],
-                    })
+                    mismatches.append(
+                        {
+                            "symbol": symbol,
+                            "date": date_str,
+                            "type": "missing_in_db",
+                            "ref_close": ref["close"],
+                        }
+                    )
                     continue
 
                 if ref["close"] > 0 and db_bar["close"] > 0:
                     pct_diff = abs(ref["close"] - db_bar["close"]) / ref["close"] * 100
                     if pct_diff > MISMATCH_THRESHOLD_PCT:
-                        mismatches.append({
-                            "symbol": symbol,
-                            "date": date_str,
-                            "type": "close_divergence",
-                            "ref_close": round(ref["close"], 4),
-                            "db_close": round(db_bar["close"], 4),
-                            "pct_diff": round(pct_diff, 2),
-                            "data_source": db_bar.get("data_source"),
-                        })
+                        mismatches.append(
+                            {
+                                "symbol": symbol,
+                                "date": date_str,
+                                "type": "close_divergence",
+                                "ref_close": round(ref["close"], 4),
+                                "db_close": round(db_bar["close"], 4),
+                                "pct_diff": round(pct_diff, 2),
+                                "data_source": db_bar.get("data_source"),
+                            }
+                        )
                     else:
                         matched += 1
                 else:
@@ -149,7 +156,7 @@ def run_reconciliation(db: Session) -> Dict[str, Any]:
 
     result = {
         "status": "ok" if not mismatches else "warning",
-        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "checked_at": datetime.now(UTC).isoformat(),
         "sample_size": len(sample),
         "bars_checked": checked,
         "bars_matched": matched,

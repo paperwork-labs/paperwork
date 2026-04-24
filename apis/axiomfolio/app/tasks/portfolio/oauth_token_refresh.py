@@ -21,8 +21,7 @@ asserts ``written + skipped + errors == total``.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Dict
+from datetime import UTC, datetime, timedelta
 
 from celery import shared_task
 
@@ -61,7 +60,10 @@ def _refresh_one(db, conn: BrokerOAuthConnection) -> str:
     except OAuthError as exc:
         logger.warning(
             "oauth.refresh unsupported broker user=%s connection=%s broker=%s err=%s",
-            conn.user_id, conn.id, conn.broker, exc,
+            conn.user_id,
+            conn.id,
+            conn.broker,
+            exc,
         )
         conn.status = OAuthConnectionStatus.ERROR.value
         conn.last_error = f"unsupported broker: {exc}"
@@ -73,7 +75,10 @@ def _refresh_one(db, conn: BrokerOAuthConnection) -> str:
     except EncryptionDecryptError as exc:
         logger.warning(
             "oauth.refresh decrypt failed user=%s connection=%s broker=%s err=%s",
-            conn.user_id, conn.id, conn.broker, exc,
+            conn.user_id,
+            conn.id,
+            conn.broker,
+            exc,
         )
         conn.status = OAuthConnectionStatus.REFRESH_FAILED.value
         conn.last_error = "stored token could not be decrypted; reauthorize"
@@ -85,21 +90,31 @@ def _refresh_one(db, conn: BrokerOAuthConnection) -> str:
         if exc.permanent:
             logger.warning(
                 "oauth.refresh permanent failure user=%s connection=%s broker=%s status=%s err=%s",
-                conn.user_id, conn.id, conn.broker, exc.provider_status, exc,
+                conn.user_id,
+                conn.id,
+                conn.broker,
+                exc.provider_status,
+                exc,
             )
             conn.status = OAuthConnectionStatus.REFRESH_FAILED.value
             conn.last_error = f"refresh failed (permanent): {exc}"
             return "errors"
         logger.warning(
             "oauth.refresh transient failure user=%s connection=%s broker=%s status=%s err=%s",
-            conn.user_id, conn.id, conn.broker, exc.provider_status, exc,
+            conn.user_id,
+            conn.id,
+            conn.broker,
+            exc.provider_status,
+            exc,
         )
         conn.last_error = f"refresh failed (transient): {exc}"
         return "errors"
     except Exception as exc:  # adapter bug; surface as ERROR
         logger.exception(
             "oauth.refresh unexpected exception user=%s connection=%s broker=%s",
-            conn.user_id, conn.id, conn.broker,
+            conn.user_id,
+            conn.id,
+            conn.broker,
         )
         conn.status = OAuthConnectionStatus.ERROR.value
         conn.last_error = f"unexpected refresh error: {exc}"
@@ -112,7 +127,7 @@ def _refresh_one(db, conn: BrokerOAuthConnection) -> str:
     if tokens.scope is not None:
         conn.scope = tokens.scope
     conn.status = OAuthConnectionStatus.ACTIVE.value
-    conn.last_refreshed_at = datetime.now(timezone.utc)
+    conn.last_refreshed_at = datetime.now(UTC)
     conn.last_error = None
     conn.rotation_count = (conn.rotation_count or 0) + 1
     return "written"
@@ -125,11 +140,11 @@ def _refresh_one(db, conn: BrokerOAuthConnection) -> str:
 )
 def refresh_expiring_tokens(
     window_minutes: int = int(REFRESH_WINDOW.total_seconds() // 60),
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Refresh ACTIVE/EXPIRED connections whose tokens expire within ``window``."""
 
     window = timedelta(minutes=max(1, int(window_minutes)))
-    cutoff = datetime.now(timezone.utc) + window
+    cutoff = datetime.now(UTC) + window
 
     counters = {"written": 0, "skipped": 0, "errors": 0, "total": 0}
     db = SessionLocal()
@@ -155,10 +170,12 @@ def refresh_expiring_tokens(
             counters[outcome] = counters.get(outcome, 0) + 1
             try:
                 db.commit()
-            except Exception as exc:
+            except Exception:
                 logger.exception(
                     "oauth.refresh commit failed user=%s connection=%s broker=%s",
-                    row.user_id, row.id, row.broker,
+                    row.user_id,
+                    row.id,
+                    row.broker,
                 )
                 db.rollback()
                 # Reclassify as error if the per-row outcome was success.
@@ -167,17 +184,19 @@ def refresh_expiring_tokens(
                     counters["errors"] = counters.get("errors", 0) + 1
 
         assert (
-            counters["written"] + counters["skipped"] + counters["errors"]
-            == counters["total"]
+            counters["written"] + counters["skipped"] + counters["errors"] == counters["total"]
         ), f"counter drift: {counters}"
 
         logger.info(
             "oauth.refresh tick complete total=%d written=%d skipped=%d errors=%d",
-            counters["total"], counters["written"], counters["skipped"], counters["errors"],
+            counters["total"],
+            counters["written"],
+            counters["skipped"],
+            counters["errors"],
         )
         return counters
     finally:
         db.close()
 
 
-__all__ = ["refresh_expiring_tokens", "_refresh_one", "REFRESH_WINDOW"]
+__all__ = ["REFRESH_WINDOW", "_refresh_one", "refresh_expiring_tokens"]

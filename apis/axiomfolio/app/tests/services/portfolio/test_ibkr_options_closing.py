@@ -10,7 +10,7 @@ this test asserts the pipeline wires the call through.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -87,18 +87,28 @@ def test_ibkr_reconciliation_creates_option_tax_lot(db_session) -> None:
     if db_session is None:
         pytest.skip("no db")
     acct = _user_and_account(db_session)
-    t_open = datetime(2025, 1, 10, 16, 0, 0, tzinfo=timezone.utc)
-    t_close = datetime(2025, 3, 10, 16, 0, 0, tzinfo=timezone.utc)
+    t_open = datetime(2025, 1, 10, 16, 0, 0, tzinfo=UTC)
+    t_close = datetime(2025, 3, 10, 16, 0, 0, tzinfo=UTC)
 
     _add_option_trade(
-        db_session, acct.id,
-        exec_id="ibkr-open-1", side="BUY", is_opening=True,
-        quantity=Decimal("2"), price=Decimal("5.00"), when=t_open,
+        db_session,
+        acct.id,
+        exec_id="ibkr-open-1",
+        side="BUY",
+        is_opening=True,
+        quantity=Decimal("2"),
+        price=Decimal("5.00"),
+        when=t_open,
     )
     _add_option_trade(
-        db_session, acct.id,
-        exec_id="ibkr-close-1", side="SELL", is_opening=False,
-        quantity=Decimal("2"), price=Decimal("8.00"), when=t_close,
+        db_session,
+        acct.id,
+        exec_id="ibkr-close-1",
+        side="SELL",
+        is_opening=False,
+        quantity=Decimal("2"),
+        price=Decimal("8.00"),
+        when=t_close,
         realized_pnl=Decimal("470.00"),
     )
     db_session.commit()
@@ -108,11 +118,7 @@ def test_ibkr_reconciliation_creates_option_tax_lot(db_session) -> None:
     db_session.commit()
 
     assert results.get("option_tax_lots_created", 0) == 1
-    rows = (
-        db_session.query(OptionTaxLot)
-        .filter(OptionTaxLot.broker_account_id == acct.id)
-        .all()
-    )
+    rows = db_session.query(OptionTaxLot).filter(OptionTaxLot.broker_account_id == acct.id).all()
     assert len(rows) == 1
     r = rows[0]
     assert r.quantity_closed == Decimal("2")
@@ -126,18 +132,28 @@ def test_ibkr_reconciliation_idempotent(db_session) -> None:
     if db_session is None:
         pytest.skip("no db")
     acct = _user_and_account(db_session)
-    t_open = datetime(2024, 2, 1, 16, 0, 0, tzinfo=timezone.utc)
+    t_open = datetime(2024, 2, 1, 16, 0, 0, tzinfo=UTC)
     t_close = t_open + timedelta(days=400)
 
     _add_option_trade(
-        db_session, acct.id,
-        exec_id="ibkr-open-lt", side="BUY", is_opening=True,
-        quantity=Decimal("1"), price=Decimal("4.00"), when=t_open,
+        db_session,
+        acct.id,
+        exec_id="ibkr-open-lt",
+        side="BUY",
+        is_opening=True,
+        quantity=Decimal("1"),
+        price=Decimal("4.00"),
+        when=t_open,
     )
     _add_option_trade(
-        db_session, acct.id,
-        exec_id="ibkr-close-lt", side="SELL", is_opening=False,
-        quantity=Decimal("1"), price=Decimal("9.00"), when=t_close,
+        db_session,
+        acct.id,
+        exec_id="ibkr-close-lt",
+        side="SELL",
+        is_opening=False,
+        quantity=Decimal("1"),
+        price=Decimal("9.00"),
+        when=t_close,
         realized_pnl=Decimal("500.00"),
     )
     db_session.commit()
@@ -147,17 +163,9 @@ def test_ibkr_reconciliation_idempotent(db_session) -> None:
         _run_closing_lot_reconciliation(db_session, acct, results)
         db_session.commit()
 
-    n = (
-        db_session.query(OptionTaxLot)
-        .filter(OptionTaxLot.broker_account_id == acct.id)
-        .count()
-    )
+    n = db_session.query(OptionTaxLot).filter(OptionTaxLot.broker_account_id == acct.id).count()
     assert n == 1
-    r = (
-        db_session.query(OptionTaxLot)
-        .filter(OptionTaxLot.broker_account_id == acct.id)
-        .one()
-    )
+    r = db_session.query(OptionTaxLot).filter(OptionTaxLot.broker_account_id == acct.id).one()
     assert r.holding_class == "long_term"
 
 
@@ -166,18 +174,28 @@ def test_ibkr_reconciliation_pnl_drift_counter(db_session) -> None:
     if db_session is None:
         pytest.skip("no db")
     acct = _user_and_account(db_session)
-    t_open = datetime(2025, 1, 10, 16, 0, 0, tzinfo=timezone.utc)
-    t_close = datetime(2025, 3, 10, 16, 0, 0, tzinfo=timezone.utc)
+    t_open = datetime(2025, 1, 10, 16, 0, 0, tzinfo=UTC)
+    t_close = datetime(2025, 3, 10, 16, 0, 0, tzinfo=UTC)
     _add_option_trade(
-        db_session, acct.id,
-        exec_id="ibkr-open-drift", side="BUY", is_opening=True,
-        quantity=Decimal("2"), price=Decimal("5.00"), when=t_open,
+        db_session,
+        acct.id,
+        exec_id="ibkr-open-drift",
+        side="BUY",
+        is_opening=True,
+        quantity=Decimal("2"),
+        price=Decimal("5.00"),
+        when=t_open,
     )
     # Broker claims $999 realized; FIFO matcher will compute ~$470.
     _add_option_trade(
-        db_session, acct.id,
-        exec_id="ibkr-close-drift", side="SELL", is_opening=False,
-        quantity=Decimal("2"), price=Decimal("8.00"), when=t_close,
+        db_session,
+        acct.id,
+        exec_id="ibkr-close-drift",
+        side="SELL",
+        is_opening=False,
+        quantity=Decimal("2"),
+        price=Decimal("8.00"),
+        when=t_close,
         realized_pnl=Decimal("999.00"),
     )
     db_session.commit()

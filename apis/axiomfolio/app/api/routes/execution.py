@@ -1,11 +1,10 @@
 """Execution quality and slippage analytics routes."""
 
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_current_user
+from app.api.dependencies import get_current_user, get_db
 from app.models.user import User
 from app.services.execution.slippage_tracker import (
     SlippageTracker,
@@ -17,14 +16,14 @@ router = APIRouter(prefix="/execution", tags=["execution"])
 
 @router.get("/slippage-stats")
 async def get_slippage_stats(
-    symbol: Optional[str] = Query(None, description="Filter by symbol"),
-    broker: Optional[str] = Query(None, description="Filter by broker type"),
+    symbol: str | None = Query(None, description="Filter by symbol"),
+    broker: str | None = Query(None, description="Filter by broker type"),
     days: int = Query(30, ge=1, le=365, description="Lookback period in days"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Get aggregated slippage statistics for filled orders.
-    
+
     Returns average, median, min, max slippage percentages and dollars,
     broken down by side, broker, and hour of day.
     """

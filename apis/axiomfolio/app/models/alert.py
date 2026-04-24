@@ -1,17 +1,18 @@
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    DateTime,
-    Boolean,
-    ForeignKey,
-    Float,
-    Numeric,
-    Text,
     JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from . import Base
 
 
@@ -25,9 +26,7 @@ class Alert(Base):
     name = Column(String(100), nullable=False)
     description = Column(Text)
     symbol = Column(String(20), nullable=False, index=True)
-    alert_type = Column(
-        String(50), nullable=False
-    )  # PRICE, INDICATOR, SIGNAL, PORTFOLIO
+    alert_type = Column(String(50), nullable=False)  # PRICE, INDICATOR, SIGNAL, PORTFOLIO
 
     # Alert configuration
     is_active = Column(Boolean, default=True)
@@ -69,12 +68,8 @@ class AlertCondition(Base):
     alert_id = Column(Integer, ForeignKey("alerts.id"), nullable=False)
 
     # Condition details
-    condition_type = Column(
-        String(50), nullable=False
-    )  # PRICE, ATR_DISTANCE, RSI, MACD, etc.
-    operator = Column(
-        String(10), nullable=False
-    )  # GT, LT, EQ, CROSSES_ABOVE, CROSSES_BELOW
+    condition_type = Column(String(50), nullable=False)  # PRICE, ATR_DISTANCE, RSI, MACD, etc.
+    operator = Column(String(10), nullable=False)  # GT, LT, EQ, CROSSES_ABOVE, CROSSES_BELOW
     target_value = Column(Float, nullable=False)
     current_value = Column(Float)
 

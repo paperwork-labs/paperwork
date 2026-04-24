@@ -10,11 +10,12 @@ Tests for account_config_service.py functionality:
 - DRY principle adherence
 """
 
-import pytest
 from unittest.mock import Mock, patch
 
-from app.models import User, BrokerAccount
-from app.models.broker_account import BrokerType, AccountType, SyncStatus, AccountCredentials
+import pytest
+
+from app.models import BrokerAccount, User
+from app.models.broker_account import AccountCredentials, AccountType, BrokerType, SyncStatus
 from app.models.narrative import PortfolioNarrative
 from app.services.portfolio.account_config_service import AccountConfigService
 
@@ -33,9 +34,7 @@ class TestAccountConfigService:
     def mock_settings(self):
         """Mock settings with test account data."""
         mock_settings = Mock()
-        mock_settings.IBKR_ACCOUNTS = (
-            "IBKR_TEST_ACCOUNT_A:TAXABLE,IBKR_TEST_ACCOUNT_B:IRA"
-        )
+        mock_settings.IBKR_ACCOUNTS = "IBKR_TEST_ACCOUNT_A:TAXABLE,IBKR_TEST_ACCOUNT_B:IRA"
         mock_settings.TASTYTRADE_CLIENT_SECRET = "test_secret"
         mock_settings.TASTYTRADE_ACCOUNT_NUMBER = "TT_TEST_ACCOUNT_1"
         mock_settings.FIDELITY_ACCOUNTS = ""  # Empty for testing
@@ -142,18 +141,14 @@ class TestAccountConfigService:
         print("✅ User creation is idempotent")
 
     @patch("app.services.portfolio.account_config_service.settings")
-    def test_seed_broker_accounts_complete(
-        self, mock_settings_patch, account_service, db_session
-    ):
+    def test_seed_broker_accounts_complete(self, mock_settings_patch, account_service, db_session):
         """Test complete broker account seeding process."""
         db_session.query(AccountCredentials).delete()
         db_session.query(BrokerAccount).delete()
         db_session.query(User).delete()
         db_session.flush()
         # Setup mock settings
-        mock_settings_patch.IBKR_ACCOUNTS = (
-            "IBKR_TEST_ACCOUNT_A:TAXABLE,IBKR_TEST_ACCOUNT_B:IRA"
-        )
+        mock_settings_patch.IBKR_ACCOUNTS = "IBKR_TEST_ACCOUNT_A:TAXABLE,IBKR_TEST_ACCOUNT_B:IRA"
         mock_settings_patch.TASTYTRADE_CLIENT_SECRET = "test_secret"
         mock_settings_patch.TASTYTRADE_ACCOUNT_NUMBER = "TT_TEST_ACCOUNT_1"
         mock_settings_patch.FIDELITY_ACCOUNTS = ""
@@ -171,9 +166,7 @@ class TestAccountConfigService:
         assert len(broker_accounts) == 3  # 2 IBKR + 1 TastyTrade
 
         # Check IBKR accounts
-        ibkr_accounts = (
-            db_session.query(BrokerAccount).filter_by(broker=BrokerType.IBKR).all()
-        )
+        ibkr_accounts = db_session.query(BrokerAccount).filter_by(broker=BrokerType.IBKR).all()
         assert len(ibkr_accounts) == 2
 
         ibkr_taxable = next(
@@ -193,11 +186,7 @@ class TestAccountConfigService:
         assert ibkr_ira.user_id == user.id
 
         # Check TastyTrade account
-        tt_accounts = (
-            db_session.query(BrokerAccount)
-            .filter_by(broker=BrokerType.TASTYTRADE)
-            .all()
-        )
+        tt_accounts = db_session.query(BrokerAccount).filter_by(broker=BrokerType.TASTYTRADE).all()
         assert len(tt_accounts) == 1
         tt_account = tt_accounts[0]
         assert tt_account.account_number == "TT_TEST_ACCOUNT_1"
@@ -212,9 +201,7 @@ class TestAccountConfigService:
         db_session.query(BrokerAccount).delete()
         db_session.query(User).delete()
         db_session.flush()
-        with patch(
-            "app.services.portfolio.account_config_service.settings", mock_settings
-        ):
+        with patch("app.services.portfolio.account_config_service.settings", mock_settings):
             # First seeding
             account_service.seed_broker_accounts(db_session)
             first_count = db_session.query(BrokerAccount).count()
@@ -303,9 +290,7 @@ class TestAccountConfigService:
 
         # Verify the relationship works
         retrieved_account = (
-            db_session.query(BrokerAccount)
-            .filter_by(account_number="TEST_INTEGRATION")
-            .first()
+            db_session.query(BrokerAccount).filter_by(account_number="TEST_INTEGRATION").first()
         )
         assert retrieved_account is not None
         assert retrieved_account.user.email == "default@axiomfolio.com"
@@ -320,10 +305,11 @@ class TestAccountConfigServiceArchitecture:
 
     def test_no_broker_specific_hardcoding(self):
         """Test that service is extensible for new brokers without hardcoding."""
+        import inspect
+
         from app.services.portfolio.account_config_service import (
             AccountConfigService,
         )
-        import inspect
 
         source = inspect.getsource(AccountConfigService)
 
@@ -334,12 +320,7 @@ class TestAccountConfigServiceArchitecture:
         for line in source.split("\n"):
             if any(suspicious in line.lower() for suspicious in suspicious_strings):
                 # Allow in method names and comments
-                if (
-                    "def " in line
-                    or "#" in line
-                    or "IBKR_" in line
-                    or "TASTYTRADE_" in line
-                ):
+                if "def " in line or "#" in line or "IBKR_" in line or "TASTYTRADE_" in line:
                     continue
                 # Allow in environment variable names
                 if "settings." in line:
@@ -371,9 +352,7 @@ class TestAccountConfigServiceArchitecture:
         # Should not have sync or trading methods (those belong elsewhere)
         forbidden_methods = ["sync_positions", "execute_trade", "get_market_data"]
         for method in forbidden_methods:
-            assert not hasattr(
-                service, method
-            ), f"Service has method it shouldn't: {method}"
+            assert not hasattr(service, method), f"Service has method it shouldn't: {method}"
 
         print("✅ Single responsibility principle maintained")
 

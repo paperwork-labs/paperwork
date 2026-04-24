@@ -63,7 +63,7 @@ import hashlib
 import logging
 import re
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from app.services.execution.broker_base import (
     ActionSide,
@@ -150,22 +150,20 @@ class TastytradeExecutor:
         env = (environment or "sandbox").lower().strip()
         if env not in ("sandbox", "prod"):
             raise ValueError(
-                f"TastytradeExecutor environment must be 'sandbox' or 'prod', "
-                f"got {environment!r}"
+                f"TastytradeExecutor environment must be 'sandbox' or 'prod', got {environment!r}"
             )
         if env == "prod":
             from app.config import settings
+
             if not bool(getattr(settings, "TASTYTRADE_ALLOW_LIVE", False)):
                 raise RuntimeError(
                     "TastyTrade live orders disabled; set TASTYTRADE_ALLOW_LIVE=true"
                 )
 
         self._environment = env
-        self._session: Optional[Any] = None
+        self._session: Any | None = None
         self._accounts: list[Any] = []
-        logger.info(
-            "TastytradeExecutor initialized environment=%s", self._environment
-        )
+        logger.info("TastytradeExecutor initialized environment=%s", self._environment)
 
     @property
     def broker_name(self) -> str:
@@ -206,7 +204,8 @@ class TastytradeExecutor:
         except Exception as exc:
             logger.warning(
                 "tastytrade preview_order SDK call failed: symbol=%s err=%s",
-                req.symbol, exc,
+                req.symbol,
+                exc,
             )
             return PreviewResult(error=str(exc), raw={"broker": "tastytrade"})
 
@@ -221,9 +220,7 @@ class TastytradeExecutor:
         bpe = getattr(response, "buying_power_effect", None)
         return PreviewResult(
             estimated_commission=_opt_float(getattr(fees, "commission", None)),
-            estimated_margin_impact=_opt_float(
-                getattr(bpe, "change_in_buying_power", None)
-            ),
+            estimated_margin_impact=_opt_float(getattr(bpe, "change_in_buying_power", None)),
             raw={
                 "broker": "tastytrade",
                 "warnings": [str(w) for w in (getattr(response, "warnings", None) or [])],
@@ -245,7 +242,8 @@ class TastytradeExecutor:
         except Exception as exc:
             logger.warning(
                 "tastytrade place_order SDK call failed: symbol=%s err=%s",
-                req.symbol, exc,
+                req.symbol,
+                exc,
             )
             return OrderResult(error=str(exc), raw={"broker": "tastytrade"})
 
@@ -290,7 +288,8 @@ class TastytradeExecutor:
         except Exception as exc:
             logger.warning(
                 "tastytrade cancel_order SDK call failed: id=%s err=%s",
-                broker_order_id, exc,
+                broker_order_id,
+                exc,
             )
             return OrderResult(error=str(exc), raw={"broker": "tastytrade"})
 
@@ -317,7 +316,8 @@ class TastytradeExecutor:
         except Exception as exc:
             logger.warning(
                 "tastytrade get_order_status SDK call failed: id=%s err=%s",
-                broker_order_id, exc,
+                broker_order_id,
+                exc,
             )
             return OrderResult(error=str(exc), raw={"broker": "tastytrade"})
 
@@ -362,16 +362,12 @@ class TastytradeExecutor:
             price = None
         elif req.order_type == IBOrderType.LMT:
             if req.limit_price is None:
-                raise TastytradeExecutorError(
-                    "LMT order missing limit_price"
-                )
+                raise TastytradeExecutorError("LMT order missing limit_price")
             tt_order_type = OrderType.LIMIT
             price = Decimal(str(req.limit_price))
         elif req.order_type == IBOrderType.STP:
             if req.stop_price is None:
-                raise TastytradeExecutorError(
-                    "STP order missing stop_price"
-                )
+                raise TastytradeExecutorError("STP order missing stop_price")
             tt_order_type = OrderType.STOP
             price = None
         elif req.order_type == IBOrderType.STP_LMT:
@@ -382,18 +378,14 @@ class TastytradeExecutor:
             tt_order_type = OrderType.STOP_LIMIT
             price = Decimal(str(req.limit_price))
         else:  # pragma: no cover — enum is exhaustive
-            raise TastytradeExecutorError(
-                f"unsupported order_type: {req.order_type}"
-            )
+            raise TastytradeExecutorError(f"unsupported order_type: {req.order_type}")
 
         # Map BUY -> "Buy to Open" and SELL -> "Sell to Close" for the
         # long-side equity flow this executor supports today. Position-aware
         # close routing (short-open / short-close) is the order_manager's
         # responsibility once it lands.
         action = (
-            OrderAction.BUY_TO_OPEN
-            if req.side == ActionSide.BUY
-            else OrderAction.SELL_TO_CLOSE
+            OrderAction.BUY_TO_OPEN if req.side == ActionSide.BUY else OrderAction.SELL_TO_CLOSE
         )
 
         leg = Leg(
@@ -462,15 +454,11 @@ class TastytradeExecutor:
                 self._accounts = await Account.get(self._session)
             except Exception as exc:
                 self._session = None
-                raise TastytradeExecutorError(
-                    f"tastytrade Account.get failed: {exc}"
-                ) from exc
+                raise TastytradeExecutorError(f"tastytrade Account.get failed: {exc}") from exc
 
             if not self._accounts:
                 self._session = None
-                raise TastytradeExecutorError(
-                    "tastytrade session returned no accounts"
-                )
+                raise TastytradeExecutorError("tastytrade session returned no accounts")
 
         return self._session
 
@@ -495,9 +483,7 @@ class TastytradeExecutor:
                     redis.set(name=key, value="1", nx=True, ex=REFRESH_LOCK_TTL_SECONDS)
                 )
             except Exception as exc:  # pragma: no cover — fail-open on lock
-                logger.warning(
-                    "tastytrade refresh lock acquire failed: %s", exc
-                )
+                logger.warning("tastytrade refresh lock acquire failed: %s", exc)
                 acquired = False
 
         try:
@@ -508,21 +494,15 @@ class TastytradeExecutor:
             # Reset session state so the next call rebuilds from scratch.
             self._session = None
             self._accounts = []
-            raise TastytradeExecutorError(
-                f"tastytrade session refresh failed: {exc}"
-            ) from exc
+            raise TastytradeExecutorError(f"tastytrade session refresh failed: {exc}") from exc
         finally:
             if acquired and redis is not None:
                 try:
                     redis.delete(key)
                 except Exception as exc:  # pragma: no cover
-                    logger.warning(
-                        "tastytrade refresh lock release failed: %s", exc
-                    )
+                    logger.warning("tastytrade refresh lock release failed: %s", exc)
 
-    async def _resolve_account(
-        self, account_id: Optional[str]
-    ) -> tuple[Any, Any]:
+    async def _resolve_account(self, account_id: str | None) -> tuple[Any, Any]:
         session = await self._ensure_session()
         if not self._accounts:
             raise TastytradeExecutorError("tastytrade has no accounts attached")
@@ -531,16 +511,14 @@ class TastytradeExecutor:
             for acct in self._accounts:
                 if getattr(acct, "account_number", None) == account_id:
                     return session, acct
-            raise TastytradeExecutorError(
-                f"tastytrade account {account_id!r} not found on session"
-            )
+            raise TastytradeExecutorError(f"tastytrade account {account_id!r} not found on session")
         return session, self._accounts[0]
 
 
 # --------------------------------------------------------------------- helpers
 
 
-def _try_get_redis() -> Optional[Any]:
+def _try_get_redis() -> Any | None:
     """Return the process-wide sync Redis client or ``None`` if unavailable.
 
     Imported lazily (the module is optional at import time for unit tests
@@ -549,13 +527,14 @@ def _try_get_redis() -> Optional[Any]:
 
     try:
         from app.services.cache import redis_client
+
         return redis_client
     except Exception as exc:  # pragma: no cover — Redis misconfigured
         logger.warning("tastytrade: app.services.cache redis unavailable: %s", exc)
         return None
 
 
-def _opt_float(value: Any) -> Optional[float]:
+def _opt_float(value: Any) -> float | None:
     if value is None:
         return None
     try:
@@ -581,14 +560,14 @@ _TT_STATUS_MAP = {
 }
 
 
-def _map_tt_status(value: Any) -> Optional[str]:
+def _map_tt_status(value: Any) -> str | None:
     if value is None:
         return None
     raw = value.value if hasattr(value, "value") else str(value)
     return _TT_STATUS_MAP.get(raw, raw.lower())
 
 
-def _aggregate_fills(placed: Any) -> tuple[float, Optional[float]]:
+def _aggregate_fills(placed: Any) -> tuple[float, float | None]:
     """Sum filled quantity across legs and weight-average the fill price."""
 
     legs = getattr(placed, "legs", None) or []

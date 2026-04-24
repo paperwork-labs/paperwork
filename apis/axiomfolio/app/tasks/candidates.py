@@ -3,16 +3,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from app.database import SessionLocal
 from app.models import User
 from app.services.billing.entitlement_service import EntitlementService
-from app.tasks.celery_app import celery_app
-from app.tasks.utils.task_utils import task_run
-
 from app.services.picks import generators  # noqa: F401 — register generators
 from app.services.picks.candidate_generator import run_all_generators
+from app.tasks.celery_app import celery_app
+from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ _FEATURE_CANDIDATES = "picks.candidates"
     queue="heavy",
 )
 @task_run("generate_candidates_daily")
-def generate_candidates_daily(only: Optional[Sequence[str]] = None) -> Dict[str, Any]:
+def generate_candidates_daily(only: Sequence[str] | None = None) -> dict[str, Any]:
     """Run candidate generators once per entitled user (Pro+ ``picks.candidates``).
 
     One DB session per user so a failure in one tenant does not roll back others.
@@ -34,10 +34,7 @@ def generate_candidates_daily(only: Optional[Sequence[str]] = None) -> Dict[str,
     list_session = SessionLocal()
     try:
         users: list = (
-            list_session.query(User)
-            .filter(User.is_active.is_(True))
-            .order_by(User.id.asc())
-            .all()
+            list_session.query(User).filter(User.is_active.is_(True)).order_by(User.id.asc()).all()
         )
     finally:
         list_session.close()
@@ -62,20 +59,16 @@ def generate_candidates_daily(only: Optional[Sequence[str]] = None) -> Dict[str,
 
         db_u = SessionLocal()
         try:
-            reports = run_all_generators(
-                db_u, only=only, quality_score_user_id=user.id
-            )
+            reports = run_all_generators(db_u, only=only, quality_score_user_id=user.id)
             db_u.commit()
             users_processed += 1
             for r in reports:
                 symbols_scanned += r.produced
                 candidates_written += r.created
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             db_u.rollback()
             errors += 1
-            logger.exception(
-                "generate_candidates_daily failed for user_id=%s: %s", user.id, e
-            )
+            logger.exception("generate_candidates_daily failed for user_id=%s: %s", user.id, e)
         finally:
             db_u.close()
 
@@ -84,7 +77,7 @@ def generate_candidates_daily(only: Optional[Sequence[str]] = None) -> Dict[str,
         % (users_processed, users_skipped_no_tier, errors, total_users)
     )
 
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "status": "ok",
         "users_processed": users_processed,
         "users_skipped_no_tier": users_skipped_no_tier,

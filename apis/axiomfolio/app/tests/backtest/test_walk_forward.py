@@ -23,9 +23,10 @@ from __future__ import annotations
 
 import math
 import random
+from collections.abc import Sequence
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any, Dict, List, Sequence
+from typing import Any
 
 import pytest
 
@@ -41,14 +42,12 @@ from app.services.backtest.regime_attribution import (
     filter_trades_by_regime,
 )
 from app.services.backtest.walk_forward import (
-    SplitResult,
     StudyResult,
     TradeResult,
     WalkForwardOptimizer,
     _generate_splits,
     validate_param_space,
 )
-
 
 # -----------------------------------------------------------------------------
 # Helpers
@@ -187,11 +186,13 @@ class TestRegimeAttribution:
 
 class TestParamSpaceValidation:
     def test_accepts_valid_specs(self) -> None:
-        validate_param_space({
-            "lookback": {"type": "int", "low": 5, "high": 40, "step": 5},
-            "stop_mult": {"type": "float", "low": 0.5, "high": 3.0},
-            "fast": {"type": "categorical", "choices": ["sma", "ema"]},
-        })
+        validate_param_space(
+            {
+                "lookback": {"type": "int", "low": 5, "high": 40, "step": 5},
+                "stop_mult": {"type": "float", "low": 0.5, "high": 3.0},
+                "fast": {"type": "categorical", "choices": ["sma", "ema"]},
+            }
+        )
 
     def test_rejects_empty(self) -> None:
         with pytest.raises(ValueError):
@@ -203,15 +204,11 @@ class TestParamSpaceValidation:
 
     def test_rejects_inverted_range(self) -> None:
         with pytest.raises(ValueError):
-            validate_param_space(
-                {"x": {"type": "int", "low": 100, "high": 10}}
-            )
+            validate_param_space({"x": {"type": "int", "low": 100, "high": 10}})
 
     def test_rejects_empty_choices(self) -> None:
         with pytest.raises(ValueError):
-            validate_param_space(
-                {"x": {"type": "categorical", "choices": []}}
-            )
+            validate_param_space({"x": {"type": "categorical", "choices": []}})
 
 
 # =============================================================================
@@ -232,16 +229,16 @@ def _make_synthetic_runner(optimal: int = 20):
     rng = random.Random(0)
 
     def runner(
-        params: Dict[str, Any],
+        params: dict[str, Any],
         symbols: Sequence[str],
         window_start: date,
         window_end: date,
-    ) -> List[TradeResult]:
+    ) -> list[TradeResult]:
         lb = int(params["lookback"])
         # Triangular: peak +0.02 at optimal, falls off by 0.001 per unit.
         edge_penalty = abs(lb - optimal) * 0.001
         mean_ret = 0.02 - edge_penalty
-        out: List[TradeResult] = []
+        out: list[TradeResult] = []
         d = window_start
         for i in range(30):
             noise = rng.gauss(0, 0.005)
@@ -306,9 +303,7 @@ def test_optimizer_per_split_results_serialize() -> None:
         seed=1,
     )
     result = optimizer.optimize(
-        param_space={
-            "lookback": {"type": "int", "low": 10, "high": 30, "step": 5}
-        },
+        param_space={"lookback": {"type": "int", "low": 10, "high": 30, "step": 5}},
         symbols=["SYNTH"],
         dataset_start=date(2024, 1, 1),
         dataset_end=date(2024, 12, 31),
@@ -321,14 +316,12 @@ def test_optimizer_per_split_results_serialize() -> None:
     assert isinstance(payload["per_split_results"], list)
     assert len(payload["per_split_results"]) == 3
     for split in payload["per_split_results"]:
-        assert {"split_index", "train_start", "test_start", "test_score"}.issubset(
-            split.keys()
-        )
+        assert {"split_index", "train_start", "test_start", "test_score"}.issubset(split.keys())
 
 
 @pytest.mark.no_db
 def test_progress_callback_is_invoked() -> None:
-    seen: List[int] = []
+    seen: list[int] = []
 
     def cb(completed: int, total: int) -> None:
         seen.append(completed)
@@ -342,9 +335,7 @@ def test_progress_callback_is_invoked() -> None:
         progress_callback=cb,
     )
     optimizer.optimize(
-        param_space={
-            "lookback": {"type": "int", "low": 10, "high": 30, "step": 10}
-        },
+        param_space={"lookback": {"type": "int", "low": 10, "high": 30, "step": 10}},
         symbols=["SYNTH"],
         dataset_start=date(2024, 1, 1),
         dataset_end=date(2024, 12, 31),
@@ -393,8 +384,9 @@ def test_study_row_is_strictly_user_scoped(db_session, two_users) -> None:
     on ``user_id == current_user.id``. If that filter ever regresses, this
     test catches it without needing the auth machinery.
     """
-    from app.models.walk_forward_study import WalkForwardStatus, WalkForwardStudy
     from datetime import datetime
+
+    from app.models.walk_forward_study import WalkForwardStatus, WalkForwardStudy
 
     a, b = two_users
     study = WalkForwardStudy(
@@ -425,9 +417,7 @@ def test_study_row_is_strictly_user_scoped(db_session, two_users) -> None:
         )
         .first()
     )
-    assert bs_view is None, (
-        "cross-tenant leak: User B was able to read User A's study row"
-    )
+    assert bs_view is None, "cross-tenant leak: User B was able to read User A's study row"
 
     # And A's own filter must still see it.
     as_view = (

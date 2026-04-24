@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 class ActionSide(str, Enum):
@@ -36,9 +36,9 @@ class OrderRequest:
     side: ActionSide
     order_type: IBOrderType
     quantity: float
-    limit_price: Optional[float] = None
-    stop_price: Optional[float] = None
-    account_id: Optional[str] = None
+    limit_price: float | None = None
+    stop_price: float | None = None
+    account_id: str | None = None
 
     @classmethod
     def from_user_input(
@@ -47,10 +47,10 @@ class OrderRequest:
         side: str,
         order_type: str,
         quantity: float,
-        limit_price: Optional[float] = None,
-        stop_price: Optional[float] = None,
-        account_id: Optional[str] = None,
-    ) -> "OrderRequest":
+        limit_price: float | None = None,
+        stop_price: float | None = None,
+        account_id: str | None = None,
+    ) -> OrderRequest:
         return cls(
             symbol=symbol.upper(),
             side=ActionSide.BUY if side.lower() == "buy" else ActionSide.SELL,
@@ -64,12 +64,12 @@ class OrderRequest:
 
 @dataclass
 class OrderResult:
-    broker_order_id: Optional[str] = None
+    broker_order_id: str | None = None
     status: str = "error"
-    error: Optional[str] = None
+    error: str | None = None
     filled_quantity: float = 0
-    avg_fill_price: Optional[float] = None
-    raw: Dict[str, Any] = field(default_factory=dict)
+    avg_fill_price: float | None = None
+    raw: dict[str, Any] = field(default_factory=dict)
 
     @property
     def ok(self) -> bool:
@@ -78,13 +78,13 @@ class OrderResult:
 
 @dataclass
 class PreviewResult:
-    estimated_commission: Optional[float] = None
-    estimated_margin_impact: Optional[float] = None
-    estimated_equity_with_loan: Optional[float] = None
-    maintenance_margin: Optional[float] = None
-    initial_margin: Optional[float] = None
-    error: Optional[str] = None
-    raw: Dict[str, Any] = field(default_factory=dict)
+    estimated_commission: float | None = None
+    estimated_margin_impact: float | None = None
+    estimated_equity_with_loan: float | None = None
+    maintenance_margin: float | None = None
+    initial_margin: float | None = None
+    error: str | None = None
+    raw: dict[str, Any] = field(default_factory=dict)
 
     @property
     def ok(self) -> bool:

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
+from collections.abc import Iterable, Sequence
+from typing import Any, Union
 
 import requests
 
@@ -17,8 +18,8 @@ class AlertService:
 
     def __init__(
         self,
-        http_client: Optional[Any] = None,
-        brain: Optional[BrainWebhookClient] = None,
+        http_client: Any | None = None,
+        brain: BrainWebhookClient | None = None,
     ) -> None:
         self.http = http_client or requests.Session()
         self._brain = brain or brain_webhook
@@ -29,7 +30,7 @@ class AlertService:
             return []
         if isinstance(descriptor, str):
             return [descriptor]
-        tokens: List[str] = []
+        tokens: list[str] = []
         for item in descriptor:
             if item is None:
                 continue
@@ -42,7 +43,7 @@ class AlertService:
         title: str,
         description: str,
         *,
-        fields: Optional[Dict[str, str]] = None,
+        fields: dict[str, str] | None = None,
         severity: str = "info",
     ) -> bool:
         """Send an operational alert to Brain (descriptor tokens are included as routing metadata)."""
@@ -53,7 +54,7 @@ class AlertService:
             self.logger.debug("Brain webhook not configured, skipping ops alert")
             return False
 
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "title": title[:256],
             "description": description[:8000],
             "severity": severity,
@@ -66,10 +67,10 @@ class AlertService:
 
     def push_prometheus_metric(
         self,
-        endpoint: Optional[str],
+        endpoint: str | None,
         metric: str,
         value: float,
-        labels: Optional[Dict[str, str]] = None,
+        labels: dict[str, str] | None = None,
     ) -> bool:
         if not endpoint:
             return False
@@ -94,4 +95,4 @@ class AlertService:
 
 alert_service = AlertService()
 
-__all__ = ["AlertService", "alert_service", "AlertDescriptor"]
+__all__ = ["AlertDescriptor", "AlertService", "alert_service"]

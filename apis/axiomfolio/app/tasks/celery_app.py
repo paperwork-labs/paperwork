@@ -125,6 +125,7 @@ celery_app.conf.task_routes = {
     "app.tasks.candidates.*": {"queue": "heavy"},
 }
 
+
 def _build_beat_schedule():
     """Generate beat_schedule from the job catalog.
 
@@ -150,16 +151,19 @@ def _build_beat_schedule():
 
         nowfun = None
         if job.default_tz and job.default_tz != "UTC":
-            from zoneinfo import ZoneInfo
             from functools import partial
+            from zoneinfo import ZoneInfo
+
             _zi = ZoneInfo(job.default_tz)
             nowfun = partial(datetime.now, _zi)
 
         entry = {
             "task": job.task,
             "schedule": crontab(
-                minute=minute, hour=hour,
-                day_of_week=dow, day_of_month=dom,
+                minute=minute,
+                hour=hour,
+                day_of_week=dow,
+                day_of_month=dom,
                 month_of_year=month,
                 nowfun=nowfun,
             ),
@@ -204,6 +208,7 @@ def _dispose_engine_on_fork(**kwargs):
     inherited slots appear occupied but are actually dead.
     """
     from app.database import engine
+
     engine.dispose()
     logger.info("Disposed SQLAlchemy engine pool for new worker child")
 
@@ -233,7 +238,7 @@ def _init_otel_on_fork(**kwargs):
             instrument_fastapi=False,
         )
         init_metrics(service_name="axiomfolio-worker")
-    except Exception as exc:  # noqa: BLE001 — observability must never crash worker
+    except Exception as exc:
         logger.warning(
             "OTel init in worker child failed (continuing without instrumentation): %s",
             exc,
@@ -249,8 +254,8 @@ def _warm_caches(sender, **kwargs):
     that could delay worker readiness or hit statement_timeout.
     """
     try:
-        from app.services.market.market_mv_service import market_mv_service
         from app.database import SessionLocal
+        from app.services.market.market_mv_service import market_mv_service
 
         db = SessionLocal()
         try:
@@ -258,9 +263,7 @@ def _warm_caches(sender, **kwargs):
                 logger.info("Cache warmup skipped: no MVs available yet")
                 return
             series = market_mv_service.get_breadth_series(db, days=120)
-            logger.info(
-                "Cache warmup: breadth_series (%d points)", len(series)
-            )
+            logger.info("Cache warmup: breadth_series (%d points)", len(series))
         finally:
             db.close()
     except Exception as e:

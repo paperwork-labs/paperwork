@@ -14,13 +14,10 @@ import re
 
 import pytest
 
-
 pytestmark = pytest.mark.no_db
 
 
-_BACKEND = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")
-)
+_BACKEND = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 # Allowlisted occurrences (substring match on the line). Each entry
@@ -31,7 +28,7 @@ _ALLOWLIST: tuple[tuple[str, str], ...] = (
     # docs / deprecated fallback in the helper.
     (
         "app/api/routes/brain_tools.py",
-        'falling back to BRAIN_TOOLS_USER_ID',
+        "falling back to BRAIN_TOOLS_USER_ID",
     ),
     (
         "app/api/routes/brain_tools.py",

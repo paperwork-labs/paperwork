@@ -14,8 +14,7 @@ volatility default.
 from __future__ import annotations
 
 import math
-from datetime import datetime, time, timedelta, timezone
-from typing import List
+from datetime import UTC, datetime, time, timedelta
 
 import numpy as np
 import pytest
@@ -32,7 +31,6 @@ from app.services.portfolio.portfolio_analytics_service import (
     TRADING_DAYS_PER_YEAR,
     PortfolioAnalyticsService,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixture helpers
@@ -75,7 +73,7 @@ def _seed_portfolio_series(
     account: BrokerAccount,
     *,
     start: datetime,
-    values: List[float],
+    values: list[float],
 ) -> None:
     for i, value in enumerate(values):
         snap = PortfolioSnapshot(
@@ -95,7 +93,7 @@ def _seed_benchmark_series(
     *,
     symbol: str,
     start: datetime,
-    closes: List[float],
+    closes: list[float],
     analysis_type: str = "benchmark_price",
 ) -> None:
     for i, close in enumerate(closes):
@@ -115,7 +113,7 @@ def _seed_portfolio_series_intraday_utc(
     account: BrokerAccount,
     *,
     start: datetime,
-    values: List[float],
+    values: list[float],
 ) -> None:
     """``snapshot_date`` at 14:30 UTC; benchmark history remains midnight-only."""
     t_utc = time(14, 30, 0)
@@ -134,7 +132,7 @@ def _seed_portfolio_series_intraday_utc(
     session.commit()
 
 
-def _values_from_returns(start_value: float, returns: List[float]) -> List[float]:
+def _values_from_returns(start_value: float, returns: list[float]) -> list[float]:
     values = [start_value]
     for r in returns:
         values.append(values[-1] * (1.0 + r))
@@ -146,7 +144,7 @@ def _recent_start(n_days: int) -> datetime:
     inside the service's default 252-day lookback. Avoids fixtures falling
     outside the query window when the test suite runs on different days.
     """
-    today = datetime.now(timezone.utc).replace(tzinfo=None)
+    today = datetime.now(UTC).replace(tzinfo=None)
     # Pull start back by n_days plus a small safety buffer.
     return datetime(today.year, today.month, today.day) - timedelta(days=n_days + 1)
 
@@ -169,9 +167,7 @@ def test_beta_regression_matches_known_fixture(db_session):
     benchmark_returns = rng.normal(0.0005, 0.01, size=n_returns).tolist()
     # Portfolio = 1.3 * benchmark + idiosyncratic noise.
     idiosyncratic = rng.normal(0.0, 0.003, size=n_returns).tolist()
-    portfolio_returns = [
-        1.3 * b + e for b, e in zip(benchmark_returns, idiosyncratic)
-    ]
+    portfolio_returns = [1.3 * b + e for b, e in zip(benchmark_returns, idiosyncratic)]
 
     start = _recent_start(n_returns + 1)
     portfolio_values = _values_from_returns(100_000.0, portfolio_returns)
@@ -247,7 +243,11 @@ def test_regression_uses_only_benchmark_price_rows_on_spy_date(db_session):
 
     _seed_portfolio_series(db_session, acct, start=start, values=portfolio_values)
     _seed_benchmark_series(
-        db_session, symbol="SPY", start=start, closes=benchmark_values, analysis_type="benchmark_price"
+        db_session,
+        symbol="SPY",
+        start=start,
+        closes=benchmark_values,
+        analysis_type="benchmark_price",
     )
     for i, _ in enumerate(benchmark_values):
         db_session.add(
@@ -284,11 +284,15 @@ def test_beta_falls_back_to_gspc_when_spy_absent(db_session):
 
     start = _recent_start(n_returns + 1)
     _seed_portfolio_series(
-        db_session, acct, start=start,
+        db_session,
+        acct,
+        start=start,
         values=_values_from_returns(50_000.0, portfolio_returns),
     )
     _seed_benchmark_series(
-        db_session, symbol="^GSPC", start=start,
+        db_session,
+        symbol="^GSPC",
+        start=start,
         closes=_values_from_returns(4000.0, benchmark_returns),
     )
 
@@ -313,7 +317,9 @@ def test_volatility_annualization_matches_daily_std_times_sqrt_252(db_session):
     returns = rng.normal(0.0, 0.012, size=n).tolist()
     start = _recent_start(n + 1)
     _seed_portfolio_series(
-        db_session, acct, start=start,
+        db_session,
+        acct,
+        start=start,
         values=_values_from_returns(100_000.0, returns),
     )
 
@@ -340,7 +346,9 @@ def test_sharpe_returns_none_below_90_days(db_session):
     returns = rng.normal(0.001, 0.01, size=n).tolist()
     start = _recent_start(n + 1)
     _seed_portfolio_series(
-        db_session, acct, start=start,
+        db_session,
+        acct,
+        start=start,
         values=_values_from_returns(100_000.0, returns),
     )
 
@@ -364,7 +372,9 @@ def test_sharpe_formula_matches_reference(db_session):
     returns = rng.normal(0.0008, 0.011, size=n).tolist()
     start = _recent_start(n + 1)
     _seed_portfolio_series(
-        db_session, acct, start=start,
+        db_session,
+        acct,
+        start=start,
         values=_values_from_returns(100_000.0, returns),
     )
 
@@ -373,9 +383,8 @@ def test_sharpe_formula_matches_reference(db_session):
 
     mean_r = float(np.mean(returns))
     daily_std = float(np.std(returns, ddof=1))
-    expected_sharpe = (
-        (mean_r * TRADING_DAYS_PER_YEAR - RISK_FREE_RATE)
-        / (daily_std * math.sqrt(TRADING_DAYS_PER_YEAR))
+    expected_sharpe = (mean_r * TRADING_DAYS_PER_YEAR - RISK_FREE_RATE) / (
+        daily_std * math.sqrt(TRADING_DAYS_PER_YEAR)
     )
     assert result.sharpe_ratio == pytest.approx(expected_sharpe, abs=0.01)
 
@@ -392,12 +401,17 @@ def test_beta_returns_none_when_benchmark_coverage_insufficient(db_session):
     portfolio_returns = rng.normal(0.0, 0.01, size=60).tolist()
     start = _recent_start(61)
     _seed_portfolio_series(
-        db_session, acct, start=start,
+        db_session,
+        acct,
+        start=start,
         values=_values_from_returns(100_000.0, portfolio_returns),
     )
     # Only 5 SPY rows in the window — well under MIN_RETURNS_FOR_BETA.
     _seed_benchmark_series(
-        db_session, symbol="SPY", start=start, closes=[500.0, 501.0, 499.0, 502.0, 503.0],
+        db_session,
+        symbol="SPY",
+        start=start,
+        closes=[500.0, 501.0, 499.0, 502.0, 503.0],
     )
 
     svc = PortfolioAnalyticsService()
@@ -450,7 +464,9 @@ def test_user_id_scoping_ignores_other_tenant(db_session):
     rng = np.random.default_rng(seed=42)
     noisy = rng.normal(0.0, 0.02, size=40).tolist()
     _seed_portfolio_series(
-        db_session, acct_b, start=start,
+        db_session,
+        acct_b,
+        start=start,
         values=_values_from_returns(50_000.0, noisy),
     )
     # User A has a perfectly flat 100k portfolio.

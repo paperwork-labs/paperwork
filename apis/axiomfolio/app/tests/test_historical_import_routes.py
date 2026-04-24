@@ -116,9 +116,7 @@ def test_run_lookup_is_tenant_scoped(client, db_session):
 
     _setup_overrides(db_session, user_a)
     try:
-        resp = client.get(
-            f"/api/v1/accounts/{account_a.id}/historical-import/{run_b.id}"
-        )
+        resp = client.get(f"/api/v1/accounts/{account_a.id}/historical-import/{run_b.id}")
         assert resp.status_code == 404
     finally:
         _teardown_overrides()

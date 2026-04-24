@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import io
 import logging
-from typing import List, Optional, Tuple
 
 from PIL import Image, ImageDraw, ImageFont
 
@@ -16,11 +15,11 @@ logger = logging.getLogger(__name__)
 
 OG_WIDTH = 1200
 OG_HEIGHT = 630
-BG: Tuple[int, int, int] = (15, 23, 42)
-FG: Tuple[int, int, int] = (241, 245, 249)
-MUTED: Tuple[int, int, int] = (148, 163, 184)
-SPARK: Tuple[int, int, int] = (99, 102, 241)
-ACCENT: Tuple[int, int, int] = (251, 191, 36)
+BG: tuple[int, int, int] = (15, 23, 42)
+FG: tuple[int, int, int] = (241, 245, 249)
+MUTED: tuple[int, int, int] = (148, 163, 184)
+SPARK: tuple[int, int, int] = (99, 102, 241)
+ACCENT: tuple[int, int, int] = (251, 191, 36)
 
 
 def _load_font(size: int) -> ImageFont.ImageFont:
@@ -38,8 +37,8 @@ def _load_font(size: int) -> ImageFont.ImageFont:
 
 
 def _sparkline_to_points(
-    values: List[float], box: Tuple[int, int, int, int]
-) -> List[Tuple[int, int]]:
+    values: list[float], box: tuple[int, int, int, int]
+) -> list[tuple[int, int]]:
     if len(values) < 2:
         return []
     left, top, right, bottom = box
@@ -50,7 +49,7 @@ def _sparkline_to_points(
     if span <= 0:
         span = 1.0
     n = len(values)
-    out: List[Tuple[int, int]] = []
+    out: list[tuple[int, int]] = []
     for i, v in enumerate(values):
         x = left + int((i / (n - 1)) * w) if n > 1 else left + w // 2
         y = bottom - int(((v - lo) / span) * h)
@@ -62,8 +61,8 @@ def _sparkline_to_points(
 def render_chart_og_png(
     *,
     symbol: str,
-    last_price: Optional[float],
-    sparkline: List[float],
+    last_price: float | None,
+    sparkline: list[float],
 ) -> bytes:
     """
     Render a 1200x630 PNG: symbol, formatted price, 30d sparkline, AxiomFolio wordmark.
@@ -73,7 +72,9 @@ def render_chart_og_png(
     font_lg = _load_font(44)
     font_sm = _load_font(24)
 
-    price_str = f"${last_price:,.2f}" if last_price is not None and not (last_price != last_price) else "—"
+    price_str = (
+        f"${last_price:,.2f}" if last_price is not None and not (last_price != last_price) else "—"
+    )
     title = f"{symbol}  {price_str}"
     draw.text((48, 52), title, fill=FG, font=font_lg)
 

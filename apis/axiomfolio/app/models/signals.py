@@ -1,20 +1,22 @@
+import enum
+
 from sqlalchemy import (
+    JSON,
+    Boolean,
     Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Index,
     Integer,
     String,
-    Float,
-    DateTime,
-    Boolean,
     Text,
-    ForeignKey,
-    Enum,
-    Index,
-    JSON,
     UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
+
 from app.models import Base
 
 
@@ -119,8 +121,12 @@ class Signal(Base):
     last_evaluated_at = Column(DateTime)  # Last performance evaluation
 
     # User/System Tracking
-    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))  # Manual signals
-    modified_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))  # Who last modified
+    created_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL")
+    )  # Manual signals
+    modified_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL")
+    )  # Who last modified
     processing_node = Column(String(50))  # Which server processed this
 
     # Audit Context
@@ -137,9 +143,7 @@ class Signal(Base):
         Index("idx_strategy_symbol", "strategy_id", "symbol"),
         Index("idx_signal_type_status", "signal_type", "status"),
         Index("idx_generated_at", "generated_at"),
-        UniqueConstraint(
-            "strategy_id", "symbol", "generated_at", name="uq_strategy_symbol_signal"
-        ),
+        UniqueConstraint("strategy_id", "symbol", "generated_at", name="uq_strategy_symbol_signal"),
     )
 
 

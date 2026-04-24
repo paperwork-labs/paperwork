@@ -13,8 +13,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 try:
-    from app.api.main import app
     from app.api.dependencies import get_current_user, get_optional_user
+    from app.api.main import app
     from app.database import get_db
     from app.models import User
     from app.models.entitlement import SubscriptionTier
@@ -191,8 +191,9 @@ def test_check_endpoint_404s_on_unknown_feature(client, db_session, auth_user):
 def test_require_feature_returns_402_when_blocked(client, db_session, auth_user):
     """Smoke test the dependency factory: mount it on a throwaway route and
     confirm the response is 402 with the structured error body."""
-    from app.api.dependencies import require_feature
     from fastapi import APIRouter, Depends
+
+    from app.api.dependencies import require_feature
 
     test_router = APIRouter()
 
@@ -219,14 +220,14 @@ def test_require_feature_returns_402_when_blocked(client, db_session, auth_user)
         _restore()
         # Clean up the throwaway route so it doesn't pollute other tests.
         app.routes[:] = [
-            r for r in app.routes
-            if getattr(r, "path", "") != "/__test_protected_brain_chat"
+            r for r in app.routes if getattr(r, "path", "") != "/__test_protected_brain_chat"
         ]
 
 
 def test_require_feature_allows_after_upgrade(client, db_session, auth_user):
-    from app.api.dependencies import require_feature
     from fastapi import APIRouter, Depends
+
+    from app.api.dependencies import require_feature
 
     test_router = APIRouter()
 
@@ -252,6 +253,5 @@ def test_require_feature_allows_after_upgrade(client, db_session, auth_user):
     finally:
         _restore()
         app.routes[:] = [
-            r for r in app.routes
-            if getattr(r, "path", "") != "/__test_protected_brain_chat_2"
+            r for r in app.routes if getattr(r, "path", "") != "/__test_protected_brain_chat_2"
         ]

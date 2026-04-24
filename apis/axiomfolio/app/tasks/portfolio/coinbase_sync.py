@@ -7,7 +7,7 @@ for ``coinbase-daily-sync`` (iron law).
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from celery import shared_task
 
@@ -25,7 +25,7 @@ _SOFT_TIME_LIMIT = 900
     soft_time_limit=_SOFT_TIME_LIMIT,
     time_limit=_TIME_LIMIT,
 )
-def sync_all_coinbase_accounts() -> Dict[str, Any]:
+def sync_all_coinbase_accounts() -> dict[str, Any]:
     """Enqueue per-account comprehensive sync for every enabled Coinbase row."""
 
     session = SessionLocal()
@@ -40,7 +40,7 @@ def sync_all_coinbase_accounts() -> Dict[str, Any]:
         )
         enqueued = 0
         errors = 0
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for acct in accounts:
             try:
                 from app.tasks.celery_app import celery_app
@@ -57,7 +57,7 @@ def sync_all_coinbase_accounts() -> Dict[str, Any]:
                     }
                 )
                 enqueued += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
                     "coinbase fan-out: enqueue failed account %s user %s: %s",

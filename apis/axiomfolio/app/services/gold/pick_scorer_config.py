@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import FrozenSet
 
 
 @dataclass(frozen=True)
@@ -73,11 +72,11 @@ def regime_alignment_raw_score(regime_code: str) -> tuple[Decimal, str]:
 
 
 # Stage labels from ``MarketSnapshot.stage_label`` (SMA150 anchor taxonomy).
-HIGH_STAGE_LABELS: FrozenSet[str] = frozenset({"2A", "2B"})
-MID_STAGE_LABELS: FrozenSet[str] = frozenset({"2C"})
-LATE_STAGE_LABELS: FrozenSet[str] = frozenset({"3A", "3B"})
-DIST_STAGE_LABELS: FrozenSet[str] = frozenset({"4A", "4B", "4C"})
-BASE_STAGE_LABELS: FrozenSet[str] = frozenset({"1A", "1B"})
+HIGH_STAGE_LABELS: frozenset[str] = frozenset({"2A", "2B"})
+MID_STAGE_LABELS: frozenset[str] = frozenset({"2C"})
+LATE_STAGE_LABELS: frozenset[str] = frozenset({"3A", "3B"})
+DIST_STAGE_LABELS: frozenset[str] = frozenset({"4A", "4B", "4C"})
+BASE_STAGE_LABELS: frozenset[str] = frozenset({"1A", "1B"})
 
 
 def sum_weights(cfg: PickScorerConfig) -> Decimal:

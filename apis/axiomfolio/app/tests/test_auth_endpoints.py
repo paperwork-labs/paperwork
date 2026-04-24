@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -11,6 +11,7 @@ from app.tests.auth_test_utils import (
 
 try:
     from fastapi.testclient import TestClient
+
     from app.api.main import app
     from app.database import get_db
 
@@ -89,9 +90,7 @@ def test_register_and_login(client, db_session):
     token = data["access_token"]
 
     # Verify /me with token
-    r_me = client.get(
-        "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
-    )
+    r_me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert r_me.status_code == 200
     me = r_me.json()
     assert me.get("username") == username
@@ -151,17 +150,13 @@ def test_refresh_rotates_and_second_refresh_succeeds(client, db_session):
     refresh_cookie = r_login.cookies.get("refresh_token")
     assert refresh_cookie
 
-    r1 = client.post(
-        "/api/v1/auth/refresh", cookies={"refresh_token": refresh_cookie}
-    )
+    r1 = client.post("/api/v1/auth/refresh", cookies={"refresh_token": refresh_cookie})
     assert r1.status_code == 200
     assert isinstance(r1.json().get("access_token"), str)
     rotated_cookie = r1.cookies.get("refresh_token")
     assert rotated_cookie
 
-    r2 = client.post(
-        "/api/v1/auth/refresh", cookies={"refresh_token": rotated_cookie}
-    )
+    r2 = client.post("/api/v1/auth/refresh", cookies={"refresh_token": rotated_cookie})
     assert r2.status_code == 200
     assert isinstance(r2.json().get("access_token"), str)
 
@@ -192,9 +187,7 @@ def test_refresh_grace_accepts_prior_family_concurrent_race(client, db_session):
     assert stale_refresh
 
     # Pass the cookie explicitly — see same note in the previous test.
-    r_rotate = client.post(
-        "/api/v1/auth/refresh", cookies={"refresh_token": stale_refresh}
-    )
+    r_rotate = client.post("/api/v1/auth/refresh", cookies={"refresh_token": stale_refresh})
     assert r_rotate.status_code == 200
 
     other = TestClient(app, raise_server_exceptions=False)
@@ -231,16 +224,12 @@ def test_refresh_prior_family_rejected_after_grace_window(client, db_session):
     stale_refresh = r_login.cookies.get("refresh_token")
     assert stale_refresh
 
-    r_rotate = client.post(
-        "/api/v1/auth/refresh", cookies={"refresh_token": stale_refresh}
-    )
+    r_rotate = client.post("/api/v1/auth/refresh", cookies={"refresh_token": stale_refresh})
     assert r_rotate.status_code == 200
 
     user = db_session.query(User).filter(User.username == username).first()
     assert user is not None
-    user.previous_refresh_token_rotated_at = datetime.now(timezone.utc) - timedelta(
-        seconds=11
-    )
+    user.previous_refresh_token_rotated_at = datetime.now(UTC) - timedelta(seconds=11)
     db_session.commit()
 
     other = TestClient(app, raise_server_exceptions=False)

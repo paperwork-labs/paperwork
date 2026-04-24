@@ -5,13 +5,13 @@ import pytest
 from app.services.execution.exit_cascade import (
     ExitAction,
     PositionContext,
-    evaluate_exit_cascade,
     _short_s4_target,
     _tier1_stop_loss,
     _tier2_trailing_stop,
     _tier3_stage_deterioration,
     _tier6_regime_transition,
     _tier7_regime_trail,
+    evaluate_exit_cascade,
 )
 from app.services.market.regime_engine import REGIME_R1, REGIME_R3, REGIME_R4
 
@@ -151,7 +151,7 @@ def test_t7_regime_trail_fires() -> None:
     )
     sig = _tier7_regime_trail(ctx)
     assert sig.action == ExitAction.EXIT
-    assert "T7" == sig.tier
+    assert sig.tier == "T7"
 
 
 def test_s4_35_percent_reachable() -> None:

@@ -15,8 +15,7 @@ trust ``user_id`` from the request body.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
@@ -90,8 +89,7 @@ def _validate_oauth_callback_url(broker: str, callback_url: str) -> str:
     raise HTTPException(
         status_code=status.HTTP_400_BAD_REQUEST,
         detail=(
-            "Configure OAUTH_ALLOWED_CALLBACK_URLS or ETRADE_OAUTH_CALLBACK_URL "
-            "for OAuth callbacks"
+            "Configure OAUTH_ALLOWED_CALLBACK_URLS or ETRADE_OAUTH_CALLBACK_URL for OAuth callbacks"
         ),
     )
 
@@ -122,10 +120,10 @@ class ConnectionRead(BaseModel):
     broker: str
     environment: str
     status: str
-    provider_account_id: Optional[str] = None
-    token_expires_at: Optional[datetime] = None
-    last_refreshed_at: Optional[datetime] = None
-    last_error: Optional[str] = None
+    provider_account_id: str | None = None
+    token_expires_at: datetime | None = None
+    last_refreshed_at: datetime | None = None
+    last_error: str | None = None
     rotation_count: int
     created_at: datetime
     updated_at: datetime
@@ -138,7 +136,7 @@ class CallbackResponse(BaseModel):
 
 
 class ConnectionsList(BaseModel):
-    connections: List[ConnectionRead]
+    connections: list[ConnectionRead]
 
 
 class RevokeResponse(BaseModel):
@@ -147,7 +145,7 @@ class RevokeResponse(BaseModel):
 
 
 class BrokersResponse(BaseModel):
-    brokers: List[str]
+    brokers: list[str]
 
 
 # ---------------------------------------------------------------------------
@@ -190,13 +188,14 @@ def initiate(
     except OAuthError as exc:
         # Permanent = config/credentials problem -> 400; transient -> 503
         http_status = (
-            status.HTTP_400_BAD_REQUEST
-            if exc.permanent
-            else status.HTTP_503_SERVICE_UNAVAILABLE
+            status.HTTP_400_BAD_REQUEST if exc.permanent else status.HTTP_503_SERVICE_UNAVAILABLE
         )
         logger.warning(
             "oauth.initiate failed broker=%s user=%s permanent=%s err=%s",
-            broker, current_user.id, exc.permanent, exc,
+            broker,
+            current_user.id,
+            exc.permanent,
+            exc,
         )
         raise HTTPException(status_code=http_status, detail=str(exc))
 
@@ -237,7 +236,9 @@ def callback(
         # CSRF / cross-tenant attempt — refuse.
         logger.warning(
             "oauth.callback cross-tenant refused broker=%s state_user=%s caller=%s",
-            broker, state_user_id, current_user.id,
+            broker,
+            state_user_id,
+            current_user.id,
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -249,13 +250,14 @@ def callback(
         tokens = adapter.exchange_code(ctx)
     except OAuthError as exc:
         http_status = (
-            status.HTTP_400_BAD_REQUEST
-            if exc.permanent
-            else status.HTTP_503_SERVICE_UNAVAILABLE
+            status.HTTP_400_BAD_REQUEST if exc.permanent else status.HTTP_503_SERVICE_UNAVAILABLE
         )
         logger.warning(
             "oauth.callback exchange failed broker=%s user=%s permanent=%s err=%s",
-            broker, current_user.id, exc.permanent, exc,
+            broker,
+            current_user.id,
+            exc.permanent,
+            exc,
         )
         raise HTTPException(status_code=http_status, detail=str(exc))
     except Exception as exc:
@@ -289,14 +291,12 @@ def callback(
         db.add(conn)
 
     conn.access_token_encrypted = encrypt(tokens.access_token)
-    conn.refresh_token_encrypted = (
-        encrypt(tokens.refresh_token) if tokens.refresh_token else None
-    )
+    conn.refresh_token_encrypted = encrypt(tokens.refresh_token) if tokens.refresh_token else None
     conn.token_expires_at = tokens.expires_at
     conn.scope = tokens.scope
     conn.environment = adapter.environment
     conn.status = OAuthConnectionStatus.ACTIVE.value
-    conn.last_refreshed_at = datetime.now(timezone.utc)
+    conn.last_refreshed_at = datetime.now(UTC)
     conn.last_error = None
     try:
         db.commit()
@@ -329,9 +329,7 @@ def list_connections(
         .order_by(BrokerOAuthConnection.id.desc())
         .all()
     )
-    return ConnectionsList(
-        connections=[ConnectionRead.model_validate(r) for r in rows]
-    )
+    return ConnectionsList(connections=[ConnectionRead.model_validate(r) for r in rows])
 
 
 @router.delete("/connections/{connection_id}", response_model=RevokeResponse)
@@ -366,9 +364,7 @@ def revoke_connection(
         try:
             access = decrypt(conn.access_token_encrypted)
             refresh = (
-                decrypt(conn.refresh_token_encrypted)
-                if conn.refresh_token_encrypted
-                else None
+                decrypt(conn.refresh_token_encrypted) if conn.refresh_token_encrypted else None
             )
             adapter.revoke(access_token=access, refresh_token=refresh)
         except Exception as exc:
@@ -376,7 +372,10 @@ def revoke_connection(
             # surface the error in last_error rather than silently swallowing.
             logger.warning(
                 "oauth.revoke provider call failed user=%s connection=%s broker=%s err=%s",
-                current_user.id, conn.id, conn.broker, exc,
+                current_user.id,
+                conn.id,
+                conn.broker,
+                exc,
             )
             conn.last_error = f"revoke at provider failed: {exc}"
 

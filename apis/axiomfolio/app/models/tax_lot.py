@@ -4,21 +4,24 @@ Generic Tax Lot Model for Multi-Brokerage Support
 Supports all brokerages: IBKR, TastyTrade, Schwab, etc.
 """
 
+import enum
+from datetime import datetime
+
 from sqlalchemy import (
     Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
     Integer,
     String,
-    Float,
-    DateTime,
-    ForeignKey,
+    event,
+)
+from sqlalchemy import (
     Enum as SQLEnum,
-    Date,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func, text
-from sqlalchemy import event
-import enum
-from datetime import datetime
 
 from app.models import Base
 
@@ -40,9 +43,7 @@ class TaxLotMethod(enum.Enum):
 class TaxLotSource(enum.Enum):
     """Data sources for tax lot information"""
 
-    OFFICIAL_STATEMENT = (
-        "official_statement"  # Official brokerage statement (preferred)
-    )
+    OFFICIAL_STATEMENT = "official_statement"  # Official brokerage statement (preferred)
     REALTIME_API = "realtime_api"  # Real-time API data
     MANUAL_ENTRY = "manual_entry"  # Manual user entry
     CALCULATED = "calculated"  # Calculated from trades
@@ -71,9 +72,7 @@ class TaxLot(Base):
     )  # Broker account foreign key
 
     symbol = Column(String(64), nullable=False, index=True)  # Stock/Option symbol
-    contract_id = Column(
-        String(50), nullable=True
-    )  # Brokerage contract ID (if available)
+    contract_id = Column(String(50), nullable=True)  # Brokerage contract ID (if available)
 
     # Tax lot details from brokerage statements
     quantity = Column(Float, nullable=False)  # Number of shares/contracts
@@ -107,9 +106,7 @@ class TaxLot(Base):
     settlement_date = Column(Date, nullable=True)  # Settlement date
     holding_period = Column(Integer, nullable=True)  # Days held
 
-    source = Column(
-        SQLEnum(TaxLotSource), nullable=False, default=TaxLotSource.OFFICIAL_STATEMENT
-    )
+    source = Column(SQLEnum(TaxLotSource), nullable=False, default=TaxLotSource.OFFICIAL_STATEMENT)
 
     execution_id = Column(String(50), nullable=True)  # Brokerage execution ID
 

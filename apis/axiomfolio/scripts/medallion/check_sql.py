@@ -50,15 +50,16 @@ CLI:
 
 Runs from repo root or any subdirectory — resolves REPO_ROOT via script path.
 """
+
 from __future__ import annotations
 
 import argparse
 import ast
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 APP = REPO_ROOT / "app"
@@ -153,7 +154,7 @@ class ORMQueryVisitor(ast.NodeVisitor):
         self.path = path
         self.hits: list[Violation] = []
 
-    def visit_Call(self, node: ast.Call) -> None:  # noqa: N802
+    def visit_Call(self, node: ast.Call) -> None:
         func = node.func
         # Pattern: <...>.delete(...) or <...>.update(...)
         if isinstance(func, ast.Attribute) and func.attr in ("delete", "update"):
@@ -163,7 +164,11 @@ class ORMQueryVisitor(ast.NodeVisitor):
             if ledger_model is not None:
                 kind = func.attr
                 line_no = node.lineno
-                snippet = self.source_lines[line_no - 1].strip() if line_no <= len(self.source_lines) else ""
+                snippet = (
+                    self.source_lines[line_no - 1].strip()
+                    if line_no <= len(self.source_lines)
+                    else ""
+                )
                 waivered, reason = _line_is_waivered(self.source_lines, line_no, kind)
                 self.hits.append(
                     Violation(
@@ -281,7 +286,10 @@ def main() -> int:
     waivered = [v for v in all_violations if v.waivered]
 
     if unwaivered:
-        print(f"✗ Iron Law #1 violated: {len(unwaivered)} unwaivered ledger mutation(s)", file=sys.stderr)
+        print(
+            f"✗ Iron Law #1 violated: {len(unwaivered)} unwaivered ledger mutation(s)",
+            file=sys.stderr,
+        )
         print("", file=sys.stderr)
         for v in sorted(unwaivered, key=lambda x: (str(x.path), x.line)):
             rel = v.path.relative_to(REPO_ROOT)
@@ -306,7 +314,10 @@ def main() -> int:
         print(f"({len(waivered)} waivered hits:)", file=sys.stderr)
         for v in sorted(waivered, key=lambda x: (str(x.path), x.line)):
             rel = v.path.relative_to(REPO_ROOT)
-            print(f"  {rel}:{v.line}  {v.kind.upper():6s} on {v.target} [{v.waiver_reason}]", file=sys.stderr)
+            print(
+                f"  {rel}:{v.line}  {v.kind.upper():6s} on {v.target} [{v.waiver_reason}]",
+                file=sys.stderr,
+            )
 
     if args.stats or not unwaivered:
         print(f"Files scanned:        {files_scanned}")

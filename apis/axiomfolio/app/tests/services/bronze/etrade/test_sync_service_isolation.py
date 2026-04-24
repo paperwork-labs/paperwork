@@ -16,7 +16,7 @@ would fail.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -38,7 +38,7 @@ class _FakeClient:
         self._account_id = "111"
         self._account_key = "keyA"
 
-    def list_accounts(self) -> List[Dict[str, Any]]:
+    def list_accounts(self) -> list[dict[str, Any]]:
         return [
             {
                 "accountId": self._account_id,
@@ -47,7 +47,7 @@ class _FakeClient:
             }
         ]
 
-    def get_portfolio(self, key: str) -> List[Dict[str, Any]]:
+    def get_portfolio(self, key: str) -> list[dict[str, Any]]:
         assert key == self._account_key
         return [
             {
@@ -59,7 +59,7 @@ class _FakeClient:
             }
         ]
 
-    def get_transactions(self, key: str) -> List[Dict[str, Any]]:
+    def get_transactions(self, key: str) -> list[dict[str, Any]]:
         return [
             {
                 "transactionId": "SHARED_TX_ID",
@@ -75,7 +75,7 @@ class _FakeClient:
             }
         ]
 
-    def get_balance(self, key: str) -> Dict[str, Any]:
+    def get_balance(self, key: str) -> dict[str, Any]:
         return {
             "Computed": {"cashBalance": 1000.0},
             "RealTimeValues": {"totalAccountValue": 1550.0},
@@ -94,9 +94,7 @@ def _user(session, name: str) -> User:
     return u
 
 
-def _etrade_account(
-    session, user: User, account_number: str
-) -> BrokerAccount:
+def _etrade_account(session, user: User, account_number: str) -> BrokerAccount:
     a = BrokerAccount(
         user_id=user.id,
         broker=BrokerType.ETRADE,
@@ -164,9 +162,9 @@ def test_sync_does_not_touch_other_users_rows(db_session) -> None:
         net_amount=-41958.0,
         commission=0,
         currency="USD",
-        transaction_date=__import__("datetime").datetime(2020, 1, 1, tzinfo=__import__(
-            "datetime"
-        ).timezone.utc),
+        transaction_date=__import__("datetime").datetime(
+            2020, 1, 1, tzinfo=__import__("datetime").timezone.utc
+        ),
         description="USER_B_SENTINEL",
         source="SEED",
     )
@@ -204,33 +202,21 @@ def test_sync_does_not_touch_other_users_rows(db_session) -> None:
 
     # User B still has exactly one position, one transaction, zero balances
     # from User A's sync.
-    user_b_positions = (
-        db_session.query(Position).filter(Position.user_id == user_b.id).all()
-    )
-    user_b_txns = (
-        db_session.query(Transaction)
-        .filter(Transaction.account_id == acct_b.id)
-        .all()
-    )
+    user_b_positions = db_session.query(Position).filter(Position.user_id == user_b.id).all()
+    user_b_txns = db_session.query(Transaction).filter(Transaction.account_id == acct_b.id).all()
     user_b_balances = (
-        db_session.query(AccountBalance)
-        .filter(AccountBalance.user_id == user_b.id)
-        .all()
+        db_session.query(AccountBalance).filter(AccountBalance.user_id == user_b.id).all()
     )
     assert len(user_b_positions) == 1
     assert len(user_b_txns) == 1
     assert len(user_b_balances) == 0
 
     # User A got the expected new rows under their own user_id.
-    user_a_positions = (
-        db_session.query(Position).filter(Position.user_id == user_a.id).all()
-    )
+    user_a_positions = db_session.query(Position).filter(Position.user_id == user_a.id).all()
     assert len(user_a_positions) == 1
     assert user_a_positions[0].account_id == acct_a.id
     user_a_balances = (
-        db_session.query(AccountBalance)
-        .filter(AccountBalance.user_id == user_a.id)
-        .all()
+        db_session.query(AccountBalance).filter(AccountBalance.user_id == user_a.id).all()
     )
     assert len(user_a_balances) == 1
 
@@ -252,6 +238,4 @@ def test_load_connection_ignores_other_users_oauth(db_session) -> None:
 
     service = ETradeSyncService()
     with pytest.raises(ConnectionError):
-        service.sync_account_comprehensive(
-            account_number=acct_a.account_number, session=db_session
-        )
+        service.sync_account_comprehensive(account_number=acct_a.account_number, session=db_session)

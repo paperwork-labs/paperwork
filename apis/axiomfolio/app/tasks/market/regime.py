@@ -5,7 +5,8 @@ Market regime computation (R1–R5) and intraday VIX spike monitoring.
 from __future__ import annotations
 
 import logging
-from datetime import date as date_type, datetime, timezone
+from datetime import UTC, datetime
+from datetime import date as date_type
 
 from celery import shared_task
 from sqlalchemy import func
@@ -26,17 +27,13 @@ def _regime_as_of_date(session) -> date_type:
     )
     if spy_dt is not None:
         return spy_dt.date() if hasattr(spy_dt, "date") else spy_dt
-    latest_dt = (
-        session.query(func.max(PriceData.date))
-        .filter(PriceData.interval == "1d")
-        .scalar()
-    )
+    latest_dt = session.query(func.max(PriceData.date)).filter(PriceData.interval == "1d").scalar()
     if latest_dt is not None:
         return latest_dt.date() if hasattr(latest_dt, "date") else latest_dt
     logger.warning(
         "Regime as_of: no 1d PriceData in DB; using calendar today (may misalign vs snapshots)"
     )
-    return datetime.now(timezone.utc).date()
+    return datetime.now(UTC).date()
 
 
 @shared_task(
@@ -110,12 +107,8 @@ def vix_alert(
             return {"status": "no_data", "vix_current": None}
 
         vix_current = float(vix_df["Close"].iloc[-1])
-        vix_prior = (
-            float(vix_df["Close"].iloc[-2]) if len(vix_df) >= 2 else vix_current
-        )
-        vix_change_pct = (
-            ((vix_current - vix_prior) / vix_prior * 100) if vix_prior > 0 else 0
-        )
+        vix_prior = float(vix_df["Close"].iloc[-2]) if len(vix_df) >= 2 else vix_current
+        vix_change_pct = ((vix_current - vix_prior) / vix_prior * 100) if vix_prior > 0 else 0
 
         spike_detected = vix_change_pct >= spike_threshold_pct or vix_current >= absolute_threshold
 

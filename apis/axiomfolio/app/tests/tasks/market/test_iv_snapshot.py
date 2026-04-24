@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import inspect
 from datetime import date
-from typing import Any, List, Optional
+from typing import Any
 
 import pytest
 
@@ -68,29 +68,29 @@ def stub_session(monkeypatch: pytest.MonkeyPatch) -> _StubSession:
     return sess
 
 
-def _ibkr_returns(sample: Optional[IVSample]):
-    def fn(symbol: str, as_of: date, *, db: Any = None) -> Optional[IVSample]:
+def _ibkr_returns(sample: IVSample | None):
+    def fn(symbol: str, as_of: date, *, db: Any = None) -> IVSample | None:
         return sample
 
     return fn
 
 
-def _yahoo_returns(sample: Optional[IVSample]):
-    def fn(symbol: str, as_of: date, *, db: Any = None) -> Optional[IVSample]:
+def _yahoo_returns(sample: IVSample | None):
+    def fn(symbol: str, as_of: date, *, db: Any = None) -> IVSample | None:
         return sample
 
     return fn
 
 
-def _per_symbol_ibkr(mapping: dict[str, Optional[IVSample]]):
-    def fn(symbol: str, as_of: date, *, db: Any = None) -> Optional[IVSample]:
+def _per_symbol_ibkr(mapping: dict[str, IVSample | None]):
+    def fn(symbol: str, as_of: date, *, db: Any = None) -> IVSample | None:
         return mapping.get(symbol)
 
     return fn
 
 
-def _per_symbol_yahoo(mapping: dict[str, Optional[IVSample]]):
-    def fn(symbol: str, as_of: date, *, db: Any = None) -> Optional[IVSample]:
+def _per_symbol_yahoo(mapping: dict[str, IVSample | None]):
+    def fn(symbol: str, as_of: date, *, db: Any = None) -> IVSample | None:
         return mapping.get(symbol)
 
     return fn
@@ -123,11 +123,9 @@ def test_yahoo_fallback_runs_when_ibkr_returns_none(
     as_of = date(2026, 4, 22)
     symbols = ["AAPL", "MSFT"]
     # IBKR returns None for both; Yahoo provides AAPL only.
-    ibkr_map: dict[str, Optional[IVSample]] = {"AAPL": None, "MSFT": None}
-    yahoo_map: dict[str, Optional[IVSample]] = {
-        "AAPL": IVSample(
-            symbol="AAPL", date=as_of, iv_30d=0.25, iv_60d=0.28, source="yahoo"
-        ),
+    ibkr_map: dict[str, IVSample | None] = {"AAPL": None, "MSFT": None}
+    yahoo_map: dict[str, IVSample | None] = {
+        "AAPL": IVSample(symbol="AAPL", date=as_of, iv_30d=0.25, iv_60d=0.28, source="yahoo"),
         "MSFT": None,
     }
 
@@ -152,20 +150,16 @@ def test_error_counter_increments_on_fetcher_exception(
     as_of = date(2026, 4, 22)
     symbols = ["AAPL", "BOOM", "MSFT"]
 
-    def ibkr(symbol: str, as_of: date, *, db: Any = None) -> Optional[IVSample]:
+    def ibkr(symbol: str, as_of: date, *, db: Any = None) -> IVSample | None:
         if symbol == "BOOM":
             raise RuntimeError("simulated gateway timeout")
         if symbol == "AAPL":
-            return IVSample(
-                symbol="AAPL", date=as_of, iv_30d=0.3, iv_60d=0.32, source="ibkr"
-            )
+            return IVSample(symbol="AAPL", date=as_of, iv_30d=0.3, iv_60d=0.32, source="ibkr")
         return None
 
-    def yahoo(symbol: str, as_of: date, *, db: Any = None) -> Optional[IVSample]:
+    def yahoo(symbol: str, as_of: date, *, db: Any = None) -> IVSample | None:
         if symbol == "MSFT":
-            return IVSample(
-                symbol="MSFT", date=as_of, iv_30d=0.22, iv_60d=0.25, source="yahoo"
-            )
+            return IVSample(symbol="MSFT", date=as_of, iv_30d=0.22, iv_60d=0.25, source="yahoo")
         return None
 
     fn = _unwrap(iv_tasks.sync_gateway)

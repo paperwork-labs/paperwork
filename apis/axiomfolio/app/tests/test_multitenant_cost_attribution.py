@@ -7,10 +7,8 @@ isolation of the rollup row.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
-
-import pytest
 
 from app.models.multitenant import TenantCostRollup
 from app.models.narrative import PortfolioNarrative
@@ -46,9 +44,7 @@ def _make_narrative(db, *, user_id: int, day: date, cost_usd: str) -> None:
             prompt_hash=f"test-{user_id}-{day.isoformat()}-{cost_usd}",
             tokens_used=100,
             cost_usd=Decimal(cost_usd),
-            created_at=datetime.combine(
-                day, datetime.min.time(), tzinfo=timezone.utc
-            ),
+            created_at=datetime.combine(day, datetime.min.time(), tzinfo=UTC),
         )
     )
     db.commit()
@@ -95,9 +91,7 @@ def test_rollup_is_idempotent(db_session):
 
     count = (
         db_session.query(TenantCostRollup)
-        .filter(
-            TenantCostRollup.user_id == user.id, TenantCostRollup.day == today
-        )
+        .filter(TenantCostRollup.user_id == user.id, TenantCostRollup.day == today)
         .count()
     )
     assert count == 1

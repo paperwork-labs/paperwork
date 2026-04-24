@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from app.models.narrative import PortfolioNarrative
 from app.models.user import User
@@ -76,7 +76,7 @@ def test_persist_narrative_updates_after_fresh_window(db_session):
     row1 = persist_narrative(db_session, u.id, summary, r1, narrative_date)
     db_session.commit()
 
-    old_created = datetime.now(timezone.utc) - timedelta(hours=2)
+    old_created = datetime.now(UTC) - timedelta(hours=2)
     db_session.query(PortfolioNarrative).filter(PortfolioNarrative.id == row1.id).update(
         {"created_at": old_created},
         synchronize_session=False,

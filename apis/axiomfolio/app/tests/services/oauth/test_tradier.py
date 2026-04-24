@@ -26,14 +26,10 @@ def test_initiate_url_includes_code_grant_and_callback(mock_settings: object) ->
     assert q.get("response_type") == ["code"]
     assert q.get("client_id") == ["cid"]
     assert "redirect_uri" in q
-    assert q["redirect_uri"] == [
-        "https://app.example.com/settings/connections?cb=1"
-    ]
+    assert q["redirect_uri"] == ["https://app.example.com/settings/connections?cb=1"]
     assert "state" in q
     assert "scope" in q
-    assert res.extra.get("callback_url") == (
-        "https://app.example.com/settings/connections?cb=1"
-    )
+    assert res.extra.get("callback_url") == ("https://app.example.com/settings/connections?cb=1")
 
 
 @patch("app.services.oauth.tradier.settings")

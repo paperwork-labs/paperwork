@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -41,7 +41,7 @@ def test_sentiment_composite_happy_path(db_session):
     app.dependency_overrides[get_db] = _override_get_db(db_session)
 
     row = MarketRegime(
-        as_of_date=datetime(2026, 4, 20, tzinfo=timezone.utc),
+        as_of_date=datetime(2026, 4, 20, tzinfo=UTC),
         vix_spot=18.4,
         vix3m_vix_ratio=1.05,
         vvix_vix_ratio=5.0,
@@ -73,7 +73,7 @@ def test_sentiment_composite_happy_path(db_session):
         assert data["aaii"] is None
         assert data["fear_greed"] is None
         assert data["regime"] == {"state": "R3", "score": 2.5}
-        assert "asof" in data and data["asof"]
+        assert data.get("asof")
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_market_data_viewer, None)
@@ -123,7 +123,7 @@ def test_vix_falls_back_to_snapshot(db_session):
     app.dependency_overrides[get_db] = _override_get_db(db_session)
 
     regime = MarketRegime(
-        as_of_date=datetime(2026, 4, 19, tzinfo=timezone.utc),
+        as_of_date=datetime(2026, 4, 19, tzinfo=UTC),
         vix_spot=None,
         vix3m_vix_ratio=1.0,
         vvix_vix_ratio=5.0,
@@ -147,8 +147,8 @@ def test_vix_falls_back_to_snapshot(db_session):
         symbol="^VIX",
         analysis_type="technical_snapshot",
         current_price=17.25,
-        expiry_timestamp=datetime(2099, 1, 1, tzinfo=timezone.utc),
-        as_of_timestamp=datetime(2026, 4, 19, 16, 0, tzinfo=timezone.utc),
+        expiry_timestamp=datetime(2099, 1, 1, tzinfo=UTC),
+        as_of_timestamp=datetime(2026, 4, 19, 16, 0, tzinfo=UTC),
     )
     db_session.add_all([regime, snap])
     db_session.commit()

@@ -1,8 +1,10 @@
 """Strategy CRUD, composable rule evaluation, backtest, and template routes."""
 
 from __future__ import annotations
-from datetime import date, timezone
-from typing import Any, Dict, List, Optional
+
+import logging
+from datetime import UTC, date
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -11,27 +13,26 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.database import get_db
-from app.models.user import User
-from app.models.strategy import Strategy, StrategyType, StrategyStatus, BacktestRun, RunStatus
-from app.models.backtest import StrategyBacktest, BacktestStatus
+from app.models.backtest import BacktestStatus, StrategyBacktest
 from app.models.market_data import MarketSnapshot
+from app.models.strategy import BacktestRun, RunStatus, Strategy, StrategyStatus, StrategyType
+from app.models.user import User
+from app.services.strategy.backtest_engine import BacktestEngine
+from app.services.strategy.context_builder import snapshot_to_context
 from app.services.strategy.rule_evaluator import (
-    RuleEvaluator,
-    ConditionGroup,
     Condition,
+    ConditionGroup,
     ConditionOperator,
     LogicalOperator,
+    RuleEvaluator,
 )
 from app.services.strategy.signal_generator import SignalGenerator
-from app.services.strategy.backtest_engine import BacktestEngine
 from app.services.strategy.templates import (
     get_template,
-    list_templates as _list_templates,
-    STRATEGY_TEMPLATES,
 )
-from app.services.strategy.context_builder import snapshot_to_context
-
-import logging
+from app.services.strategy.templates import (
+    list_templates as _list_templates,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,15 +41,17 @@ router = APIRouter()
 
 def _trigger_auto_backtest(strategy_id: int, change_type: str = "update") -> None:
     """Queue auto-backtest for strategy if rules are present.
-    
+
     Fire-and-forget: logs errors but doesn't propagate them to the API caller.
     """
     try:
         from app.tasks.strategy.auto_backtest import trigger_auto_backtest_on_change
+
         trigger_auto_backtest_on_change.delay(strategy_id, change_type=change_type)
         logger.info("Queued auto-backtest for strategy %s (%s)", strategy_id, change_type)
     except Exception as e:
         logger.warning("Failed to queue auto-backtest for strategy %s: %s", strategy_id, e)
+
 
 _evaluator = RuleEvaluator()
 _signal_gen = SignalGenerator()
@@ -58,17 +61,18 @@ _signal_gen = SignalGenerator()
 # Pydantic schemas
 # ---------------------------------------------------------------------------
 
+
 class ConditionSchema(BaseModel):
     field: str
     operator: str
     value: Any
-    value_high: Optional[Any] = None
+    value_high: Any | None = None
 
 
 class ConditionGroupSchema(BaseModel):
     logic: str = "and"
-    conditions: List[ConditionSchema] = Field(default_factory=list)
-    groups: List["ConditionGroupSchema"] = Field(default_factory=list)
+    conditions: list[ConditionSchema] = Field(default_factory=list)
+    groups: list[ConditionGroupSchema] = Field(default_factory=list)
 
 
 ConditionGroupSchema.model_rebuild()
@@ -76,22 +80,22 @@ ConditionGroupSchema.model_rebuild()
 
 class StrategyCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
-    description: Optional[str] = None
+    description: str | None = None
     strategy_type: str = Field(..., description="One of the StrategyType enum values")
-    config: Dict[str, Any] = Field(default_factory=dict)
+    config: dict[str, Any] = Field(default_factory=dict)
 
 
 class StrategyUpdateRequest(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    description: Optional[str] = None
-    strategy_type: Optional[str] = None
-    status: Optional[str] = None
-    config: Optional[Dict[str, Any]] = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = None
+    strategy_type: str | None = None
+    status: str | None = None
+    config: dict[str, Any] | None = None
 
 
 class EvaluateRequest(BaseModel):
     rules: ConditionGroupSchema
-    symbols: Optional[List[str]] = None
+    symbols: list[str] | None = None
 
 
 class BacktestRequest(BaseModel):
@@ -99,25 +103,25 @@ class BacktestRequest(BaseModel):
     end_date: date
     initial_capital: float = Field(default=100_000, gt=0)
     position_size_pct: float = Field(default=5.0, gt=0, le=100)
-    symbols: Optional[List[str]] = None
+    symbols: list[str] | None = None
 
 
 class CreateFromTemplateRequest(BaseModel):
     template_id: str
     name: str = Field(..., min_length=1, max_length=100)
-    description: Optional[str] = None
-    overrides: Dict[str, Any] = Field(default_factory=dict)
+    description: str | None = None
+    overrides: dict[str, Any] = Field(default_factory=dict)
 
 
 class StrategyResponse(BaseModel):
     id: int
     name: str
-    description: Optional[str]
+    description: str | None
     strategy_type: str
     status: str
-    parameters: Dict[str, Any]
-    created_at: Optional[str]
-    updated_at: Optional[str]
+    parameters: dict[str, Any]
+    created_at: str | None
+    updated_at: str | None
 
     model_config = {"from_attributes": True}
 
@@ -126,9 +130,10 @@ class StrategyResponse(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _fetch_latest_strategy_backtests(
-    db: Session, strategy_ids: List[int]
-) -> Dict[int, StrategyBacktest]:
+    db: Session, strategy_ids: list[int]
+) -> dict[int, StrategyBacktest]:
     """Most recent StrategyBacktest row per strategy (auto-backtest / validation pipeline)."""
     if not strategy_ids:
         return {}
@@ -138,14 +143,14 @@ def _fetch_latest_strategy_backtests(
         .order_by(StrategyBacktest.created_at.desc(), StrategyBacktest.id.desc())
         .all()
     )
-    out: Dict[int, StrategyBacktest] = {}
+    out: dict[int, StrategyBacktest] = {}
     for r in rows:
         if r.strategy_id not in out:
             out[r.strategy_id] = r
     return out
 
 
-def _metrics_from_backtest_row(bt: StrategyBacktest) -> Dict[str, Any]:
+def _metrics_from_backtest_row(bt: StrategyBacktest) -> dict[str, Any]:
     return {
         "sharpe_ratio": float(bt.sharpe_ratio) if bt.sharpe_ratio is not None else None,
         "max_drawdown_pct": float(bt.max_drawdown_pct) if bt.max_drawdown_pct is not None else None,
@@ -153,14 +158,19 @@ def _metrics_from_backtest_row(bt: StrategyBacktest) -> Dict[str, Any]:
     }
 
 
-def _backtest_validation_payload(bt: Optional[StrategyBacktest]) -> Dict[str, Any]:
+def _backtest_validation_payload(bt: StrategyBacktest | None) -> dict[str, Any]:
     """
     UI validation status for the latest auto-backtest row.
 
     Maps DB BacktestStatus + veto flags to PENDING | RUNNING | PASSED | FAILED | VETOED.
     """
     if bt is None:
-        return {"status": "PENDING", "sharpe_ratio": None, "max_drawdown_pct": None, "win_rate": None}
+        return {
+            "status": "PENDING",
+            "sharpe_ratio": None,
+            "max_drawdown_pct": None,
+            "win_rate": None,
+        }
 
     if bt.status == BacktestStatus.PENDING:
         return {**_metrics_from_backtest_row(bt), "status": "PENDING"}
@@ -179,8 +189,8 @@ def _backtest_validation_payload(bt: Optional[StrategyBacktest]) -> Dict[str, An
 
 
 def _strategy_to_dict(
-    s: Strategy, latest_backtest: Optional[StrategyBacktest] = None
-) -> Dict[str, Any]:
+    s: Strategy, latest_backtest: StrategyBacktest | None = None
+) -> dict[str, Any]:
     return {
         "id": s.id,
         "name": s.name,
@@ -219,11 +229,10 @@ def _parse_condition_group(schema: ConditionGroupSchema) -> ConditionGroup:
     )
 
 
-
-
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
 
 @router.get("")
 def list_strategies(
@@ -244,6 +253,7 @@ def list_strategies(
 # ---------------------------------------------------------------------------
 # Template routes (MUST be before /{strategy_id} to avoid path conflicts)
 # ---------------------------------------------------------------------------
+
 
 @router.get("/templates")
 def list_strategy_templates():
@@ -280,9 +290,7 @@ def create_strategy_from_template(
         stype = StrategyType.CUSTOM
 
     existing = (
-        db.query(Strategy)
-        .filter(Strategy.user_id == user.id, Strategy.name == req.name)
-        .first()
+        db.query(Strategy).filter(Strategy.user_id == user.id, Strategy.name == req.name).first()
     )
     if existing:
         raise HTTPException(status_code=409, detail="Strategy with this name already exists")
@@ -327,13 +335,11 @@ def create_strategy(
         raise HTTPException(
             status_code=422,
             detail=f"Invalid strategy_type '{req.strategy_type}'. "
-                   f"Valid: {[t.value for t in StrategyType]}",
+            f"Valid: {[t.value for t in StrategyType]}",
         )
 
     existing = (
-        db.query(Strategy)
-        .filter(Strategy.user_id == user.id, Strategy.name == req.name)
-        .first()
+        db.query(Strategy).filter(Strategy.user_id == user.id, Strategy.name == req.name).first()
     )
     if existing:
         raise HTTPException(status_code=409, detail="Strategy with this name already exists")
@@ -365,9 +371,7 @@ def get_strategy(
     user: User = Depends(get_current_user),
 ):
     strategy = (
-        db.query(Strategy)
-        .filter(Strategy.id == strategy_id, Strategy.user_id == user.id)
-        .first()
+        db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.user_id == user.id).first()
     )
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
@@ -383,9 +387,7 @@ def update_strategy(
     user: User = Depends(get_current_user),
 ):
     strategy = (
-        db.query(Strategy)
-        .filter(Strategy.id == strategy_id, Strategy.user_id == user.id)
-        .first()
+        db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.user_id == user.id).first()
     )
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
@@ -449,9 +451,7 @@ def delete_strategy(
     user: User = Depends(get_current_user),
 ):
     strategy = (
-        db.query(Strategy)
-        .filter(Strategy.id == strategy_id, Strategy.user_id == user.id)
-        .first()
+        db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.user_id == user.id).first()
     )
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
@@ -472,9 +472,7 @@ def evaluate_strategy(
     Returns signals without persisting them.
     """
     strategy = (
-        db.query(Strategy)
-        .filter(Strategy.id == strategy_id, Strategy.user_id == user.id)
-        .first()
+        db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.user_id == user.id).first()
     )
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
@@ -490,28 +488,28 @@ def evaluate_strategy(
         .group_by(MarketSnapshot.symbol)
         .subquery()
     )
-    query = db.query(MarketSnapshot).join(
-        latest_ids_sub, MarketSnapshot.id == latest_ids_sub.c.id
-    )
+    query = db.query(MarketSnapshot).join(latest_ids_sub, MarketSnapshot.id == latest_ids_sub.c.id)
     if req.symbols:
         normalized_symbols = [s.upper() for s in req.symbols]
         query = query.filter(MarketSnapshot.symbol.in_(normalized_symbols))
 
     snapshots = query.all()
-    matches: List[Dict[str, Any]] = []
+    matches: list[dict[str, Any]] = []
     for snap in snapshots:
         # Use context builder with regime context for consistent evaluation
         ctx = snapshot_to_context(snap, include_regime=True, db=db)
         result = _evaluator.evaluate(group, ctx)
         if result.matched:
-            matches.append({
-                "symbol": snap.symbol,
-                "action": "buy",
-                "strength": 1.0,
-                "context": result.details,
-                "regime_state": ctx.get("regime_state"),
-                "regime_multiplier": ctx.get("regime_multiplier"),
-            })
+            matches.append(
+                {
+                    "symbol": snap.symbol,
+                    "action": "buy",
+                    "strength": 1.0,
+                    "context": result.details,
+                    "regime_state": ctx.get("regime_state"),
+                    "regime_multiplier": ctx.get("regime_multiplier"),
+                }
+            )
 
     signals = _signal_gen.generate_signals(db, strategy, matches)
     return {
@@ -533,9 +531,7 @@ def run_backtest(
 ):
     """Run a backtest for a strategy against historical market data."""
     strategy = (
-        db.query(Strategy)
-        .filter(Strategy.id == strategy_id, Strategy.user_id == user.id)
-        .first()
+        db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.user_id == user.id).first()
     )
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
@@ -572,7 +568,7 @@ def run_backtest(
     import time
     from datetime import datetime
 
-    started_at = datetime.now(timezone.utc)
+    started_at = datetime.now(UTC)
     start_time = time.perf_counter()
 
     engine = BacktestEngine()
@@ -626,7 +622,7 @@ def run_backtest(
             "max_loss": result.metrics.max_loss,
         },
         started_at=started_at,
-        completed_at=datetime.now(timezone.utc),
+        completed_at=datetime.now(UTC),
     )
     db.add(backtest_run)
     db.commit()
@@ -674,9 +670,7 @@ def list_strategy_backtests(
 ):
     """List all backtest runs for a strategy."""
     strategy = (
-        db.query(Strategy)
-        .filter(Strategy.id == strategy_id, Strategy.user_id == user.id)
-        .first()
+        db.query(Strategy).filter(Strategy.id == strategy_id, Strategy.user_id == user.id).first()
     )
     if not strategy:
         raise HTTPException(status_code=404, detail="Strategy not found")
@@ -762,7 +756,7 @@ def start_paper_validation(
     user: User = Depends(get_current_user),
 ):
     """Start paper trading validation for a strategy.
-    
+
     Strategy must pass paper validation before it can be promoted to live trading.
     Default validation requires:
     - 7+ days of paper trading
@@ -771,14 +765,14 @@ def start_paper_validation(
     - Max drawdown <= 15%
     """
     from app.services.strategy.paper_validator import PaperValidator
-    
+
     validator = PaperValidator(db)
     result = validator.start_validation(strategy_id, user.id)
-    
+
     if "error" in result:
         status_code = 404 if "not found" in result["error"].lower() else 400
         raise HTTPException(status_code=status_code, detail=result["error"])
-    
+
     return result
 
 
@@ -790,10 +784,10 @@ def get_paper_validation_status(
 ):
     """Get current paper validation status and metrics."""
     from app.services.strategy.paper_validator import PaperValidator
-    
+
     validator = PaperValidator(db)
     result = validator.check_validation(strategy_id, user.id)
-    
+
     return {
         "status": result.status.value,
         "days_elapsed": result.days_elapsed,
@@ -815,18 +809,18 @@ def promote_to_live(
     user: User = Depends(get_current_user),
 ):
     """Promote a validated strategy to live trading.
-    
+
     Only succeeds if paper validation has passed all checks.
     """
     from app.services.strategy.paper_validator import PaperValidator
-    
+
     validator = PaperValidator(db)
     result = validator.promote_to_live(strategy_id, user.id)
-    
+
     if "error" in result:
         status_code = 404 if "not found" in result["error"].lower() else 400
         raise HTTPException(status_code=status_code, detail=result["error"])
-    
+
     return result
 
 
@@ -838,12 +832,12 @@ def reset_paper_validation(
 ):
     """Reset paper validation to start over."""
     from app.services.strategy.paper_validator import PaperValidator
-    
+
     validator = PaperValidator(db)
     result = validator.reset_validation(strategy_id, user.id)
-    
+
     if "error" in result:
         status_code = 404 if "not found" in result["error"].lower() else 400
         raise HTTPException(status_code=status_code, detail=result["error"])
-    
+
     return result

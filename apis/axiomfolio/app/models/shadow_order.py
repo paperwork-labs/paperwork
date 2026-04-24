@@ -14,12 +14,12 @@ from __future__ import annotations
 import enum
 
 from sqlalchemy import (
+    JSON,
     Column,
     DateTime,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     Numeric,
     String,
 )
@@ -90,9 +90,7 @@ class ShadowOrder(Base):
 
     error_message = Column(String(500), nullable=True)
 
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(
         DateTime(timezone=True),
         nullable=False,

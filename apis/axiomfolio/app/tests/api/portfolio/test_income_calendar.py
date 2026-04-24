@@ -13,7 +13,7 @@ Covers:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -27,7 +27,6 @@ from app.models.broker_account import AccountType, BrokerType, SyncStatus
 from app.models.position import Position, PositionStatus, PositionType
 from app.models.transaction import Dividend
 from app.models.user import UserRole
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -170,9 +169,7 @@ def test_requires_authentication(client, db_session):
     assert res.status_code in (401, 403), res.text
 
 
-def test_invalid_mode_returns_400(
-    client, db_session, _wire_overrides, broker_account
-):
+def test_invalid_mode_returns_400(client, db_session, _wire_overrides, broker_account):
     res = client.get("/api/v1/portfolio/income/calendar?mode=garbage")
     assert res.status_code == 400
 
@@ -186,10 +183,8 @@ def test_months_validation(client, db_session, _wire_overrides, broker_account):
     assert res.status_code == 422
 
 
-def test_past_mode_aggregates_by_pay_date(
-    client, db_session, _wire_overrides, broker_account
-):
-    today = datetime.now(timezone.utc)
+def test_past_mode_aggregates_by_pay_date(client, db_session, _wire_overrides, broker_account):
+    today = datetime.now(UTC)
     # Two dividends on the same pay date, plus one in a different month.
     pay1 = today - timedelta(days=30)
     pay2 = today - timedelta(days=120)
@@ -274,7 +269,7 @@ def test_past_mode_isolates_other_users(
     db_session.commit()
     db_session.refresh(other_acc)
 
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     _seed_dividend(
         db_session,
         account_id=other_acc.id,
@@ -297,7 +292,7 @@ def test_past_mode_isolates_other_users(
 def test_projection_uses_current_shares_and_quarterly_cadence(
     client, db_session, auth_user, broker_account, _wire_overrides
 ):
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     # Four trailing quarterly payments at $0.50/share.
     for q in range(4):
         _seed_dividend(
@@ -318,18 +313,13 @@ def test_projection_uses_current_shares_and_quarterly_cadence(
     )
     db_session.commit()
 
-    res = client.get(
-        "/api/v1/portfolio/income/calendar?mode=projection&months=12"
-    )
+    res = client.get("/api/v1/portfolio/income/calendar?mode=projection&months=12")
     assert res.status_code == 200, res.text
     body = res.json()
     assert body["mode"] == "projection"
     assert all(m["projected"] is True for m in body["monthly_totals"])
 
-    msft_cells = [
-        c for c in body["cells"]
-        if any(s["symbol"] == "MSFT" for s in c["by_symbol"])
-    ]
+    msft_cells = [c for c in body["cells"] if any(s["symbol"] == "MSFT" for s in c["by_symbol"])]
     # Quarterly cadence over 12 months → ~4 projected payments.
     assert 3 <= len(msft_cells) <= 5
     for cell in msft_cells:
@@ -341,7 +331,7 @@ def test_projection_excludes_sold_out_symbols(
     client, db_session, auth_user, broker_account, _wire_overrides
 ):
     """Symbols with no current position must not appear in projections."""
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     for q in range(4):
         _seed_dividend(
             db_session,
@@ -353,9 +343,7 @@ def test_projection_excludes_sold_out_symbols(
         )
     db_session.commit()  # NB: no Position seeded for OLD
 
-    res = client.get(
-        "/api/v1/portfolio/income/calendar?mode=projection&months=12"
-    )
+    res = client.get("/api/v1/portfolio/income/calendar?mode=projection&months=12")
     assert res.status_code == 200
     body = res.json()
     for cell in body["cells"]:
@@ -367,7 +355,7 @@ def test_projection_excludes_single_payment_history(
     client, db_session, auth_user, broker_account, _wire_overrides
 ):
     """One historical payment is not enough to infer cadence."""
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     _seed_dividend(
         db_session,
         account_id=broker_account.id,
@@ -385,9 +373,7 @@ def test_projection_excludes_single_payment_history(
     )
     db_session.commit()
 
-    res = client.get(
-        "/api/v1/portfolio/income/calendar?mode=projection&months=12"
-    )
+    res = client.get("/api/v1/portfolio/income/calendar?mode=projection&months=12")
     assert res.status_code == 200
     body = res.json()
     for cell in body["cells"]:
@@ -401,7 +387,7 @@ def test_projection_isolates_other_users_positions(
     """Even if another user holds shares in a symbol the auth user has
     historical dividends for, the projection must ONLY use the auth
     user's current shares."""
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     for q in range(4):
         _seed_dividend(
             db_session,
@@ -444,9 +430,7 @@ def test_projection_isolates_other_users_positions(
     )
     db_session.commit()
 
-    res = client.get(
-        "/api/v1/portfolio/income/calendar?mode=projection&months=12"
-    )
+    res = client.get("/api/v1/portfolio/income/calendar?mode=projection&months=12")
     assert res.status_code == 200
     body = res.json()
     for cell in body["cells"]:
@@ -457,7 +441,7 @@ def test_projection_isolates_other_users_positions(
 def test_tax_data_unavailable_when_no_tax_withheld(
     client, db_session, _wire_overrides, broker_account
 ):
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     _seed_dividend(
         db_session,
         account_id=broker_account.id,

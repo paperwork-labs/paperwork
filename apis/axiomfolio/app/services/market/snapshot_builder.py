@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import datetime as _pydt
 import logging
-from datetime import datetime, time, timedelta, timezone
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from datetime import datetime, time, timedelta
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from sqlalchemy.orm import Session
@@ -13,46 +13,46 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import SessionLocal
 from app.models import MarketSnapshot
+from app.models.index_constituent import IndexConstituent
 from app.models.market_data import (
     EarningsCalendarEvent,
     MarketRegime,
-    PriceData,
     MarketSnapshotHistory,
+    PriceData,
 )
-from app.models.index_constituent import IndexConstituent
-from app.services.market.indicator_engine import (
-    calculate_performance_windows,
-    classify_ma_bucket_from_ma,
-    compute_atr_matrix_metrics,
-    compute_full_indicator_series,
-    extract_latest_values,
-    compute_gap_counts,
-    compute_td_sequential_counts,
-    compute_trendline_counts,
-    compute_weinstein_stage_from_daily,
-)
+from app.services.market.constants import FUNDAMENTAL_FIELDS
 from app.services.market.dataframe_utils import (
     ensure_newest_first,
     ensure_oldest_first,
     price_data_rows_to_dataframe,
 )
-from app.services.market.constants import FUNDAMENTAL_FIELDS
-from app.services.market.stage_utils import compute_stage_run_lengths
-from app.services.market.stage_quality_service import normalize_stage_label
-from app.services.market.snapshot_history_writer import upsert_snapshot_history_row
 from app.services.market.fundamentals_service import needs_fundamentals
+from app.services.market.indicator_engine import (
+    calculate_performance_windows,
+    classify_ma_bucket_from_ma,
+    compute_atr_matrix_metrics,
+    compute_full_indicator_series,
+    compute_gap_counts,
+    compute_td_sequential_counts,
+    compute_trendline_counts,
+    compute_weinstein_stage_from_daily,
+    extract_latest_values,
+)
+from app.services.market.snapshot_history_writer import upsert_snapshot_history_row
+from app.services.market.stage_quality_service import normalize_stage_label
+from app.services.market.stage_utils import compute_stage_run_lengths
 
 if TYPE_CHECKING:
+    from app.services.market.fundamentals_service import FundamentalsService
     from app.services.market.provider_router import ProviderRouter
     from app.services.market.quote_service import QuoteService
-    from app.services.market.fundamentals_service import FundamentalsService
 
 logger = logging.getLogger(__name__)
 
 
 def _earnings_utc_for_report_date(
     report_date: _pydt.date,
-    time_of_day: Optional[str],
+    time_of_day: str | None,
 ) -> datetime:
     """Map ``report_date`` + optional ``time_of_day`` to a UTC ``datetime``.
 
@@ -62,19 +62,13 @@ def _earnings_utc_for_report_date(
     """
     tod = (time_of_day or "").strip().lower()
     if tod == "bmo":
-        return datetime.combine(
-            report_date, time(13, 30), tzinfo=timezone.utc
-        )
+        return datetime.combine(report_date, time(13, 30), tzinfo=_pydt.UTC)
     if tod == "amc":
-        return datetime.combine(
-            report_date, time(21, 0), tzinfo=timezone.utc
-        )
-    return datetime.combine(
-        report_date, time(23, 59, 59), tzinfo=timezone.utc
-    )
+        return datetime.combine(report_date, time(21, 0), tzinfo=_pydt.UTC)
+    return datetime.combine(report_date, time(23, 59, 59), tzinfo=_pydt.UTC)
 
 
-def next_earnings_utc_from_calendar(db: Session, symbol: str) -> Optional[datetime]:
+def next_earnings_utc_from_calendar(db: Session, symbol: str) -> datetime | None:
     """Earliest ``earnings_calendar.report_date`` on or after today (UTC), as a UTC time.
 
     Event time uses ``time_of_day`` (``bmo``/``amc``) or end-of-UTC-day so a
@@ -85,7 +79,7 @@ def next_earnings_utc_from_calendar(db: Session, symbol: str) -> Optional[dateti
     sym = (symbol or "").upper()
     if not sym:
         return None
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(_pydt.UTC).date()
     row = (
         db.query(
             EarningsCalendarEvent.report_date,
@@ -105,25 +99,39 @@ def next_earnings_utc_from_calendar(db: Session, symbol: str) -> Optional[dateti
 
 
 _STAGE_SNAPSHOT_FIELDS = (
-    "stage_label", "stage_slope_pct", "stage_dist_pct",
-    "ext_pct", "sma150_slope", "sma50_slope",
-    "ema10_dist_pct", "ema10_dist_n", "vol_ratio",
+    "stage_label",
+    "stage_slope_pct",
+    "stage_dist_pct",
+    "ext_pct",
+    "sma150_slope",
+    "sma50_slope",
+    "ema10_dist_pct",
+    "ema10_dist_n",
+    "vol_ratio",
     "rs_mansfield_pct",
-    "atre_promoted", "pass_count", "action_override", "manual_review",
+    "atre_promoted",
+    "pass_count",
+    "action_override",
+    "manual_review",
 )
 
 
 class SnapshotBuilder:
     """Snapshot computation, persistence, stage run derivation, and related helpers."""
 
-    def __init__(self, provider_router: "ProviderRouter", quote: "QuoteService", fundamentals: "FundamentalsService") -> None:
+    def __init__(
+        self,
+        provider_router: ProviderRouter,
+        quote: QuoteService,
+        fundamentals: FundamentalsService,
+    ) -> None:
         self._provider = provider_router
         self._quote = quote
         self._fundamentals = fundamentals
 
     # ---------------------- Snapshot from DataFrame ----------------------
 
-    def _snapshot_from_dataframe(self, df: pd.DataFrame) -> Dict[str, Any]:
+    def _snapshot_from_dataframe(self, df: pd.DataFrame) -> dict[str, Any]:
         """Common snapshot builder used by DB and provider flows."""
         if df is None or df.empty or "Close" not in df.columns:
             return {}
@@ -157,10 +165,10 @@ class SnapshotBuilder:
         atr_14 = indicators.get("atr_14") or indicators.get("atr")
         atr_30 = indicators.get("atr_30")
 
-        def pct_dist(val: Optional[float]) -> Optional[float]:
+        def pct_dist(val: float | None) -> float | None:
             return (price / val - 1.0) * 100.0 if (val and price) else None
 
-        def atr_dist(val: Optional[float]) -> Optional[float]:
+        def atr_dist(val: float | None) -> float | None:
             return ((price - val) / atr_14) if (val and price and atr_14 and atr_14 != 0) else None
 
         ma_for_bucket = {
@@ -174,7 +182,7 @@ class SnapshotBuilder:
         }
         bucket = classify_ma_bucket_from_ma(ma_for_bucket).get("bucket")
 
-        def range_pos(window: int) -> Optional[float]:
+        def range_pos(window: int) -> float | None:
             try:
                 if window <= 0:
                     return None
@@ -192,7 +200,7 @@ class SnapshotBuilder:
                 logger.debug("range_pos(%s) computation failed: %s", window, e)
                 return None
 
-        def atrx(ma_val: Optional[float]) -> Optional[float]:
+        def atrx(ma_val: float | None) -> float | None:
             try:
                 if ma_val is None or atr_14 is None or atr_14 == 0:
                     return None
@@ -201,7 +209,7 @@ class SnapshotBuilder:
                 logger.debug("atrx computation failed: %s", e)
                 return None
 
-        snapshot: Dict[str, Any] = {
+        snapshot: dict[str, Any] = {
             "current_price": price,
             "as_of_timestamp": as_of_ts.isoformat() if hasattr(as_of_ts, "isoformat") else as_of_ts,
             "rsi": indicators.get("rsi"),
@@ -278,7 +286,7 @@ class SnapshotBuilder:
     # ---------------------- Stage helpers ----------------------
 
     @staticmethod
-    def _normalize_stage_label(stage_label: Any) -> Optional[str]:
+    def _normalize_stage_label(stage_label: Any) -> str | None:
         return normalize_stage_label(stage_label)
 
     def _derive_stage_run_fields(
@@ -287,7 +295,7 @@ class SnapshotBuilder:
         current_stage_label: Any,
         prior_stage_labels: list[Any] | None,
         latest_history_row: Any | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Compute per-symbol stage run metadata from stage-label history + current stage."""
         current_norm = self._normalize_stage_label(current_stage_label)
         if current_norm is None or current_norm == "UNKNOWN":
@@ -298,7 +306,7 @@ class SnapshotBuilder:
             }
 
         normalized_prior = []
-        for lbl in (prior_stage_labels or []):
+        for lbl in prior_stage_labels or []:
             n = self._normalize_stage_label(lbl)
             if n is not None and n != "UNKNOWN":
                 normalized_prior.append(n)
@@ -346,10 +354,12 @@ class SnapshotBuilder:
                     out["previous_stage_days"] = getattr(
                         latest_history_row, "previous_stage_days", None
                     )
-            elif latest_stage_norm and latest_stage_norm != "UNKNOWN" and latest_stage_norm != current_norm:
-                out["previous_stage_label"] = (
-                    out.get("previous_stage_label") or latest_stage_norm
-                )
+            elif (
+                latest_stage_norm
+                and latest_stage_norm != "UNKNOWN"
+                and latest_stage_norm != current_norm
+            ):
+                out["previous_stage_label"] = out.get("previous_stage_label") or latest_stage_norm
                 if isinstance(latest_days, int) and latest_days > 0:
                     out["previous_stage_days"] = max(
                         int(out.get("previous_stage_days") or 0), latest_days
@@ -379,12 +389,12 @@ class SnapshotBuilder:
         }
 
     @staticmethod
-    def _needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
+    def _needs_fundamentals(snapshot: dict[str, Any]) -> bool:
         return needs_fundamentals(snapshot)
 
     # ---------------------- Snapshot CRUD ----------------------
 
-    async def get_snapshot(self, symbol: str) -> Dict[str, Any]:
+    async def get_snapshot(self, symbol: str) -> dict[str, Any]:
         """Return the latest technical snapshot for a symbol.
 
         Flow: stored -> DB compute -> provider compute -> persist
@@ -402,9 +412,9 @@ class SnapshotBuilder:
         finally:
             session.close()
 
-    def get_snapshot_from_store(self, db: Session, symbol: str) -> Dict[str, Any]:
+    def get_snapshot_from_store(self, db: Session, symbol: str) -> dict[str, Any]:
         """Fetch freshest snapshot from MarketSnapshot if not expired."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(_pydt.UTC)
         row = (
             db.query(MarketSnapshot)
             .filter(
@@ -421,9 +431,9 @@ class SnapshotBuilder:
         try:
             if exp is not None:
                 exp_utc = (
-                    exp.replace(tzinfo=timezone.utc)
+                    exp.replace(tzinfo=_pydt.UTC)
                     if exp.tzinfo is None
-                    else exp.astimezone(timezone.utc)
+                    else exp.astimezone(_pydt.UTC)
                 )
         except Exception as e:
             logger.warning("expiry_tz_normalize failed for %s: %s", symbol, e)
@@ -434,7 +444,7 @@ class SnapshotBuilder:
                 return dict(row.raw_analysis)
         except Exception as e:
             logger.warning("raw_analysis_parse failed for %s: %s", symbol, e)
-        out: Dict[str, Any] = {
+        out: dict[str, Any] = {
             "current_price": getattr(row, "current_price", None),
             "as_of_timestamp": getattr(row, "as_of_timestamp", None),
             "rsi": getattr(row, "rsi", None),
@@ -521,7 +531,7 @@ class SnapshotBuilder:
         skip_fundamentals: bool = False,
         benchmark_df=None,
         recompute_metrics: dict[str, int] | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Compute a snapshot purely from local PriceData (and enrich it)."""
         limit_bars = int(getattr(settings, "SNAPSHOT_DAILY_BARS_LIMIT", 400))
         q = db.query(
@@ -588,7 +598,8 @@ class SnapshotBuilder:
                 _prior_pc = int(getattr(_prior_row, "pass_count", None) or 0)
 
                 stage = compute_weinstein_stage_from_daily(
-                    sym_newest, bm_newest,
+                    sym_newest,
+                    bm_newest,
                     regime_state=_regime,
                     prior_stage=_prior_stage,
                     prior_atre_promoted=_prior_atre,
@@ -608,7 +619,10 @@ class SnapshotBuilder:
                             sym_newest.iloc[5:].copy(),
                             bm_newest.iloc[5:].copy(),
                         )
-                        if isinstance(stage_prev, dict) and stage_prev.get("stage_label") is not None:
+                        if (
+                            isinstance(stage_prev, dict)
+                            and stage_prev.get("stage_label") is not None
+                        ):
                             snapshot["stage_label_5d_ago"] = stage_prev.get("stage_label")
                     except Exception as e:
                         logger.warning("stage_label_5d_ago failed for %s: %s", symbol, e)
@@ -627,28 +641,19 @@ class SnapshotBuilder:
                             else:
                                 snapshot_as_of_dt = _dt.fromisoformat(s)
                         except Exception as e:
-                            logger.debug(
-                                "snapshot_as_of_dt parse failed for %s: %s", symbol, e
-                            )
+                            logger.debug("snapshot_as_of_dt parse failed for %s: %s", symbol, e)
                             snapshot_as_of_dt = None
 
-                    hist_q = (
-                        db.query(MarketSnapshotHistory)
-                        .filter(
-                            MarketSnapshotHistory.symbol == symbol,
-                            MarketSnapshotHistory.analysis_type == "technical_snapshot",
-                        )
+                    hist_q = db.query(MarketSnapshotHistory).filter(
+                        MarketSnapshotHistory.symbol == symbol,
+                        MarketSnapshotHistory.analysis_type == "technical_snapshot",
                     )
                     if snapshot_as_of_dt is not None:
                         hist_q = hist_q.filter(MarketSnapshotHistory.as_of_date < snapshot_as_of_dt)
 
-                    latest_hist = (
-                        hist_q.order_by(MarketSnapshotHistory.as_of_date.desc()).first()
-                    )
+                    latest_hist = hist_q.order_by(MarketSnapshotHistory.as_of_date.desc()).first()
                     recent_hist_rows = (
-                        hist_q.order_by(MarketSnapshotHistory.as_of_date.desc())
-                        .limit(400)
-                        .all()
+                        hist_q.order_by(MarketSnapshotHistory.as_of_date.desc()).limit(400).all()
                     )
                     prior_labels = [
                         getattr(r, "stage_label", None) for r in reversed(recent_hist_rows)
@@ -681,11 +686,11 @@ class SnapshotBuilder:
                 if prev_ts is not None:
                     try:
                         prev_utc = (
-                            prev_ts.replace(tzinfo=timezone.utc)
+                            prev_ts.replace(tzinfo=_pydt.UTC)
                             if prev_ts.tzinfo is None
-                            else prev_ts.astimezone(timezone.utc)
+                            else prev_ts.astimezone(_pydt.UTC)
                         )
-                        age = datetime.now(timezone.utc) - prev_utc
+                        age = datetime.now(_pydt.UTC) - prev_utc
                         prev_stale = age > timedelta(days=7)
                     except Exception as e:
                         logger.warning("prev_timestamp_age_check failed for %s: %s", symbol, e)
@@ -713,11 +718,7 @@ class SnapshotBuilder:
         # Scan overlay also updates this column post-build; this ensures the row is
         # correct at creation time, not just after the next scan_overlay tick.
         try:
-            latest_regime = (
-                db.query(MarketRegime)
-                .order_by(MarketRegime.as_of_date.desc())
-                .first()
-            )
+            latest_regime = db.query(MarketRegime).order_by(MarketRegime.as_of_date.desc()).first()
             if latest_regime is not None and getattr(latest_regime, "regime_state", None):
                 snapshot["regime_state"] = latest_regime.regime_state
                 if recompute_metrics is not None:
@@ -743,7 +744,7 @@ class SnapshotBuilder:
 
         # ``earnings_calendar`` is authoritative for next_earnings (overrides FMP / stale copy).
         try:
-            cal_ne: Optional[datetime] = next_earnings_utc_from_calendar(db, symbol)
+            cal_ne: datetime | None = next_earnings_utc_from_calendar(db, symbol)
             snapshot["next_earnings"] = cal_ne
             if recompute_metrics is not None:
                 if cal_ne is not None:
@@ -767,7 +768,7 @@ class SnapshotBuilder:
                 )
         return snapshot
 
-    async def compute_snapshot_from_providers(self, symbol: str) -> Dict[str, Any]:
+    async def compute_snapshot_from_providers(self, symbol: str) -> dict[str, Any]:
         """Compute a snapshot from provider OHLCV when DB path is missing (slow-path fallback)."""
         data = await self._provider.get_historical_data(symbol, period="1y", interval="1d")
         if data is None or data.empty:
@@ -796,7 +797,10 @@ class SnapshotBuilder:
                             data.iloc[5:].copy(),
                             bm_df.iloc[5:].copy(),
                         )
-                        if isinstance(stage_prev, dict) and stage_prev.get("stage_label") is not None:
+                        if (
+                            isinstance(stage_prev, dict)
+                            and stage_prev.get("stage_label") is not None
+                        ):
                             snapshot["stage_label_5d_ago"] = stage_prev.get("stage_label")
                     except Exception as e:
                         logger.warning("stage_label_5d_ago failed for %s: %s", symbol, e)
@@ -817,7 +821,7 @@ class SnapshotBuilder:
         self,
         db: Session,
         symbol: str,
-        snapshot: Dict[str, Any],
+        snapshot: dict[str, Any],
         analysis_type: str = "technical_snapshot",
         ttl_hours: int = 24,
         auto_commit: bool = True,
@@ -825,10 +829,10 @@ class SnapshotBuilder:
         """Persist latest snapshot and append to immutable history."""
         if not snapshot:
             raise ValueError("empty snapshot")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(_pydt.UTC)
         expiry = now + pd.Timedelta(hours=ttl_hours)
 
-        from datetime import timezone as _tz, time as _time
+        from datetime import time as _time
 
         as_of_ts: datetime | None = None
         raw_as_of = snapshot.get("as_of_timestamp")
@@ -841,11 +845,9 @@ class SnapshotBuilder:
                     as_of_ts = datetime.fromisoformat(s.replace("Z", "+00:00"))
                 else:
                     dt = datetime.fromisoformat(s)
-                    as_of_ts = dt if dt.tzinfo else dt.replace(tzinfo=_tz.utc)
+                    as_of_ts = dt if dt.tzinfo else dt.replace(tzinfo=_pydt.UTC)
         except Exception as e:
-            logger.warning(
-                "persist_snapshot as_of_timestamp parse failed for %s: %s", symbol, e
-            )
+            logger.warning("persist_snapshot as_of_timestamp parse failed for %s: %s", symbol, e)
             as_of_ts = None
         if as_of_ts is None:
             try:
@@ -857,7 +859,7 @@ class SnapshotBuilder:
                     .scalar()
                 )
                 if isinstance(as_of_ts, datetime) and as_of_ts.tzinfo is None:
-                    as_of_ts = as_of_ts.replace(tzinfo=_tz.utc)
+                    as_of_ts = as_of_ts.replace(tzinfo=_pydt.UTC)
             except Exception as e:
                 logger.warning(
                     "persist_snapshot DB fallback as_of_timestamp failed for %s: %s",
@@ -893,7 +895,7 @@ class SnapshotBuilder:
                 expiry_timestamp=expiry,
                 raw_analysis=snapshot_json,
             )
-            row.analysis_timestamp = datetime.now(timezone.utc)
+            row.analysis_timestamp = datetime.now(_pydt.UTC)
             for k, v in snapshot.items():
                 if hasattr(row, k):
                     setattr(row, k, v)
@@ -901,7 +903,7 @@ class SnapshotBuilder:
                 row.as_of_timestamp = as_of_ts
             db.add(row)
         else:
-            row.analysis_timestamp = datetime.now(timezone.utc)
+            row.analysis_timestamp = datetime.now(_pydt.UTC)
             row.expiry_timestamp = expiry
             row.raw_analysis = snapshot_json
             for k, v in snapshot.items():
@@ -926,27 +928,25 @@ class SnapshotBuilder:
 
     # ---------------------- High-level helpers ----------------------
 
-    async def build_indicator_snapshot(self, symbol: str) -> Dict[str, Any]:
+    async def build_indicator_snapshot(self, symbol: str) -> dict[str, Any]:
         """Build a technical snapshot from provider OHLCV with indicators."""
         return await self.compute_snapshot_from_providers(symbol)
 
-    async def get_weinstein_stage(self, symbol: str, benchmark: str = "SPY") -> Dict[str, Any]:
+    async def get_weinstein_stage(self, symbol: str, benchmark: str = "SPY") -> dict[str, Any]:
         """Compute Weinstein stage by fetching daily series for symbol and a benchmark."""
         sym_df = await self._provider.get_historical_data(symbol, period="1y", interval="1d")
         bm_df = await self._provider.get_historical_data(benchmark, period="1y", interval="1d")
         try:
             return compute_weinstein_stage_from_daily(sym_df, bm_df)
         except Exception as e:
-            logger.warning(
-                "get_weinstein_stage failed for %s vs %s: %s", symbol, benchmark, e
-            )
+            logger.warning("get_weinstein_stage failed for %s vs %s: %s", symbol, benchmark, e)
             return {"stage": "UNKNOWN"}
 
-    async def get_technical_analysis(self, symbol: str) -> Dict[str, Any]:
+    async def get_technical_analysis(self, symbol: str) -> dict[str, Any]:
         """Compatibility wrapper — returns the latest snapshot."""
         return await self.get_snapshot(symbol)
 
-    def get_tracked_details(self, db: Session, symbols: List[str]) -> Dict[str, Any]:
+    def get_tracked_details(self, db: Session, symbols: list[str]) -> dict[str, Any]:
         if not symbols:
             return {}
         sym_set = {s.upper() for s in symbols}
@@ -968,7 +968,7 @@ class SnapshotBuilder:
         )
         price_map = {sym.upper(): close for sym, close in price_rows if sym}
 
-        details: Dict[str, Any] = {}
+        details: dict[str, Any] = {}
         seen: set[str] = set()
 
         def _to_float(value):
@@ -994,9 +994,7 @@ class SnapshotBuilder:
                 "sector": getattr(row, "sector", None),
                 "industry": getattr(row, "industry", None),
                 "market_cap": _to_float(getattr(row, "market_cap", None)),
-                "last_snapshot_at": getattr(
-                    row.analysis_timestamp, "isoformat", lambda: None
-                )(),
+                "last_snapshot_at": getattr(row.analysis_timestamp, "isoformat", lambda: None)(),
             }
 
         cons_rows = (

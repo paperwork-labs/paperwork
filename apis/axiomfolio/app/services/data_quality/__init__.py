@@ -33,16 +33,16 @@ from .tolerances import (
 )
 
 __all__ = [
-    "DriftDetector",
-    "DriftDetectorResult",
-    "DriftEvent",
-    "QuorumResult",
-    "QuorumService",
     "DEFAULT_NUMERIC_TOLERANCE_PCT",
     "DEFAULT_QUORUM_THRESHOLD",
     "EXACT_TOLERANCE",
     "FUNDAMENTALS_TOLERANCE_PCT",
     "PRICE_TOLERANCE_PCT",
     "VOLUME_TOLERANCE_PCT",
+    "DriftDetector",
+    "DriftDetectorResult",
+    "DriftEvent",
+    "QuorumResult",
+    "QuorumService",
     "tolerance_for_field",
 ]

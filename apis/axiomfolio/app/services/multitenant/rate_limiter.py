@@ -27,7 +27,6 @@ import os
 import time
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 import redis as redis_sync
 from sqlalchemy import select
@@ -88,8 +87,8 @@ class TenantRateLimiter:
 
     def __init__(
         self,
-        redis_client: Optional[redis_sync.Redis] = None,
-        redis_url: Optional[str] = None,
+        redis_client: redis_sync.Redis | None = None,
+        redis_url: str | None = None,
     ) -> None:
         self._redis = redis_client
         self._redis_url = redis_url or os.getenv("REDIS_URL", "redis://redis:6379/0")
@@ -136,9 +135,7 @@ class TenantRateLimiter:
                         ts = int(raw_ts) if raw_ts is not None else now_ms
 
                     elapsed_ms = max(0, now_ms - ts)
-                    tokens = min(
-                        float(capacity), tokens + (elapsed_ms / 1000.0) * refill_per_sec
-                    )
+                    tokens = min(float(capacity), tokens + (elapsed_ms / 1000.0) * refill_per_sec)
 
                     if tokens >= cost:
                         tokens -= cost
@@ -169,12 +166,10 @@ class TenantRateLimiter:
 
     # -- public API -----------------------------------------------------
 
-    def resolve_bucket(
-        self, db: Session, user_id: Optional[int], endpoint: str
-    ) -> tuple[int, int]:
+    def resolve_bucket(self, db: Session, user_id: int | None, endpoint: str) -> tuple[int, int]:
         """Return ``(per_minute, burst_capacity)`` for a (user, endpoint) pair."""
         # Order of preference (most specific wins):
-        candidates: list[tuple[Optional[int], str]] = []
+        candidates: list[tuple[int | None, str]] = []
         if user_id is not None:
             candidates.append((user_id, endpoint))
             candidates.append((user_id, "*"))
@@ -182,9 +177,7 @@ class TenantRateLimiter:
         candidates.append((None, "*"))
 
         for uid, pattern in candidates:
-            stmt = select(TenantRateLimit).where(
-                TenantRateLimit.endpoint_pattern == pattern
-            )
+            stmt = select(TenantRateLimit).where(TenantRateLimit.endpoint_pattern == pattern)
             if uid is None:
                 stmt = stmt.where(TenantRateLimit.user_id.is_(None))
             else:
@@ -198,7 +191,7 @@ class TenantRateLimiter:
     def check(
         self,
         db: Session,
-        user_id: Optional[int],
+        user_id: int | None,
         endpoint: str,
         cost: int = 1,
     ) -> RateLimitResult:
@@ -230,8 +223,7 @@ class TenantRateLimiter:
             # IRON LAW: fail CLOSED. Surface 503 (not 429) so the caller
             # knows this is an infrastructure failure, not user abuse.
             logger.error(
-                "rate_limiter: Redis unreachable; failing CLOSED "
-                "user_id=%s endpoint=%s err=%s",
+                "rate_limiter: Redis unreachable; failing CLOSED user_id=%s endpoint=%s err=%s",
                 user_id,
                 endpoint,
                 exc,

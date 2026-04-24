@@ -1,8 +1,10 @@
 """BrokerAccount.total_value / cash_balance updated when AccountBalance rows are written."""
+
 from __future__ import annotations
 
-import pytest
 from decimal import Decimal
+
+import pytest
 
 from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.models.user import User

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
@@ -45,9 +45,9 @@ def _state_api(s: CandidateQueueState) -> str:
 
 
 def _serialize_candidate(db: Session, c: Candidate, *, detail: bool) -> dict[str, Any]:
-    email_subject: Optional[str] = None
-    email_sender: Optional[str] = None
-    parsed_at: Optional[str] = None
+    email_subject: str | None = None
+    email_sender: str | None = None
+    parsed_at: str | None = None
     if detail and c.source_email_parse_id:
         ep = (
             db.query(EmailParse)
@@ -91,22 +91,18 @@ class RejectBody(BaseModel):
 
 
 class PatchCandidateBody(BaseModel):
-    ticker: Optional[str] = None
-    action: Optional[str] = None
-    target_price: Optional[Decimal] = None
-    stop_loss: Optional[Decimal] = None
-    thesis: Optional[str] = None
+    ticker: str | None = None
+    action: str | None = None
+    target_price: Decimal | None = None
+    stop_loss: Decimal | None = None
+    thesis: str | None = None
 
 
 @router.get("/picks/queue/counts")
 def picks_queue_counts(
     db: Session = Depends(get_db),
 ) -> dict[str, int]:
-    rows = (
-        db.query(Candidate.status, func.count())
-        .group_by(Candidate.status)
-        .all()
-    )
+    rows = db.query(Candidate.status, func.count()).group_by(Candidate.status).all()
     counts = {s.name: 0 for s in CandidateQueueState}
     for st, n in rows:
         counts[st.name] = int(n)

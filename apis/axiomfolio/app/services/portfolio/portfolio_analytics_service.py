@@ -19,9 +19,10 @@ medallion: silver
 
 import logging
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -113,10 +114,10 @@ class PortfolioMetrics:
     annualized_return: float
 
     # Risk Metrics — ``None`` when coverage is insufficient
-    volatility: Optional[float]
-    sharpe_ratio: Optional[float]
-    max_drawdown: Optional[float]
-    beta: Optional[float]
+    volatility: float | None
+    sharpe_ratio: float | None
+    max_drawdown: float | None
+    beta: float | None
 
     # Asset Allocation
     equity_allocation: float
@@ -143,24 +144,24 @@ class RiskMetricsResult:
     # Regression beta: ``Cov(R_p, R_b) / Var(R_b)`` over the intersection of
     # portfolio daily returns and benchmark (``SPY`` / ``^GSPC``) daily
     # returns. ``None`` when < ``MIN_RETURNS_FOR_BETA`` aligned rows.
-    beta_portfolio_regression: Optional[float]
+    beta_portfolio_regression: float | None
 
     # Weighted-snapshot beta: Σ(w_i · MarketSnapshot.beta_i) / Σ(w_i with
     # non-null beta). ``None`` when coverage < ``MIN_BETA_COVERAGE_WEIGHT``.
-    beta_weighted_snapshot: Optional[float]
+    beta_weighted_snapshot: float | None
 
     # Annualized volatility of ``PortfolioSnapshot.total_value`` daily returns,
     # expressed as a percent (e.g. 18.5 == 18.5%). ``None`` when
     # < ``MIN_SNAPSHOTS_FOR_VOLATILITY`` usable rows.
-    volatility: Optional[float]
+    volatility: float | None
 
     # Annualized Sharpe = ``(μ·252 − r_f) / (σ·√252)``. ``None`` when
     # history < ``MIN_DAYS_FOR_SHARPE`` days or volatility is ``None``.
-    sharpe_ratio: Optional[float]
+    sharpe_ratio: float | None
 
     # Peak-to-trough drawdown as a percent (always ≤ 0). ``None`` when
     # < ``MIN_SNAPSHOTS_FOR_VOLATILITY`` rows available.
-    max_drawdown: Optional[float]
+    max_drawdown: float | None
 
     # Concentration diagnostics (always defined when at least one position
     # exists; zero otherwise). HHI is scaled to ``[0, 10000]``.
@@ -170,7 +171,7 @@ class RiskMetricsResult:
 
     # Benchmark symbol actually used for regression beta, or ``None`` when
     # benchmark coverage was insufficient.
-    benchmark_symbol: Optional[str]
+    benchmark_symbol: str | None
 
     # Number of aligned daily return pairs used for regression beta.
     benchmark_overlap_days: int
@@ -178,14 +179,14 @@ class RiskMetricsResult:
     # Number of PortfolioSnapshot rows consumed.
     portfolio_days: int
 
-    def preferred_beta(self) -> Optional[float]:
+    def preferred_beta(self) -> float | None:
         """Prefer the regression beta (portfolio-vs-SPY); fall back to the
         weighted-snapshot method when regression coverage is insufficient."""
         if self.beta_portfolio_regression is not None:
             return self.beta_portfolio_regression
         return self.beta_weighted_snapshot
 
-    def to_api_dict(self) -> Dict[str, Any]:
+    def to_api_dict(self) -> dict[str, Any]:
         """Serialize for the ``/risk-metrics`` API response."""
         return {
             "beta": self.preferred_beta(),
@@ -229,15 +230,15 @@ class PortfolioAnalyticsService:
     - Risk monitoring
     """
 
-    def __init__(self, db_session: Optional[Session] = None):
+    def __init__(self, db_session: Session | None = None):
         self.db = db_session
 
     async def get_portfolio_analytics(
         self,
         account_id: str,
         user_id: int,
-        db: Optional[Session] = None,
-    ) -> Dict[str, Any]:
+        db: Session | None = None,
+    ) -> dict[str, Any]:
         """
         Get comprehensive portfolio analytics for account.
 
@@ -255,14 +256,16 @@ class PortfolioAnalyticsService:
             positions = await ibkr_client.get_positions(account_id)
             tax_lots = await flexquery_client.get_official_tax_lots(account_id)
 
-            account_ids: List[int] = []
+            account_ids: list[int] = []
             if db is not None:
                 account_ids = [
                     row.id
-                    for row in db.query(BrokerAccount.id).filter(
+                    for row in db.query(BrokerAccount.id)
+                    .filter(
                         BrokerAccount.user_id == user_id,
                         BrokerAccount.account_number == account_id,
-                    ).all()
+                    )
+                    .all()
                 ]
 
             metrics = await self._calculate_portfolio_metrics(
@@ -271,9 +274,7 @@ class PortfolioAnalyticsService:
 
             tax_opportunities = await self._find_tax_opportunities(tax_lots)
             allocation = self._calculate_asset_allocation(positions)
-            performance = await self._calculate_performance_attribution(
-                positions, tax_lots
-            )
+            performance = await self._calculate_performance_attribution(positions, tax_lots)
 
             return {
                 "account_id": account_id,
@@ -294,11 +295,11 @@ class PortfolioAnalyticsService:
 
     async def _calculate_portfolio_metrics(
         self,
-        positions: List[Dict],
-        tax_lots: List[Dict],
+        positions: list[dict],
+        tax_lots: list[dict],
         *,
-        db: Optional[Session] = None,
-        account_ids: Optional[Sequence[int]] = None,
+        db: Session | None = None,
+        account_ids: Sequence[int] | None = None,
     ) -> PortfolioMetrics:
         """Calculate comprehensive portfolio metrics."""
 
@@ -307,33 +308,23 @@ class PortfolioAnalyticsService:
         total_cost_basis = sum(lot.get("cost_basis", 0) for lot in tax_lots)
         total_unrealized_pnl = total_value - total_cost_basis
         total_unrealized_pnl_pct = (
-            (total_unrealized_pnl / total_cost_basis * 100)
-            if total_cost_basis > 0
-            else 0
+            (total_unrealized_pnl / total_cost_basis * 100) if total_cost_basis > 0 else 0
         )
 
         # Asset allocation
         equity_value = sum(
-            pos.get("market_value", 0)
-            for pos in positions
-            if pos.get("contract_type") == "STK"
+            pos.get("market_value", 0) for pos in positions if pos.get("contract_type") == "STK"
         )
         options_value = sum(
-            pos.get("market_value", 0)
-            for pos in positions
-            if pos.get("contract_type") == "OPT"
+            pos.get("market_value", 0) for pos in positions if pos.get("contract_type") == "OPT"
         )
 
         equity_allocation = (equity_value / total_value * 100) if total_value > 0 else 0
-        options_allocation = (
-            (options_value / total_value * 100) if total_value > 0 else 0
-        )
+        options_allocation = (options_value / total_value * 100) if total_value > 0 else 0
         cash_allocation = max(0, 100 - equity_allocation - options_allocation)
 
         # Tax lot analysis
-        long_term_positions = len(
-            [lot for lot in tax_lots if lot.get("is_long_term", False)]
-        )
+        long_term_positions = len([lot for lot in tax_lots if lot.get("is_long_term", False)])
         short_term_positions = len(tax_lots) - long_term_positions
 
         unrealized_lt_gains = sum(
@@ -362,10 +353,10 @@ class PortfolioAnalyticsService:
 
         # Risk metrics — compute from the daily ledger if a DB session was
         # supplied and the account resolves; otherwise fail closed.
-        volatility: Optional[float] = None
-        sharpe_ratio: Optional[float] = None
-        max_drawdown: Optional[float] = None
-        beta: Optional[float] = None
+        volatility: float | None = None
+        sharpe_ratio: float | None = None
+        max_drawdown: float | None = None
+        beta: float | None = None
         if db is not None and account_ids:
             risk = self._compute_risk_metrics_core(db, list(account_ids))
             volatility = risk.volatility
@@ -396,8 +387,8 @@ class PortfolioAnalyticsService:
         )
 
     async def _find_tax_opportunities(
-        self, tax_lots: List[Dict]
-    ) -> List[TaxOptimizationOpportunity]:
+        self, tax_lots: list[dict]
+    ) -> list[TaxOptimizationOpportunity]:
         """Find tax optimization opportunities."""
         opportunities = []
 
@@ -409,9 +400,7 @@ class PortfolioAnalyticsService:
 
             # Tax loss harvesting opportunity
             if unrealized_pnl < -1000:  # $1000+ loss
-                estimated_tax_savings = (
-                    abs(unrealized_pnl) * 0.24
-                )  # Assume 24% tax rate
+                estimated_tax_savings = abs(unrealized_pnl) * 0.24  # Assume 24% tax rate
 
                 opportunities.append(
                     TaxOptimizationOpportunity(
@@ -446,7 +435,7 @@ class PortfolioAnalyticsService:
 
         return opportunities
 
-    def _calculate_asset_allocation(self, positions: List[Dict]) -> Dict[str, Any]:
+    def _calculate_asset_allocation(self, positions: list[dict]) -> dict[str, Any]:
         """Calculate detailed asset allocation."""
         total_value = sum(pos.get("market_value", 0) for pos in positions)
 
@@ -488,14 +477,12 @@ class PortfolioAnalyticsService:
             "total_value": total_value,
             "by_asset_class": by_asset_class,
             "top_holdings": top_holdings,
-            "concentration_risk": max(
-                [h["percentage"] for h in top_holdings], default=0
-            ),
+            "concentration_risk": max([h["percentage"] for h in top_holdings], default=0),
         }
 
     async def _calculate_performance_attribution(
-        self, positions: List[Dict], tax_lots: List[Dict]
-    ) -> Dict[str, Any]:
+        self, positions: list[dict], tax_lots: list[dict]
+    ) -> dict[str, Any]:
         """Calculate performance attribution by various factors."""
 
         # By security
@@ -509,9 +496,7 @@ class PortfolioAnalyticsService:
             by_security[symbol] += unrealized_pnl
 
         # Top contributors and detractors
-        sorted_performance = sorted(
-            by_security.items(), key=lambda x: x[1], reverse=True
-        )
+        sorted_performance = sorted(by_security.items(), key=lambda x: x[1], reverse=True)
         top_contributors = sorted_performance[:5]
         top_detractors = sorted_performance[-5:]
 
@@ -521,7 +506,6 @@ class PortfolioAnalyticsService:
             "top_detractors": [{"symbol": s, "pnl": p} for s, p in top_detractors],
             "total_securities": len(by_security),
         }
-
 
     # ------------------------------------------------------------------
     # Silver-layer risk math
@@ -539,11 +523,11 @@ class PortfolioAnalyticsService:
         account_ids: Sequence[int],
         *,
         lookback_days: int = DEFAULT_RISK_LOOKBACK_DAYS,
-    ) -> List[PortfolioSnapshot]:
+    ) -> list[PortfolioSnapshot]:
         """Return the last ``lookback_days`` daily portfolio snapshots in
         chronological order. Uses ``yield_per`` for large result sets so
         we do not spike memory on long histories."""
-        cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+        cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
         query = (
             db.query(PortfolioSnapshot)
             .filter(
@@ -558,10 +542,10 @@ class PortfolioAnalyticsService:
     def _aggregate_portfolio_daily_totals(
         self,
         snapshots: Sequence[PortfolioSnapshot],
-    ) -> List[Tuple[datetime, float]]:
+    ) -> list[tuple[datetime, float]]:
         """Collapse per-account snapshots into a single portfolio-level time
         series. Multiple accounts on the same date are summed."""
-        by_date: Dict[datetime, float] = {}
+        by_date: dict[datetime, float] = {}
         for snap in snapshots:
             value = float(snap.total_value or 0)
             if value <= 0:
@@ -571,10 +555,10 @@ class PortfolioAnalyticsService:
         return sorted(by_date.items(), key=lambda kv: kv[0])
 
     @staticmethod
-    def _daily_returns(values: Sequence[float]) -> List[float]:
+    def _daily_returns(values: Sequence[float]) -> list[float]:
         """Simple arithmetic daily returns. Skips transitions where the
         prior value is non-positive (which would blow up division)."""
-        out: List[float] = []
+        out: list[float] = []
         for i in range(1, len(values)):
             prev = values[i - 1]
             if prev > 0:
@@ -582,7 +566,7 @@ class PortfolioAnalyticsService:
         return out
 
     @staticmethod
-    def _max_drawdown_pct(values: Sequence[float]) -> Optional[float]:
+    def _max_drawdown_pct(values: Sequence[float]) -> float | None:
         """Peak-to-trough drawdown as a percent (always ≤ 0). Returns
         ``None`` when the series is too short to be meaningful."""
         if len(values) < MIN_SNAPSHOTS_FOR_VOLATILITY:
@@ -603,7 +587,7 @@ class PortfolioAnalyticsService:
         db: Session,
         symbol: str,
         start_date: datetime,
-    ) -> Dict[datetime, float]:
+    ) -> dict[datetime, float]:
         """Load daily ``current_price`` closes from ``MarketSnapshotHistory``
         for ``symbol`` since ``start_date``, restricted to benchmark rows only.
 
@@ -626,7 +610,7 @@ class PortfolioAnalyticsService:
         )
         # Last assignment wins per ``key``; ``as_of_date`` ascending plus later
         # same-calendar stamps overwrite earlier rows for that day.
-        closes: Dict[datetime, float] = {}
+        closes: dict[datetime, float] = {}
         for row in rows:
             as_of = row.as_of_date
             if hasattr(as_of, "date"):
@@ -642,7 +626,7 @@ class PortfolioAnalyticsService:
         self,
         db: Session,
         start_date: datetime,
-    ) -> Tuple[Optional[str], Dict[datetime, float]]:
+    ) -> tuple[str | None, dict[datetime, float]]:
         """Return the first benchmark symbol with enough history, or
         ``(None, {})`` when neither SPY nor ^GSPC has coverage."""
         for symbol in (BENCHMARK_SYMBOL_PRIMARY, BENCHMARK_SYMBOL_FALLBACK):
@@ -653,17 +637,17 @@ class PortfolioAnalyticsService:
 
     def _compute_regression_beta(
         self,
-        portfolio_daily: Sequence[Tuple[datetime, float]],
-        benchmark_closes: Dict[datetime, float],
-    ) -> Tuple[Optional[float], int]:
+        portfolio_daily: Sequence[tuple[datetime, float]],
+        benchmark_closes: dict[datetime, float],
+    ) -> tuple[float | None, int]:
         """Return ``(beta, n_aligned_returns)``. Beta is the sample
         covariance of portfolio and benchmark daily returns divided by
         the sample variance of benchmark returns (``ddof=1`` for both).
         """
         if not portfolio_daily or not benchmark_closes:
             return None, 0
-        aligned_p: List[float] = []
-        aligned_b: List[float] = []
+        aligned_p: list[float] = []
+        aligned_b: list[float] = []
         for i in range(1, len(portfolio_daily)):
             prev_d, prev_v = portfolio_daily[i - 1]
             curr_d, curr_v = portfolio_daily[i]
@@ -690,7 +674,7 @@ class PortfolioAnalyticsService:
         self,
         db: Session,
         account_ids: Sequence[int],
-    ) -> Optional[float]:
+    ) -> float | None:
         """Weighted average of per-symbol ``MarketSnapshot.beta`` using
         market-value weights. Returns ``None`` when the covered weight is
         below ``MIN_BETA_COVERAGE_WEIGHT`` — i.e. we lack beta for the
@@ -733,7 +717,7 @@ class PortfolioAnalyticsService:
         self,
         db: Session,
         account_ids: Sequence[int],
-    ) -> Tuple[float, float, str]:
+    ) -> tuple[float, float, str]:
         """Return ``(hhi, top5_weight_pct, label)``. Always defined, even
         when there are zero positions (returns ``0, 0, "N/A"``)."""
         if not account_ids:
@@ -749,9 +733,7 @@ class PortfolioAnalyticsService:
         weights = [float(p.market_value or 0) / total_mv for p in positions]
         hhi = sum(w * w for w in weights) * 10000
         top5 = round(sum(sorted(weights, reverse=True)[:5]) * 100, 1)
-        label = (
-            "Concentrated" if hhi > 2500 else "Moderate" if hhi > 1500 else "Diversified"
-        )
+        label = "Concentrated" if hhi > 2500 else "Moderate" if hhi > 1500 else "Diversified"
         return hhi, top5, label
 
     def _compute_risk_metrics_core(
@@ -789,15 +771,13 @@ class PortfolioAnalyticsService:
                 portfolio_days=0,
             )
 
-        snapshots = self._load_portfolio_snapshots(
-            db, account_ids, lookback_days=lookback_days
-        )
+        snapshots = self._load_portfolio_snapshots(db, account_ids, lookback_days=lookback_days)
         daily = self._aggregate_portfolio_daily_totals(snapshots)
         values = [v for _, v in daily]
 
-        volatility: Optional[float] = None
-        sharpe_ratio: Optional[float] = None
-        annualized_return: Optional[float] = None
+        volatility: float | None = None
+        sharpe_ratio: float | None = None
+        annualized_return: float | None = None
         if len(values) >= MIN_SNAPSHOTS_FOR_VOLATILITY:
             returns = self._daily_returns(values)
             if returns:
@@ -806,9 +786,7 @@ class PortfolioAnalyticsService:
                     var_r = sum((r - mean_r) ** 2 for r in returns) / (len(returns) - 1)
                     daily_vol = math.sqrt(var_r) if var_r > 0 else 0.0
                     if daily_vol > 0:
-                        volatility = round(
-                            daily_vol * math.sqrt(TRADING_DAYS_PER_YEAR) * 100, 2
-                        )
+                        volatility = round(daily_vol * math.sqrt(TRADING_DAYS_PER_YEAR) * 100, 2)
                         annualized_return = mean_r * TRADING_DAYS_PER_YEAR
                         if len(values) >= MIN_DAYS_FOR_SHARPE:
                             sharpe_ratio = round(
@@ -819,15 +797,15 @@ class PortfolioAnalyticsService:
 
         max_drawdown = self._max_drawdown_pct(values)
 
-        benchmark_symbol: Optional[str] = None
+        benchmark_symbol: str | None = None
         benchmark_overlap = 0
-        beta_regression: Optional[float] = None
+        beta_regression: float | None = None
         if daily:
             start = daily[0][0]
             if hasattr(start, "year"):
                 start_dt = datetime(start.year, start.month, start.day)
             else:
-                start_dt = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+                start_dt = datetime.now(UTC) - timedelta(days=lookback_days)
             benchmark_symbol, benchmark_closes = self._resolve_benchmark(db, start_dt)
             if benchmark_symbol is not None:
                 beta_regression, benchmark_overlap = self._compute_regression_beta(
@@ -854,7 +832,7 @@ class PortfolioAnalyticsService:
             portfolio_days=len(values),
         )
 
-    def compute_risk_metrics(self, db: Session, user_id: int) -> Dict[str, Any]:
+    def compute_risk_metrics(self, db: Session, user_id: int) -> dict[str, Any]:
         """Public risk-metrics endpoint shim.
 
         ``user_id`` is required (D88 — no ``user_id=1`` defaults). Returns
@@ -863,28 +841,22 @@ class PortfolioAnalyticsService:
         treat ``None`` as zero (no-silent-fallback.mdc)."""
         acct_ids = [
             row.id
-            for row in db.query(BrokerAccount.id)
-            .filter(BrokerAccount.user_id == user_id)
-            .all()
+            for row in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
         ]
         result = self._compute_risk_metrics_core(db, acct_ids)
         return result.to_api_dict()
 
-    def compute_twr(
-        self, db: Session, user_id: int, period_days: int = 365
-    ) -> Dict[str, Any]:
+    def compute_twr(self, db: Session, user_id: int, period_days: int = 365) -> dict[str, Any]:
         """Compute Time-Weighted Return from PortfolioSnapshot history.
 
         ``user_id`` is required (D88)."""
         acct_ids = [
             row.id
-            for row in db.query(BrokerAccount.id)
-            .filter(BrokerAccount.user_id == user_id)
-            .all()
+            for row in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
         ]
         if not acct_ids:
             return {"twr": None, "period_days": period_days, "data_points": 0}
-        cutoff = datetime.now(timezone.utc) - timedelta(days=period_days)
+        cutoff = datetime.now(UTC) - timedelta(days=period_days)
         snapshots = (
             db.query(PortfolioSnapshot)
             .filter(
@@ -910,17 +882,13 @@ class PortfolioAnalyticsService:
             "data_points": len(values),
         }
 
-    def compute_sector_attribution(
-        self, db: Session, user_id: int
-    ) -> List[Dict[str, Any]]:
+    def compute_sector_attribution(self, db: Session, user_id: int) -> list[dict[str, Any]]:
         """Performance attribution by sector/industry.
 
         ``user_id`` is required (D88)."""
         acct_ids = [
             row.id
-            for row in db.query(BrokerAccount.id)
-            .filter(BrokerAccount.user_id == user_id)
-            .all()
+            for row in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
         ]
         if not acct_ids:
             return []
@@ -936,7 +904,7 @@ class PortfolioAnalyticsService:
             return []
 
         symbols = [p.symbol for p in positions if p.symbol]
-        snap_map: Dict[str, Any] = {}
+        snap_map: dict[str, Any] = {}
         if symbols:
             snaps = (
                 db.query(MarketSnapshot)
@@ -948,15 +916,11 @@ class PortfolioAnalyticsService:
             )
             snap_map = {s.symbol: s for s in snaps}
 
-        by_sector: Dict[str, Dict[str, float]] = {}
+        by_sector: dict[str, dict[str, float]] = {}
         for p in positions:
             pos_sector = getattr(p, "sector", None)
             snap = snap_map.get(p.symbol)
-            sector = (
-                pos_sector
-                or (snap.sector if snap and snap.sector else None)
-                or "Other"
-            )
+            sector = pos_sector or (snap.sector if snap and snap.sector else None) or "Other"
             s = by_sector.setdefault(sector, {"value": 0, "pnl": 0, "weight": 0})
             mv = float(p.market_value or 0)
             s["value"] += mv

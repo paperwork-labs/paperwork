@@ -1,15 +1,15 @@
 """Tests for AdminHealthService strict composite health logic."""
 
-from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
 import json
+from datetime import UTC, datetime, timedelta
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.models import BrokerAccount
 from app.services.market.admin_health_service import (
-    AdminHealthService,
     HEALTH_THRESHOLDS,
+    AdminHealthService,
     _dim_status,
 )
 
@@ -36,7 +36,9 @@ def _mock_service():
     mock_stage_quality = MagicMock()
     patchers = [
         patch("app.services.market.admin_health_service.infra", mock_infra),
-        patch("app.services.market.admin_health_service.coverage_analytics", mock_coverage_analytics),
+        patch(
+            "app.services.market.admin_health_service.coverage_analytics", mock_coverage_analytics
+        ),
         patch("app.services.market.admin_health_service.stage_quality", mock_stage_quality),
         patch(
             "app.services.market.admin_health_service.AdminHealthService.__init__",
@@ -74,6 +76,7 @@ def _mock_db_portfolio_sync(accounts):
 
 # ---- dim_status -----------------------------------------------------------
 
+
 def test_dim_status_green():
     assert _dim_status(True) == "green"
 
@@ -83,6 +86,7 @@ def test_dim_status_red():
 
 
 # ---- composite logic ------------------------------------------------------
+
 
 def test_all_green():
     svc = _mock_service()
@@ -159,6 +163,7 @@ def test_response_includes_task_runs_and_thresholds():
 
 # ---- dimension builders ---------------------------------------------------
 
+
 def test_coverage_green_when_above_threshold():
     svc = _mock_service()
     svc._check_provider_keys = MagicMock(return_value={"fmp": "ok", "finnhub": "ok"})
@@ -196,7 +201,13 @@ def test_coverage_red_when_stale():
     svc._svc.coverage_analytics.coverage_snapshot.return_value = {}
     with patch(
         "app.services.market.coverage_utils.compute_coverage_status",
-        return_value={"daily_pct": 50.0, "stale_daily": 5, "m5_pct": 0, "stale_m5": 0, "tracked_count": 500},
+        return_value={
+            "daily_pct": 50.0,
+            "stale_daily": 5,
+            "m5_pct": 0,
+            "stale_m5": 0,
+            "tracked_count": 500,
+        },
     ):
         dim = svc._build_coverage_dimension(db)
     assert dim["status"] == "red"
@@ -216,7 +227,13 @@ def test_coverage_red_when_index_has_zero_constituents():
     }
     with patch(
         "app.services.market.coverage_utils.compute_coverage_status",
-        return_value={"daily_pct": 98.0, "stale_daily": 0, "m5_pct": 90.0, "stale_m5": 0, "tracked_count": 500},
+        return_value={
+            "daily_pct": 98.0,
+            "stale_daily": 0,
+            "m5_pct": 90.0,
+            "stale_m5": 0,
+            "tracked_count": 500,
+        },
     ):
         dim = svc._build_coverage_dimension(db)
     assert dim["status"] == "red"
@@ -367,12 +384,14 @@ def test_stage_red_when_drift_denominator_missing():
 
 def test_audit_green():
     svc = _mock_service()
-    svc._svc.redis_client.get.return_value = json.dumps({
-        "tracked_total": 500,
-        "daily_fill_pct": 98.0,
-        "snapshot_fill_pct": 95.0,
-        "missing_snapshot_history_sample": [],
-    })
+    svc._svc.redis_client.get.return_value = json.dumps(
+        {
+            "tracked_total": 500,
+            "daily_fill_pct": 98.0,
+            "snapshot_fill_pct": 95.0,
+            "missing_snapshot_history_sample": [],
+        }
+    )
     db = MagicMock()
     dim = svc._build_audit_dimension(db)
     assert dim["status"] == "green"
@@ -392,12 +411,10 @@ def test_audit_red_when_db_fails():
 
 def test_task_runs_loads_from_redis():
     svc = _mock_service()
-    from app.services.market.admin_health_service import _TASK_STATUS_KEYS
 
     def _mock_mget(keys):
         return [
-            json.dumps({"ts": "2025-01-01T00:00:00"})
-            if "admin_coverage_refresh" in k else None
+            json.dumps({"ts": "2025-01-01T00:00:00"}) if "admin_coverage_refresh" in k else None
             for k in keys
         ]
 
@@ -405,6 +422,7 @@ def test_task_runs_loads_from_redis():
     runs = svc._build_task_runs()
     assert runs.get("admin_coverage_refresh") is not None
     assert runs["admin_coverage_refresh"]["ts"] == "2025-01-01T00:00:00"
+
 
 def test_fundamentals_ok_at_pass_threshold():
     svc = _mock_service()
@@ -470,7 +488,7 @@ def test_portfolio_sync_ok_when_no_enabled_accounts():
 
 def test_portfolio_sync_green_when_all_accounts_fresh():
     svc = _mock_service()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     a1 = MagicMock()
     a1.last_successful_sync = now - timedelta(hours=1)
     a1.account_number = "U111"
@@ -488,7 +506,7 @@ def test_portfolio_sync_green_when_all_accounts_fresh():
 
 def test_portfolio_sync_red_when_some_accounts_stale():
     svc = _mock_service()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     fresh = MagicMock()
     fresh.last_successful_sync = now - timedelta(hours=1)
     fresh.account_number = "FRESH1"

@@ -16,15 +16,17 @@ from __future__ import annotations
 import enum
 
 from sqlalchemy import (
+    JSON,
     Column,
     DateTime,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     Numeric,
     String,
     Text,
+)
+from sqlalchemy import (
     Enum as SQLEnum,
 )
 from sqlalchemy.orm import relationship
@@ -120,9 +122,7 @@ class WalkForwardStudy(Base):
             "best_score": float(self.best_score) if self.best_score is not None else None,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "started_at": self.started_at.isoformat() if self.started_at else None,
-            "completed_at": (
-                self.completed_at.isoformat() if self.completed_at else None
-            ),
+            "completed_at": (self.completed_at.isoformat() if self.completed_at else None),
         }
 
     def to_detail(self) -> dict:
@@ -133,12 +133,8 @@ class WalkForwardStudy(Base):
             "symbols": self.symbols,
             "train_window_days": self.train_window_days,
             "test_window_days": self.test_window_days,
-            "dataset_start": (
-                self.dataset_start.isoformat() if self.dataset_start else None
-            ),
-            "dataset_end": (
-                self.dataset_end.isoformat() if self.dataset_end else None
-            ),
+            "dataset_start": (self.dataset_start.isoformat() if self.dataset_start else None),
+            "dataset_end": (self.dataset_end.isoformat() if self.dataset_end else None),
             "best_params": self.best_params,
             "per_split_results": self.per_split_results,
             "regime_attribution": self.regime_attribution,

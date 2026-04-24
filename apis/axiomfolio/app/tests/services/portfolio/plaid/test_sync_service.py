@@ -15,8 +15,6 @@ Coverage:
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
-
 import pytest
 
 try:
@@ -35,6 +33,7 @@ try:
     from app.models.user import User, UserRole
     from app.services.portfolio.plaid.client import PlaidAPIError
     from app.services.portfolio.plaid.sync_service import PlaidSyncService
+
     AVAILABLE = True
 except Exception:  # pragma: no cover
     AVAILABLE = False
@@ -115,11 +114,11 @@ def _mk_plaid_broker_account(
 class _FakeClientOK:
     """Happy-path stub — returns one holding with non-zero quantity."""
 
-    def __init__(self, *, accounts: Optional[List[Dict]] = None) -> None:
+    def __init__(self, *, accounts: list[dict] | None = None) -> None:
         self._accounts = accounts or [{"account_id": "acct-1"}]
         self.closed = False
 
-    def get_holdings(self, access_token_ct: str) -> Dict:
+    def get_holdings(self, access_token_ct: str) -> dict:
         assert access_token_ct == "ciphertext-placeholder"
         return {
             "accounts": self._accounts,
@@ -147,7 +146,7 @@ class _FakeClientOK:
 
 
 class _FakeClientReauth:
-    def get_holdings(self, access_token_ct: str) -> Dict:
+    def get_holdings(self, access_token_ct: str) -> dict:
         raise PlaidAPIError(
             "login required",
             error_code="ITEM_LOGIN_REQUIRED",
@@ -155,12 +154,12 @@ class _FakeClientReauth:
             display_message="Please relink your account",
         )
 
-    def close(self) -> None:  # noqa: D401
+    def close(self) -> None:
         return None
 
 
 class _FakeClientTransient:
-    def get_holdings(self, access_token_ct: str) -> Dict:
+    def get_holdings(self, access_token_ct: str) -> dict:
         raise PlaidAPIError(
             "rate limited",
             error_code="RATE_LIMIT_EXCEEDED",
@@ -182,9 +181,7 @@ def test_sync_account_happy_path_writes_position_and_aggregator_lot(db_session):
     acct = _mk_plaid_broker_account(db_session, user_id=user.id)
 
     service = PlaidSyncService(client_factory=_FakeClientOK)
-    result = service.sync_account_comprehensive(
-        acct.account_number, db_session, user_id=user.id
-    )
+    result = service.sync_account_comprehensive(acct.account_number, db_session, user_id=user.id)
 
     assert result["status"] == "success", result
     assert result["pipeline"]["written"] == 1
@@ -196,11 +193,7 @@ def test_sync_account_happy_path_writes_position_and_aggregator_lot(db_session):
         .one()
     )
     assert float(position.quantity) == 10.0
-    lot = (
-        db_session.query(TaxLot)
-        .filter(TaxLot.user_id == user.id, TaxLot.symbol == "AAPL")
-        .one()
-    )
+    lot = db_session.query(TaxLot).filter(TaxLot.user_id == user.id, TaxLot.symbol == "AAPL").one()
     assert lot.source == TaxLotSource.AGGREGATOR
     assert lot.cost_per_share is None, "aggregator lots must NOT synthesize basis"
     assert lot.cost_basis is None
@@ -210,14 +203,10 @@ def test_sync_account_happy_path_writes_position_and_aggregator_lot(db_session):
 def test_sync_account_item_login_required_marks_needs_reauth(db_session):
     user = _mk_user(db_session, email="u2@example.com", username="u2")
     conn = _mk_plaid_conn(db_session, user_id=user.id, item_id="item-reauth")
-    acct = _mk_plaid_broker_account(
-        db_session, user_id=user.id, plaid_account_id="acct-reauth"
-    )
+    acct = _mk_plaid_broker_account(db_session, user_id=user.id, plaid_account_id="acct-reauth")
 
     service = PlaidSyncService(client_factory=_FakeClientReauth)
-    result = service.sync_account_comprehensive(
-        acct.account_number, db_session, user_id=user.id
-    )
+    result = service.sync_account_comprehensive(acct.account_number, db_session, user_id=user.id)
 
     assert result["status"] == "error"
     assert result["error_code"] == "ITEM_LOGIN_REQUIRED"
@@ -230,14 +219,10 @@ def test_sync_account_item_login_required_marks_needs_reauth(db_session):
 def test_sync_account_transient_error_marks_error_not_reauth(db_session):
     user = _mk_user(db_session, email="u3@example.com", username="u3")
     conn = _mk_plaid_conn(db_session, user_id=user.id, item_id="item-err")
-    acct = _mk_plaid_broker_account(
-        db_session, user_id=user.id, plaid_account_id="acct-err"
-    )
+    acct = _mk_plaid_broker_account(db_session, user_id=user.id, plaid_account_id="acct-err")
 
     service = PlaidSyncService(client_factory=_FakeClientTransient)
-    result = service.sync_account_comprehensive(
-        acct.account_number, db_session, user_id=user.id
-    )
+    result = service.sync_account_comprehensive(acct.account_number, db_session, user_id=user.id)
 
     assert result["status"] == "error"
     assert result["error_code"] == "RATE_LIMIT_EXCEEDED"
@@ -249,9 +234,7 @@ def test_sync_rejects_cross_tenant_account_number(db_session):
     user_a = _mk_user(db_session, email="ua@example.com", username="ua")
     user_b = _mk_user(db_session, email="ub@example.com", username="ub")
     _mk_plaid_conn(db_session, user_id=user_b.id, item_id="item-b")
-    acct_b = _mk_plaid_broker_account(
-        db_session, user_id=user_b.id, plaid_account_id="acct-shared"
-    )
+    acct_b = _mk_plaid_broker_account(db_session, user_id=user_b.id, plaid_account_id="acct-shared")
 
     service = PlaidSyncService(client_factory=_FakeClientOK)
     # User A tries to sync user B's account — defensive scoping must refuse.

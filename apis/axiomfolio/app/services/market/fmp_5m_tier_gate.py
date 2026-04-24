@@ -10,7 +10,6 @@ medallion: silver
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from app.config import PROVIDER_POLICIES, settings
 
@@ -26,7 +25,7 @@ def resolved_market_provider_tier() -> str:
     return "paid"
 
 
-def fmp_5m_intraday_backfill_blocked_tier() -> Optional[str]:
+def fmp_5m_intraday_backfill_blocked_tier() -> str | None:
     """Return tier name when 5m intraday backfill must be skipped; else None."""
     resolved = resolved_market_provider_tier()
     if resolved in _INTRADAY_5M_ALLOWED:

@@ -37,7 +37,6 @@ from app.services.backtest.scenarios import (
     run_scenario,
 )
 
-
 # A fixed return distribution we use across many tests. Mix of winners
 # and losers, mean ~+0.5%, stdev ~3.5% — close to a real swing strategy.
 # Padded to ``MIN_SAMPLES`` for bootstrap validity gates.
@@ -171,8 +170,7 @@ class TestKnownDistribution:
             )
         ):
             assert lo <= mid <= hi, (
-                f"Percentile order broken at step {i}: "
-                f"p5={lo}, p50={mid}, p95={hi}"
+                f"Percentile order broken at step {i}: p5={lo}, p50={mid}, p95={hi}"
             )
 
 
@@ -234,9 +232,7 @@ class TestValidation:
 
     def test_validates_iterations_cap(self):
         with pytest.raises(ValueError, match="capped"):
-            MonteCarloSimulator().run(
-                _TRADE_RETURNS, n_simulations=MAX_ITERATIONS + 1
-            )
+            MonteCarloSimulator().run(_TRADE_RETURNS, n_simulations=MAX_ITERATIONS + 1)
 
     def test_negative_capital_raises(self):
         with pytest.raises(ValueError, match="> 0"):

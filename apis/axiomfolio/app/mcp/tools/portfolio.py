@@ -14,9 +14,10 @@ preserve precision across the JSON wire and to satisfy the project's
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
@@ -32,13 +33,12 @@ from app.models.market_data import MarketSnapshot
 from app.models.picks import PickEngagement, ValidatedPick
 from app.models.transaction import Dividend
 
-
 # ----------------------------------------------------------------------
 # Helpers
 # ----------------------------------------------------------------------
 
 
-def _money(value: Optional[Any]) -> Optional[str]:
+def _money(value: Any | None) -> str | None:
     """Render a Decimal/Float as a lossless decimal string, or None."""
     if value is None:
         return None
@@ -47,22 +47,18 @@ def _money(value: Optional[Any]) -> Optional[str]:
     return format(Decimal(str(value)), "f")
 
 
-def _iso(ts: Optional[datetime]) -> Optional[str]:
+def _iso(ts: datetime | None) -> str | None:
     """ISO-8601 UTC string for a datetime (None-safe)."""
     if ts is None:
         return None
     if ts.tzinfo is None:
-        ts = ts.replace(tzinfo=timezone.utc)
+        ts = ts.replace(tzinfo=UTC)
     return ts.isoformat()
 
 
-def _user_account_ids(db: Session, user_id: int) -> List[int]:
+def _user_account_ids(db: Session, user_id: int) -> list[int]:
     """All broker_account ids belonging to ``user_id`` (enabled or not)."""
-    rows = (
-        db.query(BrokerAccount.id)
-        .filter(BrokerAccount.user_id == user_id)
-        .all()
-    )
+    rows = db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
     return [r[0] for r in rows]
 
 
@@ -71,7 +67,7 @@ def _user_account_ids(db: Session, user_id: int) -> List[int]:
 # ----------------------------------------------------------------------
 
 
-def get_holdings(db: Session, user_id: int) -> Dict[str, Any]:
+def get_holdings(db: Session, user_id: int) -> dict[str, Any]:
     """Return open long equity positions (quantity > 0, equity instrument) for the authenticated user.
 
     Excludes closed rows (quantity zero), shorts/options/futures via
@@ -91,7 +87,7 @@ def get_holdings(db: Session, user_id: int) -> Dict[str, Any]:
         .order_by(Position.symbol.asc())
         .all()
     )
-    holdings: List[Dict[str, Any]] = []
+    holdings: list[dict[str, Any]] = []
     total_market_value = Decimal("0")
     for p in rows:
         mv = p.market_value or Decimal("0")
@@ -115,7 +111,7 @@ def get_holdings(db: Session, user_id: int) -> Dict[str, Any]:
             }
         )
     return {
-        "as_of": _iso(datetime.now(timezone.utc)),
+        "as_of": _iso(datetime.now(UTC)),
         "holdings_count": len(holdings),
         "total_market_value": _money(total_market_value),
         "holdings": holdings,
@@ -127,9 +123,7 @@ def get_holdings(db: Session, user_id: int) -> Dict[str, Any]:
 # ----------------------------------------------------------------------
 
 
-def get_recent_trades(
-    db: Session, user_id: int, days: int = 30
-) -> Dict[str, Any]:
+def get_recent_trades(db: Session, user_id: int, days: int = 30) -> dict[str, Any]:
     """Trades executed in the last ``days`` for the user's accounts."""
     if not isinstance(days, int) or days <= 0:
         raise ValueError("days must be a positive integer")
@@ -144,7 +138,7 @@ def get_recent_trades(
             "trades": [],
         }
 
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         db.query(Trade)
         .filter(Trade.account_id.in_(account_ids))
@@ -153,7 +147,7 @@ def get_recent_trades(
         .limit(500)
         .all()
     )
-    trades: List[Dict[str, Any]] = []
+    trades: list[dict[str, Any]] = []
     for t in rows:
         trades.append(
             {
@@ -186,9 +180,7 @@ def get_recent_trades(
 # ----------------------------------------------------------------------
 
 
-def get_dividend_summary(
-    db: Session, user_id: int, days: int = 365
-) -> Dict[str, Any]:
+def get_dividend_summary(db: Session, user_id: int, days: int = 365) -> dict[str, Any]:
     """Per-symbol dividend aggregation over the last ``days``."""
     if not isinstance(days, int) or days <= 0:
         raise ValueError("days must be a positive integer")
@@ -204,7 +196,7 @@ def get_dividend_summary(
             "by_symbol": [],
         }
 
-    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since = datetime.now(UTC) - timedelta(days=days)
     rows = (
         db.query(Dividend)
         .filter(Dividend.account_id.in_(account_ids))
@@ -213,7 +205,7 @@ def get_dividend_summary(
         .all()
     )
 
-    per_symbol: Dict[str, Dict[str, Any]] = defaultdict(
+    per_symbol: dict[str, dict[str, Any]] = defaultdict(
         lambda: {
             "gross": Decimal("0"),
             "tax": Decimal("0"),
@@ -250,9 +242,7 @@ def get_dividend_summary(
             "currency": agg["currency"],
             "last_pay_date": agg["last_pay_date"],
         }
-        for sym, agg in sorted(
-            per_symbol.items(), key=lambda kv: kv[1]["net"], reverse=True
-        )
+        for sym, agg in sorted(per_symbol.items(), key=lambda kv: kv[1]["net"], reverse=True)
     ]
 
     return {
@@ -269,7 +259,7 @@ def get_dividend_summary(
 # ----------------------------------------------------------------------
 
 
-def get_stage_summary(db: Session, user_id: int) -> Dict[str, Any]:
+def get_stage_summary(db: Session, user_id: int) -> dict[str, Any]:
     """Distribution of Weinstein stage labels across the user's holdings."""
     rows = (
         db.query(Position.symbol, Position.market_value, MarketSnapshot.stage_label)
@@ -277,7 +267,7 @@ def get_stage_summary(db: Session, user_id: int) -> Dict[str, Any]:
         .filter(Position.user_id == user_id)
         .all()
     )
-    by_stage: Dict[str, Dict[str, Any]] = defaultdict(
+    by_stage: dict[str, dict[str, Any]] = defaultdict(
         lambda: {"symbols": [], "market_value": Decimal("0")}
     )
     total_value = Decimal("0")
@@ -304,7 +294,7 @@ def get_stage_summary(db: Session, user_id: int) -> Dict[str, Any]:
         key=lambda r: r["stage"],
     )
     return {
-        "as_of": _iso(datetime.now(timezone.utc)),
+        "as_of": _iso(datetime.now(UTC)),
         "total_market_value": _money(total_value),
         "stages": summary,
     }
@@ -315,9 +305,7 @@ def get_stage_summary(db: Session, user_id: int) -> Dict[str, Any]:
 # ----------------------------------------------------------------------
 
 
-def get_recent_explanations(
-    db: Session, user_id: int, limit: int = 10
-) -> Dict[str, Any]:
+def get_recent_explanations(db: Session, user_id: int, limit: int = 10) -> dict[str, Any]:
     """Recent AutoOps anomaly summaries persisted for the authenticated user.
 
     Returns a tenant-safe subset (title, summary, category, severity,
@@ -363,9 +351,7 @@ def get_recent_explanations(
 # ----------------------------------------------------------------------
 
 
-def get_pick_history(
-    db: Session, user_id: int, limit: int = 50
-) -> Dict[str, Any]:
+def get_pick_history(db: Session, user_id: int, limit: int = 50) -> dict[str, Any]:
     """Validated picks the user has engaged with (viewed / executed)."""
     if not isinstance(limit, int) or limit <= 0:
         raise ValueError("limit must be a positive integer")
@@ -381,14 +367,12 @@ def get_pick_history(
         .all()
     )
 
-    items: List[Dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     for engagement, pick in rows:
         action = pick.action.value if pick.action is not None else None
         status = pick.status.value if pick.status is not None else None
         eng_type = (
-            engagement.engagement_type.value
-            if engagement.engagement_type is not None
-            else None
+            engagement.engagement_type.value if engagement.engagement_type is not None else None
         )
         items.append(
             {
@@ -417,7 +401,7 @@ def get_pick_history(
 # Tool catalog (advertised via tools/list)
 # ----------------------------------------------------------------------
 
-TOOL_DEFINITIONS: List[Dict[str, Any]] = [
+TOOL_DEFINITIONS: list[dict[str, Any]] = [
     {
         "name": "get_holdings",
         "description": (
@@ -529,7 +513,7 @@ TOOL_DEFINITIONS: List[Dict[str, Any]] = [
 ]
 
 
-TOOL_HANDLERS: Dict[str, Callable[..., Dict[str, Any]]] = {
+TOOL_HANDLERS: dict[str, Callable[..., dict[str, Any]]] = {
     "get_holdings": get_holdings,
     "get_recent_trades": get_recent_trades,
     "get_dividend_summary": get_dividend_summary,

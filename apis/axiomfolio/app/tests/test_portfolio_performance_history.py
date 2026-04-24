@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -90,7 +90,9 @@ def _wire_overrides(db_session, auth_user):
         app.dependency_overrides.pop(get_current_user, None)
 
 
-def _snapshot(account_id: int, snapshot_date: datetime, total_value: float = 10_000.0) -> PortfolioSnapshot:
+def _snapshot(
+    account_id: int, snapshot_date: datetime, total_value: float = 10_000.0
+) -> PortfolioSnapshot:
     return PortfolioSnapshot(
         account_id=account_id,
         snapshot_date=snapshot_date,
@@ -101,7 +103,9 @@ def _snapshot(account_id: int, snapshot_date: datetime, total_value: float = 10_
     )
 
 
-def test_performance_history_naive_snapshots_period_1y_returns_200(client, db_session, primary_account):
+def test_performance_history_naive_snapshots_period_1y_returns_200(
+    client, db_session, primary_account
+):
     """Naive UTC snapshot_date vs aware window end must not raise (prod 500 on Performance tab)."""
     if db_session is None:
         pytest.skip("database not configured")
@@ -121,11 +125,13 @@ def test_performance_history_naive_snapshots_period_1y_returns_200(client, db_se
     assert len(data["series"]) >= 1
 
 
-def test_performance_history_aware_snapshots_period_1y_returns_200(client, db_session, primary_account):
+def test_performance_history_aware_snapshots_period_1y_returns_200(
+    client, db_session, primary_account
+):
     if db_session is None:
         pytest.skip("database not configured")
 
-    snap_aware = datetime.now(timezone.utc) - timedelta(days=5)
+    snap_aware = datetime.now(UTC) - timedelta(days=5)
     db_session.add(_snapshot(primary_account.id, snap_aware, total_value=12_000.0))
     db_session.commit()
 

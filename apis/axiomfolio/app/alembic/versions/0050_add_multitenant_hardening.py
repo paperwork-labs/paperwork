@@ -22,9 +22,8 @@ Create Date: 2026-04-19
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0050"
 # Chained after main tip walk-forward head (0046); multitenant hardening extends chain.
@@ -67,9 +66,7 @@ def upgrade() -> None:
             name="uq_tenant_rate_limits_user_endpoint",
         ),
     )
-    op.create_index(
-        "ix_tenant_rate_limits_user_id", "tenant_rate_limits", ["user_id"]
-    )
+    op.create_index("ix_tenant_rate_limits_user_id", "tenant_rate_limits", ["user_id"])
     op.create_index(
         "ix_tenant_rate_limits_endpoint",
         "tenant_rate_limits",
@@ -143,9 +140,7 @@ def upgrade() -> None:
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column("bytes_written", sa.Integer(), nullable=True),
     )
-    op.create_index(
-        "ix_gdpr_export_jobs_user_id", "gdpr_export_jobs", ["user_id"]
-    )
+    op.create_index("ix_gdpr_export_jobs_user_id", "gdpr_export_jobs", ["user_id"])
     op.create_index(
         "ix_gdpr_export_user_status",
         "gdpr_export_jobs",
@@ -181,9 +176,7 @@ def upgrade() -> None:
         sa.Column("completed_at", sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column("error_message", sa.Text(), nullable=True),
     )
-    op.create_index(
-        "ix_gdpr_delete_jobs_user_id", "gdpr_delete_jobs", ["user_id"]
-    )
+    op.create_index("ix_gdpr_delete_jobs_user_id", "gdpr_delete_jobs", ["user_id"])
     op.create_index(
         "ix_gdpr_delete_user_status",
         "gdpr_delete_jobs",
@@ -233,18 +226,14 @@ def upgrade() -> None:
             server_default=sa.func.now(),
             nullable=False,
         ),
-        sa.UniqueConstraint(
-            "user_id", "day", name="uq_tenant_cost_rollups_user_day"
-        ),
+        sa.UniqueConstraint("user_id", "day", name="uq_tenant_cost_rollups_user_day"),
     )
     op.create_index(
         "ix_tenant_cost_rollups_user_id",
         "tenant_cost_rollups",
         ["user_id"],
     )
-    op.create_index(
-        "ix_tenant_cost_rollups_day", "tenant_cost_rollups", ["day"]
-    )
+    op.create_index("ix_tenant_cost_rollups_day", "tenant_cost_rollups", ["day"])
 
     # ------------------------------------------------------------------
     # incidents (forensic audit for fail-loud surfaces)
@@ -294,9 +283,7 @@ def downgrade() -> None:
     op.drop_table("incidents")
 
     op.drop_index("ix_tenant_cost_rollups_day", table_name="tenant_cost_rollups")
-    op.drop_index(
-        "ix_tenant_cost_rollups_user_id", table_name="tenant_cost_rollups"
-    )
+    op.drop_index("ix_tenant_cost_rollups_user_id", table_name="tenant_cost_rollups")
     op.drop_table("tenant_cost_rollups")
 
     op.drop_index("ix_gdpr_delete_user_status", table_name="gdpr_delete_jobs")
@@ -307,19 +294,11 @@ def downgrade() -> None:
     op.drop_index("ix_gdpr_export_jobs_user_id", table_name="gdpr_export_jobs")
     op.drop_table("gdpr_export_jobs")
 
-    op.drop_index(
-        "ix_rate_limit_violations_attempted_at", table_name="rate_limit_violations"
-    )
-    op.drop_index(
-        "ix_rate_limit_violations_endpoint", table_name="rate_limit_violations"
-    )
-    op.drop_index(
-        "ix_rate_limit_violations_user_id", table_name="rate_limit_violations"
-    )
+    op.drop_index("ix_rate_limit_violations_attempted_at", table_name="rate_limit_violations")
+    op.drop_index("ix_rate_limit_violations_endpoint", table_name="rate_limit_violations")
+    op.drop_index("ix_rate_limit_violations_user_id", table_name="rate_limit_violations")
     op.drop_table("rate_limit_violations")
 
-    op.drop_index(
-        "ix_tenant_rate_limits_endpoint", table_name="tenant_rate_limits"
-    )
+    op.drop_index("ix_tenant_rate_limits_endpoint", table_name="tenant_rate_limits")
     op.drop_index("ix_tenant_rate_limits_user_id", table_name="tenant_rate_limits")
     op.drop_table("tenant_rate_limits")

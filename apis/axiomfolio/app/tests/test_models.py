@@ -12,27 +12,28 @@ Test Areas:
 4. Basic persistence smoke test
 """
 
-import inspect
 import importlib
+import inspect
+
 import pytest
 from sqlalchemy import ForeignKey
 from sqlalchemy import inspect as sa_inspect
 
 from app.models import (
-    User,
+    AccountBalance,
     BrokerAccount,
+    Category,
+    Dividend,
     Instrument,
+    MarginInterest,
+    PortfolioSnapshot,
     Position,
+    PositionCategory,
     TaxLot,
     Trade,
     Transaction,
-    Dividend,
-    AccountBalance,
-    MarginInterest,
     Transfer,
-    PortfolioSnapshot,
-    Category,
-    PositionCategory,
+    User,
 )
 from app.models.broker_account import AccountType, BrokerType
 
@@ -40,11 +41,13 @@ from app.models.broker_account import AccountType, BrokerType
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _require_schema(db_session):
     inspector = sa_inspect(db_session.bind)
     if not inspector.has_table("users") or not inspector.has_table("broker_accounts"):
         pytest.skip("Test DB not migrated; required tables missing")
+
 
 # ---------------------------------------------------------------------------
 # 1. Import integrity

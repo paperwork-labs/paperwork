@@ -14,13 +14,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 try:
-    from app.api.main import app
     from app.api.dependencies import get_current_user
+    from app.api.main import app
     from app.database import get_db
-    from app.models import User, BrokerAccount
+    from app.models import BrokerAccount, User
     from app.models.account_risk_profile import BrokerAccountRiskProfile
-    from app.models.user import UserRole
     from app.models.broker_account import AccountType, BrokerType, SyncStatus
+    from app.models.user import UserRole
     from app.services.risk.account_risk_profile import (
         AccountNotFoundError,
         apply_override,
@@ -163,9 +163,7 @@ def test_invalid_negative_is_rejected(db_session, user_a, account_a):
 def test_cross_tenant_access_is_blocked(db_session, user_a, user_b, account_b):
     """User A cannot see or edit User B's account risk profile."""
     with pytest.raises(AccountNotFoundError):
-        get_effective_limits(
-            db=db_session, user_id=user_a.id, account_id=account_b.id
-        )
+        get_effective_limits(db=db_session, user_id=user_a.id, account_id=account_b.id)
 
     with pytest.raises(AccountNotFoundError):
         apply_override(

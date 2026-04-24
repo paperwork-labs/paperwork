@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, date
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import date
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -20,16 +20,14 @@ class ActivityAggregatorService:
         self.daily_mv = "portfolio_activity_daily_mv"
 
     def _mv_exists(self, db: Session, name: str) -> bool:
-        sql = text(
-            "SELECT to_regclass(:name) IS NOT NULL AS exists;"
-        )
+        sql = text("SELECT to_regclass(:name) IS NOT NULL AS exists;")
         row = db.execute(sql, {"name": name}).first()
         return bool(row and row[0])
 
-    def refresh_materialized_views(self, db: Session) -> Dict[str, Any]:
+    def refresh_materialized_views(self, db: Session) -> dict[str, Any]:
         """Refresh activity materialized views. Safe to call periodically."""
         refreshed = []
-        errors: List[str] = []
+        errors: list[str] = []
         for mv in [self.activity_mv, self.daily_mv]:
             try:
                 if self._mv_exists(db, mv):
@@ -42,30 +40,31 @@ class ActivityAggregatorService:
     def get_activity(
         self,
         db: Session,
-        account_id: Optional[int] = None,
-        user_id: Optional[int] = None,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
-        symbol: Optional[str] = None,
-        category: Optional[str] = None,  # TRADE, DIVIDEND, COMMISSION, etc.
-        side: Optional[str] = None,  # BUY / SELL
+        account_id: int | None = None,
+        user_id: int | None = None,
+        start: date | None = None,
+        end: date | None = None,
+        symbol: str | None = None,
+        category: str | None = None,  # TRADE, DIVIDEND, COMMISSION, etc.
+        side: str | None = None,  # BUY / SELL
         limit: int = 200,
         offset: int = 0,
         use_mv: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Return unified activity rows and total count.
 
         Args:
             user_id: Required for security - scopes query to user's accounts.
         """
-        params: Dict[str, Any] = {}
-        where_clauses: List[str] = []
+        params: dict[str, Any] = {}
+        where_clauses: list[str] = []
         order = "ORDER BY ts DESC"
 
         # Get user's account IDs for scoping
-        user_account_ids: Optional[Tuple[int, ...]] = None
+        user_account_ids: tuple[int, ...] | None = None
         if user_id is not None:
             from app.models.broker_account import BrokerAccount
+
             rows = db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
             user_account_ids = tuple(r[0] for r in rows) if rows else ()
             if not user_account_ids:
@@ -189,7 +188,11 @@ class ActivityAggregatorService:
         params["offset"] = max(offset, 0)
 
         count_sql = text(f"SELECT COUNT(*) AS total FROM ({base} {where}) AS _count")
-        total_result = db.execute(count_sql, {k: v for k, v in params.items() if k not in ("limit", "offset")}).mappings().first()
+        total_result = (
+            db.execute(count_sql, {k: v for k, v in params.items() if k not in ("limit", "offset")})
+            .mappings()
+            .first()
+        )
         total = int(total_result["total"]) if total_result else 0
 
         sql = text(f"""
@@ -204,25 +207,26 @@ class ActivityAggregatorService:
     def get_daily_summary(
         self,
         db: Session,
-        account_id: Optional[int] = None,
-        user_id: Optional[int] = None,
-        start: Optional[date] = None,
-        end: Optional[date] = None,
-        symbol: Optional[str] = None,
+        account_id: int | None = None,
+        user_id: int | None = None,
+        start: date | None = None,
+        end: date | None = None,
+        symbol: str | None = None,
         use_mv: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Return per-day aggregated counts and money in/out.
 
         Args:
             user_id: Required for security - scopes query to user's accounts.
         """
-        params: Dict[str, Any] = {}
-        where_clauses: List[str] = []
+        params: dict[str, Any] = {}
+        where_clauses: list[str] = []
 
         # Get user's account IDs for scoping
-        user_account_ids: Optional[Tuple[int, ...]] = None
+        user_account_ids: tuple[int, ...] | None = None
         if user_id is not None:
             from app.models.broker_account import BrokerAccount
+
             rows = db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user_id).all()
             user_account_ids = tuple(r[0] for r in rows) if rows else ()
             if not user_account_ids:
@@ -358,5 +362,3 @@ class ActivityAggregatorService:
 
 
 activity_aggregator = ActivityAggregatorService()
-
-

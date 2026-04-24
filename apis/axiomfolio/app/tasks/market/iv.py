@@ -19,8 +19,9 @@ Guardrails (``.cursor/rules/no-silent-fallback.mdc``):
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta as td, timezone
-from typing import Callable, List, Optional, Sequence
+from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
+from datetime import timedelta as td
 
 from celery import shared_task
 
@@ -35,7 +36,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def _tracked_symbols(db) -> List[str]:
+def _tracked_symbols(db) -> list[str]:
     """Return the tracked symbol universe for the daily IV snapshot.
 
     Prefers the Redis ``tracked:all`` cache; falls back to the DB-driven
@@ -70,7 +71,7 @@ def _tracked_symbols(db) -> List[str]:
     return symbols
 
 
-def _last_trading_day() -> "datetime.date":
+def _last_trading_day() -> datetime.date:
     """Most recent weekday on/before 'today' (UTC).
 
     Holiday-aware dating is not needed -- upserts are idempotent, so a
@@ -92,11 +93,11 @@ def _last_trading_day() -> "datetime.date":
 )
 @task_run("snapshot_iv_from_gateway")
 def sync_gateway(
-    symbols_override: Optional[Sequence[str]] = None,
+    symbols_override: Sequence[str] | None = None,
     *,
-    as_of_override: Optional["datetime.date"] = None,
-    ibkr_fetcher: Optional[Callable] = None,
-    yahoo_fetcher: Optional[Callable] = None,
+    as_of_override: datetime.date | None = None,
+    ibkr_fetcher: Callable | None = None,
+    yahoo_fetcher: Callable | None = None,
 ) -> dict:
     """Snapshot ATM IV for the tracked universe.
 
@@ -117,9 +118,7 @@ def sync_gateway(
     session = SessionLocal()
     try:
         symbols = (
-            list(symbols_override)
-            if symbols_override is not None
-            else _tracked_symbols(session)
+            list(symbols_override) if symbols_override is not None else _tracked_symbols(session)
         )
         total = len(symbols)
         if total == 0:
@@ -206,15 +205,12 @@ def compute_rank(lookback_days: int = 252) -> dict:
     try:
         from app.models.historical_iv import HistoricalIV
 
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         cutoff = today - td(days=lookback_days)
         updated = 0
 
         symbols = (
-            session.query(HistoricalIV.symbol)
-            .filter(HistoricalIV.date >= cutoff)
-            .distinct()
-            .all()
+            session.query(HistoricalIV.symbol).filter(HistoricalIV.date >= cutoff).distinct().all()
         )
 
         for (symbol,) in symbols:

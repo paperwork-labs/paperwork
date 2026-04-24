@@ -17,13 +17,12 @@ from __future__ import annotations
 
 import csv
 import io
-from typing import List
 
 from .schemas import FileFreePackage
 
 # Column order is part of the wire contract -- do not reorder without a
 # schema_version bump.
-CSV_COLUMNS: List[str] = [
+CSV_COLUMNS: list[str] = [
     "lot_id",
     "account_ref",
     "symbol",

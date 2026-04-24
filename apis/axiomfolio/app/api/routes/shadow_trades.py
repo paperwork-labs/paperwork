@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -42,9 +42,9 @@ class ShadowSubmitRequest(BaseModel):
     side: str = Field(..., description="buy or sell")
     quantity: Decimal = Field(..., gt=Decimal("0"))
     order_type: str = Field(default="market")
-    limit_price: Optional[Decimal] = Field(default=None)
-    tif: Optional[str] = Field(default=None)
-    account_id: Optional[str] = Field(default=None, max_length=100)
+    limit_price: Decimal | None = Field(default=None)
+    tif: str | None = Field(default=None)
+    account_id: str | None = Field(default=None, max_length=100)
 
     @field_validator("side")
     @classmethod
@@ -65,8 +65,8 @@ class ShadowSubmitRequest(BaseModel):
         return lower
 
 
-def _row_to_dict(row: ShadowOrder) -> Dict[str, Any]:
-    def _d(v: Any) -> Optional[str]:
+def _row_to_dict(row: ShadowOrder) -> dict[str, Any]:
+    def _d(v: Any) -> str | None:
         return str(v) if v is not None else None
 
     return {
@@ -83,22 +83,16 @@ def _row_to_dict(row: ShadowOrder) -> Dict[str, Any]:
         "risk_gate_verdict": row.risk_gate_verdict,
         "intended_fill_price": _d(row.intended_fill_price),
         "intended_fill_at": (
-            row.intended_fill_at.isoformat()
-            if row.intended_fill_at is not None
-            else None
+            row.intended_fill_at.isoformat() if row.intended_fill_at is not None else None
         ),
         "simulated_pnl": _d(row.simulated_pnl),
         "simulated_pnl_as_of": (
-            row.simulated_pnl_as_of.isoformat()
-            if row.simulated_pnl_as_of is not None
-            else None
+            row.simulated_pnl_as_of.isoformat() if row.simulated_pnl_as_of is not None else None
         ),
         "last_mark_price": _d(row.last_mark_price),
         "source_order_id": row.source_order_id,
         "error_message": row.error_message,
-        "created_at": (
-            row.created_at.isoformat() if row.created_at is not None else None
-        ),
+        "created_at": (row.created_at.isoformat() if row.created_at is not None else None),
     }
 
 
@@ -111,11 +105,11 @@ def _row_to_dict(row: ShadowOrder) -> Dict[str, Any]:
 async def list_shadow_trades(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-    status_filter: Optional[str] = Query(None, alias="status"),
-    symbol: Optional[str] = Query(None),
+    status_filter: str | None = Query(None, alias="status"),
+    symbol: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List the authenticated user's shadow orders, newest first."""
     q = db.query(ShadowOrder).filter(ShadowOrder.user_id == current_user.id)
     if status_filter:
@@ -123,12 +117,7 @@ async def list_shadow_trades(
     if symbol:
         q = q.filter(ShadowOrder.symbol == symbol.upper())
     total = q.count()
-    items = (
-        q.order_by(ShadowOrder.created_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
+    items = q.order_by(ShadowOrder.created_at.desc()).offset(offset).limit(limit).all()
     return {
         "items": [_row_to_dict(r) for r in items],
         "total": total,
@@ -143,7 +132,7 @@ async def submit_shadow_trade(
     payload: ShadowSubmitRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Record a shadow (paper) order directly — bypasses ``OrderManager``.
 
     This path exists so clients (and tests) can exercise the recorder in
@@ -177,7 +166,7 @@ async def submit_shadow_trade(
 async def pnl_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Aggregate simulated P&L across the user's shadow book.
 
     The response explicitly distinguishes the four possible states a
@@ -195,12 +184,8 @@ async def pnl_summary(
     agg = (
         db.query(
             func.count(ShadowOrder.id).label("total_orders"),
-            func.coalesce(func.sum(ShadowOrder.simulated_pnl), 0).label(
-                "total_pnl"
-            ),
-            func.sum(
-                case((ShadowOrder.simulated_pnl.isnot(None), 1), else_=0)
-            ).label("marked"),
+            func.coalesce(func.sum(ShadowOrder.simulated_pnl), 0).label("total_pnl"),
+            func.sum(case((ShadowOrder.simulated_pnl.isnot(None), 1), else_=0)).label("marked"),
             func.sum(
                 case(
                     (
@@ -224,7 +209,7 @@ async def pnl_summary(
         .group_by(ShadowOrder.status)
         .all()
     )
-    by_status: Dict[str, int] = {str(s): int(c) for s, c in status_rows}
+    by_status: dict[str, int] = {str(s): int(c) for s, c in status_rows}
 
     total_pnl = agg.total_pnl
     if total_pnl is None:

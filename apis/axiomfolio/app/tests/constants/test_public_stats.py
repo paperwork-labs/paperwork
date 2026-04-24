@@ -42,9 +42,7 @@ def test_direct_connect_live_matches_brokertype_enum() -> None:
     """
 
     enum_values = {b.value for b in BrokerType}
-    missing = [
-        slug for slug in DIRECT_CONNECT_BROKERS_LIVE if slug not in enum_values
-    ]
+    missing = [slug for slug in DIRECT_CONNECT_BROKERS_LIVE if slug not in enum_values]
     assert not missing, (
         f"Live direct-connect brokers missing from BrokerType enum: {missing}. "
         "Either land the sync service (and add the enum member) first, "
@@ -61,9 +59,7 @@ def test_direct_oauth_planned_not_yet_in_brokertype_enum() -> None:
     """
 
     enum_values = {b.value for b in BrokerType}
-    already_live = [
-        slug for slug in DIRECT_OAUTH_BROKERS_PLANNED if slug in enum_values
-    ]
+    already_live = [slug for slug in DIRECT_OAUTH_BROKERS_PLANNED if slug in enum_values]
     assert not already_live, (
         f"Planned OAuth brokers have already shipped: {already_live}. "
         "Promote them to DIRECT_CONNECT_BROKERS_LIVE."
@@ -74,7 +70,7 @@ def test_import_catalog_count_matches_catalog() -> None:
     """The marketing count of import brokers matches the real catalog."""
 
     catalog_import_count = sum(1 for entry in get_catalog() if entry.method == "import")
-    assert IMPORT_CATALOG_BROKERS_COUNT == catalog_import_count, (
+    assert catalog_import_count == IMPORT_CATALOG_BROKERS_COUNT, (
         f"IMPORT_CATALOG_BROKERS_COUNT ({IMPORT_CATALOG_BROKERS_COUNT}) drifted "
         f"from broker_catalog ({catalog_import_count} import entries). "
         "Update the constant when the catalog changes."
@@ -84,7 +80,4 @@ def test_import_catalog_count_matches_catalog() -> None:
 def test_brokers_supported_is_live_direct_connect_plus_import() -> None:
     """``BROKERS_SUPPORTED`` = live direct-connect + import-catalog, always."""
 
-    assert (
-        BROKERS_SUPPORTED
-        == len(DIRECT_CONNECT_BROKERS_LIVE) + IMPORT_CATALOG_BROKERS_COUNT
-    )
+    assert len(DIRECT_CONNECT_BROKERS_LIVE) + IMPORT_CATALOG_BROKERS_COUNT == BROKERS_SUPPORTED

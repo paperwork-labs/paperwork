@@ -6,15 +6,16 @@ Persistent order records for buy/sell execution flows and preview/whatIf respons
 """
 
 import enum
+
 from sqlalchemy import (
+    JSON,
     Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
     Integer,
     String,
-    Float,
-    DateTime,
-    JSON,
-    Index,
-    ForeignKey,
 )
 from sqlalchemy.sql import func
 
@@ -80,10 +81,18 @@ class Order(Base):
     broker_order_id = Column(String(100), nullable=True, index=True)
 
     # Lineage: which strategy / signal / position triggered this order
-    strategy_id = Column(Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True, index=True)
-    signal_id = Column(Integer, ForeignKey("signals.id", ondelete="SET NULL"), nullable=True, index=True)
-    position_id = Column(Integer, ForeignKey("positions.id", ondelete="SET NULL"), nullable=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    strategy_id = Column(
+        Integer, ForeignKey("strategies.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    signal_id = Column(
+        Integer, ForeignKey("signals.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    position_id = Column(
+        Integer, ForeignKey("positions.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     approved_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     source = Column(String(20), nullable=False, default="manual")
@@ -97,7 +106,9 @@ class Order(Base):
 
     # Execution quality analytics
     decision_price = Column(Float, nullable=True)  # Price when order was created/signaled
-    slippage_pct = Column(Float, nullable=True)  # (fill_price - decision_price) / decision_price * 100
+    slippage_pct = Column(
+        Float, nullable=True
+    )  # (fill_price - decision_price) / decision_price * 100
     slippage_dollars = Column(Float, nullable=True)  # Total slippage in dollars
     fill_latency_ms = Column(Integer, nullable=True)  # Time from submit to fill in milliseconds
     vwap_at_fill = Column(Float, nullable=True)  # VWAP at fill time for comparison
@@ -113,9 +124,7 @@ class Order(Base):
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by = Column(String(200), nullable=True)
 
     __table_args__ = (

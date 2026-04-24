@@ -1,4 +1,5 @@
 """Unit tests for detect_kell_patterns (C4 chart initiative)."""
+
 from __future__ import annotations
 
 import numpy as np

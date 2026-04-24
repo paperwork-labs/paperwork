@@ -27,15 +27,15 @@ Rules followed:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Path, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_feature
+from app.api.dependencies import require_feature
 from app.database import get_db
 from app.models.broker_account import (
     AccountStatus,
@@ -65,7 +65,7 @@ router = APIRouter()
 
 # Plaid account.subtype -> our AccountType. Everything else defaults to
 # TAXABLE with a logged warning rather than silently coerced.
-_ACCOUNT_TYPE_MAP: Dict[str, AccountType] = {
+_ACCOUNT_TYPE_MAP: dict[str, AccountType] = {
     "401k": AccountType.IRA,
     "401a": AccountType.IRA,
     "403b": AccountType.IRA,
@@ -99,14 +99,14 @@ class ExchangeRequest(BaseModel):
     public_token: str = Field(..., min_length=1)
     # We don't trust any field in metadata for auth decisions. It's kept
     # as a loose dict because the Plaid Link SDK's shape evolves.
-    metadata: Dict[str, Any] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ExchangeResponse(BaseModel):
     connection_id: int
     item_id: str
     institution_name: str
-    account_ids: List[int] = Field(
+    account_ids: list[int] = Field(
         ...,
         description="BrokerAccount primary keys created/updated for this item.",
     )
@@ -120,13 +120,13 @@ class ConnectionOut(BaseModel):
     institution_name: str
     status: str
     environment: str
-    last_sync_at: Optional[datetime]
-    last_error: Optional[str]
+    last_sync_at: datetime | None
+    last_error: str | None
     created_at: datetime
 
 
 class ConnectionsList(BaseModel):
-    connections: List[ConnectionOut]
+    connections: list[ConnectionOut]
 
 
 class DisconnectResponse(BaseModel):
@@ -136,8 +136,8 @@ class DisconnectResponse(BaseModel):
 
 class WebhookAckResponse(BaseModel):
     ack: bool
-    webhook_type: Optional[str] = None
-    webhook_code: Optional[str] = None
+    webhook_type: str | None = None
+    webhook_code: str | None = None
 
 
 # ---- helpers -------------------------------------------------------------
@@ -160,7 +160,7 @@ def _get_plaid_client() -> PlaidClient:
         ) from exc
 
 
-def _map_broker_type(institution_name: Optional[str]) -> BrokerType:
+def _map_broker_type(institution_name: str | None) -> BrokerType:
     """Match an institution name to a :class:`BrokerType`, case-insensitively.
 
     Plaid's institution names are free-form, so we match loosely. Unknowns
@@ -175,21 +175,17 @@ def _map_broker_type(institution_name: Optional[str]) -> BrokerType:
     for bt in BrokerType:
         if bt.value in name or name.startswith(bt.value):
             return bt
-    logger.warning(
-        "plaid: institution_name=%r did not match a known BrokerType", name
-    )
+    logger.warning("plaid: institution_name=%r did not match a known BrokerType", name)
     return BrokerType.UNKNOWN_BROKER
 
 
-def _map_account_type(subtype: Optional[str]) -> AccountType:
+def _map_account_type(subtype: str | None) -> AccountType:
     if not subtype:
         return AccountType.TAXABLE
     key = subtype.replace("_", " ").strip().lower()
     mapped = _ACCOUNT_TYPE_MAP.get(key)
     if mapped is None:
-        logger.info(
-            "plaid: unrecognised account subtype=%r -> defaulting to TAXABLE", key
-        )
+        logger.info("plaid: unrecognised account subtype=%r -> defaulting to TAXABLE", key)
         return AccountType.TAXABLE
     return mapped
 
@@ -251,9 +247,7 @@ def exchange_public_token(
     """
     client = _get_plaid_client()
     try:
-        access_token_plain, item_id = client.exchange_public_token(
-            body.public_token
-        )
+        access_token_plain, item_id = client.exchange_public_token(body.public_token)
     except PlaidAPIError as exc:
         logger.warning(
             "plaid exchange failed for user_id=%s type=%s code=%s",
@@ -278,7 +272,7 @@ def exchange_public_token(
     access_token_ct = client.encrypt_access_token(access_token_plain)
     # IMPORTANT: shred plaintext as early as possible. Python's GC will
     # free the string; this makes the intent explicit.
-    access_token_plain = ""  # noqa: F841 — intentional shred
+    access_token_plain = ""
 
     connection = PlaidConnection(
         user_id=current_user.id,
@@ -346,7 +340,7 @@ def exchange_public_token(
             },
         ) from exc
 
-    created_ids: List[int] = []
+    created_ids: list[int] = []
     for acct in accounts_meta:
         if str(acct.get("type")).lower() not in {"investment"}:
             logger.info(
@@ -383,16 +377,13 @@ def exchange_public_token(
                 connection_source="plaid",
                 connection_status="connected",
                 sync_status=SyncStatus.NEVER_SYNCED,
-                currency=(acct.get("balances", {}) or {}).get("iso_currency_code")
-                or "USD",
+                currency=(acct.get("balances", {}) or {}).get("iso_currency_code") or "USD",
             )
             db.add(ba)
             db.flush()
             created_ids.append(ba.id)
         else:
-            existing_ba.account_name = (
-                f"{display_name} (··{mask})" if mask else display_name
-            )
+            existing_ba.account_name = f"{display_name} (··{mask})" if mask else display_name
             existing_ba.account_type = _map_account_type(acct.get("subtype"))
             existing_ba.connection_status = "connected"
             existing_ba.is_enabled = True
@@ -483,9 +474,7 @@ def disconnect(
             exc.error_type,
             exc.error_code,
         )
-        conn.last_error = (
-            f"remove_item failed type={exc.error_type} code={exc.error_code}"
-        )
+        conn.last_error = f"remove_item failed type={exc.error_type} code={exc.error_code}"
 
     conn.mark_revoked()
     # Disable every BrokerAccount linked via this connection so scheduled
@@ -513,9 +502,7 @@ def disconnect(
 )
 async def plaid_webhook(
     request: Request,
-    plaid_verification: Optional[str] = Header(
-        default=None, alias="Plaid-Verification"
-    ),
+    plaid_verification: str | None = Header(default=None, alias="Plaid-Verification"),
 ) -> WebhookAckResponse:
     """Receive an async notification from Plaid.
 
@@ -536,7 +523,7 @@ async def plaid_webhook(
         payload = verify_webhook(
             body=body,
             plaid_verification_header=plaid_verification or "",
-            plaid_api_client=client._api,  # noqa: SLF001 — intentional access
+            plaid_api_client=client._api,
         )
     except WebhookVerificationError as exc:
         logger.warning("plaid webhook: signature verification failed: %s", exc)
@@ -576,9 +563,7 @@ async def plaid_webhook(
     # without leaking it into the response.
     _ = payload
 
-    return WebhookAckResponse(
-        ack=True, webhook_type=webhook_type, webhook_code=webhook_code
-    )
+    return WebhookAckResponse(ack=True, webhook_type=webhook_type, webhook_code=webhook_code)
 
 
 __all__ = ["router"]

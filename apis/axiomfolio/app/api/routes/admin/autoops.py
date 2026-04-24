@@ -31,7 +31,7 @@ agent namespace.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
@@ -44,10 +44,10 @@ from app.services.agent.anomaly_explainer import (
     AnomalySeverity,
     anomaly_to_dict,
     build_anomaly_from_dimension,
+    count_recent,
     explanation_row_to_payload,
     latest_for_anomaly,
     list_recent,
-    count_recent,
 )
 from app.tasks.ops.explain_anomaly import explain_anomaly_sync
 
@@ -56,7 +56,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/agent", tags=["agent"])
 
 
-def _explanation_out_from_sync_result(result: Dict[str, Any]) -> AutoOpsExplanationOut:
+def _explanation_out_from_sync_result(result: dict[str, Any]) -> AutoOpsExplanationOut:
     """Build response model; map skip dicts to HTTP errors for interactive callers."""
     if result.get("skipped"):
         reason = result.get("reason")
@@ -87,15 +87,15 @@ class AutoOpsExplanationOut(BaseModel):
     confidence: str
     is_fallback: bool
     model: str
-    generated_at: Optional[str]
-    payload: Dict[str, Any]
+    generated_at: str | None
+    payload: dict[str, Any]
 
 
 class AutoOpsExplanationListOut(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     total: int
-    items: List[AutoOpsExplanationOut]
+    items: list[AutoOpsExplanationOut]
 
 
 class ExplainDimensionRequest(BaseModel):
@@ -112,7 +112,7 @@ class ExplainDimensionRequest(BaseModel):
     dimension: str = Field(
         ..., min_length=1, max_length=64, description="Composite-health dimension name."
     )
-    dimension_payload: Dict[str, Any] = Field(
+    dimension_payload: dict[str, Any] = Field(
         ..., description="The dimension dict from /market-data/admin/health."
     )
 
@@ -131,18 +131,18 @@ class ExplainAnomalyRequest(BaseModel):
     category: AnomalyCategory
     severity: AnomalySeverity
     title: str = Field(..., min_length=1, max_length=200)
-    facts: Dict[str, Any] = Field(default_factory=dict)
+    facts: dict[str, Any] = Field(default_factory=dict)
     raw_evidence: str = Field("", max_length=8000)
-    detected_at: Optional[str] = None
+    detected_at: str | None = None
 
 
 @router.get("/explanations", response_model=AutoOpsExplanationListOut)
 def list_explanations(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
-    category: Optional[str] = Query(None, max_length=64),
-    severity: Optional[str] = Query(None, max_length=16),
-    fallback_only: Optional[bool] = Query(
+    category: str | None = Query(None, max_length=64),
+    severity: str | None = Query(None, max_length=16),
+    fallback_only: bool | None = Query(
         None,
         description="True -> only degraded explanations; False -> only LLM-grounded.",
     ),
@@ -209,7 +209,7 @@ def explain_now(
     }
     try:
         result = explain_anomaly_sync(payload)
-    except Exception:  # noqa: BLE001 - scrubbed 500; full traceback in logs
+    except Exception:
         logger.exception("autoops explain failed anomaly_id=%s", body.id)
         raise HTTPException(status_code=500, detail="explain failed")
     return _explanation_out_from_sync_result(result)
@@ -239,7 +239,7 @@ def explain_dimension(
     payload = anomaly_to_dict(anomaly)
     try:
         result = explain_anomaly_sync(payload)
-    except Exception:  # noqa: BLE001 - scrubbed 500; full traceback in logs
+    except Exception:
         logger.exception("autoops explain failed dimension=%s", body.dimension)
         raise HTTPException(status_code=500, detail="explain failed")
     return _explanation_out_from_sync_result(result)

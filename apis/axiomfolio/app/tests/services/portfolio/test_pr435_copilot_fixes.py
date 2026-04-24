@@ -1,4 +1,5 @@
 """Regression tests for Copilot review on PR 435 (Schwab options / sync hardening)."""
+
 from __future__ import annotations
 
 from datetime import datetime

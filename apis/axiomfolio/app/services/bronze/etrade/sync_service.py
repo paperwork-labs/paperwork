@@ -24,9 +24,9 @@ medallion: bronze
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -49,6 +49,7 @@ from app.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
+
 # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.day_pnl_service moves during Phase 0.C
 from app.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 
@@ -64,13 +65,13 @@ logger = logging.getLogger(__name__)
 # flip, which is the whole point of this guardrail. See docs/KNOWLEDGE.md
 # D130 — future broker-specific bronze sync services follow this same
 # narrow pattern.
-_ETRADE_BROKER_IDS: Tuple[str, ...] = ("etrade_sandbox",)
+_ETRADE_BROKER_IDS: tuple[str, ...] = ("etrade_sandbox",)
 
 
 # Mapping from E*TRADE's ``transactionType`` values to our canonical
 # ``TransactionType`` enum. Values observed from the v1 API:
 # https://apisb.etrade.com/docs/api/account/api-transaction-v1.html
-_ETRADE_TYPE_MAP: Dict[str, TransactionType] = {
+_ETRADE_TYPE_MAP: dict[str, TransactionType] = {
     "BUY": TransactionType.BUY,
     "SELL": TransactionType.SELL,
     "SHORT": TransactionType.SELL,
@@ -93,7 +94,7 @@ _ETRADE_TYPE_MAP: Dict[str, TransactionType] = {
 _TRADE_ETRADE_TYPES = {"BUY", "SELL", "SHORT", "BUY_TO_COVER"}
 
 
-def _to_decimal(value: Any) -> Optional[Decimal]:
+def _to_decimal(value: Any) -> Decimal | None:
     """Coerce E*TRADE's JSON numbers (or strings) into ``Decimal``.
 
     Returns ``None`` for missing / non-numeric inputs. E*TRADE mixes int and
@@ -128,24 +129,24 @@ def _parse_etrade_datetime(value: Any) -> datetime:
     """
 
     if value is None or value == "":
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     if isinstance(value, (int, float)):
         # E*TRADE uses epoch milliseconds in the v1 transactions payload.
         try:
-            return datetime.fromtimestamp(float(value) / 1000.0, tz=timezone.utc)
+            return datetime.fromtimestamp(float(value) / 1000.0, tz=UTC)
         except (OSError, ValueError, OverflowError):
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     if isinstance(value, date):
-        return datetime.combine(value, datetime.min.time(), tzinfo=timezone.utc)
+        return datetime.combine(value, datetime.min.time(), tzinfo=UTC)
     try:
         return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except (TypeError, ValueError):
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
-def _parse_option_expiry(raw: Dict[str, Any]) -> Optional[date]:
+def _parse_option_expiry(raw: dict[str, Any]) -> date | None:
     """Build a ``date`` from E*TRADE's ``expiryYear/Month/Day`` triple."""
 
     try:
@@ -170,25 +171,23 @@ class ETradeSyncService:
     commit — the caller controls the transaction boundary.
     """
 
-    def __init__(self, client: Optional[ETradeBronzeClient] = None) -> None:
+    def __init__(self, client: ETradeBronzeClient | None = None) -> None:
         # ``client`` is optional so the broker dispatcher can instantiate the
         # service cheaply and tests can inject a stub. The real client needs
         # credentials so we defer construction until ``_connect``.
-        self._client: Optional[ETradeBronzeClient] = client
+        self._client: ETradeBronzeClient | None = client
 
     # ------------------------------------------------------------------
     # Credentials + account discovery
     # ------------------------------------------------------------------
-    def _load_connection(
-        self, account: BrokerAccount, session: Session
-    ) -> BrokerOAuthConnection:
+    def _load_connection(self, account: BrokerAccount, session: Session) -> BrokerOAuthConnection:
         """Load the ACTIVE OAuth connection for this user + E*TRADE.
 
         Filters by ``user_id`` (multi-tenancy) and both accepted broker ids.
         Raises ``ConnectionError`` with a user-actionable message on miss.
         """
 
-        conn: Optional[BrokerOAuthConnection] = (
+        conn: BrokerOAuthConnection | None = (
             session.query(BrokerOAuthConnection)
             .filter(
                 BrokerOAuthConnection.user_id == account.user_id,
@@ -246,7 +245,7 @@ class ETradeSyncService:
 
     def _resolve_or_discover(
         self, account: BrokerAccount, session: Session
-    ) -> Tuple[Optional[str], Optional[str]]:
+    ) -> tuple[str | None, str | None]:
         """Map the local ``account_number`` to E*TRADE's ``accountIdKey``.
 
         The API routes balance/portfolio/transactions off an opaque
@@ -279,18 +278,15 @@ class ETradeSyncService:
         if not accounts:
             logger.warning(
                 "etrade sync: account %s (user %s) — /v1/accounts/list returned 0 accounts",
-                account.id, account.user_id,
+                account.id,
+                account.user_id,
             )
             return None, self._RESOLVE_REASON_NO_ACCOUNTS
 
         target = (account.account_number or "").strip()
-        placeholder = (
-            not target
-            or target == "ETRADE_OAUTH"
-            or target.startswith("ETRADE_")
-        )
+        placeholder = not target or target == "ETRADE_OAUTH" or target.startswith("ETRADE_")
 
-        match: Optional[Dict[str, Any]] = None
+        match: dict[str, Any] | None = None
         if not placeholder:
             match = next(
                 (a for a in accounts if str(a.get("accountId", "")) == target),
@@ -300,11 +296,7 @@ class ETradeSyncService:
         if match is None:
             # Placeholder or drift: take the first non-CLOSED account.
             match = next(
-                (
-                    a
-                    for a in accounts
-                    if (a.get("accountStatus") or "").upper() != "CLOSED"
-                ),
+                (a for a in accounts if (a.get("accountStatus") or "").upper() != "CLOSED"),
                 accounts[0],
             )
             real_id = str(match.get("accountId") or "").strip()
@@ -333,21 +325,27 @@ class ETradeSyncService:
                         "etrade sync: placeholder account %d collides with "
                         "real account %d for user %d (account_number=%s); "
                         "disabling placeholder and skipping this run.",
-                        account.id, existing.id, account.user_id, real_id,
+                        account.id,
+                        existing.id,
+                        account.user_id,
+                        real_id,
                     )
                     try:
                         account.is_enabled = False
                         session.flush()
-                    except Exception as exc:  # noqa: BLE001
+                    except Exception as exc:
                         logger.warning(
                             "etrade sync: failed to disable placeholder %d: %s",
-                            account.id, exc,
+                            account.id,
+                            exc,
                         )
                     return None, self._RESOLVE_REASON_PLACEHOLDER_COLLISION
                 logger.info(
-                    "etrade sync: auto-correcting account %d for user %d: "
-                    "'%s' -> '%s'",
-                    account.id, account.user_id, target, real_id,
+                    "etrade sync: auto-correcting account %d for user %d: '%s' -> '%s'",
+                    account.id,
+                    account.user_id,
+                    target,
+                    real_id,
                 )
                 account.account_number = real_id
                 session.flush()
@@ -368,8 +366,8 @@ class ETradeSyncService:
         account_number: str,
         session: Session,
         *,
-        user_id: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        user_id: int | None = None,
+    ) -> dict[str, Any]:
         """Sync a single E*TRADE account end-to-end.
 
         ``account_number`` is *not* globally unique across tenants (D88 /
@@ -430,7 +428,7 @@ class ETradeSyncService:
                 ),
             }
 
-        results: Dict[str, Any] = {"status": "success"}
+        results: dict[str, Any] = {"status": "success"}
 
         try:
             # Fetch the portfolio once — E*TRADE's ``/portfolio`` is the
@@ -441,19 +439,18 @@ class ETradeSyncService:
             # twice as close to the per-token rate limit for no benefit.
             assert self._client is not None
             portfolio_raw = self._client.get_portfolio(account_id_key)
-            results.update(
-                self._sync_positions(account, portfolio_raw, session)
-            )
-            results.update(
-                self._sync_options(account, portfolio_raw, session)
-            )
+            results.update(self._sync_positions(account, portfolio_raw, session))
+            results.update(self._sync_options(account, portfolio_raw, session))
             results.update(self._sync_transactions(account, account_id_key, session))
             results.update(self._sync_balances(account, account_id_key, session))
         except ETradeAPIError as exc:
             # Permanent = user-actionable (reauth), transient = retry by Celery.
             logger.warning(
                 "etrade sync: API error for user %s account %s: %s (permanent=%s)",
-                account.user_id, account.id, exc, exc.permanent,
+                account.user_id,
+                account.id,
+                exc,
+                exc.permanent,
             )
             return {
                 "status": "error",
@@ -466,7 +463,11 @@ class ETradeSyncService:
         total_items = sum(v for v in results.values() if isinstance(v, int))
         logger.info(
             "etrade sync: user %s account %s (%s) synced %d total items: %s",
-            account.user_id, account.id, account.account_number, total_items, results,
+            account.user_id,
+            account.id,
+            account.account_number,
+            total_items,
+            results,
         )
         return results
 
@@ -476,9 +477,9 @@ class ETradeSyncService:
     def _sync_positions(
         self,
         account: BrokerAccount,
-        raw: List[Dict[str, Any]],
+        raw: list[dict[str, Any]],
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Write stock positions from a pre-fetched ``/portfolio`` payload.
 
         The caller (``sync_account_comprehensive``) owns the
@@ -490,7 +491,7 @@ class ETradeSyncService:
         errors = 0
         options_seen = 0
         total = len(raw)
-        touched_rows: List[Position] = []
+        touched_rows: list[Position] = []
 
         for pos_raw in raw:
             try:
@@ -516,15 +517,11 @@ class ETradeSyncService:
                 day_gain_pct = _to_decimal(pos_raw.get("daysGainPct"))
                 current_price = _to_decimal(pos_raw.get("Quick", {}).get("lastTrade"))
 
-                fields: Dict[str, Any] = {
+                fields: dict[str, Any] = {
                     "quantity": qty,
                     "instrument_type": "STOCK",
-                    "position_type": (
-                        PositionType.LONG if qty >= 0 else PositionType.SHORT
-                    ),
-                    "status": (
-                        PositionStatus.OPEN if qty != 0 else PositionStatus.CLOSED
-                    ),
+                    "position_type": (PositionType.LONG if qty >= 0 else PositionType.SHORT),
+                    "status": (PositionStatus.OPEN if qty != 0 else PositionStatus.CLOSED),
                 }
                 if avg_cost is not None:
                     fields["average_cost"] = avg_cost
@@ -551,7 +548,7 @@ class ETradeSyncService:
                         day_gain_pct,
                     )
 
-                existing: Optional[Position] = (
+                existing: Position | None = (
                     session.query(Position)
                     .filter(
                         Position.user_id == account.user_id,
@@ -575,11 +572,13 @@ class ETradeSyncService:
                     session.add(new_pos)
                     touched_rows.append(new_pos)
                 written += 1
-            except Exception as exc:  # noqa: BLE001 — per-row isolation
+            except Exception as exc:
                 errors += 1
                 logger.warning(
                     "etrade sync: failed to upsert position for user %s account %s: %s",
-                    account.user_id, account.id, exc,
+                    account.user_id,
+                    account.id,
+                    exc,
                 )
 
         session.flush()
@@ -589,7 +588,12 @@ class ETradeSyncService:
         logger.info(
             "etrade sync positions: user=%s account=%s written=%d skipped=%d "
             "errors=%d options_in_portfolio=%d",
-            account.user_id, account.id, written, skipped, errors, options_seen,
+            account.user_id,
+            account.id,
+            written,
+            skipped,
+            errors,
+            options_seen,
         )
 
         # Server-side day P&L recompute (D141).
@@ -605,16 +609,14 @@ class ETradeSyncService:
     def _sync_options(
         self,
         account: BrokerAccount,
-        raw: List[Dict[str, Any]],
+        raw: list[dict[str, Any]],
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Write options positions from the same pre-fetched ``/portfolio``
         payload that ``_sync_positions`` consumed (see PR #395 Copilot
         follow-up)."""
         options = [
-            p
-            for p in raw
-            if (p.get("Product") or {}).get("securityType", "").upper() == "OPTN"
+            p for p in raw if (p.get("Product") or {}).get("securityType", "").upper() == "OPTN"
         ]
 
         written = 0
@@ -643,7 +645,7 @@ class ETradeSyncService:
                     skipped += 1
                     continue
 
-                existing: Optional[Option] = (
+                existing: Option | None = (
                     session.query(Option)
                     .filter(
                         Option.user_id == account.user_id,
@@ -658,9 +660,7 @@ class ETradeSyncService:
                 if existing is not None:
                     existing.open_quantity = qty
                     if market_value is not None and qty:
-                        existing.current_price = market_value / max(
-                            abs(qty) * 100, 1
-                        )
+                        existing.current_price = market_value / max(abs(qty) * 100, 1)
                     if cost_per_share is not None and qty:
                         existing.total_cost = cost_per_share * abs(qty) * 100
                 else:
@@ -669,9 +669,7 @@ class ETradeSyncService:
                             user_id=account.user_id,
                             account_id=account.id,
                             symbol=(
-                                osi_key
-                                or f"{underlying}{expiry:%y%m%d}"
-                                f"{put_call[0]}{strike:.0f}"
+                                osi_key or f"{underlying}{expiry:%y%m%d}{put_call[0]}{strike:.0f}"
                             ),
                             underlying_symbol=underlying,
                             strike_price=strike,
@@ -684,11 +682,13 @@ class ETradeSyncService:
                         )
                     )
                 written += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
                     "etrade sync: failed to upsert option for user %s account %s: %s",
-                    account.user_id, account.id, exc,
+                    account.user_id,
+                    account.id,
+                    exc,
                 )
 
         # Broker-level capability flag: if we ever see an option on this
@@ -703,7 +703,11 @@ class ETradeSyncService:
         )
         logger.info(
             "etrade sync options: user=%s account=%s written=%d skipped=%d errors=%d",
-            account.user_id, account.id, written, skipped, errors,
+            account.user_id,
+            account.id,
+            written,
+            skipped,
+            errors,
         )
         return {
             "options_synced": written,
@@ -716,7 +720,7 @@ class ETradeSyncService:
         account: BrokerAccount,
         account_id_key: str,
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         assert self._client is not None
         raw = self._client.get_transactions(account_id_key)
 
@@ -836,11 +840,13 @@ class ETradeSyncService:
                             )
                         )
                         dividends_created += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
                     "etrade sync: failed to upsert transaction for user %s account %s: %s",
-                    account.user_id, account.id, exc,
+                    account.user_id,
+                    account.id,
+                    exc,
                 )
 
         session.flush()
@@ -850,8 +856,13 @@ class ETradeSyncService:
         logger.info(
             "etrade sync transactions: user=%s account=%s written=%d skipped=%d "
             "errors=%d trades=%d dividends=%d",
-            account.user_id, account.id, written, skipped, errors,
-            trades_created, dividends_created,
+            account.user_id,
+            account.id,
+            written,
+            skipped,
+            errors,
+            trades_created,
+            dividends_created,
         )
         return {
             "transactions_synced": written,
@@ -866,13 +877,14 @@ class ETradeSyncService:
         account: BrokerAccount,
         account_id_key: str,
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         assert self._client is not None
         bal = self._client.get_balance(account_id_key)
         if not bal:
             logger.warning(
                 "etrade sync balances: user=%s account=%s — empty balance payload",
-                account.user_id, account.id,
+                account.user_id,
+                account.id,
             )
             return {"balances_synced": 0, "balances_skipped": 1, "balances_errors": 0}
 
@@ -894,7 +906,7 @@ class ETradeSyncService:
         new_bal = AccountBalance(
             user_id=account.user_id,
             broker_account_id=account.id,
-            balance_date=datetime.now(timezone.utc),
+            balance_date=datetime.now(UTC),
             cash_balance=cash_balance,
             net_liquidation=net_liq,
             buying_power=buying_power,
@@ -906,7 +918,8 @@ class ETradeSyncService:
         session.flush()
         logger.info(
             "etrade sync balances: user=%s account=%s written=1",
-            account.user_id, account.id,
+            account.user_id,
+            account.id,
         )
         return {"balances_synced": 1, "balances_skipped": 0, "balances_errors": 0}
 

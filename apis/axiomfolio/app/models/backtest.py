@@ -3,22 +3,26 @@ Strategy Backtest Models.
 
 Stores results of automated and manual backtest runs.
 """
+
+import enum
+
 from sqlalchemy import (
+    DECIMAL,
+    JSON,
+    Boolean,
     Column,
-    Integer,
-    String,
     DateTime,
     ForeignKey,
     Index,
-    JSON,
-    DECIMAL,
+    Integer,
+    String,
     Text,
-    Boolean,
+)
+from sqlalchemy import (
     Enum as SQLEnum,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
 
 from . import Base
 
@@ -45,9 +49,7 @@ class StrategyBacktest(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Configuration
-    status = Column(
-        SQLEnum(BacktestStatus), nullable=False, default=BacktestStatus.PENDING
-    )
+    status = Column(SQLEnum(BacktestStatus), nullable=False, default=BacktestStatus.PENDING)
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=False)
     initial_capital = Column(DECIMAL(15, 2), default=100000)

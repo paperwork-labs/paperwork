@@ -32,7 +32,6 @@ from app.services.bronze.etrade.client import (
 )
 from app.services.bronze.etrade.sync_service import ETradeSyncService
 
-
 __all__ = [
     "ETradeAPIError",
     "ETradeBronzeClient",

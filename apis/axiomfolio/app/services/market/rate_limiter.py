@@ -14,7 +14,6 @@ import logging
 import math
 import threading
 import time
-from typing import Dict, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +26,7 @@ class TokenBucketLimiter:
         burst: optional burst capacity (defaults to calls_per_minute / 10, min 1)
     """
 
-    def __init__(self, calls_per_minute: int, *, burst: Optional[int] = None) -> None:
+    def __init__(self, calls_per_minute: int, *, burst: int | None = None) -> None:
         if calls_per_minute <= 0:
             # No rate cap: pass-through (avoids rate=0 -> ZeroDivisionError in wait_time)
             self.rate = float("inf")
@@ -87,9 +86,10 @@ class ProviderRateLimiter:
     """
 
     @staticmethod
-    def _default_limits() -> Dict[str, int]:
+    def _default_limits() -> dict[str, int]:
         try:
             from app.config import settings as _s
+
             policy = _s.provider_policy
             return {
                 "fmp": policy.fmp_cpm,
@@ -102,14 +102,13 @@ class ProviderRateLimiter:
             logger.warning("Failed to load provider rate limits: %s", e)
             return {"fmp": 700, "finnhub": 50, "twelvedata": 7, "alphavantage": 4, "yfinance": 30}
 
-    def __init__(self, overrides: Optional[Dict[str, int]] = None) -> None:
+    def __init__(self, overrides: dict[str, int] | None = None) -> None:
         limits = {**self._default_limits(), **(overrides or {})}
-        self._limiters: Dict[str, TokenBucketLimiter] = {
-            name: TokenBucketLimiter(cpm)
-            for name, cpm in limits.items()
+        self._limiters: dict[str, TokenBucketLimiter] = {
+            name: TokenBucketLimiter(cpm) for name, cpm in limits.items()
         }
 
-    def get(self, provider: str) -> Optional[TokenBucketLimiter]:
+    def get(self, provider: str) -> TokenBucketLimiter | None:
         return self._limiters.get(provider.lower())
 
     async def acquire(self, provider: str) -> None:

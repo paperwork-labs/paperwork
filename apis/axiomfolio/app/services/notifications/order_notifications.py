@@ -4,14 +4,14 @@ medallion: ops
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from app.services.brain.webhook_client import brain_webhook
 
 logger = logging.getLogger(__name__)
 
 
-def _user_id(order_data: Dict[str, Any]) -> int | None:
+def _user_id(order_data: dict[str, Any]) -> int | None:
     raw = order_data.get("user_id")
     if raw is None:
         return None
@@ -21,7 +21,7 @@ def _user_id(order_data: Dict[str, Any]) -> int | None:
         return None
 
 
-async def send_trade_execution(order_data: Dict[str, Any]) -> None:
+async def send_trade_execution(order_data: dict[str, Any]) -> None:
     """Notify Brain when an order is filled or updated."""
     uid = _user_id(order_data)
     try:
@@ -33,7 +33,7 @@ async def send_trade_execution(order_data: Dict[str, Any]) -> None:
         logger.warning("Failed to send trade notification to Brain: %s", e)
 
 
-async def send_risk_alert(violation_msg: str, order_data: Dict[str, Any]) -> None:
+async def send_risk_alert(violation_msg: str, order_data: dict[str, Any]) -> None:
     """Notify Brain when a risk gate blocks an order."""
     uid = _user_id(order_data)
     payload = {
@@ -46,7 +46,7 @@ async def send_risk_alert(violation_msg: str, order_data: Dict[str, Any]) -> Non
         logger.warning("Failed to send risk alert to Brain: %s", e)
 
 
-async def send_order_summary(orders: List[Dict[str, Any]], period: str = "daily") -> None:
+async def send_order_summary(orders: list[dict[str, Any]], period: str = "daily") -> None:
     """Send a periodic order summary digest to Brain."""
     if not orders:
         return

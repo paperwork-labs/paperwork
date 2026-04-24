@@ -1,27 +1,30 @@
 """
-Financial Instruments 
+Financial Instruments
 ===================================
 
 Master data for all tradeable instruments (stocks, options, futures, etc.).
 Provides symbol mapping and instrument metadata.
 """
 
+import enum
+
 from sqlalchemy import (
+    DECIMAL,
+    JSON,
+    Boolean,
     Column,
+    DateTime,
+    ForeignKey,
+    Index,
     Integer,
     String,
-    DateTime,
-    Boolean,
-    ForeignKey,
-    DECIMAL,
-    Enum as SQLEnum,
-    Index,
-    JSON,
     Text,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
 
 from . import Base
 
@@ -151,9 +154,7 @@ class Instrument(Base):
         if not self.is_option:
             return self.symbol
 
-        exp_str = (
-            self.expiration_date.strftime("%y%m%d") if self.expiration_date else "XX"
-        )
+        exp_str = self.expiration_date.strftime("%y%m%d") if self.expiration_date else "XX"
         strike_str = f"{self.strike_price:.0f}" if self.strike_price else "0"
         return f"{self.underlying_symbol}_{exp_str}_{self.option_type[0]}{strike_str}"
 
@@ -167,9 +168,7 @@ class InstrumentAlias(Base):
     __tablename__ = "instrument_aliases"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    instrument_id = Column(
-        Integer, ForeignKey("instruments.id"), nullable=False, index=True
-    )
+    instrument_id = Column(Integer, ForeignKey("instruments.id"), nullable=False, index=True)
 
     # Alias information
     alias_symbol = Column(String(50), nullable=False, index=True)

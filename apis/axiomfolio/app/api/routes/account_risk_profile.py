@@ -16,7 +16,6 @@ this PR). This surface is configuration + advisory display only.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -32,7 +31,6 @@ from app.services.risk.account_risk_profile import (
 )
 from app.services.risk.firm_caps import FIRM_CAP_FIELDS, FirmCapsUnavailable
 
-
 router = APIRouter(prefix="/accounts", tags=["accounts", "risk"])
 
 
@@ -45,13 +43,13 @@ class RiskProfilePayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    max_position_pct: Optional[Decimal] = Field(default=None, ge=0, le=1)
-    max_stage_2c_pct: Optional[Decimal] = Field(default=None, ge=0, le=1)
-    max_options_pct: Optional[Decimal] = Field(default=None, ge=0, le=1)
-    max_daily_loss_pct: Optional[Decimal] = Field(default=None, ge=0, le=1)
-    hard_stop_pct: Optional[Decimal] = Field(default=None, ge=0, le=1)
+    max_position_pct: Decimal | None = Field(default=None, ge=0, le=1)
+    max_stage_2c_pct: Decimal | None = Field(default=None, ge=0, le=1)
+    max_options_pct: Decimal | None = Field(default=None, ge=0, le=1)
+    max_daily_loss_pct: Decimal | None = Field(default=None, ge=0, le=1)
+    hard_stop_pct: Decimal | None = Field(default=None, ge=0, le=1)
 
-    def as_override(self) -> dict[str, Optional[Decimal]]:
+    def as_override(self) -> dict[str, Decimal | None]:
         return {field: getattr(self, field) for field in FIRM_CAP_FIELDS}
 
 
@@ -67,9 +65,7 @@ def get_account_risk_profile(
     except AccountNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except FirmCapsUnavailable as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
     return {"data": result.as_dict()}
 
 
@@ -95,12 +91,8 @@ def put_account_risk_profile(
     except AccountNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     except FirmCapsUnavailable as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc))
     db.commit()
     return {"data": result.as_dict()}

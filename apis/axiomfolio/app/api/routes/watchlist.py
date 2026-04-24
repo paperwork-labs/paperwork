@@ -1,40 +1,39 @@
 """Watchlist routes."""
 
 from __future__ import annotations
-from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.database import get_db
+from app.models.market_data import MarketSnapshot
 from app.models.user import User
 from app.models.watchlist import Watchlist
-from app.models.market_data import MarketSnapshot
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
 
 class WatchlistAddRequest(BaseModel):
     symbol: str = Field(max_length=20)
-    notes: Optional[str] = Field(default=None, max_length=500)
+    notes: str | None = Field(default=None, max_length=500)
 
 
 class WatchlistItem(BaseModel):
     symbol: str
-    notes: Optional[str]
+    notes: str | None
     created_at: str
 
-    current_price: Optional[float] = None
-    name: Optional[str] = None
-    sector: Optional[str] = None
-    perf_1d: Optional[float] = None
-    rsi: Optional[float] = None
-    stage_label: Optional[str] = None
-    market_cap: Optional[float] = None
-    atr_percent: Optional[float] = None
+    current_price: float | None = None
+    name: str | None = None
+    sector: str | None = None
+    perf_1d: float | None = None
+    rsi: float | None = None
+    stage_label: str | None = None
+    market_cap: float | None = None
+    atr_percent: float | None = None
 
 
 class WatchlistCheckResponse(BaseModel):
@@ -102,9 +101,7 @@ def add_to_watchlist(
         raise HTTPException(status_code=400, detail="Symbol is required")
 
     existing = (
-        db.query(Watchlist)
-        .filter(Watchlist.user_id == user.id, Watchlist.symbol == symbol)
-        .first()
+        db.query(Watchlist).filter(Watchlist.user_id == user.id, Watchlist.symbol == symbol).first()
     )
     if existing:
         raise HTTPException(status_code=409, detail=f"{symbol} is already on your watchlist")
@@ -131,9 +128,7 @@ def remove_from_watchlist(
 ):
     symbol = symbol.upper().strip()
     entry = (
-        db.query(Watchlist)
-        .filter(Watchlist.user_id == user.id, Watchlist.symbol == symbol)
-        .first()
+        db.query(Watchlist).filter(Watchlist.user_id == user.id, Watchlist.symbol == symbol).first()
     )
     if not entry:
         raise HTTPException(status_code=404, detail=f"{symbol} not found on your watchlist")
@@ -151,8 +146,6 @@ def check_watchlist(
 ):
     symbol = symbol.upper().strip()
     exists = (
-        db.query(Watchlist)
-        .filter(Watchlist.user_id == user.id, Watchlist.symbol == symbol)
-        .first()
+        db.query(Watchlist).filter(Watchlist.user_id == user.id, Watchlist.symbol == symbol).first()
     )
     return {"data": WatchlistCheckResponse(watched=exists is not None).model_dump()}

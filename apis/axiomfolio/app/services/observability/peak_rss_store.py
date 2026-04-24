@@ -19,7 +19,7 @@ import platform
 import re
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from app.api.middleware import rate_limit as rate_limit_mod
 
@@ -44,7 +44,7 @@ def ru_maxrss_raw_to_kib(ru_maxrss: int) -> int:
 
 
 def _endpoint_key_from_template(method: str, path_template: str) -> str:
-    pnorm = rate_limit_mod._normalise_endpoint(path_template)  # noqa: SLF001
+    pnorm = rate_limit_mod._normalise_endpoint(path_template)
     pnorm = _re_invalid_k.sub("_", pnorm)
     m = (method or "GET").upper()
     return f"{PEAK_RSS_REDIS_KEY_PREFIX}{m}:{pnorm}"
@@ -64,15 +64,15 @@ def record_peak_rss_sample(redis, method: str, path_template: str, peak_rss_kib:
             # Lowest rank = lowest score = oldest time
             redis.zremrangebyrank(key, 0, n - _MAX_SAMPLES - 1)  # type: ignore[union-attr]
         redis.expire(key, _TTL_S)  # type: ignore[union-attr]
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("peak_rss: redis write/trim failed for %s: %s", key, e, exc_info=True)
 
 
-def _parse_members_for_kib(redis, key: str) -> List[int]:
-    out: List[int] = []
+def _parse_members_for_kib(redis, key: str) -> list[int]:
+    out: list[int] = []
     try:
         items = redis.zrange(key, 0, -1)  # type: ignore[union-attr]
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("peak_rss: zrange failed for %s: %s", key, e, exc_info=True)
         return out
     if not items:
@@ -87,7 +87,7 @@ def _parse_members_for_kib(redis, key: str) -> List[int]:
     return out
 
 
-def _pctl(sorted_vals: List[int], p: float) -> int:
+def _pctl(sorted_vals: list[int], p: float) -> int:
     if not sorted_vals:
         return 0
     n = len(sorted_vals)
@@ -102,20 +102,18 @@ def _pctl(sorted_vals: List[int], p: float) -> int:
     return int(d0 + (k - f) * (d1 - d0))
 
 
-def _scan_peak_rss_key_names(redis) -> List[str]:
-    out: List[str] = []
+def _scan_peak_rss_key_names(redis) -> list[str]:
+    out: list[str] = []
     try:
         for bkey in redis.scan_iter(match=f"{PEAK_RSS_REDIS_KEY_PREFIX}*", count=500):  # type: ignore[union-attr]
-            out.append(
-                bkey.decode() if isinstance(bkey, (bytes, bytearray)) else str(bkey)
-            )
-    except Exception as e:  # noqa: BLE001
+            out.append(bkey.decode() if isinstance(bkey, (bytes, bytearray)) else str(bkey))
+    except Exception as e:
         logger.warning("peak_rss: redis scan failed: %s", e, exc_info=True)
         raise
     return out
 
 
-def get_hottest_endpoints_aggregated(redis) -> Tuple[Optional[List[Dict[str, Any]]], Optional[str]]:
+def get_hottest_endpoints_aggregated(redis) -> tuple[list[dict[str, Any]] | None, str | None]:
     """Return ``(hottest_list, error_code)`` — error is non-None on fatal Redis.
 
     The list is the top-10 routes by max ``peak_rss`` (Kib) in the sample window, descending.
@@ -128,7 +126,7 @@ def get_hottest_endpoints_aggregated(redis) -> Tuple[Optional[List[Dict[str, Any
     except Exception:
         return None, "redis_unreachable"
 
-    rows: List[Dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
     for k in keys:
         vals = _parse_members_for_kib(redis, k)
         if not vals:

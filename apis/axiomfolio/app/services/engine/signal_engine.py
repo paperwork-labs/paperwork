@@ -6,25 +6,25 @@ Uses async Redis to avoid blocking the event loop.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import asyncio
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any
 
 import redis.asyncio as aioredis
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import SessionLocal
-from app.models.strategy import Strategy, StrategyStatus
-from app.models.signals import Signal, SignalType, SignalStatus
 from app.models.market_data import MarketSnapshot
+from app.models.strategy import Strategy, StrategyStatus
 from app.services.risk.circuit_breaker import circuit_breaker
-from app.services.strategy.rule_evaluator import RuleEvaluator, ConditionGroup
+from app.services.strategy.rule_evaluator import ConditionGroup, RuleEvaluator
 
 logger = logging.getLogger(__name__)
 
@@ -40,16 +40,14 @@ class BarEvent:
     low: float
     close: float
     volume: int
-    vwap: Optional[float] = None
+    vwap: float | None = None
 
     @classmethod
-    def from_stream_data(cls, data: Dict[bytes, bytes]) -> "BarEvent":
+    def from_stream_data(cls, data: dict[bytes, bytes]) -> BarEvent:
         """Parse from Redis Stream message."""
         return cls(
             symbol=data.get(b"symbol", b"").decode(),
-            timestamp=datetime.fromisoformat(
-                data.get(b"timestamp", b"").decode()
-            ),
+            timestamp=datetime.fromisoformat(data.get(b"timestamp", b"").decode()),
             open=float(data.get(b"open", 0)),
             high=float(data.get(b"high", 0)),
             low=float(data.get(b"low", 0)),
@@ -69,7 +67,7 @@ class SignalEvent:
     price: float
     timestamp: datetime
     confidence: float = 1.0
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -104,7 +102,7 @@ class SignalEngine:
 
     def __init__(
         self,
-        redis_client: Optional[aioredis.Redis] = None,
+        redis_client: aioredis.Redis | None = None,
     ):
         self._redis = redis_client
         self._running = False
@@ -217,9 +215,7 @@ class SignalEngine:
         finally:
             db.close()
 
-    def _get_active_strategies(
-        self, db: Session, symbol: str
-    ) -> List[Strategy]:
+    def _get_active_strategies(self, db: Session, symbol: str) -> list[Strategy]:
         """Get active strategies that should evaluate this symbol."""
         strategies = (
             db.query(Strategy)
@@ -237,9 +233,7 @@ class SignalEngine:
             sectors = universe.get("sectors", [])
 
             # If no filter, include all
-            if not symbols and not sectors:
-                matching.append(strategy)
-            elif symbol in symbols:
+            if (not symbols and not sectors) or symbol in symbols:
                 matching.append(strategy)
             # Could add sector matching here
 
@@ -250,7 +244,7 @@ class SignalEngine:
         db: Session,
         strategy: Strategy,
         bar: BarEvent,
-    ) -> List[SignalEvent]:
+    ) -> list[SignalEvent]:
         """
         Evaluate a strategy against a bar event.
 
@@ -280,9 +274,7 @@ class SignalEngine:
 
         # Evaluate exit rules if we have a position
         if position:
-            exit_signal = self._evaluate_exit_rules(
-                bar, position, exit_rules
-            )
+            exit_signal = self._evaluate_exit_rules(bar, position, exit_rules)
             if exit_signal:
                 signals.append(
                     SignalEvent(
@@ -322,9 +314,9 @@ class SignalEngine:
     def _evaluate_entry_rules(
         self,
         bar: BarEvent,
-        rules: Dict[str, Any],
-        db: Optional[Session] = None,
-    ) -> Optional[Dict[str, Any]]:
+        rules: dict[str, Any],
+        db: Session | None = None,
+    ) -> dict[str, Any] | None:
         """
         Evaluate entry rules against current market conditions.
 
@@ -361,7 +353,7 @@ class SignalEngine:
                 return None
 
             # Build evaluation context from snapshot + bar data
-            context: Dict[str, Any] = {
+            context: dict[str, Any] = {
                 # Current bar
                 "current_price": bar.close,
                 "open": bar.open,
@@ -397,7 +389,9 @@ class SignalEngine:
                 "atr_pct": snapshot.atr_pct,
                 # Volume analysis
                 "volume_sma_20": snapshot.volume_sma_20,
-                "volume_ratio": snapshot.volume / snapshot.volume_sma_20 if snapshot.volume_sma_20 else None,
+                "volume_ratio": snapshot.volume / snapshot.volume_sma_20
+                if snapshot.volume_sma_20
+                else None,
                 # TD Sequential
                 "td_buy_setup": snapshot.td_buy_setup,
                 "td_sell_setup": snapshot.td_sell_setup,
@@ -405,8 +399,12 @@ class SignalEngine:
                 "week_52_high": snapshot.week_52_high,
                 "week_52_low": snapshot.week_52_low,
                 # Distance calculations
-                "pct_from_sma_50": (bar.close / snapshot.sma_50 - 1) * 100 if snapshot.sma_50 else None,
-                "pct_from_sma_200": (bar.close / snapshot.sma_200 - 1) * 100 if snapshot.sma_200 else None,
+                "pct_from_sma_50": (bar.close / snapshot.sma_50 - 1) * 100
+                if snapshot.sma_50
+                else None,
+                "pct_from_sma_200": (bar.close / snapshot.sma_200 - 1) * 100
+                if snapshot.sma_200
+                else None,
             }
 
             # Parse rules to ConditionGroup if needed
@@ -453,8 +451,8 @@ class SignalEngine:
         self,
         bar: BarEvent,
         position: Any,
-        rules: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
+        rules: dict[str, Any],
+    ) -> dict[str, Any] | None:
         """
         Evaluate exit rules.
 

@@ -21,7 +21,7 @@ medallion: ops
 
 from __future__ import annotations
 
-from typing import List, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 class LLMProviderError(RuntimeError):
@@ -78,11 +78,11 @@ class StubLLMProvider:
 
     name = "stub"
 
-    def __init__(self, responses: List[str]) -> None:
+    def __init__(self, responses: list[str]) -> None:
         if not isinstance(responses, list):
             raise TypeError("responses must be a list[str]")
-        self._responses: List[str] = list(responses)
-        self.calls: List[tuple] = []  # for assertions in tests
+        self._responses: list[str] = list(responses)
+        self.calls: list[tuple] = []  # for assertions in tests
 
     def complete_json(
         self,

@@ -32,4 +32,3 @@ def test_weinstein_stage_refines_to_2c():
 
     stage = compute_weinstein_stage_from_daily(sym_daily, bm_daily)
     assert stage["stage_label"] == "2C"
-

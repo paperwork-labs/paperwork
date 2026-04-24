@@ -38,8 +38,8 @@ from __future__ import annotations
 
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from urllib.parse import urlencode
 
 import requests
@@ -78,7 +78,7 @@ def _classify_status(status: int) -> bool:
     return 400 <= status < 500
 
 
-def _parse_expires_at(expires_in: Optional[Any], default_s: int) -> datetime:
+def _parse_expires_at(expires_in: Any | None, default_s: int) -> datetime:
     """Coerce the provider's ``expires_in`` (seconds) into a UTC datetime.
 
     Tradier returns integer seconds; some SDKs stringify it. We coerce via
@@ -92,7 +92,7 @@ def _parse_expires_at(expires_in: Optional[Any], default_s: int) -> datetime:
         seconds = default_s
     if seconds <= 0:
         seconds = default_s
-    return datetime.now(timezone.utc) + timedelta(seconds=seconds)
+    return datetime.now(UTC) + timedelta(seconds=seconds)
 
 
 class TradierOAuth2Adapter(OAuthBrokerAdapter):
@@ -113,28 +113,24 @@ class TradierOAuth2Adapter(OAuthBrokerAdapter):
     def __init__(
         self,
         *,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        base_url: Optional[str] = None,
-        timeout_s: Optional[float] = None,
-        session: Optional[requests.Session] = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        base_url: str | None = None,
+        timeout_s: float | None = None,
+        session: requests.Session | None = None,
     ) -> None:
         self._client_id = client_id or getattr(settings, self._CLIENT_ID_SETTING, None)
-        self._client_secret = (
-            client_secret or getattr(settings, self._CLIENT_SECRET_SETTING, None)
-        )
+        self._client_secret = client_secret or getattr(settings, self._CLIENT_SECRET_SETTING, None)
         self._base_url = (base_url or self._BASE_URL).rstrip("/")
         self._timeout_s = (
-            timeout_s
-            if timeout_s is not None
-            else settings.TRADIER_OAUTH_REQUEST_TIMEOUT_S
+            timeout_s if timeout_s is not None else settings.TRADIER_OAUTH_REQUEST_TIMEOUT_S
         )
         self._session = session or requests.Session()
 
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _require_credentials(self) -> Tuple[str, str]:
+    def _require_credentials(self) -> tuple[str, str]:
         if not self._client_id or not self._client_secret:
             raise OAuthError(
                 f"Tradier credentials not configured (set "
@@ -147,7 +143,7 @@ class TradierOAuth2Adapter(OAuthBrokerAdapter):
     def _token_url(self) -> str:
         return f"{self._base_url}/v1/oauth/accesstoken"
 
-    def _post_token(self, payload: Dict[str, str]) -> Dict[str, Any]:
+    def _post_token(self, payload: dict[str, str]) -> dict[str, Any]:
         client_id, client_secret = self._require_credentials()
         url = self._token_url()
         # Tradier accepts HTTP Basic for the client credential pair and
@@ -171,8 +167,7 @@ class TradierOAuth2Adapter(OAuthBrokerAdapter):
         status = resp.status_code
         if status >= 400:
             raise OAuthError(
-                f"Tradier token endpoint returned HTTP {status}: "
-                f"{(resp.text or '')[:200]}",
+                f"Tradier token endpoint returned HTTP {status}: {(resp.text or '')[:200]}",
                 permanent=_classify_status(status),
                 broker=self.broker_id,
                 provider_status=status,
@@ -189,8 +184,7 @@ class TradierOAuth2Adapter(OAuthBrokerAdapter):
 
         if not isinstance(body, dict):
             raise OAuthError(
-                f"Tradier token response has unexpected root type "
-                f"{type(body).__name__}",
+                f"Tradier token response has unexpected root type {type(body).__name__}",
                 permanent=True,
                 broker=self.broker_id,
                 provider_status=status,
@@ -257,9 +251,7 @@ class TradierOAuth2Adapter(OAuthBrokerAdapter):
         return OAuthTokens(
             access_token=str(access_token),
             refresh_token=str(refresh_token) if refresh_token else None,
-            expires_at=_parse_expires_at(
-                body.get("expires_in"), _ACCESS_TOKEN_DEFAULT_LIFETIME_S
-            ),
+            expires_at=_parse_expires_at(body.get("expires_in"), _ACCESS_TOKEN_DEFAULT_LIFETIME_S),
             scope=str(body.get("scope") or "") or None,
             provider_account_id=None,
             raw=dict(body),
@@ -269,7 +261,7 @@ class TradierOAuth2Adapter(OAuthBrokerAdapter):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str],
+        refresh_token: str | None,
     ) -> OAuthTokens:
         if not refresh_token:
             raise OAuthError(
@@ -277,9 +269,7 @@ class TradierOAuth2Adapter(OAuthBrokerAdapter):
                 permanent=True,
                 broker=self.broker_id,
             )
-        body = self._post_token(
-            {"grant_type": "refresh_token", "refresh_token": refresh_token}
-        )
+        body = self._post_token({"grant_type": "refresh_token", "refresh_token": refresh_token})
         new_access = body.get("access_token")
         # Tradier occasionally rotates the refresh_token and occasionally
         # keeps it — fall back to the previous refresh so we never
@@ -294,9 +284,7 @@ class TradierOAuth2Adapter(OAuthBrokerAdapter):
         return OAuthTokens(
             access_token=str(new_access),
             refresh_token=str(new_refresh),
-            expires_at=_parse_expires_at(
-                body.get("expires_in"), _ACCESS_TOKEN_DEFAULT_LIFETIME_S
-            ),
+            expires_at=_parse_expires_at(body.get("expires_in"), _ACCESS_TOKEN_DEFAULT_LIFETIME_S),
             scope=str(body.get("scope") or "") or None,
             provider_account_id=None,
             raw=dict(body),
@@ -306,7 +294,7 @@ class TradierOAuth2Adapter(OAuthBrokerAdapter):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str] = None,
+        refresh_token: str | None = None,
     ) -> None:
         # Tradier does not publish an OAuth 2.0 revoke endpoint as of
         # 2026-04. The correct user-facing path is "Revoke Application"
@@ -322,8 +310,8 @@ class TradierOAuth2Adapter(OAuthBrokerAdapter):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        refresh_token: str | None = None,
+    ) -> dict[str, Any] | None:
         """Small ``/user/profile`` probe to answer "is the token live?".
 
         Returns ``{"status": <code>, "ok": bool}`` so the health/refresh
@@ -364,9 +352,9 @@ class TradierSandboxOAuth2Adapter(TradierOAuth2Adapter):
 
 
 __all__ = [
-    "TradierOAuth2Adapter",
-    "TradierSandboxOAuth2Adapter",
     "AUTHORIZE_URL",
     "LIVE_BASE",
     "SANDBOX_BASE",
+    "TradierOAuth2Adapter",
+    "TradierSandboxOAuth2Adapter",
 ]

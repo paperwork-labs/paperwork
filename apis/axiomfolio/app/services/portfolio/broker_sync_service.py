@@ -9,17 +9,16 @@ from any supported broker, while keeping the core models broker-neutral.
 medallion: bronze
 """
 
-import logging
 import asyncio
 import json
-from typing import Dict
-from datetime import datetime, timezone
+import logging
+from datetime import UTC, datetime
 
 from app.database import SessionLocal
 from app.models import BrokerAccount
+from app.models.broker_account import BrokerType
 from app.services.portfolio.ibkr import IBKRSyncService
 from app.services.portfolio.tastytrade_sync_service import TastyTradeSyncService
-from app.models.broker_account import BrokerType
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +26,7 @@ logger = logging.getLogger(__name__)
 def _import_schwab_service():
     """Lazy import for Schwab to avoid circular dependencies."""
     from app.services.portfolio.schwab_sync_service import SchwabSyncService
+
     return SchwabSyncService()
 
 
@@ -38,6 +38,7 @@ def _import_etrade_service():
     test harnesses that stub broker I/O.
     """
     from app.services.bronze.etrade import ETradeSyncService
+
     return ETradeSyncService()
 
 
@@ -48,6 +49,7 @@ def _import_tradier_service():
     imports ``requests`` eagerly; keep the dispatcher light to import.
     """
     from app.services.bronze.tradier import TradierSyncService
+
     return TradierSyncService()
 
 
@@ -55,6 +57,7 @@ def _import_coinbase_service():
     """Lazy import for the Coinbase bronze sync service."""
 
     from app.services.bronze.coinbase import CoinbaseSyncService
+
     return CoinbaseSyncService()
 
 
@@ -72,10 +75,11 @@ def _import_plaid_service():
 
     # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.plaid.sync_service moves during Phase 0.C
     from app.services.portfolio.plaid.sync_service import PlaidSyncService
+
     return PlaidSyncService()
 
 
-def _build_partial_sync_message(completeness: Dict) -> str:
+def _build_partial_sync_message(completeness: dict) -> str:
     """Build a user-facing message for SyncStatus.PARTIAL (G22).
 
     The validator can return PARTIAL for two distinct reasons:
@@ -107,14 +111,11 @@ def _build_partial_sync_message(completeness: Dict) -> str:
         parts.append(f"pipeline writer errored on {errored_sections}")
 
     if parts:
-        return (
-            f"Partial sync: {'; '.join(parts)}. See sync history for full warnings."
-        )[:500]
+        return (f"Partial sync: {'; '.join(parts)}. See sync history for full warnings.")[:500]
 
-    return (
-        "Partial sync: pipeline reported degraded completeness; see sync history "
-        "for details."
-    )[:500]
+    return ("Partial sync: pipeline reported degraded completeness; see sync history for details.")[
+        :500
+    ]
 
 
 class BrokerSyncService:
@@ -196,9 +197,7 @@ class BrokerSyncService:
         self._broker_services[broker_type] = instance
         return instance
 
-    def sync_account(
-        self, account_id: str, db=None, sync_type: str = "comprehensive"
-    ) -> Dict:
+    def sync_account(self, account_id: str, db=None, sync_type: str = "comprehensive") -> dict:
         """
         Sync any broker account using the appropriate broker-specific service.
 
@@ -213,9 +212,7 @@ class BrokerSyncService:
             # Accept either DB primary key (int) or broker account_number (str)
             if isinstance(account_id, int):
                 broker_account = (
-                    session.query(BrokerAccount)
-                    .filter(BrokerAccount.id == account_id)
-                    .first()
+                    session.query(BrokerAccount).filter(BrokerAccount.id == account_id).first()
                 )
             else:
                 broker_account = (
@@ -262,8 +259,9 @@ class BrokerSyncService:
             # (Schwab/TT/IBKR) silently ignore the kwarg today — tighten when
             # each adapter is next touched.
             import inspect as _inspect
+
             _sig = _inspect.signature(service.sync_account_comprehensive)
-            _kwargs: Dict[str, object] = {}
+            _kwargs: dict[str, object] = {}
             if "user_id" in _sig.parameters:
                 _kwargs["user_id"] = broker_account.user_id
             result = _run(
@@ -273,14 +271,12 @@ class BrokerSyncService:
             )
 
             # Update sync status
-            broker_account.last_successful_sync = datetime.now(timezone.utc)
+            broker_account.last_successful_sync = datetime.now(UTC)
             from app.models.broker_account import SyncStatus
 
             broker_account.sync_status = SyncStatus.SUCCESS
             account_type_warnings = (
-                result.get("account_type_warnings", [])
-                if isinstance(result, dict)
-                else []
+                result.get("account_type_warnings", []) if isinstance(result, dict) else []
             )
             if account_type_warnings:
                 broker_account.sync_error_message = (
@@ -308,10 +304,7 @@ class BrokerSyncService:
                 if "broker_account" in locals() and broker_account:
                     fresh = (
                         session.query(BrokerAccount)
-                        .filter(
-                            BrokerAccount.account_number
-                            == broker_account.account_number
-                        )
+                        .filter(BrokerAccount.account_number == broker_account.account_number)
                         .first()
                     )
                     if fresh:
@@ -329,15 +322,13 @@ class BrokerSyncService:
 
     async def sync_account_async(
         self, account_id: str, db=None, sync_type: str = "comprehensive"
-    ) -> Dict:
+    ) -> dict:
         """Async variant to avoid nested event loop issues under FastAPI."""
         session = db or SessionLocal()
         try:
             if isinstance(account_id, int):
                 broker_account = (
-                    session.query(BrokerAccount)
-                    .filter(BrokerAccount.id == account_id)
-                    .first()
+                    session.query(BrokerAccount).filter(BrokerAccount.id == account_id).first()
                 )
             else:
                 broker_account = (
@@ -367,8 +358,9 @@ class BrokerSyncService:
             # See note in sync_account(): scope to user_id for services
             # that accept it (E*TRADE today; other brokers to follow).
             import inspect as _inspect_async
+
             _sig_async = _inspect_async.signature(service.sync_account_comprehensive)
-            _kwargs_async: Dict[str, object] = {}
+            _kwargs_async: dict[str, object] = {}
             if "user_id" in _sig_async.parameters:
                 _kwargs_async["user_id"] = broker_account.user_id
             maybe_coro = service.sync_account_comprehensive(
@@ -394,24 +386,16 @@ class BrokerSyncService:
 
             if result_status == "error":
                 broker_account.sync_status = SyncStatus.ERROR
-                broker_account.sync_error_message = str(
-                    result.get("error", "Unknown error")
-                )[:500]
+                broker_account.sync_error_message = str(result.get("error", "Unknown error"))[:500]
             elif result_status == "partial":
                 broker_account.sync_status = SyncStatus.PARTIAL
-                completeness = (
-                    result.get("completeness", {}) if isinstance(result, dict) else {}
-                )
-                broker_account.sync_error_message = _build_partial_sync_message(
-                    completeness
-                )
+                completeness = result.get("completeness", {}) if isinstance(result, dict) else {}
+                broker_account.sync_error_message = _build_partial_sync_message(completeness)
             else:
-                broker_account.last_successful_sync = datetime.now(timezone.utc)
+                broker_account.last_successful_sync = datetime.now(UTC)
                 broker_account.sync_status = SyncStatus.SUCCESS
                 account_type_warnings = (
-                    result.get("account_type_warnings", [])
-                    if isinstance(result, dict)
-                    else []
+                    result.get("account_type_warnings", []) if isinstance(result, dict) else []
                 )
                 if account_type_warnings:
                     broker_account.sync_error_message = (
@@ -434,10 +418,7 @@ class BrokerSyncService:
                 if "broker_account" in locals() and broker_account:
                     fresh = (
                         session.query(BrokerAccount)
-                        .filter(
-                            BrokerAccount.account_number
-                            == broker_account.account_number
-                        )
+                        .filter(BrokerAccount.account_number == broker_account.account_number)
                         .first()
                     )
                     if fresh:
@@ -453,23 +434,17 @@ class BrokerSyncService:
             if db is None:
                 session.close()
 
-    def sync_all_accounts(self, db=None) -> Dict:
+    def sync_all_accounts(self, db=None) -> dict:
         """Sync all broker accounts for a user."""
         session = db or SessionLocal()
         try:
-            accounts = (
-                session.query(BrokerAccount)
-                .filter(BrokerAccount.is_enabled == True)
-                .all()
-            )
+            accounts = session.query(BrokerAccount).filter(BrokerAccount.is_enabled == True).all()
 
             results = {}
             for account in accounts:
                 account_key = f"{account.broker.value}_{account.account_number}"
                 try:
-                    results[account_key] = self.sync_account(
-                        account.account_number, session
-                    )
+                    results[account_key] = self.sync_account(account.account_number, session)
                 except ValueError as ve:
                     # Skip unsupported brokers gracefully
                     results[account_key] = {"status": "skipped", "reason": str(ve)}

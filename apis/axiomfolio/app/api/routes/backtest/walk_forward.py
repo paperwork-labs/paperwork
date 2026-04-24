@@ -14,8 +14,8 @@ key; tier policy lives in ``feature_catalog.py``, not inline here.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, date, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field, field_validator
@@ -55,39 +55,35 @@ class CreateStudyRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     strategy_class: str = Field(..., description="Key in STRATEGY_REGISTRY")
     objective: str = Field(default="sharpe_ratio")
-    param_space: Dict[str, Dict[str, Any]] = Field(...)
-    symbols: List[str] = Field(..., min_length=1, max_length=MAX_SYMBOLS)
+    param_space: dict[str, dict[str, Any]] = Field(...)
+    symbols: list[str] = Field(..., min_length=1, max_length=MAX_SYMBOLS)
     dataset_start: date
     dataset_end: date
     train_window_days: int = Field(..., ge=MIN_TRAIN_DAYS)
     test_window_days: int = Field(..., ge=MIN_TEST_DAYS)
     n_splits: int = Field(default=5, ge=1, le=MAX_SPLITS)
     n_trials: int = Field(default=50, ge=1, le=MAX_TRIALS)
-    regime_filter: Optional[str] = Field(default=None)
+    regime_filter: str | None = Field(default=None)
 
     @field_validator("regime_filter")
     @classmethod
-    def _validate_regime(cls, v: Optional[str]) -> Optional[str]:
+    def _validate_regime(cls, v: str | None) -> str | None:
         if v is None:
             return None
         if v not in REGIME_LABELS:
-            raise ValueError(
-                f"regime_filter must be one of {REGIME_LABELS} or null"
-            )
+            raise ValueError(f"regime_filter must be one of {REGIME_LABELS} or null")
         return v
 
     @field_validator("objective")
     @classmethod
     def _validate_objective(cls, v: str) -> str:
         if v not in list_objectives():
-            raise ValueError(
-                f"objective must be one of {list_objectives()}"
-            )
+            raise ValueError(f"objective must be one of {list_objectives()}")
         return v
 
     @field_validator("symbols")
     @classmethod
-    def _normalize_symbols(cls, v: List[str]) -> List[str]:
+    def _normalize_symbols(cls, v: list[str]) -> list[str]:
         # Deduplicate + uppercase so the engine query is deterministic.
         seen, out = set(), []
         for s in v:
@@ -109,24 +105,24 @@ class StudySummaryResponse(BaseModel):
     n_splits: int
     n_trials: int
     total_trials: int
-    regime_filter: Optional[str]
-    best_score: Optional[float]
-    created_at: Optional[str]
-    started_at: Optional[str]
-    completed_at: Optional[str]
+    regime_filter: str | None
+    best_score: float | None
+    created_at: str | None
+    started_at: str | None
+    completed_at: str | None
 
 
 class StudyDetailResponse(StudySummaryResponse):
-    param_space: Dict[str, Any]
-    symbols: List[str]
+    param_space: dict[str, Any]
+    symbols: list[str]
     train_window_days: int
     test_window_days: int
-    dataset_start: Optional[str]
-    dataset_end: Optional[str]
-    best_params: Optional[Dict[str, Any]]
-    per_split_results: Optional[List[Dict[str, Any]]]
-    regime_attribution: Optional[Dict[str, Any]]
-    error_message: Optional[str]
+    dataset_start: str | None
+    dataset_end: str | None
+    best_params: dict[str, Any] | None
+    per_split_results: list[dict[str, Any]] | None
+    regime_attribution: dict[str, Any] | None
+    error_message: str | None
 
 
 # ---------------------------------------------------------------------------
@@ -136,9 +132,7 @@ class StudyDetailResponse(StudySummaryResponse):
 
 def _validate_window_fits_dataset(req: CreateStudyRequest) -> None:
     if req.dataset_end <= req.dataset_start:
-        raise HTTPException(
-            status_code=400, detail="dataset_end must be after dataset_start"
-        )
+        raise HTTPException(status_code=400, detail="dataset_end must be after dataset_start")
     span = (req.dataset_end - req.dataset_start).days
     needed = req.train_window_days + req.test_window_days * req.n_splits
     if span < needed:
@@ -188,8 +182,8 @@ def create_study(
     # Lazy import keeps the strategy registry out of the route module's
     # import-time graph.
     from app.tasks.backtest.walk_forward_runner import (
-        list_strategy_classes,
         get_strategy_builder,
+        list_strategy_classes,
     )
 
     if payload.strategy_class not in list_strategy_classes():
@@ -210,13 +204,13 @@ def create_study(
     # Confirm the builder accepts dummy params (catches a registry bug
     # before we burn a task slot).
     try:
-        sample_params = {name: spec.get("low", spec.get("choices", [None])[0])
-                         for name, spec in payload.param_space.items()}
+        sample_params = {
+            name: spec.get("low", spec.get("choices", [None])[0])
+            for name, spec in payload.param_space.items()
+        }
         get_strategy_builder(payload.strategy_class)(sample_params)
     except Exception as e:
-        raise HTTPException(
-            status_code=400, detail=f"strategy_class smoke-test failed: {e}"
-        )
+        raise HTTPException(status_code=400, detail=f"strategy_class smoke-test failed: {e}")
 
     _validate_window_fits_dataset(payload)
 
@@ -233,11 +227,9 @@ def create_study(
         n_trials=payload.n_trials,
         regime_filter=payload.regime_filter,
         dataset_start=datetime.combine(
-            payload.dataset_start, datetime.min.time(), tzinfo=timezone.utc
+            payload.dataset_start, datetime.min.time(), tzinfo=UTC
         ),
-        dataset_end=datetime.combine(
-            payload.dataset_end, datetime.min.time(), tzinfo=timezone.utc
-        ),
+        dataset_end=datetime.combine(payload.dataset_end, datetime.min.time(), tzinfo=UTC),
         status=WalkForwardStatus.PENDING,
     )
     db.add(study)
@@ -250,9 +242,7 @@ def create_study(
         # Failure to enqueue is recoverable — the row exists in PENDING
         # and an admin can retry. We *do not* zero out the row or pretend
         # it succeeded.
-        logger.exception(
-            "failed to enqueue walk-forward study %s: %s", study.id, e
-        )
+        logger.exception("failed to enqueue walk-forward study %s: %s", study.id, e)
         study.status = WalkForwardStatus.FAILED
         study.error_message = f"enqueue failed: {e}"
         db.commit()
@@ -262,14 +252,14 @@ def create_study(
 
 @router.get(
     "/walk-forward/studies",
-    response_model=List[StudySummaryResponse],
+    response_model=list[StudySummaryResponse],
     dependencies=[Depends(require_feature("research.walk_forward_optimizer"))],
 )
 def list_my_studies(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = 50,
-) -> List[StudySummaryResponse]:
+) -> list[StudySummaryResponse]:
     """Return the calling user's studies, newest first.
 
     Cross-tenant safety: every query filters on ``current_user.id``.
@@ -318,7 +308,7 @@ def get_study(
 )
 def list_available_strategies(
     _: User = Depends(get_current_user),
-) -> Dict[str, List[str]]:
+) -> dict[str, list[str]]:
     """Return the registered strategy classes and objective names.
 
     The frontend StudyForm uses this to populate two dropdowns instead of

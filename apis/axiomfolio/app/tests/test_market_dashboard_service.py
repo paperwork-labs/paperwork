@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import pytest
@@ -49,7 +49,7 @@ def test_fetch_rows_dedupes_to_latest_snapshot_per_symbol(monkeypatch):
     monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
     monkeypatch.setattr(mds_module, "tracked_symbols", lambda *args, **kwargs: ["AAPL", "MSFT"])
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     rows = [
         SimpleNamespace(
             symbol="AAPL",
@@ -171,7 +171,9 @@ def test_build_dashboard_sorts_leaders_and_pullbacks_by_momentum_score(monkeypat
     ]
 
     service = MarketDashboardService()
-    monkeypatch.setattr(service, "_fetch_rows", lambda db, **kwargs: (["AAA", "BBB", "ZZZ"], rows, {}, None))
+    monkeypatch.setattr(
+        service, "_fetch_rows", lambda db, **kwargs: (["AAA", "BBB", "ZZZ"], rows, {}, None)
+    )
 
     payload = service.build_dashboard(db=_FakeDB([]))
 
@@ -197,14 +199,28 @@ def test_build_dashboard_sector_etfs_use_configured_list_and_order(monkeypatch):
     monkeypatch.setattr(mds_module, "coverage_analytics", _Coverage())
 
     rows = [
-        _SummaryRow(symbol="XLE", stage_label="2A", current_stage_days=12, perf_1d=1.2, sector="Energy"),
-        _SummaryRow(symbol="XLF", stage_label="3", current_stage_days=8, perf_1d=-0.4, sector="Financial Services"),
-        _SummaryRow(symbol="SOXX", stage_label="2B", current_stage_days=5, perf_1d=2.3, sector="Technology"),
-        _SummaryRow(symbol="XBI", stage_label="2C", current_stage_days=3, perf_1d=4.0, sector="Biotech"),
+        _SummaryRow(
+            symbol="XLE", stage_label="2A", current_stage_days=12, perf_1d=1.2, sector="Energy"
+        ),
+        _SummaryRow(
+            symbol="XLF",
+            stage_label="3",
+            current_stage_days=8,
+            perf_1d=-0.4,
+            sector="Financial Services",
+        ),
+        _SummaryRow(
+            symbol="SOXX", stage_label="2B", current_stage_days=5, perf_1d=2.3, sector="Technology"
+        ),
+        _SummaryRow(
+            symbol="XBI", stage_label="2C", current_stage_days=3, perf_1d=4.0, sector="Biotech"
+        ),
     ]
 
     service = MarketDashboardService()
-    monkeypatch.setattr(service, "_fetch_rows", lambda db, **kwargs: ([r.symbol for r in rows], rows, {}, None))
+    monkeypatch.setattr(
+        service, "_fetch_rows", lambda db, **kwargs: ([r.symbol for r in rows], rows, {}, None)
+    )
 
     payload = service.build_dashboard(db=_FakeDB([]))
     table = payload["sector_etf_table"]
@@ -251,7 +267,9 @@ def test_build_dashboard_entering_stage_2a_is_not_truncated(monkeypatch):
     ]
 
     service = MarketDashboardService()
-    monkeypatch.setattr(service, "_fetch_rows", lambda db, **kwargs: ([r.symbol for r in rows], rows, {}, None))
+    monkeypatch.setattr(
+        service, "_fetch_rows", lambda db, **kwargs: ([r.symbol for r in rows], rows, {}, None)
+    )
 
     payload = service.build_dashboard(db=_FakeDB([]))
     entering = payload["entering_stage_2a"]

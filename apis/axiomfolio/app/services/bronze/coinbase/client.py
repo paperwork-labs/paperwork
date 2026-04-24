@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 from urllib.parse import urlparse
 
 import requests
@@ -27,8 +27,8 @@ class CoinbaseAPIError(Exception):
         message: str,
         *,
         permanent: bool,
-        status: Optional[int] = None,
-        path: Optional[str] = None,
+        status: int | None = None,
+        path: str | None = None,
     ) -> None:
         super().__init__(message)
         self.permanent = permanent
@@ -42,7 +42,7 @@ def _classify_permanent(status: int) -> bool:
     return 400 <= status < 500
 
 
-def _data_rows(body: Dict[str, Any], *, context: str) -> List[Dict[str, Any]]:
+def _data_rows(body: dict[str, Any], *, context: str) -> list[dict[str, Any]]:
     block = body.get("data")
     if block is None:
         return []
@@ -51,13 +51,12 @@ def _data_rows(body: Dict[str, Any], *, context: str) -> List[Dict[str, Any]]:
     if isinstance(block, dict):
         return [block]
     raise CoinbaseAPIError(
-        f"Coinbase {context} envelope has unexpected data type "
-        f"{type(block).__name__}",
+        f"Coinbase {context} envelope has unexpected data type {type(block).__name__}",
         permanent=True,
     )
 
 
-def _next_page_path(pagination: Any) -> Optional[str]:
+def _next_page_path(pagination: Any) -> str | None:
     if not isinstance(pagination, dict):
         return None
     raw = pagination.get("next_uri")
@@ -95,8 +94,8 @@ class CoinbaseBronzeClient:
         *,
         access_token: str,
         base_url: str = BASE_URL,
-        session: Optional[requests.Session] = None,
-        timeout_s: Optional[float] = None,
+        session: requests.Session | None = None,
+        timeout_s: float | None = None,
     ) -> None:
         if not access_token:
             raise CoinbaseAPIError(
@@ -117,8 +116,8 @@ class CoinbaseBronzeClient:
         method: str,
         path: str,
         *,
-        params: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         if path.startswith("http://") or path.startswith("https://"):
             url = path
         else:
@@ -156,8 +155,7 @@ class CoinbaseBronzeClient:
                     (resp.text or "")[:200],
                 )
                 raise CoinbaseAPIError(
-                    f"Coinbase {path} returned HTTP {status}: "
-                    f"{(resp.text or '')[:200]}",
+                    f"Coinbase {path} returned HTTP {status}: {(resp.text or '')[:200]}",
                     permanent=_classify_permanent(status),
                     status=status,
                     path=path,
@@ -167,7 +165,7 @@ class CoinbaseBronzeClient:
                 body = resp.json() if resp.content else {}
             except ValueError as exc:
                 raise CoinbaseAPIError(
-                    f"Coinbase {path} returned non-JSON: " f"{(resp.text or '')[:200]}",
+                    f"Coinbase {path} returned non-JSON: {(resp.text or '')[:200]}",
                     permanent=True,
                     status=status,
                     path=path,
@@ -189,7 +187,7 @@ class CoinbaseBronzeClient:
             path=path,
         )
 
-    def get_user(self) -> Dict[str, Any]:
+    def get_user(self) -> dict[str, Any]:
         body = self._request_json("GET", "/v2/user")
         data = body.get("data")
         if not isinstance(data, dict):
@@ -200,23 +198,23 @@ class CoinbaseBronzeClient:
             )
         return data
 
-    def list_all_accounts(self) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = []
-        path: Optional[str] = "/v2/accounts?limit=100"
+    def list_all_accounts(self) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        path: str | None = "/v2/accounts?limit=100"
         while path:
             body = self._request_json("GET", path)
             out.extend(_data_rows(body, context="accounts"))
             path = _next_page_path(body.get("pagination"))
         return out
 
-    def list_transactions_for_account(self, account_id: str) -> List[Dict[str, Any]]:
+    def list_transactions_for_account(self, account_id: str) -> list[dict[str, Any]]:
         if not account_id:
             raise CoinbaseAPIError(
                 "list_transactions_for_account requires account_id",
                 permanent=True,
             )
-        out: List[Dict[str, Any]] = []
-        path: Optional[str] = f"/v2/accounts/{account_id}/transactions?limit=100"
+        out: list[dict[str, Any]] = []
+        path: str | None = f"/v2/accounts/{account_id}/transactions?limit=100"
         while path:
             body = self._request_json("GET", path)
             out.extend(_data_rows(body, context="transactions"))
@@ -224,4 +222,4 @@ class CoinbaseBronzeClient:
         return out
 
 
-__all__ = ["CoinbaseAPIError", "CoinbaseBronzeClient", "BASE_URL"]
+__all__ = ["BASE_URL", "CoinbaseAPIError", "CoinbaseBronzeClient"]

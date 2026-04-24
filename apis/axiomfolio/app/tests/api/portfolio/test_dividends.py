@@ -9,7 +9,7 @@ payload and filtering client-side.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -109,7 +109,7 @@ def _wire_overrides(db_session, auth_user):
 def test_no_filter_returns_all_user_dividends(client, db_session, broker_account):
     if db_session is None:
         pytest.skip("database not configured")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     _seed_div(db_session, broker_account.id, "AAPL", now)
     _seed_div(db_session, broker_account.id, "MSFT", now)
     db_session.commit()
@@ -124,7 +124,7 @@ def test_no_filter_returns_all_user_dividends(client, db_session, broker_account
 def test_symbol_filter_scopes_to_one_ticker(client, db_session, broker_account):
     if db_session is None:
         pytest.skip("database not configured")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     _seed_div(db_session, broker_account.id, "AAPL", now, total=24.0)
     _seed_div(db_session, broker_account.id, "MSFT", now, total=37.5)
     _seed_div(db_session, broker_account.id, "AAPL", now, total=24.0)
@@ -140,7 +140,7 @@ def test_symbol_filter_scopes_to_one_ticker(client, db_session, broker_account):
 def test_symbol_filter_is_case_insensitive(client, db_session, broker_account):
     if db_session is None:
         pytest.skip("database not configured")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     _seed_div(db_session, broker_account.id, "AAPL", now)
     db_session.commit()
 
@@ -154,7 +154,7 @@ def test_symbol_filter_is_case_insensitive(client, db_session, broker_account):
 def test_symbol_filter_unknown_returns_empty(client, db_session, broker_account):
     if db_session is None:
         pytest.skip("database not configured")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     _seed_div(db_session, broker_account.id, "AAPL", now)
     db_session.commit()
 
@@ -194,7 +194,7 @@ def test_symbol_does_not_leak_other_users_dividends(client, db_session, auth_use
     db_session.commit()
     db_session.refresh(other_acc)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     _seed_div(db_session, broker_account.id, "AAPL", now, total=10.0)
     _seed_div(db_session, other_acc.id, "AAPL", now, total=999.0)
     db_session.commit()
@@ -222,7 +222,7 @@ def test_account_and_symbol_filters_compose(client, db_session, auth_user, broke
     db_session.commit()
     db_session.refresh(secondary)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     _seed_div(db_session, broker_account.id, "AAPL", now, total=11.11)
     _seed_div(db_session, secondary.id, "AAPL", now, total=22.22)
     db_session.commit()

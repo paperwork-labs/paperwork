@@ -1,11 +1,10 @@
-from fastapi.testclient import TestClient
 import pytest
+from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_market_data_viewer
-from app.models.user import UserRole
+from app.api.main import app
 from app.config import settings
-
+from app.models.user import UserRole
 
 client = TestClient(app, raise_server_exceptions=False)
 
@@ -41,5 +40,3 @@ def test_coverage_kpi_help_all_5m_covered_when_stale_m5_zero(monkeypatch):
         assert help_text == "All 5m covered"
     else:
         assert help_text == f"{stale_m5} missing 5m"
-
-

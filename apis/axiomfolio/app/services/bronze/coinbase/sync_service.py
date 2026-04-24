@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -34,13 +34,14 @@ from app.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
+
 # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.closing_lot_matcher moves during Phase 0.C
 from app.services.portfolio.closing_lot_matcher import reconcile_closing_lots
 
 logger = logging.getLogger(__name__)
 
 _COINBASE_OAUTH_SLUG = "coinbase"
-_COINBASE_ACCOUNT_TYPES: Tuple[BrokerType, ...] = (BrokerType.COINBASE,)
+_COINBASE_ACCOUNT_TYPES: tuple[BrokerType, ...] = (BrokerType.COINBASE,)
 _PLACEHOLDER_PREFIX = "COINBASE_"
 _EXECUTION_ID_MAX_LEN = 50
 
@@ -57,7 +58,7 @@ _FIAT_CODES = frozenset(
 )
 
 
-def _to_decimal(value: Any) -> Optional[Decimal]:
+def _to_decimal(value: Any) -> Decimal | None:
     if value is None or value == "":
         return None
     try:
@@ -66,7 +67,7 @@ def _to_decimal(value: Any) -> Optional[Decimal]:
         return None
 
 
-def _money_amount(money: Any) -> Optional[Decimal]:
+def _money_amount(money: Any) -> Decimal | None:
     if not isinstance(money, dict):
         return None
     return _to_decimal(money.get("amount"))
@@ -74,17 +75,17 @@ def _money_amount(money: Any) -> Optional[Decimal]:
 
 def _parse_iso_dt(value: Any) -> datetime:
     if value is None or value == "":
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     try:
         raw = str(value).strip().replace("Z", "+00:00")
         result = datetime.fromisoformat(raw)
         if result.tzinfo is None:
-            result = result.replace(tzinfo=timezone.utc)
+            result = result.replace(tzinfo=UTC)
         return result
     except (TypeError, ValueError):
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
 def _normalize_crypto_symbol(currency_code: str) -> str:
@@ -97,7 +98,7 @@ def _normalize_crypto_symbol(currency_code: str) -> str:
 
 
 def _synthetic_external_id(account_id: str, txn_id: str) -> str:
-    raw = f"{account_id}|{txn_id}".encode("utf-8")
+    raw = f"{account_id}|{txn_id}".encode()
     digest = hashlib.blake2b(raw, digest_size=8).hexdigest()
     return f"cbt_{digest}"
 
@@ -116,22 +117,18 @@ def _trade_execution_id(txn_id: str) -> str:
 class CoinbaseSyncService:
     """Bronze ingestion from Coinbase ``/v2`` wallet endpoints."""
 
-    def __init__(self, client: Optional[CoinbaseBronzeClient] = None) -> None:
-        self._client: Optional[CoinbaseBronzeClient] = client
+    def __init__(self, client: CoinbaseBronzeClient | None = None) -> None:
+        self._client: CoinbaseBronzeClient | None = client
 
     @staticmethod
     def _oauth_broker_slug_for_account(account: BrokerAccount) -> str:
         if account.broker == BrokerType.COINBASE:
             return _COINBASE_OAUTH_SLUG
-        raise ConnectionError(
-            "This account is not a Coinbase broker; cannot load Coinbase OAuth."
-        )
+        raise ConnectionError("This account is not a Coinbase broker; cannot load Coinbase OAuth.")
 
-    def _load_connection(
-        self, account: BrokerAccount, session: Session
-    ) -> BrokerOAuthConnection:
+    def _load_connection(self, account: BrokerAccount, session: Session) -> BrokerOAuthConnection:
         expected_slug = self._oauth_broker_slug_for_account(account)
-        conn: Optional[BrokerOAuthConnection] = (
+        conn: BrokerOAuthConnection | None = (
             session.query(BrokerOAuthConnection)
             .filter(
                 BrokerOAuthConnection.user_id == account.user_id,
@@ -165,8 +162,7 @@ class CoinbaseSyncService:
             access_token = decrypt(conn.access_token_encrypted)
         except (EncryptionUnavailableError, EncryptionDecryptError) as exc:
             raise ConnectionError(
-                f"Failed to decrypt Coinbase credentials: {exc}. Re-link on "
-                "the Connections page."
+                f"Failed to decrypt Coinbase credentials: {exc}. Re-link on the Connections page."
             ) from exc
         self._client = CoinbaseBronzeClient(access_token=access_token)
 
@@ -175,7 +171,7 @@ class CoinbaseSyncService:
 
     def _resolve_or_discover(
         self, account: BrokerAccount, session: Session
-    ) -> Tuple[Optional[str], Optional[str]]:
+    ) -> tuple[str | None, str | None]:
         assert self._client is not None
         try:
             user = self._client.get_user()
@@ -187,21 +183,18 @@ class CoinbaseSyncService:
                 exc,
             )
             return None, self._RESOLVE_REASON_NO_USER
-        uid = str((user.get("id") or "")).strip()
+        uid = str(user.get("id") or "").strip()
         if not uid:
             return None, self._RESOLVE_REASON_NO_USER
 
         target = (account.account_number or "").strip()
         placeholder = (
-            not target
-            or target == "COINBASE_OAUTH"
-            or target.startswith(_PLACEHOLDER_PREFIX)
+            not target or target == "COINBASE_OAUTH" or target.startswith(_PLACEHOLDER_PREFIX)
         )
 
         if not placeholder and target != uid:
             logger.info(
-                "coinbase sync: account %s user %s keeping account_number %s "
-                "(API user %s)",
+                "coinbase sync: account %s user %s keeping account_number %s (API user %s)",
                 account.id,
                 account.user_id,
                 target,
@@ -229,7 +222,7 @@ class CoinbaseSyncService:
                 try:
                     account.is_enabled = False
                     session.flush()
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.warning(
                         "coinbase sync: failed to disable placeholder %s: %s",
                         account.id,
@@ -245,8 +238,8 @@ class CoinbaseSyncService:
         account_number: str,
         session: Session,
         *,
-        user_id: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        user_id: int | None = None,
+    ) -> dict[str, Any]:
         query = (
             session.query(BrokerAccount)
             .filter(BrokerAccount.account_number == str(account_number))
@@ -287,7 +280,7 @@ class CoinbaseSyncService:
         try:
             assert self._client is not None
             raw_accounts = self._client.list_all_accounts()
-            results: Dict[str, Any] = {"status": "success"}
+            results: dict[str, Any] = {"status": "success"}
             results.update(self._sync_positions(account, raw_accounts, session))
             gtx = self._gather_transactions(raw_accounts)
             all_txns = gtx["pairs"]
@@ -301,9 +294,7 @@ class CoinbaseSyncService:
                     results["status"] = "partial"
                 else:
                     results["status"] = "error"
-                    results["error"] = (
-                        "Coinbase transaction list failed for all wallets"
-                    )
+                    results["error"] = "Coinbase transaction list failed for all wallets"
             results.update(self._sync_transactions(account, all_txns, session))
             results.update(self._sync_trades(account, all_txns, session))
             results.update(self._sync_balances(account, raw_accounts, session))
@@ -333,7 +324,7 @@ class CoinbaseSyncService:
                     match_result.unmatched_quantity,
                     match_result.warnings[0] if match_result.warnings else "",
                 )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "coinbase sync: closing-lot reconciliation failed account %s: %s",
                 account.id,
@@ -350,11 +341,9 @@ class CoinbaseSyncService:
         )
         return results
 
-    def _gather_transactions(
-        self, raw_accounts: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+    def _gather_transactions(self, raw_accounts: list[dict[str, Any]]) -> dict[str, Any]:
         assert self._client is not None
-        out: List[Tuple[str, Dict[str, Any]]] = []
+        out: list[tuple[str, dict[str, Any]]] = []
         wallets_tx_ok = 0
         wallets_tx_failed = 0
         wallets_attempted = 0
@@ -376,9 +365,9 @@ class CoinbaseSyncService:
             wallets_tx_ok += 1
             for txn in rows:
                 out.append((acct_id, txn))
-        assert (
-            wallets_attempted == wallets_tx_ok + wallets_tx_failed
-        ), "coinbase wallet tx counter drift"
+        assert wallets_attempted == wallets_tx_ok + wallets_tx_failed, (
+            "coinbase wallet tx counter drift"
+        )
         wallets_processed = wallets_attempted
         return {
             "pairs": out,
@@ -390,10 +379,10 @@ class CoinbaseSyncService:
     def _sync_positions(
         self,
         account: BrokerAccount,
-        raw_accounts: List[Dict[str, Any]],
+        raw_accounts: list[dict[str, Any]],
         session: Session,
-    ) -> Dict[str, Any]:
-        aggregates: Dict[str, Decimal] = {}
+    ) -> dict[str, Any]:
+        aggregates: dict[str, Decimal] = {}
         consumed = 0
         skipped = 0
         errors = 0
@@ -420,7 +409,7 @@ class CoinbaseSyncService:
                     continue
                 aggregates[sym] = aggregates.get(sym, Decimal("0")) + bal
                 consumed += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
                     "coinbase sync: position row failed user %s account %s: %s",
@@ -429,9 +418,9 @@ class CoinbaseSyncService:
                     exc,
                 )
 
-        assert (
-            consumed + skipped + errors == total
-        ), f"coinbase position row drift {consumed}+{skipped}+{errors}!={total}"
+        assert consumed + skipped + errors == total, (
+            f"coinbase position row drift {consumed}+{skipped}+{errors}!={total}"
+        )
 
         written = 0
         upsert_errors = 0
@@ -441,12 +430,8 @@ class CoinbaseSyncService:
                 fields = {
                     "quantity": qty,
                     "instrument_type": "CRYPTO",
-                    "position_type": (
-                        PositionType.LONG if qty >= 0 else PositionType.SHORT
-                    ),
-                    "status": (
-                        PositionStatus.OPEN if qty != 0 else PositionStatus.CLOSED
-                    ),
+                    "position_type": (PositionType.LONG if qty >= 0 else PositionType.SHORT),
+                    "status": (PositionStatus.OPEN if qty != 0 else PositionStatus.CLOSED),
                 }
                 existing = (
                     session.query(Position)
@@ -471,7 +456,7 @@ class CoinbaseSyncService:
                         )
                     )
                 written += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 upsert_errors += 1
                 logger.warning(
                     "coinbase sync: upsert position user %s account %s: %s",
@@ -481,9 +466,9 @@ class CoinbaseSyncService:
                 )
 
         session.flush()
-        assert (
-            written + upsert_errors == n_agg
-        ), f"coinbase aggregate upsert drift {written}+{upsert_errors}!={n_agg}"
+        assert written + upsert_errors == n_agg, (
+            f"coinbase aggregate upsert drift {written}+{upsert_errors}!={n_agg}"
+        )
         logger.info(
             "coinbase positions: user=%s account=%s symbols=%d row_skipped=%d "
             "row_errors=%d upsert_errors=%d",
@@ -524,9 +509,9 @@ class CoinbaseSyncService:
     def _sync_transactions(
         self,
         account: BrokerAccount,
-        pairs: List[Tuple[str, Dict[str, Any]]],
+        pairs: list[tuple[str, dict[str, Any]]],
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         written = 0
         skipped = 0
         errors = 0
@@ -544,9 +529,7 @@ class CoinbaseSyncService:
                 amt_obj = txn.get("amount") or {}
                 native = txn.get("native_amount") or {}
                 cur_code = (
-                    str(amt_obj.get("currency") or "").upper()
-                    if isinstance(amt_obj, dict)
-                    else ""
+                    str(amt_obj.get("currency") or "").upper() if isinstance(amt_obj, dict) else ""
                 )
                 sym = _normalize_crypto_symbol(cur_code) or cur_code or "CASH"
                 qty = _money_amount(amt_obj) or Decimal("0")
@@ -582,16 +565,14 @@ class CoinbaseSyncService:
                             commission=0.0,
                             currency=account.currency or "USD",
                             transaction_date=when,
-                            description=(
-                                str(txn.get("description") or "")[:500] or None
-                            ),
+                            description=(str(txn.get("description") or "")[:500] or None),
                             source="COINBASE",
                         )
                     )
                     written += 1
                 else:
                     skipped += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
                     "coinbase sync: transaction upsert failed user %s: %s",
@@ -600,16 +581,16 @@ class CoinbaseSyncService:
                 )
 
         session.flush()
-        assert (
-            written + skipped + errors == total
-        ), f"coinbase txn counter drift {written}+{skipped}+{errors}!={total}"
+        assert written + skipped + errors == total, (
+            f"coinbase txn counter drift {written}+{skipped}+{errors}!={total}"
+        )
         return {
             "transactions_synced": written,
             "transactions_skipped": skipped,
             "transactions_errors": errors,
         }
 
-    def _extract_fee_usd(self, txn: Dict[str, Any]) -> Decimal:
+    def _extract_fee_usd(self, txn: dict[str, Any]) -> Decimal:
         fee_total = Decimal("0")
         for key in ("buy", "sell", "trade"):
             block = txn.get(key)
@@ -626,9 +607,9 @@ class CoinbaseSyncService:
     def _sync_trades(
         self,
         account: BrokerAccount,
-        pairs: List[Tuple[str, Dict[str, Any]]],
+        pairs: list[tuple[str, dict[str, Any]]],
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         written = 0
         skipped = 0
         errors = 0
@@ -645,14 +626,14 @@ class CoinbaseSyncService:
                 cb_type = (txn.get("type") or "").lower()
                 exec_id = _trade_execution_id(txn_id)
 
-                side: Optional[str] = None
+                side: str | None = None
                 is_opening = True
                 symbol = ""
                 qty = Decimal("0")
                 price = Decimal("0")
                 commission = self._extract_fee_usd(txn)
                 execution_time = _parse_iso_dt(txn.get("created_at"))
-                meta: Dict[str, Any] = {"asset_category": "CRYPTO"}
+                meta: dict[str, Any] = {"asset_category": "CRYPTO"}
 
                 if cb_type == "buy":
                     side = "BUY"
@@ -692,9 +673,7 @@ class CoinbaseSyncService:
                         skipped += 1
                         continue
                     product = str(fill.get("product_id") or "").upper()
-                    symbol = (
-                        product if "-" in product else _normalize_crypto_symbol(product)
-                    )
+                    symbol = product if "-" in product else _normalize_crypto_symbol(product)
                     amt = txn.get("amount") or {}
                     qty = abs(_money_amount(amt) or Decimal("0"))
                     price = abs(_to_decimal(fill.get("fill_price")) or Decimal("0"))
@@ -770,7 +749,7 @@ class CoinbaseSyncService:
                     )
                 )
                 written += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
                     "coinbase sync: trade upsert failed user %s wallet %s: %s",
@@ -780,9 +759,9 @@ class CoinbaseSyncService:
                 )
 
         session.flush()
-        assert (
-            written + skipped + errors == total
-        ), f"coinbase trades counter drift {written}+{skipped}+{errors}!={total}"
+        assert written + skipped + errors == total, (
+            f"coinbase trades counter drift {written}+{skipped}+{errors}!={total}"
+        )
         return {
             "trades_synced": written,
             "trades_skipped": skipped,
@@ -792,9 +771,9 @@ class CoinbaseSyncService:
     def _sync_balances(
         self,
         account: BrokerAccount,
-        raw_accounts: List[Dict[str, Any]],
+        raw_accounts: list[dict[str, Any]],
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         cash_total = Decimal("0")
         for row in raw_accounts:
             acct_type = (row.get("type") or "").lower()
@@ -823,7 +802,7 @@ class CoinbaseSyncService:
         new_bal = AccountBalance(
             user_id=account.user_id,
             broker_account_id=account.id,
-            balance_date=datetime.now(timezone.utc),
+            balance_date=datetime.now(UTC),
             cash_balance=cash_total,
             net_liquidation=cash_total,
             buying_power=cash_total,

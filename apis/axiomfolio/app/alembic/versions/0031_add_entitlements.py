@@ -21,9 +21,8 @@ revision + down_revision so the chain ends up linear (0022 -> 0023 ... ->
 final). The table contents are unaffected by the renumber.
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0031"
 down_revision = "0021"
@@ -107,9 +106,7 @@ def upgrade() -> None:
         ),
         # stripe_subscription_id is unique when set; partial unique below
     )
-    op.create_index(
-        "ix_entitlements_user_id", "entitlements", ["user_id"], unique=True
-    )
+    op.create_index("ix_entitlements_user_id", "entitlements", ["user_id"], unique=True)
     op.create_index(
         "ix_entitlements_stripe_customer_id",
         "entitlements",
@@ -158,8 +155,6 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("uq_entitlements_stripe_sub_id", table_name="entitlements")
     op.drop_index("ix_entitlements_tier_status", table_name="entitlements")
-    op.drop_index(
-        "ix_entitlements_stripe_customer_id", table_name="entitlements"
-    )
+    op.drop_index("ix_entitlements_stripe_customer_id", table_name="entitlements")
     op.drop_index("ix_entitlements_user_id", table_name="entitlements")
     op.drop_table("entitlements")

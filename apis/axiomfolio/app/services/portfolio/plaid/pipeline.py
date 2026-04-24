@@ -24,9 +24,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -51,9 +51,9 @@ class PipelineResult:
     written: int = 0
     skipped_no_holdings: int = 0
     errors: int = 0
-    error_samples: List[str] = field(default_factory=list)
+    error_samples: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "total": self.total,
             "written": self.written,
@@ -63,7 +63,7 @@ class PipelineResult:
         }
 
 
-def _to_decimal(value: Any) -> Optional[Decimal]:
+def _to_decimal(value: Any) -> Decimal | None:
     """Convert Plaid's float/str numeric fields to Decimal safely.
 
     Plaid returns floats; monetary values must be ``Decimal`` per the
@@ -78,7 +78,7 @@ def _to_decimal(value: Any) -> Optional[Decimal]:
         return None
 
 
-def _resolve_symbol(security: Optional[Dict[str, Any]]) -> Optional[str]:
+def _resolve_symbol(security: dict[str, Any] | None) -> str | None:
     """Pick the best symbol for a Plaid security record.
 
     Preference order: ``ticker_symbol`` > ``name`` (truncated) > None.
@@ -96,7 +96,7 @@ def _resolve_symbol(security: Optional[Dict[str, Any]]) -> Optional[str]:
     return None
 
 
-def _position_type_for(security: Optional[Dict[str, Any]]) -> PositionType:
+def _position_type_for(security: dict[str, Any] | None) -> PositionType:
     """Map a Plaid security ``type`` to our :class:`PositionType`.
 
     Only LONG equity positions are supported in this phase (Plaid
@@ -119,10 +119,10 @@ def _upsert_position(
     account: BrokerAccount,
     symbol: str,
     quantity: Decimal,
-    current_price: Optional[Decimal],
-    market_value: Optional[Decimal],
+    current_price: Decimal | None,
+    market_value: Decimal | None,
     position_type: PositionType,
-    price_updated_at: Optional[datetime],
+    price_updated_at: datetime | None,
 ) -> Position:
     """Upsert a Position row scoped to the given user/account/symbol.
 
@@ -131,7 +131,7 @@ def _upsert_position(
     filters by ``user_id`` so a bug in caller scoping still can't write
     across tenants.
     """
-    position: Optional[Position] = (
+    position: Position | None = (
         session.query(Position)
         .filter(
             Position.user_id == user_id,
@@ -140,7 +140,7 @@ def _upsert_position(
         )
         .first()
     )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     if position is None:
         position = Position(
             user_id=user_id,
@@ -178,8 +178,8 @@ def _write_aggregator_tax_lot(
     account: BrokerAccount,
     symbol: str,
     quantity: Decimal,
-    current_price: Optional[Decimal],
-    market_value: Optional[Decimal],
+    current_price: Decimal | None,
+    market_value: Decimal | None,
     item_id: str,
     plaid_account_id: str,
 ) -> TaxLot:
@@ -192,10 +192,8 @@ def _write_aggregator_tax_lot(
     before rendering cost-basis fields (silent-fallback rule).
     """
     lot_id = f"plaid:{item_id}:{plaid_account_id}:{symbol}"
-    lot: Optional[TaxLot] = (
-        session.query(TaxLot).filter(TaxLot.lot_id == lot_id).first()
-    )
-    now = datetime.now(timezone.utc)
+    lot: TaxLot | None = session.query(TaxLot).filter(TaxLot.lot_id == lot_id).first()
+    now = datetime.now(UTC)
     # TaxLot columns are Float, not Decimal — convert defensively.
     qty_float = float(quantity) if quantity is not None else None
     price_float = float(current_price) if current_price is not None else None
@@ -234,8 +232,8 @@ def persist_holdings(
     *,
     user_id: int,
     item_id: str,
-    broker_accounts_by_plaid_id: Dict[str, BrokerAccount],
-    holdings_payload: Dict[str, Any],
+    broker_accounts_by_plaid_id: dict[str, BrokerAccount],
+    holdings_payload: dict[str, Any],
 ) -> PipelineResult:
     """Upsert Position + TaxLot rows from a Plaid ``holdings`` response.
 
@@ -257,7 +255,7 @@ def persist_holdings(
     """
     holdings = holdings_payload.get("holdings") or []
     securities = holdings_payload.get("securities") or []
-    securities_by_id: Dict[str, Dict[str, Any]] = {
+    securities_by_id: dict[str, dict[str, Any]] = {
         s.get("security_id"): s for s in securities if s.get("security_id")
     }
 
@@ -271,10 +269,7 @@ def persist_holdings(
                 # Caller didn't supply a BrokerAccount for this holding's
                 # Plaid account. That's a bug upstream, not a silent skip.
                 result.errors += 1
-                msg = (
-                    f"plaid holding references unknown plaid_account_id="
-                    f"{plaid_account_id!r}"
-                )
+                msg = f"plaid holding references unknown plaid_account_id={plaid_account_id!r}"
                 result.error_samples.append(msg)
                 logger.warning("persist_holdings: %s", msg)
                 continue
@@ -311,10 +306,10 @@ def persist_holdings(
 
             current_price = _to_decimal(holding.get("institution_price"))
             market_value = _to_decimal(holding.get("institution_value"))
-            price_updated_raw = holding.get(
-                "institution_price_as_of"
-            ) or holding.get("institution_price_datetime")
-            price_updated_at: Optional[datetime] = None
+            price_updated_raw = holding.get("institution_price_as_of") or holding.get(
+                "institution_price_datetime"
+            )
+            price_updated_at: datetime | None = None
             if isinstance(price_updated_raw, datetime):
                 price_updated_at = price_updated_raw
             elif isinstance(price_updated_raw, str) and price_updated_raw:
@@ -355,7 +350,7 @@ def persist_holdings(
                 plaid_account_id=plaid_account_id or "",
             )
             result.written += 1
-        except Exception as exc:  # noqa: BLE001 - structured-counter loop
+        except Exception as exc:
             result.errors += 1
             msg = f"{type(exc).__name__}: {exc}"
             result.error_samples.append(msg[:200])

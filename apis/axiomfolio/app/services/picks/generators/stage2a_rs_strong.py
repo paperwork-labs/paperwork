@@ -35,9 +35,9 @@ medallion: gold
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import List, Optional, Sequence
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session, load_only
@@ -48,7 +48,6 @@ from app.services.picks.candidate_generator import (
     CandidateGenerator,
     GeneratedCandidate,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -82,12 +81,12 @@ class Stage2ARsStrongGenerator(CandidateGenerator):
     name = "stage2a_rs_strong"
     version = "v1"
 
-    def __init__(self, thresholds: Optional[Stage2AThresholds] = None) -> None:
+    def __init__(self, thresholds: Stage2AThresholds | None = None) -> None:
         self.t = thresholds or _DEFAULT_THRESHOLDS
 
     def generate(self, db: Session) -> Sequence[GeneratedCandidate]:
         rows = self._latest_snapshots(db)
-        out: List[GeneratedCandidate] = []
+        out: list[GeneratedCandidate] = []
         for r in rows:
             cand = self._evaluate(r)
             if cand is not None:
@@ -100,7 +99,7 @@ class Stage2ARsStrongGenerator(CandidateGenerator):
     # Read latest snapshot per symbol
     # ------------------------------------------------------------------
 
-    def _latest_snapshots(self, db: Session) -> List[MarketSnapshot]:
+    def _latest_snapshots(self, db: Session) -> list[MarketSnapshot]:
         """Latest valid technical snapshot per symbol that already meets
         the cheap stage filter. Heavier predicates run in Python so the
         rejection path is auditable in logs.
@@ -143,7 +142,7 @@ class Stage2ARsStrongGenerator(CandidateGenerator):
     # Per-row evaluation
     # ------------------------------------------------------------------
 
-    def _evaluate(self, row: MarketSnapshot) -> Optional[GeneratedCandidate]:
+    def _evaluate(self, row: MarketSnapshot) -> GeneratedCandidate | None:
         symbol = (row.symbol or "").upper()
         if not symbol:
             return None
@@ -186,12 +185,10 @@ class Stage2ARsStrongGenerator(CandidateGenerator):
     # Scoring + rationale
     # ------------------------------------------------------------------
 
-    def _score(self, *, rs: float, ext: Optional[float]) -> Decimal:
+    def _score(self, *, rs: float, ext: float | None) -> Decimal:
         # Decimal arithmetic end-to-end so the persisted score does not
         # round-trip through binary float.
-        ext_for_penalty = (
-            Decimal(str(ext)) if (ext is not None and ext > 0) else Decimal("0")
-        )
+        ext_for_penalty = Decimal(str(ext)) if (ext is not None and ext > 0) else Decimal("0")
         penalty = Decimal("10") - min(ext_for_penalty, Decimal("10"))
         rs_d = Decimal(str(rs))
         return (rs_d + penalty).quantize(Decimal("0.0001"))
@@ -202,10 +199,10 @@ class Stage2ARsStrongGenerator(CandidateGenerator):
         row: MarketSnapshot,
         *,
         rs: float,
-        ext: Optional[float],
-        range_pos: Optional[float],
+        ext: float | None,
+        range_pos: float | None,
     ) -> str:
-        parts: List[str] = [
+        parts: list[str] = [
             f"{symbol} in Stage {row.stage_label}",
             f"RS Mansfield {rs:.1f}",
         ]
@@ -223,7 +220,7 @@ class Stage2ARsStrongGenerator(CandidateGenerator):
 # ---------------------------------------------------------------------------
 
 
-def _to_float(v) -> Optional[float]:
+def _to_float(v) -> float | None:
     if v is None:
         return None
     try:

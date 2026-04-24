@@ -2,31 +2,30 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
-from app.tasks.celery_app import celery_app
 from app.database import SessionLocal
 from app.models.order import Order, OrderStatus
 from app.models.position import Position, PositionStatus
 from app.services.execution.order_manager import OrderManager
+from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
 STALE_SUBMITTED_THRESHOLD = timedelta(hours=1)
 
 
-def _attribute_position_to_strategy(db, order: Order) -> Optional[int]:
+def _attribute_position_to_strategy(db, order: Order) -> int | None:
     """When a strategy-generated order fills, attribute the position to that strategy.
-    
+
     Returns the position ID if attributed, None otherwise.
     """
     if not order.strategy_id:
         return None
-    
+
     if order.status != OrderStatus.FILLED.value:
         return None
-    
+
     # Find the position for this symbol/user
     position = (
         db.query(Position)
@@ -37,14 +36,16 @@ def _attribute_position_to_strategy(db, order: Order) -> Optional[int]:
         )
         .first()
     )
-    
+
     if not position:
         logger.debug(
             "No open position for %s user_id=%d to attribute to strategy %d",
-            order.symbol, order.user_id, order.strategy_id,
+            order.symbol,
+            order.user_id,
+            order.strategy_id,
         )
         return None
-    
+
     # Only attribute if not already attributed or if this is a new fill
     if position.strategy_id is None:
         position.strategy_id = order.strategy_id
@@ -53,10 +54,12 @@ def _attribute_position_to_strategy(db, order: Order) -> Optional[int]:
         db.commit()
         logger.info(
             "Attributed position %s (id=%d) to strategy_id=%d",
-            order.symbol, position.id, order.strategy_id,
+            order.symbol,
+            position.id,
+            order.strategy_id,
         )
         return position.id
-    
+
     return None
 
 
@@ -66,6 +69,7 @@ def execute_order_task(self, order_id: int) -> dict:
     db = SessionLocal()
     try:
         from app.models.order import Order
+
         order = db.query(Order).filter(Order.id == order_id).first()
         if not order:
             return {"error": f"Order {order_id} not found"}
@@ -84,7 +88,7 @@ def execute_order_task(self, order_id: int) -> dict:
         return result
     except Exception as exc:
         logger.exception("execute_order_task order_id=%s raised", order_id)
-        raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+        raise self.retry(exc=exc, countdown=2**self.request.retries)
     finally:
         db.close()
 
@@ -98,10 +102,12 @@ def monitor_open_orders_task(self) -> dict:
         open_orders = (
             db.query(Order)
             .filter(
-                Order.status.in_([
-                    OrderStatus.SUBMITTED.value,
-                    OrderStatus.PARTIALLY_FILLED.value,
-                ])
+                Order.status.in_(
+                    [
+                        OrderStatus.SUBMITTED.value,
+                        OrderStatus.PARTIALLY_FILLED.value,
+                    ]
+                )
             )
             .all()
         )
@@ -113,7 +119,7 @@ def monitor_open_orders_task(self) -> dict:
         polled = 0
         changed = 0
         stale = 0
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         for order in open_orders:
             old_status = order.status
@@ -137,7 +143,7 @@ def monitor_open_orders_task(self) -> dict:
                     old_status,
                     new_status,
                 )
-                
+
                 # Attribute position to strategy when order fills
                 if new_status == OrderStatus.FILLED.value:
                     _attribute_position_to_strategy(db, order)
@@ -159,7 +165,7 @@ def monitor_open_orders_task(self) -> dict:
         return summary
     except Exception as exc:
         logger.exception("monitor_open_orders_task raised")
-        raise self.retry(exc=exc, countdown=2 ** self.request.retries)
+        raise self.retry(exc=exc, countdown=2**self.request.retries)
     finally:
         db.close()
 
@@ -174,6 +180,7 @@ def monitor_open_orders_task(self) -> dict:
 def sweep_stale_approvals(self) -> dict:
     """Auto-reject orders stuck in PENDING_APPROVAL beyond timeout."""
     from app.services.execution.approval_service import ApprovalService
+
     db = SessionLocal()
     try:
         expired = ApprovalService.expire_stale_approvals(db)

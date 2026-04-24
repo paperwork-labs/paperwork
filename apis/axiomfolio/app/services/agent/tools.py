@@ -8,9 +8,9 @@ Each tool maps to a Celery task or service method.
 medallion: ops
 """
 
-from typing import Any, Dict, FrozenSet, List, Optional
+from typing import Any
 
-AGENT_TOOLS: List[Dict[str, Any]] = [
+AGENT_TOOLS: list[dict[str, Any]] = [
     {
         "type": "function",
         "function": {
@@ -909,42 +909,44 @@ AGENT_TOOLS: List[Dict[str, Any]] = [
 
 
 # Implemented in AgentBrain._execute_safe_tool — never dispatched to Celery.
-INLINE_ONLY_AGENT_TOOLS: FrozenSet[str] = frozenset({
-    "read_file",
-    "list_files",
-    "list_schedules",
-    "run_task_now",
-    "get_stage_distribution",
-    "get_sector_strength",
-    "get_top_scans",
-    "get_exit_alerts",
-    "get_regime_history",
-    # Market Context tools
-    "get_rotation_analysis",
-    "get_breadth_momentum",
-    "compare_historical_regime",
-    "get_market_internals",
-    # Research & Strategy tools
-    "backtest_scan",
-    "get_similar_setups",
-    "get_strategy_stats",
-    "analyze_historical_entry",
-    "list_strategies",
-    "run_backtest",
-    "list_strategy_templates",
-    "create_strategy",
-    # Technical Analysis tools
-    "calculate_support_resistance",
-    # Data Integrity tools
-    "check_data_accuracy",
-    "get_provider_metrics",
-    "check_pre_market_readiness",
-    # Admin tools
-    "cancel_job",
-    "list_users",
-})
+INLINE_ONLY_AGENT_TOOLS: frozenset[str] = frozenset(
+    {
+        "read_file",
+        "list_files",
+        "list_schedules",
+        "run_task_now",
+        "get_stage_distribution",
+        "get_sector_strength",
+        "get_top_scans",
+        "get_exit_alerts",
+        "get_regime_history",
+        # Market Context tools
+        "get_rotation_analysis",
+        "get_breadth_momentum",
+        "compare_historical_regime",
+        "get_market_internals",
+        # Research & Strategy tools
+        "backtest_scan",
+        "get_similar_setups",
+        "get_strategy_stats",
+        "analyze_historical_entry",
+        "list_strategies",
+        "run_backtest",
+        "list_strategy_templates",
+        "create_strategy",
+        # Technical Analysis tools
+        "calculate_support_resistance",
+        # Data Integrity tools
+        "check_data_accuracy",
+        "get_provider_metrics",
+        "check_pre_market_readiness",
+        # Admin tools
+        "cancel_job",
+        "list_users",
+    }
+)
 
-TOOL_TO_CELERY_TASK: Dict[str, str] = {
+TOOL_TO_CELERY_TASK: dict[str, str] = {
     "backfill_stale_daily": "app.tasks.market.backfill.stale_daily",
     "recompute_indicators": "app.tasks.market.indicators.recompute_universe",
     "repair_stage_history": "app.tasks.market.indicators.repair_stage_history",
@@ -959,6 +961,6 @@ TOOL_TO_CELERY_TASK: Dict[str, str] = {
 }
 
 
-def get_tools_for_openai() -> List[Dict[str, Any]]:
+def get_tools_for_openai() -> list[dict[str, Any]]:
     """Return tools formatted for OpenAI function calling."""
     return AGENT_TOOLS

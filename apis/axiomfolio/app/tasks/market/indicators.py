@@ -4,8 +4,7 @@ Indicator recompute, stage metadata, and related maintenance tasks.
 
 import logging
 import time
-from datetime import date, datetime, timedelta, timezone
-from typing import List, Optional, Set
+from datetime import UTC, date, datetime, timedelta
 
 import pandas as pd
 from celery import current_task, shared_task
@@ -17,6 +16,7 @@ from app.database import SessionLocal
 from app.models import Position, PriceData
 from app.models.market_data import JobRun, MarketSnapshot, MarketSnapshotHistory
 from app.observability import traced
+from app.services.market.backfill_params import daily_backfill_params
 from app.services.market.dataframe_utils import price_data_rows_to_dataframe
 from app.services.market.market_data_service import (
     coverage_analytics,
@@ -32,7 +32,6 @@ from app.tasks.utils.task_utils import (
     setup_event_loop,
     task_run,
 )
-from app.services.market.backfill_params import daily_backfill_params
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,7 @@ _DEFAULT_SOFT = 3500
 
 
 def _spy_daily_bars_stale_vs_ref(
-    latest: Optional[datetime],
+    latest: datetime | None,
     ref_date: date,
     *,
     max_trailing_sessions: int = 2,
@@ -88,8 +87,8 @@ def position_metadata() -> dict:
     _set_task_status("backfill_position_metadata", "running")
     session = SessionLocal()
     try:
-        from app.models.position import Position, PositionStatus
         from app.models.market_data import MarketSnapshot as _MS
+        from app.models.position import Position, PositionStatus
 
         positions = (
             session.query(Position)
@@ -165,7 +164,7 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
     logger.info("[%s] recompute_universe started (batch_size=%d)", task_id, batch_size)
     session = SessionLocal()
     try:
-        stale_cutoff = datetime.now(timezone.utc) - timedelta(hours=2)
+        stale_cutoff = datetime.now(UTC) - timedelta(hours=2)
         try:
             stuck = (
                 session.query(JobRun)
@@ -192,9 +191,9 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
             )
             session.rollback()
 
-        warnings: List[str] = []
+        warnings: list[str] = []
 
-        ref_date = datetime.now(timezone.utc).date()
+        ref_date = datetime.now(UTC).date()
         spy_latest_pre = (
             session.query(func.max(PriceData.date))
             .filter(
@@ -254,15 +253,13 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
         processed_ok = 0
         skipped_no_data = 0
         errors = 0
-        error_samples: List[dict] = []
+        error_samples: list[dict] = []
         earnings_written = 0
         earnings_missing = 0
         earnings_lookup_errors = 0
 
         latest_daily_dt = (
-            session.query(func.max(PriceData.date))
-            .filter(PriceData.interval == "1d")
-            .scalar()
+            session.query(func.max(PriceData.date)).filter(PriceData.interval == "1d").scalar()
         )
         bench = coverage_analytics.benchmark_health(
             session, benchmark_symbol="SPY", latest_daily_dt=latest_daily_dt
@@ -306,7 +303,11 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
                 f"Benchmark {benchmark_symbol} has {benchmark_count} daily bars (<{required_bars}); "
                 "Stage/RS may be UNKNOWN until benchmark history is backfilled."
             )
-        if latest_daily_dt and benchmark_latest_dt and benchmark_latest_dt.date() < latest_daily_dt.date():
+        if (
+            latest_daily_dt
+            and benchmark_latest_dt
+            and benchmark_latest_dt.date() < latest_daily_dt.date()
+        ):
             warnings.append(
                 f"Benchmark {benchmark_symbol} latest date {benchmark_latest_dt.date()} "
                 f"lags latest daily {latest_daily_dt.date()}; RS may be stale."
@@ -347,11 +348,11 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
         except Exception as e:
             logger.warning("spy_benchmark_fetch failed for %s: %s", benchmark_symbol, e)
 
-        fresh_syms: Set[str] = set()
+        fresh_syms: set[str] = set()
         if force:
             logger.info("[%s] force=True — bypassing freshness check", task_id)
         else:
-            fresh_cutoff = datetime.now(timezone.utc) - timedelta(hours=4)
+            fresh_cutoff = datetime.now(UTC) - timedelta(hours=4)
             try:
                 fresh_syms = {
                     str(s).upper()
@@ -386,12 +387,8 @@ def recompute_universe(batch_size: int = 50, force: bool = False) -> dict:
                         if not snap:
                             skipped_no_data += 1
                             continue
-                        earnings_written += int(
-                            recompute_earn.get("earnings_written", 0) or 0
-                        )
-                        earnings_missing += int(
-                            recompute_earn.get("earnings_missing", 0) or 0
-                        )
+                        earnings_written += int(recompute_earn.get("earnings_written", 0) or 0)
+                        earnings_missing += int(recompute_earn.get("earnings_missing", 0) or 0)
                         earnings_lookup_errors += int(
                             recompute_earn.get("earnings_lookup_errors", 0) or 0
                         )
@@ -624,15 +621,12 @@ def stage_changes() -> dict:
     try:
         symbols = [
             r[0]
-            for r in session.query(Position.symbol)
-            .filter(Position.quantity != 0)
-            .distinct()
-            .all()
+            for r in session.query(Position.symbol).filter(Position.quantity != 0).distinct().all()
         ]
         if not symbols:
             return {"status": "ok", "alerts_created": 0, "reason": "no_positions"}
 
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         recent_dates = (
             session.query(MarketSnapshotHistory.as_of_date)
             .filter(
@@ -656,9 +650,7 @@ def stage_changes() -> dict:
         previous_date = recent_dates[1][0]
 
         current_rows = (
-            session.query(
-                MarketSnapshotHistory.symbol, MarketSnapshotHistory.stage_label
-            )
+            session.query(MarketSnapshotHistory.symbol, MarketSnapshotHistory.stage_label)
             .filter(
                 MarketSnapshotHistory.symbol.in_(symbols),
                 MarketSnapshotHistory.analysis_type == "technical_snapshot",
@@ -667,9 +659,7 @@ def stage_changes() -> dict:
             .all()
         )
         previous_rows = (
-            session.query(
-                MarketSnapshotHistory.symbol, MarketSnapshotHistory.stage_label
-            )
+            session.query(MarketSnapshotHistory.symbol, MarketSnapshotHistory.stage_label)
             .filter(
                 MarketSnapshotHistory.symbol.in_(symbols),
                 MarketSnapshotHistory.analysis_type == "technical_snapshot",
@@ -686,18 +676,13 @@ def stage_changes() -> dict:
             cur_stage = current_map.get(sym)
             prev_stage = previous_map.get(sym)
             if cur_stage and prev_stage and cur_stage != prev_stage:
-                changes.append(
-                    {"symbol": sym, "from_stage": prev_stage, "to_stage": cur_stage}
-                )
+                changes.append({"symbol": sym, "from_stage": prev_stage, "to_stage": cur_stage})
 
         if changes:
             try:
                 from app.services.notifications.alerts import alert_service
 
-                fields = {
-                    c["symbol"]: f'{c["from_stage"]} → {c["to_stage"]}'
-                    for c in changes[:25]
-                }
+                fields = {c["symbol"]: f"{c['from_stage']} → {c['to_stage']}" for c in changes[:25]}
                 alert_service.send_alert(
                     "portfolio_stage_change",
                     title="Portfolio Stage Changes",

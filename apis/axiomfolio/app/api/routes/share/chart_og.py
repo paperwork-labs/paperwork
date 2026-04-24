@@ -5,7 +5,7 @@ Public chart share API — signed tokens, OG PNG, and anonymous OHLCV for `/shar
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
 import jwt
 import pandas as pd
@@ -15,9 +15,9 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
-from app.config import settings
 from app.services.market.market_data_service import provider_router
 from app.services.share.chart_og_image import render_chart_og_png
 from app.services.share.chart_share_token import create_chart_share_token, decode_chart_share_token
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-_VALID_PERIODS: Set[str] = {
+_VALID_PERIODS: set[str] = {
     "1mo",
     "3mo",
     "6mo",
@@ -37,7 +37,7 @@ _VALID_PERIODS: Set[str] = {
     "ytd",
     "max",
 }
-_VALID_INDICATOR_KEYS: Set[str] = {
+_VALID_INDICATOR_KEYS: set[str] = {
     "trendLines",
     "gaps",
     "tdSequential",
@@ -47,7 +47,7 @@ _VALID_INDICATOR_KEYS: Set[str] = {
 }
 
 
-def _history_data_source(raw: Optional[str]) -> str:
+def _history_data_source(raw: str | None) -> str:
     if raw == "redis_cache":
         return "redis_cache"
     if raw == "db":
@@ -75,7 +75,7 @@ def _public_frontend_base() -> str:
     return "http://127.0.0.1:5173"
 
 
-def _dataframe_to_bars(df: Optional[pd.DataFrame]) -> List[dict[str, Any]]:
+def _dataframe_to_bars(df: pd.DataFrame | None) -> list[dict[str, Any]]:
     if df is None or df.empty:
         return []
     try:
@@ -91,7 +91,7 @@ def _dataframe_to_bars(df: Optional[pd.DataFrame]) -> List[dict[str, Any]]:
         return col_name
 
     o, h, l_, c, v = pick("open"), pick("high"), pick("low"), pick("close"), pick("volume")
-    out: List[dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for ts, row in df_out.iterrows():
         out.append(
             {
@@ -106,7 +106,7 @@ def _dataframe_to_bars(df: Optional[pd.DataFrame]) -> List[dict[str, Any]]:
     return out
 
 
-def _last_n_closes_for_sparkline(df: Optional[pd.DataFrame], n: int = 30) -> List[float]:
+def _last_n_closes_for_sparkline(df: pd.DataFrame | None, n: int = 30) -> list[float]:
     if df is None or df.empty:
         return []
     try:
@@ -128,7 +128,7 @@ def _last_n_closes_for_sparkline(df: Optional[pd.DataFrame], n: int = 30) -> Lis
     return [float(x) for x in ser if pd.notna(x)]
 
 
-def _last_close(df: Optional[pd.DataFrame]) -> Optional[float]:
+def _last_close(df: pd.DataFrame | None) -> float | None:
     if df is None or df.empty:
         return None
     cols = {c.lower(): c for c in df.columns}
@@ -155,7 +155,7 @@ def _last_close(df: Optional[pd.DataFrame]) -> Optional[float]:
 class ChartShareCreateRequest(BaseModel):
     symbol: str
     period: str = "1y"
-    indicators: List[str] = Field(default_factory=list, max_length=32)
+    indicators: list[str] = Field(default_factory=list, max_length=32)
 
     @field_validator("symbol")
     @classmethod
@@ -175,8 +175,8 @@ class ChartShareCreateRequest(BaseModel):
 
     @field_validator("indicators")
     @classmethod
-    def _inds(cls, v: List[str]) -> List[str]:
-        out: List[str] = []
+    def _inds(cls, v: list[str]) -> list[str]:
+        out: list[str] = []
         for x in v:
             s = str(x).strip()
             if s in _VALID_INDICATOR_KEYS and s not in out:
@@ -210,7 +210,7 @@ async def create_chart_share(
 async def get_chart_share_bars(
     token: str,
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Public: verify token and return daily OHLCV in the same shape as
     ``GET /api/v1/market-data/prices/{symbol}/history`` for chart rendering.
@@ -218,13 +218,9 @@ async def get_chart_share_bars(
     try:
         claims = decode_chart_share_token(token)
     except jwt.ExpiredSignatureError as e:
-        raise HTTPException(
-            status_code=401, detail="This share link has expired"
-        ) from e
+        raise HTTPException(status_code=401, detail="This share link has expired") from e
     except (jwt.InvalidTokenError, ValueError) as e:
-        raise HTTPException(
-            status_code=401, detail="Invalid or corrupted share link"
-        ) from e
+        raise HTTPException(status_code=401, detail="Invalid or corrupted share link") from e
 
     sym = str(claims["symbol"])
     period = str(claims.get("period", "1y"))
@@ -247,9 +243,7 @@ async def get_chart_share_bars(
             df, raw_src = res, None  # type: ignore[assignment]
     except Exception as e:
         logger.exception("chart share bars: provider failed for %s: %s", sym, e)
-        raise HTTPException(
-            status_code=503, detail="Market data is temporarily unavailable"
-        ) from e
+        raise HTTPException(status_code=503, detail="Market data is temporarily unavailable") from e
 
     if df is None or df.empty:
         raise HTTPException(
@@ -266,9 +260,7 @@ async def get_chart_share_bars(
         "symbol": sym,
         "period": period,
         "interval": "1d",
-        "data_source": _history_data_source(
-            str(raw_src) if raw_src is not None else None
-        ),
+        "data_source": _history_data_source(str(raw_src) if raw_src is not None else None),
         "bars": bars,
         "indicators": [str(x) for x in ind],
     }
@@ -285,9 +277,7 @@ async def get_chart_share_og(
     except jwt.ExpiredSignatureError as e:
         raise HTTPException(status_code=401, detail="This share link has expired") from e
     except (jwt.InvalidTokenError, ValueError) as e:
-        raise HTTPException(
-            status_code=401, detail="Invalid or corrupted share link"
-        ) from e
+        raise HTTPException(status_code=401, detail="Invalid or corrupted share link") from e
 
     sym = str(claims["symbol"])
     period = str(claims.get("period", "1y"))
@@ -307,9 +297,7 @@ async def get_chart_share_og(
             df = res  # type: ignore[assignment]
     except Exception as e:
         logger.exception("chart share og: provider failed for %s: %s", sym, e)
-        raise HTTPException(
-            status_code=503, detail="Market data is temporarily unavailable"
-        ) from e
+        raise HTTPException(status_code=503, detail="Market data is temporarily unavailable") from e
 
     spark = _last_n_closes_for_sparkline(df, 30) if df is not None and not df.empty else []
     last_price = _last_close(df) if df is not None and not df.empty else None
@@ -323,9 +311,7 @@ async def get_chart_share_og(
         )
     except Exception as e:
         logger.exception("chart share og: render failed for %s: %s", sym, e)
-        raise HTTPException(
-            status_code=500, detail="Failed to render preview image"
-        ) from e
+        raise HTTPException(status_code=500, detail="Failed to render preview image") from e
 
     return Response(
         content=png,

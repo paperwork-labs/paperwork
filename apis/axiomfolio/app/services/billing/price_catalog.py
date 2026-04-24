@@ -25,12 +25,13 @@ Free tier never has a Stripe price (it's the implicit default).
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, Mapping, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ class PriceEntry:
 
 
 # (env_var_name, tier, interval)
-_CATALOG_SPEC: Tuple[Tuple[str, TierSlug, BillingInterval], ...] = (
+_CATALOG_SPEC: tuple[tuple[str, TierSlug, BillingInterval], ...] = (
     ("STRIPE_PRICE_PRO_MONTHLY", TierSlug.PRO, BillingInterval.MONTHLY),
     ("STRIPE_PRICE_PRO_ANNUAL", TierSlug.PRO, BillingInterval.ANNUAL),
     ("STRIPE_PRICE_PRO_PLUS_MONTHLY", TierSlug.PRO_PLUS, BillingInterval.MONTHLY),
@@ -85,7 +86,7 @@ class PriceCatalog:
     def __init__(self, entries: Mapping[str, PriceEntry]):
         # Detect duplicate price_ids early; if two tiers point at the same
         # price we'd silently mis-grant.
-        seen: Dict[str, PriceEntry] = {}
+        seen: dict[str, PriceEntry] = {}
         for pid, entry in entries.items():
             if pid != entry.price_id:
                 raise ValueError(
@@ -97,19 +98,16 @@ class PriceCatalog:
                     f"{seen[pid].tier.value} and {entry.tier.value}"
                 )
             seen[pid] = entry
-        self._by_price_id: Dict[str, PriceEntry] = dict(entries)
+        self._by_price_id: dict[str, PriceEntry] = dict(entries)
 
     @classmethod
-    def from_env(cls, env: Optional[Mapping[str, str]] = None) -> "PriceCatalog":
+    def from_env(cls, env: Mapping[str, str] | None = None) -> PriceCatalog:
         """Build from environment variables (or any mapping for tests)."""
         if env is None:
             from app.config import settings
 
-            env = {
-                spec[0]: getattr(settings, spec[0], None) or ""
-                for spec in _CATALOG_SPEC
-            }
-        entries: Dict[str, PriceEntry] = {}
+            env = {spec[0]: getattr(settings, spec[0], None) or "" for spec in _CATALOG_SPEC}
+        entries: dict[str, PriceEntry] = {}
         for env_key, tier, interval in _CATALOG_SPEC:
             price_id = (env.get(env_key) or "").strip()
             if not price_id:
@@ -123,12 +121,10 @@ class PriceCatalog:
                     entries[price_id].tier.value,
                 )
                 continue
-            entries[price_id] = PriceEntry(
-                price_id=price_id, tier=tier, interval=interval
-            )
+            entries[price_id] = PriceEntry(price_id=price_id, tier=tier, interval=interval)
         return cls(entries)
 
-    def resolve(self, price_id: str) -> Optional[PriceEntry]:
+    def resolve(self, price_id: str) -> PriceEntry | None:
         """Return the catalog entry for a Stripe Price ID, or None if unknown.
 
         An unknown price ID is *not* an exception — Stripe customers may have
@@ -137,7 +133,7 @@ class PriceCatalog:
         """
         return self._by_price_id.get(price_id)
 
-    def all_entries(self) -> Tuple[PriceEntry, ...]:
+    def all_entries(self) -> tuple[PriceEntry, ...]:
         return tuple(self._by_price_id.values())
 
     def __len__(self) -> int:
@@ -148,8 +144,8 @@ class PriceCatalog:
 
 
 def resolve_tier_for_price(
-    price_id: str, catalog: Optional[PriceCatalog] = None
-) -> Optional[TierSlug]:
+    price_id: str, catalog: PriceCatalog | None = None
+) -> TierSlug | None:
     """Convenience: return the tier slug for a price ID, or None if unknown."""
     cat = catalog or PriceCatalog.from_env()
     entry = cat.resolve(price_id)

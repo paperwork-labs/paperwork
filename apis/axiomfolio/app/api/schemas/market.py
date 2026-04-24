@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
-
 
 # --- Prices ---
 
@@ -14,12 +13,12 @@ class CurrentPriceResponse(BaseModel):
     """GET /prices/{symbol}"""
 
     symbol: str
-    current_price: Optional[float] = None
-    price: Optional[float] = None
+    current_price: float | None = None
+    price: float | None = None
     timestamp: str
-    source: Optional[str] = None
-    as_of: Optional[str] = None
-    age_seconds: Optional[int] = None
+    source: str | None = None
+    as_of: str | None = None
+    age_seconds: int | None = None
 
 
 class PriceHistoryBar(BaseModel):
@@ -40,7 +39,7 @@ class PriceHistoryResponse(BaseModel):
     period: str
     interval: str
     data_source: str
-    bars: List[PriceHistoryBar]
+    bars: list[PriceHistoryBar]
 
 
 # --- Snapshots (row payloads mirror ORM columns; keep dict for JSON/OpenAPI flexibility) ---
@@ -50,26 +49,26 @@ class SnapshotSingleResponse(BaseModel):
     """GET /snapshots/{symbol}"""
 
     symbol: str
-    snapshot: Optional[Dict[str, Any]] = None
+    snapshot: dict[str, Any] | None = None
 
 
 class SnapshotsListResponse(BaseModel):
     """GET /snapshots — empty universe omits tracked_count."""
 
     count: int
-    tracked_count: Optional[int] = None
-    rows: List[Dict[str, Any]]
+    tracked_count: int | None = None
+    rows: list[dict[str, Any]]
 
 
 # --- Dashboard ---
 
 
 class DashboardCoverageBlock(BaseModel):
-    status: Optional[Any] = None
-    daily_pct: Optional[Any] = None
-    m5_pct: Optional[Any] = None
-    daily_stale: Optional[Any] = None
-    m5_stale: Optional[Any] = None
+    status: Any | None = None
+    daily_pct: Any | None = None
+    m5_pct: Any | None = None
+    daily_stale: Any | None = None
+    m5_stale: Any | None = None
 
 
 class DashboardRegime(BaseModel):
@@ -80,68 +79,68 @@ class DashboardRegime(BaseModel):
     flat_1d_count: int = 0
     above_sma50_count: int = 0
     above_sma200_count: int = 0
-    stage_counts: Dict[str, int] = Field(default_factory=dict)
-    stage_counts_normalized: Dict[str, int] = Field(default_factory=dict)
+    stage_counts: dict[str, int] = Field(default_factory=dict)
+    stage_counts_normalized: dict[str, int] = Field(default_factory=dict)
 
 
 class DashboardSummaryItem(BaseModel):
     symbol: str
     stage_label: str
-    previous_stage_label: Optional[str] = None
-    current_price: Optional[float] = None
-    perf_1d: Optional[float] = None
-    perf_5d: Optional[float] = None
-    perf_20d: Optional[float] = None
-    rs_mansfield_pct: Optional[float] = None
-    sector: Optional[str] = None
-    industry: Optional[str] = None
-    current_stage_days: Optional[int] = None
-    momentum_score: Optional[float] = None
+    previous_stage_label: str | None = None
+    current_price: float | None = None
+    perf_1d: float | None = None
+    perf_5d: float | None = None
+    perf_20d: float | None = None
+    rs_mansfield_pct: float | None = None
+    sector: str | None = None
+    industry: str | None = None
+    current_stage_days: int | None = None
+    momentum_score: float | None = None
 
 
 class DashboardSetups(BaseModel):
-    breakout_candidates: List[DashboardSummaryItem]
-    pullback_candidates: List[DashboardSummaryItem]
-    rs_leaders: List[DashboardSummaryItem]
+    breakout_candidates: list[DashboardSummaryItem]
+    pullback_candidates: list[DashboardSummaryItem]
+    rs_leaders: list[DashboardSummaryItem]
 
 
 class DashboardSectorMomentumRow(BaseModel):
     sector: str
     count: int
-    avg_perf_20d: Optional[float] = None
-    avg_rs_mansfield_pct: Optional[float] = None
+    avg_perf_20d: float | None = None
+    avg_rs_mansfield_pct: float | None = None
 
 
 class DashboardStageTransition(BaseModel):
     symbol: str
-    previous_stage_label: Optional[str] = None
+    previous_stage_label: str | None = None
     stage_label: str
-    current_stage_days: Optional[int] = None
-    perf_1d: Optional[float] = None
+    current_stage_days: int | None = None
+    perf_1d: float | None = None
 
 
 class DashboardProximityRow(BaseModel):
     symbol: str
-    current_price: Optional[float] = None
-    entry_price: Optional[float] = None
-    exit_price: Optional[float] = None
-    distance_pct: Optional[float] = None
-    distance_atr: Optional[float] = None
-    sector: Optional[str] = None
-    stage_label: Optional[str] = None
-    current_stage_days: Optional[int] = None
+    current_price: float | None = None
+    entry_price: float | None = None
+    exit_price: float | None = None
+    distance_pct: float | None = None
+    distance_atr: float | None = None
+    sector: str | None = None
+    stage_label: str | None = None
+    current_stage_days: int | None = None
 
 
 class DashboardSectorEtfRow(BaseModel):
     symbol: str
     sector_name: str
-    change_1d: Optional[float] = None
-    change_5d: Optional[float] = None
-    change_20d: Optional[float] = None
-    rs_mansfield_pct: Optional[float] = None
-    atrx_sma_50: Optional[float] = None
-    stage_label: Optional[str] = None
-    days_in_stage: Optional[int] = None
+    change_1d: float | None = None
+    change_5d: float | None = None
+    change_20d: float | None = None
+    rs_mansfield_pct: float | None = None
+    atrx_sma_50: float | None = None
+    stage_label: str | None = None
+    days_in_stage: int | None = None
 
 
 class DashboardMetricRankEntry(BaseModel):
@@ -173,17 +172,17 @@ class DashboardUpcomingEarnings(BaseModel):
     symbol: str
     next_earnings: str
     stage_label: str
-    rs_mansfield_pct: Optional[float] = None
-    sector: Optional[str] = None
+    rs_mansfield_pct: float | None = None
+    sector: str | None = None
 
 
 class DashboardFundamentalLeader(BaseModel):
     symbol: str
     eps_growth_yoy: float
     rs_mansfield_pct: float
-    pe_ttm: Optional[float] = None
+    pe_ttm: float | None = None
     stage_label: str
-    sector: Optional[str] = None
+    sector: str | None = None
     composite_score: float
 
 
@@ -192,20 +191,20 @@ class DashboardRsiDivergenceItem(BaseModel):
     perf_20d: float
     rsi: float
     stage_label: str
-    sector: Optional[str] = None
+    sector: str | None = None
 
 
 class DashboardRsiDivergences(BaseModel):
-    bearish: List[DashboardRsiDivergenceItem]
-    bullish: List[DashboardRsiDivergenceItem]
+    bearish: list[DashboardRsiDivergenceItem]
+    bullish: list[DashboardRsiDivergenceItem]
 
 
 class DashboardTdSignal(BaseModel):
     symbol: str
-    signals: List[str]
+    signals: list[str]
     stage_label: str
-    perf_1d: Optional[float] = None
-    sector: Optional[str] = None
+    perf_1d: float | None = None
+    sector: str | None = None
 
 
 class DashboardGapLeader(BaseModel):
@@ -214,36 +213,36 @@ class DashboardGapLeader(BaseModel):
     gaps_down: int
     total_gaps: int
     stage_label: str
-    sector: Optional[str] = None
+    sector: str | None = None
 
 
 class MarketDashboardResponse(BaseModel):
     """GET /dashboard — matches MarketDashboardService.build_dashboard payload."""
 
     generated_at: str
-    latest_snapshot_at: Optional[str] = None
+    latest_snapshot_at: str | None = None
     tracked_count: int
     snapshot_count: int
-    coverage: Optional[DashboardCoverageBlock] = None
+    coverage: DashboardCoverageBlock | None = None
     regime: DashboardRegime
-    leaders: List[DashboardSummaryItem]
+    leaders: list[DashboardSummaryItem]
     setups: DashboardSetups
-    sector_momentum: List[DashboardSectorMomentumRow]
-    action_queue: List[DashboardSummaryItem]
-    entry_proximity_top: List[DashboardProximityRow]
-    exit_proximity_top: List[DashboardProximityRow]
-    sector_etf_table: List[DashboardSectorEtfRow]
-    entering_stage_2a: List[DashboardStageTransition]
-    entering_stage_3: List[DashboardStageTransition]
-    entering_stage_4: List[DashboardStageTransition]
-    top10_matrix: Dict[str, List[DashboardMetricRankEntry]]
-    bottom10_matrix: Dict[str, List[DashboardMetricRankEntry]]
-    range_histogram: List[DashboardRangeBin]
-    breadth_series: List[DashboardBreadthPoint]
-    rrg_sectors: List[DashboardRrgSector]
-    upcoming_earnings: List[DashboardUpcomingEarnings]
-    fundamental_leaders: List[DashboardFundamentalLeader]
+    sector_momentum: list[DashboardSectorMomentumRow]
+    action_queue: list[DashboardSummaryItem]
+    entry_proximity_top: list[DashboardProximityRow]
+    exit_proximity_top: list[DashboardProximityRow]
+    sector_etf_table: list[DashboardSectorEtfRow]
+    entering_stage_2a: list[DashboardStageTransition]
+    entering_stage_3: list[DashboardStageTransition]
+    entering_stage_4: list[DashboardStageTransition]
+    top10_matrix: dict[str, list[DashboardMetricRankEntry]]
+    bottom10_matrix: dict[str, list[DashboardMetricRankEntry]]
+    range_histogram: list[DashboardRangeBin]
+    breadth_series: list[DashboardBreadthPoint]
+    rrg_sectors: list[DashboardRrgSector]
+    upcoming_earnings: list[DashboardUpcomingEarnings]
+    fundamental_leaders: list[DashboardFundamentalLeader]
     rsi_divergences: DashboardRsiDivergences
-    td_signals: List[DashboardTdSignal]
-    gap_leaders: List[DashboardGapLeader]
-    constituent_symbols: List[str]
+    td_signals: list[DashboardTdSignal]
+    gap_leaders: list[DashboardGapLeader]
+    constituent_symbols: list[str]

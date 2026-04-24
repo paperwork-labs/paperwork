@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import redis
 from pydantic import BaseModel, Field
@@ -43,29 +43,29 @@ class HookConfig(BaseModel):
     Fields ``discord_*`` are legacy JSON keys from RedBeat metadata; values are sent as routing metadata on Brain ``ops_alert``, not to Discord URLs.
     """
 
-    discord_webhook: Optional[str] = None
-    discord_channels: List[str] = Field(default_factory=list)
-    discord_mentions: List[str] = Field(default_factory=list)
-    prometheus_endpoint: Optional[str] = None
-    alert_on: List[str] = Field(default_factory=lambda: ["failure"])
-    slow_threshold_s: Optional[float] = None
+    discord_webhook: str | None = None
+    discord_channels: list[str] = Field(default_factory=list)
+    discord_mentions: list[str] = Field(default_factory=list)
+    prometheus_endpoint: str | None = None
+    alert_on: list[str] = Field(default_factory=lambda: ["failure"])
+    slow_threshold_s: float | None = None
 
 
 class ScheduleMetadata(BaseModel):
     """Rich metadata persisted alongside each RedBeat schedule."""
 
-    queue: Optional[str] = None
-    priority: Optional[int] = None
-    dependencies: List[str] = Field(default_factory=list)
-    maintenance_windows: List[MaintenanceWindow] = Field(default_factory=list)
-    preflight_checks: List[str] = Field(default_factory=list)
+    queue: str | None = None
+    priority: int | None = None
+    dependencies: list[str] = Field(default_factory=list)
+    maintenance_windows: list[MaintenanceWindow] = Field(default_factory=list)
+    preflight_checks: list[str] = Field(default_factory=list)
     safety: SafetyConfig = Field(default_factory=SafetyConfig)
     hooks: HookConfig = Field(default_factory=HookConfig)
-    notes: Optional[str] = None
-    audit: Dict[str, Any] = Field(default_factory=dict)
+    notes: str | None = None
+    audit: dict[str, Any] = Field(default_factory=dict)
 
     def touch_audit(self, actor: str, *, is_create: bool = False) -> None:
-        now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         audit = dict(self.audit or {})
         if is_create or "created_at" not in audit:
             audit["created_at"] = now
@@ -78,17 +78,17 @@ class ScheduleMetadata(BaseModel):
 class ScheduleMetadataPatch(BaseModel):
     """Partial metadata payload used when creating/updating via API."""
 
-    queue: Optional[str] = None
-    priority: Optional[int] = None
-    dependencies: Optional[List[str]] = None
-    maintenance_windows: Optional[List[MaintenanceWindow]] = None
-    preflight_checks: Optional[List[str]] = None
-    safety: Optional[SafetyConfig] = None
-    hooks: Optional[HookConfig] = None
-    notes: Optional[str] = None
+    queue: str | None = None
+    priority: int | None = None
+    dependencies: list[str] | None = None
+    maintenance_windows: list[MaintenanceWindow] | None = None
+    preflight_checks: list[str] | None = None
+    safety: SafetyConfig | None = None
+    hooks: HookConfig | None = None
+    notes: str | None = None
 
     def apply(self, base: ScheduleMetadata | None) -> ScheduleMetadata:
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
         if base is not None:
             data.update(base.model_dump())
         payload = self.model_dump(exclude_unset=True)
@@ -101,11 +101,11 @@ class ScheduleMetadataPatch(BaseModel):
         return ScheduleMetadata(**data)
 
 
-def metadata_to_options(meta: ScheduleMetadata | None) -> Dict[str, Any]:
+def metadata_to_options(meta: ScheduleMetadata | None) -> dict[str, Any]:
     """Translate metadata into Celery apply_async options."""
     if not meta:
         return {}
-    options: Dict[str, Any] = {}
+    options: dict[str, Any] = {}
     if meta.queue:
         options["queue"] = meta.queue
     if meta.priority is not None:
@@ -115,14 +115,16 @@ def metadata_to_options(meta: ScheduleMetadata | None) -> Dict[str, Any]:
     return options
 
 
-def _redis_client(client: Optional[redis.Redis] = None) -> redis.Redis:
+def _redis_client(client: redis.Redis | None = None) -> redis.Redis:
     if client:
         return client
     url = getattr(settings, "CELERY_BROKER_URL", None) or getattr(settings, "REDIS_URL", None)
     return redis.from_url(url)
 
 
-def load_schedule_metadata(name: str, client: Optional[redis.Redis] = None) -> Optional[ScheduleMetadata]:
+def load_schedule_metadata(
+    name: str, client: redis.Redis | None = None
+) -> ScheduleMetadata | None:
     """Load metadata blob for a schedule if present."""
     try:
         raw = _redis_client(client).get(meta_key(name))
@@ -137,7 +139,7 @@ def load_schedule_metadata(name: str, client: Optional[redis.Redis] = None) -> O
 
 
 def save_schedule_metadata(
-    name: str, meta: Optional[ScheduleMetadata], *, client: Optional[redis.Redis] = None
+    name: str, meta: ScheduleMetadata | None, *, client: redis.Redis | None = None
 ) -> None:
     """Persist metadata blob; delete key if meta is None."""
     store = _redis_client(client)
@@ -150,20 +152,19 @@ def save_schedule_metadata(
         logger.warning("save_schedule_metadata failed for %s: %s", name, e)
 
 
-def delete_schedule_metadata(name: str, client: Optional[redis.Redis] = None) -> None:
+def delete_schedule_metadata(name: str, client: redis.Redis | None = None) -> None:
     save_schedule_metadata(name, None, client=client)
 
 
 __all__ = [
     "HookConfig",
     "MaintenanceWindow",
+    "SafetyConfig",
     "ScheduleMetadata",
     "ScheduleMetadataPatch",
-    "SafetyConfig",
     "delete_schedule_metadata",
     "load_schedule_metadata",
     "meta_key",
     "metadata_to_options",
     "save_schedule_metadata",
 ]
-

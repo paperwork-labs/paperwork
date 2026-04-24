@@ -10,9 +10,10 @@ Tests all functionality of the IBKRClient including:
 - Error handling and retry logic
 """
 
-import pytest
 import asyncio
 from unittest.mock import Mock, patch
+
+import pytest
 
 from app.services.clients.ibkr_client import IBKRClient
 

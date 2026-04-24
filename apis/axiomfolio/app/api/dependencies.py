@@ -3,19 +3,18 @@ AxiomFolio V1 - API Dependencies
 Common dependencies for API endpoints.
 """
 
-import secrets
-
-from fastapi import Depends, HTTPException, status, Security, Request
-from fastapi.security import APIKeyHeader, HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
 import logging
-from typing import Optional, List, Literal
+import secrets
+from typing import Literal
 
-from app.database import get_db
-from app.models.user import User
-from app.models.user import UserRole
+from fastapi import Depends, HTTPException, Request, Security, status
+from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
+from sqlalchemy.orm import Session
+
 from app.api.security import decode_token
 from app.config import settings
+from app.database import get_db
+from app.models.user import User, UserRole
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +25,7 @@ _brain_api_key_header = APIKeyHeader(name="X-Brain-Api-Key", auto_error=False)
 
 
 async def verify_brain_api_key(
-    api_key: Optional[str] = Security(_brain_api_key_header),
+    api_key: str | None = Security(_brain_api_key_header),
 ) -> None:
     """Validate Brain tool API requests (machine-to-machine). Header: X-Brain-Api-Key."""
     expected = settings.BRAIN_API_KEY
@@ -42,9 +41,7 @@ async def verify_brain_api_key(
         )
     provided = api_key.encode("utf-8")
     expected_b = expected.encode("utf-8")
-    if len(provided) != len(expected_b) or not secrets.compare_digest(
-        provided, expected_b
-    ):
+    if len(provided) != len(expected_b) or not secrets.compare_digest(provided, expected_b):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or missing Brain API key",
@@ -64,13 +61,13 @@ async def get_current_user(
         payload = decode_token(token)
         username = payload.get("sub")
         if not username:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject"
+            )
         user = db.query(User).filter(User.username == username).first()
 
         if not user:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
         if not user.is_active:
             raise HTTPException(
@@ -163,7 +160,7 @@ def require_role(*allowed_roles: UserRole):
     return check_role
 
 
-def require_roles(roles: List[UserRole]):
+def require_roles(roles: list[UserRole]):
     """
     Factory dependency to enforce one of the allowed roles on an endpoint/router.
     Usage:
@@ -178,16 +175,14 @@ def require_roles(roles: List[UserRole]):
             else str(current_user.role)
         )
         if cur not in allowed_values:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient role"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient role")
         return current_user
 
     return _dep
 
 
 async def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Security(optional_security),
+    credentials: HTTPAuthorizationCredentials | None = Security(optional_security),
     db: Session = Depends(get_db),
 ):
     """Return None if no credentials provided; otherwise validate like get_current_user."""
@@ -198,12 +193,12 @@ async def get_optional_user(
         payload = decode_token(token)
         username = payload.get("sub")
         if not username:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject"
+            )
         user = db.query(User).filter(User.username == username).first()
         if not user or not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user"
-            )
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user")
         return user
     except HTTPException:
         raise
@@ -216,7 +211,7 @@ async def get_optional_user(
 
 
 async def get_market_data_viewer(
-    optional_user: Optional[User] = Depends(get_optional_user),
+    optional_user: User | None = Depends(get_optional_user),
 ) -> User:
     """
     Return a user allowed to view market-data sections.
@@ -243,8 +238,8 @@ def _section_from_path(path: str) -> SectionName:
 
 
 def evaluate_release_access(
-    section: SectionName, current_user: Optional[User]
-) -> tuple[bool, Optional[str]]:
+    section: SectionName, current_user: User | None
+) -> tuple[bool, str | None]:
     """
     Evaluate rollout policy for a section with role-aware rules.
 
@@ -274,8 +269,8 @@ def market_exposed_to_all() -> bool:
 
 async def require_non_market_access(
     request: Request,
-    current_user: Optional[User] = Depends(get_optional_user),
-) -> Optional[User]:
+    current_user: User | None = Depends(get_optional_user),
+) -> User | None:
     """Enforce section rollout policy for optional-auth routes (portfolio vs market)."""
     if current_user is None:
         return None

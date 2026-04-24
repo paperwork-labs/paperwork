@@ -1,14 +1,16 @@
-from fastapi.testclient import TestClient
-from datetime import datetime, timedelta, timezone
 import json
+from datetime import UTC, datetime, timedelta
+
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy.exc import OperationalError
-from app.api.main import app
+
 from app.api.dependencies import get_market_data_viewer
+from app.api.main import app
+from app.config import settings
 from app.database import get_db
 from app.models.market_data import PriceData
 from app.models.user import UserRole
-from app.config import settings
 from app.services.market.coverage_analytics import CoverageAnalytics
 
 client = TestClient(app, raise_server_exceptions=False)
@@ -32,14 +34,40 @@ def test_coverage_endpoint_buckets(monkeypatch, db_session):
         pytest.skip("DB session unavailable for coverage test")
     monkeypatch.setattr(settings, "MARKET_DATA_SECTION_PUBLIC", True)
     try:
+
         def _override_db():
             yield db_session
+
         app.dependency_overrides[get_db] = _override_db
         db_session.query(PriceData).delete()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         rows = [
-            PriceData(symbol="TESTF", date=now - timedelta(hours=2), open_price=1, high_price=1, low_price=1, close_price=1, adjusted_close=1, volume=100, interval="1d", is_adjusted=True, data_source="test"),
-            PriceData(symbol="TESTS", date=now - timedelta(days=3), open_price=1, high_price=1, low_price=1, close_price=1, adjusted_close=1, volume=100, interval="1d", is_adjusted=True, data_source="test"),
+            PriceData(
+                symbol="TESTF",
+                date=now - timedelta(hours=2),
+                open_price=1,
+                high_price=1,
+                low_price=1,
+                close_price=1,
+                adjusted_close=1,
+                volume=100,
+                interval="1d",
+                is_adjusted=True,
+                data_source="test",
+            ),
+            PriceData(
+                symbol="TESTS",
+                date=now - timedelta(days=3),
+                open_price=1,
+                high_price=1,
+                low_price=1,
+                close_price=1,
+                adjusted_close=1,
+                volume=100,
+                interval="1d",
+                is_adjusted=True,
+                data_source="test",
+            ),
         ]
         for r in rows:
             db_session.add(r)
@@ -56,10 +84,14 @@ def test_coverage_endpoint_buckets(monkeypatch, db_session):
     assert data["status"]["label"].lower() in ("ok", "degraded", "stale")
 
 
-def _make_stub_analytics(redis_stub, *, coverage_snapshot_fn=None, benchmark_health_fn=None, backfill_5m=True):
+def _make_stub_analytics(
+    redis_stub, *, coverage_snapshot_fn=None, benchmark_health_fn=None, backfill_5m=True
+):
     """Build a CoverageAnalytics with stubbed infra and optional method overrides."""
+
     class _InfraStub:
         redis_client = redis_stub
+
         def is_backfill_5m_enabled(self):
             return backfill_5m
 
@@ -71,9 +103,12 @@ def _make_stub_analytics(redis_stub, *, coverage_snapshot_fn=None, benchmark_hea
     else:
         ca.benchmark_health = lambda db, **kw: {
             "symbol": kw.get("benchmark_symbol", "SPY"),
-            "latest_daily_dt": None, "latest_daily_date": None,
-            "daily_bars": 0, "required_bars": int(kw.get("required_bars") or 260),
-            "ok": False, "stale": False,
+            "latest_daily_dt": None,
+            "latest_daily_date": None,
+            "daily_bars": 0,
+            "required_bars": int(kw.get("required_bars") or 260),
+            "ok": False,
+            "stale": False,
         }
     return ca
 
@@ -112,11 +147,16 @@ def test_coverage_prefers_cached_snapshot(monkeypatch):
 
         def lrange(self, key, start, end):
             return [
-                json.dumps({
-                    "ts": "2025-01-01T00:00:00",
-                    "daily_pct": 100, "m5_pct": 50,
-                    "stale_daily": 0, "stale_m5": 0, "label": "ok",
-                })
+                json.dumps(
+                    {
+                        "ts": "2025-01-01T00:00:00",
+                        "daily_pct": 100,
+                        "m5_pct": 50,
+                        "stale_daily": 0,
+                        "stale_m5": 0,
+                        "label": "ok",
+                    }
+                )
             ]
 
     def _should_not_hit_db(db, **kw):
@@ -141,6 +181,7 @@ def test_coverage_meta_exposes_kpis_and_sparkline(monkeypatch):
     class _RedisStub:
         def get(self, key):
             return None
+
         def lrange(self, key, start, end):
             return []
 
@@ -149,7 +190,11 @@ def test_coverage_meta_exposes_kpis_and_sparkline(monkeypatch):
             "generated_at": "2025-01-01T00:00:00",
             "symbols": 2,
             "tracked_count": 2,
-            "daily": {"count": 2, "last": {"AAA": "2025-01-01T00:00:00", "BBB": "2025-01-01T00:00:00"}, "stale": []},
+            "daily": {
+                "count": 2,
+                "last": {"AAA": "2025-01-01T00:00:00", "BBB": "2025-01-01T00:00:00"},
+                "stale": [],
+            },
             "m5": {"count": 1, "last": {"AAA": "2025-01-01T00:00:00"}, "stale": []},
         }
 
@@ -177,7 +222,8 @@ def test_coverage_cache_schema_mismatch_falls_back(monkeypatch):
 
     cached_snapshot = {
         "generated_at": "2025-01-01T00:00:00",
-        "symbols": 2, "tracked_count": 2,
+        "symbols": 2,
+        "tracked_count": 2,
         "daily": {"count": 2, "stale": []},
         "m5": {"count": 1, "stale": []},
     }
@@ -194,6 +240,7 @@ def test_coverage_cache_schema_mismatch_falls_back(monkeypatch):
             if key == "coverage:health:last":
                 return json.dumps(payload)
             return None
+
         def lrange(self, key, start, end):
             return []
 
@@ -201,7 +248,8 @@ def test_coverage_cache_schema_mismatch_falls_back(monkeypatch):
         coverage_called["hit"] = True
         return {
             "generated_at": "2025-01-01T00:00:00",
-            "symbols": 2, "tracked_count": 2,
+            "symbols": 2,
+            "tracked_count": 2,
             "daily": {"count": 2, "stale": []},
             "m5": {"count": 1, "stale": []},
         }

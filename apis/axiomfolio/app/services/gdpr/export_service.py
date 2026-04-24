@@ -19,12 +19,11 @@ import io
 import json
 import logging
 import os
-import shutil
 import zipfile
-from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from sqlalchemy import inspect as sa_inspect, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -60,7 +59,7 @@ _SKIP_TABLES: frozenset[str] = frozenset(
 )
 
 
-def _user_scoped_tables() -> List[Any]:
+def _user_scoped_tables() -> list[Any]:
     """Return SA Table objects that have a ``user_id`` column.
 
     Uses the metadata that's already loaded by the time this runs (the
@@ -75,7 +74,7 @@ def _user_scoped_tables() -> List[Any]:
     return out
 
 
-def _row_to_dict(row: Any, columns: List[str]) -> dict[str, Any]:
+def _row_to_dict(row: Any, columns: list[str]) -> dict[str, Any]:
     record: dict[str, Any] = {}
     for col in columns:
         val = getattr(row, col, None)
@@ -143,7 +142,7 @@ class GDPRExportService:
             url, expires_at = self._publish(local_path, zip_filename)
 
             job.status = GDPRJobStatus.COMPLETED.value
-            job.completed_at = datetime.now(timezone.utc)
+            job.completed_at = datetime.now(UTC)
             job.download_url = url
             job.expires_at = expires_at
             job.bytes_written = bytes_written
@@ -170,14 +169,12 @@ class GDPRExportService:
         with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
             manifest = {
                 "user_id": user_id,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
                 "tables": [],
             }
 
             for table in _user_scoped_tables():
-                rows = self.db.execute(
-                    select(table).where(table.c.user_id == user_id)
-                ).fetchall()
+                rows = self.db.execute(select(table).where(table.c.user_id == user_id)).fetchall()
                 columns = [c.name for c in table.c]
                 buf = io.StringIO()
                 writer = csv.DictWriter(buf, fieldnames=columns)
@@ -185,17 +182,13 @@ class GDPRExportService:
                 for row in rows:
                     writer.writerow(_row_to_dict(row, columns))
                 zf.writestr(f"{table.name}.csv", buf.getvalue())
-                manifest["tables"].append(
-                    {"name": table.name, "row_count": len(rows)}
-                )
+                manifest["tables"].append({"name": table.name, "row_count": len(rows)})
 
             zf.writestr("MANIFEST.json", json.dumps(manifest, indent=2))
 
         return os.path.getsize(path)
 
-    def _publish(
-        self, local_path: str, zip_filename: str
-    ) -> tuple[str, datetime]:
+    def _publish(self, local_path: str, zip_filename: str) -> tuple[str, datetime]:
         """Return ``(download_url, expires_at)``.
 
         Uploads to S3 if configured, else copies to a public local dir
@@ -203,15 +196,13 @@ class GDPRExportService:
         capped by ``GDPR_EXPORT_TTL_DAYS``.
         """
         ttl = timedelta(days=max(1, settings.GDPR_EXPORT_TTL_DAYS))
-        expires_at = datetime.now(timezone.utc) + ttl
+        expires_at = datetime.now(UTC) + ttl
 
         if settings.S3_GDPR_BUCKET and settings.S3_GDPR_ACCESS_KEY_ID:
             try:
                 import boto3  # type: ignore[import-not-found]
             except ImportError as exc:
-                raise RuntimeError(
-                    "boto3 is required when S3_GDPR_BUCKET is set"
-                ) from exc
+                raise RuntimeError("boto3 is required when S3_GDPR_BUCKET is set") from exc
 
             s3 = boto3.client(
                 "s3",
@@ -238,9 +229,7 @@ class GDPRExportService:
         # /api/v1/me/data-export/{job_id}/download (added in routes).
         return f"local://{zip_filename}", expires_at
 
-    def _record_incident(
-        self, user_id: int, job_id: int, exc: Exception
-    ) -> None:
+    def _record_incident(self, user_id: int, job_id: int, exc: Exception) -> None:
         try:
             self.db.add(
                 IncidentRow(

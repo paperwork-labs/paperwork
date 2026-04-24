@@ -5,8 +5,7 @@ medallion: gold
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -19,9 +18,7 @@ class InvalidStateTransition(Exception):
     def __init__(self, current: CandidateQueueState, requested: CandidateQueueState) -> None:
         self.current = current
         self.requested = requested
-        super().__init__(
-            f"Illegal transition {current.value!r} -> {requested.value!r}"
-        )
+        super().__init__(f"Illegal transition {current.value!r} -> {requested.value!r}")
 
 
 _ALLOWED: dict[CandidateQueueState, frozenset[CandidateQueueState]] = {
@@ -42,7 +39,7 @@ def transition(
     *,
     to_state: CandidateQueueState,
     actor_user_id: int,
-    reason: Optional[str] = None,
+    reason: str | None = None,
 ) -> Candidate:
     """Validate and apply a queue state change.
 
@@ -52,7 +49,7 @@ def transition(
     if to_state not in _ALLOWED.get(current, frozenset()):
         raise InvalidStateTransition(current, to_state)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     entry = PicksAuditLog(
         candidate_id=candidate.id,
         from_state=current.value,

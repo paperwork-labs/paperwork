@@ -6,7 +6,7 @@ earnings_calendar table.
 """
 
 import logging
-from typing import Optional
+from datetime import UTC
 
 from celery import shared_task
 
@@ -35,7 +35,7 @@ def sync_earnings_calendar(lookback_days: int = 7, lookahead_days: int = 90) -> 
     Returns:
         Counters dict for JobRun persistence.
     """
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
     _set_task_status("sync_earnings_calendar", "running")
     session = SessionLocal()
@@ -45,7 +45,7 @@ def sync_earnings_calendar(lookback_days: int = 7, lookahead_days: int = 90) -> 
             logger.warning("sync_earnings_calendar: no tracked symbols found")
             return {"status": "ok", "symbols": 0, "fetched": 0, "upserted": 0}
 
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         from_date = today - timedelta(days=lookback_days)
         to_date = today + timedelta(days=lookahead_days)
 
@@ -57,7 +57,10 @@ def sync_earnings_calendar(lookback_days: int = 7, lookahead_days: int = 90) -> 
         )
         logger.info(
             "sync_earnings_calendar done: source=%s fetched=%d upserted=%d errors=%d",
-            result["source"], result["fetched"], result["upserted"], result["errors"],
+            result["source"],
+            result["fetched"],
+            result["upserted"],
+            result["errors"],
         )
         return {
             "status": "ok",

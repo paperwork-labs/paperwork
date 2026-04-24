@@ -18,8 +18,8 @@ entry is a public surface a paying customer can run a study against.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy.orm import Session
@@ -48,8 +48,8 @@ logger = logging.getLogger(__name__)
 
 
 def _stage2_breakout_builder(
-    params: Dict[str, Any],
-) -> Tuple[ConditionGroup, ConditionGroup]:
+    params: dict[str, Any],
+) -> tuple[ConditionGroup, ConditionGroup]:
     """Reference Stage-2 breakout strategy.
 
     Parameters consumed:
@@ -68,12 +68,8 @@ def _stage2_breakout_builder(
     entry = ConditionGroup(
         logic=LogicalOperator.AND,
         conditions=[
-            Condition(
-                field="stage", operator=ConditionOperator.EQ, value="2A"
-            ),
-            Condition(
-                field="rsi14", operator=ConditionOperator.LT, value=rsi_max
-            ),
+            Condition(field="stage", operator=ConditionOperator.EQ, value="2A"),
+            Condition(field="rsi14", operator=ConditionOperator.LT, value=rsi_max),
             Condition(
                 field="vol_ratio_20",
                 operator=ConditionOperator.GTE,
@@ -84,10 +80,10 @@ def _stage2_breakout_builder(
     exit_ = ConditionGroup(
         logic=LogicalOperator.OR,
         conditions=[
-            Condition(field="stage", operator=ConditionOperator.IN, value=["3A", "3B", "4A", "4B", "4C"]),
             Condition(
-                field="rsi14", operator=ConditionOperator.GT, value=85
+                field="stage", operator=ConditionOperator.IN, value=["3A", "3B", "4A", "4B", "4C"]
             ),
+            Condition(field="rsi14", operator=ConditionOperator.GT, value=85),
         ],
     )
     # ``stop_mult`` is consumed by exit_cascade in production; for the
@@ -104,7 +100,7 @@ def _stage2_breakout_builder(
     return entry, exit_
 
 
-STRATEGY_REGISTRY: Dict[str, StrategyBuilder] = {
+STRATEGY_REGISTRY: dict[str, StrategyBuilder] = {
     "stage2_breakout": _stage2_breakout_builder,
 }
 
@@ -115,10 +111,7 @@ def list_strategy_classes() -> list[str]:
 
 def get_strategy_builder(name: str) -> StrategyBuilder:
     if name not in STRATEGY_REGISTRY:
-        raise ValueError(
-            f"Unknown strategy_class '{name}'. "
-            f"Available: {list_strategy_classes()}"
-        )
+        raise ValueError(f"Unknown strategy_class '{name}'. Available: {list_strategy_classes()}")
     return STRATEGY_REGISTRY[name]
 
 
@@ -143,11 +136,7 @@ def run_walk_forward_study(self, study_id: int) -> dict:
     """
     db: Session = SessionLocal()
     try:
-        study = (
-            db.query(WalkForwardStudy)
-            .filter(WalkForwardStudy.id == study_id)
-            .first()
-        )
+        study = db.query(WalkForwardStudy).filter(WalkForwardStudy.id == study_id).first()
         if not study:
             logger.error("walk_forward_study %s not found — aborting task", study_id)
             return {"error": "study_not_found", "study_id": study_id}
@@ -172,15 +161,13 @@ def run_walk_forward_study(self, study_id: int) -> dict:
             }
 
         study.status = WalkForwardStatus.RUNNING
-        study.started_at = datetime.now(timezone.utc)
+        study.started_at = datetime.now(UTC)
         db.commit()
 
         try:
             builder = get_strategy_builder(study.strategy_class)
             regime_lookup = db_regime_lookup(db)
-            runner = build_default_runner(
-                db, builder, regime_lookup=regime_lookup
-            )
+            runner = build_default_runner(db, builder, regime_lookup=regime_lookup)
 
             def progress_cb(completed: int, total: int) -> None:
                 # Cheap update — single row, single column. We commit so
@@ -212,7 +199,7 @@ def run_walk_forward_study(self, study_id: int) -> dict:
             study.per_split_results = [s.to_dict() for s in result.per_split_results]
             study.regime_attribution = result.regime_attribution
             study.status = WalkForwardStatus.COMPLETED
-            study.completed_at = datetime.now(timezone.utc)
+            study.completed_at = datetime.now(UTC)
             db.commit()
 
             logger.info(
@@ -229,12 +216,10 @@ def run_walk_forward_study(self, study_id: int) -> dict:
                 "total_trials": result.total_trials,
             }
         except Exception as e:
-            logger.exception(
-                "walk_forward_study %s failed: %s", study_id, e
-            )
+            logger.exception("walk_forward_study %s failed: %s", study_id, e)
             study.status = WalkForwardStatus.FAILED
             study.error_message = str(e)[:1000]
-            study.completed_at = datetime.now(timezone.utc)
+            study.completed_at = datetime.now(UTC)
             db.commit()
             return {"study_id": study.id, "status": "failed", "error": str(e)}
     finally:

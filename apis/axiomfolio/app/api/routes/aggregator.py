@@ -1,38 +1,40 @@
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import logging
+import time
+import urllib.parse
+from uuid import uuid4
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
-import hashlib
-import urllib.parse
-import asyncio
-import time
-from uuid import uuid4
 
-from app.database import get_db, SessionLocal
 from app.api.dependencies import get_current_user
-from app.models.user import User
-from app.models.broker_account import (
-    BrokerAccount, AccountCredentials, AccountType, AccountStatus, SyncStatus,
-)
-from app.services.aggregator.schwab_connector import SchwabConnector
-import httpx
-from app.services.security.oauth_state import oauth_state_service
-from app.services.security.credential_vault import credential_vault
 from app.config import settings
+from app.database import SessionLocal, get_db
+from app.models.broker_account import (
+    AccountCredentials,
+    AccountStatus,
+    AccountType,
+    BrokerAccount,
+    SyncStatus,
+)
+from app.models.user import User
+from app.services.aggregator.schwab_connector import SchwabConnector
+from app.services.clients.tastytrade_client import TASTYTRADE_AVAILABLE, TastyTradeClient
+from app.services.security.connect_job_store import connect_job_store
+from app.services.security.credential_vault import credential_vault
+from app.services.security.credential_vault import credential_vault as _vault
+from app.services.security.oauth_state import oauth_state_service
 from app.services.security.pkce_state import (
-    generate_code_verifier,
     compute_code_challenge,
+    generate_code_verifier,
     pop_verifier_for_state,
 )
-from app.services.clients.tastytrade_client import TastyTradeClient, TASTYTRADE_AVAILABLE
-from app.services.security.credential_vault import credential_vault as _vault
-from app.services.security.connect_job_store import connect_job_store
-
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +44,7 @@ router = APIRouter()
 def _persist_connect_error(user_id: int, broker: str, error_msg: str) -> None:
     """Persist last connect error to AccountCredentials for user's broker accounts."""
     from app.models.broker_account import BrokerAccount, BrokerType
+
     broker_map = {"tastytrade": BrokerType.TASTYTRADE, "ibkr": BrokerType.IBKR}
     bt = broker_map.get(broker)
     if not bt:
@@ -54,7 +57,11 @@ def _persist_connect_error(user_id: int, broker: str, error_msg: str) -> None:
             .all()
         )
         for acc in accounts:
-            cred = sess.query(AccountCredentials).filter(AccountCredentials.account_id == acc.id).first()
+            cred = (
+                sess.query(AccountCredentials)
+                .filter(AccountCredentials.account_id == acc.id)
+                .first()
+            )
             if cred:
                 cred.last_error = error_msg
         sess.commit()
@@ -64,36 +71,44 @@ def _persist_connect_error(user_id: int, broker: str, error_msg: str) -> None:
         sess.close()
 
 
-def _is_truthy_value(val: Optional[str]) -> bool:
+def _is_truthy_value(val: str | None) -> bool:
     if not val:
         return False
     v = str(val).strip().lower()
     return v not in {"", "none", "null", "false"}
 
+
 def _is_schwab_configured() -> bool:
-    return _is_truthy_value(settings.SCHWAB_CLIENT_ID) and _is_truthy_value(settings.SCHWAB_REDIRECT_URI)
+    return _is_truthy_value(settings.SCHWAB_CLIENT_ID) and _is_truthy_value(
+        settings.SCHWAB_REDIRECT_URI
+    )
+
 
 class SchwabProbeResult(BaseModel):
-    tried_bases: List[str]
-    working_base: Optional[str] = None
+    tried_bases: list[str]
+    working_base: str | None = None
     status_map: dict = {}
-    built_authorize_url: Optional[str] = None
+    built_authorize_url: str | None = None
 
 
 class ProviderConfig(BaseModel):
     configured: bool
-    redirect_uri: Optional[str] = None
-    probe: Optional[SchwabProbeResult] = None
+    redirect_uri: str | None = None
+    probe: SchwabProbeResult | None = None
+
 
 class AggregatorConfigResponse(BaseModel):
     schwab: ProviderConfig
+
 
 @router.get("/config", response_model=AggregatorConfigResponse)
 async def get_aggregator_config() -> AggregatorConfigResponse:
     """Return minimal provider configuration status (no secrets)."""
     configured = _is_schwab_configured()
-    redirect_uri = settings.SCHWAB_REDIRECT_URI if _is_truthy_value(settings.SCHWAB_REDIRECT_URI) else None
-    probe: Optional[SchwabProbeResult] = None
+    redirect_uri = (
+        settings.SCHWAB_REDIRECT_URI if _is_truthy_value(settings.SCHWAB_REDIRECT_URI) else None
+    )
+    probe: SchwabProbeResult | None = None
     if configured:
         # Build current authorize URL and probe common bases to guide configuration
         connector = SchwabConnector()
@@ -126,6 +141,7 @@ async def get_aggregator_config() -> AggregatorConfigResponse:
         )
     schwab_cfg = ProviderConfig(configured=configured, redirect_uri=redirect_uri, probe=probe)
     return AggregatorConfigResponse(schwab=schwab_cfg)
+
 
 @router.get("/schwab/probe", response_model=SchwabProbeResult)
 async def probe_schwab_authorize() -> SchwabProbeResult:
@@ -160,7 +176,7 @@ async def probe_schwab_authorize() -> SchwabProbeResult:
 
 
 class BrokersResponse(BaseModel):
-    brokers: List[str]
+    brokers: list[str]
 
 
 @router.post("/brokers", response_model=BrokersResponse)
@@ -170,7 +186,7 @@ async def list_brokers() -> BrokersResponse:
 
 class LinkRequest(BaseModel):
     account_id: int
-    trading: Optional[bool] = False
+    trading: bool | None = False
 
 
 class LinkResponse(BaseModel):
@@ -178,9 +194,7 @@ class LinkResponse(BaseModel):
 
 
 @router.post("/schwab/link", response_model=LinkResponse)
-async def schwab_link(
-    req: LinkRequest, user: User = Depends(get_current_user)
-) -> LinkResponse:
+async def schwab_link(req: LinkRequest, user: User = Depends(get_current_user)) -> LinkResponse:
     # Verify account ownership
     # Note: account_management uses user_id=1 for now; auth is enforced here
     if not req.account_id:
@@ -245,31 +259,45 @@ class TTConnectRequest(BaseModel):
 class TTStatusResponse(BaseModel):
     available: bool
     connected: bool
-    accounts: List[dict] = []
-    last_error: Optional[str] = None
-    job_id: Optional[str] = None
-    job_state: Optional[str] = None  # pending|running|success|error
-    job_error: Optional[str] = None
+    accounts: list[dict] = []
+    last_error: str | None = None
+    job_id: str | None = None
+    job_state: str | None = None  # pending|running|success|error
+    job_error: str | None = None
 
 
-async def _tt_connect_job(job_id: str, client_id: str, client_secret: str, refresh_token: str, user_id: int):
-    connect_job_store.set(job_id, {"state": "running", "started_at": time.time(), "broker": "tastytrade"})
+async def _tt_connect_job(
+    job_id: str, client_id: str, client_secret: str, refresh_token: str, user_id: int
+):
+    connect_job_store.set(
+        job_id, {"state": "running", "started_at": time.time(), "broker": "tastytrade"}
+    )
     db = SessionLocal()
     try:
         client = TastyTradeClient()
         ok = await client.connect_with_credentials(client_secret, refresh_token)
         if not ok:
             last_err = getattr(client, "connection_health", {}).get("last_error") or "Login failed"
-            connect_job_store.set(job_id, {
-                "state": "error",
-                "error": last_err,
-                "finished_at": time.time(),
-                "broker": "tastytrade",
-            })
+            connect_job_store.set(
+                job_id,
+                {
+                    "state": "error",
+                    "error": last_err,
+                    "finished_at": time.time(),
+                    "broker": "tastytrade",
+                },
+            )
             _persist_connect_error(user_id, "tastytrade", last_err)
             return
         accounts = await client.get_accounts()
-        from app.models.broker_account import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
+        from app.models.broker_account import (
+            AccountStatus,
+            AccountType,
+            BrokerAccount,
+            BrokerType,
+            SyncStatus,
+        )
+
         for acc in accounts or []:
             acct_num = acc.get("account_number")
             if not acct_num:
@@ -284,7 +312,9 @@ async def _tt_connect_job(job_id: str, client_id: str, client_secret: str, refre
                 .first()
             )
             if existing:
-                existing.account_name = acc.get("nickname") or existing.account_name or f"Tastytrade ({acct_num})"
+                existing.account_name = (
+                    acc.get("nickname") or existing.account_name or f"Tastytrade ({acct_num})"
+                )
                 existing.account_type = AccountType.TAXABLE
                 existing.status = AccountStatus.ACTIVE
                 existing.is_enabled = True
@@ -309,12 +339,15 @@ async def _tt_connect_job(job_id: str, client_id: str, client_secret: str, refre
                 db.flush()
                 acc_id = ba.id
             from app.models.broker_account import AccountCredentials
+
             cred = (
-                db.query(AccountCredentials)
-                .filter(AccountCredentials.account_id == acc_id)
-                .first()
+                db.query(AccountCredentials).filter(AccountCredentials.account_id == acc_id).first()
             )
-            payload = {"client_id": client_id, "client_secret": client_secret, "refresh_token": refresh_token}
+            payload = {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "refresh_token": refresh_token,
+            }
             enc = _vault.encrypt_dict(payload)
             if cred:
                 cred.encrypted_credentials = enc
@@ -331,28 +364,38 @@ async def _tt_connect_job(job_id: str, client_id: str, client_secret: str, refre
         db.commit()
 
         synced_account_ids = [
-            ba.id for ba in db.query(BrokerAccount).filter(
+            ba.id
+            for ba in db.query(BrokerAccount)
+            .filter(
                 BrokerAccount.user_id == user_id,
                 BrokerAccount.broker == BrokerType.TASTYTRADE,
                 BrokerAccount.is_enabled == True,
-            ).all()
+            )
+            .all()
         ]
         for acc_id in synced_account_ids:
             try:
                 from app.tasks.portfolio.sync import sync_account_task
+
                 sync_account_task.delay(acc_id, "comprehensive")
                 logger.info("Queued post-connect sync for TastyTrade account %s", acc_id)
             except Exception as sync_exc:
                 logger.warning("Failed to queue TastyTrade sync for %s: %s", acc_id, sync_exc)
 
-        connect_job_store.set(job_id, {
-            "state": "success",
-            "finished_at": time.time(),
-            "broker": "tastytrade",
-        })
+        connect_job_store.set(
+            job_id,
+            {
+                "state": "success",
+                "finished_at": time.time(),
+                "broker": "tastytrade",
+            },
+        )
     except Exception as e:
         db.rollback()
-        connect_job_store.set(job_id, {"state": "error", "error": str(e), "finished_at": time.time(), "broker": "tastytrade"})
+        connect_job_store.set(
+            job_id,
+            {"state": "error", "error": str(e), "finished_at": time.time(), "broker": "tastytrade"},
+        )
         _persist_connect_error(user_id, "tastytrade", str(e))
     finally:
         db.close()
@@ -367,8 +410,12 @@ async def tastytrade_connect(
     if not TASTYTRADE_AVAILABLE:
         raise HTTPException(status_code=503, detail="TastyTrade SDK not installed")
     job_id = uuid4().hex
-    connect_job_store.set(job_id, {"state": "pending", "created_at": time.time(), "broker": "tastytrade"})
-    asyncio.create_task(_tt_connect_job(job_id, req.client_id, req.client_secret, req.refresh_token, user.id))
+    connect_job_store.set(
+        job_id, {"state": "pending", "created_at": time.time(), "broker": "tastytrade"}
+    )
+    asyncio.create_task(
+        _tt_connect_job(job_id, req.client_id, req.client_secret, req.refresh_token, user.id)
+    )
     return {"job_id": job_id}
 
 
@@ -380,6 +427,7 @@ async def tastytrade_disconnect(
     if not TASTYTRADE_AVAILABLE:
         raise HTTPException(status_code=503, detail="TastyTrade SDK not installed")
     from app.models.broker_account import BrokerAccount, BrokerType
+
     tt_accounts = (
         db.query(BrokerAccount)
         .filter(BrokerAccount.user_id == user.id, BrokerAccount.broker == BrokerType.TASTYTRADE)
@@ -396,13 +444,22 @@ async def tastytrade_disconnect(
 
 @router.get("/tastytrade/status", response_model=TTStatusResponse)
 async def tastytrade_status(
-    job_id: Optional[str] = Query(default=None),
+    job_id: str | None = Query(default=None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> TTStatusResponse:
     if not TASTYTRADE_AVAILABLE:
-        return TTStatusResponse(available=False, connected=False, accounts=[], last_error="SDK not installed", job_id=job_id, job_state=("error" if job_id else None), job_error="SDK not installed")
+        return TTStatusResponse(
+            available=False,
+            connected=False,
+            accounts=[],
+            last_error="SDK not installed",
+            job_id=job_id,
+            job_state=("error" if job_id else None),
+            job_error="SDK not installed",
+        )
     from app.models.broker_account import BrokerType
+
     tt_accounts = (
         db.query(BrokerAccount)
         .filter(BrokerAccount.user_id == user.id, BrokerAccount.broker == BrokerType.TASTYTRADE)
@@ -413,8 +470,7 @@ async def tastytrade_status(
         for a in tt_accounts
     )
     accounts_list = [
-        {"account_number": a.account_number, "nickname": a.account_name}
-        for a in tt_accounts
+        {"account_number": a.account_number, "nickname": a.account_name} for a in tt_accounts
     ]
     last_error = None
     for a in tt_accounts:
@@ -443,7 +499,7 @@ async def tastytrade_status(
 class IBKRFlexConnectRequest(BaseModel):
     flex_token: str
     query_id: str
-    account_number: Optional[str] = None
+    account_number: str | None = None
 
 
 async def _ibkr_connect_job(
@@ -451,12 +507,19 @@ async def _ibkr_connect_job(
     flex_token: str,
     query_id: str,
     user_id: int,
-    account_number: Optional[str] = None,
+    account_number: str | None = None,
 ):
     connect_job_store.set(job_id, {"state": "running", "started_at": time.time(), "broker": "ibkr"})
     db = SessionLocal()
     try:
-        from app.models.broker_account import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus, AccountCredentials
+        from app.models.broker_account import (
+            AccountCredentials,
+            AccountStatus,
+            AccountType,
+            BrokerAccount,
+            BrokerType,
+            SyncStatus,
+        )
         from app.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
 
         acct_num = (account_number or "").strip()
@@ -506,9 +569,7 @@ async def _ibkr_connect_job(
         payload = {"flex_token": flex_token, "query_id": query_id}
         enc = _vault.encrypt_dict(payload)
         cred = (
-            db.query(AccountCredentials)
-            .filter(AccountCredentials.account_id == account.id)
-            .first()
+            db.query(AccountCredentials).filter(AccountCredentials.account_id == account.id).first()
         )
         if cred:
             cred.encrypted_credentials = enc
@@ -544,7 +605,10 @@ async def _ibkr_connect_job(
         connect_job_store.set(job_id, job_result)
     except Exception as e:
         db.rollback()
-        connect_job_store.set(job_id, {"state": "error", "error": str(e), "finished_at": time.time(), "broker": "ibkr"})
+        connect_job_store.set(
+            job_id,
+            {"state": "error", "error": str(e), "finished_at": time.time(), "broker": "ibkr"},
+        )
         _persist_connect_error(user_id, "ibkr", str(e))
     finally:
         db.close()
@@ -572,7 +636,7 @@ async def ibkr_flex_connect(
 
 @router.get("/ibkr/status")
 async def ibkr_flex_status(
-    job_id: Optional[str] = Query(default=None),
+    job_id: str | None = Query(default=None),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -585,7 +649,10 @@ async def ibkr_flex_status(
     )
     result = {
         "connected": any(a.api_credentials_stored for a in accounts),
-        "accounts": [{"id": a.id, "account_number": a.account_number, "name": a.account_name} for a in accounts],
+        "accounts": [
+            {"id": a.id, "account_number": a.account_number, "name": a.account_name}
+            for a in accounts
+        ],
     }
     if job_id:
         job = connect_job_store.get(job_id)
@@ -601,6 +668,7 @@ async def ibkr_flex_disconnect(
     db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
     from app.models.broker_account import BrokerAccount, BrokerType
+
     q = (
         db.query(BrokerAccount)
         .filter(BrokerAccount.user_id == user.id, BrokerAccount.broker == BrokerType.IBKR)
@@ -650,13 +718,16 @@ async def public_connect(req: GenericConnectRequest, user: User = Depends(get_cu
 async def public_status(user: User = Depends(get_current_user)):
     return {"connected": False, "available": False, "message": "Not implemented"}
 
+
 @router.get("/schwab/callback")
 async def schwab_callback(
     code: str,
     state: str,
     db: Session = Depends(get_db),
 ):
-    frontend_origin = getattr(settings, "FRONTEND_ORIGIN", None) or settings.CORS_ORIGINS.split(",")[0].strip()
+    frontend_origin = (
+        getattr(settings, "FRONTEND_ORIGIN", None) or settings.CORS_ORIGINS.split(",")[0].strip()
+    )
     connections_url = f"{frontend_origin}/settings/connections"
 
     try:
@@ -686,11 +757,7 @@ async def schwab_callback(
         return RedirectResponse(url=f"{connections_url}?schwab=error&reason=token_exchange_failed")
 
     encrypted = credential_vault.encrypt_dict(tokens)
-    cred = (
-        db.query(AccountCredentials)
-        .filter(AccountCredentials.account_id == account.id)
-        .first()
-    )
+    cred = db.query(AccountCredentials).filter(AccountCredentials.account_id == account.id).first()
     token_fingerprint = hashlib.sha256(
         str(tokens.get("access_token", "")).encode("utf-8")
     ).hexdigest()
@@ -720,6 +787,7 @@ async def schwab_callback(
     discovered_ids: list[int] = [account.id]
     try:
         from app.services.clients.schwab_client import SchwabClient
+
         client = SchwabClient()
         await client.connect_with_credentials(
             access_token=tokens.get("access_token", ""),
@@ -807,6 +875,7 @@ async def schwab_callback(
     # Trigger sync for all discovered accounts
     try:
         from app.tasks.portfolio.sync import sync_account_task
+
         for acct_id in discovered_ids:
             sync_account_task.delay(acct_id, "comprehensive")
         logger.info("Schwab: queued sync for %d accounts", len(discovered_ids))
@@ -814,5 +883,3 @@ async def schwab_callback(
         logger.error("Schwab: failed to queue sync tasks: %s", e)
 
     return RedirectResponse(url=f"{connections_url}?schwab=linked&account_id={account.id}")
-
-

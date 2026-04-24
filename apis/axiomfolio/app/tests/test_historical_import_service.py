@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
@@ -13,6 +13,7 @@ from app.services.portfolio.ibkr.historical_import import (
     ParsedTradeRecord,
     build_year_chunks,
 )
+
 
 def _make_user(db_session) -> User:
     user = User(
@@ -67,7 +68,7 @@ def test_upsert_position_allows_short_after_oversell(db_session):
         side="BUY",
         quantity=Decimal("5"),
         price=Decimal("100"),
-        executed_at=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        executed_at=datetime(2024, 1, 1, tzinfo=UTC),
         execution_id="exec-buy",
     )
     sell_record = ParsedTradeRecord(
@@ -75,7 +76,7 @@ def test_upsert_position_allows_short_after_oversell(db_session):
         side="SELL",
         quantity=Decimal("8"),
         price=Decimal("110"),
-        executed_at=datetime(2024, 1, 2, tzinfo=timezone.utc),
+        executed_at=datetime(2024, 1, 2, tzinfo=UTC),
         execution_id="exec-sell",
     )
 

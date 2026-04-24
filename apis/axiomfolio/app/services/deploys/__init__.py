@@ -11,12 +11,12 @@ medallion: ops
 
 from __future__ import annotations
 
+from .poll_service import poll_and_record, summarize_service_health
 from .render_client import (
     DeployRecord,
     RenderDeployClient,
     RenderDeployClientError,
 )
-from .poll_service import poll_and_record, summarize_service_health
 
 __all__ = [
     "DeployRecord",

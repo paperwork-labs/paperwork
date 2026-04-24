@@ -10,7 +10,6 @@ medallion: silver
 
 from abc import ABC, abstractmethod
 from datetime import date
-from typing import Dict, List, Optional
 
 import pandas as pd
 
@@ -44,7 +43,7 @@ class MarketDataProvider(ABC):
         ...
 
     @abstractmethod
-    async def get_quotes(self, symbols: List[str]) -> Dict[str, float]:
+    async def get_quotes(self, symbols: list[str]) -> dict[str, float]:
         """Get current prices for multiple symbols.
 
         Args:
@@ -78,7 +77,7 @@ class MarketDataProvider(ABC):
         ...
 
     @abstractmethod
-    async def get_fundamentals(self, symbol: str) -> Dict:
+    async def get_fundamentals(self, symbol: str) -> dict:
         """Get company fundamentals for a symbol.
 
         Args:
@@ -90,7 +89,7 @@ class MarketDataProvider(ABC):
         """
         ...
 
-    async def get_quote(self, symbol: str) -> Optional[float]:
+    async def get_quote(self, symbol: str) -> float | None:
         """Convenience method: get single quote.
 
         Default implementation calls get_quotes with single symbol.
@@ -105,7 +104,7 @@ class MarketDataProvider(ABC):
         """
         return False
 
-    def rate_limit(self) -> Optional[int]:
+    def rate_limit(self) -> int | None:
         """Requests per minute allowed, or None if unlimited."""
         return None
 

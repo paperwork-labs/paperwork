@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from decimal import Decimal
-from typing import Any, List, Optional
+from typing import Any
 
 from app.models.market_data import MarketSnapshot
 
@@ -31,15 +31,15 @@ logger = logging.getLogger(__name__)
 # Thresholds. Kept module-level so they are visible, reviewable, and testable.
 # These are deliberately conservative; tightening is cheap once we have the
 # replay corpus to measure false-positive rate (G15 acceptance work).
-PARABOLIC_EXT_PCT_WARN = Decimal("12")       # close more than 12% above SMA150
-PARABOLIC_EXT_PCT_DANGER = Decimal("20")     # more than 20% -> full parabolic
-PARABOLIC_ATR_DIST_WARN = Decimal("4")       # 4 ATRs above EMA21
-PARABOLIC_ATR_DIST_DANGER = Decimal("7")     # 7+ ATRs above EMA21 (blow-off)
-PARABOLIC_RANGE_POS_WARN = Decimal("90")     # top decile of 52w range
-CLIMAX_VOL_RATIO_WARN = Decimal("1.5")       # 1.5x average
-CLIMAX_VOL_RATIO_DANGER = Decimal("2.5")     # 2.5x average
+PARABOLIC_EXT_PCT_WARN = Decimal("12")  # close more than 12% above SMA150
+PARABOLIC_EXT_PCT_DANGER = Decimal("20")  # more than 20% -> full parabolic
+PARABOLIC_ATR_DIST_WARN = Decimal("4")  # 4 ATRs above EMA21
+PARABOLIC_ATR_DIST_DANGER = Decimal("7")  # 7+ ATRs above EMA21 (blow-off)
+PARABOLIC_RANGE_POS_WARN = Decimal("90")  # top decile of 52w range
+CLIMAX_VOL_RATIO_WARN = Decimal("1.5")  # 1.5x average
+CLIMAX_VOL_RATIO_DANGER = Decimal("2.5")  # 2.5x average
 DISTRIBUTION_STAGES = {"3A", "3B", "4A", "4B", "4C"}
-WEAK_RS_THRESHOLD = Decimal("0")             # Mansfield < 0 => underperforming SPY
+WEAK_RS_THRESHOLD = Decimal("0")  # Mansfield < 0 => underperforming SPY
 TD_EXHAUSTION_SETUP = 9
 
 
@@ -53,7 +53,7 @@ class PeakSignal:
     distribution_score: Decimal
     td_exhaustion_flag: bool
     composite_severity: str  # low | med | high
-    reasons: List[str] = field(default_factory=list)
+    reasons: list[str] = field(default_factory=list)
 
     def to_payload(self) -> dict:
         return {
@@ -67,7 +67,7 @@ class PeakSignal:
         }
 
 
-def _d(val: Any) -> Optional[Decimal]:
+def _d(val: Any) -> Decimal | None:
     if val is None:
         return None
     try:
@@ -84,59 +84,46 @@ def _clip01(x: Decimal) -> Decimal:
     return x.quantize(Decimal("0.01"))
 
 
-def _score_parabolic(
-    row: MarketSnapshot, reasons: List[str]
-) -> Decimal:
+def _score_parabolic(row: MarketSnapshot, reasons: list[str]) -> Decimal:
     """Sub-score for how stretched price is versus trend-following MAs."""
     ext = _d(row.ext_pct)
     atrx_sma150 = _d(row.atrx_sma_150)
     atr_dist_ema21 = _d(row.atr_dist_ema21)
     range_pos_52w = _d(row.range_pos_52w)
 
-    contributions: List[Decimal] = []
+    contributions: list[Decimal] = []
 
     if ext is not None:
         if ext >= PARABOLIC_EXT_PCT_DANGER:
             contributions.append(Decimal("1.0"))
             reasons.append(
-                f"Close {ext}% above SMA150 (>={PARABOLIC_EXT_PCT_DANGER}% "
-                "is blow-off territory)"
+                f"Close {ext}% above SMA150 (>={PARABOLIC_EXT_PCT_DANGER}% is blow-off territory)"
             )
         elif ext >= PARABOLIC_EXT_PCT_WARN:
             span = PARABOLIC_EXT_PCT_DANGER - PARABOLIC_EXT_PCT_WARN
             frac = (ext - PARABOLIC_EXT_PCT_WARN) / span
             contributions.append(Decimal("0.4") + frac * Decimal("0.5"))
             reasons.append(
-                f"Close {ext}% above SMA150 (stretched; >"
-                f"{PARABOLIC_EXT_PCT_WARN}% warns)"
+                f"Close {ext}% above SMA150 (stretched; >{PARABOLIC_EXT_PCT_WARN}% warns)"
             )
 
     if atr_dist_ema21 is not None:
         if atr_dist_ema21 >= PARABOLIC_ATR_DIST_DANGER:
             contributions.append(Decimal("1.0"))
-            reasons.append(
-                f"{atr_dist_ema21} ATRs above EMA21 (climax extension)"
-            )
+            reasons.append(f"{atr_dist_ema21} ATRs above EMA21 (climax extension)")
         elif atr_dist_ema21 >= PARABOLIC_ATR_DIST_WARN:
             span = PARABOLIC_ATR_DIST_DANGER - PARABOLIC_ATR_DIST_WARN
             frac = (atr_dist_ema21 - PARABOLIC_ATR_DIST_WARN) / span
             contributions.append(Decimal("0.4") + frac * Decimal("0.5"))
-            reasons.append(
-                f"{atr_dist_ema21} ATRs above EMA21 (extended)"
-            )
+            reasons.append(f"{atr_dist_ema21} ATRs above EMA21 (extended)")
 
     if atrx_sma150 is not None and atrx_sma150 >= Decimal("5"):
         contributions.append(Decimal("0.6"))
-        reasons.append(
-            f"{atrx_sma150} ATRs above SMA150 (long-trend extension)"
-        )
+        reasons.append(f"{atrx_sma150} ATRs above SMA150 (long-trend extension)")
 
     if range_pos_52w is not None and range_pos_52w >= PARABOLIC_RANGE_POS_WARN:
         contributions.append(Decimal("0.4"))
-        reasons.append(
-            f"Top {Decimal('100') - range_pos_52w}% of 52w range "
-            "(approaching highs)"
-        )
+        reasons.append(f"Top {Decimal('100') - range_pos_52w}% of 52w range (approaching highs)")
 
     if not contributions:
         return Decimal("0")
@@ -149,9 +136,7 @@ def _score_parabolic(
     return _clip01(hi * Decimal("0.7") + avg * Decimal("0.3"))
 
 
-def _score_climax_volume(
-    row: MarketSnapshot, reasons: List[str]
-) -> Decimal:
+def _score_climax_volume(row: MarketSnapshot, reasons: list[str]) -> Decimal:
     """Sub-score for a climactic volume bar near the range highs."""
     vol_ratio = _d(row.vol_ratio)
     perf_1d = _d(row.perf_1d)
@@ -178,25 +163,19 @@ def _score_climax_volume(
     boost = Decimal("0")
     if range_pos_52w is not None and range_pos_52w >= Decimal("85"):
         boost += Decimal("0.10")
-        reasons.append(
-            "Climax bar printed in top-15% of 52w range"
-        )
+        reasons.append("Climax bar printed in top-15% of 52w range")
     if perf_1d is not None and perf_1d >= Decimal("5"):
         boost += Decimal("0.10")
         reasons.append(f"1-day move +{perf_1d}% on climactic volume")
     elif perf_1d is not None and perf_1d <= Decimal("-3"):
         # Outside-reversal / climax-reversal bar.
         boost += Decimal("0.15")
-        reasons.append(
-            f"1-day move {perf_1d}% on climactic volume (reversal risk)"
-        )
+        reasons.append(f"1-day move {perf_1d}% on climactic volume (reversal risk)")
 
     return _clip01(base + boost)
 
 
-def _score_distribution(
-    row: MarketSnapshot, reasons: List[str]
-) -> Decimal:
+def _score_distribution(row: MarketSnapshot, reasons: list[str]) -> Decimal:
     """Sub-score for stage transitions + weakening relative strength."""
     stage = (row.stage_label or "").strip().upper()
     prev_stage = (row.previous_stage_label or "").strip().upper()
@@ -215,20 +194,14 @@ def _score_distribution(
     if prev_stage and stage and prev_stage != stage:
         if prev_stage.startswith("2") and stage.startswith("3"):
             score = max(score, Decimal("0.75"))
-            reasons.append(
-                f"Stage transition {prev_stage} -> {stage} (topping)"
-            )
+            reasons.append(f"Stage transition {prev_stage} -> {stage} (topping)")
         elif prev_stage.startswith("3") and stage.startswith("4"):
             score = max(score, Decimal("0.95"))
-            reasons.append(
-                f"Stage transition {prev_stage} -> {stage} (breakdown)"
-            )
+            reasons.append(f"Stage transition {prev_stage} -> {stage} (breakdown)")
 
     if rs is not None and rs < WEAK_RS_THRESHOLD and stage in DISTRIBUTION_STAGES:
         score = max(score, score + Decimal("0.15"))
-        reasons.append(
-            f"Relative strength {rs} (underperforming benchmark during top)"
-        )
+        reasons.append(f"Relative strength {rs} (underperforming benchmark during top)")
 
     if action_label in {"REDUCE", "SHORT", "AVOID"}:
         score = max(score, Decimal("0.6"))
@@ -237,9 +210,7 @@ def _score_distribution(
     return _clip01(score)
 
 
-def _td_exhaustion(
-    row: MarketSnapshot, reasons: List[str]
-) -> bool:
+def _td_exhaustion(row: MarketSnapshot, reasons: list[str]) -> bool:
     sell_setup = row.td_sell_setup or 0
     sell_complete = bool(row.td_sell_complete)
     perfect_sell = bool(row.td_perfect_sell)
@@ -251,14 +222,10 @@ def _td_exhaustion(
         reasons.append("TD Sequential sell setup completed (exhaustion)")
         return True
     if sell_setup >= TD_EXHAUSTION_SETUP:
-        reasons.append(
-            f"TD Sequential sell setup {sell_setup}/9 (exhaustion)"
-        )
+        reasons.append(f"TD Sequential sell setup {sell_setup}/9 (exhaustion)")
         return True
     if sell_setup >= 7:
-        reasons.append(
-            f"TD Sequential sell setup {sell_setup}/9 (near exhaustion)"
-        )
+        reasons.append(f"TD Sequential sell setup {sell_setup}/9 (near exhaustion)")
     return False
 
 
@@ -270,9 +237,7 @@ def _composite_severity(
 ) -> str:
     # weighted: distribution > parabolic > climax; td_flag bumps a tier.
     blended = (
-        distribution * Decimal("0.45")
-        + parabolic * Decimal("0.35")
-        + climax * Decimal("0.20")
+        distribution * Decimal("0.45") + parabolic * Decimal("0.35") + climax * Decimal("0.20")
     )
     if td_flag:
         blended = min(Decimal("1"), blended + Decimal("0.20"))
@@ -286,9 +251,7 @@ def _composite_severity(
 class PeakSignalEngine:
     """Pure function wrapper. Stateless; accepts a snapshot, returns a signal."""
 
-    def evaluate(
-        self, symbol: str, snapshot: Optional[MarketSnapshot]
-    ) -> PeakSignal:
+    def evaluate(self, symbol: str, snapshot: MarketSnapshot | None) -> PeakSignal:
         sym = (symbol or "").upper().strip()
         if snapshot is None:
             logger.info(
@@ -305,7 +268,7 @@ class PeakSignalEngine:
                 reasons=["snapshot data not available"],
             )
 
-        reasons: List[str] = []
+        reasons: list[str] = []
         parabolic = _score_parabolic(snapshot, reasons)
         climax = _score_climax_volume(snapshot, reasons)
         distribution = _score_distribution(snapshot, reasons)

@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +15,11 @@ def _expected_latest_trading_day():
     Uses exchange_calendars if available, falls back to simple weekday logic.
     """
     try:
-        import exchange_calendars as xcals
-        import pandas as pd
         from datetime import datetime
         from zoneinfo import ZoneInfo
+
+        import exchange_calendars as xcals
+        import pandas as pd
 
         nyse = xcals.get_calendar("XNYS")
         # tz-naive: exchange_calendars sessions are naive UTC dates
@@ -35,6 +36,7 @@ def _expected_latest_trading_day():
         logger.warning("trading calendar lookup failed, using weekday fallback: %s", e)
     # Fallback: simple weekday logic
     from datetime import date, timedelta
+
     d = date.today()
     if d.weekday() == 0:
         d -= timedelta(days=3)
@@ -45,7 +47,7 @@ def _expected_latest_trading_day():
     return d.isoformat()
 
 
-def compute_coverage_status(snapshot: Dict[str, Any]) -> Dict[str, Any]:
+def compute_coverage_status(snapshot: dict[str, Any]) -> dict[str, Any]:
     """Derive human-readable coverage state + KPI percentages from a raw snapshot."""
     total_symbols = int(snapshot.get("symbols") or 0)
     tracked = int(snapshot.get("tracked_count") or 0)
@@ -103,7 +105,11 @@ def compute_coverage_status(snapshot: Dict[str, Any]) -> Dict[str, Any]:
         expected_daily_pct = None
         missing_latest = None
 
-    daily_pct = round(expected_daily_pct, 1) if isinstance(expected_daily_pct, (int, float)) else pct(daily_count)
+    daily_pct = (
+        round(expected_daily_pct, 1)
+        if isinstance(expected_daily_pct, (int, float))
+        else pct(daily_count)
+    )
     m5_pct = pct(m5_count)
 
     label = "ok"
@@ -119,19 +125,28 @@ def compute_coverage_status(snapshot: Dict[str, Any]) -> Dict[str, Any]:
         else:
             # Market-hours hint (computed in NY timezone, but stored timestamps remain UTC).
             try:
+                from datetime import time as _time
+                from datetime import timedelta
                 from zoneinfo import ZoneInfo
-                from datetime import timedelta, time as _time
 
                 ny = ZoneInfo("America/New_York")
-                now_ny = datetime.now(timezone.utc).astimezone(ny)
+                now_ny = datetime.now(UTC).astimezone(ny)
                 is_weekend = now_ny.weekday() >= 5
                 open_t = _time(hour=9, minute=30)
                 close_t = _time(hour=16, minute=0)
                 is_open = (not is_weekend) and (open_t <= now_ny.time() <= close_t)
                 close_dt = datetime.combine(now_ny.date(), close_t, tzinfo=ny)
-                within_grace = (not is_weekend) and (now_ny >= close_dt) and (now_ny <= close_dt + timedelta(hours=18))
+                within_grace = (
+                    (not is_weekend)
+                    and (now_ny >= close_dt)
+                    and (now_ny <= close_dt + timedelta(hours=18))
+                )
                 if not is_open:
-                    hint = "Market closed" if not within_grace else "Market closed (within close grace)"
+                    hint = (
+                        "Market closed"
+                        if not within_grace
+                        else "Market closed (within close grace)"
+                    )
                     summary = f"{hint}. Daily coverage is green (latest bar {expected_daily_date})."
                 else:
                     summary = f"Daily coverage is green (latest bar {expected_daily_date})."
@@ -173,7 +188,9 @@ def compute_coverage_status(snapshot: Dict[str, Any]) -> Dict[str, Any]:
         "tracked_count": tracked,
         "thresholds": {
             "daily_pct": 100,
-            "m5_expectation": ">=1 refresh/day" if backfill_5m_enabled else "ignored (disabled by admin)",
+            "m5_expectation": ">=1 refresh/day"
+            if backfill_5m_enabled
+            else "ignored (disabled by admin)",
         },
         "daily_expected_date": expected_daily_date,
     }

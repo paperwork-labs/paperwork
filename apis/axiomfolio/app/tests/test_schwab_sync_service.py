@@ -1,7 +1,8 @@
 import asyncio
 from decimal import Decimal
+
+from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.services.portfolio.schwab_sync_service import SchwabSyncService
-from app.models.broker_account import BrokerAccount, BrokerType, AccountType
 
 
 class DummySchwabClient:
@@ -44,12 +45,18 @@ class DummySchwabClient:
             {"type": "split", "symbol": "AAPL", "numerator": 2, "denominator": 1},
         ]
 
+
 def _create_account(session) -> BrokerAccount:
     from app.models.user import User
 
     user = session.query(User).filter(User.username == "sync_tester").first()
     if not user:
-        user = User(username="sync_tester", email="sync_tester@example.com", password_hash="x", is_active=True)
+        user = User(
+            username="sync_tester",
+            email="sync_tester@example.com",
+            password_hash="x",
+            is_active=True,
+        )
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -73,22 +80,34 @@ def test_schwab_sync_positions_only(db_session, monkeypatch):
     def _fake_get_decrypted(account_id, session):
         return {"access_token": "fake_at", "refresh_token": "fake_rt"}
 
-    monkeypatch.setattr(schwab_sync_service.account_credentials_service, "get_decrypted", _fake_get_decrypted)
+    monkeypatch.setattr(
+        schwab_sync_service.account_credentials_service, "get_decrypted", _fake_get_decrypted
+    )
 
     account = _create_account(db_session)
     service = SchwabSyncService(client=DummySchwabClient())
     result = asyncio.get_event_loop().run_until_complete(
-        service.sync_account_comprehensive(account_number=account.account_number, session=db_session)
+        service.sync_account_comprehensive(
+            account_number=account.account_number, session=db_session
+        )
     )
     assert result["status"] == "success"
     from app.models.position import Position, PositionStatus, PositionType
 
-    aapl = db_session.query(Position).filter(Position.account_id == account.id, Position.symbol == "AAPL").first()
+    aapl = (
+        db_session.query(Position)
+        .filter(Position.account_id == account.id, Position.symbol == "AAPL")
+        .first()
+    )
     assert aapl is not None
     assert Decimal(aapl.quantity) == Decimal("10")
     assert aapl.position_type == PositionType.LONG
     assert Decimal(aapl.average_cost) == Decimal("150")
-    msft = db_session.query(Position).filter(Position.account_id == account.id, Position.symbol == "MSFT").first()
+    msft = (
+        db_session.query(Position)
+        .filter(Position.account_id == account.id, Position.symbol == "MSFT")
+        .first()
+    )
     assert msft is not None
     assert msft.status == PositionStatus.CLOSED
 
@@ -97,9 +116,11 @@ def test_schwab_sync_positions_only(db_session, monkeypatch):
 
     opt = (
         db_session.query(Option)
-        .filter(Option.account_id == account.id, Option.underlying_symbol == "AAPL", Option.option_type == "CALL")
+        .filter(
+            Option.account_id == account.id,
+            Option.underlying_symbol == "AAPL",
+            Option.option_type == "CALL",
+        )
         .first()
     )
     assert opt is not None and opt.open_quantity == 2
-
-

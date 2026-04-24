@@ -48,22 +48,16 @@ import json
 import logging
 import time
 import uuid
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import (
     Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
     Protocol,
-    Sequence,
-    Tuple,
     runtime_checkable,
 )
 
 from sqlalchemy.orm import Session
-
 
 logger = logging.getLogger(__name__)
 
@@ -77,15 +71,15 @@ logger = logging.getLogger(__name__)
 class ChatMessage:
     role: str  # "user" | "assistant" | "system" | "tool"
     content: str
-    tool_call_id: Optional[str] = None
-    tool_name: Optional[str] = None
+    tool_call_id: str | None = None
+    tool_name: str | None = None
 
 
 @dataclass(frozen=True)
 class ChatRequest:
     user_id: int
     message: str
-    history: Tuple[ChatMessage, ...] = ()
+    history: tuple[ChatMessage, ...] = ()
     request_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
 
 
@@ -94,23 +88,23 @@ class ToolTrace:
     """One tool call recorded for transparency in the response."""
 
     name: str
-    arguments: Dict[str, Any]
+    arguments: dict[str, Any]
     result_summary: str
     elapsed_ms: int
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @dataclass(frozen=True)
 class ChatResponse:
     request_id: str
     answer: str
-    tool_trace: Tuple[ToolTrace, ...] = ()
-    sources: Tuple[Dict[str, Any], ...] = ()
+    tool_trace: tuple[ToolTrace, ...] = ()
+    sources: tuple[dict[str, Any], ...] = ()
     tokens_in: int = 0
     tokens_out: int = 0
     elapsed_ms: int = 0
     truncated: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -118,7 +112,7 @@ class ChatResponse:
 # ---------------------------------------------------------------------------
 
 
-ToolFn = Callable[[Session, int, Dict[str, Any]], Dict[str, Any]]
+ToolFn = Callable[[Session, int, dict[str, Any]], dict[str, Any]]
 """Tool signature: ``(db, user_id, arguments) -> result``.
 
 The result dict is JSON-serialisable. Tools must:
@@ -135,10 +129,10 @@ The result dict is JSON-serialisable. Tools must:
 class ToolSpec:
     name: str
     description: str
-    parameters_schema: Dict[str, Any]
+    parameters_schema: dict[str, Any]
     fn: ToolFn
 
-    def openai_function_schema(self) -> Dict[str, Any]:
+    def openai_function_schema(self) -> dict[str, Any]:
         """OpenAI ``function`` tool format."""
         return {
             "type": "function",
@@ -168,11 +162,10 @@ class LLMProvider(Protocol):
         self,
         *,
         system: str,
-        messages: Sequence[Dict[str, Any]],
-        tools: Sequence[Dict[str, Any]],
+        messages: Sequence[dict[str, Any]],
+        tools: Sequence[dict[str, Any]],
         max_tokens: int,
-    ) -> "LLMChatResult":
-        ...
+    ) -> LLMChatResult: ...
 
 
 @dataclass(frozen=True)
@@ -185,7 +178,7 @@ class LLMChatResult:
     """
 
     content: str
-    tool_calls: Tuple[Dict[str, Any], ...] = ()
+    tool_calls: tuple[dict[str, Any], ...] = ()
     tokens_in: int = 0
     tokens_out: int = 0
     finish_reason: str = "stop"
@@ -200,15 +193,15 @@ class StubLLMProvider:
     """
 
     def __init__(self, responses: Sequence[LLMChatResult]) -> None:
-        self._responses: List[LLMChatResult] = list(responses)
-        self.call_log: List[Dict[str, Any]] = []
+        self._responses: list[LLMChatResult] = list(responses)
+        self.call_log: list[dict[str, Any]] = []
 
     def chat(
         self,
         *,
         system: str,
-        messages: Sequence[Dict[str, Any]],
-        tools: Sequence[Dict[str, Any]],
+        messages: Sequence[dict[str, Any]],
+        tools: Sequence[dict[str, Any]],
         max_tokens: int,
     ) -> LLMChatResult:
         self.call_log.append(
@@ -275,15 +268,13 @@ class PortfolioChat:
         *,
         provider: LLMProvider,
         tools: Sequence[ToolSpec],
-        limits: Optional[ChatLimits] = None,
+        limits: ChatLimits | None = None,
         system_prompt: str = SYSTEM_PROMPT,
     ) -> None:
         if not isinstance(provider, LLMProvider):  # runtime_checkable
-            raise TypeError(
-                f"provider must implement LLMProvider, got {type(provider).__name__}"
-            )
+            raise TypeError(f"provider must implement LLMProvider, got {type(provider).__name__}")
         self._provider = provider
-        self._tools_by_name: Dict[str, ToolSpec] = {t.name: t for t in tools}
+        self._tools_by_name: dict[str, ToolSpec] = {t.name: t for t in tools}
         self._limits = limits or _DEFAULT_LIMITS
         self._system_prompt = system_prompt
 
@@ -295,9 +286,9 @@ class PortfolioChat:
         started = time.monotonic()
         deadline = started + self._limits.max_wall_seconds
 
-        messages: List[Dict[str, Any]] = self._compose_messages(request)
-        tool_trace: List[ToolTrace] = []
-        sources: List[Dict[str, Any]] = []
+        messages: list[dict[str, Any]] = self._compose_messages(request)
+        tool_trace: list[ToolTrace] = []
+        sources: list[dict[str, Any]] = []
         total_in = 0
         total_out = 0
         truncated = False
@@ -382,10 +373,10 @@ class PortfolioChat:
     # Internals
     # ------------------------------------------------------------------
 
-    def _compose_messages(self, request: ChatRequest) -> List[Dict[str, Any]]:
-        out: List[Dict[str, Any]] = []
+    def _compose_messages(self, request: ChatRequest) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
         for m in request.history:
-            entry: Dict[str, Any] = {"role": m.role, "content": m.content}
+            entry: dict[str, Any] = {"role": m.role, "content": m.content}
             if m.tool_call_id:
                 entry["tool_call_id"] = m.tool_call_id
             if m.tool_name:
@@ -398,8 +389,8 @@ class PortfolioChat:
         self,
         db: Session,
         user_id: int,
-        tool_call: Dict[str, Any],
-    ) -> Tuple[ToolTrace, List[Dict[str, Any]]]:
+        tool_call: dict[str, Any],
+    ) -> tuple[ToolTrace, list[dict[str, Any]]]:
         name = tool_call["name"]
         arguments = tool_call.get("arguments", {})
         if not isinstance(arguments, dict):
@@ -423,11 +414,9 @@ class PortfolioChat:
             )
         try:
             result = spec.fn(db, user_id, arguments) or {}
-        except Exception as e:  # noqa: BLE001 — isolate per-tool failures
+        except Exception as e:
             elapsed_ms = int((time.monotonic() - started) * 1000)
-            logger.exception(
-                "portfolio_chat tool %s failed (user=%s): %s", name, user_id, e
-            )
+            logger.exception("portfolio_chat tool %s failed (user=%s): %s", name, user_id, e)
             return (
                 ToolTrace(
                     name=name,
@@ -458,9 +447,7 @@ class PortfolioChat:
 # ---------------------------------------------------------------------------
 
 
-def _summarize_portfolio(
-    db: Session, user_id: int, arguments: Dict[str, Any]
-) -> Dict[str, Any]:
+def _summarize_portfolio(db: Session, user_id: int, arguments: dict[str, Any]) -> dict[str, Any]:
     """Return a compact textual summary of the user's portfolio.
 
     v0 implementation is intentionally a thin wrapper that the route PR
@@ -476,15 +463,15 @@ def _summarize_portfolio(
     }
 
 
-def _now_utc(db: Session, user_id: int, arguments: Dict[str, Any]) -> Dict[str, Any]:
+def _now_utc(db: Session, user_id: int, arguments: dict[str, Any]) -> dict[str, Any]:
     """Return the current UTC time. Useful smoke tool."""
     return {
-        "summary": datetime.now(timezone.utc).isoformat(),
+        "summary": datetime.now(UTC).isoformat(),
         "sources": [],
     }
 
 
-BUILT_IN_TOOLS: Tuple[ToolSpec, ...] = (
+BUILT_IN_TOOLS: tuple[ToolSpec, ...] = (
     ToolSpec(
         name="summarize_portfolio",
         description="Return a one-paragraph summary of the user's portfolio.",
@@ -500,7 +487,7 @@ BUILT_IN_TOOLS: Tuple[ToolSpec, ...] = (
 )
 
 
-def default_tools() -> Tuple[ToolSpec, ...]:
+def default_tools() -> tuple[ToolSpec, ...]:
     """Return the default tool registry for production wiring.
 
     Kept as a function so future PRs can extend it without mutating a

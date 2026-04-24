@@ -1,4 +1,5 @@
 import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -15,7 +16,9 @@ def client():
 
 
 def _register_and_login(client, username: str, password: str, email: str):
-    r = client.post("/api/v1/auth/register", json={"username": username, "email": email, "password": password})
+    r = client.post(
+        "/api/v1/auth/register", json={"username": username, "email": email, "password": password}
+    )
     assert r.status_code == 200
     approve_user_for_login_tests(username)
     r2 = client.post("/api/v1/auth/login", json={"email": email, "password": password})
@@ -39,6 +42,3 @@ def test_admin_guard_blocks_non_admin(client):
     token = _register_and_login(client, u, "Passw0rd!", f"{u}@example.com")
     r = client.get("/api/v1/admin/users", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code in (401, 403)
-
-
-

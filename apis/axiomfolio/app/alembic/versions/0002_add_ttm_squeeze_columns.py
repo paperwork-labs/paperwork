@@ -8,8 +8,8 @@ Note: This migration is idempotent — columns may already exist if the baseline
 migration (0001) was run against models that include these columns.
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import inspect
 
 revision = "0002"

@@ -6,7 +6,6 @@ medallion: gold
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from app.models.broker_account import AccountType, BrokerAccount
 
@@ -15,7 +14,7 @@ from app.models.broker_account import AccountType, BrokerAccount
 class AccountStrategyProfile:
     allow_wash_sale: bool
     tax_lot_method: str
-    max_gain_holding_days_for_ltcg: Optional[int]
+    max_gain_holding_days_for_ltcg: int | None
     margin_available: bool
     options_level: int
     short_allowed: bool

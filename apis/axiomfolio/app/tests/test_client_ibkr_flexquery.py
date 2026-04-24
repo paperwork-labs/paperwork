@@ -11,10 +11,11 @@ Tests all functionality of the IBKRFlexQueryClient including:
 - Error handling and retry logic
 """
 
-import pytest
 import asyncio
-from unittest.mock import patch, AsyncMock
 from datetime import datetime
+from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from app.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
 
@@ -75,9 +76,7 @@ class TestIBKRFlexQueryClient:
 
     def test_client_credentials_fallback(self):
         """Test that client falls back to settings for credentials."""
-        with patch(
-            "app.services.clients.ibkr_flexquery_client.settings"
-        ) as mock_settings:
+        with patch("app.services.clients.ibkr_flexquery_client.settings") as mock_settings:
             mock_settings.IBKR_FLEX_TOKEN = "test_token"
             mock_settings.IBKR_FLEX_QUERY_ID = "test_query_id"
 
@@ -169,9 +168,7 @@ class TestIBKRFlexQueryClient:
 
     def test_parse_option_exercises(self, client, sample_flexquery_xml):
         """Test option exercises parsing from OptionEAE section."""
-        exercises = client._parse_option_exercises(
-            sample_flexquery_xml, "IBKR_TEST_ACCOUNT_A"
-        )
+        exercises = client._parse_option_exercises(sample_flexquery_xml, "IBKR_TEST_ACCOUNT_A")
 
         assert len(exercises) >= 1
         exercise = exercises[0]
@@ -183,9 +180,7 @@ class TestIBKRFlexQueryClient:
 
     def test_parse_option_positions(self, client, sample_flexquery_xml):
         """Test option positions parsing from OpenPositions section."""
-        positions = client._parse_option_positions(
-            sample_flexquery_xml, "IBKR_TEST_ACCOUNT_A"
-        )
+        positions = client._parse_option_positions(sample_flexquery_xml, "IBKR_TEST_ACCOUNT_A")
 
         # This sample doesn't have options in OpenPositions, so should be empty
         assert len(positions) == 0
@@ -217,22 +212,18 @@ class TestIBKRFlexQueryClient:
             patch.object(client, "_get_report", return_value=sample_flexquery_xml),
             patch("asyncio.sleep"),
         ):
-
             result = await client.get_official_tax_lots("IBKR_TEST_ACCOUNT_A")
             assert len(result) >= 1
             assert result[0]["symbol"] == "AAPL"
 
     @pytest.mark.asyncio
-    async def test_get_historical_option_exercises_success(
-        self, client, sample_flexquery_xml
-    ):
+    async def test_get_historical_option_exercises_success(self, client, sample_flexquery_xml):
         """Test successful option exercises retrieval."""
         with (
             patch.object(client, "_request_report", return_value="123456789"),
             patch.object(client, "_get_report", return_value=sample_flexquery_xml),
             patch("asyncio.sleep"),
         ):
-
             result = await client.get_historical_option_exercises("IBKR_TEST_ACCOUNT_A")
             assert len(result) >= 1
             assert result[0]["symbol"] == "AAPL240315C150"

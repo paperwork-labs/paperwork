@@ -11,15 +11,15 @@ schema can be passed verbatim to OpenAI's ``response_format={'type':
 
 medallion: gold
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict
-
+from typing import Any
 
 # A Decimal is sent over the wire as a JSON number or string. The parser
 # normalizes via ``Decimal(str(value))`` so either is acceptable.
 
-PARSE_OUTPUT_SCHEMA: Dict[str, Any] = {
+PARSE_OUTPUT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "properties": {
@@ -34,8 +34,13 @@ PARSE_OUTPUT_SCHEMA: Dict[str, Any] = {
                     "action": {
                         "type": "string",
                         "enum": [
-                            "buy", "sell", "trim", "add",
-                            "hold", "avoid", "unknown",
+                            "buy",
+                            "sell",
+                            "trim",
+                            "add",
+                            "hold",
+                            "avoid",
+                            "unknown",
                         ],
                     },
                     "confidence": {"type": ["number", "string"]},
@@ -79,8 +84,13 @@ PARSE_OUTPUT_SCHEMA: Dict[str, Any] = {
                     "action": {
                         "type": "string",
                         "enum": [
-                            "buy", "sell", "trim", "add",
-                            "hold", "avoid", "unknown",
+                            "buy",
+                            "sell",
+                            "trim",
+                            "add",
+                            "hold",
+                            "avoid",
+                            "unknown",
                         ],
                     },
                     "quantity_hint": {"type": ["number", "string", "null"]},

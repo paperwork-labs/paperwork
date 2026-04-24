@@ -34,10 +34,11 @@ medallion: silver
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal, InvalidOperation
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any
 
 import requests
 from sqlalchemy import select
@@ -67,7 +68,7 @@ class FetchReport:
     symbols_errored: int = 0
     actions_inserted: int = 0
     actions_skipped_duplicate: int = 0
-    errored_symbols: List[str] = field(default_factory=list)
+    errored_symbols: list[str] = field(default_factory=list)
 
 
 class CorporateActionFetcher:
@@ -83,8 +84,8 @@ class CorporateActionFetcher:
         self,
         session: Session,
         *,
-        api_key: Optional[str] = None,
-        http_get: Optional[Callable[..., requests.Response]] = None,
+        api_key: str | None = None,
+        http_get: Callable[..., requests.Response] | None = None,
     ) -> None:
         self.session = session
         # Allow tests to inject a stub; default to the real key from settings.
@@ -124,7 +125,7 @@ class CorporateActionFetcher:
             try:
                 self._fetch_one(symbol, since_date, report)
                 report.symbols_fetched += 1
-            except Exception as exc:  # noqa: BLE001 -- per-symbol isolation
+            except Exception as exc:
                 report.symbols_errored += 1
                 report.errored_symbols.append(symbol)
                 logger.warning(
@@ -192,15 +193,15 @@ class CorporateActionFetcher:
     # FMP transport
     # ------------------------------------------------------------------
 
-    def _fetch_fmp_splits(self, symbol: str) -> List[Dict[str, Any]]:
+    def _fetch_fmp_splits(self, symbol: str) -> list[dict[str, Any]]:
         url = f"{_FMP_BASE}/historical-price-full/stock_split/{symbol}"
         return self._fetch_fmp(url, symbol, "historical")
 
-    def _fetch_fmp_dividends(self, symbol: str) -> List[Dict[str, Any]]:
+    def _fetch_fmp_dividends(self, symbol: str) -> list[dict[str, Any]]:
         url = f"{_FMP_BASE}/historical-price-full/stock_dividend/{symbol}"
         return self._fetch_fmp(url, symbol, "historical")
 
-    def _fetch_fmp(self, url: str, symbol: str, payload_key: str) -> List[Dict[str, Any]]:
+    def _fetch_fmp(self, url: str, symbol: str, payload_key: str) -> list[dict[str, Any]]:
         response = self._http_get(
             url,
             params={"apikey": self.api_key},
@@ -229,7 +230,7 @@ class CorporateActionFetcher:
 # ---------------------------------------------------------------------------
 
 
-def _parse_iso_date(raw: Any) -> Optional[date]:
+def _parse_iso_date(raw: Any) -> date | None:
     if not raw:
         return None
     if isinstance(raw, date):
@@ -240,7 +241,7 @@ def _parse_iso_date(raw: Any) -> Optional[date]:
         return None
 
 
-def _decimal_or_none(raw: Any) -> Optional[Decimal]:
+def _decimal_or_none(raw: Any) -> Decimal | None:
     if raw is None or raw == "":
         return None
     if isinstance(raw, Decimal):
@@ -255,9 +256,9 @@ def _decimal_or_none(raw: Any) -> Optional[Decimal]:
 
 def _split_payload_to_action(
     symbol: str,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     since_date: date,
-) -> Optional[CorporateAction]:
+) -> CorporateAction | None:
     """Translate an FMP split row into a ``CorporateAction``.
 
     FMP split payload shape::
@@ -286,9 +287,7 @@ def _split_payload_to_action(
         )
         return None
 
-    action_type = (
-        CorporateActionType.REVERSE_SPLIT if num < den else CorporateActionType.SPLIT
-    )
+    action_type = CorporateActionType.REVERSE_SPLIT if num < den else CorporateActionType.SPLIT
 
     return CorporateAction(
         symbol=symbol.upper(),
@@ -305,9 +304,9 @@ def _split_payload_to_action(
 
 def _dividend_payload_to_action(
     symbol: str,
-    payload: Dict[str, Any],
+    payload: dict[str, Any],
     since_date: date,
-) -> Optional[CorporateAction]:
+) -> CorporateAction | None:
     """Translate an FMP dividend row into a ``CorporateAction``.
 
     FMP dividend payload shape::
@@ -329,9 +328,7 @@ def _dividend_payload_to_action(
     if ex_date is None or ex_date < since_date:
         return None
 
-    cash = _decimal_or_none(payload.get("dividend")) or _decimal_or_none(
-        payload.get("adjDividend")
-    )
+    cash = _decimal_or_none(payload.get("dividend")) or _decimal_or_none(payload.get("adjDividend"))
     if cash is None or cash <= 0:
         logger.debug(
             "Skipping zero / malformed FMP dividend for %s on %s: %r",

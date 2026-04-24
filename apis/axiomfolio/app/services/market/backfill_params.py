@@ -63,5 +63,3 @@ def daily_backfill_params(
         period = "max"
 
     return DailyBackfillParams(days=d, period=period, max_bars=max_bars, buffer_bars=buf)
-
-

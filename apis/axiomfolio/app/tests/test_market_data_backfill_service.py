@@ -1,11 +1,12 @@
+from datetime import UTC, datetime, timedelta
+
 import pandas as pd
 import pytest
-from datetime import datetime, timedelta, timezone
 
-from app.services.market.market_data_service import price_bars, quote, snapshot_builder
-from app.services.market import snapshot_builder as sb_module
-from app.models import PriceData, MarketSnapshot
+from app.models import MarketSnapshot, PriceData
 from app.models.market_data import MarketSnapshotHistory
+from app.services.market import snapshot_builder as sb_module
+from app.services.market.market_data_service import price_bars, quote, snapshot_builder
 
 
 @pytest.fixture(autouse=True)
@@ -44,7 +45,7 @@ def _make_df(dates: list[datetime], close: float = 100.0) -> pd.DataFrame:
 
 def test_persist_price_bars_delta_only(db_session):
     sym = "TEST"
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+    now = datetime.now(UTC).replace(microsecond=0)
     yesterday = now - timedelta(days=1)
     df = _make_df([yesterday, now], close=50.0)
 
@@ -85,7 +86,7 @@ def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session, monkeyp
         lambda *a, **kw: {},
     )
     # Seed 120 days of prices to enable indicator computation
-    start = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(days=130)
+    start = datetime.now(UTC).replace(microsecond=0) - timedelta(days=130)
     dates = [start + timedelta(days=i) for i in range(120)]
     df = _make_df(dates, close=100.0)
     price_bars.persist_price_bars(
@@ -95,7 +96,7 @@ def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session, monkeyp
     prev = MarketSnapshot(
         symbol=sym,
         analysis_type="technical_snapshot",
-        expiry_timestamp=datetime.now(timezone.utc) + timedelta(hours=12),
+        expiry_timestamp=datetime.now(UTC) + timedelta(hours=12),
         sector="Technology",
         industry="Software",
         market_cap=123456789.0,
@@ -114,7 +115,7 @@ def test_compute_snapshot_from_db_uses_existing_fundamentals(db_session, monkeyp
 def test_compute_snapshot_from_db_populates_v2_indicators(db_session, monkeypatch):
     sym = "TESTV2"
     bm = "SPY"
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+    now = datetime.now(UTC).replace(microsecond=0)
     start = now - timedelta(days=160)
     dates = [start + timedelta(days=i) for i in range(160)]
 
@@ -135,7 +136,8 @@ def test_compute_snapshot_from_db_populates_v2_indicators(db_session, monkeypatc
     )
 
     monkeypatch.setattr(
-        quote, "get_fundamentals_info",
+        quote,
+        "get_fundamentals_info",
         lambda *a, **kw: {"sector": "Test", "industry": "Test"},
     )
 
@@ -159,7 +161,7 @@ def test_compute_snapshot_from_db_populates_v2_indicators(db_session, monkeypatc
 def test_compute_snapshot_from_db_advances_stage_days_from_latest_history(db_session, monkeypatch):
     sym = "TESTSTAGE"
     bm = "SPY"
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+    now = datetime.now(UTC).replace(microsecond=0)
     start = now - timedelta(days=120)
     dates = [start + timedelta(days=i) for i in range(120)]
     df = _make_df(dates, close=100.0)
@@ -187,7 +189,12 @@ def test_compute_snapshot_from_db_advances_stage_days_from_latest_history(db_ses
     monkeypatch.setattr(
         sb_module,
         "compute_weinstein_stage_from_daily",
-        lambda *_args, **_kwargs: {"stage_label": "2A", "stage_slope_pct": 1.0, "stage_dist_pct": 2.0, "rs_mansfield_pct": 0.5},
+        lambda *_args, **_kwargs: {
+            "stage_label": "2A",
+            "stage_slope_pct": 1.0,
+            "stage_dist_pct": 2.0,
+            "rs_mansfield_pct": 0.5,
+        },
     )
 
     snap = snapshot_builder.compute_snapshot_from_db(db_session, sym)
@@ -200,7 +207,7 @@ def test_compute_snapshot_from_db_advances_stage_days_from_latest_history(db_ses
 def test_compute_snapshot_from_db_sets_previous_stage_on_transition(db_session, monkeypatch):
     sym = "TESTTRANS"
     bm = "SPY"
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+    now = datetime.now(UTC).replace(microsecond=0)
     start = now - timedelta(days=120)
     dates = [start + timedelta(days=i) for i in range(120)]
     df = _make_df(dates, close=120.0)
@@ -230,13 +237,19 @@ def test_compute_snapshot_from_db_sets_previous_stage_on_transition(db_session, 
     db_session.commit()
 
     monkeypatch.setattr(
-        quote, "get_fundamentals_info",
+        quote,
+        "get_fundamentals_info",
         lambda *a, **kw: {"sector": "Test", "industry": "Test"},
     )
     monkeypatch.setattr(
         sb_module,
         "compute_weinstein_stage_from_daily",
-        lambda *_args, **_kwargs: {"stage_label": "3", "stage_slope_pct": -1.0, "stage_dist_pct": -2.0, "rs_mansfield_pct": -0.5},
+        lambda *_args, **_kwargs: {
+            "stage_label": "3",
+            "stage_slope_pct": -1.0,
+            "stage_dist_pct": -2.0,
+            "rs_mansfield_pct": -0.5,
+        },
     )
 
     snap = snapshot_builder.compute_snapshot_from_db(db_session, sym)
@@ -246,10 +259,12 @@ def test_compute_snapshot_from_db_sets_previous_stage_on_transition(db_session, 
     assert snap.get("previous_stage_days") == 9
 
 
-def test_compute_snapshot_from_db_derives_previous_stage_from_history_labels(db_session, monkeypatch):
+def test_compute_snapshot_from_db_derives_previous_stage_from_history_labels(
+    db_session, monkeypatch
+):
     sym = "THISTRUN"
     bm = "SPY"
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+    now = datetime.now(UTC).replace(microsecond=0)
     start = now - timedelta(days=140)
     dates = [start + timedelta(days=i) for i in range(140)]
     df = _make_df(dates, close=90.0)
@@ -267,7 +282,9 @@ def test_compute_snapshot_from_db_derives_previous_stage_from_history_labels(db_
         hist = MarketSnapshotHistory(
             symbol=sym,
             analysis_type="technical_snapshot",
-            as_of_date=(now - timedelta(days=5 - i)).replace(hour=0, minute=0, second=0, microsecond=0),
+            as_of_date=(now - timedelta(days=5 - i)).replace(
+                hour=0, minute=0, second=0, microsecond=0
+            ),
             stage_label=lbl,
             current_stage_days=None,
             previous_stage_label=None,
@@ -277,13 +294,19 @@ def test_compute_snapshot_from_db_derives_previous_stage_from_history_labels(db_
     db_session.commit()
 
     monkeypatch.setattr(
-        quote, "get_fundamentals_info",
+        quote,
+        "get_fundamentals_info",
         lambda *a, **kw: {"sector": "Test", "industry": "Test"},
     )
     monkeypatch.setattr(
         sb_module,
         "compute_weinstein_stage_from_daily",
-        lambda *_args, **_kwargs: {"stage_label": "2A", "stage_slope_pct": 1.1, "stage_dist_pct": 0.9, "rs_mansfield_pct": 0.4},
+        lambda *_args, **_kwargs: {
+            "stage_label": "2A",
+            "stage_slope_pct": 1.1,
+            "stage_dist_pct": 0.9,
+            "rs_mansfield_pct": 0.4,
+        },
     )
 
     snap = snapshot_builder.compute_snapshot_from_db(db_session, sym)
@@ -298,7 +321,7 @@ def test_compute_snapshot_from_db_preserves_run_length_when_history_stage_is_unk
 ):
     sym = "TUNKNOWN"
     bm = "SPY"
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+    now = datetime.now(UTC).replace(microsecond=0)
     start = now - timedelta(days=140)
     dates = [start + timedelta(days=i) for i in range(140)]
     df = _make_df(dates, close=95.0)
@@ -427,4 +450,3 @@ def test_derive_stage_run_fields_unknown_latest_with_known_priors_new_stage():
     assert out["current_stage_days"] == 1
     assert out["previous_stage_label"] == "2A"
     assert out["previous_stage_days"] == 2
-

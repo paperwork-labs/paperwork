@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.models.auto_ops_explanation import AutoOpsExplanation
 from app.services.agent.anomaly_explainer.explainer import explanation_to_dict
@@ -12,14 +12,14 @@ from app.services.agent.anomaly_explainer.persistence import (
     recent_explanation_within,
 )
 from app.services.agent.anomaly_explainer.schemas import (
+    SCHEMA_VERSION,
     Explanation,
     RemediationStep,
-    SCHEMA_VERSION,
 )
 
 
 def test_recent_explanation_within_uses_clamped_window(db_session) -> None:
-    when = datetime(2026, 4, 20, 12, 0, 0, tzinfo=timezone.utc)
+    when = datetime(2026, 4, 20, 12, 0, 0, tzinfo=UTC)
     e = Explanation(
         schema_version=SCHEMA_VERSION,
         anomaly_id="cover:red:20260420:deadbeef",
@@ -66,7 +66,7 @@ def test_recent_explanation_within_uses_clamped_window(db_session) -> None:
 
 
 def test_explanation_count_today_respects_cap_keys(db_session) -> None:
-    when = datetime(2026, 4, 20, 10, 0, 0, tzinfo=timezone.utc)
+    when = datetime(2026, 4, 20, 10, 0, 0, tzinfo=UTC)
     ids = [
         "cover:yellow:20260420:aaaaaaaa",
         "cover:red:20260420:bbbbbbbb",

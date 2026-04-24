@@ -12,16 +12,15 @@ medallion: silver
 """
 
 import logging
-from typing import Dict, List
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.config import settings
 from app.database import SessionLocal
 from app.models.broker_account import (
+    AccountStatus,
+    AccountType,
     BrokerAccount,
     BrokerType,
-    AccountType,
-    AccountStatus,
 )
 from app.models.user import User, UserRole
 
@@ -38,7 +37,7 @@ class AccountConfigService:
     def __init__(self):
         self.db = SessionLocal()
 
-    def get_ibkr_accounts_from_env(self, override_settings=None) -> List[Dict]:
+    def get_ibkr_accounts_from_env(self, override_settings=None) -> list[dict]:
         """Parse IBKR accounts from environment variables.
         Supports format: "ACC1:TAXABLE,ACC2:IRA"; falls back to comma-separated list.
         Accepts optional override_settings for tests.
@@ -50,7 +49,7 @@ class AccountConfigService:
                 logger.warning("No IBKR_ACCOUNTS found in environment")
                 return []
 
-            accounts: List[Dict] = []
+            accounts: list[dict] = []
             for token in [t.strip() for t in accounts_str.split(",") if t.strip()]:
                 # Accept "ACC:TYPE" or just "ACC"
                 if ":" in token:
@@ -83,7 +82,7 @@ class AccountConfigService:
             logger.error(f"Error parsing IBKR accounts from env: {e}")
             return []
 
-    def get_tastytrade_account_from_env(self, override_settings=None) -> Dict:
+    def get_tastytrade_account_from_env(self, override_settings=None) -> dict:
         """Get TastyTrade account info from environment variables.
         Requires TASTYTRADE_CLIENT_SECRET (OAuth) to indicate TT is configured.
         REQUIRE a real account number to seed; otherwise, skip seeding.
@@ -104,9 +103,7 @@ class AccountConfigService:
                 logger.warning("No TASTYTRADE_CLIENT_SECRET found in environment")
                 return None
             if not account_number:
-                logger.info(
-                    "TASTYTRADE_ACCOUNT_NUMBER not set; skipping TastyTrade seeding"
-                )
+                logger.info("TASTYTRADE_ACCOUNT_NUMBER not set; skipping TastyTrade seeding")
                 return None
             return {
                 "account_id": "oauth",
@@ -160,7 +157,7 @@ class AccountConfigService:
             session.rollback()
             raise
 
-    def seed_broker_accounts(self, db=None, user_id: int = 1) -> Dict:
+    def seed_broker_accounts(self, db=None, user_id: int = 1) -> dict:
         """
         Seed broker accounts from environment variables into database.
 
@@ -180,11 +177,10 @@ class AccountConfigService:
             ibkr_accounts = self.get_ibkr_accounts_from_env()
             # Optional discovery on seed (opt-in only)
             try:
-                if not ibkr_accounts and getattr(
-                    settings, "IBKR_DISCOVER_ON_SEED", False
-                ):
-                    from app.services.clients.ibkr_client import IBKRClient
+                if not ibkr_accounts and getattr(settings, "IBKR_DISCOVER_ON_SEED", False):
                     import asyncio
+
+                    from app.services.clients.ibkr_client import IBKRClient
 
                     client = IBKRClient()
                     accounts = []
@@ -233,11 +229,7 @@ class AccountConfigService:
             tt_account = self.get_tastytrade_account_from_env()
             if tt_account:
                 # normalize account number to string and cap length
-                acc = str(
-                    tt_account.get("account_number")
-                    or tt_account.get("account_id")
-                    or ""
-                )
+                acc = str(tt_account.get("account_number") or tt_account.get("account_id") or "")
                 if acc.startswith("<") or len(acc) > 50:
                     acc = tt_account.get("account_id")
                 tt_account["account_number"] = acc
@@ -285,7 +277,7 @@ class AccountConfigService:
                         # Update existing account
                         existing.account_name = account_config["account_name"]
                         existing.account_type = account_config["account_type"]
-                        existing.updated_at = datetime.now(timezone.utc)
+                        existing.updated_at = datetime.now(UTC)
                         results["updated"] += 1
                         logger.info(f"Updated existing account: {account_number}")
                     else:
@@ -300,7 +292,7 @@ class AccountConfigService:
                             is_enabled=True,
                             api_credentials_stored=False,  # Will be set when credentials are added
                             currency="USD",
-                            created_at=datetime.now(timezone.utc),
+                            created_at=datetime.now(UTC),
                         )
                         session.add(new_account)
                         results["created"] += 1
@@ -336,14 +328,12 @@ class AccountConfigService:
             if db is None:
                 self.db.close()
 
-    def get_broker_accounts_for_user(self, user_id: int = 1) -> List[BrokerAccount]:
+    def get_broker_accounts_for_user(self, user_id: int = 1) -> list[BrokerAccount]:
         """Get all broker accounts for a user."""
         try:
             accounts = (
                 self.db.query(BrokerAccount)
-                .filter(
-                    BrokerAccount.user_id == user_id, BrokerAccount.is_enabled == True
-                )
+                .filter(BrokerAccount.user_id == user_id, BrokerAccount.is_enabled == True)
                 .all()
             )
 

@@ -14,11 +14,11 @@ Functions:
 
 medallion: silver
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,10 @@ def compute_depth(gdp_first_diff: float, cpi_first_diff: float) -> str:
 
     Deep = |first difference| > 30bps on either axis.
     """
-    if abs(gdp_first_diff) > DEPTH_THRESHOLD_BPS / 100 or abs(cpi_first_diff) > DEPTH_THRESHOLD_BPS / 100:
+    if (
+        abs(gdp_first_diff) > DEPTH_THRESHOLD_BPS / 100
+        or abs(cpi_first_diff) > DEPTH_THRESHOLD_BPS / 100
+    ):
         return "Deep"
     return "Shallow"
 
@@ -106,6 +109,7 @@ def compute_quad_state(
 
 # ── Concentration Limits (Spec Section 7.2) ──
 
+
 @dataclass
 class QuadConcentrationLimits:
     """Quad-adjusted concentration limits for portfolio sizing."""
@@ -120,24 +124,36 @@ class QuadConcentrationLimits:
 
 _QUAD_LIMITS: dict[str, QuadConcentrationLimits] = {
     "Q1": QuadConcentrationLimits(
-        max_equity_pct=100, max_single_sector_pct=30,
-        max_single_position_pct=8, min_cash_floor_pct=0,
-        commodity_gold_alloc_pct=10, fixed_income_alloc_pct=0,
+        max_equity_pct=100,
+        max_single_sector_pct=30,
+        max_single_position_pct=8,
+        min_cash_floor_pct=0,
+        commodity_gold_alloc_pct=10,
+        fixed_income_alloc_pct=0,
     ),
     "Q2": QuadConcentrationLimits(
-        max_equity_pct=90, max_single_sector_pct=25,
-        max_single_position_pct=6, min_cash_floor_pct=10,
-        commodity_gold_alloc_pct=25, fixed_income_alloc_pct=10,
+        max_equity_pct=90,
+        max_single_sector_pct=25,
+        max_single_position_pct=6,
+        min_cash_floor_pct=10,
+        commodity_gold_alloc_pct=25,
+        fixed_income_alloc_pct=10,
     ),
     "Q3": QuadConcentrationLimits(
-        max_equity_pct=40, max_single_sector_pct=15,
-        max_single_position_pct=4, min_cash_floor_pct=50,
-        commodity_gold_alloc_pct=30, fixed_income_alloc_pct=25,
+        max_equity_pct=40,
+        max_single_sector_pct=15,
+        max_single_position_pct=4,
+        min_cash_floor_pct=50,
+        commodity_gold_alloc_pct=30,
+        fixed_income_alloc_pct=25,
     ),
     "Q4": QuadConcentrationLimits(
-        max_equity_pct=20, max_single_sector_pct=10,
-        max_single_position_pct=2, min_cash_floor_pct=80,
-        commodity_gold_alloc_pct=15, fixed_income_alloc_pct=40,
+        max_equity_pct=20,
+        max_single_sector_pct=10,
+        max_single_position_pct=2,
+        min_cash_floor_pct=80,
+        commodity_gold_alloc_pct=15,
+        fixed_income_alloc_pct=40,
     ),
 }
 
@@ -171,22 +187,24 @@ def get_concentration_limits(
 # Action per sector × Quad when Regime = R1/R2 (bullish internals).
 
 _SECTOR_MATRIX: dict[str, dict[str, str]] = {
-    "Technology":       {"Q1": "SCAN",  "Q2": "SCAN",  "Q3": "WATCH", "Q4": "AVOID"},
-    "Consumer Disc.":   {"Q1": "SCAN",  "Q2": "SCAN",  "Q3": "AVOID", "Q4": "AVOID"},
-    "Industrials":      {"Q1": "SCAN",  "Q2": "SCAN",  "Q3": "AVOID", "Q4": "AVOID"},
-    "Financials":       {"Q1": "WATCH", "Q2": "SCAN",  "Q3": "AVOID", "Q4": "AVOID"},
-    "Energy":           {"Q1": "WATCH", "Q2": "SCAN",  "Q3": "SCAN",  "Q4": "AVOID"},
-    "Health Care":      {"Q1": "AVOID", "Q2": "AVOID", "Q3": "SCAN",  "Q4": "SCAN"},
+    "Technology": {"Q1": "SCAN", "Q2": "SCAN", "Q3": "WATCH", "Q4": "AVOID"},
+    "Consumer Disc.": {"Q1": "SCAN", "Q2": "SCAN", "Q3": "AVOID", "Q4": "AVOID"},
+    "Industrials": {"Q1": "SCAN", "Q2": "SCAN", "Q3": "AVOID", "Q4": "AVOID"},
+    "Financials": {"Q1": "WATCH", "Q2": "SCAN", "Q3": "AVOID", "Q4": "AVOID"},
+    "Energy": {"Q1": "WATCH", "Q2": "SCAN", "Q3": "SCAN", "Q4": "AVOID"},
+    "Health Care": {"Q1": "AVOID", "Q2": "AVOID", "Q3": "SCAN", "Q4": "SCAN"},
     "Consumer Staples": {"Q1": "AVOID", "Q2": "AVOID", "Q3": "WATCH", "Q4": "SCAN"},
-    "Utilities":        {"Q1": "AVOID", "Q2": "AVOID", "Q3": "SCAN",  "Q4": "SCAN"},
-    "Materials":        {"Q1": "SCAN",  "Q2": "SCAN",  "Q3": "WATCH", "Q4": "AVOID"},
-    "REITs":            {"Q1": "SCAN",  "Q2": "AVOID", "Q3": "SCAN",  "Q4": "WATCH"},
-    "Comm. Services":   {"Q1": "SCAN",  "Q2": "AVOID", "Q3": "AVOID", "Q4": "AVOID"},
-    "Defense/Aero":     {"Q1": "SCAN",  "Q2": "SCAN",  "Q3": "SCAN",  "Q4": "SCAN"},
-    "Gold":             {"Q1": "WATCH", "Q2": "WATCH", "Q3": "SCAN",  "Q4": "SCAN"},
+    "Utilities": {"Q1": "AVOID", "Q2": "AVOID", "Q3": "SCAN", "Q4": "SCAN"},
+    "Materials": {"Q1": "SCAN", "Q2": "SCAN", "Q3": "WATCH", "Q4": "AVOID"},
+    "REITs": {"Q1": "SCAN", "Q2": "AVOID", "Q3": "SCAN", "Q4": "WATCH"},
+    "Comm. Services": {"Q1": "SCAN", "Q2": "AVOID", "Q3": "AVOID", "Q4": "AVOID"},
+    "Defense/Aero": {"Q1": "SCAN", "Q2": "SCAN", "Q3": "SCAN", "Q4": "SCAN"},
+    "Gold": {"Q1": "WATCH", "Q2": "WATCH", "Q3": "SCAN", "Q4": "SCAN"},
 }
 
-DEFENSIVE_SECTORS = frozenset({"Health Care", "Utilities", "Consumer Staples", "Gold", "Defense/Aero"})
+DEFENSIVE_SECTORS = frozenset(
+    {"Health Care", "Utilities", "Consumer Staples", "Gold", "Defense/Aero"}
+)
 
 
 def get_sector_action(
@@ -223,8 +241,7 @@ def get_sector_action(
 def get_scan_sectors(quad: str, regime: str = "R1") -> list[str]:
     """Return list of sectors eligible for scanning (SCAN action only)."""
     return [
-        sector for sector in _SECTOR_MATRIX
-        if get_sector_action(sector, quad, regime) == "SCAN"
+        sector for sector in _SECTOR_MATRIX if get_sector_action(sector, quad, regime) == "SCAN"
     ]
 
 

@@ -5,14 +5,14 @@ medallion: execution
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Optional, cast
+from typing import cast
 
 from app.models.position import Position
 
 
-def _to_decimal(v: object) -> Optional[Decimal]:
+def _to_decimal(v: object) -> Decimal | None:
     if v is None:
         return None
     if isinstance(v, Decimal):
@@ -20,7 +20,7 @@ def _to_decimal(v: object) -> Optional[Decimal]:
     return cast(Decimal, Decimal(str(v)))
 
 
-def _unrealized_pnl_pct_long(position: Position, current_price: Decimal) -> Optional[Decimal]:
+def _unrealized_pnl_pct_long(position: Position, current_price: Decimal) -> Decimal | None:
     if not position.is_long:
         return None
     qty = _to_decimal(getattr(position, "quantity", None))
@@ -32,9 +32,9 @@ def _unrealized_pnl_pct_long(position: Position, current_price: Decimal) -> Opti
     return (unrealized / cost) * Decimal("100")
 
 
-def compute_runner_state(position: Position, current_price: Decimal) -> Optional[datetime]:
+def compute_runner_state(position: Position, current_price: Decimal) -> datetime | None:
     """Returns the timestamp the position became a runner, or None if not yet."""
-    existing = cast(Optional[datetime], getattr(position, "runner_since", None))
+    existing = cast(datetime | None, getattr(position, "runner_since", None))
     if existing is not None:
         return existing
     if not position.is_long:
@@ -45,4 +45,4 @@ def compute_runner_state(position: Position, current_price: Decimal) -> Optional
     u_pct = _unrealized_pnl_pct_long(position, current_price)
     if u_pct is None or u_pct < initial_risk:
         return None
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)

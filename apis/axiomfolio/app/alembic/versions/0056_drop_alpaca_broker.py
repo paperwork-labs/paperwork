@@ -28,7 +28,6 @@ from __future__ import annotations
 
 from alembic import op
 
-
 revision = "0056"
 down_revision = "0055"
 branch_labels = None
@@ -42,9 +41,7 @@ def upgrade() -> None:
     # (uppercase), not the lowercase value. Cast via text comparison
     # so the DELETE does not re-introduce the lowercase literal that
     # postgres rejects as not-a-member-of-enum.
-    op.execute(
-        "DELETE FROM broker_accounts WHERE broker::text = 'ALPACA'"
-    )
+    op.execute("DELETE FROM broker_accounts WHERE broker::text = 'ALPACA'")
 
     op.drop_constraint(
         "ck_broker_oauth_connections_broker",

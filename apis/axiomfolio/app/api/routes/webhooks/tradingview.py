@@ -3,12 +3,12 @@ TradingView webhook endpoint for alert-triggered order execution.
 
 Receives alerts from TradingView and routes through RiskGate to execution.
 """
+
 from __future__ import annotations
 
 import hashlib
 import logging
 import secrets
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.database import get_db
-from app.models.user import User
 from app.models.order import Order, OrderStatus
+from app.models.user import User
 from app.services.execution.broker_base import OrderRequest
 from app.services.execution.risk_gate import RiskGate, RiskViolation
 from app.services.risk.circuit_breaker import circuit_breaker
@@ -53,22 +53,22 @@ class TradingViewAlert(BaseModel):
     secret: str = Field(..., description="User's TV webhook secret")
     symbol: str = Field(..., description="Ticker symbol (e.g., AAPL)")
     action: str = Field(..., description="buy, sell, or close")
-    quantity: Optional[int] = Field(None, description="Share quantity")
-    price: Optional[float] = Field(None, description="Current price")
+    quantity: int | None = Field(None, description="Share quantity")
+    price: float | None = Field(None, description="Current price")
     order_type: str = Field("market", description="market or limit")
-    limit_price: Optional[float] = Field(None, description="Limit price if order_type=limit")
-    strategy_name: Optional[str] = Field(None, description="Strategy that triggered alert")
-    message: Optional[str] = Field(None, description="Alert message")
+    limit_price: float | None = Field(None, description="Limit price if order_type=limit")
+    strategy_name: str | None = Field(None, description="Strategy that triggered alert")
+    message: str | None = Field(None, description="Alert message")
 
 
 class WebhookResponse(BaseModel):
     """Response from webhook processing."""
 
     success: bool
-    order_id: Optional[int] = None
-    status: Optional[str] = None
-    message: Optional[str] = None
-    rejection_reason: Optional[str] = None
+    order_id: int | None = None
+    status: str | None = None
+    message: str | None = None
+    rejection_reason: str | None = None
 
 
 @router.post("", response_model=WebhookResponse)
@@ -119,17 +119,22 @@ async def receive_tradingview_alert(
     # Idempotency check - prevent duplicate orders from repeated webhook calls
     # Key is based on user + symbol + action + quantity + price (rounded)
     idempotency_payload = f"{user.id}:{alert.symbol}:{alert.action}:{alert.quantity}:{alert.price or 0:.2f}:{alert.strategy_name or ''}"
-    idempotency_key = f"webhook:tv:idem:{hashlib.sha256(idempotency_payload.encode()).hexdigest()[:32]}"
-    
+    idempotency_key = (
+        f"webhook:tv:idem:{hashlib.sha256(idempotency_payload.encode()).hexdigest()[:32]}"
+    )
+
     try:
         from app.services.cache import redis_client
+
         # Atomic SET NX EX - only one request wins, others see key exists
         # 60 second TTL prevents duplicate processing
         acquired = redis_client.set(idempotency_key, "1", nx=True, ex=60)
         if not acquired:
             logger.info(
                 "Duplicate TradingView alert blocked (idempotency key exists): %s %s for user %s",
-                alert.action, alert.symbol, user.id,
+                alert.action,
+                alert.symbol,
+                user.id,
             )
             return WebhookResponse(
                 success=False,
@@ -170,9 +175,7 @@ async def receive_tradingview_alert(
     quantity = alert.quantity
     if not quantity or quantity <= 0:
         # Auto-size based on risk budget (simplified)
-        quantity = _calculate_position_size(
-            db, user.id, alert.symbol, alert.price or 0
-        )
+        quantity = _calculate_position_size(db, user.id, alert.symbol, alert.price or 0)
 
     if quantity <= 0:
         return WebhookResponse(
@@ -262,7 +265,7 @@ async def receive_tradingview_alert(
     except Exception as e:
         logger.error("Failed to queue order execution: %s", e)
         order.status = OrderStatus.ERROR.value
-        order.error_message = f"Failed to queue: {str(e)}"
+        order.error_message = f"Failed to queue: {e!s}"
         db.commit()
 
     return WebhookResponse(
@@ -290,17 +293,13 @@ async def generate_webhook_secret(
     }
 
 
-def _validate_secret(db: Session, secret: str) -> Optional[User]:
+def _validate_secret(db: Session, secret: str) -> User | None:
     """Validate webhook secret and return associated user (hash or legacy plaintext row)."""
     if not secret:
         return None
 
     digest = hash_secret(secret)
-    user = (
-        db.query(User)
-        .filter(User.tv_webhook_secret == digest)
-        .first()
-    )
+    user = db.query(User).filter(User.tv_webhook_secret == digest).first()
     if user is not None and verify_secret(secret, user.tv_webhook_secret):
         return user
 
@@ -336,7 +335,7 @@ def _calculate_position_size(
     return max(1, quantity)
 
 
-def _get_portfolio_equity(db: Session, user_id: int) -> Optional[float]:
+def _get_portfolio_equity(db: Session, user_id: int) -> float | None:
     """Get portfolio equity for a user."""
     try:
         from app.models.account_balance import AccountBalance

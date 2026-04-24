@@ -7,9 +7,8 @@ Create Date: 2026-04-21
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0065"
 down_revision = "0064"
@@ -53,12 +52,8 @@ def upgrade() -> None:
         ),
     )
     op.create_index("ix_ocs_sym_ts", "options_chain_snapshot", ["symbol", "snapshot_taken_at"])
-    op.create_index(
-        op.f("ix_options_chain_snapshot_expiry"), "options_chain_snapshot", ["expiry"]
-    )
-    op.create_index(
-        op.f("ix_options_chain_snapshot_symbol"), "options_chain_snapshot", ["symbol"]
-    )
+    op.create_index(op.f("ix_options_chain_snapshot_expiry"), "options_chain_snapshot", ["expiry"])
+    op.create_index(op.f("ix_options_chain_snapshot_symbol"), "options_chain_snapshot", ["symbol"])
     op.create_index(
         op.f("ix_options_chain_snapshot_snapshot_taken_at"),
         "options_chain_snapshot",

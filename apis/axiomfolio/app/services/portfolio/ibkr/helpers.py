@@ -61,15 +61,19 @@ def delete_account_data(db: Session, account_id: int, model_class: type) -> int:
 
     Returns the number of rows deleted.
     """
-    count = db.query(model_class).filter(
-        model_class.account_id == account_id
-    ).delete(synchronize_session="fetch")
+    count = (
+        db.query(model_class)
+        .filter(model_class.account_id == account_id)
+        .delete(synchronize_session="fetch")
+    )
     return count
 
 
 def delete_account_data_by_broker(db: Session, broker_account_id: int, model_class: type) -> int:
     """Delete rows keyed on ``broker_account_id`` instead of ``account_id``."""
-    count = db.query(model_class).filter(
-        model_class.broker_account_id == broker_account_id
-    ).delete(synchronize_session="fetch")
+    count = (
+        db.query(model_class)
+        .filter(model_class.broker_account_id == broker_account_id)
+        .delete(synchronize_session="fetch")
+    )
     return count

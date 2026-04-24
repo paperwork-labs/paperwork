@@ -2,11 +2,15 @@
 
 medallion: gold
 """
+
 from __future__ import annotations
+
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
+
 from sqlalchemy.orm import Session
+
 from app.models.strategy import Strategy
 
 logger = logging.getLogger(__name__)
@@ -14,17 +18,25 @@ logger = logging.getLogger(__name__)
 
 class SignalGenerator:
     _STAGE_CONTEXT_FIELDS = (
-        "regime_state", "regime_multiplier", "scan_tier", "action_label",
-        "stage_label", "ext_pct", "ema10_dist_n", "sma150_slope",
+        "regime_state",
+        "regime_multiplier",
+        "scan_tier",
+        "action_label",
+        "stage_label",
+        "ext_pct",
+        "ema10_dist_n",
+        "sma150_slope",
     )
 
     def generate_signals(
-        self, db: Session, strategy: Strategy, matches: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
-        signals: List[Dict[str, Any]] = []
+        self, db: Session, strategy: Strategy, matches: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        signals: list[dict[str, Any]] = []
         for match in matches:
             ctx = match.get("context", {})
-            stage_ctx = {k: match.get(k) for k in self._STAGE_CONTEXT_FIELDS if match.get(k) is not None}
+            stage_ctx = {
+                k: match.get(k) for k in self._STAGE_CONTEXT_FIELDS if match.get(k) is not None
+            }
             if stage_ctx:
                 ctx = {**ctx, "stage_analysis": stage_ctx}
 
@@ -34,7 +46,7 @@ class SignalGenerator:
                 "action": match.get("action", "buy"),
                 "strength": match.get("strength", 1.0),
                 "context": ctx,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             }
             signals.append(signal)
             logger.info(

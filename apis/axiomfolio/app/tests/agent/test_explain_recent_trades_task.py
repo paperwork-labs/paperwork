@@ -16,8 +16,7 @@ What we lock in:
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -61,14 +60,14 @@ def _make_user(db_session, *, email: str):
 def _make_order(
     db_session,
     *,
-    user_id: Optional[int],
+    user_id: int | None,
     status: str = "filled",
-    filled_at: Optional[datetime] = None,
+    filled_at: datetime | None = None,
     symbol: str = "AAPL",
 ):
     from app.models import Order
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     o = Order(
         symbol=symbol,
         side="buy",
@@ -91,9 +90,7 @@ def _make_order(
 
 @pytest.mark.usefixtures("db_session")
 class TestRunBackfill:
-    def test_explains_recent_filled_orders_and_counters_balance(
-        self, db_session
-    ):
+    def test_explains_recent_filled_orders_and_counters_balance(self, db_session):
         if db_session is None:
             pytest.skip("DB unavailable")
         user = _make_user(db_session, email="task-user-a@example.com")
@@ -103,9 +100,7 @@ class TestRunBackfill:
         provider = StubLLMProvider([_good_payload()] * 3)
         explainer = TradeDecisionExplainer(provider=provider)
 
-        result = _run_backfill(
-            lookback_hours=24, explainer=explainer, db=db_session
-        )
+        result = _run_backfill(lookback_hours=24, explainer=explainer, db=db_session)
         assert result["considered"] == 3
         assert result["explained"] == 3
         assert result["skipped_cached"] == 0
@@ -127,18 +122,14 @@ class TestRunBackfill:
         provider = StubLLMProvider([_good_payload()] * 2)
         explainer = TradeDecisionExplainer(provider=provider)
 
-        first = _run_backfill(
-            lookback_hours=24, explainer=explainer, db=db_session
-        )
+        first = _run_backfill(lookback_hours=24, explainer=explainer, db=db_session)
         assert first["explained"] == 2
 
         # Second run with NO scripted responses must not call the LLM.
         # If it does, StubLLMProvider raises -> the test fails.
         provider2 = StubLLMProvider([])
         explainer2 = TradeDecisionExplainer(provider=provider2)
-        second = _run_backfill(
-            lookback_hours=24, explainer=explainer2, db=db_session
-        )
+        second = _run_backfill(lookback_hours=24, explainer=explainer2, db=db_session)
         assert second["explained"] == 0
         assert second["skipped_cached"] == 2
         assert provider2.calls == []
@@ -148,14 +139,12 @@ class TestRunBackfill:
             pytest.skip("DB unavailable")
         user = _make_user(db_session, email="task-user-c@example.com")
         # 3 days ago is outside a 24h window
-        old = datetime.now(timezone.utc) - timedelta(days=3)
+        old = datetime.now(UTC) - timedelta(days=3)
         _make_order(db_session, user_id=user.id, filled_at=old)
         provider = StubLLMProvider([])  # would explode on call
         explainer = TradeDecisionExplainer(provider=provider)
 
-        result = _run_backfill(
-            lookback_hours=24, explainer=explainer, db=db_session
-        )
+        result = _run_backfill(lookback_hours=24, explainer=explainer, db=db_session)
         assert result["considered"] == 0
         assert provider.calls == []
 
@@ -166,9 +155,7 @@ class TestRunBackfill:
         provider = StubLLMProvider([])
         explainer = TradeDecisionExplainer(provider=provider)
 
-        result = _run_backfill(
-            lookback_hours=24, explainer=explainer, db=db_session
-        )
+        result = _run_backfill(lookback_hours=24, explainer=explainer, db=db_session)
         assert result["considered"] == 1
         assert result["skipped_no_user"] == 1
         assert result["explained"] == 0
@@ -181,9 +168,7 @@ class TestRunBackfill:
         provider = StubLLMProvider([])
         explainer = TradeDecisionExplainer(provider=provider)
 
-        result = _run_backfill(
-            lookback_hours=24, explainer=explainer, db=db_session
-        )
+        result = _run_backfill(lookback_hours=24, explainer=explainer, db=db_session)
         assert result["considered"] == 0
 
     def test_invalid_lookback_raises(self, db_session):
@@ -191,6 +176,4 @@ class TestRunBackfill:
         provider = StubLLMProvider([])
         explainer = TradeDecisionExplainer(provider=provider)
         with pytest.raises(ValueError):
-            _run_backfill(
-                lookback_hours=0, explainer=explainer, db=db_session
-            )
+            _run_backfill(lookback_hours=0, explainer=explainer, db=db_session)

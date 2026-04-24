@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import base64
-import json
 import hashlib
-from typing import Any, Dict, Optional
+import json
+from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
 
@@ -20,7 +20,7 @@ def _derive_fernet_key(secret: str) -> bytes:
     return base64.urlsafe_b64encode(digest)
 
 
-def _build_fernet(key_override: Optional[str] = None) -> Fernet:
+def _build_fernet(key_override: str | None = None) -> Fernet:
     """
     Build a Fernet instance from ENCRYPTION_KEY or SECRET_KEY fallback.
     Accepts either a pre-encoded Fernet key or an arbitrary secret which will be derived.
@@ -40,7 +40,7 @@ class CredentialVault:
     Small utility for encrypting/decrypting credential payloads at rest.
     """
 
-    def __init__(self, key_override: Optional[str] = None):
+    def __init__(self, key_override: str | None = None):
         self._fernet = _build_fernet(key_override)
 
     def encrypt_text(self, plaintext: str) -> str:
@@ -54,11 +54,11 @@ class CredentialVault:
         except InvalidToken as e:
             raise ValueError("Invalid encryption token") from e
 
-    def encrypt_dict(self, payload: Dict[str, Any]) -> str:
+    def encrypt_dict(self, payload: dict[str, Any]) -> str:
         serialized = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
         return self.encrypt_text(serialized)
 
-    def decrypt_dict(self, token: str) -> Dict[str, Any]:
+    def decrypt_dict(self, token: str) -> dict[str, Any]:
         text = self.decrypt_text(token)
         obj = json.loads(text) if text else {}
         if not isinstance(obj, dict):
@@ -68,5 +68,3 @@ class CredentialVault:
 
 # Default instance for convenience
 credential_vault = CredentialVault()
-
-

@@ -10,7 +10,7 @@ medallion: gold
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Field aliases: template/rule field -> actual snapshot column
 # Templates may use rsi_14, but snapshot has rsi. This mapping ensures compatibility.
-FIELD_ALIASES: Dict[str, str] = {
+FIELD_ALIASES: dict[str, str] = {
     "rsi_14": "rsi",
     "company_name": "name",
 }
@@ -32,8 +32,8 @@ SKIP_FIELDS = {"id", "raw_analysis", "created_at", "updated_at", "metadata"}
 def snapshot_to_context(
     snap: MarketSnapshot,
     include_regime: bool = True,
-    db: Optional[Session] = None,
-) -> Dict[str, Any]:
+    db: Session | None = None,
+) -> dict[str, Any]:
     """Convert a MarketSnapshot to a rule evaluation context dict.
 
     Args:
@@ -44,7 +44,7 @@ def snapshot_to_context(
     Returns:
         Dict with all snapshot fields plus aliases and optional regime context
     """
-    ctx: Dict[str, Any] = {"symbol": snap.symbol}
+    ctx: dict[str, Any] = {"symbol": snap.symbol}
 
     for col in snap.__table__.columns:
         if col.name in SKIP_FIELDS:
@@ -67,8 +67,8 @@ def snapshot_to_context(
 def history_to_context(
     row: MarketSnapshotHistory,
     include_regime: bool = False,
-    db: Optional[Session] = None,
-) -> Dict[str, Any]:
+    db: Session | None = None,
+) -> dict[str, Any]:
     """Convert a MarketSnapshotHistory row to a rule evaluation context dict.
 
     Args:
@@ -79,7 +79,7 @@ def history_to_context(
     Returns:
         Dict with all history fields plus aliases
     """
-    ctx: Dict[str, Any] = {"symbol": row.symbol}
+    ctx: dict[str, Any] = {"symbol": row.symbol}
 
     for col in row.__table__.columns:
         if col.name in SKIP_FIELDS:
@@ -103,7 +103,7 @@ def history_to_context(
     return ctx
 
 
-def get_regime_context(db: Session) -> Dict[str, Any]:
+def get_regime_context(db: Session) -> dict[str, Any]:
     """Fetch current market regime and return as flat dict for rule evaluation.
 
     Args:
@@ -131,9 +131,9 @@ def get_regime_context(db: Session) -> Dict[str, Any]:
 
 
 def add_prev_fields(
-    ctx: Dict[str, Any],
-    prev_row: Optional[MarketSnapshotHistory],
-) -> Dict[str, Any]:
+    ctx: dict[str, Any],
+    prev_row: MarketSnapshotHistory | None,
+) -> dict[str, Any]:
     """Add _prev suffix fields from prior history row for crossover detection.
 
     Args:

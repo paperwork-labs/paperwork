@@ -27,12 +27,12 @@ No new Stripe routes are introduced in this PR (per the v1 sprint plan
 disabled with explanatory copy for signed-in visitors until the
 checkout-session creation route lands.
 """
+
 from __future__ import annotations
 
 import threading
 import time
 from decimal import Decimal
-from typing import List, Optional
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
@@ -64,7 +64,7 @@ class PricingFeatureSchema(BaseModel):
     min_tier: str
 
     @classmethod
-    def from_feature(cls, f: Feature) -> "PricingFeatureSchema":
+    def from_feature(cls, f: Feature) -> PricingFeatureSchema:
         return cls(
             key=f.key,
             title=f.title,
@@ -86,14 +86,14 @@ class PricingTierSchema(BaseModel):
     tier: str = Field(..., description="Canonical SubscriptionTier slug.")
     name: str
     tagline: str
-    monthly_price_usd: Optional[str] = Field(
+    monthly_price_usd: str | None = Field(
         None,
         description=(
-            "Decimal price as a string (e.g. ``\"20.00\"``). Null only "
+            'Decimal price as a string (e.g. ``"20.00"``). Null only '
             "for tiers without a self-serve SKU (Enterprise)."
         ),
     )
-    annual_price_usd: Optional[str] = Field(
+    annual_price_usd: str | None = Field(
         None,
         description=(
             "Annual total as a Decimal string. Null when no annual SKU "
@@ -104,16 +104,14 @@ class PricingTierSchema(BaseModel):
     )
     covers_copy: str = Field(
         ...,
-        description=(
-            "Transparent 'your subscription covers X' microcopy."
-        ),
+        description=("Transparent 'your subscription covers X' microcopy."),
     )
     cta_label: str
-    cta_route: Optional[str] = Field(
+    cta_route: str | None = Field(
         None,
         description=(
             "Public route the CTA should navigate to "
-            "(e.g. ``\"/register\"`` for Free). Null for paid tiers — "
+            '(e.g. ``"/register"`` for Free). Null for paid tiers — '
             "the frontend owns the checkout integration."
         ),
     )
@@ -124,11 +122,11 @@ class PricingTierSchema(BaseModel):
             "Renders a ``mailto:`` CTA instead of an upgrade button."
         ),
     )
-    features: List[PricingFeatureSchema] = Field(
+    features: list[PricingFeatureSchema] = Field(
         default_factory=list,
         description="Every feature included at this tier (cumulative).",
     )
-    new_features: List[PricingFeatureSchema] = Field(
+    new_features: list[PricingFeatureSchema] = Field(
         default_factory=list,
         description=(
             "Features whose min_tier equals this tier — the diff vs "
@@ -138,7 +136,7 @@ class PricingTierSchema(BaseModel):
     )
 
     @classmethod
-    def from_tier(cls, t: TierDisplay) -> "PricingTierSchema":
+    def from_tier(cls, t: TierDisplay) -> PricingTierSchema:
         return cls(
             tier=t.tier.value,
             name=t.name,
@@ -149,13 +147,9 @@ class PricingTierSchema(BaseModel):
             cta_label=t.cta_label,
             cta_route=t.cta_route,
             is_contact_sales=t.is_contact_sales,
-            features=[
-                PricingFeatureSchema.from_feature(f)
-                for f in features_for_tier(t.tier)
-            ],
+            features=[PricingFeatureSchema.from_feature(f) for f in features_for_tier(t.tier)],
             new_features=[
-                PricingFeatureSchema.from_feature(f)
-                for f in features_introduced_at_tier(t.tier)
+                PricingFeatureSchema.from_feature(f) for f in features_introduced_at_tier(t.tier)
             ],
         )
 
@@ -163,13 +157,11 @@ class PricingTierSchema(BaseModel):
 class PricingCatalogResponse(BaseModel):
     """Top-level shape consumed by ``frontend/src/pages/Pricing.tsx``."""
 
-    tiers: List[PricingTierSchema]
-    currency: str = Field(
-        default="USD", description="ISO 4217 currency code."
-    )
+    tiers: list[PricingTierSchema]
+    currency: str = Field(default="USD", description="ISO 4217 currency code.")
 
 
-def _format_decimal(value: Optional[Decimal]) -> Optional[str]:
+def _format_decimal(value: Decimal | None) -> str | None:
     """Render a ``Decimal`` price as a normalised string.
 
     We standardise on two decimal places so the frontend never has to
@@ -192,7 +184,7 @@ def _format_decimal(value: Optional[Decimal]) -> Optional[str]:
 
 _CACHE_TTL_S: float = 300.0
 _cache_lock = threading.Lock()
-_cached_payload: Optional[PricingCatalogResponse] = None
+_cached_payload: PricingCatalogResponse | None = None
 _cached_at: float = 0.0
 
 
@@ -218,10 +210,7 @@ def _get_or_build() -> PricingCatalogResponse:
         return cached
     with _cache_lock:
         now = time.monotonic()
-        if (
-            _cached_payload is None
-            or (now - _cached_at) >= _CACHE_TTL_S
-        ):
+        if _cached_payload is None or (now - _cached_at) >= _CACHE_TTL_S:
             _cached_payload = _build_payload()
             _cached_at = now
         return _cached_payload

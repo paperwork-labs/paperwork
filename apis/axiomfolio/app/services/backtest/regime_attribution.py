@@ -18,9 +18,10 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from collections.abc import Callable, Sequence
 from datetime import date
 from decimal import Decimal
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
@@ -31,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 REGIME_LABELS = ("R1", "R2", "R3", "R4", "R5")
 
-RegimeLookup = Callable[[date], Optional[str]]
+RegimeLookup = Callable[[date], str | None]
 
 
 def db_regime_lookup(db: Session) -> RegimeLookup:
@@ -42,11 +43,11 @@ def db_regime_lookup(db: Session) -> RegimeLookup:
     small. We import lazily so this module can be unit-tested without
     standing up the full SQLAlchemy stack.
     """
-    from app.models.market_data import MarketRegime  # noqa: WPS433
+    from app.models.market_data import MarketRegime
 
-    cache: Dict[date, Optional[str]] = {}
+    cache: dict[date, str | None] = {}
 
-    def lookup(d: date) -> Optional[str]:
+    def lookup(d: date) -> str | None:
         if d in cache:
             return cache[d]
         try:
@@ -70,9 +71,9 @@ def db_regime_lookup(db: Session) -> RegimeLookup:
 
 
 def attribute_trades_by_regime(
-    trades: Sequence["TradeResult"],
-    objective: Callable[[Sequence["TradeResult"]], Decimal],
-) -> Dict[str, Dict[str, float]]:
+    trades: Sequence[TradeResult],
+    objective: Callable[[Sequence[TradeResult]], Decimal],
+) -> dict[str, dict[str, float]]:
     """Group trades by regime and apply ``objective`` to each bucket.
 
     Returns a dict shaped ``{regime: {"score": float, "trades": int,
@@ -80,18 +81,16 @@ def attribute_trades_by_regime(
     payload lands in JSON and the frontend renders to fixed precision; the
     canonical Decimal copy lives in ``best_score``.
     """
-    buckets: Dict[str, List["TradeResult"]] = defaultdict(list)
+    buckets: dict[str, list[TradeResult]] = defaultdict(list)
     for t in trades:
         label = t.regime if t.regime else "unknown"
         buckets[label].append(t)
 
-    out: Dict[str, Dict[str, float]] = {}
+    out: dict[str, dict[str, float]] = {}
     for label, items in buckets.items():
         score = objective(items)
         rets = [t.return_pct for t in items]
-        avg_ret = (
-            float(sum(rets, Decimal("0")) / Decimal(len(rets))) if rets else 0.0
-        )
+        avg_ret = float(sum(rets, Decimal("0")) / Decimal(len(rets))) if rets else 0.0
         out[label] = {
             "score": float(score),
             "trades": len(items),
@@ -105,9 +104,7 @@ def attribute_trades_by_regime(
     return out
 
 
-def filter_trades_by_regime(
-    trades: Sequence["TradeResult"], regime: str
-) -> List["TradeResult"]:
+def filter_trades_by_regime(trades: Sequence[TradeResult], regime: str) -> list[TradeResult]:
     """Return only trades whose regime tag matches ``regime``.
 
     ``regime`` must be one of ``R1``-``R5`` or ``"unknown"``. Trades with

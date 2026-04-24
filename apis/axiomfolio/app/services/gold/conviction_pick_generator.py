@@ -32,9 +32,9 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session, load_only
@@ -72,8 +72,8 @@ class ConvictionThresholds:
 
     eligible_stages: tuple[str, ...] = ("1B", "2A", "2B")
     min_rs_mansfield_pct: float = 55.0
-    min_eps_growth_yoy_pct: Optional[float] = 0.0
-    max_pe_ttm: Optional[float] = 60.0
+    min_eps_growth_yoy_pct: float | None = 0.0
+    max_pe_ttm: float | None = 60.0
     max_range_pos_52w: float = 0.95
     min_range_pos_52w: float = 0.40
     min_stage_days: int = 20
@@ -104,9 +104,9 @@ class ConvictionCandidate:
     symbol: str
     rank: int
     score: Decimal
-    stage_label: Optional[str]
+    stage_label: str | None
     rationale: str
-    breakdown: Dict[str, Any]
+    breakdown: dict[str, Any]
 
 
 @dataclass
@@ -128,9 +128,9 @@ class GenerationReport:
     skipped_valuation: int = 0
     skipped_range: int = 0
     skipped_other: int = 0
-    candidates: List[ConvictionCandidate] = field(default_factory=list)
+    candidates: list[ConvictionCandidate] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "total_scanned": self.total_scanned,
             "eligible": self.eligible,
@@ -155,7 +155,7 @@ class ConvictionPickGenerator:
     name = "conviction_pick"
     version = GENERATOR_VERSION
 
-    def __init__(self, thresholds: Optional[ConvictionThresholds] = None) -> None:
+    def __init__(self, thresholds: ConvictionThresholds | None = None) -> None:
         self.t = thresholds or DEFAULT_THRESHOLDS
 
     # ------------------------------------------------------------------
@@ -171,7 +171,7 @@ class ConvictionPickGenerator:
         rows = self._latest_snapshots(db)
         report.total_scanned = len(rows)
 
-        scored: List[tuple[Decimal, MarketSnapshot, Dict[str, Any], str]] = []
+        scored: list[tuple[Decimal, MarketSnapshot, dict[str, Any], str]] = []
         for row in rows:
             decision = self._evaluate(row)
             if decision["status"] == "eligible":
@@ -236,7 +236,7 @@ class ConvictionPickGenerator:
     # Snapshot read
     # ------------------------------------------------------------------
 
-    def _latest_snapshots(self, db: Session) -> List[MarketSnapshot]:
+    def _latest_snapshots(self, db: Session) -> list[MarketSnapshot]:
         """Latest technical snapshot per symbol meeting cheap stage prefilter."""
         latest_ids = (
             db.query(func.max(MarketSnapshot.id).label("id"))
@@ -276,7 +276,7 @@ class ConvictionPickGenerator:
     # Per-row evaluation
     # ------------------------------------------------------------------
 
-    def _evaluate(self, row: MarketSnapshot) -> Dict[str, Any]:
+    def _evaluate(self, row: MarketSnapshot) -> dict[str, Any]:
         symbol = (row.symbol or "").upper()
         if not symbol:
             return {"status": "skipped_other"}
@@ -330,9 +330,7 @@ class ConvictionPickGenerator:
         score = self._score(row, rs=rs, eps_yoy=eps_yoy, pe=pe, range_pos=range_pos)
         breakdown["total_score"] = str(score)
 
-        rationale = self._rationale(
-            symbol, row, rs=rs, eps_yoy=eps_yoy, pe=pe, range_pos=range_pos
-        )
+        rationale = self._rationale(symbol, row, rs=rs, eps_yoy=eps_yoy, pe=pe, range_pos=range_pos)
 
         return {
             "status": "eligible",
@@ -350,8 +348,8 @@ class ConvictionPickGenerator:
         row: MarketSnapshot,
         *,
         rs: float,
-        eps_yoy: Optional[float],
-        pe: Optional[float],
+        eps_yoy: float | None,
+        pe: float | None,
         range_pos: float,
     ) -> Decimal:
         """Composite 0-100 conviction score, Decimal end-to-end."""
@@ -397,11 +395,11 @@ class ConvictionPickGenerator:
         row: MarketSnapshot,
         *,
         rs: float,
-        eps_yoy: Optional[float],
-        pe: Optional[float],
+        eps_yoy: float | None,
+        pe: float | None,
         range_pos: float,
     ) -> str:
-        parts: List[str] = [
+        parts: list[str] = [
             f"{symbol} in Stage {row.stage_label}",
             f"{row.current_stage_days or 0}d in stage",
             f"RS Mansfield {rs:.1f}",
@@ -419,7 +417,7 @@ class ConvictionPickGenerator:
 # ---------------------------------------------------------------------------
 
 
-def _to_float(v: Any) -> Optional[float]:
+def _to_float(v: Any) -> float | None:
     if v is None:
         return None
     try:
@@ -429,15 +427,15 @@ def _to_float(v: Any) -> Optional[float]:
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 __all__ = [
+    "DEFAULT_THRESHOLDS",
+    "GENERATOR_VERSION",
     "ConvictionCandidate",
     "ConvictionPickGenerator",
     "ConvictionThresholds",
-    "DEFAULT_THRESHOLDS",
-    "GENERATOR_VERSION",
     "GenerationReport",
     "utc_now",
 ]

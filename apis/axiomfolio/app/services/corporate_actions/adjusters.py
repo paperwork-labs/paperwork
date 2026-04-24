@@ -34,8 +34,8 @@ medallion: silver
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_HALF_EVEN, getcontext
-from typing import Optional, Union
+from decimal import ROUND_HALF_EVEN, Decimal, getcontext
+from typing import Union
 
 # 28 is the cpython default; we set it explicitly so a downstream
 # library that lowers it can't silently corrupt our math.
@@ -64,7 +64,7 @@ class AdjustmentResult:
     new_cost_basis: Decimal
     new_avg_cost: Decimal
     cash_credited: Decimal = _ZERO
-    new_symbol: Optional[str] = None
+    new_symbol: str | None = None
 
 
 # ---------------------------------------------------------------------------

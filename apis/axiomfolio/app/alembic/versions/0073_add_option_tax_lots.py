@@ -10,7 +10,6 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-
 revision = "0073"
 down_revision = "0072"
 branch_labels = None
@@ -57,12 +56,8 @@ def upgrade() -> None:
             name="uq_option_tax_lots_opening_trade_id_closing_trade_id",
         ),
     )
-    op.create_index(
-        "ix_option_tax_lots_user_symbol", "option_tax_lots", ["user_id", "symbol"]
-    )
-    op.create_index(
-        "ix_option_tax_lots_user_closed", "option_tax_lots", ["user_id", "closed_at"]
-    )
+    op.create_index("ix_option_tax_lots_user_symbol", "option_tax_lots", ["user_id", "symbol"])
+    op.create_index("ix_option_tax_lots_user_closed", "option_tax_lots", ["user_id", "closed_at"])
 
 
 def downgrade() -> None:

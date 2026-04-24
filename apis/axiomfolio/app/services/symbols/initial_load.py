@@ -34,9 +34,9 @@ from __future__ import annotations
 
 import argparse
 import logging
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Iterable, List, Optional, Sequence
 
 from sqlalchemy.orm import Session
 
@@ -47,7 +47,6 @@ from app.models.symbol_master import (
     SymbolStatus,
 )
 from app.services.symbols.symbol_master_service import SymbolMasterService
-
 
 logger = logging.getLogger(__name__)
 
@@ -75,17 +74,23 @@ class TickerChangeSeed:
     effective_date: date
     name_after: str
     source: AliasSource = AliasSource.TICKER_CHANGE
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 SEED_TICKER_CHANGES: tuple[TickerChangeSeed, ...] = (
     # Mega-cap rebrands.
     TickerChangeSeed(
-        "FB", "META", date(2022, 6, 9), "Meta Platforms, Inc.",
+        "FB",
+        "META",
+        date(2022, 6, 9),
+        "Meta Platforms, Inc.",
         notes="Facebook -> Meta Platforms rebrand.",
     ),
     TickerChangeSeed(
-        "GOOG", "GOOGL", date(2014, 4, 3), "Alphabet Inc. (Class A)",
+        "GOOG",
+        "GOOGL",
+        date(2014, 4, 3),
+        "Alphabet Inc. (Class A)",
         source=AliasSource.MANUAL,
         notes=(
             "Stock split + share-class restructure; both classes still "
@@ -94,34 +99,52 @@ SEED_TICKER_CHANGES: tuple[TickerChangeSeed, ...] = (
         ),
     ),
     TickerChangeSeed(
-        "TWTR", "X", date(2023, 7, 26), "X Corp.",
+        "TWTR",
+        "X",
+        date(2023, 7, 26),
+        "X Corp.",
         notes=(
             "Twitter rebrand to X. Equity is private post-acquisition; "
             "alias retained for legacy snapshot / tax-lot references."
         ),
     ),
     TickerChangeSeed(
-        "ANTM", "ELV", date(2022, 6, 28), "Elevance Health, Inc.",
+        "ANTM",
+        "ELV",
+        date(2022, 6, 28),
+        "Elevance Health, Inc.",
         notes="Anthem -> Elevance Health rename.",
     ),
     TickerChangeSeed(
-        "CTLT", "CLTH", date(2024, 1, 9), "Catalent Holdings, Inc.",
+        "CTLT",
+        "CLTH",
+        date(2024, 1, 9),
+        "Catalent Holdings, Inc.",
         source=AliasSource.MANUAL,
         notes="Catalent reorg; placeholder pending Novo Holdings deal.",
     ),
     # Financials.
     TickerChangeSeed(
-        "GS", "GSGI", date(2022, 5, 1), "Goldman Sachs Group, Inc.",
+        "GS",
+        "GSGI",
+        date(2022, 5, 1),
+        "Goldman Sachs Group, Inc.",
         source=AliasSource.MANUAL,
         notes="Internal placeholder — kept for testing alias rotation.",
     ),
     # Tech / cloud.
     TickerChangeSeed(
-        "SQ", "XYZ", date(2025, 1, 17), "Block, Inc.",
+        "SQ",
+        "XYZ",
+        date(2025, 1, 17),
+        "Block, Inc.",
         notes="Block (Square) ticker change SQ -> XYZ on 2025-01-17.",
     ),
     TickerChangeSeed(
-        "ATVI", "MSFT", date(2023, 10, 13), "Microsoft Corporation",
+        "ATVI",
+        "MSFT",
+        date(2023, 10, 13),
+        "Microsoft Corporation",
         source=AliasSource.MERGER,
         notes=(
             "Activision Blizzard acquired by Microsoft; ATVI delisted. "
@@ -131,7 +154,10 @@ SEED_TICKER_CHANGES: tuple[TickerChangeSeed, ...] = (
     ),
     # Industrials / spinoffs.
     TickerChangeSeed(
-        "DD", "DD_OLD", date(2017, 9, 1), "DowDuPont (legacy)",
+        "DD",
+        "DD_OLD",
+        date(2017, 9, 1),
+        "DowDuPont (legacy)",
         source=AliasSource.MERGER,
         notes=(
             "DuPont / Dow merger then split. Legacy DD references "
@@ -140,130 +166,205 @@ SEED_TICKER_CHANGES: tuple[TickerChangeSeed, ...] = (
         ),
     ),
     TickerChangeSeed(
-        "GE", "GEHC", date(2023, 1, 4), "GE HealthCare Technologies Inc.",
+        "GE",
+        "GEHC",
+        date(2023, 1, 4),
+        "GE HealthCare Technologies Inc.",
         source=AliasSource.SPINOFF,
         notes="GE HealthCare spinoff; legacy GE references map to spinoff master in test seed.",
     ),
     # Consumer / retail.
     TickerChangeSeed(
-        "KHC", "HEINZ", date(2015, 7, 6), "Kraft Heinz Company",
+        "KHC",
+        "HEINZ",
+        date(2015, 7, 6),
+        "Kraft Heinz Company",
         source=AliasSource.MERGER,
         notes="Kraft Foods + Heinz merger formed Kraft Heinz (KHC).",
     ),
     TickerChangeSeed(
-        "BBY", "BBBY", date(2009, 1, 1), "Bed Bath & Beyond, Inc.",
+        "BBY",
+        "BBBY",
+        date(2009, 1, 1),
+        "Bed Bath & Beyond, Inc.",
         source=AliasSource.MANUAL,
         notes="Synthetic seed entry for testing — do not interpret as real corporate action.",
     ),
     TickerChangeSeed(
-        "CMCSK", "CMCSA", date(2015, 8, 4), "Comcast Corporation",
+        "CMCSK",
+        "CMCSA",
+        date(2015, 8, 4),
+        "Comcast Corporation",
         notes="Comcast Class K dual listing collapsed into CMCSA.",
     ),
     # Energy.
     TickerChangeSeed(
-        "RDS.A", "SHEL", date(2022, 1, 28), "Shell plc",
+        "RDS.A",
+        "SHEL",
+        date(2022, 1, 28),
+        "Shell plc",
         notes="Royal Dutch Shell unification; RDS.A/B dual listing -> SHEL.",
     ),
     TickerChangeSeed(
-        "RDS.B", "SHEL", date(2022, 1, 28), "Shell plc",
+        "RDS.B",
+        "SHEL",
+        date(2022, 1, 28),
+        "Shell plc",
         notes="Royal Dutch Shell unification; RDS.A/B dual listing -> SHEL.",
     ),
     # Healthcare / pharma.
     TickerChangeSeed(
-        "AGN", "ABBV", date(2020, 5, 8), "AbbVie Inc.",
+        "AGN",
+        "ABBV",
+        date(2020, 5, 8),
+        "AbbVie Inc.",
         source=AliasSource.MERGER,
         notes="Allergan acquired by AbbVie 2020.",
     ),
     TickerChangeSeed(
-        "BMY_OLD", "BMY", date(2019, 11, 20), "Bristol-Myers Squibb Company",
+        "BMY_OLD",
+        "BMY",
+        date(2019, 11, 20),
+        "Bristol-Myers Squibb Company",
         source=AliasSource.MERGER,
         notes="BMY + Celgene merger; ticker preserved.",
     ),
     TickerChangeSeed(
-        "CELG", "BMY", date(2019, 11, 20), "Bristol-Myers Squibb Company",
+        "CELG",
+        "BMY",
+        date(2019, 11, 20),
+        "Bristol-Myers Squibb Company",
         source=AliasSource.MERGER,
         notes="Celgene acquired by BMY; CELG delisted.",
     ),
     # Telecom.
     TickerChangeSeed(
-        "S", "TMUS", date(2020, 4, 1), "T-Mobile US, Inc.",
+        "S",
+        "TMUS",
+        date(2020, 4, 1),
+        "T-Mobile US, Inc.",
         source=AliasSource.MERGER,
         notes="Sprint + T-Mobile merger; Sprint S ticker delisted.",
     ),
     TickerChangeSeed(
-        "CTL", "LUMN", date(2020, 9, 14), "Lumen Technologies, Inc.",
+        "CTL",
+        "LUMN",
+        date(2020, 9, 14),
+        "Lumen Technologies, Inc.",
         notes="CenturyLink rebrand to Lumen Technologies.",
     ),
     # Auto / mobility.
     TickerChangeSeed(
-        "DAI", "MBG", date(2022, 2, 1), "Mercedes-Benz Group AG",
+        "DAI",
+        "MBG",
+        date(2022, 2, 1),
+        "Mercedes-Benz Group AG",
         notes="Daimler -> Mercedes-Benz Group (Frankfurt listing).",
     ),
     TickerChangeSeed(
-        "FCAU", "STLA", date(2021, 1, 18), "Stellantis N.V.",
+        "FCAU",
+        "STLA",
+        date(2021, 1, 18),
+        "Stellantis N.V.",
         source=AliasSource.MERGER,
         notes="FCA + PSA merger formed Stellantis.",
     ),
     # Media / entertainment.
     TickerChangeSeed(
-        "DISCA", "WBD", date(2022, 4, 11), "Warner Bros. Discovery, Inc.",
+        "DISCA",
+        "WBD",
+        date(2022, 4, 11),
+        "Warner Bros. Discovery, Inc.",
         source=AliasSource.MERGER,
         notes="Discovery + WarnerMedia merger (DISCA delisted).",
     ),
     TickerChangeSeed(
-        "DISCK", "WBD", date(2022, 4, 11), "Warner Bros. Discovery, Inc.",
+        "DISCK",
+        "WBD",
+        date(2022, 4, 11),
+        "Warner Bros. Discovery, Inc.",
         source=AliasSource.MERGER,
         notes="Discovery Class K converted to WBD post-merger.",
     ),
     TickerChangeSeed(
-        "VIAB", "PARA", date(2022, 2, 16), "Paramount Global",
+        "VIAB",
+        "PARA",
+        date(2022, 2, 16),
+        "Paramount Global",
         notes="ViacomCBS rebrand to Paramount Global.",
     ),
     TickerChangeSeed(
-        "VIAC", "PARA", date(2022, 2, 16), "Paramount Global",
+        "VIAC",
+        "PARA",
+        date(2022, 2, 16),
+        "Paramount Global",
         notes="ViacomCBS rebrand to Paramount Global.",
     ),
     # Tech / semis.
     TickerChangeSeed(
-        "WDC", "WDC_OLD", date(2024, 10, 30), "Western Digital (pre-split)",
+        "WDC",
+        "WDC_OLD",
+        date(2024, 10, 30),
+        "Western Digital (pre-split)",
         source=AliasSource.SPINOFF,
         notes="Placeholder for pending HDD/Flash split; alias retained for legacy refs.",
     ),
     TickerChangeSeed(
-        "MWE", "MPLX", date(2017, 2, 1), "MPLX LP",
+        "MWE",
+        "MPLX",
+        date(2017, 2, 1),
+        "MPLX LP",
         source=AliasSource.MERGER,
         notes="MarkWest Energy merged into MPLX (legacy seed).",
     ),
     # Travel / hospitality.
     TickerChangeSeed(
-        "MAR_OLD", "MAR", date(2016, 9, 23), "Marriott International, Inc.",
+        "MAR_OLD",
+        "MAR",
+        date(2016, 9, 23),
+        "Marriott International, Inc.",
         source=AliasSource.MERGER,
         notes="Starwood acquired by Marriott; ticker preserved.",
     ),
     TickerChangeSeed(
-        "HOT", "MAR", date(2016, 9, 23), "Marriott International, Inc.",
+        "HOT",
+        "MAR",
+        date(2016, 9, 23),
+        "Marriott International, Inc.",
         source=AliasSource.MERGER,
         notes="Starwood (HOT) merged into Marriott.",
     ),
     # Index providers / financials.
     TickerChangeSeed(
-        "ICE_OLD", "ICE", date(2014, 11, 3), "Intercontinental Exchange, Inc.",
+        "ICE_OLD",
+        "ICE",
+        date(2014, 11, 3),
+        "Intercontinental Exchange, Inc.",
         source=AliasSource.MANUAL,
         notes="ICE acquired NYSE Euronext; seeded for testing alias rotation.",
     ),
     TickerChangeSeed(
-        "MS_OLD", "MS", date(2008, 9, 22), "Morgan Stanley",
+        "MS_OLD",
+        "MS",
+        date(2008, 9, 22),
+        "Morgan Stanley",
         source=AliasSource.MANUAL,
         notes="Morgan Stanley converted to bank holding company; seed placeholder.",
     ),
     # Pharma / biotech additions.
     TickerChangeSeed(
-        "NVAX_OLD", "NVAX", date(2020, 7, 1), "Novavax, Inc.",
+        "NVAX_OLD",
+        "NVAX",
+        date(2020, 7, 1),
+        "Novavax, Inc.",
         source=AliasSource.MANUAL,
         notes="Pre-pandemic Novavax placeholder seed for testing.",
     ),
     TickerChangeSeed(
-        "MNK", "MNKD", date(2017, 1, 1), "MannKind Corporation",
+        "MNK",
+        "MNKD",
+        date(2017, 1, 1),
+        "MannKind Corporation",
         source=AliasSource.MANUAL,
         notes="Synthetic seed entry for alias-rotation testing.",
     ),
@@ -295,7 +396,7 @@ class InitialLoadCounters:
     changes_skipped: int = 0
     changes_errored: int = 0
 
-    error_samples: List[str] = field(default_factory=list)
+    error_samples: list[str] = field(default_factory=list)
 
     def assert_consistent(self) -> None:
         masters_sum = self.masters_created + self.masters_skipped + self.masters_errored
@@ -305,9 +406,7 @@ class InitialLoadCounters:
                 f"created={self.masters_created} skipped={self.masters_skipped} "
                 f"errored={self.masters_errored} total={self.masters_total}"
             )
-        changes_sum = (
-            self.changes_applied + self.changes_skipped + self.changes_errored
-        )
+        changes_sum = self.changes_applied + self.changes_skipped + self.changes_errored
         if changes_sum != self.changes_total:
             raise RuntimeError(
                 "counter drift in changes phase: "
@@ -370,12 +469,10 @@ def _seed_from_market_snapshot(
                 counters.masters_created += 1
             else:
                 counters.masters_skipped += 1
-        except Exception as e:  # noqa: BLE001 — per-row isolation
+        except Exception as e:
             counters.masters_errored += 1
             counters.error_samples.append(f"snapshot {symbol!r}: {e!r}")
-            logger.warning(
-                "initial_load: seeding master for %s failed: %s", symbol, e
-            )
+            logger.warning("initial_load: seeding master for %s failed: %s", symbol, e)
 
 
 def _apply_seed_changes(
@@ -403,11 +500,9 @@ def _apply_seed_changes(
                 counters.changes_applied += 1
             else:
                 counters.changes_skipped += 1
-        except Exception as e:  # noqa: BLE001 — per-row isolation
+        except Exception as e:
             counters.changes_errored += 1
-            counters.error_samples.append(
-                f"change {seed.old_ticker}->{seed.new_ticker}: {e!r}"
-            )
+            counters.error_samples.append(f"change {seed.old_ticker}->{seed.new_ticker}: {e!r}")
             logger.warning(
                 "initial_load: applying ticker change %s -> %s failed: %s",
                 seed.old_ticker,
@@ -424,7 +519,7 @@ def _apply_seed_changes(
 def run_initial_load(
     db: Session,
     *,
-    seeds: Optional[Iterable[TickerChangeSeed]] = None,
+    seeds: Iterable[TickerChangeSeed] | None = None,
     include_snapshot_symbols: bool = True,
     commit: bool = False,
 ) -> InitialLoadCounters:
@@ -485,7 +580,7 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s %(message)s",

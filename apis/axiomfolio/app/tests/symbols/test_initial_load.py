@@ -32,7 +32,6 @@ from app.services.symbols.initial_load import (
 )
 from app.services.symbols.symbol_master_service import SymbolMasterService
 
-
 # A small, deterministic seed list used by the idempotency tests so
 # they don't depend on the production seed length (which will grow
 # over time as we discover more historical references).
@@ -66,9 +65,7 @@ def _count_seed_rows(db_session) -> tuple[int, int, int]:
         seed_tickers.add(s.old_ticker)
         seed_tickers.add(s.new_ticker)
     masters = (
-        db_session.query(SymbolMaster)
-        .filter(SymbolMaster.primary_ticker.in_(seed_tickers))
-        .all()
+        db_session.query(SymbolMaster).filter(SymbolMaster.primary_ticker.in_(seed_tickers)).all()
     )
     master_ids = [m.id for m in masters]
     if not master_ids:
@@ -79,9 +76,7 @@ def _count_seed_rows(db_session) -> tuple[int, int, int]:
         .count()
     )
     aliases = (
-        db_session.query(SymbolAlias)
-        .filter(SymbolAlias.symbol_master_id.in_(master_ids))
-        .count()
+        db_session.query(SymbolAlias).filter(SymbolAlias.symbol_master_id.in_(master_ids)).count()
     )
     return len(masters), history, aliases
 
@@ -146,9 +141,7 @@ class TestIdempotency:
             include_snapshot_symbols=False,
             commit=False,
         )
-        masters_after_first, history_after_first, aliases_after_first = (
-            _count_seed_rows(db_session)
-        )
+        masters_after_first, history_after_first, aliases_after_first = _count_seed_rows(db_session)
 
         second = run_initial_load(
             db_session,
@@ -165,8 +158,8 @@ class TestIdempotency:
         assert second.changes_errored == 0
 
         # Hard counts must be unchanged after the second run.
-        masters_after_second, history_after_second, aliases_after_second = (
-            _count_seed_rows(db_session)
+        masters_after_second, history_after_second, aliases_after_second = _count_seed_rows(
+            db_session
         )
         assert masters_after_second == masters_after_first
         assert history_after_second == history_after_first
@@ -213,9 +206,7 @@ class TestProductionSeedSanity:
     def test_seed_entry_shape(self, seed: TickerChangeSeed):
         assert seed.old_ticker, "old_ticker must be non-empty"
         assert seed.new_ticker, "new_ticker must be non-empty"
-        assert seed.old_ticker != seed.new_ticker, (
-            f"seed for {seed.old_ticker} renames to itself"
-        )
+        assert seed.old_ticker != seed.new_ticker, f"seed for {seed.old_ticker} renames to itself"
         assert seed.old_ticker == seed.old_ticker.upper().strip(), (
             f"old_ticker {seed.old_ticker!r} not normalized"
         )

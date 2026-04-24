@@ -31,7 +31,9 @@ def test_no_orphan_revisions():
     for rev in script.walk_revisions():
         if rev.down_revision is not None:
             parent = script.get_revision(rev.down_revision)
-            assert parent is not None, f"Orphan: {rev.revision} points to missing {rev.down_revision}"
+            assert parent is not None, (
+                f"Orphan: {rev.revision} points to missing {rev.down_revision}"
+            )
 
 
 def test_chain_is_linear():
@@ -39,4 +41,6 @@ def test_chain_is_linear():
     script = _get_script_dir()
     for rev in script.walk_revisions():
         dr = rev.down_revision
-        assert not isinstance(dr, tuple), f"Branched migration: {rev.revision} has multiple parents {dr}"
+        assert not isinstance(dr, tuple), (
+            f"Branched migration: {rev.revision} has multiple parents {dr}"
+        )

@@ -23,9 +23,7 @@ real model + UNIQUE constraint at the DB layer.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -48,7 +46,6 @@ from app.services.agent.trade_decision_explainer import (
     _validate_payload,
     explainer_result_to_dict,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -87,7 +84,7 @@ def _good_llm_payload(trigger: str = "manual") -> str:
 class _FakeOrder:
     """Minimal Order stand-in for trigger-resolver tests."""
 
-    def __init__(self, source: Optional[str] = None) -> None:
+    def __init__(self, source: str | None = None) -> None:
         self.source = source
 
 
@@ -312,7 +309,7 @@ def _make_user(db_session, *, email: str):
 def _make_order(db_session, *, user_id: int, symbol: str = "AAPL"):
     from app.models import Order
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     o = Order(
         symbol=symbol,
         side="buy",
@@ -344,9 +341,7 @@ class TestExplainerEndToEnd:
         user = _make_user(db_session, email="trader-a@example.com")
         order = _make_order(db_session, user_id=user.id)
 
-        first = explainer.explain(
-            db_session, order_id=order.id, user_id=user.id
-        )
+        first = explainer.explain(db_session, order_id=order.id, user_id=user.id)
         assert first.reused is False
         assert first.is_fallback is False
         assert first.version == 1
@@ -356,9 +351,7 @@ class TestExplainerEndToEnd:
         # Provider was hit exactly once.
         assert len(provider.calls) == 1
 
-        second = explainer.explain(
-            db_session, order_id=order.id, user_id=user.id
-        )
+        second = explainer.explain(db_session, order_id=order.id, user_id=user.id)
         assert second.reused is True
         assert second.row_id == first.row_id
         # Provider must NOT have been called again.
@@ -367,20 +360,14 @@ class TestExplainerEndToEnd:
     def test_regenerate_bumps_version(self, db_session):
         if db_session is None:
             pytest.skip("DB unavailable")
-        provider = StubLLMProvider(
-            [_good_llm_payload(), _good_llm_payload()]
-        )
+        provider = StubLLMProvider([_good_llm_payload(), _good_llm_payload()])
         explainer = TradeDecisionExplainer(provider=provider)
 
         user = _make_user(db_session, email="trader-b@example.com")
         order = _make_order(db_session, user_id=user.id)
 
-        v1 = explainer.explain(
-            db_session, order_id=order.id, user_id=user.id
-        )
-        v2 = explainer.regenerate(
-            db_session, order_id=order.id, user_id=user.id
-        )
+        v1 = explainer.explain(db_session, order_id=order.id, user_id=user.id)
+        v2 = explainer.regenerate(db_session, order_id=order.id, user_id=user.id)
         assert v2.version == v1.version + 1
         assert v2.row_id != v1.row_id
         assert len(provider.calls) == 2
@@ -396,25 +383,19 @@ class TestExplainerEndToEnd:
         order_a = _make_order(db_session, user_id=user_a.id)
 
         with pytest.raises(OrderNotFoundError):
-            explainer.explain(
-                db_session, order_id=order_a.id, user_id=user_b.id
-            )
+            explainer.explain(db_session, order_id=order_a.id, user_id=user_b.id)
         # Provider must not be touched on a cross-tenant attempt.
         assert provider.calls == []
 
     def test_failing_provider_persists_fallback_row(self, db_session):
         if db_session is None:
             pytest.skip("DB unavailable")
-        explainer = TradeDecisionExplainer(
-            provider=AlwaysFailingProvider("test")
-        )
+        explainer = TradeDecisionExplainer(provider=AlwaysFailingProvider("test"))
 
         user = _make_user(db_session, email="trader-c@example.com")
         order = _make_order(db_session, user_id=user.id)
 
-        result = explainer.explain(
-            db_session, order_id=order.id, user_id=user.id
-        )
+        result = explainer.explain(db_session, order_id=order.id, user_id=user.id)
         # No silent fallback: the row exists and is_fallback=True so the
         # UI can render a degraded badge.
         assert result.is_fallback is True
@@ -436,9 +417,7 @@ class TestResultSerializer:
         explainer = TradeDecisionExplainer(provider=provider)
         user = _make_user(db_session, email="trader-d@example.com")
         order = _make_order(db_session, user_id=user.id)
-        result = explainer.explain(
-            db_session, order_id=order.id, user_id=user.id
-        )
+        result = explainer.explain(db_session, order_id=order.id, user_id=user.id)
         d = explainer_result_to_dict(result)
         # Money fields are strings, not floats, in the wire payload.
         assert isinstance(d["cost_usd"], str)

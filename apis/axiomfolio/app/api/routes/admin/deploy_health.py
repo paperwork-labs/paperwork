@@ -15,8 +15,8 @@ Kept intentionally small — this is observability, not billing or auth.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
@@ -49,25 +49,25 @@ class DeployEventResponse(BaseModel):
     service_type: str
     deploy_id: str
     status: str
-    trigger: Optional[str]
-    commit_sha: Optional[str]
-    commit_message: Optional[str]
+    trigger: str | None
+    commit_sha: str | None
+    commit_message: str | None
     render_created_at: datetime
-    render_finished_at: Optional[datetime]
-    duration_seconds: Optional[float]
+    render_finished_at: datetime | None
+    duration_seconds: float | None
     is_poll_error: bool
-    poll_error_message: Optional[str]
+    poll_error_message: str | None
     polled_at: datetime
 
 
 class DeployHealthResponse(BaseModel):
     status: str
     reason: str
-    services: List[Dict[str, Any]]
+    services: list[dict[str, Any]]
     services_configured: int
     consecutive_failures_max: int
     failures_24h_total: int
-    events: List[DeployEventResponse]
+    events: list[DeployEventResponse]
     checked_at: datetime
 
 
@@ -76,7 +76,7 @@ class PollResponse(BaseModel):
     events_inserted: int
     events_skipped: int
     poll_errors: int
-    details: List[Dict[str, Any]]
+    details: list[dict[str, Any]]
 
 
 @router.get("/health", response_model=DeployHealthResponse)
@@ -101,17 +101,16 @@ def deploy_health(
     events_query = db.query(DeployHealthEvent)
     service_ids = [s["service_id"] for s in services if s.get("service_id")]
     if service_ids:
-        events_query = events_query.filter(
-            DeployHealthEvent.service_id.in_(service_ids)
-        )
+        events_query = events_query.filter(DeployHealthEvent.service_id.in_(service_ids))
     else:
         # No services configured -> no rows at all (matches the
         # empty-services summary path rather than returning stale noise).
         events_query = events_query.filter(False)
 
     events_q = (
-        events_query
-        .order_by(DeployHealthEvent.render_created_at.desc(), DeployHealthEvent.id.desc())
+        events_query.order_by(
+            DeployHealthEvent.render_created_at.desc(), DeployHealthEvent.id.desc()
+        )
         .limit(max(1, min(int(limit), 200)))
         .all()
     )
@@ -124,7 +123,7 @@ def deploy_health(
         consecutive_failures_max=summary["consecutive_failures_max"],
         failures_24h_total=summary["failures_24h_total"],
         events=[DeployEventResponse.model_validate(e) for e in events_q],
-        checked_at=datetime.now(timezone.utc),
+        checked_at=datetime.now(UTC),
     )
 
 

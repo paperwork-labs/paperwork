@@ -2,19 +2,20 @@
 Uses IB Gateway for real-time data when connected; falls back to DB when offline.
 """
 
+import logging
+from datetime import UTC, datetime
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
-from typing import Dict, Any, List
-import logging
 
-from app.database import get_db
 from app.api.dependencies import get_current_user
-from app.models.user import User
-from app.models.position import Position
+from app.database import get_db
 from app.models import BrokerAccount
-from app.models.broker_account import BrokerType
 from app.models.account_balance import AccountBalance
+from app.models.broker_account import BrokerType
+from app.models.position import Position
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ LIVE_SUMMARY_TAGS = [
 ]
 
 
-def _float_from_summary(summary: Dict, tag: str) -> float:
+def _float_from_summary(summary: dict, tag: str) -> float:
     """Extract float from IBKR account summary item."""
     item = summary.get(tag)
     if not item:
@@ -42,7 +43,7 @@ def _float_from_summary(summary: Dict, tag: str) -> float:
         return 0.0
 
 
-@router.get("/live/summary", response_model=Dict[str, Any])
+@router.get("/live/summary", response_model=dict[str, Any])
 async def get_live_summary(
     account_id: str | None = Query(None, description="Filter by account number"),
     current_user: User = Depends(get_current_user),
@@ -54,7 +55,7 @@ async def get_live_summary(
         from app.services.clients.ibkr_client import ibkr_client
 
         is_live = False
-        summary: Dict[str, Any] = {}
+        summary: dict[str, Any] = {}
 
         # Try IB Gateway when connected (no auto-connect to avoid blocking)
         if ibkr_client.is_connected():
@@ -130,7 +131,7 @@ async def get_live_summary(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/live/positions", response_model=Dict[str, Any])
+@router.get("/live/positions", response_model=dict[str, Any])
 async def get_live_positions(
     account_id: str | None = Query(None, description="Filter by account number"),
     current_user: User = Depends(get_current_user),
@@ -142,7 +143,7 @@ async def get_live_positions(
         from app.services.clients.ibkr_client import ibkr_client
 
         is_live = False
-        positions: List[Dict[str, Any]] = []
+        positions: list[dict[str, Any]] = []
 
         if ibkr_client.is_connected():
             try:
@@ -197,7 +198,9 @@ async def get_live_positions(
                         "position_value": float(p.market_value or 0),
                         "unrealized_pnl": float(p.unrealized_pnl or 0),
                         "contract_type": (
-                            "OPT" if (p.instrument_type or "").upper().startswith("OPTION") else "STK"
+                            "OPT"
+                            if (p.instrument_type or "").upper().startswith("OPTION")
+                            else "STK"
                         ),
                         "currency": "USD",
                     }
@@ -214,7 +217,7 @@ async def get_live_positions(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/live", response_model=Dict[str, Any])
+@router.get("/live", response_model=dict[str, Any])
 async def get_live_portfolio(
     account_id: str | None = Query(
         None, description="Filter by account number (e.g., IBKR_ACCOUNT)"
@@ -235,14 +238,11 @@ async def get_live_portfolio(
 
         acct_ids = {p.account_id for p in positions_models}
         accounts_map = {
-            a.id: a
-            for a in db.query(BrokerAccount).filter(
-                BrokerAccount.id.in_(acct_ids)
-            ).all()
+            a.id: a for a in db.query(BrokerAccount).filter(BrokerAccount.id.in_(acct_ids)).all()
         }
 
         # Build accounts mapping like Snowball Analytics style expected by frontend
-        accounts: Dict[str, Any] = {}
+        accounts: dict[str, Any] = {}
         for p in positions_models:
             acc = accounts_map.get(p.account_id)
             if not acc:
@@ -251,17 +251,13 @@ async def get_live_portfolio(
             if acc_key not in accounts:
                 accounts[acc_key] = {
                     "account_summary": {
-                        "account_name": getattr(
-                            acc, "account_name", acc.account_number
-                        ),
+                        "account_name": getattr(acc, "account_name", acc.account_number),
                         "account_type": (
                             acc.account_type.value
                             if getattr(acc, "account_type", None)
                             else "taxable"
                         ),
-                        "broker": (
-                            acc.broker.value if getattr(acc, "broker", None) else "IBKR"
-                        ),
+                        "broker": (acc.broker.value if getattr(acc, "broker", None) else "IBKR"),
                         "net_liquidation": 0.0,
                         "unrealized_pnl": 0.0,
                         "unrealized_pnl_pct": 0.0,
@@ -286,8 +282,7 @@ async def get_live_portfolio(
                     "symbol": p.symbol,
                     "contract_type": (
                         "OPT"
-                        if p.instrument_type
-                        and p.instrument_type.upper().startswith("OPTION")
+                        if p.instrument_type and p.instrument_type.upper().startswith("OPTION")
                         else "STK"
                     ),
                     "position": float(p.quantity or 0),
@@ -302,25 +297,19 @@ async def get_live_portfolio(
             )
 
         # compute top-level summary
-        total_value = sum(
-            acc["account_summary"]["net_liquidation"] for acc in accounts.values()
-        )
-        total_unreal = sum(
-            acc["account_summary"]["unrealized_pnl"] for acc in accounts.values()
-        )
+        total_value = sum(acc["account_summary"]["net_liquidation"] for acc in accounts.values())
+        total_unreal = sum(acc["account_summary"]["unrealized_pnl"] for acc in accounts.values())
         summary = {
             "total_market_value": total_value,
             "total_cost_basis": None,
             "unrealized_pnl": total_unreal,
-            "unrealized_pnl_pct": (
-                (total_unreal / total_value * 100) if total_value else 0.0
-            ),
+            "unrealized_pnl_pct": ((total_unreal / total_value * 100) if total_value else 0.0),
         }
 
         return {
             "accounts": accounts,
             "portfolio_summary": summary,
-            "last_updated": datetime.now(timezone.utc).isoformat(),
+            "last_updated": datetime.now(UTC).isoformat(),
         }
     except Exception as e:
         logger.error(f"❌ Live portfolio error for user {current_user.id}: {e}")

@@ -1,13 +1,12 @@
 """Tests for DB-backed schedule CRUD API + Render sync service."""
 
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_admin_user
+from app.api.main import app
 from app.models.market_data import CronSchedule
 from app.tasks.job_catalog import CATALOG
 
@@ -45,9 +44,7 @@ def test_seed_skips_disabled_templates(db_session):
     seed(db_session)
     disabled_template_ids = {tmpl.id for tmpl in CATALOG if not tmpl.enabled}
     rows = (
-        db_session.query(CronSchedule.id)
-        .filter(CronSchedule.id.in_(disabled_template_ids))
-        .all()
+        db_session.query(CronSchedule.id).filter(CronSchedule.id.in_(disabled_template_ids)).all()
     )
     assert rows == []
 
@@ -58,7 +55,9 @@ def test_seed_creates_correct_fields(db_session):
     from app.scripts.seed_schedules import seed
 
     seed(db_session)
-    row = db_session.query(CronSchedule).filter(CronSchedule.id == "admin_coverage_backfill").first()
+    row = (
+        db_session.query(CronSchedule).filter(CronSchedule.id == "admin_coverage_backfill").first()
+    )
     assert row is not None
     assert row.cron == "0 1 * * *"
     assert row.task == "app.tasks.market.coverage.daily_bootstrap"
@@ -219,12 +218,15 @@ def test_create_schedule_validates_cron(db_session):
     app.dependency_overrides[get_admin_user] = lambda: _mock_admin_user()
     app.dependency_overrides[get_db] = override_db
     try:
-        resp = client.post("/api/v1/admin/schedules", json={
-            "id": "bad_cron",
-            "display_name": "Bad",
-            "task": "test.task",
-            "cron": "not valid cron",
-        })
+        resp = client.post(
+            "/api/v1/admin/schedules",
+            json={
+                "id": "bad_cron",
+                "display_name": "Bad",
+                "task": "test.task",
+                "cron": "not valid cron",
+            },
+        )
         assert resp.status_code == 400
     finally:
         app.dependency_overrides.pop(get_admin_user, None)
@@ -256,12 +258,15 @@ def test_create_and_delete_schedule(db_session):
             mock_sync.enabled = False
             mock_sync.sync_one.return_value = {"status": "skipped"}
 
-            resp = client.post("/api/v1/admin/schedules", json={
-                "id": "api_test_job",
-                "display_name": "API Test",
-                "task": "app.tasks.test.run",
-                "cron": "0 1 * * *",
-            })
+            resp = client.post(
+                "/api/v1/admin/schedules",
+                json={
+                    "id": "api_test_job",
+                    "display_name": "API Test",
+                    "task": "app.tasks.test.run",
+                    "cron": "0 1 * * *",
+                },
+            )
             assert resp.status_code == 200
             assert resp.json()["status"] == "ok"
 
@@ -327,7 +332,12 @@ def test_sync_endpoint(db_session):
     app.dependency_overrides[get_db] = override_db
     try:
         with patch("app.api.routes.admin.scheduler.render_sync_service") as mock_sync:
-            mock_sync.sync_all.return_value = {"created": 0, "updated": 0, "deleted": 0, "errors": 0}
+            mock_sync.sync_all.return_value = {
+                "created": 0,
+                "updated": 0,
+                "deleted": 0,
+                "errors": 0,
+            }
 
             resp = client.post("/api/v1/admin/schedules/sync")
             assert resp.status_code == 200
@@ -372,12 +382,15 @@ def test_audit_trail_on_create_and_delete(db_session):
             mock_sync.enabled = False
             mock_sync.sync_one.return_value = {"status": "skipped"}
 
-            client.post("/api/v1/admin/schedules", json={
-                "id": "audit_trail_test",
-                "display_name": "Audit Trail Test",
-                "task": "app.tasks.test.run",
-                "cron": "0 1 * * *",
-            })
+            client.post(
+                "/api/v1/admin/schedules",
+                json={
+                    "id": "audit_trail_test",
+                    "display_name": "Audit Trail Test",
+                    "task": "app.tasks.test.run",
+                    "cron": "0 1 * * *",
+                },
+            )
             client.delete("/api/v1/admin/schedules/audit_trail_test")
 
         audit_rows = (
@@ -402,12 +415,14 @@ def test_history_endpoint(db_session):
     from app.database import get_db
     from app.models.market_data import CronScheduleAudit
 
-    db_session.add(CronScheduleAudit(
-        schedule_id="history_test",
-        action="created",
-        actor="test@local",
-        changes={"task": "test.run"},
-    ))
+    db_session.add(
+        CronScheduleAudit(
+            schedule_id="history_test",
+            action="created",
+            actor="test@local",
+            changes={"task": "test.run"},
+        )
+    )
     db_session.commit()
 
     def override_db():
@@ -422,7 +437,9 @@ def test_history_endpoint(db_session):
         assert len(rows) >= 1
         assert any(r["schedule_id"] == "history_test" for r in rows)
 
-        resp_filtered = client.get("/api/v1/admin/schedules/history", params={"schedule_id": "history_test"})
+        resp_filtered = client.get(
+            "/api/v1/admin/schedules/history", params={"schedule_id": "history_test"}
+        )
         assert resp_filtered.status_code == 200
         assert all(r["schedule_id"] == "history_test" for r in resp_filtered.json()["history"])
     finally:

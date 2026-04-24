@@ -33,16 +33,15 @@ os.environ.setdefault("ETRADE_SANDBOX_SECRET", "dummy-secret")
 
 import importlib
 import json
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 import responses
 
-from app.services.execution.broker_base import OrderRequest
 from app.services.execution import etrade_executor as etrade_executor_mod
+from app.services.execution.broker_base import OrderRequest
 from app.services.execution.etrade_executor import ETradeExecutor
-from app.services.execution import oauth_executor_mixin
 from app.services.execution.oauth_executor_mixin import TokenRefreshError
 
 # All executor-level tests are pure unit tests; no DB required. The
@@ -118,7 +117,7 @@ def executor(fake_conn) -> ETradeExecutor:
     )
 
 
-def _preview_body(preview_id: int = 987654321) -> Dict[str, Any]:
+def _preview_body(preview_id: int = 987654321) -> dict[str, Any]:
     return {
         "PreviewOrderResponse": {
             "PreviewIds": [{"previewId": preview_id}],
@@ -127,7 +126,7 @@ def _preview_body(preview_id: int = 987654321) -> Dict[str, Any]:
     }
 
 
-def _place_body(order_id: int = 123456789, preview_id: int = 987654321) -> Dict[str, Any]:
+def _place_body(order_id: int = 123456789, preview_id: int = 987654321) -> dict[str, Any]:
     return {
         "PlaceOrderResponse": {
             "OrderIds": [{"orderId": order_id}],
@@ -142,7 +141,7 @@ def _status_body(
     status: str = "OPEN",
     filled_qty: float = 0.0,
     avg_price: float = 0.0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "OrdersResponse": {
             "Order": [
@@ -169,6 +168,7 @@ def _status_body(
 class TestConstruction:
     def test_sandbox_ok_without_flag(self, monkeypatch) -> None:
         from app.config import settings
+
         monkeypatch.setattr(settings, "ETRADE_ALLOW_LIVE", False, raising=False)
         ex = ETradeExecutor(environment="sandbox", consumer_key="ck", consumer_secret="cs")
         assert ex.broker_name == "etrade_sandbox"
@@ -176,6 +176,7 @@ class TestConstruction:
 
     def test_prod_requires_flag(self, monkeypatch) -> None:
         from app.config import settings
+
         monkeypatch.setattr(settings, "ETRADE_ALLOW_LIVE", False, raising=False)
         with pytest.raises(RuntimeError) as ei:
             ETradeExecutor(environment="prod", consumer_key="ck", consumer_secret="cs")
@@ -183,6 +184,7 @@ class TestConstruction:
 
     def test_prod_allowed_with_flag(self, monkeypatch) -> None:
         from app.config import settings
+
         monkeypatch.setattr(settings, "ETRADE_ALLOW_LIVE", True, raising=False)
         ex = ETradeExecutor(environment="prod", consumer_key="ck", consumer_secret="cs")
         assert ex.broker_name == "etrade"
@@ -282,9 +284,7 @@ class TestPlaceOrderTwoStep:
             assert 'oauth_token="access-tok"' in auth
         # Place request echoes the previewId from step 1
         place_body = json.loads(responses.calls[1].request.body)
-        assert place_body["PlaceOrderRequest"]["PreviewIds"] == [
-            {"previewId": preview_id}
-        ]
+        assert place_body["PlaceOrderRequest"]["PreviewIds"] == [{"previewId": preview_id}]
         # Client order id is shared across both calls
         preview_req_body = json.loads(responses.calls[0].request.body)
         assert (
@@ -357,9 +357,7 @@ class TestGetOrderStatus:
         responses.add(
             responses.GET,
             "https://apisb.etrade.com/v1/accounts/ACCT-KEY-X/orders/789.json",
-            json=_status_body(
-                order_id=789, status="EXECUTED", filled_qty=10, avg_price=150.25
-            ),
+            json=_status_body(order_id=789, status="EXECUTED", filled_qty=10, avg_price=150.25),
             status=200,
         )
         result = await executor.get_order_status("789")
@@ -377,9 +375,7 @@ class TestGetOrderStatus:
 @pytest.mark.asyncio
 class TestTokenRefresh:
     @responses.activate
-    async def test_ensure_broker_token_invoked_before_http(
-        self, monkeypatch, fake_conn
-    ) -> None:
+    async def test_ensure_broker_token_invoked_before_http(self, monkeypatch, fake_conn) -> None:
         """Flow a preview → place order and assert ensure_broker_token fires
         **before** the first HTTP call on every write path."""
 
@@ -443,9 +439,7 @@ class TestTokenRefresh:
             ("ensure", fake_conn.id),  # get_order_status
         ]
 
-    async def test_token_refresh_failure_surfaces_as_error(
-        self, monkeypatch, fake_conn
-    ) -> None:
+    async def test_token_refresh_failure_surfaces_as_error(self, monkeypatch, fake_conn) -> None:
         def _raise(db, conn, **kwargs):
             raise TokenRefreshError("expired and refresh bounced")
 
@@ -491,9 +485,7 @@ class TestErrorSurfacing:
         assert "HTTP 500" in (preview.error or "")
 
     @responses.activate
-    async def test_place_step2_404_surfaces_stage_label(
-        self, executor
-    ) -> None:
+    async def test_place_step2_404_surfaces_stage_label(self, executor) -> None:
         responses.add(
             responses.POST,
             "https://apisb.etrade.com/v1/accounts/ACCT-KEY-X/orders/preview.json",
@@ -517,9 +509,7 @@ class TestErrorSurfacing:
     async def test_missing_resolver_errors_cleanly(self) -> None:
         """A misconfigured executor (no resolver) must not silently succeed."""
 
-        ex = ETradeExecutor(
-            environment="sandbox", consumer_key="ck", consumer_secret="cs"
-        )
+        ex = ETradeExecutor(environment="sandbox", consumer_key="ck", consumer_secret="cs")
         req = OrderRequest.from_user_input(
             symbol="AAPL", side="buy", order_type="market", quantity=1
         )

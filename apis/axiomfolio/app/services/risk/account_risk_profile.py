@@ -16,9 +16,9 @@ medallion: gold
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Mapping, Optional
 
 from sqlalchemy.orm import Session
 
@@ -44,7 +44,7 @@ class EffectiveLimits:
 
     account_id: int
     firm: Mapping[str, Decimal]
-    per_account: Mapping[str, Optional[Decimal]]
+    per_account: Mapping[str, Decimal | None]
     effective: Mapping[str, Decimal]
 
     def as_dict(self) -> dict[str, object]:
@@ -52,8 +52,7 @@ class EffectiveLimits:
             "account_id": self.account_id,
             "firm": {k: str(v) for k, v in self.firm.items()},
             "per_account": {
-                k: (str(v) if v is not None else None)
-                for k, v in self.per_account.items()
+                k: (str(v) if v is not None else None) for k, v in self.per_account.items()
             },
             "effective": {k: str(v) for k, v in self.effective.items()},
         }
@@ -66,15 +65,11 @@ def _load_account(db: Session, user_id: int, account_id: int) -> BrokerAccount:
         .one_or_none()
     )
     if account is None:
-        raise AccountNotFoundError(
-            f"account {account_id} not found for user {user_id}"
-        )
+        raise AccountNotFoundError(f"account {account_id} not found for user {user_id}")
     return account
 
 
-def _load_profile(
-    db: Session, account_id: int
-) -> Optional[BrokerAccountRiskProfile]:
+def _load_profile(db: Session, account_id: int) -> BrokerAccountRiskProfile | None:
     return (
         db.query(BrokerAccountRiskProfile)
         .filter(BrokerAccountRiskProfile.account_id == account_id)
@@ -82,7 +77,7 @@ def _load_profile(
     )
 
 
-def _to_decimal_opt(value: object) -> Optional[Decimal]:
+def _to_decimal_opt(value: object) -> Decimal | None:
     if value is None:
         return None
     if isinstance(value, Decimal):
@@ -92,12 +87,12 @@ def _to_decimal_opt(value: object) -> Optional[Decimal]:
 
 def _merge_min(
     firm_caps: FirmCaps,
-    profile: Optional[BrokerAccountRiskProfile],
+    profile: BrokerAccountRiskProfile | None,
     *,
     account_id: int,
-) -> tuple[dict[str, Optional[Decimal]], dict[str, Decimal]]:
+) -> tuple[dict[str, Decimal | None], dict[str, Decimal]]:
     firm_map = firm_caps.as_mapping()
-    per_account: dict[str, Optional[Decimal]] = {}
+    per_account: dict[str, Decimal | None] = {}
     effective: dict[str, Decimal] = {}
 
     for field in FIRM_CAP_FIELDS:
@@ -127,9 +122,7 @@ def _merge_min(
     return per_account, effective
 
 
-def get_effective_limits(
-    db: Session, user_id: int, account_id: int
-) -> EffectiveLimits:
+def get_effective_limits(db: Session, user_id: int, account_id: int) -> EffectiveLimits:
     """Return firm, per-account, and effective limits for an account.
 
     Effective limit per field = ``min(firm_cap, per_account_cap)``. A
@@ -155,15 +148,14 @@ def get_effective_limits(
 
 def _validate_new_limits(
     new_limits: Mapping[str, object], firm_caps: FirmCaps
-) -> dict[str, Optional[Decimal]]:
+) -> dict[str, Decimal | None]:
     firm_map = firm_caps.as_mapping()
-    cleaned: dict[str, Optional[Decimal]] = {}
+    cleaned: dict[str, Decimal | None] = {}
 
     unknown = set(new_limits) - set(FIRM_CAP_FIELDS)
     if unknown:
         raise ValueError(
-            f"unknown risk-profile fields: {sorted(unknown)}. "
-            f"Allowed: {list(FIRM_CAP_FIELDS)}"
+            f"unknown risk-profile fields: {sorted(unknown)}. Allowed: {list(FIRM_CAP_FIELDS)}"
         )
 
     for field in FIRM_CAP_FIELDS:
@@ -176,7 +168,7 @@ def _validate_new_limits(
             continue
         try:
             value = Decimal(str(raw))
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             raise ValueError(
                 f"{field!r} must be a decimal fraction in [0, 1], got {raw!r}"
             ) from exc
@@ -185,10 +177,7 @@ def _validate_new_limits(
                 f"{field!r} cannot be negative (got {value}); use 0 for 'block entirely'"
             )
         if value > 1:
-            raise ValueError(
-                f"{field!r} must be a fraction <= 1.0 (got {value}); "
-                "e.g. 0.05 for 5%"
-            )
+            raise ValueError(f"{field!r} must be a fraction <= 1.0 (got {value}); e.g. 0.05 for 5%")
         firm_value = firm_map[field]
         if value > firm_value:
             raise ValueError(

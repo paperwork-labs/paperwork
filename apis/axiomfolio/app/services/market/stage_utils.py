@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from collections.abc import Iterable
 
 
 def compute_stage_run_lengths(
@@ -25,9 +25,7 @@ def compute_stage_run_lengths(
     for raw in stage_labels:
         label = (
             raw
-            if isinstance(raw, str)
-            and raw.strip()
-            and raw.strip().upper() != "UNKNOWN"
+            if isinstance(raw, str) and raw.strip() and raw.strip().upper() != "UNKNOWN"
             else None
         )
         if label is None:

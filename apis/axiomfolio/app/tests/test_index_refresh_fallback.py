@@ -1,7 +1,6 @@
 import pytest
 
 from app.models.index_constituent import IndexConstituent
-
 from app.tasks.market import backfill as market_backfill_tasks
 
 
@@ -39,6 +38,3 @@ def test_refresh_index_constituents_records_counters(monkeypatch, db_session):
     # Verify rows written
     count = db_session.query(IndexConstituent).count()
     assert count > 0
-
-
-

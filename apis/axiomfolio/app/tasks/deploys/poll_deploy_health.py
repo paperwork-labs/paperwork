@@ -27,7 +27,7 @@ Failure modes are surfaced — never silenced (``no-silent-fallback.mdc``):
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from celery import shared_task
 
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
     time_limit=90,
 )
 @task_run("deploy_health_poll")
-def poll_deploy_health() -> Dict[str, Any]:
+def poll_deploy_health() -> dict[str, Any]:
     """Beat-driven task: poll Render deploy state and upsert events.
 
     Returns the counter dict from :func:`poll_and_record` so JobRun

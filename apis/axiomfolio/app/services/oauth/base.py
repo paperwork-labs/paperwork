@@ -26,7 +26,7 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class OAuthError(Exception):
@@ -40,8 +40,8 @@ class OAuthError(Exception):
         message: str,
         *,
         permanent: bool = False,
-        broker: Optional[str] = None,
-        provider_status: Optional[int] = None,
+        broker: str | None = None,
+        provider_status: int | None = None,
     ) -> None:
         super().__init__(message)
         self.permanent = permanent
@@ -67,7 +67,7 @@ class OAuthInitiateResult:
 
     authorize_url: str
     state: str
-    extra: Dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -75,11 +75,11 @@ class OAuthTokens:
     """Plaintext token bundle returned by an adapter."""
 
     access_token: str
-    refresh_token: Optional[str] = None  # OAuth 1.0a: token secret; OAuth 2.0: refresh token
-    expires_at: Optional[datetime] = None
-    scope: Optional[str] = None
-    provider_account_id: Optional[str] = None
-    raw: Dict[str, Any] = field(default_factory=dict)
+    refresh_token: str | None = None  # OAuth 1.0a: token secret; OAuth 2.0: refresh token
+    expires_at: datetime | None = None
+    scope: str | None = None
+    provider_account_id: str | None = None
+    raw: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -93,7 +93,7 @@ class OAuthCallbackContext:
 
     code: str
     state: str
-    extra: Dict[str, Any] = field(default_factory=dict)
+    extra: dict[str, Any] = field(default_factory=dict)
 
 
 class OAuthBrokerAdapter(abc.ABC):
@@ -118,7 +118,7 @@ class OAuthBrokerAdapter(abc.ABC):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str],
+        refresh_token: str | None,
     ) -> OAuthTokens:
         """Refresh / renew the access token.
 
@@ -132,7 +132,7 @@ class OAuthBrokerAdapter(abc.ABC):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str] = None,
+        refresh_token: str | None = None,
     ) -> None:
         """Revoke the token at the provider. Best-effort; errors are logged."""
 
@@ -140,8 +140,8 @@ class OAuthBrokerAdapter(abc.ABC):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        refresh_token: str | None = None,
+    ) -> dict[str, Any] | None:
         """Optional: small "is the token actually live?" probe.
 
         Return ``None`` if the adapter doesn't implement a summary endpoint.

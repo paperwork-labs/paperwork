@@ -28,9 +28,9 @@ medallion: silver
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
-from typing import Dict, List, Optional, Sequence, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -63,19 +63,19 @@ class QuorumResult:
 
     symbol: str
     field_name: str
-    providers_queried: Dict[str, Optional[Decimal]]
+    providers_queried: dict[str, Decimal | None]
     status: QuorumStatus
     action: QuorumAction
-    quorum_value: Optional[Decimal] = None
+    quorum_value: Decimal | None = None
     quorum_threshold: Decimal = DEFAULT_QUORUM_THRESHOLD
-    max_disagreement_pct: Optional[Decimal] = None
-    agreeing_providers: Tuple[str, ...] = field(default_factory=tuple)
-    disagreeing_providers: Tuple[str, ...] = field(default_factory=tuple)
+    max_disagreement_pct: Decimal | None = None
+    agreeing_providers: tuple[str, ...] = field(default_factory=tuple)
+    disagreeing_providers: tuple[str, ...] = field(default_factory=tuple)
 
     def has_quorum(self) -> bool:
         return self.status == QuorumStatus.QUORUM_REACHED
 
-    def to_log_dict(self) -> Dict[str, Optional[str]]:
+    def to_log_dict(self) -> dict[str, str | None]:
         """JSONB shape for ``ProviderQuorumLog.providers_queried``."""
         return {
             name: (str(value) if value is not None else None)
@@ -93,9 +93,7 @@ class QuorumService:
 
     def __init__(self, default_threshold: Decimal = DEFAULT_QUORUM_THRESHOLD):
         if not (Decimal("0") < default_threshold <= Decimal("1")):
-            raise ValueError(
-                f"default_threshold must be in (0, 1], got {default_threshold}"
-            )
+            raise ValueError(f"default_threshold must be in (0, 1], got {default_threshold}")
         self.default_threshold = default_threshold
 
     # ------------------------------------------------------------------
@@ -106,9 +104,9 @@ class QuorumService:
         self,
         symbol: str,
         field_name: str,
-        provider_values: Dict[str, Optional[Decimal]],
-        threshold: Optional[Decimal] = None,
-        tolerance_pct: Optional[Decimal] = None,
+        provider_values: dict[str, Decimal | None],
+        threshold: Decimal | None = None,
+        tolerance_pct: Decimal | None = None,
     ) -> QuorumResult:
         """Evaluate one quorum check.
 
@@ -117,9 +115,7 @@ class QuorumService:
         (provider unreachable / didn't return a value).
         """
         if not provider_values:
-            raise ValueError(
-                "provider_values must contain at least one provider entry"
-            )
+            raise ValueError("provider_values must contain at least one provider entry")
 
         if threshold is None:
             threshold = self.default_threshold
@@ -131,15 +127,12 @@ class QuorumService:
 
         # Coerce + validate every input. We do NOT silently drop a
         # bad-typed value -- raise so the caller learns about it.
-        normalized: Dict[str, Optional[Decimal]] = {
-            provider: self._coerce_decimal(value)
-            for provider, value in provider_values.items()
+        normalized: dict[str, Decimal | None] = {
+            provider: self._coerce_decimal(value) for provider, value in provider_values.items()
         }
 
-        responding: List[Tuple[str, Decimal]] = [
-            (provider, value)
-            for provider, value in normalized.items()
-            if value is not None
+        responding: list[tuple[str, Decimal]] = [
+            (provider, value) for provider, value in normalized.items() if value is not None
         ]
 
         # Single-source / no-source short-circuits.
@@ -195,7 +188,7 @@ class QuorumService:
         db: Session,
         result: QuorumResult,
         check_at=None,
-    ) -> Optional[ProviderQuorumLog]:
+    ) -> ProviderQuorumLog | None:
         """Write a ``QuorumResult`` to ``provider_quorum_log``.
 
         Caller controls the transaction (commit/rollback) -- per the
@@ -238,7 +231,7 @@ class QuorumService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _coerce_decimal(value) -> Optional[Decimal]:
+    def _coerce_decimal(value) -> Decimal | None:
         """Accept ``None``, ``Decimal``, ``int``, or numeric ``str``.
 
         Float is rejected: silently coercing ``0.1 + 0.2`` would
@@ -251,9 +244,7 @@ class QuorumService:
             return value
         if isinstance(value, bool):
             # bool is a subclass of int; refuse it explicitly.
-            raise TypeError(
-                f"QuorumService received bool value, expected Decimal: {value!r}"
-            )
+            raise TypeError(f"QuorumService received bool value, expected Decimal: {value!r}")
         if isinstance(value, int):
             return Decimal(value)
         if isinstance(value, str):
@@ -277,8 +268,8 @@ class QuorumService:
         *,
         symbol: str,
         field_name: str,
-        normalized: Dict[str, Optional[Decimal]],
-        responding: List[Tuple[str, Decimal]],
+        normalized: dict[str, Decimal | None],
+        responding: list[tuple[str, Decimal]],
         threshold: Decimal,
     ) -> QuorumResult:
         """Exact-match quorum (ticker / sector / industry).
@@ -286,30 +277,22 @@ class QuorumService:
         Buckets responses by exact value, picks the largest bucket,
         and checks if its size meets the threshold.
         """
-        buckets: Dict[Decimal, List[str]] = {}
+        buckets: dict[Decimal, list[str]] = {}
         for provider, value in responding:
             buckets.setdefault(value, []).append(provider)
 
-        winner_value, winner_providers = max(
-            buckets.items(), key=lambda kv: len(kv[1])
-        )
+        winner_value, winner_providers = max(buckets.items(), key=lambda kv: len(kv[1]))
         agreement_ratio = Decimal(len(winner_providers)) / Decimal(len(responding))
 
         if agreement_ratio >= threshold:
-            disagreeing = tuple(
-                provider
-                for provider, value in responding
-                if value != winner_value
-            )
+            disagreeing = tuple(provider for provider, value in responding if value != winner_value)
             return QuorumResult(
                 symbol=symbol,
                 field_name=field_name,
                 providers_queried=normalized,
                 status=QuorumStatus.QUORUM_REACHED,
                 action=(
-                    QuorumAction.ACCEPTED
-                    if not disagreeing
-                    else QuorumAction.FLAGGED_FOR_REVIEW
+                    QuorumAction.ACCEPTED if not disagreeing else QuorumAction.FLAGGED_FOR_REVIEW
                 ),
                 quorum_value=winner_value,
                 quorum_threshold=threshold,
@@ -344,8 +327,8 @@ class QuorumService:
         *,
         symbol: str,
         field_name: str,
-        normalized: Dict[str, Optional[Decimal]],
-        responding: List[Tuple[str, Decimal]],
+        normalized: dict[str, Decimal | None],
+        responding: list[tuple[str, Decimal]],
         threshold: Decimal,
         tolerance_pct: Decimal,
     ) -> QuorumResult:
@@ -367,8 +350,8 @@ class QuorumService:
         else:
             max_disagreement_pct = (spread / abs(median)).copy_abs()
 
-        agreeing: List[str] = []
-        disagreeing: List[str] = []
+        agreeing: list[str] = []
+        disagreeing: list[str] = []
         for provider, value in responding:
             if median == 0:
                 if value == 0:
@@ -388,9 +371,7 @@ class QuorumService:
             # Quorum value = median of the agreeing subset, so a fringe
             # outlier that just barely passed tolerance doesn't drag the
             # answer.
-            agreeing_values = [
-                value for provider, value in responding if provider in agreeing
-            ]
+            agreeing_values = [value for provider, value in responding if provider in agreeing]
             quorum_value = _median(agreeing_values)
             return QuorumResult(
                 symbol=symbol,
@@ -398,9 +379,7 @@ class QuorumService:
                 providers_queried=normalized,
                 status=QuorumStatus.QUORUM_REACHED,
                 action=(
-                    QuorumAction.ACCEPTED
-                    if not disagreeing
-                    else QuorumAction.FLAGGED_FOR_REVIEW
+                    QuorumAction.ACCEPTED if not disagreeing else QuorumAction.FLAGGED_FOR_REVIEW
                 ),
                 quorum_value=quorum_value,
                 quorum_threshold=threshold,

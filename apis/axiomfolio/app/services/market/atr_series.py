@@ -6,7 +6,6 @@ medallion: silver
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -14,7 +13,7 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
-def calculate_atr_series(df: pd.DataFrame, period: int = 14) -> Optional[pd.Series]:
+def calculate_atr_series(df: pd.DataFrame, period: int = 14) -> pd.Series | None:
     """Wilder's ATR: seed with SMA of first *period* TRs, then recursive smoothing."""
     try:
         high_low = df["High"] - df["Low"]

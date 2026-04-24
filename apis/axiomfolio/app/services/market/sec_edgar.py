@@ -10,10 +10,9 @@ medallion: silver
 
 import logging
 import xml.etree.ElementTree as ET
-from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional
-import requests
+from datetime import date
 
+import requests
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -26,7 +25,7 @@ EDGAR_FULL_TEXT_URL = f"{EDGAR_BASE_URL}/cgi-bin/browse-edgar"
 SEC_USER_AGENT = "AxiomFolio/1.0 (contact@axiomfolio.com)"
 
 
-def parse_13f_xml(xml_content: str) -> List[Dict]:
+def parse_13f_xml(xml_content: str) -> list[dict]:
     """Parse 13F-HR XML filing and extract holdings.
 
     Returns list of holdings with: symbol, shares, value, filing info.
@@ -36,9 +35,7 @@ def parse_13f_xml(xml_content: str) -> List[Dict]:
         root = ET.fromstring(xml_content)
 
         # 13F filings use namespace - handle both with and without
-        ns = {
-            "": "http://www.sec.gov/edgar/document/thirteenf/informationtable"
-        }
+        ns = {"": "http://www.sec.gov/edgar/document/thirteenf/informationtable"}
 
         # Find all infoTable entries
         info_tables = root.findall(".//infoTable", ns) or root.findall(".//infoTable")
@@ -56,14 +53,16 @@ def parse_13f_xml(xml_content: str) -> List[Dict]:
                 symbol = _cusip_to_symbol(cusip, name_of_issuer)
 
                 if symbol:
-                    holdings.append({
-                        "symbol": symbol,
-                        "name_of_issuer": name_of_issuer,
-                        "cusip": cusip,
-                        "shares": shares,
-                        "value_thousands": value,
-                        "share_class": share_class,
-                    })
+                    holdings.append(
+                        {
+                            "symbol": symbol,
+                            "name_of_issuer": name_of_issuer,
+                            "cusip": cusip,
+                            "shares": shares,
+                            "value_thousands": value,
+                            "share_class": share_class,
+                        }
+                    )
             except Exception as e:
                 logger.debug("Failed to parse 13F entry: %s", e)
 
@@ -73,13 +72,13 @@ def parse_13f_xml(xml_content: str) -> List[Dict]:
     return holdings
 
 
-def _get_text(element, tag: str, ns: Dict) -> Optional[str]:
+def _get_text(element, tag: str, ns: dict) -> str | None:
     """Get text content of a child element."""
     child = element.find(tag, ns) or element.find(tag)
     return child.text.strip() if child is not None and child.text else None
 
 
-def _get_int(element, tag: str, ns: Dict) -> Optional[int]:
+def _get_int(element, tag: str, ns: dict) -> int | None:
     """Get integer value from a child element."""
     text = _get_text(element, tag, ns)
     if text:
@@ -90,7 +89,7 @@ def _get_int(element, tag: str, ns: Dict) -> Optional[int]:
     return None
 
 
-def _cusip_to_symbol(cusip: str, issuer_name: str) -> Optional[str]:
+def _cusip_to_symbol(cusip: str, issuer_name: str) -> str | None:
     """Map CUSIP to ticker symbol.
 
     This is a simplified mapping. In production, would use a CUSIP database
@@ -130,7 +129,7 @@ def _cusip_to_symbol(cusip: str, issuer_name: str) -> Optional[str]:
 def fetch_recent_13f_filings(
     days_back: int = 90,
     max_filings: int = 100,
-) -> List[Dict]:
+) -> list[dict]:
     """Fetch recent 13F-HR filings from SEC EDGAR.
 
     Returns list of filing metadata (not full holdings).
@@ -170,11 +169,13 @@ def fetch_recent_13f_filings(
                 updated = entry.find("atom:updated", ns)
 
                 if title is not None and link is not None:
-                    filings.append({
-                        "title": title.text,
-                        "url": link.get("href"),
-                        "updated": updated.text if updated is not None else None,
-                    })
+                    filings.append(
+                        {
+                            "title": title.text,
+                            "url": link.get("href"),
+                            "updated": updated.text if updated is not None else None,
+                        }
+                    )
             except Exception as e:
                 logger.debug("Failed to parse filing entry: %s", e)
 
@@ -184,7 +185,7 @@ def fetch_recent_13f_filings(
     return filings
 
 
-def fetch_and_parse_13f(filing_url: str) -> Dict:
+def fetch_and_parse_13f(filing_url: str) -> dict:
     """Fetch a specific 13F filing and parse its holdings.
 
     Args:
@@ -216,6 +217,7 @@ def fetch_and_parse_13f(filing_url: str) -> Dict:
 
         # Look for links to XML files
         import re
+
         xml_matches = re.findall(r'href="([^"]+\.xml)"', content, re.IGNORECASE)
         for match in xml_matches:
             if "infotable" in match.lower() or "13f" in match.lower():
@@ -243,7 +245,7 @@ def persist_13f_holdings(
     institution_name: str,
     filing_date: date,
     period_date: date,
-    holdings: List[Dict],
+    holdings: list[dict],
 ) -> int:
     """Persist 13F holdings to database.
 
@@ -260,11 +262,15 @@ def persist_13f_holdings(
 
         try:
             # Check if we already have this filing/symbol combo
-            existing = db.query(InstitutionalHolding).filter(
-                InstitutionalHolding.symbol == symbol,
-                InstitutionalHolding.filing_date == filing_date,
-                InstitutionalHolding.institution_cik == institution_cik,
-            ).first()
+            existing = (
+                db.query(InstitutionalHolding)
+                .filter(
+                    InstitutionalHolding.symbol == symbol,
+                    InstitutionalHolding.filing_date == filing_date,
+                    InstitutionalHolding.institution_cik == institution_cik,
+                )
+                .first()
+            )
 
             if existing:
                 # Update existing
@@ -273,16 +279,18 @@ def persist_13f_holdings(
                 existing.share_class = h.get("share_class")
             else:
                 # Insert new
-                db.add(InstitutionalHolding(
-                    symbol=symbol,
-                    filing_date=filing_date,
-                    period_date=period_date,
-                    institution_cik=institution_cik,
-                    institution_name=institution_name,
-                    shares=h.get("shares"),
-                    value_usd=(h.get("value_thousands") or 0) * 1000,
-                    share_class=h.get("share_class"),
-                ))
+                db.add(
+                    InstitutionalHolding(
+                        symbol=symbol,
+                        filing_date=filing_date,
+                        period_date=period_date,
+                        institution_cik=institution_cik,
+                        institution_name=institution_name,
+                        shares=h.get("shares"),
+                        value_usd=(h.get("value_thousands") or 0) * 1000,
+                        share_class=h.get("share_class"),
+                    )
+                )
                 inserted += 1
 
         except Exception as e:

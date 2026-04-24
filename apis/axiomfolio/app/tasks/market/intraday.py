@@ -5,7 +5,6 @@ Five-minute intraday bar backfill tasks.
 from __future__ import annotations
 
 import logging
-from typing import Dict, List
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -19,8 +18,10 @@ from app.services.market.market_data_service import infra, price_bars, provider_
 from app.tasks.utils.task_utils import (
     _get_tracked_universe_from_db,
     _increment_provider_usage,
-    setup_event_loop as _setup_event_loop,
     task_run,
+)
+from app.tasks.utils.task_utils import (
+    setup_event_loop as _setup_event_loop,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ _DEFAULT_HARD = 3600
     time_limit=2100,
 )
 @task_run("admin_backfill_5m_symbols")
-def bars_5m_symbols(symbols: List[str], n_days: int = 5) -> dict:
+def bars_5m_symbols(symbols: list[str], n_days: int = 5) -> dict:
     """Delta backfill last N days of 5m bars for a provided symbol list."""
     blocked_tier = fmp_5m_intraday_backfill_blocked_tier()
     if blocked_tier is not None:
@@ -62,7 +63,7 @@ def bars_5m_symbols(symbols: List[str], n_days: int = 5) -> dict:
         loop = _setup_event_loop()
         processed = 0
         errors = 0
-        provider_usage: Dict[str, int] = {}
+        provider_usage: dict[str, int] = {}
         try:
             for sym in [s.upper() for s in symbols or []]:
                 try:
@@ -152,7 +153,7 @@ def bars_5m_last_n_days(n_days: int = 5, batch_size: int = 50) -> dict:
         done = 0
         errors = 0
         loop = _setup_event_loop()
-        provider_usage: Dict[str, int] = {}
+        provider_usage: dict[str, int] = {}
         try:
             for i in range(0, total, max(1, batch_size)):
                 chunk = syms[i : i + batch_size]

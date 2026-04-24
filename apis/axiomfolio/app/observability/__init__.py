@@ -24,14 +24,14 @@ If ``OTEL_EXPORTER_OTLP_ENDPOINT`` is unset, exporters degrade to a no-op
 and instrumentation still reports a span — just without remote export.
 """
 
-from app.observability.metrics import init_metrics, get_meter
+from app.observability.metrics import get_meter, init_metrics
 from app.observability.span_decorators import traced
-from app.observability.tracing import init_tracing, get_tracer
+from app.observability.tracing import get_tracer, init_tracing
 
 __all__ = [
-    "init_tracing",
-    "init_metrics",
-    "traced",
-    "get_tracer",
     "get_meter",
+    "get_tracer",
+    "init_metrics",
+    "init_tracing",
+    "traced",
 ]

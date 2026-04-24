@@ -6,9 +6,7 @@ import base64
 import hashlib
 import logging
 import os
-import secrets
 import time
-from typing import Optional, Dict, Tuple
 
 import redis
 
@@ -22,8 +20,9 @@ def _get_redis() -> redis.Redis:
     url = getattr(settings, "REDIS_URL", None) or "redis://redis:6379/0"
     return redis.from_url(url, decode_responses=True)
 
+
 # In-memory fallback store if Redis is unavailable
-_MEM_STORE: Dict[str, Tuple[str, float]] = {}
+_MEM_STORE: dict[str, tuple[str, float]] = {}
 
 
 def generate_code_verifier(length: int = 64) -> str:
@@ -61,7 +60,7 @@ def save_verifier_for_state(state: str, code_verifier: str, ttl_seconds: int = 6
         _MEM_STORE[f"pkce:{state}"] = (code_verifier, time.time() + ttl_seconds)
 
 
-def pop_verifier_for_state(state: str) -> Optional[str]:
+def pop_verifier_for_state(state: str) -> str | None:
     """
     Atomically retrieve and delete the verifier for a given state.
     """
@@ -84,5 +83,3 @@ def pop_verifier_for_state(state: str) -> Optional[str]:
     except KeyError:
         return None
     return None
-
-

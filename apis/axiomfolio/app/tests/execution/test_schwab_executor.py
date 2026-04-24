@@ -22,9 +22,8 @@ Acceptance coverage (per ``docs/plans/WAVE_F_TRADING_PARITY.md`` F3):
 
 from __future__ import annotations
 
-from types import SimpleNamespace
-from typing import Any, Dict, List, Optional, Tuple
-from unittest.mock import MagicMock, patch
+from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -57,11 +56,11 @@ class FakeSchwabClient:
     def __init__(
         self,
         *,
-        place_response: Optional[Dict[str, Any]] = None,
-        cancel_response: Optional[Dict[str, Any]] = None,
-        status_response: Optional[Dict[str, Any]] = None,
-        preview_response: Optional[Dict[str, Any]] = None,
-        resolve_response: Optional[str] = "HASH-ABC",
+        place_response: dict[str, Any] | None = None,
+        cancel_response: dict[str, Any] | None = None,
+        status_response: dict[str, Any] | None = None,
+        preview_response: dict[str, Any] | None = None,
+        resolve_response: str | None = "HASH-ABC",
         connect_ok: bool = True,
     ) -> None:
         self.place_response = place_response or {
@@ -95,34 +94,34 @@ class FakeSchwabClient:
         }
         self.resolve_response = resolve_response
         self.connect_ok = connect_ok
-        self.credentials_seen: List[Tuple[str, str]] = []
-        self.resolve_calls: List[str] = []
-        self.place_calls: List[Tuple[str, Dict[str, Any]]] = []
-        self.cancel_calls: List[Tuple[str, str]] = []
-        self.status_calls: List[Tuple[str, str]] = []
-        self.preview_calls: List[Tuple[str, Dict[str, Any]]] = []
+        self.credentials_seen: list[tuple[str, str]] = []
+        self.resolve_calls: list[str] = []
+        self.place_calls: list[tuple[str, dict[str, Any]]] = []
+        self.cancel_calls: list[tuple[str, str]] = []
+        self.status_calls: list[tuple[str, str]] = []
+        self.preview_calls: list[tuple[str, dict[str, Any]]] = []
 
     async def connect_with_credentials(self, access: str, refresh: str, **_: Any) -> bool:
         self.credentials_seen.append((access, refresh))
         return self.connect_ok
 
-    async def resolve_account_hash_fresh(self, account_number: str) -> Optional[str]:
+    async def resolve_account_hash_fresh(self, account_number: str) -> str | None:
         self.resolve_calls.append(account_number)
         return self.resolve_response
 
-    async def place_order(self, account_hash: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def place_order(self, account_hash: str, payload: dict[str, Any]) -> dict[str, Any]:
         self.place_calls.append((account_hash, payload))
         return self.place_response
 
-    async def cancel_order(self, account_hash: str, order_id: str) -> Dict[str, Any]:
+    async def cancel_order(self, account_hash: str, order_id: str) -> dict[str, Any]:
         self.cancel_calls.append((account_hash, order_id))
         return self.cancel_response
 
-    async def get_order_status(self, account_hash: str, order_id: str) -> Dict[str, Any]:
+    async def get_order_status(self, account_hash: str, order_id: str) -> dict[str, Any]:
         self.status_calls.append((account_hash, order_id))
         return self.status_response
 
-    async def preview_order(self, account_hash: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def preview_order(self, account_hash: str, payload: dict[str, Any]) -> dict[str, Any]:
         self.preview_calls.append((account_hash, payload))
         return self.preview_response
 
@@ -166,12 +165,16 @@ def stub_token_refresh_and_decrypt(monkeypatch):
     # starts from a "token fresh" state. Individual tests that exercise the
     # refresh failure path override this.
     monkeypatch.setattr(
-        schwab_executor_module, "ensure_broker_token", _ok_refresh,
+        schwab_executor_module,
+        "ensure_broker_token",
+        _ok_refresh,
     )
     # Decrypt is a pass-through plain-text mirror in tests; real decryption
     # is exercised by backend/tests/services/oauth.
     monkeypatch.setattr(
-        schwab_executor_module, "decrypt", lambda ct: f"plain:{ct}",
+        schwab_executor_module,
+        "decrypt",
+        lambda ct: f"plain:{ct}",
     )
     yield
 
@@ -180,14 +183,14 @@ def _build_executor(
     *,
     client: FakeSchwabClient,
     context_resolver,
-) -> Tuple[SchwabExecutor, List[FakeSchwabClient]]:
+) -> tuple[SchwabExecutor, list[FakeSchwabClient]]:
     """Build an executor whose factory records every client it produces.
 
     The returned ``clients`` list is mutated in-place; callers can assert
     how many fresh clients the executor created (must be one per write call
     so the account-hash lookup is never reused across re-auth events).
     """
-    clients: List[FakeSchwabClient] = []
+    clients: list[FakeSchwabClient] = []
 
     def _factory():
         # Return the same fake for every call so test assertions on
@@ -322,9 +325,13 @@ async def test_account_hash_resolved_per_place_call(context_resolver, fake_conne
     # 4 write calls -> 4 hash resolutions against the sync resolver. None
     # reused between calls (which would let a rotated hash post-reauth
     # be reused).
-    assert client.resolve_calls == [
-        fake_connection.provider_account_id,
-    ] * 4
+    assert (
+        client.resolve_calls
+        == [
+            fake_connection.provider_account_id,
+        ]
+        * 4
+    )
 
 
 @pytest.mark.asyncio
@@ -370,10 +377,8 @@ async def test_order_request_account_id_override(context_resolver, fake_connecti
 
 
 @pytest.mark.asyncio
-async def test_ensure_broker_token_called_before_every_write(
-    context_resolver, monkeypatch
-):
-    calls: List[int] = []
+async def test_ensure_broker_token_called_before_every_write(context_resolver, monkeypatch):
+    calls: list[int] = []
 
     def _spy(db, conn, **_kwargs):
         calls.append(conn.id)
@@ -394,9 +399,7 @@ async def test_ensure_broker_token_called_before_every_write(
 
 
 @pytest.mark.asyncio
-async def test_token_refresh_failure_surfaces_as_order_error(
-    context_resolver, monkeypatch
-):
+async def test_token_refresh_failure_surfaces_as_order_error(context_resolver, monkeypatch):
     from app.services.execution.oauth_executor_mixin import TokenRefreshError
 
     def _boom(db, conn, **_kwargs):
@@ -489,7 +492,10 @@ def test_build_order_payload_market_buy():
     from app.services.clients.schwab_client import SchwabClient
 
     payload = SchwabClient.build_order_payload(
-        symbol="aapl", side="buy", quantity=10, order_type="MARKET",
+        symbol="aapl",
+        side="buy",
+        quantity=10,
+        order_type="MARKET",
     )
     assert payload["orderType"] == "MARKET"
     assert payload["orderLegCollection"][0]["instrument"]["symbol"] == "AAPL"
@@ -502,7 +508,10 @@ def test_build_order_payload_limit_requires_limit_price():
 
     with pytest.raises(ValueError, match="limit_price"):
         SchwabClient.build_order_payload(
-            symbol="AAPL", side="buy", quantity=1, order_type="LIMIT",
+            symbol="AAPL",
+            side="buy",
+            quantity=1,
+            order_type="LIMIT",
         )
 
 
@@ -527,7 +536,10 @@ def test_build_order_payload_rejects_bogus_side():
 
     with pytest.raises(ValueError, match="side"):
         SchwabClient.build_order_payload(
-            symbol="AAPL", side="bogus", quantity=1, order_type="MARKET",
+            symbol="AAPL",
+            side="bogus",
+            quantity=1,
+            order_type="MARKET",
         )
 
 
@@ -570,22 +582,23 @@ async def test_client_place_order_parses_location_header():
         params=None,
         json_body=None,
         expected_statuses=None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         assert method == "POST"
         assert path == "/accounts/HASH/orders"
         assert json_body["orderType"] == "MARKET"
         return {
             "status": 201,
             "data": None,
-            "headers": {
-                "location": "https://api.schwabapi.com/trader/v1/accounts/HASH/orders/555"
-            },
+            "headers": {"location": "https://api.schwabapi.com/trader/v1/accounts/HASH/orders/555"},
             "error": None,
         }
 
     client._request_with_meta = _mock_request_with_meta  # type: ignore[assignment]
     payload = SchwabClient.build_order_payload(
-        symbol="AAPL", side="buy", quantity=1, order_type="MARKET",
+        symbol="AAPL",
+        side="buy",
+        quantity=1,
+        order_type="MARKET",
     )
     result = await client.place_order("HASH", payload)
     assert result["broker_order_id"] == "555"
@@ -606,7 +619,10 @@ async def test_client_place_order_missing_location_surfaces_error():
 
     client._request_with_meta = _mock_request_with_meta  # type: ignore[assignment]
     payload = SchwabClient.build_order_payload(
-        symbol="AAPL", side="buy", quantity=1, order_type="MARKET",
+        symbol="AAPL",
+        side="buy",
+        quantity=1,
+        order_type="MARKET",
     )
     result = await client.place_order("HASH", payload)
     assert result["error"] is not None

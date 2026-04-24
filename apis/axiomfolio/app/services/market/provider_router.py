@@ -8,9 +8,9 @@ import logging
 import random
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import fmpsdk
 import pandas as pd
@@ -72,7 +72,10 @@ def _is_l2_fresh(latest_bar_date) -> bool:
             return bar_ts >= oldest_acceptable
     except Exception:
         logger.debug("Trading session check failed for L2 freshness, falling back to day count")
-    days_stale = (pd.Timestamp.now("UTC").normalize().tz_localize(None) - pd.Timestamp(latest_bar_date).normalize().tz_localize(None)).days
+    days_stale = (
+        pd.Timestamp.now("UTC").normalize().tz_localize(None)
+        - pd.Timestamp(latest_bar_date).normalize().tz_localize(None)
+    ).days
     return days_stale <= L2_FRESHNESS_MAX_DAYS
 
 
@@ -83,8 +86,8 @@ class APIProvider(Enum):
     YFINANCE = "yfinance"
 
 
-_cb_failures: Dict[str, int] = {}
-_cb_open_until: Dict[str, float] = {}
+_cb_failures: dict[str, int] = {}
+_cb_open_until: dict[str, float] = {}
 _cb_lock = threading.Lock()
 
 
@@ -94,7 +97,7 @@ class ProviderRouter:
     _CB_THRESHOLD = 5
     _CB_COOLDOWN_S = 600
 
-    def __init__(self, infra: "MarketInfra", price_bars: "PriceBarWriter") -> None:
+    def __init__(self, infra: MarketInfra, price_bars: PriceBarWriter) -> None:
         self._infra = infra
         self._pbw = price_bars
 
@@ -119,7 +122,9 @@ class ProviderRouter:
                 _cb_open_until[key] = time.monotonic() + self._CB_COOLDOWN_S
                 logger.warning(
                     "Circuit breaker OPEN for %s after %d consecutive failures (cooldown %ds)",
-                    key, _cb_failures[key], self._CB_COOLDOWN_S,
+                    key,
+                    _cb_failures[key],
+                    self._CB_COOLDOWN_S,
                 )
 
     def _cb_record_success(self, provider: APIProvider) -> None:
@@ -130,7 +135,7 @@ class ProviderRouter:
 
     # ---------------------- Provider selection ----------------------
 
-    def _provider_priority(self, data_type: str) -> List[APIProvider]:
+    def _provider_priority(self, data_type: str) -> list[APIProvider]:
         """Return provider order based on MARKET_PROVIDER_POLICY and availability.
 
         data_type: "historical_data" | "real_time_quote" | "company_info"
@@ -149,7 +154,7 @@ class ProviderRouter:
                 if has_td:
                     return [APIProvider.YFINANCE, APIProvider.TWELVE_DATA]
                 return [APIProvider.YFINANCE]
-            order: List[APIProvider] = []
+            order: list[APIProvider] = []
             if has_fmp:
                 order.append(APIProvider.FMP)
             order.append(APIProvider.YFINANCE)
@@ -197,7 +202,7 @@ class ProviderRouter:
     # ---------------------- Retry helpers ----------------------
 
     @staticmethod
-    def _extract_http_status(exc: Exception) -> Optional[int]:
+    def _extract_http_status(exc: Exception) -> int | None:
         """Best-effort extraction of HTTP status code from provider exceptions."""
         try:
             resp = getattr(exc, "response", None)
@@ -228,8 +233,8 @@ class ProviderRouter:
         self,
         fn,
         *args,
-        attempts: Optional[int] = None,
-        max_delay_seconds: Optional[float] = None,
+        attempts: int | None = None,
+        max_delay_seconds: float | None = None,
         **kwargs,
     ):
         """Run a blocking provider call in a thread with bounded exponential backoff.
@@ -247,11 +252,11 @@ class ProviderRouter:
             if max_delay_seconds is not None
             else float(getattr(settings, "MARKET_BACKFILL_RETRY_MAX_DELAY_SECONDS", 60.0))
         )
-        last_exc: Optional[Exception] = None
+        last_exc: Exception | None = None
         for i in range(max(1, n)):
             try:
                 return await asyncio.to_thread(fn, *args, **kwargs)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 last_exc = exc
                 status = self._extract_http_status(exc)
                 is_rate_limited = status == 429 or "too many" in str(exc).lower()
@@ -279,8 +284,8 @@ class ProviderRouter:
         self,
         fn,
         *args,
-        attempts: Optional[int] = None,
-        max_delay_seconds: Optional[float] = None,
+        attempts: int | None = None,
+        max_delay_seconds: float | None = None,
         **kwargs,
     ):
         """Sync helper for provider calls with bounded exponential backoff.
@@ -294,11 +299,11 @@ class ProviderRouter:
             if max_delay_seconds is not None
             else float(getattr(settings, "MARKET_BACKFILL_RETRY_MAX_DELAY_SECONDS", 60.0))
         )
-        last_exc: Optional[Exception] = None
+        last_exc: Exception | None = None
         for i in range(max(1, n)):
             try:
                 return fn(*args, **kwargs)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 last_exc = exc
                 status = self._extract_http_status(exc)
                 is_rate_limited = status == 429 or "too many" in str(exc).lower()
@@ -323,7 +328,7 @@ class ProviderRouter:
     @staticmethod
     def _period_to_start_date(period: str) -> datetime:
         """Convert period string to a start date for DB queries."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         mapping = {
             "1d": timedelta(days=5),
             "5d": timedelta(days=10),
@@ -367,11 +372,11 @@ class ProviderRouter:
         symbol: str,
         period: str = "1y",
         interval: str = "1d",
-        max_bars: Optional[int] = 270,
+        max_bars: int | None = 270,
         return_provider: bool = False,
-        db: Optional[Session] = None,
+        db: Session | None = None,
         skip_write_through: bool = False,
-    ) -> Optional[pd.DataFrame] | tuple[Optional[pd.DataFrame], Optional[str]]:
+    ) -> pd.DataFrame | None | tuple[pd.DataFrame | None, str | None]:
         """Get OHLCV (newest->first index) with provider policy.
 
         Semantics (provider-aware):
@@ -396,7 +401,7 @@ class ProviderRouter:
             try:
                 df_cached = pd.read_json(cached, orient="index")
                 try:
-                    _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    _date_key = datetime.now(UTC).strftime("%Y-%m-%d")
                     await r.hincrby(f"provider:calls:{_date_key}", "l1_hit", 1)
                     await r.expire(f"provider:calls:{_date_key}", 86400 * 30)
                 except Exception:
@@ -418,8 +423,11 @@ class ProviderRouter:
                     latest_date = db_df.index.max()
                     if latest_date is not None:
                         if not _is_l2_fresh(latest_date):
-                            logger.debug("L2 stale for %s: latest bar %s, falling through to L3",
-                                         symbol, latest_date)
+                            logger.debug(
+                                "L2 stale for %s: latest bar %s, falling through to L3",
+                                symbol,
+                                latest_date,
+                            )
                         else:
                             if max_bars and interval == "1d":
                                 db_df = db_df.head(max_bars)
@@ -428,7 +436,7 @@ class ProviderRouter:
                                 rw = r if r is not None else await self._infra._get_redis()
                                 await rw.setex(cache_key, ttl, db_df.to_json(orient="index"))
                                 try:
-                                    _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                                    _date_key = datetime.now(UTC).strftime("%Y-%m-%d")
                                     await rw.hincrby(f"provider:calls:{_date_key}", "l2_hit", 1)
                                     await rw.expire(f"provider:calls:{_date_key}", 86400 * 30)
                                 except Exception:
@@ -439,25 +447,39 @@ class ProviderRouter:
                                     symbol,
                                     l2_cache_exc,
                                 )
-                            logger.info("L2 DB hit for %s (%s/%s): %d bars", symbol, period, interval, len(db_df))
+                            logger.info(
+                                "L2 DB hit for %s (%s/%s): %d bars",
+                                symbol,
+                                period,
+                                interval,
+                                len(db_df),
+                            )
                             if return_provider:
                                 return db_df, "db"
                             return db_df
                 else:
-                    logger.debug("L2 DB miss for %s (%s/%s): got %d bars, need %d",
-                                 symbol, period, interval, len(db_df) if db_df is not None else 0, min_bars)
+                    logger.debug(
+                        "L2 DB miss for %s (%s/%s): got %d bars, need %d",
+                        symbol,
+                        period,
+                        interval,
+                        len(db_df) if db_df is not None else 0,
+                        min_bars,
+                    )
             except Exception as db_exc:
-                logger.warning("L2 DB read for %s failed (falling through to L3): %s", symbol, db_exc)
+                logger.warning(
+                    "L2 DB read for %s failed (falling through to L3): %s", symbol, db_exc
+                )
 
         # --- L3: External API providers ---
-        provider_used: Optional[str] = None
+        provider_used: str | None = None
         for provider in self._provider_priority("historical_data"):
             if not self._is_provider_available(provider):
                 continue
             _counter_name = "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
             if r is not None:
                 try:
-                    _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                    _date_key = datetime.now(UTC).strftime("%Y-%m-%d")
                     _current = int(await r.hget(f"provider:calls:{_date_key}", _counter_name) or 0)
                     _policy = settings.provider_policy
                     _budgets = {
@@ -467,7 +489,12 @@ class ProviderRouter:
                     }
                     _limit = _budgets.get(_counter_name, 10000)
                     if _current >= _limit:
-                        logger.warning("Provider %s over daily budget (%d/%d), skipping", _counter_name, _current, _limit)
+                        logger.warning(
+                            "Provider %s over daily budget (%d/%d), skipping",
+                            _counter_name,
+                            _current,
+                            _limit,
+                        )
                         continue
                 except Exception as _budget_exc:
                     logger.warning(
@@ -485,13 +512,21 @@ class ProviderRouter:
             try:
                 if provider == APIProvider.FMP:
                     if interval == "5m":
-                        df = await self._call_blocking_with_retries(self._get_historical_fmp_5m_sync, fetch_symbol, period)
+                        df = await self._call_blocking_with_retries(
+                            self._get_historical_fmp_5m_sync, fetch_symbol, period
+                        )
                     else:
-                        df = await self._call_blocking_with_retries(self._get_historical_fmp_sync, fetch_symbol, period, interval)
+                        df = await self._call_blocking_with_retries(
+                            self._get_historical_fmp_sync, fetch_symbol, period, interval
+                        )
                 elif provider == APIProvider.TWELVE_DATA:
-                    df = await self._call_blocking_with_retries(self._get_historical_twelve_data_sync, fetch_symbol, period, interval)
+                    df = await self._call_blocking_with_retries(
+                        self._get_historical_twelve_data_sync, fetch_symbol, period, interval
+                    )
                 elif provider == APIProvider.YFINANCE:
-                    df = await self._call_blocking_with_retries(self._get_historical_yfinance_sync, fetch_symbol, period, interval)
+                    df = await self._call_blocking_with_retries(
+                        self._get_historical_yfinance_sync, fetch_symbol, period, interval
+                    )
                 elif provider == APIProvider.FINNHUB:
                     df = None
                 else:
@@ -505,8 +540,12 @@ class ProviderRouter:
                         rw = r if r is not None else await self._infra._get_redis()
                         await rw.setex(cache_key, ttl, df.to_json(orient="index"))
                         try:
-                            _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                            _counter_name = "twelvedata" if provider == APIProvider.TWELVE_DATA else provider.value
+                            _date_key = datetime.now(UTC).strftime("%Y-%m-%d")
+                            _counter_name = (
+                                "twelvedata"
+                                if provider == APIProvider.TWELVE_DATA
+                                else provider.value
+                            )
                             await rw.hincrby(f"provider:calls:{_date_key}", _counter_name, 1)
                             await rw.expire(f"provider:calls:{_date_key}", 86400 * 30)
                         except Exception:
@@ -518,11 +557,14 @@ class ProviderRouter:
                             l3_cache_exc,
                         )
                     if not skip_write_through:
+
                         def _persist_in_thread():
                             _session = SessionLocal()
                             try:
                                 self._pbw.persist_price_bars(
-                                    _session, symbol, df,
+                                    _session,
+                                    symbol,
+                                    df,
                                     interval=interval,
                                     data_source=provider_used or "provider",
                                 )
@@ -532,13 +574,24 @@ class ProviderRouter:
                         try:
                             await asyncio.to_thread(_persist_in_thread)
                         except Exception as persist_exc:
-                            logger.warning("Write-through persist_price_bars for %s failed (non-blocking): %s", symbol, persist_exc)
+                            logger.warning(
+                                "Write-through persist_price_bars for %s failed (non-blocking): %s",
+                                symbol,
+                                persist_exc,
+                            )
                     if return_provider:
                         return df, provider_used
                     return df
             except Exception as exc:
                 self._cb_record_failure(provider)
-                logger.warning("Provider %s failed for %s (%s/%s): %s", provider.value, symbol, period, interval, exc)
+                logger.warning(
+                    "Provider %s failed for %s (%s/%s): %s",
+                    provider.value,
+                    symbol,
+                    period,
+                    interval,
+                    exc,
+                )
                 continue
         return (None, provider_used) if return_provider else None
 
@@ -546,7 +599,7 @@ class ProviderRouter:
 
     def _get_historical_yfinance_sync(
         self, symbol: str, period: str, interval: str
-    ) -> Optional[pd.DataFrame]:
+    ) -> pd.DataFrame | None:
         data = yf.Ticker(symbol).history(period=period, interval=interval)
         if data is None or data.empty:
             return None
@@ -555,13 +608,13 @@ class ProviderRouter:
             return None
         if "Volume" not in data.columns:
             data["Volume"] = 0
-        return data[[c for c in ["Open", "High", "Low", "Close", "Volume"] if c in data.columns]].sort_index(ascending=False)
+        return data[
+            [c for c in ["Open", "High", "Low", "Close", "Volume"] if c in data.columns]
+        ].sort_index(ascending=False)
 
-    def _get_historical_fmp_5m_sync(self, symbol: str, period: str) -> Optional[pd.DataFrame]:
+    def _get_historical_fmp_5m_sync(self, symbol: str, period: str) -> pd.DataFrame | None:
         """Fetch intraday 5m bars from FMP historical_chart."""
-        data = fmpsdk.historical_chart(
-            apikey=settings.FMP_API_KEY, symbol=symbol, interval="5min"
-        )
+        data = fmpsdk.historical_chart(apikey=settings.FMP_API_KEY, symbol=symbol, interval="5min")
         if isinstance(data, dict):
             msg = data.get("Error Message") or data.get("error") or data.get("message") or str(data)
             raise RuntimeError(f"FMP historical_chart error: {msg}")
@@ -586,7 +639,7 @@ class ProviderRouter:
 
     def _get_historical_twelve_data_sync(
         self, symbol: str, period: str, interval: str
-    ) -> Optional[pd.DataFrame]:
+    ) -> pd.DataFrame | None:
         if not self._infra.twelve_data_client:
             return None
         td_map = {
@@ -624,19 +677,31 @@ class ProviderRouter:
         return out.sort_index(ascending=False)
 
     def _get_historical_fmp_sync(
-        self, symbol: str, period: str, interval: str, to_date: Optional[str] = None,
-    ) -> Optional[pd.DataFrame]:
+        self,
+        symbol: str,
+        period: str,
+        interval: str,
+        to_date: str | None = None,
+    ) -> pd.DataFrame | None:
         if interval != "1d":
             return None
         from datetime import date as _date
+
         days_map = {
-            "5d": 10, "1mo": 30, "3mo": 90, "6mo": 180,
-            "1y": 365, "2y": 730, "3y": 1095,
-            "5y": 1850, "10y": 3700, "max": 36500,
+            "5d": 10,
+            "1mo": 30,
+            "3mo": 90,
+            "6mo": 180,
+            "1y": 365,
+            "2y": 730,
+            "3y": 1095,
+            "5y": 1850,
+            "10y": 3700,
+            "max": 36500,
         }
         delta = days_map.get(period, 365)
         from_date = (_date.today() - timedelta(days=delta)).isoformat()
-        fmp_kwargs: Dict[str, Any] = {
+        fmp_kwargs: dict[str, Any] = {
             "apikey": settings.FMP_API_KEY,
             "symbol": symbol,
             "from_date": from_date,
@@ -661,7 +726,7 @@ class ProviderRouter:
         df.columns = ["Open", "High", "Low", "Close", "Volume"][: len(df.columns)]
         return df.sort_index(ascending=False)
 
-    def _fetch_fmp_historical_dividends_sync(self, symbol: str) -> List[Dict]:
+    def _fetch_fmp_historical_dividends_sync(self, symbol: str) -> list[dict]:
         """Single FMP stock_dividend HTTP fetch; raises on transport or error payloads."""
         import requests
 
@@ -687,14 +752,14 @@ class ProviderRouter:
             raise RuntimeError("FMP dividend historical is not a list")
         return historical
 
-    def get_historical_dividends(self, symbol: str) -> List[Dict]:
+    def get_historical_dividends(self, symbol: str) -> list[dict]:
         """Fetch historical dividend payments from FMP for a given symbol."""
         if not settings.FMP_API_KEY:
             return []
         try:
             try:
                 _r_sync = self._infra._sync_redis
-                _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                _date_key = datetime.now(UTC).strftime("%Y-%m-%d")
                 _current = int(_r_sync.hget(f"provider:calls:{_date_key}", "fmp") or 0)
                 _budget = settings.provider_policy.fmp_daily_budget
                 if _current >= _budget:

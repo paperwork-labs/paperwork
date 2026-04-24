@@ -16,7 +16,7 @@ The silent-zero rule for ``iv_hv_spread`` has a focused unit test here.
 from __future__ import annotations
 
 import math
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 import pytest
 
@@ -71,13 +71,13 @@ class _FakeQuery:
         self._rows = list(rows_desc)
         self._limit: int | None = None
 
-    def filter(self, *_args, **_kwargs) -> "_FakeQuery":
+    def filter(self, *_args, **_kwargs) -> _FakeQuery:
         return self
 
-    def order_by(self, *_args, **_kwargs) -> "_FakeQuery":
+    def order_by(self, *_args, **_kwargs) -> _FakeQuery:
         return self
 
-    def limit(self, n: int) -> "_FakeQuery":
+    def limit(self, n: int) -> _FakeQuery:
         self._limit = int(n)
         return self
 
@@ -119,18 +119,13 @@ def test_compute_hv_matches_hand_computed_fixture() -> None:
         up = not up
     # Newest-first for the fake DB.
     closes_desc = list(reversed(closes_chron))
-    rows = [
-        _FakeRow(as_of - timedelta(days=i + 1), c)
-        for i, c in enumerate(closes_desc)
-    ]
+    rows = [_FakeRow(as_of - timedelta(days=i + 1), c) for i, c in enumerate(closes_desc)]
     db = _FakeSession(rows)
 
     hv = compute_hv("TST", as_of, 20, db)  # type: ignore[arg-type]
     assert hv is not None
     expected = math.log(1.01) * math.sqrt(252)
-    assert abs(hv - expected) < 1e-9, (
-        f"HV math drift: expected {expected:.9f}, got {hv:.9f}"
-    )
+    assert abs(hv - expected) < 1e-9, f"HV math drift: expected {expected:.9f}, got {hv:.9f}"
 
 
 def test_compute_hv_returns_none_when_insufficient_bars() -> None:
@@ -201,16 +196,12 @@ def test_pick_iv_for_tenor_respects_dte_window() -> None:
         _chain_row(far, "CALL", 100.0, 0.60),
         _chain_row(far, "PUT", 100.0, 0.62),
     ]
-    mid = _pick_iv_for_tenor(
-        rows, as_of, spot=100.0, target_dte=30, dte_min=7, dte_max=45
-    )
+    mid = _pick_iv_for_tenor(rows, as_of, spot=100.0, target_dte=30, dte_min=7, dte_max=45)
     assert mid is not None
     assert abs(mid - 0.31) < 1e-9  # near expiry, not far
 
     # With too-tight window we should get nothing.
-    mid_none = _pick_iv_for_tenor(
-        rows, as_of, spot=100.0, target_dte=30, dte_min=60, dte_max=90
-    )
+    mid_none = _pick_iv_for_tenor(rows, as_of, spot=100.0, target_dte=30, dte_min=60, dte_max=90)
     # Far expiry is inside [60, 90]? (365 DTE is NOT), near (30) is NOT.
     # Expected None.
     assert mid_none is None
@@ -218,10 +209,7 @@ def test_pick_iv_for_tenor_respects_dte_window() -> None:
 
 def test_pick_iv_for_tenor_returns_none_for_empty_chain() -> None:
     as_of = date(2026, 4, 22)
-    assert (
-        _pick_iv_for_tenor([], as_of, spot=100.0, target_dte=30, dte_min=7, dte_max=45)
-        is None
-    )
+    assert _pick_iv_for_tenor([], as_of, spot=100.0, target_dte=30, dte_min=7, dte_max=45) is None
 
 
 # ---------------------------------------------------------------------------
@@ -392,10 +380,10 @@ class _RecordingSession:
     def __init__(self) -> None:
         self.added: list = []
 
-    def query(self, *_args, **_kwargs) -> "_RecordingSession":
+    def query(self, *_args, **_kwargs) -> _RecordingSession:
         return self
 
-    def filter(self, *_args, **_kwargs) -> "_RecordingSession":
+    def filter(self, *_args, **_kwargs) -> _RecordingSession:
         return self
 
     def first(self):

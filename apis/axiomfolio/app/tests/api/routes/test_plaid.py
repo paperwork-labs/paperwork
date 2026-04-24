@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 from cryptography.fernet import Fernet
@@ -39,6 +39,7 @@ try:
     from app.models.user import User, UserRole
     from app.services.billing.entitlement_service import EntitlementService
     from app.services.portfolio.plaid import client as plaid_client_module
+
     AVAILABLE = True
 except Exception:  # pragma: no cover
     AVAILABLE = False
@@ -95,7 +96,7 @@ class _FakePlaidClient:
     link_token_value = "link-sandbox-fake"
     access_token_value = "access-sandbox-fake"
     item_id_value = "item-fake"
-    accounts_payload: List[Dict[str, Any]] = [
+    accounts_payload: list[dict[str, Any]] = [
         {
             "account_id": "acct-1",
             "name": "401(k)",
@@ -125,7 +126,7 @@ class _FakePlaidClient:
     def decrypt_access_token(ct: str) -> str:
         return "plaintext"
 
-    def get_accounts(self, access_token_ct: str) -> List[Dict[str, Any]]:
+    def get_accounts(self, access_token_ct: str) -> list[dict[str, Any]]:
         assert access_token_ct.startswith("ENC::")
         return self.accounts_payload
 
@@ -242,9 +243,7 @@ def test_exchange_creates_connection_and_broker_account(
         "/api/v1/plaid/exchange",
         json={
             "public_token": "pub-sandbox-x",
-            "metadata": {
-                "institution": {"institution_id": "ins_3", "name": "Fidelity"}
-            },
+            "metadata": {"institution": {"institution_id": "ins_3", "name": "Fidelity"}},
         },
     )
     assert r.status_code == 200, r.text
@@ -253,20 +252,12 @@ def test_exchange_creates_connection_and_broker_account(
     assert body["status"] == PlaidConnectionStatus.ACTIVE.value
     assert len(body["account_ids"]) == 1
 
-    conn = (
-        db_session.query(PlaidConnection)
-        .filter(PlaidConnection.user_id == route_user.id)
-        .one()
-    )
+    conn = db_session.query(PlaidConnection).filter(PlaidConnection.user_id == route_user.id).one()
     # Plaintext must NEVER land in the stored column.
     assert "access-sandbox" not in conn.access_token_encrypted
     assert conn.access_token_encrypted.startswith("ENC::")
 
-    ba = (
-        db_session.query(BrokerAccount)
-        .filter(BrokerAccount.user_id == route_user.id)
-        .one()
-    )
+    ba = db_session.query(BrokerAccount).filter(BrokerAccount.user_id == route_user.id).one()
     assert ba.connection_source == "plaid"
     assert ba.account_number == "acct-1"
 

@@ -11,9 +11,8 @@ We patch ``time.sleep`` and ``asyncio.sleep`` so the tests run in
 milliseconds while still asserting the *shape* of the backoff (which base
 delay was selected and how many attempts were made).
 """
-from __future__ import annotations
 
-from typing import List
+from __future__ import annotations
 
 import pytest
 
@@ -56,7 +55,7 @@ def _make_failing_fn(times: int, exc_factory):
 def test_sync_rate_limited_uses_full_retry_budget(monkeypatch):
     """The previous bug capped retries to 2 on first 429. Verify that a
     rate-limited call now uses the full attempts budget (default 6)."""
-    sleeps: List[float] = []
+    sleeps: list[float] = []
     monkeypatch.setattr(pr_module.time, "sleep", lambda s: sleeps.append(s))
 
     fn, calls = _make_failing_fn(5, _RateLimitError)
@@ -72,7 +71,7 @@ def test_sync_rate_limited_uses_full_retry_budget(monkeypatch):
 def test_sync_rate_limited_uses_long_base_delay(monkeypatch):
     """A rate-limited call's first sleep should be >> a non-transient
     failure's first sleep (8s base vs 0.2s)."""
-    sleeps: List[float] = []
+    sleeps: list[float] = []
     monkeypatch.setattr(pr_module.time, "sleep", lambda s: sleeps.append(s))
 
     fn, _ = _make_failing_fn(2, _RateLimitError)
@@ -85,13 +84,15 @@ def test_sync_rate_limited_uses_long_base_delay(monkeypatch):
 
     # First sleep should be ~8 * jitter (between 6 and 12s).
     assert sleeps, "expected at least one sleep"
-    assert 4.0 <= sleeps[0] <= 12.5, f"rate-limit first sleep {sleeps[0]} outside expected 6-12s window"
+    assert 4.0 <= sleeps[0] <= 12.5, (
+        f"rate-limit first sleep {sleeps[0]} outside expected 6-12s window"
+    )
 
 
 def test_sync_non_transient_uses_short_base_delay(monkeypatch):
     """Non-transient errors still get the fast ~0.2s base delay so we don't
     pause unnecessarily for things like 404s."""
-    sleeps: List[float] = []
+    sleeps: list[float] = []
     monkeypatch.setattr(pr_module.time, "sleep", lambda s: sleeps.append(s))
 
     class _NotFound(Exception):
@@ -112,7 +113,7 @@ def test_sync_non_transient_uses_short_base_delay(monkeypatch):
 
 def test_sync_transient_5xx_uses_medium_base_delay(monkeypatch):
     """5xx but not rate-limited should use 0.8s base."""
-    sleeps: List[float] = []
+    sleeps: list[float] = []
     monkeypatch.setattr(pr_module.time, "sleep", lambda s: sleeps.append(s))
 
     class _ServerError(Exception):
@@ -130,13 +131,15 @@ def test_sync_transient_5xx_uses_medium_base_delay(monkeypatch):
 
     assert sleeps, "expected at least one sleep"
     # 0.8 base * jitter (0.75-1.25) => 0.6-1.0s — should sit between non-transient and rate-limit.
-    assert 0.4 <= sleeps[0] <= 2.0, f"transient first sleep {sleeps[0]} outside expected 0.6-1.0s window"
+    assert 0.4 <= sleeps[0] <= 2.0, (
+        f"transient first sleep {sleeps[0]} outside expected 0.6-1.0s window"
+    )
 
 
 def test_sync_no_runaway_when_max_delay_caps(monkeypatch):
     """The max_delay_seconds cap should kick in for late retries even on
     rate-limit; 8 * 2^4 = 128 must clamp to 60s default."""
-    sleeps: List[float] = []
+    sleeps: list[float] = []
     monkeypatch.setattr(pr_module.time, "sleep", lambda s: sleeps.append(s))
 
     fn, _ = _make_failing_fn(10, _RateLimitError)
@@ -156,7 +159,7 @@ def test_sync_no_runaway_when_max_delay_caps(monkeypatch):
 @pytest.mark.asyncio
 async def test_async_rate_limited_uses_full_retry_budget(monkeypatch):
     """Mirror of the sync test for the async path."""
-    sleeps: List[float] = []
+    sleeps: list[float] = []
 
     async def _fake_sleep(s):
         sleeps.append(s)

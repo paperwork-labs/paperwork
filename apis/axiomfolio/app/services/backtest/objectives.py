@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Callable, Sequence
 from decimal import Decimal, getcontext
-from typing import TYPE_CHECKING, Callable, Dict, Sequence
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.services.backtest.walk_forward import TradeResult
@@ -43,7 +44,7 @@ def _to_decimal(value: float) -> Decimal:
     return Decimal(str(value))
 
 
-def _trade_returns(trades: Sequence["TradeResult"]) -> list[Decimal]:
+def _trade_returns(trades: Sequence[TradeResult]) -> list[Decimal]:
     return [t.return_pct for t in trades if t.return_pct is not None]
 
 
@@ -64,7 +65,7 @@ def _stdev(values: Sequence[Decimal]) -> Decimal:
     return _to_decimal(math.sqrt(float(var)))
 
 
-def sharpe_ratio(trades: Sequence["TradeResult"]) -> Decimal:
+def sharpe_ratio(trades: Sequence[TradeResult]) -> Decimal:
     """Annualized Sharpe of per-trade returns.
 
     We use trade-by-trade returns rather than daily returns because the
@@ -81,7 +82,7 @@ def sharpe_ratio(trades: Sequence["TradeResult"]) -> Decimal:
     return mu / sigma * _to_decimal(math.sqrt(float(TRADING_DAYS)))
 
 
-def sortino_ratio(trades: Sequence["TradeResult"]) -> Decimal:
+def sortino_ratio(trades: Sequence[TradeResult]) -> Decimal:
     """Like Sharpe but only penalizes downside volatility."""
     rets = _trade_returns(trades)
     if len(rets) < 2:
@@ -97,7 +98,7 @@ def sortino_ratio(trades: Sequence["TradeResult"]) -> Decimal:
     return mu / downside_std * _to_decimal(math.sqrt(float(TRADING_DAYS)))
 
 
-def calmar_ratio(trades: Sequence["TradeResult"]) -> Decimal:
+def calmar_ratio(trades: Sequence[TradeResult]) -> Decimal:
     """Total return divided by max equity drawdown across the trade sequence.
 
     Returns 0 when there were no losing periods (drawdown == 0); the trial
@@ -125,7 +126,7 @@ def calmar_ratio(trades: Sequence["TradeResult"]) -> Decimal:
     return total_ret / max_dd
 
 
-def expectancy(trades: Sequence["TradeResult"]) -> Decimal:
+def expectancy(trades: Sequence[TradeResult]) -> Decimal:
     """Average return per trade. Direct, easy to interpret."""
     rets = _trade_returns(trades)
     if not rets:
@@ -133,7 +134,7 @@ def expectancy(trades: Sequence["TradeResult"]) -> Decimal:
     return _mean(rets)
 
 
-def win_rate_x_avg_win(trades: Sequence["TradeResult"]) -> Decimal:
+def win_rate_x_avg_win(trades: Sequence[TradeResult]) -> Decimal:
     """Win rate * average winning return. Useful when avoiding drawdowns
     matters more than raw expectancy (penalizes a few big losses that
     expectancy alone might mask)."""
@@ -148,7 +149,7 @@ def win_rate_x_avg_win(trades: Sequence["TradeResult"]) -> Decimal:
     return win_rate * avg_win
 
 
-OBJECTIVES: Dict[str, ObjectiveFn] = {
+OBJECTIVES: dict[str, ObjectiveFn] = {
     "sharpe_ratio": sharpe_ratio,
     "sortino_ratio": sortino_ratio,
     "calmar_ratio": calmar_ratio,
@@ -161,10 +162,7 @@ def get_objective(name: str) -> ObjectiveFn:
     """Look up an objective by name. Raises ``ValueError`` on unknown name
     so a typo'd config fails loudly rather than silently scoring zero."""
     if name not in OBJECTIVES:
-        raise ValueError(
-            f"Unknown objective '{name}'. "
-            f"Available: {sorted(OBJECTIVES.keys())}"
-        )
+        raise ValueError(f"Unknown objective '{name}'. Available: {sorted(OBJECTIVES.keys())}")
     return OBJECTIVES[name]
 
 

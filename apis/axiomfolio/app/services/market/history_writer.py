@@ -10,12 +10,11 @@ medallion: silver
 
 import logging
 from datetime import date
-from typing import Dict, List, Optional, Set
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
-from app.models.market_data import MarketSnapshot, MarketSnapshotHistory, MarketRegime
+from app.models.market_data import MarketRegime, MarketSnapshot, MarketSnapshotHistory
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +33,8 @@ _HISTORY_CONFLICT_UPDATE_EXCLUDE = frozenset(
 def snapshot_to_history_row(
     snap: MarketSnapshot,
     as_of_date: date,
-    regime: Optional[MarketRegime] = None,
-) -> Dict:
+    regime: MarketRegime | None = None,
+) -> dict:
     """Convert a MarketSnapshot to a dict suitable for MarketSnapshotHistory.
 
     Args:
@@ -72,7 +71,7 @@ def snapshot_to_history_row(
 
 def upsert_history_rows(
     db: Session,
-    rows: List[Dict],
+    rows: list[dict],
     batch_size: int = 100,
 ) -> int:
     """Upsert rows into MarketSnapshotHistory using PostgreSQL INSERT ... ON CONFLICT.
@@ -94,16 +93,14 @@ def upsert_history_rows(
     table = MarketSnapshotHistory.__table__
     allowed_cols = {c.name for c in table.columns}
 
-    prepared: List[Dict] = []
+    prepared: list[dict] = []
     for row_data in rows:
         symbol = row_data.get("symbol")
         as_of = row_data.get("as_of_date")
         analysis_type = row_data.get("analysis_type", "technical_snapshot")
         if not symbol or not as_of:
             continue
-        payload = {
-            k: v for k, v in row_data.items() if k in allowed_cols and k != "id"
-        }
+        payload = {k: v for k, v in row_data.items() if k in allowed_cols and k != "id"}
         payload["symbol"] = symbol
         payload["as_of_date"] = as_of
         payload["analysis_type"] = analysis_type
@@ -115,7 +112,7 @@ def upsert_history_rows(
     written = 0
     for start in range(0, len(prepared), batch_size):
         batch = prepared[start : start + batch_size]
-        key_union: Set[str] = set()
+        key_union: set[str] = set()
         for p in batch:
             key_union.update(p.keys())
         key_union.discard("id")
@@ -148,9 +145,9 @@ def upsert_history_rows(
 
 def record_daily_snapshot_history(
     db: Session,
-    as_of_date: Optional[date] = None,
+    as_of_date: date | None = None,
     include_regime: bool = True,
-) -> Dict:
+) -> dict:
     """Record all current MarketSnapshots to history for a given date.
 
     This is the primary function to call from scheduled tasks.
@@ -175,13 +172,18 @@ def record_daily_snapshot_history(
     regime = None
     if include_regime:
         from app.services.market.regime_engine import get_current_regime
+
         regime = get_current_regime(db)
 
     # Get all valid snapshots
-    snapshots = db.query(MarketSnapshot).filter(
-        MarketSnapshot.analysis_type == "technical_snapshot",
-        MarketSnapshot.is_valid.is_(True),
-    ).all()
+    snapshots = (
+        db.query(MarketSnapshot)
+        .filter(
+            MarketSnapshot.analysis_type == "technical_snapshot",
+            MarketSnapshot.is_valid.is_(True),
+        )
+        .all()
+    )
 
     if not snapshots:
         return {"symbols_recorded": 0, "existing_skipped": 0, "errors": 0}

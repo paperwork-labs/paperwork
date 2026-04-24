@@ -22,9 +22,9 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal, ROUND_HALF_UP
-from typing import Any, Dict, List, Optional, Tuple
+from datetime import UTC, date, datetime, timedelta
+from decimal import ROUND_HALF_UP, Decimal
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -97,7 +97,7 @@ def _last_day_of_month(year: int, month: int) -> int:
     return (nxt - timedelta(days=1)).day
 
 
-def _iter_months(start: date, end: date) -> List[date]:
+def _iter_months(start: date, end: date) -> list[date]:
     """Inclusive list of first-of-month dates between `start` and `end`.
 
     Both bounds are normalized to the first of their month so callers
@@ -105,7 +105,7 @@ def _iter_months(start: date, end: date) -> List[date]:
     """
     cur = date(start.year, start.month, 1)
     stop = date(end.year, end.month, 1)
-    out: List[date] = []
+    out: list[date] = []
     while cur <= stop:
         out.append(cur)
         cur = _add_months(cur, 1)
@@ -138,14 +138,14 @@ class _CellAcc:
 
     total: Decimal = _ZERO
     tax_withheld: Decimal = _ZERO
-    by_symbol: Dict[str, Decimal] = field(default_factory=lambda: defaultdict(lambda: _ZERO))
+    by_symbol: dict[str, Decimal] = field(default_factory=lambda: defaultdict(lambda: _ZERO))
 
 
 @dataclass
 class _SymbolHistory:
     """Per-symbol trailing history used by the projection algorithm."""
 
-    pay_dates: List[date]
+    pay_dates: list[date]
     avg_per_share_per_payment: Decimal
     avg_tax_per_share_per_payment: Decimal
     payments_per_year: int
@@ -159,7 +159,7 @@ class _SymbolHistory:
 
 def _load_dividends_in_window(
     db: Session, user_id: int, start: date, end: date
-) -> List[_DividendRow]:
+) -> list[_DividendRow]:
     """All dividends paid between `start` and `end`, scoped to the user.
 
     Dividends with no `pay_date` are skipped (they cannot be placed on a
@@ -175,7 +175,7 @@ def _load_dividends_in_window(
         .filter(Dividend.pay_date <= datetime.combine(end, datetime.max.time()))
         .all()
     )
-    out: List[_DividendRow] = []
+    out: list[_DividendRow] = []
     for d in rows:
         pd = d.pay_date.date() if hasattr(d.pay_date, "date") else d.pay_date
         out.append(
@@ -193,7 +193,7 @@ def _load_dividends_in_window(
 
 def _build_past_calendar(
     db: Session, user_id: int, months: int, today: date
-) -> Tuple[Dict[date, _CellAcc], List[date], bool]:
+) -> tuple[dict[date, _CellAcc], list[date], bool]:
     """Aggregate realised dividends for the past `months` ending today.
 
     Returns `(cells, months_in_window, tax_data_available)`.
@@ -202,7 +202,7 @@ def _build_past_calendar(
     start = _add_months(end, -months)
     rows = _load_dividends_in_window(db, user_id, start, end)
 
-    cells: Dict[date, _CellAcc] = {}
+    cells: dict[date, _CellAcc] = {}
     tax_data_available = False
     for row in rows:
         cell = cells.setdefault(row.pay_date, _CellAcc())
@@ -223,7 +223,7 @@ def _build_past_calendar(
 # ---------------------------------------------------------------------------
 
 
-def _infer_payments_per_year(pay_dates: List[date]) -> int:
+def _infer_payments_per_year(pay_dates: list[date]) -> int:
     """Heuristic cadence in payments per year from a sorted history.
 
     Uses the median gap between consecutive payments and snaps to the
@@ -234,10 +234,7 @@ def _infer_payments_per_year(pay_dates: List[date]) -> int:
     """
     if len(pay_dates) < 2:
         return 4
-    deltas = [
-        (b - a).days
-        for a, b in zip(sorted(pay_dates)[:-1], sorted(pay_dates)[1:])
-    ]
+    deltas = [(b - a).days for a, b in zip(sorted(pay_dates)[:-1], sorted(pay_dates)[1:])]
     deltas.sort()
     median_days = deltas[len(deltas) // 2]
     if median_days <= 0:
@@ -248,19 +245,19 @@ def _infer_payments_per_year(pay_dates: List[date]) -> int:
 
 
 def _build_symbol_history(
-    rows: List[_DividendRow],
-) -> Dict[str, _SymbolHistory]:
+    rows: list[_DividendRow],
+) -> dict[str, _SymbolHistory]:
     """Group `rows` by symbol and compute per-share averages + cadence.
 
     Per-share averages, not per-payment dollar amounts — this is the
     whole point of the projection: it must scale to the *current*
     shares held, not the historical position size.
     """
-    by_sym: Dict[str, List[_DividendRow]] = defaultdict(list)
+    by_sym: dict[str, list[_DividendRow]] = defaultdict(list)
     for r in rows:
         by_sym[r.symbol].append(r)
 
-    out: Dict[str, _SymbolHistory] = {}
+    out: dict[str, _SymbolHistory] = {}
     for symbol, items in by_sym.items():
         items.sort(key=lambda x: x.pay_date)
         # Per-share average across all rows; we deliberately weight each
@@ -269,9 +266,7 @@ def _build_symbol_history(
         valid = [x for x in items if x.dividend_per_share > _ZERO]
         if not valid:
             continue
-        avg_div = sum((x.dividend_per_share for x in valid), _ZERO) / Decimal(
-            len(valid)
-        )
+        avg_div = sum((x.dividend_per_share for x in valid), _ZERO) / Decimal(len(valid))
         # Tax per share is opportunistic — many ingest paths leave it 0.
         share_weighted_tax = [
             (x.tax_withheld / x.shares_held)
@@ -294,7 +289,7 @@ def _build_symbol_history(
     return out
 
 
-def _current_shares_per_symbol(db: Session, user_id: int) -> Dict[str, Decimal]:
+def _current_shares_per_symbol(db: Session, user_id: int) -> dict[str, Decimal]:
     """Sum open-equity shares per symbol for `user_id`.
 
     Aggregates across accounts. Options/futures are excluded by the
@@ -307,7 +302,7 @@ def _current_shares_per_symbol(db: Session, user_id: int) -> Dict[str, Decimal]:
         .filter(Position.status == PositionStatus.OPEN)
         .all()
     )
-    out: Dict[str, Decimal] = defaultdict(lambda: _ZERO)
+    out: dict[str, Decimal] = defaultdict(lambda: _ZERO)
     for symbol, qty, inst_type in rows:
         # Anything non-equity (options, futures) won't accrue ordinary
         # dividends — exclude rather than risk projecting phantom income.
@@ -319,16 +314,14 @@ def _current_shares_per_symbol(db: Session, user_id: int) -> Dict[str, Decimal]:
     return out
 
 
-def _project_dates_for_symbol(
-    history: _SymbolHistory, end: date
-) -> List[date]:
+def _project_dates_for_symbol(history: _SymbolHistory, end: date) -> list[date]:
     """Project future pay dates for `history` up to (and including) `end`.
 
     Walks forward from `last_pay_date` in `cadence_days` increments
     derived from `payments_per_year`. Dates beyond `end` are dropped.
     """
     cadence_days = max(1, round(365 / history.payments_per_year))
-    out: List[date] = []
+    out: list[date] = []
     cur = history.last_pay_date + timedelta(days=cadence_days)
     while cur <= end:
         out.append(cur)
@@ -338,7 +331,7 @@ def _project_dates_for_symbol(
 
 def _build_projection_calendar(
     db: Session, user_id: int, months: int, today: date
-) -> Tuple[Dict[date, _CellAcc], List[date], bool]:
+) -> tuple[dict[date, _CellAcc], list[date], bool]:
     """Forecast next `months` of dividends from history × current shares.
 
     Algorithm
@@ -385,7 +378,7 @@ def _build_projection_calendar(
     by_symbol = _build_symbol_history(rows)
     current_shares = _current_shares_per_symbol(db, user_id)
 
-    cells: Dict[date, _CellAcc] = {}
+    cells: dict[date, _CellAcc] = {}
     tax_data_available = False
 
     for symbol, history in by_symbol.items():
@@ -423,24 +416,21 @@ def _build_projection_calendar(
 # ---------------------------------------------------------------------------
 
 
-def _serialize_cells(cells: Dict[date, _CellAcc]) -> List[Dict[str, Any]]:
+def _serialize_cells(cells: dict[date, _CellAcc]) -> list[dict[str, Any]]:
     """Cells, sorted by date, with stable per-symbol ordering."""
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for d in sorted(cells.keys()):
         acc = cells[d]
         # Sort by amount desc, then symbol asc — keeps the "biggest
         # contributor" visually first in the rich tooltip.
-        breakdown = sorted(
-            acc.by_symbol.items(), key=lambda kv: (-kv[1], kv[0])
-        )
+        breakdown = sorted(acc.by_symbol.items(), key=lambda kv: (-kv[1], kv[0]))
         out.append(
             {
                 "date": d.isoformat(),
                 "total": _decimal_to_json(acc.total),
                 "tax_withheld": _decimal_to_json(acc.tax_withheld),
                 "by_symbol": [
-                    {"symbol": sym, "amount": _decimal_to_json(amt)}
-                    for sym, amt in breakdown
+                    {"symbol": sym, "amount": _decimal_to_json(amt)} for sym, amt in breakdown
                 ],
             }
         )
@@ -448,20 +438,20 @@ def _serialize_cells(cells: Dict[date, _CellAcc]) -> List[Dict[str, Any]]:
 
 
 def _build_monthly_totals(
-    months_in_window: List[date],
-    cells: Dict[date, _CellAcc],
+    months_in_window: list[date],
+    cells: dict[date, _CellAcc],
     *,
     projected: bool,
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """One row per month in the window, with rolled-up totals."""
-    by_month_total: Dict[str, Decimal] = defaultdict(lambda: _ZERO)
-    by_month_tax: Dict[str, Decimal] = defaultdict(lambda: _ZERO)
+    by_month_total: dict[str, Decimal] = defaultdict(lambda: _ZERO)
+    by_month_tax: dict[str, Decimal] = defaultdict(lambda: _ZERO)
     for d, acc in cells.items():
         key = _month_key(d)
         by_month_total[key] += acc.total
         by_month_tax[key] += acc.tax_withheld
 
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for first_of_month in months_in_window:
         key = _month_key(first_of_month)
         out.append(
@@ -483,7 +473,7 @@ def _build_monthly_totals(
 _ALLOWED_MODES = {"past", "projection"}
 
 
-@router.get("/income/calendar", response_model=Dict[str, Any])
+@router.get("/income/calendar", response_model=dict[str, Any])
 async def get_income_calendar(
     mode: str = Query(
         "past",
@@ -502,7 +492,7 @@ async def get_income_calendar(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return a Snowball-style 12-month dividend calendar for the user.
 
     Multi-tenant: every query is scoped to `current_user.id` via
@@ -513,12 +503,10 @@ async def get_income_calendar(
     if mode_normalised not in _ALLOWED_MODES:
         raise HTTPException(
             status_code=400,
-            detail=(
-                f"mode must be one of {sorted(_ALLOWED_MODES)}; got {mode!r}"
-            ),
+            detail=(f"mode must be one of {sorted(_ALLOWED_MODES)}; got {mode!r}"),
         )
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     if mode_normalised == "past":
         cells, months_in_window, tax_data_available = _build_past_calendar(
             db, current_user.id, months, today
@@ -535,8 +523,6 @@ async def get_income_calendar(
         "months": months,
         "tax_data_available": tax_data_available,
         "cells": _serialize_cells(cells),
-        "monthly_totals": _build_monthly_totals(
-            months_in_window, cells, projected=projected
-        ),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "monthly_totals": _build_monthly_totals(months_in_window, cells, projected=projected),
+        "generated_at": datetime.now(UTC).isoformat(),
     }

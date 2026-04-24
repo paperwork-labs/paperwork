@@ -25,9 +25,9 @@ medallion: gold
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Mapping
 
 from app.config import settings as app_settings
 
@@ -93,14 +93,12 @@ def _to_decimal(value: object, field: str) -> Decimal:
         )
     try:
         dec = Decimal(str(value))
-    except Exception as exc:  # noqa: BLE001 — wrap with context
+    except Exception as exc:
         raise FirmCapsUnavailable(
             f"firm cap for {field!r} is not a valid decimal: {value!r}"
         ) from exc
     if dec < 0 or dec > 1:
-        raise FirmCapsUnavailable(
-            f"firm cap for {field!r} out of range [0, 1]: {dec}"
-        )
+        raise FirmCapsUnavailable(f"firm cap for {field!r} out of range [0, 1]: {dec}")
     return dec
 
 

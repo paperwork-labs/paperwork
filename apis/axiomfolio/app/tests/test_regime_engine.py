@@ -10,15 +10,15 @@ from app.services.market.regime_engine import (
     REGIME_R3,
     REGIME_R4,
     REGIME_R5,
-    WEIGHTS,
     WEIGHT_SUM,
+    WEIGHTS,
     RegimeInputs,
     composite_to_regime,
     compute_composite,
     compute_regime,
     score_nh_nl,
-    score_pct_above_200d,
     score_pct_above_50d,
+    score_pct_above_200d,
     score_vix,
     score_vix3m_vix,
     score_vvix_vix,
@@ -28,6 +28,7 @@ pytestmark = pytest.mark.no_db
 
 
 # ── VIX scoring: <17 / 17–20 / 20–27 / 27–35 / ≥35 ──
+
 
 class TestScoreVix:
     def test_deep_bull(self) -> None:
@@ -57,6 +58,7 @@ class TestScoreVix:
 
 # ── VIX3M/VIX scoring: >1.10 / (1.05,1.10] / (1.00,1.05] / (0.90,1.00] / ≤0.90 ──
 
+
 class TestScoreVix3mVix:
     def test_strong_contango(self) -> None:
         assert score_vix3m_vix(1.15) == 1.0
@@ -82,6 +84,7 @@ class TestScoreVix3mVix:
 
 
 # ── VVIX/VIX scoring (non-monotonic): ≥7.0→5 / (5.5,7.0)→1 / (4.5,5.5]→2 / etc. ──
+
 
 class TestScoreVvixVix:
     def test_optimal_range(self) -> None:
@@ -115,6 +118,7 @@ class TestScoreVvixVix:
 
 # ── NH-NL scoring: >100 / (20,100] / (-50,20] / (-150,-50] / ≤-150 ──
 
+
 class TestScoreNhNl:
     def test_strong_breadth(self) -> None:
         assert score_nh_nl(200) == 1.0
@@ -141,6 +145,7 @@ class TestScoreNhNl:
 
 # ── % above 200D scoring: >65 / (55,65] / (45,55] / (30,45] / ≤30 ──
 
+
 class TestScorePctAbove200d:
     def test_healthy(self) -> None:
         assert score_pct_above_200d(80) == 1.0
@@ -166,6 +171,7 @@ class TestScorePctAbove200d:
 
 # ── % above 50D scoring: >65 / (50,65] / (35,50] / (15,35] / ≤15 ──
 
+
 class TestScorePctAbove50d:
     def test_healthy(self) -> None:
         assert score_pct_above_50d(80) == 1.0
@@ -188,10 +194,11 @@ class TestScorePctAbove50d:
 
 # ── Weighted composite ──
 
+
 class TestComputeComposite:
     def test_weights_constant(self) -> None:
         assert WEIGHTS == [1.00, 1.25, 0.75, 1.00, 1.00, 0.75]
-        assert WEIGHT_SUM == pytest.approx(5.75)
+        assert pytest.approx(5.75) == WEIGHT_SUM
 
     def test_all_ones(self) -> None:
         assert compute_composite([1, 1, 1, 1, 1, 1]) == 1.0
@@ -204,7 +211,7 @@ class TestComputeComposite:
 
     def test_weighted_average(self) -> None:
         scores = [1, 2, 3, 2, 2, 3]
-        expected = (1*1.0 + 2*1.25 + 3*0.75 + 2*1.0 + 2*1.0 + 3*0.75) / 5.75
+        expected = (1 * 1.0 + 2 * 1.25 + 3 * 0.75 + 2 * 1.0 + 2 * 1.0 + 3 * 0.75) / 5.75
         rounded = round(expected * 4) / 4
         assert compute_composite(scores) == rounded
 
@@ -218,11 +225,12 @@ class TestComputeComposite:
         term_bull = list(base)
         term_bull[1] = 1  # VIX3M/VIX gets weight 1.25
         vol_bull = list(base)
-        vol_bull[2] = 1   # VVIX/VIX gets weight 0.75
+        vol_bull[2] = 1  # VVIX/VIX gets weight 0.75
         assert compute_composite(term_bull) < compute_composite(vol_bull)
 
 
 # ── Regime mapping with boundary rule ──
+
 
 class TestCompositeToRegime:
     def test_r1_range(self) -> None:
@@ -260,6 +268,7 @@ class TestCompositeToRegime:
 
 
 # ── End-to-end compute_regime ──
+
 
 class TestComputeRegime:
     def test_bull_market(self) -> None:

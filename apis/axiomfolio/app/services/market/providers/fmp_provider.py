@@ -12,12 +12,12 @@ medallion: silver
 
 import logging
 from datetime import date
-from typing import Dict, List, Optional
 
 import httpx
 import pandas as pd
 
 from app.config import settings
+
 from .protocol import MarketDataProvider
 
 logger = logging.getLogger(__name__)
@@ -44,7 +44,7 @@ class FMPProvider(MarketDataProvider):
         """Check if FMP API key is configured."""
         return bool(self.api_key)
 
-    async def get_quotes(self, symbols: List[str]) -> Dict[str, float]:
+    async def get_quotes(self, symbols: list[str]) -> dict[str, float]:
         """Get current prices for multiple symbols."""
         if not self.is_available():
             return {}
@@ -105,13 +105,15 @@ class FMPProvider(MarketDataProvider):
             df = df.set_index("date")
 
             # Standardize column names
-            df = df.rename(columns={
-                "open": "Open",
-                "high": "High",
-                "low": "Low",
-                "close": "Close",
-                "volume": "Volume",
-            })
+            df = df.rename(
+                columns={
+                    "open": "Open",
+                    "high": "High",
+                    "low": "Low",
+                    "close": "Close",
+                    "volume": "Volume",
+                }
+            )
 
             cols = ["Open", "High", "Low", "Close", "Volume"]
             available_cols = [c for c in cols if c in df.columns]
@@ -121,7 +123,7 @@ class FMPProvider(MarketDataProvider):
             logger.warning("FMP historical fetch failed for %s: %s", symbol, e)
             return pd.DataFrame()
 
-    async def get_fundamentals(self, symbol: str) -> Dict:
+    async def get_fundamentals(self, symbol: str) -> dict:
         """Get company fundamentals."""
         if not self.is_available():
             return {}
@@ -159,10 +161,11 @@ class FMPProvider(MarketDataProvider):
         """FMP supports intraday data on paid plans."""
         return True
 
-    def rate_limit(self) -> Optional[int]:
+    def rate_limit(self) -> int | None:
         """FMP rate limit (calls/min) derived from ProviderPolicy."""
         try:
             from app.config import settings
+
             return settings.provider_policy.fmp_cpm
         except Exception:
             return 700

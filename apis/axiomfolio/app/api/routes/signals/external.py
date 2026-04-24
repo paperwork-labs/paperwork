@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, timedelta
-from typing import Any, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,13 +27,13 @@ class ExternalSignalItem(BaseModel):
     source: str
     signal_date: date
     signal_type: str
-    value: Optional[str] = None
+    value: str | None = None
     raw_payload: dict[str, Any] = Field(default_factory=dict)
     created_at: str
 
 
 class ExternalSignalsResponse(BaseModel):
-    items: List[ExternalSignalItem]
+    items: list[ExternalSignalItem]
 
 
 def _row_to_item(r: ExternalSignal) -> ExternalSignalItem:
@@ -51,7 +51,7 @@ def _row_to_item(r: ExternalSignal) -> ExternalSignalItem:
 
 
 class ExternalSignalsBatchResponse(BaseModel):
-    by_symbol: dict[str, List[ExternalSignalItem]]
+    by_symbol: dict[str, list[ExternalSignalItem]]
 
 
 def _load_external_items_for_symbol(

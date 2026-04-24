@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from app.config import settings
@@ -23,7 +23,7 @@ def _snap(
     vol_ratio: float = 1.5,
     high_52w: float = 115.0,
 ) -> MarketSnapshot:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return MarketSnapshot(
         symbol=symbol,
         analysis_type="technical_snapshot",

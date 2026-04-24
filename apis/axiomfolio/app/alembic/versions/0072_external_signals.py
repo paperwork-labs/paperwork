@@ -11,7 +11,6 @@ import sqlalchemy as sa
 from alembic import op
 from sqlalchemy.dialects.postgresql import JSONB
 
-
 revision = "0072"
 down_revision = "0071"
 branch_labels = None
@@ -42,9 +41,7 @@ def upgrade() -> None:
             name="uq_external_signals_sym_src_day_type",
         ),
     )
-    op.create_index(
-        "ix_external_signals_symbol", "external_signals", ["symbol"], unique=False
-    )
+    op.create_index("ix_external_signals_symbol", "external_signals", ["symbol"], unique=False)
     op.create_index(
         "ix_external_signals_signal_date", "external_signals", ["signal_date"], unique=False
     )

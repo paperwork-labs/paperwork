@@ -1,10 +1,10 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_admin_user
+from app.api.main import app
 from app.models.market_data import MarketSnapshotHistory, PriceData
 from app.models.user import UserRole
 
@@ -28,6 +28,7 @@ def test_admin_sanity_coverage_payload(db_session, monkeypatch):
     # Force route codepaths to use pytest DB session.
     app.dependency_overrides[get_db] = lambda: db_session
     try:
+
         async def _fake_tracked_symbols_async(_db, redis_async=None):
             return ["AAA", "BBB"]
 
@@ -37,7 +38,7 @@ def test_admin_sanity_coverage_payload(db_session, monkeypatch):
         db_session.add(
             PriceData(
                 symbol="AAA",
-                date=datetime(2026, 1, 9, tzinfo=timezone.utc),
+                date=datetime(2026, 1, 9, tzinfo=UTC),
                 interval="1d",
                 open_price=1,
                 high_price=1,
@@ -51,8 +52,8 @@ def test_admin_sanity_coverage_payload(db_session, monkeypatch):
             MarketSnapshotHistory(
                 symbol="AAA",
                 analysis_type="technical_snapshot",
-                analysis_timestamp=datetime(2026, 1, 10, tzinfo=timezone.utc),
-                as_of_date=datetime(2026, 1, 9, tzinfo=timezone.utc).date(),
+                analysis_timestamp=datetime(2026, 1, 10, tzinfo=UTC),
+                as_of_date=datetime(2026, 1, 9, tzinfo=UTC).date(),
                 current_price=1.0,
             )
         )
@@ -74,5 +75,3 @@ def test_admin_sanity_coverage_payload(db_session, monkeypatch):
         assert data["benchmark"]["ok"] is False
     finally:
         app.dependency_overrides.pop(get_db, None)
-
-

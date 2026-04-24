@@ -3,19 +3,19 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import fmpsdk
 import yfinance as yf
 
 from app.config import settings
-from app.services.market.constants import FUNDAMENTAL_FIELDS, ETF_SECTOR_INDUSTRY
+from app.services.market.constants import ETF_SECTOR_INDUSTRY, FUNDAMENTAL_FIELDS
 
 logger = logging.getLogger(__name__)
 
 
-def needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
+def needs_fundamentals(snapshot: dict[str, Any]) -> bool:
     """Return True when *snapshot* is missing core fundamental fields or data is stale (>7 days)."""
     if any(snapshot.get(f) is None for f in FUNDAMENTAL_FIELDS):
         return True
@@ -32,11 +32,11 @@ def needs_fundamentals(snapshot: Dict[str, Any]) -> bool:
                 return False
         try:
             ts_utc = (
-                ts.replace(tzinfo=timezone.utc)
+                ts.replace(tzinfo=UTC)
                 if ts.tzinfo is None
-                else ts.astimezone(timezone.utc)
+                else ts.astimezone(UTC)
             )
-            age = datetime.now(timezone.utc) - ts_utc
+            age = datetime.now(UTC) - ts_utc
             if age > timedelta(days=7):
                 return True
         except Exception as e:
@@ -55,7 +55,7 @@ class FundamentalsService:
         self._infra = infra
         self._provider = provider_router
 
-    def get_fundamentals_info(self, symbol: str) -> Dict[str, Any]:
+    def get_fundamentals_info(self, symbol: str) -> dict[str, Any]:
         """Return fundamentals for *symbol* using multi-provider cascade.
 
         Provider order: FMP -> Finnhub -> yfinance -> Alpha Vantage.
@@ -63,9 +63,9 @@ class FundamentalsService:
         """
         from app.services.market.rate_limiter import provider_rate_limiter
 
-        info: Dict[str, Any] = {}
+        info: dict[str, Any] = {}
 
-        def _decimal_to_pct(value: Any) -> Optional[float]:
+        def _decimal_to_pct(value: Any) -> float | None:
             try:
                 return float(value) * 100.0 if value is not None else None
             except Exception as e:
@@ -106,20 +106,29 @@ class FundamentalsService:
         fmp_budget_ok = False
         try:
             _r = self._infra._sync_redis
-            _dk = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            _dk = datetime.now(UTC).strftime("%Y-%m-%d")
             _cur = int(_r.hget(f"provider:calls:{_dk}", "fmp") or 0)
             if _cur < settings.provider_policy.fmp_daily_budget:
                 fmp_budget_ok = True
             else:
-                logger.warning("fundamentals: FMP over daily budget (%d/%d) for %s", _cur, settings.provider_policy.fmp_daily_budget, symbol)
+                logger.warning(
+                    "fundamentals: FMP over daily budget (%d/%d) for %s",
+                    _cur,
+                    settings.provider_policy.fmp_daily_budget,
+                    symbol,
+                )
         except Exception as _be:
-            logger.warning("fundamentals: budget check failed for %s, skipping FMP: %s", symbol, _be)
+            logger.warning(
+                "fundamentals: budget check failed for %s, skipping FMP: %s", symbol, _be
+            )
 
         try:
             if settings.FMP_API_KEY and fmp_budget_ok:
                 provider_rate_limiter.acquire_sync("fmp")
                 prof = self._provider._call_blocking_with_retries_sync(
-                    fmpsdk.company_profile, apikey=settings.FMP_API_KEY, symbol=symbol,
+                    fmpsdk.company_profile,
+                    apikey=settings.FMP_API_KEY,
+                    symbol=symbol,
                 )
                 self._infra._record_provider_call_sync("fmp")
                 if prof and len(prof) > 0 and isinstance(prof[0], dict):
@@ -136,14 +145,19 @@ class FundamentalsService:
                 try:
                     provider_rate_limiter.acquire_sync("fmp")
                     metrics = self._provider._call_blocking_with_retries_sync(
-                        fmpsdk.key_metrics_ttm, apikey=settings.FMP_API_KEY, symbol=symbol,
+                        fmpsdk.key_metrics_ttm,
+                        apikey=settings.FMP_API_KEY,
+                        symbol=symbol,
                     )
                     self._infra._record_provider_call_sync("fmp")
                     if metrics and isinstance(metrics[0], dict):
                         m = metrics[0]
                         set_if_missing("pe_ttm", m.get("peRatioTTM") or m.get("peRatio"))
                         set_if_missing("peg_ttm", m.get("pegRatioTTM") or m.get("pegRatio"))
-                        set_if_missing("dividend_yield", _decimal_to_pct(m.get("dividendYieldTTM") or m.get("dividendYield")))
+                        set_if_missing(
+                            "dividend_yield",
+                            _decimal_to_pct(m.get("dividendYieldTTM") or m.get("dividendYield")),
+                        )
                         set_if_missing("roe", _decimal_to_pct(m.get("roeTTM") or m.get("roe")))
                         set_if_missing("beta", m.get("beta"))
                         set_if_missing("eps_ttm", m.get("netIncomePerShareTTM") or m.get("epsTTM"))
@@ -153,28 +167,53 @@ class FundamentalsService:
                 try:
                     ratios = call_fmp_first_available(
                         ["financial_ratios_ttm", "ratios_ttm", "financial_ratios"],
-                        apikey=settings.FMP_API_KEY, symbol=symbol,
+                        apikey=settings.FMP_API_KEY,
+                        symbol=symbol,
                     )
                     if ratios and isinstance(ratios[0], dict):
                         r = ratios[0]
-                        set_if_missing("pe_ttm", r.get("priceEarningsRatioTTM") or r.get("priceEarningsRatio"))
+                        set_if_missing(
+                            "pe_ttm", r.get("priceEarningsRatioTTM") or r.get("priceEarningsRatio")
+                        )
                         set_if_missing("peg_ttm", r.get("pegRatioTTM") or r.get("pegRatio"))
-                        set_if_missing("roe", _decimal_to_pct(r.get("returnOnEquityTTM") or r.get("returnOnEquity")))
-                        set_if_missing("dividend_yield", _decimal_to_pct(r.get("dividendYieldTTM") or r.get("dividendYield")))
+                        set_if_missing(
+                            "roe",
+                            _decimal_to_pct(r.get("returnOnEquityTTM") or r.get("returnOnEquity")),
+                        )
+                        set_if_missing(
+                            "dividend_yield",
+                            _decimal_to_pct(r.get("dividendYieldTTM") or r.get("dividendYield")),
+                        )
                 except Exception as exc:
                     logger.warning("FMP ratios failed for %s: %s", symbol, exc)
                 try:
                     provider_rate_limiter.acquire_sync("fmp")
                     growth = self._provider._call_blocking_with_retries_sync(
-                        fmpsdk.financial_growth, apikey=settings.FMP_API_KEY, symbol=symbol,
+                        fmpsdk.financial_growth,
+                        apikey=settings.FMP_API_KEY,
+                        symbol=symbol,
                     )
                     self._infra._record_provider_call_sync("fmp")
                     if growth and isinstance(growth[0], dict):
                         g = growth[0]
-                        set_if_missing("eps_growth_yoy", _decimal_to_pct(g.get("epsGrowth") or g.get("epsgrowth")))
-                        set_if_missing("eps_growth_qoq", _decimal_to_pct(g.get("epsGrowthQuarterly") or g.get("epsGrowthQoQ")))
-                        set_if_missing("revenue_growth_yoy", _decimal_to_pct(g.get("revenueGrowth") or g.get("revenuegrowth")))
-                        set_if_missing("revenue_growth_qoq", _decimal_to_pct(g.get("revenueGrowthQuarterly") or g.get("revenueGrowthQoQ")))
+                        set_if_missing(
+                            "eps_growth_yoy",
+                            _decimal_to_pct(g.get("epsGrowth") or g.get("epsgrowth")),
+                        )
+                        set_if_missing(
+                            "eps_growth_qoq",
+                            _decimal_to_pct(g.get("epsGrowthQuarterly") or g.get("epsGrowthQoQ")),
+                        )
+                        set_if_missing(
+                            "revenue_growth_yoy",
+                            _decimal_to_pct(g.get("revenueGrowth") or g.get("revenuegrowth")),
+                        )
+                        set_if_missing(
+                            "revenue_growth_qoq",
+                            _decimal_to_pct(
+                                g.get("revenueGrowthQuarterly") or g.get("revenueGrowthQoQ")
+                            ),
+                        )
                 except Exception as exc:
                     logger.warning("FMP financial growth failed for %s: %s", symbol, exc)
         except Exception as exc:
@@ -201,7 +240,9 @@ class FundamentalsService:
                     set_if_missing("pe_ttm", m.get("peTTM"))
                     set_if_missing("beta", m.get("beta"))
                     set_if_missing("roe", _decimal_to_pct(m.get("roeTTM")))
-                    set_if_missing("dividend_yield", _decimal_to_pct(m.get("dividendYieldIndicatedAnnual")))
+                    set_if_missing(
+                        "dividend_yield", _decimal_to_pct(m.get("dividendYieldIndicatedAnnual"))
+                    )
                     set_if_missing("eps_ttm", m.get("epsTTM"))
                     set_if_missing("revenue_ttm", m.get("revenueTTM"))
                     set_if_missing("peg_ttm", m.get("pegAnnual"))
@@ -237,9 +278,13 @@ class FundamentalsService:
                     set_if_missing("roe", _decimal_to_pct(y.get("returnOnEquity")))
                     set_if_missing("dividend_yield", _decimal_to_pct(y.get("dividendYield")))
                     set_if_missing("eps_growth_yoy", _decimal_to_pct(y.get("earningsGrowth")))
-                    set_if_missing("eps_growth_qoq", _decimal_to_pct(y.get("earningsQuarterlyGrowth")))
+                    set_if_missing(
+                        "eps_growth_qoq", _decimal_to_pct(y.get("earningsQuarterlyGrowth"))
+                    )
                     set_if_missing("revenue_growth_yoy", _decimal_to_pct(y.get("revenueGrowth")))
-                    set_if_missing("revenue_growth_qoq", _decimal_to_pct(y.get("revenueQuarterlyGrowth")))
+                    set_if_missing(
+                        "revenue_growth_qoq", _decimal_to_pct(y.get("revenueQuarterlyGrowth"))
+                    )
                     set_if_missing("eps_ttm", y.get("trailingEps"))
                     set_if_missing("revenue_ttm", y.get("totalRevenue"))
                     set_if_missing("analyst_rating", y.get("recommendationKey"))
@@ -256,6 +301,7 @@ class FundamentalsService:
         if settings.ALPHA_VANTAGE_API_KEY and needs_fundamentals(info):
             try:
                 import requests as _requests
+
                 provider_rate_limiter.acquire_sync("alphavantage")
                 url = (
                     f"https://www.alphavantage.co/query?function=OVERVIEW"
@@ -297,18 +343,29 @@ class FundamentalsService:
                         except (ValueError, KeyError, TypeError):
                             pass
                         try:
-                            set_if_missing("dividend_yield", _decimal_to_pct(float(av["DividendYield"])))
+                            set_if_missing(
+                                "dividend_yield", _decimal_to_pct(float(av["DividendYield"]))
+                            )
                         except (ValueError, KeyError, TypeError):
                             pass
                         try:
-                            set_if_missing("eps_growth_yoy", _decimal_to_pct(float(av["QuarterlyEarningsGrowthYOY"])))
+                            set_if_missing(
+                                "eps_growth_yoy",
+                                _decimal_to_pct(float(av["QuarterlyEarningsGrowthYOY"])),
+                            )
                         except (ValueError, KeyError, TypeError):
                             pass
                         try:
-                            set_if_missing("revenue_growth_yoy", _decimal_to_pct(float(av["QuarterlyRevenueGrowthYOY"])))
+                            set_if_missing(
+                                "revenue_growth_yoy",
+                                _decimal_to_pct(float(av["QuarterlyRevenueGrowthYOY"])),
+                            )
                         except (ValueError, KeyError, TypeError):
                             pass
-                        set_if_missing("analyst_rating", av.get("AnalystRating") or av.get("AnalystTargetPrice"))
+                        set_if_missing(
+                            "analyst_rating",
+                            av.get("AnalystRating") or av.get("AnalystTargetPrice"),
+                        )
             except Exception as exc:
                 logger.debug("Alpha Vantage overview failed for %s: %s", symbol, exc)
 

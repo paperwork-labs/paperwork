@@ -23,8 +23,7 @@ from .coinbase import CoinbaseOAuthAdapter
 from .etrade import ETradeSandboxAdapter
 from .tradier import TradierOAuth2Adapter, TradierSandboxOAuth2Adapter
 
-
-_REGISTRY: Dict[str, Type[OAuthBrokerAdapter]] = {
+_REGISTRY: dict[str, type[OAuthBrokerAdapter]] = {
     ETradeSandboxAdapter.broker_id: ETradeSandboxAdapter,
     TradierOAuth2Adapter.broker_id: TradierOAuth2Adapter,
     TradierSandboxOAuth2Adapter.broker_id: TradierSandboxOAuth2Adapter,
@@ -51,7 +50,7 @@ def supported_brokers() -> list[str]:
     return sorted(_REGISTRY.keys())
 
 
-def register_adapter(cls: Type[OAuthBrokerAdapter]) -> None:
+def register_adapter(cls: type[OAuthBrokerAdapter]) -> None:
     """Register a new adapter class. Test/extension hook."""
 
     if not cls.broker_id:
@@ -66,6 +65,6 @@ __all__ = [
     "OAuthInitiateResult",
     "OAuthTokens",
     "get_adapter",
-    "supported_brokers",
     "register_adapter",
+    "supported_brokers",
 ]

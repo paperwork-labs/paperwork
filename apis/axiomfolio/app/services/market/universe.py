@@ -12,10 +12,10 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Iterable, List
+from collections.abc import Iterable
 
-from sqlalchemy.orm import Session
 from redis.asyncio import Redis as AsyncRedis
+from sqlalchemy.orm import Session
 
 from app.models import Position
 from app.models.index_constituent import IndexConstituent
@@ -148,5 +148,3 @@ async def tracked_symbols_async(db: Session, *, redis_async: AsyncRedis) -> list
     """Async variant of tracked_symbols for async HTTP handlers."""
     out, _ = await tracked_symbols_with_source_async(db, redis_async=redis_async)
     return out
-
-

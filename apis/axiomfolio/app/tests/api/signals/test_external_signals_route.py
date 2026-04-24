@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -54,7 +54,7 @@ def test_empty_symbol_no_rows(db_session, authed_client) -> None:
 
 
 def test_returns_rows_newest_first(db_session, authed_client) -> None:
-    ts = datetime(2025, 3, 1, 12, 0, 0, tzinfo=timezone.utc)
+    ts = datetime(2025, 3, 1, 12, 0, 0, tzinfo=UTC)
     t0 = date.today()
     d_old = t0 - timedelta(days=20)
     d_new = t0 - timedelta(days=2)
@@ -92,7 +92,7 @@ def test_returns_rows_newest_first(db_session, authed_client) -> None:
 
 
 def test_batch_returns_per_symbol_newest_first(db_session, authed_client) -> None:
-    ts = datetime(2025, 3, 1, 12, 0, 0, tzinfo=timezone.utc)
+    ts = datetime(2025, 3, 1, 12, 0, 0, tzinfo=UTC)
     t0 = date.today()
     d_msft = t0 - timedelta(days=1)
     d_aapl_old = t0 - timedelta(days=5)
@@ -132,9 +132,7 @@ def test_batch_returns_per_symbol_newest_first(db_session, authed_client) -> Non
     )
     db_session.commit()
 
-    r = authed_client.get(
-        "/api/v1/signals/external/batch?symbols=AAPL%2CMSFT%2CAAPL&days=30"
-    )
+    r = authed_client.get("/api/v1/signals/external/batch?symbols=AAPL%2CMSFT%2CAAPL&days=30")
     assert r.status_code == 200
     by_sym = r.json()["by_symbol"]
     assert list(by_sym.keys()) == ["AAPL", "MSFT"]

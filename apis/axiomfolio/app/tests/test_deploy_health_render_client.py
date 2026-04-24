@@ -17,8 +17,8 @@ Covered:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 import pytest
@@ -52,7 +52,7 @@ def _deploy_payload(
     sha: str = "deadbeefdeadbeef",
     created: str = "2026-04-21T04:11:05Z",
     finished: str = "2026-04-21T04:12:50Z",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "id": deploy_id,
         "status": status,
@@ -65,8 +65,8 @@ def _deploy_payload(
 
 @pytest.fixture
 def stub_httpx(monkeypatch):
-    calls: List[Dict[str, Any]] = []
-    next_response: Dict[str, Any] = {"response": None, "error": None}
+    calls: list[dict[str, Any]] = []
+    next_response: dict[str, Any] = {"response": None, "error": None}
 
     def fake_get(url, *, params=None, headers=None, timeout=None):
         calls.append({"url": url, "params": params, "headers": headers, "timeout": timeout})
@@ -90,7 +90,7 @@ def stub_httpx(monkeypatch):
             next_response["response"] = None
 
         @property
-        def calls(self) -> List[Dict[str, Any]]:
+        def calls(self) -> list[dict[str, Any]]:
             return calls
 
     return Stub()
@@ -189,8 +189,8 @@ def test_deploy_record_short_sha_and_states():
         trigger=None,
         commit_sha="abcdef1234567890",
         commit_message="msg",
-        created_at=datetime(2026, 4, 21, tzinfo=timezone.utc),
-        finished_at=datetime(2026, 4, 21, 0, 2, tzinfo=timezone.utc),
+        created_at=datetime(2026, 4, 21, tzinfo=UTC),
+        finished_at=datetime(2026, 4, 21, 0, 2, tzinfo=UTC),
         duration_seconds=120.0,
     )
     assert live.short_sha == "abcdef12"
@@ -204,8 +204,8 @@ def test_deploy_record_short_sha_and_states():
         trigger=None,
         commit_sha=None,
         commit_message=None,
-        created_at=datetime(2026, 4, 21, tzinfo=timezone.utc),
-        finished_at=datetime(2026, 4, 21, 0, 0, 1, tzinfo=timezone.utc),
+        created_at=datetime(2026, 4, 21, tzinfo=UTC),
+        finished_at=datetime(2026, 4, 21, 0, 0, 1, tzinfo=UTC),
         duration_seconds=1.0,
     )
     assert failed.is_failure and not failed.is_live
@@ -218,7 +218,7 @@ def test_deploy_record_short_sha_and_states():
         trigger=None,
         commit_sha="c" * 40,
         commit_message=None,
-        created_at=datetime(2026, 4, 21, tzinfo=timezone.utc),
+        created_at=datetime(2026, 4, 21, tzinfo=UTC),
         finished_at=None,
         duration_seconds=None,
     )

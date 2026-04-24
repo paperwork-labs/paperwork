@@ -21,7 +21,7 @@ Entitlement model + auto-create flow.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -35,7 +35,6 @@ from app.services.billing.feature_catalog import (
     get_feature,
     is_allowed,
 )
-
 
 # =============================================================================
 # Tier ordering & ranking — pure logic, no DB needed
@@ -60,12 +59,8 @@ class TestSubscriptionTierRank:
         assert SubscriptionTier.rank(None) == 0
 
     def test_string_input_is_case_insensitive(self):
-        assert SubscriptionTier.rank("PRO") == SubscriptionTier.rank(
-            SubscriptionTier.PRO
-        )
-        assert SubscriptionTier.rank("Pro_Plus") == SubscriptionTier.rank(
-            SubscriptionTier.PRO_PLUS
-        )
+        assert SubscriptionTier.rank("PRO") == SubscriptionTier.rank(SubscriptionTier.PRO)
+        assert SubscriptionTier.rank("Pro_Plus") == SubscriptionTier.rank(SubscriptionTier.PRO_PLUS)
 
     def test_rich_comparisons(self):
         assert SubscriptionTier.PRO_PLUS > SubscriptionTier.PRO
@@ -111,9 +106,7 @@ class TestFeatureCatalog:
 
     def test_is_allowed_satisfies_higher_tier(self):
         assert is_allowed(SubscriptionTier.PRO_PLUS, "data.cached_indicators")
-        assert is_allowed(
-            SubscriptionTier.ENTERPRISE, "execution.tax_aware_exit"
-        )
+        assert is_allowed(SubscriptionTier.ENTERPRISE, "execution.tax_aware_exit")
 
     def test_is_allowed_blocks_lower_tier(self):
         assert not is_allowed(SubscriptionTier.FREE, "brain.native_chat")
@@ -144,34 +137,34 @@ class TestEntitlementGracePeriod:
         return ent
 
     def test_active_status_is_active(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         ent = self._make(EntitlementStatus.ACTIVE, now + timedelta(days=10))
         assert ent.is_active(now) is True
 
     def test_canceled_is_not_active(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         ent = self._make(EntitlementStatus.CANCELED, now - timedelta(days=1))
         assert ent.is_active(now) is False
 
     def test_past_due_within_grace_is_active(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # 24h past period end, within the 72h grace window
         ent = self._make(EntitlementStatus.PAST_DUE, now - timedelta(hours=24))
         assert ent.is_active(now) is True
 
     def test_past_due_after_grace_is_not_active(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         # 96h past period end, outside the 72h grace window
         ent = self._make(EntitlementStatus.PAST_DUE, now - timedelta(hours=96))
         assert ent.is_active(now) is False
 
     def test_effective_tier_falls_back_to_free_when_inactive(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         ent = self._make(EntitlementStatus.CANCELED, now - timedelta(days=10))
         assert ent.effective_tier(now) == SubscriptionTier.FREE
 
     def test_effective_tier_returns_persisted_when_active(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         ent = self._make(EntitlementStatus.ACTIVE, now + timedelta(days=10))
         assert ent.effective_tier(now) == SubscriptionTier.PRO_PLUS
 
@@ -290,8 +283,8 @@ class TestEntitlementService:
             stripe_customer_id="cus_test",
             stripe_subscription_id="sub_test",
             stripe_price_id="price_test",
-            current_period_start=datetime.now(timezone.utc),
-            current_period_end=datetime.now(timezone.utc) + timedelta(days=30),
+            current_period_start=datetime.now(UTC),
+            current_period_end=datetime.now(UTC) + timedelta(days=30),
             trial_ends_at=None,
             cancel_at_period_end=False,
             stripe_event_id="evt_123",
@@ -309,7 +302,7 @@ class TestEntitlementService:
         )
 
         user = _create_user(db_session, "ent_stripe_normal")
-        period_end = datetime.now(timezone.utc) + timedelta(days=30)
+        period_end = datetime.now(UTC) + timedelta(days=30)
         ent = EntitlementService.apply_subscription_state(
             db_session,
             user=user,
@@ -318,7 +311,7 @@ class TestEntitlementService:
             stripe_customer_id="cus_real",
             stripe_subscription_id="sub_real",
             stripe_price_id="price_pro_monthly",
-            current_period_start=datetime.now(timezone.utc),
+            current_period_start=datetime.now(UTC),
             current_period_end=period_end,
             trial_ends_at=None,
             cancel_at_period_end=False,
@@ -340,9 +333,7 @@ class TestEntitlementService:
             EntitlementService.manual_set_tier(
                 db_session,
                 user=user,
-                new_tier=(
-                    SubscriptionTier.PRO if i % 2 == 0 else SubscriptionTier.FREE
-                ),
+                new_tier=(SubscriptionTier.PRO if i % 2 == 0 else SubscriptionTier.FREE),
                 actor="test",
                 note=f"cycle {i}",
             )

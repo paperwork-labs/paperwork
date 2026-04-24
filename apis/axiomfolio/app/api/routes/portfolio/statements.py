@@ -1,8 +1,8 @@
 """Statements endpoint powering frontend Transactions.tsx."""
 
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, Optional
 import logging
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -10,8 +10,8 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.database import get_db
 from app.models import BrokerAccount
-from app.models.user import User
 from app.models.transaction import Transaction
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -21,19 +21,17 @@ router = APIRouter()
 @router.get("/statements")
 async def get_statements(
     days: int = Query(30, ge=1, le=3650),
-    account_id: Optional[str] = Query(
+    account_id: str | None = Query(
         None, description="Filter by account number (e.g., IBKR_ACCOUNT)"
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return unified transaction statements for last N days for the authenticated user."""
     try:
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         # Base filter: all user's accounts
-        account_ids_q = db.query(BrokerAccount.id).filter(
-            BrokerAccount.user_id == current_user.id
-        )
+        account_ids_q = db.query(BrokerAccount.id).filter(BrokerAccount.user_id == current_user.id)
         # Optional filter: specific account number
         if account_id:
             account_row = (
@@ -49,9 +47,7 @@ async def get_statements(
                     "status": "success",
                     "data": {"transactions": [], "summary": {"total_transactions": 0}},
                 }
-            account_ids_q = db.query(BrokerAccount.id).filter(
-                BrokerAccount.id == account_row.id
-            )
+            account_ids_q = db.query(BrokerAccount.id).filter(BrokerAccount.id == account_row.id)
 
         q = (
             db.query(Transaction)
@@ -63,20 +59,14 @@ async def get_statements(
         )
         rows = q.all()
 
-        def to_row(t: Transaction) -> Dict[str, Any]:
+        def to_row(t: Transaction) -> dict[str, Any]:
             ttype = (t.transaction_type.name if t.transaction_type else "OTHER").upper()
             is_buy = ttype == "BUY"
             is_sell = ttype == "SELL"
-            acc = (
-                db.query(BrokerAccount).filter(BrokerAccount.id == t.account_id).first()
-            )
+            acc = db.query(BrokerAccount).filter(BrokerAccount.id == t.account_id).first()
             return {
                 "id": t.id,
-                "date": (
-                    t.transaction_date.date().isoformat()
-                    if t.transaction_date
-                    else None
-                ),
+                "date": (t.transaction_date.date().isoformat() if t.transaction_date else None),
                 "time": (
                     t.transaction_date.time().isoformat(timespec="seconds")
                     if t.transaction_date
@@ -102,9 +92,7 @@ async def get_statements(
                 "execution_id": t.execution_id,
                 "contract_type": t.asset_category,
                 "account": acc.account_number if acc else None,
-                "settlement_date": (
-                    t.settlement_date.isoformat() if t.settlement_date else None
-                ),
+                "settlement_date": (t.settlement_date.isoformat() if t.settlement_date else None),
                 "source": t.source,
             }
 

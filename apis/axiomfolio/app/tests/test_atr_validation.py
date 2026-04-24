@@ -7,8 +7,8 @@ Standalone validation of ATR calculations without database dependencies.
 Tests the core mathematical accuracy of our enhanced ATR implementation.
 """
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
 class StandaloneATRCalculator:
@@ -33,9 +33,7 @@ class StandaloneATRCalculator:
 
         return pd.Series(true_range, index=data.index)
 
-    def calculate_wilder_atr(
-        self, true_range_series: pd.Series, periods: int
-    ) -> pd.Series:
+    def calculate_wilder_atr(self, true_range_series: pd.Series, periods: int) -> pd.Series:
         """Calculate ATR using Wilder's smoothing method."""
         atr_values = []
 
@@ -55,9 +53,7 @@ class StandaloneATRCalculator:
 
         return pd.Series(atr_values, index=true_range_series.index)
 
-    def classify_volatility_regime(
-        self, atr_series: pd.Series, current_atr: float
-    ) -> dict:
+    def classify_volatility_regime(self, atr_series: pd.Series, current_atr: float) -> dict:
         """Classify volatility regime."""
         valid_atr = atr_series.dropna()
         if len(valid_atr) < 10:
@@ -91,9 +87,7 @@ class StandaloneATRCalculator:
 
         return {"level": level, "percentile": percentile, "trend": trend}
 
-    def detect_breakout(
-        self, data: pd.DataFrame, atr: float, current_tr: float
-    ) -> dict:
+    def detect_breakout(self, data: pd.DataFrame, atr: float, current_tr: float) -> dict:
         """Detect ATR-based breakouts."""
         if atr <= 0:
             return {"is_breakout": False}
@@ -225,7 +219,7 @@ def validate_atr_calculations():
                 f"   🚀 Breakout detected: {breakout['direction']} {breakout['multiple']:.1f}x ATR (strength: {breakout['strength']:.2f})"
             )
         else:
-            print(f"   📈 Normal movement: {current_tr/current_atr:.1f}x ATR")
+            print(f"   📈 Normal movement: {current_tr / current_atr:.1f}x ATR")
 
     print("\n" + "=" * 50)
     print("🎉 ATR VALIDATION COMPLETE - ALL TESTS PASSED!")
@@ -242,12 +236,12 @@ def validate_atr_calculations():
     expected_tr_1 = max(105 - 98, abs(105 - 100), abs(98 - 100))  # First period
     expected_tr_2 = max(107 - 101, abs(107 - 103), abs(101 - 103))  # Second period
 
-    assert (
-        abs(tr_series.iloc[0] - expected_tr_1) < 1e-10
-    ), f"TR[0] calculation error: {tr_series.iloc[0]} vs {expected_tr_1}"
-    assert (
-        abs(tr_series.iloc[1] - expected_tr_2) < 1e-10
-    ), f"TR[1] calculation error: {tr_series.iloc[1]} vs {expected_tr_2}"
+    assert abs(tr_series.iloc[0] - expected_tr_1) < 1e-10, (
+        f"TR[0] calculation error: {tr_series.iloc[0]} vs {expected_tr_1}"
+    )
+    assert abs(tr_series.iloc[1] - expected_tr_2) < 1e-10, (
+        f"TR[1] calculation error: {tr_series.iloc[1]} vs {expected_tr_2}"
+    )
     print("   ✅ True Range accuracy test passed")
 
     # Test 2: ATR smoothing accuracy

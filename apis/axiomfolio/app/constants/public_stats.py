@@ -36,27 +36,22 @@ See docs/KNOWLEDGE.md D129 for the direct-connect-only expansion policy
 
 from __future__ import annotations
 
-from typing import Tuple
-
-
-DIRECT_CONNECT_BROKERS_LIVE: Tuple[str, ...] = (
-    "schwab",      # OAuth 2.0
-    "ibkr",        # FlexQuery + IB Gateway (not OAuth — see D131)
+DIRECT_CONNECT_BROKERS_LIVE: tuple[str, ...] = (
+    "schwab",  # OAuth 2.0
+    "ibkr",  # FlexQuery + IB Gateway (not OAuth — see D131)
     "tastytrade",  # OAuth 2.0
-    "etrade",      # OAuth 1.0a (sandbox in v1)
-    "tradier",     # OAuth 2.0 (live + sandbox tokens)
-    "coinbase",    # OAuth 2.0 (consumer wallet read-only)
+    "etrade",  # OAuth 1.0a (sandbox in v1)
+    "tradier",  # OAuth 2.0 (live + sandbox tokens)
+    "coinbase",  # OAuth 2.0 (consumer wallet read-only)
 )
 
 # Deprecated alias. Kept so existing imports
 # (``from app.constants.public_stats import DIRECT_OAUTH_BROKERS_LIVE``)
 # don't break during the rename. Remove once external callers migrate.
-DIRECT_OAUTH_BROKERS_LIVE: Tuple[str, ...] = DIRECT_CONNECT_BROKERS_LIVE
+DIRECT_OAUTH_BROKERS_LIVE: tuple[str, ...] = DIRECT_CONNECT_BROKERS_LIVE
 
-DIRECT_OAUTH_BROKERS_PLANNED: Tuple[str, ...] = ()
+DIRECT_OAUTH_BROKERS_PLANNED: tuple[str, ...] = ()
 
 IMPORT_CATALOG_BROKERS_COUNT: int = 14
 
-BROKERS_SUPPORTED: int = (
-    len(DIRECT_CONNECT_BROKERS_LIVE) + IMPORT_CATALOG_BROKERS_COUNT
-)
+BROKERS_SUPPORTED: int = len(DIRECT_CONNECT_BROKERS_LIVE) + IMPORT_CATALOG_BROKERS_COUNT

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from celery import shared_task
 
 from app.database import SessionLocal
-from app.models.broker_account import BrokerAccount, BrokerType, SyncStatus, AccountSync
+from app.models.broker_account import AccountSync, BrokerAccount, BrokerType, SyncStatus
 from app.services.portfolio.broker_sync_service import broker_sync_service
 
 logger = logging.getLogger(__name__)
@@ -31,27 +31,24 @@ SYNC_LOCK_TTL_SECONDS = 1020  # Must exceed time_limit (960s)
 @shared_task(name="app.tasks.account_sync.sync_account_task", soft_time_limit=900, time_limit=960)
 def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict:
     """Run broker account sync in a Celery worker (separate process).
-    
+
     Uses Redis lock to prevent concurrent syncs for the same account.
     """
     # Acquire per-account lock to prevent concurrent syncs
     lock_key = f"sync:account:{account_id}"
     try:
         from app.services.cache import redis_client
-        lock_acquired = redis_client.set(
-            lock_key, "1", nx=True, ex=SYNC_LOCK_TTL_SECONDS
-        )
+
+        lock_acquired = redis_client.set(lock_key, "1", nx=True, ex=SYNC_LOCK_TTL_SECONDS)
         if not lock_acquired:
-            logger.warning(
-                "Sync for account %s blocked by concurrent sync (lock held)", account_id
-            )
+            logger.warning("Sync for account %s blocked by concurrent sync (lock held)", account_id)
             return {"status": "skipped", "error": "Sync already in progress"}
     except Exception as e:
         logger.warning("Redis lock failed for account %s sync, proceeding: %s", account_id, e)
-    
+
     session = SessionLocal()
     sync_record = None
-    started_at = datetime.now(timezone.utc)
+    started_at = datetime.now(UTC)
     try:
         account = session.query(BrokerAccount).filter(BrokerAccount.id == account_id).first()
         if not account:
@@ -84,17 +81,13 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
         finally:
             loop.close()
 
-        completed_at = datetime.now(timezone.utc)
+        completed_at = datetime.now(UTC)
         duration_seconds = int((completed_at - started_at).total_seconds())
 
-        result_status = (
-            result.get("status") if isinstance(result, dict) else None
-        )
+        result_status = result.get("status") if isinstance(result, dict) else None
         is_error = result_status == "error"
         is_partial = result_status == "partial"
-        completeness = (
-            result.get("completeness", {}) if isinstance(result, dict) else {}
-        )
+        completeness = result.get("completeness", {}) if isinstance(result, dict) else {}
 
         if sync_record:
             sync_record.completed_at = completed_at
@@ -127,20 +120,16 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
                 sync_record.warnings = completeness.get("warnings", [])
                 sync_record.expected_sections = completeness.get("expected_sections", [])
                 sync_record.received_sections = completeness.get("received_sections", [])
-                sync_record.missing_sections = (
-                    list(completeness.get("missing_required", []))
-                    + list(completeness.get("missing_optional", []))
-                )
-                sync_record.section_row_counts = completeness.get(
-                    "section_row_counts", {}
-                )
+                sync_record.missing_sections = list(
+                    completeness.get("missing_required", [])
+                ) + list(completeness.get("missing_optional", []))
+                sync_record.section_row_counts = completeness.get("section_row_counts", {})
 
             if not is_error and isinstance(result, dict):
                 sync_record.positions_synced = _extract_count(result, "positions")
-                sync_record.transactions_synced = (
-                    _extract_count(result, "cash_transactions")
-                    or _extract_count(result, "transactions")
-                )
+                sync_record.transactions_synced = _extract_count(
+                    result, "cash_transactions"
+                ) or _extract_count(result, "transactions")
                 dr_start = result.get("data_range_start")
                 dr_end = result.get("data_range_end")
                 if dr_start:
@@ -156,7 +145,9 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
             session.commit()
 
         if is_error:
-            logger.warning("Sync returned error for account %s: %s", account_id, result.get("error"))
+            logger.warning(
+                "Sync returned error for account %s: %s", account_id, result.get("error")
+            )
         elif is_partial:
             logger.warning(
                 "Sync returned PARTIAL for account %s: missing_required=%s, warnings=%d",
@@ -165,17 +156,13 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
                 len(completeness.get("warnings", [])),
             )
 
-        return (
-            result
-            if isinstance(result, dict)
-            else {"status": "success", "data": result}
-        )
+        return result if isinstance(result, dict) else {"status": "success", "data": result}
     except Exception as e:
         logger.exception("Sync failed for account %s: %s", account_id, e)
         if sync_record:
             try:
                 sync_record.status = SyncStatus.ERROR
-                sync_record.completed_at = datetime.now(timezone.utc)
+                sync_record.completed_at = datetime.now(UTC)
                 sync_record.duration_seconds = int(
                     (sync_record.completed_at - started_at).total_seconds()
                 )
@@ -211,6 +198,7 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
         # Release sync lock
         try:
             from app.services.cache import redis_client
+
             redis_client.delete(lock_key)
         except Exception:
             pass  # Lock will expire on TTL
@@ -290,7 +278,7 @@ def recover_stale_syncs() -> dict:
     """
     session = SessionLocal()
     try:
-        cutoff = datetime.now(timezone.utc) - timedelta(minutes=STALE_SYNC_THRESHOLD_MINUTES)
+        cutoff = datetime.now(UTC) - timedelta(minutes=STALE_SYNC_THRESHOLD_MINUTES)
         stale_accounts = (
             session.query(BrokerAccount)
             .filter(
@@ -304,7 +292,8 @@ def recover_stale_syncs() -> dict:
         for acct in stale_accounts:
             logger.warning(
                 "Recovering stale sync for account %s (stuck since %s)",
-                acct.id, acct.last_sync_attempt,
+                acct.id,
+                acct.last_sync_attempt,
             )
             acct.sync_status = SyncStatus.ERROR
             acct.sync_error_message = (
@@ -324,7 +313,7 @@ def recover_stale_syncs() -> dict:
             )
             for sr in stale_syncs:
                 sr.status = SyncStatus.ERROR
-                sr.completed_at = datetime.now(timezone.utc)
+                sr.completed_at = datetime.now(UTC)
                 sr.duration_seconds = int((sr.completed_at - sr.started_at).total_seconds())
                 sr.error_message = "Timed out — auto-recovered by recover_stale_syncs"
 

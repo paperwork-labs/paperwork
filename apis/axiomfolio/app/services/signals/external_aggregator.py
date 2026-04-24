@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any, List, Optional, TypedDict
+from typing import Any, TypedDict
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -25,7 +25,7 @@ class ExternalSignalDict(TypedDict, total=False):
     source: str
     signal_date: date
     signal_type: str
-    value: Optional[Decimal]
+    value: Decimal | None
     raw_payload: dict[str, Any]
 
 
@@ -101,8 +101,7 @@ def external_context_bonus_points(
                 ExternalSignal.symbol == sym,
                 ExternalSignal.signal_date >= cutoff,
             )
-        )
-        .scalar()
+        ).scalar()
         or 0
     )
     if n <= 0:
@@ -121,17 +120,9 @@ def external_context_bonus_points_map(
 ) -> dict[str, Decimal]:
     """Same bonus as :func:`external_context_bonus_points` but one aggregate query (no N+1)."""
     if not settings.ENABLE_EXTERNAL_SIGNALS:
-        return {
-            (s or "").upper().strip(): Decimal("0")
-            for s in symbols
-            if (s or "").strip()
-        }
+        return {(s or "").upper().strip(): Decimal("0") for s in symbols if (s or "").strip()}
     wanted: list[str] = list(
-        dict.fromkeys(
-            (s or "").upper().strip()
-            for s in symbols
-            if (s or "").strip()
-        )
+        dict.fromkeys((s or "").upper().strip() for s in symbols if (s or "").strip())
     )
     out: dict[str, Decimal] = {u: Decimal("0") for u in wanted}
     if not wanted:

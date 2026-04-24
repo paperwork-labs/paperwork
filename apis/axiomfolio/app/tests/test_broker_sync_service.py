@@ -10,11 +10,12 @@ Tests for broker_sync_service.py functionality:
 - Extensibility for new brokers
 """
 
-import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
-from app.models import User, BrokerAccount
-from app.models.broker_account import BrokerType, AccountType, SyncStatus
+import pytest
+
+from app.models import BrokerAccount, User
+from app.models.broker_account import AccountType, BrokerType, SyncStatus
 from app.services.portfolio.broker_sync_service import BrokerSyncService
 
 
@@ -31,9 +32,7 @@ class TestBrokerSyncService:
     @pytest.fixture
     def test_user(self, db_session):
         """Create test user."""
-        user = User(
-            email="test@axiomfolio.com", username="testuser", full_name="Test User"
-        )
+        user = User(email="test@axiomfolio.com", username="testuser", full_name="Test User")
         db_session.add(user)
         db_session.commit()
         return user
@@ -107,9 +106,7 @@ class TestBrokerSyncService:
         }
 
         # Execute sync
-        result = broker_sync_service.sync_account(
-            test_ibkr_account.account_number, db_session
-        )
+        result = broker_sync_service.sync_account(test_ibkr_account.account_number, db_session)
 
         # Verify correct service was called
         mock_ibkr_service.assert_called_once()
@@ -155,15 +152,13 @@ class TestBrokerSyncService:
         print("✅ TastyTrade account sync routing working correctly")
 
     @pytest.mark.asyncio
-    async def test_tastytrade_sync_uses_stored_credentials(
-        self, db_session, test_user
-    ):
+    async def test_tastytrade_sync_uses_stored_credentials(self, db_session, test_user):
         """TastyTrade sync uses AccountCredentials when present."""
         from app.models.broker_account import AccountCredentials
-        from app.services.security.credential_vault import credential_vault
         from app.services.portfolio.tastytrade_sync_service import (
             TastyTradeSyncService,
         )
+        from app.services.security.credential_vault import credential_vault
 
         account = BrokerAccount(
             user_id=test_user.id,
@@ -196,18 +191,14 @@ class TestBrokerSyncService:
                 new_callable=AsyncMock,
                 return_value=True,
             ) as mock_creds,
-            patch.object(
-                svc.client, "connect_with_retry", new_callable=AsyncMock
-            ) as mock_retry,
+            patch.object(svc.client, "connect_with_retry", new_callable=AsyncMock) as mock_retry,
             patch.object(
                 svc,
                 "_sync_positions",
                 new_callable=AsyncMock,
                 return_value={"positions": 0},
             ),
-            patch.object(
-                svc, "_sync_trades", new_callable=AsyncMock, return_value={"trades": 0}
-            ),
+            patch.object(svc, "_sync_trades", new_callable=AsyncMock, return_value={"trades": 0}),
             patch.object(
                 svc,
                 "_sync_transactions",
@@ -269,9 +260,7 @@ class TestBrokerSyncService:
                 new_callable=AsyncMock,
                 return_value={"positions": 0},
             ),
-            patch.object(
-                svc, "_sync_trades", new_callable=AsyncMock, return_value={"trades": 0}
-            ),
+            patch.object(svc, "_sync_trades", new_callable=AsyncMock, return_value={"trades": 0}),
             patch.object(
                 svc,
                 "_sync_transactions",
@@ -296,9 +285,7 @@ class TestBrokerSyncService:
             mock_creds.assert_not_called()
             assert result.get("positions") == 0
 
-    def test_sync_unknown_broker_account(
-        self, broker_sync_service, db_session, test_user
-    ):
+    def test_sync_unknown_broker_account(self, broker_sync_service, db_session, test_user):
         """Test handling of unknown broker type."""
         # Create account with unknown broker (simulate future broker)
         unknown_account = BrokerAccount(
@@ -337,9 +324,7 @@ class TestBrokerSyncService:
         # Setup mocks
         mock_ibkr_instance = Mock()
         mock_ibkr_service.return_value = mock_ibkr_instance
-        mock_ibkr_instance.sync_account_comprehensive.return_value = {
-            "status": "success"
-        }
+        mock_ibkr_instance.sync_account_comprehensive.return_value = {"status": "success"}
 
         mock_tt_instance = Mock()
         mock_tt_service.return_value = mock_tt_instance
@@ -360,24 +345,16 @@ class TestBrokerSyncService:
 
         print("✅ Sync all accounts working correctly")
 
-    def test_account_sync_status_update(
-        self, broker_sync_service, db_session, test_ibkr_account
-    ):
+    def test_account_sync_status_update(self, broker_sync_service, db_session, test_ibkr_account):
         """Test that account sync status is updated properly."""
         # Mock successful sync
-        with patch(
-            "app.services.portfolio.broker_sync_service.IBKRSyncService"
-        ) as mock_service:
+        with patch("app.services.portfolio.broker_sync_service.IBKRSyncService") as mock_service:
             mock_instance = Mock()
             mock_service.return_value = mock_instance
-            mock_instance.sync_account_comprehensive.return_value = {
-                "status": "success"
-            }
+            mock_instance.sync_account_comprehensive.return_value = {"status": "success"}
 
             # Execute sync
-            broker_sync_service.sync_account(
-                test_ibkr_account.account_number, db_session
-            )
+            broker_sync_service.sync_account(test_ibkr_account.account_number, db_session)
 
             # Verify status was updated
             db_session.refresh(test_ibkr_account)
@@ -386,24 +363,16 @@ class TestBrokerSyncService:
 
         print("✅ Account sync status update working correctly")
 
-    def test_sync_error_handling(
-        self, broker_sync_service, db_session, test_ibkr_account
-    ):
+    def test_sync_error_handling(self, broker_sync_service, db_session, test_ibkr_account):
         """Test error handling during sync operations."""
         # Mock sync failure
-        with patch(
-            "app.services.portfolio.broker_sync_service.IBKRSyncService"
-        ) as mock_service:
+        with patch("app.services.portfolio.broker_sync_service.IBKRSyncService") as mock_service:
             mock_instance = Mock()
             mock_service.return_value = mock_instance
-            mock_instance.sync_account_comprehensive.side_effect = Exception(
-                "Connection failed"
-            )
+            mock_instance.sync_account_comprehensive.side_effect = Exception("Connection failed")
 
             # Execute sync - should handle error gracefully
-            result = broker_sync_service.sync_account(
-                test_ibkr_account.account_number, db_session
-            )
+            result = broker_sync_service.sync_account(test_ibkr_account.account_number, db_session)
 
             # Verify error was handled
             assert result["status"] == "error"
@@ -433,8 +402,9 @@ class TestBrokerSyncServiceArchitecture:
 
     def test_dry_principle_no_broker_duplication(self):
         """Test that broker-specific logic is not duplicated."""
-        from app.services.portfolio.broker_sync_service import BrokerSyncService
         import inspect
+
+        from app.services.portfolio.broker_sync_service import BrokerSyncService
 
         source = inspect.getsource(BrokerSyncService)
 
@@ -444,28 +414,25 @@ class TestBrokerSyncServiceArchitecture:
 
         # Count broker-specific mentions (should be minimal in coordinator)
         ibkr_mentions = sum(
-            1
-            for line in lines
-            if "ibkr" in line.lower() and "import" not in line.lower()
+            1 for line in lines if "ibkr" in line.lower() and "import" not in line.lower()
         )
         tastytrade_mentions = sum(
-            1
-            for line in lines
-            if "tastytrade" in line.lower() and "import" not in line.lower()
+            1 for line in lines if "tastytrade" in line.lower() and "import" not in line.lower()
         )
 
         # Should have minimal broker-specific code (just routing)
         assert ibkr_mentions <= 3, f"Too many IBKR-specific references: {ibkr_mentions}"
-        assert (
-            tastytrade_mentions <= 3
-        ), f"Too many TastyTrade-specific references: {tastytrade_mentions}"
+        assert tastytrade_mentions <= 3, (
+            f"Too many TastyTrade-specific references: {tastytrade_mentions}"
+        )
 
         print("✅ DRY principle maintained - no broker logic duplication")
 
     def test_extensibility_for_new_brokers(self):
         """Test that adding new brokers doesn't require changing existing code."""
-        from app.services.portfolio.broker_sync_service import BrokerSyncService
         import inspect
+
+        from app.services.portfolio.broker_sync_service import BrokerSyncService
 
         source = inspect.getsource(BrokerSyncService)
 
@@ -473,16 +440,15 @@ class TestBrokerSyncServiceArchitecture:
         elif_count = source.count("elif")
 
         # Should have minimal elif statements (good architecture uses mapping/factory)
-        assert (
-            elif_count <= 2
-        ), f"Too many elif statements - not extensible: {elif_count}"
+        assert elif_count <= 2, f"Too many elif statements - not extensible: {elif_count}"
 
         print("✅ Service is extensible for new brokers")
 
     def test_single_responsibility_coordination_only(self):
         """Test that service only coordinates, doesn't implement sync logic."""
-        from app.services.portfolio.broker_sync_service import BrokerSyncService
         import inspect
+
+        from app.services.portfolio.broker_sync_service import BrokerSyncService
 
         source = inspect.getsource(BrokerSyncService)
 
@@ -498,9 +464,9 @@ class TestBrokerSyncServiceArchitecture:
         ]
 
         for pattern in forbidden_patterns:
-            assert (
-                pattern not in source.lower()
-            ), f"Service contains implementation detail: {pattern}"
+            assert pattern not in source.lower(), (
+                f"Service contains implementation detail: {pattern}"
+            )
 
         print("✅ Service maintains single responsibility (coordination only)")
 
@@ -572,9 +538,7 @@ class TestBrokerSyncServiceIntegration:
             mock_get_service.return_value = mock_broker_service
 
             # Test rollback on failure
-            mock_broker_service.sync_account_comprehensive.side_effect = Exception(
-                "Test error"
-            )
+            mock_broker_service.sync_account_comprehensive.side_effect = Exception("Test error")
 
             # Create test account
             user = User(email="test@test.com", username="testuser")

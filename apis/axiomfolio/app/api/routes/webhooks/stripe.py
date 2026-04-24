@@ -13,10 +13,10 @@ Read raw bytes (``await request.body()``) before parsing; Stripe signatures
 are computed over the *exact* request body, so do NOT use FastAPI's body
 parser here.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import JSONResponse
@@ -91,19 +91,16 @@ def _build_idempotency_store():
         return None
     try:
         client = MarketInfra().redis_client
-    except Exception as exc:  # noqa: BLE001 - REDIS_URL missing, etc.
+    except Exception as exc:
         logger.warning(
-            "stripe webhook: Redis unavailable, falling back to in-process "
-            "idempotency: %s",
+            "stripe webhook: Redis unavailable, falling back to in-process idempotency: %s",
             exc,
         )
         return None
     try:
         return RedisIdempotencyStore(client)
-    except Exception as exc:  # noqa: BLE001 - never fail webhook on infra
-        logger.warning(
-            "stripe webhook: idempotency store construction failed: %s", exc
-        )
+    except Exception as exc:
+        logger.warning("stripe webhook: idempotency store construction failed: %s", exc)
         return None
 
 
@@ -125,7 +122,7 @@ def _build_processor(session: Session) -> StripeWebhookProcessor:
 @router.post("/stripe", include_in_schema=True)
 async def stripe_webhook(
     request: Request,
-    stripe_signature: Optional[str] = Header(None, alias="Stripe-Signature"),
+    stripe_signature: str | None = Header(None, alias="Stripe-Signature"),
     db: Session = Depends(get_db),
 ) -> JSONResponse:
     """Receive and process a Stripe webhook event."""

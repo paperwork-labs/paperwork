@@ -22,5 +22,3 @@ def test_coverage_status_ignores_5m_when_disabled():
     status = compute_coverage_status(snap)
     assert status["label"] == "ok"
     assert "ignored" in str(status.get("thresholds", {}).get("m5_expectation", "")).lower()
-
-

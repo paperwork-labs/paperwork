@@ -6,14 +6,14 @@ Endpoints for Hedgeye GIP Quad Model state and history.
 """
 
 from datetime import date, datetime, timedelta
-from typing import Dict, Any
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.database import get_db
 from app.api.dependencies import get_market_data_viewer
+from app.database import get_db
 from app.models.market_data import MarketQuad
 from app.models.user import User
 
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/quad", tags=["quad"])
 async def get_current_quad(
     db: Session = Depends(get_db),
     _viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get the most recent Quad state."""
     stmt = select(MarketQuad).order_by(MarketQuad.as_of_date.desc()).limit(1)
     row = db.execute(stmt).scalar_one_or_none()
@@ -50,7 +50,7 @@ async def get_quad_history(
     days: int = Query(90, ge=1, le=365),
     db: Session = Depends(get_db),
     _viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get quad history for the last N days."""
     cutoff_date = date.today() - timedelta(days=days)
     cutoff = datetime.combine(cutoff_date, datetime.min.time())

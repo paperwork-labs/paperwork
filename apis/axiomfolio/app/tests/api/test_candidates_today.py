@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
 
 try:
-    from app.api.main import app
     from app.api.dependencies import get_current_user, get_db
+    from app.api.main import app
     from app.models.picks import Candidate, CandidateQueueState, PickAction
     from app.models.user import User, UserRole
 
@@ -63,9 +63,7 @@ def picks_user(db_session):
 
 
 def _seed_today_candidates(db_session, *, n: int) -> datetime:
-    start = datetime.now(timezone.utc).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
     for i in range(n):
         db_session.add(
             Candidate(

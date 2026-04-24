@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime
+from typing import Any
 
 from app.config import settings
 
@@ -27,7 +27,7 @@ class VolatilityService:
         self._redis = redis_client
         self._fmp_key = fmp_api_key
 
-    def _get_cached(self) -> Dict[str, Any] | None:
+    def _get_cached(self) -> dict[str, Any] | None:
         if not self._redis:
             return None
         try:
@@ -38,7 +38,7 @@ class VolatilityService:
             logger.debug("Failed to read volatility cache")
         return None
 
-    def _set_cache(self, data: Dict[str, Any]) -> None:
+    def _set_cache(self, data: dict[str, Any]) -> None:
         if not self._redis:
             return
         try:
@@ -51,7 +51,7 @@ class VolatilityService:
         if not self._redis:
             return False
         try:
-            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date_key = datetime.now(UTC).strftime("%Y-%m-%d")
             current = int(self._redis.hget(f"provider:calls:{date_key}", "fmp") or 0)
             budget = settings.provider_policy.fmp_daily_budget
             if current >= budget:
@@ -59,7 +59,10 @@ class VolatilityService:
                 return False
             return True
         except Exception as exc:
-            logger.warning("VolatilityService: budget check failed (Redis error), treating as over-budget: %s", exc)
+            logger.warning(
+                "VolatilityService: budget check failed (Redis error), treating as over-budget: %s",
+                exc,
+            )
             return False
 
     def _record_fmp_call(self, n: int = 1) -> None:
@@ -67,22 +70,26 @@ class VolatilityService:
         if not self._redis:
             return
         try:
-            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date_key = datetime.now(UTC).strftime("%Y-%m-%d")
             hash_key = f"provider:calls:{date_key}"
             self._redis.hincrby(hash_key, "fmp", n)
             self._redis.expire(hash_key, 86400 * 30)
         except Exception:
             logger.debug("VolatilityService: failed to record FMP call")
 
-    async def get_dashboard(self) -> Dict[str, Any]:
+    async def get_dashboard(self) -> dict[str, Any]:
         cached = self._get_cached()
         if cached:
             return cached
 
-        result: Dict[str, Any] = {
-            "vix": None, "vvix": None, "vix3m": None,
-            "term_structure_ratio": None, "vol_of_vol_ratio": None,
-            "regime": "unknown", "signal": "",
+        result: dict[str, Any] = {
+            "vix": None,
+            "vvix": None,
+            "vix3m": None,
+            "term_structure_ratio": None,
+            "vol_of_vol_ratio": None,
+            "regime": "unknown",
+            "signal": "",
         }
 
         if not self._fmp_key:
@@ -92,10 +99,11 @@ class VolatilityService:
             return result
 
         import aiohttp
+
         from app.services.market.rate_limiter import provider_rate_limiter
 
         symbols = {"vix": "^VIX", "vvix": "^VVIX", "vix3m": "^VIX3M"}
-        quotes: Dict[str, float] = {}
+        quotes: dict[str, float] = {}
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
             for key, sym in symbols.items():
                 try:
@@ -108,7 +116,9 @@ class VolatilityService:
                                 quotes[key] = float(data[0].get("price", 0))
                     self._record_fmp_call()
                 except Exception as exc:
-                    logger.warning("Failed to fetch volatility quote for %s (%s): %s", key, sym, exc)
+                    logger.warning(
+                        "Failed to fetch volatility quote for %s (%s): %s", key, sym, exc
+                    )
 
         vix = quotes.get("vix")
         vvix = quotes.get("vvix")

@@ -6,7 +6,8 @@ import functools
 import hashlib
 import json
 import logging
-from typing import Any, Awaitable, Callable, Optional, TypeVar
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeVar
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
@@ -37,7 +38,7 @@ def _cache_key(user_id: int, request: Request) -> str:
     return f"{_CACHE_KEY_PREFIX}:{user_id}:{path}:{query_hash}"
 
 
-def _find_user(kwargs: dict[str, Any]) -> Optional[User]:
+def _find_user(kwargs: dict[str, Any]) -> User | None:
     for v in kwargs.values():
         if isinstance(v, User):
             return v
@@ -59,7 +60,7 @@ def redis_response_cache(*, ttl_seconds: int = 30) -> Callable[[F], F]:
     def decorator(func: F) -> F:
         @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> Any:
-            request: Optional[Request] = kwargs.get("request")
+            request: Request | None = kwargs.get("request")
             user = _find_user(kwargs)
             if request is None or user is None:
                 return await func(*args, **kwargs)

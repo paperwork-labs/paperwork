@@ -19,7 +19,6 @@ Why a separate router?
 from __future__ import annotations
 
 import logging
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -53,7 +52,7 @@ def export_filefree(
         pattern="^(json|csv)$",
         description="Output format: 'json' (versioned package) or 'csv' (lots only).",
     ),
-    account_ids: Optional[List[int]] = Query(
+    account_ids: list[int] | None = Query(
         None,
         description="Optional whitelist of broker account ids; default is all of the user's accounts.",
     ),
@@ -82,9 +81,7 @@ def export_filefree(
             include_tax_advantaged=include_tax_advantaged,
         )
     except Exception as e:
-        logger.exception(
-            "filefree_export failed: user_id=%s year=%s: %s", user.id, year, e
-        )
+        logger.exception("filefree_export failed: user_id=%s year=%s: %s", user.id, year, e)
         raise HTTPException(status_code=500, detail="tax export failed")
 
     if format == "csv":

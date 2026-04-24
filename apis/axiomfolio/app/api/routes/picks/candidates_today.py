@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
@@ -18,13 +18,13 @@ router = APIRouter()
 
 
 def _today_utc_start() -> datetime:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-def _serialize_today_row(c: Candidate) -> Dict[str, Any]:
+def _serialize_today_row(c: Candidate) -> dict[str, Any]:
     breakdown = c.pick_quality_breakdown
-    score_payload: Optional[Dict[str, Any]] = None
+    score_payload: dict[str, Any] | None = None
     if breakdown is not None:
         score_payload = {
             "total_score": breakdown.get("total_score"),
@@ -55,14 +55,12 @@ def list_candidates_today(
     _user: User = Depends(get_current_user),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return today's system-generated candidates, highest pick quality first."""
     start = _today_utc_start()
     base_filter = (Candidate.generated_at >= start,)
-    total = (
-        db.query(func.count(Candidate.id)).filter(*base_filter).scalar() or 0
-    )
-    rows: List[Candidate] = (
+    total = db.query(func.count(Candidate.id)).filter(*base_filter).scalar() or 0
+    rows: list[Candidate] = (
         db.query(Candidate)
         .filter(*base_filter)
         .order_by(

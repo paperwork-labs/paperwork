@@ -1,21 +1,16 @@
 """Tests for the Quad Engine — Hedgeye GIP Quad Model classification."""
 
-import pytest
 
 from app.services.market.quad_engine import (
-    QuadConcentrationLimits,
-    QuadState,
+    check_t10_trigger,
     classify_quad,
+    compute_binding_ceiling,
     compute_depth,
     compute_quad_state,
     get_concentration_limits,
-    get_sector_action,
     get_scan_sectors,
-    check_t10_trigger,
-    compute_binding_ceiling,
-    DEFENSIVE_SECTORS,
+    get_sector_action,
 )
-
 
 # ── classify_quad ──
 
@@ -69,8 +64,10 @@ class TestComputeDepth:
 class TestComputeQuadState:
     def test_no_divergence(self):
         state = compute_quad_state(
-            gdp_first_diff_quarterly=0.5, cpi_first_diff_quarterly=-0.3,
-            gdp_first_diff_monthly=0.4, cpi_first_diff_monthly=-0.2,
+            gdp_first_diff_quarterly=0.5,
+            cpi_first_diff_quarterly=-0.3,
+            gdp_first_diff_monthly=0.4,
+            cpi_first_diff_monthly=-0.2,
         )
         assert state.quarterly_quad == "Q1"
         assert state.monthly_quad == "Q1"
@@ -80,8 +77,10 @@ class TestComputeQuadState:
 
     def test_divergence_first_month(self):
         state = compute_quad_state(
-            gdp_first_diff_quarterly=0.5, cpi_first_diff_quarterly=-0.3,
-            gdp_first_diff_monthly=-0.2, cpi_first_diff_monthly=0.3,
+            gdp_first_diff_quarterly=0.5,
+            cpi_first_diff_quarterly=-0.3,
+            gdp_first_diff_monthly=-0.2,
+            cpi_first_diff_monthly=0.3,
             prior_divergence_months=0,
         )
         assert state.quarterly_quad == "Q1"
@@ -92,8 +91,10 @@ class TestComputeQuadState:
 
     def test_divergence_two_months_monthly_becomes_operative(self):
         state = compute_quad_state(
-            gdp_first_diff_quarterly=0.5, cpi_first_diff_quarterly=-0.3,
-            gdp_first_diff_monthly=-0.2, cpi_first_diff_monthly=0.3,
+            gdp_first_diff_quarterly=0.5,
+            cpi_first_diff_quarterly=-0.3,
+            gdp_first_diff_monthly=-0.2,
+            cpi_first_diff_monthly=0.3,
             prior_divergence_months=1,
         )
         assert state.divergence_months == 2
@@ -101,8 +102,10 @@ class TestComputeQuadState:
 
     def test_divergence_resets_on_convergence(self):
         state = compute_quad_state(
-            gdp_first_diff_quarterly=0.5, cpi_first_diff_quarterly=-0.3,
-            gdp_first_diff_monthly=0.3, cpi_first_diff_monthly=-0.1,
+            gdp_first_diff_quarterly=0.5,
+            cpi_first_diff_quarterly=-0.3,
+            gdp_first_diff_monthly=0.3,
+            cpi_first_diff_monthly=-0.1,
             prior_divergence_months=3,
         )
         assert state.divergence_flag is False
@@ -111,8 +114,10 @@ class TestComputeQuadState:
 
     def test_depth_computation(self):
         state = compute_quad_state(
-            gdp_first_diff_quarterly=0.5, cpi_first_diff_quarterly=-0.1,
-            gdp_first_diff_monthly=0.1, cpi_first_diff_monthly=-0.05,
+            gdp_first_diff_quarterly=0.5,
+            cpi_first_diff_quarterly=-0.1,
+            gdp_first_diff_monthly=0.1,
+            cpi_first_diff_monthly=-0.05,
         )
         assert state.quarterly_depth == "Deep"
         assert state.monthly_depth == "Shallow"

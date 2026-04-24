@@ -4,19 +4,19 @@ All endpoints require authentication via JWT.
 Categories are scoped to the authenticated user.
 """
 
-from typing import Any, Dict, List, Optional
 import logging
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 
-from app.database import get_db
 from app.api.dependencies import get_current_user
+from app.database import get_db
+from app.models.broker_account import BrokerAccount
 from app.models.portfolio import Category, PositionCategory
 from app.models.position import Position
-from app.models.broker_account import BrokerAccount
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -26,21 +26,21 @@ router = APIRouter()
 
 class CategoryCreate(BaseModel):
     name: str
-    target_allocation_pct: Optional[float] = None
-    description: Optional[str] = None
-    color: Optional[str] = None
-    category_type: Optional[str] = "custom"
+    target_allocation_pct: float | None = None
+    description: str | None = None
+    color: str | None = None
+    category_type: str | None = "custom"
 
 
 class CategoryUpdate(BaseModel):
-    name: Optional[str] = None
-    target_allocation_pct: Optional[float] = None
-    description: Optional[str] = None
-    color: Optional[str] = None
+    name: str | None = None
+    target_allocation_pct: float | None = None
+    description: str | None = None
+    color: str | None = None
 
 
 class AssignPositionsRequest(BaseModel):
-    position_ids: List[int]
+    position_ids: list[int]
 
 
 @router.get("/categories/views")
@@ -49,12 +49,7 @@ async def list_category_views(
     user: User = Depends(get_current_user),
 ):
     """Return available category view types for the user."""
-    types = (
-        db.query(Category.category_type)
-        .filter(Category.user_id == user.id)
-        .distinct()
-        .all()
-    )
+    types = db.query(Category.category_type).filter(Category.user_id == user.id).distinct().all()
     existing = [t[0] for t in types if t[0]]
     if "custom" not in existing:
         existing.insert(0, "custom")
@@ -70,9 +65,9 @@ async def list_category_views(
     return {"status": "success", "data": {"views": views}}
 
 
-@router.get("/categories", response_model=Dict[str, Any])
+@router.get("/categories", response_model=dict[str, Any])
 async def list_categories(
-    category_type: Optional[str] = None,
+    category_type: str | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
@@ -81,9 +76,12 @@ async def list_categories(
     if category_type:
         q = q.filter(Category.category_type == category_type)
     categories = q.order_by(Category.display_order, Category.name).all()
-    total_value = db.query(func.coalesce(func.sum(Position.market_value), 0)).filter(
-        Position.user_id == user.id
-    ).scalar() or 0
+    total_value = (
+        db.query(func.coalesce(func.sum(Position.market_value), 0))
+        .filter(Position.user_id == user.id)
+        .scalar()
+        or 0
+    )
     result = []
     for cat in categories:
         assigned_value = (
@@ -94,18 +92,22 @@ async def list_categories(
             .scalar()
         ) or 0
         actual_pct = (assigned_value / total_value * 100) if total_value else 0
-        result.append({
-            "id": cat.id,
-            "name": cat.name,
-            "description": cat.description,
-            "color": cat.color,
-            "category_type": cat.category_type or "custom",
-            "target_allocation_pct": cat.target_allocation_pct,
-            "actual_allocation_pct": round(actual_pct, 2),
-            "display_order": cat.display_order or 0,
-            "positions_count": db.query(PositionCategory).filter(PositionCategory.category_id == cat.id).count(),
-            "total_value": assigned_value,
-        })
+        result.append(
+            {
+                "id": cat.id,
+                "name": cat.name,
+                "description": cat.description,
+                "color": cat.color,
+                "category_type": cat.category_type or "custom",
+                "target_allocation_pct": cat.target_allocation_pct,
+                "actual_allocation_pct": round(actual_pct, 2),
+                "display_order": cat.display_order or 0,
+                "positions_count": db.query(PositionCategory)
+                .filter(PositionCategory.category_id == cat.id)
+                .count(),
+                "total_value": assigned_value,
+            }
+        )
 
     # Compute uncategorized positions within this view
     cat_ids = [c.id for c in categories]
@@ -119,9 +121,7 @@ async def list_categories(
         }
 
     all_positions = (
-        db.query(Position)
-        .filter(Position.user_id == user.id, Position.quantity != 0)
-        .all()
+        db.query(Position).filter(Position.user_id == user.id, Position.quantity != 0).all()
     )
     uncategorized = [p for p in all_positions if p.id not in categorized_position_ids]
     uncat_value = sum(float(p.market_value or 0) for p in uncategorized)
@@ -142,7 +142,7 @@ async def list_categories(
     }
 
 
-@router.post("/categories", response_model=Dict[str, Any])
+@router.post("/categories", response_model=dict[str, Any])
 async def create_category(
     body: CategoryCreate,
     db: Session = Depends(get_db),
@@ -150,11 +150,15 @@ async def create_category(
 ):
     """Create a category."""
     cat_type = body.category_type or "custom"
-    existing = db.query(Category).filter(
-        Category.user_id == user.id,
-        Category.name == body.name,
-        Category.category_type == cat_type,
-    ).first()
+    existing = (
+        db.query(Category)
+        .filter(
+            Category.user_id == user.id,
+            Category.name == body.name,
+            Category.category_type == cat_type,
+        )
+        .first()
+    )
     if existing:
         raise HTTPException(status_code=400, detail="Category name already exists")
     cat = Category(
@@ -172,10 +176,10 @@ async def create_category(
 
 
 class ReorderRequest(BaseModel):
-    ordered_ids: List[int]
+    ordered_ids: list[int]
 
 
-@router.put("/categories/reorder", response_model=Dict[str, Any])
+@router.put("/categories/reorder", response_model=dict[str, Any])
 async def reorder_categories(
     body: ReorderRequest,
     db: Session = Depends(get_db),
@@ -191,19 +195,25 @@ async def reorder_categories(
     return {"status": "success"}
 
 
-@router.get("/categories/rebalance-suggestions", response_model=Dict[str, Any])
+@router.get("/categories/rebalance-suggestions", response_model=dict[str, Any])
 async def get_rebalance_suggestions(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """Compute rebalancing suggestions based on target vs actual allocations."""
     try:
-        acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id).all()]
+        acct_ids = [
+            a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id).all()
+        ]
         if not acct_ids:
             return {"status": "success", "data": {"suggestions": [], "total_value": 0}}
 
         categories = db.query(Category).filter(Category.user_id == user.id).all()
-        positions = db.query(Position).filter(Position.account_id.in_(acct_ids), Position.quantity != 0).all()
+        positions = (
+            db.query(Position)
+            .filter(Position.account_id.in_(acct_ids), Position.quantity != 0)
+            .all()
+        )
         total_mv = sum(float(p.market_value or 0) for p in positions)
 
         if total_mv <= 0 or not categories:
@@ -218,11 +228,17 @@ async def get_rebalance_suggestions(
                 continue
 
             links = db.query(PositionCategory).filter(PositionCategory.category_id == cat.id).all()
-            cat_positions = [pos_map[lnk.position_id] for lnk in links if lnk.position_id in pos_map]
+            cat_positions = [
+                pos_map[lnk.position_id] for lnk in links if lnk.position_id in pos_map
+            ]
             cat_mv = sum(float(p.market_value or 0) for p in cat_positions)
             actual_pct = (cat_mv / total_mv * 100) if total_mv > 0 else 0
             drift = actual_pct - target_pct
-            threshold = float(cat.rebalance_threshold_pct or 5) if hasattr(cat, "rebalance_threshold_pct") else 5.0
+            threshold = (
+                float(cat.rebalance_threshold_pct or 5)
+                if hasattr(cat, "rebalance_threshold_pct")
+                else 5.0
+            )
 
             if abs(drift) > threshold:
                 dollar_adj = round(drift / 100 * total_mv, 2)
@@ -230,21 +246,38 @@ async def get_rebalance_suggestions(
 
                 pos_details = []
                 for p in cat_positions:
-                    w = float(p.market_value or 0) / cat_mv if cat_mv > 0 else 1 / max(len(cat_positions), 1)
+                    w = (
+                        float(p.market_value or 0) / cat_mv
+                        if cat_mv > 0
+                        else 1 / max(len(cat_positions), 1)
+                    )
                     est = round(abs(dollar_adj) * w, 2)
-                    pos_details.append({"symbol": p.symbol, "est_value": est, "shares": round(est / float(p.current_price or 1), 2) if p.current_price else 0})
+                    pos_details.append(
+                        {
+                            "symbol": p.symbol,
+                            "est_value": est,
+                            "shares": round(est / float(p.current_price or 1), 2)
+                            if p.current_price
+                            else 0,
+                        }
+                    )
 
-                suggestions.append({
-                    "category": cat.name,
-                    "target_pct": round(target_pct, 1),
-                    "actual_pct": round(actual_pct, 1),
-                    "drift_pct": round(drift, 1),
-                    "direction": direction,
-                    "amount": abs(dollar_adj),
-                    "positions": pos_details,
-                })
+                suggestions.append(
+                    {
+                        "category": cat.name,
+                        "target_pct": round(target_pct, 1),
+                        "actual_pct": round(actual_pct, 1),
+                        "drift_pct": round(drift, 1),
+                        "direction": direction,
+                        "amount": abs(dollar_adj),
+                        "positions": pos_details,
+                    }
+                )
 
-        return {"status": "success", "data": {"suggestions": suggestions, "total_value": round(total_mv, 2)}}
+        return {
+            "status": "success",
+            "data": {"suggestions": suggestions, "total_value": round(total_mv, 2)},
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -284,9 +317,7 @@ async def apply_preset(
 
     account_ids = [a.id for a in user.accounts] if hasattr(user, "accounts") else []
     if not account_ids:
-        account_ids_query = db.query(BrokerAccount.id).filter(
-            BrokerAccount.user_id == user.id
-        )
+        account_ids_query = db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id)
         account_ids = [r[0] for r in account_ids_query.all()]
 
     positions = (
@@ -347,9 +378,9 @@ async def apply_preset(
         .all()
     )
     for old_cat in old_cats:
-        db.query(PositionCategory).filter(
-            PositionCategory.category_id == old_cat.id
-        ).delete(synchronize_session=False)
+        db.query(PositionCategory).filter(PositionCategory.category_id == old_cat.id).delete(
+            synchronize_session=False
+        )
         db.delete(old_cat)
     db.flush()
 
@@ -363,9 +394,7 @@ async def apply_preset(
         categories_created += 1
 
         for pos in bucket_positions:
-            db.add(
-                PositionCategory(category_id=cat.id, position_id=pos.id)
-            )
+            db.add(PositionCategory(category_id=cat.id, position_id=pos.id))
             positions_assigned += 1
 
     db.commit()
@@ -376,24 +405,32 @@ async def apply_preset(
     }
 
 
-@router.get("/categories/{category_id}", response_model=Dict[str, Any])
+@router.get("/categories/{category_id}", response_model=dict[str, Any])
 async def get_category(
     category_id: int = Path(...),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """Get one category with positions."""
-    cat = db.query(Category).filter(
-        Category.id == category_id,
-        Category.user_id == user.id,
-    ).first()
+    cat = (
+        db.query(Category)
+        .filter(
+            Category.id == category_id,
+            Category.user_id == user.id,
+        )
+        .first()
+    )
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
     position_ids = [
         r[0]
-        for r in db.query(PositionCategory.position_id).filter(PositionCategory.category_id == category_id).all()
+        for r in db.query(PositionCategory.position_id)
+        .filter(PositionCategory.category_id == category_id)
+        .all()
     ]
-    positions = db.query(Position).filter(Position.id.in_(position_ids)).all() if position_ids else []
+    positions = (
+        db.query(Position).filter(Position.id.in_(position_ids)).all() if position_ids else []
+    )
     cat_total = sum(float(p.market_value or 0) for p in positions)
 
     from app.models.market_data import MarketSnapshot
@@ -415,16 +452,18 @@ async def get_category(
     for p in positions:
         mv = float(p.market_value or 0)
         snap = snap_map.get(p.symbol)
-        pos_list.append({
-            "id": p.id,
-            "symbol": p.symbol,
-            "shares": float(p.quantity or 0),
-            "market_value": mv,
-            "weight_pct": round(mv / cat_total * 100, 2) if cat_total else 0,
-            "stage_label": getattr(snap, "stage_label", None) if snap else None,
-            "unrealized_pnl": float(p.unrealized_pnl or 0),
-            "unrealized_pnl_pct": float(p.unrealized_pnl_pct or 0),
-        })
+        pos_list.append(
+            {
+                "id": p.id,
+                "symbol": p.symbol,
+                "shares": float(p.quantity or 0),
+                "market_value": mv,
+                "weight_pct": round(mv / cat_total * 100, 2) if cat_total else 0,
+                "stage_label": getattr(snap, "stage_label", None) if snap else None,
+                "unrealized_pnl": float(p.unrealized_pnl or 0),
+                "unrealized_pnl_pct": float(p.unrealized_pnl_pct or 0),
+            }
+        )
 
     return {
         "status": "success",
@@ -441,18 +480,22 @@ async def get_category(
     }
 
 
-@router.put("/categories/{category_id}", response_model=Dict[str, Any])
+@router.put("/categories/{category_id}", response_model=dict[str, Any])
 async def update_category(
     category_id: int = Path(...),
-    body: Optional[CategoryUpdate] = None,
+    body: CategoryUpdate | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """Update a category."""
-    cat = db.query(Category).filter(
-        Category.id == category_id,
-        Category.user_id == user.id,
-    ).first()
+    cat = (
+        db.query(Category)
+        .filter(
+            Category.id == category_id,
+            Category.user_id == user.id,
+        )
+        .first()
+    )
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
     if body:
@@ -469,17 +512,21 @@ async def update_category(
     return {"status": "success", "data": {"id": cat.id}}
 
 
-@router.delete("/categories/{category_id}", response_model=Dict[str, Any])
+@router.delete("/categories/{category_id}", response_model=dict[str, Any])
 async def delete_category(
     category_id: int = Path(...),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """Delete a category and its position assignments."""
-    cat = db.query(Category).filter(
-        Category.id == category_id,
-        Category.user_id == user.id,
-    ).first()
+    cat = (
+        db.query(Category)
+        .filter(
+            Category.id == category_id,
+            Category.user_id == user.id,
+        )
+        .first()
+    )
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
     db.query(PositionCategory).filter(PositionCategory.category_id == category_id).delete()
@@ -488,33 +535,45 @@ async def delete_category(
     return {"status": "success"}
 
 
-@router.post("/categories/{category_id}/positions", response_model=Dict[str, Any])
+@router.post("/categories/{category_id}/positions", response_model=dict[str, Any])
 async def assign_positions(
     category_id: int = Path(...),
-    body: Optional[AssignPositionsRequest] = None,
+    body: AssignPositionsRequest | None = None,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
     """Assign positions to a category (adds to existing)."""
-    cat = db.query(Category).filter(
-        Category.id == category_id,
-        Category.user_id == user.id,
-    ).first()
+    cat = (
+        db.query(Category)
+        .filter(
+            Category.id == category_id,
+            Category.user_id == user.id,
+        )
+        .first()
+    )
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
     position_ids = body.position_ids if body else []
     added = 0
     for pid in position_ids:
-        position = db.query(Position).filter(
-            Position.id == pid,
-            Position.user_id == user.id,
-        ).first()
+        position = (
+            db.query(Position)
+            .filter(
+                Position.id == pid,
+                Position.user_id == user.id,
+            )
+            .first()
+        )
         if not position:
             continue
-        existing = db.query(PositionCategory).filter(
-            PositionCategory.category_id == category_id,
-            PositionCategory.position_id == pid,
-        ).first()
+        existing = (
+            db.query(PositionCategory)
+            .filter(
+                PositionCategory.category_id == category_id,
+                PositionCategory.position_id == pid,
+            )
+            .first()
+        )
         if not existing:
             db.add(PositionCategory(category_id=category_id, position_id=pid))
             added += 1
@@ -522,7 +581,7 @@ async def assign_positions(
     return {"status": "success", "data": {"added": added}}
 
 
-@router.delete("/categories/{category_id}/positions/{position_id}", response_model=Dict[str, Any])
+@router.delete("/categories/{category_id}/positions/{position_id}", response_model=dict[str, Any])
 async def unassign_position(
     category_id: int = Path(...),
     position_id: int = Path(...),
@@ -530,16 +589,24 @@ async def unassign_position(
     user: User = Depends(get_current_user),
 ):
     """Remove a position from a category."""
-    cat = db.query(Category).filter(
-        Category.id == category_id,
-        Category.user_id == user.id,
-    ).first()
+    cat = (
+        db.query(Category)
+        .filter(
+            Category.id == category_id,
+            Category.user_id == user.id,
+        )
+        .first()
+    )
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
-    link = db.query(PositionCategory).filter(
-        PositionCategory.category_id == category_id,
-        PositionCategory.position_id == position_id,
-    ).first()
+    link = (
+        db.query(PositionCategory)
+        .filter(
+            PositionCategory.category_id == category_id,
+            PositionCategory.position_id == position_id,
+        )
+        .first()
+    )
     if link:
         db.delete(link)
         db.commit()

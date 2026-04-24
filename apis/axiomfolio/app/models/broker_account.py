@@ -6,23 +6,26 @@ Broker account tracking and integration.
 Handles broker account tracking; examples in docs use placeholders, not real IDs.
 """
 
+import enum
+from datetime import datetime
+
 from sqlalchemy import (
+    DECIMAL,
     JSON,
+    Boolean,
     Column,
+    DateTime,
+    ForeignKey,
+    Index,
     Integer,
     String,
-    DateTime,
-    Boolean,
     Text,
-    ForeignKey,
-    DECIMAL,
+)
+from sqlalchemy import (
     Enum as SQLEnum,
-    Index,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
-import enum
 
 from . import Base
 
@@ -116,9 +119,7 @@ class BrokerAccount(Base):
     )
 
     # Status
-    status = Column(
-        SQLEnum(AccountStatus), default=AccountStatus.ACTIVE, nullable=False
-    )
+    status = Column(SQLEnum(AccountStatus), default=AccountStatus.ACTIVE, nullable=False)
     is_primary = Column(Boolean, default=False)  # Primary account for this broker
     is_enabled = Column(Boolean, default=True)  # Enabled for sync/trading
 
@@ -148,9 +149,7 @@ class BrokerAccount(Base):
     total_pnl = Column(DECIMAL(15, 2))  # Total unrealized P&L
 
     # Data retention settings
-    import_transactions_since = Column(
-        DateTime
-    )  # Only import transactions after this date
+    import_transactions_since = Column(DateTime)  # Only import transactions after this date
     keep_historical_data_days = Column(Integer, default=365 * 3)  # 3 years default
 
     # Timestamps
@@ -167,12 +166,8 @@ class BrokerAccount(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
-    syncs = relationship(
-        "AccountSync", back_populates="account", cascade="all, delete-orphan"
-    )
-    positions = relationship(
-        "Position", back_populates="account", cascade="all, delete-orphan"
-    )
+    syncs = relationship("AccountSync", back_populates="account", cascade="all, delete-orphan")
+    positions = relationship("Position", back_populates="account", cascade="all, delete-orphan")
     transactions = relationship(
         "Transaction", back_populates="broker_account", cascade="all, delete-orphan"
     )
@@ -192,9 +187,7 @@ class BrokerAccount(Base):
     account_balances = relationship(
         "AccountBalance", back_populates="broker_account", cascade="all, delete-orphan"
     )
-    options = relationship(
-        "Option", back_populates="broker_account", cascade="all, delete-orphan"
-    )
+    options = relationship("Option", back_populates="broker_account", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
@@ -208,7 +201,9 @@ class BrokerAccount(Base):
         """Human-friendly account display name."""
         if self.account_name:
             return f"{self.account_name} ({self.account_number})"
-        return f"{self.broker.value.upper()} {self.account_type.value.title()} ({self.account_number})"
+        return (
+            f"{self.broker.value.upper()} {self.account_type.value.title()} ({self.account_number})"
+        )
 
     @property
     def is_aggregator(self) -> bool:
@@ -270,18 +265,14 @@ class AccountCredentials(Base):
     __tablename__ = "account_credentials"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    account_id = Column(
-        Integer, ForeignKey("broker_accounts.id"), nullable=False, unique=True
-    )
+    account_id = Column(Integer, ForeignKey("broker_accounts.id"), nullable=False, unique=True)
 
     # Encrypted credentials (implementation specific)
     encrypted_credentials = Column(Text)  # JSON blob with broker-specific fields
     credential_hash = Column(String(255))  # For validation
     # Provider and metadata (non-secret)
     provider = Column(SQLEnum(BrokerType), nullable=True)
-    credential_type = Column(
-        String(32), nullable=True
-    )  # oauth|basic|api_key|ibkr_flex|tws
+    credential_type = Column(String(32), nullable=True)  # oauth|basic|api_key|ibkr_flex|tws
     username_hint = Column(String(255))  # masked username/email if applicable
     last_refreshed_at = Column(DateTime)
     refresh_token_expires_at = Column(DateTime)
@@ -304,14 +295,10 @@ class AccountSync(Base):
     __tablename__ = "account_syncs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    account_id = Column(
-        Integer, ForeignKey("broker_accounts.id"), nullable=False, index=True
-    )
+    account_id = Column(Integer, ForeignKey("broker_accounts.id"), nullable=False, index=True)
 
     # Sync details
-    sync_type = Column(
-        String(50), nullable=False
-    )  # "full", "incremental", "positions_only"
+    sync_type = Column(String(50), nullable=False)  # "full", "incremental", "positions_only"
     started_at = Column(DateTime, nullable=False)
     completed_at = Column(DateTime)
     duration_seconds = Column(Integer)

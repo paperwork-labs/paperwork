@@ -42,13 +42,15 @@ on retries.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Any, Dict, Mapping, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from .price_catalog import PriceCatalog, TierSlug
 from .stripe_client import StripeNotConfigured, get_stripe
@@ -107,9 +109,9 @@ class SubscriptionState:
     user_id: int
     tier: TierSlug
     status: SubscriptionStatus
-    stripe_customer_id: Optional[str]
-    stripe_subscription_id: Optional[str]
-    current_period_end: Optional[datetime]
+    stripe_customer_id: str | None
+    stripe_subscription_id: str | None
+    current_period_end: datetime | None
     cancel_at_period_end: bool
     source_event_id: str
     source_event_type: str
@@ -146,13 +148,13 @@ class _DictIdempotencyStore:
     """Default in-process store. Not safe across worker processes."""
 
     def __init__(self) -> None:
-        self._seen: Dict[str, datetime] = {}
+        self._seen: dict[str, datetime] = {}
 
     def __contains__(self, event_id: object) -> bool:
         return isinstance(event_id, str) and event_id in self._seen
 
     def mark(self, event_id: str) -> None:
-        self._seen[event_id] = datetime.now(timezone.utc)
+        self._seen[event_id] = datetime.now(UTC)
 
 
 class RedisIdempotencyStore:
@@ -188,7 +190,7 @@ class RedisIdempotencyStore:
             return False
         try:
             return bool(self._redis.exists(self._key(event_id)))
-        except Exception as exc:  # noqa: BLE001 - tolerate Redis hiccups
+        except Exception as exc:
             logger.warning(
                 "stripe webhook: idempotency lookup failed for %s: %s",
                 event_id,
@@ -204,7 +206,7 @@ class RedisIdempotencyStore:
             return
         try:
             self._redis.set(self._key(event_id), "1", ex=self._ttl)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "stripe webhook: idempotency mark failed for %s: %s",
                 event_id,
@@ -224,10 +226,10 @@ class UserResolver(Protocol):
     def resolve(
         self,
         *,
-        stripe_customer_id: Optional[str],
-        email: Optional[str],
+        stripe_customer_id: str | None,
+        email: str | None,
         metadata: Mapping[str, Any],
-    ) -> Optional[int]: ...  # pragma: no cover
+    ) -> int | None: ...  # pragma: no cover
 
 
 # --------------------------------------------------------------------------- #
@@ -258,7 +260,7 @@ class ProcessResult:
     acked: bool
     acted: bool
     reason: str
-    state: Optional[SubscriptionState] = None
+    state: SubscriptionState | None = None
 
 
 class StripeWebhookProcessor:
@@ -282,12 +284,12 @@ class StripeWebhookProcessor:
     def __init__(
         self,
         *,
-        webhook_secret: Optional[str],
+        webhook_secret: str | None,
         catalog: PriceCatalog,
         user_resolver: UserResolver,
         sink: SubscriptionStateSink,
-        idempotency: Optional[IdempotencyStore] = None,
-        stripe_module: Optional[Any] = None,
+        idempotency: IdempotencyStore | None = None,
+        stripe_module: Any | None = None,
     ) -> None:
         self._webhook_secret = webhook_secret
         self._catalog = catalog
@@ -300,7 +302,7 @@ class StripeWebhookProcessor:
     # Verification                                                          #
     # --------------------------------------------------------------------- #
 
-    def verify_and_parse(self, payload: bytes, sig_header: Optional[str]) -> Dict[str, Any]:
+    def verify_and_parse(self, payload: bytes, sig_header: str | None) -> dict[str, Any]:
         """Validate the Stripe-Signature header and return the parsed event.
 
         Raises:
@@ -347,9 +349,7 @@ class StripeWebhookProcessor:
         event_type = str(event.get("type") or "")
 
         if not event_id or not event_type:
-            raise StripeWebhookError(
-                f"Event missing id/type: id={event_id!r} type={event_type!r}"
-            )
+            raise StripeWebhookError(f"Event missing id/type: id={event_id!r} type={event_type!r}")
 
         if event_id in self._idempotency:
             logger.info("stripe webhook: skipping already-processed event_id=%s", event_id)
@@ -358,9 +358,7 @@ class StripeWebhookProcessor:
         if event_type not in _HANDLED_EVENT_TYPES:
             # Acknowledge so Stripe stops retrying. Don't mark idempotent so
             # if we add the type later, the next replay will pick it up.
-            logger.debug(
-                "stripe webhook: ignoring unhandled type=%s id=%s", event_type, event_id
-            )
+            logger.debug("stripe webhook: ignoring unhandled type=%s id=%s", event_type, event_id)
             return ProcessResult(acked=True, acted=False, reason=f"unhandled:{event_type}")
 
         try:
@@ -516,9 +514,7 @@ class StripeWebhookProcessor:
             stripe_customer_id=customer_id, email=None, metadata=metadata
         )
         if user_id is None:
-            raise StripeWebhookError(
-                f"invoice.*: cannot resolve user (customer={customer_id})"
-            )
+            raise StripeWebhookError(f"invoice.*: cannot resolve user (customer={customer_id})")
 
         # Resolve current tier from the invoice line items.
         lines = (invoice.get("lines") or {}).get("data") or []
@@ -551,7 +547,7 @@ class StripeWebhookProcessor:
     # --- helpers --------------------------------------------------------- #
 
     @staticmethod
-    def _get_customer_id(obj: Mapping[str, Any]) -> Optional[str]:
+    def _get_customer_id(obj: Mapping[str, Any]) -> str | None:
         # Stripe sometimes returns expanded customer objects; normalize.
         cust = obj.get("customer")
         if isinstance(cust, str):
@@ -574,11 +570,11 @@ class StripeWebhookProcessor:
             )
             return SubscriptionStatus.PAST_DUE
 
-    def _tier_from_line_items(self, line_items: Any) -> Optional[TierSlug]:
+    def _tier_from_line_items(self, line_items: Any) -> TierSlug | None:
         # Same rule as _tier_from_subscription_items: pick the highest tier
         # so a multi-line checkout (e.g. Pro+ + add-on) never accidentally
         # downgrades the user to whichever line happened to come first.
-        best: Optional[TierSlug] = None
+        best: TierSlug | None = None
         for li in line_items:
             price = li.get("price") or {}
             pid = price.get("id")
@@ -590,10 +586,10 @@ class StripeWebhookProcessor:
             best = _max_tier(best, entry.tier)
         return best
 
-    def _tier_from_subscription_items(self, items: Any) -> Optional[TierSlug]:
+    def _tier_from_subscription_items(self, items: Any) -> TierSlug | None:
         # If a subscription has multiple items at different tiers (rare),
         # take the highest tier — never accidentally downgrade.
-        best: Optional[TierSlug] = None
+        best: TierSlug | None = None
         for item in items:
             price = item.get("price") or {}
             pid = price.get("id")
@@ -605,8 +601,8 @@ class StripeWebhookProcessor:
             best = _max_tier(best, entry.tier)
         return best
 
-    def _tier_from_invoice_lines(self, lines: Any) -> Optional[TierSlug]:
-        best: Optional[TierSlug] = None
+    def _tier_from_invoice_lines(self, lines: Any) -> TierSlug | None:
+        best: TierSlug | None = None
         for line in lines:
             price = line.get("price") or {}
             pid = price.get("id")
@@ -641,16 +637,16 @@ _TIER_RANK = {
 }
 
 
-def _max_tier(a: Optional[TierSlug], b: TierSlug) -> TierSlug:
+def _max_tier(a: TierSlug | None, b: TierSlug) -> TierSlug:
     if a is None:
         return b
     return a if _TIER_RANK[a] >= _TIER_RANK[b] else b
 
 
-def _unix_to_dt(value: Any) -> Optional[datetime]:
+def _unix_to_dt(value: Any) -> datetime | None:
     if value is None:
         return None
     try:
-        return datetime.fromtimestamp(int(value), tz=timezone.utc)
+        return datetime.fromtimestamp(int(value), tz=UTC)
     except (TypeError, ValueError):
         return None

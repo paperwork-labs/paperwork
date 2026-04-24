@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -126,7 +126,7 @@ def test_dividend_summary_aware_pay_date_returns_200(client, db_session, primary
     if db_session is None:
         pytest.skip("database not configured")
 
-    pay_aware = datetime.now(timezone.utc) - timedelta(days=30)
+    pay_aware = datetime.now(UTC) - timedelta(days=30)
     ex_aware = pay_aware - timedelta(days=7)
 
     db_session.add(

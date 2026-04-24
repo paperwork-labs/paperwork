@@ -1,19 +1,22 @@
 """Portfolio options endpoints (moved from options.py)."""
 
+import logging
+from datetime import UTC, date, datetime
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
-from datetime import datetime, date, timezone
-from typing import List, Dict, Any, Optional
-import logging
 
-from app.database import get_db
 from app.api.dependencies import get_admin_user, get_current_user
 from app.api.middleware.response_cache import redis_response_cache
+from app.database import get_db
 from app.models import BrokerAccount, Option
 from app.models.broker_account import BrokerType
 from app.models.user import User
 from app.services.market.options_chain_service import (
     get_chain as get_options_chain,
+)
+from app.services.market.options_chain_service import (
     probe_sources as probe_chain_sources,
 )
 
@@ -41,8 +44,8 @@ router = APIRouter()
 
 
 def _compute_options_portfolio(
-    db: Session, user_id: int, account_id: Optional[str]
-) -> Dict[str, Any]:
+    db: Session, user_id: int, account_id: str | None
+) -> dict[str, Any]:
     """Build the unified options portfolio payload for a single user.
 
     Returns a dict with ``positions``, ``underlyings``, ``filtering``,
@@ -62,13 +65,10 @@ def _compute_options_portfolio(
 
     opt_acct_ids = {p.account_id for p in positions_models}
     opt_accounts_map = {
-        a.id: a
-        for a in db.query(BrokerAccount)
-        .filter(BrokerAccount.id.in_(opt_acct_ids))
-        .all()
+        a.id: a for a in db.query(BrokerAccount).filter(BrokerAccount.id.in_(opt_acct_ids)).all()
     }
 
-    def _days_to_expiry(exp: Optional[date]) -> int:
+    def _days_to_expiry(exp: date | None) -> int:
         try:
             if not exp:
                 return 0
@@ -77,9 +77,9 @@ def _compute_options_portfolio(
             logger.warning("days_to_expiry calculation failed: %s", e)
             return 0
 
-    positions: List[Dict[str, Any]] = []
-    underlyings: Dict[str, Dict[str, Any]] = {}
-    per_broker_counters: Dict[str, Dict[str, int]] = {}
+    positions: list[dict[str, Any]] = []
+    underlyings: dict[str, dict[str, Any]] = {}
+    per_broker_counters: dict[str, dict[str, int]] = {}
     for p in positions_models:
         acc = opt_accounts_map.get(p.account_id)
         account_number = acc.account_number if acc else None
@@ -97,8 +97,7 @@ def _compute_options_portfolio(
                     cur_price = mv / (abs_qty * mult)
         except Exception as e:
             logger.warning(
-                "Options position market value / price derivation failed "
-                "(position id=%s): %s",
+                "Options position market value / price derivation failed (position id=%s): %s",
                 getattr(p, "id", None),
                 e,
             )
@@ -108,8 +107,7 @@ def _compute_options_portfolio(
                 u_pnl = mv - abs(total_cost)
             except Exception as e:
                 logger.warning(
-                    "Options unrealized PnL fallback failed "
-                    "(position id=%s): %s",
+                    "Options unrealized PnL fallback failed (position id=%s): %s",
                     getattr(p, "id", None),
                     e,
                 )
@@ -130,14 +128,12 @@ def _compute_options_portfolio(
                     e,
                 )
                 sym_value = p.underlying_symbol or "UNKNOWN"
-        pos: Dict[str, Any] = {
+        pos: dict[str, Any] = {
             "id": p.id,
             "symbol": sym_value,
             "underlying_symbol": p.underlying_symbol or "",
             "strike_price": float(p.strike_price or 0),
-            "expiration_date": (
-                p.expiry_date.isoformat() if p.expiry_date else None
-            ),
+            "expiration_date": (p.expiry_date.isoformat() if p.expiry_date else None),
             "option_type": (p.option_type or "").lower(),
             "quantity": qty,
             "average_open_price": avg_cost,
@@ -160,22 +156,16 @@ def _compute_options_portfolio(
             "theta": float(p.theta) if p.theta is not None else None,
             "vega": float(p.vega) if p.vega is not None else None,
             "implied_volatility": (
-                float(p.implied_volatility)
-                if p.implied_volatility is not None
-                else None
+                float(p.implied_volatility) if p.implied_volatility is not None else None
             ),
             "underlying_price": (
                 float(p.underlying_price) if p.underlying_price is not None else None
             ),
             "cost_basis": float(p.total_cost) if p.total_cost else None,
-            "realized_pnl": (
-                float(p.realized_pnl) if p.realized_pnl is not None else None
-            ),
-            "commission": (
-                float(p.commission) if p.commission is not None else None
-            ),
+            "realized_pnl": (float(p.realized_pnl) if p.realized_pnl is not None else None),
+            "commission": (float(p.commission) if p.commission is not None else None),
             "last_updated": (
-                p.updated_at or p.last_updated or datetime.now(timezone.utc)
+                p.updated_at or p.last_updated or datetime.now(UTC)
             ).isoformat(),
         }
         positions.append(pos)
@@ -212,7 +202,7 @@ def _compute_options_portfolio(
     }
 
 
-@router.get("/accounts", response_model=Dict[str, Any])
+@router.get("/accounts", response_model=dict[str, Any])
 @redis_response_cache(ttl_seconds=30)
 async def get_option_accounts(
     request: Request,
@@ -235,9 +225,7 @@ async def get_option_accounts(
         from sqlalchemy import exists, or_
 
         has_open_options = (
-            exists()
-            .where(Option.account_id == BrokerAccount.id)
-            .where(Option.open_quantity != 0)
+            exists().where(Option.account_id == BrokerAccount.id).where(Option.open_quantity != 0)
         )
         accounts = (
             db.query(BrokerAccount)
@@ -277,12 +265,12 @@ async def get_option_accounts(
 @redis_response_cache(ttl_seconds=30)
 async def get_unified_options_portfolio(
     request: Request,
-    account_id: Optional[str] = Query(
+    account_id: str | None = Query(
         None, description="Filter by account number (e.g., IBKR_ACCOUNT)"
     ),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Unified options positions (all brokers) with optional account filter."""
     try:
         data = _compute_options_portfolio(db, user.id, account_id)
@@ -294,12 +282,12 @@ async def get_unified_options_portfolio(
 
 @router.get("/unified/summary")
 async def get_unified_options_summary(
-    account_id: Optional[str] = Query(
+    account_id: str | None = Query(
         None, description="Filter by account number (e.g., IBKR_ACCOUNT)"
     ),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Aggregate summary for options positions (all brokers)."""
     try:
         # Build the portfolio payload directly from the shared helper. This
@@ -310,7 +298,7 @@ async def get_unified_options_summary(
         # frontend as the "Failed to load options" card on the Positions
         # subtab — the screenshot bug reported by the founder.
         portfolio = _compute_options_portfolio(db, user.id, account_id)
-        positions: List[Dict[str, Any]] = portfolio["positions"]
+        positions: list[dict[str, Any]] = portfolio["positions"]
         total_value = sum(abs(p.get("market_value", 0.0)) for p in positions)
         total_pnl = sum(p.get("unrealized_pnl", 0.0) for p in positions)
         calls = [p for p in positions if p.get("option_type") == "call"]
@@ -320,9 +308,7 @@ async def get_unified_options_summary(
             "total_positions": len(positions),
             "total_market_value": total_value,
             "total_unrealized_pnl": total_pnl,
-            "total_unrealized_pnl_pct": (
-                (total_pnl / total_value * 100) if total_value else 0.0
-            ),
+            "total_unrealized_pnl_pct": ((total_pnl / total_value * 100) if total_value else 0.0),
             "total_day_pnl": 0.0,
             "total_day_pnl_pct": 0.0,
             "calls_count": len(calls),
@@ -335,17 +321,11 @@ async def get_unified_options_summary(
             ),
             "underlyings_count": len(portfolio["underlyings"]),
             "avg_days_to_expiration": (
-                (
-                    sum(p.get("days_to_expiration", 0) for p in positions)
-                    / len(positions)
-                )
+                (sum(p.get("days_to_expiration", 0) for p in positions) / len(positions))
                 if positions
                 else 0
             ),
-            "net_delta": sum(
-                (p.get("delta") or 0) * p.get("quantity", 0)
-                for p in positions
-            ),
+            "net_delta": sum((p.get("delta") or 0) * p.get("quantity", 0) for p in positions),
             "net_theta": sum(
                 (p.get("theta") or 0) * p.get("quantity", 0) * p.get("multiplier", 100)
                 for p in positions
@@ -365,11 +345,11 @@ async def get_unified_options_summary(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/chain/sources", response_model=Dict[str, Any])
+@router.get("/chain/sources", response_model=dict[str, Any])
 async def get_option_chain_sources(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Report which option-chain data sources are available for this user.
 
     Used by the frontend to decide whether the chain tab should render data,
@@ -391,7 +371,7 @@ async def get_option_chain_sources(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/chain/{symbol}", response_model=Dict[str, Any])
+@router.get("/chain/{symbol}", response_model=dict[str, Any])
 async def get_option_chain(
     symbol: str,
     user: User = Depends(get_current_user),
@@ -414,12 +394,12 @@ async def get_option_chain(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/history", response_model=Dict[str, Any])
+@router.get("/history", response_model=dict[str, Any])
 async def get_options_history(
-    account_id: Optional[str] = Query(None, description="Filter by account number"),
+    account_id: str | None = Query(None, description="Filter by account number"),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return exercised/assigned/expired options history for the authenticated user."""
     try:
         from sqlalchemy import or_
@@ -454,28 +434,26 @@ async def get_options_history(
         for opt in options:
             exercised = getattr(opt, "exercised_quantity", 0) or 0
             assigned = getattr(opt, "assigned_quantity", 0) or 0
-            event_type = (
-                "exercised" if exercised > 0
-                else "assigned" if assigned > 0
-                else "expired"
-            )
+            event_type = "exercised" if exercised > 0 else "assigned" if assigned > 0 else "expired"
             closed_qty = int(exercised + assigned)
-            history_items.append({
-                "id": opt.id,
-                "symbol": opt.symbol,
-                "underlying_symbol": opt.underlying_symbol,
-                "option_type": opt.option_type,
-                "strike_price": float(opt.strike_price) if opt.strike_price else None,
-                "expiry_date": opt.expiry_date.isoformat() if opt.expiry_date else None,
-                "event_type": event_type,
-                "exercised_quantity": exercised,
-                "assigned_quantity": assigned,
-                "original_quantity": float(closed_qty) if closed_qty > 0 else None,
-                "cost_basis": float(opt.total_cost or 0),
-                "realized_pnl": float(opt.realized_pnl or 0),
-                "commission": float(opt.commission or 0),
-                "data_source": opt.data_source,
-            })
+            history_items.append(
+                {
+                    "id": opt.id,
+                    "symbol": opt.symbol,
+                    "underlying_symbol": opt.underlying_symbol,
+                    "option_type": opt.option_type,
+                    "strike_price": float(opt.strike_price) if opt.strike_price else None,
+                    "expiry_date": opt.expiry_date.isoformat() if opt.expiry_date else None,
+                    "event_type": event_type,
+                    "exercised_quantity": exercised,
+                    "assigned_quantity": assigned,
+                    "original_quantity": float(closed_qty) if closed_qty > 0 else None,
+                    "cost_basis": float(opt.total_cost or 0),
+                    "realized_pnl": float(opt.realized_pnl or 0),
+                    "commission": float(opt.commission or 0),
+                    "data_source": opt.data_source,
+                }
+            )
 
         return {
             "status": "success",
@@ -491,13 +469,13 @@ async def get_options_history(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/gateway-status", response_model=Dict[str, Any])
+@router.get("/gateway-status", response_model=dict[str, Any])
 async def get_gateway_status(
     user: User = Depends(get_current_user),
 ):
     """Check IB Gateway connection status."""
     try:
-        from app.services.clients.ibkr_client import ibkr_client, IBKR_AVAILABLE
+        from app.services.clients.ibkr_client import IBKR_AVAILABLE, ibkr_client
 
         if not IBKR_AVAILABLE:
             return {
@@ -547,6 +525,7 @@ async def gateway_connect(
     gw_client_id: int | None = None
     try:
         from app.services.portfolio.account_credentials_service import account_credentials_service
+
         ibkr_accounts = (
             db.query(BrokerAccount)
             .filter(
@@ -560,7 +539,9 @@ async def gateway_connect(
             if gw:
                 gw_host = gw.get("gateway_host") or gw_host
                 gw_port = int(gw["gateway_port"]) if gw.get("gateway_port") else gw_port
-                gw_client_id = int(gw["gateway_client_id"]) if gw.get("gateway_client_id") else gw_client_id
+                gw_client_id = (
+                    int(gw["gateway_client_id"]) if gw.get("gateway_client_id") else gw_client_id
+                )
                 break
     except Exception as exc:
         logger.debug("No per-user gateway creds found, using defaults: %s", exc)
@@ -568,6 +549,7 @@ async def gateway_connect(
     def _sync_probe():
         """Probe gateway connectivity in a worker thread without keeping the IB instance."""
         from ib_insync import IB, util
+
         util.patchAsyncio()
 
         from app.services.clients.ibkr_client import ibkr_client
@@ -604,6 +586,7 @@ async def gateway_connect(
 
         if ok:
             from app.services.clients.ibkr_client import ibkr_client
+
             ibkr_client.host = host
             ibkr_client.port = port
             ibkr_client.client_id = cid

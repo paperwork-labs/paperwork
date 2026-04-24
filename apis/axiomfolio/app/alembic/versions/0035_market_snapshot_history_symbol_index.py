@@ -30,7 +30,6 @@ chain stays linear: 0021 -> 0031 -> 0033 -> 0034 -> 0035.
 
 from alembic import op
 
-
 revision = "0035"
 down_revision = "0034"
 branch_labels = None

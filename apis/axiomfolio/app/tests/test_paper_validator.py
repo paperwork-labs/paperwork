@@ -4,19 +4,19 @@ Tests: start_validation, check_validation, promote_to_live,
 reset_validation, and _calculate_metrics.
 """
 
-import pytest
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from app.models.order import OrderStatus
+from app.models.strategy import ExecutionMode, StrategyStatus
 from app.services.strategy.paper_validator import (
     PaperValidator,
     ValidationConfig,
     ValidationResult,
     ValidationStatus,
 )
-from app.models.order import OrderStatus
-from app.models.strategy import ExecutionMode, StrategyStatus
 
 
 def _make_mock_db():
@@ -73,7 +73,9 @@ def _make_mock_order(
     # Set realized_pnl from slippage_dollars (negative slippage = positive P&L)
     order.realized_pnl = -slippage_dollars if slippage_dollars is not None else None
     # Set cost_basis for loss percentage calculation (per-share cost)
-    order.cost_basis = decision_price if slippage_dollars is not None and slippage_dollars > 0 else None
+    order.cost_basis = (
+        decision_price if slippage_dollars is not None and slippage_dollars > 0 else None
+    )
     return order
 
 
@@ -107,14 +109,12 @@ class TestStartValidation:
 
         config = ValidationConfig(min_duration_days=14, min_trades=10)
         validator = PaperValidator(db, config=config)
-        
-        with patch(
-            "app.services.strategy.paper_validator.datetime"
-        ) as mock_datetime:
-            mock_now = datetime(2026, 3, 28, 12, 0, 0, tzinfo=timezone.utc)
+
+        with patch("app.services.strategy.paper_validator.datetime") as mock_datetime:
+            mock_now = datetime(2026, 3, 28, 12, 0, 0, tzinfo=UTC)
             mock_datetime.now.return_value = mock_now
             mock_datetime.fromisoformat = datetime.fromisoformat
-            
+
             validator.start_validation(strategy_id=1, user_id=1)
 
         assert "paper_validation" in strategy.audit_metadata
@@ -193,7 +193,7 @@ class TestCheckValidation:
     def test_check_validation_in_progress_min_duration_not_met(self):
         """Returns IN_PROGRESS when min_duration_days not met."""
         db = _make_mock_db()
-        started_at = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+        started_at = (datetime.now(UTC) - timedelta(days=3)).isoformat()
         strategy = _make_mock_strategy(
             audit_metadata={
                 "paper_validation": {
@@ -216,7 +216,7 @@ class TestCheckValidation:
     def test_check_validation_in_progress_min_trades_not_met(self):
         """Returns IN_PROGRESS when min_trades not met."""
         db = _make_mock_db()
-        started_at = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        started_at = (datetime.now(UTC) - timedelta(days=10)).isoformat()
         strategy = _make_mock_strategy(
             audit_metadata={
                 "paper_validation": {
@@ -225,15 +225,13 @@ class TestCheckValidation:
                 }
             }
         )
-        
+
         orders = [_make_mock_order(slippage_dollars=-5.0) for _ in range(2)]
-        
+
         db.query.return_value.filter.return_value.first.return_value = strategy
         db.query.return_value.filter.return_value.all.return_value = orders
 
-        config = ValidationConfig(
-            min_duration_days=7, min_trades=5, min_win_rate_pct=40.0
-        )
+        config = ValidationConfig(min_duration_days=7, min_trades=5, min_win_rate_pct=40.0)
         validator = PaperValidator(db, config=config)
         result = validator.check_validation(strategy_id=1, user_id=1)
 
@@ -244,7 +242,7 @@ class TestCheckValidation:
     def test_check_validation_passed_all_thresholds_met(self):
         """Returns PASSED when all thresholds met."""
         db = _make_mock_db()
-        started_at = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        started_at = (datetime.now(UTC) - timedelta(days=10)).isoformat()
         strategy = _make_mock_strategy(
             audit_metadata={
                 "paper_validation": {
@@ -253,16 +251,11 @@ class TestCheckValidation:
                 }
             }
         )
-        
-        winning_orders = [
-            _make_mock_order(order_id=i, slippage_dollars=-10.0)
-            for i in range(4)
-        ]
-        losing_orders = [
-            _make_mock_order(order_id=5, slippage_dollars=5.0)
-        ]
+
+        winning_orders = [_make_mock_order(order_id=i, slippage_dollars=-10.0) for i in range(4)]
+        losing_orders = [_make_mock_order(order_id=5, slippage_dollars=5.0)]
         all_orders = winning_orders + losing_orders
-        
+
         db.query.return_value.filter.return_value.first.return_value = strategy
         db.query.return_value.filter.return_value.all.return_value = all_orders
 
@@ -284,7 +277,7 @@ class TestCheckValidation:
     def test_check_validation_failed_win_rate_below_threshold(self):
         """Returns FAILED when win_rate below threshold."""
         db = _make_mock_db()
-        started_at = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        started_at = (datetime.now(UTC) - timedelta(days=10)).isoformat()
         strategy = _make_mock_strategy(
             audit_metadata={
                 "paper_validation": {
@@ -293,13 +286,11 @@ class TestCheckValidation:
                 }
             }
         )
-        
+
         winning_orders = [_make_mock_order(order_id=1, slippage_dollars=-5.0)]
-        losing_orders = [
-            _make_mock_order(order_id=i, slippage_dollars=5.0) for i in range(2, 6)
-        ]
+        losing_orders = [_make_mock_order(order_id=i, slippage_dollars=5.0) for i in range(2, 6)]
         all_orders = winning_orders + losing_orders
-        
+
         db.query.return_value.filter.return_value.first.return_value = strategy
         db.query.return_value.filter.return_value.all.return_value = all_orders
 
@@ -322,7 +313,7 @@ class TestCheckValidation:
     def test_check_validation_failed_max_drawdown_exceeded(self):
         """Returns FAILED when max_drawdown exceeded."""
         db = _make_mock_db()
-        started_at = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        started_at = (datetime.now(UTC) - timedelta(days=10)).isoformat()
         strategy = _make_mock_strategy(
             audit_metadata={
                 "paper_validation": {
@@ -331,9 +322,9 @@ class TestCheckValidation:
                 }
             }
         )
-        
+
         orders = [_make_mock_order(order_id=i, slippage_dollars=-5.0) for i in range(5)]
-        
+
         db.query.return_value.filter.return_value.first.return_value = strategy
         db.query.return_value.filter.return_value.all.return_value = orders
 
@@ -357,7 +348,7 @@ class TestPromoteToLive:
     def test_promote_to_live_success(self):
         """Promotes strategy when validation passed."""
         db = _make_mock_db()
-        started_at = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        started_at = (datetime.now(UTC) - timedelta(days=10)).isoformat()
         strategy = _make_mock_strategy(
             audit_metadata={
                 "paper_validation": {
@@ -366,15 +357,13 @@ class TestPromoteToLive:
                 }
             }
         )
-        
+
         orders = [_make_mock_order(order_id=i, slippage_dollars=-5.0) for i in range(6)]
-        
+
         db.query.return_value.filter.return_value.first.return_value = strategy
         db.query.return_value.filter.return_value.all.return_value = orders
 
-        config = ValidationConfig(
-            min_duration_days=7, min_trades=5, min_win_rate_pct=40.0
-        )
+        config = ValidationConfig(min_duration_days=7, min_trades=5, min_win_rate_pct=40.0)
         validator = PaperValidator(db, config=config)
         result = validator.promote_to_live(strategy_id=1, user_id=1)
 
@@ -387,7 +376,7 @@ class TestPromoteToLive:
     def test_promote_to_live_rejects_when_not_passed(self):
         """Rejects promotion when validation not passed."""
         db = _make_mock_db()
-        started_at = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+        started_at = (datetime.now(UTC) - timedelta(days=3)).isoformat()
         strategy = _make_mock_strategy(
             audit_metadata={
                 "paper_validation": {
@@ -396,7 +385,7 @@ class TestPromoteToLive:
                 }
             }
         )
-        
+
         db.query.return_value.filter.return_value.first.return_value = strategy
         db.query.return_value.filter.return_value.all.return_value = []
 
@@ -424,7 +413,7 @@ class TestPromoteToLive:
     def test_promote_to_live_records_completion_metadata(self):
         """Records promotion metadata with final metrics."""
         db = _make_mock_db()
-        started_at = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        started_at = (datetime.now(UTC) - timedelta(days=10)).isoformat()
         strategy = _make_mock_strategy(
             audit_metadata={
                 "paper_validation": {
@@ -433,15 +422,13 @@ class TestPromoteToLive:
                 }
             }
         )
-        
+
         orders = [_make_mock_order(order_id=i, slippage_dollars=-5.0) for i in range(6)]
-        
+
         db.query.return_value.filter.return_value.first.return_value = strategy
         db.query.return_value.filter.return_value.all.return_value = orders
 
-        config = ValidationConfig(
-            min_duration_days=7, min_trades=5, min_win_rate_pct=40.0
-        )
+        config = ValidationConfig(min_duration_days=7, min_trades=5, min_win_rate_pct=40.0)
         validator = PaperValidator(db, config=config)
         validator.promote_to_live(strategy_id=1, user_id=1)
 
@@ -491,10 +478,10 @@ class TestResetValidation:
         db.query.return_value.filter.return_value.first.return_value = strategy
 
         validator = PaperValidator(db)
-        
+
         reset_result = validator.reset_validation(strategy_id=1, user_id=1)
         assert reset_result["status"] == "reset"
-        
+
         start_result = validator.start_validation(strategy_id=1, user_id=1)
         assert start_result["status"] == "started"
         assert "paper_validation" in strategy.audit_metadata
@@ -518,10 +505,8 @@ class TestCalculateMetrics:
         """Computes correct win_rate."""
         db = _make_mock_db()
         validator = PaperValidator(db)
-        
-        winning_orders = [
-            _make_mock_order(order_id=i, slippage_dollars=-10.0) for i in range(3)
-        ]
+
+        winning_orders = [_make_mock_order(order_id=i, slippage_dollars=-10.0) for i in range(3)]
         losing_orders = [
             _make_mock_order(order_id=4, slippage_dollars=5.0),
             _make_mock_order(order_id=5, slippage_dollars=5.0),
@@ -537,7 +522,7 @@ class TestCalculateMetrics:
         """Computes correct profit_factor."""
         db = _make_mock_db()
         validator = PaperValidator(db)
-        
+
         winning_orders = [
             _make_mock_order(order_id=1, slippage_dollars=-30.0),
             _make_mock_order(order_id=2, slippage_dollars=-20.0),
@@ -570,7 +555,7 @@ class TestCalculateMetrics:
         """Handles orders with no P&L data (None slippage)."""
         db = _make_mock_db()
         validator = PaperValidator(db)
-        
+
         orders = [
             _make_mock_order(order_id=1, slippage_dollars=None),
             _make_mock_order(order_id=2, slippage_dollars=None),
@@ -585,10 +570,8 @@ class TestCalculateMetrics:
         """Handles all winning trades (profit_factor is high)."""
         db = _make_mock_db()
         validator = PaperValidator(db)
-        
-        orders = [
-            _make_mock_order(order_id=i, slippage_dollars=-10.0) for i in range(5)
-        ]
+
+        orders = [_make_mock_order(order_id=i, slippage_dollars=-10.0) for i in range(5)]
 
         metrics = validator._calculate_metrics(orders)
 
@@ -599,10 +582,8 @@ class TestCalculateMetrics:
         """Handles all losing trades."""
         db = _make_mock_db()
         validator = PaperValidator(db)
-        
-        orders = [
-            _make_mock_order(order_id=i, slippage_dollars=10.0) for i in range(5)
-        ]
+
+        orders = [_make_mock_order(order_id=i, slippage_dollars=10.0) for i in range(5)]
 
         metrics = validator._calculate_metrics(orders)
 
@@ -614,7 +595,7 @@ class TestCalculateMetrics:
         """Computes correct avg_loss_pct."""
         db = _make_mock_db()
         validator = PaperValidator(db)
-        
+
         orders = [
             _make_mock_order(
                 order_id=1,

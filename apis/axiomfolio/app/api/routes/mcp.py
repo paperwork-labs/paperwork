@@ -22,8 +22,8 @@ Multi-tenancy is enforced at every layer:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Path, status
 from pydantic import BaseModel, Field, field_validator
@@ -57,13 +57,12 @@ class MCPTokenCreate(BaseModel):
         max_length=120,
         description="Human-readable label shown in the Settings UI.",
     )
-    expires_in_days: Optional[int] = Field(
+    expires_in_days: int | None = Field(
         None,
         ge=1,
         le=3650,
         description=(
-            "Optional lifetime override (1..3650 days). Omit to use "
-            "the default 365-day lifetime."
+            "Optional lifetime override (1..3650 days). Omit to use the default 365-day lifetime."
         ),
     )
     pii_tax_lot_consent: bool = Field(
@@ -90,10 +89,10 @@ class MCPTokenSummary(BaseModel):
     name: str
     created_at: datetime
     expires_at: datetime
-    last_used_at: Optional[datetime]
-    revoked_at: Optional[datetime]
+    last_used_at: datetime | None
+    revoked_at: datetime | None
     is_active: bool
-    pii_consent_at: Optional[datetime]
+    pii_consent_at: datetime | None
 
 
 class MCPTokenCreateResponse(MCPTokenSummary):
@@ -132,11 +131,11 @@ def _serialize_summary(row: MCPToken) -> MCPTokenSummary:
 # ----------------------------------------------------------------------
 
 
-@router.get("/tokens", response_model=List[MCPTokenSummary])
+@router.get("/tokens", response_model=list[MCPTokenSummary])
 async def list_tokens(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[MCPTokenSummary]:
+) -> list[MCPTokenSummary]:
     """List the caller's MCP tokens (newest first)."""
     rows = (
         db.query(MCPToken)
@@ -160,26 +159,20 @@ async def create_token(
     """Mint a new MCP token; the plaintext value is shown exactly once."""
     plaintext, token_hash = generate_token()
 
-    expires_at = datetime.now(timezone.utc) + timedelta(
-        days=payload.expires_in_days or 365
-    )
+    expires_at = datetime.now(UTC) + timedelta(days=payload.expires_in_days or 365)
 
     row = MCPToken(
         user_id=current_user.id,
         name=payload.name,
         token_hash=token_hash,
         expires_at=expires_at,
-        pii_consent_at=(
-            datetime.now(timezone.utc) if payload.pii_tax_lot_consent else None
-        ),
+        pii_consent_at=(datetime.now(UTC) if payload.pii_tax_lot_consent else None),
     )
     db.add(row)
     try:
         db.commit()
     except Exception as e:
-        logger.warning(
-            "MCP token create failed for user_id=%s: %s", current_user.id, e
-        )
+        logger.warning("MCP token create failed for user_id=%s: %s", current_user.id, e)
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -214,7 +207,7 @@ async def revoke_token(
             detail="MCP token not found",
         )
     if row.revoked_at is None:
-        row.revoked_at = datetime.now(timezone.utc)
+        row.revoked_at = datetime.now(UTC)
         try:
             db.commit()
         except Exception as e:
@@ -229,9 +222,7 @@ async def revoke_token(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Could not revoke MCP token",
             )
-        logger.info(
-            "MCP token revoked: id=%s user_id=%s", row.id, current_user.id
-        )
+        logger.info("MCP token revoked: id=%s user_id=%s", row.id, current_user.id)
     return None
 
 
@@ -245,7 +236,7 @@ async def mcp_jsonrpc(
     payload: Any = Body(...),
     db: Session = Depends(get_db),
     auth: MCPAuthContext = Depends(get_mcp_context),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Bearer-authed JSON-RPC 2.0 endpoint for ``tools/list`` and ``tools/call``."""
     response = _mcp_server.handle(
         payload,

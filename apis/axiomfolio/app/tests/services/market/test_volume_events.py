@@ -1,4 +1,5 @@
 """Unit tests for detect_volume_events (C4 chart initiative)."""
+
 from __future__ import annotations
 
 import numpy as np

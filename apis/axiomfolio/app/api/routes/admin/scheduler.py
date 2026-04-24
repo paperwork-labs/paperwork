@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import threading
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from zoneinfo import ZoneInfo
 
 from croniter import croniter
@@ -41,36 +41,38 @@ _seed_lock = threading.Lock()
 # Pydantic schemas
 # ---------------------------------------------------------------------------
 
+
 class ScheduleCreate(BaseModel):
     id: str
     display_name: str
     group: str = "market_data"
     task: str
-    description: Optional[str] = None
+    description: str | None = None
     cron: str
     timezone: str = "UTC"
-    args: Optional[List[Any]] = None
-    kwargs: Optional[Dict[str, Any]] = None
+    args: list[Any] | None = None
+    kwargs: dict[str, Any] | None = None
     enabled: bool = True
     timeout_s: int = 3600
     singleflight: bool = True
 
 
 class ScheduleUpdate(BaseModel):
-    display_name: Optional[str] = None
-    cron: Optional[str] = None
-    timezone: Optional[str] = None
-    args: Optional[List[Any]] = None
-    kwargs: Optional[Dict[str, Any]] = None
-    enabled: Optional[bool] = None
-    timeout_s: Optional[int] = None
-    singleflight: Optional[bool] = None
-    description: Optional[str] = None
+    display_name: str | None = None
+    cron: str | None = None
+    timezone: str | None = None
+    args: list[Any] | None = None
+    kwargs: dict[str, Any] | None = None
+    enabled: bool | None = None
+    timeout_s: int | None = None
+    singleflight: bool | None = None
+    description: str | None = None
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _actor_label(user: User) -> str:
     return user.email or user.username or f"user:{user.id}"
@@ -86,6 +88,7 @@ def _ensure_seeded(db: Session) -> None:
             return
         try:
             from app.scripts.seed_schedules import seed
+
             result = seed(db)
             _seeded = True
             logger.info("Catalog sync: %s", result)
@@ -94,15 +97,17 @@ def _ensure_seeded(db: Session) -> None:
 
 
 def _audit(db: Session, schedule_id: str, action: str, actor: str, changes: Any = None) -> None:
-    db.add(CronScheduleAudit(
-        schedule_id=schedule_id,
-        action=action,
-        actor=actor,
-        changes=changes,
-    ))
+    db.add(
+        CronScheduleAudit(
+            schedule_id=schedule_id,
+            action=action,
+            actor=actor,
+            changes=changes,
+        )
+    )
 
 
-def _snapshot(s: CronSchedule) -> Dict[str, Any]:
+def _snapshot(s: CronSchedule) -> dict[str, Any]:
     return {
         "id": s.id,
         "display_name": s.display_name,
@@ -114,7 +119,7 @@ def _snapshot(s: CronSchedule) -> Dict[str, Any]:
     }
 
 
-def _last_run_for_task(db: Session, dotted_task: str) -> Optional[Dict[str, Any]]:
+def _last_run_for_task(db: Session, dotted_task: str) -> dict[str, Any] | None:
     simple = dotted_task.rsplit(".", 1)[-1]
     row = (
         db.query(JobRun)
@@ -132,7 +137,7 @@ def _last_run_for_task(db: Session, dotted_task: str) -> Optional[Dict[str, Any]
     }
 
 
-def _schedule_to_dict(s: CronSchedule, db: Session) -> Dict[str, Any]:
+def _schedule_to_dict(s: CronSchedule, db: Session) -> dict[str, Any]:
     return {
         "id": s.id,
         "display_name": s.display_name,
@@ -159,7 +164,9 @@ def _schedule_to_dict(s: CronSchedule, db: Session) -> Dict[str, Any]:
 def _validate_cron(cron: str) -> None:
     parts = cron.strip().split()
     if len(parts) != 5:
-        raise HTTPException(status_code=400, detail="Cron must be a 5-field expression (m h dom mon dow)")
+        raise HTTPException(
+            status_code=400, detail="Cron must be a 5-field expression (m h dom mon dow)"
+        )
     try:
         croniter(cron, datetime.now())
     except (ValueError, KeyError) as exc:
@@ -170,11 +177,12 @@ def _validate_cron(cron: str) -> None:
 # Routes
 # ---------------------------------------------------------------------------
 
+
 @router.get("/schedules")
 async def list_schedules(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     _ensure_seeded(db)
     rows = db.query(CronSchedule).order_by(CronSchedule.group, CronSchedule.id).all()
     schedules = [_schedule_to_dict(r, db) for r in rows]
@@ -192,7 +200,7 @@ async def create_schedule(
     payload: ScheduleCreate,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     _validate_cron(payload.cron)
 
     existing = db.query(CronSchedule).filter(CronSchedule.id == payload.id).first()
@@ -230,13 +238,13 @@ async def update_schedule(
     payload: ScheduleUpdate,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     row = db.query(CronSchedule).filter(CronSchedule.id == schedule_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Schedule not found")
 
     actor = _actor_label(admin_user)
-    changes: Dict[str, Dict[str, Any]] = {}
+    changes: dict[str, dict[str, Any]] = {}
 
     def _apply(field: str, model_attr: str, new_val: Any) -> None:
         old_val = getattr(row, model_attr)
@@ -271,7 +279,7 @@ async def delete_schedule(
     schedule_id: str,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     row = db.query(CronSchedule).filter(CronSchedule.id == schedule_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -317,7 +325,7 @@ async def pause_schedule(
     schedule_id: str,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     row = db.query(CronSchedule).filter(CronSchedule.id == schedule_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -338,7 +346,7 @@ async def resume_schedule(
     schedule_id: str,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     row = db.query(CronSchedule).filter(CronSchedule.id == schedule_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Schedule not found")
@@ -358,7 +366,7 @@ async def sync_schedules(
     request: Request,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     result = render_sync_service.sync_all(db)
     return {"status": "ok", "sync": result}
 
@@ -369,7 +377,7 @@ async def run_now(
     request: Request,
     task: str = Query(..., description="dotted task path"),
     admin_user: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     try:
         res = celery_app.send_task(task, args=(), kwargs={})
         return {"status": "ok", "task_id": res.id}
@@ -383,7 +391,7 @@ async def preview_cron(
     timezone: str = Query("UTC"),
     count: int = Query(5, ge=1, le=20),
     admin_user: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     _validate_cron(cron)
     try:
         tz = ZoneInfo(timezone)
@@ -397,11 +405,11 @@ async def preview_cron(
 
 @router.get("/schedules/history")
 async def list_history(
-    schedule_id: Optional[str] = Query(None, description="Filter by schedule ID"),
+    schedule_id: str | None = Query(None, description="Filter by schedule ID"),
     limit: int = Query(50, ge=1, le=200),
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     q = db.query(CronScheduleAudit).order_by(CronScheduleAudit.timestamp.desc())
     if schedule_id:
         q = q.filter(CronScheduleAudit.schedule_id == schedule_id)
@@ -425,10 +433,10 @@ async def list_history(
 async def list_catalog(
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     from app.tasks.job_catalog import CATALOG
 
-    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    grouped: dict[str, list[dict[str, Any]]] = {}
     for t in CATALOG:
         item = t.to_dict()
         item["last_run"] = _last_run_for_task(db, t.task)

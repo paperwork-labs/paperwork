@@ -8,10 +8,9 @@ Revises: 0049
 Create Date: 2026-04-19
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision = "0044"
 down_revision = "0048"
@@ -48,9 +47,7 @@ def upgrade() -> None:
         ),
         sa.UniqueConstraint("token_hash", name="uq_mcp_tokens_token_hash"),
     )
-    op.create_index(
-        "ix_mcp_tokens_token_hash", "mcp_tokens", ["token_hash"], unique=True
-    )
+    op.create_index("ix_mcp_tokens_token_hash", "mcp_tokens", ["token_hash"], unique=True)
     op.create_index("ix_mcp_tokens_user_id", "mcp_tokens", ["user_id"])
     op.create_index(
         "ix_mcp_tokens_user_revoked",

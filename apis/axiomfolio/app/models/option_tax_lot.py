@@ -26,9 +26,7 @@ class OptionTaxLot(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    broker_account_id = Column(
-        Integer, ForeignKey("broker_accounts.id"), nullable=False
-    )
+    broker_account_id = Column(Integer, ForeignKey("broker_accounts.id"), nullable=False)
     symbol = Column(String(64), nullable=False)
     underlying = Column(String(32), nullable=False)
     option_type = Column(String(8), nullable=False)  # "call" | "put"

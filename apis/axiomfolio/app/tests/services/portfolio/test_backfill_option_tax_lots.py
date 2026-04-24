@@ -9,7 +9,7 @@ Celery plumbing.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -54,41 +54,43 @@ def _make_account(db_session, user: User, broker: BrokerType, tag: str) -> Broke
 def _add_option_round_trip(
     db_session, account_id: int, symbol: str, *, open_exec: str, close_exec: str
 ) -> None:
-    t_open = datetime(2025, 1, 10, 16, 0, 0, tzinfo=timezone.utc)
-    t_close = datetime(2025, 3, 10, 16, 0, 0, tzinfo=timezone.utc)
-    db_session.add_all([
-        Trade(
-            account_id=account_id,
-            symbol=symbol,
-            side="BUY",
-            quantity=Decimal("2"),
-            price=Decimal("5.00"),
-            total_value=Decimal("10.00"),
-            commission=Decimal("0.65"),
-            execution_id=open_exec,
-            execution_time=t_open,
-            status="FILLED",
-            is_opening=True,
-            is_paper_trade=False,
-            trade_metadata={"asset_category": "OPT", "multiplier": 100},
-        ),
-        Trade(
-            account_id=account_id,
-            symbol=symbol,
-            side="SELL",
-            quantity=Decimal("2"),
-            price=Decimal("8.00"),
-            total_value=Decimal("16.00"),
-            commission=Decimal("0.65"),
-            execution_id=close_exec,
-            execution_time=t_close,
-            status="FILLED",
-            is_opening=False,
-            is_paper_trade=False,
-            realized_pnl=Decimal("600.00"),
-            trade_metadata={"asset_category": "OPT", "multiplier": 100},
-        ),
-    ])
+    t_open = datetime(2025, 1, 10, 16, 0, 0, tzinfo=UTC)
+    t_close = datetime(2025, 3, 10, 16, 0, 0, tzinfo=UTC)
+    db_session.add_all(
+        [
+            Trade(
+                account_id=account_id,
+                symbol=symbol,
+                side="BUY",
+                quantity=Decimal("2"),
+                price=Decimal("5.00"),
+                total_value=Decimal("10.00"),
+                commission=Decimal("0.65"),
+                execution_id=open_exec,
+                execution_time=t_open,
+                status="FILLED",
+                is_opening=True,
+                is_paper_trade=False,
+                trade_metadata={"asset_category": "OPT", "multiplier": 100},
+            ),
+            Trade(
+                account_id=account_id,
+                symbol=symbol,
+                side="SELL",
+                quantity=Decimal("2"),
+                price=Decimal("8.00"),
+                total_value=Decimal("16.00"),
+                commission=Decimal("0.65"),
+                execution_id=close_exec,
+                execution_time=t_close,
+                status="FILLED",
+                is_opening=False,
+                is_paper_trade=False,
+                realized_pnl=Decimal("600.00"),
+                trade_metadata={"asset_category": "OPT", "multiplier": 100},
+            ),
+        ]
+    )
 
 
 @pytest.fixture
@@ -123,9 +125,7 @@ def _patch_sessionlocal(db_session):
         yield
 
 
-def test_backfill_runs_across_multi_broker_user(
-    db_session, _patch_sessionlocal
-) -> None:
+def test_backfill_runs_across_multi_broker_user(db_session, _patch_sessionlocal) -> None:
     """One user with both IBKR + Schwab option histories gets lots from BOTH."""
     if db_session is None:
         pytest.skip("no db")
@@ -135,12 +135,16 @@ def test_backfill_runs_across_multi_broker_user(
     ibkr = _make_account(db_session, user, BrokerType.IBKR, "ibkr")
     schwab = _make_account(db_session, user, BrokerType.SCHWAB, "schwab")
     _add_option_round_trip(
-        db_session, ibkr.id, OPT_AAPL,
+        db_session,
+        ibkr.id,
+        OPT_AAPL,
         open_exec=f"ibkr-open-{uuid.uuid4().hex[:6]}",
         close_exec=f"ibkr-close-{uuid.uuid4().hex[:6]}",
     )
     _add_option_round_trip(
-        db_session, schwab.id, OPT_TSLA,
+        db_session,
+        schwab.id,
+        OPT_TSLA,
         open_exec=f"schwab-open-{uuid.uuid4().hex[:6]}",
         close_exec=f"schwab-close-{uuid.uuid4().hex[:6]}",
     )
@@ -156,18 +160,12 @@ def test_backfill_runs_across_multi_broker_user(
     brokers_touched = {d["broker"] for d in result["details"]}
     assert brokers_touched == {"ibkr", "schwab"}
 
-    rows = (
-        db_session.query(OptionTaxLot)
-        .filter(OptionTaxLot.user_id == user.id)
-        .all()
-    )
+    rows = db_session.query(OptionTaxLot).filter(OptionTaxLot.user_id == user.id).all()
     underlyings = {r.underlying for r in rows}
     assert underlyings == {"AAPL", "TSLA"}
 
 
-def test_backfill_all_users_when_user_id_none(
-    db_session, _patch_sessionlocal
-) -> None:
+def test_backfill_all_users_when_user_id_none(db_session, _patch_sessionlocal) -> None:
     if db_session is None:
         pytest.skip("no db")
     from app.tasks.portfolio.reconciliation import backfill_option_tax_lots
@@ -177,12 +175,16 @@ def test_backfill_all_users_when_user_id_none(
     a1 = _make_account(db_session, u1, BrokerType.IBKR, "a")
     a2 = _make_account(db_session, u2, BrokerType.SCHWAB, "b")
     _add_option_round_trip(
-        db_session, a1.id, OPT_AAPL,
+        db_session,
+        a1.id,
+        OPT_AAPL,
         open_exec=f"ao-{uuid.uuid4().hex[:6]}",
         close_exec=f"ac-{uuid.uuid4().hex[:6]}",
     )
     _add_option_round_trip(
-        db_session, a2.id, OPT_TSLA,
+        db_session,
+        a2.id,
+        OPT_TSLA,
         open_exec=f"bo-{uuid.uuid4().hex[:6]}",
         close_exec=f"bc-{uuid.uuid4().hex[:6]}",
     )
@@ -196,9 +198,7 @@ def test_backfill_all_users_when_user_id_none(
     assert u1.id in touched_users and u2.id in touched_users
 
 
-def test_backfill_idempotent_on_rerun(
-    db_session, _patch_sessionlocal
-) -> None:
+def test_backfill_idempotent_on_rerun(db_session, _patch_sessionlocal) -> None:
     if db_session is None:
         pytest.skip("no db")
     from app.tasks.portfolio.reconciliation import backfill_option_tax_lots
@@ -206,7 +206,9 @@ def test_backfill_idempotent_on_rerun(
     user = _make_user(db_session, "idem")
     acct = _make_account(db_session, user, BrokerType.IBKR, "ibkr")
     _add_option_round_trip(
-        db_session, acct.id, OPT_AAPL,
+        db_session,
+        acct.id,
+        OPT_AAPL,
         open_exec=f"io-{uuid.uuid4().hex[:6]}",
         close_exec=f"ic-{uuid.uuid4().hex[:6]}",
     )
@@ -222,28 +224,24 @@ def test_backfill_idempotent_on_rerun(
     assert second["option_lots_created"] == 0
     assert second["option_lots_updated"] >= 1
 
-    n = (
-        db_session.query(OptionTaxLot)
-        .filter(OptionTaxLot.user_id == user.id)
-        .count()
-    )
+    n = db_session.query(OptionTaxLot).filter(OptionTaxLot.user_id == user.id).count()
     assert n == 1
 
 
-def test_backfill_account_failure_does_not_poison_batch(
-    db_session, _patch_sessionlocal
-) -> None:
+def test_backfill_account_failure_does_not_poison_batch(db_session, _patch_sessionlocal) -> None:
     """When one account's reconcile raises, others still complete."""
     if db_session is None:
         pytest.skip("no db")
-    from app.tasks.portfolio.reconciliation import backfill_option_tax_lots
     from app.services.portfolio import closing_lot_matcher as _matcher
+    from app.tasks.portfolio.reconciliation import backfill_option_tax_lots
 
     user = _make_user(db_session, "partial")
     good = _make_account(db_session, user, BrokerType.IBKR, "good")
     bad = _make_account(db_session, user, BrokerType.SCHWAB, "bad")
     _add_option_round_trip(
-        db_session, good.id, OPT_AAPL,
+        db_session,
+        good.id,
+        OPT_AAPL,
         open_exec=f"go-{uuid.uuid4().hex[:6]}",
         close_exec=f"gc-{uuid.uuid4().hex[:6]}",
     )
@@ -265,9 +263,5 @@ def test_backfill_account_failure_does_not_poison_batch(
     assert result["accounts_total"] == 2
     assert result["accounts_processed"] + result["accounts_failed"] == 2
     # The good account still produced a lot
-    rows = (
-        db_session.query(OptionTaxLot)
-        .filter(OptionTaxLot.broker_account_id == good.id)
-        .all()
-    )
+    rows = db_session.query(OptionTaxLot).filter(OptionTaxLot.broker_account_id == good.id).all()
     assert len(rows) == 1

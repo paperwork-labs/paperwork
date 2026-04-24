@@ -6,12 +6,11 @@ medallion: execution
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
-
-from datetime import datetime, timedelta, timezone
 
 from app.config import settings
 from app.models.order import Order, OrderStatus
@@ -170,7 +169,7 @@ class ApprovalService:
         db: Session,
         order_id: int,
         rejector: User,
-        reason: Optional[str] = None,
+        reason: str | None = None,
     ) -> dict:
         """Reject an order."""
         order = db.query(Order).filter(Order.id == order_id).first()
@@ -188,9 +187,7 @@ class ApprovalService:
             }
 
         order.status = OrderStatus.REJECTED.value
-        order.error_message = (
-            f"Rejected by {rejector.email}: {reason or 'No reason given'}"
-        )
+        order.error_message = f"Rejected by {rejector.email}: {reason or 'No reason given'}"
         db.commit()
         db.refresh(order)
 
@@ -212,7 +209,7 @@ class ApprovalService:
         """Auto-reject orders stuck in PENDING_APPROVAL beyond timeout."""
         from sqlalchemy import update
 
-        cutoff = datetime.now(timezone.utc) - timedelta(minutes=APPROVAL_TIMEOUT_MINUTES)
+        cutoff = datetime.now(UTC) - timedelta(minutes=APPROVAL_TIMEOUT_MINUTES)
 
         # Atomic conditional update - only affects rows still in PENDING_APPROVAL
         stmt = (
@@ -272,11 +269,11 @@ class ApprovalService:
                 "created_at": o.created_at.isoformat() if o.created_at else None,
                 "minutes_pending": (
                     (
-                        datetime.now(timezone.utc)
+                        datetime.now(UTC)
                         - (
-                            o.updated_at.replace(tzinfo=timezone.utc)
+                            o.updated_at.replace(tzinfo=UTC)
                             if o.updated_at.tzinfo is None
-                            else o.updated_at.astimezone(timezone.utc)
+                            else o.updated_at.astimezone(UTC)
                         )
                     ).total_seconds()
                     / 60

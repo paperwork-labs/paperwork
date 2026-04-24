@@ -7,13 +7,6 @@ Render. That leaves the route + pydantic response model under test.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List
-
-import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
 # Build a minimal FastAPI app that mounts only the deploy-health admin router
 # so these tests don't pay the cost of importing the full `app.api.main`
 # (which pulls in every route + heavy optional deps like optuna).
@@ -23,13 +16,17 @@ from fastapi.testclient import TestClient
 # `routes` module. Import the target submodule directly as an object so we
 # can monkeypatch it without going through the shadowed attribute path.
 import importlib
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from app.api.dependencies import get_admin_user, get_db
 from app.models.deploy_health_event import DeployHealthEvent
 
-deploy_health_module = importlib.import_module(
-    "app.api.routes.admin.deploy_health"
-)
+deploy_health_module = importlib.import_module("app.api.routes.admin.deploy_health")
 
 
 app = FastAPI()
@@ -78,7 +75,7 @@ def test_deploy_health_returns_composite(_override_admin, monkeypatch, db_sessio
     }
     monkeypatch.setattr(deploy_health_module, "_resolve_services", lambda: [service])
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for i in range(2):
         db_session.add(
             DeployHealthEvent(
@@ -124,7 +121,7 @@ def test_deploy_health_poll_delegates_to_service(_override_admin, monkeypatch):
     }
     monkeypatch.setattr(deploy_health_module, "_resolve_services", lambda: [service])
 
-    captured: Dict[str, Any] = {}
+    captured: dict[str, Any] = {}
 
     def fake_poll(db, services, **kwargs):
         captured["services"] = list(services)

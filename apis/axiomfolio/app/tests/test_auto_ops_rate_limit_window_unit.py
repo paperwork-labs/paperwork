@@ -17,7 +17,7 @@ pytestmark = pytest.mark.no_db
 
 
 def test_default_rate_limit_window_is_one_hour() -> None:
-    assert DEFAULT_RATE_LIMIT_WINDOW == timedelta(hours=1)
+    assert timedelta(hours=1) == DEFAULT_RATE_LIMIT_WINDOW
 
 
 def test_clamp_rate_limit_window() -> None:

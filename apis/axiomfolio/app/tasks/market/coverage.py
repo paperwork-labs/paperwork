@@ -12,8 +12,8 @@ from __future__ import annotations
 import bisect
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
@@ -48,9 +48,7 @@ def _run_scan_overlay() -> dict:
         regime = get_current_regime(session)
         regime_state = regime.regime_state if regime else "R3"
         regime_state_to_store = (
-            regime.regime_state
-            if regime and getattr(regime, "regime_state", None)
-            else None
+            regime.regime_state if regime and getattr(regime, "regime_state", None) else None
         )
         regime_state_written = 0
         regime_state_missing = 0
@@ -64,9 +62,7 @@ def _run_scan_overlay() -> dict:
             .all()
         )
 
-        atrx_vals = sorted(
-            [float(s.atrx_sma_150) for s in snapshots if s.atrx_sma_150 is not None]
-        )
+        atrx_vals = sorted([float(s.atrx_sma_150) for s in snapshots if s.atrx_sma_150 is not None])
         atrx_count = len(atrx_vals)
 
         def _atrx_percentile(val: float) -> float:
@@ -82,17 +78,13 @@ def _run_scan_overlay() -> dict:
         updated = 0
         for snap in snapshots:
             try:
-                atrx_raw = (
-                    float(snap.atrx_sma_150) if snap.atrx_sma_150 is not None else None
-                )
+                atrx_raw = float(snap.atrx_sma_150) if snap.atrx_sma_150 is not None else None
                 scan_input = ScanInput(
                     symbol=snap.symbol,
                     stage_label=snap.stage_label or "UNKNOWN",
                     rs_mansfield=snap.rs_mansfield_pct,
                     ema10_dist_n=snap.ema10_dist_n,
-                    atre_150_pctile=_atrx_percentile(atrx_raw)
-                    if atrx_raw is not None
-                    else None,
+                    atre_150_pctile=_atrx_percentile(atrx_raw) if atrx_raw is not None else None,
                     range_pos_52w=snap.range_pos_52w,
                     ext_pct=snap.ext_pct,
                     atrp_14=snap.atrp_14,
@@ -105,13 +97,17 @@ def _run_scan_overlay() -> dict:
                 )
                 prev = previous_tiers.get(snap.symbol)
                 if tier in _ALERT_TIERS and prev not in _ALERT_TIERS:
-                    new_candidates.append({
-                        "symbol": snap.symbol,
-                        "scan_tier": tier,
-                        "action_label": label,
-                        "stage": scan_input.stage_label,
-                        "rs_mansfield": float(snap.rs_mansfield_pct) if snap.rs_mansfield_pct is not None else None,
-                    })
+                    new_candidates.append(
+                        {
+                            "symbol": snap.symbol,
+                            "scan_tier": tier,
+                            "action_label": label,
+                            "stage": scan_input.stage_label,
+                            "rs_mansfield": float(snap.rs_mansfield_pct)
+                            if snap.rs_mansfield_pct is not None
+                            else None,
+                        }
+                    )
                 snap.scan_tier = tier
                 snap.action_label = label
                 if regime_state_to_store is not None:
@@ -123,15 +119,14 @@ def _run_scan_overlay() -> dict:
             except SoftTimeLimitExceeded:
                 raise
             except Exception as e:
-                logger.warning(
-                    "Scan overlay failed for %s: %s", getattr(snap, "symbol", "?"), e
-                )
+                logger.warning("Scan overlay failed for %s: %s", getattr(snap, "symbol", "?"), e)
                 continue
 
         session.commit()
 
         if new_candidates:
             from app.services.brain.webhook_client import brain_webhook
+
             brain_webhook.notify_sync(
                 "scan_alert",
                 {
@@ -205,17 +200,10 @@ def _evaluate_exit_cascade_all() -> dict:
 
                 entry_price = float(pos.average_cost or 0)
                 current_price = float(snap.current_price or 0)
-                pnl_pct = (
-                    ((current_price - entry_price) / entry_price * 100)
-                    if entry_price
-                    else 0
-                )
-                is_short = (
-                    getattr(pos, "position_type", None) is not None
-                    and str(getattr(pos, "position_type", ""))
-                    .lower()
-                    .startswith("short")
-                )
+                pnl_pct = ((current_price - entry_price) / entry_price * 100) if entry_price else 0
+                is_short = getattr(pos, "position_type", None) is not None and str(
+                    getattr(pos, "position_type", "")
+                ).lower().startswith("short")
 
                 ctx = PositionContext(
                     symbol=pos.symbol,
@@ -250,9 +238,7 @@ def _evaluate_exit_cascade_all() -> dict:
             except SoftTimeLimitExceeded:
                 raise
             except Exception:
-                logger.warning(
-                    "Exit cascade failed for position %s", pos.symbol, exc_info=True
-                )
+                logger.warning("Exit cascade failed for position %s", pos.symbol, exc_info=True)
                 continue
 
         return {
@@ -264,7 +250,7 @@ def _evaluate_exit_cascade_all() -> dict:
         session.close()
 
 
-def _summarize_bootstrap_step(step: str, payload: Optional[dict]) -> str:
+def _summarize_bootstrap_step(step: str, payload: dict | None) -> str:
     data = payload or {}
     if step == "market_indices_constituents_refresh":
         idx = data.get("indices") or {}
@@ -321,13 +307,15 @@ def _summarize_bootstrap_step(step: str, payload: Optional[dict]) -> str:
     soft_time_limit=7000,
     time_limit=7200,
 )
-@task_run("admin_coverage_backfill", lock_key=lambda: "admin_coverage_backfill", lock_ttl_seconds=7500)
+@task_run(
+    "admin_coverage_backfill", lock_key=lambda: "admin_coverage_backfill", lock_ttl_seconds=7500
+)
 def daily_bootstrap(
-    history_days: Optional[int] = None,
+    history_days: int | None = None,
     history_batch_size: int = 25,
     backfill_days: int = 200,
     *,
-    pipeline_run_id: Optional[str] = None,
+    pipeline_run_id: str | None = None,
 ) -> dict:
     """Backfill DAILY coverage for the tracked universe (no 5m).
 
@@ -377,7 +365,7 @@ def daily_bootstrap(
     except (TypeError, ValueError):
         _backfill_days = 200
 
-    rollup: Dict[str, Any] = {"steps": []}
+    rollup: dict[str, Any] = {"steps": []}
     import time as _time
 
     def _append(step_name: str, result: dict, duration_s: float = 0.0) -> None:
@@ -459,9 +447,7 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         resolved_days = _resolve_history_days(history_days)
-        res7 = snapshot_last_n_days(
-            days=int(resolved_days), batch_size=int(history_batch_size)
-        )
+        res7 = snapshot_last_n_days(days=int(resolved_days), batch_size=int(history_batch_size))
     except SoftTimeLimitExceeded:
         logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
         raise
@@ -507,6 +493,7 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         from app.tasks.market.maintenance import refresh_market_mvs as _refresh_mvs
+
         res_mv = _refresh_mvs()
     except SoftTimeLimitExceeded:
         logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
@@ -519,6 +506,7 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         from app.tasks.market.maintenance import warm_dashboard_cache as _warm_dash
+
         res_dash = _warm_dash()
     except SoftTimeLimitExceeded:
         logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
@@ -531,6 +519,7 @@ def daily_bootstrap(
     _t0 = _time.monotonic()
     try:
         from app.tasks.market.maintenance import audit_quality as _audit_quality
+
         res10b = _audit_quality()
     except SoftTimeLimitExceeded:
         logger.warning("Task %s hit soft time limit", "admin_coverage_backfill")
@@ -581,9 +570,7 @@ def health_check() -> dict:
     try:
         snapshot = coverage_analytics.coverage_snapshot(session)
         try:
-            snapshot.setdefault("meta", {})["backfill_5m_enabled"] = (
-                infra.is_backfill_5m_enabled()
-            )
+            snapshot.setdefault("meta", {})["backfill_5m_enabled"] = infra.is_backfill_5m_enabled()
         except Exception as e:
             logger.warning("backfill_5m_toggle_read failed: %s", e)
         status_info = compute_coverage_status(snapshot)
@@ -591,7 +578,7 @@ def health_check() -> dict:
         payload = {
             "schema_version": 1,
             "snapshot": snapshot,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
             "status": status_info,
         }
         redis_client = infra.redis_client

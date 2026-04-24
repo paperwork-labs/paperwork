@@ -6,17 +6,19 @@ Endpoints for current prices, historical data, and indicator series.
 """
 
 import logging
-from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import numpy as np
 import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_market_data_viewer, require_feature
+from app.api.schemas.market import CurrentPriceResponse, PriceHistoryResponse
 from app.database import get_db
-from app.models.user import User
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory, PriceData
+from app.models.user import User
 from app.services.billing.entitlement_service import EntitlementService
 from app.services.market.indicator_engine import (
     compute_rs_mansfield,
@@ -24,15 +26,13 @@ from app.services.market.indicator_engine import (
     detect_volume_events,
 )
 from app.services.market.market_data_service import provider_router, quote
-from app.api.dependencies import get_market_data_viewer, require_feature
-from app.api.schemas.market import CurrentPriceResponse, PriceHistoryResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/prices", tags=["prices"])
 
 
-def _history_data_source(raw: Optional[str]) -> str:
+def _history_data_source(raw: str | None) -> str:
     """Normalize internal history layer/provider tags for API consumers."""
     if raw == "redis_cache":
         return "redis_cache"
@@ -57,7 +57,7 @@ def _history_data_source(raw: Optional[str]) -> str:
 async def get_current_price(
     symbol: str,
     _viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get current price for a symbol."""
     try:
         sym = symbol.strip().upper()
@@ -91,7 +91,7 @@ async def get_history(
     interval: str = Query("1d", description="1d, 4h, 1h, 5m"),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Daily/intraday OHLCV series for the symbol."""
     try:
         df, raw_src = await provider_router.get_historical_data(
@@ -121,14 +121,16 @@ async def get_history(
         o, h, l, c, v = pick("open"), pick("high"), pick("low"), pick("close"), pick("volume")
         out = []
         for ts, row in df_out.iterrows():
-            out.append({
-                "time": ts.isoformat() if hasattr(ts, "isoformat") else str(ts),
-                "open": float(row.get(o, None) or row.get("open_price", 0) or 0),
-                "high": float(row.get(h, None) or row.get("high_price", 0) or 0),
-                "low": float(row.get(l, None) or row.get("low_price", 0) or 0),
-                "close": float(row.get(c, None) or row.get("close_price", 0) or 0),
-                "volume": float(row.get(v, 0) or 0),
-            })
+            out.append(
+                {
+                    "time": ts.isoformat() if hasattr(ts, "isoformat") else str(ts),
+                    "open": float(row.get(o, None) or row.get("open_price", 0) or 0),
+                    "high": float(row.get(h, None) or row.get("high_price", 0) or 0),
+                    "low": float(row.get(l, None) or row.get("low_price", 0) or 0),
+                    "close": float(row.get(c, None) or row.get("close_price", 0) or 0),
+                    "volume": float(row.get(v, 0) or 0),
+                }
+            )
         return {
             "symbol": symbol.upper(),
             "period": period,
@@ -143,7 +145,7 @@ async def get_history(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-def _close_series_oldest_first(df: Optional[pd.DataFrame]) -> pd.Series:
+def _close_series_oldest_first(df: pd.DataFrame | None) -> pd.Series:
     """Extract Close as a float series with normalized daily index (oldest first)."""
     if df is None or df.empty or "Close" not in df.columns:
         return pd.Series(dtype=float)
@@ -164,7 +166,7 @@ async def get_rs_mansfield_series(
     ma_window: int = Query(252, ge=10, le=400),
     _viewer: User = Depends(require_feature("chart.rs_ribbon")),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Daily RS Mansfield % vs ``benchmark`` (live OHLCV), Pro tier or higher."""
     sym_u = symbol.strip().upper()
     bm_u = benchmark.strip().upper()
@@ -197,7 +199,7 @@ async def get_rs_mansfield_series(
         bench_aligned = bench_close.reindex(sym_close.index, method="ffill")
         series = compute_rs_mansfield(sym_close, bench_aligned, ma_window)
 
-        data: List[Dict[str, Any]] = []
+        data: list[dict[str, Any]] = []
         for idx, val in series.items():
             if val is None or (isinstance(val, float) and (val != val or not np.isfinite(val))):
                 continue
@@ -233,11 +235,17 @@ async def get_indicator_series(
     """Read pre-computed indicator series from MarketSnapshotHistory."""
     sym = symbol.strip().upper()
     period_days = {
-        "1mo": 35, "3mo": 100, "6mo": 200, "1y": 370,
-        "2y": 740, "3y": 1100, "5y": 1850, "max": 36500,
+        "1mo": 35,
+        "3mo": 100,
+        "6mo": 200,
+        "1y": 370,
+        "2y": 740,
+        "3y": 1100,
+        "5y": 1850,
+        "max": 36500,
     }
     days = period_days.get(period, 370)
-    start_date = datetime.now(timezone.utc) - timedelta(days=days)
+    start_date = datetime.now(UTC) - timedelta(days=days)
 
     rows = (
         db.query(MarketSnapshotHistory)
@@ -252,18 +260,66 @@ async def get_indicator_series(
     )
 
     all_indicator_cols = [
-        "current_price", "rsi", "sma_5", "sma_10", "sma_14", "sma_21", "sma_50",
-        "sma_100", "sma_150", "sma_200", "ema_8", "ema_10", "ema_21", "ema_200",
-        "atr_14", "atr_30", "atrp_14", "atrp_30", "macd", "macd_signal", "macd_histogram",
-        "adx", "plus_di", "minus_di", "bollinger_upper", "bollinger_lower", "bollinger_width",
-        "high_52w", "low_52w", "stoch_rsi", "volume_avg_20d",
-        "range_pos_20d", "range_pos_50d", "range_pos_52w",
-        "atrx_sma_21", "atrx_sma_50", "atrx_sma_100", "atrx_sma_150",
-        "pct_dist_ema8", "pct_dist_ema21", "pct_dist_ema200",
-        "atr_dist_ema8", "atr_dist_ema21", "atr_dist_ema200",
-        "ma_bucket", "stage_label", "stage_slope_pct", "stage_dist_pct", "rs_mansfield_pct",
-        "td_buy_setup", "td_sell_setup", "td_buy_complete", "td_sell_complete",
-        "perf_1d", "perf_3d", "perf_5d", "perf_20d", "perf_60d", "perf_120d", "perf_252d",
+        "current_price",
+        "rsi",
+        "sma_5",
+        "sma_10",
+        "sma_14",
+        "sma_21",
+        "sma_50",
+        "sma_100",
+        "sma_150",
+        "sma_200",
+        "ema_8",
+        "ema_10",
+        "ema_21",
+        "ema_200",
+        "atr_14",
+        "atr_30",
+        "atrp_14",
+        "atrp_30",
+        "macd",
+        "macd_signal",
+        "macd_histogram",
+        "adx",
+        "plus_di",
+        "minus_di",
+        "bollinger_upper",
+        "bollinger_lower",
+        "bollinger_width",
+        "high_52w",
+        "low_52w",
+        "stoch_rsi",
+        "volume_avg_20d",
+        "range_pos_20d",
+        "range_pos_50d",
+        "range_pos_52w",
+        "atrx_sma_21",
+        "atrx_sma_50",
+        "atrx_sma_100",
+        "atrx_sma_150",
+        "pct_dist_ema8",
+        "pct_dist_ema21",
+        "pct_dist_ema200",
+        "atr_dist_ema8",
+        "atr_dist_ema21",
+        "atr_dist_ema200",
+        "ma_bucket",
+        "stage_label",
+        "stage_slope_pct",
+        "stage_dist_pct",
+        "rs_mansfield_pct",
+        "td_buy_setup",
+        "td_sell_setup",
+        "td_buy_complete",
+        "td_sell_complete",
+        "perf_1d",
+        "perf_3d",
+        "perf_5d",
+        "perf_20d",
+        "perf_60d",
+        "perf_120d",
+        "perf_252d",
     ]
 
     if indicators:
@@ -292,16 +348,16 @@ async def get_indicator_series(
     if len(rows) < expected_rows * 0.8 and expected_rows > 0:
         bar_count = (
             db.query(PriceData)
-            .filter(PriceData.symbol == sym, PriceData.interval == "1d", PriceData.date >= start_date)
+            .filter(
+                PriceData.symbol == sym, PriceData.interval == "1d", PriceData.date >= start_date
+            )
             .count()
         )
         if bar_count >= expected_rows * 0.7:
             try:
                 from app.tasks.market.history import snapshot_for_symbol
 
-                snapshot_for_symbol.delay(
-                    symbol=sym, start_date=start_date.strftime("%Y-%m-%d")
-                )
+                snapshot_for_symbol.delay(symbol=sym, start_date=start_date.strftime("%Y-%m-%d"))
                 backfill_requested = True
             except Exception:
                 pass
@@ -310,13 +366,16 @@ async def get_indicator_series(
 
     if dates and rows:
         latest_hist_date = rows[-1].as_of_date
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         if hasattr(latest_hist_date, "date"):
             latest_hist_date = latest_hist_date.date()
         if latest_hist_date < today:
             snapshot = (
                 db.query(MarketSnapshot)
-                .filter(MarketSnapshot.symbol == sym, MarketSnapshot.analysis_type == "technical_snapshot")
+                .filter(
+                    MarketSnapshot.symbol == sym,
+                    MarketSnapshot.analysis_type == "technical_snapshot",
+                )
                 .order_by(MarketSnapshot.analysis_timestamp.desc())
                 .first()
             )
@@ -328,7 +387,7 @@ async def get_indicator_series(
                         val = None
                     series[col].append(val)
 
-    out: Dict[str, Any] = {
+    out: dict[str, Any] = {
         "symbol": sym,
         "rows": len(dates),
         "backfill_requested": backfill_requested,
@@ -406,7 +465,7 @@ async def get_indicator_series(
         if d is None:
             continue
         if isinstance(d, datetime):
-            dk = d.astimezone(timezone.utc).date() if d.tzinfo is not None else d.date()
+            dk = d.astimezone(UTC).date() if d.tzinfo is not None else d.date()
         elif isinstance(d, date):
             dk = d
         else:
@@ -421,9 +480,9 @@ async def get_indicator_series(
     def _dkey_for_ts(ts: pd.Timestamp) -> date:
         return ts.date() if hasattr(ts, "date") else pd.Timestamp(ts).date()
 
-    st_vals: list[Optional[str]] = []
+    st_vals: list[str | None] = []
     for t in ohlcv.index:
-        st_vals.append(stage_by_date.get(_dkey_for_ts(t), None))
+        st_vals.append(stage_by_date.get(_dkey_for_ts(t)))
     stage_series = pd.Series(st_vals, index=ohlcv.index, dtype=object)
 
     try:
@@ -435,21 +494,17 @@ async def get_indicator_series(
         out["kell_patterns"] = []
         return out
 
-    volume_events: List[Dict[str, str]] = []
+    volume_events: list[dict[str, str]] = []
     for ts, r in ve_df.iterrows():
         ev = r.get("volume_event")
         if ev in ("climax", "dry_up"):
-            volume_events.append(
-                {"date": pd.Timestamp(ts).strftime("%Y-%m-%d"), "type": str(ev)}
-            )
+            volume_events.append({"date": pd.Timestamp(ts).strftime("%Y-%m-%d"), "type": str(ev)})
 
-    kell_patterns: List[Dict[str, Any]] = []
+    kell_patterns: list[dict[str, Any]] = []
     for ts, r in kp_df.iterrows():
         pat = r.get("pattern")
         cval = r.get("confidence")
-        if pat in ("EBC", "KRC", "PPB") and cval is not None and np.isfinite(
-            float(cval)
-        ):
+        if pat in ("EBC", "KRC", "PPB") and cval is not None and np.isfinite(float(cval)):
             kell_patterns.append(
                 {
                     "date": pd.Timestamp(ts).strftime("%Y-%m-%d"),

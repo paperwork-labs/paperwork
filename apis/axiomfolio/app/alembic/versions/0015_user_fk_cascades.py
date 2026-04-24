@@ -15,11 +15,10 @@ Revises: 0014
 Create Date: 2026-04-02
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import text
 from sqlalchemy.dialects import postgresql
-
 
 revision = "0015"
 down_revision = "0014"
@@ -30,20 +29,36 @@ depends_on = None
 # ── Enum definitions ──────────────────────────────────────────────────
 
 _NOTIFICATION_TYPE_VALS = (
-    "portfolio_alert", "strategy_execution", "trade_confirmation",
-    "market_alert", "system_status", "user_action",
+    "portfolio_alert",
+    "strategy_execution",
+    "trade_confirmation",
+    "market_alert",
+    "system_status",
+    "user_action",
 )
 _NOTIFICATION_CHANNEL_VALS = ("discord", "email", "in_app", "sms")
 _NOTIFICATION_STATUS_VALS = ("pending", "sent", "failed", "delivered")
 _PRIORITY_VALS = ("low", "normal", "high", "urgent")
 _AUDIT_EVENT_TYPE_VALS = (
-    "user_login", "user_logout", "user_register",
-    "portfolio_view", "portfolio_sync",
-    "trade_execute", "trade_cancel",
-    "strategy_start", "strategy_stop", "strategy_modify",
-    "data_import", "data_export", "data_modify", "data_delete",
-    "system_start", "system_stop", "system_error",
-    "api_call", "settings_change",
+    "user_login",
+    "user_logout",
+    "user_register",
+    "portfolio_view",
+    "portfolio_sync",
+    "trade_execute",
+    "trade_cancel",
+    "strategy_start",
+    "strategy_stop",
+    "strategy_modify",
+    "data_import",
+    "data_export",
+    "data_modify",
+    "data_delete",
+    "system_start",
+    "system_stop",
+    "system_error",
+    "api_call",
+    "settings_change",
 )
 _AUDIT_LEVEL_VALS = ("debug", "info", "warning", "error", "critical")
 _AUDIT_STATUS_VALS = ("success", "failure", "partial", "pending")
@@ -80,15 +95,19 @@ def _fk_name(table: str, column: str) -> str:
 
 
 def _table_exists(conn, name: str) -> bool:
-    result = conn.execute(text(
-        "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
-        "WHERE table_schema = 'public' AND table_name = :t)"
-    ), {"t": name})
+    result = conn.execute(
+        text(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = :t)"
+        ),
+        {"t": name},
+    )
     return result.scalar()
 
 
 def _find_existing_fk(conn, table: str, column: str) -> str | None:
-    result = conn.execute(text("""
+    result = conn.execute(
+        text("""
         SELECT tc.constraint_name
         FROM information_schema.table_constraints tc
         JOIN information_schema.key_column_usage kcu
@@ -101,12 +120,15 @@ def _find_existing_fk(conn, table: str, column: str) -> str | None:
           AND tc.table_name = :table
           AND kcu.column_name = :column
           AND ccu.table_name = 'users'
-    """), {"table": table, "column": column})
+    """),
+        {"table": table, "column": column},
+    )
     row = result.fetchone()
     return row[0] if row else None
 
 
 # ── Part A: create missing tables ─────────────────────────────────────
+
 
 def _create_tables() -> None:
     # Create all PG enum types first via raw SQL (IF NOT EXISTS)
@@ -122,17 +144,25 @@ def _create_tables() -> None:
     ]
     for name, vals in enum_defs:
         vals_sql = ", ".join(f"'{v}'" for v in vals)
-        conn.execute(text(
-            f"DO $$ BEGIN "
-            f"CREATE TYPE {name} AS ENUM ({vals_sql}); "
-            f"EXCEPTION WHEN duplicate_object THEN NULL; "
-            f"END $$;"
-        ))
+        conn.execute(
+            text(
+                f"DO $$ BEGIN "
+                f"CREATE TYPE {name} AS ENUM ({vals_sql}); "
+                f"EXCEPTION WHEN duplicate_object THEN NULL; "
+                f"END $$;"
+            )
+        )
 
     # Reference existing PG enum types (create_type=False since they exist)
-    notif_type = postgresql.ENUM(*_NOTIFICATION_TYPE_VALS, name="notificationtype", create_type=False)
-    notif_channel = postgresql.ENUM(*_NOTIFICATION_CHANNEL_VALS, name="notificationchannel", create_type=False)
-    notif_status = postgresql.ENUM(*_NOTIFICATION_STATUS_VALS, name="notificationstatus", create_type=False)
+    notif_type = postgresql.ENUM(
+        *_NOTIFICATION_TYPE_VALS, name="notificationtype", create_type=False
+    )
+    notif_channel = postgresql.ENUM(
+        *_NOTIFICATION_CHANNEL_VALS, name="notificationchannel", create_type=False
+    )
+    notif_status = postgresql.ENUM(
+        *_NOTIFICATION_STATUS_VALS, name="notificationstatus", create_type=False
+    )
     priority_enum = postgresql.ENUM(*_PRIORITY_VALS, name="priority", create_type=False)
     audit_event = postgresql.ENUM(*_AUDIT_EVENT_TYPE_VALS, name="auditeventtype", create_type=False)
     audit_level = postgresql.ENUM(*_AUDIT_LEVEL_VALS, name="auditlevel", create_type=False)
@@ -140,56 +170,74 @@ def _create_tables() -> None:
 
     if not _table_exists(conn, "alerts"):
         op.create_table(
-        "alerts",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("name", sa.String(100), nullable=False),
-        sa.Column("description", sa.Text()),
-        sa.Column("symbol", sa.String(20), nullable=False, index=True),
-        sa.Column("alert_type", sa.String(50), nullable=False),
-        sa.Column("is_active", sa.Boolean(), server_default=sa.text("true")),
-        sa.Column("is_repeating", sa.Boolean(), server_default=sa.text("false")),
-        sa.Column("max_triggers", sa.Integer(), server_default=sa.text("1")),
-        sa.Column("current_triggers", sa.Integer(), server_default=sa.text("0")),
-        sa.Column("notify_discord", sa.Boolean(), server_default=sa.text("true")),
-        sa.Column("notify_email", sa.Boolean(), server_default=sa.text("false")),
-        sa.Column("notify_app", sa.Boolean(), server_default=sa.text("true")),
-        sa.Column("priority", sa.String(10), server_default=sa.text("'MEDIUM'")),
-        sa.Column("sound_enabled", sa.Boolean(), server_default=sa.text("true")),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-        sa.Column("updated_at", sa.DateTime(timezone=True)),
-        sa.Column("last_triggered", sa.DateTime(timezone=True)),
-        sa.Column("expires_at", sa.DateTime(timezone=True)),
-        sa.Column("custom_message", sa.Text()),
-    )
+            "alerts",
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column(
+                "user_id",
+                sa.Integer(),
+                sa.ForeignKey("users.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column("name", sa.String(100), nullable=False),
+            sa.Column("description", sa.Text()),
+            sa.Column("symbol", sa.String(20), nullable=False, index=True),
+            sa.Column("alert_type", sa.String(50), nullable=False),
+            sa.Column("is_active", sa.Boolean(), server_default=sa.text("true")),
+            sa.Column("is_repeating", sa.Boolean(), server_default=sa.text("false")),
+            sa.Column("max_triggers", sa.Integer(), server_default=sa.text("1")),
+            sa.Column("current_triggers", sa.Integer(), server_default=sa.text("0")),
+            sa.Column("notify_discord", sa.Boolean(), server_default=sa.text("true")),
+            sa.Column("notify_email", sa.Boolean(), server_default=sa.text("false")),
+            sa.Column("notify_app", sa.Boolean(), server_default=sa.text("true")),
+            sa.Column("priority", sa.String(10), server_default=sa.text("'MEDIUM'")),
+            sa.Column("sound_enabled", sa.Boolean(), server_default=sa.text("true")),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+            sa.Column("updated_at", sa.DateTime(timezone=True)),
+            sa.Column("last_triggered", sa.DateTime(timezone=True)),
+            sa.Column("expires_at", sa.DateTime(timezone=True)),
+            sa.Column("custom_message", sa.Text()),
+        )
 
     if not _table_exists(conn, "alert_conditions"):
         op.create_table(
             "alert_conditions",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("alert_id", sa.Integer(), sa.ForeignKey("alerts.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("condition_type", sa.String(50), nullable=False),
-        sa.Column("operator", sa.String(10), nullable=False),
-        sa.Column("target_value", sa.Float(), nullable=False),
-        sa.Column("current_value", sa.Float()),
-        sa.Column("indicator_params", sa.JSON()),
-        sa.Column("timeframe", sa.String(10), server_default=sa.text("'1D'")),
-        sa.Column("is_met", sa.Boolean(), server_default=sa.text("false")),
-        sa.Column("last_checked", sa.DateTime(timezone=True)),
-        sa.Column("times_met", sa.Integer(), server_default=sa.text("0")),
-        sa.Column("logical_operator", sa.String(10), server_default=sa.text("'AND'")),
-        sa.Column("group_id", sa.Integer()),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
-    )
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column(
+                "alert_id",
+                sa.Integer(),
+                sa.ForeignKey("alerts.id", ondelete="CASCADE"),
+                nullable=False,
+            ),
+            sa.Column("condition_type", sa.String(50), nullable=False),
+            sa.Column("operator", sa.String(10), nullable=False),
+            sa.Column("target_value", sa.Float(), nullable=False),
+            sa.Column("current_value", sa.Float()),
+            sa.Column("indicator_params", sa.JSON()),
+            sa.Column("timeframe", sa.String(10), server_default=sa.text("'1D'")),
+            sa.Column("is_met", sa.Boolean(), server_default=sa.text("false")),
+            sa.Column("last_checked", sa.DateTime(timezone=True)),
+            sa.Column("times_met", sa.Integer(), server_default=sa.text("0")),
+            sa.Column("logical_operator", sa.String(10), server_default=sa.text("'AND'")),
+            sa.Column("group_id", sa.Integer()),
+            sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        )
 
     if not _table_exists(conn, "notifications"):
         op.create_table(
             "notifications",
             sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
+            sa.Column(
+                "user_id",
+                sa.Integer(),
+                sa.ForeignKey("users.id", ondelete="CASCADE"),
+                nullable=False,
+                index=True,
+            ),
             sa.Column("type", notif_type, nullable=False, index=True),
             sa.Column("channel", notif_channel, nullable=False),
-            sa.Column("priority", priority_enum, nullable=False, server_default=sa.text("'normal'")),
+            sa.Column(
+                "priority", priority_enum, nullable=False, server_default=sa.text("'normal'")
+            ),
             sa.Column("title", sa.String(200), nullable=False),
             sa.Column("message", sa.Text(), nullable=False),
             sa.Column("formatted_message", sa.Text()),
@@ -214,44 +262,60 @@ def _create_tables() -> None:
     if not _table_exists(conn, "notification_preferences"):
         op.create_table(
             "notification_preferences",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True),
-        sa.Column("notification_type", notif_type, nullable=False),
-        sa.Column("channel", notif_channel, nullable=False),
-        sa.Column("is_enabled", sa.Boolean(), server_default=sa.text("true")),
-        sa.Column("min_priority", priority_enum, server_default=sa.text("'normal'")),
-        sa.Column("channel_settings", sa.JSON()),
-        sa.Column("quiet_hours_start", sa.String(5)),
-        sa.Column("quiet_hours_end", sa.String(5)),
-        sa.Column("quiet_hours_timezone", sa.String(50), server_default=sa.text("'UTC'")),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now()),
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column(
+                "user_id",
+                sa.Integer(),
+                sa.ForeignKey("users.id", ondelete="CASCADE"),
+                nullable=False,
+                index=True,
+            ),
+            sa.Column("notification_type", notif_type, nullable=False),
+            sa.Column("channel", notif_channel, nullable=False),
+            sa.Column("is_enabled", sa.Boolean(), server_default=sa.text("true")),
+            sa.Column("min_priority", priority_enum, server_default=sa.text("'normal'")),
+            sa.Column("channel_settings", sa.JSON()),
+            sa.Column("quiet_hours_start", sa.String(5)),
+            sa.Column("quiet_hours_end", sa.String(5)),
+            sa.Column("quiet_hours_timezone", sa.String(50), server_default=sa.text("'UTC'")),
+            sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+            sa.Column("updated_at", sa.DateTime(), server_default=sa.func.now()),
         )
-        op.create_index("idx_preferences_user_type", "notification_preferences", ["user_id", "notification_type"])
+        op.create_index(
+            "idx_preferences_user_type",
+            "notification_preferences",
+            ["user_id", "notification_type"],
+        )
 
     if not _table_exists(conn, "audit_logs"):
         op.create_table(
             "audit_logs",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("event_type", audit_event, nullable=False, index=True),
-        sa.Column("event_id", sa.String(100)),
-        sa.Column("correlation_id", sa.String(100), index=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL")),
-        sa.Column("session_id", sa.String(100)),
-        sa.Column("ip_address", sa.String(45)),
-        sa.Column("user_agent", sa.Text()),
-        sa.Column("level", audit_level, nullable=False, server_default=sa.text("'info'")),
-        sa.Column("status", audit_status, nullable=False, server_default="success"),
-        sa.Column("message", sa.Text(), nullable=False),
-        sa.Column("resource_type", sa.String(50)),
-        sa.Column("resource_id", sa.String(100)),
-        sa.Column("action", sa.String(100)),
-        sa.Column("request_data", sa.JSON()),
-        sa.Column("response_data", sa.JSON()),
-        sa.Column("error_details", sa.JSON()),
-        sa.Column("duration_ms", sa.Integer()),
-        sa.Column("occurred_at", sa.DateTime(), server_default=sa.func.now(), nullable=False, index=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column("event_type", audit_event, nullable=False, index=True),
+            sa.Column("event_id", sa.String(100)),
+            sa.Column("correlation_id", sa.String(100), index=True),
+            sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL")),
+            sa.Column("session_id", sa.String(100)),
+            sa.Column("ip_address", sa.String(45)),
+            sa.Column("user_agent", sa.Text()),
+            sa.Column("level", audit_level, nullable=False, server_default=sa.text("'info'")),
+            sa.Column("status", audit_status, nullable=False, server_default="success"),
+            sa.Column("message", sa.Text(), nullable=False),
+            sa.Column("resource_type", sa.String(50)),
+            sa.Column("resource_id", sa.String(100)),
+            sa.Column("action", sa.String(100)),
+            sa.Column("request_data", sa.JSON()),
+            sa.Column("response_data", sa.JSON()),
+            sa.Column("error_details", sa.JSON()),
+            sa.Column("duration_ms", sa.Integer()),
+            sa.Column(
+                "occurred_at",
+                sa.DateTime(),
+                server_default=sa.func.now(),
+                nullable=False,
+                index=True,
+            ),
+            sa.Column("created_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         )
         op.create_index("idx_audit_user_date", "audit_logs", ["user_id", "occurred_at"])
         op.create_index("idx_audit_event_date", "audit_logs", ["event_type", "occurred_at"])
@@ -260,17 +324,17 @@ def _create_tables() -> None:
     if not _table_exists(conn, "data_change_logs"):
         op.create_table(
             "data_change_logs",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("audit_log_id", sa.Integer(), sa.ForeignKey("audit_logs.id"), index=True),
-        sa.Column("table_name", sa.String(100), nullable=False, index=True),
-        sa.Column("record_id", sa.String(100), nullable=False),
-        sa.Column("operation", sa.String(20), nullable=False),
-        sa.Column("old_values", sa.JSON()),
-        sa.Column("new_values", sa.JSON()),
-        sa.Column("changed_fields", sa.JSON()),
-        sa.Column("changed_by", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL")),
-        sa.Column("change_reason", sa.Text()),
-        sa.Column("changed_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column("audit_log_id", sa.Integer(), sa.ForeignKey("audit_logs.id"), index=True),
+            sa.Column("table_name", sa.String(100), nullable=False, index=True),
+            sa.Column("record_id", sa.String(100), nullable=False),
+            sa.Column("operation", sa.String(20), nullable=False),
+            sa.Column("old_values", sa.JSON()),
+            sa.Column("new_values", sa.JSON()),
+            sa.Column("changed_fields", sa.JSON()),
+            sa.Column("changed_by", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL")),
+            sa.Column("change_reason", sa.Text()),
+            sa.Column("changed_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         )
         op.create_index("idx_changes_table_record", "data_change_logs", ["table_name", "record_id"])
         op.create_index("idx_changes_date", "data_change_logs", ["changed_at"])
@@ -278,19 +342,21 @@ def _create_tables() -> None:
     if not _table_exists(conn, "security_events"):
         op.create_table(
             "security_events",
-        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("audit_log_id", sa.Integer(), sa.ForeignKey("audit_logs.id"), index=True),
-        sa.Column("event_category", sa.String(50), nullable=False),
-        sa.Column("severity", audit_level, nullable=False),
-        sa.Column("threat_indicators", sa.JSON()),
-        sa.Column("risk_score", sa.Integer()),
-        sa.Column("action_taken", sa.Text()),
-        sa.Column("requires_investigation", sa.Boolean(), server_default=sa.text("false")),
-        sa.Column("investigated_by", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL")),
-        sa.Column("investigation_notes", sa.Text()),
-        sa.Column("resolved_at", sa.DateTime()),
-        sa.Column("resolution_notes", sa.Text()),
-        sa.Column("detected_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
+            sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+            sa.Column("audit_log_id", sa.Integer(), sa.ForeignKey("audit_logs.id"), index=True),
+            sa.Column("event_category", sa.String(50), nullable=False),
+            sa.Column("severity", audit_level, nullable=False),
+            sa.Column("threat_indicators", sa.JSON()),
+            sa.Column("risk_score", sa.Integer()),
+            sa.Column("action_taken", sa.Text()),
+            sa.Column("requires_investigation", sa.Boolean(), server_default=sa.text("false")),
+            sa.Column(
+                "investigated_by", sa.Integer(), sa.ForeignKey("users.id", ondelete="SET NULL")
+            ),
+            sa.Column("investigation_notes", sa.Text()),
+            sa.Column("resolved_at", sa.DateTime()),
+            sa.Column("resolution_notes", sa.Text()),
+            sa.Column("detected_at", sa.DateTime(), server_default=sa.func.now(), nullable=False),
         )
         op.create_index("idx_security_category", "security_events", ["event_category"])
         op.create_index("idx_security_severity", "security_events", ["severity"])
@@ -299,18 +365,30 @@ def _create_tables() -> None:
 
 def _drop_tables() -> None:
     for t in [
-        "security_events", "data_change_logs", "audit_logs",
-        "notification_preferences", "notifications",
-        "alert_conditions", "alerts",
+        "security_events",
+        "data_change_logs",
+        "audit_logs",
+        "notification_preferences",
+        "notifications",
+        "alert_conditions",
+        "alerts",
     ]:
         op.drop_table(t)
     conn = op.get_bind()
-    for name in ("auditstatus", "auditlevel", "auditeventtype",
-                 "priority", "notificationstatus", "notificationchannel", "notificationtype"):
+    for name in (
+        "auditstatus",
+        "auditlevel",
+        "auditeventtype",
+        "priority",
+        "notificationstatus",
+        "notificationchannel",
+        "notificationtype",
+    ):
         conn.execute(text(f"DROP TYPE IF EXISTS {name}"))
 
 
 # ── Part B: FK cascade changes ────────────────────────────────────────
+
 
 def _apply_fk_cascades() -> None:
     conn = op.get_bind()
@@ -326,8 +404,12 @@ def _apply_fk_cascades() -> None:
             op.alter_column(table, column, existing_type=sa.Integer(), nullable=True)
 
         op.create_foreign_key(
-            _fk_name(table, column), table, "users",
-            [column], ["id"], ondelete=on_delete,
+            _fk_name(table, column),
+            table,
+            "users",
+            [column],
+            ["id"],
+            ondelete=on_delete,
         )
 
 
@@ -344,12 +426,16 @@ def _revert_fk_cascades() -> None:
             op.alter_column(table, column, existing_type=sa.Integer(), nullable=False)
 
         op.create_foreign_key(
-            _fk_name(table, column), table, "users",
-            [column], ["id"],
+            _fk_name(table, column),
+            table,
+            "users",
+            [column],
+            ["id"],
         )
 
 
 # ── Entry points ──────────────────────────────────────────────────────
+
 
 def upgrade() -> None:
     conn = op.get_bind()

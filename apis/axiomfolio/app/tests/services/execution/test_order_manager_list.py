@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -53,7 +53,7 @@ def test_list_orders_unions_trades_newest_first(db_session):
 
     user = _make_user(db_session)
     acct = _make_account(db_session, user)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     t_old = Trade(
         account_id=acct.id,
@@ -116,7 +116,7 @@ def test_list_source_app_only_orders(db_session):
 
     user = _make_user(db_session)
     acct = _make_account(db_session, user)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ex = f"ex-{uuid.uuid4().hex[:8]}"
     db_session.add(
         Trade(
@@ -162,7 +162,7 @@ def test_list_source_broker_only_trades(db_session):
 
     user = _make_user(db_session)
     acct = _make_account(db_session, user)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     ex = f"ex-{uuid.uuid4().hex[:8]}"
     db_session.add(
         Trade(
@@ -207,7 +207,7 @@ def test_pagination_limit_offset(db_session):
         pytest.skip("database not configured")
 
     user = _make_user(db_session)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for i in range(3):
         db_session.add(
             Order(
@@ -243,7 +243,7 @@ def test_user_isolation(db_session):
     ub = _make_user(db_session, prefix="b")
     acct_a = _make_account(db_session, ua)
     acct_b = _make_account(db_session, ub)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     db_session.add(
         Order(
@@ -292,7 +292,7 @@ def test_include_broker_fills_false_is_app_only(db_session):
 
     user = _make_user(db_session)
     acct = _make_account(db_session, user)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     db_session.add(
         Trade(
             account_id=acct.id,
@@ -338,7 +338,7 @@ def test_disabled_broker_account_excludes_trades(db_session):
 
     user = _make_user(db_session)
     acct = _make_account(db_session, user, enabled=False)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     db_session.add(
         Trade(
             account_id=acct.id,
@@ -367,8 +367,8 @@ def test_list_orders_uses_execution_time_as_created_at_on_broker_ledger_row(db_s
 
     user = _make_user(db_session)
     acct = _make_account(db_session, user)
-    exec_t = datetime(2026, 3, 11, 16, 0, 0, tzinfo=timezone.utc)
-    ingest_t = datetime(2026, 4, 22, 12, 0, 0, tzinfo=timezone.utc)
+    exec_t = datetime(2026, 3, 11, 16, 0, 0, tzinfo=UTC)
+    ingest_t = datetime(2026, 4, 22, 12, 0, 0, tzinfo=UTC)
     t = Trade(
         account_id=acct.id,
         symbol="RDDT",
@@ -399,7 +399,7 @@ def test_list_orders_filters_by_account_id_for_orders_and_trades(db_session):
     acct_b = _make_account(db_session, user)
     other_user = _make_user(db_session, prefix="other")
     acct_other = _make_account(db_session, other_user)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     db_session.add(
         Trade(
@@ -462,20 +462,14 @@ def test_list_orders_filters_by_account_id_for_orders_and_trades(db_session):
     db_session.flush()
 
     mgr = OrderManager()
-    only_a = mgr.list_orders(
-        db_session, user.id, limit=20, list_source="all", account_id=acct_a.id
-    )
+    only_a = mgr.list_orders(db_session, user.id, limit=20, list_source="all", account_id=acct_a.id)
     syms = {r["symbol"] for r in only_a}
     assert syms == {"ON_A", "O_A"}
 
-    only_b = mgr.list_orders(
-        db_session, user.id, limit=20, list_source="all", account_id=acct_b.id
-    )
+    only_b = mgr.list_orders(db_session, user.id, limit=20, list_source="all", account_id=acct_b.id)
     assert {r["symbol"] for r in only_b} == {"ON_B", "O_B"}
 
     assert (
-        mgr.list_orders(
-            db_session, user.id, limit=20, list_source="all", account_id=acct_other.id
-        )
+        mgr.list_orders(db_session, user.id, limit=20, list_source="all", account_id=acct_other.id)
         == []
     )

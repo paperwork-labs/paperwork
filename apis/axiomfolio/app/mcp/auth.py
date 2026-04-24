@@ -17,8 +17,7 @@ import hashlib
 import logging
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Optional, Tuple
+from datetime import UTC, datetime
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -47,7 +46,7 @@ class MCPAuthContext:
     token: MCPToken
     tier: SubscriptionTier
     allowed_scopes: frozenset[str]
-    daily_limit: Optional[int]
+    daily_limit: int | None
 
 
 def hash_token(plaintext: str) -> str:
@@ -55,7 +54,7 @@ def hash_token(plaintext: str) -> str:
     return hashlib.sha256(plaintext.encode("utf-8")).hexdigest()
 
 
-def _split_credential(raw: Optional[str]) -> Optional[str]:
+def _split_credential(raw: str | None) -> str | None:
     """Validate the prefix and return the raw plaintext, or None."""
     if not raw or not raw.startswith(TOKEN_PREFIX):
         return None
@@ -65,8 +64,8 @@ def _split_credential(raw: Optional[str]) -> Optional[str]:
 
 
 def authenticate_mcp_token(
-    plaintext: str, db: Session, *, now: Optional[datetime] = None
-) -> Tuple[User, MCPToken]:
+    plaintext: str, db: Session, *, now: datetime | None = None
+) -> tuple[User, MCPToken]:
     """Resolve a plaintext bearer token to ``(User, MCPToken)``.
 
     Raises ``HTTPException(401)`` for any failure mode (missing prefix,
@@ -83,11 +82,7 @@ def authenticate_mcp_token(
         )
 
     candidate_hash = hash_token(valid)
-    row = (
-        db.query(MCPToken)
-        .filter(MCPToken.token_hash == candidate_hash)
-        .one_or_none()
-    )
+    row = db.query(MCPToken).filter(MCPToken.token_hash == candidate_hash).one_or_none()
     if row is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -142,7 +137,7 @@ def authenticate_mcp_token(
 
 
 def get_mcp_context(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(mcp_bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(mcp_bearer),
     db: Session = Depends(get_db),
 ) -> MCPAuthContext:
     """FastAPI dependency: resolve the bearer header into an MCP context."""
@@ -158,12 +153,10 @@ def get_mcp_context(
     # commit error here — observability is nice-to-have, auth already
     # passed.
     try:
-        token.last_used_at = datetime.now(timezone.utc)
+        token.last_used_at = datetime.now(UTC)
         db.commit()
     except Exception as e:  # pragma: no cover - opportunistic write
-        logger.warning(
-            "MCP last_used_at update failed for token id=%s: %s", token.id, e
-        )
+        logger.warning("MCP last_used_at update failed for token id=%s: %s", token.id, e)
         db.rollback()
 
     return MCPAuthContext(
@@ -175,7 +168,7 @@ def get_mcp_context(
     )
 
 
-def generate_token() -> Tuple[str, str]:
+def generate_token() -> tuple[str, str]:
     """Mint a new ``(plaintext, hash)`` pair.
 
     The plaintext is shown to the operator exactly once; the hash is

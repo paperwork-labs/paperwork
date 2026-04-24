@@ -8,12 +8,10 @@ separate connection and login can see it.
 
 from __future__ import annotations
 
-from typing import Optional
-
 from sqlalchemy.orm import Session
 
 
-def approve_user_for_login_tests(username: str, db: Optional[Session] = None) -> None:
+def approve_user_for_login_tests(username: str, db: Session | None = None) -> None:
     """Approve and verify a user for login tests.
 
     Args:
@@ -45,7 +43,7 @@ def approve_user_for_login_tests(username: str, db: Optional[Session] = None) ->
         own.close()
 
 
-def approve_user_only_for_login_tests(username: str, db: Optional[Session] = None) -> None:
+def approve_user_only_for_login_tests(username: str, db: Session | None = None) -> None:
     """Set is_approved=True only; leaves is_verified unchanged (e.g. False after register).
 
     Args:

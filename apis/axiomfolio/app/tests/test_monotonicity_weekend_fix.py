@@ -1,14 +1,12 @@
 """Tests for the monotonicity checker fix that skips weekend/holiday gaps."""
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
 from app.api.main import app
-from app.api.dependencies import get_admin_user
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from app.services.market.market_data_service import stage_quality
-
 
 client = TestClient(app, raise_server_exceptions=False)
 
@@ -27,7 +25,7 @@ def _make_history_row(symbol, date, stage_label, current_stage_days):
 
 def _recent_monday(min_days_ago: int = 7) -> date:
     """Return a Monday in the recent past (within lookback windows)."""
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     candidate = today - timedelta(days=min_days_ago)
     while candidate.weekday() != 0:  # Monday=0
         candidate -= timedelta(days=1)
@@ -36,7 +34,7 @@ def _recent_monday(min_days_ago: int = 7) -> date:
 
 def test_monotonicity_skips_weekend_gaps(db_session):
     """Friday→Monday gap should NOT count as a monotonicity violation."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     snap = MarketSnapshot(
         symbol="AAA",
         analysis_type="technical_snapshot",
@@ -63,7 +61,7 @@ def test_monotonicity_skips_weekend_gaps(db_session):
 
 def test_monotonicity_catches_real_violations(db_session):
     """Consecutive trading days with wrong counter should still be caught."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     snap = MarketSnapshot(
         symbol="BBB",
         analysis_type="technical_snapshot",
@@ -87,7 +85,7 @@ def test_monotonicity_catches_real_violations(db_session):
 
 def test_monotonicity_stage_transition_over_weekend(db_session):
     """Stage transition over a weekend should not flag a violation."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     snap = MarketSnapshot(
         symbol="CCC",
         analysis_type="technical_snapshot",

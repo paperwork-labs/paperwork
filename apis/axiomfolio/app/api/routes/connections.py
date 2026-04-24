@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
@@ -23,15 +22,15 @@ class BrokerHealthRow(BaseModel):
         ...,
         description="disconnected | connected | stale | error",
     )
-    last_sync_at: Optional[datetime] = None
-    error_message: Optional[str] = None
+    last_sync_at: datetime | None = None
+    error_message: str | None = None
 
 
 class ConnectionsHealthResponse(BaseModel):
     connected: int
     total: int
-    last_sync_at: Optional[datetime] = None
-    by_broker: List[BrokerHealthRow]
+    last_sync_at: datetime | None = None
+    by_broker: list[BrokerHealthRow]
 
 
 @router.get("/health", response_model=ConnectionsHealthResponse)

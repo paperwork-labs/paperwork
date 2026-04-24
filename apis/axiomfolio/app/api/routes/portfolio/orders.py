@@ -11,7 +11,6 @@ Mutation routes (preview, submit, cancel) require OWNER or ANALYST role.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -20,8 +19,8 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user, require_role
 from app.database import get_db
 from app.models.user import User, UserRole
-from app.services.execution.order_manager import OrderManager
 from app.services.execution.broker_base import OrderRequest
+from app.services.execution.order_manager import OrderManager
 from app.services.execution.risk_gate import RiskViolation
 from app.services.risk.account_risk_profile import (
     AccountNotFoundError,
@@ -42,10 +41,10 @@ class OrderPreviewRequest(BaseModel):
     side: str = Field(description="buy or sell")
     order_type: str = Field(default="market", description="market, limit, stop, stop_limit")
     quantity: float
-    limit_price: Optional[float] = None
-    stop_price: Optional[float] = None
+    limit_price: float | None = None
+    stop_price: float | None = None
     broker_type: str = Field(default="ibkr", description="Broker to use: ibkr, schwab, tastytrade")
-    account_id: Optional[int] = Field(
+    account_id: int | None = Field(
         default=None,
         description=(
             "Optional internal broker_accounts.id for advisory per-account "
@@ -89,9 +88,7 @@ async def preview_order(
     # Enforcement stays in RiskGate (Danger Zone); this is display only.
     if req.account_id is not None:
         try:
-            effective = get_effective_limits(
-                db=db, user_id=user.id, account_id=req.account_id
-            )
+            effective = get_effective_limits(db=db, user_id=user.id, account_id=req.account_id)
             result["risk_profile_advisory"] = effective.as_dict()
         except AccountNotFoundError:
             result["risk_profile_advisory"] = None
@@ -116,23 +113,21 @@ async def submit_order(
     result = await _order_manager.submit(db=db, order_id=req.order_id, user_id=user.id)
     err = result.get("error")
     if err:
-        raise HTTPException(
-            status_code=403 if err == "Forbidden" else 400, detail=err
-        )
+        raise HTTPException(status_code=403 if err == "Forbidden" else 400, detail=err)
     return {"data": result}
 
 
 @router.get("")
 def list_orders(
-    status: Optional[str] = None,
-    symbol: Optional[str] = None,
+    status: str | None = None,
+    symbol: str | None = None,
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0, le=100_000),
     source: str = Query(
         "all",
         description="Which rows to return: in-app orders (app), broker-synced trades (broker), or both (all).",
     ),
-    account_id: Optional[int] = Query(
+    account_id: int | None = Query(
         None,
         description="Optional broker_accounts.id: restrict rows to that linked account.",
     ),
@@ -164,13 +159,13 @@ async def poll_order_status(
 ):
     """Poll broker for latest order status."""
     result = await _order_manager.poll_status(
-        db=db, order_id=order_id, user_id=user.id,
+        db=db,
+        order_id=order_id,
+        user_id=user.id,
     )
     err = result.get("error")
     if err:
-        raise HTTPException(
-            status_code=403 if err == "Forbidden" else 400, detail=err
-        )
+        raise HTTPException(status_code=403 if err == "Forbidden" else 400, detail=err)
     return {"data": result}
 
 
@@ -195,11 +190,11 @@ async def cancel_order(
 ):
     """Cancel a submitted order. Requires OWNER or ANALYST role."""
     result = await _order_manager.cancel(
-        db=db, order_id=order_id, user_id=user.id,
+        db=db,
+        order_id=order_id,
+        user_id=user.id,
     )
     err = result.get("error")
     if err:
-        raise HTTPException(
-            status_code=403 if err == "Forbidden" else 400, detail=err
-        )
+        raise HTTPException(status_code=403 if err == "Forbidden" else 400, detail=err)
     return {"data": result}

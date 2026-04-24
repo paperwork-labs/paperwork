@@ -8,9 +8,8 @@ Revises: 0017
 Create Date: 2026-04-06
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0018"
 down_revision = "0017"
@@ -37,7 +36,9 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
         sa.UniqueConstraint(
-            "symbol", "report_date", "fiscal_period",
+            "symbol",
+            "report_date",
+            "fiscal_period",
             name="uq_earnings_sym_date_period",
         ),
     )

@@ -28,10 +28,10 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Optional, Sequence, Tuple
 
 from sqlalchemy.orm import Session
 
@@ -74,11 +74,11 @@ class DriftDetectorResult:
     actual_value: Decimal
     is_drift: bool
     reason: str
-    mean: Optional[Decimal] = None
-    stddev: Optional[Decimal] = None
-    lower_bound: Optional[Decimal] = None
-    upper_bound: Optional[Decimal] = None
-    deviation_pct: Optional[Decimal] = None
+    mean: Decimal | None = None
+    stddev: Decimal | None = None
+    lower_bound: Decimal | None = None
+    upper_bound: Decimal | None = None
+    deviation_pct: Decimal | None = None
     n_samples: int = 0
     window_days: int = DEFAULT_HISTORY_WINDOW_DAYS
 
@@ -108,17 +108,11 @@ class DriftDetector:
         min_samples: int = MIN_SAMPLES_FOR_ENVELOPE,
     ):
         if history_window_days <= 0:
-            raise ValueError(
-                f"history_window_days must be positive, got {history_window_days}"
-            )
+            raise ValueError(f"history_window_days must be positive, got {history_window_days}")
         if sigma_threshold <= 0:
-            raise ValueError(
-                f"sigma_threshold must be positive, got {sigma_threshold}"
-            )
+            raise ValueError(f"sigma_threshold must be positive, got {sigma_threshold}")
         if min_samples < 2:
-            raise ValueError(
-                f"min_samples must be >= 2 (need variance), got {min_samples}"
-            )
+            raise ValueError(f"min_samples must be >= 2 (need variance), got {min_samples}")
         self._history_window_days = int(history_window_days)
         self._sigma_threshold = Decimal(sigma_threshold)
         self._min_samples = int(min_samples)
@@ -131,16 +125,16 @@ class DriftDetector:
     def sigma_threshold(self) -> Decimal:
         return self._sigma_threshold
 
-    def cutoff_for_now(self, now: Optional[datetime] = None) -> datetime:
+    def cutoff_for_now(self, now: datetime | None = None) -> datetime:
         """UTC cutoff timestamp for "still in the lookback window"."""
-        anchor = now or datetime.now(timezone.utc)
+        anchor = now or datetime.now(UTC)
         if anchor.tzinfo is None:
-            anchor = anchor.replace(tzinfo=timezone.utc)
+            anchor = anchor.replace(tzinfo=UTC)
         return anchor - timedelta(days=self._history_window_days)
 
     def compute_envelope(
         self, history: Sequence[Decimal]
-    ) -> Tuple[Optional[Decimal], Optional[Decimal]]:
+    ) -> tuple[Decimal | None, Decimal | None]:
         """Return ``(mean, stddev)`` from ``history``.
 
         Uses sample standard deviation (``n - 1`` denominator) so a
@@ -178,8 +172,7 @@ class DriftDetector:
         """
         if not isinstance(value, Decimal):
             raise TypeError(
-                f"DriftDetector.check requires Decimal value, got "
-                f"{type(value).__name__}: {value!r}"
+                f"DriftDetector.check requires Decimal value, got {type(value).__name__}: {value!r}"
             )
 
         n = len(history)
@@ -213,12 +206,8 @@ class DriftDetector:
             # at all is "drift" by definition -- otherwise we'd
             # rubber-stamp a stuck provider.
             is_drift = value != mean
-            deviation_pct = (
-                ((value - mean) / mean).copy_abs() if mean != 0 else Decimal(0)
-            )
-            signed_deviation_pct = (
-                ((value - mean) / mean) if mean != 0 else Decimal(0)
-            )
+            deviation_pct = ((value - mean) / mean).copy_abs() if mean != 0 else Decimal(0)
+            signed_deviation_pct = ((value - mean) / mean) if mean != 0 else Decimal(0)
             return DriftDetectorResult(
                 symbol=symbol,
                 field_name=field_name,
@@ -269,8 +258,8 @@ class DriftDetector:
         self,
         db: Session,
         result: DriftDetectorResult,
-        alert_at: Optional[datetime] = None,
-    ) -> Optional[ProviderDriftAlert]:
+        alert_at: datetime | None = None,
+    ) -> ProviderDriftAlert | None:
         """Write a drift alert if ``result.is_drift``.
 
         Returns ``None`` when ``is_drift`` is False (so callers can do

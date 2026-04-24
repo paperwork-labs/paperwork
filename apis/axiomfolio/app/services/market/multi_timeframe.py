@@ -6,12 +6,12 @@ and calculates alignment scores for confluence-based trading.
 
 medallion: silver
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Dict, List, Optional, Tuple
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -38,7 +38,7 @@ class MultiTimeframeResult:
 
     symbol: str
     timestamp: datetime
-    stages: Dict[str, TimeframeStage]  # Keyed by timeframe
+    stages: dict[str, TimeframeStage]  # Keyed by timeframe
     alignment_score: int  # 0-100
     primary_trend: str  # "bullish", "bearish", "mixed"
     recommendation: str  # "strong_buy", "buy", "hold", "sell", "strong_sell"
@@ -91,13 +91,13 @@ class MultiTimeframeEngine:
     def __init__(self, db: Session):
         self.db = db
 
-    def analyze(self, symbol: str) -> Optional[MultiTimeframeResult]:
+    def analyze(self, symbol: str) -> MultiTimeframeResult | None:
         """
         Run multi-timeframe analysis on a symbol.
 
         Returns None if insufficient data.
         """
-        stages: Dict[str, TimeframeStage] = {}
+        stages: dict[str, TimeframeStage] = {}
 
         for tf in self.TIMEFRAMES:
             stage = self._analyze_timeframe(symbol, tf)
@@ -119,14 +119,14 @@ class MultiTimeframeEngine:
 
         return MultiTimeframeResult(
             symbol=symbol,
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             stages=stages,
             alignment_score=alignment,
             primary_trend=trend,
             recommendation=rec,
         )
 
-    def analyze_batch(self, symbols: List[str]) -> Dict[str, MultiTimeframeResult]:
+    def analyze_batch(self, symbols: list[str]) -> dict[str, MultiTimeframeResult]:
         """Analyze multiple symbols."""
         results = {}
         for symbol in symbols:
@@ -178,9 +178,7 @@ class MultiTimeframeEngine:
         )
         return True
 
-    def _analyze_timeframe(
-        self, symbol: str, timeframe: str
-    ) -> Optional[TimeframeStage]:
+    def _analyze_timeframe(self, symbol: str, timeframe: str) -> TimeframeStage | None:
         """
         Analyze a single timeframe.
 
@@ -227,9 +225,7 @@ class MultiTimeframeEngine:
 
         # Adjust stage based on timeframe characteristics
         # (Simplified - production would use actual timeframe data)
-        adjusted_stage = self._adjust_stage_for_timeframe(
-            base_stage, timeframe, sma_slope
-        )
+        adjusted_stage = self._adjust_stage_for_timeframe(base_stage, timeframe, sma_slope)
 
         return TimeframeStage(
             timeframe=timeframe,
@@ -240,9 +236,7 @@ class MultiTimeframeEngine:
             confidence=confidence,
         )
 
-    def _adjust_stage_for_timeframe(
-        self, base_stage: str, timeframe: str, sma_slope: float
-    ) -> str:
+    def _adjust_stage_for_timeframe(self, base_stage: str, timeframe: str, sma_slope: float) -> str:
         """
         Adjust stage classification based on timeframe.
 
@@ -252,7 +246,7 @@ class MultiTimeframeEngine:
         # Full implementation would compute from actual OHLCV data
         return base_stage
 
-    def _calculate_alignment(self, stages: Dict[str, TimeframeStage]) -> int:
+    def _calculate_alignment(self, stages: dict[str, TimeframeStage]) -> int:
         """
         Calculate alignment score (0-100).
 
@@ -292,7 +286,7 @@ class MultiTimeframeEngine:
 
         return max(0, min(100, alignment))
 
-    def _determine_trend(self, stages: Dict[str, TimeframeStage]) -> str:
+    def _determine_trend(self, stages: dict[str, TimeframeStage]) -> str:
         """Determine primary trend from stage analysis."""
         if not stages:
             return "mixed"
@@ -310,7 +304,7 @@ class MultiTimeframeEngine:
         self,
         alignment: int,
         trend: str,
-        stages: Dict[str, TimeframeStage],
+        stages: dict[str, TimeframeStage],
     ) -> str:
         """Generate trading recommendation based on analysis."""
         # Priority: Daily stage + alignment

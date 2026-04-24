@@ -9,13 +9,13 @@ Implements proper out-of-sample validation:
 
 medallion: gold
 """
+
 from __future__ import annotations
 
 import logging
-import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import numpy as np
 from sqlalchemy.orm import Session
@@ -35,23 +35,23 @@ class WalkForwardFold:
     train_end: date
     test_start: date
     test_end: date
-    train_result: Optional[BacktestResult]
-    test_result: Optional[BacktestResult]
+    train_result: BacktestResult | None
+    test_result: BacktestResult | None
 
     @property
-    def train_sharpe(self) -> Optional[float]:
+    def train_sharpe(self) -> float | None:
         if self.train_result and self.train_result.metrics:
             return self.train_result.metrics.sharpe_ratio
         return None
 
     @property
-    def test_sharpe(self) -> Optional[float]:
+    def test_sharpe(self) -> float | None:
         if self.test_result and self.test_result.metrics:
             return self.test_result.metrics.sharpe_ratio
         return None
 
     @property
-    def degradation(self) -> Optional[float]:
+    def degradation(self) -> float | None:
         """Calculate performance degradation from train to test."""
         if self.train_sharpe and self.test_sharpe:
             if self.train_sharpe != 0:
@@ -77,7 +77,7 @@ class VetoGateResult:
 
     name: str
     passed: bool
-    value: Optional[float]
+    value: float | None
     threshold: float
     message: str
 
@@ -86,12 +86,12 @@ class VetoGateResult:
 class WalkForwardResult:
     """Complete walk-forward analysis result."""
 
-    strategy_id: Optional[int]
+    strategy_id: int | None
     n_folds: int
     purge_days: int
-    folds: List[WalkForwardFold]
-    veto_results: List[VetoGateResult]
-    summary: Dict[str, Any]
+    folds: list[WalkForwardFold]
+    veto_results: list[VetoGateResult]
+    summary: dict[str, Any]
     passed_all_gates: bool
     recommendation: str  # "deploy", "paper_trade", "reject"
 
@@ -152,10 +152,10 @@ class WalkForwardAnalyzer:
         self,
         entry_rules: ConditionGroup,
         exit_rules: ConditionGroup,
-        symbols: List[str],
+        symbols: list[str],
         start_date: date,
         end_date: date,
-        strategy_id: Optional[int] = None,
+        strategy_id: int | None = None,
     ) -> WalkForwardResult:
         """
         Run walk-forward analysis on a strategy.
@@ -234,9 +234,7 @@ class WalkForwardAnalyzer:
             recommendation=recommendation,
         )
 
-    def _generate_folds(
-        self, start_date: date, end_date: date
-    ) -> List[WalkForwardFold]:
+    def _generate_folds(self, start_date: date, end_date: date) -> list[WalkForwardFold]:
         """
         Generate train/test splits with purged gaps.
 
@@ -281,7 +279,7 @@ class WalkForwardAnalyzer:
 
         return folds
 
-    def _calculate_summary(self, folds: List[WalkForwardFold]) -> Dict[str, Any]:
+    def _calculate_summary(self, folds: list[WalkForwardFold]) -> dict[str, Any]:
         """Calculate summary statistics across all folds."""
         train_sharpes = [f.train_sharpe for f in folds if f.train_sharpe is not None]
         test_sharpes = [f.test_sharpe for f in folds if f.test_sharpe is not None]
@@ -307,9 +305,7 @@ class WalkForwardAnalyzer:
             "positive_folds": sum(1 for s in test_sharpes if s and s > 0),
             "total_folds": len(folds),
             "positive_fold_ratio": (
-                sum(1 for s in test_sharpes if s and s > 0) / len(folds)
-                if folds
-                else 0
+                sum(1 for s in test_sharpes if s and s > 0) / len(folds) if folds else 0
             ),
             "avg_test_return": np.mean(test_returns) if test_returns else None,
             "avg_test_drawdown": np.mean(test_drawdowns) if test_drawdowns else None,
@@ -319,8 +315,8 @@ class WalkForwardAnalyzer:
         }
 
     def _apply_veto_gates(
-        self, folds: List[WalkForwardFold], summary: Dict[str, Any]
-    ) -> List[VetoGateResult]:
+        self, folds: list[WalkForwardFold], summary: dict[str, Any]
+    ) -> list[VetoGateResult]:
         """Apply veto gates to determine if strategy is production-ready."""
         results = []
 
@@ -332,15 +328,12 @@ class WalkForwardAnalyzer:
             )
         else:
             sharpe_display = f"{avg_test_sharpe:.2f}" if avg_test_sharpe else "N/A"
-            min_sharpe_msg = (
-                f"Avg test Sharpe {sharpe_display} < {self.VETO_MIN_AVG_TEST_SHARPE}"
-            )
+            min_sharpe_msg = f"Avg test Sharpe {sharpe_display} < {self.VETO_MIN_AVG_TEST_SHARPE}"
         results.append(
             VetoGateResult(
                 name="min_test_sharpe",
                 passed=(
-                    avg_test_sharpe is not None
-                    and avg_test_sharpe >= self.VETO_MIN_AVG_TEST_SHARPE
+                    avg_test_sharpe is not None and avg_test_sharpe >= self.VETO_MIN_AVG_TEST_SHARPE
                 ),
                 value=avg_test_sharpe,
                 threshold=self.VETO_MIN_AVG_TEST_SHARPE,
@@ -352,14 +345,12 @@ class WalkForwardAnalyzer:
         avg_degradation = summary.get("avg_degradation")
         if avg_degradation and abs(avg_degradation) <= self.VETO_MAX_AVG_DEGRADATION:
             max_deg_msg = (
-                f"Avg degradation {abs(avg_degradation)*100:.1f}% <= "
-                f"{self.VETO_MAX_AVG_DEGRADATION*100}%"
+                f"Avg degradation {abs(avg_degradation) * 100:.1f}% <= "
+                f"{self.VETO_MAX_AVG_DEGRADATION * 100}%"
             )
         else:
             deg_pct = abs(avg_degradation) * 100 if avg_degradation else 0.0
-            max_deg_msg = (
-                f"Avg degradation {deg_pct:.1f}% > {self.VETO_MAX_AVG_DEGRADATION*100}%"
-            )
+            max_deg_msg = f"Avg degradation {deg_pct:.1f}% > {self.VETO_MAX_AVG_DEGRADATION * 100}%"
         results.append(
             VetoGateResult(
                 name="max_degradation",
@@ -382,9 +373,9 @@ class WalkForwardAnalyzer:
                 value=positive_ratio,
                 threshold=self.VETO_MIN_POSITIVE_FOLDS,
                 message=(
-                    f"{positive_ratio*100:.0f}% positive folds >= {self.VETO_MIN_POSITIVE_FOLDS*100}%"
+                    f"{positive_ratio * 100:.0f}% positive folds >= {self.VETO_MIN_POSITIVE_FOLDS * 100}%"
                     if positive_ratio >= self.VETO_MIN_POSITIVE_FOLDS
-                    else f"{positive_ratio*100:.0f}% positive folds < {self.VETO_MIN_POSITIVE_FOLDS*100}%"
+                    else f"{positive_ratio * 100:.0f}% positive folds < {self.VETO_MIN_POSITIVE_FOLDS * 100}%"
                 ),
             )
         )
@@ -393,21 +384,18 @@ class WalkForwardAnalyzer:
         avg_win_rate = summary.get("avg_test_win_rate")
         if avg_win_rate and avg_win_rate >= self.VETO_MIN_TEST_WIN_RATE:
             win_rate_msg = (
-                f"Avg test win rate {avg_win_rate*100:.1f}% >= "
-                f"{self.VETO_MIN_TEST_WIN_RATE*100}%"
+                f"Avg test win rate {avg_win_rate * 100:.1f}% >= "
+                f"{self.VETO_MIN_TEST_WIN_RATE * 100}%"
             )
         else:
             win_pct = avg_win_rate * 100 if avg_win_rate else 0.0
             win_rate_msg = (
-                f"Avg test win rate {win_pct:.1f}% < {self.VETO_MIN_TEST_WIN_RATE*100}%"
+                f"Avg test win rate {win_pct:.1f}% < {self.VETO_MIN_TEST_WIN_RATE * 100}%"
             )
         results.append(
             VetoGateResult(
                 name="min_test_win_rate",
-                passed=(
-                    avg_win_rate is not None
-                    and avg_win_rate >= self.VETO_MIN_TEST_WIN_RATE
-                ),
+                passed=(avg_win_rate is not None and avg_win_rate >= self.VETO_MIN_TEST_WIN_RATE),
                 value=avg_win_rate,
                 threshold=self.VETO_MIN_TEST_WIN_RATE,
                 message=win_rate_msg,
@@ -422,16 +410,11 @@ class WalkForwardAnalyzer:
             )
         else:
             dd_display = avg_drawdown if avg_drawdown else 0.0
-            drawdown_msg = (
-                f"Avg test drawdown {dd_display:.1f}% > {self.VETO_MAX_TEST_DRAWDOWN}%"
-            )
+            drawdown_msg = f"Avg test drawdown {dd_display:.1f}% > {self.VETO_MAX_TEST_DRAWDOWN}%"
         results.append(
             VetoGateResult(
                 name="max_test_drawdown",
-                passed=(
-                    avg_drawdown is not None
-                    and avg_drawdown <= self.VETO_MAX_TEST_DRAWDOWN
-                ),
+                passed=(avg_drawdown is not None and avg_drawdown <= self.VETO_MAX_TEST_DRAWDOWN),
                 value=avg_drawdown,
                 threshold=self.VETO_MAX_TEST_DRAWDOWN,
                 message=drawdown_msg,
@@ -441,7 +424,7 @@ class WalkForwardAnalyzer:
         return results
 
     def _determine_recommendation(
-        self, veto_results: List[VetoGateResult], summary: Dict[str, Any]
+        self, veto_results: list[VetoGateResult], summary: dict[str, Any]
     ) -> str:
         """Determine deployment recommendation based on veto gates."""
         failed_gates = [v for v in veto_results if not v.passed]

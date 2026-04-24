@@ -20,9 +20,8 @@ medallion: ops
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import List, Optional
 
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
@@ -68,8 +67,8 @@ def persist_explanation(
     explanation: Explanation,
     *,
     anomaly_category: str,
-    anomaly_severity: Optional[str] = None,
-    user_id: Optional[int] = None,
+    anomaly_severity: str | None = None,
+    user_id: int | None = None,
 ) -> AutoOpsExplanation:
     """Insert one :class:`Explanation` and return the stored row.
 
@@ -84,11 +83,7 @@ def persist_explanation(
     parameter keeps the denormalized column accurate.
     """
     payload = explanation_to_dict(explanation)
-    severity = (
-        anomaly_severity
-        or payload.get("severity")
-        or "warning"
-    )
+    severity = anomaly_severity or payload.get("severity") or "warning"
     severity = str(severity).strip().lower() or "warning"
 
     row = AutoOpsExplanation(
@@ -120,9 +115,8 @@ def persist_explanation(
     )
     return row
 
-def latest_for_anomaly(
-    db: Session, anomaly_id: str
-) -> Optional[AutoOpsExplanation]:
+
+def latest_for_anomaly(db: Session, anomaly_id: str) -> AutoOpsExplanation | None:
     """Most recent explanation for one anomaly id, or ``None``."""
     return (
         db.query(AutoOpsExplanation)
@@ -136,7 +130,7 @@ def latest_for_anomaly(
 def latest_for_dimension_key(
     db: Session,
     anomaly_id: str,
-) -> Optional[AutoOpsExplanation]:
+) -> AutoOpsExplanation | None:
     """Most recent row for any anomaly id sharing this dimension key prefix.
 
     Uses the same ``prefix:%`` grouping as :func:`explanation_count_today_for_key`
@@ -160,7 +154,7 @@ def explanation_count_today_for_key(
     db: Session,
     anomaly_id: str,
     *,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
 ) -> int:
     """Count persisted explanations in the current UTC day for this key.
 
@@ -169,11 +163,11 @@ def explanation_count_today_for_key(
     :func:`anomaly_builder.deterministic_id`, i.e. the prefix before the
     first ``:``. Caps apply per dimension+day, not per full anomaly_id.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+        now = now.replace(tzinfo=UTC)
     else:
-        now = now.astimezone(timezone.utc)
+        now = now.astimezone(UTC)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     prefix, _, rest = anomaly_id.partition(":")
     if not rest:
@@ -196,14 +190,14 @@ def recent_explanation_within(
     anomaly_id: str,
     *,
     window: timedelta = DEFAULT_RATE_LIMIT_WINDOW,
-    now: Optional[datetime] = None,
-) -> Optional[AutoOpsExplanation]:
+    now: datetime | None = None,
+) -> AutoOpsExplanation | None:
     """Return the most recent explanation if it's inside ``window``.
 
     Used by the Celery task to short-circuit a redundant LLM call when a
     flapping dimension fires multiple anomalies in a short window.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     window = clamp_rate_limit_window(window)
     cutoff = now - window
     return (
@@ -223,10 +217,10 @@ def list_recent(
     *,
     limit: int = 50,
     offset: int = 0,
-    category: Optional[str] = None,
-    severity: Optional[str] = None,
-    fallback_only: Optional[bool] = None,
-) -> List[AutoOpsExplanation]:
+    category: str | None = None,
+    severity: str | None = None,
+    fallback_only: bool | None = None,
+) -> list[AutoOpsExplanation]:
     """Paginated list for the admin UI.
 
     Filters are optional; ``fallback_only`` lets the UI surface degraded
@@ -247,9 +241,9 @@ def list_recent(
 def count_recent(
     db: Session,
     *,
-    category: Optional[str] = None,
-    severity: Optional[str] = None,
-    fallback_only: Optional[bool] = None,
+    category: str | None = None,
+    severity: str | None = None,
+    fallback_only: bool | None = None,
 ) -> int:
     """Total count for the admin UI's pagination footer."""
     q = db.query(func.count(AutoOpsExplanation.id))
@@ -291,8 +285,8 @@ __all__ = [
     "MAX_RATE_LIMIT_WINDOW",
     "MIN_RATE_LIMIT_WINDOW",
     "clamp_rate_limit_window",
-    "explanation_count_today_for_key",
     "count_recent",
+    "explanation_count_today_for_key",
     "explanation_row_to_payload",
     "latest_for_anomaly",
     "latest_for_dimension_key",

@@ -25,9 +25,9 @@ medallion: execution
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -39,7 +39,7 @@ from app.services.execution.risk_gate import RiskGate, RiskViolation
 logger = logging.getLogger(__name__)
 
 
-def _to_decimal(value: Any) -> Optional[Decimal]:
+def _to_decimal(value: Any) -> Decimal | None:
     """Best-effort conversion to Decimal.
 
     Returns ``None`` when the value cannot be represented cleanly, so callers
@@ -71,7 +71,7 @@ class ShadowOrderRecorder:
     def __init__(
         self,
         session: Session,
-        risk_gate: Optional[RiskGate] = None,
+        risk_gate: RiskGate | None = None,
     ) -> None:
         self.session = session
         self.risk_gate = risk_gate or RiskGate()
@@ -84,7 +84,7 @@ class ShadowOrderRecorder:
         *,
         order_id: int,
         user_id: int,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Persist a ``ShadowOrder`` for the given previewed order row.
 
         The caller (``OrderManager.submit``) has already loaded the
@@ -92,9 +92,7 @@ class ShadowOrderRecorder:
         ``user_id``) so cross-tenant access is structurally impossible.
         """
         order = (
-            self.session.query(Order)
-            .filter(Order.id == order_id, Order.user_id == user_id)
-            .first()
+            self.session.query(Order).filter(Order.id == order_id, Order.user_id == user_id).first()
         )
         if order is None:
             logger.warning(
@@ -119,17 +117,15 @@ class ShadowOrderRecorder:
         side: str,
         quantity: Decimal,
         order_type: str = "market",
-        limit_price: Optional[Decimal] = None,
-        tif: Optional[str] = None,
-        account_id: Optional[str] = None,
+        limit_price: Decimal | None = None,
+        tif: str | None = None,
+        account_id: str | None = None,
     ) -> ShadowOrder:
         """Persist a ``ShadowOrder`` from raw inputs (no existing ``Order``)."""
         symbol_upper = (symbol or "").upper().strip()
         side_lower = (side or "").lower().strip()
         if symbol_upper == "" or side_lower not in {"buy", "sell"}:
-            raise ValueError(
-                f"invalid shadow order request: symbol={symbol!r} side={side!r}"
-            )
+            raise ValueError(f"invalid shadow order request: symbol={symbol!r} side={side!r}")
         if quantity is None or quantity <= 0:
             raise ValueError(f"invalid shadow order quantity: {quantity!r}")
 
@@ -142,9 +138,7 @@ class ShadowOrderRecorder:
             account_id=account_id,
         )
 
-        verdict, estimated_price = self._run_risk_gate(
-            req=req, user_id=user_id
-        )
+        verdict, estimated_price = self._run_risk_gate(req=req, user_id=user_id)
 
         status = (
             ShadowOrderStatus.WOULD_DENY_BY_RISK_GATE
@@ -166,7 +160,7 @@ class ShadowOrderRecorder:
             intended_fill_price=_to_decimal(estimated_price)
             if status == ShadowOrderStatus.EXECUTED_AT_SIMULATION_TIME
             else None,
-            intended_fill_at=datetime.now(timezone.utc)
+            intended_fill_at=datetime.now(UTC)
             if status == ShadowOrderStatus.EXECUTED_AT_SIMULATION_TIME
             else None,
             source_order_id=None,
@@ -188,9 +182,7 @@ class ShadowOrderRecorder:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
-    def _record_for_order(
-        self, *, order: Order, user_id: int
-    ) -> Dict[str, Any]:
+    def _record_for_order(self, *, order: Order, user_id: int) -> dict[str, Any]:
         qty = _to_decimal(order.quantity)
         if qty is None or qty <= 0:
             logger.warning(
@@ -210,9 +202,7 @@ class ShadowOrderRecorder:
             account_id=order.account_id,
         )
 
-        verdict, estimated_price = self._run_risk_gate(
-            req=req, user_id=user_id
-        )
+        verdict, estimated_price = self._run_risk_gate(req=req, user_id=user_id)
 
         status = (
             ShadowOrderStatus.WOULD_DENY_BY_RISK_GATE
@@ -234,7 +224,7 @@ class ShadowOrderRecorder:
             intended_fill_price=_to_decimal(estimated_price)
             if status == ShadowOrderStatus.EXECUTED_AT_SIMULATION_TIME
             else None,
-            intended_fill_at=datetime.now(timezone.utc)
+            intended_fill_at=datetime.now(UTC)
             if status == ShadowOrderStatus.EXECUTED_AT_SIMULATION_TIME
             else None,
             source_order_id=order.id,
@@ -258,26 +248,22 @@ class ShadowOrderRecorder:
             "status": row.status,
             "risk_gate": verdict,
             "intended_fill_price": (
-                str(row.intended_fill_price)
-                if row.intended_fill_price is not None
-                else None
+                str(row.intended_fill_price) if row.intended_fill_price is not None else None
             ),
             "intended_fill_at": (
-                row.intended_fill_at.isoformat()
-                if row.intended_fill_at is not None
-                else None
+                row.intended_fill_at.isoformat() if row.intended_fill_at is not None else None
             ),
         }
 
     def _run_risk_gate(
         self, *, req: OrderRequest, user_id: int
-    ) -> tuple[Dict[str, Any], Optional[float]]:
+    ) -> tuple[dict[str, Any], float | None]:
         """Run the real RiskGate and return a JSON-safe verdict + est. price.
 
         The verdict is stored verbatim on the shadow row so downstream
         observers can tell why a paper order would (not) have been allowed.
         """
-        estimated_price: Optional[float]
+        estimated_price: float | None
         try:
             _stop = getattr(req, "stop_price", None)
             estimated_price = self.risk_gate.estimate_price(

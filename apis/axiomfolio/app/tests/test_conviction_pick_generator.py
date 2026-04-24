@@ -14,9 +14,8 @@ Covers:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import List
 
 from app.models.broker_account import (
     AccountStatus,
@@ -32,7 +31,6 @@ from app.models.user import User
 from app.services.gold.conviction_pick_generator import (
     ConvictionPickGenerator,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -77,7 +75,7 @@ def _seed_snapshot(
     pe: float | None = 22.0,
     range_pos: float = 0.65,
 ) -> None:
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
     db_session.add(
         MarketSnapshot(
             symbol=symbol,
@@ -226,9 +224,7 @@ class TestTaskPersistenceHelpers:
     The helpers are where the per-user correctness lives.
     """
 
-    def test_active_user_ids_returns_users_with_open_positions(
-        self, db_session
-    ):
+    def test_active_user_ids_returns_users_with_open_positions(self, db_session):
         from app.tasks.market.conviction import _active_user_ids
 
         user = _seed_user(db_session, email="t1@example.com")
@@ -249,9 +245,7 @@ class TestTaskPersistenceHelpers:
         uids = _active_user_ids(db_session)
         assert user.id in uids
 
-    def test_excludes_symbols_already_held_in_conviction_sleeve(
-        self, db_session
-    ):
+    def test_excludes_symbols_already_held_in_conviction_sleeve(self, db_session):
         from app.services.gold.conviction_pick_generator import (
             ConvictionCandidate,
             GenerationReport,
@@ -301,7 +295,7 @@ class TestTaskPersistenceHelpers:
         exclude = _user_conviction_holdings(db_session, user.id)
         assert exclude == {"HELD"}
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         written = _persist_for_user(
             db_session,
             user_id=user.id,
@@ -312,7 +306,7 @@ class TestTaskPersistenceHelpers:
         db_session.flush()
 
         assert written == 1
-        rows: List[ConvictionPick] = (
+        rows: list[ConvictionPick] = (
             db_session.query(ConvictionPick)
             .filter(ConvictionPick.user_id == user.id)
             .order_by(ConvictionPick.rank)

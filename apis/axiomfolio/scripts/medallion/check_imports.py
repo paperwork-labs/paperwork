@@ -28,6 +28,7 @@ Exit codes:
     1  violations found (CI failure)
     2  configuration error
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,11 +44,11 @@ SERVICES_IMPORT_PREFIX = "app.services."
 # Import rules: layer → set of layers it may import from.
 # "stdlib" (anything not under services_import_prefix) is always allowed.
 ALLOW: dict[str, set[str]] = {
-    "bronze":    {"ops"},
-    "silver":    {"bronze", "ops"},
-    "gold":      {"silver", "bronze", "ops"},
+    "bronze": {"ops"},
+    "silver": {"bronze", "ops"},
+    "gold": {"silver", "bronze", "ops"},
     "execution": {"gold", "silver", "bronze", "ops"},
-    "ops":       {"bronze", "silver", "gold", "execution", "ops"},  # escape hatch
+    "ops": {"bronze", "silver", "gold", "execution", "ops"},  # escape hatch
 }
 
 TAG_RE = re.compile(r"^\s*medallion:\s*(bronze|silver|gold|execution|ops)\s*$", re.MULTILINE)
@@ -79,7 +80,7 @@ def module_to_file(module: str) -> Path | None:
     """Resolve `app.services.foo.bar` → filesystem Path to foo/bar.py or foo/bar/__init__.py."""
     if not module.startswith(SERVICES_IMPORT_PREFIX):
         return None
-    rel = module[len(SERVICES_IMPORT_PREFIX):].replace(".", "/")
+    rel = module[len(SERVICES_IMPORT_PREFIX) :].replace(".", "/")
     candidates = [
         SERVICES / f"{rel}.py",
         SERVICES / rel / "__init__.py",
@@ -144,16 +145,20 @@ def main() -> int:
             file_layer[py] = layer
 
     if untagged:
-        print(f"error: {len(untagged)} .py files under app/services/ missing "
-              f"medallion tag. Run scripts/medallion/tag_files.py --apply.",
-              file=sys.stderr)
+        print(
+            f"error: {len(untagged)} .py files under app/services/ missing "
+            f"medallion tag. Run scripts/medallion/tag_files.py --apply.",
+            file=sys.stderr,
+        )
         for p in untagged[:10]:
             print(f"  {p.relative_to(REPO_ROOT)}", file=sys.stderr)
         if len(untagged) > 10:
             print(f"  ... and {len(untagged) - 10} more", file=sys.stderr)
         return 2
 
-    violations: list[tuple[Path, int, str, str, str]] = []  # (file, line, src_layer, dst_layer, import_module)
+    violations: list[
+        tuple[Path, int, str, str, str]
+    ] = []  # (file, line, src_layer, dst_layer, import_module)
     waivers_used = 0
     imports_checked = 0
 

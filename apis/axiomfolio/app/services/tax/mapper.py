@@ -38,9 +38,10 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from collections.abc import Iterable, Sequence
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any
 
 from .schemas import (
     SCHEMA_VERSION,
@@ -57,7 +58,7 @@ logger = logging.getLogger(__name__)
 
 ZERO = Decimal("0")
 
-_BROKER_TO_DEFAULT_QUALITY: Dict[str, DataQuality] = {
+_BROKER_TO_DEFAULT_QUALITY: dict[str, DataQuality] = {
     "ibkr": DataQuality.BROKER_OFFICIAL,
     "tastytrade": DataQuality.CALCULATED,
     "schwab": DataQuality.UNKNOWN,
@@ -65,7 +66,7 @@ _BROKER_TO_DEFAULT_QUALITY: Dict[str, DataQuality] = {
     "robinhood": DataQuality.UNKNOWN,
 }
 
-_BROKER_TO_DEFAULT_SOURCE: Dict[str, str] = {
+_BROKER_TO_DEFAULT_SOURCE: dict[str, str] = {
     "ibkr": "ibkr_flexquery",
     "tastytrade": "tastytrade_calculated",
     "schwab": "schwab",
@@ -95,7 +96,7 @@ def _to_decimal(value: Any, default: Decimal = ZERO) -> Decimal:
         return default
 
 
-def _to_date(value: Any) -> Optional[date]:
+def _to_date(value: Any) -> date | None:
     """Coerce strings or datetimes to date; return None on failure."""
     if value is None or value == "":
         return None
@@ -133,7 +134,7 @@ def _account_ref(broker: str, account_number: Any) -> str:
     return f"{broker}:{account_number or 'unknown'}"
 
 
-def _classify_term(meta: Dict[str, Any]) -> LotTerm:
+def _classify_term(meta: dict[str, Any]) -> LotTerm:
     if meta.get("is_long_term") is True:
         return LotTerm.LONG_TERM
     if meta.get("is_long_term") is False:
@@ -143,7 +144,7 @@ def _classify_term(meta: Dict[str, Any]) -> LotTerm:
     return LotTerm.UNKNOWN
 
 
-def _instrument_type(symbol: str, meta: Dict[str, Any]) -> InstrumentType:
+def _instrument_type(symbol: str, meta: dict[str, Any]) -> InstrumentType:
     """Heuristic instrument classifier.
 
     OCC option symbols are 21 chars typically (e.g. 'AAPL  240119C00150000'),
@@ -159,7 +160,7 @@ def _instrument_type(symbol: str, meta: Dict[str, Any]) -> InstrumentType:
     return InstrumentType.EQUITY
 
 
-def _data_quality_for(broker: str, meta: Dict[str, Any]) -> Tuple[DataQuality, str]:
+def _data_quality_for(broker: str, meta: dict[str, Any]) -> tuple[DataQuality, str]:
     """Return ``(quality, source_slug)`` for one trade row."""
     declared_source = (meta.get("source") or "").lower().strip()
     if declared_source:
@@ -178,8 +179,8 @@ def _build_lot(
     trade: Any,
     account: Any,
     broker_slug: str,
-    warnings: List[str],
-) -> Optional[FileFreeLot]:
+    warnings: list[str],
+) -> FileFreeLot | None:
     """Map a single Trade-shaped row into a FileFreeLot."""
 
     status = (getattr(trade, "status", "") or "").upper()
@@ -187,13 +188,11 @@ def _build_lot(
         return None
 
     meta_raw = getattr(trade, "trade_metadata", None) or {}
-    meta: Dict[str, Any] = dict(meta_raw) if isinstance(meta_raw, dict) else {}
+    meta: dict[str, Any] = dict(meta_raw) if isinstance(meta_raw, dict) else {}
 
     symbol = (getattr(trade, "symbol", None) or "").upper()
     if not symbol:
-        warnings.append(
-            f"trade id={getattr(trade, 'id', '?')} skipped: missing symbol"
-        )
+        warnings.append(f"trade id={getattr(trade, 'id', '?')} skipped: missing symbol")
         return None
 
     qty = _to_decimal(getattr(trade, "quantity", None))
@@ -202,8 +201,8 @@ def _build_lot(
     realized = _to_decimal(getattr(trade, "realized_pnl", None), default=proceeds - cost_basis)
 
     is_wash = status == "WASH_SALE"
-    wash_amt: Optional[Decimal] = None
-    adj_code: Optional[str] = None
+    wash_amt: Decimal | None = None
+    adj_code: str | None = None
     if is_wash:
         raw_wash = meta.get("wash_sale_loss") or meta.get("wash_sale_disallowed")
         wash_amt = abs(_to_decimal(raw_wash)) if raw_wash is not None else None
@@ -213,16 +212,12 @@ def _build_lot(
     trade_pk = getattr(trade, "id", None)
     lot_key = execution_id or f"trade-{trade_pk}" if trade_pk is not None else None
     if lot_key is None:
-        warnings.append(
-            f"trade for {symbol} skipped: no execution_id and no id"
-        )
+        warnings.append(f"trade for {symbol} skipped: no execution_id and no id")
         return None
     lot_id = f"{getattr(account, 'id', 'na')}::{lot_key}"
 
     date_acquired = _to_date(meta.get("open_date") or meta.get("acquisition_date"))
-    date_sold = _to_date(
-        meta.get("close_date") or getattr(trade, "execution_time", None)
-    )
+    date_sold = _to_date(meta.get("close_date") or getattr(trade, "execution_time", None))
     if date_sold is None:
         trade_pk = getattr(trade, "id", None)
         warnings.append(f"missing date_sold for trade {trade_pk}")
@@ -287,7 +282,7 @@ def build_package(
     tax_year: int,
     accounts: Iterable[Any],
     trades: Iterable[Any],
-    generated_at: Optional[datetime] = None,
+    generated_at: datetime | None = None,
 ) -> FileFreePackage:
     """Build a :class:`FileFreePackage` from already-fetched DB rows.
 
@@ -303,12 +298,12 @@ def build_package(
        consumer (FileFree.ai UI) can show a banner instead of silently
        miscomputing the user's taxes.
     """
-    generated_at = generated_at or datetime.now(timezone.utc)
+    generated_at = generated_at or datetime.now(UTC)
     if generated_at.tzinfo is None:
-        generated_at = generated_at.replace(tzinfo=timezone.utc)
+        generated_at = generated_at.replace(tzinfo=UTC)
 
-    warnings: List[str] = []
-    accounts_by_id: Dict[int, Any] = {}
+    warnings: list[str] = []
+    accounts_by_id: dict[int, Any] = {}
     for account in accounts:
         acct_id = getattr(account, "id", None)
         if acct_id is None:
@@ -317,15 +312,14 @@ def build_package(
         accounts_by_id[int(acct_id)] = account
 
     # Group lots by account for per-account roll-up flags.
-    per_account_lots: Dict[int, List[FileFreeLot]] = defaultdict(list)
-    all_lots: List[FileFreeLot] = []
+    per_account_lots: dict[int, list[FileFreeLot]] = defaultdict(list)
+    all_lots: list[FileFreeLot] = []
 
     for trade in trades:
         acct_id = getattr(trade, "account_id", None)
         if acct_id is None or int(acct_id) not in accounts_by_id:
             warnings.append(
-                f"trade id={getattr(trade, 'id', '?')} skipped: "
-                f"account_id={acct_id!r} not in scope"
+                f"trade id={getattr(trade, 'id', '?')} skipped: account_id={acct_id!r} not in scope"
             )
             continue
         account = accounts_by_id[int(acct_id)]
@@ -340,7 +334,7 @@ def build_package(
     # Build the per-account summaries (only for accounts that produced lots OR
     # were explicitly in scope -- the ladder lets the consumer see "this taxable
     # account had zero realized gains" instead of silently dropping it).
-    account_blocks: List[FileFreeAccount] = []
+    account_blocks: list[FileFreeAccount] = []
     for acct_id, account in accounts_by_id.items():
         lots_for_acct = per_account_lots.get(acct_id, [])
         broker_slug = _enum_value(getattr(account, "broker", "")).lower() or "unknown"
@@ -348,14 +342,10 @@ def build_package(
 
         account_blocks.append(
             FileFreeAccount(
-                account_ref=_account_ref(
-                    broker_slug, getattr(account, "account_number", None)
-                ),
+                account_ref=_account_ref(broker_slug, getattr(account, "account_number", None)),
                 broker=broker_slug,
                 account_type=_enum_value(getattr(account, "account_type", "")).lower(),
-                is_tax_advantaged=bool(
-                    getattr(account, "is_tax_advantaged", False)
-                ),
+                is_tax_advantaged=bool(getattr(account, "is_tax_advantaged", False)),
                 lot_count=len(lots_for_acct),
                 has_calculated_lots=has_calc,
             )

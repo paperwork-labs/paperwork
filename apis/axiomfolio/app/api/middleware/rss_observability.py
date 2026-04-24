@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import logging
 import resource
-from typing import Optional
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware

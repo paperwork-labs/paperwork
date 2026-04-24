@@ -12,7 +12,7 @@ Covers:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -36,7 +36,6 @@ from app.models import (
     User,
     ValidatedPick,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -75,7 +74,7 @@ def email(db_session) -> EmailInbox:
         sender="validator@example.com",
         subject="Picks for Monday",
         body_text="Buy NVDA on the breakout. Stop 110.",
-        received_at=datetime.now(timezone.utc),
+        received_at=datetime.now(UTC),
     )
     db_session.add(msg)
     db_session.flush()
@@ -215,7 +214,7 @@ class TestEmailIngestion:
             message_id=email.message_id,
             source_label="validator_primary",
             sender="other@example.com",
-            received_at=datetime.now(timezone.utc),
+            received_at=datetime.now(UTC),
         )
         with pytest.raises(IntegrityError):
             try:
@@ -230,9 +229,7 @@ class TestEmailIngestion:
         assert any(p.id == email_parse.id for p in email.parses)
         assert email_parse.email is email
 
-    def test_email_parse_uniqueness_on_schema_and_model(
-        self, db_session, email, email_parse
-    ):
+    def test_email_parse_uniqueness_on_schema_and_model(self, db_session, email, email_parse):
         duplicate = EmailParse(
             email_id=email.id,
             schema_version=email_parse.schema_version,
@@ -291,39 +288,33 @@ class TestValidatedPickLifecycle:
         db_session.flush()
         assert pick.is_active() is False
 
-    def test_published_pick_with_future_expiry_is_active(
-        self, db_session, validator_user
-    ):
+    def test_published_pick_with_future_expiry_is_active(self, db_session, validator_user):
         pick = self._pick(
             validator_user,
             status=PickStatus.PUBLISHED,
-            published_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=5),
+            published_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(days=5),
         )
         db_session.add(pick)
         db_session.flush()
         assert pick.is_active() is True
 
-    def test_published_pick_with_past_expiry_is_inactive(
-        self, db_session, validator_user
-    ):
+    def test_published_pick_with_past_expiry_is_inactive(self, db_session, validator_user):
         pick = self._pick(
             validator_user,
             status=PickStatus.PUBLISHED,
-            published_at=datetime.now(timezone.utc) - timedelta(days=20),
-            expires_at=datetime.now(timezone.utc) - timedelta(days=10),
+            published_at=datetime.now(UTC) - timedelta(days=20),
+            expires_at=datetime.now(UTC) - timedelta(days=10),
         )
         db_session.add(pick)
         db_session.flush()
         assert pick.is_active() is False
 
-    def test_published_pick_with_no_expiry_is_active(
-        self, db_session, validator_user
-    ):
+    def test_published_pick_with_no_expiry_is_active(self, db_session, validator_user):
         pick = self._pick(
             validator_user,
             status=PickStatus.PUBLISHED,
-            published_at=datetime.now(timezone.utc),
+            published_at=datetime.now(UTC),
             expires_at=None,
         )
         db_session.add(pick)
@@ -334,8 +325,8 @@ class TestValidatedPickLifecycle:
         original = self._pick(
             validator_user,
             status=PickStatus.PUBLISHED,
-            published_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=10),
+            published_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(days=10),
         )
         db_session.add(original)
         db_session.flush()
@@ -344,8 +335,8 @@ class TestValidatedPickLifecycle:
             action=PickAction.TRIM,
             reason_summary="Trim 25% into strength.",
             status=PickStatus.PUBLISHED,
-            published_at=datetime.now(timezone.utc),
-            expires_at=datetime.now(timezone.utc) + timedelta(days=10),
+            published_at=datetime.now(UTC),
+            expires_at=datetime.now(UTC) + timedelta(days=10),
         )
         db_session.add(replacement)
         db_session.flush()
@@ -354,9 +345,7 @@ class TestValidatedPickLifecycle:
         assert original.is_active() is False
         assert replacement.is_active() is True
 
-    def test_decimal_fields_round_trip_without_float_loss(
-        self, db_session, validator_user
-    ):
+    def test_decimal_fields_round_trip_without_float_loss(self, db_session, validator_user):
         pick = self._pick(
             validator_user,
             suggested_entry=Decimal("125.123456"),
@@ -378,9 +367,7 @@ class TestValidatedPickLifecycle:
 
 
 class TestProvenance:
-    def test_pick_can_link_back_to_email_parse(
-        self, db_session, validator_user, email_parse
-    ):
+    def test_pick_can_link_back_to_email_parse(self, db_session, validator_user, email_parse):
         pick = ValidatedPick(
             source_email_parse_id=email_parse.id,
             validator_user_id=validator_user.id,
@@ -394,9 +381,7 @@ class TestProvenance:
         assert pick.source_parse is email_parse
         assert pick in email_parse.picks
 
-    def test_candidate_promotion_links_both_directions(
-        self, db_session, validator_user
-    ):
+    def test_candidate_promotion_links_both_directions(self, db_session, validator_user):
         cand = Candidate(
             symbol="MSFT",
             generator_name="stage2a_rs_strong",
@@ -493,9 +478,7 @@ class TestPickEngagement:
                 db_session.rollback()
                 raise
 
-    def test_different_engagement_types_coexist(
-        self, db_session, validator_user, subscriber_user
-    ):
+    def test_different_engagement_types_coexist(self, db_session, validator_user, subscriber_user):
         pick = ValidatedPick(
             validator_user_id=validator_user.id,
             symbol="NVDA",
@@ -537,7 +520,7 @@ class TestSiblingSignals:
             time_horizon_days=14,
             confidence=Decimal("0.650"),
             status=PickStatus.PUBLISHED,
-            published_at=datetime.now(timezone.utc),
+            published_at=datetime.now(UTC),
         )
         db_session.add(outlook)
         db_session.flush()
@@ -547,9 +530,7 @@ class TestSiblingSignals:
         assert outlook.status == PickStatus.PUBLISHED
         assert outlook.validator_pseudonym == "Twisted Slice"
 
-    def test_position_change_round_trip(
-        self, db_session, validator_user, email_parse
-    ):
+    def test_position_change_round_trip(self, db_session, validator_user, email_parse):
         change = PositionChange(
             source_email_parse_id=email_parse.id,
             validator_user_id=validator_user.id,
@@ -558,7 +539,7 @@ class TestSiblingSignals:
             size_change_pct=Decimal("0.2500"),
             reason="Trim 25% into the earnings rip; keep core.",
             status=PickStatus.PUBLISHED,
-            published_at=datetime.now(timezone.utc),
+            published_at=datetime.now(UTC),
         )
         db_session.add(change)
         db_session.flush()

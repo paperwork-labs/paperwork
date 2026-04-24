@@ -5,7 +5,8 @@ Position and order reconciliation against broker-reported data.
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import UTC
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -20,20 +21,21 @@ logger = logging.getLogger(__name__)
     soft_time_limit=300,
     time_limit=360,
 )
-def reconcile_orders(self, lookback_hours: int = 24) -> Dict:
+def reconcile_orders(self, lookback_hours: int = 24) -> dict:
     """Match filled Orders to Trades. Runs after broker sync.
-    
+
     Compares our Order records with broker-reported executions/fills
     to ensure we haven't missed any fills or have orphaned orders.
     """
+    from datetime import datetime, timedelta
+
     from app.database import SessionLocal
     from app.models.order import Order, OrderStatus
-    from datetime import datetime, timezone, timedelta
 
     db = SessionLocal()
     try:
-        cutoff = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
-        
+        cutoff = datetime.now(UTC) - timedelta(hours=lookback_hours)
+
         # Find orders that claim to be filled but may not have matched trades
         filled_orders = (
             db.query(Order)
@@ -43,10 +45,10 @@ def reconcile_orders(self, lookback_hours: int = 24) -> Dict:
             )
             .all()
         )
-        
+
         matched = 0
         unmatched = 0
-        
+
         for order in filled_orders:
             # Check if we have a fill confirmation (broker_order_id and fill_price)
             if order.broker_order_id and order.filled_avg_price is not None:
@@ -55,9 +57,10 @@ def reconcile_orders(self, lookback_hours: int = 24) -> Dict:
                 unmatched += 1
                 logger.warning(
                     "Order %d (%s) marked FILLED but missing broker confirmation",
-                    order.id, order.symbol,
+                    order.id,
+                    order.symbol,
                 )
-        
+
         result = {
             "total_orders": len(filled_orders),
             "matched": matched,
@@ -65,7 +68,9 @@ def reconcile_orders(self, lookback_hours: int = 24) -> Dict:
         }
         logger.info(
             "Reconciliation: %d matched, %d unmatched of %d total",
-            matched, unmatched, len(filled_orders),
+            matched,
+            unmatched,
+            len(filled_orders),
         )
         return result
     except Exception as e:
@@ -81,7 +86,7 @@ def reconcile_orders(self, lookback_hours: int = 24) -> Dict:
     soft_time_limit=300,
     time_limit=360,
 )
-def reconcile_positions(self) -> Dict:
+def reconcile_positions(self) -> dict:
     """Verify internal position state matches broker reported positions.
 
     Compares local Position records against live broker positions for each
@@ -90,12 +95,12 @@ def reconcile_positions(self) -> Dict:
     Run daily after broker sync to catch any drift.
     """
     from app.database import SessionLocal
+    from app.models.broker_account import AccountStatus, BrokerAccount
     from app.models.position import Position, PositionStatus
-    from app.models.broker_account import BrokerAccount, AccountStatus, BrokerType
 
     db = SessionLocal()
     try:
-        discrepancies: List[Dict] = []
+        discrepancies: list[dict] = []
         reconciled = 0
         errors = 0
 
@@ -143,50 +148,58 @@ def reconcile_positions(self) -> Dict:
                     broker = broker_pos_map.get(symbol)
 
                     if local and not broker:
-                        discrepancies.append({
-                            "symbol": symbol,
-                            "account_id": account.id,
-                            "account_name": account.account_name,
-                            "type": "missing_at_broker",
-                            "local_qty": float(local.quantity or 0),
-                            "broker_qty": 0,
-                        })
+                        discrepancies.append(
+                            {
+                                "symbol": symbol,
+                                "account_id": account.id,
+                                "account_name": account.account_name,
+                                "type": "missing_at_broker",
+                                "local_qty": float(local.quantity or 0),
+                                "broker_qty": 0,
+                            }
+                        )
                     elif broker and not local:
-                        discrepancies.append({
-                            "symbol": symbol,
-                            "account_id": account.id,
-                            "account_name": account.account_name,
-                            "type": "missing_locally",
-                            "local_qty": 0,
-                            "broker_qty": broker.get("quantity"),
-                        })
+                        discrepancies.append(
+                            {
+                                "symbol": symbol,
+                                "account_id": account.id,
+                                "account_name": account.account_name,
+                                "type": "missing_locally",
+                                "local_qty": 0,
+                                "broker_qty": broker.get("quantity"),
+                            }
+                        )
                     elif local and broker:
                         local_qty = float(local.quantity or 0)
                         broker_qty = float(broker.get("quantity") or 0)
                         if abs(local_qty - broker_qty) > 0.001:
-                            discrepancies.append({
-                                "symbol": symbol,
-                                "account_id": account.id,
-                                "account_name": account.account_name,
-                                "type": "quantity_mismatch",
-                                "local_qty": local_qty,
-                                "broker_qty": broker_qty,
-                                "diff": broker_qty - local_qty,
-                            })
+                            discrepancies.append(
+                                {
+                                    "symbol": symbol,
+                                    "account_id": account.id,
+                                    "account_name": account.account_name,
+                                    "type": "quantity_mismatch",
+                                    "local_qty": local_qty,
+                                    "broker_qty": broker_qty,
+                                    "diff": broker_qty - local_qty,
+                                }
+                            )
                         else:
                             reconciled += 1
 
             except Exception as e:
                 logger.warning(
                     "Position reconciliation failed for account %s: %s",
-                    account.account_name, e,
+                    account.account_name,
+                    e,
                 )
                 errors += 1
 
         if discrepancies:
             logger.warning(
                 "Position reconciliation found %d discrepancies across %d accounts",
-                len(discrepancies), len(accounts),
+                len(discrepancies),
+                len(accounts),
             )
 
         return {
@@ -207,7 +220,7 @@ def reconcile_positions(self) -> Dict:
 
 async def _fetch_tastytrade_positions_async(
     account: Any, db: Session
-) -> Optional[List[Dict[str, Any]]]:
+) -> list[dict[str, Any]] | None:
     """Connect to TastyTrade, fetch positions, return normalized rows or None on failure."""
     from app.services.clients.tastytrade_client import (
         TASTYTRADE_AVAILABLE,
@@ -223,7 +236,7 @@ async def _fetch_tastytrade_positions_async(
         return None
 
     client = TastyTradeClient()
-    raw: List[Dict[str, Any]] = []
+    raw: list[dict[str, Any]] = []
     try:
         try:
             payload = account_credentials_service.get_decrypted(account.id, db)
@@ -242,7 +255,7 @@ async def _fetch_tastytrade_positions_async(
 
         # Validate that the requested account number exists in the TastyTrade session.
         target_account_number = getattr(account, "account_number", None)
-        session_account_numbers: List[str] = []
+        session_account_numbers: list[str] = []
         try:
             session_accounts = getattr(client, "accounts", []) or []
             session_account_numbers = [
@@ -283,7 +296,7 @@ async def _fetch_tastytrade_positions_async(
         except Exception as disc_e:
             logger.debug("TastyTrade disconnect after reconciliation fetch: %s", disc_e)
 
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for pos in raw:
         instr = (pos.get("instrument_type") or "").lower()
         if "option" in instr:
@@ -303,7 +316,7 @@ async def _fetch_tastytrade_positions_async(
         avg = float(pos.get("average_open_price") or 0)
         cost_basis = magnitude * avg
         mark_value_raw = pos.get("mark_value")
-        market_value: Optional[float] = None
+        market_value: float | None = None
         if mark_value_raw is not None:
             try:
                 market_value = float(mark_value_raw)
@@ -326,7 +339,7 @@ async def _fetch_tastytrade_positions_async(
     return out
 
 
-def _fetch_broker_positions(account, db: Session) -> Optional[List[Dict]]:
+def _fetch_broker_positions(account, db: Session) -> list[dict] | None:
     """Fetch current positions from the broker for an account.
 
     Returns list of dicts with: symbol, quantity, cost_basis, market_value
@@ -334,7 +347,7 @@ def _fetch_broker_positions(account, db: Session) -> Optional[List[Dict]]:
     """
     from app.models.broker_account import BrokerType
 
-    positions: List[Dict] = []
+    positions: list[dict] = []
 
     try:
         if account.broker == BrokerType.IBKR:
@@ -351,9 +364,7 @@ def _fetch_broker_positions(account, db: Session) -> Optional[List[Dict]]:
         elif account.broker == BrokerType.TASTYTRADE:
             loop = asyncio.new_event_loop()
             try:
-                positions = loop.run_until_complete(
-                    _fetch_tastytrade_positions_async(account, db)
-                )
+                positions = loop.run_until_complete(_fetch_tastytrade_positions_async(account, db))
             finally:
                 loop.close()
             return positions
@@ -375,9 +386,9 @@ def _fetch_broker_positions(account, db: Session) -> Optional[List[Dict]]:
 )
 def monitor_portfolio_drawdown(
     self,
-    thresholds: List[float] = None,
+    thresholds: list[float] = None,
     send_alerts: bool = True,
-) -> Dict:
+) -> dict:
     """Monitor portfolio drawdown and alert if thresholds exceeded.
 
     Run periodically (e.g., hourly during market hours) to catch
@@ -390,10 +401,11 @@ def monitor_portfolio_drawdown(
     Returns:
         Dict with current drawdown metrics and any triggered alerts
     """
+    from datetime import datetime, timedelta
+
     from app.database import SessionLocal
     from app.models.portfolio import PortfolioSnapshot
     from app.models.position import Position, PositionStatus
-    from datetime import datetime, timedelta
 
     if thresholds is None:
         thresholds = [5.0, 10.0, 15.0, 20.0]
@@ -401,14 +413,10 @@ def monitor_portfolio_drawdown(
     db = SessionLocal()
     try:
         # Calculate current portfolio value from open positions
-        positions = (
-            db.query(Position)
-            .filter(Position.status == PositionStatus.OPEN)
-            .all()
-        )
-        
+        positions = db.query(Position).filter(Position.status == PositionStatus.OPEN).all()
+
         current_value = sum(float(p.market_value or 0) for p in positions)
-        
+
         # Get peak value from recent snapshots (last 90 days)
         ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
         peak_snapshot = (
@@ -417,9 +425,9 @@ def monitor_portfolio_drawdown(
             .order_by(PortfolioSnapshot.total_value.desc())
             .first()
         )
-        
+
         peak_value = float(peak_snapshot.total_value) if peak_snapshot else current_value
-        
+
         # Calculate drawdown
         if peak_value > 0:
             drawdown_pct = ((peak_value - current_value) / peak_value) * 100
@@ -427,17 +435,19 @@ def monitor_portfolio_drawdown(
         else:
             drawdown_pct = 0.0
             drawdown_dollars = 0.0
-        
+
         # Check thresholds
         alerts = []
         for threshold in thresholds:
             if drawdown_pct >= threshold:
-                alerts.append({
-                    "threshold_pct": threshold,
-                    "current_drawdown_pct": drawdown_pct,
-                    "current_drawdown_dollars": drawdown_dollars,
-                })
-        
+                alerts.append(
+                    {
+                        "threshold_pct": threshold,
+                        "current_drawdown_pct": drawdown_pct,
+                        "current_drawdown_dollars": drawdown_dollars,
+                    }
+                )
+
         result = {
             "status": "ok",
             "drawdown_pct": round(drawdown_pct, 2),
@@ -447,13 +457,14 @@ def monitor_portfolio_drawdown(
             "total_positions": len(positions),
             "alerts_triggered": len(alerts),
         }
-        
+
         if drawdown_pct >= 10:
             logger.warning(
                 "Portfolio drawdown at %.1f%% ($%.0f from peak)",
-                drawdown_pct, drawdown_dollars,
+                drawdown_pct,
+                drawdown_dollars,
             )
-        
+
         return result
 
     except Exception as e:
@@ -469,9 +480,7 @@ def monitor_portfolio_drawdown(
     soft_time_limit=3300,
     time_limit=3600,
 )
-def backfill_option_tax_lots(
-    self, user_id: Optional[int] = None
-) -> Dict[str, Any]:
+def backfill_option_tax_lots(self, user_id: int | None = None) -> dict[str, Any]:
     """Replay FIFO closing-lot matcher across all enabled accounts.
 
     Produces ``OptionTaxLot`` rows (and equity ``CLOSED_LOT`` trades) from
@@ -505,7 +514,7 @@ def backfill_option_tax_lots(
     finally:
         list_db.close()
 
-    details: List[Dict[str, Any]] = []
+    details: list[dict[str, Any]] = []
     processed = 0
     failed = 0
     total_option_created = 0
@@ -519,9 +528,7 @@ def backfill_option_tax_lots(
         account_db = SessionLocal()
         try:
             acct = (
-                account_db.query(BrokerAccount)
-                .filter(BrokerAccount.id == account_id)
-                .one_or_none()
+                account_db.query(BrokerAccount).filter(BrokerAccount.id == account_id).one_or_none()
             )
             if acct is None:
                 logger.warning(
@@ -555,7 +562,7 @@ def backfill_option_tax_lots(
                     "unmatched_quantity": str(res.unmatched_quantity),
                 }
             )
-        except Exception as exc:  # noqa: BLE001 — isolate per-account failure
+        except Exception as exc:
             account_db.rollback()
             failed += 1
             logger.warning(

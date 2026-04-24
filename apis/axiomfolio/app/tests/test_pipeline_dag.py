@@ -1,7 +1,7 @@
 """Tests for pipeline DAG resolution, orchestration, resume, and retry."""
+
 from __future__ import annotations
 
-import json
 import os
 from unittest.mock import MagicMock, patch
 
@@ -14,10 +14,8 @@ from app.services.pipeline.dag import (
     PIPELINE_DAG,
     STEP_ERROR,
     STEP_OK,
-    STEP_PENDING,
     STEP_SKIPPED,
     StepDef,
-    _step_key,
     all_deps_satisfied,
     dag_edges,
     get_step_status,
@@ -34,6 +32,7 @@ pytestmark = pytest.mark.no_db
 def _schema_guard():
     yield
 
+
 @pytest.fixture
 def db_session():
     yield None
@@ -42,6 +41,7 @@ def db_session():
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def fake_redis():
@@ -69,6 +69,7 @@ DIAMOND_DAG = {
 # ---------------------------------------------------------------------------
 # Topological sort
 # ---------------------------------------------------------------------------
+
 
 class TestTopoSort:
     def test_full_dag_valid_order(self):
@@ -120,6 +121,7 @@ class TestTopoSort:
 # DAG edges
 # ---------------------------------------------------------------------------
 
+
 class TestDAGEdges:
     def test_edge_count(self):
         edges = dag_edges(PIPELINE_DAG)
@@ -136,6 +138,7 @@ class TestDAGEdges:
 # ---------------------------------------------------------------------------
 # Redis state helpers
 # ---------------------------------------------------------------------------
+
 
 class TestRedisState:
     def test_mark_and_get_step(self, fake_redis):
@@ -164,6 +167,7 @@ class TestRedisState:
 # Orchestrator
 # ---------------------------------------------------------------------------
 
+
 def _make_step_fn(return_value=None):
     """Create a mock step function returning a dict."""
     result = return_value or {"status": "ok"}
@@ -187,9 +191,11 @@ class TestOrchestrator:
         mark_step("resume-run", "a", STEP_OK)
         mark_step("resume-run", "b", STEP_OK)
         call_count = {"count": 0}
+
         def counting_fn(**kw):
             call_count["count"] += 1
             return {"status": "ok"}
+
         mock_resolve.return_value = counting_fn
         result = run_pipeline("resume-run", dag=MINI_DAG)
         assert result["status"] == "ok"
@@ -199,8 +205,10 @@ class TestOrchestrator:
     @patch("app.services.pipeline.orchestrator._summarize", return_value="ok")
     def test_dep_failure_cascades_skip(self, _mock_summary, mock_resolve, fake_redis):
         call_order = []
+
         def step_fn(**kw):
             return {"status": "ok"}
+
         def failing_fn(**kw):
             raise RuntimeError("boom")
 
@@ -224,12 +232,16 @@ class TestOrchestrator:
     @patch("app.services.pipeline.orchestrator._summarize", return_value="ok")
     def test_independent_branches(self, _mock_summary, mock_resolve, fake_redis):
         """In diamond DAG: if 'left' fails, 'right' still runs, 'join' is skipped."""
+
         def resolver(path):
             if path == "x.left":
+
                 def fail(**kw):
                     raise RuntimeError("left failed")
+
                 return fail
             return _make_step_fn()
+
         mock_resolve.side_effect = resolver
 
         result = run_pipeline("branch-run", dag=DIAMOND_DAG)

@@ -5,6 +5,7 @@ import os
 import pytest
 from fastapi.testclient import TestClient
 
+
 def _test_client_or_skip() -> tuple[TestClient, object]:
     try:
         from app.api.dependencies import get_admin_user

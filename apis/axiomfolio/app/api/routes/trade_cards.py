@@ -9,8 +9,8 @@ account balances. Cards are not persisted — see
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func
@@ -33,7 +33,7 @@ router = APIRouter()
 
 
 def _today_utc_start() -> datetime:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return now.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
@@ -43,7 +43,7 @@ def list_trade_cards_today(
     current_user: User = Depends(get_current_user),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return today's trade cards for ``current_user`` ordered by pick score desc.
 
     Cards are composed per-candidate; a failure in one card's composition logs
@@ -53,11 +53,9 @@ def list_trade_cards_today(
     start = _today_utc_start()
     base_filter = (Candidate.generated_at >= start,)
 
-    total = (
-        db.query(func.count(Candidate.id)).filter(*base_filter).scalar() or 0
-    )
+    total = db.query(func.count(Candidate.id)).filter(*base_filter).scalar() or 0
 
-    rows: List[Candidate] = (
+    rows: list[Candidate] = (
         db.query(Candidate)
         .filter(*base_filter)
         .order_by(
@@ -74,8 +72,8 @@ def list_trade_cards_today(
     regime = get_current_regime(db)
     account_value = _sum_user_account_value(db, current_user.id)
 
-    items: List[Dict[str, Any]] = []
-    errors: List[Dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
     for idx, cand in enumerate(rows):
         try:
             card = composer.compose(

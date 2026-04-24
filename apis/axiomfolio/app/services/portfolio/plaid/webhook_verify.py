@@ -24,7 +24,7 @@ import hmac
 import logging
 import threading
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import jwt  # PyJWT
 from jwt import PyJWTError
@@ -51,12 +51,12 @@ class WebhookVerificationError(RuntimeError):
 # kid -> (jwk_dict, fetched_at_epoch_seconds). Cache for 24 hours per
 # Plaid's recommendation, with a shorter TTL on failure so transient
 # outages don't pin a stale key forever.
-_KEY_CACHE: Dict[str, Tuple[Dict[str, Any], float]] = {}
+_KEY_CACHE: dict[str, tuple[dict[str, Any], float]] = {}
 _KEY_CACHE_TTL_SECONDS = 24 * 60 * 60
 _KEY_CACHE_LOCK = threading.Lock()
 
 
-def _cache_get(kid: str) -> Optional[Dict[str, Any]]:
+def _cache_get(kid: str) -> dict[str, Any] | None:
     with _KEY_CACHE_LOCK:
         entry = _KEY_CACHE.get(kid)
         if not entry:
@@ -69,7 +69,7 @@ def _cache_get(kid: str) -> Optional[Dict[str, Any]]:
         return jwk
 
 
-def _cache_put(kid: str, jwk: Dict[str, Any]) -> None:
+def _cache_put(kid: str, jwk: dict[str, Any]) -> None:
     with _KEY_CACHE_LOCK:
         _KEY_CACHE[kid] = (jwk, time.time())
 
@@ -80,7 +80,7 @@ def reset_cache() -> None:
         _KEY_CACHE.clear()
 
 
-def _fetch_key(plaid_api_client: plaid_api.PlaidApi, kid: str) -> Dict[str, Any]:
+def _fetch_key(plaid_api_client: plaid_api.PlaidApi, kid: str) -> dict[str, Any]:
     """Fetch a verification key from Plaid by ``kid``.
 
     Plaid returns a JWK in the ``key`` field; the "is_live" field on the
@@ -107,7 +107,7 @@ def _fetch_key(plaid_api_client: plaid_api.PlaidApi, kid: str) -> Dict[str, Any]
     return key
 
 
-def _jwk_to_pem(jwk: Dict[str, Any]) -> bytes:
+def _jwk_to_pem(jwk: dict[str, Any]) -> bytes:
     """Convert a Plaid JWK (EC P-256) to PEM format accepted by PyJWT."""
     import json as _json
 
@@ -119,7 +119,7 @@ def verify_webhook(
     body: bytes,
     plaid_verification_header: str,
     plaid_api_client: plaid_api.PlaidApi,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Verify a Plaid webhook and return the decoded JSON payload.
 
     Args:
@@ -166,9 +166,7 @@ def verify_webhook(
             algorithms=["ES256"],
         )
     except PyJWTError as exc:
-        logger.warning(
-            "plaid webhook JWT decode failed (kid=%s): %s", kid, exc
-        )
+        logger.warning("plaid webhook JWT decode failed (kid=%s): %s", kid, exc)
         raise WebhookVerificationError("invalid signature") from exc
 
     expected_sha = claims.get("request_body_sha256")
@@ -196,6 +194,6 @@ def verify_webhook(
 
 __all__ = [
     "WebhookVerificationError",
-    "verify_webhook",
     "reset_cache",
+    "verify_webhook",
 ]

@@ -9,10 +9,17 @@ from starlette.requests import Request
 from starlette.responses import PlainTextResponse
 
 from app.api.middleware import peak_rss
-from app.api.middleware.peak_rss import PeakRssMiddleware, is_observability_bypass_path, should_sample_for_request_id
+from app.api.middleware.peak_rss import (
+    PeakRssMiddleware,
+    is_observability_bypass_path,
+    should_sample_for_request_id,
+)
 from app.services.market.admin_health_service import AdminHealthService
 from app.services.observability import peak_rss_store
-from app.services.observability.peak_rss_store import get_hottest_endpoints_aggregated, ru_maxrss_raw_to_kib
+from app.services.observability.peak_rss_store import (
+    get_hottest_endpoints_aggregated,
+    ru_maxrss_raw_to_kib,
+)
 
 
 def test_bypass_path_health_never_sampled() -> None:
@@ -45,8 +52,9 @@ async def test_high_delta_emits_warning(monkeypatch: pytest.MonkeyPatch) -> None
 
     _g_calls: list[int] = []
 
-    def _getrusage(who: int):  # noqa: ANN001
+    def _getrusage(who: int):
         _g_calls.append(1)
+
         class R:
             pass
 
@@ -75,19 +83,34 @@ async def test_high_delta_emits_warning(monkeypatch: pytest.MonkeyPatch) -> None
     request = Request(scope)
     with mock.patch.object(peak_rss.logger, "warning") as wmock:
         with mock.patch("app.api.middleware.peak_rss.get_request_id", return_value="x-req-1"):
-            with mock.patch("app.api.middleware.peak_rss.should_sample_for_request_id", return_value=True):
-                with mock.patch("app.api.middleware.peak_rss.is_observability_bypass_path", return_value=False):
-                    with mock.patch("app.api.middleware.peak_rss._get_sync_redis", return_value=None):
-                        with mock.patch("app.api.middleware.peak_rss._path_template_for_metrics", return_value="/api/v1/under-test"):
-                            with mock.patch("app.services.observability.peak_rss_store.platform", mock.MagicMock()) as p_sys:
+            with mock.patch(
+                "app.api.middleware.peak_rss.should_sample_for_request_id", return_value=True
+            ):
+                with mock.patch(
+                    "app.api.middleware.peak_rss.is_observability_bypass_path", return_value=False
+                ):
+                    with mock.patch(
+                        "app.api.middleware.peak_rss._get_sync_redis", return_value=None
+                    ):
+                        with mock.patch(
+                            "app.api.middleware.peak_rss._path_template_for_metrics",
+                            return_value="/api/v1/under-test",
+                        ):
+                            with mock.patch(
+                                "app.services.observability.peak_rss_store.platform",
+                                mock.MagicMock(),
+                            ) as p_sys:
                                 p_sys.system = mock.Mock(return_value="Linux")
-                                with mock.patch("app.api.middleware.peak_rss.resource.getrusage", side_effect=_getrusage):
+                                with mock.patch(
+                                    "app.api.middleware.peak_rss.resource.getrusage",
+                                    side_effect=_getrusage,
+                                ):
                                     tm = mock.MagicMock()
                                     tm.get_traced_memory = mock.Mock(return_value=(0, 0))
                                     with mock.patch("app.api.middleware.peak_rss.tracemalloc", tm):
                                         mw = PeakRssMiddleware(lambda _req: PlainTextResponse("x"))
 
-                                        async def _next(_r) -> PlainTextResponse:  # noqa: ANN001
+                                        async def _next(_r) -> PlainTextResponse:
                                             return PlainTextResponse("x")
 
                                         await mw.dispatch(request, _next)
@@ -111,7 +134,7 @@ def test_hottest_aggregated_percentiles() -> None:
     r0 = rows[0]
     assert r0["route"] == "GET:/api/v1/foo"
     assert r0["samples"] == 3
-    assert r0["max_peak_mb"] == int(round(30000 / 1024.0))
+    assert r0["max_peak_mb"] == round(30000 / 1024.0)
     assert "p50_peak_mb" in r0
     assert "p95_peak_mb" in r0
 
@@ -148,7 +171,7 @@ def test_composite_merge_hottest_and_error(monkeypatch: pytest.MonkeyPatch) -> N
         ),
     ):
         p: dict = {"composite_status": "green", "composite_reason": "ok", "dimensions": {}}
-        svc._merge_peak_hottest_endpoints(p, r)  # noqa: SLF001
+        svc._merge_peak_hottest_endpoints(p, r)
     assert p["hottest_endpoints"] is not None
     assert p["hottest_endpoints_error"] is None
     monkeypatch.setattr("app.config.settings.ENABLE_PEAK_RSS_MIDDLEWARE", True, raising=False)
@@ -157,11 +180,11 @@ def test_composite_merge_hottest_and_error(monkeypatch: pytest.MonkeyPatch) -> N
         return_value=(None, "redis_unreachable"),
     ):
         p2: dict = {"composite_status": "green"}
-        svc._merge_peak_hottest_endpoints(p2, r)  # noqa: SLF001
+        svc._merge_peak_hottest_endpoints(p2, r)
     assert p2["hottest_endpoints"] is None
     assert p2["hottest_endpoints_error"] == "redis_unreachable"
     monkeypatch.setattr("app.config.settings.ENABLE_PEAK_RSS_MIDDLEWARE", False, raising=False)
     p3: dict = {}
-    svc._merge_peak_hottest_endpoints(p3, r)  # noqa: SLF001
+    svc._merge_peak_hottest_endpoints(p3, r)
     assert p3["hottest_endpoints"] is None
     assert p3["hottest_endpoints_error"] == "disabled"

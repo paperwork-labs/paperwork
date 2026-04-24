@@ -23,7 +23,6 @@ separate PR will surface the writes behind ``get_admin_user``.
 from __future__ import annotations
 
 from datetime import date
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, ConfigDict
@@ -38,7 +37,6 @@ from app.models.symbol_master import (
 )
 from app.models.user import User
 from app.services.symbols import SymbolMasterService
-
 
 router = APIRouter(prefix="/symbols", tags=["Symbols"])
 
@@ -58,20 +56,20 @@ class SymbolMasterResponse(BaseModel):
 
     id: int
     primary_ticker: str
-    cik: Optional[str] = None
-    isin: Optional[str] = None
-    figi: Optional[str] = None
+    cik: str | None = None
+    isin: str | None = None
+    figi: str | None = None
     asset_class: str
-    exchange: Optional[str] = None
-    country: Optional[str] = None
-    currency: Optional[str] = None
-    name: Optional[str] = None
-    sector: Optional[str] = None
-    industry: Optional[str] = None
-    gics_code: Optional[str] = None
+    exchange: str | None = None
+    country: str | None = None
+    currency: str | None = None
+    name: str | None = None
+    sector: str | None = None
+    industry: str | None = None
+    gics_code: str | None = None
     status: str
-    delisted_at: Optional[str] = None
-    merged_into_symbol_master_id: Optional[int] = None
+    delisted_at: str | None = None
+    merged_into_symbol_master_id: int | None = None
 
 
 class SymbolAliasResponse(BaseModel):
@@ -81,9 +79,9 @@ class SymbolAliasResponse(BaseModel):
     symbol_master_id: int
     alias_ticker: str
     valid_from: date
-    valid_to: Optional[date] = None
+    valid_to: date | None = None
     source: str
-    notes: Optional[str] = None
+    notes: str | None = None
 
 
 class SymbolHistoryResponse(BaseModel):
@@ -92,8 +90,8 @@ class SymbolHistoryResponse(BaseModel):
     id: int
     symbol_master_id: int
     change_type: str
-    old_value: Optional[dict] = None
-    new_value: Optional[dict] = None
+    old_value: dict | None = None
+    new_value: dict | None = None
     effective_date: date
     source: str
 
@@ -110,9 +108,9 @@ class ResolveResponse(BaseModel):
 
     query_ticker: str
     normalized_ticker: str
-    as_of_date: Optional[date] = None
-    master: Optional[SymbolMasterResponse] = None
-    matched_alias: Optional[SymbolAliasResponse] = None
+    as_of_date: date | None = None
+    master: SymbolMasterResponse | None = None
+    matched_alias: SymbolAliasResponse | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -134,7 +132,7 @@ class ResolveResponse(BaseModel):
 )
 def resolve_ticker(
     ticker: str = Path(..., min_length=1, max_length=20),
-    as_of: Optional[date] = Query(
+    as_of: date | None = Query(
         default=None,
         description=(
             "Optional ISO-8601 date. When set, walks SymbolAlias rows whose "
@@ -150,7 +148,7 @@ def resolve_ticker(
     normalized = service._normalize(ticker)
     master = service.resolve(ticker, as_of_date=as_of)
 
-    matched_alias: Optional[SymbolAlias] = None
+    matched_alias: SymbolAlias | None = None
     if master is not None and normalized != master.primary_ticker:
         alias_q = db.query(SymbolAlias).filter(
             SymbolAlias.alias_ticker == normalized,
@@ -166,9 +164,7 @@ def resolve_ticker(
         as_of_date=as_of,
         master=SymbolMasterResponse.model_validate(master) if master else None,
         matched_alias=(
-            SymbolAliasResponse.model_validate(matched_alias)
-            if matched_alias
-            else None
+            SymbolAliasResponse.model_validate(matched_alias) if matched_alias else None
         ),
     )
 
@@ -194,14 +190,14 @@ def get_symbol_master(
 
 @router.get(
     "/{symbol_master_id}/history",
-    response_model=List[SymbolHistoryResponse],
+    response_model=list[SymbolHistoryResponse],
     summary="Audit ledger for a SymbolMaster row, oldest first.",
 )
 def get_symbol_history(
     symbol_master_id: int = Path(..., ge=1),
     db: Session = Depends(get_db),
     _user: User = Depends(get_current_user),
-) -> List[SymbolHistoryResponse]:
+) -> list[SymbolHistoryResponse]:
     master = db.get(SymbolMaster, symbol_master_id)
     if master is None:
         raise HTTPException(

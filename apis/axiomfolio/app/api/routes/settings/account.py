@@ -6,29 +6,27 @@ API endpoints for managing broker accounts before syncing.
 
 Flow:
 1. User adds broker account credentials via UI
-2. Backend stores account in broker_accounts table 
+2. Backend stores account in broker_accounts table
 3. Backend can then sync that account's data
 4. Subsequent syncs update existing data
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from typing import List, Optional
-from pydantic import BaseModel
+import logging
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
+from celery.result import AsyncResult
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.api.dependencies import get_current_user
 from app.database import get_db
-from app.models import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
-from app.models.broker_account import AccountSync, AccountCredentials
-from app.services.security.credential_vault import credential_vault
+from app.models import AccountStatus, AccountType, BrokerAccount, BrokerType, SyncStatus
+from app.models.broker_account import AccountCredentials, AccountSync
 from app.models.position import Position
 from app.models.tax_lot import TaxLot
-from app.tasks.celery_app import celery_app
-from celery.result import AsyncResult
-from fastapi import Query
-from typing import Dict, Any
-from app.api.dependencies import get_current_user
 from app.models.user import User
 from app.services.execution.runner_state_service import compute_runner_state
 from app.services.portfolio.day_pnl_service import (
@@ -36,7 +34,8 @@ from app.services.portfolio.day_pnl_service import (
     recompute_position_day_pnl,
     resolve_prior_close,
 )
-import logging
+from app.services.security.credential_vault import credential_vault
+from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +46,9 @@ router = APIRouter(prefix="/api/v1/accounts", tags=["Accounts"])
 class AddBrokerAccountRequest(BaseModel):
     broker: str  # 'IBKR', 'TASTYTRADE', etc.
     account_number: str
-    account_name: Optional[str] = None
+    account_name: str | None = None
     account_type: str  # 'TAXABLE', 'TRADITIONAL_IRA', etc.
-    api_credentials: Optional[dict] = None  # Store encrypted credentials
+    api_credentials: dict | None = None  # Store encrypted credentials
     is_paper_trading: bool = False
 
 
@@ -57,23 +56,21 @@ class BrokerAccountResponse(BaseModel):
     id: int
     broker: str
     account_number: str
-    account_name: Optional[str]
+    account_name: str | None
     account_type: str
     status: str
     is_enabled: bool
-    last_successful_sync: Optional[datetime]
-    sync_status: Optional[str]
-    sync_error_message: Optional[str] = None
+    last_successful_sync: datetime | None
+    sync_status: str | None
+    sync_error_message: str | None = None
     created_at: datetime
-    sync_task_id: Optional[str] = None
-    data_range_start: Optional[datetime] = None
-    data_range_end: Optional[datetime] = None
+    sync_task_id: str | None = None
+    data_range_start: datetime | None = None
+    data_range_end: datetime | None = None
 
 
 class SyncAccountRequest(BaseModel):
-    sync_type: str = (
-        "comprehensive"  # 'comprehensive', 'positions_only', 'transactions_only'
-    )
+    sync_type: str = "comprehensive"  # 'comprehensive', 'positions_only', 'transactions_only'
 
 
 def _record_sync_rejection(
@@ -147,8 +144,7 @@ async def add_broker_account(
             user_id=current_user.id,
             broker=broker_enum,
             account_number=request.account_number,
-            account_name=request.account_name
-            or f"{request.broker} {request.account_number}",
+            account_name=request.account_name or f"{request.broker} {request.account_number}",
             account_type=account_type_enum,
             status=AccountStatus.ACTIVE,
             is_enabled=True,
@@ -165,7 +161,7 @@ async def add_broker_account(
         db.commit()
         db.refresh(broker_account)
 
-        sync_task_id: Optional[str] = None
+        sync_task_id: str | None = None
         try:
             from app.tasks.portfolio.sync import sync_account_task
 
@@ -183,9 +179,7 @@ async def add_broker_account(
             status=broker_account.status.value,
             is_enabled=broker_account.is_enabled,
             last_successful_sync=broker_account.last_successful_sync,
-            sync_status=(
-                broker_account.sync_status.value if broker_account.sync_status else None
-            ),
+            sync_status=(broker_account.sync_status.value if broker_account.sync_status else None),
             sync_error_message=broker_account.sync_error_message,
             created_at=broker_account.created_at,
             sync_task_id=sync_task_id,
@@ -195,10 +189,10 @@ async def add_broker_account(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error adding account: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error adding account: {e!s}")
 
 
-@router.get("", response_model=List[BrokerAccountResponse])
+@router.get("", response_model=list[BrokerAccountResponse])
 async def list_broker_accounts(
     current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
 ):
@@ -237,18 +231,18 @@ class SyncHistoryItem(BaseModel):
     id: int
     account_id: int
     account_number: str
-    account_name: Optional[str]
+    account_name: str | None
     sync_type: str
     status: str
     started_at: datetime
-    completed_at: Optional[datetime]
-    duration_seconds: Optional[int]
-    error_message: Optional[str]
+    completed_at: datetime | None
+    duration_seconds: int | None
+    error_message: str | None
 
 
-@router.get("/sync-history", response_model=List[SyncHistoryItem])
+@router.get("/sync-history", response_model=list[SyncHistoryItem])
 async def get_sync_history(
-    account_id: Optional[int] = Query(default=None, description="Filter by account ID"),
+    account_id: int | None = Query(default=None, description="Filter by account ID"),
     limit: int = Query(default=20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -277,14 +271,14 @@ async def get_sync_history(
 
 class UpdateCredentialsRequest(BaseModel):
     broker: str  # "tastytrade" | "ibkr"
-    credentials: Dict[str, Any]
-    account_number: Optional[str] = None  # Optional for IBKR to change account_number
+    credentials: dict[str, Any]
+    account_number: str | None = None  # Optional for IBKR to change account_number
 
 
 class UpdateAccountRequest(BaseModel):
-    account_name: Optional[str] = None
-    account_type: Optional[str] = None
-    is_enabled: Optional[bool] = None
+    account_name: str | None = None
+    account_type: str | None = None
+    is_enabled: bool | None = None
 
 
 @router.patch("/{account_id}")
@@ -308,7 +302,9 @@ async def update_account(
         try:
             account.account_type = AccountType[request.account_type.upper()]
         except KeyError:
-            raise HTTPException(status_code=400, detail=f"Invalid account type: {request.account_type}")
+            raise HTTPException(
+                status_code=400, detail=f"Invalid account type: {request.account_type}"
+            )
     if request.is_enabled is not None:
         account.is_enabled = request.is_enabled
         if not request.is_enabled:
@@ -337,11 +333,9 @@ async def update_account_credentials(
         raise HTTPException(status_code=404, detail="Account not found")
 
     broker_lower = request.broker.lower()
-    existing_creds: Dict[str, Any] = {}
+    existing_creds: dict[str, Any] = {}
     existing_row = (
-        db.query(AccountCredentials)
-        .filter(AccountCredentials.account_id == account_id)
-        .first()
+        db.query(AccountCredentials).filter(AccountCredentials.account_id == account_id).first()
     )
     if existing_row and existing_row.encrypted_credentials:
         try:
@@ -352,9 +346,12 @@ async def update_account_credentials(
     if broker_lower == "tastytrade":
         creds = request.credentials
         payload = {
-            "client_id": (str(creds.get("client_id") or "").strip()) or existing_creds.get("client_id", ""),
-            "client_secret": (str(creds.get("client_secret") or "").strip()) or existing_creds.get("client_secret", ""),
-            "refresh_token": (str(creds.get("refresh_token") or "").strip()) or existing_creds.get("refresh_token", ""),
+            "client_id": (str(creds.get("client_id") or "").strip())
+            or existing_creds.get("client_id", ""),
+            "client_secret": (str(creds.get("client_secret") or "").strip())
+            or existing_creds.get("client_secret", ""),
+            "refresh_token": (str(creds.get("refresh_token") or "").strip())
+            or existing_creds.get("refresh_token", ""),
         }
         if not all(payload.values()):
             raise HTTPException(
@@ -365,8 +362,10 @@ async def update_account_credentials(
     elif broker_lower == "ibkr":
         creds = request.credentials
         payload = {
-            "flex_token": (str(creds.get("flex_token") or "").strip()) or existing_creds.get("flex_token", ""),
-            "query_id": (str(creds.get("query_id") or "").strip()) or existing_creds.get("query_id", ""),
+            "flex_token": (str(creds.get("flex_token") or "").strip())
+            or existing_creds.get("flex_token", ""),
+            "query_id": (str(creds.get("query_id") or "").strip())
+            or existing_creds.get("query_id", ""),
         }
         if not all(payload.values()):
             raise HTTPException(
@@ -381,9 +380,7 @@ async def update_account_credentials(
 
     enc = credential_vault.encrypt_dict(payload)
     existing = (
-        db.query(AccountCredentials)
-        .filter(AccountCredentials.account_id == account_id)
-        .first()
+        db.query(AccountCredentials).filter(AccountCredentials.account_id == account_id).first()
     )
     if existing:
         existing.encrypted_credentials = enc
@@ -404,12 +401,12 @@ async def update_account_credentials(
 
 
 class GatewaySettingsRequest(BaseModel):
-    gateway_host: Optional[str] = None
-    gateway_port: Optional[int] = None
-    gateway_client_id: Optional[int] = None
-    gateway_username: Optional[str] = None
-    gateway_password: Optional[str] = None
-    gateway_trading_mode: Optional[str] = None
+    gateway_host: str | None = None
+    gateway_port: int | None = None
+    gateway_client_id: int | None = None
+    gateway_username: str | None = None
+    gateway_password: str | None = None
+    gateway_trading_mode: str | None = None
 
 
 @router.patch("/{account_id}/gateway-settings")
@@ -523,7 +520,7 @@ async def sync_broker_account(
             db.commit()
         except Exception:
             db.rollback()
-        raise HTTPException(status_code=500, detail=f"Sync failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Sync failed: {e!s}")
 
 
 @router.post("/sync-all")
@@ -539,7 +536,7 @@ async def sync_all_accounts(
             .filter(BrokerAccount.user_id == current_user.id, BrokerAccount.is_enabled)
             .all()
         )
-        task_ids: Dict[str, str] = {}
+        task_ids: dict[str, str] = {}
         for account in accounts:
             key = f"{account.broker.value}_{account.account_number}"
             task = sync_account_task.delay(account.id)
@@ -547,7 +544,7 @@ async def sync_all_accounts(
         return {"status": "queued", "task_ids": task_ids}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error syncing accounts: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error syncing accounts: {e!s}")
 
 
 @router.delete("/{account_id}")
@@ -579,7 +576,7 @@ async def delete_broker_account(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error deleting account: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error deleting account: {e!s}")
 
 
 @router.get("/{account_id}/sync-status")
@@ -607,7 +604,7 @@ async def get_account_sync_status(
         .first()
     )
 
-    last_sync_completeness: Optional[Dict[str, Any]] = None
+    last_sync_completeness: dict[str, Any] | None = None
     if latest_sync:
         last_sync_completeness = {
             "sync_id": latest_sync.id,
@@ -641,9 +638,7 @@ async def get_task_status(task_id: str):
     response = {"task_id": task_id, "state": state}
     if state in ("SUCCESS", "FAILURE", "REVOKED"):
         try:
-            response["result"] = (
-                res.result if isinstance(res.result, dict) else str(res.result)
-            )
+            response["result"] = res.result if isinstance(res.result, dict) else str(res.result)
         except Exception:
             response["result"] = None
     return response
@@ -652,15 +647,15 @@ async def get_task_status(task_id: str):
 # Inline price refresh relocated from market_data routes for better cohesion
 @router.post("/prices/refresh")
 async def refresh_prices(
-    account_id: Optional[int] = Query(
+    account_id: int | None = Query(
         default=None, description="Broker account ID to scope refresh"
     ),
-    symbols: Optional[List[str]] = Query(
+    symbols: list[str] | None = Query(
         default=None, description="Optional subset of symbols to refresh"
     ),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     from app.services.market.market_data_service import quote
 
     try:
@@ -709,7 +704,7 @@ async def refresh_prices(
         day_pnl_nulled_split = 0
         day_pnl_nulled_no_prior = 0
         day_pnl_errors = 0
-        refreshed_positions: List[Position] = []
+        refreshed_positions: list[Position] = []
         for p in positions:
             price = symbol_to_price.get(p.symbol)
             if price is None:
@@ -719,9 +714,7 @@ async def refresh_prices(
                 total_cost = float(p.total_cost_basis or 0)
                 market_value = quantity_abs * price
                 unrealized = market_value - total_cost
-                unrealized_pct = (
-                    (unrealized / total_cost * 100) if total_cost > 0 else 0.0
-                )
+                unrealized_pct = (unrealized / total_cost * 100) if total_cost > 0 else 0.0
                 p.current_price = price
                 p.market_value = market_value
                 p.unrealized_pnl = unrealized
@@ -777,10 +770,7 @@ async def refresh_prices(
                 )
 
         total_day_pnl_touched = (
-            day_pnl_recomputed
-            + day_pnl_nulled_split
-            + day_pnl_nulled_no_prior
-            + day_pnl_errors
+            day_pnl_recomputed + day_pnl_nulled_split + day_pnl_nulled_no_prior + day_pnl_errors
         )
         assert total_day_pnl_touched == len(refreshed_positions), (
             f"day_pnl counter drift: {day_pnl_recomputed}+{day_pnl_nulled_split}+"
@@ -807,7 +797,7 @@ async def refresh_prices(
             tq = tq.filter(TaxLot.account_id == account_id)
         if symbols:
             tq = tq.filter(TaxLot.symbol.in_(symbols))
-        lots: List[TaxLot] = tq.all()
+        lots: list[TaxLot] = tq.all()
 
         updated_lots = 0
         for lot in lots:
@@ -819,9 +809,7 @@ async def refresh_prices(
                 cost_basis = float(lot.cost_basis or 0)
                 market_value = qty_abs * price
                 unrealized = market_value - cost_basis
-                unrealized_pct = (
-                    (unrealized / cost_basis * 100) if cost_basis > 0 else 0.0
-                )
+                unrealized_pct = (unrealized / cost_basis * 100) if cost_basis > 0 else 0.0
                 lot.current_price = price
                 lot.market_value = market_value
                 lot.unrealized_pnl = unrealized
@@ -859,10 +847,11 @@ async def flexquery_diagnostic(
     without persisting anything.
     """
     import xml.etree.ElementTree as ET
+
     from app.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
     from app.services.portfolio.account_credentials_service import (
-        account_credentials_service,
         CredentialsNotFoundError,
+        account_credentials_service,
     )
 
     accounts = (

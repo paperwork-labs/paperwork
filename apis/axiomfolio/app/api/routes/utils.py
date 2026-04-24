@@ -1,8 +1,9 @@
-from typing import List, Dict, Any
+from typing import Any
+
 from app.models.market_data import JobRun
 
 
-def serialize_job_runs(rows: List[JobRun]) -> List[Dict[str, Any]]:
+def serialize_job_runs(rows: list[JobRun]) -> list[dict[str, Any]]:
     out = []
     for r in rows:
         out.append(
@@ -18,4 +19,3 @@ def serialize_job_runs(rows: List[JobRun]) -> List[Dict[str, Any]]:
             }
         )
     return out
-

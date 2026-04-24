@@ -24,8 +24,6 @@ medallion: silver
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Dict
-
 
 # Quorum threshold = "fraction of responding providers that must
 # agree". 2 of 3 = 2/3 exactly (not 0.667, which is slightly above 2/3
@@ -59,7 +57,7 @@ FUNDAMENTALS_TOLERANCE_PCT = Decimal("0.01")  # 1%
 
 # Per-field map. Lookup-only: ``tolerance_for_field`` is the public
 # entry point so callers don't reach into the dict and miss a default.
-_FIELD_TOLERANCES: Dict[str, Decimal] = {
+_FIELD_TOLERANCES: dict[str, Decimal] = {
     # Live / intraday price-like fields.
     "LAST_PRICE": PRICE_TOLERANCE_PCT,
     "OPEN_PRICE": PRICE_TOLERANCE_PCT,

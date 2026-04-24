@@ -16,14 +16,13 @@ Conventions (enforced by tests):
 
 medallion: gold
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import FrozenSet, Optional, Tuple
-
 
 # --------------------------------------------------------------------------- #
 # Enums                                                                       #
@@ -69,9 +68,9 @@ class ExtractedPick:
     action: PickActionHint
     confidence: Decimal  # 0.0 - 1.0; LLM self-rating clamped server-side
     rationale: str  # short, <500 chars
-    target_price: Optional[Decimal] = None
-    stop_loss: Optional[Decimal] = None
-    horizon_days: Optional[int] = None  # holding period suggestion
+    target_price: Decimal | None = None
+    stop_loss: Decimal | None = None
+    horizon_days: int | None = None  # holding period suggestion
     source_excerpt: str = ""  # verbatim quote anchoring the extraction
     source_format: SourceFormat = SourceFormat.PLAIN_TEXT
 
@@ -84,8 +83,8 @@ class ExtractedMacro:
     body: str  # supporting text from the email
     sentiment: Decimal  # -1.0 (bearish) .. +1.0 (bullish)
     confidence: Decimal
-    sectors: Tuple[str, ...] = field(default_factory=tuple)  # ETF symbols / GICS names
-    horizon_days: Optional[int] = None
+    sectors: tuple[str, ...] = field(default_factory=tuple)  # ETF symbols / GICS names
+    horizon_days: int | None = None
     source_excerpt: str = ""
     source_format: SourceFormat = SourceFormat.PLAIN_TEXT
 
@@ -101,8 +100,8 @@ class ExtractedPositionChange:
 
     symbol: str
     action: PickActionHint
-    quantity_hint: Optional[Decimal] = None  # rough size if mentioned
-    occurred_at_hint: Optional[datetime] = None  # timezone-aware UTC
+    quantity_hint: Decimal | None = None  # rough size if mentioned
+    occurred_at_hint: datetime | None = None  # timezone-aware UTC
     confidence: Decimal = Decimal("0.5")
     source_excerpt: str = ""
     source_format: SourceFormat = SourceFormat.PLAIN_TEXT
@@ -149,7 +148,7 @@ def clamp_sentiment(value) -> Decimal:
 # Whitelist of common forwarded-from addresses we treat as analyst sources;
 # the parser records the actual sender for audit but uses this to bias the
 # system prompt selection. Real list lives in DB once PR #327 lands.
-KNOWN_ANALYST_DOMAINS: FrozenSet[str] = frozenset(
+KNOWN_ANALYST_DOMAINS: frozenset[str] = frozenset(
     {
         # placeholder, intentionally empty — populated via env / DB at deploy.
     }

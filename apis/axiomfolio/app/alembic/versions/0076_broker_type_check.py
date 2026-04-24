@@ -29,7 +29,6 @@ from __future__ import annotations
 
 from alembic import op
 
-
 revision = "0076"
 down_revision = "0075"
 branch_labels = None
@@ -56,9 +55,7 @@ def upgrade() -> None:
     values_sql = ", ".join(f"'{v}'" for v in ALLOWED_BROKERS)
 
     if dialect == "postgresql":
-        op.execute(
-            f"ALTER TABLE orders DROP CONSTRAINT IF EXISTS {CONSTRAINT_NAME}"
-        )
+        op.execute(f"ALTER TABLE orders DROP CONSTRAINT IF EXISTS {CONSTRAINT_NAME}")
         op.execute(
             f"ALTER TABLE orders ADD CONSTRAINT {CONSTRAINT_NAME} "
             f"CHECK (broker_type IS NULL OR broker_type IN ({values_sql}))"
@@ -76,8 +73,6 @@ def downgrade() -> None:
     dialect = bind.dialect.name if bind is not None else ""
 
     if dialect == "postgresql":
-        op.execute(
-            f"ALTER TABLE orders DROP CONSTRAINT IF EXISTS {CONSTRAINT_NAME}"
-        )
+        op.execute(f"ALTER TABLE orders DROP CONSTRAINT IF EXISTS {CONSTRAINT_NAME}")
     else:
         op.drop_constraint(CONSTRAINT_NAME, "orders", type_="check")

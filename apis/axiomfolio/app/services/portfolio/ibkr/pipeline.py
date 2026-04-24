@@ -12,7 +12,6 @@ import logging
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, List
 
 from sqlalchemy import func as sa_func
 from sqlalchemy.exc import InvalidRequestError
@@ -24,23 +23,25 @@ from app.models.broker_account import AccountType
 from app.models.instrument import Instrument
 from app.models.option_tax_lot import OptionTaxLot
 from app.models.position import Position
-from app.models.transfer import Transfer
 from app.models.transaction import Transaction as TxModel
+from app.models.transfer import Transfer
 from app.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.account_type_resolver moves during Phase 0.C
-from app.services.portfolio.account_type_resolver import resolve_account_type
+
 # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.account_credentials_service moves during Phase 0.C
 from app.services.portfolio.account_credentials_service import (
     CredentialsNotFoundError,
     account_credentials_service,
 )
+
+# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.account_type_resolver moves during Phase 0.C
+from app.services.portfolio.account_type_resolver import resolve_account_type
+
 # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.closing_lot_matcher moves during Phase 0.C
 from app.services.portfolio.closing_lot_matcher import (
     MatchResult,
     reconcile_closing_lots,
 )
 
-from .helpers import serialize_for_json
 from .sync_balances import sync_account_balances, sync_margin_interest, sync_transfers
 from .sync_greeks import sync_option_greeks_from_gateway
 from .sync_positions import (
@@ -83,10 +84,10 @@ class IBKRSyncService:
 
     async def sync_comprehensive_portfolio(
         self, account_number: str, db_session: Session | None = None
-    ) -> Dict:
+    ) -> dict:
         """Run all sync steps in order, committing once at the end."""
         db = db_session or SessionLocal()
-        results: Dict = {}
+        results: dict = {}
         try:
             logger.info("Starting comprehensive sync for %s", account_number)
 
@@ -102,12 +103,13 @@ class IBKRSyncService:
 
             report_xml = await fc.get_full_report(account_number)
             if not report_xml:
-                return {"status": "error", "error": "FlexQuery report not available — token or query ID may be invalid."}
+                return {
+                    "status": "error",
+                    "error": "FlexQuery report not available — token or query ID may be invalid.",
+                }
 
             self._log_xml_sections(report_xml, account_number)
-            account_discovery = self._discover_accounts_from_report(
-                db, broker_account, report_xml
-            )
+            account_discovery = self._discover_accounts_from_report(db, broker_account, report_xml)
             if account_discovery["created"]:
                 logger.info(
                     "IBKR account auto-discovery created %d accounts for user=%s",
@@ -131,18 +133,27 @@ class IBKRSyncService:
             results["instruments"] = await sync_instruments(db, account_number, report_xml, fc)
 
             # Step 2 – tax lots
-            results["tax_lots"] = await sync_tax_lots(db, broker_account, account_number, report_xml, fc)
+            results["tax_lots"] = await sync_tax_lots(
+                db, broker_account, account_number, report_xml, fc
+            )
             logger.info("Tax lots sync result for %s: %s", account_number, results["tax_lots"])
 
             # Step 3 – option positions
-            results["option_positions"] = await sync_option_positions(db, broker_account, account_number, report_xml, fc)
+            results["option_positions"] = await sync_option_positions(
+                db, broker_account, account_number, report_xml, fc
+            )
 
             # Step 4 – trades
-            results["trades"] = await sync_trades(db, broker_account, account_number, report_xml, fc)
+            results["trades"] = await sync_trades(
+                db, broker_account, account_number, report_xml, fc
+            )
 
             # Step 5 – positions (prefer tax-lot-derived; fall back to OpenPositions)
             results["positions"] = await sync_positions_from_tax_lots(db, broker_account)
-            if isinstance(results["positions"], dict) and results["positions"].get("synced", 0) == 0:
+            if (
+                isinstance(results["positions"], dict)
+                and results["positions"].get("synced", 0) == 0
+            ):
                 results["positions"] = await sync_positions_from_open_positions(
                     db, broker_account, account_number, report_xml, fc
                 )
@@ -199,12 +210,8 @@ class IBKRSyncService:
             self._refresh_activity_views(db)
 
             if completeness.status == SyncCompletenessStatus.ERROR:
-                error_msg = (
-                    "FlexQuery report incomplete: "
-                    + "; ".join(
-                        w["message"] for w in completeness.warnings
-                        if w.get("level") == "error"
-                    )
+                error_msg = "FlexQuery report incomplete: " + "; ".join(
+                    w["message"] for w in completeness.warnings if w.get("level") == "error"
                 )
                 logger.error("%s (account %s)", error_msg, account_number)
                 return {"status": "error", "error": error_msg, **results}
@@ -234,9 +241,7 @@ class IBKRSyncService:
             if db_session is None:
                 db.close()
 
-    async def sync_account_comprehensive(
-        self, account_number: str, db_session=None
-    ) -> Dict:
+    async def sync_account_comprehensive(self, account_number: str, db_session=None) -> dict:
         """Adapter for broker-agnostic sync interface."""
         return await self.sync_comprehensive_portfolio(account_number, db_session=db_session)
 
@@ -256,7 +261,7 @@ class IBKRSyncService:
     async def _create_portfolio_snapshot(self, db, broker_account):
         return await create_portfolio_snapshot(db, broker_account)
 
-    def normalize_instruments_from_activity(self, db: Session) -> Dict:
+    def normalize_instruments_from_activity(self, db: Session) -> dict:
         """Uppercase symbols, backfill missing names from transfers/transactions."""
         updated = 0
         try:
@@ -309,11 +314,11 @@ class IBKRSyncService:
     @staticmethod
     def _discover_accounts_from_report(
         db: Session, seed_account: BrokerAccount, report_xml: str
-    ) -> Dict[str, List]:
+    ) -> dict[str, list]:
         """Create/update IBKR accounts discovered across all FlexStatement blocks."""
-        created: List[str] = []
-        updated: List[str] = []
-        warnings: List[dict] = []
+        created: list[str] = []
+        updated: list[str] = []
+        warnings: list[dict] = []
         try:
             root = ET.fromstring(report_xml)
         except ET.ParseError as exc:
@@ -384,7 +389,10 @@ class IBKRSyncService:
                 sections = [child.tag for child in stmt]
                 logger.info(
                     "FlexQuery for %s [%s → %s]: %s",
-                    account_number, from_date, to_date, sections,
+                    account_number,
+                    from_date,
+                    to_date,
+                    sections,
                 )
         except ET.ParseError:
             pass
@@ -394,6 +402,7 @@ class IBKRSyncService:
         try:
             # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.activity_aggregator moves during Phase 0.C
             from app.services.portfolio.activity_aggregator import activity_aggregator
+
             activity_aggregator.refresh_materialized_views(db)
         except Exception as exc:
             logger.warning("Activity MV refresh skipped: %s", exc)
@@ -420,12 +429,14 @@ class IBKRSyncService:
             total_cost = float(
                 db.query(sa_func.coalesce(sa_func.sum(Position.total_cost_basis), 0))
                 .filter(Position.account_id == broker_account.id)
-                .scalar() or 0
+                .scalar()
+                or 0
             )
             total_value = float(
                 db.query(sa_func.coalesce(sa_func.sum(Position.market_value), 0))
                 .filter(Position.account_id == broker_account.id)
-                .scalar() or 0
+                .scalar()
+                or 0
             )
         total_pnl = total_value - total_cost
         return_pct = (total_pnl / total_cost * 100) if total_cost > 0 else 0
@@ -439,7 +450,7 @@ class IBKRSyncService:
 
 
 def _run_closing_lot_reconciliation(
-    db: Session, broker_account: BrokerAccount, results: Dict
+    db: Session, broker_account: BrokerAccount, results: dict
 ) -> None:
     """Invoke the broker-agnostic FIFO matcher with Schwab-style savepoint handling.
 
@@ -484,7 +495,7 @@ def _run_closing_lot_reconciliation(
 
         discrepancies = _audit_option_pnl_discrepancies(db, broker_account)
         results["option_pnl_discrepancies"] = discrepancies
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "reconcile_closing_lots failed for user=%s account=%s: %s",
             broker_account.user_id,
@@ -497,9 +508,7 @@ def _run_closing_lot_reconciliation(
 _PNL_DISCREPANCY_TOL = Decimal("0.01")
 
 
-def _audit_option_pnl_discrepancies(
-    db: Session, broker_account: BrokerAccount
-) -> int:
+def _audit_option_pnl_discrepancies(db: Session, broker_account: BrokerAccount) -> int:
     """Per-closing-trade audit: matcher OptionTaxLot.realized_pnl vs broker realized_pnl.
 
     Returns the number of closing trades where our FIFO matcher's summed
@@ -523,7 +532,7 @@ def _audit_option_pnl_discrepancies(
             .group_by(OptionTaxLot.closing_trade_id)
             .all()
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("option-pnl-audit: aggregate query failed: %s", exc)
         return 0
 
@@ -531,7 +540,7 @@ def _audit_option_pnl_discrepancies(
         return 0
 
     trade_ids = [r[0] for r in rows]
-    broker_pnl_by_id: Dict[int, Decimal] = {
+    broker_pnl_by_id: dict[int, Decimal] = {
         tid: Decimal(str(pnl or 0))
         for tid, pnl in db.query(Trade.id, Trade.realized_pnl)
         .filter(Trade.id.in_(trade_ids), Trade.realized_pnl.isnot(None))

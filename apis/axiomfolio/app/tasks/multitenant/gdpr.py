@@ -9,6 +9,8 @@ from celery import shared_task
 from app.database import SessionLocal
 from app.services.gdpr.delete_service import (
     GDPR_DELETE_CASCADE_TABLES as _GDPR_DELETE_CASCADE_TABLES,
+)
+from app.services.gdpr.delete_service import (
     GDPRDeleteService,
 )
 from app.services.gdpr.export_service import GDPRExportService
@@ -16,7 +18,7 @@ from app.services.gdpr.export_service import GDPRExportService
 logger = logging.getLogger(__name__)
 # Re-export the canonical registry so worker-side callers/tests can reference one source.
 GDPR_DELETE_CASCADE_TABLES = _GDPR_DELETE_CASCADE_TABLES
-__all__ = ("run_export", "run_delete", "GDPR_DELETE_CASCADE_TABLES")
+__all__ = ("GDPR_DELETE_CASCADE_TABLES", "run_delete", "run_export")
 
 
 # Both tasks set explicit time limits per the iron law in
@@ -33,7 +35,7 @@ __all__ = ("run_export", "run_delete", "GDPR_DELETE_CASCADE_TABLES")
     autoretry_for=(),  # explicit: do NOT auto-retry data exports
     max_retries=0,
 )
-def run_export(self, job_id: int) -> None:  # noqa: D401
+def run_export(self, job_id: int) -> None:
     """Worker entry: build + publish a user's data export ZIP."""
     db = SessionLocal()
     try:
@@ -51,7 +53,7 @@ def run_export(self, job_id: int) -> None:  # noqa: D401
     autoretry_for=(),  # never retry destructive operations
     max_retries=0,
 )
-def run_delete(self, job_id: int) -> None:  # noqa: D401
+def run_delete(self, job_id: int) -> None:
     """Worker entry: cascade-delete a user's data."""
     db = SessionLocal()
     try:

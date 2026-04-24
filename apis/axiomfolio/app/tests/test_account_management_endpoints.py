@@ -1,21 +1,22 @@
 """Tests for account management: sync-history, PATCH, 409, credentials."""
 
+from datetime import UTC, datetime
+
 import pytest
-from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 
 try:
-    from app.api.main import app
     from app.api.dependencies import get_current_user, get_optional_user
+    from app.api.main import app
     from app.database import get_db
-    from app.models import User, BrokerAccount
-    from app.models.user import UserRole
+    from app.models import BrokerAccount, User
     from app.models.broker_account import (
-        BrokerType,
-        AccountType,
-        SyncStatus,
         AccountSync,
+        AccountType,
+        BrokerType,
+        SyncStatus,
     )
+    from app.models.user import UserRole
 
     AVAILABLE = True
 except Exception:
@@ -48,6 +49,7 @@ def auth_user(db_session):
 @pytest.fixture
 def auth_headers(auth_user):
     from app.api.security import create_access_token
+
     token = create_access_token({"sub": str(auth_user.id)})
     return {"Authorization": f"Bearer {token}"}
 
@@ -99,7 +101,7 @@ def test_sync_history_returns_only_owned(client, db_session, auth_user, broker_a
             account_id=broker_account.id,
             sync_type="comprehensive",
             status=SyncStatus.SUCCESS,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
         db_session.add(sync)
         db_session.commit()

@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import enum
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any
 
 from sqlalchemy import (
     Column,
@@ -42,7 +42,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 
 from . import Base
-
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -175,7 +174,7 @@ class ProviderQuorumLog(Base):
         ),
     )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Wire-shape used by the admin Data Quality endpoints."""
         return {
             "id": self.id,
@@ -183,15 +182,11 @@ class ProviderQuorumLog(Base):
             "field_name": self.field_name,
             "check_at": self.check_at.isoformat() if self.check_at else None,
             "providers_queried": self.providers_queried,
-            "quorum_value": (
-                str(self.quorum_value) if self.quorum_value is not None else None
-            ),
+            "quorum_value": (str(self.quorum_value) if self.quorum_value is not None else None),
             "quorum_threshold": str(self.quorum_threshold),
             "status": self.status.value if self.status else None,
             "max_disagreement_pct": (
-                str(self.max_disagreement_pct)
-                if self.max_disagreement_pct is not None
-                else None
+                str(self.max_disagreement_pct) if self.max_disagreement_pct is not None else None
             ),
             "action_taken": self.action_taken.value if self.action_taken else None,
         }
@@ -237,14 +232,12 @@ class ProviderDriftAlert(Base):
     resolved_at = Column(DateTime(timezone=True), nullable=True, index=True)
     resolution_note = Column(Text, nullable=True)
 
-    __table_args__ = (
-        Index("idx_provider_drift_open", "resolved_at", "alert_at"),
-    )
+    __table_args__ = (Index("idx_provider_drift_open", "resolved_at", "alert_at"),)
 
     def is_open(self) -> bool:
         return self.resolved_at is None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "symbol": self.symbol,
@@ -254,9 +247,7 @@ class ProviderDriftAlert(Base):
             "actual_value": str(self.actual_value),
             "deviation_pct": str(self.deviation_pct),
             "alert_at": self.alert_at.isoformat() if self.alert_at else None,
-            "resolved_at": (
-                self.resolved_at.isoformat() if self.resolved_at else None
-            ),
+            "resolved_at": (self.resolved_at.isoformat() if self.resolved_at else None),
             "resolution_note": self.resolution_note,
             "is_open": self.is_open(),
         }

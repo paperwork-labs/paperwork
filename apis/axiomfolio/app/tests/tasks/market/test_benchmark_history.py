@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -13,7 +13,7 @@ from app.tasks.market import benchmark_history as benchmark_history
 
 
 def _today_naive() -> datetime:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return datetime(now.year, now.month, now.day)
 
 

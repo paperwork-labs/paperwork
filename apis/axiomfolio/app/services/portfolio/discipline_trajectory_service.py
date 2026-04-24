@@ -30,9 +30,9 @@ medallion: silver
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Literal, Optional, Tuple
+from typing import Literal
 
 # D119 proportional defaults (MASTER_PLAN: 50% / 100% / 200% cumulative rungs).
 _UNLEVERAGED_MULT = Decimal("1.5")
@@ -62,10 +62,10 @@ def compute_anchors(starting_equity: Decimal) -> TrajectoryAnchors:
 def compute_ytd_fraction_as_of(as_of: datetime) -> Decimal:
     """Days since 1 Jan UTC (inclusive of partial day as full days + 1 minimum)."""
     if as_of.tzinfo is None:
-        as_of = as_of.replace(tzinfo=timezone.utc)
+        as_of = as_of.replace(tzinfo=UTC)
     else:
-        as_of = as_of.astimezone(timezone.utc)
-    year_start = datetime(as_of.year, 1, 1, tzinfo=timezone.utc)
+        as_of = as_of.astimezone(UTC)
+    year_start = datetime(as_of.year, 1, 1, tzinfo=UTC)
     delta = as_of - year_start
     days = int(delta.total_seconds() // 86400) + 1
     return Decimal(max(1, days))
@@ -76,7 +76,7 @@ def compute_projected_year_end(
     starting_equity: Decimal,
     current_equity: Decimal,
     as_of: datetime,
-) -> Optional[Decimal]:
+) -> Decimal | None:
     """Linear YTD extrapolation to calendar year-end; ``None`` if invalid."""
     if starting_equity <= 0:
         return None
@@ -101,7 +101,9 @@ def compute_trend(
     return "up" if diff > 0 else "down"
 
 
-def decimal_from_balance_fields(net_liquidation: Optional[float], equity: Optional[float]) -> Decimal:
+def decimal_from_balance_fields(
+    net_liquidation: float | None, equity: float | None
+) -> Decimal:
     """Prefer net liquidation, then equity; broker-agnostic NLV semantics."""
     for v in (net_liquidation, equity):
         if v is not None and float(v) > 0:

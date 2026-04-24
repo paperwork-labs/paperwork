@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from cryptography.fernet import Fernet
@@ -12,24 +12,24 @@ from fastapi.testclient import TestClient
 
 os.environ.setdefault("OAUTH_TOKEN_ENCRYPTION_KEY", Fernet.generate_key().decode())
 
-from app.api.dependencies import get_current_user  # noqa: E402
-from app.api.main import app  # noqa: E402
-from app.database import get_db  # noqa: E402
-from app.models.broker_account import (  # noqa: E402
+from app.api.dependencies import get_current_user
+from app.api.main import app
+from app.database import get_db
+from app.models.broker_account import (
     AccountType,
     BrokerAccount,
     BrokerType,
     SyncStatus,
 )
-from app.models.broker_oauth_connection import (  # noqa: E402
+from app.models.broker_oauth_connection import (
     BrokerOAuthConnection,
     OAuthConnectionStatus,
 )
-from app.models.user import User, UserRole  # noqa: E402
-from app.services.connections.health_aggregate import (  # noqa: E402
+from app.models.user import User, UserRole
+from app.services.connections.health_aggregate import (
     build_connections_health,
 )
-from app.services.oauth.encryption import encrypt  # noqa: E402
+from app.services.oauth.encryption import encrypt
 
 
 def _make_user(db_session) -> User:
@@ -118,7 +118,7 @@ def test_health_cross_tenant_isolation(client: TestClient, db_session, other_use
 
 
 def test_health_connected_with_last_sync(client: TestClient, db_session, route_user: User):
-    when = datetime(2026, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+    when = datetime(2026, 1, 15, 12, 0, 0, tzinfo=UTC)
     acct = BrokerAccount(
         user_id=route_user.id,
         broker=BrokerType.IBKR,
@@ -190,7 +190,7 @@ def test_build_connections_health_matches_route(client: TestClient, db_session, 
         broker=BrokerType.COINBASE,
         account_number="CB1",
         account_type=AccountType.TAXABLE,
-        last_successful_sync=datetime.now(timezone.utc) - timedelta(hours=2),
+        last_successful_sync=datetime.now(UTC) - timedelta(hours=2),
         sync_status=SyncStatus.SUCCESS,
     )
     db_session.add(acct)

@@ -18,9 +18,9 @@ in milliseconds even when the broader CI marks DB tests as required.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -34,7 +34,6 @@ from app.services.tax.schemas import (
     LotTerm,
 )
 from app.services.tax.serialization import CSV_COLUMNS, package_to_csv
-
 
 # ---------------------------------------------------------------------------
 # Test doubles
@@ -68,12 +67,12 @@ class FakeTrade:
     symbol: str
     quantity: Decimal
     total_value: Decimal
-    realized_pnl: Optional[Decimal]
+    realized_pnl: Decimal | None
     status: str
     execution_id: str = ""
-    execution_time: Optional[datetime] = None
+    execution_time: datetime | None = None
     side: str = "SELL"
-    trade_metadata: Dict[str, Any] = field(default_factory=dict)
+    trade_metadata: dict[str, Any] = field(default_factory=dict)
 
 
 def _ibkr_close(
@@ -89,9 +88,9 @@ def _ibkr_close(
     open_date: str = "2022-03-01",
     close_date: str = "2024-06-15",
     status: str = "CLOSED_LOT",
-    wash_loss: Optional[str] = None,
+    wash_loss: str | None = None,
 ) -> FakeTrade:
-    meta: Dict[str, Any] = {
+    meta: dict[str, Any] = {
         "cost_basis": cost_basis,
         "open_date": open_date,
         "close_date": close_date,
@@ -110,7 +109,7 @@ def _ibkr_close(
         status=status,
         execution_id=f"E{trade_id}",
         execution_time=datetime.fromisoformat(close_date + "T15:00:00").replace(
-            tzinfo=timezone.utc
+            tzinfo=UTC
         ),
         trade_metadata=meta,
     )
@@ -130,7 +129,7 @@ class TestMapperHappyPath:
             tax_year=2024,
             accounts=[acct],
             trades=[trade],
-            generated_at=datetime(2025, 1, 5, 12, 0, tzinfo=timezone.utc),
+            generated_at=datetime(2025, 1, 5, 12, 0, tzinfo=UTC),
         )
 
         assert pkg.schema_version == SCHEMA_VERSION
@@ -159,12 +158,22 @@ class TestMapperHappyPath:
     def test_summary_aggregates_short_and_long(self):
         acct = FakeAccount(id=1)
         st = _ibkr_close(
-            1, 1, symbol="MSFT", realized="-300.00", is_long_term=False,
-            proceeds="2700.00", cost_basis="3000.00",
+            1,
+            1,
+            symbol="MSFT",
+            realized="-300.00",
+            is_long_term=False,
+            proceeds="2700.00",
+            cost_basis="3000.00",
         )
         lt = _ibkr_close(
-            2, 1, symbol="AAPL", realized="5000.00", is_long_term=True,
-            proceeds="15000.00", cost_basis="10000.00",
+            2,
+            1,
+            symbol="AAPL",
+            realized="5000.00",
+            is_long_term=True,
+            proceeds="15000.00",
+            cost_basis="10000.00",
         )
         pkg = build_package(
             user_id=1,
@@ -194,9 +203,7 @@ class TestMapperHappyPath:
             wash_loss="500.00",
             is_long_term=False,
         )
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[acct], trades=[wash]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[acct], trades=[wash])
         lot = pkg.lots[0]
         assert lot.is_wash_sale is True
         assert lot.adjustment_code == "W"
@@ -217,9 +224,7 @@ class TestMapperHappyPath:
             status="WASH_SALE",
             wash_loss="-200",
         )
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[acct], trades=[wash]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[acct], trades=[wash])
         assert pkg.lots[0].wash_sale_disallowed_loss == Decimal("200")
 
 
@@ -240,12 +245,10 @@ class TestMapperEdgeCases:
             realized_pnl=Decimal("2000"),
             status="CLOSED_LOT",
             execution_id="E99",
-            execution_time=datetime(2024, 5, 1, tzinfo=timezone.utc),
+            execution_time=datetime(2024, 5, 1, tzinfo=UTC),
             trade_metadata={},  # no is_long_term key
         )
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[acct], trades=[bare]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[acct], trades=[bare])
         assert pkg.lots[0].term == LotTerm.UNKNOWN
 
     def test_tastytrade_account_marked_calculated_and_warns(self):
@@ -263,12 +266,10 @@ class TestMapperEdgeCases:
             realized_pnl=Decimal("1000"),
             status="CLOSED_LOT",
             execution_id="X1",
-            execution_time=datetime(2024, 7, 1, tzinfo=timezone.utc),
+            execution_time=datetime(2024, 7, 1, tzinfo=UTC),
             trade_metadata={"is_long_term": False},
         )
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[acct], trades=[trade]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[acct], trades=[trade])
         assert pkg.lots[0].data_quality == DataQuality.CALCULATED
         assert pkg.accounts[0].has_calculated_lots is True
         assert any("CALCULATED" in w for w in pkg.warnings)
@@ -284,11 +285,9 @@ class TestMapperEdgeCases:
             realized_pnl=Decimal("0"),
             status="CLOSED_LOT",
             execution_id="R1",
-            execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            execution_time=datetime(2024, 1, 1, tzinfo=UTC),
         )
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[acct], trades=[rogue]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[acct], trades=[rogue])
         assert pkg.lots == []
         assert any("not in scope" in w for w in pkg.warnings)
 
@@ -304,11 +303,9 @@ class TestMapperEdgeCases:
             realized_pnl=Decimal("0"),
             status="FILLED",
             execution_id="F1",
-            execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            execution_time=datetime(2024, 1, 1, tzinfo=UTC),
         )
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[acct], trades=[regular]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[acct], trades=[regular])
         assert pkg.lots == []
         assert pkg.summary.lot_count == 0
 
@@ -324,9 +321,7 @@ class TestMapperEdgeCases:
             status="CLOSED_LOT",
             execution_id="B1",
         )
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[acct], trades=[bad]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[acct], trades=[bad])
         assert pkg.lots == []
         assert any("missing symbol" in w for w in pkg.warnings)
 
@@ -341,12 +336,10 @@ class TestMapperEdgeCases:
             realized_pnl=Decimal("100"),
             status="CLOSED_LOT",
             execution_id="O1",
-            execution_time=datetime(2024, 1, 19, tzinfo=timezone.utc),
+            execution_time=datetime(2024, 1, 19, tzinfo=UTC),
             trade_metadata={"is_long_term": False, "asset_class": "OPT"},
         )
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[acct], trades=[opt]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[acct], trades=[opt])
         assert pkg.lots[0].instrument_type == InstrumentType.OPTION
 
     def test_decimal_precision_preserved_through_floats(self):
@@ -360,12 +353,10 @@ class TestMapperEdgeCases:
             realized_pnl=0.2,
             status="CLOSED_LOT",
             execution_id="P1",
-            execution_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            execution_time=datetime(2024, 1, 1, tzinfo=UTC),
             trade_metadata={"cost_basis": 0.1, "is_long_term": True},
         )
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[acct], trades=[trade]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[acct], trades=[trade])
         # Floats stringified -> exact decimal, no IEEE-754 noise like 0.1 -> 0.10000000000000000555...
         assert pkg.lots[0].quantity == Decimal("0.1")
         assert pkg.lots[0].cost_basis == Decimal("0.1")
@@ -382,9 +373,7 @@ class TestMapperEdgeCases:
         assert pkg.generated_at.tzinfo is not None
 
     def test_empty_inputs_produce_empty_package(self):
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[], trades=[]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[], trades=[])
         assert pkg.lots == []
         assert pkg.accounts == []
         assert pkg.summary.lot_count == 0
@@ -442,7 +431,7 @@ class TestExporterWiring:
         pkg = FileFreeExporter(sess).export(
             user_id=1,
             tax_year=2024,
-            generated_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+            generated_at=datetime(2025, 1, 1, tzinfo=UTC),
         )
 
         # Only the taxable account in scope
@@ -459,9 +448,7 @@ class TestExporterWiring:
         )
         sess = _FakeSession([taxable, ira], [])
 
-        pkg = FileFreeExporter(sess).export(
-            user_id=1, tax_year=2024, include_tax_advantaged=True
-        )
+        pkg = FileFreeExporter(sess).export(user_id=1, tax_year=2024, include_tax_advantaged=True)
         refs = {a.account_ref for a in pkg.accounts}
         assert "ibkr:U-IRA" in refs
 
@@ -504,9 +491,7 @@ class TestCSVSerializer:
     def test_csv_rendering_round_trip(self):
         acct = FakeAccount(id=1)
         trade = _ibkr_close(1, 1)
-        pkg = build_package(
-            user_id=1, tax_year=2024, accounts=[acct], trades=[trade]
-        )
+        pkg = build_package(user_id=1, tax_year=2024, accounts=[acct], trades=[trade])
         csv_text = package_to_csv(pkg)
         lines = csv_text.strip().splitlines()
         assert lines[0].startswith("lot_id,account_ref,symbol")

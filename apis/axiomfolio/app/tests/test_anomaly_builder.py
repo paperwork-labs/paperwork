@@ -7,9 +7,10 @@ spinning up Postgres. Marked with ``pytest.mark.no_db`` at module level so
 collection skips DB setup. The Celery wiring + persistence path is covered
 separately in :mod:`app.tests.test_explain_anomaly_task`.
 """
+
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -30,7 +31,7 @@ pytestmark = pytest.mark.no_db
 
 
 def test_deterministic_id_is_stable_for_same_inputs():
-    when = datetime(2026, 4, 18, 12, 0, tzinfo=timezone.utc)
+    when = datetime(2026, 4, 18, 12, 0, tzinfo=UTC)
     a = deterministic_id("coverage", "red", when=when)
     b = deterministic_id("coverage", "red", when=when)
     assert a == b
@@ -39,7 +40,7 @@ def test_deterministic_id_is_stable_for_same_inputs():
 
 
 def test_deterministic_id_carries_dimension_status_and_day():
-    when = datetime(2026, 4, 18, 9, 30, tzinfo=timezone.utc)
+    when = datetime(2026, 4, 18, 9, 30, tzinfo=UTC)
     out = deterministic_id("stage_quality", "red", when=when)
     assert out.startswith("stage_quality:red:20260418:")
     assert len(out.split(":")[-1]) == 8  # 8-char sha256 prefix
@@ -51,7 +52,7 @@ def test_build_anomaly_from_dimension_returns_none_for_green():
 
 
 def test_build_anomaly_from_dimension_maps_status_to_severity():
-    when = datetime(2026, 4, 18, tzinfo=timezone.utc)
+    when = datetime(2026, 4, 18, tzinfo=UTC)
 
     red = build_anomaly_from_dimension(
         "coverage", {"status": "red", "reason": "30% missing"}, detected_at=when
@@ -147,7 +148,7 @@ def test_anomaly_to_dict_round_trips_through_anomaly_from_dict():
         title="Coverage dimension is RED",
         facts={"dimension": "coverage", "daily_pct": 60.0},
         raw_evidence="some/log/line",
-        detected_at=datetime(2026, 4, 18, 14, 0, tzinfo=timezone.utc),
+        detected_at=datetime(2026, 4, 18, 14, 0, tzinfo=UTC),
     )
     payload = anomaly_to_dict(original)
     rebuilt = anomaly_from_dict(payload)
@@ -186,7 +187,7 @@ def test_anomaly_from_dict_accepts_z_suffixed_iso_timestamp():
             "detected_at": "2026-04-18T10:00:00Z",
         }
     )
-    assert out.detected_at == datetime(2026, 4, 18, 10, 0, tzinfo=timezone.utc)
+    assert out.detected_at == datetime(2026, 4, 18, 10, 0, tzinfo=UTC)
 
 
 def test_anomaly_from_dict_falls_back_to_deterministic_id_when_missing():

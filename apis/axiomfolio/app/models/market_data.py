@@ -5,25 +5,26 @@ Market Data Models (Core)
 Minimal, production-focused models for price history and indicator snapshots.
 """
 
+from datetime import datetime
+
 from sqlalchemy import (
+    JSON,
     BigInteger,
+    Boolean,
     Column,
     Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
-    Float,
-    DateTime,
-    Boolean,
-    JSON,
-    ForeignKey,
+    Text,
     UniqueConstraint,
-    Index,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
-from sqlalchemy import Text
 
 from . import Base
 
@@ -35,9 +36,7 @@ class PriceData(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     symbol = Column(String(20), index=True, nullable=False)
-    instrument_id = Column(
-        Integer, ForeignKey("instruments.id"), nullable=True, index=True
-    )
+    instrument_id = Column(Integer, ForeignKey("instruments.id"), nullable=True, index=True)
     date = Column(DateTime, index=True, nullable=False)
 
     # OHLCV data
@@ -81,9 +80,7 @@ class MarketSnapshot(Base):
     symbol = Column(String(20), nullable=False, index=True)
     # Display name (e.g., company name)
     name = Column(String(200))
-    analysis_type = Column(
-        String(50), nullable=False
-    )  # 'technical_snapshot', 'atr_matrix', etc.
+    analysis_type = Column(String(50), nullable=False)  # 'technical_snapshot', 'atr_matrix', etc.
     analysis_timestamp = Column(DateTime(timezone=True), server_default=func.now())
     # The market data "as-of" timestamp this snapshot was computed from (latest 1d bar).
     # This is the correct dimension for snapshot coverage by date (not analysis_timestamp).
@@ -213,7 +210,9 @@ class MarketSnapshot(Base):
     ema10_dist_pct = Column(Float)  # (Close - EMA10) / EMA10 * 100
     ema10_dist_n = Column(Float)  # ema10_dist_pct / atrp_14 (ATR-normalized)
     vol_ratio = Column(Float)  # volume / volume_avg_20d
-    scan_tier = Column(String(20))  # Breakout Elite/Standard, Early Base, Speculative, Breakdown Elite/Standard
+    scan_tier = Column(
+        String(20)
+    )  # Breakout Elite/Standard, Early Base, Speculative, Breakdown Elite/Standard
     action_label = Column(String(10))  # BUY, HOLD, WATCH, REDUCE, SHORT, AVOID
     regime_state = Column(String(10))  # R1, R2, R3, R4, R5 (denormalized from MarketRegime)
 
@@ -256,9 +255,7 @@ class MarketSnapshot(Base):
     raw_analysis = Column(JSON)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(
-        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     is_valid = Column(Boolean, default=True)
 
     __table_args__ = (
@@ -432,9 +429,7 @@ class MarketSnapshotHistory(Base):
     trend_down_count = Column(Integer)
 
     __table_args__ = (
-        UniqueConstraint(
-            "symbol", "analysis_type", "as_of_date", name="uq_symbol_type_asof"
-        ),
+        UniqueConstraint("symbol", "analysis_type", "as_of_date", name="uq_symbol_type_asof"),
         Index("idx_hist_symbol_date", "symbol", "as_of_date"),
     )
 
@@ -553,9 +548,7 @@ class CronScheduleAudit(Base):
     changes = Column(JSON)  # {field: {old, new}} for updates; full snapshot for create/delete
     timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    __table_args__ = (
-        Index("idx_audit_schedule_time", "schedule_id", "timestamp"),
-    )
+    __table_args__ = (Index("idx_audit_schedule_time", "schedule_id", "timestamp"),)
 
 
 class EarningsCalendarEvent(Base):
@@ -580,7 +573,9 @@ class EarningsCalendarEvent(Base):
     fetched_at = Column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (
-        UniqueConstraint("symbol", "report_date", "fiscal_period", name="uq_earnings_sym_date_period"),
+        UniqueConstraint(
+            "symbol", "report_date", "fiscal_period", name="uq_earnings_sym_date_period"
+        ),
         Index("idx_earnings_report_date", "report_date"),
         Index("idx_earnings_symbol_date", "symbol", "report_date"),
     )
@@ -617,4 +612,3 @@ class MarketQuad(Base):
 
     source = Column(String(20))  # "hedgeye", "bea_bls_fallback"
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-

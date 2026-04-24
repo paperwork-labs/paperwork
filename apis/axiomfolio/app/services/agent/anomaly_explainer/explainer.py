@@ -21,10 +21,11 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Mapping
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any
 
 from .knowledge import (
     EMPTY_KNOWLEDGE,
@@ -38,7 +39,6 @@ from .schemas import (
     SCHEMA_VERSION,
     Anomaly,
     AnomalyCategory,
-    AnomalySeverity,
     Explanation,
     RemediationStep,
 )
@@ -51,7 +51,7 @@ _DEFAULT_MAX_STEPS = 12
 # Per-category scripted fallback steps. These are intentionally conservative
 # (read-only diagnostics first, mutations require approval) so AutoOps can
 # never "auto-remediate" something destructive while degraded.
-_FALLBACK_STEPS_BY_CATEGORY: Dict[AnomalyCategory, List[Dict[str, Any]]] = {
+_FALLBACK_STEPS_BY_CATEGORY: dict[AnomalyCategory, list[dict[str, Any]]] = {
     AnomalyCategory.PIPELINE_FAILURE: [
         {
             "description": (
@@ -125,8 +125,7 @@ _FALLBACK_STEPS_BY_CATEGORY: Dict[AnomalyCategory, List[Dict[str, Any]]] = {
         },
         {
             "description": (
-                "Backfill the gap via the admin action 'Backfill Daily "
-                "Coverage (Tracked)'."
+                "Backfill the gap via the admin action 'Backfill Daily Coverage (Tracked)'."
             ),
             "requires_approval": True,
         },
@@ -134,7 +133,7 @@ _FALLBACK_STEPS_BY_CATEGORY: Dict[AnomalyCategory, List[Dict[str, Any]]] = {
 }
 
 # All other categories share this generic fallback.
-_GENERIC_FALLBACK_STEPS: List[Dict[str, Any]] = [
+_GENERIC_FALLBACK_STEPS: list[dict[str, Any]] = [
     {
         "description": (
             "Pull the latest composite health JSON from "
@@ -168,7 +167,7 @@ def _to_decimal_confidence(value: Any) -> Decimal:
     return d
 
 
-def _coerce_step(raw: Mapping[str, Any], default_order: int) -> Optional[RemediationStep]:
+def _coerce_step(raw: Mapping[str, Any], default_order: int) -> RemediationStep | None:
     description = (raw.get("description") or "").strip()
     if not description:
         return None
@@ -202,9 +201,7 @@ def _coerce_step(raw: Mapping[str, Any], default_order: int) -> Optional[Remedia
         description=description[:600],
         runbook_section=runbook,
         proposed_task=proposed,
-        requires_approval=_coerce_bool(
-            raw.get("requires_approval"), default=True
-        ),
+        requires_approval=_coerce_bool(raw.get("requires_approval"), default=True),
         rationale=rationale,
     )
 
@@ -230,7 +227,7 @@ def _coerce_bool(value: Any, *, default: bool) -> bool:
     return default
 
 
-def _build_runbook_block(chunks: List[RunbookChunk]) -> str:
+def _build_runbook_block(chunks: list[RunbookChunk]) -> str:
     if not chunks:
         return "(no relevant runbook excerpts found)"
     blocks = []
@@ -238,10 +235,7 @@ def _build_runbook_block(chunks: List[RunbookChunk]) -> str:
         body = chunk.body
         if len(body) > 1500:
             body = body[:1500].rstrip() + "\n... (truncated)"
-        blocks.append(
-            f"---\nreference: {chunk.reference()}\nheading: {chunk.heading}\n"
-            f"---\n{body}"
-        )
+        blocks.append(f"---\nreference: {chunk.reference()}\nheading: {chunk.heading}\n---\n{body}")
     return "\n\n".join(blocks)
 
 
@@ -253,16 +247,16 @@ class AnomalyExplainer:
     def __init__(
         self,
         provider: LLMProvider,
-        knowledge: Optional[RunbookKnowledge] = None,
+        knowledge: RunbookKnowledge | None = None,
         *,
-        available_tasks: Optional[Mapping[str, str]] = None,
+        available_tasks: Mapping[str, str] | None = None,
         max_runbook_chunks: int = 3,
     ) -> None:
         if provider is None:
             raise ValueError("AnomalyExplainer requires an LLMProvider")
         self.provider = provider
         self.knowledge = knowledge or EMPTY_KNOWLEDGE
-        self._available_tasks: Dict[str, str] = dict(available_tasks or {})
+        self._available_tasks: dict[str, str] = dict(available_tasks or {})
         self._max_runbook_chunks = max(0, int(max_runbook_chunks))
 
     def explain(self, anomaly: Anomaly) -> Explanation:
@@ -290,7 +284,7 @@ class AnomalyExplainer:
                 e,
             )
             return self._fallback_explanation(anomaly, chunks)
-        except Exception as e:  # noqa: BLE001 -- belt-and-suspenders
+        except Exception as e:
             logger.exception(
                 "anomaly_explainer: unexpected error for %s: %s",
                 anomaly.id,
@@ -298,7 +292,7 @@ class AnomalyExplainer:
             )
             return self._fallback_explanation(anomaly, chunks)
 
-    def _retrieve_chunks(self, anomaly: Anomaly) -> List[RunbookChunk]:
+    def _retrieve_chunks(self, anomaly: Anomaly) -> list[RunbookChunk]:
         if self._max_runbook_chunks == 0 or len(self.knowledge) == 0:
             return []
         query = query_text_for_anomaly(
@@ -309,7 +303,7 @@ class AnomalyExplainer:
         )
         return self.knowledge.find_relevant(query, top_k=self._max_runbook_chunks)
 
-    def _call_llm(self, anomaly: Anomaly, chunks: List[RunbookChunk]) -> str:
+    def _call_llm(self, anomaly: Anomaly, chunks: list[RunbookChunk]) -> str:
         anomaly_payload = {
             "id": anomaly.id,
             "category": anomaly.category.value,
@@ -317,9 +311,7 @@ class AnomalyExplainer:
             "title": anomaly.title,
             "facts": anomaly.facts,
             "raw_evidence": anomaly.raw_evidence[:2000],
-            "detected_at": anomaly.detected_at.isoformat()
-            if anomaly.detected_at
-            else None,
+            "detected_at": anomaly.detected_at.isoformat() if anomaly.detected_at else None,
         }
         user_prompt = USER_PROMPT_TEMPLATE.format(
             anomaly_json=json.dumps(anomaly_payload, sort_keys=True, default=str),
@@ -329,7 +321,7 @@ class AnomalyExplainer:
         )
         return self.provider.complete_json(SYSTEM_PROMPT, user_prompt)
 
-    def _parse_and_validate(self, raw: str) -> Dict[str, Any]:
+    def _parse_and_validate(self, raw: str) -> dict[str, Any]:
         if not raw or not raw.strip():
             raise _MalformedLLMOutput("empty response")
         try:
@@ -345,21 +337,19 @@ class AnomalyExplainer:
         if not isinstance(steps, list) or not steps:
             raise _MalformedLLMOutput("steps must be a non-empty list")
         if len(steps) > _DEFAULT_MAX_STEPS:
-            raise _MalformedLLMOutput(
-                f"too many steps ({len(steps)} > {_DEFAULT_MAX_STEPS})"
-            )
+            raise _MalformedLLMOutput(f"too many steps ({len(steps)} > {_DEFAULT_MAX_STEPS})")
         return payload
 
     def _build_explanation(
         self,
         anomaly: Anomaly,
-        payload: Dict[str, Any],
-        chunks: List[RunbookChunk],
+        payload: dict[str, Any],
+        chunks: list[RunbookChunk],
         *,
         is_fallback: bool,
     ) -> Explanation:
         steps_raw = payload.get("steps", [])
-        steps: List[RemediationStep] = []
+        steps: list[RemediationStep] = []
         for idx, step_raw in enumerate(steps_raw, start=1):
             if not isinstance(step_raw, dict):
                 continue
@@ -405,7 +395,7 @@ class AnomalyExplainer:
             steps=steps,
             confidence=confidence,
             runbook_excerpts=[chunk.reference() for chunk in chunks],
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             model=self.provider.name,
             # Flip is_fallback if we had to substitute scripted steps even
             # when the LLM call itself didn't fail -- the explanation is no
@@ -414,10 +404,8 @@ class AnomalyExplainer:
             is_fallback=is_fallback or used_scripted_fallback_steps,
         )
 
-    def _fallback_steps(self, anomaly: Anomaly) -> List[RemediationStep]:
-        templates = _FALLBACK_STEPS_BY_CATEGORY.get(
-            anomaly.category, _GENERIC_FALLBACK_STEPS
-        )
+    def _fallback_steps(self, anomaly: Anomaly) -> list[RemediationStep]:
+        templates = _FALLBACK_STEPS_BY_CATEGORY.get(anomaly.category, _GENERIC_FALLBACK_STEPS)
         return [
             RemediationStep(
                 order=i,
@@ -430,9 +418,7 @@ class AnomalyExplainer:
             for i, tpl in enumerate(templates, start=1)
         ]
 
-    def _fallback_explanation(
-        self, anomaly: Anomaly, chunks: List[RunbookChunk]
-    ) -> Explanation:
+    def _fallback_explanation(self, anomaly: Anomaly, chunks: list[RunbookChunk]) -> Explanation:
         title = f"[Fallback] {anomaly.title}"
         summary = (
             "AutoOps could not reach the LLM provider; surfacing a "
@@ -455,7 +441,7 @@ class AnomalyExplainer:
             steps=self._fallback_steps(anomaly),
             confidence=_FALLBACK_CONFIDENCE,
             runbook_excerpts=[chunk.reference() for chunk in chunks],
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
             model=self.provider.name,
             is_fallback=True,
         )
@@ -465,7 +451,7 @@ class _MalformedLLMOutput(ValueError):
     """Internal signal that the LLM payload didn't pass our schema gate."""
 
 
-def explanation_to_dict(exp: Explanation) -> Dict[str, Any]:
+def explanation_to_dict(exp: Explanation) -> dict[str, Any]:
     """Serialize an :class:`Explanation` to a JSON-friendly dict.
 
     Convenience for routes/Celery tasks that need to push the result over

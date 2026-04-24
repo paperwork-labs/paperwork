@@ -5,14 +5,14 @@ Orders are "filled" instantly at current market price (from MarketSnapshot).
 
 medallion: execution
 """
+
 from __future__ import annotations
 
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Dict, Optional
 
 from app.services.execution.broker_base import (
     OrderRequest,
@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PaperPosition:
     """Virtual position in paper trading account."""
+
     symbol: str
     quantity: Decimal
     avg_cost: Decimal
@@ -36,23 +37,24 @@ class PaperPosition:
 @dataclass
 class PaperOrder:
     """Record of a paper order."""
+
     order_id: str
     symbol: str
     side: str
     quantity: Decimal
     order_type: str
     status: str  # pending, filled, cancelled
-    limit_price: Optional[Decimal] = None
-    stop_price: Optional[Decimal] = None
-    fill_price: Optional[Decimal] = None
+    limit_price: Decimal | None = None
+    stop_price: Decimal | None = None
+    fill_price: Decimal | None = None
     filled_quantity: Decimal = Decimal("0")
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    filled_at: Optional[datetime] = None
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    filled_at: datetime | None = None
 
 
 class PaperExecutor:
     """Paper trading executor with simulated fills.
-    
+
     Features:
     - Instant market order fills at current snapshot price
     - Limit orders fill if price meets condition
@@ -63,8 +65,8 @@ class PaperExecutor:
     def __init__(self, starting_cash: float = 100_000.0):
         self._cash = Decimal(str(starting_cash))
         self._starting_cash = Decimal(str(starting_cash))
-        self._positions: Dict[str, PaperPosition] = {}
-        self._orders: Dict[str, PaperOrder] = {}
+        self._positions: dict[str, PaperPosition] = {}
+        self._orders: dict[str, PaperOrder] = {}
         self._order_counter = 0
 
     @property
@@ -85,12 +87,12 @@ class PaperExecutor:
         self._order_counter += 1
         return f"PAPER-{self._order_counter:06d}-{uuid.uuid4().hex[:8]}"
 
-    def _get_current_price(self, symbol: str) -> Optional[Decimal]:
+    def _get_current_price(self, symbol: str) -> Decimal | None:
         """Get current price from MarketSnapshot."""
         try:
             from app.database import SessionLocal
             from app.models.market_data import MarketSnapshot
-            
+
             db = SessionLocal()
             try:
                 snap = (
@@ -116,10 +118,10 @@ class PaperExecutor:
         price = self._get_current_price(req.symbol)
         if price is None:
             price = Decimal(str(req.limit_price or 100.0))  # Fallback
-        
+
         order_value = price * Decimal(str(req.quantity))
         commission = Decimal("0")  # Paper trading has no commissions
-        
+
         return PreviewResult(
             estimated_commission=float(commission),
             estimated_margin_impact=float(order_value),
@@ -133,7 +135,7 @@ class PaperExecutor:
     async def place_order(self, req: OrderRequest) -> OrderResult:
         """Place and immediately attempt to fill paper order."""
         order_id = self._generate_order_id()
-        
+
         paper_order = PaperOrder(
             order_id=order_id,
             symbol=req.symbol,
@@ -144,13 +146,13 @@ class PaperExecutor:
             limit_price=Decimal(str(req.limit_price)) if req.limit_price else None,
             stop_price=Decimal(str(req.stop_price)) if req.stop_price else None,
         )
-        
+
         self._orders[order_id] = paper_order
-        
+
         # Attempt immediate fill for market orders
         if req.order_type.value in ("MKT", "market"):
             return await self._fill_order(paper_order)
-        
+
         # For limit/stop orders, check if fillable
         return await self._check_and_fill(paper_order)
 
@@ -161,9 +163,9 @@ class PaperExecutor:
             return OrderResult(
                 error=f"No price data available for {order.symbol}",
             )
-        
+
         order_value = price * order.quantity
-        
+
         # Check if we have enough cash for buys
         if order.side == "buy":
             if order_value > self._cash:
@@ -178,21 +180,25 @@ class PaperExecutor:
                 return OrderResult(
                     error=f"Insufficient shares of {order.symbol}",
                 )
-        
+
         # Execute the fill
         order.fill_price = price
         order.filled_quantity = order.quantity
         order.status = "filled"
-        order.filled_at = datetime.now(timezone.utc)
-        
+        order.filled_at = datetime.now(UTC)
+
         # Update position
         self._update_position(order)
-        
+
         logger.info(
             "Paper order filled: %s %s %s @ $%.2f (value: $%.2f)",
-            order.side.upper(), order.quantity, order.symbol, price, order_value,
+            order.side.upper(),
+            order.quantity,
+            order.symbol,
+            price,
+            order_value,
         )
-        
+
         return OrderResult(
             broker_order_id=order.order_id,
             status="filled",
@@ -211,26 +217,22 @@ class PaperExecutor:
                 status="pending",
                 raw={"paper_mode": True, "reason": "awaiting price data"},
             )
-        
+
         can_fill = False
-        
+
         # Limit order: buy at or below limit, sell at or above limit
         if order.limit_price:
-            if order.side == "buy" and price <= order.limit_price:
+            if (order.side == "buy" and price <= order.limit_price) or (order.side == "sell" and price >= order.limit_price):
                 can_fill = True
-            elif order.side == "sell" and price >= order.limit_price:
-                can_fill = True
-        
+
         # Stop order: triggered when price hits stop
         if order.stop_price:
-            if order.side == "buy" and price >= order.stop_price:
+            if (order.side == "buy" and price >= order.stop_price) or (order.side == "sell" and price <= order.stop_price):
                 can_fill = True
-            elif order.side == "sell" and price <= order.stop_price:
-                can_fill = True
-        
+
         if can_fill:
             return await self._fill_order(order)
-        
+
         return OrderResult(
             broker_order_id=order.order_id,
             status="pending",
@@ -240,11 +242,13 @@ class PaperExecutor:
     def _update_position(self, order: PaperOrder) -> None:
         """Update positions after a fill."""
         pos = self._positions.get(order.symbol)
-        
+
         if order.side == "buy":
             if pos:
                 # Average in
-                total_cost = (pos.avg_cost * pos.quantity) + (order.fill_price * order.filled_quantity)
+                total_cost = (pos.avg_cost * pos.quantity) + (
+                    order.fill_price * order.filled_quantity
+                )
                 pos.quantity += order.filled_quantity
                 pos.avg_cost = total_cost / pos.quantity if pos.quantity > 0 else Decimal("0")
             else:
@@ -267,10 +271,10 @@ class PaperExecutor:
         order = self._orders.get(broker_order_id)
         if not order:
             return OrderResult(error="Order not found")
-        
+
         if order.status == "filled":
             return OrderResult(error="Cannot cancel filled order")
-        
+
         order.status = "cancelled"
         return OrderResult(
             broker_order_id=broker_order_id,
@@ -282,12 +286,12 @@ class PaperExecutor:
         order = self._orders.get(broker_order_id)
         if not order:
             return OrderResult(error="Order not found")
-        
+
         # For pending limit/stop orders, check if now fillable
         if order.status == "pending":
             result = await self._check_and_fill(order)
             return result
-        
+
         return OrderResult(
             broker_order_id=broker_order_id,
             status=order.status,
@@ -302,14 +306,16 @@ class PaperExecutor:
             price = self._get_current_price(symbol) or pos.avg_cost
             market_value = price * pos.quantity
             unrealized_pnl = market_value - (pos.avg_cost * pos.quantity)
-            
-            result.append({
-                "symbol": symbol,
-                "quantity": float(pos.quantity),
-                "avg_cost": float(pos.avg_cost),
-                "market_value": float(market_value),
-                "unrealized_pnl": float(unrealized_pnl),
-            })
+
+            result.append(
+                {
+                    "symbol": symbol,
+                    "quantity": float(pos.quantity),
+                    "avg_cost": float(pos.avg_cost),
+                    "market_value": float(market_value),
+                    "unrealized_pnl": float(unrealized_pnl),
+                }
+            )
         return result
 
     def get_account_summary(self) -> dict:
@@ -319,7 +325,7 @@ class PaperExecutor:
             for p in self._positions.values()
         )
         total_equity = self._cash + positions_value
-        
+
         return {
             "cash": float(self._cash),
             "positions_value": float(positions_value),
@@ -327,7 +333,9 @@ class PaperExecutor:
             "starting_cash": float(self._starting_cash),
             "total_return_pct": float(
                 ((total_equity - self._starting_cash) / self._starting_cash) * 100
-            ) if self._starting_cash > 0 else 0.0,
+            )
+            if self._starting_cash > 0
+            else 0.0,
             "position_count": len(self._positions),
         }
 

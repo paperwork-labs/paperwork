@@ -12,7 +12,7 @@ snapshot write path's dict-to-row mapping. See D## in KNOWLEDGE.md.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -41,7 +41,7 @@ def _stub_fundamentals(monkeypatch):
 
 def _make_ohlcv_df(n: int, base: float = 100.0, vol: int = 1_000_000) -> pd.DataFrame:
     rng = np.random.default_rng(42)
-    start = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(days=n + 10)
+    start = datetime.now(UTC).replace(microsecond=0) - timedelta(days=n + 10)
     idx = [start + timedelta(days=i) for i in range(n)]
     close = base + np.cumsum(rng.normal(0, 0.2, n))
     volume = vol + rng.integers(0, 100_000, n)
@@ -79,20 +79,14 @@ def test_persist_snapshot_writes_volume_avg_and_vol_ratio(db_session):
     sym = "VOLPERS"
     _seed_prices(db_session, sym)
 
-    snap = snapshot_builder.compute_snapshot_from_db(
-        db_session, sym, skip_fundamentals=True
-    )
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym, skip_fundamentals=True)
     assert snap, "snapshot build should succeed"
     assert snap.get("volume_avg_20d") is not None
     assert snap.get("vol_ratio") is not None
 
     snapshot_builder.persist_snapshot(db_session, sym, snap)
 
-    row = (
-        db_session.query(MarketSnapshot)
-        .filter(MarketSnapshot.symbol == sym)
-        .one()
-    )
+    row = db_session.query(MarketSnapshot).filter(MarketSnapshot.symbol == sym).one()
     assert row.volume_avg_20d is not None and float(row.volume_avg_20d) > 0
     assert row.vol_ratio is not None
 
@@ -104,7 +98,7 @@ def test_persist_snapshot_writes_regime_state_from_market_regime(db_session):
     _seed_prices(db_session, sym)
 
     # Seed a fresh regime. compute_snapshot_from_db should pick this up.
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     db_session.add(
         MarketRegime(
             as_of_date=now,
@@ -114,17 +108,11 @@ def test_persist_snapshot_writes_regime_state_from_market_regime(db_session):
     )
     db_session.commit()
 
-    snap = snapshot_builder.compute_snapshot_from_db(
-        db_session, sym, skip_fundamentals=True
-    )
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym, skip_fundamentals=True)
     assert snap.get("regime_state") == "R2"
 
     snapshot_builder.persist_snapshot(db_session, sym, snap)
-    row = (
-        db_session.query(MarketSnapshot)
-        .filter(MarketSnapshot.symbol == sym)
-        .one()
-    )
+    row = db_session.query(MarketSnapshot).filter(MarketSnapshot.symbol == sym).one()
     assert row.regime_state == "R2"
 
 
@@ -137,7 +125,7 @@ def test_regime_state_refresh_overrides_prior_stale_row(db_session):
     sym = "REGREF"
     _seed_prices(db_session, sym)
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     # Prior snapshot row carries a stale regime_state.
     db_session.add(
         MarketSnapshot(
@@ -167,11 +155,7 @@ def test_regime_state_refresh_overrides_prior_stale_row(db_session):
     assert metrics.get("regime_state_written", 0) == 1
 
     snapshot_builder.persist_snapshot(db_session, sym, snap)
-    row = (
-        db_session.query(MarketSnapshot)
-        .filter(MarketSnapshot.symbol == sym)
-        .one()
-    )
+    row = db_session.query(MarketSnapshot).filter(MarketSnapshot.symbol == sym).one()
     assert row.regime_state == "R4"
 
 
@@ -181,7 +165,7 @@ def test_persist_snapshot_populates_previous_stage_label_from_history(db_session
     _seed_prices(db_session, sym)
 
     # Seed history with two older rows establishing a stage transition 2A -> 2B.
-    base_date = datetime.now(timezone.utc) - timedelta(days=10)
+    base_date = datetime.now(UTC) - timedelta(days=10)
     for i, lbl in enumerate(["2A", "2A", "2B"]):
         db_session.add(
             MarketSnapshotHistory(
@@ -216,7 +200,7 @@ def test_persist_snapshot_writes_next_earnings_from_calendar(db_session):
     sym = "EARNPERS"
     _seed_prices(db_session, sym)
 
-    target_date = (datetime.now(timezone.utc) + timedelta(days=7)).date()
+    target_date = (datetime.now(UTC) + timedelta(days=7)).date()
     db_session.add(
         EarningsCalendarEvent(
             symbol=sym,
@@ -227,17 +211,11 @@ def test_persist_snapshot_writes_next_earnings_from_calendar(db_session):
     )
     db_session.commit()
 
-    snap = snapshot_builder.compute_snapshot_from_db(
-        db_session, sym, skip_fundamentals=True
-    )
+    snap = snapshot_builder.compute_snapshot_from_db(db_session, sym, skip_fundamentals=True)
     assert snap.get("next_earnings") is not None
     assert snap["next_earnings"].date() == target_date
 
     snapshot_builder.persist_snapshot(db_session, sym, snap)
-    row = (
-        db_session.query(MarketSnapshot)
-        .filter(MarketSnapshot.symbol == sym)
-        .one()
-    )
+    row = db_session.query(MarketSnapshot).filter(MarketSnapshot.symbol == sym).one()
     assert row.next_earnings is not None
     assert row.next_earnings.date() == target_date

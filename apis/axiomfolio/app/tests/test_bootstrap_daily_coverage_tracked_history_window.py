@@ -1,4 +1,6 @@
-def test_bootstrap_daily_coverage_tracked_defaults_to_rolling_20_day_history(db_session, monkeypatch):
+def test_bootstrap_daily_coverage_tracked_defaults_to_rolling_20_day_history(
+    db_session, monkeypatch
+):
     """Backfill Daily Coverage (Tracked) should backfill a short rolling snapshot-history window by default."""
     # daily_bootstrap imports subtasks from app.tasks.market.* — patch those modules.
     monkeypatch.setattr("app.tasks.market.backfill.constituents", lambda: {"status": "ok"})
@@ -13,8 +15,12 @@ def test_bootstrap_daily_coverage_tracked_defaults_to_rolling_20_day_history(db_
     )
     monkeypatch.setattr("app.tasks.market.regime.compute_daily", lambda: {"status": "ok"})
     monkeypatch.setattr("app.tasks.market.coverage._run_scan_overlay", lambda: {"status": "ok"})
-    monkeypatch.setattr("app.tasks.market.coverage._evaluate_exit_cascade_all", lambda: {"status": "ok"})
-    monkeypatch.setattr("app.tasks.strategy.tasks.evaluate_strategies_task", lambda: {"status": "ok"})
+    monkeypatch.setattr(
+        "app.tasks.market.coverage._evaluate_exit_cascade_all", lambda: {"status": "ok"}
+    )
+    monkeypatch.setattr(
+        "app.tasks.strategy.tasks.evaluate_strategies_task", lambda: {"status": "ok"}
+    )
     monkeypatch.setattr(
         "app.tasks.market.coverage.health_check",
         lambda: {"status": "ok", "daily_pct": 100, "stale_daily": 0},

@@ -15,8 +15,8 @@ from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import pytest
 from cryptography.fernet import Fernet
@@ -32,35 +32,34 @@ os.environ.setdefault(
     "https://app.example/cb",
 )
 
-from app.api.dependencies import get_current_user  # noqa: E402
-from app.api.main import app  # noqa: E402
-from app.database import get_db  # noqa: E402
-from app.models.broker_oauth_connection import (  # noqa: E402
+from app.api.dependencies import get_current_user
+from app.api.main import app
+from app.database import get_db
+from app.models.broker_oauth_connection import (
     BrokerOAuthConnection,
     OAuthConnectionStatus,
 )
-from app.models.user import User, UserRole  # noqa: E402
-from app.services.oauth import (  # noqa: E402
+from app.models.user import User, UserRole
+from app.services.oauth import (
     OAuthCallbackContext,
     OAuthError,
     OAuthInitiateResult,
     OAuthTokens,
     register_adapter,
+    state_store,
 )
-from app.services.oauth.base import OAuthBrokerAdapter  # noqa: E402
-from app.services.oauth.encryption import (  # noqa: E402
+from app.services.oauth.base import OAuthBrokerAdapter
+from app.services.oauth.encryption import (
     decrypt,
     encrypt,
     reset_cache,
 )
-from app.services.oauth.etrade import (  # noqa: E402
+from app.services.oauth.etrade import (
     ETradeSandboxAdapter,
     build_signature_base_string,
     sign_hmac_sha1,
 )
-from app.services.oauth import state_store  # noqa: E402
-from app.tasks.portfolio.oauth_token_refresh import _refresh_one  # noqa: E402
-
+from app.tasks.portfolio.oauth_token_refresh import _refresh_one
 
 # ---------------------------------------------------------------------------
 # Stub HTTP plumbing — we never hit E*TRADE in tests.
@@ -76,11 +75,11 @@ class _StubResponse:
 class _StubSession:
     """Mimics the requests.Session.request() surface."""
 
-    def __init__(self, responses: List[_StubResponse]) -> None:
+    def __init__(self, responses: list[_StubResponse]) -> None:
         self._responses = list(responses)
-        self.calls: List[Dict[str, Any]] = []
+        self.calls: list[dict[str, Any]] = []
 
-    def request(self, method: str, url: str, *, headers: Dict[str, str], timeout: float):
+    def request(self, method: str, url: str, *, headers: dict[str, str], timeout: float):
         self.calls.append({"method": method, "url": url, "headers": headers, "timeout": timeout})
         if not self._responses:
             raise AssertionError("stub session ran out of responses")
@@ -154,6 +153,7 @@ def test_encryption_key_rotation_via_retired_keys(monkeypatch):
     enc_module.reset_cache()
     # Reload settings cache because Settings reads env at import time.
     from app.config import settings as _settings
+
     _settings.OAUTH_TOKEN_ENCRYPTION_KEY = retired
     _settings.OAUTH_TOKEN_ENCRYPTION_KEYS_RETIRED = ""
     ciphertext = enc_module.encrypt("rotate-me")
@@ -185,9 +185,7 @@ def test_etrade_initiate_returns_authorize_url_with_state(monkeypatch):
             )
         ]
     )
-    adapter = ETradeSandboxAdapter(
-        consumer_key="ck", consumer_secret="cs", session=session
-    )
+    adapter = ETradeSandboxAdapter(consumer_key="ck", consumer_secret="cs", session=session)
     result = adapter.initiate_url(user_id=42, callback_url="https://app/cb")
     assert isinstance(result, OAuthInitiateResult)
     assert "key=ck" in result.authorize_url
@@ -239,11 +237,13 @@ def test_etrade_exchange_code_sets_expiry_and_secret():
     assert tokens.access_token == "access-token"
     assert tokens.refresh_token == "access-secret"  # OAuth 1.0a: secret stored here
     assert tokens.expires_at is not None
-    assert tokens.expires_at > datetime.now(timezone.utc)
+    assert tokens.expires_at > datetime.now(UTC)
 
 
 def test_etrade_exchange_code_raises_on_missing_request_token():
-    adapter = ETradeSandboxAdapter(consumer_key="ck", consumer_secret="cs", session=_StubSession([]))
+    adapter = ETradeSandboxAdapter(
+        consumer_key="ck", consumer_secret="cs", session=_StubSession([])
+    )
     ctx = OAuthCallbackContext(code="V", state="s", extra={})
     with pytest.raises(OAuthError) as ei:
         adapter.exchange_code(ctx)
@@ -269,6 +269,7 @@ def test_etrade_revoke_swallows_provider_4xx():
 def test_etrade_requires_credentials(monkeypatch):
     # Clear settings fallback so the constructor truly has no credentials.
     from app.config import settings as _settings
+
     monkeypatch.setattr(_settings, "ETRADE_SANDBOX_KEY", None)
     monkeypatch.setattr(_settings, "ETRADE_SANDBOX_SECRET", None)
     adapter = ETradeSandboxAdapter(
@@ -295,7 +296,9 @@ class _PermFailureAdapter(OAuthBrokerAdapter):
         raise NotImplementedError
 
     def refresh(self, *, access_token, refresh_token):
-        raise OAuthError("invalid_grant", permanent=True, broker=self.broker_id, provider_status=401)
+        raise OAuthError(
+            "invalid_grant", permanent=True, broker=self.broker_id, provider_status=401
+        )
 
     def revoke(self, *, access_token, refresh_token=None):  # pragma: no cover - unused
         return None
@@ -303,7 +306,9 @@ class _PermFailureAdapter(OAuthBrokerAdapter):
 
 class _TransientFailureAdapter(_PermFailureAdapter):
     def refresh(self, *, access_token, refresh_token):
-        raise OAuthError("network down", permanent=False, broker=self.broker_id, provider_status=503)
+        raise OAuthError(
+            "network down", permanent=False, broker=self.broker_id, provider_status=503
+        )
 
 
 class _SuccessAdapter(_PermFailureAdapter):
@@ -311,7 +316,7 @@ class _SuccessAdapter(_PermFailureAdapter):
         return OAuthTokens(
             access_token="new-access",
             refresh_token="new-secret",
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=12),
+            expires_at=datetime.now(UTC) + timedelta(hours=12),
         )
 
 
@@ -331,7 +336,9 @@ def _make_user(db_session) -> User:
     return user
 
 
-def _make_active_conn(db_session, *, user_id: int, expires_in_minutes: int = 5) -> BrokerOAuthConnection:
+def _make_active_conn(
+    db_session, *, user_id: int, expires_in_minutes: int = 5
+) -> BrokerOAuthConnection:
     conn = BrokerOAuthConnection(
         user_id=user_id,
         broker="etrade_sandbox",
@@ -339,7 +346,7 @@ def _make_active_conn(db_session, *, user_id: int, expires_in_minutes: int = 5) 
         status=OAuthConnectionStatus.ACTIVE.value,
         access_token_encrypted=encrypt("acc-1"),
         refresh_token_encrypted=encrypt("sec-1"),
-        token_expires_at=datetime.now(timezone.utc) + timedelta(minutes=expires_in_minutes),
+        token_expires_at=datetime.now(UTC) + timedelta(minutes=expires_in_minutes),
         environment="sandbox",
         rotation_count=0,
     )
@@ -475,7 +482,7 @@ class _RouteStubAdapter(OAuthBrokerAdapter):
         return OAuthTokens(
             access_token="access-from-exchange",
             refresh_token="secret-from-exchange",
-            expires_at=datetime.now(timezone.utc) + timedelta(hours=12),
+            expires_at=datetime.now(UTC) + timedelta(hours=12),
         )
 
     def refresh(self, *, access_token, refresh_token):  # pragma: no cover
@@ -573,9 +580,7 @@ def test_callback_rejects_cross_tenant_state(client, route_user, other_user):
         register_adapter(ETradeSandboxAdapter)
 
 
-def test_list_connections_only_returns_callers_rows(
-    client, db_session, route_user, other_user
-):
+def test_list_connections_only_returns_callers_rows(client, db_session, route_user, other_user):
     # Mine
     mine = BrokerOAuthConnection(
         user_id=route_user.id,
@@ -606,9 +611,7 @@ def test_list_connections_only_returns_callers_rows(
     assert theirs.id not in ids
 
 
-def test_revoke_marks_connection_and_clears_tokens(
-    client, db_session, route_user
-):
+def test_revoke_marks_connection_and_clears_tokens(client, db_session, route_user):
     register_adapter(_RouteStubAdapter)
     try:
         conn = BrokerOAuthConnection(

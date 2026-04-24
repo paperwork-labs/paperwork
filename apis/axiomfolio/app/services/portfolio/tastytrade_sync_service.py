@@ -9,36 +9,40 @@ medallion: bronze
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime as dt
 from decimal import Decimal
-import re
-from typing import Any, Dict, Tuple
+from typing import Any
 
 from sqlalchemy.orm import Session
-from app.services.clients.tastytrade_client import TastyTradeClient
+
 from app.models import (
+    AccountBalance,
     BrokerAccount,
-    Position,
+    Dividend,
     Option,
+    Position,
+    TaxLot,
     Trade,
     Transaction,
-    Dividend,
-    AccountBalance,
-    TaxLot,
 )
+from app.models.account_balance import AccountBalanceType
+from app.models.position import PositionType
 from app.models.tax_lot import TaxLotSource
+from app.models.transaction import TransactionType
+from app.services.clients.tastytrade_client import TastyTradeClient
+
 # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.account_credentials_service moves during Phase 0.C
 from app.services.portfolio.account_credentials_service import (
-    account_credentials_service,
     CredentialsNotFoundError,
+    account_credentials_service,
 )
+
 # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.closing_lot_matcher moves during Phase 0.C
 from app.services.portfolio.closing_lot_matcher import reconcile_closing_lots
+
 # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.day_pnl_service moves during Phase 0.C
 from app.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
-from app.models.position import PositionType
-from app.models.transaction import TransactionType
-from app.models.account_balance import AccountBalanceType
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +71,9 @@ class TastyTradeSyncService:
     # Public API
     # ---------------------------------------------------------------------
 
-    async def sync_account(
-        self, db: Session, broker_account: BrokerAccount
-    ) -> Dict[str, Any]:
+    async def sync_account(self, db: Session, broker_account: BrokerAccount) -> dict[str, Any]:
         """Sync ALL objects for the given broker account. Returns row counts."""
-        counts: Dict[str, Any] = {}
+        counts: dict[str, Any] = {}
 
         # Per-user credentials: use AccountCredentialsService for decryption
         try:
@@ -93,7 +95,8 @@ class TastyTradeSyncService:
                 logger.error(
                     "Encryption/token error for TastyTrade account %s: %s — "
                     "credentials need to be re-entered.",
-                    broker_account.account_number, exc,
+                    broker_account.account_number,
+                    exc,
                 )
                 raise ConnectionError(
                     f"Invalid encryption token — please re-enter your TastyTrade credentials "
@@ -104,9 +107,7 @@ class TastyTradeSyncService:
         # Ensure the requested account number exists in the connected TT session
         try:
             if getattr(self.client, "accounts", None):
-                tt_numbers = [
-                    getattr(a, "account_number", None) for a in self.client.accounts
-                ]
+                tt_numbers = [getattr(a, "account_number", None) for a in self.client.accounts]
                 if broker_account.account_number not in tt_numbers and tt_numbers:
                     logger.warning(
                         "Account %s not found in TastyTrade session; updating to %s",
@@ -142,14 +143,16 @@ class TastyTradeSyncService:
                 logger.warning(
                     "TastyTrade sync: account %s had %s unmatched sell-shares "
                     "during closing-lot reconciliation",
-                    broker_account.id, match_result.unmatched_quantity,
+                    broker_account.id,
+                    match_result.unmatched_quantity,
                 )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # begin_nested() auto-rolls back the SAVEPOINT on exception,
             # so the outer transaction stays clean.
             logger.warning(
                 "TastyTrade sync: closing-lot reconciliation failed for account %s: %s",
-                broker_account.id, exc,
+                broker_account.id,
+                exc,
             )
             counts["closed_lots_error"] = str(exc)
 
@@ -158,6 +161,7 @@ class TastyTradeSyncService:
         try:
             # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.activity_aggregator moves during Phase 0.C
             from app.services.portfolio.activity_aggregator import activity_aggregator
+
             activity_aggregator.refresh_materialized_views(db)
         except Exception as e:
             logger.warning("Activity MV refresh skipped: %s", e)
@@ -167,7 +171,7 @@ class TastyTradeSyncService:
 
     async def sync_account_comprehensive(
         self, account_number: str, db_session=None
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Adapter to align with broker-agnostic sync interface used by BrokerSyncService."""
         db = db_session or self._get_db_session()
         try:
@@ -197,7 +201,7 @@ class TastyTradeSyncService:
     # Internal helpers (1 per table)
     # ------------------------------------------------------------------
 
-    async def _sync_positions(self, db: Session, ba: BrokerAccount) -> Dict[str, Any]:
+    async def _sync_positions(self, db: Session, ba: BrokerAccount) -> dict[str, Any]:
         data = await self.client.get_current_positions(ba.account_number)
         db.query(Position).filter_by(account_id=ba.id).delete()
         db.query(Option).filter_by(account_id=ba.id).delete()
@@ -270,7 +274,7 @@ class TastyTradeSyncService:
         # ``get_current_positions`` does not surface day P&L; this is the
         # canonical place for it to land.
         day_pnl_stats = recompute_day_pnl_for_rows(db, touched_rows, "tastytrade")
-        out: Dict[str, Any] = {
+        out: dict[str, Any] = {
             "positions": count,
             "options_dropped_no_underlying": dropped_no_underlying,
             "options_dropped_no_expiry": dropped_no_expiry,
@@ -289,7 +293,7 @@ class TastyTradeSyncService:
             out["options_silent_drop"] = True
         return out
 
-    async def _sync_tax_lots(self, db: Session, ba: BrokerAccount) -> Dict[str, int]:
+    async def _sync_tax_lots(self, db: Session, ba: BrokerAccount) -> dict[str, int]:
         """Generate tax lots from synced positions (one lot per position).
 
         TastyTrade's API doesn't expose per-lot data, so we approximate each
@@ -313,22 +317,24 @@ class TastyTradeSyncService:
                 pnl = float(pos.unrealized_pnl or 0)
                 pnl_pct = (pnl / cost_basis * 100) if cost_basis else 0.0
 
-                db.add(TaxLot(
-                    user_id=ba.user_id,
-                    account_id=ba.id,
-                    lot_id=f"TT_{pos.symbol}_{count}",
-                    symbol=pos.symbol,
-                    quantity=qty,
-                    cost_per_share=avg,
-                    cost_basis=cost_basis,
-                    current_price=float(pos.current_price or 0),
-                    market_value=mkt_val,
-                    unrealized_pnl=pnl,
-                    unrealized_pnl_pct=pnl_pct,
-                    currency="USD",
-                    asset_category="STK",
-                    source=TaxLotSource.CALCULATED,
-                ))
+                db.add(
+                    TaxLot(
+                        user_id=ba.user_id,
+                        account_id=ba.id,
+                        lot_id=f"TT_{pos.symbol}_{count}",
+                        symbol=pos.symbol,
+                        quantity=qty,
+                        cost_per_share=avg,
+                        cost_basis=cost_basis,
+                        current_price=float(pos.current_price or 0),
+                        market_value=mkt_val,
+                        unrealized_pnl=pnl,
+                        unrealized_pnl_pct=pnl_pct,
+                        currency="USD",
+                        asset_category="STK",
+                        source=TaxLotSource.CALCULATED,
+                    )
+                )
                 count += 1
             except Exception as exc:
                 logger.warning("Skipping TastyTrade tax lot for %s: %s", pos.symbol, exc)
@@ -338,7 +344,7 @@ class TastyTradeSyncService:
         logger.info("Synced %d tax lots from TastyTrade positions for %s", count, ba.account_number)
         return {"tax_lots": count}
 
-    async def _sync_trades(self, db: Session, ba: BrokerAccount) -> Dict[str, int]:
+    async def _sync_trades(self, db: Session, ba: BrokerAccount) -> dict[str, int]:
         """Idempotent trade sync from TastyTrade.
 
         Iron Law #1 (append-only ledger): never DELETE trades. Existing rows
@@ -384,11 +390,19 @@ class TastyTradeSyncService:
             logger.error(
                 "TastyTrade trades sync counter mismatch account=%s "
                 "written=%d skipped=%d errors=%d total=%d — Iron Law #5 violation",
-                ba.account_number, written, skipped, errors, total,
+                ba.account_number,
+                written,
+                skipped,
+                errors,
+                total,
             )
         logger.info(
             "TastyTrade trades sync account=%s written=%d skipped=%d errors=%d total=%d",
-            ba.account_number, written, skipped, errors, total,
+            ba.account_number,
+            written,
+            skipped,
+            errors,
+            total,
         )
         return {
             "trades": total,
@@ -397,9 +411,7 @@ class TastyTradeSyncService:
             "errors": errors,
         }
 
-    async def _sync_transactions(
-        self, db: Session, ba: BrokerAccount
-    ) -> Dict[str, int]:
+    async def _sync_transactions(self, db: Session, ba: BrokerAccount) -> dict[str, int]:
         """Idempotent transaction sync from TastyTrade.
 
         Iron Law #1: never DELETE transactions (append-only ledger).
@@ -423,9 +435,7 @@ class TastyTradeSyncService:
                 errors += 1
                 continue
             ext_id = (
-                kwargs.get("external_id")
-                or kwargs.get("execution_id")
-                or kwargs.get("order_id")
+                kwargs.get("external_id") or kwargs.get("execution_id") or kwargs.get("order_id")
             )
             if ext_id and ext_id in seen_txn_ids:
                 skipped += 1
@@ -444,11 +454,19 @@ class TastyTradeSyncService:
             logger.error(
                 "TastyTrade txns sync counter mismatch account=%s "
                 "written=%d skipped=%d errors=%d total=%d — Iron Law #5 violation",
-                ba.account_number, written, skipped, errors, total,
+                ba.account_number,
+                written,
+                skipped,
+                errors,
+                total,
             )
         logger.info(
             "TastyTrade txns sync account=%s written=%d skipped=%d errors=%d total=%d",
-            ba.account_number, written, skipped, errors, total,
+            ba.account_number,
+            written,
+            skipped,
+            errors,
+            total,
         )
         return {
             "transactions": written,
@@ -457,7 +475,7 @@ class TastyTradeSyncService:
             "errors": errors,
         }
 
-    async def _sync_dividends(self, db: Session, ba: BrokerAccount) -> Dict[str, int]:
+    async def _sync_dividends(self, db: Session, ba: BrokerAccount) -> dict[str, int]:
         divs = await self.client.get_dividends(ba.account_number, days=365)
         count = 0
         for d in divs:
@@ -465,9 +483,9 @@ class TastyTradeSyncService:
                 kwargs = self._div_to_kwargs(d, ba)
                 ext_id = kwargs.get("external_id")
                 if ext_id:
-                    existing = db.query(Dividend).filter_by(
-                        account_id=ba.id, external_id=ext_id
-                    ).first()
+                    existing = (
+                        db.query(Dividend).filter_by(account_id=ba.id, external_id=ext_id).first()
+                    )
                     if existing:
                         continue
                 db.add(Dividend(**kwargs))
@@ -478,9 +496,7 @@ class TastyTradeSyncService:
         db.flush()
         return {"dividends": count}
 
-    async def _sync_account_balances(
-        self, db: Session, ba: BrokerAccount
-    ) -> Dict[str, int]:
+    async def _sync_account_balances(self, db: Session, ba: BrokerAccount) -> dict[str, int]:
         bal = await self.client.get_account_balances(ba.account_number)
         if not bal:
             return {"account_balances": 0}
@@ -511,14 +527,12 @@ class TastyTradeSyncService:
     # Converters
     # ------------------------------------------------------------------
 
-    def _equity_position_kwargs(self, p: Dict, ba: BrokerAccount) -> Dict:
+    def _equity_position_kwargs(self, p: dict, ba: BrokerAccount) -> dict:
         quantity = float(p.get("quantity", 0) or 0)
         avg_cost = p.get("average_open_price") or 0
         total_cost_basis = abs(quantity) * float(avg_cost)
         current_price = p.get("mark")
-        market_value = p.get("mark_value") or (
-            abs(quantity) * float(current_price or 0)
-        )
+        market_value = p.get("mark_value") or (abs(quantity) * float(current_price or 0))
         unrealized = None
         try:
             unrealized = float(market_value) - float(total_cost_basis)
@@ -539,7 +553,7 @@ class TastyTradeSyncService:
             unrealized_pnl=unrealized,
         )
 
-    def _trade_to_kwargs(self, t: Dict, ba: BrokerAccount) -> Dict:
+    def _trade_to_kwargs(self, t: dict, ba: BrokerAccount) -> dict:
         """Map a TastyTrade trade payload to ``Trade`` column kwargs.
 
         Fields required by the closing-lot matcher
@@ -561,7 +575,7 @@ class TastyTradeSyncService:
         """
         try:
             executed_at = dt.fromisoformat(t["executed_at"])
-        except Exception:  # noqa: BLE001 — broker payload oddities
+        except Exception:
             executed_at = None
         side = (t.get("side") or "").upper()
         is_opening = side == "BUY"
@@ -578,7 +592,7 @@ class TastyTradeSyncService:
             status="FILLED",
         )
 
-    def _txn_to_kwargs(self, tx: Dict, ba: BrokerAccount) -> Dict:
+    def _txn_to_kwargs(self, tx: dict, ba: BrokerAccount) -> dict:
         # Compose datetime from separate date/time fields
         dt_str = f"{tx.get('date')}T{tx.get('time')}"
         try:
@@ -610,12 +624,10 @@ class TastyTradeSyncService:
             order_id=tx.get("order_id"),
             execution_id=tx.get("execution_id"),
             source="tastytrade_enhanced",
-            asset_category=(
-                "OPT" if "option" in (tx.get("contract_type", "").lower()) else "STK"
-            ),
+            asset_category=("OPT" if "option" in (tx.get("contract_type", "").lower()) else "STK"),
         )
 
-    def _div_to_kwargs(self, d: Dict, ba: BrokerAccount) -> Dict:
+    def _div_to_kwargs(self, d: dict, ba: BrokerAccount) -> dict:
         ex_date = (
             dt.fromisoformat(d.get("date") + "T" + d.get("time"))
             if d.get("date") and d.get("time")
@@ -642,7 +654,7 @@ class TastyTradeSyncService:
             dividend_type="ORDINARY",
         )
 
-    def _option_position_kwargs(self, p: Dict, ba: BrokerAccount) -> Tuple[Dict[str, Any], str]:
+    def _option_position_kwargs(self, p: dict, ba: BrokerAccount) -> tuple[dict[str, Any], str]:
         """Return (kwargs, drop_reason) — drop_reason empty string on success."""
         quantity = int(abs(float(p.get("quantity", 0) or 0)))
         if quantity == 0:
@@ -667,16 +679,13 @@ class TastyTradeSyncService:
 
         # Fallback: parse OCC-like option symbol, e.g. "SOUN  250815C00013000"
         if not (strike_price and exp_date and option_type and underlying_symbol):
-            m = re.match(
-                r"^([A-Z\.]{1,6})\s+(\d{6})([CP])(\d{8})$", symbol.strip().upper()
-            )
+            m = re.match(r"^([A-Z\.]{1,6})\s+(\d{6})([CP])(\d{8})$", symbol.strip().upper())
             if m:
                 underlying_symbol = underlying_symbol or m.group(1)
                 yymmdd = m.group(2)
                 yy, mm, dd = int(yymmdd[0:2]), int(yymmdd[2:4]), int(yymmdd[4:6])
                 exp_date = (
-                    exp_date
-                    or dt.strptime(f"20{yy:02d}-{mm:02d}-{dd:02d}", "%Y-%m-%d").date()
+                    exp_date or dt.strptime(f"20{yy:02d}-{mm:02d}-{dd:02d}", "%Y-%m-%d").date()
                 )
                 option_type = option_type or ("CALL" if m.group(3) == "C" else "PUT")
                 # strike encoded with 3 decimals in 8 digits
@@ -695,9 +704,7 @@ class TastyTradeSyncService:
         mark_val = p.get("mark_value") or 0
         mult = p.get("multiplier", 100) or 100
         total_cost = abs(float(quantity)) * float(avg_cost) * float(mult)
-        unrealized = (
-            (float(mark_val) - float(total_cost)) if (mark_val is not None) else None
-        )
+        unrealized = (float(mark_val) - float(total_cost)) if (mark_val is not None) else None
 
         return (
             dict(

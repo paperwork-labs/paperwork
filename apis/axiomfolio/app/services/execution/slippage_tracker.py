@@ -4,13 +4,13 @@ Aggregates execution quality metrics across orders for analysis and ML training.
 
 medallion: execution
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -22,6 +22,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SlippageStats:
     """Aggregated slippage statistics."""
+
     total_orders: int
     orders_with_slippage: int
     avg_slippage_pct: float
@@ -30,9 +31,9 @@ class SlippageStats:
     min_slippage_pct: float
     total_slippage_dollars: float
     avg_fill_latency_ms: float
-    avg_slippage_by_side: Dict[str, float]
-    avg_slippage_by_broker: Dict[str, float]
-    avg_slippage_by_hour: Dict[int, float]
+    avg_slippage_by_side: dict[str, float]
+    avg_slippage_by_broker: dict[str, float]
+    avg_slippage_by_hour: dict[int, float]
 
 
 class SlippageTracker:
@@ -43,36 +44,36 @@ class SlippageTracker:
 
     def get_slippage_stats(
         self,
-        user_id: Optional[int] = None,
-        symbol: Optional[str] = None,
-        broker_type: Optional[str] = None,
+        user_id: int | None = None,
+        symbol: str | None = None,
+        broker_type: str | None = None,
         days: int = 30,
     ) -> SlippageStats:
         """Get aggregated slippage statistics for filled orders.
-        
+
         Args:
             user_id: Filter by user (optional, for multi-tenant)
             symbol: Filter by symbol (optional)
             broker_type: Filter by broker (optional)
             days: Lookback period in days
         """
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-        
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+
         query = self.db.query(Order).filter(
             Order.status == OrderStatus.FILLED.value,
             Order.filled_at >= cutoff,
             Order.slippage_pct.isnot(None),
         )
-        
+
         if user_id:
             query = query.filter(Order.user_id == user_id)
         if symbol:
             query = query.filter(Order.symbol == symbol.upper())
         if broker_type:
             query = query.filter(Order.broker_type == broker_type)
-        
+
         orders = query.all()
-        
+
         if not orders:
             return SlippageStats(
                 total_orders=0,
@@ -87,50 +88,51 @@ class SlippageTracker:
                 avg_slippage_by_broker={},
                 avg_slippage_by_hour={},
             )
-        
+
         slippages = [float(o.slippage_pct) for o in orders if o.slippage_pct is not None]
         latencies = [o.fill_latency_ms for o in orders if o.fill_latency_ms is not None]
         dollars = [float(o.slippage_dollars) for o in orders if o.slippage_dollars is not None]
-        
+
         # Calculate by-side averages
-        by_side: Dict[str, List[float]] = {"buy": [], "sell": []}
+        by_side: dict[str, list[float]] = {"buy": [], "sell": []}
         for o in orders:
             if o.slippage_pct is not None and o.side in by_side:
                 by_side[o.side].append(float(o.slippage_pct))
         avg_by_side = {
-            side: sum(vals) / len(vals) if vals else 0.0
-            for side, vals in by_side.items()
+            side: sum(vals) / len(vals) if vals else 0.0 for side, vals in by_side.items()
         }
-        
+
         # Calculate by-broker averages
-        by_broker: Dict[str, List[float]] = {}
+        by_broker: dict[str, list[float]] = {}
         for o in orders:
             if o.slippage_pct is not None and o.broker_type:
                 by_broker.setdefault(o.broker_type, []).append(float(o.slippage_pct))
         avg_by_broker = {
-            broker: sum(vals) / len(vals) if vals else 0.0
-            for broker, vals in by_broker.items()
+            broker: sum(vals) / len(vals) if vals else 0.0 for broker, vals in by_broker.items()
         }
-        
+
         # Calculate by-hour averages (hour of day UTC)
-        by_hour: Dict[int, List[float]] = {}
+        by_hour: dict[int, list[float]] = {}
         for o in orders:
             if o.slippage_pct is not None and o.submitted_at:
                 hour = o.submitted_at.hour
                 by_hour.setdefault(hour, []).append(float(o.slippage_pct))
         avg_by_hour = {
-            hour: sum(vals) / len(vals) if vals else 0.0
-            for hour, vals in by_hour.items()
+            hour: sum(vals) / len(vals) if vals else 0.0 for hour, vals in by_hour.items()
         }
-        
+
         sorted_slippages = sorted(slippages)
         median_idx = len(sorted_slippages) // 2
         median = (
-            sorted_slippages[median_idx]
-            if len(sorted_slippages) % 2 == 1
-            else (sorted_slippages[median_idx - 1] + sorted_slippages[median_idx]) / 2
-        ) if sorted_slippages else 0.0
-        
+            (
+                sorted_slippages[median_idx]
+                if len(sorted_slippages) % 2 == 1
+                else (sorted_slippages[median_idx - 1] + sorted_slippages[median_idx]) / 2
+            )
+            if sorted_slippages
+            else 0.0
+        )
+
         return SlippageStats(
             total_orders=len(orders),
             orders_with_slippage=len(slippages),
@@ -147,24 +149,24 @@ class SlippageTracker:
 
     def get_worst_slippage_orders(
         self,
-        user_id: Optional[int] = None,
+        user_id: int | None = None,
         limit: int = 10,
         days: int = 30,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get orders with the worst slippage for analysis."""
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-        
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+
         query = self.db.query(Order).filter(
             Order.status == OrderStatus.FILLED.value,
             Order.filled_at >= cutoff,
             Order.slippage_pct.isnot(None),
         )
-        
+
         if user_id:
             query = query.filter(Order.user_id == user_id)
-        
+
         orders = query.order_by(Order.slippage_pct.desc()).limit(limit).all()
-        
+
         return [
             {
                 "id": o.id,
@@ -185,42 +187,44 @@ class SlippageTracker:
 
     def get_slippage_by_symbol(
         self,
-        user_id: Optional[int] = None,
+        user_id: int | None = None,
         days: int = 30,
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         """Get slippage breakdown by symbol."""
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-        
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+
         query = self.db.query(Order).filter(
             Order.status == OrderStatus.FILLED.value,
             Order.filled_at >= cutoff,
             Order.slippage_pct.isnot(None),
         )
-        
+
         if user_id:
             query = query.filter(Order.user_id == user_id)
-        
+
         orders = query.all()
-        
-        by_symbol: Dict[str, List[Order]] = {}
+
+        by_symbol: dict[str, list[Order]] = {}
         for o in orders:
             by_symbol.setdefault(o.symbol, []).append(o)
-        
+
         result = {}
         for symbol, symbol_orders in by_symbol.items():
             slippages = [float(o.slippage_pct) for o in symbol_orders if o.slippage_pct is not None]
-            dollars = [float(o.slippage_dollars) for o in symbol_orders if o.slippage_dollars is not None]
-            
+            dollars = [
+                float(o.slippage_dollars) for o in symbol_orders if o.slippage_dollars is not None
+            ]
+
             result[symbol] = {
                 "order_count": len(symbol_orders),
                 "avg_slippage_pct": sum(slippages) / len(slippages) if slippages else 0.0,
                 "total_slippage_dollars": sum(dollars) if dollars else 0.0,
             }
-        
+
         return result
 
 
-def get_slippage_stats_dict(stats: SlippageStats) -> Dict[str, Any]:
+def get_slippage_stats_dict(stats: SlippageStats) -> dict[str, Any]:
     """Convert SlippageStats to dict for API response."""
     return {
         "total_orders": stats.total_orders,

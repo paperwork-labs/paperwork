@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
-from typing import Any, Dict, List, Optional
+from dataclasses import asdict, dataclass
+from typing import Any
 
 from app.config import settings as _settings
 
@@ -15,23 +15,23 @@ class JobTemplate:
     description: str
     default_cron: str  # standard 5-field cron
     default_tz: str  # e.g., UTC
-    job_run_label: Optional[str] = None  # @task_run() label for JobRun lookup
-    args: List[Any] | None = None
-    kwargs: Dict[str, Any] | None = None
+    job_run_label: str | None = None  # @task_run() label for JobRun lookup
+    args: list[Any] | None = None
+    kwargs: dict[str, Any] | None = None
     singleflight: bool = True
     max_concurrency: int = 1
     timeout_s: int = 3600
     retries: int = 0
     backoff_s: int = 0
-    maintenance_windows: List[Dict[str, str]] | None = None
-    queue: Optional[str] = None
+    maintenance_windows: list[dict[str, str]] | None = None
+    queue: str | None = None
     enabled: bool = True
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
 
-CATALOG: List[JobTemplate] = [
+CATALOG: list[JobTemplate] = [
     # ── Portfolio ──────────────────────────────────────────────────
     JobTemplate(
         id="ibkr-daily-flex-sync",
@@ -403,9 +403,7 @@ CATALOG: List[JobTemplate] = [
         timeout_s=600,
         queue="celery",
     ),
-
     # ── Intelligence Briefs ──
-
     JobTemplate(
         id="generate_daily_digest",
         display_name="Daily Intelligence Digest",
@@ -437,7 +435,6 @@ CATALOG: List[JobTemplate] = [
         default_tz="America/New_York",
         job_run_label="intelligence_monthly_review",
     ),
-
     # ── Coverage & Quality ─────────────────────────────────────────
     JobTemplate(
         id="coverage_health_check",
@@ -507,7 +504,6 @@ CATALOG: List[JobTemplate] = [
         job_run_label="admin_backfill_5m",
         timeout_s=1800,
     ),
-
     # ── Dashboard cache warming ────────────────────────────────────
     # The /market-data/dashboard endpoint reads exclusively from Redis. On a cache
     # miss it returns 202 ("warming") and triggers a Celery task. Without periodic
@@ -550,7 +546,6 @@ CATALOG: List[JobTemplate] = [
         kwargs={"universe": "holdings"},
         timeout_s=180,
     ),
-
     # ── Auto-Ops ────────────────────────────────────────────────────
     JobTemplate(
         id="auto_ops_health_check",
@@ -563,7 +558,6 @@ CATALOG: List[JobTemplate] = [
         job_run_label="auto_ops_health_check",
         timeout_s=180,
     ),
-
     # ── Deploy Health (G28) ─────────────────────────────────────────
     JobTemplate(
         id="deploy_health_poll",
@@ -581,7 +575,6 @@ CATALOG: List[JobTemplate] = [
         job_run_label="deploy_health_poll",
         timeout_s=90,
     ),
-
     # ── Deep Backfill ────────────────────────────────────────────────
     JobTemplate(
         id="full_historical_backfill",
@@ -798,10 +791,7 @@ CATALOG: List[JobTemplate] = [
         id="options-chain-refresh-universe",
         display_name="Options chain refresh (tracked universe fan-out)",
         group="market_data",
-        task=(
-            "app.tasks.market.options_chain."
-            "refresh_options_chains_for_tracked_universe"
-        ),
+        task=("app.tasks.market.options_chain.refresh_options_chains_for_tracked_universe"),
         description="Enqueue one per-symbol options chain task (tracked).",
         default_cron="0 0 1 1 *",
         default_tz="UTC",
@@ -869,4 +859,4 @@ CATALOG: List[JobTemplate] = [
 ]
 
 # Alias for callers that expect JOB_CATALOG (e.g. task_run singleflight lookup).
-JOB_CATALOG: List[JobTemplate] = CATALOG
+JOB_CATALOG: list[JobTemplate] = CATALOG

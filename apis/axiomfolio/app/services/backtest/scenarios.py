@@ -21,15 +21,14 @@ medallion: gold
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Dict, List, Optional, Sequence
 
 from app.services.backtest.monte_carlo import (
     MonteCarloResult,
     MonteCarloSimulator,
 )
-
 
 _SKEW_FACTOR: float = 2.0
 
@@ -50,7 +49,7 @@ class ScenarioResult:
         }
 
 
-SCENARIO_DESCRIPTIONS: Dict[str, str] = {
+SCENARIO_DESCRIPTIONS: dict[str, str] = {
     "iid_baseline": (
         "Uniform-with-replacement bootstrap. Each historical trade is "
         "equally likely to be sampled -- the standard Monte Carlo baseline."
@@ -66,7 +65,7 @@ SCENARIO_DESCRIPTIONS: Dict[str, str] = {
 }
 
 
-def _winner_weights(returns: Sequence[Decimal]) -> List[float]:
+def _winner_weights(returns: Sequence[Decimal]) -> list[float]:
     """Return per-trade sampling weights that bias toward winning trades.
 
     A trade is a "winner" if its return is strictly positive. Flat trades
@@ -75,7 +74,7 @@ def _winner_weights(returns: Sequence[Decimal]) -> List[float]:
     return [_SKEW_FACTOR if float(r) > 0 else 1.0 for r in returns]
 
 
-def _loser_weights(returns: Sequence[Decimal]) -> List[float]:
+def _loser_weights(returns: Sequence[Decimal]) -> list[float]:
     """Return per-trade sampling weights that bias toward losing trades."""
     return [_SKEW_FACTOR if float(r) < 0 else 1.0 for r in returns]
 
@@ -86,7 +85,7 @@ def run_scenario(
     *,
     n_simulations: int = 10_000,
     initial_capital: Decimal = Decimal("100000"),
-    seed: Optional[int] = None,
+    seed: int | None = None,
     risk_free_rate: Decimal = Decimal("0"),
 ) -> ScenarioResult:
     """Run a single named scenario and return its result.
@@ -99,14 +98,12 @@ def run_scenario(
         as a 4xx instead of silently producing the wrong picture.
     """
     if name not in SCENARIO_DESCRIPTIONS:
-        raise ValueError(
-            f"Unknown scenario '{name}'. Valid: {sorted(SCENARIO_DESCRIPTIONS)}"
-        )
+        raise ValueError(f"Unknown scenario '{name}'. Valid: {sorted(SCENARIO_DESCRIPTIONS)}")
 
     sim = MonteCarloSimulator(risk_free_rate=risk_free_rate)
 
     if name == "iid_baseline":
-        weights: Optional[List[float]] = None
+        weights: list[float] | None = None
     elif name == "optimistic_skew":
         weights = _winner_weights(trade_returns)
     elif name == "pessimistic_skew":
@@ -133,9 +130,9 @@ def run_all_scenarios(
     *,
     n_simulations: int = 10_000,
     initial_capital: Decimal = Decimal("100000"),
-    seed: Optional[int] = None,
+    seed: int | None = None,
     risk_free_rate: Decimal = Decimal("0"),
-) -> Dict[str, ScenarioResult]:
+) -> dict[str, ScenarioResult]:
     """Run all three preset scenarios and return them keyed by name.
 
     Each scenario gets the *same* base seed; numpy's PRNG state is

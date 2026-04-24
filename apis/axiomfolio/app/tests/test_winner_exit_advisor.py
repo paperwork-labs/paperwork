@@ -26,7 +26,6 @@ from app.services.gold.winner_exit_advisor import (
     WinnerExitAdvisor,
 )
 
-
 pytestmark = pytest.mark.no_db
 
 
@@ -112,11 +111,11 @@ def test_boundary_everything_firing_advises_full_exit():
     out = advisor.advise(
         symbol="X",
         peak=peak,
-        tax=_tax_result_neutral(),   # tax-advantaged: no drag
+        tax=_tax_result_neutral(),  # tax-advantaged: no drag
         current_price=Decimal("150"),
-        stop_price=Decimal("148"),   # very tight stop
+        stop_price=Decimal("148"),  # very tight stop
         atr_value=Decimal("5"),
-        regime_state="R5",           # risk-off
+        regime_state="R5",  # risk-off
     )
     assert out.action == ACTION_EXIT
     assert out.suggested_scale_pct == 100
@@ -165,9 +164,9 @@ def test_medium_peak_plus_tight_stop_advises_scale():
         peak=peak,
         tax=_tax_result_neutral(),
         current_price=Decimal("100"),
-        stop_price=Decimal("99"),         # <1 ATR
+        stop_price=Decimal("99"),  # <1 ATR
         atr_value=Decimal("2"),
-        regime_state="R3",                # neutral
+        regime_state="R3",  # neutral
     )
     assert out.action in {ACTION_SCALE, ACTION_EXIT}
     assert out.suggested_scale_pct >= 33

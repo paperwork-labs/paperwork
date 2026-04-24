@@ -9,14 +9,15 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, List, Optional, Sequence
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def _d(val: Any) -> Optional[Decimal]:
+def _d(val: Any) -> Decimal | None:
     if val is None:
         return None
     if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
@@ -27,7 +28,7 @@ def _d(val: Any) -> Optional[Decimal]:
         return None
 
 
-def _i(val: Any) -> Optional[int]:
+def _i(val: Any) -> int | None:
     if val is None:
         return None
     try:
@@ -39,7 +40,7 @@ def _i(val: Any) -> Optional[int]:
         return None
 
 
-def _parse_iv(v: Any) -> Optional[Decimal]:
+def _parse_iv(v: Any) -> Decimal | None:
     d = _d(v)
     if d is None or d < 0:
         return None
@@ -54,8 +55,8 @@ def fetch_yfinance_options_chain(
     symbol: str,
     *,
     max_dte_days: int = 120,
-    expiries: Optional[Sequence[date]] = None,
-) -> List[dict[str, Any]]:
+    expiries: Sequence[date] | None = None,
+) -> list[dict[str, Any]]:
     """Return flat option contract dicts (CALL/PUT) for the symbol from Yahoo.
 
     Each row: expiry (date), option_type, strike, bid, ask, open_interest,
@@ -82,7 +83,7 @@ def fetch_yfinance_options_chain(
         return []
 
     today = date.today()
-    out: List[dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
 
     want = None
     if expiries is not None:
@@ -126,8 +127,7 @@ def fetch_yfinance_options_chain(
                         "open_interest": _i(row.get("openInterest") or row.get("open interest")),
                         "volume": _i(row.get("volume")),
                         "implied_vol": _parse_iv(
-                            row.get("impliedVolatility")
-                            or row.get("impliedVol")
+                            row.get("impliedVolatility") or row.get("impliedVol")
                         ),
                         "delta": _d(row.get("delta")),
                         "gamma": _d(row.get("gamma")),

@@ -47,9 +47,7 @@ def _acct(db_session, user_id: int) -> BrokerAccount:
     return a
 
 
-def _pos(
-    db_session, *, uid: int, aid: int, symbol: str
-) -> None:
+def _pos(db_session, *, uid: int, aid: int, symbol: str) -> None:
     db_session.add(
         Position(
             user_id=uid,

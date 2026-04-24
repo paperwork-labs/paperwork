@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 import fmpsdk
 import yfinance as yf
@@ -16,9 +16,9 @@ from app.services.market.provider_router import APIProvider
 from app.services.market.rate_limiter import provider_rate_limiter
 
 if TYPE_CHECKING:
+    from app.services.market.fundamentals_service import FundamentalsService
     from app.services.market.market_infra import MarketInfra
     from app.services.market.provider_router import ProviderRouter
-    from app.services.market.fundamentals_service import FundamentalsService
 
 logger = logging.getLogger(__name__)
 
@@ -26,17 +26,22 @@ logger = logging.getLogger(__name__)
 class QuoteService:
     """Current price resolution and fundamentals delegation."""
 
-    def __init__(self, infra: "MarketInfra", provider_router: "ProviderRouter", fundamentals: "FundamentalsService") -> None:
+    def __init__(
+        self,
+        infra: MarketInfra,
+        provider_router: ProviderRouter,
+        fundamentals: FundamentalsService,
+    ) -> None:
         self._infra = infra
         self._provider = provider_router
         self._fundamentals = fundamentals
 
-    async def _get_current_price_detail(self, symbol: str) -> Optional[Dict[str, Any]]:
+    async def _get_current_price_detail(self, symbol: str) -> dict[str, Any] | None:
         """Resolve live quote with source and freshness (60s Redis cache, then providers, then DB)."""
         sym_key = symbol.strip().upper()
         cache_key = f"price:{sym_key}"
         cached = None
-        r: Optional[Any] = None
+        r: Any | None = None
         try:
             r = await self._infra._get_redis()
             cached = await r.get(cache_key)
@@ -49,7 +54,7 @@ class QuoteService:
         if cached:
             try:
                 price = float(cached)
-                as_of = datetime.now(timezone.utc)
+                as_of = datetime.now(UTC)
                 ttl_remain = -1
                 if r is not None:
                     try:
@@ -76,7 +81,7 @@ class QuoteService:
                 if provider == APIProvider.FMP:
                     try:
                         r_budget = await self._infra._get_redis()
-                        _date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                        _date_key = datetime.now(UTC).strftime("%Y-%m-%d")
                         _current = int(
                             await r_budget.hget(f"provider:calls:{_date_key}", "fmp") or 0
                         )
@@ -116,7 +121,7 @@ class QuoteService:
                         logger.warning(
                             "Redis unavailable for price cache write for %s: %s", sym_key, e
                         )
-                    as_of = datetime.now(timezone.utc)
+                    as_of = datetime.now(UTC)
                     if provider == APIProvider.FMP:
                         src = "provider_fmp"
                     elif provider == APIProvider.YFINANCE:
@@ -151,10 +156,10 @@ class QuoteService:
                 if bar_ts is None:
                     return None
                 if bar_ts.tzinfo is None:
-                    as_of = bar_ts.replace(tzinfo=timezone.utc)
+                    as_of = bar_ts.replace(tzinfo=UTC)
                 else:
-                    as_of = bar_ts.astimezone(timezone.utc)
-                now = datetime.now(timezone.utc)
+                    as_of = bar_ts.astimezone(UTC)
+                now = datetime.now(UTC)
                 age_seconds = max(0, int((now - as_of).total_seconds()))
                 return {
                     "price": float(row.close_price),
@@ -168,20 +173,20 @@ class QuoteService:
             db.close()
         return None
 
-    async def get_current_price(self, symbol: str) -> Optional[float]:
+    async def get_current_price(self, symbol: str) -> float | None:
         """Get current price for a symbol with provider policy and 60s Redis cache."""
         detail = await self._get_current_price_detail(symbol)
         return float(detail["price"]) if detail else None
 
-    async def get_current_price_with_freshness(self, symbol: str) -> Optional[Dict[str, Any]]:
+    async def get_current_price_with_freshness(self, symbol: str) -> dict[str, Any] | None:
         """Same as live quote path as `get_current_price`, with API-oriented freshness fields."""
         detail = await self._get_current_price_detail(symbol)
         if not detail:
             return None
         as_of = detail["as_of"]
         if as_of.tzinfo is None:
-            as_of = as_of.replace(tzinfo=timezone.utc)
-        as_of_utc = as_of.astimezone(timezone.utc)
+            as_of = as_of.replace(tzinfo=UTC)
+        as_of_utc = as_of.astimezone(UTC)
         as_of_str = as_of_utc.isoformat().replace("+00:00", "Z")
         return {
             "price": detail["price"],
@@ -190,6 +195,6 @@ class QuoteService:
             "age_seconds": int(detail["age_seconds"]),
         }
 
-    def get_fundamentals_info(self, symbol: str) -> Dict[str, Any]:
+    def get_fundamentals_info(self, symbol: str) -> dict[str, Any]:
         """Delegate to FundamentalsService (multi-provider cascade)."""
         return self._fundamentals.get_fundamentals_info(symbol)

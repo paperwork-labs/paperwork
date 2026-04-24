@@ -12,7 +12,7 @@ from unittest import mock
 import pytest
 
 from app.config import settings
-from app.models.broker_account import BrokerAccount, BrokerType, AccountType
+from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.models.user import User
 from app.services.portfolio.schwab_sync_service import (
     RECONCILE_ANOMALY_KEY,
@@ -107,9 +107,7 @@ def _make_user_and_account(db_session) -> BrokerAccount:
 
 
 @pytest.mark.usefixtures("db_session")
-def test_reconcile_error_production_continues_and_records_anomaly(
-    db_session, monkeypatch
-) -> None:
+def test_reconcile_error_production_continues_and_records_anomaly(db_session, monkeypatch) -> None:
     if db_session is None:
         pytest.skip("database not configured")
 
@@ -123,9 +121,7 @@ def test_reconcile_error_production_continues_and_records_anomaly(
         "get_decrypted",
         _fake_get_decrypted,
     )
-    monkeypatch.setattr(
-        schwab_sync_service, "reconcile_closing_lots", _raiser
-    )
+    monkeypatch.setattr(schwab_sync_service, "reconcile_closing_lots", _raiser)
     fake_r = _FakeRedis()
     monkeypatch.setattr(
         "app.services.market.market_data_service.infra",
@@ -163,9 +159,7 @@ def test_reconcile_error_production_continues_and_records_anomaly(
 
 
 @pytest.mark.usefixtures("db_session")
-def test_reconcile_error_development_re_raises(
-    db_session, monkeypatch
-) -> None:
+def test_reconcile_error_development_re_raises(db_session, monkeypatch) -> None:
     if db_session is None:
         pytest.skip("database not configured")
 
@@ -179,9 +173,7 @@ def test_reconcile_error_development_re_raises(
         "get_decrypted",
         _fake_get_decrypted,
     )
-    monkeypatch.setattr(
-        schwab_sync_service, "reconcile_closing_lots", _raiser
-    )
+    monkeypatch.setattr(schwab_sync_service, "reconcile_closing_lots", _raiser)
     fake_r = _FakeRedis()
     monkeypatch.setattr(
         "app.services.market.market_data_service.infra",
@@ -195,13 +187,12 @@ def test_reconcile_error_development_re_raises(
 
     with mock.patch.object(
         schwab_sync_service.logger, "warning", wraps=schwab_sync_service.logger.warning
-    ) as w_mock:
-        with pytest.raises(RuntimeError, match="forced reconcile"):
-            asyncio.run(
-                service.sync_account_comprehensive(
-                    account_number=acct.account_number, session=db_session
-                )
+    ) as w_mock, pytest.raises(RuntimeError, match="forced reconcile"):
+        asyncio.run(
+            service.sync_account_comprehensive(
+                account_number=acct.account_number, session=db_session
             )
+        )
     w_mock.assert_any_call(
         "reconcile_closing_lots failed for user=%s account=%s: %s",
         acct.user_id,

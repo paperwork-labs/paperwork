@@ -16,9 +16,9 @@ medallion: execution
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, Optional, Set
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import and_, func
@@ -40,9 +40,7 @@ _OPEN_MTM_STATUSES: tuple[str, ...] = (
 )
 
 
-def _latest_snapshot_prices(
-    session: Session, symbols: Set[str]
-) -> Dict[str, Decimal]:
+def _latest_snapshot_prices(session: Session, symbols: set[str]) -> dict[str, Decimal]:
     """Latest ``MarketSnapshot.current_price`` per symbol (one query batch).
 
     Keys are uppercased symbols. Omits symbols with no row, NULL price, or
@@ -77,7 +75,7 @@ def _latest_snapshot_prices(
         .all()
     )
 
-    out: Dict[str, Decimal] = {}
+    out: dict[str, Decimal] = {}
     for sym, raw_price in rows:
         key = (sym or "").upper()
         if raw_price is None:
@@ -110,27 +108,21 @@ def _compute_simulated_pnl(
     return (fill_price - mark_price) * qty
 
 
-def mark_open_shadow_orders(session: Session) -> Dict[str, Any]:
+def mark_open_shadow_orders(session: Session) -> dict[str, Any]:
     """Update ``simulated_pnl`` for every open shadow order.
 
     Pure Python (no Celery dependency) so tests can exercise the exact same
     code path with an injected ``Session`` and a frozen ``MarketSnapshot``
     fixture.
     """
-    rows = (
-        session.query(ShadowOrder)
-        .filter(ShadowOrder.status.in_(_OPEN_MTM_STATUSES))
-        .all()
-    )
+    rows = session.query(ShadowOrder).filter(ShadowOrder.status.in_(_OPEN_MTM_STATUSES)).all()
     total = len(rows)
-    price_by_symbol = _latest_snapshot_prices(
-        session, {(r.symbol or "") for r in rows}
-    )
+    price_by_symbol = _latest_snapshot_prices(session, {(r.symbol or "") for r in rows})
     updated = 0
     skipped_no_price = 0
     skipped_no_fill = 0
     errors = 0
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for row in rows:
         try:
@@ -161,18 +153,16 @@ def mark_open_shadow_orders(session: Session) -> Dict[str, Any]:
             row.last_mark_price = mark
             row.status = ShadowOrderStatus.MARKED_TO_MARKET.value
             updated += 1
-        except Exception as e:  # noqa: BLE001 — count + log, never swallow silently
+        except Exception as e:
             errors += 1
-            logger.warning(
-                "shadow_mtm: row id=%s failed to mark-to-market: %s", row.id, e
-            )
+            logger.warning("shadow_mtm: row id=%s failed to mark-to-market: %s", row.id, e)
 
     if updated or skipped_no_price or skipped_no_fill or errors:
         session.commit()
 
-    assert (
-        updated + skipped_no_price + skipped_no_fill + errors == total
-    ), "shadow_mtm counter drift: counters do not sum to total rows"
+    assert updated + skipped_no_price + skipped_no_fill + errors == total, (
+        "shadow_mtm counter drift: counters do not sum to total rows"
+    )
 
     logger.info(
         "shadow_mtm: total=%d updated=%d skipped_no_price=%d skipped_no_fill=%d errors=%d",
@@ -203,7 +193,7 @@ def mark_open_shadow_orders(session: Session) -> Dict[str, Any]:
     lock_key=lambda **k: "singleton",
     lock_ttl_seconds=600,
 )
-def run() -> Dict[str, Any]:
+def run() -> dict[str, Any]:
     """Celery entry point. Refreshes MtM P&L for every open shadow order."""
     session = SessionLocal()
     try:

@@ -1,4 +1,5 @@
 """Schwab _sync_options escalates when API returns options but nothing is persisted."""
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -6,9 +7,9 @@ from unittest.mock import patch
 import pytest
 
 from app.models.broker_account import AccountType, BrokerAccount, BrokerType
+from app.models.user import User
 from app.services.portfolio import schwab_sync_service
 from app.services.portfolio.schwab_sync_service import SchwabSyncService
-from app.models.user import User
 
 
 class AllDroppedOptionsClient:
@@ -36,11 +37,7 @@ class AllDroppedOptionsClient:
 
 
 def _account(session) -> BrokerAccount:
-    u = (
-        session.query(User)
-        .filter(User.email == "silent_drop@example.com")
-        .first()
-    )
+    u = session.query(User).filter(User.email == "silent_drop@example.com").first()
     if not u:
         u = User(
             username="silent_drop_t",

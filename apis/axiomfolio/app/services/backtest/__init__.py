@@ -16,8 +16,8 @@ medallion: gold
 """
 
 from app.services.backtest.walk_forward import (
-    StrategyBuilder,
     SplitResult,
+    StrategyBuilder,
     StudyResult,
     TradeResult,
     WalkForwardOptimizer,
@@ -25,8 +25,8 @@ from app.services.backtest.walk_forward import (
 )
 
 __all__ = [
-    "StrategyBuilder",
     "SplitResult",
+    "StrategyBuilder",
     "StudyResult",
     "TradeResult",
     "WalkForwardOptimizer",

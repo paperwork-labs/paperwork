@@ -8,7 +8,7 @@ this task.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
     "parse_inbound_email",
     attrs={"component": "picks", "subsystem": "parser_task"},
 )
-def parse_inbound_email(email_inbox_id: int) -> Dict[str, Any]:
+def parse_inbound_email(email_inbox_id: int) -> dict[str, Any]:
     """Load ``EmailInbox`` by id, mark parse pending, log stub; real parser later."""
     db: Session = SessionLocal()
     try:

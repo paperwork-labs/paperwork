@@ -11,9 +11,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
-from typing import Dict, List, Optional
 
 import requests
 import yfinance as yf
@@ -33,16 +32,16 @@ class EarningsEvent:
 
     symbol: str
     report_date: date
-    fiscal_period: Optional[str] = None
-    estimate_eps: Optional[Decimal] = None
-    actual_eps: Optional[Decimal] = None
-    estimate_revenue: Optional[Decimal] = None
-    actual_revenue: Optional[Decimal] = None
+    fiscal_period: str | None = None
+    estimate_eps: Decimal | None = None
+    actual_eps: Decimal | None = None
+    estimate_revenue: Decimal | None = None
+    actual_revenue: Decimal | None = None
     time_of_day: str = "unknown"  # bmo | amc | unknown
     source: str = "unknown"
 
 
-def _safe_decimal(val: object) -> Optional[Decimal]:
+def _safe_decimal(val: object) -> Decimal | None:
     if val is None:
         return None
     try:
@@ -51,7 +50,7 @@ def _safe_decimal(val: object) -> Optional[Decimal]:
         return None
 
 
-def _normalize_time_of_day(raw: Optional[str]) -> str:
+def _normalize_time_of_day(raw: str | None) -> str:
     if not raw:
         return "unknown"
     lower = raw.strip().lower()
@@ -68,10 +67,10 @@ class EarningsCalendarService:
     def get_earnings_calendar(
         self,
         db: Session,
-        from_date: Optional[date] = None,
-        to_date: Optional[date] = None,
-        symbols: Optional[List[str]] = None,
-    ) -> List[Dict]:
+        from_date: date | None = None,
+        to_date: date | None = None,
+        symbols: list[str] | None = None,
+    ) -> list[dict]:
         """Query persisted earnings events, optionally filtered by date range and symbols."""
         q = db.query(EarningsCalendarEvent)
         if from_date:
@@ -87,10 +86,10 @@ class EarningsCalendarService:
     def sync_earnings(
         self,
         db: Session,
-        symbols: List[str],
-        from_date: Optional[date] = None,
-        to_date: Optional[date] = None,
-    ) -> Dict:
+        symbols: list[str],
+        from_date: date | None = None,
+        to_date: date | None = None,
+    ) -> dict:
         """Fetch from best available provider and upsert into DB.
 
         Returns counters: {source, fetched, upserted, errors}.
@@ -100,7 +99,7 @@ class EarningsCalendarService:
         if to_date is None:
             to_date = date.today() + timedelta(days=90)
 
-        events: List[EarningsEvent] = []
+        events: list[EarningsEvent] = []
         source = "none"
 
         if self._fmp_available():
@@ -112,7 +111,9 @@ class EarningsCalendarService:
                     events = [e for e in events if e.symbol in upper]
                 logger.info(
                     "FMP earnings: fetched %d events (%s to %s)",
-                    len(events), from_date, to_date,
+                    len(events),
+                    from_date,
+                    to_date,
                 )
             except Exception as exc:
                 logger.warning("FMP earnings fetch failed, falling back to yfinance: %s", exc)
@@ -122,7 +123,9 @@ class EarningsCalendarService:
             try:
                 events = self._fetch_from_yfinance(symbols)
                 source = "yfinance"
-                logger.info("yfinance earnings: fetched %d events for %d symbols", len(events), len(symbols))
+                logger.info(
+                    "yfinance earnings: fetched %d events for %d symbols", len(events), len(symbols)
+                )
             except Exception as exc:
                 logger.warning("yfinance earnings fetch failed: %s", exc)
 
@@ -135,7 +138,9 @@ class EarningsCalendarService:
                 upserted += 1
             except Exception as exc:
                 errors += 1
-                logger.warning("Failed to upsert earnings for %s %s: %s", ev.symbol, ev.report_date, exc)
+                logger.warning(
+                    "Failed to upsert earnings for %s %s: %s", ev.symbol, ev.report_date, exc
+                )
 
         if upserted:
             db.commit()
@@ -159,7 +164,7 @@ class EarningsCalendarService:
 
     # ── FMP ──────────────────────────────────────────────────────
 
-    def _fetch_from_fmp(self, from_date: date, to_date: date) -> List[EarningsEvent]:
+    def _fetch_from_fmp(self, from_date: date, to_date: date) -> list[EarningsEvent]:
         """FMP /v3/earning_calendar endpoint (premium only)."""
         provider_rate_limiter.acquire_sync("fmp")
 
@@ -178,9 +183,11 @@ class EarningsCalendarService:
             raise RuntimeError(f"FMP earning_calendar error: {msg}")
 
         if not isinstance(data, list):
-            raise RuntimeError(f"FMP earning_calendar unexpected payload type: {type(data).__name__}")
+            raise RuntimeError(
+                f"FMP earning_calendar unexpected payload type: {type(data).__name__}"
+            )
 
-        events: List[EarningsEvent] = []
+        events: list[EarningsEvent] = []
         for item in data:
             symbol = (item.get("symbol") or "").upper()
             raw_date = item.get("date")
@@ -191,24 +198,26 @@ class EarningsCalendarService:
             except (ValueError, TypeError):
                 continue
 
-            events.append(EarningsEvent(
-                symbol=symbol,
-                report_date=report_dt,
-                fiscal_period=item.get("fiscalDateEnding"),
-                estimate_eps=_safe_decimal(item.get("epsEstimated")),
-                actual_eps=_safe_decimal(item.get("eps")),
-                estimate_revenue=_safe_decimal(item.get("revenueEstimated")),
-                actual_revenue=_safe_decimal(item.get("revenue")),
-                time_of_day=_normalize_time_of_day(item.get("time")),
-                source="fmp",
-            ))
+            events.append(
+                EarningsEvent(
+                    symbol=symbol,
+                    report_date=report_dt,
+                    fiscal_period=item.get("fiscalDateEnding"),
+                    estimate_eps=_safe_decimal(item.get("epsEstimated")),
+                    actual_eps=_safe_decimal(item.get("eps")),
+                    estimate_revenue=_safe_decimal(item.get("revenueEstimated")),
+                    actual_revenue=_safe_decimal(item.get("revenue")),
+                    time_of_day=_normalize_time_of_day(item.get("time")),
+                    source="fmp",
+                )
+            )
         return events
 
     # ── yfinance ─────────────────────────────────────────────────
 
-    def _fetch_from_yfinance(self, symbols: List[str]) -> List[EarningsEvent]:
+    def _fetch_from_yfinance(self, symbols: list[str]) -> list[EarningsEvent]:
         """yfinance Ticker.calendar property (always free)."""
-        events: List[EarningsEvent] = []
+        events: list[EarningsEvent] = []
         for sym in symbols:
             provider_rate_limiter.acquire_sync("yfinance")
             try:
@@ -218,19 +227,21 @@ class EarningsCalendarService:
                     continue
                 earnings_dates = self._extract_yf_dates(cal)
                 for dt in earnings_dates:
-                    events.append(EarningsEvent(
-                        symbol=sym.upper(),
-                        report_date=dt,
-                        source="yfinance",
-                    ))
+                    events.append(
+                        EarningsEvent(
+                            symbol=sym.upper(),
+                            report_date=dt,
+                            source="yfinance",
+                        )
+                    )
             except Exception as exc:
                 logger.warning("yfinance calendar failed for %s: %s", sym, exc)
         return events
 
     @staticmethod
-    def _extract_yf_dates(cal: object) -> List[date]:
+    def _extract_yf_dates(cal: object) -> list[date]:
         """Parse earnings dates from yfinance calendar (dict or DataFrame)."""
-        dates: List[date] = []
+        dates: list[date] = []
         if isinstance(cal, dict):
             raw = cal.get("Earnings Date", [])
             if not isinstance(raw, (list, tuple)):
@@ -241,6 +252,7 @@ class EarningsCalendarService:
                     dates.append(parsed)
         else:
             import pandas as pd
+
             if isinstance(cal, pd.DataFrame):
                 if "Earnings Date" in cal.columns:
                     for d in cal["Earnings Date"]:
@@ -249,7 +261,9 @@ class EarningsCalendarService:
                             dates.append(parsed)
                 elif "Earnings Date" in cal.index:
                     row = cal.loc["Earnings Date"]
-                    for d in (row if hasattr(row, "__iter__") and not isinstance(row, str) else [row]):
+                    for d in (
+                        row if hasattr(row, "__iter__") and not isinstance(row, str) else [row]
+                    ):
                         parsed = _parse_date(d)
                         if parsed:
                             dates.append(parsed)
@@ -270,7 +284,7 @@ class EarningsCalendarService:
             actual_revenue=ev.actual_revenue,
             time_of_day=ev.time_of_day,
             source=ev.source,
-            fetched_at=datetime.now(timezone.utc),
+            fetched_at=datetime.now(UTC),
         )
         stmt = stmt.on_conflict_do_update(
             constraint="uq_earnings_sym_date_period",
@@ -287,7 +301,7 @@ class EarningsCalendarService:
         db.execute(stmt)
 
 
-def _parse_date(val: object) -> Optional[date]:
+def _parse_date(val: object) -> date | None:
     """Best-effort parse of a date-like value into a date object."""
     if val is None:
         return None
@@ -297,6 +311,7 @@ def _parse_date(val: object) -> Optional[date]:
         return val.date()
     try:
         import pandas as pd
+
         if isinstance(val, pd.Timestamp):
             return val.date()
     except ImportError:
@@ -310,7 +325,7 @@ def _parse_date(val: object) -> Optional[date]:
     return None
 
 
-def _row_to_dict(row: EarningsCalendarEvent) -> Dict:
+def _row_to_dict(row: EarningsCalendarEvent) -> dict:
     """Serialize an ORM row to a JSON-safe dict."""
     return {
         "id": row.id,
@@ -319,7 +334,9 @@ def _row_to_dict(row: EarningsCalendarEvent) -> Dict:
         "fiscal_period": row.fiscal_period,
         "estimate_eps": float(row.estimate_eps) if row.estimate_eps is not None else None,
         "actual_eps": float(row.actual_eps) if row.actual_eps is not None else None,
-        "estimate_revenue": float(row.estimate_revenue) if row.estimate_revenue is not None else None,
+        "estimate_revenue": float(row.estimate_revenue)
+        if row.estimate_revenue is not None
+        else None,
         "actual_revenue": float(row.actual_revenue) if row.actual_revenue is not None else None,
         "time_of_day": row.time_of_day,
         "source": row.source,

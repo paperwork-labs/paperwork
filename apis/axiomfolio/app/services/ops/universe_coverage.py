@@ -12,10 +12,10 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
-
+from datetime import UTC, datetime
 from decimal import Decimal
+from typing import Any
+
 from sqlalchemy.orm import Session
 
 from app.models import User
@@ -35,7 +35,7 @@ def _quantity_nonzero(quantity: object) -> bool:
         return True
 
 
-def run_universe_coverage_check(db: Session) -> Dict[str, Any]:
+def run_universe_coverage_check(db: Session) -> dict[str, Any]:
     """Compare each active user's open position symbols to the tracked universe.
 
     Returns a JSON-serializable dict including counters and ``state`` in
@@ -46,10 +46,8 @@ def run_universe_coverage_check(db: Session) -> Dict[str, Any]:
     from app.services.market.universe import tracked_symbols_with_source
 
     try:
-        tracked_list, _src = tracked_symbols_with_source(
-            db, redis_client=infra.redis_client
-        )
-    except Exception as e:  # noqa: BLE001 — surface on health, do not block startup
+        tracked_list, _src = tracked_symbols_with_source(db, redis_client=infra.redis_client)
+    except Exception as e:
         logger.exception("universe coverage: failed to load tracked universe: %s", e)
         return {
             "state": "error",
@@ -58,7 +56,7 @@ def run_universe_coverage_check(db: Session) -> Dict[str, Any]:
             "gaps_total": 0,
             "errors": 1,
             "error_detail": str(e)[:2000],
-            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "checked_at": datetime.now(UTC).isoformat(),
         }
 
     universe = {str(s).upper() for s in (tracked_list or []) if s}
@@ -79,7 +77,7 @@ def run_universe_coverage_check(db: Session) -> Dict[str, Any]:
                 )
                 .all()
             )
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             errors += 1
             logger.warning(
                 "universe coverage: positions query failed for user_id=%s: %s",
@@ -117,7 +115,7 @@ def run_universe_coverage_check(db: Session) -> Dict[str, Any]:
         "gaps_total": gaps_total,
         "errors": errors,
         "error_detail": None,
-        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "checked_at": datetime.now(UTC).isoformat(),
     }
     logger.info(
         "universe coverage summary: users_checked=%s positions_total=%s "
@@ -131,7 +129,7 @@ def run_universe_coverage_check(db: Session) -> Dict[str, Any]:
     return out
 
 
-def persist_universe_coverage_to_redis(payload: Dict[str, Any], *, r: object) -> None:
+def persist_universe_coverage_to_redis(payload: dict[str, Any], *, r: object) -> None:
     """Store last check result for :meth:`read_universe_coverage_for_admin_health`."""
     try:
         body = json.dumps(payload, default=str)
@@ -140,7 +138,7 @@ def persist_universe_coverage_to_redis(payload: Dict[str, Any], *, r: object) ->
         logger.warning("universe coverage: redis persist failed: %s", e, exc_info=True)
 
 
-def read_universe_coverage_for_admin_health() -> Optional[Dict[str, Any]]:
+def read_universe_coverage_for_admin_health() -> dict[str, Any] | None:
     """Load last startup check from Redis. Returns None if missing or parse error."""
     from app.services.market.market_data_service import infra
 

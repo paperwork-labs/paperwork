@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -11,8 +11,8 @@ from fastapi.testclient import TestClient
 from app.api.dependencies import get_current_user
 from app.api.main import app
 from app.database import get_db
-from app.models.account_balance import AccountBalance, AccountBalanceType
 from app.models import BrokerAccount, User
+from app.models.account_balance import AccountBalance, AccountBalanceType
 from app.models.broker_account import AccountType, BrokerType
 from app.models.entitlement import SubscriptionTier
 from app.models.user import UserRole
@@ -127,9 +127,9 @@ def _wire_overrides(db_session, auth_user):
 def test_single_account_happy_path(client, db_session, auth_user, primary_account):
     if db_session is None:
         pytest.skip("database not configured")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     y = now.year
-    ytd_open = datetime(y, 1, 4, 12, 0, 0, tzinfo=timezone.utc)
+    ytd_open = datetime(y, 1, 4, 12, 0, 0, tzinfo=UTC)
     latest = now - timedelta(hours=3)
 
     _seed_balance(
@@ -175,9 +175,9 @@ def test_aggregate_happy_path(client, db_session, auth_user, primary_account):
     db_session.commit()
 
     second = _make_account(db_session, auth_user, name="Second", broker=BrokerType.SCHWAB)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     y = now.year
-    ytd_open = datetime(y, 1, 5, 12, 0, 0, tzinfo=timezone.utc)
+    ytd_open = datetime(y, 1, 5, 12, 0, 0, tzinfo=UTC)
     latest = now - timedelta(hours=2)
 
     for acc, start_nlv, end_nlv in (
@@ -222,7 +222,9 @@ def test_aggregate_without_entitlement_returns_403(client, db_session, auth_user
     assert detail.get("feature") == "execution.multi_broker"
 
 
-def test_cross_tenant_cannot_query_other_users_account(client, db_session, auth_user, primary_account):
+def test_cross_tenant_cannot_query_other_users_account(
+    client, db_session, auth_user, primary_account
+):
     if db_session is None:
         pytest.skip("database not configured")
     other = _make_user(db_session, "traj_other")

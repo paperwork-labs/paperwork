@@ -26,9 +26,8 @@ Create Date: 2026-04-20
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0053"
 down_revision = "0052"
@@ -43,27 +42,19 @@ def upgrade() -> None:
     )
     op.add_column(
         "account_syncs",
-        sa.Column(
-            "expected_sections", sa.JSON(), nullable=False, server_default="[]"
-        ),
+        sa.Column("expected_sections", sa.JSON(), nullable=False, server_default="[]"),
     )
     op.add_column(
         "account_syncs",
-        sa.Column(
-            "received_sections", sa.JSON(), nullable=False, server_default="[]"
-        ),
+        sa.Column("received_sections", sa.JSON(), nullable=False, server_default="[]"),
     )
     op.add_column(
         "account_syncs",
-        sa.Column(
-            "missing_sections", sa.JSON(), nullable=False, server_default="[]"
-        ),
+        sa.Column("missing_sections", sa.JSON(), nullable=False, server_default="[]"),
     )
     op.add_column(
         "account_syncs",
-        sa.Column(
-            "section_row_counts", sa.JSON(), nullable=False, server_default="{}"
-        ),
+        sa.Column("section_row_counts", sa.JSON(), nullable=False, server_default="{}"),
     )
 
 

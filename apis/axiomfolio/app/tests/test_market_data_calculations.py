@@ -1,5 +1,6 @@
-import pytest
 import pandas as pd
+import pytest
+
 from app.services.market.market_data_service import provider_router, snapshot_builder
 
 
@@ -9,9 +10,7 @@ async def test_manual_ma_stage_basic(monkeypatch):
     close = pd.Series(range(1, 221), index=dates, dtype=float)
     high = close + 1
     low = close - 1
-    df = pd.DataFrame(
-        {"Open": close, "High": high, "Low": low, "Close": close, "Volume": 1000}
-    )
+    df = pd.DataFrame({"Open": close, "High": high, "Low": low, "Close": close, "Volume": 1000})
     df = df.iloc[::-1]
 
     async def _fake_hist(symbol, period="1y", interval="1d", **_kw):

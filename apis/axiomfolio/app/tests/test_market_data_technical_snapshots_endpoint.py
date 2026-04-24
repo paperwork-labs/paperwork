@@ -1,7 +1,9 @@
+from datetime import UTC
+
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_market_data_viewer
+from app.api.main import app
 from app.models.user import UserRole
 
 
@@ -75,7 +77,7 @@ def test_technical_snapshots_endpoint_returns_rows(monkeypatch):
 
 
 def test_technical_snapshots_endpoint_picks_latest_row_per_symbol(monkeypatch):
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime
 
     from app.api.routes.market import snapshots as routes
     from app.database import get_db
@@ -84,7 +86,7 @@ def test_technical_snapshots_endpoint_picks_latest_row_per_symbol(monkeypatch):
 
     app.dependency_overrides[get_market_data_viewer] = _viewer_override
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     class _FakeSnapshotQuery:
         def join(self, *_args, **_kwargs):
@@ -206,4 +208,3 @@ def test_snapshot_history_batch_returns_histories_per_symbol():
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_market_data_viewer, None)
-

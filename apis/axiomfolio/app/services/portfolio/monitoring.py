@@ -8,11 +8,9 @@ medallion: silver
 """
 
 import logging
-from datetime import date, datetime, timedelta, timezone
-from typing import Dict, List, Optional
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.orm import Session
-from sqlalchemy import func
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +18,7 @@ logger = logging.getLogger(__name__)
 def calculate_portfolio_drawdown(
     db: Session,
     lookback_days: int = 252,
-) -> Dict:
+) -> dict:
     """Calculate current portfolio drawdown from peak.
 
     Args:
@@ -85,8 +83,8 @@ def calculate_portfolio_drawdown(
 
 def check_drawdown_alerts(
     db: Session,
-    thresholds: Optional[List[float]] = None,
-) -> List[Dict]:
+    thresholds: list[float] | None = None,
+) -> list[dict]:
     """Check if portfolio drawdown has exceeded alert thresholds.
 
     Args:
@@ -105,21 +103,27 @@ def check_drawdown_alerts(
     alerts = []
     for threshold in sorted(thresholds):
         if dd_pct >= threshold:
-            alerts.append({
-                "type": "drawdown_exceeded",
-                "threshold_pct": threshold,
-                "actual_pct": dd_pct,
-                "drawdown_dollars": drawdown.get("drawdown_dollars"),
-                "peak_value": drawdown.get("peak_value"),
-                "current_value": drawdown.get("current_value"),
-                "peak_date": drawdown.get("peak_date"),
-                "severity": "critical" if threshold >= 20 else "warning" if threshold >= 10 else "info",
-            })
+            alerts.append(
+                {
+                    "type": "drawdown_exceeded",
+                    "threshold_pct": threshold,
+                    "actual_pct": dd_pct,
+                    "drawdown_dollars": drawdown.get("drawdown_dollars"),
+                    "peak_value": drawdown.get("peak_value"),
+                    "current_value": drawdown.get("current_value"),
+                    "peak_date": drawdown.get("peak_date"),
+                    "severity": "critical"
+                    if threshold >= 20
+                    else "warning"
+                    if threshold >= 10
+                    else "info",
+                }
+            )
 
     return alerts
 
 
-def send_drawdown_alert(alert: Dict) -> bool:
+def send_drawdown_alert(alert: dict) -> bool:
     """Send a drawdown alert to Brain webhook.
 
     Args:
@@ -156,7 +160,7 @@ def send_drawdown_alert(alert: Dict) -> bool:
         return False
 
 
-def get_portfolio_health_metrics(db: Session) -> Dict:
+def get_portfolio_health_metrics(db: Session) -> dict:
     """Get comprehensive portfolio health metrics.
 
     Returns:
@@ -189,5 +193,5 @@ def get_portfolio_health_metrics(db: Session) -> Dict:
         "max_concentration_pct": max_concentration,
         "largest_position": largest_position,
         "positions_over_10pct": list(concentration.keys()),
-        "as_of": datetime.now(timezone.utc).isoformat(),
+        "as_of": datetime.now(UTC).isoformat(),
     }

@@ -8,17 +8,18 @@ medallion: ops
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Optional, Any
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 try:
     import tastytrade as _tt_module
+
     # SDK v12.0.2 defaults to api.tastyworks.com (legacy domain).
     # TastyTrade's OAuth portal (my.tastytrade.com) issues grants for
     # api.tastytrade.com, so we must override before any Session is created.
     _tt_module.API_URL = "https://api.tastytrade.com"
 
-    from tastytrade import Session, Account
+    from tastytrade import Account, Session
     from tastytrade.account import CurrentPosition, Transaction
     from tastytrade.instruments import Equity, Option
     from tastytrade.order import InstrumentType
@@ -45,15 +46,15 @@ class TastyTradeClient:
     """
 
     def __init__(self):
-        self.session: Optional[Any] = None
-        self.accounts: List[Any] = []
+        self.session: Any | None = None
+        self.accounts: list[Any] = []
         self.connected = False
-        self.connection_start_time: Optional[datetime] = None
+        self.connection_start_time: datetime | None = None
         self.retry_count = 0
         self.max_retries = 3
         self.base_retry_delay = 2
         self._lock = asyncio.Lock() if TASTYTRADE_AVAILABLE else None
-        self.connection_health: Dict[str, Any] = {
+        self.connection_health: dict[str, Any] = {
             "status": "disconnected",
             "last_successful_request": None,
             "consecutive_failures": 0,
@@ -70,9 +71,7 @@ class TastyTradeClient:
         async with self._lock:
             for attempt in range(max_attempts):
                 try:
-                    logger.info(
-                        "TastyTrade connection attempt %d/%d", attempt + 1, max_attempts
-                    )
+                    logger.info("TastyTrade connection attempt %d/%d", attempt + 1, max_attempts)
 
                     client_secret = getattr(settings, "TASTYTRADE_CLIENT_SECRET", None)
                     refresh_token = getattr(settings, "TASTYTRADE_REFRESH_TOKEN", None)
@@ -85,9 +84,7 @@ class TastyTradeClient:
                         )
                         return False
 
-                    self.session = Session(
-                        client_secret, refresh_token, is_test=is_test_env
-                    )
+                    self.session = Session(client_secret, refresh_token, is_test=is_test_env)
                     self.accounts = await Account.get(self.session)
 
                     if not self.accounts:
@@ -123,29 +120,25 @@ class TastyTradeClient:
                     )
                     self.connected = False
                     if attempt < max_attempts - 1:
-                        wait_time = self.base_retry_delay * (2 ** attempt)
+                        wait_time = self.base_retry_delay * (2**attempt)
                         logger.info("Waiting %ds before retry...", wait_time)
                         await asyncio.sleep(wait_time)
 
-            logger.error(
-                "Failed to connect to TastyTrade after %d attempts", max_attempts
-            )
+            logger.error("Failed to connect to TastyTrade after %d attempts", max_attempts)
             return False
 
     async def connect_with_credentials(
         self,
         client_secret: str,
         refresh_token: str,
-        is_test_env: Optional[bool] = None,
+        is_test_env: bool | None = None,
         **_kwargs: Any,
     ) -> bool:
         """Connect using explicitly provided OAuth credentials."""
         if not TASTYTRADE_AVAILABLE:
             return False
         try:
-            is_test = (
-                is_test_env if is_test_env is not None else settings.TASTYTRADE_IS_TEST
-            )
+            is_test = is_test_env if is_test_env is not None else settings.TASTYTRADE_IS_TEST
             self.session = Session(client_secret, refresh_token, is_test=is_test)
             self.accounts = await Account.get(self.session)
             if not self.accounts:
@@ -200,7 +193,7 @@ class TastyTradeClient:
     # Account helpers
     # -----------------------------------------------------------------
 
-    def _find_account(self, account_number: Optional[str] = None) -> Optional[Any]:
+    def _find_account(self, account_number: str | None = None) -> Any | None:
         if not self.connected or not self.accounts:
             return None
         if account_number:
@@ -210,7 +203,7 @@ class TastyTradeClient:
             )
         return self.accounts[0] if self.accounts else None
 
-    async def get_accounts(self) -> List[Dict[str, Any]]:
+    async def get_accounts(self) -> list[dict[str, Any]]:
         try:
             if not self.connected or not self.accounts:
                 return []
@@ -220,17 +213,11 @@ class TastyTradeClient:
                     {
                         "account_number": account.account_number,
                         "nickname": getattr(account, "nickname", ""),
-                        "account_type": getattr(
-                            account, "account_type_name", "Unknown"
-                        ),
+                        "account_type": getattr(account, "account_type_name", "Unknown"),
                         "is_closed": getattr(account, "is_closed", False),
                         "is_firm_error": getattr(account, "is_firm_error", False),
-                        "is_firm_proprietary": getattr(
-                            account, "is_firm_proprietary", False
-                        ),
-                        "is_futures_approved": getattr(
-                            account, "is_futures_approved", False
-                        ),
+                        "is_firm_proprietary": getattr(account, "is_firm_proprietary", False),
+                        "is_futures_approved": getattr(account, "is_futures_approved", False),
                         "is_test_drive": getattr(account, "is_test_drive", False),
                     }
                 )
@@ -245,8 +232,8 @@ class TastyTradeClient:
     # -----------------------------------------------------------------
 
     async def get_current_positions(
-        self, account_number: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+        self, account_number: str | None = None
+    ) -> list[dict[str, Any]]:
         try:
             target = self._find_account(account_number)
             if not target:
@@ -269,7 +256,7 @@ class TastyTradeClient:
             logger.error("Error getting TastyTrade positions: %s", e)
             return []
 
-    def _position_to_dict(self, position: Any, account_number: str) -> Dict[str, Any]:
+    def _position_to_dict(self, position: Any, account_number: str) -> dict[str, Any]:
         sf = _safe_float
         ss = _safe_str
 
@@ -277,7 +264,7 @@ class TastyTradeClient:
         if hasattr(instrument_type_val, "value"):
             instrument_type_val = instrument_type_val.value
 
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "symbol": position.symbol,
             "instrument_type": instrument_type_val or "Unknown",
             "quantity": sf(position.quantity),
@@ -347,7 +334,7 @@ class TastyTradeClient:
 
     async def get_transaction_history(
         self, account_number: str, days: int = 365
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Simple transaction list (id, account_number, symbol, action, quantity, price, commission)."""
         try:
             if not self.connected:
@@ -371,18 +358,14 @@ class TastyTradeClient:
                         }
                     )
                 except Exception as e:
-                    logger.warning(
-                        "Skipping TastyTrade history row (normalize failed): %s", e
-                    )
+                    logger.warning("Skipping TastyTrade history row (normalize failed): %s", e)
                     continue
             return results
         except Exception as e:
             logger.warning("TastyTrade get_history (raw) failed for %s: %s", account_number, e)
             return []
 
-    async def get_trade_history(
-        self, account_number: str, days: int = 365
-    ) -> List[Dict[str, Any]]:
+    async def get_trade_history(self, account_number: str, days: int = 365) -> list[dict[str, Any]]:
         """Return filled trades as dicts for sync service."""
         if not TASTYTRADE_AVAILABLE:
             return []
@@ -390,12 +373,12 @@ class TastyTradeClient:
             account = self._find_account(account_number)
             if not account:
                 return []
-            start = datetime.now(timezone.utc) - timedelta(days=days)
-            end = datetime.now(timezone.utc)
+            start = datetime.now(UTC) - timedelta(days=days)
+            end = datetime.now(UTC)
             txns = await account.get_history(
                 self.session, start_date=start.date(), end_date=end.date()
             )
-            results: List[Dict[str, Any]] = []
+            results: list[dict[str, Any]] = []
             for t in txns:
                 try:
                     txn_type = getattr(t, "transaction_type", "")
@@ -403,14 +386,10 @@ class TastyTradeClient:
                         txn_type = txn_type.value
                     if txn_type != "Trade":
                         continue
-                    transformed = self._transform_tastytrade_transaction(
-                        t, account_number
-                    )
+                    transformed = self._transform_tastytrade_transaction(t, account_number)
                     if not transformed:
                         continue
-                    executed_iso = (
-                        f"{transformed.get('date')}T{transformed.get('time')}"
-                    )
+                    executed_iso = f"{transformed.get('date')}T{transformed.get('time')}"
                     results.append(
                         {
                             "symbol": transformed.get("symbol", ""),
@@ -418,9 +397,7 @@ class TastyTradeClient:
                             "quantity": float(transformed.get("quantity", 0) or 0),
                             "price": float(transformed.get("price", 0) or 0),
                             "order_id": str(transformed.get("order_id", "") or ""),
-                            "execution_id": str(
-                                transformed.get("execution_id", "") or ""
-                            ),
+                            "execution_id": str(transformed.get("execution_id", "") or ""),
                             "executed_at": executed_iso,
                         }
                     )
@@ -436,17 +413,15 @@ class TastyTradeClient:
             logger.error("TT trade history error: %s", e)
             return []
 
-    async def get_transactions(
-        self, account_number: str, days: int = 365
-    ) -> List[Dict[str, Any]]:
+    async def get_transactions(self, account_number: str, days: int = 365) -> list[dict[str, Any]]:
         if not TASTYTRADE_AVAILABLE:
             return []
         try:
             account = self._find_account(account_number)
             if not account:
                 return []
-            start = datetime.now(timezone.utc) - timedelta(days=days)
-            end = datetime.now(timezone.utc)
+            start = datetime.now(UTC) - timedelta(days=days)
+            end = datetime.now(UTC)
             txns = await account.get_history(
                 self.session, start_date=start.date(), end_date=end.date()
             )
@@ -459,17 +434,15 @@ class TastyTradeClient:
             logger.error("TT transactions error: %s", e)
             return []
 
-    async def get_dividends(
-        self, account_number: str, days: int = 365
-    ) -> List[Dict[str, Any]]:
+    async def get_dividends(self, account_number: str, days: int = 365) -> list[dict[str, Any]]:
         if not TASTYTRADE_AVAILABLE:
             return []
         try:
             account = self._find_account(account_number)
             if not account:
                 return []
-            start = datetime.now(timezone.utc) - timedelta(days=days)
-            end = datetime.now(timezone.utc)
+            start = datetime.now(UTC) - timedelta(days=days)
+            end = datetime.now(UTC)
             txns = await account.get_history(
                 self.session, start_date=start.date(), end_date=end.date()
             )
@@ -479,9 +452,7 @@ class TastyTradeClient:
                 if hasattr(txn_type, "value"):
                     txn_type = txn_type.value
                 if txn_type in ("Dividend", "Cash Dividend"):
-                    transformed = self._transform_tastytrade_transaction(
-                        t, account_number
-                    )
+                    transformed = self._transform_tastytrade_transaction(t, account_number)
                     if transformed:
                         results.append(transformed)
             return results
@@ -489,7 +460,7 @@ class TastyTradeClient:
             logger.error("TT dividends error: %s", e)
             return []
 
-    async def get_account_balances(self, account_number: str) -> Dict[str, Any]:
+    async def get_account_balances(self, account_number: str) -> dict[str, Any]:
         if not TASTYTRADE_AVAILABLE:
             return {}
         try:
@@ -499,27 +470,13 @@ class TastyTradeClient:
             bal = await account.get_balances(self.session)
             return {
                 "cash_balance": float(getattr(bal, "cash_balance", 0) or 0),
-                "net_liquidating_value": float(
-                    getattr(bal, "net_liquidating_value", 0) or 0
-                ),
-                "long_margin_value": float(
-                    getattr(bal, "long_margineable_value", 0) or 0
-                ),
-                "short_margin_value": float(
-                    getattr(bal, "short_margineable_value", 0) or 0
-                ),
-                "equity_buying_power": float(
-                    getattr(bal, "equity_buying_power", 0) or 0
-                ),
-                "derivative_buying_power": float(
-                    getattr(bal, "derivative_buying_power", 0) or 0
-                ),
-                "day_trading_buying_power": float(
-                    getattr(bal, "day_trading_buying_power", 0) or 0
-                ),
-                "maintenance_requirement": float(
-                    getattr(bal, "maintenance_requirement", 0) or 0
-                ),
+                "net_liquidating_value": float(getattr(bal, "net_liquidating_value", 0) or 0),
+                "long_margin_value": float(getattr(bal, "long_margineable_value", 0) or 0),
+                "short_margin_value": float(getattr(bal, "short_margineable_value", 0) or 0),
+                "equity_buying_power": float(getattr(bal, "equity_buying_power", 0) or 0),
+                "derivative_buying_power": float(getattr(bal, "derivative_buying_power", 0) or 0),
+                "day_trading_buying_power": float(getattr(bal, "day_trading_buying_power", 0) or 0),
+                "maintenance_requirement": float(getattr(bal, "maintenance_requirement", 0) or 0),
                 "margin_equity": float(getattr(bal, "margin_equity", 0) or 0),
             }
         except Exception as e:
@@ -532,7 +489,7 @@ class TastyTradeClient:
 
     async def get_enhanced_account_statements(
         self, account_number: str, days: int = 365
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Comprehensive transaction history in standardized format."""
         if not self.connected:
             return []
@@ -559,9 +516,7 @@ class TastyTradeClient:
                 if transaction:
                     all_transactions.append(transaction)
 
-            all_transactions.sort(
-                key=lambda x: f"{x['date']} {x['time']}", reverse=True
-            )
+            all_transactions.sort(key=lambda x: f"{x['date']} {x['time']}", reverse=True)
             logger.info(
                 "Enhanced TastyTrade statements: %d transactions for %s",
                 len(all_transactions),
@@ -572,7 +527,7 @@ class TastyTradeClient:
             logger.error("Error getting TastyTrade enhanced statements: %s", e)
             return []
 
-    async def get_enhanced_tax_lots(self, account_number: str) -> List[Dict[str, Any]]:
+    async def get_enhanced_tax_lots(self, account_number: str) -> list[dict[str, Any]]:
         """Tax lots from positions with P&L calculations."""
         if not self.connected:
             return []
@@ -591,9 +546,7 @@ class TastyTradeClient:
 
                     cost_per_share = float(position.average_open_price)
                     current_price = (
-                        float(position.close_price)
-                        if position.close_price
-                        else cost_per_share
+                        float(position.close_price) if position.close_price else cost_per_share
                     )
 
                     instrument_type_val = getattr(position, "instrument_type", None)
@@ -617,9 +570,7 @@ class TastyTradeClient:
                     else:
                         acq_str = datetime.now().strftime("%Y-%m-%d")
                     try:
-                        days_held = (
-                            datetime.now() - datetime.strptime(acq_str, "%Y-%m-%d")
-                        ).days
+                        days_held = (datetime.now() - datetime.strptime(acq_str, "%Y-%m-%d")).days
                     except Exception as e:
                         logger.warning(
                             "TastyTrade days_held parse failed for %s (acq_str=%s): %s",
@@ -667,7 +618,7 @@ class TastyTradeClient:
             logger.error("Error getting TastyTrade enhanced tax lots: %s", e)
             return []
 
-    async def get_account_info(self, account_number: str) -> Dict[str, Any]:
+    async def get_account_info(self, account_number: str) -> dict[str, Any]:
         if not self.connected:
             await self.connect_with_retry()
         try:
@@ -700,8 +651,8 @@ class TastyTradeClient:
     # -----------------------------------------------------------------
 
     def _transform_tastytrade_transaction(
-        self, txn: Any, account_number: str, all_transactions: Optional[List[Any]] = None
-    ) -> Optional[Dict[str, Any]]:
+        self, txn: Any, account_number: str, all_transactions: list[Any] | None = None
+    ) -> dict[str, Any] | None:
         """Transform a TastyTrade Transaction object to a standardized dict."""
         try:
             executed_at = getattr(txn, "executed_at", None) or getattr(
@@ -711,9 +662,7 @@ class TastyTradeClient:
                 return None
 
             action = str(getattr(txn, "action", "") or "")
-            transaction_type = (
-                "BUY" if ("Buy" in action or "Deposit" in action) else "SELL"
-            )
+            transaction_type = "BUY" if ("Buy" in action or "Deposit" in action) else "SELL"
 
             symbol = getattr(txn, "symbol", "CASH") or "CASH"
             underlying_symbol = getattr(txn, "underlying_symbol", None)
@@ -731,14 +680,9 @@ class TastyTradeClient:
             net_value = float(getattr(txn, "net_value", value) or value)
 
             clearing_date = getattr(txn, "clearing_date", None)
-            settlement_date = (
-                clearing_date.strftime("%Y-%m-%d") if clearing_date else None
-            )
+            settlement_date = clearing_date.strftime("%Y-%m-%d") if clearing_date else None
 
-            txn_id = str(
-                getattr(txn, "id", "")
-                or f"tt_{account_number}_{executed_at.timestamp()}"
-            )
+            txn_id = str(getattr(txn, "id", "") or f"tt_{account_number}_{executed_at.timestamp()}")
             order_id = str(getattr(txn, "order_id", "") or "")
 
             description = self._build_transaction_description(
@@ -779,7 +723,7 @@ class TastyTradeClient:
         value: float,
         txn: Any,
         executed_at: Any,
-        all_transactions: Optional[List[Any]],
+        all_transactions: list[Any] | None,
     ) -> str:
         """Build enhanced description with option correlation for CASH transactions."""
         if symbol != "CASH":
@@ -815,17 +759,13 @@ class TastyTradeClient:
             if related_option.get("expiration"):
                 try:
                     exp = related_option["expiration"]
-                    exp_str = (
-                        exp.strftime("%m/%d/%y") if hasattr(exp, "strftime") else str(exp)
-                    )
+                    exp_str = exp.strftime("%m/%d/%y") if hasattr(exp, "strftime") else str(exp)
                     opt_desc += f" exp {exp_str}"
                 except Exception as e:
                     logger.warning(
                         "TastyTrade transaction description: expiration format failed: %s", e
                     )
-            label = next(
-                (v for k, v in action_map.items() if k in action), "Settlement"
-            )
+            label = next((v for k, v in action_map.items() if k in action), "Settlement")
             return f"CASH {label}: {opt_desc} ${abs(value):.2f}"
 
         label = next((v for k, v in action_map.items() if k in action), "Transaction")
@@ -833,8 +773,8 @@ class TastyTradeClient:
 
     @staticmethod
     def _find_related_option(
-        executed_at: Any, all_transactions: Optional[List[Any]]
-    ) -> Optional[Dict[str, Any]]:
+        executed_at: Any, all_transactions: list[Any] | None
+    ) -> dict[str, Any] | None:
         if not all_transactions or not executed_at:
             return None
         window = timedelta(minutes=5)

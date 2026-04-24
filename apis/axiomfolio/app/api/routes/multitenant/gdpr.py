@@ -9,8 +9,7 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
@@ -43,20 +42,20 @@ class ExportJobResponse(BaseModel):
     id: int
     status: str
     requested_at: datetime
-    completed_at: Optional[datetime] = None
-    download_url: Optional[str] = None
-    expires_at: Optional[datetime] = None
-    bytes_written: Optional[int] = None
-    error_message: Optional[str] = None
+    completed_at: datetime | None = None
+    download_url: str | None = None
+    expires_at: datetime | None = None
+    bytes_written: int | None = None
+    error_message: str | None = None
 
 
 class DeleteJobResponse(BaseModel):
     id: int
     status: str
     requested_at: datetime
-    confirmed_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    error_message: Optional[str] = None
+    confirmed_at: datetime | None = None
+    completed_at: datetime | None = None
+    error_message: str | None = None
 
 
 class StartDeleteResponse(BaseModel):
@@ -103,9 +102,7 @@ def get_export_job(
     if job is None or job.user_id != current_user.id:
         # Same response for "not found" and "wrong tenant" so we don't
         # leak job-id existence cross-tenant.
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Export job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Export job not found")
     return ExportJobResponse(
         id=job.id,
         status=job.status,
@@ -131,9 +128,7 @@ def download_export(
     """
     job = db.get(GDPRExportJob, job_id)
     if job is None or job.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Export job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Export job not found")
     if job.status != GDPRJobStatus.COMPLETED.value:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -144,16 +139,12 @@ def download_export(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Export was published to remote storage; use download_url instead",
         )
-    if job.expires_at and job.expires_at < datetime.now(timezone.utc):
-        raise HTTPException(
-            status_code=status.HTTP_410_GONE, detail="Export has expired"
-        )
+    if job.expires_at and job.expires_at < datetime.now(UTC):
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Export has expired")
     fname = job.download_url.removeprefix("local://")
     path = os.path.join(settings.GDPR_EXPORT_LOCAL_DIR, fname)
     if not os.path.exists(path):
-        raise HTTPException(
-            status_code=status.HTTP_410_GONE, detail="Export artefact missing"
-        )
+        raise HTTPException(status_code=status.HTTP_410_GONE, detail="Export artefact missing")
     return FileResponse(path, media_type="application/zip", filename=fname)
 
 
@@ -189,9 +180,7 @@ def start_account_delete(
     )
 
 
-@router.post(
-    "/account-delete/{job_id}/confirm", response_model=DeleteJobResponse
-)
+@router.post("/account-delete/{job_id}/confirm", response_model=DeleteJobResponse)
 def confirm_account_delete(
     job_id: int,
     body: ConfirmDeleteRequest,
@@ -202,13 +191,9 @@ def confirm_account_delete(
     try:
         job = service.confirm(current_user.id, job_id, body.confirmation_token)
     except PermissionError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
     return DeleteJobResponse(
         id=job.id,
         status=job.status,
@@ -227,9 +212,7 @@ def get_delete_job(
 ) -> DeleteJobResponse:
     job = db.get(GDPRDeleteJob, job_id)
     if job is None or job.user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Delete job not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Delete job not found")
     return DeleteJobResponse(
         id=job.id,
         status=job.status,

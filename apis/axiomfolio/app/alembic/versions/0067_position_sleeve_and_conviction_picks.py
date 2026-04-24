@@ -27,7 +27,6 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-
 revision = "0067"
 down_revision = "0068"
 branch_labels = None
@@ -95,9 +94,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_index("idx_conviction_picks_user_rank", table_name="conviction_picks")
-    op.drop_index(
-        "idx_conviction_picks_user_generated", table_name="conviction_picks"
-    )
+    op.drop_index("idx_conviction_picks_user_generated", table_name="conviction_picks")
     op.drop_table("conviction_picks")
     op.drop_index("idx_positions_user_sleeve", table_name="positions")
     op.drop_column("positions", "sleeve")

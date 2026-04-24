@@ -18,8 +18,8 @@ medallion: silver
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -77,8 +77,8 @@ class PlaidSyncService:
         account_number: str,
         session: Session,
         *,
-        user_id: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        user_id: int | None = None,
+    ) -> dict[str, Any]:
         """Sync one Plaid-backed ``BrokerAccount`` row.
 
         Args:
@@ -99,7 +99,7 @@ class PlaidSyncService:
         )
         if user_id is not None:
             query = query.filter(BrokerAccount.user_id == user_id)
-        account: Optional[BrokerAccount] = query.first()
+        account: BrokerAccount | None = query.first()
         if account is None:
             return {
                 "status": "error",
@@ -171,7 +171,7 @@ class PlaidSyncService:
             connection.mark_error("counter drift in persist_holdings")
             raise
 
-        connection.mark_synced(datetime.now(timezone.utc))
+        connection.mark_synced(datetime.now(UTC))
         session.flush()
 
         status: str = "success"
@@ -194,7 +194,7 @@ class PlaidSyncService:
         *,
         user_id: int,
         broker_account: BrokerAccount,
-    ) -> Optional[PlaidConnection]:
+    ) -> PlaidConnection | None:
         """Find the PlaidConnection backing a BrokerAccount.
 
         Single-Item association (current scope): the
@@ -205,7 +205,7 @@ class PlaidSyncService:
         ``plaid_connection_id`` to the account; raise loudly here if we
         ever see >1 candidate connection without that disambiguator.
         """
-        connections: List[PlaidConnection] = (
+        connections: list[PlaidConnection] = (
             session.query(PlaidConnection)
             .filter(
                 PlaidConnection.user_id == user_id,
@@ -233,8 +233,8 @@ class PlaidSyncService:
         session: Session,
         *,
         user_id: int,
-        plaid_accounts: List[Dict[str, Any]],
-    ) -> Dict[str, BrokerAccount]:
+        plaid_accounts: list[dict[str, Any]],
+    ) -> dict[str, BrokerAccount]:
         """Map ``plaid_account_id`` -> :class:`BrokerAccount` for this user.
 
         The Plaid ``account_id`` is stored in
@@ -244,7 +244,7 @@ class PlaidSyncService:
         ids = [a.get("account_id") for a in plaid_accounts if a.get("account_id")]
         if not ids:
             return {}
-        rows: List[BrokerAccount] = (
+        rows: list[BrokerAccount] = (
             session.query(BrokerAccount)
             .filter(
                 BrokerAccount.user_id == user_id,
@@ -260,7 +260,7 @@ class PlaidSyncService:
         connection: PlaidConnection,
         session: Session,
         exc: PlaidAPIError,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Classify a Plaid API error and update the connection row."""
         error_code = (exc.error_code or "").upper()
         message = exc.display_message or str(exc)

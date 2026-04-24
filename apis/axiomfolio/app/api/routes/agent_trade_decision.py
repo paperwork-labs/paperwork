@@ -27,13 +27,13 @@ Why split GET vs POST + ``regenerate``:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_current_user, require_feature
+from app.api.dependencies import require_feature
 from app.database import get_db
 from app.models.user import User
 from app.services.agent.trade_decision_explainer import (
@@ -71,13 +71,13 @@ class TradeDecisionResponse(BaseModel):
     cost_usd: str = Field(description="Decimal as string to avoid IEEE-754 drift.")
     prompt_token_count: int
     completion_token_count: int
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     narrative: str
     generated_at: str | None
     reused: bool
 
 
-def _to_response(payload: Dict[str, Any]) -> TradeDecisionResponse:
+def _to_response(payload: dict[str, Any]) -> TradeDecisionResponse:
     return TradeDecisionResponse.model_validate(payload)
 
 
@@ -95,9 +95,7 @@ async def get_trade_decision_explanation(
     current user. Generates one on-demand on a cache miss."""
     explainer = TradeDecisionExplainer()
     try:
-        result = explainer.explain(
-            db, order_id=order_id, user_id=current_user.id
-        )
+        result = explainer.explain(db, order_id=order_id, user_id=current_user.id)
         db.commit()
     except OrderNotFoundError as e:
         db.rollback()
@@ -110,9 +108,7 @@ async def get_trade_decision_explanation(
             current_user.id,
             e,
         )
-        raise HTTPException(
-            status_code=500, detail="Trade decision explainer failed"
-        ) from e
+        raise HTTPException(status_code=500, detail="Trade decision explainer failed") from e
     return _to_response(explainer_result_to_dict(result))
 
 
@@ -136,9 +132,7 @@ async def regenerate_trade_decision_explanation(
     """
     explainer = TradeDecisionExplainer()
     try:
-        result = explainer.regenerate(
-            db, order_id=order_id, user_id=current_user.id
-        )
+        result = explainer.regenerate(db, order_id=order_id, user_id=current_user.id)
         db.commit()
     except OrderNotFoundError as e:
         db.rollback()
@@ -151,7 +145,5 @@ async def regenerate_trade_decision_explanation(
             current_user.id,
             e,
         )
-        raise HTTPException(
-            status_code=500, detail="Trade decision explainer failed"
-        ) from e
+        raise HTTPException(status_code=500, detail="Trade decision explainer failed") from e
     return _to_response(explainer_result_to_dict(result))

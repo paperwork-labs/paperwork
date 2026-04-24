@@ -13,7 +13,7 @@ Mirrors ``backend/tests/services/bronze/etrade/test_sync_service.py``.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -37,24 +37,24 @@ class FakeTradierClient:
     def __init__(
         self,
         *,
-        accounts: List[Dict[str, Any]],
-        positions: List[Dict[str, Any]],
-        history: List[Dict[str, Any]],
-        balances: Dict[str, Any],
-        gainloss: Optional[List[Dict[str, Any]]] = None,
+        accounts: list[dict[str, Any]],
+        positions: list[dict[str, Any]],
+        history: list[dict[str, Any]],
+        balances: dict[str, Any],
+        gainloss: list[dict[str, Any]] | None = None,
     ) -> None:
         self._accounts = accounts
         self._positions = positions
         self._history = history
         self._balances = balances
         self._gainloss = gainloss or []
-        self.calls: List[str] = []
+        self.calls: list[str] = []
 
-    def get_accounts(self) -> List[Dict[str, Any]]:
+    def get_accounts(self) -> list[dict[str, Any]]:
         self.calls.append("get_accounts")
         return list(self._accounts)
 
-    def get_positions(self, account_id: str) -> List[Dict[str, Any]]:
+    def get_positions(self, account_id: str) -> list[dict[str, Any]]:
         self.calls.append(f"get_positions:{account_id}")
         return list(self._positions)
 
@@ -62,14 +62,14 @@ class FakeTradierClient:
         self,
         account_id: str,
         *,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-        history_type: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        start: str | None = None,
+        end: str | None = None,
+        history_type: str | None = None,
+    ) -> list[dict[str, Any]]:
         self.calls.append(f"get_history:{account_id}")
         return list(self._history)
 
-    def get_balances(self, account_id: str) -> Dict[str, Any]:
+    def get_balances(self, account_id: str) -> dict[str, Any]:
         self.calls.append(f"get_balances:{account_id}")
         return dict(self._balances)
 
@@ -77,9 +77,9 @@ class FakeTradierClient:
         self,
         account_id: str,
         *,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        start: str | None = None,
+        end: str | None = None,
+    ) -> list[dict[str, Any]]:
         self.calls.append(f"get_gainloss:{account_id}")
         return list(self._gainloss)
 
@@ -132,7 +132,7 @@ def _make_oauth_connection(
     return conn
 
 
-def _default_payload() -> Dict[str, Any]:
+def _default_payload() -> dict[str, Any]:
     """Canonical minimal payload covering balances/positions/history."""
 
     return {
@@ -263,20 +263,22 @@ def test_sync_trades_populate_closing_lot_fields(db_session) -> None:
 
     payload = _default_payload()
     # Add a closing sell so we exercise both opening and closing trades.
-    payload["history"].append({
-        "amount": 1800.0,
-        "date": "2024-03-01T10:15:00-05:00",
-        "type": "trade",
-        "trade": {
-            "commission": 1.0,
-            "description": "SOLD AAPL @ 180",
-            "price": 180.0,
-            "quantity": 10,
-            "symbol": "AAPL",
-            "trade_type": "Equity",
-            "transaction_type": "sell",
-        },
-    })
+    payload["history"].append(
+        {
+            "amount": 1800.0,
+            "date": "2024-03-01T10:15:00-05:00",
+            "type": "trade",
+            "trade": {
+                "commission": 1.0,
+                "description": "SOLD AAPL @ 180",
+                "price": 180.0,
+                "quantity": 10,
+                "symbol": "AAPL",
+                "trade_type": "Equity",
+                "transaction_type": "sell",
+            },
+        }
+    )
 
     user = _make_user(db_session, "tradier_trades")
     account = _make_tradier_account(db_session, user)
@@ -328,23 +330,15 @@ def test_sync_is_idempotent_on_second_run(db_session) -> None:
         balances=payload["balances"],
     )
     service = TradierSyncService(client=fake)
-    service.sync_account_comprehensive(
-        account_number=account.account_number, session=db_session
-    )
+    service.sync_account_comprehensive(account_number=account.account_number, session=db_session)
     # Second pass against the auto-corrected real account number.
-    result2 = service.sync_account_comprehensive(
-        account_number="987654321", session=db_session
-    )
+    result2 = service.sync_account_comprehensive(account_number="987654321", session=db_session)
     assert result2["status"] == "success"
     # Transactions are external_id-keyed, so re-ingest is a skip.
     assert result2["transactions_synced"] == 0
     assert result2["transactions_skipped"] >= 2
 
-    pos_count = (
-        db_session.query(Position)
-        .filter(Position.account_id == account.id)
-        .count()
-    )
+    pos_count = db_session.query(Position).filter(Position.account_id == account.id).count()
     assert pos_count == 1
 
 
@@ -375,14 +369,10 @@ def test_sync_requires_user_id_when_account_number_collides(db_session) -> None:
     _make_oauth_connection(db_session, user_b)
 
     service = TradierSyncService(
-        client=FakeTradierClient(
-            accounts=[], positions=[], history=[], balances={}
-        )
+        client=FakeTradierClient(accounts=[], positions=[], history=[], balances={})
     )
     with pytest.raises(ValueError) as exc:
-        service.sync_account_comprehensive(
-            account_number="SHARED_NUM", session=db_session
-        )
+        service.sync_account_comprehensive(account_number="SHARED_NUM", session=db_session)
     assert "multi-tenancy" in str(exc.value).lower()
 
 
@@ -417,11 +407,7 @@ def test_sync_scopes_to_user_id_kwarg(db_session) -> None:
         .filter(Position.user_id == user_a.id, Position.account_id == acct_a.id)
         .count()
     )
-    user_b_positions = (
-        db_session.query(Position)
-        .filter(Position.user_id == user_b.id)
-        .count()
-    )
+    user_b_positions = db_session.query(Position).filter(Position.user_id == user_b.id).count()
     assert user_a_positions == 1
     assert user_b_positions == 0
 
@@ -438,10 +424,10 @@ def test_sync_returns_error_on_permanent_api_failure(db_session) -> None:
             self,
             account_id: str,
             *,
-            start: Optional[str] = None,
-            end: Optional[str] = None,
-            history_type: Optional[str] = None,
-        ) -> List[Dict[str, Any]]:
+            start: str | None = None,
+            end: str | None = None,
+            history_type: str | None = None,
+        ) -> list[dict[str, Any]]:
             raise TradierAPIError("401 unauthorized", permanent=True, status=401)
 
     payload = _default_payload()
@@ -472,15 +458,9 @@ def test_sync_dividends_populate_correctly(db_session) -> None:
         balances=payload["balances"],
     )
     service = TradierSyncService(client=fake)
-    service.sync_account_comprehensive(
-        account_number=account.account_number, session=db_session
-    )
+    service.sync_account_comprehensive(account_number=account.account_number, session=db_session)
 
-    divs = (
-        db_session.query(Dividend)
-        .filter(Dividend.account_id == account.id)
-        .all()
-    )
+    divs = db_session.query(Dividend).filter(Dividend.account_id == account.id).all()
     assert len(divs) == 1
     assert divs[0].symbol == "AAPL"
     assert divs[0].total_dividend == pytest.approx(42.50)
@@ -489,7 +469,7 @@ def test_sync_dividends_populate_correctly(db_session) -> None:
 def test_history_external_id_fits_trade_execution_id_limit() -> None:
     """Long/verbose Tradier history rows must hash to a short ``tra_*`` id."""
 
-    long_event: Dict[str, Any] = {
+    long_event: dict[str, Any] = {
         "date": "2024-01-15T10:00:00-05:00",
         "type": "trade",
         "amount": -500.0,

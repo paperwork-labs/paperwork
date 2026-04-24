@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from celery.schedules import crontab
 
@@ -15,7 +14,7 @@ def build_crontab_schedule(
     day_of_month: str,
     month_of_year: str,
     day_of_week: str,
-    timezone: Optional[str] = "UTC",
+    timezone: str | None = "UTC",
 ):
     """
     Create a crontab schedule that tolerates Celery versions with differing tz kwargs.
@@ -48,5 +47,3 @@ def build_crontab_schedule(
 
 
 __all__ = ["build_crontab_schedule"]
-
-

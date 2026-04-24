@@ -11,8 +11,9 @@ Covers:
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from app.services.execution.broker_base import OrderRequest
 from app.services.execution.risk_gate import (
@@ -87,9 +88,7 @@ class TestCryptoSizing:
     def test_crypto_skips_stage_regime_path(self) -> None:
         """Crypto must NOT enter ``_check_stage_regime_sizing`` even when db is provided."""
         db = MagicMock()
-        with patch.object(
-            RiskGate, "_check_stage_regime_sizing"
-        ) as mock_stage:
+        with patch.object(RiskGate, "_check_stage_regime_sizing") as mock_stage:
             warnings = self.gate.check(
                 self._req("SOL-USD", qty=10.0),
                 price_estimate=100.0,

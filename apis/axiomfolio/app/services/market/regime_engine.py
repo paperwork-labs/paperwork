@@ -9,13 +9,14 @@ Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
 
 medallion: silver
 """
+
 from __future__ import annotations
 
 import logging
 import math
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Optional, Union
+
 from sqlalchemy.orm import Session
 
 from app.models.market_data import MarketRegime
@@ -35,6 +36,7 @@ REGIME_R5 = "R5"  # Bear
 @dataclass
 class RegimeInputs:
     """Raw daily inputs for the Regime Engine."""
+
     vix_spot: float
     vix3m_vix_ratio: float
     vvix_vix_ratio: float
@@ -46,6 +48,7 @@ class RegimeInputs:
 @dataclass
 class RegimeResult:
     """Full regime computation output."""
+
     as_of_date: date
     inputs: RegimeInputs
     score_vix: float
@@ -65,19 +68,22 @@ class RegimeResult:
 # ── Scoring functions (1–5 per non-overlapping boundaries) ──
 # Boundary rule: on-boundary = more bearish score.
 
-def _safe_input(func_name: str, value, *, allow_negative: bool = False) -> Optional[float]:
+
+def _safe_input(func_name: str, value, *, allow_negative: bool = False) -> float | None:
     """Return None if value is invalid (None/NaN/non-positive), else float."""
     if value is None or (isinstance(value, float) and math.isnan(value)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            func_name, value,
+            func_name,
+            value,
         )
         return None
     val = float(value)
     if not allow_negative and val <= 0:
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            func_name, value,
+            func_name,
+            value,
         )
         return None
     return val
@@ -110,7 +116,8 @@ def score_vix3m_vix(ratio: float) -> float:
     if ratio is None or (isinstance(ratio, float) and math.isnan(ratio)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_vix3m_vix", ratio,
+            "score_vix3m_vix",
+            ratio,
         )
         return 3.0
     if ratio > 1.10:
@@ -133,7 +140,8 @@ def score_vvix_vix(ratio: float) -> float:
     if ratio is None or (isinstance(ratio, float) and math.isnan(ratio)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_vvix_vix", ratio,
+            "score_vvix_vix",
+            ratio,
         )
         return 3.0
     if ratio >= 7.0:
@@ -149,7 +157,7 @@ def score_vvix_vix(ratio: float) -> float:
     return 4.0
 
 
-def score_nh_nl(nh_nl: Optional[Union[int, float]]) -> float:
+def score_nh_nl(nh_nl: int | float | None) -> float:
     """New Highs minus New Lows (S&P 500) → 1 (bullish) to 5 (bearish).
 
     Boundaries: >100 / (20,100] / (-50,20] / (-150,-50] / ≤-150
@@ -157,7 +165,8 @@ def score_nh_nl(nh_nl: Optional[Union[int, float]]) -> float:
     if nh_nl is None or (isinstance(nh_nl, float) and math.isnan(nh_nl)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_nh_nl", nh_nl,
+            "score_nh_nl",
+            nh_nl,
         )
         return 3.0
     if nh_nl > 100:
@@ -179,7 +188,8 @@ def score_pct_above_200d(pct: float) -> float:
     if pct is None or (isinstance(pct, float) and math.isnan(pct)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_pct_above_200d", pct,
+            "score_pct_above_200d",
+            pct,
         )
         return 3.0
     if pct > 65:
@@ -201,7 +211,8 @@ def score_pct_above_50d(pct: float) -> float:
     if pct is None or (isinstance(pct, float) and math.isnan(pct)):
         logger.warning(
             "Regime scoring: %s received invalid input %s, using neutral score",
-            "score_pct_above_50d", pct,
+            "score_pct_above_50d",
+            pct,
         )
         return 3.0
     if pct > 65:
@@ -340,7 +351,7 @@ def persist_regime(db: Session, result: RegimeResult) -> MarketRegime:
     return row
 
 
-def get_current_regime(db: Session) -> Optional[MarketRegime]:
+def get_current_regime(db: Session) -> MarketRegime | None:
     """Get the most recent regime row."""
     from sqlalchemy import select
 
@@ -350,9 +361,9 @@ def get_current_regime(db: Session) -> Optional[MarketRegime]:
 
 def get_current_and_previous_regime(
     db: Session,
-) -> tuple[Optional[MarketRegime], Optional[MarketRegime]]:
+) -> tuple[MarketRegime | None, MarketRegime | None]:
     """Get current and previous regime rows for transition detection.
-    
+
     Returns:
         Tuple of (current_regime, previous_regime). Either may be None.
     """
@@ -361,7 +372,7 @@ def get_current_and_previous_regime(
     current = get_current_regime(db)
     if not current:
         return None, None
-    
+
     stmt = (
         select(MarketRegime)
         .where(MarketRegime.as_of_date < current.as_of_date)
@@ -372,7 +383,7 @@ def get_current_and_previous_regime(
     return current, previous
 
 
-def get_regime_for_date(db: Session, as_of: date) -> Optional[MarketRegime]:
+def get_regime_for_date(db: Session, as_of: date) -> MarketRegime | None:
     """Get regime for a specific date."""
     from sqlalchemy import select
 

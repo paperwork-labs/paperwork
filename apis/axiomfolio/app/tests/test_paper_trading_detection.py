@@ -4,8 +4,9 @@ Covers: IBKR_TRADING_MODE config, port-based fallback, and interaction
 between the two mechanisms.
 """
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from app.services.clients.ibkr_client import IBKRClient
 
@@ -47,8 +48,8 @@ class TestPaperTradingDetection:
     @pytest.mark.parametrize(
         "port,expected",
         [
-            (7497, True),   # TWS Paper
-            (4002, True),   # Gateway Paper
+            (7497, True),  # TWS Paper
+            (4002, True),  # Gateway Paper
             (7496, False),  # TWS Live
             (4001, False),  # Gateway Live
             (8888, False),  # extrange unified - ambiguous, should default to not-paper

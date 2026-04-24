@@ -157,10 +157,14 @@ def test_e2e_full_indicator_series(synthetic_stock_spy: tuple[pd.DataFrame, pd.D
     for i in (200, 220, 280):
         win = close.iloc[i - 149 : i + 1]
         exp_sma150 = float(win.mean())
-        np.testing.assert_allclose(float(result["sma_150"].iloc[i]), exp_sma150, rtol=1e-9, atol=1e-6)
+        np.testing.assert_allclose(
+            float(result["sma_150"].iloc[i]), exp_sma150, rtol=1e-9, atol=1e-6
+        )
 
     exp_sma50_280 = float(close.iloc[280 - 49 : 281].mean())
-    np.testing.assert_allclose(float(result["sma_50"].iloc[280]), exp_sma50_280, rtol=1e-9, atol=1e-6)
+    np.testing.assert_allclose(
+        float(result["sma_50"].iloc[280]), exp_sma50_280, rtol=1e-9, atol=1e-6
+    )
 
 
 def test_e2e_stage_classification(synthetic_stock_spy: tuple[pd.DataFrame, pd.DataFrame]) -> None:

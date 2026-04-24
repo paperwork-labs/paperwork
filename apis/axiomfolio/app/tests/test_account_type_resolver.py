@@ -5,7 +5,6 @@ import pytest
 from app.models.broker_account import AccountType, BrokerType
 from app.services.portfolio.account_type_resolver import resolve_account_type
 
-
 pytestmark = pytest.mark.no_db
 
 

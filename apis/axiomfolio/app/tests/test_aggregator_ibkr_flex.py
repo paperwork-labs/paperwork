@@ -1,12 +1,13 @@
-import uuid
 import asyncio
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.main import app
-from app.tests.auth_test_utils import approve_user_for_login_tests
-from app.models.broker_account import BrokerAccount, AccountCredentials, BrokerType
 import app.api.routes.aggregator as agg
+from app.api.main import app
+from app.models.broker_account import AccountCredentials, BrokerAccount, BrokerType
+from app.tests.auth_test_utils import approve_user_for_login_tests
 
 
 @pytest.fixture(scope="module")
@@ -21,7 +22,9 @@ def _login(client):
     username = f"ibkr_{uuid.uuid4().hex[:6]}"
     password = "Passw0rd!"
     email = f"{username}@example.com"
-    r = client.post("/api/v1/auth/register", json={"username": username, "email": email, "password": password})
+    r = client.post(
+        "/api/v1/auth/register", json={"username": username, "email": email, "password": password}
+    )
     if r.status_code != 200:
         pytest.skip("auth endpoint not available in test env")
     approve_user_for_login_tests(username)
@@ -31,7 +34,9 @@ def _login(client):
 
 
 def test_ibkr_flex_connect_and_status(client, monkeypatch, db_session):
-    pytest.skip("Integration-style test (background job + independent session); excluded from default suite.")
+    pytest.skip(
+        "Integration-style test (background job + independent session); excluded from default suite."
+    )
     user_id, token = _login(client)
     if not token:
         pytest.skip("login failed in test env")
@@ -40,6 +45,7 @@ def test_ibkr_flex_connect_and_status(client, monkeypatch, db_session):
     def _create_task(coro):
         loop = asyncio.get_event_loop()
         return loop.create_task(coro) if loop.is_running() else asyncio.run(coro)
+
     monkeypatch.setattr(agg.asyncio, "create_task", _create_task)
 
     # connect with dummy credentials (async -> returns job_id)
@@ -56,9 +62,17 @@ def test_ibkr_flex_connect_and_status(client, monkeypatch, db_session):
     # The connect endpoint runs a background job that uses its own SessionLocal().
     # We intentionally do NOT override get_db for this test, so the user row is committed
     # and visible to the background job's session.
-    acct = db_session.query(BrokerAccount).filter(BrokerAccount.user_id == user_id, BrokerAccount.broker == BrokerType.IBKR).first()
+    acct = (
+        db_session.query(BrokerAccount)
+        .filter(BrokerAccount.user_id == user_id, BrokerAccount.broker == BrokerType.IBKR)
+        .first()
+    )
     assert acct is not None
-    cred = db_session.query(AccountCredentials).filter(AccountCredentials.account_id == acct.id).first()
+    cred = (
+        db_session.query(AccountCredentials)
+        .filter(AccountCredentials.account_id == acct.id)
+        .first()
+    )
     assert cred is not None
     assert cred.provider == BrokerType.IBKR
     assert cred.credential_type == "ibkr_flex"
@@ -69,7 +83,3 @@ def test_ibkr_flex_connect_and_status(client, monkeypatch, db_session):
     assert rs.status_code == 200
     body = rs.json()
     assert body.get("connected") in (True, False)
-
-
-
-

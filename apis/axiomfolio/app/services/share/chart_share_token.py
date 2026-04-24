@@ -12,8 +12,9 @@ medallion: ops
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, List, Optional, Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jwt
 
@@ -27,7 +28,7 @@ CHART_TOKEN_VERSION = 1
 
 
 def _signing_key() -> bytes:
-    raw: Optional[str] = settings.OAUTH_STATE_SECRET or settings.SECRET_KEY
+    raw: str | None = settings.OAUTH_STATE_SECRET or settings.SECRET_KEY
     if not raw or not str(raw).strip():
         raise RuntimeError(
             "OAUTH_STATE_SECRET (or SECRET_KEY) must be set to issue chart share tokens"
@@ -40,12 +41,12 @@ def create_chart_share_token(
     user_id: int,
     symbol: str,
     period: str = "1y",
-    indicators: Optional[Sequence[str]] = None,
+    indicators: Sequence[str] | None = None,
 ) -> str:
     """Return an HS256 JWT expiring in 30 days. Payload includes ``uid`` for audit only."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     exp = now + timedelta(days=30)
-    ind_list: List[str] = [str(x) for x in (indicators or []) if str(x).strip()][:32]
+    ind_list: list[str] = [str(x) for x in (indicators or []) if str(x).strip()][:32]
     payload: dict[str, Any] = {
         "sub": CHART_SHARE_SUB,
         "scope": CHART_SHARE_SCOPE,

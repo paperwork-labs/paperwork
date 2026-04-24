@@ -1,28 +1,29 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import functools
+import json
 import logging
 import traceback
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, Dict, List, Optional, Set
+from collections.abc import Callable
+from datetime import UTC, datetime
+from typing import Any
 
 from celery import current_task
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import SessionLocal
-from app.tasks.job_catalog import JOB_CATALOG
 from app.models import JobRun, PriceData
 from app.services.market.market_data_service import infra, price_bars, provider_router
 from app.services.notifications.alerts import alert_service
+from app.tasks.job_catalog import JOB_CATALOG
 from app.tasks.utils.schedule_metadata import HookConfig, ScheduleMetadata
 
 logger = logging.getLogger(__name__)
 
 
-def _catalog_singleflight_lock_key(task_name: str) -> Optional[str]:
+def _catalog_singleflight_lock_key(task_name: str) -> str | None:
     """If *task_name* matches a catalog row with ``singleflight=True``, return *task_name* for Redis lock."""
     for job in JOB_CATALOG:
         if job.job_run_label == task_name:
@@ -32,7 +33,12 @@ def _catalog_singleflight_lock_key(task_name: str) -> Optional[str]:
     return None
 
 
-def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]] = None, lock_ttl_seconds: int = 3900):
+def task_run(
+    task_name: str,
+    *,
+    lock_key: Callable[..., str | None] | None = None,
+    lock_ttl_seconds: int = 3900,
+):
     """Decorator to standardize task execution.
 
     Features:
@@ -49,9 +55,9 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
         @functools.wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:
             # Optional redis lock (explicit lock_key, or catalog singleflight default)
-            lock_id: Optional[str] = None
+            lock_id: str | None = None
             try:
-                resolved_key: Optional[str] = None
+                resolved_key: str | None = None
                 if lock_key is not None:
                     resolved_key = lock_key(*args, **kwargs)
                 else:
@@ -74,7 +80,7 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                 task_name=task_name,
                 params=kwargs or {},
                 status="running",
-                started_at=datetime.now(timezone.utc),
+                started_at=datetime.now(UTC),
             )
             session.add(job)
             session.commit()
@@ -97,11 +103,13 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                         if nonfatal_error:
                             job.error = str(nonfatal_error)[:10000]
                     except Exception as e:
-                        logger.warning("task_run store nonfatal job error failed for %s: %s", task_name, e)
+                        logger.warning(
+                            "task_run store nonfatal job error failed for %s: %s", task_name, e
+                        )
                 job.status = "ok"
                 if isinstance(result, dict) and result.get("status") == "error":
                     job.status = "error"
-                job.finished_at = datetime.now(timezone.utc)
+                job.finished_at = datetime.now(UTC)
                 duration = _job_duration_seconds(job)
                 if counters is not None:
                     counters["duration_s"] = duration
@@ -135,7 +143,7 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
             except Exception as exc:
                 job.status = "error"
                 job.error = f"{exc}\n{traceback.format_exc()}"
-                job.finished_at = datetime.now(timezone.utc)
+                job.finished_at = datetime.now(UTC)
                 session.commit()
                 try:
                     _publish_status(task_name, "error", {"id": job.id, "error": str(exc)})
@@ -157,7 +165,9 @@ def task_run(task_name: str, *, lock_key: Optional[Callable[..., Optional[str]]]
                     try:
                         infra.redis_client.delete(f"lock:{task_name}:{lock_id}")
                     except Exception as e:
-                        logger.warning("task_run redis lock release failed for %s: %s", task_name, e)
+                        logger.warning(
+                            "task_run redis lock release failed for %s: %s", task_name, e
+                        )
 
         return wrapper
 
@@ -168,7 +178,14 @@ def _publish_status(task: str, status: str, payload: dict | None = None) -> None
     r = infra.redis_client
     r.set(
         f"taskstatus:{task}:last",
-        json.dumps({"task": task, "status": status, "ts": datetime.now(timezone.utc).isoformat(), "payload": payload or {}}),
+        json.dumps(
+            {
+                "task": task,
+                "status": status,
+                "ts": datetime.now(UTC).isoformat(),
+                "payload": payload or {},
+            }
+        ),
     )
 
 
@@ -219,7 +236,7 @@ def _duration_bucket(duration_s: float) -> str:
     return "very_slow"
 
 
-def _slow_threshold(meta: ScheduleMetadata | None, hooks: HookConfig | None) -> Optional[float]:
+def _slow_threshold(meta: ScheduleMetadata | None, hooks: HookConfig | None) -> float | None:
     if hooks and hooks.slow_threshold_s:
         try:
             return float(hooks.slow_threshold_s)
@@ -233,7 +250,9 @@ def _slow_threshold(meta: ScheduleMetadata | None, hooks: HookConfig | None) -> 
     return None
 
 
-def _is_slow_run(duration_s: float, meta: ScheduleMetadata | None, hooks: HookConfig | None) -> bool:
+def _is_slow_run(
+    duration_s: float, meta: ScheduleMetadata | None, hooks: HookConfig | None
+) -> bool:
     threshold = _slow_threshold(meta, hooks)
     if threshold is None:
         return False
@@ -249,7 +268,7 @@ def _emit_alerts(
     duration_s: float | None,
     meta: ScheduleMetadata | None,
     counters: dict | None = None,
-    error: Optional[str] = None,
+    error: str | None = None,
 ) -> None:
     if hooks is None:
         return
@@ -321,7 +340,7 @@ def setup_event_loop() -> asyncio.AbstractEventLoop:
     return asyncio.new_event_loop()
 
 
-def increment_provider_usage(usage: Dict[str, int], result: Optional[Dict[str, Any]]) -> None:
+def increment_provider_usage(usage: dict[str, int], result: dict[str, Any] | None) -> None:
     """Track provider usage statistics from a fetch result."""
     provider = (result or {}).get("provider") or "unknown"
     usage[provider] = usage.get(provider, 0) + 1
@@ -341,9 +360,9 @@ def classify_provider_error(error: object) -> str:
     return "provider_error"
 
 
-def resolve_history_days(requested_days: Optional[int]) -> int:
+def resolve_history_days(requested_days: int | None) -> int:
     """Resolve snapshot history window using last successful run (min 5 days).
-    
+
     If requested_days is provided, uses that (clamped to minimum of 5).
     Otherwise looks up last successful admin_coverage_backfill run and computes
     the number of days since then, defaulting to 20 if no prior run found.
@@ -372,7 +391,7 @@ def resolve_history_days(requested_days: Optional[int]) -> int:
         if last_run:
             last_ts = last_run.finished_at or last_run.started_at
         if last_ts:
-            delta_days = max(0, (datetime.now(timezone.utc).date() - last_ts.date()).days)
+            delta_days = max(0, (datetime.now(UTC).date() - last_ts.date()).days)
             return max(minimum_days, delta_days)
     except Exception as e:
         logger.warning("History days lookup failed, using default: %s", e)
@@ -381,17 +400,17 @@ def resolve_history_days(requested_days: Optional[int]) -> int:
     return max(minimum_days, 20)
 
 
-def get_tracked_symbols_safe(session: Session) -> List[str]:
+def get_tracked_symbols_safe(session: Session) -> list[str]:
     """Get tracked symbols with fallback to DB if Redis cache is empty.
-    
+
     Args:
         session: SQLAlchemy session
-        
+
     Returns:
         Sorted list of uppercase symbol strings
     """
     from app.services.market.universe import tracked_symbols, tracked_symbols_from_db
-    
+
     symbols = tracked_symbols(session, redis_client=infra.redis_client)
     symbols = sorted({str(s).upper() for s in (symbols or []) if s})
     if not symbols:
@@ -399,26 +418,25 @@ def get_tracked_symbols_safe(session: Session) -> List[str]:
     return symbols
 
 
-def get_tracked_universe_from_db(session: Session) -> Set[str]:
+def get_tracked_universe_from_db(session: Session) -> set[str]:
     """Get union of active index constituents and portfolio symbols from DB.
-    
+
     IMPORTANT:
     - We intentionally exclude inactive index constituents, otherwise the tracked universe
       accumulates delisted/removed tickers and coverage will look degraded forever.
-      
+
     Args:
         session: SQLAlchemy session
-        
+
     Returns:
         Set of uppercase symbol strings
     """
     from app.services.market.universe import tracked_symbols_from_db
+
     return set(tracked_symbols_from_db(session))
 
 
-def set_task_status(
-    task_name: str, status: str, payload: Optional[Dict[str, Any]] = None
-) -> None:
+def set_task_status(task_name: str, status: str, payload: dict[str, Any] | None = None) -> None:
     """Publish task status to Redis for monitoring.
 
     Wraps :func:`_publish_status` with error handling so tasks do not fail on Redis issues.
@@ -435,9 +453,7 @@ def _setup_event_loop() -> asyncio.AbstractEventLoop:
     return setup_event_loop()
 
 
-def _increment_provider_usage(
-    usage: Dict[str, int], result: Optional[Dict[str, Any]]
-) -> None:
+def _increment_provider_usage(usage: dict[str, int], result: dict[str, Any] | None) -> None:
     """Underscore alias for :func:`increment_provider_usage`."""
     increment_provider_usage(usage, result)
 
@@ -447,24 +463,22 @@ def _classify_provider_error(error: object) -> str:
     return classify_provider_error(error)
 
 
-def _resolve_history_days(requested_days: Optional[int]) -> int:
+def _resolve_history_days(requested_days: int | None) -> int:
     """Underscore alias for :func:`resolve_history_days`."""
     return resolve_history_days(requested_days)
 
 
-def _get_tracked_symbols_safe(session: Session) -> List[str]:
+def _get_tracked_symbols_safe(session: Session) -> list[str]:
     """Underscore alias for :func:`get_tracked_symbols_safe`."""
     return get_tracked_symbols_safe(session)
 
 
-def _set_task_status(
-    task_name: str, status: str, payload: Optional[Dict[str, Any]] = None
-) -> None:
+def _set_task_status(task_name: str, status: str, payload: dict[str, Any] | None = None) -> None:
     """Underscore alias for :func:`set_task_status`."""
     set_task_status(task_name, status, payload)
 
 
-def _get_tracked_universe_from_db(session: Session) -> Set[str]:
+def _get_tracked_universe_from_db(session: Session) -> set[str]:
     """Underscore alias for :func:`get_tracked_universe_from_db`."""
     return get_tracked_universe_from_db(session)
 
@@ -486,11 +500,11 @@ def _daily_backfill_concurrency() -> int:
 def _persist_daily_fetch_results(
     *,
     session: Session,
-    fetched: List[dict],
-    since_dt: Optional[Any],
+    fetched: list[dict],
+    since_dt: Any | None,
     use_delta_after: bool,
     error_samples_limit: int = 25,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Persist provider daily OHLCV fetch results into ``price_data`` via ``persist_price_bars``.
 
     Aggregates counters (updated vs up-to-date, bars inserted, errors) and optional error samples
@@ -506,12 +520,16 @@ def _persist_daily_fetch_results(
     processed_ok = 0
     skipped_empty = 0
     errors = 0
-    error_samples: List[dict] = []
-    provider_usage: Dict[str, int] = {}
+    error_samples: list[dict] = []
+    provider_usage: dict[str, int] = {}
 
-    last_dates: Dict[str, Any] = {}
+    last_dates: dict[str, Any] = {}
     if use_delta_after and fetched:
-        all_syms = [item.get("symbol") for item in fetched if item.get("symbol") and item.get("symbol") != "?"]
+        all_syms = [
+            item.get("symbol")
+            for item in fetched
+            if item.get("symbol") and item.get("symbol") != "?"
+        ]
         if all_syms:
             last_dates = dict(
                 session.query(PriceData.symbol, func.max(PriceData.date))
@@ -547,16 +565,14 @@ def _persist_daily_fetch_results(
             df2 = df
             if since_dt is not None:
                 df2 = df.copy()
-                df2.index = pd.to_datetime(df2.index, utc=True, errors="coerce").tz_convert(
-                    None
-                )
+                df2.index = pd.to_datetime(df2.index, utc=True, errors="coerce").tz_convert(None)
                 df2 = df2[df2.index >= since_dt]
                 if df2 is None or df2.empty:
                     processed_ok += 1
                     _increment_provider_usage(provider_usage, {"provider": provider})
                     continue
 
-            bars_attempted_total += int(len(df2))
+            bars_attempted_total += len(df2)
             last_date = None
             if use_delta_after:
                 last_date = last_dates.get(sym)
@@ -605,12 +621,12 @@ def _persist_daily_fetch_results(
 
 async def fetch_daily_for_symbols(
     *,
-    symbols: List[str],
+    symbols: list[str],
     period: str,
-    max_bars: Optional[int],
+    max_bars: int | None,
     concurrency: int,
     skip_l2: bool = False,
-) -> List[dict]:
+) -> list[dict]:
     """Concurrent provider fetch of daily OHLCV for many symbols (used by backfill tasks).
 
     When *skip_l2* is True the DB cache layer is bypassed so every symbol
@@ -618,7 +634,7 @@ async def fetch_daily_for_symbols(
     the DB may already have partial data but you need full-depth history.
     """
     sem = asyncio.Semaphore(max(1, int(concurrency)))
-    out: List[dict] = []
+    out: list[dict] = []
 
     async def _one(sym: str) -> dict:
         async with sem:
@@ -649,12 +665,12 @@ async def fetch_daily_for_symbols(
 
 async def _fetch_daily_for_symbols(
     *,
-    symbols: List[str],
+    symbols: list[str],
     period: str,
-    max_bars: Optional[int],
+    max_bars: int | None,
     concurrency: int,
     skip_l2: bool = False,
-) -> List[dict]:
+) -> list[dict]:
     """Underscore alias for :func:`fetch_daily_for_symbols`."""
     return await fetch_daily_for_symbols(
         symbols=symbols,
@@ -663,4 +679,3 @@ async def _fetch_daily_for_symbols(
         concurrency=concurrency,
         skip_l2=skip_l2,
     )
-

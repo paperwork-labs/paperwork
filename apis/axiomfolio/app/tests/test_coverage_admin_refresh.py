@@ -1,9 +1,10 @@
-import pytest
 from types import SimpleNamespace
+
+import pytest
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_admin_user
+from app.api.main import app
 from app.models.user import UserRole
 
 
@@ -51,5 +52,3 @@ def test_admin_restore_daily_tracked_enqueues_task(monkeypatch):
     assert resp.status_code == 200
     payload = resp.json()
     assert payload.get("task_id") == "task-restore-123"
-
-

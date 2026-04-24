@@ -2,14 +2,15 @@
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import hashlib
 import hmac
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
@@ -22,14 +23,14 @@ class BrainWebhookClient:
     """Client for sending webhooks to Paperwork Brain."""
 
     def __init__(self):
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     @property
-    def webhook_url(self) -> Optional[str]:
+    def webhook_url(self) -> str | None:
         return getattr(settings, "BRAIN_WEBHOOK_URL", None)
 
     @property
-    def webhook_secret(self) -> Optional[str]:
+    def webhook_secret(self) -> str | None:
         return getattr(settings, "BRAIN_WEBHOOK_SECRET", None)
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -37,9 +38,9 @@ class BrainWebhookClient:
             self._client = httpx.AsyncClient(timeout=10.0)
         return self._client
 
-    def _sign(self, body_bytes: bytes) -> Dict[str, str]:
+    def _sign(self, body_bytes: bytes) -> dict[str, str]:
         """Compute HMAC-SHA256 signature over body and return auth headers."""
-        headers: Dict[str, str] = {}
+        headers: dict[str, str] = {}
         if self.webhook_secret:
             sig = hmac.new(
                 self.webhook_secret.encode(),
@@ -52,8 +53,8 @@ class BrainWebhookClient:
     async def notify(
         self,
         event: str,
-        data: Dict[str, Any],
-        user_id: Optional[int] = None,
+        data: dict[str, Any],
+        user_id: int | None = None,
     ) -> bool:
         """Send event to Brain webhook."""
         if not self.webhook_url:
@@ -64,7 +65,7 @@ class BrainWebhookClient:
             "event": event,
             "data": data,
             "user_id": user_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "source": "axiomfolio",
         }
 
@@ -96,8 +97,8 @@ class BrainWebhookClient:
     def notify_sync(
         self,
         event: str,
-        data: Dict[str, Any],
-        user_id: Optional[int] = None,
+        data: dict[str, Any],
+        user_id: int | None = None,
     ) -> bool:
         """Same as notify() using a synchronous HTTP client (Celery / sync callers)."""
         if not self.webhook_url:
@@ -108,7 +109,7 @@ class BrainWebhookClient:
             "event": event,
             "data": data,
             "user_id": user_id,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "source": "axiomfolio",
         }
 
@@ -138,31 +139,35 @@ class BrainWebhookClient:
             return False
 
     # Convenience methods for common events
-    async def trade_executed(self, order_data: Dict[str, Any], user_id: int) -> bool:
+    async def trade_executed(self, order_data: dict[str, Any], user_id: int) -> bool:
         return await self.notify("trade_executed", order_data, user_id)
 
-    async def position_closed(self, position_data: Dict[str, Any], user_id: int) -> bool:
+    async def position_closed(self, position_data: dict[str, Any], user_id: int) -> bool:
         return await self.notify("position_closed", position_data, user_id)
 
-    async def stop_triggered(self, order_data: Dict[str, Any], user_id: int) -> bool:
+    async def stop_triggered(self, order_data: dict[str, Any], user_id: int) -> bool:
         return await self.notify("stop_triggered", order_data, user_id)
 
-    async def risk_gate_activated(self, risk_data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
+    async def risk_gate_activated(
+        self, risk_data: dict[str, Any], user_id: int | None = None
+    ) -> bool:
         return await self.notify("risk_gate_activated", risk_data, user_id)
 
-    async def scan_alert(self, scan_data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
+    async def scan_alert(self, scan_data: dict[str, Any], user_id: int | None = None) -> bool:
         return await self.notify("scan_alert", scan_data, user_id)
 
-    async def regime_change(self, regime_data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
+    async def regime_change(
+        self, regime_data: dict[str, Any], user_id: int | None = None
+    ) -> bool:
         return await self.notify("regime_change", regime_data, user_id)
 
-    async def exit_alert(self, exit_data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
+    async def exit_alert(self, exit_data: dict[str, Any], user_id: int | None = None) -> bool:
         return await self.notify("exit_alert", exit_data, user_id)
 
-    async def approval_required(self, order_data: Dict[str, Any], user_id: int) -> bool:
+    async def approval_required(self, order_data: dict[str, Any], user_id: int) -> bool:
         return await self.notify("approval_required", order_data, user_id)
 
-    async def approval_expired(self, data: Dict[str, Any], user_id: Optional[int] = None) -> bool:
+    async def approval_expired(self, data: dict[str, Any], user_id: int | None = None) -> bool:
         return await self.notify("approval_expired", data, user_id)
 
 
