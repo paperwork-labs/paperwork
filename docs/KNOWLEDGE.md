@@ -277,6 +277,8 @@ Companion changes: added DELETE `/settings/ai-keys` so a user who downgrades fro
 
 **Reversible?** Partially. The naming convention is policy and can be revised; docstring tags are cheap to add or remove. Directory moves remain separate, reversible diffs.
 
+**Amendment [2026-04-23]:** D127's "three-layer" model is now superseded by the **four-layer** model defined in the Medallion Wave 0 scope (see `docs/plans/MEDALLION_AUDIT_2026Q2.md` and `docs/handoffs/2026-04-22-medallion-wave-0-stage-setting.md`). The fourth layer is `execution/`, which reads gold signals and emits real-world broker orders — it does not fit bronze/silver/gold because its blast radius is user money, not data. An `ops/` escape hatch is declared explicitly for cross-cutting infrastructure (billing, notifications, oauth, observability, etc.) that does not participate in the data-flow hierarchy. Phase 0.A (2026-04-23) applied 268 docstring tags; Phase 0.B added a CI import-layer gate (`scripts/medallion/check_imports.py`, `make medallion-check`) with a waiver mechanism for 21 pre-existing cross-layer violations; Phase 0.C will execute the physical file relocation per `medallion_move_map.yaml` (145 moves across 4 passes).
+
 ### D44–D45, D69, D71–D72 — Paperwork Integration Sprint (2026-03-31)
 
 **Celery Beat (D44)**: All scheduling driven by `backend/tasks/job_catalog.py` via Celery Beat. 20 catalog entries with cron, timezone, timeout. Render worker runs `celery ... worker --beat`. Three legacy Render cron jobs (`admin_coverage_backfill`, `admin_retention_enforce`, `ibkr-daily-flex-sync`) suspended. `render_sync_service.py` remains for optional non-Beat / Render-cron deployments.
