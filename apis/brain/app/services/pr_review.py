@@ -12,7 +12,13 @@ Design notes:
   auditable.
 - Every review is persisted as a memory episode so the next review can
   reason about historical patterns (e.g. "we rejected similar risk_gate
-  changes in PR #489 because…").
+  changes in PR #489 because…") and so ``sweep_open_prs`` can skip PRs it
+  has already reviewed at the current head SHA.
+
+Architecture note: Brain drives this itself — via chat, MCP, or the admin
+sweep endpoint. There is deliberately no external cron or GitHub Actions
+webhook pinging this module; Brain's agent loop + memory + GitHub tools are
+sufficient, and the webhook was redundant state.
 """
 
 from __future__ import annotations
@@ -22,8 +28,11 @@ import logging
 from typing import Any
 
 import httpx
+from sqlalchemy import and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.models.episode import Episode
 from app.services import memory
 from app.services.pii import scrub_pii
 from app.tools import github as gh_tools
@@ -194,7 +203,9 @@ async def _call_anthropic(
     return {}
 
 
-async def review_pr(db: Any, *, pr_number: int, org_id: str = "paperwork-labs") -> dict[str, Any]:
+async def review_pr(
+    db: AsyncSession, *, pr_number: int, org_id: str = "paperwork-labs"
+) -> dict[str, Any]:
     """Fetch PR + diff, call Claude, post review, store memory episode.
 
     Returns a dict with keys: {posted: bool, verdict: str, summary: str, review_id: str}.
@@ -203,6 +214,7 @@ async def review_pr(db: Any, *, pr_number: int, org_id: str = "paperwork-labs") 
     if meta_text.startswith("PR #") and "not found" in meta_text:
         return {"posted": False, "error": "pr_not_found", "number": pr_number}
 
+    head_sha = await _fetch_head_sha(pr_number)
     files = _extract_files(meta_text)
     diff = await gh_tools.get_github_pr_diff(pr_number, max_chars=60000)
 
@@ -249,6 +261,7 @@ async def review_pr(db: Any, *, pr_number: int, org_id: str = "paperwork-labs") 
             summary=f"PR #{pr_number}: {verdict} — {str(parsed.get('summary') or '')[:200]}",
             full_context=json.dumps({
                 "pr_number": pr_number,
+                "head_sha": head_sha,
                 "verdict": verdict,
                 "model": model,
                 "files": files[:40],
@@ -259,7 +272,12 @@ async def review_pr(db: Any, *, pr_number: int, org_id: str = "paperwork-labs") 
             product="brain",
             source_ref=str(pr_number),
             importance=0.6 if verdict == "REQUEST_CHANGES" else 0.4,
-            metadata={"pr_number": pr_number, "verdict": verdict, "model": model},
+            metadata={
+                "pr_number": pr_number,
+                "head_sha": head_sha,
+                "verdict": verdict,
+                "model": model,
+            },
         )
     except Exception as e:
         logger.warning("Failed to persist PR review episode: %s", e)
@@ -271,7 +289,202 @@ async def review_pr(db: Any, *, pr_number: int, org_id: str = "paperwork-labs") 
         "review_result": post_result,
         "model": model,
         "number": pr_number,
+        "head_sha": head_sha,
     }
+
+
+# ---- sweep: Brain's autonomous "review everything new" loop ------------------
+
+
+# Labels that tell Brain to stay out. Dependabot bumps have their own Haiku
+# triage pipeline (see docs/DEPENDABOT.md), so we skip the whole "dependencies"
+# family by default.
+_SKIP_LABELS = frozenset({
+    "skip-brain-review",
+    "deps:major",
+    "dependencies",
+    "do-not-merge",
+})
+
+_SKIP_AUTHORS = frozenset({
+    "dependabot[bot]",
+    "dependabot-preview[bot]",
+    "renovate[bot]",
+    "github-actions[bot]",
+})
+
+
+async def sweep_open_prs(
+    db: AsyncSession,
+    *,
+    org_id: str = "paperwork-labs",
+    limit: int = 30,
+    force: bool = False,
+) -> dict[str, Any]:
+    """Find open PRs Brain hasn't reviewed yet at their current head SHA, review them.
+
+    This is Brain's self-driven review loop. Called from:
+    - the agent loop (e.g. user says "review open PRs")
+    - the MCP tool ``brain_sweep_open_prs``
+    - the admin endpoint ``POST /api/v1/admin/pr-sweep``
+    - a cron / scheduler that hits the admin endpoint (optional)
+
+    Memory is the source of truth for "has this been reviewed at this SHA?".
+    No external bookkeeping — just a Postgres query.
+
+    Returns a report: ``{reviewed: [numbers], skipped: [{number, reason}], errors: [...]}``.
+    """
+    owner, repo = _repo_parts_from_settings()
+
+    prs = await _list_open_prs(owner, repo, limit=limit)
+    reviewed: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
+    errors: list[dict[str, Any]] = []
+
+    for pr in prs:
+        number = int(pr.get("number", 0))
+        if not number:
+            continue
+
+        author = ((pr.get("user") or {}).get("login") or "").strip()
+        if author in _SKIP_AUTHORS:
+            skipped.append({"number": number, "reason": f"skip author: {author}"})
+            continue
+
+        labels = {
+            (lbl.get("name") or "").strip()
+            for lbl in (pr.get("labels") or [])
+            if isinstance(lbl, dict)
+        }
+        blocking = labels & _SKIP_LABELS
+        if blocking:
+            skipped.append({"number": number, "reason": f"skip label(s): {sorted(blocking)}"})
+            continue
+
+        if pr.get("draft"):
+            skipped.append({"number": number, "reason": "draft"})
+            continue
+
+        head_sha = str(((pr.get("head") or {}).get("sha") or "")).strip()
+        if not head_sha:
+            skipped.append({"number": number, "reason": "no head SHA"})
+            continue
+
+        if not force and await _has_review_at_sha(db, org_id=org_id, pr_number=number, head_sha=head_sha):
+            skipped.append({"number": number, "reason": f"already reviewed at {head_sha[:7]}"})
+            continue
+
+        try:
+            result = await review_pr(db, pr_number=number, org_id=org_id)
+            if result.get("posted"):
+                reviewed.append({"number": number, "verdict": result.get("verdict")})
+            else:
+                errors.append({"number": number, "error": result.get("error", "unknown")})
+        except Exception as e:
+            logger.exception("sweep_open_prs: review_pr failed for #%s", number)
+            errors.append({"number": number, "error": str(e)[:200]})
+
+    logger.info(
+        "sweep_open_prs complete: reviewed=%d skipped=%d errors=%d",
+        len(reviewed),
+        len(skipped),
+        len(errors),
+    )
+    return {
+        "reviewed": reviewed,
+        "skipped": skipped,
+        "errors": errors,
+        "scanned": len(prs),
+    }
+
+
+# ---- helpers for sweep -------------------------------------------------------
+
+
+def _repo_parts_from_settings() -> tuple[str, str]:
+    raw = (settings.GITHUB_REPO or "").strip()
+    parts = raw.split("/", 1)
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        raise ValueError("GITHUB_REPO must be 'owner/repo'")
+    return parts[0], parts[1]
+
+
+async def _list_open_prs(owner: str, repo: str, *, limit: int) -> list[dict[str, Any]]:
+    """Raw /pulls list — needs head.sha and labels, which ``list_github_prs`` doesn't surface."""
+    capped = max(1, min(limit, 100))
+    headers = {
+        "Authorization": f"token {settings.GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+    async with httpx.AsyncClient(
+        base_url="https://api.github.com",
+        headers=headers,
+        timeout=httpx.Timeout(30.0),
+    ) as client:
+        r = await client.get(
+            f"/repos/{owner}/{repo}/pulls",
+            params={"state": "open", "per_page": capped, "sort": "created", "direction": "desc"},
+        )
+        r.raise_for_status()
+        data = r.json()
+    if isinstance(data, list):
+        return data
+    return []
+
+
+async def _fetch_head_sha(pr_number: int) -> str:
+    """One-shot head SHA fetch; returns empty string on failure (non-fatal)."""
+    try:
+        owner, repo = _repo_parts_from_settings()
+    except ValueError:
+        return ""
+    headers = {
+        "Authorization": f"token {settings.GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+    try:
+        async with httpx.AsyncClient(
+            base_url="https://api.github.com",
+            headers=headers,
+            timeout=httpx.Timeout(15.0),
+        ) as client:
+            r = await client.get(f"/repos/{owner}/{repo}/pulls/{pr_number}")
+            if r.status_code != 200:
+                return ""
+            data = r.json()
+    except (httpx.RequestError, ValueError):
+        return ""
+    return str(((data or {}).get("head") or {}).get("sha") or "")
+
+
+async def _has_review_at_sha(
+    db: AsyncSession,
+    *,
+    org_id: str,
+    pr_number: int,
+    head_sha: str,
+) -> bool:
+    """True if an episode exists for this PR+SHA with source 'brain:pr-review:*'."""
+    if not head_sha:
+        return False
+    stmt = (
+        select(func.count(Episode.id))
+        .where(
+            and_(
+                Episode.organization_id == org_id,
+                Episode.source_ref == str(pr_number),
+                Episode.source.like("brain:pr-review:%"),
+                Episode.metadata_["head_sha"].astext == head_sha,
+            )
+        )
+    )
+    try:
+        result = await db.execute(stmt)
+        count = int(result.scalar() or 0)
+        return count > 0
+    except Exception as e:
+        logger.warning("_has_review_at_sha query failed (treating as unreviewed): %s", e)
+        return False
 
 
 # ---- helpers -----------------------------------------------------------------
