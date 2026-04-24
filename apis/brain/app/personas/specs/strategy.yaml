@@ -1,0 +1,14 @@
+name: strategy
+description: Strategy — roadmap, priorities, quarterly planning.
+default_model: claude-sonnet-4-20250514
+escalation_model: claude-opus-4-20250618
+escalate_if:
+  - tokens>6000
+  - mention:quarterly
+allowed_tools:
+  - read_github_file
+  - search_github_code
+  - search_memory
+daily_cost_ceiling_usd: 6.00
+owner_channel: strategy
+mode: chat

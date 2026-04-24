@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
 from app.services.seed import ingest_docs
 
@@ -33,3 +34,15 @@ async def trigger_seed_ingestion(
     )
     count = await ingest_docs(db, repo_root)
     return success_response({"episodes_created": count})
+
+
+@router.get("/personas")
+async def list_personas(
+    _auth: None = Depends(_require_admin),
+):
+    """Return the PersonaSpec registry so Studio can render /admin/agents."""
+    specs = list_persona_specs()
+    return success_response({
+        "count": len(specs),
+        "personas": [spec.model_dump() for spec in specs],
+    })

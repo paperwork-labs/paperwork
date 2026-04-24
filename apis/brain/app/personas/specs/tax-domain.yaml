@@ -1,0 +1,15 @@
+name: tax-domain
+description: Tax-domain — 1040 calcs, brackets, filing status, deductions.
+default_model: o4-mini
+escalation_model: claude-sonnet-4-20250514
+escalate_if:
+  - compliance
+  - tools_required
+allowed_tools:
+  - read_github_file
+  - search_memory
+compliance_flagged: true
+confidence_floor: 0.8
+daily_cost_ceiling_usd: 3.00
+owner_channel: tax
+mode: chat

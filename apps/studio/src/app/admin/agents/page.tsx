@@ -1,4 +1,10 @@
-import { getN8nExecutions, getN8nWorkflows, WORKFLOW_META } from "@/lib/command-center";
+import {
+  getBrainPersonas,
+  getN8nExecutions,
+  getN8nWorkflows,
+  WORKFLOW_META,
+  type BrainPersonaSpec,
+} from "@/lib/command-center";
 import Link from "next/link";
 
 type AgentsPageProps = {
@@ -29,9 +35,103 @@ function statusTone(status: string) {
   return "text-amber-300";
 }
 
+function BrainPersonaRegistry({ personas }: { personas: BrainPersonaSpec[] }) {
+  if (personas.length === 0) {
+    return (
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+        <p className="mb-2 text-sm font-medium text-zinc-200">Brain Personas</p>
+        <p className="text-xs text-zinc-500">
+          Set <code className="rounded bg-zinc-800 px-1 py-0.5">BRAIN_API_URL</code> and{" "}
+          <code className="rounded bg-zinc-800 px-1 py-0.5">BRAIN_API_SECRET</code> to
+          load the persona spec registry from Brain&apos;s{" "}
+          <code className="rounded bg-zinc-800 px-1 py-0.5">/admin/personas</code>{" "}
+          endpoint. Specs live at{" "}
+          <code className="rounded bg-zinc-800 px-1 py-0.5">
+            apis/brain/app/personas/specs/
+          </code>
+          .
+        </p>
+      </section>
+    );
+  }
+
+  const sorted = [...personas].sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-medium text-zinc-200">
+          Brain Personas{" "}
+          <span className="text-xs text-zinc-500">({sorted.length} specs loaded)</span>
+        </p>
+        <span className="text-xs text-zinc-500">
+          source: apis/brain/app/personas/specs/
+        </span>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {sorted.map((p) => (
+          <div
+            key={p.name}
+            className="rounded-md bg-zinc-800/60 px-3 py-3 text-sm"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="truncate font-medium text-zinc-100">{p.name}</p>
+              <span className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide">
+                {p.compliance_flagged && (
+                  <span className="rounded-full bg-rose-900/40 px-2 py-0.5 text-rose-300">
+                    compliance
+                  </span>
+                )}
+                <span className="rounded-full bg-zinc-700/60 px-2 py-0.5 text-zinc-300">
+                  {p.mode}
+                </span>
+              </span>
+            </div>
+            <p className="mt-1 line-clamp-2 text-xs text-zinc-400">
+              {p.description}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
+              <span className="rounded-full bg-zinc-700/60 px-2 py-0.5 font-mono text-zinc-200">
+                {p.default_model}
+              </span>
+              {p.escalation_model && (
+                <>
+                  <span className="text-zinc-600">→</span>
+                  <span className="rounded-full bg-indigo-900/40 px-2 py-0.5 font-mono text-indigo-200">
+                    {p.escalation_model}
+                  </span>
+                </>
+              )}
+              {p.daily_cost_ceiling_usd !== null && (
+                <span className="rounded-full bg-zinc-700/30 px-2 py-0.5 text-zinc-500">
+                  cap ${p.daily_cost_ceiling_usd.toFixed(2)}/day
+                </span>
+              )}
+            </div>
+            {p.escalate_if.length > 0 && (
+              <p className="mt-1.5 text-[11px] text-zinc-500">
+                escalate: {p.escalate_if.join(", ")}
+              </p>
+            )}
+            {p.owner_channel && (
+              <p className="mt-0.5 text-[11px] text-zinc-600">
+                #{p.owner_channel}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default async function AgentsPage({ searchParams }: AgentsPageProps) {
   const params = await searchParams;
-  const [workflows, executions] = await Promise.all([getN8nWorkflows(), getN8nExecutions(40)]);
+  const [workflows, executions, personas] = await Promise.all([
+    getN8nWorkflows(),
+    getN8nExecutions(40),
+    getBrainPersonas(),
+  ]);
   const workflowId = params.workflow ?? "all";
   const sortDirection = params.sort === "asc" ? "asc" : "desc";
   const executionsWithDerivedStatus = executions.map((execution) => {
@@ -88,6 +188,8 @@ export default async function AgentsPage({ searchParams }: AgentsPageProps) {
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold tracking-tight">Agent Activity</h1>
       <p className="text-zinc-400">Workflow-level status, recent executions, and persona activity.</p>
+
+      <BrainPersonaRegistry personas={personas} />
 
       <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
         <p className="mb-3 text-sm font-medium text-zinc-200">Workflow Health + Stats</p>

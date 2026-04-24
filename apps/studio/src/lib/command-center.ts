@@ -200,6 +200,39 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T | null> 
   }
 }
 
+export type BrainPersonaSpec = {
+  name: string;
+  description: string;
+  default_model: string;
+  escalation_model: string | null;
+  escalate_if: string[];
+  allowed_tools: string[] | null;
+  daily_cost_ceiling_usd: number | null;
+  confidence_floor: number | null;
+  compliance_flagged: boolean;
+  owner_channel: string | null;
+  mode: "chat" | "task";
+};
+
+function getBrainApiRoot() {
+  const raw = normalizeBaseUrl(process.env.BRAIN_API_URL);
+  if (!raw) return undefined;
+  return raw.endsWith("/api/v1") ? raw : `${raw}/api/v1`;
+}
+
+export async function getBrainPersonas(): Promise<BrainPersonaSpec[]> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) return [];
+  const data = await fetchJson<{
+    success?: boolean;
+    data?: { count: number; personas: BrainPersonaSpec[] };
+  }>(`${apiRoot}/admin/personas`, {
+    headers: { "X-Brain-Secret": secret },
+  });
+  return data?.data?.personas ?? [];
+}
+
 export async function getN8nWorkflows() {
   const apiRoot = getN8nApiRoot();
   const headers = getN8nHeaders();

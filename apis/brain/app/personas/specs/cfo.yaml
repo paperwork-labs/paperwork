@@ -1,0 +1,13 @@
+name: cfo
+description: CFO — cost, burn, revenue, subscriptions, pricing, budget.
+default_model: claude-sonnet-4-20250514
+escalation_model: claude-opus-4-20250618
+escalate_if:
+  - tokens>5000
+  - mention:forecast
+allowed_tools:
+  - read_github_file
+  - search_memory
+daily_cost_ceiling_usd: 5.00
+owner_channel: cfo
+mode: chat

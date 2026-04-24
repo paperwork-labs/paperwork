@@ -1,0 +1,13 @@
+name: ux
+description: UX — design, components, accessibility, interaction polish.
+default_model: gpt-4o-mini
+escalation_model: claude-sonnet-4-20250514
+escalate_if:
+  - tokens>3500
+allowed_tools:
+  - read_github_file
+  - search_github_code
+  - search_memory
+daily_cost_ceiling_usd: 3.00
+owner_channel: ux
+mode: chat

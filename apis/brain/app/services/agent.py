@@ -25,6 +25,8 @@ from typing import Any
 import yaml
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.personas import get_spec as get_persona_spec
+from app.personas import resolve_model as resolve_persona_model
 from app.services import idempotency, memory
 from app.services.observability import create_trace, flush as flush_traces
 from app.services.pii import scrub_pii
@@ -34,6 +36,7 @@ from app.services.router import (
     ChainResult,
     CircuitBreaker,
     ClassifyAndRoute,
+    PersonaPinnedRoute,
 )
 
 logger = logging.getLogger(__name__)
@@ -294,7 +297,37 @@ async def process(
     messages.append({"role": "user", "content": message})
 
     cb = _get_circuit_breaker(redis_client)
-    strategy = ClassifyAndRoute(cb)
+
+    persona_spec = get_persona_spec(persona)
+    if persona_spec is not None:
+        tokens_threshold: int | None = None
+        escalate_on_tools = False
+        mention_targets: list[str] = []
+        for tag in persona_spec.escalate_if:
+            if tag == "tools_required":
+                escalate_on_tools = True
+            elif tag == "compliance" and persona_spec.compliance_flagged:
+                escalate_on_tools = True
+            elif tag.startswith("tokens>"):
+                try:
+                    tokens_threshold = int(tag.split(">", 1)[1])
+                except ValueError:
+                    pass
+            elif tag.startswith("mention:"):
+                mention_targets.append(tag.split(":", 1)[1])
+        strategy = PersonaPinnedRoute(
+            cb,
+            model=persona_spec.default_model,
+            escalation_model=persona_spec.escalation_model,
+            escalate_on_tools=escalate_on_tools,
+            escalate_on_tokens_over=tokens_threshold,
+            escalate_on_mentions=mention_targets,
+        )
+        strategy_name = "persona_pinned_route"
+    else:
+        strategy = ClassifyAndRoute(cb)
+        strategy_name = "classify_and_route"
+
     context = ChainContext(
         message=message,
         system_prompt=system_prompt,
@@ -303,7 +336,7 @@ async def process(
         organization_id=organization_id,
     )
 
-    llm_span = trace.span(name="classify_and_route", input={"message": message[:200]})
+    llm_span = trace.span(name=strategy_name, input={"message": message[:200]})
     result: ChainResult = await strategy.execute(context)
     llm_span.end(output={
         "model": result.model,
@@ -321,7 +354,7 @@ async def process(
             [v["principle_id"] for v in violations],
         )
 
-    await memory.store_episode(
+    episode = await memory.store_episode(
         db,
         organization_id=organization_id,
         source=f"brain:{channel or 'api'}",
@@ -338,6 +371,14 @@ async def process(
         tokens_in=result.tokens_in,
         tokens_out=result.tokens_out,
     )
+
+    # D4: stamp provenance on the response so downstream channels (Slack,
+    # Studio, n8n) can link back to the source episode. Skip for trivial
+    # duplicate/mock responses where content is empty.
+    episode_uri = f"brain://episode/{episode.id}" if episode and episode.id else None
+    stamped_content = result.content
+    if episode_uri and result.content and "brain://episode/" not in result.content:
+        stamped_content = f"{result.content}\n\n_source: {episode_uri}_"
 
     if result.classification:
         await memory.store_episode(
@@ -374,8 +415,9 @@ async def process(
     flush_traces()
 
     return {
-        "response": result.content,
+        "response": stamped_content,
         "persona": persona,
+        "persona_spec": persona_spec.name if persona_spec else None,
         "model": result.model,
         "provider": result.provider,
         "tokens_in": result.tokens_in,
@@ -384,4 +426,6 @@ async def process(
         "classification": result.classification,
         "tool_calls": result.tool_calls,
         "constitutional_violations": violations,
+        "episode_id": episode.id if episode else None,
+        "episode_uri": episode_uri,
     }

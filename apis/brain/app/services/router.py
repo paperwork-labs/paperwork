@@ -164,6 +164,126 @@ FALLBACK_MAP = {
 # -- ClassifyAndRoute Strategy -------------------------------------------------
 
 
+def _provider_for_model(model: str) -> str:
+    """Infer provider from a model slug. Keep in sync with FALLBACK_MAP."""
+    if model.startswith("claude-"):
+        return "anthropic"
+    if model.startswith("gemini-"):
+        return "google"
+    return "openai"
+
+
+class PersonaPinnedRoute:
+    """Skip Gemini classifier when a persona has a typed spec. Saves ~1
+    classifier call per request and gives the persona owner explicit control.
+    Escalates to spec.escalation_model when tools are needed or heuristics
+    (e.g. token threshold, escalate_if mentions) fire."""
+
+    def __init__(
+        self,
+        circuit_breaker: CircuitBreaker,
+        *,
+        model: str,
+        escalation_model: str | None,
+        escalate_on_tools: bool,
+        escalate_on_tokens_over: int | None,
+        escalate_on_mentions: list[str],
+    ):
+        self.cb = circuit_breaker
+        self.model = model
+        self.escalation_model = escalation_model
+        self.escalate_on_tools = escalate_on_tools
+        self.escalate_on_tokens_over = escalate_on_tokens_over
+        self.escalate_on_mentions = [m.lower() for m in escalate_on_mentions]
+
+    async def execute(self, context: ChainContext) -> ChainResult:
+        message_lower = context.message.lower()
+        # Cheap heuristic for "tools likely needed" without calling a classifier:
+        # question words + infra/code/repo nouns or explicit tool-ish phrases.
+        tools_hint_keywords = (
+            "pr ", "prs", "pull request", "deploy", "commit", "render", "vercel",
+            "github", "workflow", "portfolio", "position", "trade",
+            "memory", "remember ", "know about",
+        )
+        tools_needed = any(k in message_lower for k in tools_hint_keywords)
+
+        model = self.model
+        escalated = False
+        if self.escalation_model:
+            if self.escalate_on_tools and tools_needed:
+                model, escalated = self.escalation_model, True
+            elif any(m in message_lower for m in self.escalate_on_mentions):
+                model, escalated = self.escalation_model, True
+            elif (
+                self.escalate_on_tokens_over is not None
+                and len(context.message) // 4 > self.escalate_on_tokens_over
+            ):
+                model, escalated = self.escalation_model, True
+
+        provider = _provider_for_model(model)
+
+        if await self.cb.is_open(provider):
+            fallback = FALLBACK_MAP.get(provider, {})
+            new_provider = fallback.get("provider", "anthropic")
+            model_map = fallback.get("model_map", {})
+            model = model_map.get(model, "claude-sonnet-4-20250514")
+            provider = new_provider
+            logger.warning(
+                "Circuit open for pinned persona route, falling back to %s/%s",
+                provider, model,
+            )
+
+        try:
+            if tools_needed and provider == "anthropic":
+                result = await llm.complete_with_mcp(
+                    system_prompt=context.system_prompt,
+                    messages=context.messages,
+                    model=model,
+                )
+            elif tools_needed and provider == "openai":
+                result = await llm.complete_openai_with_mcp(
+                    system_prompt=context.system_prompt,
+                    messages=context.messages,
+                    model=model,
+                )
+            else:
+                result = await llm.complete_text(
+                    system_prompt=context.system_prompt,
+                    messages=context.messages,
+                    model=model,
+                    provider=provider,
+                )
+            await self.cb.record_success(provider)
+        except Exception:
+            logger.error(
+                "PersonaPinnedRoute LLM call failed for %s/%s",
+                provider, model, exc_info=True,
+            )
+            await self.cb.record_failure(provider)
+            result = llm._mock_response(context.messages)
+
+        cost = calculate_cost(
+            result.get("model", model),
+            result.get("tokens_in", 0),
+            result.get("tokens_out", 0),
+        )
+
+        return ChainResult(
+            content=result.get("content", ""),
+            model=result.get("model", model),
+            provider=result.get("provider", provider),
+            tokens_in=result.get("tokens_in", 0),
+            tokens_out=result.get("tokens_out", 0),
+            tool_calls=result.get("tool_calls", []),
+            classification={
+                "strategy": "persona_pinned",
+                "escalated": escalated,
+                "tools_needed": tools_needed,
+            },
+            cost=cost,
+        )
+
+
 class ClassifyAndRoute:
     """D20 Pattern 3 — Gemini Flash classifies, then routes to optimal model."""
 

@@ -1,0 +1,13 @@
+name: agent-ops
+description: Agent-ops — model routing, persona config, workflow migration.
+default_model: claude-sonnet-4-20250514
+escalation_model: claude-opus-4-20250618
+escalate_if:
+  - tokens>5000
+allowed_tools:
+  - read_github_file
+  - search_github_code
+  - search_memory
+daily_cost_ceiling_usd: 5.00
+owner_channel: agent-ops
+mode: chat

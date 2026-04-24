@@ -1,0 +1,15 @@
+name: legal
+description: Legal — compliance, UPL, privacy, disclaimers. Not legal advice.
+default_model: claude-sonnet-4-20250514
+escalation_model: claude-opus-4-20250618
+escalate_if:
+  - compliance
+  - tokens>4000
+allowed_tools:
+  - read_github_file
+  - search_memory
+compliance_flagged: true
+confidence_floor: 0.85
+daily_cost_ceiling_usd: 4.00
+owner_channel: legal
+mode: chat
