@@ -16,7 +16,7 @@ from app.database import async_session_factory, engine
 from app.mcp_server import create_mcp_app
 from app.rate_limit import limiter
 from app.redis import close_redis, get_redis, init_redis
-from app.routers import admin, brain, health, webhooks
+from app.routers import admin, brain, health, pr_review, webhooks
 from app.services.observability import init_langfuse
 from app.tools import memory_tools
 from app.utils.correlation import CorrelationIdMiddleware
@@ -157,6 +157,7 @@ async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSON
 app.include_router(health.router)
 app.include_router(brain.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
+app.include_router(pr_review.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 
 

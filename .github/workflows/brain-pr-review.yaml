@@ -1,0 +1,83 @@
+name: Brain PR review
+
+# Triggers Brain's executive reviewer on every non-bot PR.
+# Brain fetches the diff, pulls historical context from memory, calls Claude,
+# and posts a review on the PR. Cheap by default (Haiku 4.5), escalates to
+# Sonnet on critical paths (execution/, risk/, migrations, infra).
+#
+# Skipping:
+# - Dependabot / Renovate PRs (handled by dependabot-*.yaml workflows)
+# - PRs with label `skip-brain-review`
+# - Draft PRs
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  # One review in flight per PR. New pushes cancel the prior run.
+  group: brain-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  request-review:
+    # Skip bots and drafts. The actor guard is belt-and-suspenders — the
+    # label check catches human-labeled opt-outs.
+    if: |
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.login != 'dependabot[bot]' &&
+      github.event.pull_request.user.login != 'renovate[bot]' &&
+      github.event.pull_request.user.login != 'github-actions[bot]' &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-brain-review') &&
+      !contains(github.event.pull_request.labels.*.name, 'deps:major') &&
+      !contains(github.event.pull_request.labels.*.name, 'dependencies')
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Build payload + call Brain
+        env:
+          BRAIN_WEBHOOK_URL: ${{ secrets.BRAIN_WEBHOOK_URL }}
+          BRAIN_GITHUB_WEBHOOK_SECRET: ${{ secrets.BRAIN_GITHUB_WEBHOOK_SECRET }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ACTION: ${{ github.event.action }}
+        run: |
+          if [ -z "$BRAIN_WEBHOOK_URL" ] || [ -z "$BRAIN_GITHUB_WEBHOOK_SECRET" ]; then
+            echo "::warning::Brain webhook not configured (BRAIN_WEBHOOK_URL / BRAIN_GITHUB_WEBHOOK_SECRET missing). Skipping review."
+            exit 0
+          fi
+
+          PAYLOAD=$(jq -nc \
+            --arg pr "$PR_NUMBER" \
+            --arg action "$ACTION" \
+            '{pr_number: ($pr|tonumber), action: $action, organization_id: "paperwork-labs"}')
+
+          SIG=$(printf '%s' "$PAYLOAD" \
+            | openssl dgst -sha256 -hmac "$BRAIN_GITHUB_WEBHOOK_SECRET" -hex \
+            | awk '{print $2}')
+
+          echo "Calling Brain: ${BRAIN_WEBHOOK_URL%%/api*}/api/v1/webhooks/github/pr-review (PR #$PR_NUMBER, action=$ACTION)"
+
+          HTTP_CODE=$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
+            -X POST "$BRAIN_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-Brain-Signature: sha256=$SIG" \
+            --data "$PAYLOAD" \
+            --max-time 30 \
+            --retry 2 --retry-delay 3)
+
+          echo "Brain responded: HTTP $HTTP_CODE"
+          cat /tmp/resp.json || true
+          echo
+
+          # 202/200 = review queued. 401 = secret mismatch. Anything else = bug.
+          case "$HTTP_CODE" in
+            200|202) echo "::notice::Brain review queued for PR #$PR_NUMBER" ;;
+            401)     echo "::error::Brain rejected HMAC signature. Check BRAIN_GITHUB_WEBHOOK_SECRET parity." ; exit 1 ;;
+            503)     echo "::warning::Brain webhook secret not configured on server side (503)." ;;
+            *)       echo "::error::Unexpected response ($HTTP_CODE) from Brain." ; exit 1 ;;
+          esac
