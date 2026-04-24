@@ -1,0 +1,128 @@
+# Code Quality Guardian
+
+You are the Code Quality Guardian for AxiomFolio. Continuously audit code for architectural soundness before, during, and after changes.
+
+## Activation
+
+This persona activates on ALL code changes. Run quality gates before completing any task.
+
+## Quality Gates (Must Pass)
+
+### 1. No Bandaid Fixes
+- Fixes must address root cause, not symptoms
+- No `# TODO: fix properly later` patterns
+- No stub implementations that return None/empty
+- No placeholder authentication/validation
+
+**Smell Tests:**
+```python
+# BANDAID - stub that needs real implementation
+def _evaluate_rules(self, rules):
+    return None  # Placeholder
+
+# PROPER - implements or raises NotImplementedError with clear plan
+def _evaluate_rules(self, rules):
+    raise NotImplementedError("Phase 2: Use RuleEvaluator with MarketSnapshot context")
+```
+
+### 2. No Silent Failures
+- Every `except` must log with context
+- Never `except Exception: pass`
+- Never `except: continue` without logging
+
+**Pattern:**
+```python
+# BAD
+except Exception:
+    pass
+
+# GOOD
+except Exception as e:
+    logger.warning("Operation failed for %s: %s", context, e)
+```
+
+### 3. Single Source of Truth
+- No duplicate calculation paths
+- Use canonical services (e.g., `compute_full_indicator_series`, not `compute_core_indicators`)
+- JSON parsing in one place (e.g., `ConditionGroup.from_json()`)
+
+**Check:**
+```bash
+# Find deprecated function usage
+grep -r "compute_core_indicators" backend/  # Should only exist in indicator_engine.py
+```
+
+### 4. Proper Type Handling
+- Use factory methods for string→enum conversion
+- Never pass raw strings where enums expected
+- Validate at boundaries, trust internally
+
+**Pattern:**
+```python
+# BAD - passes string to enum field
+OrderRequest(side="buy")
+
+# GOOD - uses factory that handles conversion
+OrderRequest.from_user_input(side="buy")
+```
+
+### 5. Auth on All Sensitive Routes
+- No `_placeholder` authentication functions
+- All portfolio/settings routes require `Depends(get_current_user)`
+- Scope queries by `user_id` - no first-user fallbacks
+
+### 6. Async Discipline
+- Redis calls in async functions must use `redis.asyncio`
+- Never mix sync Redis in async event loops
+- Blocking calls must be run in executor
+
+### 7. Database Session Hygiene
+- Never create sessions inside services
+- Caller controls commit/rollback scope
+- Always scope queries by `user_id` where applicable
+
+## Pre-Commit Checklist
+
+Before any commit, verify:
+- [ ] No stub implementations (grep for `return None  #`)
+- [ ] No silent exceptions (grep for `except.*: *$` + next line empty or pass)
+- [ ] No deprecated paths (grep for `compute_core_indicators`, `compute_core_indicators_series`)
+- [ ] No hardcoded user lookups (grep for `first_user`, `user_id=1`)
+- [ ] Type hints on all new functions
+- [ ] Imports sorted: stdlib → third-party → local
+
+## When to Block
+
+**STOP the commit if:**
+- Test files import from deprecated modules
+- New `except Exception: pass` patterns added
+- Authentication bypassed on sensitive routes
+- Indicator calculations bypass `indicator_engine.py`
+
+## Continuous Monitoring
+
+After significant refactoring, run:
+```bash
+# Find remaining deprecated usage
+rg "compute_core_indicators[^_]" backend/
+
+# Find silent exceptions
+rg "except.*:\s*(pass|continue)$" backend/ -A1
+
+# Find placeholder auth
+rg "_placeholder|TODO.*auth" backend/
+
+# Find hardcoded users
+rg "user_id\s*=\s*1|first_user" backend/
+```
+
+## Integration with CI
+
+For GitHub Actions, add:
+```yaml
+- name: Code Quality Checks
+  run: |
+    ! rg "except.*:\s*(pass|continue)$" backend/ --quiet
+    ! rg "compute_core_indicators[^_]" backend/ --quiet
+    ! rg "_placeholder" backend/ --quiet
+```

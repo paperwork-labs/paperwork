@@ -1,0 +1,57 @@
+---
+description: Git workflow conventions — branch naming, PR standards, commit messages. Always active.
+alwaysApply: true
+---
+
+# Git Workflow
+
+## Branch Naming
+
+- `feat/` — New features (e.g., `feat/regime-engine`)
+- `fix/` — Bug fixes (e.g., `fix/celery-time-limits`)
+- `chore/` — Maintenance, deps, infra (e.g., `chore/upgrade-react-query`)
+- `docs/` — Documentation only (e.g., `docs/knowledge-md`)
+- `refactor/` — Code restructuring without behavior change
+
+## Commit Messages
+
+Use conventional commits for changelog generation:
+
+```
+feat: add Market Regime Engine with 6-input scoring
+fix: enforce Celery time_limit on all tasks
+chore: upgrade react-query to @tanstack/react-query v5
+docs: add KNOWLEDGE.md decision log
+refactor: consolidate OrderService into OrderManager
+```
+
+## PR Rules
+
+- **Never push to main** directly
+- Every PR must have: summary (what + why), test plan, files changed list
+- Run `make test` and `make frontend-check` before opening
+- Squash merge preferred for clean history
+
+## Pre-Merge Gate (MANDATORY)
+
+**NEVER run `gh pr merge` until ALL of the following are confirmed:**
+
+1. **CI green**: Run `gh pr checks <number>` and verify every check shows `pass`. If any check shows `pending` or `fail`, STOP and wait/fix.
+2. **Review comments addressed**: Run `gh api repos/{owner}/{repo}/pulls/{number}/comments` and confirm all comments have been resolved in code.
+3. **No merge conflicts**: `gh pr view <number> --json mergeable` must show `MERGEABLE`.
+
+If CI has not finished, **poll and wait**. Do not merge optimistically.
+Do not claim CI passed without evidence from `gh pr checks` or `gh run view`.
+
+```bash
+# Correct merge sequence — no shortcuts
+gh pr checks <NUMBER>        # must show all pass
+gh pr merge <NUMBER> --squash --delete-branch
+```
+
+## What NOT to Commit
+
+- `.env`, `env.dev`, credentials, tokens
+- `node_modules/`, `__pycache__/`, `.pyc` files
+- Large binary files, database dumps
+- IDE-specific files (except `.cursor/rules/` and `.cursor/skills/`)

@@ -1,0 +1,39 @@
+# Request GitHub Copilot code review on new PRs (same-repo only; skips Dependabot).
+# Requires a plan with Copilot code review. Uses `gh pr edit --add-reviewer @copilot` (gh CLI 2.88+ on the runner).
+# If Copilot is unavailable or already requested, the step is allowed to fail without failing the workflow run.
+
+name: Request Copilot review
+
+concurrency:
+  group: request-copilot-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+"on":
+  pull_request:
+    branches: [main]
+    # Non-draft PRs created as ready: `opened`. Draft -> ready: `ready_for_review`.
+    # Concurrency dedupes if both could apply to the same PR.
+    types: [opened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  request-copilot:
+    name: Add @copilot as reviewer
+    runs-on: ubuntu-latest
+    if: |
+      github.actor != 'dependabot[bot]' &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Request Copilot review
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --repo "${{ github.repository }}" \
+            --add-reviewer @copilot
+        continue-on-error: true

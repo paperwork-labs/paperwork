@@ -1,0 +1,67 @@
+---
+description: Market data pipeline invariants and red lines
+globs:
+  - backend/services/market/**
+  - backend/tasks/market/**
+  - backend/api/routes/market/**
+alwaysApply: false
+---
+
+# Market Data Guardian
+
+Hard invariants for the market data pipeline. Violating any of these will break production.
+
+## Red Lines — NEVER Do These
+
+1. **Never bypass FMP daily budget check when Redis is healthy.** Every FMP call must go through `_record_provider_call` and the Redis budget counter when Redis is available. If Redis is unreachable during the **read** of budget counters, fail-open with a warning (allow the call) so Redis is not a single point of failure for live/provider data.
+2. **Never set `ALLOW_DEEP_BACKFILL=true` in production.** Deep backfills burn bandwidth. The `validate_production_settings()` check in `config.py` enforces this.
+3. **Never call FMP without rate limiting.** Every FMP HTTP call must be preceded by `provider_rate_limiter.acquire("fmp")`.
+4. **Never load large datasets client-side.** Aggregation, filtering, sorting, and pagination belong on the server. Use `/snapshots/table` and `/snapshots/heatmap` endpoints instead of shipping 5000 rows to the browser.
+5. **Never `except Exception: pass` in pipeline code.** Always log with context: `logger.warning("thing failed for %s: %s", context, e)`.
+6. **Never create a second indicator computation path.** All indicators flow through `indicator_engine.py → compute_full_indicator_series()`. No ad-hoc computation in routes or tasks.
+7. **Never hardcode provider budgets or rate limits.** Use `settings.provider_policy` which reads from `MARKET_PROVIDER_POLICY` env var.
+
+## Invariants
+
+- **Single tier knob**: `MARKET_PROVIDER_POLICY` env var controls all provider budgets, rate limits, and concurrency. No other env vars should override these.
+- **Budget tracking**: Redis key `provider:calls:{date}` tracks daily FMP call count. Budget is `settings.provider_policy.fmp_daily_budget`.
+- **Rate limiting**: `ProviderRateLimiter` uses token bucket per provider. Limits come from `settings.provider_policy`.
+- **Celery time limits**: Every task's `soft_time_limit` and `time_limit` must match `job_catalog.py` `timeout_s`. When adding new tasks, always set both.
+- **Snapshot single source**: `MarketSnapshot` is the latest state. `MarketSnapshotHistory` is the immutable daily ledger. Never write to history without a corresponding snapshot.
+- **Universe resolution**: `tracked_symbols()` in `universe.py` is the single source for which symbols we track. Redis `tracked:all` preferred, DB fallback.
+
+## Tier Switching Checklist
+
+1. Change `MARKET_PROVIDER_POLICY` in Render (API + Worker services)
+2. Deploy both services
+3. Verify in Admin Health that `policy_tier` shows the new tier
+4. No code changes needed — all values derive from `ProviderPolicy` dataclass
+
+## Adding a New Provider
+
+1. Add fields to `ProviderPolicy` dataclass in `config.py`
+2. Add values for all 4 tiers in `PROVIDER_POLICIES`
+3. Register in `ProviderRateLimiter._default_limits()`
+4. Add budget tracking via `_record_provider_call` in `MarketDataService`
+5. Update `docs/MARKET_DATA.md` tier table
+6. Add decision entry to `docs/KNOWLEDGE.md`
+
+## Adding a New Celery Task
+
+1. Add entry to `job_catalog.py` with `timeout_s`
+2. Set `soft_time_limit` and `time_limit` on the `@shared_task` decorator matching `timeout_s`
+3. Register in `celery_app.py` include list if in a new module
+4. Test locally via `make task-run TASK=backend.tasks.market.<module>.<function>`
+
+## Key Files
+
+| File | Responsibility |
+|------|---------------|
+| `backend/config.py` | `ProviderPolicy` dataclass, tier definitions |
+| `backend/services/market/market_data_service.py` | Provider routing, caching, budget checks |
+| `backend/services/market/rate_limiter.py` | Per-provider token bucket rate limiting |
+| `backend/services/market/indicator_engine.py` | All indicator computation from OHLCV |
+| `backend/services/market/universe.py` | Tracked symbol resolution |
+| `backend/services/market/volatility_service.py` | VIX/VVIX/VIX3M regime dashboard |
+| `backend/services/market/market_dashboard_service.py` | Dashboard aggregation with universe filter |
+| `backend/tasks/job_catalog.py` | Task schedules, timeouts, metadata |

@@ -1,0 +1,421 @@
+//@version=6
+indicator("Market Analysis Suite Pro", overlay=true, max_labels_count=500, max_boxes_count=500, max_lines_count=500)
+
+// ========================================
+// THEME DETECTION & COLOR MANAGEMENT
+// ========================================
+isDarkTheme = color.rgb(255, 255, 255) == chart.fg_color
+
+// ========================================
+// INPUTS & CONFIGURATION
+// ========================================
+// General Settings
+benchmarkSymbol = input.symbol("SPY", "RS Benchmark", group="Configuration")
+
+// TD Sequential Settings
+showTDSequential = input.bool(true, "Show TD Sequential", group="TD Sequential")
+tdPerfectHighlight = input.bool(true, "Highlight Perfect Setups", group="TD Sequential")
+tdLabelOffset = input.float(0.5, "Label Distance Multiplier", minval=0.1, maxval=2, step=0.1, group="TD Sequential")
+
+// Gap Settings
+showGaps = input.bool(true, "Show Gaps", group="Gaps")
+minGapPercent = input.float(0.5, "Minimum Gap %", minval=0, step=0.1, group="Gaps") / 100
+maxGapsToShow = input.int(20, "Max Gaps to Display", minval=5, maxval=50, group="Gaps")
+hideGapPercent = input.float(10, "Hide Gaps X% Away", minval=-1, group="Gaps", tooltip="-1 = Show all gaps") / 100
+
+// Trend Line Settings
+showTrendLines = input.bool(true, "Show Trend Lines", group="Trend Lines")
+pivotPeriod = input.int(20, "Pivot Period", minval=10, maxval=50, group="Trend Lines")
+maxTrendLines = input.int(3, "Max Trend Lines", minval=1, maxval=5, group="Trend Lines")
+
+// Theme-Aware Colors
+textColor = isDarkTheme ? color.white : color.black
+bgColor = isDarkTheme ? color.new(color.black, 80) : color.new(color.white, 80)
+borderColor = isDarkTheme ? color.new(color.gray, 50) : color.new(color.gray, 30)
+
+// Feature Colors
+gapUpColor = input.color(color.new(color.lime, 60), "Gap Up", group="Colors")
+gapDownColor = input.color(color.new(color.red, 60), "Gap Down", group="Colors")
+trendUpColor = input.color(color.new(color.lime, 0), "Uptrend", group="Colors")
+trendDownColor = input.color(color.new(color.red, 0), "Downtrend", group="Colors")
+tdSetupColor = isDarkTheme ? color.yellow : color.orange
+tdCountdownColor = color.new(color.red, 0)
+tdPerfectColor = color.new(color.fuchsia, 0)
+
+// ========================================
+// UTILITY FUNCTIONS
+// ========================================
+f_formatNumber(value) =>
+    absValue = math.abs(value)
+    if absValue >= 1e12
+        str.format("{0,number,0.00}T", value/1e12)
+    else if absValue >= 1e9
+        str.format("{0,number,0.00}B", value/1e9)
+    else if absValue >= 1e6
+        str.format("{0,number,0.00}M", value/1e6)
+    else if absValue >= 1e3
+        str.format("{0,number,0}K", value/1e3)
+    else
+        str.format("{0,number,0}", value)
+
+f_formatPercent(value, decimals = 2) =>
+    sign = value > 0 ? "+" : ""
+    format = decimals == 0 ? "{0,number,0}%" : "{0,number,0.00}%"
+    sign + str.format(format, value)
+
+f_formatATR(value) =>
+    sign = value > 0 ? "+" : ""
+    sign + str.format("{0,number,0.00}×", value)
+
+// ========================================
+// TD SEQUENTIAL - IMPROVED POSITIONING
+// ========================================
+// State variables
+var int tdBuySetup = 0
+var int tdSellSetup = 0
+var bool tdBuyComplete = false
+var bool tdSellComplete = false
+var int tdBuyCountdown = 0
+var int tdSellCountdown = 0
+
+// Calculate ATR for dynamic positioning
+atr14 = ta.atr(14)
+labelDistance = atr14 * tdLabelOffset
+
+// Buy Setup Logic
+if close < close[4]
+    tdBuySetup += 1
+    tdSellSetup := 0
+    tdSellComplete := false
+else
+    if tdBuySetup >= 9
+        tdBuyComplete := true
+    tdBuySetup := 0
+
+// Sell Setup Logic  
+if close > close[4]
+    tdSellSetup += 1
+    tdBuySetup := 0
+    tdBuyComplete := false
+else
+    if tdSellSetup >= 9
+        tdSellComplete := true
+    tdSellSetup := 0
+
+// Perfect Setup Detection
+perfectBuy = tdBuySetup == 9 and low < low[2] and low < low[3] and low[1] < low[2] and low[1] < low[3]
+perfectSell = tdSellSetup == 9 and high > high[2] and high > high[3] and high[1] > high[2] and high[1] > high[3]
+
+// Countdown Logic
+if tdBuyComplete and close <= low[2]
+    tdBuyCountdown += 1
+    if tdBuyCountdown >= 13
+        tdBuyCountdown := 0
+
+if tdSellComplete and close >= high[2]
+    tdSellCountdown += 1
+    if tdSellCountdown >= 13
+        tdSellCountdown := 0
+
+// Plot TD Sequential with improved positioning
+if showTDSequential
+    // Buy Setup
+    if tdBuySetup > 0
+        setupColor = perfectBuy and tdPerfectHighlight ? tdPerfectColor : tdSetupColor
+        label.new(bar_index, low - labelDistance, str.tostring(tdBuySetup), style=label.style_none, textcolor=setupColor, size=size.small)
+    
+    // Sell Setup
+    if tdSellSetup > 0
+        setupColor = perfectSell and tdPerfectHighlight ? tdPerfectColor : tdSetupColor
+        label.new(bar_index, high + labelDistance, str.tostring(tdSellSetup), style=label.style_none, textcolor=setupColor, size=size.small)
+    
+    // Buy Countdown
+    if tdBuyCountdown > 0 and tdBuyComplete
+        label.new(bar_index, low - labelDistance * 2, "+" + str.tostring(tdBuyCountdown), style=label.style_none, textcolor=tdCountdownColor, size=size.tiny)
+    
+    // Sell Countdown
+    if tdSellCountdown > 0 and tdSellComplete
+        label.new(bar_index, high + labelDistance * 2, "+" + str.tostring(tdSellCountdown), style=label.style_none, textcolor=tdCountdownColor, size=size.tiny)
+
+// ========================================
+// GAP DETECTION & DISPLAY
+// ========================================
+type Gap
+    box gapBox
+    bool isFilled
+    float topPrice
+    float bottomPrice
+    int startBar
+
+var array<Gap> upGaps = array.new<Gap>()
+var array<Gap> downGaps = array.new<Gap>()
+
+// Detect gaps
+gapUp = low > high[1] and (low / high[1] - 1) > minGapPercent
+gapDown = high < low[1] and (1 - high / low[1]) > minGapPercent
+
+// Create gap boxes
+if showGaps and gapUp
+    newGap = Gap.new()
+    newGap.gapBox := box.new(bar_index, high[1], bar_index + 1, low, bgcolor=gapUpColor, border_color=trendUpColor, text=f_formatPercent((low / high[1] - 1) * 100), text_color=textColor, text_size=size.tiny, text_halign=text.align_right)
+    newGap.topPrice := low
+    newGap.bottomPrice := high[1]
+    newGap.startBar := bar_index
+    newGap.isFilled := false
+    array.push(upGaps, newGap)
+
+if showGaps and gapDown
+    newGap = Gap.new()
+    newGap.gapBox := box.new(bar_index, low[1], bar_index + 1, high, bgcolor=gapDownColor, border_color=trendDownColor, text=f_formatPercent((1 - high / low[1]) * 100), text_color=textColor, text_size=size.tiny, text_halign=text.align_right)
+    newGap.topPrice := low[1]
+    newGap.bottomPrice := high
+    newGap.startBar := bar_index
+    newGap.isFilled := false
+    array.push(downGaps, newGap)
+
+// Update gaps
+if showGaps
+    // Update up gaps
+    for i = array.size(upGaps) - 1 to 0
+        gap = array.get(upGaps, i)
+        
+        // Check if filled
+        if low <= gap.bottomPrice and not gap.isFilled
+            gap.isFilled := true
+            box.set_text(gap.gapBox, "Filled")
+            box.set_bgcolor(gap.gapBox, color.new(gapUpColor, 90))
+        
+        // Extend box
+        if not gap.isFilled
+            box.set_right(gap.gapBox, bar_index + 1)
+            
+        // Hide if too far
+        if hideGapPercent > 0 and close > gap.topPrice * (1 + hideGapPercent)
+            box.delete(gap.gapBox)
+            array.remove(upGaps, i)
+    
+    // Update down gaps
+    for i = array.size(downGaps) - 1 to 0
+        gap = array.get(downGaps, i)
+        
+        // Check if filled
+        if high >= gap.topPrice and not gap.isFilled
+            gap.isFilled := true
+            box.set_text(gap.gapBox, "Filled")
+            box.set_bgcolor(gap.gapBox, color.new(gapDownColor, 90))
+        
+        // Extend box
+        if not gap.isFilled
+            box.set_right(gap.gapBox, bar_index + 1)
+            
+        // Hide if too far
+        if hideGapPercent > 0 and close < gap.bottomPrice * (1 - hideGapPercent)
+            box.delete(gap.gapBox)
+            array.remove(downGaps, i)
+    
+    // Limit number of gaps
+    while array.size(upGaps) > maxGapsToShow
+        oldGap = array.shift(upGaps)
+        box.delete(oldGap.gapBox)
+    
+    while array.size(downGaps) > maxGapsToShow
+        oldGap = array.shift(downGaps)
+        box.delete(oldGap.gapBox)
+
+// ========================================
+// TREND LINE DETECTION
+// ========================================
+ph = ta.pivothigh(high, pivotPeriod, pivotPeriod)
+pl = ta.pivotlow(low, pivotPeriod, pivotPeriod)
+
+var array<line> upTrendLines = array.new<line>()
+var array<line> downTrendLines = array.new<line>()
+var array<float> pivotHighs = array.new<float>()
+var array<int> pivotHighBars = array.new<int>()
+var array<float> pivotLows = array.new<float>()
+var array<int> pivotLowBars = array.new<int>()
+
+// Store pivot points
+if not na(ph)
+    array.unshift(pivotHighs, ph)
+    array.unshift(pivotHighBars, bar_index[pivotPeriod])
+    if array.size(pivotHighs) > 10
+        array.pop(pivotHighs)
+        array.pop(pivotHighBars)
+
+if not na(pl)
+    array.unshift(pivotLows, pl)
+    array.unshift(pivotLowBars, bar_index[pivotPeriod])
+    if array.size(pivotLows) > 10
+        array.pop(pivotLows)
+        array.pop(pivotLowBars)
+
+// Draw trend lines
+if showTrendLines and barstate.isconfirmed
+    // Clear old lines
+    for line in upTrendLines
+        line.delete(line)
+    for line in downTrendLines
+        line.delete(line)
+    array.clear(upTrendLines)
+    array.clear(downTrendLines)
+    
+    // Find uptrend lines (connecting lows)
+    if array.size(pivotLows) >= 2
+        for i = 0 to math.min(array.size(pivotLows) - 2, maxTrendLines - 1)
+            y1 = array.get(pivotLows, i)
+            x1 = array.get(pivotLowBars, i)
+            
+            for j = i + 1 to array.size(pivotLows) - 1
+                y2 = array.get(pivotLows, j)
+                x2 = array.get(pivotLowBars, j)
+                
+                if y1 > y2  // Uptrend
+                    slope = (y1 - y2) / (x1 - x2)
+                    extended_y = y1 + slope * (bar_index - x1)
+                    
+                    // Validate trend line
+                    isValid = true
+                    for k = x1 to bar_index
+                        expectedY = y1 + slope * (k - x1)
+                        if low[bar_index - k] < expectedY - atr14 * 0.1
+                            isValid := false
+                            break
+                    
+                    if isValid
+                        trendLine = line.new(x2, y2, bar_index, extended_y, color=trendUpColor, width=2, style=line.style_dashed)
+                        array.push(upTrendLines, trendLine)
+                        break
+    
+    // Find downtrend lines (connecting highs)
+    if array.size(pivotHighs) >= 2
+        for i = 0 to math.min(array.size(pivotHighs) - 2, maxTrendLines - 1)
+            y1 = array.get(pivotHighs, i)
+            x1 = array.get(pivotHighBars, i)
+            
+            for j = i + 1 to array.size(pivotHighs) - 1
+                y2 = array.get(pivotHighs, j)
+                x2 = array.get(pivotHighBars, j)
+                
+                if y1 < y2  // Downtrend
+                    slope = (y1 - y2) / (x1 - x2)
+                    extended_y = y1 + slope * (bar_index - x1)
+                    
+                    // Validate trend line
+                    isValid = true
+                    for k = x1 to bar_index
+                        expectedY = y1 + slope * (k - x1)
+                        if high[bar_index - k] > expectedY + atr14 * 0.1
+                            isValid := false
+                            break
+                    
+                    if isValid
+                        trendLine = line.new(x2, y2, bar_index, extended_y, color=trendDownColor, width=2, style=line.style_dashed)
+                        array.push(downTrendLines, trendLine)
+                        break
+
+// ========================================
+// TECHNICAL INDICATORS
+// ========================================
+[ema8_d, ema21_d, ema200_d, atr_d] = request.security(syminfo.tickerid, "D", [ta.ema(close, 8), ta.ema(close, 21), ta.ema(close, 200), ta.atr(14)])
+
+// Distance calculations
+pctDist8 = na(ema8_d) ? na : (close/ema8_d - 1) * 100
+pctDist21 = na(ema21_d) ? na : (close/ema21_d - 1) * 100
+pctDist200 = na(ema200_d) ? na : (close/ema200_d - 1) * 100
+
+atrDist8 = na(ema8_d) or na(atr_d) or atr_d == 0 ? na : (close - ema8_d) / atr_d
+atrDist21 = na(ema21_d) or na(atr_d) or atr_d == 0 ? na : (close - ema21_d) / atr_d
+atrDist200 = na(ema200_d) or na(atr_d) or atr_d == 0 ? na : (close - ema200_d) / atr_d
+
+// ========================================
+// FUNDAMENTAL & STAGE ANALYSIS
+// ========================================
+nextEarnings = earnings.future_time
+nextEarningsStr = na(nextEarnings) ? "N/A" : str.format_time(nextEarnings, "MM/dd")
+
+shares = request.financial(syminfo.tickerid, "TOTAL_SHARES_OUTSTANDING", "FQ")
+marketCap = na(shares) ? na : shares * close
+marketCapStr = na(marketCap) ? "N/A" : syminfo.currency + " " + f_formatNumber(marketCap)
+
+// Weekly data for stage analysis
+[wClose, wMA30] = request.security(syminfo.tickerid, "W", [close, ta.sma(close, 30)])
+wMA30_prev = request.security(syminfo.tickerid, "W", ta.sma(close, 30)[1])
+wSlopePct = na(wMA30) or na(wMA30_prev) ? 0 : (wMA30/wMA30_prev - 1) * 100
+wDistPct = na(wMA30) ? na : (wClose/wMA30 - 1) * 100
+
+// Weinstein Stage
+stage = "?"
+if not na(wMA30) and not na(wClose)
+    if wSlopePct > 0.05 and wDistPct > 0
+        stage := wDistPct <= 5 ? "2A" : wDistPct <= 15 ? "2B" : "2C"
+    else if wSlopePct < -0.05 and wDistPct < 0
+        stage := "4"
+    else if math.abs(wSlopePct) <= 0.05 and math.abs(wDistPct) <= 5
+        stage := "1"
+    else
+        stage := "3"
+
+// ========================================
+// ENHANCED TABLE DISPLAY
+// ========================================
+var dashboardTable = table.new(position.middle_right, 2, 10, 
+    frame_color=borderColor, 
+    border_width=1)
+
+// Color function
+f_getDistanceColor(pct) =>
+    maxDist = 20.0
+    trans = na(pct) ? 90 : 20 + (math.min(math.abs(pct), maxDist) / maxDist) * 65
+    baseCol = na(pct) ? color.gray : (pct >= 0 ? color.green : color.red)
+    color.new(baseCol, trans)
+
+// Initialize table
+if barstate.isfirst
+    table.merge_cells(dashboardTable, 0, 0, 1, 0)
+    
+    headers = array.from("Ticker", "Market Cap", "Next Earnings", "8 EMA", "21 EMA", "200 EMA", "TD Sequential", "Gaps", "Trend")
+    for i = 1 to 8
+        table.cell(dashboardTable, 0, i, array.get(headers, i - 1), text_color=textColor, bgcolor=bgColor)
+
+// Update table
+stageHeader = "Stage " + stage + " (" + (na(wDistPct) ? "N/A" : f_formatPercent(wDistPct, 0)) + ")"
+table.cell(dashboardTable, 0, 0, stageHeader, text_color=textColor, bgcolor=bgColor, text_halign=text.align_center)
+
+// Update colored cells
+table.cell(dashboardTable, 0, 4, "8 EMA", text_color=textColor, bgcolor=f_getDistanceColor(pctDist8))
+table.cell(dashboardTable, 0, 5, "21 EMA", text_color=textColor, bgcolor=f_getDistanceColor(pctDist21))
+table.cell(dashboardTable, 0, 6, "200 EMA", text_color=textColor, bgcolor=f_getDistanceColor(pctDist200))
+
+// Data values
+table.cell(dashboardTable, 1, 1, syminfo.ticker, text_color=textColor, bgcolor=bgColor)
+table.cell(dashboardTable, 1, 2, marketCapStr, text_color=textColor, bgcolor=bgColor)
+table.cell(dashboardTable, 1, 3, nextEarningsStr, text_color=textColor, bgcolor=bgColor)
+
+// EMA distances
+table.cell(dashboardTable, 1, 4, na(pctDist8) ? "N/A" : f_formatPercent(pctDist8) + " | " + f_formatATR(atrDist8), text_color=textColor, bgcolor=bgColor)
+table.cell(dashboardTable, 1, 5, na(pctDist21) ? "N/A" : f_formatPercent(pctDist21) + " | " + f_formatATR(atrDist21), text_color=textColor, bgcolor=bgColor)
+table.cell(dashboardTable, 1, 6, na(pctDist200) ? "N/A" : f_formatPercent(pctDist200) + " | " + f_formatATR(atrDist200), text_color=textColor, bgcolor=bgColor)
+
+// TD Status
+tdStatus = tdBuySetup > 0 ? "Buy " + str.tostring(tdBuySetup) : tdSellSetup > 0 ? "Sell " + str.tostring(tdSellSetup) : tdBuyCountdown > 0 ? "Buy CD " + str.tostring(tdBuyCountdown) : tdSellCountdown > 0 ? "Sell CD " + str.tostring(tdSellCountdown) : "Inactive"
+tdColor = tdBuySetup > 0 or tdBuyCountdown > 0 ? color.green : tdSellSetup > 0 or tdSellCountdown > 0 ? color.red : color.gray
+table.cell(dashboardTable, 1, 7, tdStatus, text_color=tdColor, bgcolor=bgColor)
+
+// Gap Status
+unfilled_up = 0
+unfilled_down = 0
+for gap in upGaps
+    if not gap.isFilled
+        unfilled_up += 1
+for gap in downGaps
+    if not gap.isFilled
+        unfilled_down += 1
+        
+gapStatus = "↑" + str.tostring(unfilled_up) + " ↓" + str.tostring(unfilled_down)
+table.cell(dashboardTable, 1, 8, gapStatus, text_color=textColor, bgcolor=bgColor)
+
+// Trend Status
+trendStatus = array.size(upTrendLines) > 0 ? "Up " + str.tostring(array.size(upTrendLines)) : array.size(downTrendLines) > 0 ? "Down " + str.tostring(array.size(downTrendLines)) : "None"
+trendColor = array.size(upTrendLines) > 0 ? color.green : array.size(downTrendLines) > 0 ? color.red : color.gray
+table.cell(dashboardTable, 1, 9, trendStatus, text_color=trendColor, bgcolor=bgColor)

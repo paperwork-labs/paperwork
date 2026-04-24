@@ -1,0 +1,270 @@
+name: AxiomFolio
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      # Postgres major upgrades require a new data directory. We keep old volumes
+      # intact (v15, v16) and restore into this new v18 volume.
+      - postgres_data_v18:/var/lib/postgresql/data
+    ports:
+      - "${DB_HOST_PORT}:5432"
+    networks:
+      - axiomfolio_network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: redis
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_HOST_PORT}:6379"
+    networks:
+      - axiomfolio_network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "--raw", "PING" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ..
+      dockerfile: Dockerfile.backend
+    container_name: backend
+    env_file:
+      - ./env.dev
+    ports:
+      - "${BACKEND_HOST_PORT}:8000"
+    volumes:
+      - ..:/app
+      - /app/backend/__pycache__
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      - PYTHONPATH=/app
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - NEW_RELIC_CONFIG_FILE=/app/infra/observability/newrelic.ini
+      - NEW_RELIC_APP_NAME=AxiomFolio Backend
+      - NEW_RELIC_LICENSE_KEY=${NEW_RELIC_LICENSE_KEY}
+      - NEW_RELIC_LOG=stdout
+      - NEW_RELIC_LOG_LEVEL=info
+    command: sh -c "cd /app && python -m uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --log-level info --reload --reload-dir /app/backend"
+    networks:
+      - axiomfolio_network
+    restart: unless-stopped
+
+  celery_worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile.backend
+    container_name: celery-worker
+    env_file:
+      - ./env.dev
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - IBKR_HOST=${IBKR_HOST}
+    volumes:
+      - ../backend:/app/backend
+      - ../requirements.txt:/app/requirements.txt
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      backend:
+        condition: service_started
+    networks:
+      - axiomfolio_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A backend.tasks.celery_app inspect ping --timeout 5 2>/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    command: bash -lc "celery -A backend.tasks.celery_app worker -Q celery,account_sync,orders --loglevel=info"
+
+  celery_beat:
+    build:
+      context: ..
+      dockerfile: Dockerfile.backend
+    container_name: celery-beat
+    env_file:
+      - ./env.dev
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - IBKR_HOST=${IBKR_HOST}
+    volumes:
+      - ../backend:/app/backend
+      - ../requirements.txt:/app/requirements.txt
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      backend:
+        condition: service_started
+    networks:
+      - axiomfolio_network
+    restart: unless-stopped
+    command: bash -lc "celery -A backend.tasks.celery_app beat --loglevel=info"
+
+  flower:
+    build:
+      context: ..
+      dockerfile: Dockerfile.backend
+    container_name: flower
+    env_file:
+      - ./env.dev
+    environment:
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD}@redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://:${REDIS_PASSWORD}@redis:6379/0
+    ports:
+      - "${FLOWER_HOST_PORT}:5555"
+    depends_on:
+      - redis
+      - celery_worker
+    networks:
+      - axiomfolio_network
+    command: bash -lc "export FLOWER_UNAUTHENTICATED_API=1; celery -A backend.tasks.celery_app flower --address=0.0.0.0 --port=5555"
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: Dockerfile.frontend
+      target: dev
+    container_name: frontend
+    environment:
+      - VITE_API_BASE_URL=/api/v1
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    ports:
+      - "${WEB_HOST_PORT}:3000"
+    depends_on:
+      - backend
+    networks:
+      - axiomfolio_network
+    command: npm run dev
+
+  ladle:
+    build:
+      context: ..
+      dockerfile: Dockerfile.frontend
+      target: dev
+    container_name: ladle
+    environment:
+      - VITE_API_BASE_URL=/api/v1
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ../frontend:/app
+      - /app/node_modules
+    ports:
+      - "${LADLE_HOST_PORT:-61000}:61000"
+    depends_on:
+      - backend
+    networks:
+      - axiomfolio_network
+    command: npm run ladle -- --host 0.0.0.0 --port 61000
+    profiles:
+      - ui
+
+  ib-gateway:
+    image: ghcr.io/extrange/ibkr:stable
+    platform: linux/amd64
+    container_name: ib-gateway
+    env_file:
+      - ./env.dev
+    environment:
+      USERNAME: ${IBKR_USERNAME:-}
+      PASSWORD: "${IBKR_PASSWORD:-}"
+      GATEWAY_OR_TWS: gateway
+      IBC_TradingMode: ${IBKR_TRADING_MODE:-paper}
+      # Default to read-only for safety; set IBC_READONLY_API=no in env to enable orders
+      IBC_ReadOnlyApi: "${IBC_READONLY_API:-yes}"
+      IBC_ExistingSessionDetectedAction: primary
+      IBC_AcceptIncomingConnectionAction: accept
+      TWS_SETTINGS_PATH: /settings
+      TWOFA_TIMEOUT_ACTION: restart
+      JAVA_TOTP_SECRET: ${IBKR_TOTP_SECRET:-}
+    volumes:
+      - ibkr-settings:/settings
+    ulimits:
+      nofile: 10000
+    ports:
+      - "6080:6080"    # VNC web interface
+      - "8888:8888"    # IB Gateway API (redirect to 4001/4002)
+      - "4001:4001"    # Live trading
+      - "4002:4002"    # Paper trading
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 4001 || nc -z 127.0.0.1 4002 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - axiomfolio_network
+    restart: unless-stopped
+    profiles:
+      - ibkr
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    env_file:
+      - ./env.dev
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARED_TUNNEL_TOKEN}
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TUNNEL_TOKEN}
+    depends_on:
+      - backend
+    networks:
+      - axiomfolio_network
+    restart: unless-stopped
+    profiles:
+      - tunnel
+
+networks:
+  axiomfolio_network:
+    driver: bridge
+
+volumes:
+  # Legacy Postgres data volumes retained for safety (do not delete casually).
+  postgres_data:
+    driver: local
+  postgres_data_v16:
+    driver: local
+  # Active Postgres 18 data volume.
+  postgres_data_v18:
+    driver: local
+  redis_data:
+    driver: local
+  # IB Gateway settings persistence (jts.ini, API port config).
+  ibkr-settings:
+    driver: local

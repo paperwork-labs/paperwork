@@ -1,0 +1,91 @@
+---
+description: Production database access — how to connect to the Render-hosted Postgres. Activates when querying prod data, running diagnostics, or verifying deployments.
+globs:
+  - "**/scripts/backup*"
+  - "**/render.yaml"
+---
+
+# Production Database Access
+
+## How to Find Connection Details
+
+All connection details live in the **Render dashboard** under the `axiomfolio-db` Postgres instance.
+The `RENDER_API_KEY` is in the local (uncommitted) `infra/.env` file. If that file doesn't exist,
+ask the user to provide it or export it as an environment variable.
+
+Do NOT hardcode Render resource IDs, hostnames, or usernames in code or rules.
+Source them at runtime from:
+- `render.yaml` (for the DB name reference)
+- Render dashboard > axiomfolio-db > Connections (for host, user, password)
+- `infra/.env` (for `RENDER_API_KEY`)
+
+## Connection Methods (in order of preference)
+
+### 1. Render MCP Tool (preferred)
+
+```
+CallMcpTool: server=user-render, toolName=list_postgres_instances
+  -> returns the Postgres ID
+
+CallMcpTool: server=user-render, toolName=query_render_postgres
+Arguments: { "postgresId": "<ID from above>", "sql": "SELECT ..." }
+```
+
+May fail with SSL errors. If so, fall back to method 2.
+
+### 2. Direct psql (requires IP allowlist)
+
+Get the external connection string from Render dashboard > axiomfolio-db > Connections, then:
+
+```bash
+psql "<EXTERNAL_DATABASE_URL>?sslmode=require" -t -c "SELECT ..."
+```
+
+External access requires the machine's IP in the Render DB allowlist (see below).
+
+### 3. Prod API Endpoints (no DB access needed)
+
+For health/coverage stats, hit the authenticated API:
+
+```bash
+curl -s -H "Authorization: Bearer <token>" "https://axiomfolio-api.onrender.com/api/v1/market-data/admin/health"
+```
+
+## IP Allowlist Management
+
+External traffic is blocked by default. To add your IP temporarily:
+
+```bash
+# 1. Get your public IP
+curl -s https://api.ipify.org
+
+# 2. Read the Render API key from local env
+RENDER_KEY="${RENDER_API_KEY}"  # or: grep RENDER_API_KEY infra/.env | cut -d= -f2
+
+# 3. Get the Postgres ID from Render MCP or render.yaml
+PG_ID="<postgres-id-from-render>"
+
+# 4. Add your IP to the allowlist
+curl -s -X PATCH \
+  -H "Authorization: Bearer ${RENDER_KEY}" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"ipAllowList": [{"cidrBlock": "<YOUR_IP>/32", "description": "temp agent access"}]}' \
+  "https://api.render.com/v1/postgres/${PG_ID}"
+
+# 5. ALWAYS clean up when done — remove by setting empty allowlist
+curl -s -X PATCH \
+  -H "Authorization: Bearer ${RENDER_KEY}" \
+  -H "Accept: application/json" \
+  -H "Content-Type: application/json" \
+  -d '{"ipAllowList": []}' \
+  "https://api.render.com/v1/postgres/${PG_ID}"
+```
+
+## Important Rules
+
+- NEVER store the database password in cursor rules, code, or docs
+- ALWAYS remove your IP from the allowlist when done querying
+- Use read-only queries only — never modify prod data via direct SQL
+- For write operations, use the Operator Actions UI or Celery tasks
+- The local dev DB (Docker Postgres on port 5432) is NOT the same as production

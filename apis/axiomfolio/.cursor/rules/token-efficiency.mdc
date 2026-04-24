@@ -1,0 +1,92 @@
+# Token Efficiency
+
+Always optimize for token efficiency without dropping quality. This is a core operating principle.
+
+## Delegation First
+
+Before executing multi-step operations yourself, consider delegation:
+
+- **Shell subagent** (`subagent_type: "shell"`, `model: "fast"`): Git operations, type checks, test runs, API calls, file verification
+- **Explore subagent** (`subagent_type: "explore"`, `model: "fast"`): Finding files, searching code patterns, understanding architecture
+- **Parallel execution**: When tasks are independent, launch multiple subagents in a single message
+
+## When to Delegate
+
+| Task | Delegate? | Why |
+|------|-----------|-----|
+| `git status`, `git diff`, `git log` | Yes | Simple command, no reasoning needed |
+| Type checking (`npm run type-check`) | Yes | Just needs output parsing |
+| Running tests | Yes | Execution + output capture |
+| Finding files across 5+ directories | Yes | Mechanical search |
+| Creating PR with `gh pr create` | Yes | Templated command |
+| Exploring unfamiliar code areas | Yes | Discovery task |
+
+## When NOT to Delegate
+
+| Task | Keep in Opus | Why |
+|------|--------------|-----|
+| Financial calculations | Always | Correctness critical |
+| Security-sensitive code | Always | Risk of mistakes |
+| Architecture decisions | Always | Requires deep reasoning |
+| Code review of subagent output | Always | Quality gate |
+| Complex multi-file refactors | Usually | Needs coherent vision |
+
+## Batch Operations
+
+Instead of sequential tool calls:
+```
+# Bad: 4 separate tool calls
+git status
+git diff
+git log -5
+npm run type-check
+```
+
+Do parallel delegation:
+```
+# Good: 1 message with 2 parallel Task calls
+Task 1 (shell): git status && git diff && git log -5
+Task 2 (shell): npm run type-check
+```
+
+## Commit + PR Pattern
+
+When committing and creating PRs, delegate the entire sequence:
+
+```python
+Task(
+    subagent_type="shell",
+    model="fast",
+    prompt="""
+    1. git add -A
+    2. git commit -m "message"
+    3. git push -u origin branch
+    4. gh pr create --title "..." --body "..."
+    Report the PR URL.
+    """
+)
+```
+
+## Validation Strategy
+
+Opus validates subagent output **only when quality-critical**:
+
+| Output Type | Validate? | Why |
+|-------------|-----------|-----|
+| Git status/diff | No | Factual output, trust it |
+| Type check results | No | Pass/fail is clear |
+| PR URL | No | Just need the link |
+| Code changes | Yes | Review for correctness |
+| Financial calculations | Yes | Critical accuracy |
+| Architecture suggestions | Yes | Needs judgment |
+
+**Don't waste tokens re-reading obvious results.** If subagent says "commit created, PR URL is X", trust it and move on.
+
+## Self-Check
+
+Before making a tool call, ask:
+1. Can a fast model do this without quality loss?
+2. Can I batch this with other independent operations?
+3. Am I about to do something mechanical that doesn't need my reasoning?
+
+If yes to any, delegate.

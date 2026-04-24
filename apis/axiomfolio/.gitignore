@@ -1,0 +1,208 @@
+# # Environment variables
+# .env.bak*
+# .env.local
+# .env.development.local
+# .env.test.local
+# .env.production.local
+
+# Infra env files (real secrets / machine-specific values)
+infra/env.dev
+infra/env.test
+infra/env.prod
+infra/.env.prod
+infra/.env
+
+# Local env exports / scratch copies (never commit secrets)
+env.txt
+infra/*.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+!frontend/src/lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# PyCharm
+.idea/
+
+# VS Code
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Node.js / Frontend
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Build outputs
+dist/
+dist-ssr/
+*.local
+
+# Frontend build
+frontend/dist/
+frontend/build/
+
+# Logs
+logs/
+*.log
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+frontend/node_modules/
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
+tmp/
+temp/
+
+# Docker
+.docker/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+data/
+!frontend/src/data/
+postgres_data/
+redis_data/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor backups
+*~
+*.swp
+*.swo
+
+# Certificate files
+*.pem
+*.key
+*.crt
+
+# API keys and secrets
+secrets.json
+credentials.json
+
+# Test coverage
+/coverage/
+.nyc_output
+
+# Alembic
+/alembic.ini
+!backend/alembic.ini
+
+# Local configuration
+config.local.py
+local_settings.py
+
+# Trading data
+trading_data/
+historical_data/
+market_data/
+
+# Backup files
+*.bak
+*.backup
+
+# Temporary files
+*.tmp
+
+# Local DB dumps
+other_assets/
+other_assets/axiomfolio.dump
+
+# Cache
+.cache/
+cache/
+
+# Git backup
+.git_backup/ 
+*.pdf
+*.tar.gz
+*.sql.gz

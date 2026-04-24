@@ -1,0 +1,39 @@
+---
+description: After any merge to main that touches prod, verify the change actually works in prod before claiming done.
+alwaysApply: true
+---
+
+# Production Verification
+
+Merging to main does not equal "shipped". Render auto-deploys can fail; auto-deploys can succeed but the change may not behave as intended in the prod environment.
+
+## Required after every merge to main
+
+1. **Wait for Render deploy to complete** — check Render dashboard or `gh api repos/.../deployments`. Both API and worker services must show `live` on the new commit SHA.
+2. **Hit the relevant health endpoint** — `/health` for basic, `/health/full` for DB, `/api/v1/market-data/admin/health` for market data dimensions.
+3. **Verify the specific change**:
+   - New endpoint? `curl` it with auth, expect 200 + correct schema
+   - New Celery task? Trigger it via `/api/v1/admin/jobs/run-now` (or wait for Beat) and confirm `JobRun` row shows success
+   - Frontend change? Open the page in prod, click the relevant control, confirm expected behavior
+   - Schema change? Confirm `alembic current` on prod matches expected revision
+4. **Watch logs for 5 minutes** post-deploy for unexpected errors
+
+## Never claim "shipped" based on
+
+- "CI was green" (CI doesn't test prod)
+- "Build succeeded" (a successful Render deploy can still serve broken behavior)
+- "I see it in the UI" (the UI may be cached; force reload + check network tab)
+
+## When verification fails
+
+- **Roll back immediately** if the change introduces a P0 — revert PR, force redeploy
+- **Open follow-up issue** if it's a non-critical bug; don't try to fix in-place under pressure
+- **Document in KNOWLEDGE.md** as an `R##` entry if root cause non-obvious
+
+## Prod-only checks for risk-touching changes
+
+Risk gate, order manager, exit cascade, billing webhook — also:
+
+- Send one canary order through `paper-shadow` mode
+- Verify circuit breaker state matches expected
+- Check no new `risk_violation` rows appeared

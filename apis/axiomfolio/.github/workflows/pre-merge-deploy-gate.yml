@@ -1,0 +1,128 @@
+name: Pre-merge Deploy Gate
+
+# G28: Block merges to `main` while production deploys are actively failing.
+#
+# Reads the deploy-health snapshot from prod and fails the PR check if the
+# composite status is RED (3+ consecutive failed deploys on any monitored
+# Render service). A YELLOW status advises — the check soft-passes and leaves
+# a PR comment so the merging engineer can weigh risk.
+#
+# Per `no-silent-fallback.mdc`: if the endpoint is unreachable, this check
+# fails CLOSED (treated as a YELLOW advisory) so the deploy gate never masks
+# an outage by returning a clean status.
+#
+# Required secrets (set at repo level):
+#   PROD_HEALTH_URL      e.g. https://api.axiomfolio.com
+#   PROD_HEALTH_TOKEN    admin bearer for /admin/deploys/health
+#
+# If either secret is missing, the check no-ops with a warning — this keeps
+# forks and PRs from external contributors unblocked while still gating the
+# primary repo.
+
+"on":
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: pre-merge-deploy-gate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy_gate:
+    name: Deploy-health gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      pull-requests: write
+      # issues: write is required because github.rest.issues.createComment
+      # posts via the Issues API (PRs are issues). Without it the comment step
+      # 403s silently and masks the actual gate-failure signal.
+      issues: write
+    steps:
+      - name: Check prod deploy-health
+        id: gate
+        env:
+          PROD_HEALTH_URL: ${{ secrets.PROD_HEALTH_URL }}
+          PROD_HEALTH_TOKEN: ${{ secrets.PROD_HEALTH_TOKEN }}
+        run: |
+          set +e
+          if [ -z "$PROD_HEALTH_URL" ] || [ -z "$PROD_HEALTH_TOKEN" ]; then
+            echo "::warning::PROD_HEALTH_URL / PROD_HEALTH_TOKEN not configured; skipping deploy gate."
+            echo "status=skipped" >> "$GITHUB_OUTPUT"
+            echo "reason=secrets not configured" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          URL="${PROD_HEALTH_URL%/}/api/v1/admin/deploys/health"
+          echo "Polling $URL"
+          HTTP_CODE=$(curl -sS -o /tmp/deploy_health.json \
+            -w "%{http_code}" \
+            -H "Authorization: Bearer $PROD_HEALTH_TOKEN" \
+            --max-time 15 \
+            "$URL") || HTTP_CODE="000"
+
+          echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::warning::Deploy-health endpoint returned $HTTP_CODE; treating as advisory YELLOW."
+            echo "status=yellow" >> "$GITHUB_OUTPUT"
+            echo "reason=endpoint HTTP $HTTP_CODE" >> "$GITHUB_OUTPUT"
+            cat /tmp/deploy_health.json || true
+            exit 0
+          fi
+
+          STATUS=$(jq -r '.status // "unknown"' /tmp/deploy_health.json)
+          REASON=$(jq -r '.reason // "no reason provided"' /tmp/deploy_health.json)
+          FAIL_MAX=$(jq -r '.consecutive_failures_max // 0' /tmp/deploy_health.json)
+          FAIL_24H=$(jq -r '.failures_24h_total // 0' /tmp/deploy_health.json)
+          SERVICES=$(jq -r '.services_configured // 0' /tmp/deploy_health.json)
+
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+          echo "consecutive_failures_max=$FAIL_MAX" >> "$GITHUB_OUTPUT"
+          echo "failures_24h_total=$FAIL_24H" >> "$GITHUB_OUTPUT"
+          echo "services_configured=$SERVICES" >> "$GITHUB_OUTPUT"
+
+          echo "Deploy gate: status=$STATUS services=$SERVICES consec_max=$FAIL_MAX fail_24h=$FAIL_24H"
+          echo "Reason: $REASON"
+
+          if [ "$STATUS" = "red" ]; then
+            echo "::error::Production deploys are RED ($REASON). Merging is blocked until prod stabilizes. See docs/runbooks/deploy-pipeline-failure.md."
+            exit 1
+          fi
+
+          exit 0
+
+      - name: Comment on PR when gate triggers
+        if: always() && github.event_name == 'pull_request' && steps.gate.outputs.status == 'red'
+        # Pinned to v7.0.1 commit SHA per repo policy (all actions require
+        # full-length SHA pinning).
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea
+        with:
+          script: |
+            const status = `${{ steps.gate.outputs.status }}`;
+            const reason = `${{ steps.gate.outputs.reason }}`;
+            const max = `${{ steps.gate.outputs.consecutive_failures_max }}`;
+            const h24 = `${{ steps.gate.outputs.failures_24h_total }}`;
+            const body = [
+              '**Pre-merge Deploy Gate — BLOCKED**',
+              '',
+              `Production deploy-health is **${status.toUpperCase()}**.`,
+              '',
+              `- Reason: ${reason}`,
+              `- Consecutive failures (worst service): ${max}`,
+              `- Failures in last 24h (all services): ${h24}`,
+              '',
+              'Runbook: `docs/runbooks/deploy-pipeline-failure.md`',
+              '',
+              'This check re-runs on push and on manual rerun. Do not force-merge; fix the Render pipeline first or coordinate with the on-call operator.',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
