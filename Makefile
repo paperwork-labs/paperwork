@@ -6,7 +6,7 @@
 	ib-up ib-down ib-logs ib-verify \
 	tunnel-up tunnel-down tunnel-logs tunnel-on tunnel-off \
 	backup-db \
-	medallion-check medallion-tag
+	medallion-check medallion-tag medallion-check-sql medallion-lint
 
 DOCKER ?= docker
 PROJECT ?= axiomfolio
@@ -209,5 +209,11 @@ ib-verify: ## Verify IB Gateway connectivity end-to-end
 medallion-check:
 	@python3 scripts/medallion/check_imports.py --stats
 
+medallion-check-sql:
+	@python3 scripts/medallion/check_sql.py --stats
+
 medallion-tag:
 	@python3 scripts/medallion/tag_files.py --apply
+
+# Run all medallion lint gates at once (used by pre-commit + CI).
+medallion-lint: medallion-check medallion-check-sql

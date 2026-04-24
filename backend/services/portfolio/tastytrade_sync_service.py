@@ -339,46 +339,123 @@ class TastyTradeSyncService:
         return {"tax_lots": count}
 
     async def _sync_trades(self, db: Session, ba: BrokerAccount) -> Dict[str, int]:
+        """Idempotent trade sync from TastyTrade.
+
+        Iron Law #1 (append-only ledger): never DELETE trades. Existing rows
+        are preserved; rows that collide on the (account_id, execution_id)
+        natural key are silently skipped via Postgres ON CONFLICT DO NOTHING.
+
+        Iron Law #2 (idempotent bronze): re-running this sync produces the
+        same persisted state — rowcounts may grow (new trades from the broker)
+        but never shrink.
+
+        Iron Law #5 (counter-based auditing): written/skipped/errors are
+        reported per-call and their sum is asserted == input.
+        """
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
         trades = await self.client.get_trade_history(ba.account_number, days=365)
-        db.query(Trade).filter_by(account_id=ba.id).delete()
-        seen_execs = set()
+        written = 0
+        skipped = 0
+        errors = 0
+        seen_execs: set[str] = set()
         for t in trades:
-            kwargs = self._trade_to_kwargs(t, ba)
+            try:
+                kwargs = self._trade_to_kwargs(t, ba)
+            except Exception as exc:
+                logger.warning("Skipping TastyTrade trade (build kwargs): %s", exc)
+                errors += 1
+                continue
             exec_id = kwargs.get("execution_id") or kwargs.get("order_id")
             if exec_id and exec_id in seen_execs:
+                skipped += 1
                 continue
             if exec_id:
                 seen_execs.add(exec_id)
-            db.add(Trade(**kwargs))
+            stmt = pg_insert(Trade.__table__).values(**kwargs).on_conflict_do_nothing()
+            result = db.execute(stmt)
+            if result.rowcount == 1:
+                written += 1
+            else:
+                skipped += 1
         db.flush()
-        return {"trades": len(trades)}
+        total = len(trades)
+        if written + skipped + errors != total:
+            logger.error(
+                "TastyTrade trades sync counter mismatch account=%s "
+                "written=%d skipped=%d errors=%d total=%d — Iron Law #5 violation",
+                ba.account_number, written, skipped, errors, total,
+            )
+        logger.info(
+            "TastyTrade trades sync account=%s written=%d skipped=%d errors=%d total=%d",
+            ba.account_number, written, skipped, errors, total,
+        )
+        return {
+            "trades": total,
+            "written": written,
+            "skipped": skipped,
+            "errors": errors,
+        }
 
     async def _sync_transactions(
         self, db: Session, ba: BrokerAccount
     ) -> Dict[str, int]:
+        """Idempotent transaction sync from TastyTrade.
+
+        Iron Law #1: never DELETE transactions (append-only ledger).
+        Iron Law #2: re-run safely — any row colliding on either unique
+            constraint (account_id + external_id OR account_id + execution_id)
+            is skipped by ON CONFLICT DO NOTHING.
+        Iron Law #5: counters reported, sum asserted.
+        """
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
         txns = await self.client.get_transactions(ba.account_number, days=365)
-        db.query(Transaction).filter_by(account_id=ba.id).delete()
-        count = 0
-        seen_txn_ids = set()
+        written = 0
+        skipped = 0
+        errors = 0
+        seen_txn_ids: set[str] = set()
         for txn in txns:
             try:
                 kwargs = self._txn_to_kwargs(txn, ba)
-                ext_id = (
-                    kwargs.get("external_id")
-                    or kwargs.get("execution_id")
-                    or kwargs.get("order_id")
-                )
-                if ext_id and ext_id in seen_txn_ids:
-                    continue
-                if ext_id:
-                    seen_txn_ids.add(ext_id)
-                db.add(Transaction(**kwargs))
-                count += 1
             except Exception as exc:
-                logger.warning("Skipping TastyTrade transaction: %s", exc)
+                logger.warning("Skipping TastyTrade transaction (build kwargs): %s", exc)
+                errors += 1
                 continue
+            ext_id = (
+                kwargs.get("external_id")
+                or kwargs.get("execution_id")
+                or kwargs.get("order_id")
+            )
+            if ext_id and ext_id in seen_txn_ids:
+                skipped += 1
+                continue
+            if ext_id:
+                seen_txn_ids.add(ext_id)
+            stmt = pg_insert(Transaction.__table__).values(**kwargs).on_conflict_do_nothing()
+            result = db.execute(stmt)
+            if result.rowcount == 1:
+                written += 1
+            else:
+                skipped += 1
         db.flush()
-        return {"transactions": count}
+        total = len(txns)
+        if written + skipped + errors != total:
+            logger.error(
+                "TastyTrade txns sync counter mismatch account=%s "
+                "written=%d skipped=%d errors=%d total=%d — Iron Law #5 violation",
+                ba.account_number, written, skipped, errors, total,
+            )
+        logger.info(
+            "TastyTrade txns sync account=%s written=%d skipped=%d errors=%d total=%d",
+            ba.account_number, written, skipped, errors, total,
+        )
+        return {
+            "transactions": written,
+            "written": written,
+            "skipped": skipped,
+            "errors": errors,
+        }
 
     async def _sync_dividends(self, db: Session, ba: BrokerAccount) -> Dict[str, int]:
         divs = await self.client.get_dividends(ba.account_number, days=365)

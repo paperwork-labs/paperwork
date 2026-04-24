@@ -60,16 +60,22 @@ async def sync_trades(
             closed_lots_data = parsed.get("closed_lots", [])
             wash_sales_data = parsed.get("wash_sales", [])
 
-        db.query(Trade).filter(Trade.account_id == broker_account.id).delete(
-            synchronize_session="fetch"
-        )
+        # Iron Law #1 (append-only ledger): never DELETE trades.
+        # Iron Law #2 (idempotent bronze): re-running this sync never shrinks
+        # rowcount; ON CONFLICT DO NOTHING on (account_id, execution_id) makes
+        # repeat ingests safe.
+        # Iron Law #5 (counter-based auditing): written/skipped/errors per
+        # category, asserted sum == total_input.
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-        synced_count = 0
+        written = 0
+        skipped = 0
+        errors = 0
 
         def _store_trade(td: dict, status: str) -> None:
-            nonlocal synced_count
+            nonlocal written, skipped, errors
             exec_id = str(td.get("execution_id") or "").strip() or None
-            db.add(Trade(
+            values = dict(
                 account_id=broker_account.id,
                 symbol=td.get("symbol"),
                 side=td.get("side", "BUY"),
@@ -89,36 +95,56 @@ async def sync_trades(
                 status=status,
                 is_paper_trade=False,
                 trade_metadata=serialize_for_json(td),
-            ))
-            synced_count += 1
+            )
+            stmt = pg_insert(Trade.__table__).values(**values).on_conflict_do_nothing()
+            result = db.execute(stmt)
+            if result.rowcount == 1:
+                written += 1
+            else:
+                skipped += 1
 
         for td in trades_data:
             try:
                 _store_trade(td, "FILLED")
             except Exception as exc:
                 logger.error("Error creating trade: %s", exc)
+                errors += 1
 
         for td in closed_lots_data:
             try:
                 _store_trade(td, "CLOSED_LOT")
             except Exception as exc:
                 logger.error("Error creating closed lot: %s", exc)
+                errors += 1
 
         for td in wash_sales_data:
             try:
                 _store_trade(td, "WASH_SALE")
             except Exception as exc:
                 logger.error("Error creating wash sale: %s", exc)
+                errors += 1
 
         db.flush()
+        total_input = len(trades_data) + len(closed_lots_data) + len(wash_sales_data)
+        if written + skipped + errors != total_input:
+            logger.error(
+                "IBKR trades sync counter mismatch account=%s "
+                "written=%d skipped=%d errors=%d total=%d — Iron Law #5 violation",
+                broker_account.account_number, written, skipped, errors, total_input,
+            )
         logger.info(
-            "Trades: %d executions, %d closed lots, %d wash sales",
+            "IBKR trades sync account=%s written=%d skipped=%d errors=%d "
+            "(exec=%d closed_lots=%d wash_sales=%d)",
+            broker_account.account_number, written, skipped, errors,
             len(trades_data), len(closed_lots_data), len(wash_sales_data),
         )
         return {
             "synced": len(trades_data),
             "closed_lots": len(closed_lots_data),
             "wash_sales": len(wash_sales_data),
+            "written": written,
+            "skipped": skipped,
+            "errors": errors,
         }
     except Exception as exc:
         logger.error("Error syncing trades: %s", exc)
