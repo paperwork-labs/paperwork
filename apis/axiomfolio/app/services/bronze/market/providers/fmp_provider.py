@@ -7,7 +7,7 @@ Requires API key, has generous free tier (250 calls/day).
 
 Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
 
-medallion: silver
+medallion: bronze
 """
 
 import logging

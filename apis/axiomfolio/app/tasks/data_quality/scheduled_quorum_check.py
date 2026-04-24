@@ -105,7 +105,7 @@ async def _gather_provider_quotes(
     Imports happen inside the function so that test runs that monkey-
     patch this function don't pay the import cost of yfinance / fmpsdk.
     """
-    from app.services.market.providers import (
+    from app.services.bronze.market.providers import (
         FMPProvider,
         YFinanceProvider,
     )

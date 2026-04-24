@@ -1,6 +1,6 @@
 """Market Data Providers Package.
 
-medallion: silver
+medallion: bronze
 """
 
 from .protocol import MarketDataProvider

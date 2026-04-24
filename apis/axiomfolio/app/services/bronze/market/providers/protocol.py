@@ -5,7 +5,7 @@ Market Data Provider Protocol
 Abstract base / Protocol for all market data providers.
 Ensures consistent interface across FMP, yfinance, Finnhub, Twelve Data, etc.
 
-medallion: silver
+medallion: bronze
 """
 
 from abc import ABC, abstractmethod
