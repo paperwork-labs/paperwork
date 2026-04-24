@@ -1,5 +1,12 @@
 # AxiomFolio — AI Agent Entry Point
 
+> **Canonical location (as of 2026-04-23)**: `apis/axiomfolio/` inside the
+> [paperwork monorepo](https://github.com/paperwork-labs/paperwork). The
+> standalone `paperwork-labs/axiomfolio` repo is being archived — do not
+> open new PRs against it. CI, Render blueprint, and agent coordination
+> all live at the monorepo root; see [.github/workflows/axiomfolio-ci.yml](../../.github/workflows/axiomfolio-ci.yml)
+> and [apis/axiomfolio/.github/WORKFLOWS_MOVED.md](.github/WORKFLOWS_MOVED.md).
+
 Welcome, agent. This is a quantitative portfolio intelligence platform built for swing trading using Stage Analysis (Oliver Kell / Weinstein refined). Read this file first, then dive into the relevant domain.
 
 ## Tech Stack

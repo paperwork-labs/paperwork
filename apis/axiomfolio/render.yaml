@@ -1,7 +1,16 @@
+# AxiomFolio Render Blueprint.
+#
+# As of 2026-04-23 AxiomFolio lives inside the paperwork monorepo at
+# apis/axiomfolio/. The Render blueprint service is configured to read
+# THIS file (Blueprint file path: apis/axiomfolio/render.yaml) from the
+# paperwork repo. Each service sets rootDir: apis/axiomfolio so build
+# context, Dockerfile paths, and relative buildCommand paths resolve
+# correctly against the subtree root.
 services:
   - type: web
     name: axiomfolio-api
     runtime: docker
+    rootDir: apis/axiomfolio
     plan: standard
     dockerfilePath: ./Dockerfile.backend
     healthCheckPath: /health
@@ -46,6 +55,7 @@ services:
   - type: worker
     name: axiomfolio-worker
     runtime: docker
+    rootDir: apis/axiomfolio
     # Fast worker — handles short-running tasks (default `celery` queue,
     # `account_sync`, `orders`) plus Celery Beat scheduling. Concurrency=2
     # because per-task memory is small (<200 MiB) so two children fit
@@ -90,6 +100,7 @@ services:
   - type: worker
     name: axiomfolio-worker-heavy
     runtime: docker
+    rootDir: apis/axiomfolio
     # Heavy worker — exclusively handles the `heavy` queue: long-running
     # market-data jobs that previously starved the fast worker (a single
     # `repair_stage_history` would block dashboard warming for an hour).
@@ -133,6 +144,7 @@ services:
   - type: web
     name: axiomfolio-frontend
     runtime: static
+    rootDir: apis/axiomfolio
     autoDeploy: true
     buildCommand: cd frontend && npm ci && npm run build
     staticPublishPath: frontend/dist

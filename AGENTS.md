@@ -1,6 +1,16 @@
 # Paperwork Labs — Agent Instructions
 
-Paperwork Labs builds tools that eliminate paperwork. This repo contains 4 products (FileFree, LaunchFree, Distill, Trinkets). Current code is transitioning from the legacy `api/` + `web/` layout to the target `apps/` + `packages/` pnpm monorepo structure.
+Paperwork Labs builds tools that eliminate paperwork. This repo is a pnpm + Turborepo monorepo containing 5 products (FileFree, LaunchFree, Distill, Trinkets, AxiomFolio) plus Brain (the shared AI orchestration layer).
+
+## Repo layout
+
+- `apps/` — user-facing frontends (Next.js, Vite)
+- `apis/` — self-contained product backends (each with its own Dockerfile, alembic, pyproject.toml)
+  - `apis/brain/` — Brain orchestration layer (FastAPI)
+  - `apis/filefree/`, `apis/launchfree/` — product APIs
+  - `apis/axiomfolio/` — quantitative portfolio intelligence (FastAPI + Celery + Postgres 18). Absorbed 2026-04-23. See [apis/axiomfolio/AGENTS.md](apis/axiomfolio/AGENTS.md).
+- `packages/` — shared libs (auth, analytics, vault, UI primitives)
+- `docs/` — cross-product philosophy docs (infra, data, orchestration)
 
 ## Quick Start
 

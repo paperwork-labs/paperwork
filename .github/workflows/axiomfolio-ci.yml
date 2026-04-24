@@ -1,0 +1,207 @@
+name: AxiomFolio CI
+
+# Runs on any change under apis/axiomfolio/. Ported from the standalone
+# axiomfolio repo (apis/axiomfolio/.github/workflows/ci.yml, which is now
+# inert — GitHub Actions only reads .github/workflows/ at repo root). All
+# steps run with working-directory: apis/axiomfolio so relative paths inside
+# the Makefile and docker compose files continue to work unchanged.
+
+"on":
+  pull_request:
+    branches: [main]
+    paths:
+      - "apis/axiomfolio/**"
+      - ".github/workflows/axiomfolio-ci.yml"
+  push:
+    branches: [main]
+    paths:
+      - "apis/axiomfolio/**"
+      - ".github/workflows/axiomfolio-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: axiomfolio-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: Detect changed paths (axiomfolio)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.decide.outputs.backend }}
+      frontend: ${{ steps.decide.outputs.frontend }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Run path filter (pull_request only)
+        id: filter
+        if: github.event_name == 'pull_request'
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d
+        with:
+          filters: |
+            backend:
+              - 'apis/axiomfolio/backend/**'
+              - 'apis/axiomfolio/infra/**'
+              - 'apis/axiomfolio/Dockerfile.backend'
+              - 'apis/axiomfolio/docker-compose.test.yml'
+              - 'apis/axiomfolio/infra/compose.test.yaml'
+              - 'apis/axiomfolio/requirements*.txt'
+              - 'apis/axiomfolio/pyproject.toml'
+              - 'apis/axiomfolio/alembic.ini'
+              - 'apis/axiomfolio/backend/alembic.ini'
+              - 'apis/axiomfolio/Makefile'
+              - '.github/workflows/axiomfolio-ci.yml'
+            frontend:
+              - 'apis/axiomfolio/frontend/**'
+              - '.github/workflows/axiomfolio-ci.yml'
+
+      - name: Decide which jobs need real work
+        id: decide
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            echo "backend=${{ steps.filter.outputs.backend }}" >> "$GITHUB_OUTPUT"
+            echo "frontend=${{ steps.filter.outputs.frontend }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "backend=true" >> "$GITHUB_OUTPUT"
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  backend-tests:
+    name: AxiomFolio backend (pytest in docker)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apis/axiomfolio
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Prepare test env
+        run: cp infra/env.test.example infra/env.test
+
+      - name: Start test stack (postgres_test, redis_test)
+        run: make test-up
+
+      - name: Python syntax check
+        run: make test-syntax
+
+      - name: Run backend tests (isolated postgres_test)
+        run: make test
+
+      - name: Migration chain integrity
+        run: |
+          docker compose --project-name axiomfolio_test --env-file infra/env.test \
+            -f infra/compose.test.yaml run --rm --no-deps backend_test \
+            python -c "
+          from alembic.config import Config
+          from alembic.script import ScriptDirectory
+          import os, sys
+          cfg = Config(os.path.join('backend', 'alembic.ini'))
+          cfg.set_main_option('script_location', os.path.join('backend', 'alembic'))
+          script = ScriptDirectory.from_config(cfg)
+          heads = script.get_heads()
+          if len(heads) != 1:
+              print(f'ERROR: Expected 1 migration head, found {len(heads)}: {heads}')
+              sys.exit(1)
+          revs = list(script.walk_revisions())
+          print(f'OK: {len(revs)} migrations, single head: {heads[0]}')
+          "
+
+      - name: Tear down test stack
+        if: always()
+        run: make test-down
+
+  backend-tests-skipped:
+    name: AxiomFolio backend (pytest in docker)
+    needs: changes
+    if: needs.changes.outputs.backend != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "No axiomfolio backend changes; skipping real tests."
+
+  frontend-checks:
+    name: AxiomFolio frontend (lint/typecheck/test)
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apis/axiomfolio/frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Node
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apis/axiomfolio/frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run type-check
+
+      - name: Unit tests
+        run: npm run test
+
+  frontend-checks-skipped:
+    name: AxiomFolio frontend (lint/typecheck/test)
+    needs: changes
+    if: needs.changes.outputs.frontend != 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "No axiomfolio frontend changes; skipping real checks."
+
+  medallion-check:
+    name: Medallion import-layer gate
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    defaults:
+      run:
+        working-directory: apis/axiomfolio
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Setup Python
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3
+        with:
+          python-version: "3.11"
+      - name: Run medallion-check
+        run: make medallion-check
+
+  medallion-check-sql:
+    name: "Iron Law #1 — append-only ledgers"
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    defaults:
+      run:
+        working-directory: apis/axiomfolio
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - name: Setup Python
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3
+        with:
+          python-version: "3.11"
+      - name: Run medallion-check-sql
+        run: make medallion-check-sql
