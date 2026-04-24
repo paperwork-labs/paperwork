@@ -330,7 +330,7 @@ def run_smoke_tests() -> None:
     """Run lightweight checks: imports, medallion lints, pytest collect."""
     print("  → python -m compileall (syntax check)")
     subprocess.run(
-        [sys.executable, "-m", "compileall", "-q", "backend"],
+        [sys.executable, "-m", "compileall", "-q", "app"],
         check=True, cwd=REPO,
     )
     print("  → make medallion-check (import layering)")
