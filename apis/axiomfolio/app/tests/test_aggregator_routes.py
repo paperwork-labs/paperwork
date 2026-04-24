@@ -112,7 +112,7 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
     import httpx
     monkeypatch.setattr(httpx, "AsyncClient", DummyClient)
     # Stub token exchange so callback succeeds regardless of async/thread context
-    from app.services.aggregator.schwab_connector import SchwabConnector
+    from app.services.bronze.aggregator.schwab_connector import SchwabConnector
     monkeypatch.setattr(SchwabConnector, "exchange_code_for_tokens", _stub_exchange_code_for_tokens)
 
     try:
