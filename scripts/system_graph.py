@@ -488,20 +488,58 @@ def main() -> int:
         if not OUTPUT_PATH.exists():
             print(f"{OUTPUT_PATH} missing — run: python scripts/system_graph.py")
             return 1
-        current = OUTPUT_PATH.read_text()
         # `generated_at` and `commit_sha` change every run; compare the structural
-        # payload (nodes + layers) by ignoring both. Otherwise CI would fail any
-        # PR that doesn't also regenerate the snapshot — a bandaid that turns
-        # every single PR into a two-step ritual.
-        def _strip(text: str) -> str:
-            text = re.sub(r'"generated_at":\s*"[^"]*",?\s*', "", text)
-            text = re.sub(r'"commit_sha":\s*"[^"]*",?\s*', "", text)
-            return text
-        if _strip(current) != _strip(rendered):
+        # payload (nodes + layers) by parsing JSON and dropping both. Otherwise
+        # CI would fail any PR that doesn't also regenerate the snapshot — a
+        # bandaid that turns every single PR into a two-step ritual.
+        try:
+            current = json.loads(OUTPUT_PATH.read_text())
+        except json.JSONDecodeError as exc:
+            print(
+                f"{OUTPUT_PATH} is not valid JSON ({exc}) — run: python scripts/system_graph.py",
+                file=sys.stderr,
+            )
+            return 1
+
+        def _structural(payload: dict) -> dict:
+            return {k: v for k, v in payload.items() if k not in {"generated_at", "commit_sha"}}
+
+        if _structural(current) != _structural(graph):
+            # Show a concrete diff so CI is actionable instead of opaque.
+            cur_nodes = {n["id"]: n for n in current.get("nodes", [])}
+            gen_nodes = {n["id"]: n for n in graph["nodes"]}
+            added = sorted(gen_nodes.keys() - cur_nodes.keys())
+            removed = sorted(cur_nodes.keys() - gen_nodes.keys())
+            changed: list[str] = []
+            for nid in sorted(cur_nodes.keys() & gen_nodes.keys()):
+                if cur_nodes[nid] != gen_nodes[nid]:
+                    changed.append(nid)
             print(
                 f"{OUTPUT_PATH} is stale — run: python scripts/system_graph.py",
                 file=sys.stderr,
             )
+            if added:
+                print(f"  nodes added:   {', '.join(added)}", file=sys.stderr)
+            if removed:
+                print(f"  nodes removed: {', '.join(removed)}", file=sys.stderr)
+            if changed:
+                print(f"  nodes changed: {', '.join(changed)}", file=sys.stderr)
+                # Print first changed node's diff.
+                first = changed[0]
+                cur_n = cur_nodes[first]
+                gen_n = gen_nodes[first]
+                cur_keys = set(cur_n.keys())
+                gen_keys = set(gen_n.keys())
+                if cur_keys != gen_keys:
+                    print(f"    {first} keys diff: +{sorted(gen_keys - cur_keys)} -{sorted(cur_keys - gen_keys)}", file=sys.stderr)
+                for k in cur_keys & gen_keys:
+                    if cur_n[k] != gen_n[k]:
+                        print(f"    {first}.{k}: {cur_n[k]!r} -> {gen_n[k]!r}", file=sys.stderr)
+            if current.get("layers") != graph.get("layers"):
+                print(
+                    f"  layers: {current.get('layers')!r} -> {graph.get('layers')!r}",
+                    file=sys.stderr,
+                )
             return 1
         print(f"{OUTPUT_PATH} is up to date ({len(graph['nodes'])} nodes).")
         return 0
