@@ -122,3 +122,17 @@ jobs:
             high)   gh pr edit "$PR_NUMBER" --add-label "risk:high" ;;
             *)      gh pr edit "$PR_NUMBER" --add-label "risk:medium" ;;
           esac
+
+      - name: Auto-approve risk:low majors
+        # Claude Haiku reviewed the diff and classified it risk:low. Pair with
+        # the auto-merge-sweep gate (deps:major + risk:low → mergeable) so
+        # the full pipeline is: dependabot opens → triage → approve → sweep
+        # merges on next 10-min poll. Medium and high stay pending human review.
+        if: steps.triage.outputs.risk == 'low'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        run: |
+          gh pr review "$PR_NUMBER" --approve --body "Auto-approved: Claude Haiku classified this major bump as risk:low.
+
+          Sweep will merge once CI is green. Pipeline: dependabot-major-triage.yaml → auto-merge-sweep.yaml."
