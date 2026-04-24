@@ -1,15 +1,9 @@
 """Portfolio services - sync, tax lots, analytics.
 
 medallion: silver
-"""
-from .tax_lot_service import TaxLotService
-from .tax_loss_harvester import TaxLossHarvester, HarvestOpportunity, WashSaleWindow
-from .portfolio_analytics_service import PortfolioAnalyticsService
 
-__all__ = [
-    "TaxLotService",
-    "TaxLossHarvester",
-    "HarvestOpportunity",
-    "WashSaleWindow",
-    "PortfolioAnalyticsService",
-]
+``PortfolioAnalyticsService`` now lives at
+:mod:`app.services.silver.portfolio.analytics`. ``TaxLotService`` and
+``TaxLossHarvester`` continue to live in their own modules. Import from
+the canonical submodule rather than this package's namespace.
+"""
