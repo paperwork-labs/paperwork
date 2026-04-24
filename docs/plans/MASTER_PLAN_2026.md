@@ -4,7 +4,11 @@
 **Created**: 2026-04-09
 **Owner**: Staff Engineer (Opus orchestrator)
 **Reviewed**: see `docs/KNOWLEDGE.md` D81-D90 for decision rationale.
-**Companion**: [GAPS_2026Q2.md](GAPS_2026Q2.md) — production gaps discovered 2026-04-20.
+**Companions**:
+- [GAPS_2026Q2.md](GAPS_2026Q2.md) — production gaps discovered 2026-04-20.
+- [PLATFORM_REVIEW_2026Q2.md](PLATFORM_REVIEW_2026Q2.md) — 13-chapter strategic review (2026-04-22, D144 + D145). Defines the 16-wave execution roadmap, two-layer moat (retail-discipline + HNW tax-alpha), founder dogfood flywheel, pricing audit + feature-to-tier remap, marketing narrative, and the **medallion + data-warehouse discipline** (Ch 1.8 + Wave 16; D127/D145 iron laws). **The 16-wave roadmap in Ch 11 is the unit of execution — prefer it over Phase-3 wave numbers in this file where the two diverge.**
+- [BROKER_COVERAGE_TRACKER.md](BROKER_COVERAGE_TRACKER.md) — evergreen broker read/write matrix + ACATS cost-basis recovery playbook.
+- [PORTFOLIO_SYNC_COMPLETENESS_2026Q2.md](PORTFOLIO_SYNC_COMPLETENESS_2026Q2.md) — Wave 8 spec (blocks W3.7 FileFree 1.1.0 bump). Diagnostic runbook + 4-path recovery for founder's Schwab ACATS tax-lot + options symptoms.
 
 - Scope: G1–G27, dual-mode return-maximization platform per D116, IBKR sync correctness
   per D117, founder-replay-corpus discipline per D118, and discipline-bounded year-end
