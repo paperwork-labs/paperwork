@@ -15,7 +15,7 @@ Hetzner), `docs/ORCHESTRATION_PHILOSOPHY.md` (Celery vs Airflow/Dagster),
    per-product dev compose.
 2. **One postgres, one redis.** Each product gets its own logical database
    (`axiomfolio_dev`, `brain_dev`, `filefree_dev`, `launchfree_dev`) on a
-   single `postgres:18-alpine` instance. Each product gets its own redis
+   single `postgres:17-alpine` instance. Each product gets its own redis
    logical DB index (`/0..3`).
 3. **Opt-in extras are profiles.** Interactive Brokers gateway, Cloudflare
    tunnel, Celery Flower — all live behind `docker compose --profile`
@@ -58,7 +58,7 @@ APIs) gets its own `infra/<product>/` folder following the same pattern.
 | Service    | Port host:container | Purpose                                    |
 | ---------- | ------------------- | ------------------------------------------ |
 | `portal`   | 3000:80             | dev portal — <http://localhost:3000>        |
-| `postgres` | 5433:5432           | postgres 18-alpine, all product DBs        |
+| `postgres` | 5433:5432           | postgres 17-alpine, all product DBs        |
 | `redis`    | 6380:6379           | redis 7-alpine, logical DBs `/0..3`        |
 
 The **portal** is a static landing page (`infra/portal/index.html`,
@@ -86,7 +86,7 @@ This is dev-only; production Render deploys provision per-service
 managed databases with scoped roles. The role was renamed from
 `filefree` to `paperwork` on 2026-04-24 — if you have a pre-existing
 `pgdata` volume, wipe it (see "Upgrading an existing dev environment"
-below; the same `down -v` resets both the pg18 bump and the role).
+below; the same `down -v` resets both the pg17 bump and the role).
 
 Dev connection string (inside a container):
 
@@ -197,12 +197,18 @@ glance.
 
 ---
 
-## Postgres version alignment (pg18)
+## Postgres version alignment (pg17)
 
-Root postgres was `15-alpine`. Bumped to `18-alpine` to align with
-AxiomFolio's production Render DB (which has 7.3 GB of live data on
-pg18). FileFree / LaunchFree / Brain have no pg15-specific features and
-work unchanged on pg18.
+Root postgres was `15-alpine`. Bumped to `17-alpine` to get closer to
+AxiomFolio's production Render DB (pg18, 7.3 GB of live data). FileFree
+/ LaunchFree / Brain have no version-specific features and work
+unchanged on pg17.
+
+**Why not pg18?** We tried. `postgres:18-alpine` (released Oct 2025)
+silently exited(1) on GitHub Actions runners — the container reported
+"Started" but crashed before healthcheck passed, breaking CI across the
+monorepo. pg17-alpine is what Render, Supabase, Neon, and every managed
+provider ship today; revisit pg18 once the alpine image has baked.
 
 Local dev DBs are re-init-able (`docker compose down -v && docker compose up`);
 no prod risk. Production Render databases are managed per-service and
@@ -210,7 +216,7 @@ unaffected by this bump.
 
 ### Upgrading an existing dev environment
 
-If you have an existing `pgdata` volume from before this change, the pg18
+If you have an existing `pgdata` volume from before this change, the pg17
 container will refuse to start ("incompatible data directory version").
 Wipe the volume to re-initialize:
 
@@ -229,7 +235,7 @@ Re-run migrations per product (`make migrate-up` from each `apis/*/`).
 
 Performed as part of PR #80 (AxiomFolio monorepo absorption):
 
-1. **Shared stack bumped to pg18.** Existing dev DBs re-initialized.
+1. **Shared stack bumped to pg17.** Existing dev DBs re-initialized.
 2. **AxiomFolio services added to root compose.** `api-axiomfolio`,
    `celery-axiomfolio-worker`, `celery-axiomfolio-beat` now live in
    `infra/compose.dev.yaml`.
