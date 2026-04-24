@@ -1,4 +1,7 @@
-"""User-scoped connection aggregation helpers (broker accounts + OAuth)."""
+"""User-scoped connection aggregation helpers (broker accounts + OAuth).
+
+medallion: ops
+"""
 
 from backend.services.connections.health_aggregate import build_connections_health
 

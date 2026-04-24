@@ -3,6 +3,8 @@ Tax Loss Harvester Service.
 
 Identifies tax loss harvesting opportunities while enforcing
 wash sale compliance (61-day window: 30 days before + 30 days after sale).
+
+medallion: silver
 """
 from __future__ import annotations
 

@@ -5,6 +5,8 @@ These tokens are NOT login JWTs: ``sub`` is ``chart_share`` and ``scope`` is
 ``chart-share`` (verified on decode so OAuth state or auth tokens are rejected).
 Uses ``OAUTH_STATE_SECRET`` (with ``SECRET_KEY`` fallback) as the HS256 key,
 matching `backend.services.security.oauth_state` configuration.
+
+medallion: ops
 """
 
 from __future__ import annotations

@@ -36,6 +36,8 @@ user-agnostic so any caller can resolve a ticker. Callers that
 project user-scoped data through the master (e.g. user portfolios)
 **must** keep the user filter on their own tables — the master
 contributes no tenant filter.
+
+medallion: silver
 """
 
 from __future__ import annotations

@@ -4,6 +4,8 @@ DANGER ZONE: This file is the single execution path. See .cursor/rules/protected
 Related docs: docs/TRADING_PRINCIPLES.md
 Related rules: portfolio-manager.mdc
 IRON LAW: Single execution path - OrderManager → RiskGate → BrokerRouter. Never bypass.
+
+medallion: execution
 """
 
 from __future__ import annotations

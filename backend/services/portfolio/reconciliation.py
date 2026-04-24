@@ -2,6 +2,8 @@
 
 Compares internal position records against broker-reported positions
 and generates discrepancy alerts.
+
+medallion: silver
 """
 import logging
 from dataclasses import dataclass

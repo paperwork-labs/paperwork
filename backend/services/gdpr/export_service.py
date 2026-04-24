@@ -8,6 +8,8 @@ are written back to ``GDPRExportJob``.
 Failures write an ``IncidentRow`` so we have a forensic trail even
 after the user-facing job row is marked FAILED. This is the
 no-silent-fallback iron law in practice.
+
+medallion: ops
 """
 
 from __future__ import annotations

@@ -21,6 +21,8 @@ Threading model: ``httpx.Client`` (sync) instantiated per call. The poll
 cadence is 5 min with <= 4 service lookups per tick, so connection
 pooling buys us nothing and a per-call client keeps the worker memory
 footprint flat.
+
+medallion: ops
 """
 
 from __future__ import annotations

@@ -28,6 +28,8 @@ Design choices
 * Severity mapping mirrors the dashboard:
   ``red -> ERROR``, ``yellow|warning -> WARNING``, ``critical -> CRITICAL``.
   ``green|ok`` rows never produce an anomaly (we filter them out).
+
+medallion: ops
 """
 
 from __future__ import annotations

@@ -1,4 +1,7 @@
-"""Persist in-app notifications and relay events to the Brain webhook."""
+"""Persist in-app notifications and relay events to the Brain webhook.
+
+medallion: ops
+"""
 
 from __future__ import annotations
 

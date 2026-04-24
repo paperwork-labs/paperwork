@@ -1,4 +1,7 @@
-"""Cash transaction, dividend, and trade sync steps for IBKR pipeline."""
+"""Cash transaction, dividend, and trade sync steps for IBKR pipeline.
+
+medallion: bronze
+"""
 
 import logging
 from collections import defaultdict

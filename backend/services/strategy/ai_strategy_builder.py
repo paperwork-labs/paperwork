@@ -5,6 +5,8 @@ Uses LLM to generate strategy rules with safety constraints:
 - Trust scoring based on backtesting performance
 - Risk guardrails to prevent dangerous configurations
 - Explainability of generated rules
+
+medallion: gold
 """
 from __future__ import annotations
 

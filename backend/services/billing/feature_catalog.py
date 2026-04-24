@@ -27,6 +27,8 @@ The product/pricing team needs to be able to read this file and answer
 data here also lets us expose a public ``/entitlements/catalog`` endpoint
 so the marketing site and frontend can render the pricing table without
 duplicating the source of truth.
+
+medallion: ops
 """
 
 from __future__ import annotations

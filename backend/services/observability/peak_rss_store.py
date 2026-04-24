@@ -8,6 +8,8 @@ Each zset has score = monotonic time (``time.time()``, float) and
 ``member = "{peak_rss_kib:012d}:\\x00{unique}"`` so we keep the 100
 most **recent** samples (trim lowest scores / oldest) and percentiles
 reflect recent traffic, not the historical max.
+
+medallion: ops
 """
 
 from __future__ import annotations

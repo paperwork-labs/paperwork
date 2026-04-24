@@ -25,6 +25,8 @@ sync service):
    fun outage modes).
 
 See plan ``docs/plans/PLAID_FIDELITY_401K.md`` §4.
+
+medallion: silver
 """
 
 from __future__ import annotations

@@ -18,6 +18,8 @@ Conventions:
   greppable.
 * ``Decimal`` for confidence (no IEEE-754 surprises in audit logs).
 * ``datetime`` values are timezone-aware UTC.
+
+medallion: ops
 """
 
 from __future__ import annotations

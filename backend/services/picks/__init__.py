@@ -12,4 +12,6 @@ Module layout::
     email_parser/            Polymorphic LLM-based email parser that
                              normalizes inbox messages into structured
                              pick payloads.
+
+medallion: gold
 """

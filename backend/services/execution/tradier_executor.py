@@ -33,6 +33,8 @@ Design notes
 
 This executor does **not** touch any DANGER ZONE file (risk_gate,
 order_manager, exit_cascade, circuit_breaker, auth).
+
+medallion: execution
 """
 
 from __future__ import annotations

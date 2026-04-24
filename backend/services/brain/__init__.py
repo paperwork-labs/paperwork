@@ -1,4 +1,7 @@
-"""Brain (Paperwork) integration: webhooks and related clients."""
+"""Brain (Paperwork) integration: webhooks and related clients.
+
+medallion: ops
+"""
 
 from backend.services.brain.webhook_client import BrainWebhookClient, brain_webhook
 

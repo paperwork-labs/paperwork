@@ -9,6 +9,8 @@ the FileFree.ai pipeline expects.
 
 Keeping CSV column headers in one place means the contract is reviewable in
 isolation; bumping it requires a corresponding ``schema_version`` change.
+
+medallion: silver
 """
 
 from __future__ import annotations

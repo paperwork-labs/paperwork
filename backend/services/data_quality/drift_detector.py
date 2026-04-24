@@ -20,6 +20,8 @@ adjustment conventions) and isolates the change-detection signal.
 Decimal end to end (R32, R34, R38). We use ``math.sqrt`` only on a
 ``float`` cast at the very last step, then round-trip back through
 ``Decimal(str(...))`` so the persisted value is exact.
+
+medallion: silver
 """
 
 from __future__ import annotations

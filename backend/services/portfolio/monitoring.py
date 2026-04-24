@@ -3,6 +3,8 @@ Portfolio Monitoring Service
 ============================
 
 Tracks portfolio health metrics including drawdown monitoring and alerts.
+
+medallion: silver
 """
 
 import logging

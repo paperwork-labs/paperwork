@@ -24,6 +24,8 @@ We want a single place that:
    issued a comp upgrade, etc.) without scattering audit code everywhere.
 3. Exposes a one-call ``check_feature_access`` so route code stays a
    one-liner.
+
+medallion: ops
 """
 
 from __future__ import annotations

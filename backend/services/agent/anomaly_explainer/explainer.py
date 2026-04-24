@@ -13,6 +13,8 @@ It NEVER raises in normal operation. Producers (Celery tasks, admin
 routes) can call it inside an ``except`` of their own and forward the
 ``Explanation`` to alerting / Brain webhooks / dashboards without an
 extra try/except wrapper.
+
+medallion: ops
 """
 
 from __future__ import annotations

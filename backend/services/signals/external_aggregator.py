@@ -1,4 +1,7 @@
-"""Fetch and persist auxiliary external signals (stubs for Finviz/Zacks until licensed)."""
+"""Fetch and persist auxiliary external signals (stubs for Finviz/Zacks until licensed).
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

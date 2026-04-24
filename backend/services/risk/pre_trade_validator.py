@@ -1,5 +1,7 @@
 """
 Pre-trade validation - all checks must pass before order reaches broker.
+
+medallion: gold
 """
 from __future__ import annotations
 

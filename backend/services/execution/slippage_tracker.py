@@ -1,6 +1,8 @@
 """Slippage tracking and analytics service.
 
 Aggregates execution quality metrics across orders for analysis and ML training.
+
+medallion: execution
 """
 from __future__ import annotations
 

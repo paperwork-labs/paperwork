@@ -12,6 +12,8 @@ Flow:
 
 Iron law: shared / market-wide rows are NOT deleted (we'd damage
 other tenants). Those tables are listed in ``_SHARED_TABLES``.
+
+medallion: ops
 """
 
 from __future__ import annotations

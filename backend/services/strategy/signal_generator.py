@@ -1,4 +1,7 @@
-"""Generate trade signals from rule evaluation results."""
+"""Generate trade signals from rule evaluation results.
+
+medallion: gold
+"""
 from __future__ import annotations
 import logging
 from datetime import datetime, timezone

@@ -2,6 +2,8 @@
 Options chain gold surface: IV context, liquidity, spread.
 
 Medallion layer: gold. See docs/ARCHITECTURE.md and D127.
+
+medallion: gold
 """
 
 from __future__ import annotations

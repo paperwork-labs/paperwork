@@ -1,4 +1,7 @@
-"""OpenAI chat-completions adapter for plain-text portfolio narratives."""
+"""OpenAI chat-completions adapter for plain-text portfolio narratives.
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

@@ -10,6 +10,8 @@ financial statistics must not silently round-trip through ``float`` when
 they are persisted. Internal arithmetic that requires ``math.sqrt`` falls
 back to ``float`` only for the square root step and is converted back to
 ``Decimal`` immediately so the persisted column is exact.
+
+medallion: gold
 """
 
 from __future__ import annotations

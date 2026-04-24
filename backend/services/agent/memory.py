@@ -1,6 +1,8 @@
 """Agent memory system for long-term learning.
 
 Stores observations, decisions, and outcomes to enable learning from experience.
+
+medallion: ops
 """
 from __future__ import annotations
 

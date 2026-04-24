@@ -17,6 +17,8 @@ disagreement.
 
 If you need to add a new field, add it here AND add a corresponding
 test in ``backend/tests/data_quality/test_quorum_service.py``.
+
+medallion: silver
 """
 
 from __future__ import annotations

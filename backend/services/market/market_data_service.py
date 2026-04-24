@@ -8,6 +8,8 @@ Callers import the specific sub-service they need:
 Construction order is linear and acyclic:
     MarketInfra -> PriceBarWriter -> ProviderRouter -> FundamentalsService
     -> QuoteService -> IndexUniverseService -> SnapshotBuilder -> CoverageAnalytics
+
+medallion: silver
 """
 from __future__ import annotations
 

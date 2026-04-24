@@ -13,6 +13,8 @@ There is no user-level ``TaxProfile`` model in the main branch today; the
 shape of this module's ``TaxProfile`` dataclass is the interface a future
 persistent model will populate. Until then, callers pass either a hand-built
 profile or let the calculator fall back to the conservative defaults.
+
+medallion: gold
 """
 
 from __future__ import annotations

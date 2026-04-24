@@ -15,6 +15,8 @@ Why a Protocol instead of just calling :class:`AgentBrain` directly?
 
 Implementations live next to this file so the explainer module stays
 provider-agnostic.
+
+medallion: ops
 """
 
 from __future__ import annotations

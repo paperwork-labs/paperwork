@@ -12,6 +12,8 @@ and return a structured, advisory-only "should you close?" recommendation.
 
 This service **never** places orders and is not wired into any execution
 path. It feeds a UI surface and the daily narrative.
+
+medallion: gold
 """
 
 from __future__ import annotations

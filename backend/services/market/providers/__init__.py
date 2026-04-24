@@ -1,4 +1,7 @@
-"""Market Data Providers Package."""
+"""Market Data Providers Package.
+
+medallion: silver
+"""
 
 from .protocol import MarketDataProvider
 from .yfinance_provider import YFinanceProvider

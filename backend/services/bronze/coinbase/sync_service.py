@@ -2,6 +2,8 @@
 
 Read-only positions (spot wallets), transactions, and FILLED trade rows
 for FIFO closing-lot reconstruction via ``reconcile_closing_lots``.
+
+medallion: bronze
 """
 
 from __future__ import annotations

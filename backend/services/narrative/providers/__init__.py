@@ -1,1 +1,4 @@
-"""Narrative LLM provider implementations."""
+"""Narrative LLM provider implementations.
+
+medallion: gold
+"""

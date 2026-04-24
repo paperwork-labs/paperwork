@@ -1,4 +1,7 @@
-"""Runner state: long position that has covered at least its initial (1R) risk."""
+"""Runner state: long position that has covered at least its initial (1R) risk.
+
+medallion: execution
+"""
 
 from __future__ import annotations
 

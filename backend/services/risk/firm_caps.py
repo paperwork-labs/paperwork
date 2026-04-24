@@ -18,6 +18,8 @@ If the firm cap for a field cannot be determined (e.g. a config value is
 ``None`` or missing), we raise ``FirmCapsUnavailable`` rather than
 defaulting to zero or infinity — silent fallbacks mask broken systems
 (see ``.cursor/rules/no-silent-fallback.mdc``).
+
+medallion: gold
 """
 
 from __future__ import annotations

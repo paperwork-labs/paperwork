@@ -1,4 +1,7 @@
-"""Broker router -- resolves the correct executor for a given broker type."""
+"""Broker router -- resolves the correct executor for a given broker type.
+
+medallion: execution
+"""
 
 from __future__ import annotations
 

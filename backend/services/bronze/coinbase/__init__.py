@@ -1,4 +1,7 @@
-"""Coinbase bronze ingestion (OAuth 2.0 v2 wallet API)."""
+"""Coinbase bronze ingestion (OAuth 2.0 v2 wallet API).
+
+medallion: bronze
+"""
 
 from __future__ import annotations
 

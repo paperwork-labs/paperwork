@@ -19,6 +19,8 @@ explicitly distinguishes (a) brokers we already integrate via OAuth,
 (b) brokers gated behind CSV/statement import (the ~50% of US retail
 behind brokers that refuse to expose APIs), (c) brokers queued for v1.1
 OAuth, and (d) brokers gated behind v1.2 SnapTrade (Pro).
+
+medallion: silver
 """
 
 from __future__ import annotations

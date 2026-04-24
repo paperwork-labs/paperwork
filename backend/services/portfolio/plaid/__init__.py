@@ -13,6 +13,8 @@ only (no trading — Plaid Investments doesn't expose order entry).
   protocol consumed by :class:`backend.services.portfolio.broker_sync_service.BrokerSyncService`.
 * :func:`persist_holdings` — pipeline that upserts :class:`Position` +
   :class:`TaxLot` rows from a holdings payload.
+
+medallion: silver
 """
 
 from backend.services.portfolio.plaid.client import (  # noqa: F401

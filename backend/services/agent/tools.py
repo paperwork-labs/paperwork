@@ -4,6 +4,8 @@ Agent Tools
 
 Defines available tools/actions for the auto-ops agent.
 Each tool maps to a Celery task or service method.
+
+medallion: ops
 """
 
 from typing import Any, Dict, FrozenSet, List, Optional

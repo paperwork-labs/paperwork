@@ -1,6 +1,8 @@
 """Volatility dashboard service.
 
 Provides VIX/VVIX/VIX3M regime indicators with caching.
+
+medallion: silver
 """
 
 from __future__ import annotations

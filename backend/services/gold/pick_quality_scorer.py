@@ -1,6 +1,8 @@
 """Pick quality scoring: 0-100 explainable composite from ``MarketSnapshot``.
 
 Reads pre-computed snapshot fields only (no indicator recompute).
+
+medallion: gold
 """
 
 from __future__ import annotations

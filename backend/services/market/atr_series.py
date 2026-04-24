@@ -1,4 +1,7 @@
-"""Wilder ATR as a standalone series helper (shared by indicator and stage pipelines)."""
+"""Wilder ATR as a standalone series helper (shared by indicator and stage pipelines).
+
+medallion: silver
+"""
 
 from __future__ import annotations
 

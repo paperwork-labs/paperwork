@@ -4,6 +4,8 @@ TOTP Utilities for IBKR 2FA
 
 Generate TOTP codes for automated IBKR Gateway login.
 Used with IBC (Interactive Brokers Controller) for unattended 2FA.
+
+medallion: ops
 """
 
 import base64

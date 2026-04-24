@@ -11,6 +11,8 @@ Functions:
     get_concentration_limits — Quad-adjusted concentration limits
     get_sector_action   — SCAN/WATCH/AVOID for a sector × Quad pair
     check_t10_trigger   — whether a Quad transition fires T10 exit cascade
+
+medallion: silver
 """
 from __future__ import annotations
 

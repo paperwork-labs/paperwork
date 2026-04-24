@@ -4,6 +4,8 @@ Startup and health observability: held position symbols vs global tracked univer
 Failing to track a held symbol means indicator recompute may skip that ticker;
 this module surfaces the gap in logs and the ``universe_coverage`` admin-health
 dimension without blocking API startup.
+
+medallion: ops
 """
 
 from __future__ import annotations

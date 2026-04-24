@@ -22,6 +22,8 @@ they see when they subsequently ``decrypt()`` it.
 This is *not* a coroutine-safe primitive on its own — we lean on Redis for
 cross-worker mutual exclusion. Within a single process it is the caller's
 responsibility not to race two refresh calls on the same ``conn`` object.
+
+medallion: execution
 """
 
 from __future__ import annotations

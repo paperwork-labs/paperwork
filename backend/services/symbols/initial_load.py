@@ -26,6 +26,8 @@ Operational use::
 The ``--commit`` flag is required to actually persist; without it the
 script runs in dry-run / rollback mode so you can inspect counter
 output before touching prod.
+
+medallion: silver
 """
 
 from __future__ import annotations

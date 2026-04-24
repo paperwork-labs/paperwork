@@ -32,6 +32,8 @@ construction time via ``context_resolver``. ``context_resolver()`` returns
 resolver raises -- the router-registered singleton is not callable until
 ``order_manager`` wires a real resolver in a follow-up PR (this is the
 same pattern F1/F2/F4 will use).
+
+medallion: execution
 """
 
 from __future__ import annotations

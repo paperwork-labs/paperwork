@@ -1,4 +1,7 @@
-"""Backtest engine -- replays strategy rules against historical market data."""
+"""Backtest engine -- replays strategy rules against historical market data.
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

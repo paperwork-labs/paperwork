@@ -7,6 +7,8 @@ Centralized module for fetching all regime engine inputs:
 - NH-NL (New Highs minus New Lows) from yfinance ^NYHILO
 - Breadth from MarketSnapshot (% above 200D SMA, % above 50D SMA)
 - Sector RS calculation using sector ETFs
+
+medallion: silver
 """
 
 import logging

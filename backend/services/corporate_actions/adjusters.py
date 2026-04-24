@@ -27,6 +27,8 @@ Precision policy
 ROUND_HALF_EVEN ("banker's rounding") is used everywhere -- it's the
 financial-industry default and avoids the systematic upward bias of
 ROUND_HALF_UP.
+
+medallion: silver
 """
 
 from __future__ import annotations

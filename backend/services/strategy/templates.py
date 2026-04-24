@@ -5,6 +5,8 @@ scan_tier, action_label, ext_pct, ema10_dist_n, sma150_slope, ttm_squeeze_on,
 ttm_momentum, etc.
 
 New operators available: in, not_in, starts_with, contains.
+
+medallion: gold
 """
 from __future__ import annotations
 from typing import Any, Dict, List

@@ -30,6 +30,8 @@ Input contracts:
   ``is_tax_advantaged`` (property or attribute).
 
 Anything missing is filled with safe defaults and surfaced via ``warnings``.
+
+medallion: silver
 """
 
 from __future__ import annotations

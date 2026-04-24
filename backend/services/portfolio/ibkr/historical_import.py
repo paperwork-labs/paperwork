@@ -1,4 +1,7 @@
-"""Historical IBKR import service (Flex XML + CSV activity statements)."""
+"""Historical IBKR import service (Flex XML + CSV activity statements).
+
+medallion: bronze
+"""
 
 from __future__ import annotations
 

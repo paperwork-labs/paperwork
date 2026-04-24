@@ -8,6 +8,8 @@ Both MV and raw-fallback paths compute breadth over the full
 ``analysis_type='technical_snapshot'`` universe (not filtered to
 tracked symbols) so that results are identical regardless of which
 path executes.
+
+medallion: silver
 """
 from __future__ import annotations
 

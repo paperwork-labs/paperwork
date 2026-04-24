@@ -23,6 +23,8 @@ Out of scope (deliberately): cash dividends. Adjusting OHLCV for cash
 dividends is provider-policy-dependent and would require a separate
 toggle. The position-level applier handles cash dividends without
 touching ``price_data``.
+
+medallion: silver
 """
 
 from __future__ import annotations

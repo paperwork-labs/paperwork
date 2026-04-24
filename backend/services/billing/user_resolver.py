@@ -11,6 +11,8 @@ Resolution order (most reliable first):
 Returning ``None`` means "we don't know who this is, do not act." The
 processor will raise StripeWebhookError so Stripe retries (the answer may
 become known after the user signs up).
+
+medallion: ops
 """
 from __future__ import annotations
 

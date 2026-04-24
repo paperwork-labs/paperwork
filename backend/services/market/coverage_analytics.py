@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+"""medallion: silver"""
 import json
 import logging
 from datetime import datetime, timedelta, timezone

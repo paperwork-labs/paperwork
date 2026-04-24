@@ -9,6 +9,8 @@ Follows the operator-observability pattern from ``.cursor/rules/no-silent-fallba
 per-iteration counters (``updated`` / ``skipped_no_price`` / ``errors``) are
 returned and asserted to sum to the total rows considered, so counter drift
 trips loudly in CI and the admin panel.
+
+medallion: execution
 """
 
 from __future__ import annotations

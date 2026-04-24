@@ -2,6 +2,8 @@
 
 Implements BrokerExecutor protocol with in-memory position tracking.
 Orders are "filled" instantly at current market price (from MarketSnapshot).
+
+medallion: execution
 """
 from __future__ import annotations
 

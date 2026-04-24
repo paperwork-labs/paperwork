@@ -19,6 +19,8 @@ the canonical-string construction is well-defined.
 Sandbox credentials (``ETRADE_SANDBOX_KEY`` / ``ETRADE_SANDBOX_SECRET``) must
 be issued by E*TRADE; without them ``initiate_url`` raises ``OAuthError``
 loudly so we never silently degrade.
+
+medallion: ops
 """
 
 from __future__ import annotations

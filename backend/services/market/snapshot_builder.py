@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+"""medallion: silver"""
 import datetime as _pydt
 import logging
 from datetime import datetime, time, timedelta, timezone

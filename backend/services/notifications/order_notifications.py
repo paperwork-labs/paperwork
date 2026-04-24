@@ -1,4 +1,7 @@
-"""Order-related notifications via Brain webhook."""
+"""Order-related notifications via Brain webhook.
+
+medallion: ops
+"""
 
 import logging
 from typing import Any, Dict, List

@@ -5,6 +5,8 @@ Tiers are regime-gated: R1 sees all tiers, R5 sees only short tiers.
 Quad sector filter restricts scans to SCAN sectors per the Quad × Regime matrix.
 
 4 long tiers (Breakout Elite/Standard, Early Base, Speculative) + 2 short tiers (Breakdown Elite/Standard).
+
+medallion: silver
 """
 from __future__ import annotations
 

@@ -35,6 +35,8 @@ events into ``Dividend`` rows. All three scan the same raw list — we
 fetch it once.
 
 Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
+
+medallion: bronze
 """
 
 from __future__ import annotations

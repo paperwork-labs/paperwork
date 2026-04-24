@@ -8,6 +8,8 @@ Storage (UTC hour bucket ``YYYYMMDDHH``; TTL 72h on all keys):
   - ``apiv1:obs:rss:count:{bucket}`` — request counter (INCR).
 
 No PII: only method + path template.
+
+medallion: ops
 """
 
 from __future__ import annotations

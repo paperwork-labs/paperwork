@@ -1,4 +1,7 @@
-"""Strategy services - rule evaluation, backtesting, AI builder, walk-forward."""
+"""Strategy services - rule evaluation, backtesting, AI builder, walk-forward.
+
+medallion: gold
+"""
 from .rule_evaluator import (
     RuleEvaluator,
     ConditionGroup,

@@ -2,6 +2,8 @@
 """TastyTrade Sync Service
 Pulls positions, transactions, balances, dividends from Tastytrade API and
 persists to AxiomFolio broker-agnostic tables.
+
+medallion: bronze
 """
 
 from __future__ import annotations

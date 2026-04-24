@@ -24,6 +24,8 @@ The counter is deliberately Redis-only (no DB row) because:
 
 Module owner: :mod:`backend.services.market.admin_health_service`
 reads the snapshot via :func:`snapshot`.
+
+medallion: ops
 """
 from __future__ import annotations
 

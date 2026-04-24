@@ -11,6 +11,8 @@ bootstrap distributions, regime-conditional reports.
 
 Sub-modules import lazily where needed so an optional dependency for one
 analysis type does not break the whole package.
+
+medallion: gold
 """
 
 from backend.services.backtest.walk_forward import (

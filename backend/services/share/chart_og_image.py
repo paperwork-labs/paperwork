@@ -1,5 +1,7 @@
 """
 Open Graph (1200x630) PNG for chart share links — Pillow-based raster.
+
+medallion: ops
 """
 
 from __future__ import annotations

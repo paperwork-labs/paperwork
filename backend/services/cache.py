@@ -23,6 +23,8 @@ Usage:
 Module attribute access is lazy (via module `__getattr__`) so unit tests that
 don't exercise Redis aren't forced to have `REDIS_URL` configured at import
 time. Instantiation failure surfaces at first *use*, not at import.
+
+medallion: ops
 """
 
 from __future__ import annotations

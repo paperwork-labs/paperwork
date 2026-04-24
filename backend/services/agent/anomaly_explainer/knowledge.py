@@ -18,6 +18,8 @@ This v1 implementation is intentionally *simple*:
 If/when we want better recall we can add a ``EmbeddingRunbookKnowledge``
 that implements the same surface and let ``AnomalyExplainer`` accept
 either via duck typing.
+
+medallion: ops
 """
 
 from __future__ import annotations

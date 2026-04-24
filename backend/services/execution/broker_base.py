@@ -1,4 +1,7 @@
-"""Abstract broker executor protocol and shared data types."""
+"""Abstract broker executor protocol and shared data types.
+
+medallion: execution
+"""
 
 from __future__ import annotations
 

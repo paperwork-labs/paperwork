@@ -17,6 +17,8 @@ RiskGate already routes recognized crypto symbols to
 at the edge: if the order symbol does not look like crypto we reject it
 immediately rather than let a mis-routed equity order appear to fill against
 the Coinbase paper book.
+
+medallion: execution
 """
 
 from __future__ import annotations

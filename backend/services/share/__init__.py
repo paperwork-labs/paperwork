@@ -1,1 +1,4 @@
-"""Shared-link helpers (signed tokens, OG raster)."""
+"""Shared-link helpers (signed tokens, OG raster).
+
+medallion: ops
+"""

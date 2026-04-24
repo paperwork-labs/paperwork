@@ -1,4 +1,7 @@
-"""Portfolio services - sync, tax lots, analytics."""
+"""Portfolio services - sync, tax lots, analytics.
+
+medallion: silver
+"""
 from .tax_lot_service import TaxLotService
 from .tax_loss_harvester import TaxLossHarvester, HarvestOpportunity, WashSaleWindow
 from .portfolio_analytics_service import PortfolioAnalyticsService

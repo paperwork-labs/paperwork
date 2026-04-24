@@ -22,6 +22,8 @@ Design rules (do not violate without bumping a schema_version):
   (CSV serialization is OK because it stringifies anyway).
 * Database access lives in the exporter layer; pure transforms live in
   the mapper layer. This keeps the mapper unit-testable without a DB.
+
+medallion: silver
 """
 
 from .schemas import (

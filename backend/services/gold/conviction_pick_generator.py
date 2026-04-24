@@ -24,6 +24,8 @@ regression can't hide behind an aggregate "N picks generated" log line.
 
 Score math is pure Python ``Decimal`` so persisted scores do not
 round-trip through binary float.
+
+medallion: gold
 """
 
 from __future__ import annotations

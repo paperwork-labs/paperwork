@@ -13,6 +13,8 @@ Conventions (enforced by tests):
 - Frozen dataclasses (immutable extracted records).
 - Explicit `confidence` per item (0.0 - 1.0).
 - `source_excerpt` on every record so audit trail is intact.
+
+medallion: gold
 """
 from __future__ import annotations
 

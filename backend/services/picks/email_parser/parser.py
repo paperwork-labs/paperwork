@@ -21,6 +21,8 @@ Error policy:
     - Schema-invalid LLM output -> parse_errors, empty extraction lists.
     - Per-record validation failures (e.g., bad ticker) are skipped with a
       parse_error appended for that single record.
+
+medallion: gold
 """
 from __future__ import annotations
 

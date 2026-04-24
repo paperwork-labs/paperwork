@@ -22,6 +22,8 @@ we don't re-read MARKET_DATA_RUNBOOK.md on every Celery task invocation.
 The cache is keyed by mtime so a runbook edit on disk is picked up
 without a process restart in dev (in prod the file is baked into the
 image so the mtime is stable).
+
+medallion: ops
 """
 
 from __future__ import annotations

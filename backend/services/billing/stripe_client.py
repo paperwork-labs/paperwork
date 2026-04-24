@@ -19,6 +19,8 @@ Usage:
 
 For tests, prefer ``StripeClientFactory`` (below) so you can inject a stub
 module without monkey-patching ``sys.modules``.
+
+medallion: ops
 """
 from __future__ import annotations
 

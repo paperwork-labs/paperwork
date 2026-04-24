@@ -1,6 +1,8 @@
 """Alpha factor engine for multi-factor signal generation.
 
 Defines and combines alpha factors for quantitative stock selection.
+
+medallion: gold
 """
 from __future__ import annotations
 

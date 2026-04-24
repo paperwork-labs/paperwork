@@ -2,6 +2,8 @@
 
 Queries MarketSnapshot, MarketRegime, positions, and stage transitions
 to produce structured briefs that can be rendered in-app or sent via Brain webhook.
+
+medallion: silver
 """
 
 from __future__ import annotations

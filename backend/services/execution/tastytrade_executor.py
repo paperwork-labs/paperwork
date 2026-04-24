@@ -53,6 +53,8 @@ the options path lands it must:
    ``instrument_type`` and ``option_symbol``.
 2. Call ``Option.get_option(session, symbol)`` before building the leg.
 3. Replace :func:`_is_option_symbol` with a strict OCC parser.
+
+medallion: execution
 """
 
 from __future__ import annotations

@@ -3,6 +3,8 @@
 Fetches upcoming earnings dates, EPS/revenue estimates, and actuals.
 FMP v3/earning_calendar is premium-only; when unavailable (free tier or
 key missing), falls back to yfinance Ticker.calendar per symbol.
+
+medallion: silver
 """
 
 from __future__ import annotations

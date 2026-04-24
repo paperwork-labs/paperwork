@@ -4,6 +4,8 @@ History Writer
 
 Single source of truth for writing to MarketSnapshotHistory.
 Ensures consistent schema, deduplication, and upsert semantics.
+
+medallion: silver
 """
 
 import logging

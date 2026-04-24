@@ -3,6 +3,8 @@
 Clean IBKR Client - Real-time Trading API
 Focuses on real-time positions, trading, and market data via ib_insync.
 Historical data and tax lots handled by separate FlexQuery client.
+
+medallion: ops
 """
 from __future__ import annotations
 

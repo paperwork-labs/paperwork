@@ -3,6 +3,8 @@ Real-time signal engine using Redis Streams.
 
 Consumes bar data, evaluates strategies, and publishes signals.
 Uses async Redis to avoid blocking the event loop.
+
+medallion: ops
 """
 from __future__ import annotations
 

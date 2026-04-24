@@ -11,6 +11,8 @@ an async wrapper.
 Return shape matches the other broker services:
 ``{"status": "success"|"error"|"partial", "pipeline": {...}, "error": "..."}``
 so the dispatcher can interpret completeness consistently.
+
+medallion: silver
 """
 
 from __future__ import annotations

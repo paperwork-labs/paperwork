@@ -28,6 +28,8 @@ contributes the dominant signal; the extension penalty docks chasers.
 The validator queue ranks by score within this generator only, so the
 absolute scale does not need to be cross-comparable with other
 generators.
+
+medallion: gold
 """
 
 from __future__ import annotations

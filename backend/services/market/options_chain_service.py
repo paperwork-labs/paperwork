@@ -19,6 +19,8 @@ Observability: logs which source was tried and what succeeded. Returns
 surface an explicit empty state (see ``no-silent-fallback.mdc``).
 
 Medallion layer: silver (enrichment over raw broker ingestion).
+
+medallion: silver
 """
 
 from __future__ import annotations

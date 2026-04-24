@@ -5,6 +5,8 @@ Context Builder for Strategy Evaluation
 Single source of truth for building rule evaluation context from MarketSnapshot.
 Handles field aliases and regime context inclusion for consistent evaluation
 across live evaluation, API endpoints, and backtesting.
+
+medallion: gold
 """
 
 import logging

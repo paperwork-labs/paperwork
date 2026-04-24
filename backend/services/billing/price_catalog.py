@@ -22,6 +22,8 @@ Env vars consumed (all optional; missing entries simply don't resolve):
     STRIPE_PRICE_ENTERPRISE_ANNUAL
 
 Free tier never has a Stripe price (it's the implicit default).
+
+medallion: ops
 """
 from __future__ import annotations
 

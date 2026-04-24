@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+"""medallion: silver"""
 from typing import Iterable
 
 

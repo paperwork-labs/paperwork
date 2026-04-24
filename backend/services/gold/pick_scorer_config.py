@@ -2,6 +2,8 @@
 
 Single source of truth for tunables so weights can be revised without
 scattered literals (reversible via config per decision log).
+
+medallion: gold
 """
 
 from __future__ import annotations

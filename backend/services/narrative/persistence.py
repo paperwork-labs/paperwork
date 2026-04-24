@@ -1,4 +1,7 @@
-"""Persistence helpers for :class:`backend.models.narrative.PortfolioNarrative`."""
+"""Persistence helpers for :class:`backend.models.narrative.PortfolioNarrative`.
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

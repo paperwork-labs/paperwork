@@ -3,6 +3,8 @@
 IBKR FlexQuery Client - Official Tax Lots & Historical Data
 Uses IBKR's FlexQuery API to get official tax lots, cost basis, and statements.
 This is the CORRECT way to get tax lot data instead of manual calculations.
+
+medallion: ops
 """
 
 import asyncio

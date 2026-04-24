@@ -3,6 +3,8 @@
 Prevents hitting 429s by enforcing minimum spacing between API calls
 per provider, complementing the existing concurrency semaphore and
 reactive backoff in market_data_service.
+
+medallion: silver
 """
 
 from __future__ import annotations

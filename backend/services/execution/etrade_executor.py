@@ -38,6 +38,8 @@ Endpoints
 
 Base URLs follow the existing bronze sync client: ``apisb.etrade.com``
 for sandbox and ``api.etrade.com`` for prod.
+
+medallion: execution
 """
 
 from __future__ import annotations

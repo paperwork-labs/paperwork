@@ -7,6 +7,8 @@ and populate the database with broker accounts.
 
 This eliminates hardcoded account numbers from code and centralizes
 account management.
+
+medallion: silver
 """
 
 import logging

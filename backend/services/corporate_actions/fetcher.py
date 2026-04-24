@@ -27,6 +27,8 @@ Per-symbol HTTP failures are caught, logged, and counted under
 universe sweep. Caller (the Celery task) reads the counters and
 records them on ``JobRun.counters`` so admin / health surfaces can see
 the failure mode without having to grep logs.
+
+medallion: silver
 """
 
 from __future__ import annotations

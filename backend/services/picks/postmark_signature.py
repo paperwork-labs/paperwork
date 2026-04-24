@@ -17,6 +17,8 @@ References:
 
 * Postmark — Webhooks overview (securing endpoints)
 * Postmark — Inbound webhook (JSON body; HTTP 403 stops retries)
+
+medallion: gold
 """
 
 from __future__ import annotations

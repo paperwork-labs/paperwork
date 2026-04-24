@@ -1,4 +1,7 @@
-"""Validator queue state machine for ``Candidate`` rows."""
+"""Validator queue state machine for ``Candidate`` rows.
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

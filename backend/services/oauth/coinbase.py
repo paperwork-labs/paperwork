@@ -5,6 +5,8 @@ Bronze sync uses the v2 data API (``GET /v2/accounts``, per-account
 transactions) with read-only scopes.
 
 See D130 in ``docs/KNOWLEDGE.md`` for the bronze-plus-OAuth contract.
+
+medallion: ops
 """
 
 from __future__ import annotations

@@ -1,4 +1,7 @@
-"""Deliver intelligence briefs to Brain webhook."""
+"""Deliver intelligence briefs to Brain webhook.
+
+medallion: silver
+"""
 
 from __future__ import annotations
 

@@ -10,6 +10,8 @@ Lookups go through ``MarketRegime`` (immutable, indexed by ``as_of_date``)
 to honor the point-in-time-data rule. If the regime table has no row for
 an entry date, the trade is tagged as ``"unknown"`` rather than silently
 dropped.
+
+medallion: gold
 """
 
 from __future__ import annotations

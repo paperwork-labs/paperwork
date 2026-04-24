@@ -1,4 +1,7 @@
-"""Backward-compat shim — all logic moved to backend.services.portfolio.ibkr/."""
+"""Backward-compat shim — all logic moved to backend.services.portfolio.ibkr/.
+
+medallion: silver
+"""
 
 from backend.services.portfolio.ibkr.pipeline import (  # noqa: F401
     IBKRSyncService,

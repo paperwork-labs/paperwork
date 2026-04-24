@@ -9,6 +9,8 @@ Redis key layout (TTL = 7 days):
     pipeline:{run_id}:meta     -> JSON {status, started_at, finished_at, triggered_by}
     pipeline:{run_id}:{step}   -> JSON {status, started_at, finished_at, duration_s, error, counters}
     pipeline:runs              -> sorted set of run_ids by started_at (score = unix ts)
+
+medallion: ops
 """
 from __future__ import annotations
 

@@ -15,6 +15,8 @@ strategies the UI exposes as presets:
 The skew weights are intentionally simple (2x on the skewed side, 1x
 on the other) to keep the result interpretable. More elaborate weight
 schemes belong in a future "regime-conditional Monte Carlo" sub-phase.
+
+medallion: gold
 """
 
 from __future__ import annotations

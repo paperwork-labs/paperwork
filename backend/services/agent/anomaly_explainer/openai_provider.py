@@ -26,6 +26,8 @@ JSON output mode:
 * OpenAI's ``response_format={"type": "json_object"}`` is enabled so the
   model is forced to return a single JSON object. The explainer's
   schema-validation gate is the second line of defence.
+
+medallion: ops
 """
 
 from __future__ import annotations

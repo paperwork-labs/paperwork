@@ -1,4 +1,7 @@
-"""IBKR executor -- adapts the existing IBKRClient to BrokerExecutor protocol."""
+"""IBKR executor -- adapts the existing IBKRClient to BrokerExecutor protocol.
+
+medallion: execution
+"""
 
 from __future__ import annotations
 

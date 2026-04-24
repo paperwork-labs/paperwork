@@ -30,6 +30,8 @@ Iron laws this module enforces (per ``.cursor/rules/no-silent-fallback``,
    ``Decimal``-only. Conversion to ``Float`` happens *only* at the
    ``TaxLot`` boundary (the legacy ``Float`` schema we're not changing
    in this PR; see commit message).
+
+medallion: silver
 """
 
 from __future__ import annotations

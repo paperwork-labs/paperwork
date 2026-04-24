@@ -23,6 +23,8 @@ YTD P&L. When ``S <= 0`` or missing, projection is undefined (caller surfaces
 empty state).
 
 All money math uses ``Decimal``; callers serialize to JSON floats where needed.
+
+medallion: silver
 """
 
 from __future__ import annotations

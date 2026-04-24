@@ -8,6 +8,8 @@ that fails validation is recorded in ``parse_errors`` and discarded.
 We intentionally use a *small* schema (no nested $ref, no oneOf) so the
 schema can be passed verbatim to OpenAI's ``response_format={'type':
 'json_schema'}`` and the equivalent Anthropic tool definition.
+
+medallion: gold
 """
 from __future__ import annotations
 

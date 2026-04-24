@@ -1,4 +1,7 @@
-"""Aggregate broker connection + OAuth status for the connections health API."""
+"""Aggregate broker connection + OAuth status for the connections health API.
+
+medallion: ops
+"""
 
 from __future__ import annotations
 

@@ -3,6 +3,8 @@ Gate FMP 5-minute intraday backfill by MARKET_PROVIDER_POLICY.
 
 FMP historical_chart (5m) requires a paid-style plan; free/starter waste quota on failures.
 Resolution of unknown policy names matches ``Settings.provider_policy`` (falls back to paid).
+
+medallion: silver
 """
 
 from __future__ import annotations

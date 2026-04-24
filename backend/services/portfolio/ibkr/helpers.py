@@ -1,4 +1,7 @@
-"""Shared helpers and constants for IBKR sync pipeline."""
+"""Shared helpers and constants for IBKR sync pipeline.
+
+medallion: bronze
+"""
 
 import logging
 from datetime import date, datetime

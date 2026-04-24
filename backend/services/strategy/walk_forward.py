@@ -6,6 +6,8 @@ Implements proper out-of-sample validation:
 - Multiple train/test splits
 - Degradation detection
 - Veto gates for production deployment
+
+medallion: gold
 """
 from __future__ import annotations
 

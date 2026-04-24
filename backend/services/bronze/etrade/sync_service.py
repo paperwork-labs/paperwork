@@ -17,6 +17,8 @@ All queries filter by ``user_id`` — the cross-tenant-isolation test in
 pins the invariant.
 
 Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
+
+medallion: bronze
 """
 
 from __future__ import annotations

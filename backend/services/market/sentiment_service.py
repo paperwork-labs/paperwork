@@ -1,6 +1,8 @@
 """Sentiment aggregation service.
 
 Aggregates social/news sentiment for symbols to enhance trading decisions.
+
+medallion: silver
 """
 from __future__ import annotations
 

@@ -18,6 +18,8 @@ Tradier wraps its payloads in either a ``{ "accounts": { "account": [...] } }``
 or an equivalent ``{ "balances": { ... } }`` envelope. Array fields
 collapse to the inner object when only one row exists, so every
 extractor normalizes to a list.
+
+medallion: bronze
 """
 
 from __future__ import annotations

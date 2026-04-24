@@ -13,6 +13,8 @@ byte sequence) instead of the raw request body.
 See plan ``docs/plans/PLAID_FIDELITY_401K.md`` §6 and the
 `Plaid webhook verification docs
 <https://plaid.com/docs/api/webhooks/webhook-verification/>`_.
+
+medallion: silver
 """
 
 from __future__ import annotations

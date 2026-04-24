@@ -17,6 +17,8 @@ Design notes
   (revoked, invalid_grant, 4xx). Permanent errors carry
   ``permanent=True`` so the refresh task knows to mark
   ``REFRESH_FAILED`` instead of retrying.
+
+medallion: ops
 """
 
 from __future__ import annotations

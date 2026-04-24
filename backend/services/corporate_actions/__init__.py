@@ -4,6 +4,8 @@ Public surface is grown incrementally as submodules land. Importers
 should reference the concrete module path (e.g.
 ``backend.services.corporate_actions.adjusters``) so adding a new
 submodule never breaks the package import for anyone.
+
+medallion: silver
 """
 
 from .adjusters import (

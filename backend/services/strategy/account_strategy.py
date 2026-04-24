@@ -1,4 +1,7 @@
-"""Account-type-aware strategy profile (G24)."""
+"""Account-type-aware strategy profile (G24).
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

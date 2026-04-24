@@ -1,4 +1,6 @@
 """Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
+
+medallion: bronze
 """
 from __future__ import annotations
 

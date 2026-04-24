@@ -8,6 +8,8 @@ The service handles point-in-time resolution, alias registration,
 and ticker-change recording. The ``initial_load`` module bootstraps
 the master from existing ``MarketSnapshot`` rows plus a curated
 seed of historical corporate actions.
+
+medallion: silver
 """
 
 from backend.services.symbols.symbol_master_service import (

@@ -22,6 +22,8 @@ This module is deliberately conservative:
   ``None``. NEVER 0.
 
 See [`docs/plans/G5_IV_RANK_SURFACE.md`](../../../docs/plans/G5_IV_RANK_SURFACE.md).
+
+medallion: silver
 """
 
 from __future__ import annotations

@@ -13,6 +13,8 @@ mapper directly -- because it handles:
 
 Sessions are passed in by the caller (FastAPI dependency, Celery task, CLI),
 never opened here -- consistent with the rest of the backend services.
+
+medallion: silver
 """
 
 from __future__ import annotations

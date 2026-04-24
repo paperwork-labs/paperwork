@@ -12,6 +12,8 @@ up-trending position is showing late-stage topping behavior:
 * ``td_exhaustion_flag``: TD Sequential sell-setup exhausted (>= 9 or completed).
 
 The engine is deterministic, pure, and safe to call on every dashboard tick.
+
+medallion: gold
 """
 
 from __future__ import annotations

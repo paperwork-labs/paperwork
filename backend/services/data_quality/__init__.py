@@ -16,6 +16,8 @@ Tolerances are centralised in :mod:`tolerances` so changing them is a
 one-line audit. Both services accept ``Decimal`` only -- floats are
 rejected loudly so we never invent disagreements out of binary
 floating-point noise (R32, R34, R38).
+
+medallion: silver
 """
 
 from .drift_detector import DriftDetector, DriftDetectorResult, DriftEvent

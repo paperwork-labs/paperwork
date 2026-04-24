@@ -2,6 +2,8 @@
 
 Predicts expected slippage based on order characteristics and market conditions.
 Uses lightweight scikit-learn model to avoid heavy dependencies.
+
+medallion: gold
 """
 from __future__ import annotations
 

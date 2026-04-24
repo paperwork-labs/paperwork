@@ -10,6 +10,8 @@ Callers:
 - ``backend.tasks.market.history.record_daily`` (ORM)
 - ``backend.tasks.market.history.snapshot_last_n_days`` (PostgreSQL upsert, wide rows)
 - ``backend.tasks.market.history.snapshot_for_symbol`` (PostgreSQL upsert, partial rows)
+
+medallion: silver
 """
 
 from __future__ import annotations

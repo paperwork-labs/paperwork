@@ -8,6 +8,8 @@
   S1–S4: Cover signals for short positions
 
 Each tier fires independently; most aggressive (closest to exit) wins.
+
+medallion: execution
 """
 from __future__ import annotations
 

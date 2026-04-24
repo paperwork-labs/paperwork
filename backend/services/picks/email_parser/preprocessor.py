@@ -14,6 +14,8 @@ We keep this dependency-light: stdlib `email`, `html.parser`, and an
 *optional* lazy import of `pypdf` for PDF text extraction. If `pypdf` is
 not installed we record a `parse_warning` and pass the empty extracted text
 to the LLM; the LLM can still reason about the email body.
+
+medallion: gold
 """
 from __future__ import annotations
 

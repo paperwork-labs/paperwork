@@ -3,6 +3,8 @@ Agent Services
 ==============
 
 LLM-powered auto-ops agent for intelligent system monitoring and remediation.
+
+medallion: ops
 """
 
 from .brain import AgentBrain

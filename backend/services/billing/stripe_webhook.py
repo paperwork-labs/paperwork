@@ -39,6 +39,8 @@ non-2xx responses for up to 3 days, so it is critical that:
 Idempotency: every event has a unique `event.id`. Callers should pass an
 ``IdempotencyStore`` (any mapping-like object) to skip already-processed IDs
 on retries.
+
+medallion: ops
 """
 from __future__ import annotations
 

@@ -14,6 +14,8 @@ Aggregates per-user spend per UTC day across:
 All money math uses :class:`Decimal`. Storage rollup writes integer MB.
 The job uses an UPSERT so reruns for the same (user, day) overwrite
 rather than duplicate.
+
+medallion: ops
 """
 
 from __future__ import annotations

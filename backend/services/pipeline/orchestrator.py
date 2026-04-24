@@ -13,6 +13,8 @@ The orchestrator walks the topologically-sorted DAG.  For each step it:
 
 ``SoftTimeLimitExceeded`` is re-raised after marking the step as
 error/timeout so that the outer Celery task wrapper can handle it.
+
+medallion: ops
 """
 from __future__ import annotations
 

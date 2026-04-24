@@ -6,6 +6,8 @@ The Regime Engine is the outermost gate for all downstream modules.
 Regime is computed BEFORE all other pipeline steps (Step 0 of nightly pipeline).
 
 Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
+
+medallion: silver
 """
 from __future__ import annotations
 

@@ -7,6 +7,8 @@ Typed records below (BrokerPosition, BrokerOrder, BrokerBalance, OrderRequest,
 OrderResult) are adapter-layer helpers. For the execution order pipeline,
 see ``backend.services.execution.broker_base`` for ``OrderRequest`` /
 ``OrderResult`` (enum-based); those are separate types in another module.
+
+medallion: execution
 """
 
 from __future__ import annotations

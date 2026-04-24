@@ -3,6 +3,8 @@ Admin Health Service -- Composite health aggregation.
 
 Composes coverage, stage quality, jobs, audit, fundamentals, regime, data accuracy,
 and task-run data into a single response so the Admin Dashboard needs only one fetch.
+
+medallion: silver
 """
 
 from __future__ import annotations

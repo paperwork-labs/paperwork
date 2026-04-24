@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+"""medallion: silver"""
 import asyncio
 import logging
 from datetime import datetime, timezone

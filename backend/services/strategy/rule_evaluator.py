@@ -1,6 +1,8 @@
 """Composable rule evaluator for strategy conditions.
 
 Medallion layer: gold. See docs/ARCHITECTURE.md and D127.
+
+medallion: gold
 """
 from __future__ import annotations
 import logging

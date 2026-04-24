@@ -4,6 +4,8 @@ Replaces the monolithic ``ibkr_sync_service.py`` with a step-based pipeline that
 delegates to focused sync modules while preserving the single-commit-at-end pattern.
 
 Medallion layer: bronze. See docs/ARCHITECTURE.md and D127.
+
+medallion: bronze
 """
 
 import logging

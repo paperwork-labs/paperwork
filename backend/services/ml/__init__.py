@@ -1,4 +1,7 @@
-"""Machine learning services for trading intelligence."""
+"""Machine learning services for trading intelligence.
+
+medallion: gold
+"""
 
 from backend.services.ml.slippage_predictor import (
     SlippagePredictor,

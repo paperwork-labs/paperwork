@@ -6,6 +6,8 @@ but providers don't support "last N trading days" directly. We therefore:
 - choose a coarse provider `period` (calendar range) when the provider supports it (e.g. yfinance)
 - always apply a hard `max_bars` bound to the returned dataframe so downstream compute is stable
 - include a buffer so indicators like SMA200 (and other rolling windows) have enough history
+
+medallion: silver
 """
 
 from __future__ import annotations

@@ -1,4 +1,7 @@
-"""Trade approval workflow service."""
+"""Trade approval workflow service.
+
+medallion: execution
+"""
 
 from __future__ import annotations
 

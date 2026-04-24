@@ -41,6 +41,8 @@ Hard rules (enforced by tests):
 - PDF parsing is lazy-imported in the preprocessor; if ``pypdf`` is missing,
   PDF bytes are skipped and a ``parse_warning`` is attached to
   ``NormalizedEmail`` (the parser surfaces those warnings on ``ParseResult``).
+
+medallion: gold
 """
 from .preprocessor import EmailPreprocessor, NormalizedEmail, RawEmail
 from .parser import (

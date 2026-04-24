@@ -1,1 +1,4 @@
-"""Operational services (startup checks, runbooks, etc.)."""
+"""Operational services (startup checks, runbooks, etc.).
+
+medallion: ops
+"""

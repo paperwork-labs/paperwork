@@ -22,6 +22,8 @@ Tokens live in ``backend/models/broker_oauth_connection.py`` (not
 ``AccountCredentials``). The sync service looks up the connection by
 ``(user_id, broker)`` filtered to the two supported ids (``etrade`` and
 ``etrade_sandbox``) and decrypts via ``backend.services.oauth.encryption``.
+
+medallion: bronze
 """
 
 from backend.services.bronze.etrade.client import (

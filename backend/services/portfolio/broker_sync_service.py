@@ -5,6 +5,8 @@ Broker-Agnostic Portfolio Sync Service
 Universal sync coordinator that routes to broker-specific services.
 This service provides a unified interface for syncing portfolio data
 from any supported broker, while keeping the core models broker-neutral.
+
+medallion: bronze
 """
 
 import logging

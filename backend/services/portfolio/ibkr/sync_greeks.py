@@ -1,4 +1,7 @@
-"""IB Gateway Greeks enrichment for open option positions."""
+"""IB Gateway Greeks enrichment for open option positions.
+
+medallion: bronze
+"""
 
 import logging
 from typing import Dict

@@ -6,6 +6,8 @@ lifecycle management.
 
 Eager imports are avoided: importing submodules (e.g. ``runner_state_service``)
 must not load OrderManager, Redis, or the full broker graph.
+
+medallion: execution
 """
 
 from __future__ import annotations

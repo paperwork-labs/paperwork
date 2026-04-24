@@ -1,4 +1,7 @@
-"""Portfolio drawdown tracking and alerts."""
+"""Portfolio drawdown tracking and alerts.
+
+medallion: silver
+"""
 from datetime import date, timedelta
 from decimal import Decimal
 from typing import Optional

@@ -4,6 +4,8 @@ SEC EDGAR 13F Parser
 
 Fetches and parses institutional holdings from SEC EDGAR 13F filings.
 Free data source with quarterly frequency and 45-day delay.
+
+medallion: silver
 """
 
 import logging

@@ -13,6 +13,8 @@ single-token storage. OAuth tokens are short opaque strings and benefit from:
 
 There is **no silent fallback** for missing keys: if no key is configured at
 all we raise ``EncryptionUnavailableError`` rather than storing plaintext.
+
+medallion: ops
 """
 
 from __future__ import annotations

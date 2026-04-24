@@ -1,4 +1,7 @@
-"""Provider protocol for daily portfolio narrative (mirrors AnomalyExplainer LLMProvider pattern)."""
+"""Provider protocol for daily portfolio narrative (mirrors AnomalyExplainer LLMProvider pattern).
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

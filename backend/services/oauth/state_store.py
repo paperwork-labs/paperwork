@@ -11,6 +11,8 @@ returned by the adapter, so collisions are negligible.
 There is an in-memory fallback when Redis is unavailable so dev-without-Redis
 and unit tests still work; in production Redis must be reachable or callbacks
 will fail loudly when the key is missing.
+
+medallion: ops
 """
 
 from __future__ import annotations

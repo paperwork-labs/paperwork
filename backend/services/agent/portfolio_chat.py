@@ -38,6 +38,8 @@ PR F scope
 This PR ships only the service layer + tests. The HTTP route lands in a
 follow-up PR once PR #326 (entitlements) merges so we can gate it with
 ``Depends(require_feature("brain.native_chat"))``.
+
+medallion: ops
 """
 
 from __future__ import annotations

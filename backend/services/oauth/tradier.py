@@ -30,6 +30,8 @@ Why not swagger-generate or pull in ``authlib``? A single-file hand-rolled
 OAuth 2.0 code grant is tiny (~200 lines) and dependency-free, matching
 the E*TRADE adapter's "no oauthlib for OAuth 1.0a" choice; see D130 in
 ``docs/KNOWLEDGE.md`` for the bronze+OAuth contract.
+
+medallion: ops
 """
 
 from __future__ import annotations

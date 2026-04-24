@@ -1,4 +1,7 @@
-"""Deterministic narrative provider for tests."""
+"""Deterministic narrative provider for tests.
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

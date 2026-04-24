@@ -15,6 +15,8 @@ order:
 3. ``(NULL, exact endpoint pattern)`` — global default for endpoint
 4. ``(NULL, '*')`` — global default
 5. Hard-coded fallback (``DEFAULT_BUCKET``)
+
+medallion: ops
 """
 
 from __future__ import annotations

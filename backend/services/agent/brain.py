@@ -4,6 +4,8 @@ Agent Brain
 
 LLM-powered decision engine for the auto-ops agent.
 Uses OpenAI GPT-4o-mini for cost-effective intelligent operations.
+
+medallion: ops
 """
 
 from __future__ import annotations

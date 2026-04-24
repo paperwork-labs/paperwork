@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+"""medallion: silver"""
 from datetime import datetime, date
 from typing import Any, Dict, List, Optional, Tuple
 

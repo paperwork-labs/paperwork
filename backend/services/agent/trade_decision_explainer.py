@@ -34,6 +34,8 @@ through it. Today the explainer reuses the same
 :class:`OpenAIChatProvider` and :class:`StubLLMProvider` machinery the
 AnomalyExplainer uses, so the budget pattern is identical (per-call
 ``max_tokens`` cap, fail-closed when ``OPENAI_API_KEY`` is absent).
+
+medallion: ops
 """
 
 from __future__ import annotations

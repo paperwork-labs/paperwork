@@ -7,6 +7,8 @@ Every cache/lock/queue key that holds user data MUST be wrapped with
 * enforce isolation between users in a shared Redis,
 * drop a tenant's keys cleanly during GDPR delete (``SCAN tenant:{id}:*``),
 * attribute Redis memory back to a tenant for cost rollup.
+
+medallion: ops
 """
 
 from __future__ import annotations

@@ -1,4 +1,7 @@
-"""Exit-cascade planning context helpers (G24 wiring point)."""
+"""Exit-cascade planning context helpers (G24 wiring point).
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

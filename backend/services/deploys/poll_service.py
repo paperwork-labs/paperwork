@@ -13,6 +13,8 @@ Responsibilities:
   returning ``{status, consecutive_failures, failures_24h, last_status,
   last_live_sha, last_deploy_sha, last_deploy_at, ...}``. Used by both
   the admin dimension builder and the admin route.
+
+medallion: ops
 """
 
 from __future__ import annotations

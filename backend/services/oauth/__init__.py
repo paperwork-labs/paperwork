@@ -4,6 +4,8 @@ Adapters are registered by ``broker_id`` (matching the ``OAuthBrokerType``
 enum value persisted in ``broker_oauth_connections.broker``). The route layer
 calls ``get_adapter("etrade_sandbox")`` rather than knowing about concrete
 classes — this is the seam future brokers (Schwab, Fidelity, …) plug into.
+
+medallion: ops
 """
 
 from __future__ import annotations

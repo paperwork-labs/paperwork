@@ -1,4 +1,7 @@
-"""Template-only narrative when the LLM path is unavailable."""
+"""Template-only narrative when the LLM path is unavailable.
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

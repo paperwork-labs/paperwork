@@ -1,6 +1,8 @@
 """
 Read-only options chain from Yahoo Finance via the yfinance library
 (same stack as YFinanceProvider; no new external dependency).
+
+medallion: silver
 """
 
 from __future__ import annotations

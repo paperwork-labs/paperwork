@@ -9,6 +9,8 @@ If you update :data:`SYSTEM_PROMPT` or :data:`OUTPUT_JSON_SCHEMA` and
 the change is observable to consumers (changes step structure, renames
 fields, etc.), bump :data:`SCHEMA_VERSION` in
 ``backend.services.agent.anomaly_explainer.schemas``.
+
+medallion: ops
 """
 
 from __future__ import annotations

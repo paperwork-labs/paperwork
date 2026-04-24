@@ -1,1 +1,4 @@
-"""Lightweight cross-cutting observability helpers (not OpenTelemetry)."""
+"""Lightweight cross-cutting observability helpers (not OpenTelemetry).
+
+medallion: ops
+"""

@@ -26,6 +26,8 @@ The feature catalog is a *policy* file (which features gate which
 tier). The tier catalog is a *marketing* file (price, copy, CTA
 wording). They change at different rhythms; conflating them would mean
 every copy tweak touches the policy file.
+
+medallion: ops
 """
 from __future__ import annotations
 

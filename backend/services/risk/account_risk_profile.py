@@ -9,6 +9,8 @@ callers (and the UI) can read the tighter-of-two limits.
 Multi-tenancy: every public function accepts ``user_id`` and filters
 account lookups by it. Cross-tenant access attempts raise
 ``AccountNotFoundError`` rather than leaking existence information.
+
+medallion: gold
 """
 
 from __future__ import annotations

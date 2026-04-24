@@ -10,6 +10,8 @@ Functions:
     weekly_from_daily             — weekly resample helper
 
 Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
+
+medallion: silver
 """
 from __future__ import annotations
 

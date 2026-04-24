@@ -1,4 +1,7 @@
-"""Medallion layer: gold. See docs/ARCHITECTURE.md and D127."""
+"""Medallion layer: gold. See docs/ARCHITECTURE.md and D127.
+
+medallion: gold
+"""
 
 from backend.services.gold.conviction_pick_generator import (
     ConvictionCandidate,

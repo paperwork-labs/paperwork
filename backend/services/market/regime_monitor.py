@@ -1,6 +1,8 @@
 """Real-time regime monitoring service.
 
 Monitors VIX for intraday spikes and generates regime shift alerts.
+
+medallion: silver
 """
 
 from __future__ import annotations

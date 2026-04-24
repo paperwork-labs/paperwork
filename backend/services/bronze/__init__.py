@@ -21,4 +21,6 @@ Existing modules under ``backend/services/portfolio/ibkr``,
 ``backend/services/portfolio/tastytrade_sync_service.py`` are bronze-layer
 services too — they predate the rename and are annotated in place rather
 than moved (no big-bang rename; see docs/KNOWLEDGE.md D127).
+
+medallion: bronze
 """

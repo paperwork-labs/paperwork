@@ -1,4 +1,7 @@
-"""Market data services - indicators, universe, multi-timeframe."""
+"""Market data services - indicators, universe, multi-timeframe.
+
+medallion: silver
+"""
 
 from .stage_classifier import (
     classify_stage_for_timeframe,

@@ -1,4 +1,7 @@
-"""Account balance, margin interest, and transfer sync steps for IBKR pipeline."""
+"""Account balance, margin interest, and transfer sync steps for IBKR pipeline.
+
+medallion: bronze
+"""
 
 import logging
 from datetime import datetime

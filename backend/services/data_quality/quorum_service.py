@@ -21,6 +21,8 @@ Inputs are ``Optional[Decimal]``. Floats are rejected loudly: comparing
 ``0.1 + 0.2`` to ``0.3`` would invent disagreements that don't exist
 in the underlying data. ``str`` and ``int`` are coerced via
 ``Decimal(...)``; anything else raises ``TypeError``.
+
+medallion: silver
 """
 
 from __future__ import annotations

@@ -2,6 +2,8 @@
 TastyTrade Client
 Production-grade TastyTrade integration using OAuth (SDK v12+).
 All SDK methods are async; this client exposes an async-first API.
+
+medallion: ops
 """
 
 import asyncio

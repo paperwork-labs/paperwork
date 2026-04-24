@@ -12,4 +12,6 @@ which in turn is mutated only by:
 Never call `stripe.*` from a route, task, or model. Always go through
 ``stripe_client.get_stripe()`` so the lazy import / test-mode guard rails
 hold.
+
+medallion: ops
 """

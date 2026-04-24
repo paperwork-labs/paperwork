@@ -1,4 +1,7 @@
-"""Assemble structured portfolio facts and render LLM narrative with fallback."""
+"""Assemble structured portfolio facts and render LLM narrative with fallback.
+
+medallion: gold
+"""
 
 from __future__ import annotations
 

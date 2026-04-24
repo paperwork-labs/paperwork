@@ -13,6 +13,8 @@ Why a service module instead of putting this on the model:
   read in code review.
 * Routes and Celery tasks pass already-built :class:`Explanation`
   objects; the conversion to columns happens in exactly one place.
+
+medallion: ops
 """
 
 from __future__ import annotations

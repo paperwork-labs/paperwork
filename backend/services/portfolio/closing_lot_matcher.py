@@ -45,6 +45,8 @@ Returns a ``MatchResult`` with per-account counters so callers emit the
 requires. The matcher itself never silently swallows exceptions.
 
 Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
+
+medallion: silver
 """
 
 from __future__ import annotations

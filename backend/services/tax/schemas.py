@@ -26,6 +26,8 @@ Conventions:
   trailing ``Z`` stripped (Pydantic default).
 * Enum values are lower-case snake_case strings so consumers can pattern
   match without import-coupling.
+
+medallion: silver
 """
 
 from __future__ import annotations

@@ -15,6 +15,8 @@ Monetary math uses :class:`decimal.Decimal`; the one exception is the call into
 :func:`backend.services.execution.risk_gate.compute_position_size`, which takes
 floats by historical contract. Inputs and outputs are explicitly converted at
 the boundary.
+
+medallion: gold
 """
 
 from __future__ import annotations

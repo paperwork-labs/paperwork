@@ -6,6 +6,8 @@ is unchanged; this module encodes the SMA150-anchored filter stack requested
 for Stage 2 advance + leadership + volume + proximity to 52w highs.
 
 Gated by ``settings.ENABLE_STAGE2A_GENERATOR`` (default off).
+
+medallion: gold
 """
 
 from __future__ import annotations

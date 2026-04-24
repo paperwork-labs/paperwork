@@ -4,6 +4,8 @@ Pipeline Runner
 
 Orchestrates market data pipeline stages with progress tracking.
 Used by the nightly pipeline and auto-remediation tasks.
+
+medallion: silver
 """
 
 import logging

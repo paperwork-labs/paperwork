@@ -3,6 +3,8 @@
 Single source of truth for:
 - prefer Redis `tracked:all` if present and fresh (UI/source-of-truth)
 - otherwise derive from DB: active index constituents ∪ portfolio symbols
+
+medallion: silver
 """
 
 from __future__ import annotations

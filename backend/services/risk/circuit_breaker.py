@@ -1,6 +1,8 @@
 """
 Tiered circuit breaker with Redis-backed state.
 Based on MiFID II / FIA best practices.
+
+medallion: gold
 """
 from __future__ import annotations
 

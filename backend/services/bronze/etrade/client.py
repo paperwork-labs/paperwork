@@ -18,6 +18,8 @@ JSON vs XML:
     The E*TRADE v1 data API returns XML by default and JSON when the URL
     ends in ``.json``. We always append ``.json`` to avoid having to
     parse XML or mutate the adapter's request headers.
+
+medallion: bronze
 """
 
 from __future__ import annotations

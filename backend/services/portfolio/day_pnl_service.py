@@ -24,6 +24,8 @@ Contract (D141):
 * On missing prior_close or ambiguous corporate-action window,
   ``day_pnl`` and ``day_pnl_pct`` are set to ``NULL`` — zero is a
   valid market outcome, null is "unknown".
+
+medallion: silver
 """
 
 from __future__ import annotations

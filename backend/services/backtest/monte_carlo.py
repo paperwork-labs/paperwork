@@ -42,6 +42,8 @@ Public API
 See ``backend/api/routes/backtest/monte_carlo.py`` for the HTTP wrapper
 and ``backend/services/backtest/scenarios.py`` for preset weighted
 resamplers (optimistic/pessimistic skew).
+
+medallion: gold
 """
 
 from __future__ import annotations

@@ -5,6 +5,8 @@ via the Render REST API (https://api.render.com/v1/).
 
 When ``RENDER_API_KEY`` is unset the service becomes a no-op so that
 local-dev and CI environments are never affected.
+
+medallion: ops
 """
 
 from __future__ import annotations

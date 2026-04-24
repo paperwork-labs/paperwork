@@ -13,6 +13,8 @@ Silver-layer portfolio risk metrics:
   ``user_id=1`` defaults) — D88.
 
 Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
+
+medallion: silver
 """
 
 import logging

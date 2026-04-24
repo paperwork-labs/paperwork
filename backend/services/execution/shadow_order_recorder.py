@@ -18,6 +18,8 @@ The recorder is deliberately conservative:
 A separate :func:`POST /api/v1/shadow-trades/submit` route exists for direct
 entry (bypassing ``OrderManager``) so clients can exercise this recorder
 without going through the preview step.
+
+medallion: execution
 """
 
 from __future__ import annotations

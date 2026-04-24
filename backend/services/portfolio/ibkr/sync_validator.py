@@ -21,6 +21,8 @@ This module makes section presence/absence a first-class signal:
 - Always populate a structured ``warnings`` list so a downstream observer
   (UI, log, /admin/health) can tell whether the system is healthy or
   degraded. No silent fallbacks (R32, R34, R38).
+
+medallion: bronze
 """
 
 from __future__ import annotations

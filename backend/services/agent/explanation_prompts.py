@@ -26,6 +26,8 @@ Hard rules baked into the prompt:
 * Output is strict JSON matching ``OUTPUT_JSON_SCHEMA``. The service
   validates this and falls back to a deterministic explanation if
   parsing fails.
+
+medallion: ops
 """
 
 from __future__ import annotations

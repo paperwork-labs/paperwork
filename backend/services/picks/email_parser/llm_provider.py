@@ -18,6 +18,8 @@ It returns:
       (validated by the parser; invalid output is treated as a parse_error,
       not a crash).
     - Token + latency telemetry.
+
+medallion: gold
 """
 from __future__ import annotations
 

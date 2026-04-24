@@ -2,6 +2,8 @@
 Schwab Trader API Client
 Production-ready scaffold for Schwab Trader API v1 (https://api.schwabapi.com/trader/v1).
 Uses OAuth tokens from the aggregator callback flow. Returns empty results when not configured.
+
+medallion: ops
 """
 
 from __future__ import annotations

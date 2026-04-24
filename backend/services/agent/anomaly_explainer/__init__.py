@@ -30,6 +30,8 @@ This package is a *standalone scaffold*. Integration with the existing
 ``auto_remediate_health`` task in ``backend/tasks/ops/auto_ops.py`` is
 deliberately out of scope for this PR -- that path is a danger-zone
 adjacent file and gets a separate, smaller PR once this is reviewed.
+
+medallion: ops
 """
 
 from .anomaly_builder import (

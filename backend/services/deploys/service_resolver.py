@@ -17,6 +17,8 @@ Failure modes surfaced (never silenced — ``no-silent-fallback.mdc``):
   "deploy telemetry disabled" instead of fake-green.
 * Render API error on the metadata lookup -> warning log, empty slug,
   proceed. The row still lands; the slug fills in on the next poll.
+
+medallion: ops
 """
 
 from __future__ import annotations

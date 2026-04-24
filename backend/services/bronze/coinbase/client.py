@@ -1,4 +1,7 @@
-"""HTTP client for Coinbase v2 data API (wallet accounts + transactions)."""
+"""HTTP client for Coinbase v2 data API (wallet accounts + transactions).
+
+medallion: bronze
+"""
 
 from __future__ import annotations
 

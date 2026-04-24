@@ -3,6 +3,8 @@
 Importing this package registers every generator with the
 ``CandidateGenerator`` registry via ``__init_subclass__``. Adding a
 new generator: drop a module here and import it below.
+
+medallion: gold
 """
 
 from . import stage2a_rs_strong  # noqa: F401  (registers via __init_subclass__)

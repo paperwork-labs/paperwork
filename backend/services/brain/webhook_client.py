@@ -1,4 +1,7 @@
-"""Webhook client for notifying Brain of AxiomFolio events."""
+"""Webhook client for notifying Brain of AxiomFolio events.
+
+medallion: ops
+"""
 from __future__ import annotations
 
 import hashlib

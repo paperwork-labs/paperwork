@@ -1,4 +1,7 @@
-"""Resolve broker account types from provider metadata and XML signals."""
+"""Resolve broker account types from provider metadata and XML signals.
+
+medallion: silver
+"""
 
 from __future__ import annotations
 

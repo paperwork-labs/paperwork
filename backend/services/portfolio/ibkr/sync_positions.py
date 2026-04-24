@@ -1,4 +1,7 @@
-"""Position, tax lot, instrument, and option sync steps for IBKR pipeline."""
+"""Position, tax lot, instrument, and option sync steps for IBKR pipeline.
+
+medallion: bronze
+"""
 
 import asyncio
 import json

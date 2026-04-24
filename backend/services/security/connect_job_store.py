@@ -3,6 +3,8 @@ Connect job status store using Redis.
 
 Replaces in-memory JOBS dict for production: connect job status must persist
 across multiple uvicorn workers / replicas. Used by TastyTrade and IBKR connect flows.
+
+medallion: ops
 """
 
 from __future__ import annotations

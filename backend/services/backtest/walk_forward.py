@@ -31,6 +31,8 @@ Read-only safety
 The optimizer never places orders or mutates broker / position state. It
 operates entirely on historical data via ``MarketSnapshotHistory`` (the
 backtest engine's only data source).
+
+medallion: gold
 """
 
 from __future__ import annotations

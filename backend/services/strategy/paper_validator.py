@@ -2,6 +2,8 @@
 
 Validates strategies in paper mode before allowing live trading.
 Implements a configurable validation period with performance gates.
+
+medallion: gold
 """
 from __future__ import annotations
 

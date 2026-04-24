@@ -3,6 +3,8 @@ Multi-Timeframe Stage Analysis Engine.
 
 Computes stage classification on multiple timeframes (1H, 4H, 1D, 1W)
 and calculates alignment scores for confluence-based trading.
+
+medallion: silver
 """
 from __future__ import annotations
 
