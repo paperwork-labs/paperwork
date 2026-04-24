@@ -83,6 +83,8 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 };
 
+const AUTO_REFRESH_MS = 60_000;
+
 export default function InfraClient({
   initialServices,
   initialCheckedAt,
@@ -94,16 +96,19 @@ export default function InfraClient({
   const [checkedAt, setCheckedAt] = useState(initialCheckedAt);
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
       const res = await fetch("/api/admin/infrastructure");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setServices(data.services);
       setCheckedAt(data.checkedAt);
-    } catch {
-      // silently fail, keep stale data
+      setRefreshError(null);
+    } catch (err) {
+      setRefreshError(err instanceof Error ? err.message : "Refresh failed");
     } finally {
       setRefreshing(false);
     }
@@ -111,7 +116,7 @@ export default function InfraClient({
 
   useEffect(() => {
     if (!autoRefresh) return;
-    const interval = setInterval(refresh, 60000);
+    const interval = setInterval(refresh, AUTO_REFRESH_MS);
     return () => clearInterval(interval);
   }, [autoRefresh, refresh]);
 
@@ -211,8 +216,13 @@ export default function InfraClient({
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="h-3 w-3 rounded border-zinc-600 bg-zinc-800 accent-emerald-500"
             />
-            Auto-refresh 30s
+            Auto-refresh 60s
           </label>
+          {refreshError && (
+            <span className="ml-3 rounded-full border border-rose-800/40 bg-rose-950/20 px-2 py-0.5 text-xs text-rose-300">
+              Refresh failed: {refreshError}
+            </span>
+          )}
         </div>
         <button
           onClick={refresh}

@@ -49,6 +49,60 @@ async function checkGithubToken(): Promise<ServiceToken> {
   }
 }
 
+async function checkGoogleDrive(): Promise<ServiceToken> {
+  const brainUrl = process.env.BRAIN_API_URL?.trim();
+  const brainSecret = process.env.BRAIN_API_SECRET?.trim();
+  if (!brainUrl || !brainSecret) {
+    return {
+      service: "Google Drive",
+      configured: false,
+      verified: false,
+      detail: "Brain not wired (BRAIN_API_URL / BRAIN_API_SECRET missing)",
+    };
+  }
+  try {
+    const root = brainUrl.replace(/\/+$/, "");
+    const res = await fetch(`${root}/api/v1/admin/tools`, {
+      headers: { "X-Brain-Secret": brainSecret },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      return {
+        service: "Google Drive",
+        configured: true,
+        verified: false,
+        detail: `Brain tools HTTP ${res.status}`,
+      };
+    }
+    const json = (await res.json()) as { data?: { tools?: Array<{ name?: string }> } };
+    const tools = json?.data?.tools ?? [];
+    const gdriveTool = tools.find((t) =>
+      typeof t?.name === "string" && /gdrive|google.*drive/i.test(t.name),
+    );
+    if (!gdriveTool) {
+      return {
+        service: "Google Drive",
+        configured: false,
+        verified: false,
+        detail: "No gdrive tool registered in Brain",
+      };
+    }
+    return {
+      service: "Google Drive",
+      configured: true,
+      verified: true,
+      detail: `Registered as ${gdriveTool.name}`,
+    };
+  } catch (err) {
+    return {
+      service: "Google Drive",
+      configured: true,
+      verified: false,
+      detail: err instanceof Error ? err.message : "Brain request failed",
+    };
+  }
+}
+
 async function checkVercelToken(): Promise<ServiceToken> {
   const token = process.env.VERCEL_API_TOKEN?.trim();
   if (!token) return { service: "Vercel", configured: false, verified: false, detail: "No token" };
@@ -67,20 +121,14 @@ async function checkVercelToken(): Promise<ServiceToken> {
 
 export async function GET() {
   const data = await cached("admin:ops", CACHE_TTL, async () => {
-    const [workflows, executions, slack, github, vercel] = await Promise.all([
+    const [workflows, executions, slack, github, vercel, gdrive] = await Promise.all([
       getN8nWorkflows(),
       getN8nExecutions(50),
       checkSlackToken(),
       checkGithubToken(),
       checkVercelToken(),
+      checkGoogleDrive(),
     ]);
-
-    const gdrive: ServiceToken = {
-      service: "Google Drive",
-      configured: true,
-      verified: true,
-      detail: "Configured via MCP",
-    };
 
     return {
       workflows,

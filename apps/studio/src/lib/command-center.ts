@@ -403,7 +403,9 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
 
     // Provider APIs
     checkTokenApi("Render", "hosting", "https://api.render.com/v1/services", renderToken, "https://dashboard.render.com"),
-    checkTokenApi("Vercel", "hosting", "https://api.vercel.com/v9/projects", vercelToken, "https://vercel.com/paperwork-labs"),
+    // Use /v2/user (always accessible to any valid token) instead of /v9/projects
+    // which 403s for team-scoped tokens without a ?teamId= query param.
+    checkTokenApi("Vercel", "hosting", "https://api.vercel.com/v2/user", vercelToken, "https://vercel.com/paperwork-labs"),
     checkTokenApi("Neon", "data", "https://console.neon.tech/api/v2/projects", neonApiKey, "https://console.neon.tech"),
   ];
 

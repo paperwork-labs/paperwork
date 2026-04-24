@@ -39,6 +39,7 @@ type Execution = {
   stoppedAt?: string;
   workflowId?: string;
   status?: string;
+  workflowData?: { name?: string };
 };
 
 type ServiceToken = {
@@ -122,22 +123,25 @@ const fadeUp = {
 export default function OpsClient({ initial }: { initial: OpsData }) {
   const [data, setData] = useState(initial);
   const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
       const res = await fetch("/api/admin/ops");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);
-    } catch {
-      // keep stale
+      setRefreshError(null);
+    } catch (err) {
+      setRefreshError(err instanceof Error ? err.message : "Refresh failed");
     } finally {
       setRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    const interval = setInterval(refresh, 60000);
+    const interval = setInterval(refresh, 60_000);
     return () => clearInterval(interval);
   }, [refresh]);
 
@@ -145,7 +149,7 @@ export default function OpsClient({ initial }: { initial: OpsData }) {
 
   const activeCount = workflows.filter((w) => w.active).length;
   const workflowNameById = useMemo(
-    () => new Map(workflows.map((w) => [w.id, w.name])),
+    () => new Map(workflows.map((w) => [String(w.id), w.name])),
     [workflows],
   );
 
@@ -173,14 +177,21 @@ export default function OpsClient({ initial }: { initial: OpsData }) {
             Agent workflows, service tokens, and cost tracking.
           </p>
         </div>
-        <button
-          onClick={refresh}
-          disabled={refreshing}
-          className="flex items-center gap-2 rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-3">
+          {refreshError && (
+            <span className="rounded-full border border-rose-800/40 bg-rose-950/20 px-2 py-0.5 text-xs text-rose-300">
+              Refresh failed: {refreshError}
+            </span>
+          )}
+          <button
+            onClick={refresh}
+            disabled={refreshing}
+            className="flex items-center gap-2 rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Workflow Roster */}
@@ -211,7 +222,15 @@ export default function OpsClient({ initial }: { initial: OpsData }) {
             </div>
           ) : (
             workflows.map((w) => {
-              const lastExec = executions.find((e) => e.workflowId === w.id);
+              // n8n returns executions with either string or numeric workflowId
+              // depending on version, and sometimes only the name in workflowData.
+              // Coerce to strings and fall back to name match so we don't show
+              // "Last: —" for every row just because IDs are strings-vs-numbers.
+              const lastExec = executions.find(
+                (e) =>
+                  String(e.workflowId ?? "") === String(w.id) ||
+                  e.workflowData?.name === w.name,
+              );
               const lastStatus = lastExec ? executionStatusStyle(lastExec.status) : null;
               const meta = workflowMeta?.[w.name];
               return (
@@ -283,7 +302,10 @@ export default function OpsClient({ initial }: { initial: OpsData }) {
             ) : (
               recentExecs.map((e) => {
                 const style = executionStatusStyle(e.status);
-                const name = workflowNameById.get(e.workflowId ?? "") || "Unknown";
+                const name =
+                  workflowNameById.get(String(e.workflowId ?? "")) ||
+                  e.workflowData?.name ||
+                  "Unknown";
                 return (
                   <div
                     key={e.id}
