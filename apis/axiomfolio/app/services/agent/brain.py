@@ -49,7 +49,7 @@ BYOK_PROVIDER_URLS: Dict[str, str] = {
 def _resolve_backend_codebase_dir() -> Optional[str]:
     import os
 
-    for candidate in ("/app/backend", "backend"):
+    for candidate in ("/app/app", "app", "/app/backend", "backend"):
         if os.path.isdir(candidate):
             return os.path.realpath(os.path.abspath(candidate))
     return None

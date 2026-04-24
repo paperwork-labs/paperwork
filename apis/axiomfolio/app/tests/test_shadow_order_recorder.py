@@ -353,7 +353,7 @@ def test_order_manager_flag_gate_exists_exactly_once() -> None:
     )
 
     recorder_hits = re.findall(
-        r"from backend\.services\.execution\.shadow_order_recorder import ShadowOrderRecorder",
+        r"from app\.services\.execution\.shadow_order_recorder import ShadowOrderRecorder",
         source,
     )
     assert len(recorder_hits) == 1, (

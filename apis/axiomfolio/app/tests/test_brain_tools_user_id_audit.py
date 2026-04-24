@@ -27,7 +27,7 @@ _BACKEND = os.path.abspath(
 # documents WHY the occurrence is safe.
 _ALLOWLIST: tuple[tuple[str, str], ...] = (
     # config default literal — read at runtime, not a hard-coded scope.
-    ("backend/config.py", "BRAIN_TOOLS_USER_ID: int = 1"),
+    ("app/config.py", "BRAIN_TOOLS_USER_ID: int = 1"),
     # docs / deprecated fallback in the helper.
     (
         "app/api/routes/brain_tools.py",
