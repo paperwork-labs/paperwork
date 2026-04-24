@@ -1,0 +1,90 @@
+name: Dependabot auto-approve + auto-merge
+
+# Auto-approve and enable squash-auto-merge on safe Dependabot PRs.
+#
+# Safe = patch, minor, grouped minor-and-patch PR, or github-actions bump.
+# Major version bumps get a `deps:major` label and hand off to the LLM
+# triage workflow; they do NOT auto-merge here.
+#
+# Security:
+#   * Uses `pull_request_target`, so the workflow runs against the base
+#     branch's definition (not the PR's), which is safe from tampering.
+#   * Never checks out the PR head. Only calls the GitHub API.
+#   * Explicit actor guard — refuses to do anything unless the PR was
+#     opened by `dependabot[bot]`.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-approve:
+    if: github.actor == 'dependabot[bot]' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Classify bump
+        id: classify
+        env:
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          ECOSYSTEM: ${{ steps.meta.outputs.package-ecosystem }}
+          GROUP: ${{ steps.meta.outputs.dependency-group }}
+        run: |
+          set -euo pipefail
+          echo "update-type=$UPDATE_TYPE"
+          echo "ecosystem=$ECOSYSTEM"
+          echo "group=$GROUP"
+
+          SAFE=false
+          REASON=""
+
+          if [ -n "$GROUP" ]; then
+            SAFE=true
+            REASON="grouped update ($GROUP) — already scoped to minor+patch by dependabot.yml"
+          elif [ "$ECOSYSTEM" = "github_actions" ]; then
+            SAFE=true
+            REASON="github-actions bump — maintained actions, low blast radius"
+          elif [ "$UPDATE_TYPE" = "version-update:semver-patch" ]; then
+            SAFE=true
+            REASON="patch bump"
+          elif [ "$UPDATE_TYPE" = "version-update:semver-minor" ]; then
+            SAFE=true
+            REASON="minor bump"
+          else
+            REASON="major bump — requires human review"
+          fi
+
+          echo "safe=$SAFE" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
+      - name: Approve + enable auto-merge (safe bumps)
+        if: steps.classify.outputs.safe == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          REASON: ${{ steps.classify.outputs.reason }}
+        run: |
+          set -euo pipefail
+          gh pr review "$PR_URL" --approve \
+            --body "auto-approved by dependabot-auto-approve.yaml — $REASON"
+          gh pr merge "$PR_URL" --auto --squash
+
+      - name: Label + comment (major bumps)
+        if: steps.classify.outputs.safe == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          set -euo pipefail
+          gh pr edit "$PR_URL" --add-label "deps:major"
+          gh pr comment "$PR_URL" --body \
+            "Major version bump detected. Labeled \`deps:major\`; LLM triage will post a risk assessment shortly."
