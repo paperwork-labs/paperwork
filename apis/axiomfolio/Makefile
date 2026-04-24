@@ -107,6 +107,9 @@ test:
 	$(COMPOSE) up -d postgres redis
 	$(COMPOSE) run --rm \
 		-e DATABASE_URL=postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_test \
+		-e TEST_DATABASE_URL=postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_test \
+		-e TEST_DB_EXPECTED_HOST=postgres \
+		-e POSTGRES_TEST_USER=paperwork \
 		-e REDIS_URL=redis://redis:6379/3 \
 		-e CELERY_BROKER_URL=redis://redis:6379/3 \
 		-e CELERY_RESULT_BACKEND=redis://redis:6379/3 \
@@ -117,6 +120,9 @@ test:
 test-shell:
 	$(COMPOSE) run --rm \
 		-e DATABASE_URL=postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_test \
+		-e TEST_DATABASE_URL=postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_test \
+		-e TEST_DB_EXPECTED_HOST=postgres \
+		-e POSTGRES_TEST_USER=paperwork \
 		-e REDIS_URL=redis://redis:6379/3 \
 		$(API_SVC) bash
 
