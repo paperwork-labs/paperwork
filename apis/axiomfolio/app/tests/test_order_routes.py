@@ -4,11 +4,11 @@ Covers: preview risk rejection (422), submit happy path, list/get orders,
 and cancel endpoint.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from fastapi.testclient import TestClient
+import pytest
 from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from app.api.routes.portfolio.orders import router
 from app.models.user import UserRole
@@ -52,30 +52,38 @@ class TestPreviewRoute:
         mock_mgr.preview = AsyncMock(
             side_effect=RiskViolation("Order value $200,000 exceeds $100,000 maximum")
         )
-        resp = client.post("/portfolio/orders/preview", json={
-            "symbol": "AAPL",
-            "side": "buy",
-            "order_type": "market",
-            "quantity": 1000,
-        })
+        resp = client.post(
+            "/portfolio/orders/preview",
+            json={
+                "symbol": "AAPL",
+                "side": "buy",
+                "order_type": "market",
+                "quantity": 1000,
+            },
+        )
         assert resp.status_code == 422
         assert "exceeds" in resp.json()["detail"]
 
     @patch(ORDER_MGR_PATH)
     def test_preview_returns_200_on_success(self, mock_mgr, client):
-        mock_mgr.preview = AsyncMock(return_value={
-            "order_id": 1,
-            "status": "preview",
-            "preview": {"estimated_commission": 1.0},
-            "warnings": [],
-        })
-        resp = client.post("/portfolio/orders/preview", json={
-            "symbol": "AAPL",
-            "side": "buy",
-            "order_type": "limit",
-            "quantity": 10,
-            "limit_price": 150.0,
-        })
+        mock_mgr.preview = AsyncMock(
+            return_value={
+                "order_id": 1,
+                "status": "preview",
+                "preview": {"estimated_commission": 1.0},
+                "warnings": [],
+            }
+        )
+        resp = client.post(
+            "/portfolio/orders/preview",
+            json={
+                "symbol": "AAPL",
+                "side": "buy",
+                "order_type": "limit",
+                "quantity": 10,
+                "limit_price": 150.0,
+            },
+        )
         assert resp.status_code == 200
         assert resp.json()["data"]["order_id"] == 1
 
@@ -83,12 +91,14 @@ class TestPreviewRoute:
 class TestSubmitRoute:
     @patch(ORDER_MGR_PATH)
     def test_submit_returns_200(self, mock_mgr, client):
-        mock_mgr.submit = AsyncMock(return_value={
-            "order_id": 1,
-            "status": "submitted",
-            "broker_order_id": "12345",
-            "error": None,
-        })
+        mock_mgr.submit = AsyncMock(
+            return_value={
+                "order_id": 1,
+                "status": "submitted",
+                "broker_order_id": "12345",
+                "error": None,
+            }
+        )
         resp = client.post("/portfolio/orders/submit", json={"order_id": 1})
         assert resp.status_code == 200
 
@@ -121,17 +131,19 @@ class TestGetRoute:
 class TestCancelRoute:
     @patch(ORDER_MGR_PATH)
     def test_cancel_returns_200(self, mock_mgr, client):
-        mock_mgr.cancel = AsyncMock(return_value={
-            "order_id": 1,
-            "status": "cancelled",
-        })
+        mock_mgr.cancel = AsyncMock(
+            return_value={
+                "order_id": 1,
+                "status": "cancelled",
+            }
+        )
         resp = client.delete("/portfolio/orders/1")
         assert resp.status_code == 200
 
     @patch(ORDER_MGR_PATH)
     def test_cancel_returns_400_on_invalid_state(self, mock_mgr, client):
-        mock_mgr.cancel = AsyncMock(return_value={
-            "error": "Cannot cancel order in 'preview' state"
-        })
+        mock_mgr.cancel = AsyncMock(
+            return_value={"error": "Cannot cancel order in 'preview' state"}
+        )
         resp = client.delete("/portfolio/orders/1")
         assert resp.status_code == 400

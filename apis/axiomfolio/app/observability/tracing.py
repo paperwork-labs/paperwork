@@ -29,7 +29,7 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from typing import Any, Optional
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 _INIT_LOCK = threading.Lock()
 _INITIALIZED = False
-_TRACER_PROVIDER: Optional[TracerProvider] = None
+_TRACER_PROVIDER: TracerProvider | None = None
 
 
 def _build_resource(service_name: str, environment: str) -> Resource:
@@ -68,9 +68,7 @@ def _maybe_register_otlp_exporter(provider: TracerProvider) -> bool:
     is told the trace pipeline is degraded.
     """
     endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip()
-    traces_endpoint = os.getenv(
-        "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", ""
-    ).strip()
+    traces_endpoint = os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT", "").strip()
     if not endpoint and not traces_endpoint:
         logger.info(
             "OTel tracing: no OTLP endpoint configured "
@@ -103,7 +101,7 @@ def _maybe_register_otlp_exporter(provider: TracerProvider) -> bool:
         return False
 
 
-def _instrument_fastapi(app: Optional[Any] = None) -> None:
+def _instrument_fastapi(app: Any | None = None) -> None:
     try:
         from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
@@ -137,6 +135,7 @@ def _instrument_sqlalchemy() -> None:
 def _instrument_celery() -> None:
     try:
         from opentelemetry.instrumentation.celery import CeleryInstrumentor
+
         CeleryInstrumentor().instrument()
     except Exception as exc:
         logger.warning("OTel: Celery auto-instrumentation failed: %s", exc)
@@ -145,6 +144,7 @@ def _instrument_celery() -> None:
 def _instrument_httpx() -> None:
     try:
         from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+
         HTTPXClientInstrumentor().instrument()
     except Exception as exc:
         logger.warning("OTel: httpx auto-instrumentation failed: %s", exc)
@@ -153,6 +153,7 @@ def _instrument_httpx() -> None:
 def _instrument_redis() -> None:
     try:
         from opentelemetry.instrumentation.redis import RedisInstrumentor
+
         RedisInstrumentor().instrument()
     except Exception as exc:
         logger.warning("OTel: redis auto-instrumentation failed: %s", exc)
@@ -162,7 +163,7 @@ def init_tracing(
     service_name: str,
     environment: str = "dev",
     *,
-    fastapi_app: Optional[Any] = None,
+    fastapi_app: Any | None = None,
     instrument_fastapi: bool = True,
     instrument_sqlalchemy: bool = True,
     instrument_celery: bool = True,

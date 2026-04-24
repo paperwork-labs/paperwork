@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from app.config import settings
 from app.database import SessionLocal
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
     queue="celery",
 )
 @task_run("aggregate_external_signals", lock_ttl_seconds=960)
-def aggregate_external_signals_task() -> Dict[str, Any]:
+def aggregate_external_signals_task() -> dict[str, Any]:
     """Daily: fetch stubbed external signals for the tracked universe and upsert."""
     if not settings.ENABLE_EXTERNAL_SIGNALS:
         logger.info("aggregate_external_signals: disabled (ENABLE_EXTERNAL_SIGNALS=false)")

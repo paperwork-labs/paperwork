@@ -5,13 +5,13 @@ medallion: gold
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 
 from app.models.broker_account import BrokerAccount
 from app.services.strategy.account_strategy import get_strategy_profile
 
 
-def build_exit_planner_context(account: BrokerAccount) -> Dict[str, Any]:
+def build_exit_planner_context(account: BrokerAccount) -> dict[str, Any]:
     """Build strategy context injected into exit-cascade evaluation."""
     profile = get_strategy_profile(account)
     return {

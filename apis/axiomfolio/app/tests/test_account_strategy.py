@@ -5,11 +5,12 @@ import pytest
 from app.models.broker_account import AccountType, BrokerAccount
 from app.services.strategy.account_strategy import get_strategy_profile
 
-
 pytestmark = pytest.mark.no_db
 
 
-def _account(account_type: AccountType, *, margin: bool = False, options: bool = False) -> BrokerAccount:
+def _account(
+    account_type: AccountType, *, margin: bool = False, options: bool = False
+) -> BrokerAccount:
     account = BrokerAccount(
         user_id=1,
         broker="ibkr",  # test helper only

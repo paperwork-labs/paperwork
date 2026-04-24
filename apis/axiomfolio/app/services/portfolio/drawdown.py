@@ -2,9 +2,9 @@
 
 medallion: silver
 """
+
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -18,7 +18,7 @@ class DrawdownAlert:
     def __init__(
         self,
         user_id: int,
-        account_id: Optional[int],
+        account_id: int | None,
         current_drawdown_pct: float,
         drawdown_days: int,
         peak_value: Decimal,
@@ -46,11 +46,11 @@ class DrawdownService:
     def record_daily_snapshot(
         self,
         user_id: int,
-        account_id: Optional[int],
+        account_id: int | None,
         total_value: Decimal,
         cash_value: Decimal,
         positions_value: Decimal,
-        as_of: Optional[date] = None,
+        as_of: date | None = None,
     ) -> PortfolioHistory:
         """Record a daily portfolio snapshot and compute drawdown metrics."""
         as_of = as_of or date.today()
@@ -205,7 +205,7 @@ class DrawdownService:
     def get_drawdown_history(
         self,
         user_id: int,
-        account_id: Optional[int] = None,
+        account_id: int | None = None,
         days: int = 90,
     ) -> list[PortfolioHistory]:
         """Get drawdown history for charting."""

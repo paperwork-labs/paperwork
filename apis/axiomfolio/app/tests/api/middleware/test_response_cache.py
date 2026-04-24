@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -18,7 +18,7 @@ from app.services.market.market_data_service import infra
 
 class _FakeRedis:
     def __init__(self) -> None:
-        self.store: Dict[str, Any] = {}
+        self.store: dict[str, Any] = {}
 
     def get(self, key: str) -> Any:
         return self.store.get(key)

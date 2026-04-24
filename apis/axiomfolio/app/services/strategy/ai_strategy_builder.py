@@ -8,22 +8,22 @@ Uses LLM to generate strategy rules with safety constraints:
 
 medallion: gold
 """
+
 from __future__ import annotations
 
-import json
 import logging
 import re
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models.strategy import Strategy, StrategyType, StrategyStatus
+from app.models.strategy import Strategy, StrategyStatus, StrategyType
 from app.services.strategy.rule_evaluator import (
-    ConditionGroup,
     Condition,
+    ConditionGroup,
     ConditionOperator,
     LogicalOperator,
 )
@@ -46,8 +46,8 @@ class TrustScore:
     """Trust assessment of an AI-generated strategy."""
 
     overall: float  # 0-100
-    components: Dict[str, float]  # Individual score components
-    flags: List[str]  # Warning flags
+    components: dict[str, float]  # Individual score components
+    flags: list[str]  # Warning flags
     recommendation: str  # "deploy", "paper_trade", "reject"
 
     def to_dict(self) -> dict:
@@ -67,10 +67,10 @@ class GeneratedStrategy:
     description: str
     entry_rules: ConditionGroup
     exit_rules: ConditionGroup
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     trust_score: TrustScore
     explanation: str
-    raw_llm_output: Optional[str] = None
+    raw_llm_output: str | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -207,9 +207,7 @@ class AIStrategyBuilder:
                 user_prompt, intent
             )
         else:
-            entry_rules, exit_rules, params, raw_output = self._generate_from_templates(
-                intent
-            )
+            entry_rules, exit_rules, params, raw_output = self._generate_from_templates(intent)
 
         # Apply guardrails
         guardrail_results = self._apply_guardrails(entry_rules, exit_rules, params)
@@ -220,9 +218,7 @@ class AIStrategyBuilder:
         )
 
         # Generate explanation
-        explanation = self._generate_explanation(
-            intent, entry_rules, exit_rules, trust_score
-        )
+        explanation = self._generate_explanation(intent, entry_rules, exit_rules, trust_score)
 
         # Create name
         name = self._generate_name(intent)
@@ -283,7 +279,7 @@ class AIStrategyBuilder:
 
         return strategy
 
-    def _parse_intent(self, prompt: str) -> Dict[str, Any]:
+    def _parse_intent(self, prompt: str) -> dict[str, Any]:
         """Parse user intent from prompt."""
         prompt_lower = prompt.lower()
 
@@ -331,8 +327,8 @@ class AIStrategyBuilder:
         return intent
 
     def _generate_from_templates(
-        self, intent: Dict[str, Any]
-    ) -> Tuple[ConditionGroup, ConditionGroup, Dict[str, Any], None]:
+        self, intent: dict[str, Any]
+    ) -> tuple[ConditionGroup, ConditionGroup, dict[str, Any], None]:
         """Generate strategy from built-in templates."""
         conditions = []
         exit_conditions = []
@@ -445,8 +441,8 @@ class AIStrategyBuilder:
         return entry_group, exit_group, params, None
 
     def _generate_with_llm(
-        self, prompt: str, intent: Dict[str, Any]
-    ) -> Tuple[ConditionGroup, ConditionGroup, Dict[str, Any], str]:
+        self, prompt: str, intent: dict[str, Any]
+    ) -> tuple[ConditionGroup, ConditionGroup, dict[str, Any], str]:
         """Generate strategy using LLM."""
         # Placeholder for LLM integration
         # In production, this would call OpenAI/Claude API
@@ -458,8 +454,8 @@ class AIStrategyBuilder:
         self,
         entry_rules: ConditionGroup,
         exit_rules: ConditionGroup,
-        params: Dict[str, Any],
-    ) -> List[Tuple[SafetyGuardrail, bool, str]]:
+        params: dict[str, Any],
+    ) -> list[tuple[SafetyGuardrail, bool, str]]:
         """Apply all safety guardrails."""
         results = []
 
@@ -477,20 +473,20 @@ class AIStrategyBuilder:
         self,
         entry_rules: ConditionGroup,
         exit_rules: ConditionGroup,
-        params: Dict[str, Any],
-    ) -> Tuple[bool, str]:
+        params: dict[str, Any],
+    ) -> tuple[bool, str]:
         """Check position size is reasonable."""
         size = params.get("position_size_pct", 0.1)
         if size > 0.2:
-            return False, f"Position size {size*100}% exceeds 20% limit"
-        return True, f"Position size {size*100}% is acceptable"
+            return False, f"Position size {size * 100}% exceeds 20% limit"
+        return True, f"Position size {size * 100}% is acceptable"
 
     def _check_stop_loss(
         self,
         entry_rules: ConditionGroup,
         exit_rules: ConditionGroup,
-        params: Dict[str, Any],
-    ) -> Tuple[bool, str]:
+        params: dict[str, Any],
+    ) -> tuple[bool, str]:
         """Check stop loss is configured."""
         stop_loss = params.get("stop_loss_pct")
         if not stop_loss or stop_loss <= 0:
@@ -503,8 +499,8 @@ class AIStrategyBuilder:
         self,
         entry_rules: ConditionGroup,
         exit_rules: ConditionGroup,
-        params: Dict[str, Any],
-    ) -> Tuple[bool, str]:
+        params: dict[str, Any],
+    ) -> tuple[bool, str]:
         """Check no leverage/margin is used."""
         leverage = params.get("leverage", 1.0)
         if leverage > 1.0:
@@ -515,8 +511,8 @@ class AIStrategyBuilder:
         self,
         entry_rules: ConditionGroup,
         exit_rules: ConditionGroup,
-        params: Dict[str, Any],
-    ) -> Tuple[bool, str]:
+        params: dict[str, Any],
+    ) -> tuple[bool, str]:
         """Check expected returns are realistic."""
         expected = params.get("expected_annual_return")
         if expected and expected > 100:
@@ -527,12 +523,10 @@ class AIStrategyBuilder:
         self,
         entry_rules: ConditionGroup,
         exit_rules: ConditionGroup,
-        params: Dict[str, Any],
-    ) -> Tuple[bool, str]:
+        params: dict[str, Any],
+    ) -> tuple[bool, str]:
         """Check we have enough entry conditions."""
-        count = len(entry_rules.conditions) + sum(
-            len(g.conditions) for g in entry_rules.groups
-        )
+        count = len(entry_rules.conditions) + sum(len(g.conditions) for g in entry_rules.groups)
         if count < 2:
             return False, f"Only {count} entry conditions (need 2+)"
         return True, f"{count} entry conditions"
@@ -541,8 +535,8 @@ class AIStrategyBuilder:
         self,
         entry_rules: ConditionGroup,
         exit_rules: ConditionGroup,
-        params: Dict[str, Any],
-        guardrail_results: List[Tuple[SafetyGuardrail, bool, str]],
+        params: dict[str, Any],
+        guardrail_results: list[tuple[SafetyGuardrail, bool, str]],
     ) -> TrustScore:
         """Calculate trust score for the strategy."""
         components = {}
@@ -606,7 +600,7 @@ class AIStrategyBuilder:
 
     def _generate_explanation(
         self,
-        intent: Dict[str, Any],
+        intent: dict[str, Any],
         entry_rules: ConditionGroup,
         exit_rules: ConditionGroup,
         trust_score: TrustScore,
@@ -637,7 +631,7 @@ class AIStrategyBuilder:
 
         return "\n".join(lines)
 
-    def _generate_name(self, intent: Dict[str, Any]) -> str:
+    def _generate_name(self, intent: dict[str, Any]) -> str:
         """Generate a name for the strategy."""
         parts = []
 
@@ -659,10 +653,10 @@ class AIStrategyBuilder:
         if not parts:
             parts = ["AI", "Generated"]
 
-        timestamp = datetime.now(timezone.utc).strftime("%m%d")
+        timestamp = datetime.now(UTC).strftime("%m%d")
         return f"{'_'.join(parts)}_{timestamp}"
 
-    def _load_templates(self) -> Dict[str, Any]:
+    def _load_templates(self) -> dict[str, Any]:
         """Load strategy templates."""
         return {
             "momentum": {

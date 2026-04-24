@@ -38,10 +38,11 @@ medallion: gold
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional, Protocol, Sequence, Tuple
+from typing import Any, Protocol
 
 import optuna
 from optuna.samplers import TPESampler
@@ -84,7 +85,7 @@ class TradeResult:
     pnl: Decimal
     return_pct: Decimal
     symbol: str = ""
-    regime: Optional[str] = None  # R1-R5 or None when lookup unavailable
+    regime: str | None = None  # R1-R5 or None when lookup unavailable
 
 
 @dataclass
@@ -117,12 +118,12 @@ class SplitResult:
 class StudyResult:
     """Top-level result emitted by :meth:`WalkForwardOptimizer.optimize`."""
 
-    best_params: Dict[str, Any]
+    best_params: dict[str, Any]
     best_score: Decimal
     objective: str
     total_trials: int
-    per_split_results: List[SplitResult]
-    regime_attribution: Dict[str, Dict[str, float]]
+    per_split_results: list[SplitResult]
+    regime_attribution: dict[str, dict[str, float]]
     failed_trials: int = 0
 
     def to_dict(self) -> dict:
@@ -142,7 +143,7 @@ class StudyResult:
 # ---------------------------------------------------------------------------
 
 
-StrategyBuilder = Callable[[Dict[str, Any]], Tuple[ConditionGroup, ConditionGroup]]
+StrategyBuilder = Callable[[dict[str, Any]], tuple[ConditionGroup, ConditionGroup]]
 """Build entry + exit rule trees from a candidate parameter set."""
 
 
@@ -157,11 +158,11 @@ class WindowRunner(Protocol):
 
     def __call__(
         self,
-        params: Dict[str, Any],
+        params: dict[str, Any],
         symbols: Sequence[str],
         window_start: date,
         window_end: date,
-    ) -> List[TradeResult]: ...
+    ) -> list[TradeResult]: ...
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +173,7 @@ class WindowRunner(Protocol):
 def _bt_trade_to_result(
     entry: BacktestTrade,
     exit_: BacktestTrade,
-    regime_lookup: Optional[RegimeLookup],
+    regime_lookup: RegimeLookup | None,
 ) -> TradeResult:
     """Pair a buy + sell from the engine into a TradeResult.
 
@@ -199,11 +200,11 @@ def _bt_trade_to_result(
 
 def _engine_trades_to_results(
     engine_trades: Sequence[BacktestTrade],
-    regime_lookup: Optional[RegimeLookup],
-) -> List[TradeResult]:
+    regime_lookup: RegimeLookup | None,
+) -> list[TradeResult]:
     """Pair each closing 'sell' to its most recent 'buy' for the same symbol."""
-    open_buys: Dict[str, BacktestTrade] = {}
-    out: List[TradeResult] = []
+    open_buys: dict[str, BacktestTrade] = {}
+    out: list[TradeResult] = []
     for t in engine_trades:
         if t.side == "buy":
             # If a stale buy is still open we replace it to keep the runner
@@ -231,7 +232,7 @@ def build_default_runner(
     position_size_pct: float = 0.05,
     slippage_bps: float = 5.0,
     commission_per_trade: float = 1.0,
-    regime_lookup: Optional[RegimeLookup] = None,
+    regime_lookup: RegimeLookup | None = None,
 ) -> WindowRunner:
     """Wire the production :class:`BacktestEngine` into a ``WindowRunner``.
 
@@ -240,16 +241,14 @@ def build_default_runner(
     controls its lifetime (per the iron law that services must not own
     sessions).
     """
-    engine = BacktestEngine(
-        slippage_bps=slippage_bps, commission_per_trade=commission_per_trade
-    )
+    engine = BacktestEngine(slippage_bps=slippage_bps, commission_per_trade=commission_per_trade)
 
     def runner(
-        params: Dict[str, Any],
+        params: dict[str, Any],
         symbols: Sequence[str],
         window_start: date,
         window_end: date,
-    ) -> List[TradeResult]:
+    ) -> list[TradeResult]:
         entry_rules, exit_rules = strategy_builder(params)
         result = engine.run(
             db=db,
@@ -277,7 +276,7 @@ def _generate_splits(
     train_window_days: int,
     test_window_days: int,
     n_splits: int,
-) -> List[Tuple[date, date, date, date]]:
+) -> list[tuple[date, date, date, date]]:
     """Build rolling, non-overlapping (train_start, train_end, test_start,
     test_end) tuples.
 
@@ -293,9 +292,7 @@ def _generate_splits(
     make a study look like it ran successfully on no data.
     """
     if train_window_days <= 0 or test_window_days <= 0:
-        raise ValueError(
-            "train_window_days and test_window_days must be positive integers"
-        )
+        raise ValueError("train_window_days and test_window_days must be positive integers")
     if n_splits <= 0:
         raise ValueError("n_splits must be a positive integer")
 
@@ -308,7 +305,7 @@ def _generate_splits(
             f"{n_splits}*test={test_window_days})."
         )
 
-    splits: List[Tuple[date, date, date, date]] = []
+    splits: list[tuple[date, date, date, date]] = []
     for i in range(n_splits):
         train_start = dataset_start + timedelta(days=i * test_window_days)
         train_end = train_start + timedelta(days=train_window_days - 1)
@@ -318,9 +315,7 @@ def _generate_splits(
             break
         splits.append((train_start, train_end, test_start, test_end))
     if not splits:
-        raise ValueError(
-            "No splits could be generated; check dataset / window sizing."
-        )
+        raise ValueError("No splits could be generated; check dataset / window sizing.")
     return splits
 
 
@@ -329,7 +324,7 @@ def _generate_splits(
 # ---------------------------------------------------------------------------
 
 
-def _suggest(trial: optuna.Trial, name: str, spec: Dict[str, Any]) -> Any:
+def _suggest(trial: optuna.Trial, name: str, spec: dict[str, Any]) -> Any:
     """Translate a JSON param spec into an Optuna ``trial.suggest_*`` call.
 
     Spec shapes::
@@ -357,7 +352,7 @@ def _suggest(trial: optuna.Trial, name: str, spec: Dict[str, Any]) -> Any:
     raise ValueError(f"Unknown param type '{kind}' for '{name}'")
 
 
-def validate_param_space(param_space: Dict[str, Dict[str, Any]]) -> None:
+def validate_param_space(param_space: dict[str, dict[str, Any]]) -> None:
     """Cheap upfront check so a bad config rejects at API time instead of
     inside a Celery task that has already taken the heavy lock."""
     if not isinstance(param_space, dict) or not param_space:
@@ -405,27 +400,26 @@ class WalkForwardOptimizer:
     runner: WindowRunner
     objective_name: str = "sharpe_ratio"
     n_trials: int = 50
-    timeout_s: Optional[int] = None
-    seed: Optional[int] = 42
-    progress_callback: Optional[Callable[[int, int], None]] = None
+    timeout_s: int | None = None
+    seed: int | None = 42
+    progress_callback: Callable[[int, int], None] | None = None
 
     def __post_init__(self) -> None:
         if self.objective_name not in OBJECTIVES:
             raise ValueError(
-                f"Unknown objective '{self.objective_name}'. "
-                f"Available: {list_objectives()}"
+                f"Unknown objective '{self.objective_name}'. Available: {list_objectives()}"
             )
 
     def optimize(
         self,
-        param_space: Dict[str, Dict[str, Any]],
+        param_space: dict[str, dict[str, Any]],
         symbols: Sequence[str],
         dataset_start: date,
         dataset_end: date,
         train_window_days: int,
         test_window_days: int,
         n_splits: int,
-        regime_filter: Optional[str] = None,
+        regime_filter: str | None = None,
     ) -> StudyResult:
         """Run the study and return a :class:`StudyResult`.
 
@@ -435,9 +429,7 @@ class WalkForwardOptimizer:
         """
         validate_param_space(param_space)
         if regime_filter is not None and regime_filter not in REGIME_LABELS:
-            raise ValueError(
-                f"regime_filter must be one of {REGIME_LABELS} or None"
-            )
+            raise ValueError(f"regime_filter must be one of {REGIME_LABELS} or None")
 
         splits = _generate_splits(
             dataset_start, dataset_end, train_window_days, test_window_days, n_splits
@@ -446,23 +438,21 @@ class WalkForwardOptimizer:
 
         # Cache per-trial trade lists so we can replay regime attribution
         # for the winning trial without re-running every backtest.
-        trial_state: Dict[int, Dict[str, Any]] = {}
+        trial_state: dict[int, dict[str, Any]] = {}
         completed_trials = 0
         failed_trials = 0
 
         def trial_objective(trial: optuna.Trial) -> float:
             nonlocal completed_trials, failed_trials
             params = {name: _suggest(trial, name, spec) for name, spec in param_space.items()}
-            split_results: List[SplitResult] = []
-            all_trades: List[TradeResult] = []
+            split_results: list[SplitResult] = []
+            all_trades: list[TradeResult] = []
             try:
                 for idx, (tr_s, tr_e, te_s, te_e) in enumerate(splits):
                     train_trades = self.runner(params, symbols, tr_s, tr_e)
                     test_trades = self.runner(params, symbols, te_s, te_e)
                     if regime_filter:
-                        test_trades_for_score = filter_trades_by_regime(
-                            test_trades, regime_filter
-                        )
+                        test_trades_for_score = filter_trades_by_regime(test_trades, regime_filter)
                     else:
                         test_trades_for_score = test_trades
                     train_score = objective_fn(train_trades)
@@ -485,14 +475,12 @@ class WalkForwardOptimizer:
                 # behavior on a raise is to mark it FAILED and keep
                 # searching. We log + count for the run summary.
                 failed_trials += 1
-                logger.warning(
-                    "trial %s failed for params=%s: %s", trial.number, params, e
-                )
+                logger.warning("trial %s failed for params=%s: %s", trial.number, params, e)
                 raise
 
-            mean_test_score = sum(
-                (s.test_score for s in split_results), Decimal("0")
-            ) / Decimal(len(split_results))
+            mean_test_score = sum((s.test_score for s in split_results), Decimal("0")) / Decimal(
+                len(split_results)
+            )
 
             trial_state[trial.number] = {
                 "splits": split_results,
@@ -530,7 +518,7 @@ class WalkForwardOptimizer:
                 "accounting bug; refusing to silently return zeros."
             )
 
-        best_trades: List[TradeResult] = best_state["trades"]
+        best_trades: list[TradeResult] = best_state["trades"]
         regime_attr = attribute_trades_by_regime(best_trades, objective_fn)
 
         return StudyResult(

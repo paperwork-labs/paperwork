@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -30,16 +30,18 @@ class OptionsTaxItem(BaseModel):
     option_type: str
     open_quantity: int
     multiplier: Decimal
-    cost_basis: Optional[Decimal] = Field(
+    cost_basis: Decimal | None = Field(
         default=None,
         description="Total cost basis in account currency when known (from Option.total_cost).",
     )
-    mark: Optional[Decimal] = Field(default=None, description="Current option mark per contract unit.")
-    unrealized_pnl: Optional[Decimal] = None
-    unrealized_pnl_pct: Optional[Decimal] = None
-    days_to_expiry: Optional[int] = None
-    tax_holding_class: Optional[Literal["short_term", "long_term"]] = None
-    opened_at: Optional[datetime] = Field(
+    mark: Decimal | None = Field(
+        default=None, description="Current option mark per contract unit."
+    )
+    unrealized_pnl: Decimal | None = None
+    unrealized_pnl_pct: Decimal | None = None
+    days_to_expiry: int | None = None
+    tax_holding_class: Literal["short_term", "long_term"] | None = None
+    opened_at: datetime | None = Field(
         default=None,
         description="Position first seen timestamp (Option.created_at); used for holding class.",
     )
@@ -51,8 +53,8 @@ class OptionsTaxCounts(BaseModel):
 
 
 class OptionsTaxSummaryResponse(BaseModel):
-    items: List[OptionsTaxItem]
-    total_unrealized_pnl: Optional[Decimal] = None
+    items: list[OptionsTaxItem]
+    total_unrealized_pnl: Decimal | None = None
     counts: OptionsTaxCounts
 
 
@@ -66,13 +68,13 @@ class RealizedOptionItem(BaseModel):
     multiplier: int
     quantity_opened: Decimal
     quantity_closed: Decimal
-    cost_basis_per_contract: Optional[Decimal] = None
-    proceeds_per_contract: Optional[Decimal] = None
-    realized_pnl: Optional[Decimal] = None
-    holding_class: Optional[Literal["short_term", "long_term"]] = None
-    closed_at: Optional[datetime] = None
+    cost_basis_per_contract: Decimal | None = None
+    proceeds_per_contract: Decimal | None = None
+    realized_pnl: Decimal | None = None
+    holding_class: Literal["short_term", "long_term"] | None = None
+    closed_at: datetime | None = None
     opening_trade_id: int
-    closing_trade_id: Optional[int] = None
+    closing_trade_id: int | None = None
 
 
 class RealizedOptionsCounts(BaseModel):
@@ -82,13 +84,13 @@ class RealizedOptionsCounts(BaseModel):
 
 
 class RealizedOptionsTaxResponse(BaseModel):
-    items: List[RealizedOptionItem]
-    total_realized_pnl_short: Optional[Decimal] = None
-    total_realized_pnl_long: Optional[Decimal] = None
+    items: list[RealizedOptionItem]
+    total_realized_pnl_short: Decimal | None = None
+    total_realized_pnl_long: Decimal | None = None
     counts: RealizedOptionsCounts
 
 
-def _to_decimal(value: Any) -> Optional[Decimal]:
+def _to_decimal(value: Any) -> Decimal | None:
     if value is None:
         return None
     if isinstance(value, Decimal):
@@ -96,7 +98,9 @@ def _to_decimal(value: Any) -> Optional[Decimal]:
     return Decimal(str(value))
 
 
-def _cost_basis_per_unit(total_cost: Optional[Decimal], qty: int, mult: Decimal) -> Optional[Decimal]:
+def _cost_basis_per_unit(
+    total_cost: Decimal | None, qty: int, mult: Decimal
+) -> Decimal | None:
     if total_cost is None:
         return None
     denom = Decimal(qty) * mult
@@ -105,7 +109,9 @@ def _cost_basis_per_unit(total_cost: Optional[Decimal], qty: int, mult: Decimal)
     return total_cost / denom
 
 
-def _holding_class(opened_at: Optional[datetime], as_of: date) -> Optional[Literal["short_term", "long_term"]]:
+def _holding_class(
+    opened_at: datetime | None, as_of: date
+) -> Literal["short_term", "long_term"] | None:
     if opened_at is None:
         return None
     acq = opened_at.date()
@@ -120,21 +126,21 @@ def _build_item(row: Option, as_of: date) -> OptionsTaxItem:
     mark = _to_decimal(row.current_price)
 
     cb_unit = _cost_basis_per_unit(total_cost, qty, mult)
-    unrealized: Optional[Decimal] = None
+    unrealized: Decimal | None = None
     if mark is not None and cb_unit is not None:
         unrealized = (mark - cb_unit) * Decimal(qty) * mult
 
-    unrealized_pct: Optional[Decimal] = None
+    unrealized_pct: Decimal | None = None
     if unrealized is not None and total_cost is not None and total_cost != _ZERO:
         unrealized_pct = (unrealized / total_cost) * Decimal("100")
 
-    days_te: Optional[int] = None
+    days_te: int | None = None
     if row.expiry_date is not None:
         days_te = (row.expiry_date - as_of).days
 
     opened = row.created_at
     if opened is not None and opened.tzinfo is None:
-        opened = opened.replace(tzinfo=timezone.utc)
+        opened = opened.replace(tzinfo=UTC)
 
     return OptionsTaxItem(
         id=row.id,
@@ -152,11 +158,11 @@ def _build_item(row: Option, as_of: date) -> OptionsTaxItem:
     )
 
 
-@router.get("/tax-summary", response_model=Dict[str, Any])
+@router.get("/tax-summary", response_model=dict[str, Any])
 def get_open_options_tax_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List open option positions with unrealized PnL and holding-term class."""
     as_of = date.today()
     acct_ids = _user_account_ids(db, current_user.id)
@@ -179,7 +185,7 @@ def get_open_options_tax_summary(
     longs = sum(1 for i in items if i.open_quantity > 0)
     shorts = sum(1 for i in items if i.open_quantity < 0)
 
-    total_unrealized: Optional[Decimal] = None
+    total_unrealized: Decimal | None = None
     if items:
         if all(i.unrealized_pnl is not None for i in items):
             total_unrealized = sum((i.unrealized_pnl or _ZERO) for i in items)
@@ -200,7 +206,7 @@ def get_open_options_tax_summary(
     }
 
 
-def _rollup_realized_pnls(values: List[Optional[Decimal]]) -> Optional[Decimal]:
+def _rollup_realized_pnls(values: list[Decimal | None]) -> Decimal | None:
     if not values:
         return Decimal("0")
     if any(v is None for v in values):
@@ -208,15 +214,15 @@ def _rollup_realized_pnls(values: List[Optional[Decimal]]) -> Optional[Decimal]:
     return sum((v if v is not None else _ZERO) for v in values)
 
 
-@router.get("/realized", response_model=Dict[str, Any])
+@router.get("/realized", response_model=dict[str, Any])
 def get_realized_options_tax(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    year: Optional[int] = Query(
+    year: int | None = Query(
         None,
         description="Tax year filter on closed_at (defaults to current calendar year).",
     ),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Closed option lots (realized PnL) for Tax Center, grouped by holding class."""
     tax_year = year if year is not None else date.today().year
     acct_ids = _user_account_ids(db, current_user.id)
@@ -244,14 +250,14 @@ def get_realized_options_tax(
         .all()
     )
 
-    items: List[RealizedOptionItem] = []
+    items: list[RealizedOptionItem] = []
     for r in rows:
-        hc: Optional[Literal["short_term", "long_term"]] = None
+        hc: Literal["short_term", "long_term"] | None = None
         if r.holding_class in ("short_term", "long_term"):
             hc = r.holding_class  # type: ignore[assignment]
         closed = r.closed_at
         if closed is not None and closed.tzinfo is None:
-            closed = closed.replace(tzinfo=timezone.utc)
+            closed = closed.replace(tzinfo=UTC)
         items.append(
             RealizedOptionItem(
                 id=r.id,

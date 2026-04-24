@@ -6,21 +6,22 @@ BEFORE: 168KB file doing EVERYTHING
 AFTER: Clean, focused endpoints with proper separation of concerns
 """
 
+import logging
+import uuid
+from datetime import date, datetime
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
-from typing import Optional, Dict, Any, List
-import logging
-import uuid
-from datetime import date, datetime, timedelta
-
-# dependencies
-from app.database import get_db
-from app.models.user import User
-from app.models import BrokerAccount
 
 # Auth dependency (to be implemented)
 from app.api.dependencies import get_current_user
+
+# dependencies
+from app.database import get_db
+from app.models import BrokerAccount
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +37,7 @@ class ManualTaxLotCreate(BaseModel):
     quantity: float
     cost_per_share: float
     acquisition_date: date
-    account_id: Optional[int] = None
+    account_id: int | None = None
 
     @field_validator("quantity")
     @classmethod
@@ -61,9 +62,9 @@ class ManualTaxLotCreate(BaseModel):
 
 
 class ManualTaxLotUpdate(BaseModel):
-    quantity: Optional[float] = None
-    cost_per_share: Optional[float] = None
-    acquisition_date: Optional[date] = None
+    quantity: float | None = None
+    cost_per_share: float | None = None
+    acquisition_date: date | None = None
 
 
 # =============================================================================
@@ -81,10 +82,7 @@ async def get_portfolio_symbols(
     from app.models.position import Position
 
     account_ids = [
-        r[0]
-        for r in db.query(BrokerAccount.id)
-        .filter(BrokerAccount.user_id == user.id)
-        .all()
+        r[0] for r in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id).all()
     ]
 
     if not account_ids:
@@ -96,7 +94,7 @@ async def get_portfolio_symbols(
         .all()
     )
 
-    result: Dict[str, Any] = {}
+    result: dict[str, Any] = {}
     for p in positions:
         sym = p.symbol
         if sym not in result:
@@ -117,11 +115,11 @@ async def get_portfolio_symbols(
 
 @router.get("/tax-lots")
 async def get_tax_lots(
-    symbol: Optional[str] = Query(None, description="Filter by symbol"),
-    account_id: Optional[str] = Query(None, description="Filter by account number"),
+    symbol: str | None = Query(None, description="Filter by symbol"),
+    account_id: str | None = Query(None, description="Filter by account number"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get user's tax lots.
     CLEAN: Only tax lot data, optionally filtered by symbol.
@@ -143,9 +141,7 @@ async def get_tax_lots(
             )
             if not acc:
                 raise HTTPException(status_code=404, detail="Account not found")
-            tax_lots_models = await tls.get_tax_lots_for_account(
-                user.id, acc.id, symbol=symbol
-            )
+            tax_lots_models = await tls.get_tax_lots_for_account(user.id, acc.id, symbol=symbol)
         else:
             tax_lots_models = await tls.get_tax_lots_for_user(user.id, symbol=symbol)
         # Serialize for JSON
@@ -157,9 +153,7 @@ async def get_tax_lots(
                     "symbol": tl.symbol,
                     "quantity": float(tl.quantity or 0),
                     "cost_per_share": (
-                        float(tl.cost_per_share or 0)
-                        if tl.cost_per_share is not None
-                        else 0
+                        float(tl.cost_per_share or 0) if tl.cost_per_share is not None else 0
                     ),
                     "acquisition_date": (
                         tl.acquisition_date.isoformat() if tl.acquisition_date else None
@@ -188,25 +182,25 @@ async def create_manual_tax_lot(
     body: ManualTaxLotCreate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create a manual tax lot for transferred or unsynced shares."""
     from app.models.tax_lot import TaxLot, TaxLotSource
 
     acct_id = body.account_id
     if not acct_id:
-        first_acct = (
-            db.query(BrokerAccount)
-            .filter(BrokerAccount.user_id == user.id)
-            .first()
-        )
+        first_acct = db.query(BrokerAccount).filter(BrokerAccount.user_id == user.id).first()
         if not first_acct:
             raise HTTPException(status_code=400, detail="No broker account found")
         acct_id = first_acct.id
     else:
-        acct = db.query(BrokerAccount).filter(
-            BrokerAccount.id == acct_id,
-            BrokerAccount.user_id == user.id,
-        ).first()
+        acct = (
+            db.query(BrokerAccount)
+            .filter(
+                BrokerAccount.id == acct_id,
+                BrokerAccount.user_id == user.id,
+            )
+            .first()
+        )
         if not acct:
             raise HTTPException(status_code=404, detail="Account not found")
 
@@ -249,7 +243,7 @@ async def update_manual_tax_lot(
     body: ManualTaxLotUpdate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Update a manual tax lot. Only MANUAL_ENTRY lots can be edited."""
     from app.models.tax_lot import TaxLot, TaxLotSource
 
@@ -298,7 +292,7 @@ async def delete_manual_tax_lot(
     lot_id: int,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Delete a manual tax lot. Only MANUAL_ENTRY lots can be deleted."""
     from app.models.tax_lot import TaxLot, TaxLotSource
 
@@ -317,7 +311,7 @@ async def delete_manual_tax_lot(
 @router.get("/tax-lots/summary")
 async def get_tax_lots_summary(
     user: User = Depends(get_current_user), db: Session = Depends(get_db)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get tax lots summary by symbol.
     CLEAN: Only summary data, properly aggregated.
@@ -347,7 +341,7 @@ async def get_tax_lots_summary(
 @router.get("/flexquery/status")
 async def get_flexquery_status(
     user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get FlexQuery configuration status.
     Returns setup instructions if not configured.
@@ -379,7 +373,7 @@ async def sync_official_tax_lots(
     payload: FlexSyncRequest,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Sync official IBKR tax lots via FlexQuery.
     This gets the REAL tax lot data from IBKR Tax Optimizer.
@@ -388,9 +382,7 @@ async def sync_official_tax_lots(
         from app.services.clients.ibkr_flexquery_client import flexquery_client
 
         # Get official tax lots from IBKR
-        official_tax_lots = await flexquery_client.get_official_tax_lots(
-            payload.account_id
-        )
+        official_tax_lots = await flexquery_client.get_official_tax_lots(payload.account_id)
 
         if not official_tax_lots:
             return {
@@ -400,8 +392,8 @@ async def sync_official_tax_lots(
             }
 
         # Persist to DB
-        from app.services.portfolio.tax_lot_service import TaxLotService
         from app.models.broker_account import BrokerAccount
+        from app.services.portfolio.tax_lot_service import TaxLotService
 
         broker_account = (
             db.query(BrokerAccount)
@@ -415,9 +407,7 @@ async def sync_official_tax_lots(
             raise HTTPException(status_code=404, detail="Broker account not found")
 
         tls = TaxLotService(db)
-        result = await tls.sync_official_tax_lots(
-            user.id, broker_account, official_tax_lots
-        )
+        result = await tls.sync_official_tax_lots(user.id, broker_account, official_tax_lots)
 
         return {
             "status": "success",
@@ -444,7 +434,7 @@ async def get_portfolio_analytics(
     account_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get comprehensive portfolio analytics (Snowball Analytics style).
 
@@ -497,7 +487,7 @@ async def get_tax_optimization_opportunities(
     account_id: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get tax optimization opportunities for the account.
     Identifies tax loss harvesting, wash sale warnings, etc.
@@ -534,8 +524,7 @@ async def get_tax_optimization_opportunities(
                         "type": "tax_loss_harvest",
                         "symbol": lot.get("symbol"),
                         "unrealized_loss": unrealized_pnl,
-                        "estimated_tax_savings": abs(unrealized_pnl)
-                        * 0.24,  # 24% tax rate
+                        "estimated_tax_savings": abs(unrealized_pnl) * 0.24,  # 24% tax rate
                         "recommendation": f"Harvest ${abs(unrealized_pnl):,.0f} loss",
                     }
                 )
@@ -572,7 +561,7 @@ async def get_performance_metrics(
     period: str = "ytd",  # ytd, 1y, 3y, 5y, all
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Get detailed performance metrics for the account.
     Includes risk-adjusted returns, drawdown analysis, etc.
@@ -620,13 +609,10 @@ async def get_performance_metrics(
 
         # Average performance by symbol
         avg_performance = {
-            symbol: sum(pnls) / len(pnls)
-            for symbol, pnls in performance_by_symbol.items()
+            symbol: sum(pnls) / len(pnls) for symbol, pnls in performance_by_symbol.items()
         }
 
-        best_performers = sorted(
-            avg_performance.items(), key=lambda x: x[1], reverse=True
-        )[:5]
+        best_performers = sorted(avg_performance.items(), key=lambda x: x[1], reverse=True)[:5]
         worst_performers = sorted(avg_performance.items(), key=lambda x: x[1])[:5]
 
         return {
@@ -642,12 +628,8 @@ async def get_performance_metrics(
                     [lot.get("unrealized_pnl_pct", 0) for lot in tax_lots], default=0
                 ),
             },
-            "best_performers": [
-                {"symbol": s, "return_pct": p} for s, p in best_performers
-            ],
-            "worst_performers": [
-                {"symbol": s, "return_pct": p} for s, p in worst_performers
-            ],
+            "best_performers": [{"symbol": s, "return_pct": p} for s, p in best_performers],
+            "worst_performers": [{"symbol": s, "return_pct": p} for s, p in worst_performers],
             "timestamp": datetime.now().isoformat(),
         }
 
@@ -673,7 +655,7 @@ async def get_performance_metrics(
 async def get_portfolio_insights(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Lightweight portfolio insights from local DB data.
 
     Returns tax-loss harvesting candidates, positions approaching long-term
@@ -683,26 +665,21 @@ async def get_portfolio_insights(
     from app.models.tax_lot import TaxLot
 
     try:
-
         account_ids = [
-            a.id
-            for a in db.query(BrokerAccount)
-            .filter(BrokerAccount.user_id == user.id)
-            .all()
+            a.id for a in db.query(BrokerAccount).filter(BrokerAccount.user_id == user.id).all()
         ]
         if not account_ids:
-            return {"status": "success", "data": {"harvest_candidates": [], "approaching_lt": [], "concentration_warnings": []}}
+            return {
+                "status": "success",
+                "data": {
+                    "harvest_candidates": [],
+                    "approaching_lt": [],
+                    "concentration_warnings": [],
+                },
+            }
 
-        positions = (
-            db.query(Position)
-            .filter(Position.account_id.in_(account_ids))
-            .all()
-        )
-        tax_lots = (
-            db.query(TaxLot)
-            .filter(TaxLot.account_id.in_(account_ids))
-            .all()
-        )
+        positions = db.query(Position).filter(Position.account_id.in_(account_ids)).all()
+        tax_lots = db.query(TaxLot).filter(TaxLot.account_id.in_(account_ids)).all()
 
         total_value = sum(float(p.market_value or 0) for p in positions)
 
@@ -710,25 +687,29 @@ async def get_portfolio_insights(
         for lot in tax_lots:
             unrealized = float(lot.unrealized_pnl or 0)
             if unrealized < -1000:
-                harvest_candidates.append({
-                    "symbol": lot.symbol,
-                    "unrealized_pnl": unrealized,
-                    "shares": float(lot.quantity or 0),
-                    "days_held": lot.holding_period or 0,
-                })
+                harvest_candidates.append(
+                    {
+                        "symbol": lot.symbol,
+                        "unrealized_pnl": unrealized,
+                        "shares": float(lot.quantity or 0),
+                        "days_held": lot.holding_period or 0,
+                    }
+                )
         harvest_candidates.sort(key=lambda x: x["unrealized_pnl"])
 
         approaching_lt = []
         for lot in tax_lots:
             days = lot.holding_period or 0
             if 300 <= days < 365:
-                approaching_lt.append({
-                    "symbol": lot.symbol,
-                    "days_held": days,
-                    "days_to_lt": 365 - days,
-                    "shares": float(lot.quantity or 0),
-                    "unrealized_pnl": float(lot.unrealized_pnl or 0),
-                })
+                approaching_lt.append(
+                    {
+                        "symbol": lot.symbol,
+                        "days_held": days,
+                        "days_to_lt": 365 - days,
+                        "shares": float(lot.quantity or 0),
+                        "unrealized_pnl": float(lot.unrealized_pnl or 0),
+                    }
+                )
         approaching_lt.sort(key=lambda x: x["days_to_lt"])
 
         concentration_warnings = []
@@ -737,11 +718,13 @@ async def get_portfolio_insights(
                 mv = float(p.market_value or 0)
                 pct = (mv / total_value) * 100
                 if pct > 20:
-                    concentration_warnings.append({
-                        "symbol": p.symbol,
-                        "market_value": mv,
-                        "pct_of_portfolio": round(pct, 1),
-                    })
+                    concentration_warnings.append(
+                        {
+                            "symbol": p.symbol,
+                            "market_value": mv,
+                            "pct_of_portfolio": round(pct, 1),
+                        }
+                    )
         concentration_warnings.sort(key=lambda x: -x["pct_of_portfolio"])
 
         return {

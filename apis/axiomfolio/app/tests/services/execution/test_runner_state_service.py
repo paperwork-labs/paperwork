@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
+
+import pytest
 
 from app.models.position import PositionType
 from app.services.execution.runner_state_service import compute_runner_state
@@ -21,8 +22,8 @@ class _LongPos:
     position_type: Any = PositionType.LONG
     quantity: Decimal = Decimal("10")
     total_cost_basis: Decimal = Decimal("1000")
-    runner_since: Optional[datetime] = None
-    initial_risk_pct: Optional[Decimal] = field(default=Decimal("2"))
+    runner_since: datetime | None = None
+    initial_risk_pct: Decimal | None = field(default=Decimal("2"))
 
     @property
     def is_long(self) -> bool:
@@ -45,7 +46,7 @@ def test_12r_becomes_runner() -> None:
     price = Decimal("102.4")
     out = compute_runner_state(p, price)
     assert out is not None
-    assert out.tzinfo == timezone.utc
+    assert out.tzinfo == UTC
 
 
 def test_missing_initial_risk_returns_none() -> None:
@@ -55,7 +56,7 @@ def test_missing_initial_risk_returns_none() -> None:
 
 
 def test_subsequent_does_not_reset_timestamp() -> None:
-    t0 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    t0 = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
     p = _LongPos(
         initial_risk_pct=Decimal("2"),
         runner_since=t0,

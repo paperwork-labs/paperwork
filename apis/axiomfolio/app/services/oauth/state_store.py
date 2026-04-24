@@ -21,14 +21,14 @@ import json
 import logging
 import threading
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 _DEFAULT_TTL_SECONDS = 600  # 10 minutes — covers slow human + verifier paste
 
 _memory_lock = threading.Lock()
-_memory_store: Dict[str, tuple[float, Dict[str, Any]]] = {}
+_memory_store: dict[str, tuple[float, dict[str, Any]]] = {}
 
 
 def _normalize_state_token(state: str) -> str:
@@ -83,7 +83,7 @@ def _redis_client():
 def save_extra(
     broker: str,
     state: str,
-    extra: Dict[str, Any],
+    extra: dict[str, Any],
     *,
     ttl_seconds: int = _DEFAULT_TTL_SECONDS,
 ) -> None:
@@ -107,7 +107,7 @@ def save_extra(
         _memory_store[_key(broker, norm)] = (expiry, dict(extra))
 
 
-def load_extra(broker: str, state: str) -> Optional[Dict[str, Any]]:
+def load_extra(broker: str, state: str) -> dict[str, Any] | None:
     """Pop the stored ``extra`` for ``(broker, state)``; ``None`` if missing."""
 
     norm = _normalize_state_token(state)
@@ -149,4 +149,4 @@ def clear_memory_store() -> None:
         _memory_store.clear()
 
 
-__all__ = ["save_extra", "load_extra", "clear_memory_store"]
+__all__ = ["clear_memory_store", "load_extra", "save_extra"]

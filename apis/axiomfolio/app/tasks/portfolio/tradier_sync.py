@@ -15,7 +15,7 @@ per-broker fan-outs stay separate.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from celery import shared_task
 
@@ -38,7 +38,7 @@ _SOFT_TIME_LIMIT = 900
     soft_time_limit=_SOFT_TIME_LIMIT,
     time_limit=_TIME_LIMIT,
 )
-def sync_all_tradier_accounts() -> Dict[str, Any]:
+def sync_all_tradier_accounts() -> dict[str, Any]:
     """Enqueue per-account sync tasks for every enabled Tradier account.
 
     Multi-tenancy: we never carry a ``user_id`` parameter here (Beat
@@ -54,16 +54,14 @@ def sync_all_tradier_accounts() -> Dict[str, Any]:
         accounts = (
             session.query(BrokerAccount)
             .filter(
-                BrokerAccount.broker.in_(
-                    (BrokerType.TRADIER, BrokerType.TRADIER_SANDBOX)
-                ),
+                BrokerAccount.broker.in_((BrokerType.TRADIER, BrokerType.TRADIER_SANDBOX)),
                 BrokerAccount.is_enabled.is_(True),
             )
             .all()
         )
         enqueued = 0
         errors = 0
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for acct in accounts:
             try:
                 # Import here to keep module import cheap for Beat/worker
@@ -82,12 +80,13 @@ def sync_all_tradier_accounts() -> Dict[str, Any]:
                     }
                 )
                 enqueued += 1
-            except Exception as exc:  # noqa: BLE001 — per-account isolation
+            except Exception as exc:
                 errors += 1
                 logger.warning(
-                    "tradier fan-out: failed to enqueue sync for account %s "
-                    "(user %s): %s",
-                    acct.id, acct.user_id, exc,
+                    "tradier fan-out: failed to enqueue sync for account %s (user %s): %s",
+                    acct.id,
+                    acct.user_id,
+                    exc,
                 )
                 results.append(
                     {
@@ -100,7 +99,9 @@ def sync_all_tradier_accounts() -> Dict[str, Any]:
         # Structured counter logging per no-silent-fallback rule.
         logger.info(
             "tradier fan-out: total=%d enqueued=%d errors=%d",
-            len(accounts), enqueued, errors,
+            len(accounts),
+            enqueued,
+            errors,
         )
         return {
             "status": "queued",

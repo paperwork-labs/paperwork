@@ -2,15 +2,15 @@
 Shared utilities for market routes.
 """
 
-import json
 import logging
-from typing import List, Dict, Any, Callable
+from collections.abc import Callable
+from typing import Any
 
-from app.api.dependencies import market_visibility_scope, market_exposed_to_all
+from app.api.dependencies import market_visibility_scope
 from app.services.market.constants import (
+    SNAPSHOT_HISTORY_PREFERRED_COLUMNS,
     SNAPSHOT_PREFERRED_COLUMNS,
     SNAPSHOTS_PREFERRED_COLUMNS,
-    SNAPSHOT_HISTORY_PREFERRED_COLUMNS,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,13 +30,13 @@ def snapshot_preferred_columns(kind: str) -> list[str]:
     raise ValueError(f"Unknown snapshot column kind: {kind}")
 
 
-def enqueue_task(task_fn: Callable, *args, **kwargs) -> Dict[str, Any]:
+def enqueue_task(task_fn: Callable, *args, **kwargs) -> dict[str, Any]:
     """Standardize task enqueue responses."""
     result = task_fn.delay(*args, **kwargs)
     return {"task_id": result.id}
 
 
-TASK_ACTIONS: List[Dict[str, Any]] = [
+TASK_ACTIONS: list[dict[str, Any]] = [
     {
         "task_name": "admin_backfill_5m",
         "method": "POST",
@@ -133,8 +133,8 @@ TASK_ACTIONS: List[Dict[str, Any]] = [
 ]
 
 
-def coverage_actions(backfill_5m_enabled: bool = True) -> List[Dict[str, Any]]:
-    actions: List[Dict[str, Any]] = [
+def coverage_actions(backfill_5m_enabled: bool = True) -> list[dict[str, Any]]:
+    actions: list[dict[str, Any]] = [
         {
             "label": "Refresh Index Constituents",
             "task_name": "market_indices_constituents_refresh",
@@ -174,7 +174,7 @@ def coverage_actions(backfill_5m_enabled: bool = True) -> List[Dict[str, Any]]:
     return actions
 
 
-def coverage_education() -> Dict[str, Any]:
+def coverage_education() -> dict[str, Any]:
     return {
         "coverage": "Coverage measures how many tracked symbols have fresh bars stored in price_data.",
         "tracked": "Tracked is the union of live index constituents plus any symbols seen in brokerage accounts.",
@@ -187,7 +187,7 @@ def coverage_education() -> Dict[str, Any]:
     }
 
 
-def tracked_actions() -> List[Dict[str, str]]:
+def tracked_actions() -> list[dict[str, str]]:
     return [
         {
             "label": "Update Tracked Symbols",
@@ -197,7 +197,7 @@ def tracked_actions() -> List[Dict[str, str]]:
     ]
 
 
-def tracked_education() -> Dict[str, Any]:
+def tracked_education() -> dict[str, Any]:
     return {
         "overview": "Tracked symbols represent everything the platform monitors (index members + holdings).",
         "details": [

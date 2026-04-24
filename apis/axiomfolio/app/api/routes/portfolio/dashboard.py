@@ -1,24 +1,25 @@
 """Dashboard endpoint that merges summary, positions, dividends for front-end /portfolio/dashboard."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy.orm import Session
-from sqlalchemy import func, desc, or_
-from datetime import date, datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional
 import logging
+from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import desc, func, or_
+from sqlalchemy.orm import Session
+
+from app.api.dependencies import get_current_user
+from app.api.middleware.response_cache import redis_response_cache
 from app.database import get_db
-from app.models.user import User
+from app.models.account_balance import AccountBalance
+from app.models.broker_account import BrokerAccount
+from app.models.margin_interest import MarginInterest
+from app.models.options import Option
+from app.models.portfolio import PortfolioSnapshot
 from app.models.position import Position
 from app.models.trade import Trade
 from app.models.transaction import Dividend, Transaction, TransactionType
-from app.models.portfolio import PortfolioSnapshot
-from app.models.broker_account import BrokerAccount
-from app.models.account_balance import AccountBalance
-from app.models.margin_interest import MarginInterest
-from app.models.options import Option
-from app.api.dependencies import get_current_user
-from app.api.middleware.response_cache import redis_response_cache
+from app.models.user import User
 from app.services.portfolio.portfolio_analytics_service import portfolio_analytics_service
 
 logger = logging.getLogger(__name__)
@@ -29,11 +30,11 @@ router = APIRouter()
 def _datetime_as_utc_aware(dt: datetime) -> datetime:
     """Coerce to timezone-aware UTC so comparisons match ``datetime.now(timezone.utc)``."""
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
-@router.get("/dashboard", response_model=Dict[str, Any])
+@router.get("/dashboard", response_model=dict[str, Any])
 @redis_response_cache(ttl_seconds=30)
 async def get_dashboard(
     request: Request,
@@ -43,7 +44,6 @@ async def get_dashboard(
 ):
     """Simple dashboard summary until full analytics ready."""
     try:
-
         # positions
         pos_models = db.query(Position).filter(Position.user_id == user.id).all()
         positions = [
@@ -59,9 +59,9 @@ async def get_dashboard(
         total_value = sum(p["market_value"] for p in positions)
         total_cost = sum(float(p.total_cost_basis or 0) for p in pos_models)
 
-        option_models = db.query(Option).filter(
-            Option.user_id == user.id, Option.open_quantity != 0
-        ).all()
+        option_models = (
+            db.query(Option).filter(Option.user_id == user.id, Option.open_quantity != 0).all()
+        )
         options_value = sum(
             float(o.current_price or 0) * abs(o.open_quantity or 0) * (o.multiplier or 100)
             for o in option_models
@@ -70,7 +70,7 @@ async def get_dashboard(
         total_value += options_value
 
         # dividends last X days
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = datetime.now(UTC) - timedelta(days=days)
         divs = (
             db.query(Dividend)
             .filter(
@@ -91,12 +91,16 @@ async def get_dashboard(
         }
 
         # sector_allocation: aggregate by sector
-        sector_value: Dict[str, float] = {}
+        sector_value: dict[str, float] = {}
         for p in pos_models:
             sec = (p.sector or "").strip() or "Other"
             sector_value[sec] = sector_value.get(sec, 0) + float(p.market_value or 0)
         sector_allocation = [
-            {"sector": name, "value": val, "pct": round((val / total_value * 100), 2) if total_value else 0}
+            {
+                "sector": name,
+                "value": val,
+                "pct": round((val / total_value * 100), 2) if total_value else 0,
+            }
             for name, val in sorted(sector_value.items(), key=lambda x: -x[1])
         ]
 
@@ -107,29 +111,47 @@ async def get_dashboard(
             reverse=True,
         )
         top_performers = [
-            {"symbol": p.symbol, "market_value": float(p.market_value or 0), "unrealized_pnl": float(p.unrealized_pnl or 0)}
-            for p in sorted_by_pnl if float(p.unrealized_pnl or 0) > 0
+            {
+                "symbol": p.symbol,
+                "market_value": float(p.market_value or 0),
+                "unrealized_pnl": float(p.unrealized_pnl or 0),
+            }
+            for p in sorted_by_pnl
+            if float(p.unrealized_pnl or 0) > 0
         ][:5]
         top_losers = [
-            {"symbol": p.symbol, "market_value": float(p.market_value or 0), "unrealized_pnl": float(p.unrealized_pnl or 0)}
-            for p in sorted_by_pnl if float(p.unrealized_pnl or 0) < 0
+            {
+                "symbol": p.symbol,
+                "market_value": float(p.market_value or 0),
+                "unrealized_pnl": float(p.unrealized_pnl or 0),
+            }
+            for p in sorted_by_pnl
+            if float(p.unrealized_pnl or 0) < 0
         ][-5:]
         top_losers.reverse()
 
         # accounts_summary: per-account value and count
-        broker_accounts = db.query(BrokerAccount).filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True).all()
+        broker_accounts = (
+            db.query(BrokerAccount)
+            .filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True)
+            .all()
+        )
         accounts_summary = []
         for acc in broker_accounts:
             acc_positions = [p for p in pos_models if p.account_id == acc.id]
             acc_value = sum(float(p.market_value or 0) for p in acc_positions)
-            accounts_summary.append({
-                "account_id": acc.account_number,
-                "broker": acc.broker.value,
-                "account_type": acc.account_type.value,
-                "total_value": acc_value,
-                "positions_count": len(acc_positions),
-                "last_successful_sync": acc.last_successful_sync.isoformat() if acc.last_successful_sync else None,
-            })
+            accounts_summary.append(
+                {
+                    "account_id": acc.account_number,
+                    "broker": acc.broker.value,
+                    "account_type": acc.account_type.value,
+                    "total_value": acc_value,
+                    "positions_count": len(acc_positions),
+                    "last_successful_sync": acc.last_successful_sync.isoformat()
+                    if acc.last_successful_sync
+                    else None,
+                }
+            )
 
         return {
             "status": "success",
@@ -137,7 +159,7 @@ async def get_dashboard(
                 "user_id": user.id,
                 "summary": summary,
                 "positions": positions,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
                 "total_value": total_value,
                 "total_unrealized_pnl": summary["unrealized_pnl"],
                 "total_unrealized_pnl_pct": (
@@ -153,7 +175,7 @@ async def get_dashboard(
                 "top_performers": top_performers,
                 "top_losers": top_losers,
                 "holdings_count": len(positions),
-                "last_updated": datetime.now(timezone.utc).isoformat(),
+                "last_updated": datetime.now(UTC).isoformat(),
                 "brokerages": ["IBKR", "TASTYTRADE"],
             },
         }
@@ -162,7 +184,7 @@ async def get_dashboard(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def _parse_period(period: str) -> Optional[timedelta]:
+def _parse_period(period: str) -> timedelta | None:
     """Return timedelta for period or None for 'all'."""
     p = (period or "").strip().lower()
     if p in ("all", ""):
@@ -178,20 +200,19 @@ def _parse_period(period: str) -> Optional[timedelta]:
     return timedelta(days=365)
 
 
-@router.get("/performance/history", response_model=Dict[str, Any])
+@router.get("/performance/history", response_model=dict[str, Any])
 @redis_response_cache(ttl_seconds=30)
 async def get_performance_history(
     request: Request,
-    account_id: Optional[str] = Query(None, description="Filter by account number"),
+    account_id: str | None = Query(None, description="Filter by account number"),
     period: str = Query("1y", description="30d, 90d, 1y, all"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Return portfolio_snapshots time series for the performance chart (aggregate total_value per day)."""
     try:
-
-        account_ids_q = (
-            db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True)
+        account_ids_q = db.query(BrokerAccount.id).filter(
+            BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True
         )
         if account_id:
             account_ids_q = account_ids_q.filter(BrokerAccount.account_number == account_id)
@@ -203,7 +224,7 @@ async def get_performance_history(
                 "data": {
                     "series": [],
                     "period": period,
-                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "generated_at": datetime.now(UTC).isoformat(),
                 },
             }
 
@@ -218,7 +239,7 @@ async def get_performance_history(
         )
 
         delta = _parse_period(period)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if period and period.strip().lower() == "ytd":
             query = query.filter(func.extract("year", PortfolioSnapshot.snapshot_date) == now.year)
         elif delta:
@@ -242,7 +263,9 @@ async def get_performance_history(
                 continue
             series.append(
                 {
-                    "date": row.date.isoformat() if hasattr(row.date, "isoformat") else str(row.date),
+                    "date": row.date.isoformat()
+                    if hasattr(row.date, "isoformat")
+                    else str(row.date),
                     "total_value": float(tv),
                 }
             )
@@ -252,7 +275,7 @@ async def get_performance_history(
             "data": {
                 "series": series,
                 "period": period,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             },
         }
     except HTTPException:
@@ -268,9 +291,9 @@ async def get_performance_history(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/balances", response_model=Dict[str, Any])
+@router.get("/balances", response_model=dict[str, Any])
 async def get_account_balances(
-    account_id: Optional[int] = Query(None, description="Filter by broker account ID"),
+    account_id: int | None = Query(None, description="Filter by broker account ID"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -301,30 +324,32 @@ async def get_account_balances(
             if not bal:
                 continue
             ba = db.query(BrokerAccount).filter(BrokerAccount.id == bid).first()
-            balances.append({
-                "account_id": bid,
-                "broker": ba.broker.value if ba else None,
-                "account_number": ba.account_number if ba else None,
-                "balance_date": bal.balance_date.isoformat() if bal.balance_date else None,
-                "cash_balance": bal.cash_balance,
-                "total_cash_value": bal.total_cash_value,
-                "settled_cash": bal.settled_cash,
-                "available_funds": bal.available_funds,
-                "net_liquidation": bal.net_liquidation,
-                "gross_position_value": bal.gross_position_value,
-                "equity": bal.equity,
-                "buying_power": bal.buying_power,
-                "initial_margin_req": bal.initial_margin_req,
-                "maintenance_margin_req": bal.maintenance_margin_req,
-                "cushion": bal.cushion,
-                "leverage": bal.leverage,
-                "daily_pnl": bal.daily_pnl,
-                "unrealized_pnl": bal.unrealized_pnl,
-                "realized_pnl": bal.realized_pnl,
-                "accrued_dividend": bal.accrued_dividend,
-                "accrued_interest": bal.accrued_interest,
-                "margin_utilization_pct": bal.margin_utilization_pct,
-            })
+            balances.append(
+                {
+                    "account_id": bid,
+                    "broker": ba.broker.value if ba else None,
+                    "account_number": ba.account_number if ba else None,
+                    "balance_date": bal.balance_date.isoformat() if bal.balance_date else None,
+                    "cash_balance": bal.cash_balance,
+                    "total_cash_value": bal.total_cash_value,
+                    "settled_cash": bal.settled_cash,
+                    "available_funds": bal.available_funds,
+                    "net_liquidation": bal.net_liquidation,
+                    "gross_position_value": bal.gross_position_value,
+                    "equity": bal.equity,
+                    "buying_power": bal.buying_power,
+                    "initial_margin_req": bal.initial_margin_req,
+                    "maintenance_margin_req": bal.maintenance_margin_req,
+                    "cushion": bal.cushion,
+                    "leverage": bal.leverage,
+                    "daily_pnl": bal.daily_pnl,
+                    "unrealized_pnl": bal.unrealized_pnl,
+                    "realized_pnl": bal.realized_pnl,
+                    "accrued_dividend": bal.accrued_dividend,
+                    "accrued_interest": bal.accrued_interest,
+                    "margin_utilization_pct": bal.margin_utilization_pct,
+                }
+            )
 
         return {"status": "success", "data": {"balances": balances}}
     except HTTPException:
@@ -334,7 +359,7 @@ async def get_account_balances(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/dashboard/margin-health", response_model=Dict[str, Any])
+@router.get("/dashboard/margin-health", response_model=dict[str, Any])
 async def get_margin_health(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -357,7 +382,7 @@ async def get_margin_health(
                     "maintenance_margin_req": None,
                     "margin_warning": False,
                     "margin_critical": False,
-                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "generated_at": datetime.now(UTC).isoformat(),
                 },
             }
 
@@ -382,13 +407,17 @@ async def get_margin_health(
                     "maintenance_margin_req": None,
                     "margin_warning": False,
                     "margin_critical": False,
-                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "generated_at": datetime.now(UTC).isoformat(),
                 },
             }
 
         cushions = [float(b.cushion or 0) for b in balances if b.cushion is not None]
         cushion = min(cushions) if cushions else None
-        leverage = max(float(b.leverage or 0) for b in balances) if any(b.leverage is not None for b in balances) else None
+        leverage = (
+            max(float(b.leverage or 0) for b in balances)
+            if any(b.leverage is not None for b in balances)
+            else None
+        )
         buying_power = sum(float(b.buying_power or 0) for b in balances)
         maintenance_margin_req = sum(float(b.maintenance_margin_req or 0) for b in balances)
 
@@ -404,7 +433,7 @@ async def get_margin_health(
                 "maintenance_margin_req": round(maintenance_margin_req, 2),
                 "margin_warning": margin_warning,
                 "margin_critical": margin_critical,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             },
         }
     except HTTPException:
@@ -414,9 +443,9 @@ async def get_margin_health(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/dashboard/pnl-summary", response_model=Dict[str, Any])
+@router.get("/dashboard/pnl-summary", response_model=dict[str, Any])
 async def get_pnl_summary(
-    account_id: Optional[str] = Query(
+    account_id: str | None = Query(
         None,
         description="Filter by broker account number; if numeric-only, also matches broker_accounts.id",
     ),
@@ -440,12 +469,12 @@ async def get_pnl_summary(
                     "total_dividends": 0,
                     "total_fees": 0,
                     "total_return": 0,
-                    "generated_at": datetime.now(timezone.utc).isoformat(),
+                    "generated_at": datetime.now(UTC).isoformat(),
                 },
             }
 
         filter_ref = (account_id or "").strip() or None
-        filter_broker_pk: Optional[int] = None
+        filter_broker_pk: int | None = None
         if filter_ref:
             ba_base = db.query(BrokerAccount).filter(
                 BrokerAccount.user_id == user.id,
@@ -496,7 +525,11 @@ async def get_pnl_summary(
         )
         total_dividends = float(dividends_row or 0)
 
-        fee_types = (TransactionType.COMMISSION, TransactionType.OTHER_FEE, TransactionType.BROKER_INTEREST_PAID)
+        fee_types = (
+            TransactionType.COMMISSION,
+            TransactionType.OTHER_FEE,
+            TransactionType.BROKER_INTEREST_PAID,
+        )
         fees_row = (
             db.query(func.coalesce(func.sum(func.abs(Transaction.amount)), 0))
             .filter(
@@ -517,7 +550,7 @@ async def get_pnl_summary(
                 "total_dividends": round(total_dividends, 2),
                 "total_fees": round(total_fees, 2),
                 "total_return": round(total_return, 2),
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             },
         }
     except HTTPException:
@@ -527,9 +560,9 @@ async def get_pnl_summary(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/margin-interest", response_model=Dict[str, Any])
+@router.get("/margin-interest", response_model=dict[str, Any])
 async def get_margin_interest(
-    account_id: Optional[int] = Query(None, description="Filter by broker account ID"),
+    account_id: int | None = Query(None, description="Filter by broker account ID"),
     period: str = Query("90d", description="30d, 90d, 1y, all"),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -558,26 +591,28 @@ async def get_margin_interest(
 
         delta = _parse_period(period)
         if delta:
-            since = datetime.now(timezone.utc).date() - delta
+            since = datetime.now(UTC).date() - delta
             query = query.filter(MarginInterest.to_date >= since)
 
         rows = query.limit(200).all()
         items = []
         for m in rows:
-            items.append({
-                "id": m.id,
-                "account_id": m.broker_account_id,
-                "from_date": m.from_date.isoformat() if m.from_date else None,
-                "to_date": m.to_date.isoformat() if m.to_date else None,
-                "starting_balance": m.starting_balance,
-                "interest_accrued": m.interest_accrued,
-                "accrual_reversal": m.accrual_reversal,
-                "ending_balance": m.ending_balance,
-                "interest_rate": m.interest_rate,
-                "daily_rate": m.daily_rate,
-                "currency": m.currency,
-                "interest_type": m.interest_type,
-            })
+            items.append(
+                {
+                    "id": m.id,
+                    "account_id": m.broker_account_id,
+                    "from_date": m.from_date.isoformat() if m.from_date else None,
+                    "to_date": m.to_date.isoformat() if m.to_date else None,
+                    "starting_balance": m.starting_balance,
+                    "interest_accrued": m.interest_accrued,
+                    "accrual_reversal": m.accrual_reversal,
+                    "ending_balance": m.ending_balance,
+                    "interest_rate": m.interest_rate,
+                    "daily_rate": m.daily_rate,
+                    "currency": m.currency,
+                    "interest_type": m.interest_type,
+                }
+            )
 
         return {"status": "success", "data": {"margin_interest": items}}
     except HTTPException:
@@ -589,17 +624,22 @@ async def get_margin_interest(
 
 @router.get("/dividends/summary")
 async def get_dividend_summary(
-    account_id: Optional[str] = Query(None),
+    account_id: str | None = Query(None),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Dividend income analytics: trailing 12m, forward yield, top payers, upcoming ex-dates."""
     try:
-        acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True).all()]
+        acct_ids = [
+            a.id
+            for a in db.query(BrokerAccount.id)
+            .filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True)
+            .all()
+        ]
         if not acct_ids:
             return {"status": "success", "data": {}}
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         one_year_ago = now - timedelta(days=365)
         one_year_ago_date = one_year_ago.date()
 
@@ -618,7 +658,7 @@ async def get_dividend_summary(
         )
         trailing_12m = sum(float(d.total_dividend or 0) for d in trailing_divs)
 
-        by_sym: Dict[str, list] = {}
+        by_sym: dict[str, list] = {}
         for d in trailing_divs:
             by_sym.setdefault(d.symbol, []).append(d)
 
@@ -642,7 +682,7 @@ async def get_dividend_summary(
         )
         fwd_yield = round((trailing_12m / total_mv * 100) if total_mv > 0 else 0, 2)
 
-        monthly: Dict[str, float] = {}
+        monthly: dict[str, float] = {}
         for d in trailing_divs:
             key = d.pay_date.strftime("%Y-%m") if d.pay_date else "unknown"
             monthly[key] = monthly.get(key, 0) + float(d.total_dividend or 0)
@@ -651,7 +691,7 @@ async def get_dividend_summary(
 
         upcoming: list = []
         for sym, ds in by_sym.items():
-            ex_utc: List[datetime] = []
+            ex_utc: list[datetime] = []
             for d in ds:
                 if not d.ex_date:
                     continue
@@ -659,9 +699,7 @@ async def get_dividend_summary(
                 if isinstance(ed, datetime):
                     ex_utc.append(_datetime_as_utc_aware(ed))
                 elif isinstance(ed, date):
-                    ex_utc.append(
-                        datetime.combine(ed, datetime.min.time(), tzinfo=timezone.utc)
-                    )
+                    ex_utc.append(datetime.combine(ed, datetime.min.time(), tzinfo=UTC))
             ex_dates = sorted(ex_utc, reverse=True)
             if len(ex_dates) >= 2:
                 gap = (ex_dates[0] - ex_dates[1]).days
@@ -669,12 +707,18 @@ async def get_dividend_summary(
                 now_date = now.date()
                 est_next_date = est_next.date()
                 if est_next_date >= now_date and (est_next_date - now_date).days <= 60:
-                    per_share = [float(d.dividend_per_share or 0) for d in ds if d.dividend_per_share]
-                    upcoming.append({
-                        "symbol": sym,
-                        "est_ex_date": est_next.isoformat(),
-                        "est_per_share": round(sum(per_share) / len(per_share), 4) if per_share else 0,
-                    })
+                    per_share = [
+                        float(d.dividend_per_share or 0) for d in ds if d.dividend_per_share
+                    ]
+                    upcoming.append(
+                        {
+                            "symbol": sym,
+                            "est_ex_date": est_next.isoformat(),
+                            "est_per_share": round(sum(per_share) / len(per_share), 4)
+                            if per_share
+                            else 0,
+                        }
+                    )
 
         return {
             "status": "success",
@@ -705,6 +749,7 @@ async def get_live_summary(
 
         try:
             from app.services.clients.ibkr_client import ibkr_client
+
             if ibkr_client.ib and ibkr_client.ib.isConnected():
                 gw_data = ibkr_client.get_account_summary()
                 if gw_data and gw_data.get("net_liquidation"):
@@ -714,7 +759,12 @@ async def get_live_summary(
             logger.warning("Live summary: IB Gateway fetch failed, using DB fallback: %s", e)
 
         if not is_live:
-            acct_ids = [a.id for a in db.query(BrokerAccount.id).filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True).all()]
+            acct_ids = [
+                a.id
+                for a in db.query(BrokerAccount.id)
+                .filter(BrokerAccount.user_id == user.id, BrokerAccount.is_enabled == True)
+                .all()
+            ]
             if acct_ids:
                 bal = (
                     db.query(AccountBalance)
@@ -726,8 +776,12 @@ async def get_live_summary(
                     summary = {
                         "net_liquidation": float(bal.net_liquidation or 0),
                         "buying_power": float(bal.buying_power or 0),
-                        "margin_used": float(bal.margin_used or 0) if hasattr(bal, "margin_used") else 0,
-                        "available_funds": float(bal.available_funds or 0) if hasattr(bal, "available_funds") else 0,
+                        "margin_used": float(bal.margin_used or 0)
+                        if hasattr(bal, "margin_used")
+                        else 0,
+                        "available_funds": float(bal.available_funds or 0)
+                        if hasattr(bal, "available_funds")
+                        else 0,
                         "cushion": float(bal.cushion or 0) if hasattr(bal, "cushion") else 0,
                     }
 
@@ -762,7 +816,9 @@ async def get_twr(
     try:
         days = 365
         if period == "ytd":
-            days = (datetime.now(timezone.utc) - datetime(datetime.now(timezone.utc).year, 1, 1)).days
+            days = (
+                datetime.now(UTC) - datetime(datetime.now(UTC).year, 1, 1)
+            ).days
         elif period == "all":
             days = 3650
         result = portfolio_analytics_service.compute_twr(db, user_id=user.id, period_days=days)

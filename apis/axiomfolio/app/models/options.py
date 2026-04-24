@@ -4,21 +4,22 @@ Generic Options Model for Multi-Brokerage Support
 Core options data models supporting all brokerages: IBKR, TastyTrade, Schwab, etc.
 """
 
+import enum
+
 from sqlalchemy import (
     Column,
-    Integer,
-    String,
-    Float,
-    DateTime,
-    ForeignKey,
     Date,
-    Numeric,
-    UniqueConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
     Index,
+    Integer,
+    Numeric,
+    String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
 
 from app.models import Base
 
@@ -51,9 +52,7 @@ class Option(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     # Account Information
-    account_id = Column(
-        Integer, ForeignKey("broker_accounts.id"), nullable=False, index=True
-    )
+    account_id = Column(Integer, ForeignKey("broker_accounts.id"), nullable=False, index=True)
     account_alias = Column(String(100), nullable=True)
 
     # Options Contract Details (Generic brokerage fields)

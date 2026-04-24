@@ -13,13 +13,11 @@ medallion: ops
 
 from __future__ import annotations
 
-from typing import Optional
-
 _NAMESPACE_PREFIX = "tenant"
 _GLOBAL_BUCKET = "global"
 
 
-def tenant_key(user_id: Optional[int], key: str) -> str:
+def tenant_key(user_id: int | None, key: str) -> str:
     """Return ``tenant:{user_id}:{key}`` (or ``tenant:global:{key}`` if user_id is None).
 
     ``user_id is None`` is reserved for genuinely cross-tenant

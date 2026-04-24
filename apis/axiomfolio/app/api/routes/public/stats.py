@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
@@ -48,7 +48,7 @@ def _read_charts_counter() -> int:
         return 0
 
 
-def _try_cache_get() -> Dict[str, Any] | None:
+def _try_cache_get() -> dict[str, Any] | None:
     try:
         cached = infra.redis_client.get(_CACHE_KEY)
         if not cached:
@@ -64,16 +64,18 @@ def _try_cache_get() -> Dict[str, Any] | None:
         return None
 
 
-def _try_cache_set(payload: Dict[str, Any]) -> None:
+def _try_cache_set(payload: dict[str, Any]) -> None:
     try:
         infra.redis_client.setex(_CACHE_KEY, _CACHE_TTL_S, json.dumps(payload))
     except Exception as e:
         logger.warning("public stats: cache write failed: %s", e)
 
 
-def _compute_payload(db: Session) -> Dict[str, Any]:
+def _compute_payload(db: Session) -> dict[str, Any]:
     row = db.scalar(
-        select(func.count(func.distinct(Position.user_id))).where(Position.status == PositionStatus.OPEN)
+        select(func.count(func.distinct(Position.user_id))).where(
+            Position.status == PositionStatus.OPEN
+        )
     )
     portfolios_tracked = int(row or 0)
     charts_rendered_24h = _read_charts_counter()

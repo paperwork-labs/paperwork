@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey, Enum as SQLEnum
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, String
+from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.sql import func
 
 from . import Base

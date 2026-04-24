@@ -9,12 +9,12 @@ Celery tasks for strategy operations:
 - Auto-backtesting
 """
 
-from .tasks import (
-    evaluate_strategies_task,
-)
 from .auto_backtest import (
     run_auto_backtest,
     trigger_auto_backtest_on_change,
+)
+from .tasks import (
+    evaluate_strategies_task,
 )
 
 __all__ = [

@@ -1,15 +1,16 @@
 import json
 import time
-import pytest
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
-from datetime import datetime, timedelta, timezone
+
+import pytest
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_admin_user
+from app.api.main import app
 from app.database import get_db
-from app.models.user import UserRole
 from app.models.market_data import PriceData
+from app.models.user import UserRole
 from app.services.market.market_data_service import coverage_analytics, infra
 from app.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 
@@ -44,7 +45,7 @@ def test_backfill_stale_daily_returns_full_stale_candidates(monkeypatch, db_sess
 
         # Insert bars for FRESH (recent) and STALE (old). MISSING has no bars.
         db_session.query(PriceData).delete()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         db_session.add(
             PriceData(
                 symbol="FRESH",
@@ -112,7 +113,7 @@ def test_coverage_snapshot_counts_missing_in_none_bucket(db_session):
     infra.redis_client.set(TRACKED_ALL_UPDATED_AT_KEY, str(time.time()))
     try:
         db_session.query(PriceData).delete()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         db_session.add(
             PriceData(
                 symbol="FRESH2",
@@ -132,7 +133,7 @@ def test_coverage_snapshot_counts_missing_in_none_bucket(db_session):
 
         snap = coverage_analytics.coverage_snapshot(db_session)
         daily = snap.get("daily") or {}
-        buckets = (daily.get("freshness") or {})
+        buckets = daily.get("freshness") or {}
         assert sum(int(v) for v in buckets.values()) == 2
         assert int(buckets.get("none") or 0) == 1
         assert int(daily.get("missing") or 0) == 1
@@ -142,5 +143,3 @@ def test_coverage_snapshot_counts_missing_in_none_bucket(db_session):
             infra.redis_client.delete(TRACKED_ALL_UPDATED_AT_KEY)
         except Exception:
             pass
-
-

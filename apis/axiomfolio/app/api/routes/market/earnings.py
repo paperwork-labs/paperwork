@@ -5,7 +5,7 @@ Query upcoming and recent earnings events from the earnings_calendar table.
 
 import logging
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -24,10 +24,10 @@ router = APIRouter(tags=["earnings"])
 def get_earnings_calendar(
     db: Session = Depends(get_db),
     viewer: User = Depends(get_market_data_viewer),
-    from_date: Optional[str] = Query(None, description="Start date YYYY-MM-DD"),
-    to_date: Optional[str] = Query(None, description="End date YYYY-MM-DD"),
-    symbols: Optional[str] = Query(None, description="Comma-separated symbols"),
-) -> Dict[str, Any]:
+    from_date: str | None = Query(None, description="Start date YYYY-MM-DD"),
+    to_date: str | None = Query(None, description="End date YYYY-MM-DD"),
+    symbols: str | None = Query(None, description="Comma-separated symbols"),
+) -> dict[str, Any]:
     """Return earnings calendar events, optionally filtered by date range and symbols."""
     try:
         fd = date.fromisoformat(from_date) if from_date else date.today() - timedelta(days=7)
@@ -35,7 +35,7 @@ def get_earnings_calendar(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {exc}")
 
-    sym_list: Optional[List[str]] = None
+    sym_list: list[str] | None = None
     if symbols:
         sym_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
 

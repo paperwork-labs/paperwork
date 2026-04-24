@@ -21,8 +21,8 @@ database fixture required.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -54,7 +54,7 @@ def _make_connection(
     *,
     access_token_plaintext: str = "old-access-token",
     status: str = OAuthConnectionStatus.ACTIVE.value,
-    token_expires_at: Optional[datetime] = None,
+    token_expires_at: datetime | None = None,
     broker_slug: str = "tradier_sandbox",
     provider_account_id: str = ACCOUNT_ID,
     id_: int = 42,
@@ -66,7 +66,7 @@ def _make_connection(
     """
 
     if token_expires_at is None:
-        token_expires_at = datetime.now(timezone.utc) + timedelta(hours=12)
+        token_expires_at = datetime.now(UTC) + timedelta(hours=12)
 
     conn = BrokerOAuthConnection()
     conn.id = id_
@@ -99,7 +99,7 @@ def _make_order_row(
     order.broker_type = broker_type
     order.account_id = account_id
     order.user_id = 7
-    order.created_at = datetime.now(timezone.utc)
+    order.created_at = datetime.now(UTC)
     return order
 
 
@@ -121,10 +121,10 @@ class _StubSession:
     def __init__(
         self,
         *,
-        connection: Optional[BrokerOAuthConnection] = None,
-        order: Optional[Order] = None,
+        connection: BrokerOAuthConnection | None = None,
+        order: Order | None = None,
     ) -> None:
-        self._by_class: Dict[Any, Any] = {}
+        self._by_class: dict[Any, Any] = {}
         if connection is not None:
             self._by_class[BrokerOAuthConnection] = connection
         if order is not None:
@@ -132,7 +132,7 @@ class _StubSession:
         self.commits: int = 0
         self.closed: bool = False
 
-    def query(self, model: Any) -> "_StubQuery":
+    def query(self, model: Any) -> _StubQuery:
         return _StubQuery(self._by_class.get(model))
 
     def commit(self) -> None:
@@ -146,16 +146,16 @@ class _StubQuery:
     def __init__(self, result: Any) -> None:
         self._result = result
 
-    def filter(self, *args: Any, **kwargs: Any) -> "_StubQuery":
+    def filter(self, *args: Any, **kwargs: Any) -> _StubQuery:
         return self
 
-    def order_by(self, *args: Any, **kwargs: Any) -> "_StubQuery":
+    def order_by(self, *args: Any, **kwargs: Any) -> _StubQuery:
         return self
 
     def first(self) -> Any:
         return self._result
 
-    def all(self) -> List[Any]:
+    def all(self) -> list[Any]:
         return [self._result] if self._result is not None else []
 
 
@@ -221,9 +221,7 @@ class TestPreviewOrder:
             },
             status=200,
             match=[
-                matchers.header_matcher(
-                    {"Authorization": "Bearer old-access-token"}
-                ),
+                matchers.header_matcher({"Authorization": "Bearer old-access-token"}),
                 matchers.urlencoded_params_matcher(
                     {
                         "class": "equity",
@@ -259,9 +257,7 @@ class TestPreviewOrder:
 
 class TestPlaceOrder:
     @responses.activate
-    def test_place_happy_path_populates_broker_order_id(
-        self, patched_decrypt, noop_ensure_token
-    ):
+    def test_place_happy_path_populates_broker_order_id(self, patched_decrypt, noop_ensure_token):
         conn = _make_connection()
         session = _StubSession(connection=conn)
         executor = TradierExecutor(
@@ -303,9 +299,7 @@ class TestPlaceOrder:
         assert result.raw["broker"] == "tradier_sandbox"
 
     @responses.activate
-    def test_place_with_limit_price_sends_price_param(
-        self, patched_decrypt, noop_ensure_token
-    ):
+    def test_place_with_limit_price_sends_price_param(self, patched_decrypt, noop_ensure_token):
         conn = _make_connection()
         session = _StubSession(connection=conn)
         executor = TradierExecutor(
@@ -423,9 +417,7 @@ class TestGetOrderStatus:
 
 class TestErrorSurface:
     @responses.activate
-    def test_4xx_surfaces_via_order_result_error(
-        self, patched_decrypt, noop_ensure_token
-    ):
+    def test_4xx_surfaces_via_order_result_error(self, patched_decrypt, noop_ensure_token):
         """Permanent provider errors never masquerade as silent success.
 
         Tradier returns 400 with an error body for bad orders (e.g.
@@ -509,9 +501,7 @@ class TestErrorSurface:
         assert result.ok is False
         assert "symbol not found" in (result.error or "")
 
-    def test_missing_account_id_refuses(
-        self, patched_decrypt, noop_ensure_token
-    ):
+    def test_missing_account_id_refuses(self, patched_decrypt, noop_ensure_token):
         """``req.account_id`` is required to resolve the OAuth connection."""
 
         session = _StubSession(connection=None)
@@ -552,14 +542,12 @@ class TestTokenRefresh:
     """
 
     @responses.activate
-    def test_expired_token_is_refreshed_before_place(
-        self, patched_decrypt
-    ):
+    def test_expired_token_is_refreshed_before_place(self, patched_decrypt):
         # Start with an already-expired token. ``_needs_refresh`` returns
         # True because ``token_expires_at`` is in the past.
         conn = _make_connection(
             access_token_plaintext="old-access-token",
-            token_expires_at=datetime.now(timezone.utc) - timedelta(hours=1),
+            token_expires_at=datetime.now(UTC) - timedelta(hours=1),
         )
         session = _StubSession(connection=conn)
 
@@ -574,9 +562,7 @@ class TestTokenRefresh:
         # contract in ``app.tasks.portfolio.oauth_token_refresh``.
         def fake_refresh_one(db, conn_):
             conn_.access_token_encrypted = "CIPHER::new-access-token"
-            conn_.token_expires_at = datetime.now(timezone.utc) + timedelta(
-                hours=12
-            )
+            conn_.token_expires_at = datetime.now(UTC) + timedelta(hours=12)
             conn_.status = OAuthConnectionStatus.ACTIVE.value
             conn_.rotation_count = (conn_.rotation_count or 0) + 1
             return "written"
@@ -591,9 +577,7 @@ class TestTokenRefresh:
             json={"order": {"id": 555, "status": "ok"}},
             status=200,
             match=[
-                matchers.header_matcher(
-                    {"Authorization": "Bearer new-access-token"}
-                ),
+                matchers.header_matcher({"Authorization": "Bearer new-access-token"}),
             ],
         )
 
@@ -613,12 +597,13 @@ class TestTokenRefresh:
         # Patch only the two integration points the mixin reaches out
         # to: the Redis client (for the lock) and ``_refresh_one`` (for
         # the actual refresh). Everything else in the mixin runs as-is.
-        with patch(
-            "app.services.market.market_data_service.infra"
-        ) as mock_infra, patch(
-            "app.tasks.portfolio.oauth_token_refresh._refresh_one",
-            side_effect=fake_refresh_one,
-        ) as mock_refresh_one:
+        with (
+            patch("app.services.market.market_data_service.infra") as mock_infra,
+            patch(
+                "app.tasks.portfolio.oauth_token_refresh._refresh_one",
+                side_effect=fake_refresh_one,
+            ) as mock_refresh_one,
+        ):
             mock_infra.redis_client = fake_redis
 
             import asyncio

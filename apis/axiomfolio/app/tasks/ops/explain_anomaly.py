@@ -29,23 +29,24 @@ Idempotency:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.services.agent.anomaly_explainer import (
+    DAILY_EXPLANATION_CAP_PER_KEY,
     AnomalyExplainer,
+    LLMProviderRateLimitedError,
     anomaly_from_dict,
     build_default_explainer,
-    DAILY_EXPLANATION_CAP_PER_KEY,
     explanation_count_today_for_key,
     explanation_row_to_payload,
     explanation_to_dict,
     latest_for_anomaly,
     latest_for_dimension_key,
-    LLMProviderRateLimitedError,
     persist_explanation,
     recent_explanation_within,
 )
@@ -57,8 +58,8 @@ logger = logging.getLogger(__name__)
 def _reuse_latest_or_skip(
     db: Session,
     anomaly_id: str,
-    skip: Dict[str, Any],
-) -> Dict[str, Any]:
+    skip: dict[str, Any],
+) -> dict[str, Any]:
     """Prefer any persisted explanation for this id or dimension key; else ``skip``."""
     row = latest_for_anomaly(db, anomaly_id)
     if row is None:
@@ -72,7 +73,7 @@ def _reuse_latest_or_skip(
 
 def _run_explainer(
     payload: Mapping[str, Any], *, explainer: AnomalyExplainer | None = None
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Pure function so we can drive it from sync routes too.
 
     Returns the persisted-row payload (matches what the API endpoint
@@ -145,7 +146,7 @@ def _run_explainer(
     autoretry_for=(),  # never retry: a degraded LLM should hit the fallback path inside .explain()
 )
 @task_run("auto_ops_explain_anomaly")
-def explain_anomaly(payload: Dict[str, Any]) -> Dict[str, Any]:
+def explain_anomaly(payload: dict[str, Any]) -> dict[str, Any]:
     """Build, persist, and return one AnomalyExplanation.
 
     Accepts the dict produced by
@@ -158,7 +159,7 @@ def explain_anomaly(payload: Dict[str, Any]) -> Dict[str, Any]:
         raise ValueError("explain_anomaly requires a dict payload")
     try:
         return _run_explainer(payload)
-    except Exception as exc:  # noqa: BLE001 - log + bubble so Celery records the failure
+    except Exception as exc:
         logger.exception(
             "explain_anomaly failed for anomaly=%s: %s",
             payload.get("id"),
@@ -167,7 +168,7 @@ def explain_anomaly(payload: Dict[str, Any]) -> Dict[str, Any]:
         raise
 
 
-def explain_anomaly_sync(payload: Mapping[str, Any]) -> Dict[str, Any]:
+def explain_anomaly_sync(payload: Mapping[str, Any]) -> dict[str, Any]:
     """Synchronous variant for FastAPI routes that want an inline result.
 
     Mirrors :func:`explain_anomaly` but skips the Celery wrapping so
@@ -186,4 +187,4 @@ __all__ = [
 
 # Re-export ``explanation_to_dict`` so callers that import the task
 # module also get the canonical serializer in one place.
-explanation_to_dict = explanation_to_dict  # noqa: F401 - intentional re-export
+explanation_to_dict = explanation_to_dict

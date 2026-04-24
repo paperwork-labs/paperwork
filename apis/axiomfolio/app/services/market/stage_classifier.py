@@ -13,11 +13,12 @@ Medallion layer: silver. See docs/ARCHITECTURE.md and D127.
 
 medallion: silver
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -32,10 +33,11 @@ SLOPE_T = 0.35  # ±0.35% slope threshold
 @dataclass
 class StageResult:
     """Full stage classification output with state tracking."""
+
     stage_label: str
     atre_promoted: bool = False
     pass_count: int = 0
-    action_override: Optional[str] = None
+    action_override: str | None = None
     manual_review: bool = False
 
 
@@ -59,12 +61,12 @@ def classify_stage_for_timeframe(
     sma150: float,
     sma50: float,
     ema10: float,
-    prev_stage: Optional[str] = None,
+    prev_stage: str | None = None,
     *,
     sma21: float = 0.0,
-    sma150_slope: Optional[float] = None,
-    sma50_slope: Optional[float] = None,
-    ext_pct: Optional[float] = None,
+    sma150_slope: float | None = None,
+    sma50_slope: float | None = None,
+    ext_pct: float | None = None,
     vol_ratio: float = 0.0,
 ) -> str:
     """Classify stage for any timeframe using Stage Analysis rules (SMA150 anchor).
@@ -205,7 +207,7 @@ def classify_stage_full(
     ext_pct: float,
     atre_150: float,
     vol_ratio: float,
-    rs_mansfield: Optional[float] = None,
+    rs_mansfield: float | None = None,
     *,
     regime_state: str = "R1",
     prior_stage: str = "UNKNOWN",
@@ -226,8 +228,16 @@ def classify_stage_full(
 
     # Step 2: Classify raw stage (without ATRE override)
     stage = classify_stage_scalar(
-        close, sma150, sma50, sma21, ema10,
-        sma150_slope, sma50_slope, ext_pct, atre_150, vol_ratio,
+        close,
+        sma150,
+        sma50,
+        sma21,
+        ema10,
+        sma150_slope,
+        sma50_slope,
+        ext_pct,
+        atre_150,
+        vol_ratio,
     )
 
     # Step 3: ATRE override post-check (2A/2B → 2C when promoted)
@@ -247,7 +257,7 @@ def classify_stage_full(
         pass_count += 1
 
     # Step 6: action_override (2C in R4 → act as 3A)
-    action_override: Optional[str] = None
+    action_override: str | None = None
     if stage == "2C" and regime_state == "R4":
         action_override = "3A"
 
@@ -307,13 +317,16 @@ def classify_stage_series(
     assign(below & slope_strongly_down & (ext_pct <= -30), "4C")
 
     # 4B: Accelerating decline (SMA50 < SMA150)
-    assign(below & slope_strongly_down & (ext_pct > -30) & (ext_pct <= -15) & (sma50 < sma150), "4B")
+    assign(
+        below & slope_strongly_down & (ext_pct > -30) & (ext_pct <= -15) & (sma50 < sma150), "4B"
+    )
 
     # 4A: Early decline
     assign(
         below
         & (slope_strongly_down | (slope_flat & (sma50_slope < -SLOPE_T)))
-        & (ext_pct > -15) & (ext_pct <= -5),
+        & (ext_pct > -15)
+        & (ext_pct <= -5),
         "4A",
     )
 
@@ -327,11 +340,24 @@ def classify_stage_series(
     )
 
     # 2A: Early advance (EMA stack required)
-    assign(above & slope_non_negative & (ext_pct >= 0) & (ext_pct <= 8) & (ema10 > sma21) & (sma21 > sma50), "2A")
+    assign(
+        above
+        & slope_non_negative
+        & (ext_pct >= 0)
+        & (ext_pct <= 8)
+        & (ema10 > sma21)
+        & (sma21 > sma50),
+        "2A",
+    )
 
     # 2B: Confirmed advance (strong slope, SMA50 confirms)
     assign(
-        above & slope_up & (ext_pct > 8) & (ext_pct <= 20) & (sma50 > sma150) & (sma50_slope > SLOPE_T),
+        above
+        & slope_up
+        & (ext_pct > 8)
+        & (ext_pct <= 20)
+        & (sma50 > sma150)
+        & (sma50_slope > SLOPE_T),
         "2B",
     )
 
@@ -340,7 +366,11 @@ def classify_stage_series(
 
     # 3A: Early distribution (SMA50 > SMA150 disambiguates)
     assign(
-        slope_gently_positive & (ext_pct > -5) & (ext_pct <= 0) & (sma50 > sma150) & (sma50_slope < SLOPE_T),
+        slope_gently_positive
+        & (ext_pct > -5)
+        & (ext_pct <= 0)
+        & (sma50 > sma150)
+        & (sma50_slope < SLOPE_T),
         "3A",
     )
 
@@ -355,10 +385,7 @@ def classify_stage_series(
     stage[fallback] = "3A"
 
     # Post-classification: Breakout override — 1B with volume + stacked MAs → 2A
-    breakout = (
-        (stage == "1B") & above
-        & (vol_ratio > 1.5) & (ema10 > sma21) & (sma21 > sma50)
-    )
+    breakout = (stage == "1B") & above & (vol_ratio > 1.5) & (ema10 > sma21) & (sma21 > sma50)
     stage[breakout] = "2A"
 
     # Post-classification: ATRE override — 2A/2B with ATRE_150 > 6 → 2C
@@ -380,14 +407,14 @@ def compute_weinstein_stage_from_daily(
     prior_stage: str = "UNKNOWN",
     prior_atre_promoted: bool = False,
     prior_pass_count: int = 0,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compute Stage Analysis from daily OHLCV (both newest->first).
 
     Uses SMA150 as primary anchor. Returns latest bar's stage + supporting
     metrics + state fields (atre_promoted, pass_count, action_override,
     manual_review).
     """
-    unknown: Dict[str, Any] = {
+    unknown: dict[str, Any] = {
         "stage": "UNKNOWN",
         "stage_label": "UNKNOWN",
         "stage_slope_pct": None,
@@ -427,14 +454,30 @@ def compute_weinstein_stage_from_daily(
     vol_avg = volume.rolling(20).mean()
 
     ext_pct = ((close - sma150) / sma150 * 100).replace([np.inf, -np.inf], np.nan)
-    sma150_slope_s = ((sma150 - sma150.shift(20)) / sma150.shift(20) * 100).replace([np.inf, -np.inf], np.nan)
-    sma50_slope_s = ((sma50 - sma50.shift(10)) / sma50.shift(10) * 100).replace([np.inf, -np.inf], np.nan)
+    sma150_slope_s = ((sma150 - sma150.shift(20)) / sma150.shift(20) * 100).replace(
+        [np.inf, -np.inf], np.nan
+    )
+    sma50_slope_s = ((sma50 - sma50.shift(10)) / sma50.shift(10) * 100).replace(
+        [np.inf, -np.inf], np.nan
+    )
     vol_ratio_s = (volume / vol_avg).replace([np.inf, -np.inf], np.nan)
 
-    atr14 = calculate_atr_series(sym, 14) if {"High", "Low", "Close"}.issubset(sym.columns) else pd.Series(np.nan, index=sym.index)
-    atre_150 = ((close - sma150) / atr14).replace([np.inf, -np.inf], np.nan) if atr14 is not None else pd.Series(np.nan, index=sym.index)
+    atr14 = (
+        calculate_atr_series(sym, 14)
+        if {"High", "Low", "Close"}.issubset(sym.columns)
+        else pd.Series(np.nan, index=sym.index)
+    )
+    atre_150 = (
+        ((close - sma150) / atr14).replace([np.inf, -np.inf], np.nan)
+        if atr14 is not None
+        else pd.Series(np.nan, index=sym.index)
+    )
     ema10_dist_pct_s = ((close - ema10) / ema10 * 100).replace([np.inf, -np.inf], np.nan)
-    atrp14 = (atr14 / close * 100).replace([np.inf, -np.inf], np.nan) if atr14 is not None else pd.Series(np.nan, index=sym.index)
+    atrp14 = (
+        (atr14 / close * 100).replace([np.inf, -np.inf], np.nan)
+        if atr14 is not None
+        else pd.Series(np.nan, index=sym.index)
+    )
     ema10_dist_n_s = (ema10_dist_pct_s / atrp14).replace([np.inf, -np.inf], np.nan)
 
     # RS Mansfield (daily RS vs 252-day SMA of RS)
@@ -443,7 +486,7 @@ def compute_weinstein_stage_from_daily(
     rs_ma = rs.rolling(252).mean()
     rs_mansfield = ((rs / rs_ma - 1.0) * 100.0).replace([np.inf, -np.inf], np.nan)
 
-    def last_val(s: pd.Series) -> Optional[float]:
+    def last_val(s: pd.Series) -> float | None:
         v = s.iloc[-1] if not s.empty else None
         return float(v) if v is not None and not pd.isna(v) else None
 
@@ -463,8 +506,16 @@ def compute_weinstein_stage_from_daily(
         return dict(unknown)
 
     result = classify_stage_full(
-        c, s150, s50 or 0, s21 or 0, e10 or 0,
-        sl150, sl50, ep, at150 or 0, vr or 0,
+        c,
+        s150,
+        s50 or 0,
+        s21 or 0,
+        e10 or 0,
+        sl150,
+        sl50,
+        ep,
+        at150 or 0,
+        vr or 0,
         rm,
         regime_state=regime_state,
         prior_stage=prior_stage,
@@ -525,11 +576,19 @@ def compute_weinstein_stage_series_from_daily(
     vol_avg = volume.rolling(20).mean()
 
     ext_pct = ((close - sma150) / sma150 * 100).replace([np.inf, -np.inf], np.nan)
-    sma150_slope = ((sma150 - sma150.shift(20)) / sma150.shift(20) * 100).replace([np.inf, -np.inf], np.nan)
-    sma50_slope = ((sma50 - sma50.shift(10)) / sma50.shift(10) * 100).replace([np.inf, -np.inf], np.nan)
+    sma150_slope = ((sma150 - sma150.shift(20)) / sma150.shift(20) * 100).replace(
+        [np.inf, -np.inf], np.nan
+    )
+    sma50_slope = ((sma50 - sma50.shift(10)) / sma50.shift(10) * 100).replace(
+        [np.inf, -np.inf], np.nan
+    )
     vol_ratio = (volume / vol_avg).replace([np.inf, -np.inf], np.nan)
 
-    atr14 = calculate_atr_series(sym, 14) if {"High", "Low", "Close"}.issubset(sym.columns) else pd.Series(np.nan, index=sym.index)
+    atr14 = (
+        calculate_atr_series(sym, 14)
+        if {"High", "Low", "Close"}.issubset(sym.columns)
+        else pd.Series(np.nan, index=sym.index)
+    )
     if atr14 is None:
         atr14 = pd.Series(np.nan, index=sym.index)
     atre_150 = ((close - sma150) / atr14).replace([np.inf, -np.inf], np.nan)
@@ -544,9 +603,17 @@ def compute_weinstein_stage_series_from_daily(
     rs_mansfield = ((rs / rs_ma - 1.0) * 100.0).replace([np.inf, -np.inf], np.nan)
 
     stage_label = classify_stage_series(
-        close, sma150, sma50, sma21, ema10,
-        sma150_slope, sma50_slope, ext_pct, atre_150,
-        vol_ratio, rs_mansfield,
+        close,
+        sma150,
+        sma50,
+        sma21,
+        ema10,
+        sma150_slope,
+        sma50_slope,
+        ext_pct,
+        atre_150,
+        vol_ratio,
+        rs_mansfield,
     )
 
     daily_out = pd.DataFrame(

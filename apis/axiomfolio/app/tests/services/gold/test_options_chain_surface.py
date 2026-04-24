@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -72,7 +72,7 @@ def _sample_row(**kw):
 
 
 def test_idempotency_two_runs_no_duplicate_rows(db_session):
-    ts = datetime(2026, 1, 15, 12, 0, tzinfo=timezone.utc)
+    ts = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
     rows = [
         _sample_row(
             strike=Decimal("100"),
@@ -82,9 +82,7 @@ def test_idempotency_two_runs_no_duplicate_rows(db_session):
         ),
     ]
     s = OptionsChainSurface()
-    s.compute(
-        "TEST", 1, session=db_session, rows=rows, snapshot_taken_at=ts
-    )
+    s.compute("TEST", 1, session=db_session, rows=rows, snapshot_taken_at=ts)
     c1 = (
         db_session.query(OptionsChainSnapshot)
         .filter(
@@ -93,9 +91,7 @@ def test_idempotency_two_runs_no_duplicate_rows(db_session):
         )
         .count()
     )
-    s.compute(
-        "TEST", 1, session=db_session, rows=rows, snapshot_taken_at=ts
-    )
+    s.compute("TEST", 1, session=db_session, rows=rows, snapshot_taken_at=ts)
     c2 = (
         db_session.query(OptionsChainSnapshot)
         .filter(
@@ -110,7 +106,7 @@ def test_idempotency_two_runs_no_duplicate_rows(db_session):
 
 def test_prepass_uncomparable_strike_skipped_without_killing_batch(db_session):
     """Bad strike in strike-range pass must log, skip the row, finish batch."""
-    ts = datetime(2026, 1, 17, 12, 0, tzinfo=timezone.utc)
+    ts = datetime(2026, 1, 17, 12, 0, tzinfo=UTC)
     rows: list[dict] = [
         _sample_row(strike=Decimal("100")),
         {
@@ -134,7 +130,7 @@ def test_prepass_uncomparable_strike_skipped_without_killing_batch(db_session):
 
 
 def test_malformed_row_skipped_with_counter(db_session):
-    ts = datetime(2026, 1, 16, 12, 0, tzinfo=timezone.utc)
+    ts = datetime(2026, 1, 16, 12, 0, tzinfo=UTC)
     bad = {
         "expiry": date(2026, 6, 19),
         "strike": Decimal("99"),
@@ -145,9 +141,7 @@ def test_malformed_row_skipped_with_counter(db_session):
         _sample_row(strike=Decimal("102")),
     ]
     s = OptionsChainSurface()
-    r = s.compute(
-        "TERR", 1, session=db_session, rows=rows, snapshot_taken_at=ts
-    )
+    r = s.compute("TERR", 1, session=db_session, rows=rows, snapshot_taken_at=ts)
     assert r.contracts_processed == 3
     assert r.contracts_skipped_malformed == 1
     assert r.contracts_errored == 0
@@ -162,7 +156,7 @@ def test_iv_history_query_count_scales_with_buckets_not_contracts(
     """Batched IV history: DB round-trips O(buckets), not O(contracts)."""
     sym = "IVBAT"
     ex = date(2026, 6, 19)
-    ts_compute = datetime(2026, 1, 20, 12, 0, tzinfo=timezone.utc)
+    ts_compute = datetime(2026, 1, 20, 12, 0, tzinfo=UTC)
     # 35+ historical IV points in the first strike decile (see wide book-end below)
     for i in range(35):
         tsn = ts_compute - timedelta(days=i + 1)
@@ -174,8 +168,7 @@ def test_iv_history_query_count_scales_with_buckets_not_contracts(
                 option_type="CALL",
                 bid=Decimal("1"),
                 ask=Decimal("1.1"),
-                implied_vol=Decimal("0.25")
-                + Decimal(str(i % 3)) * Decimal("0.01"),
+                implied_vol=Decimal("0.25") + Decimal(str(i % 3)) * Decimal("0.01"),
                 snapshot_taken_at=tsn,
                 source="yfinance",
             )

@@ -7,21 +7,23 @@ Multi-user authentication, preferences, and user isolation.
 
 from enum import Enum
 
+import sqlalchemy as sa
 from sqlalchemy import (
+    JSON,
+    TIMESTAMP,
+    Boolean,
     Column,
+    Index,
     Integer,
     String,
-    Boolean,
-    Index,
-    TIMESTAMP,
-    Enum as SQLEnum,
-    JSON,
     Text,
     UniqueConstraint,
 )
+from sqlalchemy import (
+    Enum as SQLEnum,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import sqlalchemy as sa
 
 from . import Base
 
@@ -57,8 +59,8 @@ class User(Base):
     phone = Column(String(20))
 
     # OAuth
-    oauth_provider = Column(String(20), nullable=True)   # 'google', 'apple', None for password
-    oauth_id = Column(String(255), nullable=True)        # provider's unique user ID
+    oauth_provider = Column(String(20), nullable=True)  # 'google', 'apple', None for password
+    oauth_id = Column(String(255), nullable=True)  # provider's unique user ID
     avatar_url = Column(Text, nullable=True)
 
     # Authentication & Access (VARCHAR; migrated from PostgreSQL userrole enum)
@@ -102,35 +104,23 @@ class User(Base):
     llm_provider_key_encrypted = Column(Text, nullable=True)
 
     # Audit
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Relationships - Essential ones only to avoid circular imports
     broker_accounts = relationship(
         "BrokerAccount", back_populates="user", cascade="all, delete-orphan"
     )
-    positions = relationship(
-        "Position", back_populates="user", cascade="all, delete-orphan"
-    )
-    tax_lots = relationship(
-        "TaxLot", back_populates="user", cascade="all, delete-orphan"
-    )
+    positions = relationship("Position", back_populates="user", cascade="all, delete-orphan")
+    tax_lots = relationship("TaxLot", back_populates="user", cascade="all, delete-orphan")
     account_balances = relationship(
         "AccountBalance", back_populates="user", cascade="all, delete-orphan"
     )
     margin_interest = relationship(
         "MarginInterest", back_populates="user", cascade="all, delete-orphan"
     )
-    transfers = relationship(
-        "Transfer", back_populates="user", cascade="all, delete-orphan"
-    )
-    options = relationship(
-        "Option", back_populates="user", cascade="all, delete-orphan"
-    )
+    transfers = relationship("Transfer", back_populates="user", cascade="all, delete-orphan")
+    options = relationship("Option", back_populates="user", cascade="all, delete-orphan")
     strategies = relationship(
         "Strategy",
         back_populates="user",

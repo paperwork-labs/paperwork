@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import logging
 from collections import Counter
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
@@ -16,15 +16,25 @@ from app.models.market_data import MarketSnapshotHistory
 logger = logging.getLogger(__name__)
 
 VALID_STAGE_LABELS = {
-    "1", "1A", "1B",
-    "2A", "2B", "2B(RS-)", "2C",
-    "3", "3A", "3B",
-    "4", "4A", "4B", "4C",
+    "1",
+    "1A",
+    "1B",
+    "2A",
+    "2B",
+    "2B(RS-)",
+    "2C",
+    "3",
+    "3A",
+    "3B",
+    "4",
+    "4A",
+    "4B",
+    "4C",
     "UNKNOWN",
 }
 
 
-def normalize_stage_label(stage_label: Any) -> Optional[str]:
+def normalize_stage_label(stage_label: Any) -> str | None:
     """Normalize a raw stage label string to its canonical form.
 
     Shared across stage quality, stage run derivation, and repair operations.
@@ -71,9 +81,9 @@ class StageQualityService:
         db: Session,
         *,
         lookback_days: int = 120,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         lookback_days = max(7, min(int(lookback_days), 3650))
-        cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+        cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
 
         MS = MarketSnapshot
         snap_type = MS.analysis_type == "technical_snapshot"
@@ -86,9 +96,7 @@ class StageQualityService:
         invalid_stage_count = 0
         unknown_count = 0
         empty_label_count = 0
-        for label_val, cnt in (
-            db.query(lab, func.count()).filter(snap_type).group_by(lab).all()
-        ):
+        for label_val, cnt in db.query(lab, func.count()).filter(snap_type).group_by(lab).all():
             stage_raw = str(label_val or "").strip().upper()
             n = int(cnt)
             if stage_raw == "":
@@ -163,16 +171,16 @@ class StageQualityService:
         monotonicity_issues = 0
         history_rows_checked = 0
         unknown_stage_days_count = 0
-        by_symbol: Dict[str, List[tuple[datetime, Any, Any]]] = {}
+        by_symbol: dict[str, list[tuple[datetime, Any, Any]]] = {}
         for symbol, as_of_date, stage_label, current_days in recent_rows:
             by_symbol.setdefault(str(symbol or "").upper(), []).append(
                 (as_of_date, stage_label, current_days)
             )
 
         for series in by_symbol.values():
-            prev_norm: Optional[str] = None
-            prev_days_val: Optional[int] = None
-            prev_dt: Optional[datetime] = None
+            prev_norm: str | None = None
+            prev_days_val: int | None = None
+            prev_dt: datetime | None = None
             for dt, stage_label, current_days in series:
                 norm = normalize_stage_label(stage_label)
                 if norm is None:
@@ -243,11 +251,8 @@ class StageQualityService:
             "unknown_stage_days_count": unknown_stage_days_count,
             "stage_history_rows_checked": history_rows_checked,
             "stale_stage_count": stale_stage_count,
-            "stage_counts": {
-                k: int(stage_counter.get(k, 0))
-                for k in sorted(VALID_STAGE_LABELS)
-            },
-            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "stage_counts": {k: int(stage_counter.get(k, 0)) for k in sorted(VALID_STAGE_LABELS)},
+            "checked_at": datetime.now(UTC).isoformat(),
         }
 
     def repair_stage_history_window(
@@ -256,7 +261,7 @@ class StageQualityService:
         *,
         days: int = 120,
         symbol: str | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         days = max(7, min(int(days), 3650))
         target_symbol = (symbol or "").strip().upper() or None
         # None: full-universe DISTINCT path; set: repair only that symbol as a one-element list.
@@ -295,10 +300,10 @@ class StageQualityService:
                 continue
             rows = list(reversed(rows))
 
-            cur_stage: Optional[str] = None
+            cur_stage: str | None = None
             cur_days = 0
-            prev_stage: Optional[str] = None
-            prev_days_val: Optional[int] = None
+            prev_stage: str | None = None
+            prev_days_val: int | None = None
             updated_for_symbol = False
 
             for row in rows:
@@ -340,23 +345,17 @@ class StageQualityService:
                     .first()
                 )
                 if snap is not None:
-                    target_norm = normalize_stage_label(
-                        getattr(snap, "stage_label", None)
-                    )
+                    target_norm = normalize_stage_label(getattr(snap, "stage_label", None))
                     candidate = None
                     if target_norm is not None:
                         for row in reversed(rows):
-                            row_norm = normalize_stage_label(
-                                getattr(row, "stage_label", None)
-                            )
+                            row_norm = normalize_stage_label(getattr(row, "stage_label", None))
                             if row_norm == target_norm:
                                 candidate = row
                                 break
                     if candidate is None:
                         for row in reversed(rows):
-                            row_norm = normalize_stage_label(
-                                getattr(row, "stage_label", None)
-                            )
+                            row_norm = normalize_stage_label(getattr(row, "stage_label", None))
                             if row_norm is not None and row_norm != "UNKNOWN":
                                 candidate = row
                                 break
@@ -375,5 +374,5 @@ class StageQualityService:
             "total_symbols": len(symbols),
             "touched_symbols": touched_symbols,
             "touched_rows": touched_rows,
-            "updated_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(UTC).isoformat(),
         }

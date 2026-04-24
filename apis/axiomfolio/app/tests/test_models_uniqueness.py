@@ -1,13 +1,14 @@
+from datetime import UTC, date, datetime
+
 import pytest
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import inspect
+from sqlalchemy.exc import IntegrityError
 
 from app.models import BrokerAccount, User
-from app.models.broker_account import BrokerType, AccountType, AccountStatus
+from app.models.broker_account import AccountStatus, AccountType, BrokerType
+from app.models.options import Option
 from app.models.trade import Trade
 from app.models.transaction import Transaction, TransactionType
-from app.models.options import Option
-from datetime import datetime, date, timezone
 
 
 @pytest.fixture
@@ -113,7 +114,7 @@ def test_transaction_unique_external_and_execution(db, broker_account):
         amount=1.0,
         net_amount=1.0,
         currency="USD",
-        transaction_date=datetime.now(timezone.utc),
+        transaction_date=datetime.now(UTC),
     )
     db.add(tx1)
     db.commit()
@@ -127,7 +128,7 @@ def test_transaction_unique_external_and_execution(db, broker_account):
         amount=1.0,
         net_amount=1.0,
         currency="USD",
-        transaction_date=datetime.now(timezone.utc),
+        transaction_date=datetime.now(UTC),
     )
     nested = db.begin_nested()
     db.add(tx2)
@@ -144,7 +145,7 @@ def test_transaction_unique_external_and_execution(db, broker_account):
         amount=1.0,
         net_amount=1.0,
         currency="USD",
-        transaction_date=datetime.now(timezone.utc),
+        transaction_date=datetime.now(UTC),
     )
     db.add(tx3)
     db.commit()
@@ -158,7 +159,7 @@ def test_transaction_unique_external_and_execution(db, broker_account):
         amount=1.0,
         net_amount=1.0,
         currency="USD",
-        transaction_date=datetime.now(timezone.utc),
+        transaction_date=datetime.now(UTC),
     )
     nested = db.begin_nested()
     db.add(tx4)

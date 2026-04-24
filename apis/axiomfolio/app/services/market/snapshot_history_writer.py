@@ -16,8 +16,9 @@ medallion: silver
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
@@ -74,7 +75,7 @@ def upsert_snapshot_history_row(
     ``analysis_timestamp`` on each write. Backfill tasks that rely on server default
     can pass False.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     snap = dict(snapshot)
     existing = (
         session.query(MarketSnapshotHistory)
@@ -151,11 +152,7 @@ def build_snapshot_history_pg_upsert_stmt(
         }
     elif conflict_update == "partial":
         keys = frozenset(rows[0].keys())
-        set_ = {
-            k: stmt.excluded[k]
-            for k in keys
-            if k not in _PG_PARTIAL_CONFLICT_KEYS
-        }
+        set_ = {k: stmt.excluded[k] for k in keys if k not in _PG_PARTIAL_CONFLICT_KEYS}
     else:
         raise ValueError(f"unknown conflict_update: {conflict_update!r}")
     return stmt.on_conflict_do_update(constraint="uq_symbol_type_asof", set_=set_)

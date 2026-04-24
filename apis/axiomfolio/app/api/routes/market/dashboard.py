@@ -8,19 +8,19 @@ Endpoints are synchronous to keep SQLAlchemy Session on the calling thread.
 
 import json
 import logging
-from typing import Dict, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_market_data_viewer
 from app.api.rate_limit import limiter
+from app.api.schemas.market import MarketDashboardResponse
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
 from app.services.market.market_data_service import infra
-from app.api.dependencies import get_market_data_viewer
-from app.api.schemas.market import MarketDashboardResponse
-from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ def get_market_dashboard(
     db: Session = Depends(get_db),
     viewer: User = Depends(get_market_data_viewer),
     universe: str = "all",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Reader-friendly market dashboard summary for momentum workflows.
 
     Reads exclusively from Redis cache. On cache miss, triggers a Celery
@@ -58,6 +58,7 @@ def get_market_dashboard(
 
     try:
         from app.tasks.market.maintenance import warm_dashboard_cache
+
         warm_dashboard_cache.delay(universe)
         logger.info("Dashboard cache miss (universe=%s) -- triggered async warm", universe)
     except Exception as e:
@@ -75,7 +76,7 @@ def get_market_dashboard(
 @router.get("/volatility-dashboard")
 async def get_volatility_dashboard(
     _viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """VIX/VVIX/VIX3M volatility regime dashboard."""
     from app.services.market.volatility_service import VolatilityService
 

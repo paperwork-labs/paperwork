@@ -5,8 +5,8 @@ Historical Implied Volatility Model
 Daily IV snapshots for IV rank calculation and options analysis.
 """
 
-from datetime import date
-from sqlalchemy import Column, Integer, String, Float, Date, Index, UniqueConstraint
+from sqlalchemy import Column, Date, Float, Index, Integer, String, UniqueConstraint
+
 from app.models import Base
 
 

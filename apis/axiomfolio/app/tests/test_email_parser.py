@@ -3,10 +3,11 @@
 No DB, no network, no real LLM. Provider is stubbed; PDF parsing degrades
 to a warning when pypdf is not installed.
 """
+
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 import pytest
@@ -15,8 +16,8 @@ from app.services.picks.email_parser import (
     EmailPreprocessor,
     LLMParseProvider,
     LLMRequest,
-    ParserLimits,
     ParseResult,
+    ParserLimits,
     PolymorphicEmailParser,
     RawEmail,
     SourceFormat,
@@ -70,14 +71,14 @@ class TestPreprocessorInline:
             RawEmail(
                 sender="A N <a@example.com>",
                 subject="watchlist",
-                received_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                received_at=datetime(2025, 1, 1, tzinfo=UTC),
                 body_text="Buy AAPL on the dip; trim NVDA.",
             )
         )
         assert out.source_format == SourceFormat.PLAIN_TEXT
         assert "AAPL" in out.candidate_tickers
         assert "NVDA" in out.candidate_tickers
-        assert out.received_at.tzinfo is timezone.utc
+        assert out.received_at.tzinfo is UTC
 
     def test_html_is_stripped(self):
         pp = EmailPreprocessor()
@@ -85,7 +86,7 @@ class TestPreprocessorInline:
             RawEmail(
                 sender="x@y.com",
                 subject="s",
-                received_at=datetime(2025, 1, 1, tzinfo=timezone.utc),
+                received_at=datetime(2025, 1, 1, tzinfo=UTC),
                 body_html="<html><body><p>Buy <b>MSFT</b></p>"
                 "<script>alert(1)</script></body></html>",
             )
@@ -97,7 +98,7 @@ class TestPreprocessorInline:
     def test_default_received_at_is_utc(self):
         pp = EmailPreprocessor()
         out = pp.normalize(RawEmail(body_text="hi"))
-        assert out.received_at.tzinfo is timezone.utc
+        assert out.received_at.tzinfo is UTC
 
     def test_image_attachments_become_data_urls(self):
         pp = EmailPreprocessor()
@@ -123,9 +124,7 @@ class TestPreprocessorInline:
 
         monkeypatch.setattr(builtins, "__import__", fake_import)
         pp = EmailPreprocessor()
-        out = pp.normalize(
-            RawEmail(body_text="see attached", pdf_attachments=[b"%PDF-1.4 fake"])
-        )
+        out = pp.normalize(RawEmail(body_text="see attached", pdf_attachments=[b"%PDF-1.4 fake"]))
         assert out.extracted_pdf_text == ""
         assert any("pypdf not installed" in w for w in out.parse_warnings)
 
@@ -181,11 +180,7 @@ class TestPreprocessorHelpers:
         assert out == ("AAPL", "MSFT")
 
     def test_strip_forwarded_envelopes_keeps_body(self):
-        text = (
-            "---------- Forwarded message ----------\n"
-            "From: x@y.com\n"
-            "Real content here.\n"
-        )
+        text = "---------- Forwarded message ----------\nFrom: x@y.com\nReal content here.\n"
         out = _strip_forwarded_envelopes(text)
         assert "Forwarded message" not in out
         assert "Real content" in out
@@ -231,13 +226,13 @@ def _good_payload(picks=None, macro=None, changes=None, conf=0.8):
     )
 
 
-def _norm(body="Buy AAPL.", subject="watchlist") -> "object":
+def _norm(body="Buy AAPL.", subject="watchlist") -> object:
     pp = EmailPreprocessor()
     return pp.normalize(
         RawEmail(
             sender="a@example.com",
             subject=subject,
-            received_at=datetime(2026, 4, 9, tzinfo=timezone.utc),
+            received_at=datetime(2026, 4, 9, tzinfo=UTC),
             body_text=body,
         )
     )
@@ -312,7 +307,7 @@ class TestParserHappyPath:
         pc = result.position_changes[0]
         assert pc.symbol == "TSLA"
         assert pc.action == PickActionHint.TRIM
-        assert pc.occurred_at_hint == datetime(2026, 4, 8, 20, 0, tzinfo=timezone.utc)
+        assert pc.occurred_at_hint == datetime(2026, 4, 8, 20, 0, tzinfo=UTC)
 
 
 class TestParserErrorPaths:
@@ -459,8 +454,12 @@ class TestParserClamping:
 class TestParserLimits:
     def test_max_picks_enforced(self):
         items = [
-            {"symbol": f"AAA{i}"[:5] if i < 100 else "AAPL",
-             "action": "buy", "confidence": 0.5, "rationale": "x"}
+            {
+                "symbol": f"AAA{i}"[:5] if i < 100 else "AAPL",
+                "action": "buy",
+                "confidence": 0.5,
+                "rationale": "x",
+            }
             for i in range(50)
         ]
         # Replace symbols with valid uppercase tickers
@@ -483,7 +482,7 @@ class TestParserLimits:
             RawEmail(
                 sender="a@b.com",
                 subject="s",
-                received_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+                received_at=datetime(2026, 1, 1, tzinfo=UTC),
                 body_text=big_body,
             )
         )
@@ -517,7 +516,7 @@ class TestParseResultShape:
         norm = NormalizedEmail(
             sender="a@b.com",
             subject="s",
-            received_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            received_at=datetime(2026, 1, 1, tzinfo=UTC),
             body="hi",
             source_format=SourceFormat.PLAIN_TEXT,
             extracted_pdf_text="",

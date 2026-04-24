@@ -22,10 +22,11 @@ module without monkey-patching ``sys.modules``.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional, Protocol
+from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +49,8 @@ class _StripeLike(Protocol):
     `stripe`. The real `stripe` module satisfies this implicitly.
     """
 
-    api_key: Optional[str]
-    api_version: Optional[str]
+    api_key: str | None
+    api_version: str | None
 
     Webhook: Any  # stripe.Webhook namespace
     Customer: Any
@@ -70,7 +71,7 @@ class StripeClientFactory:
 
     def __init__(self, loader=None):
         self._loader = loader or self._default_loader
-        self._cached: Optional[_StripeLike] = None
+        self._cached: _StripeLike | None = None
 
     @staticmethod
     def _default_loader() -> _StripeLike:
@@ -83,7 +84,7 @@ class StripeClientFactory:
             ) from exc
         return stripe  # type: ignore[return-value]
 
-    def get(self, api_key: Optional[str], api_version: Optional[str] = None) -> _StripeLike:
+    def get(self, api_key: str | None, api_version: str | None = None) -> _StripeLike:
         if not api_key:
             raise StripeNotConfigured(
                 "STRIPE_API_KEY is not set. Set it in the environment to enable "
@@ -106,8 +107,8 @@ _default_factory = StripeClientFactory()
 
 
 def get_stripe(
-    api_key: Optional[str] = None,
-    api_version: Optional[str] = None,
+    api_key: str | None = None,
+    api_version: str | None = None,
 ) -> _StripeLike:
     """Return a configured `stripe` SDK module.
 

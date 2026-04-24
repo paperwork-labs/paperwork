@@ -4,9 +4,10 @@
 Uses ast.parse() which only parses in memory — no __pycache__ directories
 are created, avoiding PermissionError in non-root Docker containers.
 """
+
 import ast
-import sys
 import pathlib
+import sys
 
 errs = 0
 checked = 0

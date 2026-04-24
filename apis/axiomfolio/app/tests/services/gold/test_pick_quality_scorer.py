@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-
 
 from app.models.market_data import MarketRegime, MarketSnapshot
 from app.services.gold.pick_quality_scorer import (
@@ -14,7 +13,7 @@ from app.services.gold.pick_quality_scorer import (
 
 
 def _regime(db_session, *, code: str) -> MarketRegime:
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
     row = MarketRegime(
         as_of_date=now,
         regime_state=code,
@@ -36,7 +35,7 @@ def _snapshot(
     td_buy: int | None = 8,
     td_sell: int | None = 0,
 ) -> MarketSnapshot:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     price = 125.50
     row = MarketSnapshot(
         symbol=symbol,
@@ -105,7 +104,7 @@ def test_regime_r5_forces_total_zero(db_session):
 
 def test_earnings_in_three_days_penalizes_component(db_session):
     r = _regime(db_session, code="R1")
-    ref = datetime.now(timezone.utc)
+    ref = datetime.now(UTC)
     ne = ref + timedelta(days=3)
     _snapshot(db_session, next_earnings=ne)
     scorer = PickQualityScorer()

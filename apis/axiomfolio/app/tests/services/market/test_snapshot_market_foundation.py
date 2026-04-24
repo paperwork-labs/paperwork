@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import datetime as stdlib_datetime
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -11,7 +11,10 @@ import pytest
 
 from app.models.market_data import EarningsCalendarEvent, MarketRegime, MarketSnapshot
 from app.services.market.constants import CURATED_MARKET_SYMBOLS
-from app.services.market.indicator_engine import compute_full_indicator_series, extract_latest_values
+from app.services.market.indicator_engine import (
+    compute_full_indicator_series,
+    extract_latest_values,
+)
 from app.services.market.market_data_service import price_bars, snapshot_builder
 from app.services.market.snapshot_builder import next_earnings_utc_from_calendar
 
@@ -50,7 +53,7 @@ def test_curated_universe_includes_retail_favorites():
 
 
 def test_next_earnings_utc_from_calendar_finds_earliest_future_row(db_session):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(stdlib_datetime.UTC)
     d0 = (now + timedelta(days=3)).date()
     d1 = (now + timedelta(days=30)).date()
     db_session.add(
@@ -82,12 +85,12 @@ def test_next_earnings_utc_from_calendar_none_when_empty(db_session):
 
 def test_next_earnings_utc_today_eod_stays_future_dated(db_session, monkeypatch):
     """Same-day report_date must not be UTC midnight (already in the past)."""
-    fixed = stdlib_datetime.datetime(2024, 3, 10, 12, 0, 0, tzinfo=timezone.utc)
+    fixed = stdlib_datetime.datetime(2024, 3, 10, 12, 0, 0, tzinfo=stdlib_datetime.UTC)
 
     class _FauxDateTime:
         @staticmethod
         def now(tz=None):
-            if tz is timezone.utc:
+            if tz is stdlib_datetime.UTC:
                 return fixed
             return stdlib_datetime.datetime.now(tz)
 
@@ -117,7 +120,7 @@ def test_next_earnings_utc_today_eod_stays_future_dated(db_session, monkeypatch)
 
 def test_next_earnings_utc_bmo_and_amc_hours(db_session):
     """time_of_day bmo / amc map to 13:30 and 21:00 UTC."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(stdlib_datetime.UTC)
     d = (now + timedelta(days=14)).date()
     db_session.add(
         EarningsCalendarEvent(
@@ -146,7 +149,7 @@ def test_next_earnings_utc_bmo_and_amc_hours(db_session):
 
 def test_recompute_earnings_metrics_counts_missing(db_session):
     sym = "EARNM"
-    start = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(days=130)
+    start = datetime.now(stdlib_datetime.UTC).replace(microsecond=0) - timedelta(days=130)
     dates = [start + timedelta(days=i) for i in range(120)]
     df = _make_ohlcv_df(dates)
     price_bars.persist_price_bars(
@@ -164,13 +167,13 @@ def test_recompute_earnings_metrics_counts_missing(db_session):
 
 def test_recompute_earnings_metrics_counts_written(db_session):
     sym = "EARNW"
-    start = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(days=130)
+    start = datetime.now(stdlib_datetime.UTC).replace(microsecond=0) - timedelta(days=130)
     dates = [start + timedelta(days=i) for i in range(120)]
     df = _make_ohlcv_df(dates)
     price_bars.persist_price_bars(
         db_session, sym, df, interval="1d", data_source="unit_test", is_adjusted=True
     )
-    rd = (datetime.now(timezone.utc) + timedelta(days=5)).date()
+    rd = (datetime.now(stdlib_datetime.UTC) + timedelta(days=5)).date()
     db_session.add(
         EarningsCalendarEvent(
             symbol=sym,
@@ -196,7 +199,7 @@ def test_earnings_calendar_exception_preserves_next_earnings_and_increments_erro
 ):
     """Transient calendar lookup must not clobber next_earnings from prior snapshot."""
     sym = "EARNPRES"
-    start = datetime.now(timezone.utc).replace(microsecond=0) - timedelta(days=130)
+    start = datetime.now(stdlib_datetime.UTC).replace(microsecond=0) - timedelta(days=130)
     dates = [start + timedelta(days=i) for i in range(120)]
     df = _make_ohlcv_df(dates)
     price_bars.persist_price_bars(
@@ -204,7 +207,7 @@ def test_earnings_calendar_exception_preserves_next_earnings_and_increments_erro
     )
     # Aligned to MarketSnapshot.next_earnings (naive in DB) for equality.
     existing = datetime(2025, 6, 1, 15, 30, 0)
-    ts = datetime.now(timezone.utc)
+    ts = datetime.now(stdlib_datetime.UTC)
     db_session.add(
         MarketSnapshot(
             symbol=sym,
@@ -288,7 +291,7 @@ def test_run_scan_overlay_writes_regime_state_from_market_regime(db_session, mon
 
     _run = coverage._run_scan_overlay
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(stdlib_datetime.UTC)
     db_session.add(
         MarketRegime(
             as_of_date=now,

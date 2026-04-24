@@ -33,7 +33,6 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import update
 from sqlalchemy.orm import Session
@@ -68,7 +67,7 @@ class OhlcvAdjustReport:
     ex_date: date
     multiplier: Decimal
     rows_updated: int
-    skipped_reason: Optional[str] = None  # set when adjustment was a no-op
+    skipped_reason: str | None = None  # set when adjustment was a no-op
 
 
 class HistoricalOhlcvAdjuster:
@@ -185,7 +184,7 @@ class HistoricalOhlcvAdjuster:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _multiplier(action: CorporateAction) -> Optional[Decimal]:
+    def _multiplier(action: CorporateAction) -> Decimal | None:
         if action.action_type not in _OHLCV_ADJUSTABLE_TYPES:
             return None
         if action.ratio_numerator is None or action.ratio_denominator is None:

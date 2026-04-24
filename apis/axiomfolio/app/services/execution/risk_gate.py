@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -63,10 +62,24 @@ DEFAULT_STOP_MULTIPLIER = 2.0
 # crypto assets not recognized here fall through to the equity path and
 # are blocked by missing MarketSnapshot/stage data, which is the safer
 # failure mode.
-CRYPTO_SYMBOLS_CORE = frozenset({
-    "BTC", "ETH", "ADA", "SOL", "MATIC", "DOGE", "LTC", "XRP", "DOT", "AVAX",
-    "LINK", "UNI", "ATOM", "BCH",
-})
+CRYPTO_SYMBOLS_CORE = frozenset(
+    {
+        "BTC",
+        "ETH",
+        "ADA",
+        "SOL",
+        "MATIC",
+        "DOGE",
+        "LTC",
+        "XRP",
+        "DOT",
+        "AVAX",
+        "LINK",
+        "UNI",
+        "ATOM",
+        "BCH",
+    }
+)
 
 
 def _is_crypto_symbol(symbol: str) -> bool:
@@ -96,6 +109,7 @@ def _is_crypto_symbol(symbol: str) -> bool:
 @dataclass
 class PositionSizeResult:
     """Stage Analysis spec position sizing output."""
+
     full_position_dollars: float
     stage_cap: float  # 0.0–1.0 fraction
     capped_position_dollars: float
@@ -184,18 +198,17 @@ class RiskGate:
         self,
         req: OrderRequest,
         price_estimate: float,
-        db: Optional[Session] = None,
-        portfolio_equity: Optional[float] = None,
-        risk_budget: Optional[float] = None,
-    ) -> List[str]:
+        db: Session | None = None,
+        portfolio_equity: float | None = None,
+        risk_budget: float | None = None,
+    ) -> list[str]:
         """Run all risk checks. Raises on hard block, returns soft warnings."""
-        warnings: List[str] = []
+        warnings: list[str] = []
         est_value = req.quantity * price_estimate
 
         if est_value > self.max_order_value:
             raise RiskViolation(
-                f"Order value ${est_value:,.0f} exceeds "
-                f"${self.max_order_value:,.0f} maximum"
+                f"Order value ${est_value:,.0f} exceeds ${self.max_order_value:,.0f} maximum"
             )
 
         # Crypto orders use a tighter, Weinstein-agnostic path. Rationale:
@@ -218,9 +231,7 @@ class RiskGate:
         if db and price_estimate > 0 and risk_budget and risk_budget > 0:
             if app_settings.ENABLE_ACCOUNT_AWARE_RISK:
                 self._load_account_strategy_profile(db, req)
-            sizing_warning = self._check_stage_regime_sizing(
-                db, req, price_estimate, risk_budget
-            )
+            sizing_warning = self._check_stage_regime_sizing(db, req, price_estimate, risk_budget)
             if sizing_warning:
                 warnings.append(sizing_warning)
 
@@ -230,7 +241,7 @@ class RiskGate:
         self,
         req: OrderRequest,
         price_estimate: float,
-        portfolio_equity: Optional[float],
+        portfolio_equity: float | None,
     ) -> None:
         """Crypto-specific sizing: enforce CRYPTO_MAX_POSITION_PCT as a hard cap.
 
@@ -247,14 +258,15 @@ class RiskGate:
             return
 
         est_value = req.quantity * price_estimate
-        cap_pct = float(
-            getattr(app_settings, "CRYPTO_MAX_POSITION_PCT", 0.05) or 0.05
-        )
+        cap_pct = float(getattr(app_settings, "CRYPTO_MAX_POSITION_PCT", 0.05) or 0.05)
         cap_value = portfolio_equity * cap_pct
         if est_value > cap_value:
             logger.warning(
                 "Crypto sizing cap BLOCKED: %s est_value=$%.0f cap=$%.0f (%.1f%%)",
-                req.symbol, est_value, cap_value, cap_pct * 100,
+                req.symbol,
+                est_value,
+                cap_value,
+                cap_pct * 100,
             )
             raise RiskViolation(
                 f"Crypto position ${est_value:,.0f} exceeds "
@@ -267,7 +279,7 @@ class RiskGate:
         req: OrderRequest,
         price_estimate: float,
         risk_budget: float,
-    ) -> Optional[str]:
+    ) -> str | None:
         """Enforce Stage Analysis spec position sizing as a hard cap.
 
         Raises RiskViolation if requested quantity exceeds stage cap.
@@ -309,8 +321,12 @@ class RiskGate:
             logger.warning(
                 "Position sizing cap BLOCKED: %s requested %d shares, max is %d "
                 "(stage=%s, regime=%s, cap=%.0f%%)",
-                req.symbol, req.quantity, result.shares,
-                snap.stage_label, regime_state, result.stage_cap * 100,
+                req.symbol,
+                req.quantity,
+                result.shares,
+                snap.stage_label,
+                regime_state,
+                result.stage_cap * 100,
             )
             raise RiskViolation(
                 f"Position sizing: requested {req.quantity} shares exceeds "
@@ -338,8 +354,8 @@ class RiskGate:
         self,
         db: Session,
         symbol: str,
-        limit_price: Optional[float],
-        stop_price: Optional[float],
+        limit_price: float | None,
+        stop_price: float | None,
     ) -> float:
         """Estimate order price for risk checks.
 
@@ -364,7 +380,6 @@ class RiskGate:
                     )
             else:
                 raise RiskViolation(
-                    f"No price available for {symbol} — "
-                    f"order rejected (conservative fail-safe)"
+                    f"No price available for {symbol} — order rejected (conservative fail-safe)"
                 )
         return price

@@ -1,4 +1,5 @@
 """Schwab option field mapping: optionExpirationDate + OCC symbol fallback."""
+
 from __future__ import annotations
 
 import pytest

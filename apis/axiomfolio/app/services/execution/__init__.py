@@ -17,13 +17,13 @@ from typing import Any, List
 
 __all__ = [
     "BrokerExecutor",
+    "BrokerRouter",
+    "OrderManager",
     "OrderRequest",
     "OrderResult",
-    "BrokerRouter",
+    "PaperExecutor",
     "RiskGate",
     "RiskViolation",
-    "OrderManager",
-    "PaperExecutor",
 ]
 
 
@@ -43,5 +43,5 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
-def __dir__() -> List[str]:
+def __dir__() -> list[str]:
     return sorted(__all__)

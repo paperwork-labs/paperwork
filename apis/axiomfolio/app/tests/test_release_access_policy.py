@@ -1,5 +1,5 @@
-from types import SimpleNamespace
 import uuid
+from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
@@ -52,7 +52,9 @@ def test_release_policy_authenticated_non_admin_portfolio_allowed():
 
 def test_authenticated_non_admin_portfolio_api_allowed(client: TestClient):
     user_username = f"user_{uuid.uuid4().hex[:8]}"
-    user_token = _register_and_login(client, user_username, "Passw0rd!", f"{user_username}@example.com")
+    user_token = _register_and_login(
+        client, user_username, "Passw0rd!", f"{user_username}@example.com"
+    )
 
     market_res = client.get(
         "/api/v1/market-data/universe/tracked",

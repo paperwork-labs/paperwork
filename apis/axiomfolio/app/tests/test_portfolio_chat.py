@@ -7,7 +7,7 @@ deterministic StubLLMProvider.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -25,13 +25,12 @@ from app.services.agent.portfolio_chat import (
     default_tools,
 )
 
-
 # ---------------------------------------------------------------------------
 # Tool helpers used by tests
 # ---------------------------------------------------------------------------
 
 
-def _user_only_tool(call_log: List[Dict[str, Any]]) -> ToolSpec:
+def _user_only_tool(call_log: list[dict[str, Any]]) -> ToolSpec:
     """A test tool that records the (user_id, args) it was called with."""
 
     def fn(db, user_id, args):
@@ -85,7 +84,7 @@ class TestDispatch:
         assert resp.truncated is False
 
     def test_tool_call_then_final_answer(self, db_session):
-        log: List[Dict[str, Any]] = []
+        log: list[dict[str, Any]] = []
         echo = _user_only_tool(log)
         provider = StubLLMProvider(
             [
@@ -125,9 +124,7 @@ class TestDispatch:
             [
                 LLMChatResult(
                     content="",
-                    tool_calls=(
-                        {"id": "x", "name": "does_not_exist", "arguments": {}},
-                    ),
+                    tool_calls=({"id": "x", "name": "does_not_exist", "arguments": {}},),
                 ),
                 LLMChatResult(content="Sorry, I could not find that data."),
             ]
@@ -145,9 +142,7 @@ class TestDispatch:
             [
                 LLMChatResult(
                     content="",
-                    tool_calls=(
-                        {"id": "boom_1", "name": "boom", "arguments": {}},
-                    ),
+                    tool_calls=({"id": "boom_1", "name": "boom", "arguments": {}},),
                 ),
                 LLMChatResult(content="Recovered."),
             ]
@@ -165,16 +160,14 @@ class TestDispatch:
 
 class TestLimits:
     def test_too_many_tool_calls_truncates(self, db_session):
-        log: List[Dict[str, Any]] = []
+        log: list[dict[str, Any]] = []
         echo = _user_only_tool(log)
         # Provider always asks for another tool call.
         provider = StubLLMProvider(
             [
                 LLMChatResult(
                     content="",
-                    tool_calls=(
-                        {"id": f"call_{i}", "name": "user_echo", "arguments": {}},
-                    ),
+                    tool_calls=({"id": f"call_{i}", "name": "user_echo", "arguments": {}},),
                 )
                 for i in range(10)
             ]
@@ -263,7 +256,7 @@ class TestToolRegistry:
 
 class TestMultiTenancy:
     def test_user_id_is_threaded_through_to_each_tool_call(self, db_session):
-        log: List[Dict[str, Any]] = []
+        log: list[dict[str, Any]] = []
         echo = _user_only_tool(log)
         provider = StubLLMProvider(
             [
@@ -282,7 +275,7 @@ class TestMultiTenancy:
         assert [c["user_id"] for c in log] == [7, 7]
 
     def test_isolation_between_two_users_with_separate_chats(self, db_session):
-        log: List[Dict[str, Any]] = []
+        log: list[dict[str, Any]] = []
         echo = _user_only_tool(log)
         provider1 = StubLLMProvider(
             [

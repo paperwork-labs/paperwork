@@ -6,9 +6,8 @@ helpers that are async are run via ``asyncio.new_event_loop()`` and
 """
 
 import asyncio
-import json
 import logging
-from datetime import date, datetime, timezone
+from datetime import UTC, datetime
 
 from app.database import SessionLocal
 from app.tasks.celery_app import celery_app
@@ -39,6 +38,7 @@ def generate_daily_digest_task(deliver_brain: bool = True) -> dict:
 
         if deliver_brain:
             from app.services.intelligence.brief_delivery import deliver_daily_digest_brain
+
             loop = _setup_loop()
             try:
                 loop.run_until_complete(deliver_daily_digest_brain(brief))
@@ -77,6 +77,7 @@ def generate_weekly_brief_task(deliver_brain: bool = True) -> dict:
 
         if deliver_brain:
             from app.services.intelligence.brief_delivery import deliver_weekly_brief_brain
+
             loop = _setup_loop()
             try:
                 loop.run_until_complete(deliver_weekly_brief_brain(brief))
@@ -116,9 +117,7 @@ def generate_monthly_review_task(deliver_brain: bool = True) -> dict:
 
             loop = _setup_loop()
             try:
-                loop.run_until_complete(
-                    brain_webhook.notify("monthly_review", brief, user_id=None)
-                )
+                loop.run_until_complete(brain_webhook.notify("monthly_review", brief, user_id=None))
             finally:
                 loop.close()
 
@@ -142,8 +141,8 @@ def _store_brief(session: SessionLocal, brief: dict) -> None:
         run = JobRun(
             task_name=f"intelligence_{brief['type']}_brief",
             status="ok",
-            started_at=datetime.now(timezone.utc),
-            finished_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
+            finished_at=datetime.now(UTC),
             result_meta=brief,
         )
         session.add(run)

@@ -14,11 +14,12 @@ Truth table under test (from `_classify_stale_queued`):
 | >900s        | yes               | no           | error (idle)     |
 | >900s        | no                | n/a          | error (down)     |
 """
+
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 
@@ -32,8 +33,8 @@ from app.services.pipeline.dag import (
 )
 
 
-def _meta(age_s: float, status: str = RUN_QUEUED) -> Dict[str, Any]:
-    started = datetime.fromtimestamp(time.time() - age_s, tz=timezone.utc)
+def _meta(age_s: float, status: str = RUN_QUEUED) -> dict[str, Any]:
+    started = datetime.fromtimestamp(time.time() - age_s, tz=UTC)
     return {
         "run_id": "manual-abc",
         "status": status,
@@ -41,17 +42,14 @@ def _meta(age_s: float, status: str = RUN_QUEUED) -> Dict[str, Any]:
     }
 
 
-def _patch_inspect(
-    monkeypatch: pytest.MonkeyPatch, value: Optional[Dict[str, Any]]
-) -> None:
-    monkeypatch.setattr(
-        dag_module, "_inspect_active_tasks", lambda: value
-    )
+def _patch_inspect(monkeypatch: pytest.MonkeyPatch, value: dict[str, Any] | None) -> None:
+    monkeypatch.setattr(dag_module, "_inspect_active_tasks", lambda: value)
 
 
 # ---------------------------------------------------------------------------
 # Non-queued runs are returned untouched
 # ---------------------------------------------------------------------------
+
 
 def test_non_queued_meta_returned_untouched(monkeypatch):
     """Running/ok/error/partial runs must not be reclassified."""
@@ -70,6 +68,7 @@ def test_meta_without_started_at_is_passthrough(monkeypatch):
 # Below the surface threshold — must remain `queued`
 # ---------------------------------------------------------------------------
 
+
 def test_young_queued_run_stays_queued(monkeypatch):
     """A 5-second-old queued run is too fresh to reclassify."""
     _patch_inspect(monkeypatch, {"worker-1": []})
@@ -81,6 +80,7 @@ def test_young_queued_run_stays_queued(monkeypatch):
 # ---------------------------------------------------------------------------
 # Worker reachable + busy → `waiting`
 # ---------------------------------------------------------------------------
+
 
 def test_busy_worker_surfaces_waiting_with_longest_running_task(monkeypatch):
     """Two workers, two tasks; we report the older one as the blocker."""
@@ -132,6 +132,7 @@ def test_old_queued_run_with_busy_worker_still_waiting_not_error(monkeypatch):
 # Worker reachable but idle → keep `queued` until timeout, then `error`
 # ---------------------------------------------------------------------------
 
+
 def test_idle_worker_within_timeout_stays_queued(monkeypatch):
     _patch_inspect(monkeypatch, {"worker-fast": []})
     out = _classify_stale_queued(_meta(age_s=300))
@@ -152,6 +153,7 @@ def test_idle_worker_past_timeout_escalates_to_error(monkeypatch):
 # No worker reachable → keep `queued` until timeout, then `error`
 # ---------------------------------------------------------------------------
 
+
 def test_no_worker_within_timeout_stays_queued(monkeypatch):
     """Transient broker glitches must not flap the row to error."""
     _patch_inspect(monkeypatch, None)
@@ -169,6 +171,7 @@ def test_no_worker_past_timeout_errors_with_worker_down_message(monkeypatch):
 # ---------------------------------------------------------------------------
 # Backward-compat: the removed-but-aliased _expire_stale_queued must work
 # ---------------------------------------------------------------------------
+
 
 def test_legacy_alias_still_callable():
     assert dag_module._expire_stale_queued is dag_module._classify_stale_queued

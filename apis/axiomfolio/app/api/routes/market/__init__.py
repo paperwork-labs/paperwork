@@ -19,17 +19,17 @@ Modules:
 from fastapi import APIRouter
 
 from .admin import router as admin_router
-from .prices import router as prices_router
-from .snapshots import router as snapshots_router
 from .coverage import router as coverage_router
-from .regime import router as regime_router
-from .quad import router as quad_router
-from .intelligence import router as intelligence_router
-from .universe import router as universe_router
 from .dashboard import router as dashboard_router
 from .earnings import router as earnings_router
+from .intelligence import router as intelligence_router
 from .iv import router as iv_router
+from .prices import router as prices_router
+from .quad import router as quad_router
+from .regime import router as regime_router
 from .sentiment_composite import router as sentiment_composite_router
+from .snapshots import router as snapshots_router
+from .universe import router as universe_router
 
 # Combined router for all market endpoints
 router = APIRouter()
@@ -49,17 +49,17 @@ router.include_router(iv_router)
 router.include_router(sentiment_composite_router)
 
 __all__ = [
-    "router",
     "admin_router",
-    "prices_router",
-    "snapshots_router",
     "coverage_router",
-    "regime_router",
-    "quad_router",
-    "intelligence_router",
-    "universe_router",
     "dashboard_router",
     "earnings_router",
+    "intelligence_router",
     "iv_router",
+    "prices_router",
+    "quad_router",
+    "regime_router",
+    "router",
     "sentiment_composite_router",
+    "snapshots_router",
+    "universe_router",
 ]

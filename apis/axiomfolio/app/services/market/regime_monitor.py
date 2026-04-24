@@ -7,8 +7,7 @@ medallion: silver
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session
 
@@ -45,26 +44,26 @@ class RegimeMonitor:
 
     def __init__(self, db: Session) -> None:
         self.db = db
-        self._last_vix: Optional[float] = None
-        self._vix_open: Optional[float] = None
+        self._last_vix: float | None = None
+        self._vix_open: float | None = None
         self._alerts_sent: set[str] = set()
 
-    def restore_day_state(self, vix_open: Optional[float], alerts_sent: set[str]) -> None:
+    def restore_day_state(self, vix_open: float | None, alerts_sent: set[str]) -> None:
         """Restore VIX open and dedupe keys from Redis across Celery runs."""
         self._vix_open = vix_open
         self._alerts_sent = set(alerts_sent)
 
-    def snapshot_day_state(self) -> tuple[Optional[float], set[str]]:
+    def snapshot_day_state(self) -> tuple[float | None, set[str]]:
         """State to persist after a run (VIX open + alert dedupe keys)."""
         return self._vix_open, set(self._alerts_sent)
 
-    def check_vix(self, current_vix: float) -> List[RegimeAlert]:
+    def check_vix(self, current_vix: float) -> list[RegimeAlert]:
         """Check VIX for alert conditions.
 
         Returns list of alerts triggered (may be empty).
         """
-        alerts: List[RegimeAlert] = []
-        now = datetime.now(timezone.utc)
+        alerts: list[RegimeAlert] = []
+        now = datetime.now(UTC)
 
         # Check absolute level
         if current_vix >= self.VIX_ABSOLUTE_CRITICAL:
@@ -136,14 +135,11 @@ class RegimeMonitor:
         """Set today's VIX open price for spike calculation."""
         self._vix_open = open_price
 
-    def check_regime_shift(self) -> Optional[RegimeAlert]:
+    def check_regime_shift(self) -> RegimeAlert | None:
         """Check if market regime shifted from previous day."""
         # Get last two regime records
         regimes = (
-            self.db.query(MarketRegime)
-            .order_by(MarketRegime.as_of_date.desc())
-            .limit(2)
-            .all()
+            self.db.query(MarketRegime).order_by(MarketRegime.as_of_date.desc()).limit(2).all()
         )
 
         if len(regimes) < 2:
@@ -152,7 +148,7 @@ class RegimeMonitor:
         current, previous = regimes[0], regimes[1]
 
         if current.regime_state != previous.regime_state:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             severity = "warning"
 
             # Critical if shift is 2+ levels or to R5

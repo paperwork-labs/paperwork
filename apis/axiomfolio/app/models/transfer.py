@@ -5,19 +5,20 @@ Maps to brokerage transfer sections from any data source.
 Supports all brokerages: IBKR, TastyTrade, Schwab, etc.
 """
 
+import enum
+
 from sqlalchemy import (
     Column,
+    Date,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
     Integer,
     String,
-    Float,
-    DateTime,
-    ForeignKey,
-    Date,
-    Enum,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
 
 from app.models import Base
 
@@ -63,9 +64,7 @@ class Transfer(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    broker_account_id = Column(
-        Integer, ForeignKey("broker_accounts.id"), nullable=False
-    )
+    broker_account_id = Column(Integer, ForeignKey("broker_accounts.id"), nullable=False)
 
     # Transfer Identity
     transaction_id = Column(String(100), nullable=True, unique=True, index=True)

@@ -44,12 +44,19 @@ Hard rules (enforced by tests):
 
 medallion: gold
 """
-from .preprocessor import EmailPreprocessor, NormalizedEmail, RawEmail
+
+from .llm_provider import (
+    LLMParseProvider,
+    LLMRequest,
+    LLMResponse,
+    StubLLMParseProvider,
+)
 from .parser import (
-    PolymorphicEmailParser,
     ParseResult,
     ParserLimits,
+    PolymorphicEmailParser,
 )
+from .preprocessor import EmailPreprocessor, NormalizedEmail, RawEmail
 from .types import (
     ExtractedMacro,
     ExtractedPick,
@@ -57,27 +64,21 @@ from .types import (
     PickActionHint,
     SourceFormat,
 )
-from .llm_provider import (
-    LLMParseProvider,
-    LLMRequest,
-    LLMResponse,
-    StubLLMParseProvider,
-)
 
 __all__ = [
     "EmailPreprocessor",
-    "NormalizedEmail",
-    "RawEmail",
-    "PolymorphicEmailParser",
-    "ParseResult",
-    "ParserLimits",
     "ExtractedMacro",
     "ExtractedPick",
     "ExtractedPositionChange",
-    "PickActionHint",
-    "SourceFormat",
     "LLMParseProvider",
     "LLMRequest",
     "LLMResponse",
+    "NormalizedEmail",
+    "ParseResult",
+    "ParserLimits",
+    "PickActionHint",
+    "PolymorphicEmailParser",
+    "RawEmail",
+    "SourceFormat",
     "StubLLMParseProvider",
 ]

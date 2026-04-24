@@ -16,7 +16,6 @@ from app.services.multitenant.rate_limiter import (
     TenantRateLimiter,
 )
 
-
 pytestmark = pytest.mark.no_db
 
 
@@ -77,9 +76,7 @@ def test_burst_exhaustion_returns_429(limiter):
     db = _StubDB()
     decisions = []
     for _ in range(DEFAULT_BURST_CAPACITY + 5):
-        decisions.append(
-            limiter.check(db, user_id=42, endpoint="/api/v1/burst").decision
-        )
+        decisions.append(limiter.check(db, user_id=42, endpoint="/api/v1/burst").decision)
     assert RateLimitDecision.LIMITED in decisions
     last = decisions[-1]
     assert last == RateLimitDecision.LIMITED

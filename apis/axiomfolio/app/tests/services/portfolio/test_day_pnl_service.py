@@ -13,7 +13,7 @@ prod scenario (3,500 sh, current $17.15, simulated broker day_pnl
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -40,7 +40,6 @@ from app.services.portfolio.day_pnl_service import (
     recompute_position_day_pnl,
     resolve_prior_close,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -74,9 +73,7 @@ def _make_account(session, user: User, *, broker: BrokerType = BrokerType.IBKR) 
     return acct
 
 
-def _insert_daily_bar(
-    session, symbol: str, bar_date: date, close: float
-) -> PriceData:
+def _insert_daily_bar(session, symbol: str, bar_date: date, close: float) -> PriceData:
     row = PriceData(
         symbol=symbol,
         date=datetime.combine(bar_date, datetime.min.time()),
@@ -237,9 +234,7 @@ def test_has_ambiguous_corporate_action_detects_split_in_window(db_session) -> N
     db_session.add(ca)
     db_session.flush()
 
-    assert (
-        has_ambiguous_corporate_action(db_session, "TSLA", prior, as_of=today) is True
-    )
+    assert has_ambiguous_corporate_action(db_session, "TSLA", prior, as_of=today) is True
 
 
 def test_has_ambiguous_corporate_action_ignores_cash_dividends(db_session) -> None:
@@ -257,9 +252,7 @@ def test_has_ambiguous_corporate_action_ignores_cash_dividends(db_session) -> No
     db_session.flush()
 
     # Cash dividends do NOT change price scale — not ambiguous.
-    assert (
-        has_ambiguous_corporate_action(db_session, "MSFT", prior, as_of=today) is False
-    )
+    assert has_ambiguous_corporate_action(db_session, "MSFT", prior, as_of=today) is False
 
 
 def test_recompute_position_day_pnl_happy_path(db_session) -> None:
@@ -312,9 +305,7 @@ def test_recompute_position_day_pnl_overwrites_broker_value(db_session) -> None:
     # 10 × (155 - 150) = 50; 50 / (1550 - 50) = 50 / 1500 = 3.333...
     assert pos.day_pnl == Decimal("50")
     assert pos.day_pnl_pct is not None
-    assert abs(pos.day_pnl_pct - Decimal("3.33333333333333333333333333")) < Decimal(
-        "0.0001"
-    )
+    assert abs(pos.day_pnl_pct - Decimal("3.33333333333333333333333333")) < Decimal("0.0001")
 
 
 def test_recompute_split_window_nulls_day_pnl(db_session) -> None:
@@ -421,14 +412,38 @@ def test_recompute_counter_sums_to_total(db_session) -> None:
     db_session.flush()
 
     rows = [
-        _make_position(db_session, account, symbol="OK1", quantity=Decimal("10"),
-                       current_price=Decimal("101"), avg_cost=Decimal("95")),
-        _make_position(db_session, account, symbol="OK2", quantity=Decimal("20"),
-                       current_price=Decimal("51"), avg_cost=Decimal("48")),
-        _make_position(db_session, account, symbol="SPL", quantity=Decimal("30"),
-                       current_price=Decimal("16"), avg_cost=Decimal("20")),
-        _make_position(db_session, account, symbol="NOBARS", quantity=Decimal("40"),
-                       current_price=Decimal("9"), avg_cost=Decimal("10")),
+        _make_position(
+            db_session,
+            account,
+            symbol="OK1",
+            quantity=Decimal("10"),
+            current_price=Decimal("101"),
+            avg_cost=Decimal("95"),
+        ),
+        _make_position(
+            db_session,
+            account,
+            symbol="OK2",
+            quantity=Decimal("20"),
+            current_price=Decimal("51"),
+            avg_cost=Decimal("48"),
+        ),
+        _make_position(
+            db_session,
+            account,
+            symbol="SPL",
+            quantity=Decimal("30"),
+            current_price=Decimal("16"),
+            avg_cost=Decimal("20"),
+        ),
+        _make_position(
+            db_session,
+            account,
+            symbol="NOBARS",
+            quantity=Decimal("40"),
+            current_price=Decimal("9"),
+            avg_cost=Decimal("10"),
+        ),
     ]
 
     stats = recompute_day_pnl_for_rows(db_session, rows, "unit_test", as_of=today)

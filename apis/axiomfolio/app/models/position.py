@@ -6,24 +6,26 @@ Current portfolio positions across all accounts and brokers.
 Real-time position tracking with P&L calculations.
 """
 
+import enum
+from datetime import datetime
+from decimal import Decimal
+
 from sqlalchemy import (
+    DECIMAL,
     Column,
-    Integer,
-    String,
     DateTime,
     ForeignKey,
-    DECIMAL,
-    Enum as SQLEnum,
     Index,
+    Integer,
+    String,
     Text,
+    event,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 from sqlalchemy.orm import relationship
-from sqlalchemy import event
-from sqlalchemy.sql import text
-from sqlalchemy.sql import func
-from datetime import datetime
-import enum
-from decimal import Decimal
+from sqlalchemy.sql import func, text
 
 from . import Base
 
@@ -77,9 +79,7 @@ class Position(Base):
     # Primary identification
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    account_id = Column(
-        Integer, ForeignKey("broker_accounts.id"), nullable=False, index=True
-    )
+    account_id = Column(Integer, ForeignKey("broker_accounts.id"), nullable=False, index=True)
 
     # Security identification
     symbol = Column(String(20), nullable=False, index=True)
@@ -91,9 +91,7 @@ class Position(Base):
     # Position details
     position_type = Column(SQLEnum(PositionType), nullable=True)
     quantity = Column(DECIMAL(15, 6), nullable=False)  # Shares/contracts held
-    status = Column(
-        SQLEnum(PositionStatus), default=PositionStatus.OPEN, nullable=False
-    )
+    status = Column(SQLEnum(PositionStatus), default=PositionStatus.OPEN, nullable=False)
 
     # Cost basis (aggregate from tax lots)
     average_cost = Column(DECIMAL(15, 4), nullable=True)  # Average cost per share
@@ -105,9 +103,7 @@ class Position(Base):
 
     # P&L calculations
     unrealized_pnl = Column(DECIMAL(15, 2))  # market_value - total_cost_basis
-    unrealized_pnl_pct = Column(
-        DECIMAL(8, 4)
-    )  # unrealized_pnl / total_cost_basis * 100
+    unrealized_pnl_pct = Column(DECIMAL(8, 4))  # unrealized_pnl / total_cost_basis * 100
     day_pnl = Column(DECIMAL(15, 2))  # Today's P&L change
     day_pnl_pct = Column(DECIMAL(8, 4))  # Today's % change
 
@@ -144,7 +140,7 @@ class Position(Base):
     # Data source
     last_sync_id = Column(Integer, ForeignKey("account_syncs.id"))
     broker_position_id = Column(String(100))  # Broker's internal position ID
-    
+
     # Strategy attribution (for positions opened by strategy signals)
     strategy_id = Column(Integer, ForeignKey("strategies.id"), nullable=True, index=True)
     entry_signal_id = Column(Integer, ForeignKey("signals.id"), nullable=True)
@@ -211,26 +207,20 @@ class Position(Base):
 
         # Calculate percentage
         if self.total_cost_basis > 0:
-            self.unrealized_pnl_pct = (
-                self.unrealized_pnl / self.total_cost_basis
-            ) * 100
+            self.unrealized_pnl_pct = (self.unrealized_pnl / self.total_cost_basis) * 100
 
         # Day P&L if provided
         if day_change is not None:
             self.day_pnl = self.quantity * Decimal(str(day_change))
             if self.market_value > 0:
-                self.day_pnl_pct = (
-                    self.day_pnl / (self.market_value - self.day_pnl)
-                ) * 100
+                self.day_pnl_pct = (self.day_pnl / (self.market_value - self.day_pnl)) * 100
 
         self.price_updated_at = datetime.now()
 
     def calculate_position_size_pct(self, total_portfolio_value: float):
         """Calculate position size as percentage of total portfolio."""
         if total_portfolio_value > 0 and self.market_value:
-            self.position_size_pct = (
-                abs(float(self.market_value)) / total_portfolio_value
-            ) * 100
+            self.position_size_pct = (abs(float(self.market_value)) / total_portfolio_value) * 100
 
 
 class PositionHistory(Base):
@@ -242,10 +232,10 @@ class PositionHistory(Base):
     __tablename__ = "position_history"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    position_id = Column(
-        Integer, ForeignKey("positions.id"), nullable=False, index=True
+    position_id = Column(Integer, ForeignKey("positions.id"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
     # Snapshot date
     snapshot_date = Column(DateTime, nullable=False, index=True)

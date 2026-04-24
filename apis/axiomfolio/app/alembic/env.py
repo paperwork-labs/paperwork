@@ -1,10 +1,11 @@
 """Alembic Environment Configuration for AxiomFolio"""
 
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool, text
-from alembic import context
 import os
 import sys
+from logging.config import fileConfig
+
+from alembic import context
+from sqlalchemy import engine_from_config, pool, text
 
 # Add the proper paths for the backend directory
 current_dir = os.path.dirname(os.path.abspath(__file__))

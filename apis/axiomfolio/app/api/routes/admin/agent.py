@@ -16,15 +16,14 @@ that key (UTF-8 string: full | safe | ask) or fall back to
 """
 
 import logging
-from datetime import datetime, timezone
-from typing import List, Optional
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import desc, distinct, func
 from sqlalchemy.orm import Session
 
-from app.api.dependencies import get_db, get_admin_user
+from app.api.dependencies import get_admin_user, get_db
 from app.api.rate_limit import limiter
 from app.models import User
 from app.models.agent_action import AgentAction
@@ -38,38 +37,38 @@ AGENT_AUTONOMY_LEVELS: tuple[str, ...] = ("full", "safe", "ask")
 
 class AgentActionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     action_type: str
     action_name: str
-    payload: Optional[dict]
+    payload: dict | None
     risk_level: str
     status: str
-    reasoning: Optional[str]
-    context_summary: Optional[str]
-    task_id: Optional[str]
-    result: Optional[dict]
-    error: Optional[str]
+    reasoning: str | None
+    context_summary: str | None
+    task_id: str | None
+    result: dict | None
+    error: str | None
     created_at: datetime
-    approved_at: Optional[datetime]
-    executed_at: Optional[datetime]
-    completed_at: Optional[datetime]
+    approved_at: datetime | None
+    executed_at: datetime | None
+    completed_at: datetime | None
     auto_approved: bool
-    session_id: Optional[str]
+    session_id: str | None
 
 
 class ApprovalRequest(BaseModel):
     approved: bool
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 class AgentRunResponse(BaseModel):
     mode: str
-    session_id: Optional[str]
-    analysis: Optional[str]
-    actions_taken: List[dict]
-    actions_pending: List[dict]
-    health_input: Optional[str]
+    session_id: str | None
+    analysis: str | None
+    actions_taken: list[dict]
+    actions_pending: list[dict]
+    health_input: str | None
 
 
 class AgentSessionSummary(BaseModel):
@@ -79,16 +78,16 @@ class AgentSessionSummary(BaseModel):
     started_at: datetime
     last_action_at: datetime
     action_count: int
-    statuses: List[str]
+    statuses: list[str]
 
 
 class AgentSettingsResponse(BaseModel):
     autonomy_level: str
-    available_levels: List[str]
+    available_levels: list[str]
 
 
 class AgentSettingsUpdate(BaseModel):
-    autonomy_level: Optional[str] = None
+    autonomy_level: str | None = None
 
 
 REDIS_KEY_AUTONOMY_LEVEL = "agent:settings:autonomy_level"
@@ -140,9 +139,7 @@ def update_agent_settings(
     """Update agent settings (persists to Redis for cross-worker consistency)."""
     if update.autonomy_level is not None:
         if update.autonomy_level not in AGENT_AUTONOMY_LEVELS:
-            raise HTTPException(
-                status_code=400, detail="Invalid autonomy level"
-            )
+            raise HTTPException(status_code=400, detail="Invalid autonomy level")
         _set_autonomy_level(update.autonomy_level)
 
     return AgentSettingsResponse(
@@ -151,11 +148,11 @@ def update_agent_settings(
     )
 
 
-@router.get("/actions", response_model=List[AgentActionResponse])
+@router.get("/actions", response_model=list[AgentActionResponse])
 def list_agent_actions(
-    status: Optional[str] = Query(None, description="Filter by status"),
-    risk_level: Optional[str] = Query(None, description="Filter by risk level"),
-    session_id: Optional[str] = Query(None, description="Filter by session"),
+    status: str | None = Query(None, description="Filter by status"),
+    risk_level: str | None = Query(None, description="Filter by risk level"),
+    session_id: str | None = Query(None, description="Filter by session"),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
@@ -163,19 +160,19 @@ def list_agent_actions(
 ):
     """List agent actions with optional filters."""
     query = db.query(AgentAction).order_by(desc(AgentAction.created_at))
-    
+
     if status:
         query = query.filter(AgentAction.status == status)
     if risk_level:
         query = query.filter(AgentAction.risk_level == risk_level)
     if session_id:
         query = query.filter(AgentAction.session_id == session_id)
-    
+
     actions = query.offset(offset).limit(limit).all()
     return actions
 
 
-@router.get("/actions/pending", response_model=List[AgentActionResponse])
+@router.get("/actions/pending", response_model=list[AgentActionResponse])
 def list_pending_approvals(
     db: Session = Depends(get_db),
     _admin: User = Depends(get_admin_user),
@@ -190,7 +187,7 @@ def list_pending_approvals(
     return actions
 
 
-@router.get("/sessions", response_model=List[AgentSessionSummary])
+@router.get("/sessions", response_model=list[AgentSessionSummary])
 def list_agent_sessions(
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -225,8 +222,9 @@ def list_agent_sessions(
 
 class SessionMessagesResponse(BaseModel):
     """Response for session messages endpoint."""
+
     session_id: str
-    messages: List[dict]
+    messages: list[dict]
     found: bool
 
 
@@ -243,9 +241,10 @@ def get_session_messages(
 
     Returns the full message history for resuming a past conversation.
     """
-    from app.services.market.market_data_service import infra
-    from app.models.agent_message import load_conversation_from_db
     import json
+
+    from app.models.agent_message import load_conversation_from_db
+    from app.services.market.market_data_service import infra
 
     redis = infra.redis_client
     if redis:
@@ -253,9 +252,7 @@ def get_session_messages(
             redis_key = f"agent:conversation:{session_id}"
             raw = redis.get(redis_key)
             if raw:
-                data = json.loads(
-                    raw.decode("utf-8") if isinstance(raw, bytes) else raw
-                )
+                data = json.loads(raw.decode("utf-8") if isinstance(raw, bytes) else raw)
                 messages = data if isinstance(data, list) else []
                 return SessionMessagesResponse(
                     session_id=session_id,
@@ -312,16 +309,15 @@ async def approve_action(
     action = db.query(AgentAction).filter(AgentAction.id == action_id).first()
     if not action:
         raise HTTPException(status_code=404, detail="Action not found")
-    
+
     if action.status != "pending_approval":
         raise HTTPException(
-            status_code=400, 
-            detail=f"Action is not pending approval (status: {action.status})"
+            status_code=400, detail=f"Action is not pending approval (status: {action.status})"
         )
-    
-    action.approved_at = datetime.now(timezone.utc)
+
+    action.approved_at = datetime.now(UTC)
     action.approved_by_id = current_user.id
-    
+
     if approval.approved:
         action.status = "approved"
         from app.services.agent.brain import AgentBrain
@@ -334,31 +330,29 @@ async def approve_action(
             result = await brain._execute_safe_tool(action.action_type, payload)
             action.status = "completed"
             action.result = result
-            action.executed_at = datetime.now(timezone.utc)
-            action.completed_at = datetime.now(timezone.utc)
+            action.executed_at = datetime.now(UTC)
+            action.completed_at = datetime.now(UTC)
         else:
             task_path = TOOL_TO_CELERY_TASK.get(action.action_type)
             if task_path:
                 try:
-                    celery_result = celery_app.send_task(
-                        task_path, kwargs=action.payload or {}
-                    )
+                    celery_result = celery_app.send_task(task_path, kwargs=action.payload or {})
                     action.task_id = celery_result.id
                     action.status = "executing"
-                    action.executed_at = datetime.now(timezone.utc)
+                    action.executed_at = datetime.now(UTC)
                 except Exception as e:
                     action.error = str(e)
                     action.status = "failed"
-                    action.completed_at = datetime.now(timezone.utc)
+                    action.completed_at = datetime.now(UTC)
             else:
                 action.error = f"No Celery task mapped for action type: {action.action_type}"
                 action.status = "failed"
-                action.completed_at = datetime.now(timezone.utc)
+                action.completed_at = datetime.now(UTC)
     else:
         action.status = "rejected"
         if approval.reason:
             action.error = f"Rejected: {approval.reason}"
-    
+
     db.commit()
     db.refresh(action)
     return action
@@ -368,29 +362,28 @@ async def approve_action(
 @limiter.limit("10/minute")
 async def trigger_agent_run(
     request: Request,
-    context: Optional[str] = Query(None, description="Additional context for the agent"),
+    context: str | None = Query(None, description="Additional context for the agent"),
     db: Session = Depends(get_db),
     _admin: User = Depends(get_admin_user),
 ):
     """Manually trigger an agent analysis and remediation run."""
-    from app.services.market.admin_health_service import AdminHealthService
-    from app.services.agent.brain import AgentBrain
     from app.config import settings
+    from app.services.agent.brain import AgentBrain
+    from app.services.market.admin_health_service import AdminHealthService
 
     current_user = _admin
-    
+
     if not settings.OPENAI_API_KEY:
         raise HTTPException(
-            status_code=503,
-            detail="LLM agent not configured (OPENAI_API_KEY missing)"
+            status_code=503, detail="LLM agent not configured (OPENAI_API_KEY missing)"
         )
-    
+
     health_svc = AdminHealthService()
     health = health_svc.get_composite_health(db)
-    
+
     brain = AgentBrain(db=db, user_id=current_user.id)
     result = await brain.analyze_and_act(health, context=context)
-    
+
     return AgentRunResponse(
         mode="llm",
         session_id=result.get("session_id"),
@@ -405,7 +398,7 @@ class ChatRequest(BaseModel):
     """Request body for agent chat."""
 
     message: str
-    session_id: Optional[str] = None
+    session_id: str | None = None
 
     @field_validator("message")
     @classmethod
@@ -420,10 +413,11 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     """Response from agent chat."""
+
     session_id: str
     response: str
-    tool_calls: List[dict]
-    actions: List[dict]
+    tool_calls: list[dict]
+    actions: list[dict]
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -436,17 +430,16 @@ async def agent_chat(
 ):
     """
     Send a message to the agent and get a response.
-    
+
     This endpoint supports multi-turn conversations. Pass the session_id
     from a previous response to continue the conversation.
     """
-    from app.services.agent.brain import AgentBrain
     from app.config import settings
-    
+    from app.services.agent.brain import AgentBrain
+
     if not settings.OPENAI_API_KEY:
         raise HTTPException(
-            status_code=503,
-            detail="LLM agent not configured (OPENAI_API_KEY missing)"
+            status_code=503, detail="LLM agent not configured (OPENAI_API_KEY missing)"
         )
 
     brain = AgentBrain(db=db, user_id=_admin.id)
@@ -480,12 +473,16 @@ async def agent_chat(
     # New chat (no client session) or brain ended on a different session id: persist
     # a row so /agent/sessions and the session sidebar include this conversation.
     try:
-        existing = db.query(AgentAction).filter(
-            AgentAction.session_id == brain.session_id,
-            AgentAction.action_type == "session_start",
-        ).first()
+        existing = (
+            db.query(AgentAction)
+            .filter(
+                AgentAction.session_id == brain.session_id,
+                AgentAction.action_type == "session_start",
+            )
+            .first()
+        )
         if not existing:
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             session_action = AgentAction(
                 action_type="session_start",
                 action_name="Chat session started",
@@ -517,25 +514,25 @@ def get_agent_stats(
 ):
     """Get agent statistics."""
     total = db.query(func.count(AgentAction.id)).scalar()
-    pending = db.query(func.count(AgentAction.id)).filter(
-        AgentAction.status == "pending_approval"
-    ).scalar()
-    completed = db.query(func.count(AgentAction.id)).filter(
-        AgentAction.status == "completed"
-    ).scalar()
-    failed = db.query(func.count(AgentAction.id)).filter(
-        AgentAction.status == "failed"
-    ).scalar()
-    auto_approved = db.query(func.count(AgentAction.id)).filter(
-        AgentAction.auto_approved == True
-    ).scalar()
-    
+    pending = (
+        db.query(func.count(AgentAction.id))
+        .filter(AgentAction.status == "pending_approval")
+        .scalar()
+    )
+    completed = (
+        db.query(func.count(AgentAction.id)).filter(AgentAction.status == "completed").scalar()
+    )
+    failed = db.query(func.count(AgentAction.id)).filter(AgentAction.status == "failed").scalar()
+    auto_approved = (
+        db.query(func.count(AgentAction.id)).filter(AgentAction.auto_approved == True).scalar()
+    )
+
     by_risk = dict(
         db.query(AgentAction.risk_level, func.count(AgentAction.id))
         .group_by(AgentAction.risk_level)
         .all()
     )
-    
+
     by_action = dict(
         db.query(AgentAction.action_type, func.count(AgentAction.id))
         .group_by(AgentAction.action_type)
@@ -543,7 +540,7 @@ def get_agent_stats(
         .limit(10)
         .all()
     )
-    
+
     return {
         "total_actions": total,
         "pending_approval": pending,

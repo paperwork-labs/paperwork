@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import timezone
+from datetime import UTC
 from decimal import Decimal
-from typing import Any, Dict, FrozenSet, List, Optional
+from typing import Any
 
 import pytest
 
@@ -26,11 +26,11 @@ class FakeCoinbaseClient:
     def __init__(
         self,
         *,
-        user: Dict[str, Any],
-        accounts: List[Dict[str, Any]],
-        transactions_by_account: Dict[str, List[Dict[str, Any]]],
+        user: dict[str, Any],
+        accounts: list[dict[str, Any]],
+        transactions_by_account: dict[str, list[dict[str, Any]]],
         fail_list_accounts: bool = False,
-        fail_txn_account_ids: Optional[FrozenSet[str]] = None,
+        fail_txn_account_ids: frozenset[str] | None = None,
     ) -> None:
         self._user = user
         self._accounts = accounts
@@ -38,17 +38,17 @@ class FakeCoinbaseClient:
         self.fail_list_accounts = fail_list_accounts
         self._fail_txn_account_ids = fail_txn_account_ids or frozenset()
 
-    def get_user(self) -> Dict[str, Any]:
+    def get_user(self) -> dict[str, Any]:
         return dict(self._user)
 
-    def list_all_accounts(self) -> List[Dict[str, Any]]:
+    def list_all_accounts(self) -> list[dict[str, Any]]:
         if self.fail_list_accounts:
             from app.services.bronze.coinbase.client import CoinbaseAPIError
 
             raise CoinbaseAPIError("forced", permanent=True, status=500)
         return [dict(a) for a in self._accounts]
 
-    def list_transactions_for_account(self, account_id: str) -> List[Dict[str, Any]]:
+    def list_transactions_for_account(self, account_id: str) -> list[dict[str, Any]]:
         if account_id in self._fail_txn_account_ids:
             from app.services.bronze.coinbase.client import CoinbaseAPIError
 
@@ -105,7 +105,7 @@ def _make_oauth(session, user: User) -> BrokerOAuthConnection:
     return conn
 
 
-def _btc_wallet() -> Dict[str, Any]:
+def _btc_wallet() -> dict[str, Any]:
     return {
         "id": "wallet-btc",
         "type": "wallet",
@@ -114,7 +114,7 @@ def _btc_wallet() -> Dict[str, Any]:
     }
 
 
-def _usd_fiat() -> Dict[str, Any]:
+def _usd_fiat() -> dict[str, Any]:
     return {
         "id": "wallet-usd",
         "type": "fiat",
@@ -123,7 +123,7 @@ def _usd_fiat() -> Dict[str, Any]:
     }
 
 
-def _eth_wallet() -> Dict[str, Any]:
+def _eth_wallet() -> dict[str, Any]:
     return {
         "id": "wallet-eth",
         "type": "wallet",
@@ -132,7 +132,7 @@ def _eth_wallet() -> Dict[str, Any]:
     }
 
 
-def _buy_txn() -> Dict[str, Any]:
+def _buy_txn() -> dict[str, Any]:
     return {
         "id": "11111111-1111-1111-1111-111111111111",
         "type": "buy",
@@ -145,7 +145,7 @@ def _buy_txn() -> Dict[str, Any]:
     }
 
 
-def _sell_txn() -> Dict[str, Any]:
+def _sell_txn() -> dict[str, Any]:
     return {
         "id": "22222222-2222-2222-2222-222222222222",
         "type": "sell",
@@ -214,9 +214,7 @@ def test_sync_idempotent_second_run(db_session) -> None:
         transactions_by_account={"wallet-btc": [_buy_txn()]},
     )
     service = CoinbaseSyncService(client=fake)
-    service.sync_account_comprehensive(
-        account_number=account.account_number, session=db_session
-    )
+    service.sync_account_comprehensive(account_number=account.account_number, session=db_session)
     r2 = service.sync_account_comprehensive(account_number="u2", session=db_session)
     assert r2["status"] == "success"
     assert r2["transactions_synced"] == 0
@@ -294,7 +292,7 @@ def test_parse_iso_dt_naive_string_is_utc() -> None:
 
     dt = _parse_iso_dt("2026-01-15T12:00:00")
     assert dt.tzinfo is not None
-    assert dt.tzinfo == timezone.utc
+    assert dt.tzinfo == UTC
 
 
 def test_sync_api_error(db_session) -> None:

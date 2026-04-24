@@ -15,7 +15,7 @@ All tests use dependency overrides; no real DB or network.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -25,7 +25,6 @@ from fastapi.testclient import TestClient
 from app.api.routes.portfolio.options import router
 from app.models.broker_account import BrokerType
 from app.models.user import UserRole
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -74,7 +73,7 @@ def _make_option(
     o.theta = -0.05
     o.vega = 0.1
     o.implied_volatility = 0.25
-    o.updated_at = datetime.now(timezone.utc)
+    o.updated_at = datetime.now(UTC)
     o.last_updated = None
     return o
 
@@ -122,9 +121,7 @@ def _wire_db_for_positions(app, *, positions, accounts):
     mock_db = app.state.mock_db
 
     opt_q = MagicMock()
-    opt_q.join.return_value.filter.return_value.filter.return_value.all.return_value = (
-        positions
-    )
+    opt_q.join.return_value.filter.return_value.filter.return_value.all.return_value = positions
     opt_q.join.return_value.filter.return_value.all.return_value = positions
 
     acct_q = MagicMock()
@@ -153,13 +150,11 @@ class TestUnifiedPortfolioMultiBroker:
             _make_option(id_=10, account_id=1, underlying="RDDT", strike=100),
             _make_option(id_=11, account_id=2, underlying="MSTR", strike=300),
         ]
-        _wire_db_for_positions(
-            app, positions=positions, accounts=[schwab_acct, ibkr_acct]
-        )
+        _wire_db_for_positions(app, positions=positions, accounts=[schwab_acct, ibkr_acct])
 
         with patch(
             "app.api.middleware.response_cache.redis_response_cache",
-            lambda **kw: (lambda fn: fn),
+            lambda **kw: lambda fn: fn,
         ):
             resp = client.get("/portfolio/options/unified/portfolio")
         assert resp.status_code == 200, resp.text

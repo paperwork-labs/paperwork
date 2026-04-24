@@ -12,6 +12,7 @@ Usage:
     python scripts/medallion/tag_files.py --apply   # writes changes
     python scripts/medallion/tag_files.py           # dry run, shows diff summary
 """
+
 from __future__ import annotations
 
 import argparse
@@ -106,7 +107,11 @@ def has_module_docstring(source: str) -> tuple[bool, str | None]:
     if not tree.body:
         return False, None
     first = tree.body[0]
-    if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant) and isinstance(first.value.value, str):
+    if (
+        isinstance(first, ast.Expr)
+        and isinstance(first.value, ast.Constant)
+        and isinstance(first.value.value, str)
+    ):
         return True, first.value.value
     return False, None
 
@@ -126,7 +131,7 @@ def update_file(path: Path, layer: str, apply: bool) -> tuple[str, str]:
         for line in doc.splitlines():
             stripped = line.strip()
             if stripped.startswith(TAG_PREFIX):
-                existing_layer = stripped[len(TAG_PREFIX):].strip()
+                existing_layer = stripped[len(TAG_PREFIX) :].strip()
                 if existing_layer == layer:
                     return "skipped", "already tagged correctly"
                 # Layer drift — rewrite.

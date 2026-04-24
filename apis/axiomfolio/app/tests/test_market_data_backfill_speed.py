@@ -1,9 +1,8 @@
 import asyncio
-import pandas as pd
 import time
-from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from datetime import UTC, datetime, timedelta
 
+import pandas as pd
 import pytest
 
 from app.services.market.market_data_service import (
@@ -16,7 +15,7 @@ from app.services.market.market_data_service import (
 
 
 def _make_df(days: int = 5) -> pd.DataFrame:
-    now = datetime.now(timezone.utc).replace(microsecond=0)
+    now = datetime.now(UTC).replace(microsecond=0)
     dates = [now - timedelta(days=i) for i in range(days)][::-1]
     df = pd.DataFrame(
         [{"Open": 1.0, "High": 1.0, "Low": 1.0, "Close": 1.0, "Volume": 1} for _ in dates],
@@ -45,7 +44,9 @@ async def test_call_blocking_with_retries_backoff_on_429(monkeypatch):
             raise RateLimitExc("429")
         return "ok"
 
-    out = await provider_router._call_blocking_with_retries(flaky, attempts=5, max_delay_seconds=1.0)
+    out = await provider_router._call_blocking_with_retries(
+        flaky, attempts=5, max_delay_seconds=1.0
+    )
     assert out == "ok"
     assert calls["n"] == 2
     assert len(sleeps) == 1
@@ -119,8 +120,12 @@ def test_persist_price_bars_bulk_upsert_still_delta_only(db_session):
     )
     assert last_date is not None
     inserted_2 = price_bars.persist_price_bars(
-        db_session, sym, df, interval="1d", data_source="unit_test", is_adjusted=True, delta_after=last_date
+        db_session,
+        sym,
+        df,
+        interval="1d",
+        data_source="unit_test",
+        is_adjusted=True,
+        delta_after=last_date,
     )
     assert inserted_2 == 2
-
-

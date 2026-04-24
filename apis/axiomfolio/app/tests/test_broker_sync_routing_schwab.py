@@ -1,8 +1,7 @@
 import uuid
-import pytest
 
+from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.services.portfolio.broker_sync_service import broker_sync_service
-from app.models.broker_account import BrokerAccount, BrokerType, AccountType
 
 
 def _ensure_account(session) -> BrokerAccount:
@@ -10,7 +9,12 @@ def _ensure_account(session) -> BrokerAccount:
 
     user = session.query(User).filter(User.username == "route_tester").first()
     if not user:
-        user = User(username="route_tester", email="route_tester@example.com", password_hash="x", is_active=True)
+        user = User(
+            username="route_tester",
+            email="route_tester@example.com",
+            password_hash="x",
+            is_active=True,
+        )
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -49,8 +53,8 @@ def test_broker_sync_routes_to_schwab(monkeypatch, db_session):
     monkeypatch.setattr(schwab_module, "SchwabSyncService", lambda: DummyService())
 
     acct = _ensure_account(db_session)
-    result = broker_sync_service.sync_account(account_id=acct.account_number, db=db_session, sync_type="comprehensive")
+    result = broker_sync_service.sync_account(
+        account_id=acct.account_number, db=db_session, sync_type="comprehensive"
+    )
     assert result["status"] == "success"
     assert calls["count"] == 1
-
-

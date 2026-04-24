@@ -30,9 +30,9 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Mapping
 from pathlib import Path
 from threading import Lock
-from typing import Mapping, Optional, Tuple
 
 from .explainer import AnomalyExplainer
 from .knowledge import RunbookKnowledge, load_runbook_chunks
@@ -44,10 +44,10 @@ logger = logging.getLogger(__name__)
 _RUNBOOK_PATH_DEFAULT = Path(__file__).resolve().parents[4] / "docs" / "MARKET_DATA_RUNBOOK.md"
 
 _runbook_cache_lock = Lock()
-_runbook_cache: Optional[Tuple[float, RunbookKnowledge]] = None
+_runbook_cache: tuple[float, RunbookKnowledge] | None = None
 
 
-def get_runbook(path: Optional[Path] = None) -> RunbookKnowledge:
+def get_runbook(path: Path | None = None) -> RunbookKnowledge:
     """Return a memoized :class:`RunbookKnowledge` for the runbook file.
 
     Re-loads when the file's mtime changes so editors see fresh content
@@ -71,7 +71,7 @@ def get_runbook(path: Optional[Path] = None) -> RunbookKnowledge:
             return _runbook_cache[1]
         try:
             chunks = load_runbook_chunks(runbook_path)
-        except Exception as exc:  # noqa: BLE001 - never block AutoOps on a parse error
+        except Exception as exc:
             logger.warning(
                 "anomaly_explainer.factory: failed to parse runbook at %s: %s",
                 runbook_path,
@@ -100,7 +100,7 @@ def _build_provider() -> LLMProvider:
     )
     try:
         return OpenAIChatProvider(api_key=api_key, model=model)
-    except Exception as exc:  # noqa: BLE001 -- degrade, don't crash AutoOps
+    except Exception as exc:
         logger.warning(
             "anomaly_explainer.factory: failed to construct OpenAIChatProvider "
             "(%s); falling back to StubLLMProvider.",
@@ -119,7 +119,7 @@ def _default_task_allowlist() -> Mapping[str, str]:
     """
     try:
         from app.tasks.ops.auto_ops import REMEDIATION_MAP
-    except Exception:  # noqa: BLE001 - tests / scripts may run without celery
+    except Exception:
         return {}
     return {
         task_name: f"AutoOps remediation for {dimension!r}"
@@ -130,9 +130,9 @@ def _default_task_allowlist() -> Mapping[str, str]:
 
 def build_default_explainer(
     *,
-    provider: Optional[LLMProvider] = None,
-    knowledge: Optional[RunbookKnowledge] = None,
-    available_tasks: Optional[Mapping[str, str]] = None,
+    provider: LLMProvider | None = None,
+    knowledge: RunbookKnowledge | None = None,
+    available_tasks: Mapping[str, str] | None = None,
 ) -> AnomalyExplainer:
     """Construct the canonical AnomalyExplainer used by tasks + routes.
 
@@ -141,7 +141,9 @@ def build_default_explainer(
     return AnomalyExplainer(
         provider=provider or _build_provider(),
         knowledge=knowledge or get_runbook(),
-        available_tasks=available_tasks if available_tasks is not None else _default_task_allowlist(),
+        available_tasks=available_tasks
+        if available_tasks is not None
+        else _default_task_allowlist(),
     )
 
 

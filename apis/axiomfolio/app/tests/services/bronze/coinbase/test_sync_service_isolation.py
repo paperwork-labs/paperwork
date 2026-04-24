@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 from decimal import Decimal
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -61,21 +61,21 @@ def _conn(session, user: User) -> None:
 
 
 class _Fake:
-    def __init__(self, payload: Dict[str, Any]) -> None:
+    def __init__(self, payload: dict[str, Any]) -> None:
         self._payload = payload
 
-    def get_user(self) -> Dict[str, Any]:
+    def get_user(self) -> dict[str, Any]:
         return copy.deepcopy(self._payload["user"])
 
-    def list_all_accounts(self) -> List[Dict[str, Any]]:
+    def list_all_accounts(self) -> list[dict[str, Any]]:
         return copy.deepcopy(self._payload["accounts"])
 
-    def list_transactions_for_account(self, account_id: str) -> List[Dict[str, Any]]:
+    def list_transactions_for_account(self, account_id: str) -> list[dict[str, Any]]:
         return copy.deepcopy(self._payload["tx"].get(account_id, []))
 
 
 @pytest.fixture
-def payload_a() -> Dict[str, Any]:
+def payload_a() -> dict[str, Any]:
     return {
         "user": {"id": "user-a-cb", "name": "A"},
         "accounts": [
@@ -121,11 +121,7 @@ def test_user_b_rows_untouched_after_user_a_sync(db_session, payload_a) -> None:
         .filter(Position.user_id == ub.id, Position.account_id == acct_b.id)
         .all()
     )
-    b_tx_before = (
-        db_session.query(Transaction)
-        .filter(Transaction.account_id == acct_b.id)
-        .all()
-    )
+    b_tx_before = db_session.query(Transaction).filter(Transaction.account_id == acct_b.id).all()
     snap_b_pos = [(p.symbol, Decimal(p.quantity)) for p in b_pos_before]
     snap_b_tx = [t.external_id for t in b_tx_before]
 
@@ -141,10 +137,6 @@ def test_user_b_rows_untouched_after_user_a_sync(db_session, payload_a) -> None:
         .filter(Position.user_id == ub.id, Position.account_id == acct_b.id)
         .all()
     )
-    b_tx_after = (
-        db_session.query(Transaction)
-        .filter(Transaction.account_id == acct_b.id)
-        .all()
-    )
+    b_tx_after = db_session.query(Transaction).filter(Transaction.account_id == acct_b.id).all()
     assert [(p.symbol, Decimal(p.quantity)) for p in b_pos_after] == snap_b_pos
     assert [t.external_id for t in b_tx_after] == snap_b_tx

@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import patch
 
 import pytest
 
 from app.services.market import market_dashboard_service as mds_module
 from app.services.market.constants import SECTOR_ETF_SYMBOLS_ORDER
-from app.services.market.market_dashboard_service import MarketDashboardService, _SummaryRow
+from app.services.market.market_dashboard_service import MarketDashboardService
 
 pytestmark = pytest.mark.no_db
 
@@ -48,11 +47,13 @@ class _FakeDB:
         return _FakeQuery(self._rows)
 
 
-def _mock_snapshot(symbol, stage="2A", prev="1", perf_1d=1.0, perf_5d=2.0, perf_20d=5.0, rs=3.0, **kw):
+def _mock_snapshot(
+    symbol, stage="2A", prev="1", perf_1d=1.0, perf_5d=2.0, perf_20d=5.0, rs=3.0, **kw
+):
     defaults = dict(
         symbol=symbol,
         analysis_type="technical_snapshot",
-        analysis_timestamp=datetime.now(timezone.utc),
+        analysis_timestamp=datetime.now(UTC),
         stage_label=stage,
         previous_stage_label=prev,
         current_stage_days=5,
@@ -83,7 +84,7 @@ def _mock_snapshot(symbol, stage="2A", prev="1", perf_1d=1.0, perf_5d=2.0, perf_
         td_perfect_sell=None,
         gaps_unfilled_up=0,
         gaps_unfilled_down=0,
-        as_of_date=datetime.now(timezone.utc).date(),
+        as_of_date=datetime.now(UTC).date(),
     )
     defaults.update(kw)
     return SimpleNamespace(**defaults)
@@ -91,9 +92,14 @@ def _mock_snapshot(symbol, stage="2A", prev="1", perf_1d=1.0, perf_5d=2.0, perf_
 
 def test_sector_etf_table_has_enhanced_fields(monkeypatch):
     """sector_etf_table entries should include change_5d, change_20d, rs_mansfield_pct."""
+
     class _FakeCoverage:
         def build_coverage_response(self, *a, **kw):
-            return {"status": "ok", "daily": {"coverage": {"pct": 99}}, "m5": {"coverage": {"pct": 95}}}
+            return {
+                "status": "ok",
+                "daily": {"coverage": {"pct": 99}},
+                "m5": {"coverage": {"pct": 95}},
+            }
 
     monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
     monkeypatch.setattr(mds_module, "coverage_analytics", _FakeCoverage())
@@ -120,9 +126,14 @@ def test_sector_etf_table_has_enhanced_fields(monkeypatch):
 
 def test_entering_stage_3_and_4_populated(monkeypatch):
     """entering_stage_3 and entering_stage_4 should be populated from snapshot data."""
+
     class _FakeCoverage:
         def build_coverage_response(self, *a, **kw):
-            return {"status": "ok", "daily": {"coverage": {"pct": 99}}, "m5": {"coverage": {"pct": 95}}}
+            return {
+                "status": "ok",
+                "daily": {"coverage": {"pct": 99}},
+                "m5": {"coverage": {"pct": 95}},
+            }
 
     monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
     monkeypatch.setattr(mds_module, "coverage_analytics", _FakeCoverage())
@@ -147,9 +158,14 @@ def test_entering_stage_3_and_4_populated(monkeypatch):
 
 def _dashboard_helper(monkeypatch, rows, tracked=None):
     """DRY helper for tests that need a full build_dashboard call."""
+
     class _FakeCoverage:
         def build_coverage_response(self, *a, **kw):
-            return {"status": "ok", "daily": {"coverage": {"pct": 99}}, "m5": {"coverage": {"pct": 95}}}
+            return {
+                "status": "ok",
+                "daily": {"coverage": {"pct": 99}},
+                "m5": {"coverage": {"pct": 95}},
+            }
 
     monkeypatch.setattr(mds_module, "infra", SimpleNamespace(redis_client=None))
     monkeypatch.setattr(mds_module, "coverage_analytics", _FakeCoverage())
@@ -177,6 +193,7 @@ def test_range_histogram(monkeypatch):
 
 def test_rrg_sectors(monkeypatch):
     from app.services.market.constants import SECTOR_ETF_SYMBOLS_ORDER
+
     sym = SECTOR_ETF_SYMBOLS_ORDER[0]
     rows = [_mock_snapshot(sym, rs=4.5, perf_5d=1.2)]
     result = _dashboard_helper(monkeypatch, rows, tracked=[sym])
@@ -240,8 +257,9 @@ def test_fundamental_leaders(monkeypatch):
 
 def test_upcoming_earnings(monkeypatch):
     from datetime import timedelta
-    near = datetime.now(timezone.utc) + timedelta(days=3)
-    far = datetime.now(timezone.utc) + timedelta(days=30)
+
+    near = datetime.now(UTC) + timedelta(days=3)
+    far = datetime.now(UTC) + timedelta(days=30)
     rows = [
         _mock_snapshot("SOON", next_earnings=near),
         _mock_snapshot("LATER", next_earnings=far),

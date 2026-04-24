@@ -5,9 +5,8 @@ Revises: 0009
 Create Date: 2026-03-28
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0010"
 down_revision = "0009"
@@ -31,7 +30,7 @@ def upgrade() -> None:
         sa.Column("last_accessed", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
-    
+
     op.create_index("idx_memory_user_type", "agent_memories", ["user_id", "memory_type"])
     op.create_index("idx_memory_created", "agent_memories", ["created_at"])
     op.create_index("idx_memory_hash", "agent_memories", ["content_hash"])

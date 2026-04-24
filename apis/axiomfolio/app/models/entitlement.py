@@ -28,26 +28,26 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy import (
+    JSON,
+    TIMESTAMP,
     Boolean,
     Column,
-    Enum as SQLEnum,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     String,
-    TIMESTAMP,
     UniqueConstraint,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from . import Base
-
 
 # =============================================================================
 # ENUMS
@@ -68,7 +68,7 @@ class SubscriptionTier(str, Enum):
     ENTERPRISE = "enterprise"
 
     @classmethod
-    def rank(cls, value: "SubscriptionTier | str | None") -> int:
+    def rank(cls, value: SubscriptionTier | str | None) -> int:
         """Return the ordinal rank of a tier. Unknown / None → 0 (FREE).
 
         Using a method rather than `auto()` so the persisted string values
@@ -130,7 +130,7 @@ class EntitlementStatus(str, Enum):
     MANUAL = "manual"
 
     @classmethod
-    def is_active_like(cls, value: "EntitlementStatus | str | None") -> bool:
+    def is_active_like(cls, value: EntitlementStatus | str | None) -> bool:
         """Return True if the status grants tier access right now.
 
         We treat ``trialing``, ``active``, and ``manual`` as access-granting.
@@ -220,9 +220,7 @@ class Entitlement(Base):
     # Audit + free-form Stripe payload mirror
     metadata_json = Column("metadata", JSON, nullable=True)
 
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
@@ -245,7 +243,7 @@ class Entitlement(Base):
 
     GRACE_PERIOD_HOURS = 72  # past_due users keep access for 3 days
 
-    def is_active(self, now: Optional[datetime] = None) -> bool:
+    def is_active(self, now: datetime | None = None) -> bool:
         """True if the subscription currently grants tier access.
 
         Past-due subscriptions retain access for ``GRACE_PERIOD_HOURS`` to
@@ -258,7 +256,7 @@ class Entitlement(Base):
             return self.is_in_grace_period(now)
         return False
 
-    def is_in_grace_period(self, now: Optional[datetime] = None) -> bool:
+    def is_in_grace_period(self, now: datetime | None = None) -> bool:
         """True if a past_due subscription is still inside its grace window.
 
         Grace is measured from ``current_period_end`` (when Stripe last
@@ -274,7 +272,7 @@ class Entitlement(Base):
         delta = now - self.current_period_end
         return delta.total_seconds() <= self.GRACE_PERIOD_HOURS * 3600
 
-    def effective_tier(self, now: Optional[datetime] = None) -> SubscriptionTier:
+    def effective_tier(self, now: datetime | None = None) -> SubscriptionTier:
         """The tier we should *behave* as for this user right now.
 
         Returns the persisted tier when active, otherwise FREE. This is the

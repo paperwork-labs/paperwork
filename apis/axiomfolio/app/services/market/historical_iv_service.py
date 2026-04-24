@@ -30,10 +30,11 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
-from typing import Any, Iterable, List, Optional, Sequence, Tuple
+from typing import Any
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -59,8 +60,8 @@ class IVSample:
 
     symbol: str
     date: date
-    iv_30d: Optional[float]
-    iv_60d: Optional[float]
+    iv_30d: float | None
+    iv_60d: float | None
     source: str  # "ibkr" | "yahoo"
 
 
@@ -69,7 +70,7 @@ class IVSample:
 # ---------------------------------------------------------------------------
 
 
-def _latest_spot_price(symbol: str, db: Session) -> Optional[float]:
+def _latest_spot_price(symbol: str, db: Session) -> float | None:
     """Best-effort spot: latest ``MarketSnapshot.current_price``, else the
     most recent daily close from ``price_data``. Returns ``None`` if
     nothing usable is available.
@@ -115,13 +116,13 @@ def _dte(expiry: date, as_of: date) -> int:
 
 def _pair_rows_by_expiry_strike(
     rows: Sequence[dict[str, Any]],
-) -> dict[Tuple[date, float], dict[str, dict[str, Any]]]:
+) -> dict[tuple[date, float], dict[str, dict[str, Any]]]:
     """Group options rows into ``{(expiry, strike): {"CALL": row, "PUT": row}}``.
 
     Input rows use the ``fetch_yfinance_options_chain`` shape
     (``expiry``, ``option_type``, ``strike``, ``implied_vol``).
     """
-    paired: dict[Tuple[date, float], dict[str, dict[str, Any]]] = {}
+    paired: dict[tuple[date, float], dict[str, dict[str, Any]]] = {}
     for r in rows:
         ex = r.get("expiry")
         k = r.get("strike")
@@ -137,7 +138,7 @@ def _pair_rows_by_expiry_strike(
     return paired
 
 
-def _iv_from_row(row: dict[str, Any]) -> Optional[float]:
+def _iv_from_row(row: dict[str, Any]) -> float | None:
     """Return IV as float fraction in ``[0, 1]``; ``None`` if absent."""
     if not row:
         return None
@@ -160,15 +161,15 @@ def _iv_from_row(row: dict[str, Any]) -> Optional[float]:
 
 
 def _pick_atm_mid_iv(
-    paired: dict[Tuple[date, float], dict[str, dict[str, Any]]],
+    paired: dict[tuple[date, float], dict[str, dict[str, Any]]],
     spot: float,
-) -> Optional[float]:
+) -> float | None:
     """Given expiry-strike-pair map and a spot price, return the mid IV
     (average of call IV and put IV) of the strike nearest to spot.
 
     Returns ``None`` if no strike has both legs with a usable IV.
     """
-    best: Optional[Tuple[float, float]] = None  # (|strike - spot|, mid_iv)
+    best: tuple[float, float] | None = None  # (|strike - spot|, mid_iv)
     for (_ex, strike_f), legs in paired.items():
         call_iv = _iv_from_row(legs.get("CALL") or {})
         put_iv = _iv_from_row(legs.get("PUT") or {})
@@ -194,17 +195,17 @@ def _bucket_rows_by_dte(
     *,
     dte_min: int,
     dte_max: int,
-) -> List[Tuple[int, List[dict[str, Any]]]]:
+) -> list[tuple[int, list[dict[str, Any]]]]:
     """Group rows by expiry and keep only buckets whose DTE is in
     ``[dte_min, dte_max]``. Sorted by DTE ascending (nearest first).
     """
-    by_exp: dict[date, List[dict[str, Any]]] = {}
+    by_exp: dict[date, list[dict[str, Any]]] = {}
     for r in rows:
         ex = r.get("expiry")
         if ex is None:
             continue
         by_exp.setdefault(ex, []).append(r)
-    buckets: List[Tuple[int, List[dict[str, Any]]]] = []
+    buckets: list[tuple[int, list[dict[str, Any]]]] = []
     for ex, rows_for_ex in by_exp.items():
         d = _dte(ex, as_of)
         if d < dte_min or d > dte_max:
@@ -222,7 +223,7 @@ def _pick_iv_for_tenor(
     target_dte: int,
     dte_min: int,
     dte_max: int,
-) -> Optional[float]:
+) -> float | None:
     """Pick the ATM mid IV from the chain bucket whose DTE is closest to
     ``target_dte`` (within the ``[dte_min, dte_max]`` window).
     """
@@ -249,12 +250,12 @@ def atm_iv_from_yahoo(
     symbol: str,
     as_of: date,
     *,
-    db: Optional[Session] = None,
-    chain_fetcher: Optional[Any] = None,
-    spot_override: Optional[float] = None,
-    dte_min: Optional[int] = None,
-    dte_max: Optional[int] = None,
-) -> Optional[IVSample]:
+    db: Session | None = None,
+    chain_fetcher: Any | None = None,
+    spot_override: float | None = None,
+    dte_min: int | None = None,
+    dte_max: int | None = None,
+) -> IVSample | None:
     """Fetch ATM IV for ``symbol`` from Yahoo.
 
     The nearest-expiry chain within ``[dte_min, dte_max]`` DTE is picked,
@@ -293,7 +294,7 @@ def atm_iv_from_yahoo(
 
     # Normalize rows (Decimals -> floats, coerce types) so pair-picker is
     # plain arithmetic.
-    norm: List[dict[str, Any]] = []
+    norm: list[dict[str, Any]] = []
     for r in rows:
         ex = r.get("expiry")
         if isinstance(ex, datetime):
@@ -320,9 +321,7 @@ def atm_iv_from_yahoo(
         logger.info("atm_iv_from_yahoo: no spot for %s, skipping", symbol)
         return None
 
-    iv30 = _pick_iv_for_tenor(
-        norm, as_of, float(spot), target_dte=30, dte_min=d_min, dte_max=d_max
-    )
+    iv30 = _pick_iv_for_tenor(norm, as_of, float(spot), target_dte=30, dte_min=d_min, dte_max=d_max)
     iv60 = _pick_iv_for_tenor(
         norm,
         as_of,
@@ -342,13 +341,13 @@ def atm_iv_from_yahoo(
 # ---------------------------------------------------------------------------
 
 
-def _normalize_ibkr_chain(chain: dict) -> List[dict[str, Any]]:
+def _normalize_ibkr_chain(chain: dict) -> list[dict[str, Any]]:
     """Flatten the ``get_option_chain`` return shape
     (``{chains: {expiry_str: {calls:[..], puts:[..]}}}``) into
     the same row dict shape as yfinance: ``expiry``, ``option_type``,
     ``strike``, ``implied_vol``.
     """
-    out: List[dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     if not isinstance(chain, dict):
         return out
     chains_by_exp = chain.get("chains") or {}
@@ -356,7 +355,7 @@ def _normalize_ibkr_chain(chain: dict) -> List[dict[str, Any]]:
         return out
     for exp_key, legs in chains_by_exp.items():
         # IBKR expirations come back as ``YYYYMMDD`` strings.
-        exp_d: Optional[date] = None
+        exp_d: date | None = None
         if isinstance(exp_key, date):
             exp_d = exp_key
         elif isinstance(exp_key, str):
@@ -409,12 +408,12 @@ def atm_iv_from_ibkr(
     symbol: str,
     as_of: date,
     *,
-    db: Optional[Session] = None,
-    chain_fetcher: Optional[Any] = None,
-    spot_override: Optional[float] = None,
-    dte_min: Optional[int] = None,
-    dte_max: Optional[int] = None,
-) -> Optional[IVSample]:
+    db: Session | None = None,
+    chain_fetcher: Any | None = None,
+    spot_override: float | None = None,
+    dte_min: int | None = None,
+    dte_max: int | None = None,
+) -> IVSample | None:
     """Fetch ATM IV for ``symbol`` from the IBKR Gateway.
 
     Primary path when the gateway is up. Returns ``None`` (without
@@ -467,9 +466,7 @@ def atm_iv_from_ibkr(
         logger.info("atm_iv_from_ibkr: no spot for %s, skipping", symbol)
         return None
 
-    iv30 = _pick_iv_for_tenor(
-        rows, as_of, float(spot), target_dte=30, dte_min=d_min, dte_max=d_max
-    )
+    iv30 = _pick_iv_for_tenor(rows, as_of, float(spot), target_dte=30, dte_min=d_min, dte_max=d_max)
     iv60 = _pick_iv_for_tenor(
         rows,
         as_of,
@@ -497,7 +494,7 @@ def compute_hv(
     as_of: date,
     window: int,
     db: Session,
-) -> Optional[float]:
+) -> float | None:
     """Population stdev (``ddof=0``) of log returns over ``window``
     contiguous trading days ending at ``as_of``, annualized by
     ``sqrt(252)``.
@@ -539,7 +536,7 @@ def compute_hv(
     # Log returns. If any close is non-positive, we can't take the log
     # and the whole window is unreliable -- surface None rather than
     # silently masking.
-    log_returns: List[float] = []
+    log_returns: list[float] = []
     for prev, curr in zip(closes[:-1], closes[1:]):
         if prev <= 0 or curr <= 0:
             return None
@@ -568,8 +565,8 @@ def compute_hv(
 
 def persist_iv_sample(
     sample: IVSample,
-    hv_20d: Optional[float],
-    hv_60d: Optional[float],
+    hv_20d: float | None,
+    hv_60d: float | None,
     db: Session,
 ) -> HistoricalIV:
     """Upsert one ``HistoricalIV`` row keyed on ``(symbol, date)``.
@@ -583,7 +580,7 @@ def persist_iv_sample(
     if not sample.symbol or not sample.date:
         raise ValueError("IVSample must have symbol and date")
 
-    spread: Optional[float]
+    spread: float | None
     if sample.iv_30d is not None and hv_20d is not None:
         spread = float(sample.iv_30d) - float(hv_20d)
     else:
@@ -626,7 +623,7 @@ def persist_iv_sample(
 # ---------------------------------------------------------------------------
 
 
-def last_trading_day(today: Optional[date] = None) -> date:
+def last_trading_day(today: date | None = None) -> date:
     """Return the most recent weekday on/before ``today``.
 
     Note: this does not honor market holidays -- the downstream
@@ -669,10 +666,10 @@ def iv_source_breakdown(db: Session, *, as_of: date) -> dict:
 
 __all__ = [
     "IVSample",
-    "atm_iv_from_yahoo",
     "atm_iv_from_ibkr",
+    "atm_iv_from_yahoo",
     "compute_hv",
-    "persist_iv_sample",
-    "last_trading_day",
     "iv_source_breakdown",
+    "last_trading_day",
+    "persist_iv_sample",
 ]

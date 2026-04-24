@@ -34,7 +34,7 @@ from __future__ import annotations
 
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:
     import requests
@@ -69,7 +69,7 @@ class OpenAIChatProvider:
     def __init__(
         self,
         *,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         model: str = DEFAULT_MODEL,
         api_url: str = OPENAI_API_URL,
         timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS,
@@ -106,7 +106,7 @@ class OpenAIChatProvider:
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
         }
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self._model,
             "messages": [
                 {"role": "system", "content": system_prompt},
@@ -148,13 +148,11 @@ class OpenAIChatProvider:
                 time.sleep(max(1, min(8, retry_s)))
                 continue
             if status == 429:
-                raise LLMProviderRateLimitedError(
-                    "openai rate limited after max retries (429)"
-                )
+                raise LLMProviderRateLimitedError("openai rate limited after max retries (429)")
             body = ""
             try:
                 body = resp.text[:500]
-            except Exception:  # noqa: BLE001
+            except Exception:
                 body = ""
             raise LLMProviderError(f"openai http {status}: {body}")
 
@@ -172,7 +170,7 @@ class OpenAIChatProvider:
         return content
 
     @staticmethod
-    def _extract_content(data: Dict[str, Any]) -> Optional[str]:
+    def _extract_content(data: dict[str, Any]) -> str | None:
         """Pull ``choices[0].message.content`` out, defensively."""
         try:
             choices = data.get("choices") or []
@@ -183,5 +181,5 @@ class OpenAIChatProvider:
             if isinstance(content, str) and content.strip():
                 return content
             return None
-        except Exception:  # noqa: BLE001
+        except Exception:
             return None

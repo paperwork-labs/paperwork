@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
@@ -25,22 +25,17 @@ from app.services.gold.options_chain_surface import (
 router = APIRouter(prefix="/options", tags=["Options"])
 
 
-def _latest_snapshot_ts(
-    db: Session, sym: str, expiry: Optional[date]
-) -> Optional[datetime]:
+def _latest_snapshot_ts(db: Session, sym: str, expiry: date | None) -> datetime | None:
     """Max snapshot time for this symbol, optionally restricted to one expiry."""
-    max_ts_q = (
-        db.query(func.max(OptionsChainSnapshot.snapshot_taken_at))
-        .filter(OptionsChainSnapshot.symbol == sym)
+    max_ts_q = db.query(func.max(OptionsChainSnapshot.snapshot_taken_at)).filter(
+        OptionsChainSnapshot.symbol == sym
     )
     if expiry is not None:
         max_ts_q = max_ts_q.filter(OptionsChainSnapshot.expiry == expiry)
     return max_ts_q.scalar()
 
 
-def _user_may_read_chain(
-    db: Session, user_id: int, symbol: str
-) -> bool:
+def _user_may_read_chain(db: Session, user_id: int, symbol: str) -> bool:
     u = (symbol or "").upper().strip()
     if not u:
         return False
@@ -100,7 +95,7 @@ async def get_options_chain(
     symbol: str,
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
-    expiry: Optional[date] = Query(None, description="Filter to one expiry (ISO)"),
+    expiry: date | None = Query(None, description="Filter to one expiry (ISO)"),
     fresh: int = Query(0, ge=0, le=1, description="1 = recompute (sync, <=30s)"),
 ) -> dict[str, Any]:
     """Latest snapshot of the options surface, or a fresh recompute if requested."""
@@ -110,7 +105,7 @@ async def get_options_chain(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Symbol not in your watchlist or open positions",
         )
-    ex_list: Optional[List[date]] = [expiry] if expiry is not None else None
+    ex_list: list[date] | None = [expiry] if expiry is not None else None
 
     last_compute: dict[str, Any] = {}
     if fresh == 1:
@@ -135,7 +130,7 @@ async def get_options_chain(
                 asyncio.to_thread(_compute_in_thread),
                 timeout=30.0,
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise HTTPException(
                 status_code=status.HTTP_504_GATEWAY_TIMEOUT,
                 detail="Options chain recompute timed out",

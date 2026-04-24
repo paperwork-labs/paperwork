@@ -25,7 +25,7 @@ medallion: bronze
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 
@@ -48,8 +48,8 @@ class ETradeAPIError(Exception):
         message: str,
         *,
         permanent: bool,
-        status: Optional[int] = None,
-        path: Optional[str] = None,
+        status: int | None = None,
+        path: str | None = None,
     ) -> None:
         super().__init__(message)
         self.permanent = permanent
@@ -81,7 +81,7 @@ class ETradeBronzeClient:
         *,
         access_token: str,
         access_token_secret: str,
-        adapter: Optional[ETradeSandboxAdapter] = None,
+        adapter: ETradeSandboxAdapter | None = None,
     ) -> None:
         if not access_token or not access_token_secret:
             raise ETradeAPIError(
@@ -101,7 +101,7 @@ class ETradeBronzeClient:
     # ------------------------------------------------------------------
     # Low-level signed GET returning parsed JSON
     # ------------------------------------------------------------------
-    def _signed_get_json(self, path: str) -> Dict[str, Any]:
+    def _signed_get_json(self, path: str) -> dict[str, Any]:
         """Issue a signed GET and return parsed JSON.
 
         Raises :class:`ETradeAPIError` with ``permanent=True`` on 4xx or
@@ -113,16 +113,14 @@ class ETradeBronzeClient:
         # second caller of the adapter's signing helper. Keeping the HMAC
         # logic in one place is more important than the lint warning.
         try:
-            resp = self._adapter._signed_request(  # noqa: SLF001
+            resp = self._adapter._signed_request(
                 "GET",
                 path,
                 token=self._token,
                 token_secret=self._secret,
             )
         except Exception as exc:  # OAuthError / requests.RequestException
-            logger.warning(
-                "etrade client: network/signing failure on %s: %s", path, exc
-            )
+            logger.warning("etrade client: network/signing failure on %s: %s", path, exc)
             raise ETradeAPIError(
                 f"network or signing failure calling E*TRADE {path}: {exc}",
                 permanent=False,
@@ -133,7 +131,9 @@ class ETradeBronzeClient:
         if status >= 400:
             logger.warning(
                 "etrade client: HTTP %s on %s body=%s",
-                status, path, (resp.text or "")[:200],
+                status,
+                path,
+                (resp.text or "")[:200],
             )
             raise ETradeAPIError(
                 f"E*TRADE {path} returned HTTP {status}: {(resp.text or '')[:200]}",
@@ -145,9 +145,7 @@ class ETradeBronzeClient:
         try:
             body = resp.json() if resp.content else {}
         except ValueError as exc:
-            logger.warning(
-                "etrade client: non-JSON body on %s: %s", path, (resp.text or "")[:200]
-            )
+            logger.warning("etrade client: non-JSON body on %s: %s", path, (resp.text or "")[:200])
             raise ETradeAPIError(
                 f"E*TRADE {path} returned non-JSON body: {(resp.text or '')[:200]}",
                 permanent=True,
@@ -169,7 +167,7 @@ class ETradeBronzeClient:
     # ------------------------------------------------------------------
     # Public data-API wrappers — one per endpoint
     # ------------------------------------------------------------------
-    def list_accounts(self) -> List[Dict[str, Any]]:
+    def list_accounts(self) -> list[dict[str, Any]]:
         """Return the list of accounts accessible to the current token.
 
         Shape normalized to a flat list of ``Account`` dicts (E*TRADE
@@ -177,18 +175,15 @@ class ETradeBronzeClient:
         """
 
         body = self._signed_get_json("/v1/accounts/list.json")
-        accounts = (
-            (body.get("AccountListResponse") or {})
-            .get("Accounts", {})
-            .get("Account", [])
-            or []
-        )
+        accounts = (body.get("AccountListResponse") or {}).get("Accounts", {}).get(
+            "Account", []
+        ) or []
         if isinstance(accounts, dict):
             # Single-account responses come back as an object, not a list.
             accounts = [accounts]
         return list(accounts)
 
-    def get_balance(self, account_id_key: str) -> Dict[str, Any]:
+    def get_balance(self, account_id_key: str) -> dict[str, Any]:
         """Return the BalanceResponse for ``account_id_key``.
 
         ``instType=BROKERAGE`` and ``realTimeNAV=true`` are required
@@ -200,14 +195,11 @@ class ETradeBronzeClient:
                 "get_balance requires a non-empty account_id_key",
                 permanent=True,
             )
-        path = (
-            f"/v1/accounts/{account_id_key}/balance.json"
-            f"?instType=BROKERAGE&realTimeNAV=true"
-        )
+        path = f"/v1/accounts/{account_id_key}/balance.json?instType=BROKERAGE&realTimeNAV=true"
         body = self._signed_get_json(path)
         return body.get("BalanceResponse") or {}
 
-    def get_portfolio(self, account_id_key: str) -> List[Dict[str, Any]]:
+    def get_portfolio(self, account_id_key: str) -> list[dict[str, Any]]:
         """Return the flat list of open positions.
 
         E*TRADE nests positions inside
@@ -224,7 +216,7 @@ class ETradeBronzeClient:
         portfolios = (body.get("PortfolioResponse") or {}).get("AccountPortfolio", [])
         if isinstance(portfolios, dict):
             portfolios = [portfolios]
-        out: List[Dict[str, Any]] = []
+        out: list[dict[str, Any]] = []
         for portfolio in portfolios or []:
             positions = portfolio.get("Position", []) if isinstance(portfolio, dict) else []
             if isinstance(positions, dict):
@@ -232,7 +224,7 @@ class ETradeBronzeClient:
             out.extend(p for p in positions if isinstance(p, dict))
         return out
 
-    def get_transactions(self, account_id_key: str) -> List[Dict[str, Any]]:
+    def get_transactions(self, account_id_key: str) -> list[dict[str, Any]]:
         """Return the flat list of transactions for ``account_id_key``."""
 
         if not account_id_key:
@@ -240,9 +232,7 @@ class ETradeBronzeClient:
                 "get_transactions requires a non-empty account_id_key",
                 permanent=True,
             )
-        body = self._signed_get_json(
-            f"/v1/accounts/{account_id_key}/transactions.json"
-        )
+        body = self._signed_get_json(f"/v1/accounts/{account_id_key}/transactions.json")
         txns = (body.get("TransactionListResponse") or {}).get("Transaction", [])
         if isinstance(txns, dict):
             txns = [txns]

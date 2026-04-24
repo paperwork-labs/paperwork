@@ -21,8 +21,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date, timedelta
-from decimal import Decimal, ROUND_HALF_UP
-from typing import List, Optional
+from decimal import ROUND_HALF_UP, Decimal
+
 
 # match TaxLot.is_long_term: held > 365 per IRS Publication 550
 def _is_long_term_held(held_days: int) -> bool:
@@ -36,10 +36,10 @@ _LONG_TERM_MIN_CALENDAR_SPAN = 366
 # Conservative defaults. Source: IRS 2025 top brackets. Effective rates for
 # most users will be lower; these are the "never under-state tax drag"
 # baseline described above.
-DEFAULT_FEDERAL_ST_RATE = Decimal("0.37")    # ordinary income top bracket
-DEFAULT_FEDERAL_LT_RATE = Decimal("0.20")    # long-term top bracket
-DEFAULT_STATE_RATE = Decimal("0.05")         # middle-of-pack state income tax
-DEFAULT_NIIT_RATE = Decimal("0.038")         # Net Investment Income Tax
+DEFAULT_FEDERAL_ST_RATE = Decimal("0.37")  # ordinary income top bracket
+DEFAULT_FEDERAL_LT_RATE = Decimal("0.20")  # long-term top bracket
+DEFAULT_STATE_RATE = Decimal("0.05")  # middle-of-pack state income tax
+DEFAULT_NIIT_RATE = Decimal("0.038")  # Net Investment Income Tax
 DEFAULT_NIIT_APPLIES = True
 
 TWO_PLACES = Decimal("0.01")
@@ -63,10 +63,10 @@ class TaxProfile:
     state_rate: Decimal = DEFAULT_STATE_RATE
     niit_rate: Decimal = DEFAULT_NIIT_RATE
     niit_applies: bool = DEFAULT_NIIT_APPLIES
-    state: Optional[str] = None
+    state: str | None = None
 
     @classmethod
-    def conservative_default(cls) -> "TaxProfile":
+    def conservative_default(cls) -> TaxProfile:
         return cls()
 
 
@@ -96,12 +96,12 @@ class TaxAwareExitResult:
     total_tax: Decimal
     after_tax_proceeds: Decimal
     tax_advantaged: bool
-    days_to_long_term: Optional[int]
-    breakeven_price_for_long_term_wait: Optional[Decimal]
-    reasons: List[str] = field(default_factory=list)
+    days_to_long_term: int | None
+    breakeven_price_for_long_term_wait: Decimal | None
+    reasons: list[str] = field(default_factory=list)
 
     def to_payload(self) -> dict:
-        def _f(v: Optional[Decimal]) -> Optional[float]:
+        def _f(v: Decimal | None) -> float | None:
             return float(v) if v is not None else None
 
         return {
@@ -119,9 +119,7 @@ class TaxAwareExitResult:
             "after_tax_proceeds": _f(self.after_tax_proceeds),
             "tax_advantaged": self.tax_advantaged,
             "days_to_long_term": self.days_to_long_term,
-            "breakeven_price_for_long_term_wait": _f(
-                self.breakeven_price_for_long_term_wait
-            ),
+            "breakeven_price_for_long_term_wait": _f(self.breakeven_price_for_long_term_wait),
             "reasons": list(self.reasons),
         }
 
@@ -129,7 +127,7 @@ class TaxAwareExitResult:
 class TaxAwareExitCalculator:
     """Pure calculator. Accepts explicit inputs; performs no DB I/O."""
 
-    def __init__(self, profile: Optional[TaxProfile] = None) -> None:
+    def __init__(self, profile: TaxProfile | None = None) -> None:
         self._profile = profile or TaxProfile.conservative_default()
 
     def evaluate(
@@ -138,8 +136,8 @@ class TaxAwareExitCalculator:
         symbol: str,
         current_price: Decimal,
         exit_shares: Decimal,
-        lots: List[ExitLot],
-        as_of: Optional[date] = None,
+        lots: list[ExitLot],
+        as_of: date | None = None,
         tax_advantaged: bool = False,
     ) -> TaxAwareExitResult:
         """Compute tax impact of selling ``exit_shares`` of ``symbol``.
@@ -151,7 +149,7 @@ class TaxAwareExitCalculator:
         """
         sym = (symbol or "").upper().strip()
         as_of = as_of or date.today()
-        reasons: List[str] = []
+        reasons: list[str] = []
 
         if exit_shares <= Decimal("0"):
             reasons.append("proposed exit size is zero or negative")
@@ -166,7 +164,7 @@ class TaxAwareExitCalculator:
         cost_basis = Decimal("0")
         st_gain = Decimal("0")
         lt_gain = Decimal("0")
-        min_days_to_lt: Optional[int] = None
+        min_days_to_lt: int | None = None
         filled = Decimal("0")
 
         for lot in lots:
@@ -191,9 +189,7 @@ class TaxAwareExitCalculator:
             filled += take
 
         if filled < exit_shares:
-            reasons.append(
-                f"lots cover only {filled} of {exit_shares} requested shares"
-            )
+            reasons.append(f"lots cover only {filled} of {exit_shares} requested shares")
             return self._empty(sym, tax_advantaged, reasons)
 
         gross_proceeds = filled * current_price
@@ -201,8 +197,7 @@ class TaxAwareExitCalculator:
 
         if tax_advantaged:
             reasons.append(
-                "Tax-advantaged account (IRA / Roth / HSA): no immediate "
-                "tax drag on this exit"
+                "Tax-advantaged account (IRA / Roth / HSA): no immediate tax drag on this exit"
             )
             return TaxAwareExitResult(
                 symbol=sym,
@@ -237,23 +232,19 @@ class TaxAwareExitCalculator:
         )
         state_tax = (taxable_st + taxable_lt) * profile.state_rate
         niit_tax = (
-            (taxable_st + taxable_lt) * profile.niit_rate
-            if profile.niit_applies
-            else Decimal("0")
+            (taxable_st + taxable_lt) * profile.niit_rate if profile.niit_applies else Decimal("0")
         )
         total_tax = federal_tax + state_tax + niit_tax
         after_tax = gross_proceeds - total_tax
 
-        breakeven_price: Optional[Decimal] = None
+        breakeven_price: Decimal | None = None
         if min_days_to_lt is not None and st_gain > Decimal("0"):
             # The tax delta per share of ST vs LT federal (the portion that
             # depends on holding period). NIIT + state are holding-period
             # agnostic at this conservative-defaults level, so do not get
             # subtracted. This is the move required to recover the ST->LT
             # federal spread and make "wait" break even with "scale now".
-            federal_spread_rate = (
-                profile.federal_short_term_rate - profile.federal_long_term_rate
-            )
+            federal_spread_rate = profile.federal_short_term_rate - profile.federal_long_term_rate
             if federal_spread_rate > Decimal("0") and filled > Decimal("0"):
                 savings_if_lt = taxable_st * federal_spread_rate
                 breakeven_price = current_price - (savings_if_lt / filled)
@@ -265,18 +256,12 @@ class TaxAwareExitCalculator:
                     f"requires price to hold >= ${_q(breakeven_price)}"
                 )
             else:
-                reasons.append(
-                    "Federal ST rate not greater than LT; no waiting premium"
-                )
+                reasons.append("Federal ST rate not greater than LT; no waiting premium")
 
         if st_gain > Decimal("0"):
-            reasons.append(
-                f"Short-term gain ${_q(st_gain)} taxed at ordinary rates"
-            )
+            reasons.append(f"Short-term gain ${_q(st_gain)} taxed at ordinary rates")
         if lt_gain > Decimal("0"):
-            reasons.append(
-                f"Long-term gain ${_q(lt_gain)} at preferential rate"
-            )
+            reasons.append(f"Long-term gain ${_q(lt_gain)} at preferential rate")
         if realized < Decimal("0"):
             reasons.append(
                 f"Net loss ${_q(realized)} -- tax drag set to zero "
@@ -304,9 +289,7 @@ class TaxAwareExitCalculator:
             reasons=reasons,
         )
 
-    def _empty(
-        self, symbol: str, tax_advantaged: bool, reasons: List[str]
-    ) -> TaxAwareExitResult:
+    def _empty(self, symbol: str, tax_advantaged: bool, reasons: list[str]) -> TaxAwareExitResult:
         zero = Decimal("0.00")
         return TaxAwareExitResult(
             symbol=symbol,
@@ -328,7 +311,7 @@ class TaxAwareExitCalculator:
         )
 
 
-def days_to_long_term(acquired_on: date, as_of: Optional[date] = None) -> int:
+def days_to_long_term(acquired_on: date, as_of: date | None = None) -> int:
     """Calendar days until ``(as_of - acquired_on).days > 365``; 0 if already
     long-term. Aligns with ``TaxLot.is_long_term`` (holding period over 365
     days, IRS Publication 550)."""

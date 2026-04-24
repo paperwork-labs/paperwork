@@ -6,13 +6,14 @@ Tests that validate the IBKR sync service properly populates all database models
 - Positions, TaxLots, Trades, Instruments, Transactions, BrokerAccounts
 """
 
-import pytest
-from decimal import Decimal
 from datetime import datetime
+from decimal import Decimal
 from unittest.mock import patch
+
+import pytest
 from sqlalchemy import inspect
 
-from app.models import BrokerAccount, TaxLot, Instrument, Position, User, PortfolioSnapshot
+from app.models import BrokerAccount, Instrument, PortfolioSnapshot, Position, TaxLot, User
 from app.services.portfolio.ibkr_sync_service import IBKRSyncService
 
 
@@ -41,7 +42,7 @@ class TestIBKRSyncService:
     @pytest.fixture
     def test_broker_account(self, db_session, test_user):
         """Create test broker account."""
-        from app.models.broker_account import BrokerType, AccountType, SyncStatus
+        from app.models.broker_account import AccountType, BrokerType, SyncStatus
 
         broker_account = BrokerAccount(
             user_id=test_user.id,
@@ -128,7 +129,9 @@ class TestIBKRSyncService:
         db_session,
     ):
         """Test successful comprehensive portfolio sync."""
-        pytest.skip("Requires real FlexQuery XML + optional IBKR TWS/Gateway; covered by lower-level unit tests.")
+        pytest.skip(
+            "Requires real FlexQuery XML + optional IBKR TWS/Gateway; covered by lower-level unit tests."
+        )
 
         # Mock FlexQuery client methods
         with (
@@ -142,19 +145,14 @@ class TestIBKRSyncService:
                 "get_full_report",
                 return_value="<mock_xml>",
             ),
-            patch.object(
-                sync_service.flexquery_client, "_request_report", return_value="REF123"
-            ),
-            patch.object(
-                sync_service.flexquery_client, "_get_report", return_value="<mock_xml>"
-            ),
+            patch.object(sync_service.flexquery_client, "_request_report", return_value="REF123"),
+            patch.object(sync_service.flexquery_client, "_get_report", return_value="<mock_xml>"),
             patch.object(
                 sync_service.flexquery_client,
                 "_parse_trades_from_xml",
                 return_value=mock_trades_data,
             ),
         ):
-
             # Run comprehensive sync
             result = await sync_service.sync_comprehensive_portfolio(
                 "IBKR_TEST_ACCOUNT_A",
@@ -184,7 +182,6 @@ class TestIBKRSyncService:
             "get_official_tax_lots",
             return_value=mock_flexquery_data,
         ):
-
             result = await sync_service._sync_instruments(db_session, "IBKR_TEST_ACCOUNT_A")
 
             # Verify result
@@ -207,7 +204,6 @@ class TestIBKRSyncService:
             "get_official_tax_lots",
             return_value=mock_flexquery_data,
         ):
-
             result = await sync_service._sync_tax_lots_from_flexquery(
                 db_session, test_broker_account, "IBKR_TEST_ACCOUNT_A"
             )
@@ -219,9 +215,7 @@ class TestIBKRSyncService:
 
             # Verify tax lots in database
             tax_lots = (
-                db_session.query(TaxLot)
-                .filter(TaxLot.account_id == test_broker_account.id)
-                .all()
+                db_session.query(TaxLot).filter(TaxLot.account_id == test_broker_account.id).all()
             )
             assert len(tax_lots) == 2
 
@@ -265,19 +259,13 @@ class TestIBKRSyncService:
         db.commit()
 
         # Test holdings sync
-        result = await sync_service._sync_holdings_from_tax_lots(
-            db, test_broker_account
-        )
+        result = await sync_service._sync_holdings_from_tax_lots(db, test_broker_account)
 
         # Verify result
         assert result["synced"] == 1  # One aggregated AAPL holding
 
         # Verify holding created
-        holdings = (
-            db.query(Position)
-            .filter(Position.account_id == test_broker_account.id)
-            .all()
-        )
+        holdings = db.query(Position).filter(Position.account_id == test_broker_account.id).all()
         assert len(holdings) == 1
 
         aapl_holding = holdings[0]
@@ -313,11 +301,7 @@ class TestIBKRSyncService:
 
         assert result["synced"] == 1
 
-        positions = (
-            db.query(Position)
-            .filter(Position.account_id == test_broker_account.id)
-            .all()
-        )
+        positions = db.query(Position).filter(Position.account_id == test_broker_account.id).all()
         assert len(positions) == 1
 
         position = positions[0]
@@ -351,9 +335,7 @@ class TestIBKRSyncService:
         db.commit()
 
         # Test snapshot creation
-        result = await sync_service._create_portfolio_snapshot(
-            db, test_broker_account
-        )
+        result = await sync_service._create_portfolio_snapshot(db, test_broker_account)
 
         # Verify result
         assert result["created"] is True
@@ -405,15 +387,12 @@ class TestIBKRSyncService:
             "get_official_tax_lots",
             return_value=mock_flexquery_data,
         ):
-
             # First sync
             await sync_service._sync_tax_lots_from_flexquery(
                 db, test_broker_account, "IBKR_TEST_ACCOUNT_A"
             )
             first_count = (
-                db.query(TaxLot)
-                .filter(TaxLot.account_id == test_broker_account.id)
-                .count()
+                db.query(TaxLot).filter(TaxLot.account_id == test_broker_account.id).count()
             )
 
             # Second sync (should clear and recreate)
@@ -421,9 +400,7 @@ class TestIBKRSyncService:
                 db, test_broker_account, "IBKR_TEST_ACCOUNT_A"
             )
             second_count = (
-                db.query(TaxLot)
-                .filter(TaxLot.account_id == test_broker_account.id)
-                .count()
+                db.query(TaxLot).filter(TaxLot.account_id == test_broker_account.id).count()
             )
 
             # Verify no duplicates

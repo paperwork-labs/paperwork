@@ -13,9 +13,6 @@ Focus: the per-connection counter loop:
 
 from __future__ import annotations
 
-from typing import Dict
-from unittest.mock import patch
-
 import pytest
 
 try:
@@ -31,6 +28,7 @@ try:
     )
     from app.models.user import User, UserRole
     from app.tasks.portfolio import plaid_sync as plaid_sync_mod
+
     AVAILABLE = True
 except Exception:  # pragma: no cover
     AVAILABLE = False
@@ -90,7 +88,7 @@ def _mk_broker_account(db_session, user_id: int, *, acct_num: str) -> BrokerAcco
 class _FakeService:
     """Pluggable fake that emits per-call outcomes for the sync loop."""
 
-    def __init__(self, outcomes_by_item: Dict[str, str]) -> None:
+    def __init__(self, outcomes_by_item: dict[str, str]) -> None:
         self._outcomes = outcomes_by_item
 
     def sync_account_comprehensive(self, account_number, session, *, user_id=None):
@@ -111,9 +109,7 @@ def test_sync_one_connection_returns_skipped_when_needs_reauth(db_session):
         item_id="item-reauth",
         status=PlaidConnectionStatus.NEEDS_REAUTH.value,
     )
-    outcome = plaid_sync_mod._sync_one_connection(
-        db_session, conn, _FakeService({})
-    )
+    outcome = plaid_sync_mod._sync_one_connection(db_session, conn, _FakeService({}))
     assert outcome == "skipped_no_holdings"
 
 
@@ -125,9 +121,7 @@ def test_sync_one_connection_skipped_when_no_enabled_accounts(db_session):
         item_id="item-no",
         status=PlaidConnectionStatus.ACTIVE.value,
     )
-    outcome = plaid_sync_mod._sync_one_connection(
-        db_session, conn, _FakeService({})
-    )
+    outcome = plaid_sync_mod._sync_one_connection(db_session, conn, _FakeService({}))
     assert outcome == "skipped_no_holdings"
 
 
@@ -248,9 +242,7 @@ def test_daily_sync_counters_sum_to_total(db_session, monkeypatch):
     assert isinstance(counters, dict), counters
     assert counters["total"] == 3
     assert (
-        counters["written"]
-        + counters["skipped_no_holdings"]
-        + counters["errors"]
+        counters["written"] + counters["skipped_no_holdings"] + counters["errors"]
         == counters["total"]
     )
     # Expected breakdown from fixtures above.

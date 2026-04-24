@@ -5,22 +5,25 @@ Notifications System
 In-app notifications and optional Brain webhook relay for portfolio events, strategy execution, and system status.
 """
 
+import enum
+from datetime import datetime
+
 from sqlalchemy import (
+    JSON,
+    Boolean,
     Column,
+    DateTime,
+    ForeignKey,
+    Index,
     Integer,
     String,
-    DateTime,
-    Boolean,
     Text,
-    ForeignKey,
+)
+from sqlalchemy import (
     Enum as SQLEnum,
-    Index,
-    JSON,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
-import enum
 
 from . import Base
 
@@ -73,7 +76,9 @@ class Notification(Base):
 
     # Primary identification
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     # Notification details
     type = Column(SQLEnum(NotificationType), nullable=False, index=True)
@@ -86,9 +91,7 @@ class Notification(Base):
     formatted_message = Column(Text)  # Channel-specific formatting
 
     # Status
-    status = Column(
-        SQLEnum(NotificationStatus), default=NotificationStatus.PENDING, nullable=False
-    )
+    status = Column(SQLEnum(NotificationStatus), default=NotificationStatus.PENDING, nullable=False)
 
     # Metadata
     source_type = Column(String(50))  # "strategy", "portfolio", "system"
@@ -129,10 +132,7 @@ class Notification(Base):
     @property
     def can_retry(self) -> bool:
         """Check if notification can be retried."""
-        return (
-            self.status == NotificationStatus.FAILED
-            and self.retry_count < self.max_retries
-        )
+        return self.status == NotificationStatus.FAILED and self.retry_count < self.max_retries
 
     @property
     def is_expired(self) -> bool:
@@ -179,7 +179,9 @@ class NotificationPreference(Base):
     __tablename__ = "notification_preferences"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     # Preferences by type and channel
     notification_type = Column(SQLEnum(NotificationType), nullable=False)
@@ -205,9 +207,7 @@ class NotificationPreference(Base):
     user = relationship("User")
 
     # Constraints
-    __table_args__ = (
-        Index("idx_preferences_user_type", "user_id", "notification_type"),
-    )
+    __table_args__ = (Index("idx_preferences_user_type", "user_id", "notification_type"),)
 
 
 class NotificationDelivery(Base):
@@ -218,9 +218,7 @@ class NotificationDelivery(Base):
     __tablename__ = "notification_deliveries"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    notification_id = Column(
-        Integer, ForeignKey("notifications.id"), nullable=False, index=True
-    )
+    notification_id = Column(Integer, ForeignKey("notifications.id"), nullable=False, index=True)
 
     # Delivery attempt details
     attempt_number = Column(Integer, nullable=False)

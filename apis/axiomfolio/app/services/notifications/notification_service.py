@@ -6,8 +6,8 @@ medallion: ops
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 class NotificationService:
     """Create in-app notification rows and send parallel events to Brain."""
 
-    def __init__(self, brain: Optional[BrainWebhookClient] = None) -> None:
+    def __init__(self, brain: BrainWebhookClient | None = None) -> None:
         self._brain = brain or brain_webhook
 
     @staticmethod
@@ -44,11 +44,11 @@ class NotificationService:
         notification_type: NotificationType = NotificationType.USER_ACTION,
         priority: Priority = Priority.NORMAL,
         brain_event: str = "user_notification",
-        brain_extra: Optional[Dict[str, Any]] = None,
-        source_type: Optional[str] = None,
-        source_id: Optional[str] = None,
+        brain_extra: dict[str, Any] | None = None,
+        source_type: str | None = None,
+        source_id: str | None = None,
         commit: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         row = Notification(
             user_id=user_id,
             type=notification_type,
@@ -57,7 +57,7 @@ class NotificationService:
             title=title[:200],
             message=message,
             status=NotificationStatus.SENT,
-            sent_at=datetime.now(timezone.utc),
+            sent_at=datetime.now(UTC),
             source_type=source_type,
             source_id=source_id,
         )
@@ -68,7 +68,7 @@ class NotificationService:
         else:
             db.flush()
 
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "title": title,
             "message": message,
             "notification_id": row.id,
@@ -85,9 +85,9 @@ class NotificationService:
         message: str,
         *,
         brain_event: str = "system_alert",
-        extra_data: Optional[Dict[str, Any]] = None,
+        extra_data: dict[str, Any] | None = None,
     ) -> bool:
-        data: Dict[str, Any] = {"title": title, "message": message}
+        data: dict[str, Any] = {"title": title, "message": message}
         if extra_data:
             data.update(extra_data)
         return self._brain.notify_sync(brain_event, data, user_id=None)

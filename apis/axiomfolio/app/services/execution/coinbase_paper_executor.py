@@ -54,24 +54,16 @@ class CoinbasePaperExecutor(PaperExecutor):
         return "coinbase"
 
     def _reject_non_crypto(self, req: OrderRequest) -> OrderResult:
-        logger.warning(
-            "CoinbasePaperExecutor rejected non-crypto symbol: %s", req.symbol
-        )
+        logger.warning("CoinbasePaperExecutor rejected non-crypto symbol: %s", req.symbol)
         return OrderResult(
-            error=(
-                f"Coinbase executor only accepts crypto symbols; "
-                f"received {req.symbol!r}"
-            ),
+            error=(f"Coinbase executor only accepts crypto symbols; received {req.symbol!r}"),
             raw={"paper_mode": True, "broker": "coinbase", "rejected": "non_crypto"},
         )
 
     async def preview_order(self, req: OrderRequest) -> PreviewResult:
         if not _is_crypto_symbol(req.symbol):
             return PreviewResult(
-                error=(
-                    f"Coinbase executor only accepts crypto symbols; "
-                    f"received {req.symbol!r}"
-                ),
+                error=(f"Coinbase executor only accepts crypto symbols; received {req.symbol!r}"),
                 raw={"paper_mode": True, "broker": "coinbase"},
             )
         preview = await super().preview_order(req)

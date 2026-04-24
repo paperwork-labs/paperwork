@@ -39,10 +39,11 @@ from __future__ import annotations
 import logging
 import os
 from collections import defaultdict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -109,7 +110,7 @@ class _PerActionResult:
     tax_lots_adjusted: int = 0
     cash_credited_total: Decimal = Decimal("0")
     ohlcv_rows_adjusted: int = 0
-    error_messages: List[str] = field(default_factory=list)
+    error_messages: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -135,7 +136,7 @@ class CorporateActionApplier:
         self,
         session: Session,
         *,
-        ohlcv_adjuster: Optional[HistoricalOhlcvAdjuster] = None,
+        ohlcv_adjuster: HistoricalOhlcvAdjuster | None = None,
     ) -> None:
         self.session = session
         # Lazily wire the OHLCV adjuster; tests can pass a custom one
@@ -150,7 +151,7 @@ class CorporateActionApplier:
     # Public API
     # ------------------------------------------------------------------
 
-    def apply_pending(self, *, today: Optional[date] = None) -> ApplyReport:
+    def apply_pending(self, *, today: date | None = None) -> ApplyReport:
         """Apply every PENDING action whose ex_date <= ``today``."""
         cutoff = today or datetime.utcnow().date()
         report = ApplyReport()
@@ -235,7 +236,7 @@ class CorporateActionApplier:
         """
         outcome = _PerActionResult()
 
-        applications_by_user: Dict[int, List[AppliedCorporateAction]] = defaultdict(list)
+        applications_by_user: dict[int, list[AppliedCorporateAction]] = defaultdict(list)
         for row in action.applications:
             applications_by_user[row.user_id].append(row)
 
@@ -294,7 +295,7 @@ class CorporateActionApplier:
         # Pull every open position + tax-lot of the symbol. We use the
         # status='OPEN' filter for positions so cash mergers don't
         # re-close already-closed positions (idempotency vs prior runs).
-        positions: List[Position] = (
+        positions: list[Position] = (
             self.session.execute(
                 select(Position)
                 .where(Position.symbol == symbol)
@@ -305,12 +306,8 @@ class CorporateActionApplier:
         )
         # Tax lots: include all (no status enum on TaxLot); the applier
         # short-circuits qty == 0 lots inside _apply_for_user.
-        tax_lots: List[TaxLot] = (
-            self.session.execute(
-                select(TaxLot).where(TaxLot.symbol == symbol)
-            )
-            .scalars()
-            .all()
+        tax_lots: list[TaxLot] = (
+            self.session.execute(select(TaxLot).where(TaxLot.symbol == symbol)).scalars().all()
         )
 
         if not positions and not tax_lots:
@@ -318,10 +315,10 @@ class CorporateActionApplier:
             # _PerActionResult lets _update_action_status mark it.
             return outcome
 
-        positions_by_user: Dict[int, List[Position]] = defaultdict(list)
+        positions_by_user: dict[int, list[Position]] = defaultdict(list)
         for pos in positions:
             positions_by_user[pos.user_id].append(pos)
-        lots_by_user: Dict[int, List[TaxLot]] = defaultdict(list)
+        lots_by_user: dict[int, list[TaxLot]] = defaultdict(list)
         for lot in tax_lots:
             if lot.user_id is None:
                 # Defensive: TaxLot.user_id is nullable in the model;
@@ -343,9 +340,7 @@ class CorporateActionApplier:
             user_lots = lots_by_user.get(user_id, [])
             try:
                 with self.session.begin_nested():
-                    per_user = self._apply_for_user(
-                        action, user_id, user_positions, user_lots
-                    )
+                    per_user = self._apply_for_user(action, user_id, user_positions, user_lots)
                 outcome.users_applied += 1
                 outcome.positions_adjusted += per_user["positions_adjusted"]
                 outcome.tax_lots_adjusted += per_user["tax_lots_adjusted"]
@@ -353,7 +348,7 @@ class CorporateActionApplier:
             except _UnsupportedActionType:
                 # Bubble: the parent loop turns this into SKIPPED.
                 raise
-            except Exception as exc:  # noqa: BLE001 -- per-user isolation
+            except Exception as exc:
                 outcome.users_failed += 1
                 msg = f"user_id={user_id}: {exc}"
                 outcome.error_messages.append(msg)
@@ -379,7 +374,7 @@ class CorporateActionApplier:
         user_id: int,
         positions: Iterable[Position],
         tax_lots: Iterable[TaxLot],
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         positions_adjusted = 0
         tax_lots_adjusted = 0
         cash_credited = Decimal("0")
@@ -525,15 +520,11 @@ class CorporateActionApplier:
             return adjust_for_split(current_qty, current_cost_basis, num, den)
 
         if atype == CorporateActionType.REVERSE_SPLIT.value:
-            self._require(
-                num is not None and den is not None, action, "reverse_split needs ratio"
-            )
+            self._require(num is not None and den is not None, action, "reverse_split needs ratio")
             return adjust_for_reverse_split(current_qty, current_cost_basis, num, den)
 
         if atype == CorporateActionType.STOCK_DIVIDEND.value:
-            self._require(
-                num is not None and den is not None, action, "stock_dividend needs ratio"
-            )
+            self._require(num is not None and den is not None, action, "stock_dividend needs ratio")
             return adjust_for_stock_dividend(current_qty, current_cost_basis, num, den)
 
         if atype in (

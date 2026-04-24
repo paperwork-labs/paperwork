@@ -132,9 +132,7 @@ class TestPatchSleeve:
     def test_rejects_invalid_sleeve(self, db_session, client, as_user):
         user = _make_user(db_session, email="bad@example.com")
         acct = _make_account(db_session, user_id=user.id)
-        pos = _make_position(
-            db_session, user_id=user.id, account_id=acct.id, symbol="MSFT"
-        )
+        pos = _make_position(db_session, user_id=user.id, account_id=acct.id, symbol="MSFT")
         as_user(user)
 
         r = client.patch(
@@ -143,15 +141,11 @@ class TestPatchSleeve:
         )
         assert r.status_code == 400
 
-    def test_cannot_modify_other_users_position(
-        self, db_session, client, as_user
-    ):
+    def test_cannot_modify_other_users_position(self, db_session, client, as_user):
         owner = _make_user(db_session, email="a@example.com")
         attacker = _make_user(db_session, email="b@example.com")
         acct = _make_account(db_session, user_id=owner.id)
-        pos = _make_position(
-            db_session, user_id=owner.id, account_id=acct.id, symbol="NVDA"
-        )
+        pos = _make_position(db_session, user_id=owner.id, account_id=acct.id, symbol="NVDA")
         as_user(attacker)
 
         r = client.patch(
@@ -229,10 +223,6 @@ class TestListBySleeve:
         r = client.get("/api/v1/positions/by-sleeve")
         assert r.status_code == 200
         body = r.json()
-        seen = {
-            p["symbol"]
-            for group in body["items_by_sleeve"].values()
-            for p in group
-        }
+        seen = {p["symbol"] for group in body["items_by_sleeve"].values() for p in group}
         assert "MINE" in seen
         assert "YOURS" not in seen

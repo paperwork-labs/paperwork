@@ -29,8 +29,7 @@ medallion: execution
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -69,8 +68,8 @@ def _needs_refresh(conn: BrokerOAuthConnection, skew_seconds: int) -> bool:
         return False
     expires_at = conn.token_expires_at
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    return expires_at <= datetime.now(timezone.utc) + timedelta(seconds=skew_seconds)
+        expires_at = expires_at.replace(tzinfo=UTC)
+    return expires_at <= datetime.now(UTC) + timedelta(seconds=skew_seconds)
 
 
 def ensure_broker_token(
@@ -107,13 +106,9 @@ def ensure_broker_token(
         REFRESH_FAILED) or if the refresh attempt failed permanently.
     """
     if conn.status == OAuthConnectionStatus.REVOKED.value:
-        raise TokenRefreshError(
-            f"connection {conn.id} is REVOKED; user must re-authorize"
-        )
+        raise TokenRefreshError(f"connection {conn.id} is REVOKED; user must re-authorize")
     if conn.status == OAuthConnectionStatus.REFRESH_FAILED.value:
-        raise TokenRefreshError(
-            f"connection {conn.id} is REFRESH_FAILED; user must re-authorize"
-        )
+        raise TokenRefreshError(f"connection {conn.id} is REFRESH_FAILED; user must re-authorize")
 
     if not _needs_refresh(conn, skew_seconds):
         return conn
@@ -124,13 +119,14 @@ def ensure_broker_token(
 
     r = infra.redis_client
     key = _lock_key(conn.id)
-    acquired: Optional[bool] = False
+    acquired: bool | None = False
     try:
         acquired = r.set(name=key, value="1", nx=True, ex=lock_ttl_seconds)
     except Exception as exc:  # pragma: no cover — Redis down is fail-open on the lock
         logger.warning(
             "ensure_broker_token redis lock set failed connection=%s err=%s",
-            conn.id, exc,
+            conn.id,
+            exc,
         )
         acquired = False
 
@@ -142,17 +138,13 @@ def ensure_broker_token(
         # We do not spin here. The caller should re-query `conn` after a brief
         # pause if it wants to observe the refreshed token; for order-placement
         # paths we surface this as a retriable error so OrderManager can back off.
-        raise TokenRefreshError(
-            f"connection {conn.id} is being refreshed by another worker; retry"
-        )
+        raise TokenRefreshError(f"connection {conn.id} is being refreshed by another worker; retry")
 
     try:
         outcome = _refresh_one(db, conn)
         db.commit()
         if outcome == "errors":
-            raise TokenRefreshError(
-                f"connection {conn.id} refresh failed: {conn.last_error}"
-            )
+            raise TokenRefreshError(f"connection {conn.id} refresh failed: {conn.last_error}")
         if outcome == "skipped":
             # _refresh_one skipped because status moved underneath us. Treat as a
             # retriable error rather than silent success — the caller must not
@@ -167,13 +159,14 @@ def ensure_broker_token(
         except Exception as exc:  # pragma: no cover
             logger.warning(
                 "ensure_broker_token redis lock release failed connection=%s err=%s",
-                conn.id, exc,
+                conn.id,
+                exc,
             )
 
 
 __all__ = [
+    "DEFAULT_LOCK_TTL_SECONDS",
+    "DEFAULT_SKEW_SECONDS",
     "TokenRefreshError",
     "ensure_broker_token",
-    "DEFAULT_SKEW_SECONDS",
-    "DEFAULT_LOCK_TTL_SECONDS",
 ]

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 import jwt
 
 from app.config import settings
@@ -19,20 +20,20 @@ class OAuthStateService:
     """
 
     def __init__(self, secret: str | None = None, algorithm: str = "HS256"):
-        self._secret = (
-            secret or settings.OAUTH_STATE_SECRET or settings.SECRET_KEY
-        ).encode("utf-8")
+        self._secret = (secret or settings.OAUTH_STATE_SECRET or settings.SECRET_KEY).encode(
+            "utf-8"
+        )
         self._alg = algorithm
 
     def issue_state(
         self,
         user_id: int,
         account_id: int,
-        code_verifier: Optional[str] = None,
+        code_verifier: str | None = None,
         minutes_valid: int = 10,
     ) -> str:
-        now = datetime.now(timezone.utc)
-        payload: Dict[str, Any] = {
+        now = datetime.now(UTC)
+        payload: dict[str, Any] = {
             "sub": "oauth_state",
             "uid": user_id,
             "aid": account_id,
@@ -44,7 +45,7 @@ class OAuthStateService:
             payload["cv"] = code_verifier
         return jwt.encode(payload, self._secret, algorithm=self._alg)
 
-    def validate_state(self, token: str) -> Dict[str, Any]:
+    def validate_state(self, token: str) -> dict[str, Any]:
         data = jwt.decode(token, self._secret, algorithms=[self._alg])
         if data.get("sub") != "oauth_state":
             raise ValueError("Invalid state subject")
@@ -54,5 +55,3 @@ class OAuthStateService:
 
 
 oauth_state_service = OAuthStateService()
-
-

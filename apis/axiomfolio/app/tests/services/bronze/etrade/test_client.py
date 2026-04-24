@@ -14,7 +14,7 @@ so these tests run with ``no_db`` semantics and zero network I/O.
 
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -24,7 +24,6 @@ from app.services.bronze.etrade.client import (
     ETradeAPIError,
     ETradeBronzeClient,
 )
-
 
 pytestmark = pytest.mark.no_db
 
@@ -68,7 +67,7 @@ def test_construction_requires_both_secrets() -> None:
 
 
 def test_list_accounts_unwraps_nested_envelope() -> None:
-    body: Dict[str, Any] = {
+    body: dict[str, Any] = {
         "AccountListResponse": {
             "Accounts": {
                 "Account": [
@@ -132,9 +131,7 @@ def test_4xx_is_permanent(status: int) -> None:
 
 @pytest.mark.parametrize("status", [500, 502, 503, 504])
 def test_5xx_is_transient(status: int) -> None:
-    client = _make_client_with_response(
-        _FakeResponse(status, text="upstream boom")
-    )
+    client = _make_client_with_response(_FakeResponse(status, text="upstream boom"))
     with pytest.raises(ETradeAPIError) as exc:
         client.list_accounts()
     assert exc.value.permanent is False
@@ -144,9 +141,7 @@ def test_5xx_is_transient(status: int) -> None:
 def test_network_error_is_transient() -> None:
     adapter = MagicMock()
     adapter._signed_request.side_effect = requests.ConnectionError("DNS fail")
-    client = ETradeBronzeClient(
-        access_token="tok", access_token_secret="sec", adapter=adapter
-    )
+    client = ETradeBronzeClient(access_token="tok", access_token_secret="sec", adapter=adapter)
     with pytest.raises(ETradeAPIError) as exc:
         client.list_accounts()
     assert exc.value.permanent is False
@@ -181,9 +176,7 @@ def test_urls_use_json_suffix() -> None:
     only way we avoid having to teach the adapter about headers."""
     adapter = MagicMock()
     adapter._signed_request.return_value = _FakeResponse(200, json_body={})
-    client = ETradeBronzeClient(
-        access_token="tok", access_token_secret="sec", adapter=adapter
-    )
+    client = ETradeBronzeClient(access_token="tok", access_token_secret="sec", adapter=adapter)
     client.list_accounts()
     client.get_portfolio("KEY")
     client.get_balance("KEY")

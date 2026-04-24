@@ -6,10 +6,8 @@ medallion: execution
 from __future__ import annotations
 
 import logging
-from typing import Dict
 
 from app.services.execution.broker_base import (
-    BrokerExecutor,
     OrderRequest,
     OrderResult,
     PreviewResult,
@@ -28,6 +26,7 @@ class IBKRExecutor:
     def _ibkr(self):
         if self._client is None:
             from app.services.clients.ibkr_client import ibkr_client
+
             self._client = ibkr_client
         return self._client
 

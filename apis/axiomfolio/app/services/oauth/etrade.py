@@ -31,8 +31,9 @@ import hmac
 import logging
 import secrets
 import time
-from datetime import datetime, time as dtime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple
+from datetime import UTC, datetime, timedelta, timezone
+from datetime import time as dtime
+from typing import Any
 from urllib.parse import quote
 
 import requests
@@ -71,7 +72,7 @@ def _timestamp() -> str:
 def build_signature_base_string(
     method: str,
     url: str,
-    params: Dict[str, str],
+    params: dict[str, str],
 ) -> str:
     """Build the OAuth 1.0a canonical signature base string.
 
@@ -82,15 +83,15 @@ def build_signature_base_string(
     4. Build base = METHOD & encoded_url & encoded_param_string.
     """
 
-    encoded = sorted(
-        (_percent_encode(k), _percent_encode(v)) for k, v in params.items()
-    )
+    encoded = sorted((_percent_encode(k), _percent_encode(v)) for k, v in params.items())
     param_string = "&".join(f"{k}={v}" for k, v in encoded)
-    return "&".join([
-        method.upper(),
-        _percent_encode(url),
-        _percent_encode(param_string),
-    ])
+    return "&".join(
+        [
+            method.upper(),
+            _percent_encode(url),
+            _percent_encode(param_string),
+        ]
+    )
 
 
 def sign_hmac_sha1(base_string: str, consumer_secret: str, token_secret: str = "") -> str:
@@ -105,7 +106,7 @@ def sign_hmac_sha1(base_string: str, consumer_secret: str, token_secret: str = "
     return base64.b64encode(digest).decode("ascii")
 
 
-def _build_oauth_header(params: Dict[str, str]) -> str:
+def _build_oauth_header(params: dict[str, str]) -> str:
     """Format params into an ``Authorization: OAuth ...`` header."""
 
     pieces = [f'{_percent_encode(k)}="{_percent_encode(v)}"' for k, v in sorted(params.items())]
@@ -125,13 +126,13 @@ def _next_midnight_us_eastern() -> datetime:
     now_eastern = datetime.now(eastern)
     next_day = now_eastern.date() + timedelta(days=1)
     midnight = datetime.combine(next_day, dtime(0, 0), tzinfo=eastern)
-    return midnight.astimezone(timezone.utc)
+    return midnight.astimezone(UTC)
 
 
-def _parse_token_response(text: str) -> Dict[str, str]:
+def _parse_token_response(text: str) -> dict[str, str]:
     """Parse ``key=value&key=value`` from an E*TRADE token response body."""
 
-    out: Dict[str, str] = {}
+    out: dict[str, str] = {}
     for piece in text.split("&"):
         if "=" not in piece:
             continue
@@ -161,22 +162,24 @@ class ETradeSandboxAdapter(OAuthBrokerAdapter):
     def __init__(
         self,
         *,
-        consumer_key: Optional[str] = None,
-        consumer_secret: Optional[str] = None,
+        consumer_key: str | None = None,
+        consumer_secret: str | None = None,
         base_url: str = SANDBOX_BASE,
-        timeout_s: Optional[float] = None,
-        session: Optional[requests.Session] = None,
+        timeout_s: float | None = None,
+        session: requests.Session | None = None,
     ) -> None:
         self._consumer_key = consumer_key or settings.ETRADE_SANDBOX_KEY
         self._consumer_secret = consumer_secret or settings.ETRADE_SANDBOX_SECRET
         self._base_url = base_url.rstrip("/")
-        self._timeout_s = timeout_s if timeout_s is not None else settings.ETRADE_OAUTH_REQUEST_TIMEOUT_S
+        self._timeout_s = (
+            timeout_s if timeout_s is not None else settings.ETRADE_OAUTH_REQUEST_TIMEOUT_S
+        )
         self._session = session or requests.Session()
 
     # ------------------------------------------------------------------
     # Internal HTTP helpers
     # ------------------------------------------------------------------
-    def _require_credentials(self) -> Tuple[str, str]:
+    def _require_credentials(self) -> tuple[str, str]:
         if not self._consumer_key or not self._consumer_secret:
             raise OAuthError(
                 "E*TRADE sandbox credentials not configured "
@@ -193,12 +196,12 @@ class ETradeSandboxAdapter(OAuthBrokerAdapter):
         *,
         token: str = "",
         token_secret: str = "",
-        callback: Optional[str] = None,
-        verifier: Optional[str] = None,
+        callback: str | None = None,
+        verifier: str | None = None,
     ) -> requests.Response:
         consumer_key, consumer_secret = self._require_credentials()
         url = f"{self._base_url}{path}"
-        params: Dict[str, str] = {
+        params: dict[str, str] = {
             "oauth_consumer_key": consumer_key,
             "oauth_nonce": _nonce(),
             "oauth_signature_method": "HMAC-SHA1",
@@ -213,9 +216,7 @@ class ETradeSandboxAdapter(OAuthBrokerAdapter):
             params["oauth_verifier"] = verifier
 
         base_string = build_signature_base_string(method, url, params)
-        params["oauth_signature"] = sign_hmac_sha1(
-            base_string, consumer_secret, token_secret
-        )
+        params["oauth_signature"] = sign_hmac_sha1(base_string, consumer_secret, token_secret)
         headers = {"Authorization": _build_oauth_header(params)}
         try:
             return self._session.request(
@@ -325,7 +326,7 @@ class ETradeSandboxAdapter(OAuthBrokerAdapter):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str],
+        refresh_token: str | None,
     ) -> OAuthTokens:
         if not refresh_token:
             raise OAuthError(
@@ -364,7 +365,7 @@ class ETradeSandboxAdapter(OAuthBrokerAdapter):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str] = None,
+        refresh_token: str | None = None,
     ) -> None:
         try:
             resp = self._signed_request(
@@ -390,8 +391,8 @@ class ETradeSandboxAdapter(OAuthBrokerAdapter):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        refresh_token: str | None = None,
+    ) -> dict[str, Any] | None:
         # The /v1/accounts/list endpoint is the canonical "is this token live?"
         # probe. We only attempt it when the caller passes the token secret;
         # otherwise we can't sign and return ``None`` (caller treats as "skip").

@@ -31,9 +31,10 @@ medallion: silver
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from collections.abc import Iterable
+from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple
+from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Session
 
@@ -51,14 +52,14 @@ logger = logging.getLogger(__name__)
 # today invalidates a naive (current - prior_close) day P&L. A forward
 # split, reverse split, or stock-dividend all silently change the price
 # scale; a cash dividend does NOT (share count is unchanged).
-_SPLIT_LIKE_TYPES: Tuple[str, ...] = (
+_SPLIT_LIKE_TYPES: tuple[str, ...] = (
     CorporateActionType.SPLIT.value,
     CorporateActionType.REVERSE_SPLIT.value,
     CorporateActionType.STOCK_DIVIDEND.value,
 )
 
 
-def _to_decimal(value: object) -> Optional[Decimal]:
+def _to_decimal(value: object) -> Decimal | None:
     """Coerce a DB scalar (float / Decimal / str) to Decimal, or None.
 
     We explicitly do NOT default to ``Decimal(0)`` on failure: an
@@ -79,8 +80,8 @@ def resolve_prior_close(
     db: Session,
     symbol: str,
     *,
-    as_of: Optional[date] = None,
-) -> Optional[Tuple[Decimal, date]]:
+    as_of: date | None = None,
+) -> tuple[Decimal, date] | None:
     """Return ``(prior_close, prior_close_date)`` or ``None`` if unavailable.
 
     Source of truth: daily ``price_data`` (interval='1d') — the same
@@ -150,7 +151,7 @@ def has_ambiguous_corporate_action(
     symbol: str,
     prior_close_date: date,
     *,
-    as_of: Optional[date] = None,
+    as_of: date | None = None,
 ) -> bool:
     """``True`` if a SPLIT / REVERSE_SPLIT / STOCK_DIVIDEND has
     ``ex_date`` in ``(prior_close_date, as_of]``.
@@ -190,7 +191,7 @@ def compute_day_pnl(
     current_price: Decimal,
     prior_close: Decimal,
     market_value: Decimal,
-) -> Tuple[Optional[Decimal], Optional[Decimal]]:
+) -> tuple[Decimal | None, Decimal | None]:
     """Return ``(day_pnl, day_pnl_pct)``.
 
     Formula:
@@ -236,9 +237,9 @@ def compute_day_pnl(
 
 def recompute_position_day_pnl(
     db: Session,
-    position: "Position",
+    position: Position,
     *,
-    as_of: Optional[date] = None,
+    as_of: date | None = None,
 ) -> None:
     """Mutates ``position.day_pnl`` and ``position.day_pnl_pct`` in
     place.
@@ -270,9 +271,7 @@ def recompute_position_day_pnl(
         return
     prior_close, prior_close_date = resolved
 
-    if has_ambiguous_corporate_action(
-        db, position.symbol, prior_close_date, as_of=as_of
-    ):
+    if has_ambiguous_corporate_action(db, position.symbol, prior_close_date, as_of=as_of):
         logger.info(
             "day_pnl: nulling %s (qty=%s): split-like corporate action between "
             "prior_close_date=%s and as_of=%s",
@@ -313,11 +312,11 @@ def recompute_position_day_pnl(
 
 def recompute_day_pnl_for_rows(
     db: Session,
-    rows: Iterable["Position"],
+    rows: Iterable[Position],
     source_label: str,
     *,
-    as_of: Optional[date] = None,
-) -> Dict[str, int]:
+    as_of: date | None = None,
+) -> dict[str, int]:
     """Recompute day P&L for a batch of positions with structured counters.
 
     Returns a dict with ``day_pnl_recomputed``, ``day_pnl_nulled_due_to_split``,
@@ -347,16 +346,14 @@ def recompute_day_pnl_for_rows(
                 nulled_missing += 1
                 continue
             _, prior_close_date = resolved
-            if has_ambiguous_corporate_action(
-                db, p.symbol, prior_close_date, as_of=as_of
-            ):
+            if has_ambiguous_corporate_action(db, p.symbol, prior_close_date, as_of=as_of):
                 p.day_pnl = None
                 p.day_pnl_pct = None
                 nulled_split += 1
                 continue
             recompute_position_day_pnl(db, p, as_of=as_of)
             recomputed += 1
-        except Exception as e:  # noqa: BLE001 — per-row isolation, counted
+        except Exception as e:
             errors += 1
             logger.warning(
                 "%s day_pnl: recompute failed for position %s (%s): %s",

@@ -11,12 +11,13 @@ path executes.
 
 medallion: silver
 """
+
 from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import and_, func, select, text
 from sqlalchemy.orm import Session
@@ -35,6 +36,7 @@ _SECTOR_PERF_CACHE_TTL = 300
 
 def _redis():
     from app.services.market.market_data_service import infra
+
     return infra.redis_client
 
 
@@ -70,15 +72,15 @@ class MarketMVService:
     # Refresh
     # ------------------------------------------------------------------
 
-    def refresh_all(self, db: Session) -> Dict[str, Any]:
+    def refresh_all(self, db: Session) -> dict[str, Any]:
         """Refresh all market MVs. Safe to call periodically.
 
         Uses autocommit isolation (Postgres requirement for MV refresh).
         For empty MVs (created WITH NO DATA), uses non-concurrent refresh
         since CONCURRENTLY requires at least one prior population.
         """
-        refreshed: List[str] = []
-        errors: List[str] = []
+        refreshed: list[str] = []
+        errors: list[str] = []
         raw_conn = db.get_bind().connect()
         try:
             auto_conn = raw_conn.execution_options(isolation_level="AUTOCOMMIT")
@@ -89,14 +91,10 @@ class MarketMVService:
                         continue
 
                     if self._mv_has_data(db, mv):
-                        auto_conn.execute(
-                            text(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {mv};")
-                        )
+                        auto_conn.execute(text(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {mv};"))
                     else:
                         logger.info("MV %s is empty, using non-concurrent refresh", mv)
-                        auto_conn.execute(
-                            text(f"REFRESH MATERIALIZED VIEW {mv};")
-                        )
+                        auto_conn.execute(text(f"REFRESH MATERIALIZED VIEW {mv};"))
                     refreshed.append(mv)
                 except Exception as e:
                     logger.warning("Failed to refresh MV %s: %s", mv, e)
@@ -107,7 +105,7 @@ class MarketMVService:
         try:
             _redis().set(
                 "mv:last_refresh",
-                datetime.now(timezone.utc).isoformat(),
+                datetime.now(UTC).isoformat(),
                 ex=86400,
             )
         except Exception:
@@ -120,8 +118,12 @@ class MarketMVService:
     # ------------------------------------------------------------------
 
     def get_breadth_series(
-        self, db: Session, days: int = 120, *, skip_cache: bool = False,
-    ) -> List[Dict[str, Any]]:
+        self,
+        db: Session,
+        days: int = 120,
+        *,
+        skip_cache: bool = False,
+    ) -> list[dict[str, Any]]:
         """Return daily breadth data. Uses Redis -> MV -> raw table."""
         if not skip_cache:
             cached = self._get_cached(_BREADTH_CACHE_KEY)
@@ -136,8 +138,8 @@ class MarketMVService:
         self._set_cached(_BREADTH_CACHE_KEY, series, _BREADTH_CACHE_TTL)
         return series
 
-    def _query_mv_breadth(self, db: Session, days: int) -> List[Dict[str, Any]]:
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).date()
+    def _query_mv_breadth(self, db: Session, days: int) -> list[dict[str, Any]]:
+        cutoff = (datetime.now(UTC) - timedelta(days=days)).date()
         rows = db.execute(
             text(
                 "SELECT dt, above_50, above_200, total "
@@ -156,9 +158,9 @@ class MarketMVService:
             for r in rows
         ]
 
-    def _query_raw_breadth(self, db: Session, days: int) -> List[Dict[str, Any]]:
+    def _query_raw_breadth(self, db: Session, days: int) -> list[dict[str, Any]]:
         """Fallback: direct query on market_snapshot_history (full universe)."""
-        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).date()
+        cutoff_date = (datetime.now(UTC) - timedelta(days=days)).date()
         stmt = (
             select(
                 MarketSnapshotHistory.as_of_date,
@@ -203,8 +205,12 @@ class MarketMVService:
     # ------------------------------------------------------------------
 
     def get_stage_distribution(
-        self, db: Session, days: int = 120, *, skip_cache: bool = False,
-    ) -> List[Dict[str, Any]]:
+        self,
+        db: Session,
+        days: int = 120,
+        *,
+        skip_cache: bool = False,
+    ) -> list[dict[str, Any]]:
         if not skip_cache:
             cached = self._get_cached(_STAGE_DIST_CACHE_KEY)
             if cached is not None:
@@ -218,8 +224,8 @@ class MarketMVService:
         self._set_cached(_STAGE_DIST_CACHE_KEY, data, _STAGE_DIST_CACHE_TTL)
         return data
 
-    def _query_mv_stage_dist(self, db: Session, days: int) -> List[Dict[str, Any]]:
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).date()
+    def _query_mv_stage_dist(self, db: Session, days: int) -> list[dict[str, Any]]:
+        cutoff = (datetime.now(UTC) - timedelta(days=days)).date()
         rows = db.execute(
             text(
                 "SELECT dt, stage_label, cnt "
@@ -230,9 +236,9 @@ class MarketMVService:
         ).fetchall()
         return [{"date": str(r[0]), "stage_label": r[1], "count": r[2]} for r in rows]
 
-    def _query_raw_stage_dist(self, db: Session, days: int) -> List[Dict[str, Any]]:
+    def _query_raw_stage_dist(self, db: Session, days: int) -> list[dict[str, Any]]:
         """Fallback: direct query on market_snapshot_history."""
-        cutoff_date = (datetime.now(timezone.utc) - timedelta(days=days)).date()
+        cutoff_date = (datetime.now(UTC) - timedelta(days=days)).date()
         stmt = (
             select(
                 MarketSnapshotHistory.as_of_date,
@@ -260,8 +266,11 @@ class MarketMVService:
     # ------------------------------------------------------------------
 
     def get_sector_performance(
-        self, db: Session, *, skip_cache: bool = False,
-    ) -> List[Dict[str, Any]]:
+        self,
+        db: Session,
+        *,
+        skip_cache: bool = False,
+    ) -> list[dict[str, Any]]:
         if not skip_cache:
             cached = self._get_cached(_SECTOR_PERF_CACHE_KEY)
             if cached is not None:
@@ -275,7 +284,7 @@ class MarketMVService:
         self._set_cached(_SECTOR_PERF_CACHE_KEY, data, _SECTOR_PERF_CACHE_TTL)
         return data
 
-    def _query_mv_sector_perf(self, db: Session) -> List[Dict[str, Any]]:
+    def _query_mv_sector_perf(self, db: Session) -> list[dict[str, Any]]:
         rows = db.execute(
             text(
                 "SELECT sector, avg_perf_20d, avg_rs, cnt "
@@ -292,7 +301,7 @@ class MarketMVService:
             for r in rows
         ]
 
-    def _query_raw_sector_perf(self, db: Session) -> List[Dict[str, Any]]:
+    def _query_raw_sector_perf(self, db: Session) -> list[dict[str, Any]]:
         """Fallback: direct query on market_snapshot (latest only)."""
         stmt = (
             select(
@@ -324,7 +333,7 @@ class MarketMVService:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _get_cached(key: str) -> Optional[Any]:
+    def _get_cached(key: str) -> Any | None:
         try:
             raw = _redis().get(key)
             if raw:

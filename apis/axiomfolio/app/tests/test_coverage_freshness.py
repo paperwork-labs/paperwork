@@ -1,15 +1,15 @@
-from datetime import datetime, timedelta, timezone
-from fastapi.testclient import TestClient
-import pytest
+from datetime import UTC, datetime, timedelta
 
-from app.api.main import app
+import pytest
+from fastapi.testclient import TestClient
+
 from app.api.dependencies import get_market_data_viewer
+from app.api.main import app
 from app.database import get_db
-from app.models.market_data import PriceData
-from app.models.market_data import MarketSnapshot
+from app.models.market_data import MarketSnapshot, PriceData
+from app.models.user import UserRole
 from app.tasks.market import coverage as market_coverage_tasks
 from app.tasks.market.coverage import health_check
-from app.models.user import UserRole
 
 
 @pytest.fixture(autouse=True)
@@ -27,7 +27,7 @@ def allow_market_data_viewer():
 def _seed_prices(db):
     db.query(PriceData).delete()
     db.query(MarketSnapshot).delete()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     rows = [
         # fresh <24h
         PriceData(
@@ -140,4 +140,3 @@ def test_coverage_endpoint_uses_recomputed_freshness(db_session, monkeypatch):
         assert isinstance(daily["snapshot_fill_by_date"], list)
     finally:
         app.dependency_overrides.pop(get_db, None)
-

@@ -35,11 +35,11 @@ def _row(symbol: str, iv_rank: float | None) -> ScanInput:
 
 def test_iv_rank_lt_20_excludes_null_rank() -> None:
     rows = [
-        _row("LOW", 10.0),     # passes
-        _row("MID", 50.0),     # filtered out
-        _row("RAMP", None),    # EXCLUDED (ramping/no data)
-        _row("HIGH", 95.0),    # filtered out
-        _row("ZERO", 0.0),     # passes
+        _row("LOW", 10.0),  # passes
+        _row("MID", 50.0),  # filtered out
+        _row("RAMP", None),  # EXCLUDED (ramping/no data)
+        _row("HIGH", 95.0),  # filtered out
+        _row("ZERO", 0.0),  # passes
     ]
     out = apply_iv_rank_filter(rows, op="lt", value=20.0)
     symbols = [r.symbol for r in out]

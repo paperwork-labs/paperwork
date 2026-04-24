@@ -8,7 +8,7 @@ medallion: ops
 """
 
 from .brain import AgentBrain
-from .tools import AGENT_TOOLS
 from .taxonomy import RiskLevel, classify_action_risk
+from .tools import AGENT_TOOLS
 
-__all__ = ["AgentBrain", "AGENT_TOOLS", "RiskLevel", "classify_action_risk"]
+__all__ = ["AGENT_TOOLS", "AgentBrain", "RiskLevel", "classify_action_risk"]

@@ -13,14 +13,14 @@ JSON-RPC dispatcher -> per-user tool execution. Critical scenarios:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_current_user
+from app.api.main import app
 from app.database import get_db
 from app.mcp.auth import generate_token, hash_token
 from app.models.broker_account import (
@@ -118,7 +118,7 @@ def two_users(db_session):
 def _mint_token(db_session, user, *, expires_delta: timedelta | None = None) -> str:
     """Insert an active MCP token row, returning the plaintext value."""
     plaintext, h = generate_token()
-    expires_at = datetime.now(timezone.utc) + (expires_delta or timedelta(days=30))
+    expires_at = datetime.now(UTC) + (expires_delta or timedelta(days=30))
     db_session.add(
         MCPToken(
             user_id=user.id,
@@ -188,7 +188,7 @@ def _seed_trade(db, account, *, symbol: str, side: str, qty: str, price: str, da
             total_value=Decimal(qty) * Decimal(price),
             commission=Decimal("0"),
             fees=Decimal("0"),
-            execution_time=datetime.now(timezone.utc) - timedelta(days=days_ago),
+            execution_time=datetime.now(UTC) - timedelta(days=days_ago),
             order_type="MARKET",
             status="EXECUTED",
             is_opening=True,
@@ -197,7 +197,7 @@ def _seed_trade(db, account, *, symbol: str, side: str, qty: str, price: str, da
 
 
 def _seed_dividend(db, account, *, symbol: str, gross: float, days_ago: int = 5):
-    ts = datetime.now(timezone.utc) - timedelta(days=days_ago)
+    ts = datetime.now(UTC) - timedelta(days=days_ago)
     shares = 100.0
     db.add(
         Dividend(
@@ -268,10 +268,7 @@ class TestTokenCRUD:
         # User A has a token
         token_a = _mint_token(db_session, two_users["user_a"])
         listed_id = (
-            db_session.query(MCPToken)
-            .filter(MCPToken.token_hash == hash_token(token_a))
-            .one()
-            .id
+            db_session.query(MCPToken).filter(MCPToken.token_hash == hash_token(token_a)).one().id
         )
         # User B tries to revoke A's token
         _login_as(two_users["user_b"])
@@ -303,17 +300,13 @@ class TestBearerAuth:
     def test_unknown_token_is_401(self, client):
         r = client.post(
             "/api/v1/mcp/jsonrpc",
-            headers={
-                "Authorization": "Bearer mcp_axfolio_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
-            },
+            headers={"Authorization": "Bearer mcp_axfolio_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"},
             json={"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
         )
         assert r.status_code == 401
 
     def test_expired_token_is_401(self, client, two_users, db_session):
-        token = _mint_token(
-            db_session, two_users["user_a"], expires_delta=timedelta(seconds=-60)
-        )
+        token = _mint_token(db_session, two_users["user_a"], expires_delta=timedelta(seconds=-60))
         r = client.post(
             "/api/v1/mcp/jsonrpc",
             headers={"Authorization": f"Bearer {token}"},
@@ -455,12 +448,20 @@ class TestCrossTenantIsolation:
 
     def test_holdings_isolated(self, client, two_users, db_session):
         _seed_position(
-            db_session, two_users["user_a"], two_users["acct_a"],
-            symbol="AAA", qty="10", price="100",
+            db_session,
+            two_users["user_a"],
+            two_users["acct_a"],
+            symbol="AAA",
+            qty="10",
+            price="100",
         )
         _seed_position(
-            db_session, two_users["user_b"], two_users["acct_b"],
-            symbol="BBB", qty="5", price="50",
+            db_session,
+            two_users["user_b"],
+            two_users["acct_b"],
+            symbol="BBB",
+            qty="5",
+            price="50",
         )
         db_session.flush()
 
@@ -489,7 +490,9 @@ class TestCrossTenantIsolation:
         assert b_symbols == ["BBB"]
 
     def test_trades_isolated(self, client, two_users, db_session):
-        _seed_trade(db_session, two_users["acct_a"], symbol="AAA", side="BUY", qty="10", price="100")
+        _seed_trade(
+            db_session, two_users["acct_a"], symbol="AAA", side="BUY", qty="10", price="100"
+        )
         _seed_trade(db_session, two_users["acct_b"], symbol="BBB", side="BUY", qty="5", price="50")
         db_session.flush()
 

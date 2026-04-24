@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 import pytest
@@ -159,8 +159,8 @@ def test_returns_long_and_short_unrealized_math(client, db_session, user_a, brok
     if db_session is None:
         pytest.skip("database not configured")
 
-    long_ago = datetime.now(timezone.utc) - timedelta(days=400)
-    recent = datetime.now(timezone.utc) - timedelta(days=30)
+    long_ago = datetime.now(UTC) - timedelta(days=400)
+    recent = datetime.now(UTC) - timedelta(days=30)
 
     lo = _opt_long(
         user_id=user_a.id,
@@ -235,7 +235,9 @@ def test_unrealized_null_when_mark_missing_not_zero(client, db_session, user_a, 
     assert row["unrealized_pnl_pct"] is None
 
 
-def test_total_unrealized_null_when_any_row_missing_pnl(client, db_session, user_a, broker_account_a):
+def test_total_unrealized_null_when_any_row_missing_pnl(
+    client, db_session, user_a, broker_account_a
+):
     if db_session is None:
         pytest.skip("database not configured")
 

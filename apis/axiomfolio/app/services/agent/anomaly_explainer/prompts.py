@@ -15,8 +15,7 @@ medallion: ops
 
 from __future__ import annotations
 
-from typing import Any, Dict
-
+from typing import Any
 
 SYSTEM_PROMPT = (
     "You are AxiomFolio AutoOps, an experienced site-reliability engineer "
@@ -44,7 +43,7 @@ SYSTEM_PROMPT = (
 )
 
 
-OUTPUT_JSON_SCHEMA: Dict[str, Any] = {
+OUTPUT_JSON_SCHEMA: dict[str, Any] = {
     "type": "object",
     "additionalProperties": False,
     "required": [

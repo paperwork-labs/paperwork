@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_admin_user
+from app.api.main import app
 
 client = TestClient(app, raise_server_exceptions=False)
 

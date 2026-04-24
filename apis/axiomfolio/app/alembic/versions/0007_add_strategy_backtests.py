@@ -4,8 +4,9 @@ Revision ID: 0007
 Revises: 0006
 Create Date: 2026-03-27
 """
-from alembic import op
+
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
 
 revision = "0007"
@@ -23,7 +24,9 @@ def upgrade() -> None:
         # Configuration
         sa.Column(
             "status",
-            sa.Enum("pending", "running", "completed", "failed", "cancelled", name="backteststatus"),
+            sa.Enum(
+                "pending", "running", "completed", "failed", "cancelled", name="backteststatus"
+            ),
             nullable=False,
             server_default="pending",
         ),

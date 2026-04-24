@@ -191,9 +191,7 @@ class TestGetChain:
         fake_client.is_connected.return_value = True
 
         yf_stub = MagicMock(
-            return_value=[
-                {"expiry": date(2026, 2, 20), "strike": 10, "option_type": "CALL"}
-            ]
+            return_value=[{"expiry": date(2026, 2, 20), "strike": 10, "option_type": "CALL"}]
         )
 
         with patch.dict(

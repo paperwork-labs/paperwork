@@ -12,8 +12,9 @@ medallion: gold
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from decimal import Decimal
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -110,16 +111,16 @@ class Stage2ARsStrongKellGenerator(CandidateGenerator):
             return []
 
         result = db.execute(_SELECT_SQL, {"lim": _MAX_ROWS})
-        rows: List[Mapping[str, Any]] = list(result.mappings().all())
+        rows: list[Mapping[str, Any]] = list(result.mappings().all())
 
-        out: List[GeneratedCandidate] = []
+        out: list[GeneratedCandidate] = []
         for r in rows:
             cand = self._row_to_candidate(r)
             if cand is not None:
                 out.append(cand)
         return out
 
-    def _row_to_candidate(self, r: Mapping[str, Any]) -> Optional[GeneratedCandidate]:
+    def _row_to_candidate(self, r: Mapping[str, Any]) -> GeneratedCandidate | None:
         symbol = (r.get("symbol") or "").strip().upper()
         if not symbol:
             return None
@@ -133,7 +134,7 @@ class Stage2ARsStrongKellGenerator(CandidateGenerator):
         dist_52 = r.get("distance_from_52w_high_pct")
         stage = r.get("stage_label")
 
-        breakdown: Dict[str, Decimal] = {
+        breakdown: dict[str, Decimal] = {
             "stage_substage": _DIM_WEIGHT,
             "rs_mansfield_and_rank": _DIM_WEIGHT,
             "sma150_anchor": _DIM_WEIGHT,
@@ -161,7 +162,7 @@ class Stage2ARsStrongKellGenerator(CandidateGenerator):
         )
         rationale = "; ".join(p for p in rationale_parts if p) + "."
 
-        signals: Dict[str, Any] = {
+        signals: dict[str, Any] = {
             "stage_label": stage,
             "rs_mansfield_pct": float(rs) if rs is not None else None,
             "rs_mansfield_rank_pct": float(rs_rank_pct) if rs_rank_pct is not None else None,

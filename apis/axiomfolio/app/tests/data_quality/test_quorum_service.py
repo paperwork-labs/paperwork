@@ -196,9 +196,7 @@ def test_explicit_threshold_override_tightens_quorum(service: QuorumService) -> 
         "yfinance": Decimal("100.20"),
         "finnhub": Decimal("120.00"),
     }
-    default = service.validate(
-        symbol="AAPL", field_name="LAST_PRICE", provider_values=values
-    )
+    default = service.validate(symbol="AAPL", field_name="LAST_PRICE", provider_values=values)
     assert default.status == QuorumStatus.QUORUM_REACHED
 
     strict = service.validate(
@@ -321,9 +319,7 @@ def test_threshold_must_be_in_unit_interval() -> None:
 
 def test_empty_provider_values_raises(service: QuorumService) -> None:
     with pytest.raises(ValueError):
-        service.validate(
-            symbol="AAPL", field_name="LAST_PRICE", provider_values={}
-        )
+        service.validate(symbol="AAPL", field_name="LAST_PRICE", provider_values={})
 
 
 def test_quorum_result_fields_present_for_disagreement(
@@ -346,4 +342,4 @@ def test_quorum_result_fields_present_for_disagreement(
 
 
 def test_exact_tolerance_constant_is_zero() -> None:
-    assert EXACT_TOLERANCE == Decimal("0")
+    assert Decimal("0") == EXACT_TOLERANCE

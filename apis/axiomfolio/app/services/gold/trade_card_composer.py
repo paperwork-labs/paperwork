@@ -23,10 +23,10 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from enum import Enum
-from typing import Any, Dict, List, Optional, Protocol
+from typing import Any, Protocol
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -35,6 +35,7 @@ from app.models.broker_account import AccountStatus, BrokerAccount
 from app.models.market_data import MarketRegime, MarketSnapshot
 from app.models.picks import Candidate, PickAction
 from app.models.user import User
+
 # medallion: allow cross-layer import (gold -> execution); resolves when app.services.execution.risk_gate moves during Phase 0.C
 from app.services.execution.risk_gate import (
     DEFAULT_STOP_MULTIPLIER,
@@ -117,9 +118,9 @@ class ContractRecommendation:
     mid: Decimal
     ask: Decimal
     spread_pct: Decimal  # (ask-bid) / mid * 100
-    delta: Optional[Decimal]
-    open_interest: Optional[int]
-    volume: Optional[int]
+    delta: Decimal | None
+    open_interest: int | None
+    volume: int | None
 
 
 class OptionsChainSurface(Protocol):
@@ -137,9 +138,9 @@ class OptionsChainSurface(Protocol):
         *,
         symbol: str,
         current_price: Decimal,
-        earnings_date: Optional[datetime],
+        earnings_date: datetime | None,
         bias: ContractType,
-    ) -> Optional[ContractRecommendation]:  # pragma: no cover - protocol
+    ) -> ContractRecommendation | None:  # pragma: no cover - protocol
         ...
 
 
@@ -151,34 +152,34 @@ class OptionsChainSurface(Protocol):
 @dataclass(frozen=True)
 class UnderlyingView:
     symbol: str
-    name: Optional[str]
-    sector: Optional[str]
-    stage_label: Optional[str]
-    current_price: Optional[Decimal]
-    rs_mansfield_pct: Optional[Decimal]
-    perf_5d: Optional[Decimal]
-    td_buy_setup: Optional[int]
-    td_sell_setup: Optional[int]
-    next_earnings: Optional[datetime]
-    days_to_earnings: Optional[int]
-    atr_14: Optional[Decimal]
-    atrp_14: Optional[Decimal]
-    sma_21: Optional[Decimal]
-    volume_avg_20d: Optional[Decimal]
+    name: str | None
+    sector: str | None
+    stage_label: str | None
+    current_price: Decimal | None
+    rs_mansfield_pct: Decimal | None
+    perf_5d: Decimal | None
+    td_buy_setup: int | None
+    td_sell_setup: int | None
+    next_earnings: datetime | None
+    days_to_earnings: int | None
+    atr_14: Decimal | None
+    atrp_14: Decimal | None
+    sma_21: Decimal | None
+    volume_avg_20d: Decimal | None
 
 
 @dataclass(frozen=True)
 class RegimeView:
     regime_state: str
-    composite_score: Optional[Decimal]
+    composite_score: Decimal | None
     regime_multiplier: Decimal
-    as_of_date: Optional[date]
+    as_of_date: date | None
 
 
 @dataclass(frozen=True)
 class ScoreView:
     pick_quality_score: Decimal
-    components: Dict[str, Dict[str, str]]
+    components: dict[str, dict[str, str]]
     regime_multiplier: Decimal
 
 
@@ -192,9 +193,9 @@ class ContractView:
     mid: Decimal
     ask: Decimal
     spread_pct: Decimal
-    delta: Optional[Decimal]
-    open_interest: Optional[int]
-    volume: Optional[int]
+    delta: Decimal | None
+    open_interest: int | None
+    volume: int | None
 
 
 @dataclass(frozen=True)
@@ -207,7 +208,7 @@ class LimitPriceTier:
 
 @dataclass(frozen=True)
 class SizingView:
-    tier: Optional[SizingTier]
+    tier: SizingTier | None
     contracts: int
     shares: int
     premium_dollars: Decimal
@@ -222,11 +223,11 @@ class SizingView:
 
 @dataclass(frozen=True)
 class StopsView:
-    premium_stop: Optional[Decimal]
-    underlying_stop: Optional[Decimal]
-    underlying_stop_reason: Optional[str]
-    calendar_stop: Optional[date]
-    calendar_stop_reason: Optional[str]
+    premium_stop: Decimal | None
+    underlying_stop: Decimal | None
+    underlying_stop_reason: str | None
+    calendar_stop: date | None
+    calendar_stop_reason: str | None
 
 
 @dataclass(frozen=True)
@@ -246,14 +247,14 @@ class TradeCard:
     regime: RegimeView
     score: ScoreView
     contract_status: ContractStatus
-    contract: Optional[ContractView]
-    limit_tiers: List[LimitPriceTier]
+    contract: ContractView | None
+    limit_tiers: list[LimitPriceTier]
     sizing_status: SizingStatus
-    sizing: Optional[SizingView]
+    sizing: SizingView | None
     stops: StopsView
-    alerts: List[AlertItem]
+    alerts: list[AlertItem]
     anti_thesis: str
-    notes: List[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
 
 
 # ----------------------------------------------------------------------------
@@ -267,7 +268,7 @@ _LONG_STAGE_LABELS = {"2A", "2B", "2C", "2A(RS-)", "2B(RS-)", "2C(RS-)"}
 _DISTRIBUTION_LABELS = {"3A", "3B", "4A", "4B", "4C"}
 
 
-def _d(val: Any) -> Optional[Decimal]:
+def _d(val: Any) -> Decimal | None:
     if val is None:
         return None
     try:
@@ -281,11 +282,11 @@ def _req_d(val: Any) -> Decimal:
     return d if d is not None else Decimal("0")
 
 
-def _to_aware_utc(dt: Optional[datetime]) -> Optional[datetime]:
+def _to_aware_utc(dt: datetime | None) -> datetime | None:
     if dt is None:
         return None
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
+        return dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -293,7 +294,7 @@ def _days_between(earlier: datetime, later: datetime) -> int:
     return (later.date() - earlier.date()).days
 
 
-def _sum_user_account_value(db: Session, user_id: int) -> Optional[Decimal]:
+def _sum_user_account_value(db: Session, user_id: int) -> Decimal | None:
     """Sum ``total_value`` across the user's active broker accounts.
 
     Returns ``None`` when the user has no active accounts or every one lacks a
@@ -319,7 +320,7 @@ def _sum_user_account_value(db: Session, user_id: int) -> Optional[Decimal]:
     return Decimal(str(total_sum))
 
 
-def _load_snapshot(db: Session, symbol: str) -> Optional[MarketSnapshot]:
+def _load_snapshot(db: Session, symbol: str) -> MarketSnapshot | None:
     return (
         db.query(MarketSnapshot)
         .filter(
@@ -332,7 +333,7 @@ def _load_snapshot(db: Session, symbol: str) -> Optional[MarketSnapshot]:
     )
 
 
-def _sizing_tier(premium_dollars: Decimal) -> Optional[SizingTier]:
+def _sizing_tier(premium_dollars: Decimal) -> SizingTier | None:
     if premium_dollars <= 0:
         return None
     if premium_dollars < Decimal("1000"):
@@ -342,7 +343,7 @@ def _sizing_tier(premium_dollars: Decimal) -> Optional[SizingTier]:
     return SizingTier.T3_POSITION
 
 
-def _underlying_view(snapshot: Optional[MarketSnapshot], symbol: str) -> UnderlyingView:
+def _underlying_view(snapshot: MarketSnapshot | None, symbol: str) -> UnderlyingView:
     if snapshot is None:
         return UnderlyingView(
             symbol=symbol,
@@ -362,7 +363,7 @@ def _underlying_view(snapshot: Optional[MarketSnapshot], symbol: str) -> Underly
             volume_avg_20d=None,
         )
     ne = _to_aware_utc(snapshot.next_earnings)
-    today = datetime.now(timezone.utc)
+    today = datetime.now(UTC)
     days_to_earnings = _days_between(today, ne) if ne is not None else None
     return UnderlyingView(
         symbol=symbol,
@@ -383,7 +384,7 @@ def _underlying_view(snapshot: Optional[MarketSnapshot], symbol: str) -> Underly
     )
 
 
-def _regime_view(regime: Optional[MarketRegime]) -> RegimeView:
+def _regime_view(regime: MarketRegime | None) -> RegimeView:
     if regime is None:
         return RegimeView(
             regime_state="",
@@ -434,7 +435,7 @@ def _contract_view_from_rec(rec: ContractRecommendation) -> ContractView:
     )
 
 
-def _limit_tiers_for_option(contract: ContractRecommendation) -> List[LimitPriceTier]:
+def _limit_tiers_for_option(contract: ContractRecommendation) -> list[LimitPriceTier]:
     """Three limit prices per Kell/Weinstein-style execution discipline.
 
     Passive sits just above bid so you only fill if supply meets you; mid is
@@ -451,18 +452,14 @@ def _limit_tiers_for_option(contract: ContractRecommendation) -> List[LimitPrice
         LimitPriceTier(
             tier=LimitTier.PASSIVE,
             price=passive,
-            logic=(
-                "GTC just above bid; only fills if supply meets you at your "
-                "price."
-            ),
+            logic=("GTC just above bid; only fills if supply meets you at your price."),
             fill_likelihood="low",
         ),
         LimitPriceTier(
             tier=LimitTier.MID,
             price=mid.quantize(Decimal("0.01")),
             logic=(
-                "Midpoint of bid/ask. Reasonable if thesis is time-sensitive "
-                "and spread is tight."
+                "Midpoint of bid/ask. Reasonable if thesis is time-sensitive and spread is tight."
             ),
             fill_likelihood="moderate",
         ),
@@ -478,7 +475,7 @@ def _limit_tiers_for_option(contract: ContractRecommendation) -> List[LimitPrice
     ]
 
 
-def _limit_tiers_for_stock(current_price: Decimal) -> List[LimitPriceTier]:
+def _limit_tiers_for_stock(current_price: Decimal) -> list[LimitPriceTier]:
     """Price tiers when only a stock position is available.
 
     We anchor the mid tier at the last print, passive at a mild pullback
@@ -510,7 +507,9 @@ def _limit_tiers_for_stock(current_price: Decimal) -> List[LimitPriceTier]:
     ]
 
 
-def _calendar_stop(contract: Optional[ContractRecommendation], earnings: Optional[datetime]) -> tuple[Optional[date], Optional[str]]:
+def _calendar_stop(
+    contract: ContractRecommendation | None, earnings: datetime | None
+) -> tuple[date | None, str | None]:
     """Calendar stop: earliest of (2 calendar days pre-earnings, contract expiry -7d)."""
     candidates: list[tuple[date, str]] = []
     if earnings is not None:
@@ -518,14 +517,16 @@ def _calendar_stop(contract: Optional[ContractRecommendation], earnings: Optiona
         candidates.append((pre_earn, f"Exit by {pre_earn.isoformat()} to avoid earnings IV crush"))
     if contract is not None:
         pre_exp = contract.expiry - timedelta(days=7)
-        candidates.append((pre_exp, f"Exit by {pre_exp.isoformat()} to avoid gamma-week theta collapse"))
+        candidates.append(
+            (pre_exp, f"Exit by {pre_exp.isoformat()} to avoid gamma-week theta collapse")
+        )
     if not candidates:
         return None, None
     candidates.sort(key=lambda p: p[0])
     return candidates[0]
 
 
-def _underlying_stop(underlying: UnderlyingView) -> tuple[Optional[Decimal], Optional[str]]:
+def _underlying_stop(underlying: UnderlyingView) -> tuple[Decimal | None, str | None]:
     """SMA21 break is the default stop anchor per stage analysis; fall back to
     2 ATR below price if SMA21 is missing."""
     if underlying.sma_21 is not None and underlying.sma_21 > 0:
@@ -551,16 +552,18 @@ def _build_alerts(
     *,
     underlying: UnderlyingView,
     regime: RegimeView,
-    contract: Optional[ContractRecommendation],
-    calendar_stop: Optional[date],
+    contract: ContractRecommendation | None,
+    calendar_stop: date | None,
     pick_score: Decimal,
-) -> List[AlertItem]:
-    alerts: List[AlertItem] = []
+) -> list[AlertItem]:
+    alerts: list[AlertItem] = []
     if underlying.days_to_earnings is not None and underlying.days_to_earnings <= 14:
         alerts.append(
             AlertItem(
                 alert_type="earnings",
-                level=AlertLevel.CRITICAL if underlying.days_to_earnings <= 7 else AlertLevel.WARNING,
+                level=AlertLevel.CRITICAL
+                if underlying.days_to_earnings <= 7
+                else AlertLevel.WARNING,
                 message=(
                     f"Earnings in {underlying.days_to_earnings}d — confirm "
                     f"contract cashflow exits before the print."
@@ -626,7 +629,7 @@ def _build_alerts(
 
 def _build_anti_thesis(underlying: UnderlyingView, regime: RegimeView) -> str:
     """One-sentence summary of what would invalidate this trade."""
-    reasons: List[str] = []
+    reasons: list[str] = []
     stage = (underlying.stage_label or "").upper()
     if stage in _DISTRIBUTION_LABELS:
         reasons.append(f"Stage {underlying.stage_label} is distribution — not a long-bias setup")
@@ -635,21 +638,25 @@ def _build_anti_thesis(underlying: UnderlyingView, regime: RegimeView) -> str:
     if regime.regime_state == "R5":
         reasons.append("Regime R5 caps equity exposure at 10% — sizing is nominal")
     if underlying.days_to_earnings is not None and underlying.days_to_earnings <= 7:
-        reasons.append(f"Earnings in {underlying.days_to_earnings}d — IV crush risk dominates direction")
+        reasons.append(
+            f"Earnings in {underlying.days_to_earnings}d — IV crush risk dominates direction"
+        )
     if not reasons:
         if underlying.sma_21 is not None and underlying.current_price is not None:
             reasons.append(
                 "Close below SMA21 or two consecutive distribution days invalidates the setup"
             )
         else:
-            reasons.append("Loss of volume confirmation or a stage transition invalidates the setup")
+            reasons.append(
+                "Loss of volume confirmation or a stage transition invalidates the setup"
+            )
     return "; ".join(reasons)
 
 
 def _resolve_contract_status_for_earnings(
     underlying: UnderlyingView,
-    contract: Optional[ContractRecommendation],
-) -> Optional[ContractStatus]:
+    contract: ContractRecommendation | None,
+) -> ContractStatus | None:
     """If earnings land in the pre-expiry window, the chain pick is unsafe.
 
     The window is two calendar days before contract expiry through expiry
@@ -664,7 +671,7 @@ def _resolve_contract_status_for_earnings(
     window_end = contract.expiry
     if not (window_start <= earn_d <= window_end):
         return None
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     if today <= earn_d:
         return ContractStatus.SKIPPED_EARNINGS
     return None
@@ -687,7 +694,7 @@ class TradeCardComposer:
     preconfigured one in tests.
     """
 
-    options_surface: Optional[OptionsChainSurface] = None
+    options_surface: OptionsChainSurface | None = None
     pick_scorer: PickQualityScorer = field(default_factory=PickQualityScorer)
     default_bias: ContractType = ContractType.CALL_DEBIT
     risk_budget_fraction: Decimal = Decimal("0.01")  # 1% of equity per trade
@@ -699,8 +706,8 @@ class TradeCardComposer:
         candidate: Candidate,
         user: User,
         rank: int = 1,
-        regime: Optional[MarketRegime] = None,
-        snapshot: Optional[MarketSnapshot] = None,
+        regime: MarketRegime | None = None,
+        snapshot: MarketSnapshot | None = None,
         account_value_override: Any = ACCOUNT_VALUE_FETCH,
     ) -> TradeCard:
         """Build a complete trade card for one candidate."""
@@ -731,9 +738,9 @@ class TradeCardComposer:
             else account_value_override
         )
 
-        contract_rec: Optional[ContractRecommendation] = None
+        contract_rec: ContractRecommendation | None = None
         contract_status = ContractStatus.CHAIN_UNAVAILABLE
-        notes: List[str] = []
+        notes: list[str] = []
 
         if self.options_surface is not None and underlying.current_price is not None:
             try:
@@ -753,9 +760,7 @@ class TradeCardComposer:
                     symbol,
                 )
                 contract_rec = None
-                notes.append(
-                    "Options chain lookup failed; stock-only sizing shown."
-                )
+                notes.append("Options chain lookup failed; stock-only sizing shown.")
             if contract_rec is None:
                 contract_status = ContractStatus.CHAIN_UNAVAILABLE
             else:
@@ -830,7 +835,7 @@ class TradeCardComposer:
             else str(candidate.action_suggestion or "").lower()
         ) or "buy"
 
-        generated_at = _to_aware_utc(candidate.generated_at) or datetime.now(timezone.utc)
+        generated_at = _to_aware_utc(candidate.generated_at) or datetime.now(UTC)
 
         return TradeCard(
             rank=rank,
@@ -860,9 +865,9 @@ class TradeCardComposer:
         *,
         underlying: UnderlyingView,
         regime: RegimeView,
-        contract: Optional[ContractRecommendation],
-        account_value: Optional[Decimal],
-    ) -> tuple[Optional[SizingView], SizingStatus, List[LimitPriceTier]]:
+        contract: ContractRecommendation | None,
+        account_value: Decimal | None,
+    ) -> tuple[SizingView | None, SizingStatus, list[LimitPriceTier]]:
         """Compute sizing + limit tiers.
 
         Returns ``(sizing_view, sizing_status, limit_tiers)``. Limit tiers are
@@ -974,14 +979,14 @@ class TradeCardComposer:
         return sizing, SizingStatus.COMPUTED, tiers
 
     @staticmethod
-    def _contracts_from_cap(
-        capped_dollars: Decimal, contract_mid: Decimal
-    ) -> tuple[int, Decimal]:
+    def _contracts_from_cap(capped_dollars: Decimal, contract_mid: Decimal) -> tuple[int, Decimal]:
         """Integer contract count that fits under the capped budget."""
         if contract_mid <= 0:
             return 0, Decimal("0")
         cost_per_contract = contract_mid * Decimal("100")
-        contracts = int((capped_dollars / cost_per_contract).to_integral_value(rounding="ROUND_FLOOR"))
+        contracts = int(
+            (capped_dollars / cost_per_contract).to_integral_value(rounding="ROUND_FLOOR")
+        )
         contracts = max(contracts, 0)
         premium = (Decimal(contracts) * cost_per_contract).quantize(Decimal("0.01"))
         return contracts, premium
@@ -992,11 +997,11 @@ class TradeCardComposer:
 # ----------------------------------------------------------------------------
 
 
-def _d_or_none(v: Optional[Decimal]) -> Optional[str]:
+def _d_or_none(v: Decimal | None) -> str | None:
     return str(v) if v is not None else None
 
 
-def trade_card_to_payload(card: TradeCard) -> Dict[str, Any]:
+def trade_card_to_payload(card: TradeCard) -> dict[str, Any]:
     """JSON-serializable payload for the trade-cards API."""
     u = card.underlying
     r = card.regime

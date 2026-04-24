@@ -42,6 +42,7 @@ Safety
 Between passes, run ``make medallion-lint`` and ``pytest --collect-only``.
 If either fails, ``git reset --hard HEAD~1`` and inspect.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -81,8 +82,8 @@ def _path_to_module(rel: str) -> str:
 
 @dataclass(frozen=True)
 class Move:
-    source: str          # relative to app/services/
-    target: str          # relative to app/services/
+    source: str  # relative to app/services/
+    target: str  # relative to app/services/
     pass_name: str
 
     @property
@@ -142,7 +143,7 @@ def parse_move_map(text: str) -> list[Move]:
             if cur:
                 moves.append(_finalize(cur))
                 cur = {}
-            cur["source"] = stripped[len("- source:"):].strip()
+            cur["source"] = stripped[len("- source:") :].strip()
             continue
         m = _FIELD_RE.match(line)
         if not m:
@@ -168,11 +169,7 @@ def _finalize(d: dict[str, str]) -> Move:
 
 def build_rewrite_pairs(moves: list[Move]) -> list[tuple[str, str]]:
     """Return (old_module, new_module) pairs, longest-first."""
-    pairs = [
-        (m.old_module, m.new_module)
-        for m in moves
-        if m.old_module != m.new_module
-    ]
+    pairs = [(m.old_module, m.new_module) for m in moves if m.old_module != m.new_module]
     pairs.sort(key=lambda p: len(p[0]), reverse=True)
     return pairs
 
@@ -202,9 +199,7 @@ def rewrite_file(path: Path, pairs: list[tuple[str, str]]) -> tuple[bool, int]:
         # layers than the parent package (e.g. risk/ splits to gold/
         # and execution/). Without this, a bare package rewrite would
         # corrupt submodule references.
-        pattern = re.compile(
-            r"(?<![A-Za-z0-9_.])" + re.escape(old) + r"(?![A-Za-z0-9_.])"
-        )
+        pattern = re.compile(r"(?<![A-Za-z0-9_.])" + re.escape(old) + r"(?![A-Za-z0-9_.])")
         new_text, n = pattern.subn(new, new_text)
         count += n
     if new_text != text:
@@ -222,8 +217,7 @@ def rewrite_all(pairs: list[tuple[str, str]], apply: bool) -> tuple[int, int]:
         if not root.exists():
             continue
         for path in root.rglob("*.py"):
-            if any(part in {".venv", "__pycache__", "node_modules"}
-                   for part in path.parts):
+            if any(part in {".venv", "__pycache__", "node_modules"} for part in path.parts):
                 continue
             if not apply:
                 # Dry-run: test the rewrite in memory and count.
@@ -234,9 +228,7 @@ def rewrite_all(pairs: list[tuple[str, str]], apply: bool) -> tuple[int, int]:
                 count = 0
                 for old, new in pairs:
                     pattern = re.compile(
-                        r"(?<![A-Za-z0-9_.])"
-                        + re.escape(old)
-                        + r"(?![A-Za-z0-9_.])"
+                        r"(?<![A-Za-z0-9_.])" + re.escape(old) + r"(?![A-Za-z0-9_.])"
                     )
                     count += len(pattern.findall(text))
                 if count:
@@ -256,12 +248,9 @@ def rewrite_all(pairs: list[tuple[str, str]], apply: bool) -> tuple[int, int]:
 
 
 def ensure_clean_tree() -> None:
-    out = subprocess.check_output(
-        ["git", "status", "--porcelain"], cwd=REPO
-    ).decode()
+    out = subprocess.check_output(["git", "status", "--porcelain"], cwd=REPO).decode()
     if out.strip():
-        print("error: working tree is dirty. Commit or stash first.",
-              file=sys.stderr)
+        print("error: working tree is dirty. Commit or stash first.", file=sys.stderr)
         sys.exit(2)
 
 
@@ -281,9 +270,7 @@ def ensure_init_pys(target_dirs: set[Path], apply: bool) -> int:
                 if apply:
                     cur.mkdir(parents=True, exist_ok=True)
                     layer = cur.relative_to(SERVICES).parts[0]
-                    init.write_text(
-                        f'"""medallion: {layer}"""\n'
-                    )
+                    init.write_text(f'"""medallion: {layer}"""\n')
                 created += 1
             cur = cur.parent
     return created
@@ -301,9 +288,9 @@ def git_mv(source: Path, target: Path, apply: bool) -> str:
     if apply:
         target.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(
-            ["git", "mv", str(source.relative_to(REPO)),
-             str(target.relative_to(REPO))],
-            check=True, cwd=REPO,
+            ["git", "mv", str(source.relative_to(REPO)), str(target.relative_to(REPO))],
+            check=True,
+            cwd=REPO,
         )
     return "moved"
 
@@ -312,9 +299,7 @@ def commit_pass(pass_name: str, moves: list[Move]) -> None:
     count = len(moves)
     subprocess.run(["git", "add", "-A"], check=True, cwd=REPO)
     # If nothing is staged, do not create an empty commit.
-    out = subprocess.check_output(
-        ["git", "diff", "--cached", "--stat"], cwd=REPO
-    ).decode()
+    out = subprocess.check_output(["git", "diff", "--cached", "--stat"], cwd=REPO).decode()
     if not out.strip():
         print(f"  (no changes staged for {pass_name}; skipping commit)")
         return
@@ -331,7 +316,8 @@ def run_smoke_tests() -> None:
     print("  → python -m compileall (syntax check)")
     subprocess.run(
         [sys.executable, "-m", "compileall", "-q", "backend"],
-        check=True, cwd=REPO,
+        check=True,
+        cwd=REPO,
     )
     print("  → make medallion-check (import layering)")
     subprocess.run(["make", "medallion-check"], check=True, cwd=REPO)
@@ -362,8 +348,7 @@ def run_pass(
     target_dirs = {m.abs_target.parent for m in pass_moves}
     created = ensure_init_pys(target_dirs, apply=apply)
     if created:
-        print(f"  {'would create' if not apply else 'created'} "
-              f"{created} new __init__.py")
+        print(f"  {'would create' if not apply else 'created'} {created} new __init__.py")
 
     statuses = {"moved": 0, "skipped-already": 0, "skipped-missing": 0}
     for mv in pass_moves:
@@ -371,8 +356,7 @@ def run_pass(
         statuses[status] = statuses.get(status, 0) + 1
     print(f"  moves: {statuses}")
     if statuses["skipped-missing"]:
-        print("  WARNING: sources missing with no target present — "
-              "move map may be stale.")
+        print("  WARNING: sources missing with no target present — move map may be stale.")
 
     # 2. rewrite references for the files moved *in this pass*.
     #    Using pass-local pairs (not global) keeps each commit atomic.
@@ -381,8 +365,10 @@ def run_pass(
         print("  no dotted-path changes to rewrite")
     else:
         files, refs = rewrite_all(pairs, apply=apply)
-        print(f"  references: {'would rewrite' if not apply else 'rewrote'} "
-              f"{refs} occurrence(s) in {files} file(s)")
+        print(
+            f"  references: {'would rewrite' if not apply else 'rewrote'} "
+            f"{refs} occurrence(s) in {files} file(s)"
+        )
 
     if not apply:
         print("  (dry-run; no git commit)")
@@ -393,7 +379,8 @@ def run_pass(
     print("  → scripts/medallion/tag_files.py --apply (retag new paths)")
     subprocess.run(
         [sys.executable, "scripts/medallion/tag_files.py", "--apply"],
-        check=True, cwd=REPO,
+        check=True,
+        cwd=REPO,
     )
 
     # 4. smoke tests BEFORE commit — if they fail, leave the tree dirty
@@ -414,15 +401,18 @@ def run_pass(
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[2])
-    ap.add_argument("--apply", action="store_true",
-                    help="Actually perform the migration (default: dry-run).")
-    ap.add_argument("--pass", dest="pass_name",
-                    help="Run only the named pass.")
-    ap.add_argument("--list-passes", action="store_true",
-                    help="Print pass names + file counts, then exit.")
-    ap.add_argument("--skip-smoke", action="store_true",
-                    help="Skip compileall + medallion checks "
-                         "(NOT recommended).")
+    ap.add_argument(
+        "--apply", action="store_true", help="Actually perform the migration (default: dry-run)."
+    )
+    ap.add_argument("--pass", dest="pass_name", help="Run only the named pass.")
+    ap.add_argument(
+        "--list-passes", action="store_true", help="Print pass names + file counts, then exit."
+    )
+    ap.add_argument(
+        "--skip-smoke",
+        action="store_true",
+        help="Skip compileall + medallion checks (NOT recommended).",
+    )
     args = ap.parse_args()
 
     moves = parse_move_map(MAP_PATH.read_text())

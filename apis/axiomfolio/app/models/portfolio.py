@@ -1,23 +1,23 @@
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Optional
 
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Float,
-    DateTime,
     Boolean,
-    Text,
+    Column,
+    Date,
+    DateTime,
+    Float,
     ForeignKey,
     Index,
-    UniqueConstraint,
-    Date,
+    Integer,
     Numeric,
+    String,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
+
 from app.models import Base
 
 # Import enums from their proper locations to avoid DRY violations
@@ -37,7 +37,7 @@ class PortfolioHistory(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
-    account_id: Mapped[Optional[int]] = mapped_column(
+    account_id: Mapped[int | None] = mapped_column(
         ForeignKey("broker_accounts.id"), nullable=True, index=True
     )
     as_of_date: Mapped[date] = mapped_column(Date, index=True)
@@ -48,9 +48,9 @@ class PortfolioHistory(Base):
     positions_value: Mapped[Decimal] = mapped_column(Numeric(18, 2))
 
     # Drawdown metrics (computed)
-    peak_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 2), nullable=True)
-    drawdown_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    drawdown_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    peak_value: Mapped[Decimal | None] = mapped_column(Numeric(18, 2), nullable=True)
+    drawdown_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    drawdown_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -77,9 +77,7 @@ class Category(Base):
     parent_category_id = Column(Integer, ForeignKey("categories.id"))
 
     # Category type
-    category_type = Column(
-        String(50), default="custom"
-    )  # custom, sector, strategy, etc.
+    category_type = Column(String(50), default="custom")  # custom, sector, strategy, etc.
 
     # Target allocation (percentage)
     target_allocation_pct = Column(Float)
@@ -87,9 +85,7 @@ class Category(Base):
     max_allocation_pct = Column(Float)
 
     # Rebalancing settings
-    rebalance_threshold_pct = Column(
-        Float, default=5.0
-    )  # Trigger rebalancing at 5% deviation
+    rebalance_threshold_pct = Column(Float, default=5.0)  # Trigger rebalancing at 5% deviation
     auto_rebalance = Column(Boolean, default=False)
 
     display_order = Column(Integer, default=0, server_default="0")
@@ -124,9 +120,7 @@ class PositionCategory(Base):
     category = relationship("Category", back_populates="position_assignments")
 
     # Unique constraint
-    __table_args__ = (
-        Index("idx_position_category", "position_id", "category_id", unique=True),
-    )
+    __table_args__ = (Index("idx_position_category", "position_id", "category_id", unique=True),)
 
 
 class PortfolioSnapshot(Base):
@@ -143,15 +137,9 @@ class PortfolioSnapshot(Base):
     total_cash = Column(Float, nullable=False)
     total_equity_value = Column(Float, nullable=False)
     unrealized_pnl = Column(Float, nullable=False)
-    realized_pnl = Column(
-        Float, nullable=True
-    )  # Made nullable - not always available immediately
-    day_pnl = Column(
-        Float, nullable=True
-    )  # Made nullable - not always available immediately
-    day_pnl_pct = Column(
-        Float, nullable=True
-    )  # Made nullable - not always available immediately
+    realized_pnl = Column(Float, nullable=True)  # Made nullable - not always available immediately
+    day_pnl = Column(Float, nullable=True)  # Made nullable - not always available immediately
+    day_pnl_pct = Column(Float, nullable=True)  # Made nullable - not always available immediately
 
     # Risk metrics
     beta = Column(Float)

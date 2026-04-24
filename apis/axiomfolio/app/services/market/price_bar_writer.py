@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
-
 import math
+from datetime import datetime
+from typing import TYPE_CHECKING, Any
+
 import pandas as pd
-from sqlalchemy.orm import Session
 from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from app.services.market.dataframe_utils import price_data_rows_to_dataframe
 
@@ -35,7 +35,7 @@ class PriceBarWriter:
         data_source: str = "provider",
         is_adjusted: bool = True,
         is_synthetic_ohlc: bool = False,
-        delta_after: Optional[datetime] = None,
+        delta_after: datetime | None = None,
         auto_commit: bool = True,
     ) -> int:
         """Persist OHLCV bars into `price_data` with ON CONFLICT DO UPDATE.
@@ -49,6 +49,7 @@ class PriceBarWriter:
             return 0
         try:
             from sqlalchemy.dialects.postgresql import insert as pg_insert
+
             from app.models import PriceData
         except Exception as exc:
             raise RuntimeError("PostgreSQL dialect or models unavailable") from exc
@@ -64,11 +65,15 @@ class PriceBarWriter:
             df_iter = df.iterrows()
 
         rows: list[dict[str, Any]] = []
-        prev_close: Optional[float] = None
+        prev_close: float | None = None
         for ts, row in df_iter:
             try:
                 if isinstance(ts, pd.Timestamp):
-                    pd_date = ts.tz_convert("UTC").to_pydatetime().replace(tzinfo=None) if ts.tzinfo else ts.to_pydatetime()
+                    pd_date = (
+                        ts.tz_convert("UTC").to_pydatetime().replace(tzinfo=None)
+                        if ts.tzinfo
+                        else ts.to_pydatetime()
+                    )
                 elif hasattr(ts, "timestamp"):
                     pd_date = datetime.utcfromtimestamp(ts.timestamp())
                 else:
@@ -83,43 +88,64 @@ class PriceBarWriter:
             if delta_after and pd_date <= delta_after:
                 continue
             raw_close = row.get("Close")
-            if raw_close is None or (isinstance(raw_close, float) and (math.isnan(raw_close) or math.isinf(raw_close))):
-                logger.debug("persist_price_bars: SKIPPING %s %s — Close is NaN/None/inf", symbol, pd_date)
+            if raw_close is None or (
+                isinstance(raw_close, float) and (math.isnan(raw_close) or math.isinf(raw_close))
+            ):
+                logger.debug(
+                    "persist_price_bars: SKIPPING %s %s — Close is NaN/None/inf", symbol, pd_date
+                )
                 continue
             close_val = float(raw_close)
             open_val = (
                 float(row.get("Open"))
-                if "Open" in row and row.get("Open") is not None
-                   and not (isinstance(row.get("Open"), float) and math.isnan(row.get("Open")))
+                if "Open" in row
+                and row.get("Open") is not None
+                and not (isinstance(row.get("Open"), float) and math.isnan(row.get("Open")))
                 else close_val
             )
             high_val = (
                 float(row.get("High"))
-                if "High" in row and row.get("High") is not None
-                   and not (isinstance(row.get("High"), float) and math.isnan(row.get("High")))
+                if "High" in row
+                and row.get("High") is not None
+                and not (isinstance(row.get("High"), float) and math.isnan(row.get("High")))
                 else close_val
             )
             low_val = (
                 float(row.get("Low"))
-                if "Low" in row and row.get("Low") is not None
-                   and not (isinstance(row.get("Low"), float) and math.isnan(row.get("Low")))
+                if "Low" in row
+                and row.get("Low") is not None
+                and not (isinstance(row.get("Low"), float) and math.isnan(row.get("Low")))
                 else close_val
             )
             vol_val = int(row.get("Volume") or 0) if "Volume" in row else 0
 
             if close_val <= 0:
-                logger.warning("persist_price_bars: SKIPPING %s %s close=%.4f (<=0)", symbol, pd_date, close_val)
+                logger.warning(
+                    "persist_price_bars: SKIPPING %s %s close=%.4f (<=0)",
+                    symbol,
+                    pd_date,
+                    close_val,
+                )
                 continue
             elif interval == "1d" and prev_close and prev_close > 0:
                 pct_chg = abs(close_val - prev_close) / prev_close
                 if pct_chg > 0.50:
                     logger.warning(
                         "persist_price_bars: %s %s %.1f%% daily move (%.2f->%.2f)",
-                        symbol, pd_date, pct_chg * 100, prev_close, close_val,
+                        symbol,
+                        pd_date,
+                        pct_chg * 100,
+                        prev_close,
+                        close_val,
                     )
             if high_val < low_val:
-                logger.warning("persist_price_bars: FIXING %s %s high=%.4f < low=%.4f — swapping",
-                               symbol, pd_date, high_val, low_val)
+                logger.warning(
+                    "persist_price_bars: FIXING %s %s high=%.4f < low=%.4f — swapping",
+                    symbol,
+                    pd_date,
+                    high_val,
+                    low_val,
+                )
                 high_val, low_val = low_val, high_val
             prev_close = close_val
 
@@ -148,7 +174,10 @@ class PriceBarWriter:
                     if consecutive_same >= 3:
                         logger.warning(
                             "persist_price_bars: %s has %d consecutive identical closes at %.4f ending %s",
-                            symbol, consecutive_same, rows[i]["close_price"], rows[i]["date"],
+                            symbol,
+                            consecutive_same,
+                            rows[i]["close_price"],
+                            rows[i]["date"],
                         )
                 else:
                     consecutive_same = 1
@@ -184,14 +213,15 @@ class PriceBarWriter:
         db: Session,
         symbol: str,
         *,
-        provider: "ProviderRouter",
+        provider: ProviderRouter,
         lookback_period: str = "1y",
         max_bars: int = 270,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Delta backfill last ~270 daily bars for a single symbol using provider policy."""
-        last_date: Optional[datetime] = None
+        last_date: datetime | None = None
         try:
             from app.models import PriceData
+
             last_date = (
                 db.query(PriceData.date)
                 .filter(PriceData.symbol == symbol.upper(), PriceData.interval == "1d")
@@ -200,9 +230,7 @@ class PriceBarWriter:
                 .scalar()
             )
         except Exception as e:
-            logger.warning(
-                "backfill_daily_bars last_date query failed for %s: %s", symbol, e
-            )
+            logger.warning("backfill_daily_bars last_date query failed for %s: %s", symbol, e)
             last_date = None
         df, provider_used = await provider.get_historical_data(
             symbol=symbol.upper(),
@@ -239,13 +267,14 @@ class PriceBarWriter:
         db: Session,
         symbol: str,
         *,
-        provider: "ProviderRouter",
+        provider: ProviderRouter,
         lookback_days: int = 30,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Delta backfill last N days of 5m bars for a single symbol using provider policy."""
         from app.models import PriceData
+
         sym = symbol.upper()
-        last_ts: Optional[datetime] = (
+        last_ts: datetime | None = (
             db.query(PriceData.date)
             .filter(PriceData.symbol == sym, PriceData.interval == "5m")
             .order_by(PriceData.date.desc())
@@ -279,23 +308,21 @@ class PriceBarWriter:
         symbol: str,
         *,
         interval: str = "1d",
-        start: Optional[datetime] = None,
-        end: Optional[datetime] = None,
-        limit: Optional[int] = None,
+        start: datetime | None = None,
+        end: datetime | None = None,
+        limit: int | None = None,
     ) -> pd.DataFrame:
         """Read OHLCV from price_data (ascending by time) for API consumers."""
         from app.models import PriceData
-        q = (
-            db.query(
-                PriceData.date,
-                PriceData.open_price,
-                PriceData.high_price,
-                PriceData.low_price,
-                PriceData.close_price,
-                PriceData.volume,
-            )
-            .filter(PriceData.symbol == symbol.upper(), PriceData.interval == interval)
-        )
+
+        q = db.query(
+            PriceData.date,
+            PriceData.open_price,
+            PriceData.high_price,
+            PriceData.low_price,
+            PriceData.close_price,
+            PriceData.volume,
+        ).filter(PriceData.symbol == symbol.upper(), PriceData.interval == interval)
         if start:
             q = q.filter(PriceData.date >= start)
         if end:

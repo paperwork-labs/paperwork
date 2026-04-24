@@ -118,9 +118,7 @@ def test_requires_auth(client: TestClient, db_session):
     assert res.status_code in (401, 403)
 
 
-def test_returns_full_catalog_shape(
-    client: TestClient, db_session, auth_user, _wire_overrides
-):
+def test_returns_full_catalog_shape(client: TestClient, db_session, auth_user, _wire_overrides):
     """Catalog returns >= 20 brokers with the documented fields and enums."""
 
     if db_session is None:
@@ -207,9 +205,7 @@ def test_inactive_account_does_not_count_as_connected(
     assert by_slug["schwab"]["user_state"]["connected"] is False
 
 
-def test_cross_tenant_isolation(
-    client: TestClient, db_session, auth_user, other_user
-):
+def test_cross_tenant_isolation(client: TestClient, db_session, auth_user, other_user):
     """User A's BrokerAccount must NOT show as connected for User B.
 
     We deliberately wire overrides manually here so we can swap which user

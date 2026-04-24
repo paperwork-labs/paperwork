@@ -41,13 +41,10 @@ from app.services.execution.tastytrade_executor import (
     _map_tt_status,
 )
 
-
 # --------------------------------------------------------------------- helpers
 
 
-def _make_executor_with_session(
-    session: Any, accounts: list[Any]
-) -> TastytradeExecutor:
+def _make_executor_with_session(session: Any, accounts: list[Any]) -> TastytradeExecutor:
     """Return an executor whose ``_resolve_account`` is short-circuited so tests
     don't touch credentials/Redis/the real SDK at all."""
 
@@ -60,9 +57,7 @@ def _make_executor_with_session(
             for acct in accounts:
                 if getattr(acct, "account_number", None) == account_id:
                     return session, acct
-            raise TastytradeExecutorError(
-                f"tastytrade account {account_id!r} not found on session"
-            )
+            raise TastytradeExecutorError(f"tastytrade account {account_id!r} not found on session")
         return session, accounts[0]
 
     ex._resolve_account = _fake_resolve  # type: ignore[method-assign]
@@ -108,6 +103,7 @@ class TestBrokerRouterRegistration:
 
     def test_sandbox_always_registered(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from app.config import settings
+
         monkeypatch.setattr(settings, "TASTYTRADE_ALLOW_LIVE", False, raising=False)
 
         router = create_default_router()
@@ -117,10 +113,9 @@ class TestBrokerRouterRegistration:
         assert executor.broker_name == "tastytrade"
         assert executor.is_paper_trading() is True
 
-    def test_live_blocked_when_flag_disabled(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_live_blocked_when_flag_disabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from app.config import settings
+
         monkeypatch.setattr(settings, "TASTYTRADE_ALLOW_LIVE", False, raising=False)
 
         router = create_default_router()
@@ -128,10 +123,9 @@ class TestBrokerRouterRegistration:
         with pytest.raises(ValueError, match="No executor registered"):
             router.get("tastytrade")
 
-    def test_live_registered_when_flag_enabled(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_live_registered_when_flag_enabled(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from app.config import settings
+
         monkeypatch.setattr(settings, "TASTYTRADE_ALLOW_LIVE", True, raising=False)
 
         router = create_default_router()
@@ -140,10 +134,9 @@ class TestBrokerRouterRegistration:
         assert isinstance(executor, TastytradeExecutor)
         assert executor.is_paper_trading() is False
 
-    def test_constructor_rejects_prod_without_flag(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_constructor_rejects_prod_without_flag(self, monkeypatch: pytest.MonkeyPatch) -> None:
         from app.config import settings
+
         monkeypatch.setattr(settings, "TASTYTRADE_ALLOW_LIVE", False, raising=False)
 
         with pytest.raises(RuntimeError, match="TASTYTRADE_ALLOW_LIVE"):
@@ -168,11 +161,11 @@ class TestOptionSymbolClassifier:
     @pytest.mark.parametrize(
         "symbol",
         [
-            "AAPL  240119C00150000",   # OCC-padded
-            "AAPL240119C00150000",     # compressed OCC
-            "SPY   241220P00450000",   # OCC with put
-            "FOOBARBAZ",               # too long
-            "aapl",                    # lowercase (not uppercase match)
+            "AAPL  240119C00150000",  # OCC-padded
+            "AAPL240119C00150000",  # compressed OCC
+            "SPY   241220P00450000",  # OCC with put
+            "FOOBARBAZ",  # too long
+            "aapl",  # lowercase (not uppercase match)
         ],
     )
     def test_non_equity_symbols_are_flagged(self, symbol: str) -> None:
@@ -391,9 +384,7 @@ class TestCancelOrder:
     @pytest.mark.asyncio
     async def test_cancel_propagates_sdk_exception(self) -> None:
         account = MagicMock()
-        account.delete_order = AsyncMock(
-            side_effect=RuntimeError("404 order_not_found")
-        )
+        account.delete_order = AsyncMock(side_effect=RuntimeError("404 order_not_found"))
         ex = _make_executor_with_session(MagicMock(), [account])
 
         result = await ex.cancel_order("99999")
@@ -438,9 +429,7 @@ class TestGetOrderStatus:
 
     @pytest.mark.asyncio
     async def test_status_unknown_sdk_status(self) -> None:
-        placed = SimpleNamespace(
-            id=1, status=SimpleNamespace(value="WeirdNewStatus"), legs=[]
-        )
+        placed = SimpleNamespace(id=1, status=SimpleNamespace(value="WeirdNewStatus"), legs=[])
         account = MagicMock()
         account.get_order = AsyncMock(return_value=placed)
         ex = _make_executor_with_session(MagicMock(), [account])
@@ -518,9 +507,8 @@ class TestSessionRefresh:
         with patch(
             "app.services.execution.tastytrade_executor._try_get_redis",
             return_value=None,
-        ):
-            with pytest.raises(TastytradeExecutorError):
-                await ex._refresh_session_under_lock("secret")
+        ), pytest.raises(TastytradeExecutorError):
+            await ex._refresh_session_under_lock("secret")
 
         assert ex._session is None
         assert ex._accounts == []
@@ -534,9 +522,7 @@ class TestSessionRefresh:
             TASTYTRADE_REFRESH_TOKEN = None
             TASTYTRADE_IS_TEST = False
 
-        with patch(
-            "app.config.settings", _Settings()
-        ):
+        with patch("app.config.settings", _Settings()):
             with pytest.raises(TastytradeExecutorError) as exc_info:
                 await ex._ensure_session()
         assert "credentials" in str(exc_info.value).lower()
@@ -557,9 +543,7 @@ class TestSessionRefresh:
             TASTYTRADE_IS_TEST = True
 
         with (
-            patch(
-                "app.config.settings", _Settings()
-            ),
+            patch("app.config.settings", _Settings()),
             patch(
                 "tastytrade.Session",
                 return_value=fake_session,
@@ -577,9 +561,7 @@ class TestSessionRefresh:
 
         assert session is fake_session
         fake_session.refresh.assert_awaited_once()
-        session_ctor.assert_called_once_with(
-            "client-secret", "refresh-token", is_test=True
-        )
+        session_ctor.assert_called_once_with("client-secret", "refresh-token", is_test=True)
         account_get.assert_awaited_once()
         assert ex._accounts == [fake_account]
 

@@ -31,7 +31,7 @@ Coverage map
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
@@ -55,7 +55,6 @@ from app.services.corporate_actions.applier import CorporateActionApplier
 from app.services.corporate_actions.historical_ohlcv_adjuster import (
     HistoricalOhlcvAdjuster,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -191,12 +190,18 @@ def test_forward_split_3_for_1_preserves_total_cost_basis(db_session):
     user = _make_user(db, "alice_split")
     account = _make_account(db, user)
     pos = _make_position(
-        db, user, account, "NVDA",
+        db,
+        user,
+        account,
+        "NVDA",
         qty=Decimal("100.000000"),
         avg_cost=Decimal("450.0000"),
     )
     lot = _make_tax_lot(
-        db, user, account, "NVDA",
+        db,
+        user,
+        account,
+        "NVDA",
         qty=100.0,
         cost_per_share=450.0,
     )
@@ -259,7 +264,10 @@ def test_reverse_split_1_for_10_preserves_total_cost_basis(db_session):
     user = _make_user(db, "alice_revsplit")
     account = _make_account(db, user)
     pos = _make_position(
-        db, user, account, "REVS",
+        db,
+        user,
+        account,
+        "REVS",
         qty=Decimal("1000.000000"),
         avg_cost=Decimal("0.5000"),
     )
@@ -294,7 +302,10 @@ def test_cash_dividend_records_cash_without_changing_position(db_session):
     user = _make_user(db, "alice_div")
     account = _make_account(db, user)
     pos = _make_position(
-        db, user, account, "AAPL",
+        db,
+        user,
+        account,
+        "AAPL",
         qty=Decimal("200.000000"),
         avg_cost=Decimal("150.0000"),
     )
@@ -341,12 +352,18 @@ def test_stock_merger_renames_symbol_in_place(db_session):
     user = _make_user(db, "alice_merger")
     account = _make_account(db, user)
     pos = _make_position(
-        db, user, account, "OLDCO",
+        db,
+        user,
+        account,
+        "OLDCO",
         qty=Decimal("100.000000"),
         avg_cost=Decimal("20.0000"),
     )
     lot = _make_tax_lot(
-        db, user, account, "OLDCO",
+        db,
+        user,
+        account,
+        "OLDCO",
         qty=100.0,
         cost_per_share=20.0,
     )
@@ -380,7 +397,10 @@ def test_cash_merger_closes_position_and_records_cash(db_session):
     user = _make_user(db, "alice_buyout")
     account = _make_account(db, user)
     pos = _make_position(
-        db, user, account, "BUYME",
+        db,
+        user,
+        account,
+        "BUYME",
         qty=Decimal("100.000000"),
         avg_cost=Decimal("10.0000"),
     )
@@ -426,12 +446,18 @@ def test_reverse_restores_exact_pre_application_state(db_session):
     user = _make_user(db, "alice_reverse")
     account = _make_account(db, user)
     pos = _make_position(
-        db, user, account, "TSLA",
+        db,
+        user,
+        account,
+        "TSLA",
         qty=Decimal("33.000000"),
         avg_cost=Decimal("700.1234"),
     )
     lot = _make_tax_lot(
-        db, user, account, "TSLA",
+        db,
+        user,
+        account,
+        "TSLA",
         qty=33.0,
         cost_per_share=700.1234,
     )
@@ -494,7 +520,10 @@ def test_apply_pending_is_idempotent(db_session):
     user = _make_user(db, "alice_idem")
     account = _make_account(db, user)
     pos = _make_position(
-        db, user, account, "IDEM",
+        db,
+        user,
+        account,
+        "IDEM",
         qty=Decimal("10.000000"),
         avg_cost=Decimal("100.0000"),
     )
@@ -540,9 +569,7 @@ def test_apply_pending_is_idempotent(db_session):
 # ---------------------------------------------------------------------------
 
 
-def test_cross_tenant_isolation_one_user_failure_does_not_block_another(
-    db_session, monkeypatch
-):
+def test_cross_tenant_isolation_one_user_failure_does_not_block_another(db_session, monkeypatch):
     """Inject a per-user failure for user A; user B's adjustment must
     still commit and the action must surface as PARTIAL.
 
@@ -558,12 +585,18 @@ def test_cross_tenant_isolation_one_user_failure_does_not_block_another(
     account_b = _make_account(db, user_b)
 
     pos_a = _make_position(
-        db, user_a, account_a, "ISOL",
+        db,
+        user_a,
+        account_a,
+        "ISOL",
         qty=Decimal("50.000000"),
         avg_cost=Decimal("100.0000"),
     )
     pos_b = _make_position(
-        db, user_b, account_b, "ISOL",
+        db,
+        user_b,
+        account_b,
+        "ISOL",
         qty=Decimal("80.000000"),
         avg_cost=Decimal("100.0000"),
     )
@@ -587,9 +620,7 @@ def test_cross_tenant_isolation_one_user_failure_does_not_block_another(
             raise RuntimeError("simulated user-A failure")
         return original_apply_for_user(self, action, user_id, positions, tax_lots)
 
-    monkeypatch.setattr(
-        CorporateActionApplier, "_apply_for_user", _explode_for_user_a
-    )
+    monkeypatch.setattr(CorporateActionApplier, "_apply_for_user", _explode_for_user_a)
 
     report = CorporateActionApplier(db).apply_pending(today=date(2025, 9, 1))
     db.flush()
@@ -668,9 +699,9 @@ def test_historical_ohlcv_back_adjuster_divides_pre_ex_date_prices(db_session):
             is_adjusted=False,
         )
 
-    pre_bar = _bar(datetime(2025, 6, 9, tzinfo=timezone.utc), close=300.0)
-    ex_bar = _bar(datetime(2025, 6, 10, tzinfo=timezone.utc), close=100.0)
-    post_bar = _bar(datetime(2025, 6, 11, tzinfo=timezone.utc), close=101.0)
+    pre_bar = _bar(datetime(2025, 6, 9, tzinfo=UTC), close=300.0)
+    ex_bar = _bar(datetime(2025, 6, 10, tzinfo=UTC), close=100.0)
+    post_bar = _bar(datetime(2025, 6, 11, tzinfo=UTC), close=101.0)
     db.add_all([pre_bar, ex_bar, post_bar])
     db.flush()
 

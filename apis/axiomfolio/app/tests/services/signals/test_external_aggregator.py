@@ -23,10 +23,7 @@ def test_persist_empty_is_noop(db_session) -> None:
     n = persist_signals(db_session, [])
     assert n == 0
     db_session.commit()
-    c = (
-        db_session.query(ExternalSignal)
-        .count()
-    )
+    c = db_session.query(ExternalSignal).count()
     assert c == 0
 
 
@@ -55,17 +52,9 @@ def test_persist_upsert_dedupes_unique_key(db_session) -> None:
     )
     assert n2 == 1
     db_session.commit()
-    c = (
-        db_session.query(ExternalSignal)
-        .filter(ExternalSignal.symbol == "AAPL")
-        .count()
-    )
+    c = db_session.query(ExternalSignal).filter(ExternalSignal.symbol == "AAPL").count()
     assert c == 1
-    r = (
-        db_session.query(ExternalSignal)
-        .filter(ExternalSignal.symbol == "AAPL")
-        .one()
-    )
+    r = db_session.query(ExternalSignal).filter(ExternalSignal.symbol == "AAPL").one()
     assert r.value == Decimal("2.0")
     assert r.raw_payload == {"x": 2}
 
@@ -101,11 +90,7 @@ def test_persist_normalizes_source_and_signal_type_casing(db_session) -> None:
         ],
     )
     assert n2 == 1
-    c = (
-        db_session.query(ExternalSignal)
-        .filter(ExternalSignal.symbol == "AAPL")
-        .count()
-    )
+    c = db_session.query(ExternalSignal).filter(ExternalSignal.symbol == "AAPL").count()
     assert c == 1
 
 

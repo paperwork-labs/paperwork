@@ -1,6 +1,5 @@
 """FMP 5m intraday backfill tier gate (no DB)."""
 
-from typing import Optional
 
 import pytest
 
@@ -17,7 +16,7 @@ pytestmark = pytest.mark.no_db
     ],
 )
 def test_fmp_5m_intraday_backfill_blocked_tier(
-    monkeypatch: pytest.MonkeyPatch, policy: str, expect_blocked: Optional[str]
+    monkeypatch: pytest.MonkeyPatch, policy: str, expect_blocked: str | None
 ) -> None:
     from app.services.market import fmp_5m_tier_gate as gate
 

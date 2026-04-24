@@ -6,23 +6,25 @@ Endpoints for market snapshots (current state and history).
 """
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Callable, Dict, Any, List, Optional
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import case, func, nullslast, select
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models.user import User
-from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
-from app.models.index_constituent import IndexConstituent
-from app.models.market_tracked_plan import MarketTrackedPlan
-from app.services.market.market_data_service import infra
-from app.services.market.universe import tracked_symbols
 from app.api.dependencies import get_market_data_viewer
 from app.api.rate_limit import limiter
 from app.api.schemas.market import SnapshotSingleResponse, SnapshotsListResponse
+from app.database import get_db
+from app.models.index_constituent import IndexConstituent
+from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
+from app.models.market_tracked_plan import MarketTrackedPlan
+from app.models.user import User
+from app.services.market.market_data_service import infra
+from app.services.market.universe import tracked_symbols
+
 from ._shared import snapshot_preferred_columns
 
 logger = logging.getLogger(__name__)
@@ -57,7 +59,7 @@ _SORT_COL_MAP = {
     "rsi": MarketSnapshot.rsi,
 }
 
-PRESET_FILTERS: Dict[str, Callable] = {
+PRESET_FILTERS: dict[str, Callable] = {
     "pullback_buy_zone": lambda q: q.filter(
         MarketSnapshot.stage_label.like("2%"),
         MarketSnapshot.rs_mansfield_pct > 0,
@@ -84,10 +86,14 @@ PRESET_FILTERS: Dict[str, Callable] = {
 
 def _latest_technical_snapshot_subq(tracked: list[str]):
     """One row per symbol: latest technical_snapshot by analysis_timestamp (SQL window)."""
-    ranked = func.row_number().over(
-        partition_by=MarketSnapshot.symbol,
-        order_by=MarketSnapshot.analysis_timestamp.desc(),
-    ).label("rn")
+    ranked = (
+        func.row_number()
+        .over(
+            partition_by=MarketSnapshot.symbol,
+            order_by=MarketSnapshot.analysis_timestamp.desc(),
+        )
+        .label("rn")
+    )
     return (
         select(MarketSnapshot.id, ranked)
         .where(
@@ -98,9 +104,23 @@ def _latest_technical_snapshot_subq(tracked: list[str]):
     )
 
 
-def _apply_filters(q, *, search, filter_stage, sectors, scan_tiers,
-                    regime_state, rs_min, rs_max, action_labels, preset,
-                    index_name, symbols, universe_filter, db):
+def _apply_filters(
+    q,
+    *,
+    search,
+    filter_stage,
+    sectors,
+    scan_tiers,
+    regime_state,
+    rs_min,
+    rs_max,
+    action_labels,
+    preset,
+    index_name,
+    symbols,
+    universe_filter,
+    db,
+):
     """Apply query filters to a MarketSnapshot query. Returns filtered query."""
     if symbols:
         sym_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
@@ -150,12 +170,12 @@ async def get_snapshot_heatmap(
     days: int = Query(90, ge=1, le=1095),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Batch heatmap endpoint — returns stage history grid for multiple symbols in one query."""
     symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
     if not symbol_list:
         return {"grid": {}, "dates": []}
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).replace(tzinfo=None)
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).replace(tzinfo=None)
     rows = (
         db.query(
             MarketSnapshotHistory.symbol,
@@ -170,7 +190,7 @@ async def get_snapshot_heatmap(
         .order_by(MarketSnapshotHistory.as_of_date.asc())
         .all()
     )
-    grid: Dict[str, Dict[str, str | None]] = {}
+    grid: dict[str, dict[str, str | None]] = {}
     dates_set: set[str] = set()
     for sym, dt, stage in rows:
         d = dt.strftime("%Y-%m-%d") if hasattr(dt, "strftime") else str(dt)
@@ -183,25 +203,24 @@ async def get_snapshot_heatmap(
 async def get_snapshot_table(
     sort_by: str = Query("symbol", description="Sort column"),
     sort_dir: str = Query("asc", description="asc or desc"),
-    filter_stage: Optional[str] = Query(
-        None, description="Filter by stage prefix e.g. '2A'"
-    ),
-    search: Optional[str] = Query(None, description="Symbol search substring"),
-    sectors: Optional[str] = Query(None, description="Comma-separated sector filter"),
-    scan_tiers: Optional[str] = Query(None, description="Comma-separated scan tier filter"),
-    regime_state: Optional[str] = Query(None, description="Filter by regime state (R1-R5)"),
-    rs_min: Optional[float] = Query(None, description="Min RS Mansfield %"),
-    rs_max: Optional[float] = Query(None, description="Max RS Mansfield %"),
-    action_labels: Optional[str] = Query(
+    filter_stage: str | None = Query(None, description="Filter by stage prefix e.g. '2A'"),
+    search: str | None = Query(None, description="Symbol search substring"),
+    sectors: str | None = Query(None, description="Comma-separated sector filter"),
+    scan_tiers: str | None = Query(None, description="Comma-separated scan tier filter"),
+    regime_state: str | None = Query(None, description="Filter by regime state (R1-R5)"),
+    rs_min: float | None = Query(None, description="Min RS Mansfield %"),
+    rs_max: float | None = Query(None, description="Max RS Mansfield %"),
+    action_labels: str | None = Query(
         None, description="Comma-separated action labels (BUY,WATCH,HOLD,SHORT,REDUCE,AVOID)"
     ),
-    preset: Optional[str] = Query(
-        None, description="Named preset filter (pullback_buy_zone, ma_alignment, large_cap_leaders, squeeze_setup)"
+    preset: str | None = Query(
+        None,
+        description="Named preset filter (pullback_buy_zone, ma_alignment, large_cap_leaders, squeeze_setup)",
     ),
-    index_name: Optional[str] = Query(
+    index_name: str | None = Query(
         None, description="Filter by index membership (SP500, NASDAQ100, DOW30, RUSSELL2000)"
     ),
-    symbols: Optional[str] = Query(
+    symbols: str | None = Query(
         None, description="Comma-separated symbols to include (overrides pagination scope)"
     ),
     offset: int = Query(0, ge=0),
@@ -209,25 +228,30 @@ async def get_snapshot_table(
     include_plan: bool = Query(False, description="Join MarketTrackedPlan entry/exit prices"),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Server-side paginated, sorted, filtered snapshot table."""
     tracked = tracked_symbols(db, redis_client=infra.redis_client)
     if not tracked:
         return {"rows": [], "total": 0}
 
     subq = _latest_technical_snapshot_subq(tracked)
-    q = (
-        db.query(MarketSnapshot)
-        .join(subq, MarketSnapshot.id == subq.c.id)
-        .filter(subq.c.rn == 1)
-    )
+    q = db.query(MarketSnapshot).join(subq, MarketSnapshot.id == subq.c.id).filter(subq.c.rn == 1)
 
     q = _apply_filters(
-        q, search=search, filter_stage=filter_stage, sectors=sectors,
-        scan_tiers=scan_tiers, regime_state=regime_state,
-        rs_min=rs_min, rs_max=rs_max, action_labels=action_labels,
-        preset=preset, index_name=index_name, symbols=symbols,
-        universe_filter=None, db=db,
+        q,
+        search=search,
+        filter_stage=filter_stage,
+        sectors=sectors,
+        scan_tiers=scan_tiers,
+        regime_state=regime_state,
+        rs_min=rs_min,
+        rs_max=rs_max,
+        action_labels=action_labels,
+        preset=preset,
+        index_name=index_name,
+        symbols=symbols,
+        universe_filter=None,
+        db=db,
     )
 
     effective_sort = sort_by if sort_by in _SORT_COL_MAP else "symbol"
@@ -241,15 +265,17 @@ async def get_snapshot_table(
 
     plan_map: dict[str, MarketTrackedPlan] = {}
     if include_plan:
-        symbols = [str(getattr(r, "symbol", "")).upper() for r in page if getattr(r, "symbol", None)]
+        symbols = [
+            str(getattr(r, "symbol", "")).upper() for r in page if getattr(r, "symbol", None)
+        ]
         if symbols:
             plans = db.query(MarketTrackedPlan).filter(MarketTrackedPlan.symbol.in_(symbols)).all()
             plan_map = {str(p.symbol).upper(): p for p in plans}
 
     preferred = snapshot_preferred_columns("list")
-    rows_out: list[Dict[str, Any]] = []
+    rows_out: list[dict[str, Any]] = []
     for r in page:
-        d: Dict[str, Any] = {}
+        d: dict[str, Any] = {}
         for col in preferred:
             val = getattr(r, col, None)
             if val is not None:
@@ -266,25 +292,21 @@ async def get_snapshot_table(
 
 @router.get("/aggregates")
 async def get_snapshot_aggregates(
-    filter_stage: Optional[str] = Query(None, description="Stage prefix filter"),
-    sectors: Optional[str] = Query(None, description="Comma-separated sector filter"),
-    scan_tiers: Optional[str] = Query(None, description="Comma-separated scan tier filter"),
-    regime_state: Optional[str] = Query(None, description="Filter by regime state"),
-    action_labels: Optional[str] = Query(
+    filter_stage: str | None = Query(None, description="Stage prefix filter"),
+    sectors: str | None = Query(None, description="Comma-separated sector filter"),
+    scan_tiers: str | None = Query(None, description="Comma-separated scan tier filter"),
+    regime_state: str | None = Query(None, description="Filter by regime state"),
+    action_labels: str | None = Query(
         None, description="Comma-separated action labels (BUY,WATCH,HOLD,SHORT,REDUCE,AVOID)"
     ),
-    preset: Optional[str] = Query(
-        None, description="Named preset filter"
-    ),
-    index_name: Optional[str] = Query(
+    preset: str | None = Query(None, description="Named preset filter"),
+    index_name: str | None = Query(
         None, description="Filter by index membership (SP500, NASDAQ100, DOW30, RUSSELL2000)"
     ),
-    symbols: Optional[str] = Query(
-        None, description="Comma-separated symbols to include"
-    ),
+    symbols: str | None = Query(None, description="Comma-separated symbols to include"),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Aggregate distributions: stage, sector, scan tier, action — via SQL GROUP BY.
 
     Returns ~5KB JSON instead of shipping all rows to the client.
@@ -301,16 +323,23 @@ async def get_snapshot_aggregates(
 
     subq = _latest_technical_snapshot_subq(tracked)
     base = (
-        db.query(MarketSnapshot)
-        .join(subq, MarketSnapshot.id == subq.c.id)
-        .filter(subq.c.rn == 1)
+        db.query(MarketSnapshot).join(subq, MarketSnapshot.id == subq.c.id).filter(subq.c.rn == 1)
     )
     base = _apply_filters(
-        base, search=None, filter_stage=filter_stage, sectors=sectors,
-        scan_tiers=scan_tiers, regime_state=regime_state,
-        rs_min=None, rs_max=None, action_labels=action_labels,
-        preset=preset, index_name=index_name, symbols=symbols,
-        universe_filter=None, db=db,
+        base,
+        search=None,
+        filter_stage=filter_stage,
+        sectors=sectors,
+        scan_tiers=scan_tiers,
+        regime_state=regime_state,
+        rs_min=None,
+        rs_max=None,
+        action_labels=action_labels,
+        preset=preset,
+        index_name=index_name,
+        symbols=symbols,
+        universe_filter=None,
+        db=db,
     )
 
     total = base.count()
@@ -320,9 +349,7 @@ async def get_snapshot_aggregates(
         .group_by(MarketSnapshot.stage_label)
         .all()
     )
-    stage_distribution = [
-        {"stage": s or "Unknown", "count": c} for s, c in stage_rows
-    ]
+    stage_distribution = [{"stage": s or "Unknown", "count": c} for s, c in stage_rows]
 
     sector_rows = (
         base.with_entities(
@@ -342,34 +369,32 @@ async def get_snapshot_aggregates(
         s2_pct = round((s2 / c) * 100, 1) if c else 0.0
         s4_pct = round((s4 / c) * 100, 1) if c else 0.0
         health = "bullish" if s2 > s4 else ("bearish" if s4 > s2 else "neutral")
-        sector_summary.append({
-            "sector": s or "Unknown",
-            "count": c,
-            "avg_rs": round(rs, 2) if rs else None,
-            "avg_perf_1d": round(p1d, 4) if p1d else None,
-            "avg_perf_20d": round(p20d, 4) if p20d else None,
-            "stage2_pct": s2_pct,
-            "stage4_pct": s4_pct,
-            "health": health,
-        })
+        sector_summary.append(
+            {
+                "sector": s or "Unknown",
+                "count": c,
+                "avg_rs": round(rs, 2) if rs else None,
+                "avg_perf_1d": round(p1d, 4) if p1d else None,
+                "avg_perf_20d": round(p20d, 4) if p20d else None,
+                "stage2_pct": s2_pct,
+                "stage4_pct": s4_pct,
+                "health": health,
+            }
+        )
 
     tier_rows = (
         base.with_entities(MarketSnapshot.scan_tier, func.count())
         .group_by(MarketSnapshot.scan_tier)
         .all()
     )
-    scan_tier_distribution = [
-        {"scan_tier": t or "None", "count": c} for t, c in tier_rows
-    ]
+    scan_tier_distribution = [{"scan_tier": t or "None", "count": c} for t, c in tier_rows]
 
     action_rows = (
         base.with_entities(MarketSnapshot.action_label, func.count())
         .group_by(MarketSnapshot.action_label)
         .all()
     )
-    action_distribution = [
-        {"action": a or "None", "count": c} for a, c in action_rows
-    ]
+    action_distribution = [{"action": a or "None", "count": c} for a, c in action_rows]
 
     return {
         "total": total,
@@ -386,7 +411,7 @@ async def get_snapshot_history_batch(
     days: int = Query(90, ge=1, le=1095),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Batch fetch snapshot history for multiple symbols (used by HeatmapView)."""
     symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()]
     if len(symbol_list) > 50:
@@ -394,7 +419,7 @@ async def get_snapshot_history_batch(
     if not symbol_list:
         return {"histories": {}, "counts": {}}
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).replace(tzinfo=None)
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).replace(tzinfo=None)
     rows = (
         db.query(MarketSnapshotHistory)
         .filter(
@@ -410,12 +435,12 @@ async def get_snapshot_history_batch(
     )
 
     preferred = snapshot_preferred_columns("history")
-    histories: Dict[str, list[Dict[str, Any]]] = {s: [] for s in symbol_list}
+    histories: dict[str, list[dict[str, Any]]] = {s: [] for s in symbol_list}
     for r in rows:
         sym = getattr(r, "symbol", None)
         if sym is None or sym not in histories:
             continue
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         for col in preferred:
             val = getattr(r, col, None)
             if val is not None:
@@ -431,7 +456,7 @@ async def get_snapshot(
     symbol: str,
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return latest technical snapshot for a symbol from MarketSnapshot."""
     row = (
         db.query(MarketSnapshot)
@@ -466,7 +491,7 @@ async def get_snapshots(
     limit: int = Query(200, ge=1, le=200),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return latest technical snapshots (DEPRECATED — use /snapshots/table instead).
 
     Hard-capped at 200 rows.  Will be removed in a future release.
@@ -488,7 +513,7 @@ async def get_snapshots(
     )
 
     preferred = snapshot_preferred_columns("list")
-    col_names = list(getattr(MarketSnapshot, "__table__").columns.keys())
+    col_names = list(MarketSnapshot.__table__.columns.keys())
     ordered = [k for k in preferred if k in col_names]
     ordered.extend([k for k in col_names if k not in set(ordered) and k not in {"id"}])
 
@@ -516,9 +541,9 @@ async def get_snapshot_history(
     days: int = Query(90, ge=1, le=1095),
     _viewer: User = Depends(get_market_data_viewer),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get historical snapshots for a symbol."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).replace(tzinfo=None)
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).replace(tzinfo=None)
 
     rows = (
         db.query(MarketSnapshotHistory)

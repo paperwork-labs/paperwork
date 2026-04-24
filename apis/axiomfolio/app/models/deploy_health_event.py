@@ -21,7 +21,7 @@ materialised off this log if query volume requires it.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import (
     Boolean,
@@ -89,7 +89,7 @@ class DeployHealthEvent(Base):
         # Use timezone-aware UTC to match the ``DateTime(timezone=True)``
         # column; ``datetime.utcnow()`` is naive and produced psycopg2 mixed
         # naive/aware comparisons depending on session settings.
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
     )
     created_at = Column(

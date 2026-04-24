@@ -24,6 +24,7 @@ Error policy:
 
 medallion: gold
 """
+
 from __future__ import annotations
 
 import json
@@ -31,14 +32,15 @@ import logging
 import re
 import time
 import uuid
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Iterable, List, Mapping, Optional, Tuple
+from typing import Any
 
 from app.observability import traced
 
-from .llm_provider import LLMParseProvider, LLMRequest, LLMResponse
+from .llm_provider import LLMParseProvider, LLMRequest
 from .preprocessor import NormalizedEmail
 from .schemas import PARSE_OUTPUT_SCHEMA, SYSTEM_PROMPT_DEFAULT
 from .types import (
@@ -80,13 +82,13 @@ class ParseResult:
     sender: str
     subject: str
     source_format: SourceFormat
-    picks: Tuple[ExtractedPick, ...]
-    macro: Tuple[ExtractedMacro, ...]
-    position_changes: Tuple[ExtractedPositionChange, ...]
+    picks: tuple[ExtractedPick, ...]
+    macro: tuple[ExtractedMacro, ...]
+    position_changes: tuple[ExtractedPositionChange, ...]
     overall_confidence: Decimal
     parser_notes: str
-    parse_errors: Tuple[str, ...]
-    parse_warnings: Tuple[str, ...]
+    parse_errors: tuple[str, ...]
+    parse_warnings: tuple[str, ...]
     llm_provider: str
     llm_model: str
     prompt_tokens: int
@@ -112,7 +114,7 @@ class PolymorphicEmailParser:
     def __init__(
         self,
         provider: LLMParseProvider,
-        limits: Optional[ParserLimits] = None,
+        limits: ParserLimits | None = None,
         system_prompt: str = SYSTEM_PROMPT_DEFAULT,
     ) -> None:
         if not isinstance(provider, LLMParseProvider):
@@ -135,7 +137,7 @@ class PolymorphicEmailParser:
     def parse(self, email: NormalizedEmail) -> ParseResult:
         request_id = uuid.uuid4().hex[:16]
         started = time.monotonic()
-        errors: List[str] = []
+        errors: list[str] = []
 
         try:
             request = self._build_request(email, request_id)
@@ -174,12 +176,8 @@ class PolymorphicEmailParser:
                 completion_tokens=response.completion_tokens,
             )
 
-        picks, pick_errs = self._coerce_picks(
-            payload.get("picks", []), email.source_format
-        )
-        macros, macro_errs = self._coerce_macros(
-            payload.get("macro", []), email.source_format
-        )
+        picks, pick_errs = self._coerce_picks(payload.get("picks", []), email.source_format)
+        macros, macro_errs = self._coerce_macros(payload.get("macro", []), email.source_format)
         changes, change_errs = self._coerce_position_changes(
             payload.get("position_changes", []), email.source_format
         )
@@ -218,7 +216,7 @@ class PolymorphicEmailParser:
 
         ticker_hints = ", ".join(email.candidate_tickers) or "(none)"
         user_prompt_parts = [
-            f"# Email metadata\n",
+            "# Email metadata\n",
             f"From: {email.sender or '(unknown)'}\n",
             f"Subject: {email.subject or '(no subject)'}\n",
             f"Source format: {email.source_format.value}\n",
@@ -298,9 +296,9 @@ class PolymorphicEmailParser:
 
     def _coerce_picks(
         self, raw: Iterable[Mapping[str, Any]], source_format: SourceFormat
-    ) -> Tuple[Tuple[ExtractedPick, ...], List[str]]:
-        out: List[ExtractedPick] = []
-        errs: List[str] = []
+    ) -> tuple[tuple[ExtractedPick, ...], list[str]]:
+        out: list[ExtractedPick] = []
+        errs: list[str] = []
         for idx, item in enumerate(raw):
             if not isinstance(item, Mapping):
                 errs.append(f"picks[{idx}]: not an object")
@@ -310,9 +308,7 @@ class PolymorphicEmailParser:
                 errs.append(f"picks[{idx}]: symbol must be a non-empty string")
                 continue
             if not isinstance(act_in, str) or not act_in.strip():
-                errs.append(
-                    f"picks[{idx}]: action_hint/action must be a non-empty string"
-                )
+                errs.append(f"picks[{idx}]: action_hint/action must be a non-empty string")
                 continue
             try:
                 symbol = self._coerce_symbol(item.get("symbol"))
@@ -347,9 +343,9 @@ class PolymorphicEmailParser:
 
     def _coerce_macros(
         self, raw: Iterable[Mapping[str, Any]], source_format: SourceFormat
-    ) -> Tuple[Tuple[ExtractedMacro, ...], List[str]]:
-        out: List[ExtractedMacro] = []
-        errs: List[str] = []
+    ) -> tuple[tuple[ExtractedMacro, ...], list[str]]:
+        out: list[ExtractedMacro] = []
+        errs: list[str] = []
         for idx, item in enumerate(raw):
             if not isinstance(item, Mapping):
                 errs.append(f"macro[{idx}]: not an object")
@@ -362,8 +358,7 @@ class PolymorphicEmailParser:
                 sectors = tuple(
                     str(s).strip()
                     for s in (item.get("sectors") or [])
-                    if isinstance(s, (str, int))
-                    and str(s).strip()
+                    if isinstance(s, (str, int)) and str(s).strip()
                 )
                 horizon = _maybe_int(item.get("horizon_days"))
                 excerpt = self._truncate_str(
@@ -393,9 +388,9 @@ class PolymorphicEmailParser:
 
     def _coerce_position_changes(
         self, raw: Iterable[Mapping[str, Any]], source_format: SourceFormat
-    ) -> Tuple[Tuple[ExtractedPositionChange, ...], List[str]]:
-        out: List[ExtractedPositionChange] = []
-        errs: List[str] = []
+    ) -> tuple[tuple[ExtractedPositionChange, ...], list[str]]:
+        out: list[ExtractedPositionChange] = []
+        errs: list[str] = []
         for idx, item in enumerate(raw):
             if not isinstance(item, Mapping):
                 errs.append(f"position_changes[{idx}]: not an object")
@@ -455,7 +450,7 @@ class PolymorphicEmailParser:
         request_id: str,
         started: float,
         *,
-        errors: List[str],
+        errors: list[str],
         provider: str = "unknown",
         model: str = "unknown",
         prompt_tokens: int = 0,
@@ -511,7 +506,7 @@ def _coerce_action(value: Any) -> PickActionHint:
         raise _CoerceError(f"unknown action: {value!r}")
 
 
-def _maybe_decimal(value: Any) -> Optional[Decimal]:
+def _maybe_decimal(value: Any) -> Decimal | None:
     if value is None or value == "":
         return None
     try:
@@ -520,7 +515,7 @@ def _maybe_decimal(value: Any) -> Optional[Decimal]:
         raise _CoerceError(f"not a decimal: {value!r}")
 
 
-def _maybe_int(value: Any) -> Optional[int]:
+def _maybe_int(value: Any) -> int | None:
     if value is None or value == "":
         return None
     try:
@@ -532,7 +527,7 @@ def _maybe_int(value: Any) -> Optional[int]:
     return out
 
 
-def _maybe_iso_dt(value: Any) -> Optional[datetime]:
+def _maybe_iso_dt(value: Any) -> datetime | None:
     if not value:
         return None
     if not isinstance(value, str):
@@ -545,5 +540,5 @@ def _maybe_iso_dt(value: Any) -> Optional[datetime]:
     except ValueError:
         raise _CoerceError(f"not ISO8601: {value!r}")
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)

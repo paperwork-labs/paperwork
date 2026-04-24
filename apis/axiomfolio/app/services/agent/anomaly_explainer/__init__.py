@@ -41,6 +41,7 @@ from .anomaly_builder import (
     build_anomaly_from_dimension,
     deterministic_id,
 )
+from .explainer import AnomalyExplainer, explanation_to_dict
 from .factory import build_default_explainer, get_runbook
 from .knowledge import RunbookChunk, RunbookKnowledge, load_runbook_chunks
 from .openai_provider import OpenAIChatProvider
@@ -73,15 +74,12 @@ from .schemas import (
     Explanation,
     RemediationStep,
 )
-from .explainer import AnomalyExplainer, explanation_to_dict
 
 __all__ = [
     "DAILY_EXPLANATION_CAP_PER_KEY",
     "DEFAULT_RATE_LIMIT_WINDOW",
     "MAX_RATE_LIMIT_WINDOW",
     "MIN_RATE_LIMIT_WINDOW",
-    "clamp_rate_limit_window",
-    "explanation_count_today_for_key",
     "SCHEMA_VERSION",
     "Anomaly",
     "AnomalyCategory",
@@ -101,8 +99,10 @@ __all__ = [
     "build_anomalies_from_health",
     "build_anomaly_from_dimension",
     "build_default_explainer",
+    "clamp_rate_limit_window",
     "count_recent",
     "deterministic_id",
+    "explanation_count_today_for_key",
     "explanation_row_to_payload",
     "explanation_to_dict",
     "get_runbook",

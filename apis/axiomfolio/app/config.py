@@ -1,7 +1,7 @@
 import logging
 import os
 from dataclasses import dataclass
-from typing import Any, List, Optional
+from typing import Any
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings
@@ -14,6 +14,7 @@ class ProviderPolicy:
     All budget/rate/concurrency values derive from the selected tier.
     Change tier by setting MARKET_PROVIDER_POLICY env var (free/starter/paid/unlimited).
     """
+
     fmp_daily_budget: int
     fmp_cpm: int
     twelvedata_daily_budget: int
@@ -27,10 +28,10 @@ class ProviderPolicy:
 
 
 PROVIDER_POLICIES: dict[str, ProviderPolicy] = {
-    "free":      ProviderPolicy(200,    250,  100, 7,  5000,  30,   5, False, False, False),
-    "starter":   ProviderPolicy(3000,   280,  800, 7, 10000,  30,  25, False, False, False),
-    "paid":      ProviderPolicy(100000, 700,  800, 7, 10000,  30,  50, False, False, False),
-    "unlimited": ProviderPolicy(999999, 2800, 800, 7, 10000,  30, 100, True,  True,  True),
+    "free": ProviderPolicy(200, 250, 100, 7, 5000, 30, 5, False, False, False),
+    "starter": ProviderPolicy(3000, 280, 800, 7, 10000, 30, 25, False, False, False),
+    "paid": ProviderPolicy(100000, 700, 800, 7, 10000, 30, 50, False, False, False),
+    "unlimited": ProviderPolicy(999999, 2800, 800, 7, 10000, 30, 100, True, True, True),
 }
 
 logger = logging.getLogger(__name__)
@@ -56,15 +57,15 @@ class Settings(BaseSettings):
     CELERY_TASK_TIME_LIMIT: int = 3600
 
     # API Keys
-    ALPHA_VANTAGE_API_KEY: Optional[str] = None
-    FINNHUB_API_KEY: Optional[str] = None
-    TWELVE_DATA_API_KEY: Optional[str] = None
-    FMP_API_KEY: Optional[str] = None
-    
+    ALPHA_VANTAGE_API_KEY: str | None = None
+    FINNHUB_API_KEY: str | None = None
+    TWELVE_DATA_API_KEY: str | None = None
+    FMP_API_KEY: str | None = None
+
     # LLM / Agent API Keys
-    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: str | None = None
     # Service-to-service key for Brain tool HTTP routes (header X-Brain-Api-Key)
-    BRAIN_API_KEY: Optional[str] = None
+    BRAIN_API_KEY: str | None = None
     # DEPRECATED. Used as a last-resort fallback ONLY when no
     # X-Axiom-User-Id header was supplied AND the caller authenticated
     # with the global Brain API key. New M2M callers MUST set
@@ -75,11 +76,11 @@ class Settings(BaseSettings):
     GDPR_EXPORT_LOCAL_DIR: str = "/tmp/axiomfolio-gdpr-exports"
     GDPR_EXPORT_TTL_DAYS: int = 7
     GDPR_DELETE_CONFIRM_TTL_HOURS: int = 24
-    S3_GDPR_BUCKET: Optional[str] = None
-    S3_GDPR_REGION: Optional[str] = None
-    S3_GDPR_ENDPOINT_URL: Optional[str] = None
-    S3_GDPR_ACCESS_KEY_ID: Optional[str] = None
-    S3_GDPR_SECRET_ACCESS_KEY: Optional[str] = None
+    S3_GDPR_BUCKET: str | None = None
+    S3_GDPR_REGION: str | None = None
+    S3_GDPR_ENDPOINT_URL: str | None = None
+    S3_GDPR_ACCESS_KEY_ID: str | None = None
+    S3_GDPR_SECRET_ACCESS_KEY: str | None = None
     # Per-tenant rate limit middleware kill switch (default ON in prod).
     TENANT_RATE_LIMIT_ENABLED: bool = True
     # Per-request process max-RSS (ru_maxrss) logging to Redis; default off under pytest
@@ -87,15 +88,15 @@ class Settings(BaseSettings):
     ENABLE_RSS_OBSERVABILITY: bool = True
     # Wave E: sampled peak-RSS + tracemalloc; default off under pytest unless set. See D142.
     ENABLE_PEAK_RSS_MIDDLEWARE: bool = True
-    BRAIN_WEBHOOK_URL: Optional[str] = None
-    BRAIN_WEBHOOK_SECRET: Optional[str] = None
+    BRAIN_WEBHOOK_URL: str | None = None
+    BRAIN_WEBHOOK_SECRET: str | None = None
     # Agent autonomy level: "full" (auto-execute all), "safe" (auto-execute safe only), "ask" (always ask)
     AGENT_AUTONOMY_LEVEL: str = "safe"
 
     # TastyTrade Configuration (OAuth — v12+ SDK)
     # Dev fallback only; production credentials stored per-user in account_credentials table
-    TASTYTRADE_CLIENT_SECRET: Optional[str] = None
-    TASTYTRADE_REFRESH_TOKEN: Optional[str] = None
+    TASTYTRADE_CLIENT_SECRET: str | None = None
+    TASTYTRADE_REFRESH_TOKEN: str | None = None
     TASTYTRADE_IS_TEST: bool = False
     # Hard kill switch for live (prod) TastyTrade order execution. Mirrors
     # ETRADE_ALLOW_LIVE — TASTYTRADE_IS_TEST controls the SDK base URL but is
@@ -104,37 +105,35 @@ class Settings(BaseSettings):
     # "tastytrade_sandbox" executor is always registered.
     TASTYTRADE_ALLOW_LIVE: bool = False
     # Legacy credentials (ignored by SDK v12+; kept for backward-compat env files)
-    TASTYTRADE_USERNAME: Optional[str] = None
-    TASTYTRADE_PASSWORD: Optional[str] = None
+    TASTYTRADE_USERNAME: str | None = None
+    TASTYTRADE_PASSWORD: str | None = None
 
     # IBKR Configuration
     IBKR_HOST: str = "127.0.0.1"
     IBKR_PORT: int = 7497
     IBKR_CLIENT_ID: int = 1
     IBKR_TRADING_MODE: str = "paper"  # paper | live
-    IBKR_ACCOUNTS: Optional[str] = None  # Comma separated account numbers
+    IBKR_ACCOUNTS: str | None = None  # Comma separated account numbers
     IBKR_DISCOVER_ON_SEED: bool = False
-    IBKR_FLEX_TOKEN: Optional[str] = None
-    IBKR_FLEX_QUERY_ID: Optional[str] = None
-    IBKR_FLEX_LOOKBACK_YEARS: int = (
-        10  # Intended history window; configure FlexQuery accordingly
-    )
+    IBKR_FLEX_TOKEN: str | None = None
+    IBKR_FLEX_QUERY_ID: str | None = None
+    IBKR_FLEX_LOOKBACK_YEARS: int = 10  # Intended history window; configure FlexQuery accordingly
     # IBKR Gateway TOTP (for automated 2FA login via IBC)
-    IBKR_TOTP_SECRET: Optional[str] = None  # Base32 TOTP secret from IBKR Authenticator setup
-    IBKR_USERNAME: Optional[str] = None  # Gateway login username
-    IBKR_PASSWORD: Optional[str] = None  # Gateway login password (use secrets manager in prod)
+    IBKR_TOTP_SECRET: str | None = None  # Base32 TOTP secret from IBKR Authenticator setup
+    IBKR_USERNAME: str | None = None  # Gateway login username
+    IBKR_PASSWORD: str | None = None  # Gateway login password (use secrets manager in prod)
 
     # E*TRADE OAuth 1.0a (sandbox-first; live keys require formal app approval)
     # Used by app.services.oauth.etrade.ETradeSandboxAdapter. The sandbox
     # base URL is fixed; only the consumer key/secret + callback URL vary.
-    ETRADE_SANDBOX_KEY: Optional[str] = None
-    ETRADE_SANDBOX_SECRET: Optional[str] = None
+    ETRADE_SANDBOX_KEY: str | None = None
+    ETRADE_SANDBOX_SECRET: str | None = None
     # Registered OAuth redirect URI at the provider (must match request_token).
     # When set, /oauth/{etrade}/initiate rejects callback_url values that differ.
-    ETRADE_OAUTH_CALLBACK_URL: Optional[str] = None
+    ETRADE_OAUTH_CALLBACK_URL: str | None = None
     # Comma-separated absolute callback URLs allowed for /oauth/*/initiate.
     # When non-empty, client callback_url must match one entry exactly.
-    OAUTH_ALLOWED_CALLBACK_URLS: Optional[str] = None
+    OAUTH_ALLOWED_CALLBACK_URLS: str | None = None
     ETRADE_OAUTH_REQUEST_TIMEOUT_S: float = 15.0
     # Live-order kill switch for the production E*TRADE executor. When
     # False (default), the BrokerRouter refuses to register the prod
@@ -149,48 +148,48 @@ class Settings(BaseSettings):
     # Used by app.services.oauth.tradier.{TradierOAuth2Adapter,
     # TradierSandboxOAuth2Adapter}. Sandbox base URL is fixed; only the
     # client id/secret + callback URL vary.
-    TRADIER_CLIENT_ID: Optional[str] = None
-    TRADIER_CLIENT_SECRET: Optional[str] = None
-    TRADIER_SANDBOX_CLIENT_ID: Optional[str] = None
-    TRADIER_SANDBOX_CLIENT_SECRET: Optional[str] = None
-    TRADIER_OAUTH_CALLBACK_URL: Optional[str] = None
+    TRADIER_CLIENT_ID: str | None = None
+    TRADIER_CLIENT_SECRET: str | None = None
+    TRADIER_SANDBOX_CLIENT_ID: str | None = None
+    TRADIER_SANDBOX_CLIENT_SECRET: str | None = None
+    TRADIER_OAUTH_CALLBACK_URL: str | None = None
     TRADIER_OAUTH_REQUEST_TIMEOUT_S: float = 15.0
 
     # Coinbase OAuth 2.0 (consumer wallet API, read-only scopes).
-    COINBASE_CLIENT_ID: Optional[str] = None
-    COINBASE_CLIENT_SECRET: Optional[str] = None
-    COINBASE_OAUTH_CALLBACK_URL: Optional[str] = None
+    COINBASE_CLIENT_ID: str | None = None
+    COINBASE_CLIENT_SECRET: str | None = None
+    COINBASE_OAUTH_CALLBACK_URL: str | None = None
     COINBASE_OAUTH_REQUEST_TIMEOUT_S: float = 15.0
 
     # Schwab (optional) - comma-separated account numbers for seeding
-    SCHWAB_ACCOUNTS: Optional[str] = None
-    SCHWAB_CLIENT_ID: Optional[str] = None
-    SCHWAB_CLIENT_SECRET: Optional[str] = None
-    SCHWAB_REDIRECT_URI: Optional[str] = None
-    SCHWAB_AUTH_BASE: Optional[str] = None
-    SCHWAB_CLIENT_ID_SUFFIX: Optional[str] = None
+    SCHWAB_ACCOUNTS: str | None = None
+    SCHWAB_CLIENT_ID: str | None = None
+    SCHWAB_CLIENT_SECRET: str | None = None
+    SCHWAB_REDIRECT_URI: str | None = None
+    SCHWAB_AUTH_BASE: str | None = None
+    SCHWAB_CLIENT_ID_SUFFIX: str | None = None
 
     # Legacy Discord env vars (unused by app code; notifications use BRAIN_WEBHOOK_URL).
-    DISCORD_WEBHOOK_SIGNALS: Optional[str] = None
-    DISCORD_WEBHOOK_PORTFOLIO_DIGEST: Optional[str] = None
-    DISCORD_WEBHOOK_MORNING_BREW: Optional[str] = None
-    DISCORD_WEBHOOK_PLAYGROUND: Optional[str] = None
-    DISCORD_WEBHOOK_SYSTEM_STATUS: Optional[str] = None
-    DISCORD_BOT_TOKEN: Optional[str] = None
-    DISCORD_BOT_DEFAULT_CHANNEL_ID: Optional[str] = None
+    DISCORD_WEBHOOK_SIGNALS: str | None = None
+    DISCORD_WEBHOOK_PORTFOLIO_DIGEST: str | None = None
+    DISCORD_WEBHOOK_MORNING_BREW: str | None = None
+    DISCORD_WEBHOOK_PLAYGROUND: str | None = None
+    DISCORD_WEBHOOK_SYSTEM_STATUS: str | None = None
+    DISCORD_BOT_TOKEN: str | None = None
+    DISCORD_BOT_DEFAULT_CHANNEL_ID: str | None = None
 
     # Security Configuration
     SECRET_KEY: str = "your-secret-key-here-change-in-production"
-    OAUTH_STATE_SECRET: Optional[str] = None
+    OAUTH_STATE_SECRET: str | None = None
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
-    ENCRYPTION_KEY: Optional[str] = None
+    ENCRYPTION_KEY: str | None = None
     # OAuth broker token encryption (separate key + retired keys for rotation).
     # Falls back to ENCRYPTION_KEY / SECRET_KEY at the encryption-service layer
     # so dev environments work out-of-the-box; production should set this
     # explicitly so OAuth credential rotation is independent of the app key.
-    OAUTH_TOKEN_ENCRYPTION_KEY: Optional[str] = None
-    OAUTH_TOKEN_ENCRYPTION_KEYS_RETIRED: Optional[str] = None  # comma-separated
+    OAUTH_TOKEN_ENCRYPTION_KEY: str | None = None
+    OAUTH_TOKEN_ENCRYPTION_KEYS_RETIRED: str | None = None  # comma-separated
     ENABLE_TRADING: bool = False
     ALLOW_LIVE_ORDERS: bool = False
     ENABLE_AUTO_TRADING: bool = False
@@ -235,36 +234,36 @@ class Settings(BaseSettings):
     TRADE_APPROVAL_THRESHOLD: float = 5000.0  # USD value threshold
 
     # Google OAuth
-    GOOGLE_CLIENT_ID: Optional[str] = None
-    GOOGLE_CLIENT_SECRET: Optional[str] = None
-    GOOGLE_REDIRECT_URI: Optional[str] = None
+    GOOGLE_CLIENT_ID: str | None = None
+    GOOGLE_CLIENT_SECRET: str | None = None
+    GOOGLE_REDIRECT_URI: str | None = None
 
     # Apple Sign-In
-    APPLE_CLIENT_ID: Optional[str] = None
-    APPLE_TEAM_ID: Optional[str] = None
-    APPLE_KEY_ID: Optional[str] = None
-    APPLE_PRIVATE_KEY: Optional[str] = None
-    APPLE_REDIRECT_URI: Optional[str] = None
+    APPLE_CLIENT_ID: str | None = None
+    APPLE_TEAM_ID: str | None = None
+    APPLE_KEY_ID: str | None = None
+    APPLE_PRIVATE_KEY: str | None = None
+    APPLE_REDIRECT_URI: str | None = None
 
     # Email verification (Resend)
-    RESEND_API_KEY: Optional[str] = None
+    RESEND_API_KEY: str | None = None
 
     # Stripe billing (test-mode keys in dev/staging, live in prod).
     # All keys are optional; the webhook returns HTTP 402 if unconfigured.
-    STRIPE_API_KEY: Optional[str] = None
-    STRIPE_API_VERSION: Optional[str] = None  # e.g. "2024-06-20"
-    STRIPE_WEBHOOK_SECRET: Optional[str] = None
-    STRIPE_PUBLISHABLE_KEY: Optional[str] = None  # safe to ship to frontend
+    STRIPE_API_KEY: str | None = None
+    STRIPE_API_VERSION: str | None = None  # e.g. "2024-06-20"
+    STRIPE_WEBHOOK_SECRET: str | None = None
+    STRIPE_PUBLISHABLE_KEY: str | None = None  # safe to ship to frontend
     # Price ID -> tier mapping (one env var per tier+interval).
     # See app/services/billing/price_catalog.py for the full list.
-    STRIPE_PRICE_PRO_MONTHLY: Optional[str] = None
-    STRIPE_PRICE_PRO_ANNUAL: Optional[str] = None
-    STRIPE_PRICE_PRO_PLUS_MONTHLY: Optional[str] = None
-    STRIPE_PRICE_PRO_PLUS_ANNUAL: Optional[str] = None
-    STRIPE_PRICE_QUANT_DESK_MONTHLY: Optional[str] = None
-    STRIPE_PRICE_QUANT_DESK_ANNUAL: Optional[str] = None
-    STRIPE_PRICE_ENTERPRISE_MONTHLY: Optional[str] = None
-    STRIPE_PRICE_ENTERPRISE_ANNUAL: Optional[str] = None
+    STRIPE_PRICE_PRO_MONTHLY: str | None = None
+    STRIPE_PRICE_PRO_ANNUAL: str | None = None
+    STRIPE_PRICE_PRO_PLUS_MONTHLY: str | None = None
+    STRIPE_PRICE_PRO_PLUS_ANNUAL: str | None = None
+    STRIPE_PRICE_QUANT_DESK_MONTHLY: str | None = None
+    STRIPE_PRICE_QUANT_DESK_ANNUAL: str | None = None
+    STRIPE_PRICE_ENTERPRISE_MONTHLY: str | None = None
+    STRIPE_PRICE_ENTERPRISE_ANNUAL: str | None = None
 
     # Plaid Investments aggregator (Pro-tier broker.plaid_investments feature).
     # Read-only sync of 401k / held-away investment accounts. Credentials are
@@ -275,19 +274,19 @@ class Settings(BaseSettings):
     # than crashing at startup. ``PLAID_WEBHOOK_URL`` is the public URL
     # Plaid will POST async notifications to (must match JWT ``iss`` /
     # ``aud`` expectations in webhook signature verification).
-    PLAID_CLIENT_ID: Optional[str] = None
-    PLAID_SECRET: Optional[str] = None
+    PLAID_CLIENT_ID: str | None = None
+    PLAID_SECRET: str | None = None
     PLAID_ENV: str = "sandbox"  # sandbox | production
     PLAID_PRODUCTS: str = "investments,transactions"
-    PLAID_WEBHOOK_URL: Optional[str] = None
+    PLAID_WEBHOOK_URL: str | None = None
 
     # Postmark inbound (picks newsletter forwarding)
-    POSTMARK_INBOUND_SECRET: Optional[str] = None
-    PICKS_INBOUND_ALLOWLIST: List[str] = Field(default_factory=list)
+    POSTMARK_INBOUND_SECRET: str | None = None
+    PICKS_INBOUND_ALLOWLIST: list[str] = Field(default_factory=list)
     PICKS_INBOUND_REQUIRE_SIGNATURE: bool = True
 
     # Frontend origin for OAuth redirects (falls back to first CORS_ORIGINS entry)
-    FRONTEND_ORIGIN: Optional[str] = None
+    FRONTEND_ORIGIN: str | None = None
 
     # API / CORS / rate limiting
     CORS_ORIGINS: str = (
@@ -298,7 +297,7 @@ class Settings(BaseSettings):
         "https://staging.axiomfolio.com"
     )
     RATE_LIMIT_DEFAULT: str = "100/minute"
-    RATE_LIMIT_STORAGE_URL: Optional[str] = None
+    RATE_LIMIT_STORAGE_URL: str | None = None
 
     # Deprecated toggles (no longer functional). Kept for backward-compat only.
     # DB + Render API sync is now the schedule source-of-truth.
@@ -306,8 +305,8 @@ class Settings(BaseSettings):
     ENABLE_REDBEAT: bool = False
 
     # Render API (schedule sync — production only)
-    RENDER_API_KEY: Optional[str] = None
-    RENDER_OWNER_ID: Optional[str] = None
+    RENDER_API_KEY: str | None = None
+    RENDER_OWNER_ID: str | None = None
     RENDER_SYNC_ON_STARTUP: bool = False
     RENDER_REPO_URL: str = "https://github.com/sankalp404/axiomfolio.git"
 
@@ -322,9 +321,9 @@ class Settings(BaseSettings):
     DEPLOY_HEALTH_SERVICE_IDS: str = ""
 
     # Admin seeding (development convenience)
-    ADMIN_USERNAME: Optional[str] = None
-    ADMIN_EMAIL: Optional[str] = None
-    ADMIN_PASSWORD: Optional[str] = None
+    ADMIN_USERNAME: str | None = None
+    ADMIN_EMAIL: str | None = None
+    ADMIN_PASSWORD: str | None = None
     ADMIN_SEED_ENABLED: bool = False
 
     # Application Settings
@@ -339,9 +338,7 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = "json"  # json | text
 
     # Market data bootstrap
-    DEFAULT_PRICE_SYMBOLS: Optional[str] = (
-        None  # Comma-separated list to prefetch on startup
-    )
+    DEFAULT_PRICE_SYMBOLS: str | None = None  # Comma-separated list to prefetch on startup
 
     # Market data provider policy and caching
     # Values: "paid" (prefer paid providers like FMP), "free" (prefer free/fallbacks)
@@ -414,13 +411,16 @@ class Settings(BaseSettings):
     def _rss_observability_default_in_tests(self) -> "Settings":
         if os.getenv("AXIOMFOLIO_TESTING") == "1" and "ENABLE_RSS_OBSERVABILITY" not in os.environ:
             object.__setattr__(self, "ENABLE_RSS_OBSERVABILITY", False)
-        if os.getenv("AXIOMFOLIO_TESTING") == "1" and "ENABLE_PEAK_RSS_MIDDLEWARE" not in os.environ:
+        if (
+            os.getenv("AXIOMFOLIO_TESTING") == "1"
+            and "ENABLE_PEAK_RSS_MIDDLEWARE" not in os.environ
+        ):
             object.__setattr__(self, "ENABLE_PEAK_RSS_MIDDLEWARE", False)
         return self
 
     @field_validator("PICKS_INBOUND_ALLOWLIST", mode="before")
     @classmethod
-    def _parse_picks_inbound_allowlist(cls, v: Any) -> List[str]:
+    def _parse_picks_inbound_allowlist(cls, v: Any) -> list[str]:
         if v is None or v == "":
             return []
         if isinstance(v, list):
@@ -510,8 +510,7 @@ def validate_production_settings() -> None:
         )
     if settings.ADMIN_SEED_ENABLED:
         logger.warning(
-            "ADMIN_SEED_ENABLED is True in production; "
-            "disable admin seeding for real deployments."
+            "ADMIN_SEED_ENABLED is True in production; disable admin seeding for real deployments."
         )
     cors_origins = settings.CORS_ORIGINS or ""
     cors_lower = cors_origins.lower()

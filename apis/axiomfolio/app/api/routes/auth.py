@@ -5,32 +5,33 @@ AxiomFolio V1 - Authentication Routes
 User authentication, registration, OAuth, email verification, and session management.
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Any, Dict
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response, Query
-from fastapi.security import HTTPBearer
-from pydantic import BaseModel, EmailStr, ConfigDict, Field
-from sqlalchemy.orm import Session
-from passlib.context import CryptContext
-from fastapi.responses import RedirectResponse
 import hashlib
 import hmac
-import httpx
-import jwt as jwt_lib
 import logging
 import time as _time
 import uuid
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from app.database import get_db
-from app.models.user import User, UserRole
-from app.models.user_invite import UserInvite
-from app.config import settings
+import httpx
+import jwt as jwt_lib
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import RedirectResponse
+from fastapi.security import HTTPBearer
+from passlib.context import CryptContext
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from sqlalchemy.orm import Session
+
+from app.api.dependencies import get_current_user
 from app.api.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
 )
-from app.api.dependencies import get_current_user
+from app.config import settings
+from app.database import get_db
+from app.models.user import User, UserRole
+from app.models.user_invite import UserInvite
 
 logger = logging.getLogger(__name__)
 
@@ -47,11 +48,12 @@ router = APIRouter()
 # Pydantic models
 # ---------------------------------------------------------------------------
 
+
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
     password: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
 
 
 class UserLogin(BaseModel):
@@ -62,7 +64,7 @@ class UserLogin(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
-    role: Optional[str] = None
+    role: str | None = None
 
 
 class UserResponse(BaseModel):
@@ -71,18 +73,18 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
-    full_name: Optional[str]
+    full_name: str | None
     is_active: bool
     is_approved: bool = False
     created_at: datetime
-    timezone: Optional[str] = None
-    currency_preference: Optional[str] = None
-    notification_preferences: Optional[Dict[str, Any]] = None
-    ui_preferences: Optional[Dict[str, Any]] = None
-    role: Optional[str] = None
-    has_password: Optional[bool] = None
-    avatar_url: Optional[str] = None
-    is_verified: Optional[bool] = None
+    timezone: str | None = None
+    currency_preference: str | None = None
+    notification_preferences: dict[str, Any] | None = None
+    ui_preferences: dict[str, Any] | None = None
+    role: str | None = None
+    has_password: bool | None = None
+    avatar_url: str | None = None
+    is_verified: bool | None = None
 
 
 class RegisterUserResponse(UserResponse):
@@ -97,17 +99,17 @@ class RegisterUserResponse(UserResponse):
 
 
 class UserUpdate(BaseModel):
-    full_name: Optional[str] = None
-    email: Optional[EmailStr] = None
-    current_password: Optional[str] = None
-    timezone: Optional[str] = None
-    currency_preference: Optional[str] = None
-    notification_preferences: Optional[Dict[str, Any]] = None
-    ui_preferences: Optional[Dict[str, Any]] = None
+    full_name: str | None = None
+    email: EmailStr | None = None
+    current_password: str | None = None
+    timezone: str | None = None
+    currency_preference: str | None = None
+    notification_preferences: dict[str, Any] | None = None
+    ui_preferences: dict[str, Any] | None = None
 
 
 class ChangePasswordRequest(BaseModel):
-    current_password: Optional[str] = None
+    current_password: str | None = None
     new_password: str
 
 
@@ -121,6 +123,7 @@ class InviteAcceptRequest(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -129,14 +132,14 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-def verify_token(token: str) -> Optional[str]:
+def verify_token(token: str) -> str | None:
     """Deprecated: use dependencies.get_current_user instead."""
     return None
 
 
-def _find_active_invite_for_email(db: Session, email: str) -> Optional[UserInvite]:
+def _find_active_invite_for_email(db: Session, email: str) -> UserInvite | None:
     """Pending, non-expired invite for this email (not yet accepted)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return (
         db.query(UserInvite)
         .filter(
@@ -148,7 +151,7 @@ def _find_active_invite_for_email(db: Session, email: str) -> Optional[UserInvit
     )
 
 
-def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
+def authenticate_user(db: Session, email: str, password: str) -> User | None:
     normalized_email = email.strip().lower()
     user = db.query(User).filter(User.email == normalized_email).first()
     if not user:
@@ -165,10 +168,10 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
 
 def _issue_tokens(
     user: User,
-    response: Optional[Response] = None,
+    response: Response | None = None,
     *,
     rotation: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Issue access + refresh token pair. Sets refresh as httpOnly cookie if response given.
 
     When ``rotation`` is True (normal refresh rotation), the current DB family is copied to
@@ -177,7 +180,7 @@ def _issue_tokens(
     """
     if rotation and user.refresh_token_family:
         user.previous_refresh_token_family = user.refresh_token_family
-        user.previous_refresh_token_rotated_at = datetime.now(timezone.utc)
+        user.previous_refresh_token_rotated_at = datetime.now(UTC)
     else:
         user.previous_refresh_token_family = None
         user.previous_refresh_token_rotated_at = None
@@ -213,7 +216,9 @@ def _issue_tokens(
 
 def _send_verification_email(email: str, token: str) -> None:
     """Send email verification link. Gracefully skips when RESEND_API_KEY is absent."""
-    verify_url = f"{settings.FRONTEND_ORIGIN or 'http://localhost:3000'}/auth/verify-email?token={token}"
+    verify_url = (
+        f"{settings.FRONTEND_ORIGIN or 'http://localhost:3000'}/auth/verify-email?token={token}"
+    )
 
     if not settings.RESEND_API_KEY:
         logger.info("Email verification URL (no RESEND_API_KEY): %s", verify_url)
@@ -253,7 +258,7 @@ def _sign_oauth_state(max_age: int = 600) -> str:
     return f"{nonce}:{ts}:{sig}"
 
 
-def _verify_oauth_state(state: Optional[str], max_age: int = 600) -> bool:
+def _verify_oauth_state(state: str | None, max_age: int = 600) -> bool:
     """Verify a HMAC-signed OAuth state token. Returns True if valid and not expired."""
     if not state:
         return False
@@ -287,6 +292,7 @@ async def get_current_active_user(
 # Google OAuth
 # ---------------------------------------------------------------------------
 
+
 @router.get("/google/login")
 async def google_login(request: Request):
     """Redirect to Google's authorization endpoint."""
@@ -311,7 +317,7 @@ async def google_login(request: Request):
 @router.get("/google/callback")
 async def google_callback(
     code: str,
-    state: Optional[str] = None,
+    state: str | None = None,
     db: Session = Depends(get_db),
 ):
     """Handle Google OAuth callback: exchange code, find-or-create user, redirect with token."""
@@ -349,16 +355,16 @@ async def google_callback(
     google_sub = info.get("sub")
     raw_email = info.get("email", "")
     if not google_sub or not raw_email:
-        raise HTTPException(status_code=400, detail="Google did not return required user info (sub/email)")
+        raise HTTPException(
+            status_code=400, detail="Google did not return required user info (sub/email)"
+        )
     email = raw_email.strip().lower()
     given_name = info.get("given_name", "")
     family_name = info.get("family_name", "")
     picture = info.get("picture")
 
     user = (
-        db.query(User)
-        .filter(User.oauth_provider == "google", User.oauth_id == google_sub)
-        .first()
+        db.query(User).filter(User.oauth_provider == "google", User.oauth_id == google_sub).first()
     )
 
     if not user:
@@ -395,7 +401,7 @@ async def google_callback(
             )
             db.add(user)
             if active_invite is not None:
-                active_invite.accepted_at = datetime.now(timezone.utc)
+                active_invite.accepted_at = datetime.now(UTC)
 
     user.avatar_url = picture
     user.is_verified = True
@@ -431,6 +437,7 @@ async def google_callback(
 # Apple Sign-In
 # ---------------------------------------------------------------------------
 
+
 def _build_apple_client_secret() -> str:
     """Build a short-lived JWT client secret signed with Apple's ES256 private key.
 
@@ -438,6 +445,7 @@ def _build_apple_client_secret() -> str:
     iss=team_id, sub=client_id, aud=https://appleid.apple.com, iat, exp (max 6mo).
     """
     import time
+
     now = int(time.time())
     headers = {"kid": settings.APPLE_KEY_ID, "alg": "ES256"}
     payload = {
@@ -450,7 +458,7 @@ def _build_apple_client_secret() -> str:
     return jwt_lib.encode(payload, settings.APPLE_PRIVATE_KEY, algorithm="ES256", headers=headers)
 
 
-def _decode_apple_id_token(id_token: str) -> Dict[str, Any]:
+def _decode_apple_id_token(id_token: str) -> dict[str, Any]:
     """Decode and verify Apple's id_token against their public JWKS."""
     jwks_resp = httpx.get("https://appleid.apple.com/auth/keys", timeout=10)
     jwks_resp.raise_for_status()
@@ -464,6 +472,7 @@ def _decode_apple_id_token(id_token: str) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="Apple id_token key not found in JWKS")
 
     from jwt.algorithms import RSAAlgorithm
+
     public_key = RSAAlgorithm.from_jwk(key_data)
 
     return jwt_lib.decode(
@@ -530,6 +539,7 @@ async def apple_callback(
     if user_json:
         try:
             import json
+
             user_data = json.loads(str(user_json))
             name = user_data.get("name", {})
             first_name = name.get("firstName", "")
@@ -537,11 +547,7 @@ async def apple_callback(
         except Exception as e:
             logger.warning("Failed to parse Apple user_json for name fields: %s", e)
 
-    user = (
-        db.query(User)
-        .filter(User.oauth_provider == "apple", User.oauth_id == apple_sub)
-        .first()
-    )
+    user = db.query(User).filter(User.oauth_provider == "apple", User.oauth_id == apple_sub).first()
 
     if not user:
         user = db.query(User).filter(User.email == email).first() if email else None
@@ -577,7 +583,7 @@ async def apple_callback(
             )
             db.add(user)
             if active_invite is not None:
-                active_invite.accepted_at = datetime.now(timezone.utc)
+                active_invite.accepted_at = datetime.now(UTC)
 
     if first_name and not user.first_name:
         user.first_name = first_name
@@ -616,6 +622,7 @@ async def apple_callback(
 # ---------------------------------------------------------------------------
 # Schwab OAuth scaffolding
 # ---------------------------------------------------------------------------
+
 
 @router.get("/schwab/login")
 async def schwab_login():
@@ -665,6 +672,7 @@ async def schwab_callback(code: str):
 # Registration + Email Verification
 # ---------------------------------------------------------------------------
 
+
 @router.post("/register", response_model=RegisterUserResponse)
 async def register_user(
     user_data: UserCreate, response: Response, db: Session = Depends(get_db)
@@ -696,7 +704,9 @@ async def register_user(
         email=normalized_email,
         password_hash=hashed_password,
         full_name=user_data.full_name,
-        role=active_invite.role if has_invite and isinstance(active_invite.role, UserRole) else UserRole.VIEWER,
+        role=active_invite.role
+        if has_invite and isinstance(active_invite.role, UserRole)
+        else UserRole.VIEWER,
         is_active=True,
         is_verified=False,
         is_approved=has_invite,
@@ -704,7 +714,7 @@ async def register_user(
     db.add(db_user)
 
     if has_invite:
-        active_invite.accepted_at = datetime.now(timezone.utc)
+        active_invite.accepted_at = datetime.now(UTC)
 
     db.commit()
     db.refresh(db_user)
@@ -765,14 +775,15 @@ async def resend_verification(current_user: User = Depends(get_current_user)):
 # Invite flow
 # ---------------------------------------------------------------------------
 
+
 @router.get("/invite/{token}")
-async def get_invite(token: str, db: Session = Depends(get_db)) -> Dict[str, Any]:
+async def get_invite(token: str, db: Session = Depends(get_db)) -> dict[str, Any]:
     invite = db.query(UserInvite).filter(UserInvite.token == token).first()
     if not invite:
         raise HTTPException(status_code=404, detail="Invite not found")
     if invite.accepted_at is not None:
         raise HTTPException(status_code=409, detail="Invite already used")
-    if invite.expires_at < datetime.now(timezone.utc):
+    if invite.expires_at < datetime.now(UTC):
         raise HTTPException(status_code=410, detail="Invite expired")
     return {
         "email": invite.email,
@@ -791,7 +802,7 @@ async def accept_invite(
         raise HTTPException(status_code=404, detail="Invite not found")
     if invite.accepted_at is not None:
         raise HTTPException(status_code=409, detail="Invite already used")
-    if invite.expires_at < datetime.now(timezone.utc):
+    if invite.expires_at < datetime.now(UTC):
         raise HTTPException(status_code=410, detail="Invite expired")
 
     normalized_invite_email = invite.email.strip().lower()
@@ -825,7 +836,7 @@ async def accept_invite(
         is_approved=True,
     )
     db.add(db_user)
-    invite.accepted_at = datetime.now(timezone.utc)
+    invite.accepted_at = datetime.now(UTC)
     db.commit()
     db.refresh(db_user)
     resp = UserResponse.model_validate(db_user)
@@ -837,6 +848,7 @@ async def accept_invite(
 # ---------------------------------------------------------------------------
 # Login / Refresh / Logout
 # ---------------------------------------------------------------------------
+
 
 @router.post("/login", response_model=Token)
 async def login_user(
@@ -868,7 +880,7 @@ async def login_user(
             detail="Account pending admin approval",
         )
 
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = datetime.now(UTC)
     result = _issue_tokens(user, response)
     db.commit()
     logger.info("User logged in: %s", user.username)
@@ -896,7 +908,7 @@ async def refresh_access_token(
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if user.refresh_token_family == family:
         result = _issue_tokens(user, response, rotation=True)
@@ -906,7 +918,8 @@ async def refresh_access_token(
     grace_ok = (
         user.previous_refresh_token_family == family
         and user.previous_refresh_token_rotated_at is not None
-        and (now - user.previous_refresh_token_rotated_at).total_seconds() <= REFRESH_TOKEN_GRACE_SECONDS
+        and (now - user.previous_refresh_token_rotated_at).total_seconds()
+        <= REFRESH_TOKEN_GRACE_SECONDS
     )
     if grace_ok:
         # Benign concurrent-tab race: JWT still carries the pre-rotation family; do not rotate again.
@@ -960,6 +973,7 @@ async def logout_user(
 # ---------------------------------------------------------------------------
 # Profile
 # ---------------------------------------------------------------------------
+
 
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_info(user: User = Depends(get_current_user)) -> UserResponse:
@@ -1016,7 +1030,9 @@ async def update_current_user(
 
     if user_update.notification_preferences is not None:
         if not isinstance(user_update.notification_preferences, dict):
-            raise HTTPException(status_code=400, detail="notification_preferences must be an object")
+            raise HTTPException(
+                status_code=400, detail="notification_preferences must be an object"
+            )
         current_user.notification_preferences = user_update.notification_preferences
 
     if user_update.ui_preferences is not None:
@@ -1026,10 +1042,15 @@ async def update_current_user(
         merged.update(user_update.ui_preferences)
         cm = merged.get("color_mode_preference")
         if cm is not None and cm not in ("system", "light", "dark"):
-            raise HTTPException(status_code=400, detail="ui_preferences.color_mode_preference must be system|light|dark")
+            raise HTTPException(
+                status_code=400,
+                detail="ui_preferences.color_mode_preference must be system|light|dark",
+            )
         td = merged.get("table_density")
         if td is not None and td not in ("comfortable", "compact"):
-            raise HTTPException(status_code=400, detail="ui_preferences.table_density must be comfortable|compact")
+            raise HTTPException(
+                status_code=400, detail="ui_preferences.table_density must be comfortable|compact"
+            )
         current_user.ui_preferences = merged
 
     db.commit()
@@ -1077,5 +1098,5 @@ async def auth_health_check():
     return {
         "status": "healthy",
         "service": "authentication",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }

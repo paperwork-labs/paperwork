@@ -2,30 +2,28 @@
 Returns dividends for the authenticated user over the given number of days.
 """
 
-from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Any
 import logging
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.database import get_db
+from app.models import BrokerAccount
 from app.models.transaction import Dividend
 from app.models.user import User
-from app.models import BrokerAccount
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.get("/dividends", response_model=Dict[str, Any])
+@router.get("/dividends", response_model=dict[str, Any])
 async def get_dividends(
     days: int = Query(365, ge=1, le=3650),
-    account_id: str | None = Query(
-        None, description="Filter by account number (e.g., U19491234)"
-    ),
+    account_id: str | None = Query(None, description="Filter by account number (e.g., U19491234)"),
     symbol: str | None = Query(
         None,
         max_length=20,
@@ -49,7 +47,7 @@ async def get_dividends(
     the authenticated user owns.
     """
     try:
-        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff_date = datetime.now(UTC) - timedelta(days=days)
 
         base = (
             db.query(Dividend)
@@ -66,7 +64,7 @@ async def get_dividends(
             base = base.filter(Dividend.symbol == symbol.strip().upper())
         divs = base.all()
 
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for d in divs:
             results.append(
                 {

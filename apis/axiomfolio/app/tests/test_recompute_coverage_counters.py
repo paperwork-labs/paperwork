@@ -6,6 +6,7 @@ structured counters that sum back to the universe size. This test file is
 the regression guard against "silent zero" coverage drift (the R38 class of
 bug that hid partial coverage as success).
 """
+
 from app.services.market.market_data_service import infra
 from app.tasks.market import indicators as market_indicators_tasks
 
@@ -24,9 +25,7 @@ class _DummyRedis:
 def _patch_common(monkeypatch, db_session, symbols):
     monkeypatch.setattr(infra, "_redis_sync", _DummyRedis())
     monkeypatch.setattr(market_indicators_tasks, "SessionLocal", lambda: db_session)
-    monkeypatch.setattr(
-        market_indicators_tasks, "_set_task_status", lambda *a, **kw: None
-    )
+    monkeypatch.setattr(market_indicators_tasks, "_set_task_status", lambda *a, **kw: None)
     monkeypatch.setattr(
         market_indicators_tasks,
         "_get_tracked_symbols_safe",
@@ -36,9 +35,7 @@ def _patch_common(monkeypatch, db_session, symbols):
     async def _fake_fetch(**_kw):
         return [{"symbol": "SPY", "df": None, "provider": "fmp"}]
 
-    monkeypatch.setattr(
-        market_indicators_tasks, "_fetch_daily_for_symbols", _fake_fetch
-    )
+    monkeypatch.setattr(market_indicators_tasks, "_fetch_daily_for_symbols", _fake_fetch)
     monkeypatch.setattr(
         market_indicators_tasks,
         "_persist_daily_fetch_results",
@@ -46,9 +43,7 @@ def _patch_common(monkeypatch, db_session, symbols):
     )
 
 
-def test_coverage_counters_sum_to_universe_size_no_data_path(
-    db_session, monkeypatch
-):
+def test_coverage_counters_sum_to_universe_size_no_data_path(db_session, monkeypatch):
     """When every symbol has no data, skipped_no_data should equal the universe."""
     if db_session is None:
         return
@@ -65,17 +60,13 @@ def test_coverage_counters_sum_to_universe_size_no_data_path(
         + res["errors"]
         + res["skipped_unprocessed"]
     )
-    assert (
-        accounted == total
-    ), f"counter drift: total={total} accounted={accounted}"
+    assert accounted == total, f"counter drift: total={total} accounted={accounted}"
     assert res["coverage_consistent"] is True
     assert res["skipped_no_data"] == 3, "all three symbols had no underlying data"
     assert res["skipped_unprocessed"] == 0
 
 
-def test_coverage_response_includes_skipped_unprocessed_field(
-    db_session, monkeypatch
-):
+def test_coverage_response_includes_skipped_unprocessed_field(db_session, monkeypatch):
     """Result dict always carries skipped_unprocessed and coverage_consistent."""
     if db_session is None:
         return
@@ -89,9 +80,7 @@ def test_coverage_response_includes_skipped_unprocessed_field(
     assert isinstance(res["coverage_consistent"], bool)
 
 
-def test_coverage_warns_when_symbols_unprocessed(
-    db_session, monkeypatch
-):
+def test_coverage_warns_when_symbols_unprocessed(db_session, monkeypatch):
     """If skipped_unprocessed > 0, a warning is recorded in result.
 
     We can't easily simulate SoftTimeLimitExceeded here without mocking deep
@@ -110,14 +99,10 @@ def test_coverage_warns_when_symbols_unprocessed(
     assert res["skipped_unprocessed"] == 0
     # No counter-drift warning should appear.
     drift_warnings = [w for w in (res.get("warnings") or []) if "drift" in w]
-    assert (
-        not drift_warnings
-    ), f"unexpected counter-drift warning in healthy path: {drift_warnings}"
+    assert not drift_warnings, f"unexpected counter-drift warning in healthy path: {drift_warnings}"
 
 
-def test_log_line_includes_coverage_consistency_flag(
-    db_session, monkeypatch, caplog
-):
+def test_log_line_includes_coverage_consistency_flag(db_session, monkeypatch, caplog):
     """The completion log line must surface coverage_consistent for ops triage.
 
     The recompute_universe Celery task is wrapped in ``@shared_task`` +
@@ -144,17 +129,13 @@ def test_log_line_includes_coverage_consistency_flag(
     task_logger.setLevel(logging.INFO)
     try:
         with caplog.at_level(logging.INFO, logger="app.tasks.market.indicators"):
-            res = market_indicators_tasks.recompute_universe(
-                batch_size=2, force=True
-            )
+            res = market_indicators_tasks.recompute_universe(batch_size=2, force=True)
     finally:
         task_logger.propagate = prev_propagate
         task_logger.setLevel(prev_level)
 
     completion_logs = [
-        r.getMessage()
-        for r in caplog.records
-        if "recompute_universe completed" in r.getMessage()
+        r.getMessage() for r in caplog.records if "recompute_universe completed" in r.getMessage()
     ]
     if completion_logs:
         last = completion_logs[-1]

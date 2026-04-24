@@ -30,9 +30,8 @@ import asyncio
 import logging
 import math
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
 
 from celery import shared_task
 
@@ -62,8 +61,8 @@ def _select_sample(
     sample_pct: float,
     max_sample: int,
     *,
-    rng: Optional[random.Random] = None,
-) -> List[str]:
+    rng: random.Random | None = None,
+) -> list[str]:
     """Pull recent symbols from ``market_snapshot`` and downsample.
 
     We use ``analysis_timestamp`` (when the snapshot was written) rather
@@ -71,7 +70,7 @@ def _select_sample(
     "what did we just write?" maps to the former.
     """
     rng = rng or random
-    cutoff = datetime.now(timezone.utc) - timedelta(minutes=lookback_minutes)
+    cutoff = datetime.now(UTC) - timedelta(minutes=lookback_minutes)
 
     rows = (
         db.query(MarketSnapshot.symbol)
@@ -94,8 +93,8 @@ def _select_sample(
 
 
 async def _gather_provider_quotes(
-    symbols: List[str],
-) -> Dict[str, Dict[str, Optional[Decimal]]]:
+    symbols: list[str],
+) -> dict[str, dict[str, Decimal | None]]:
     """Fan out ``get_quotes`` across configured providers.
 
     Returns ``{symbol: {provider_name: Decimal_or_None}}``. A provider
@@ -126,7 +125,7 @@ async def _gather_provider_quotes(
         logger.warning("scheduled_quorum_check found 0 configured providers")
         return {symbol: {} for symbol in symbols}
 
-    async def _one(provider) -> Tuple[str, Dict[str, Optional[float]]]:
+    async def _one(provider) -> tuple[str, dict[str, float | None]]:
         try:
             quotes = await provider.get_quotes(symbols)
             return provider.name, quotes or {}
@@ -143,9 +142,7 @@ async def _gather_provider_quotes(
         *(_one(provider) for provider in providers), return_exceptions=False
     )
 
-    by_symbol: Dict[str, Dict[str, Optional[Decimal]]] = {
-        symbol: {} for symbol in symbols
-    }
+    by_symbol: dict[str, dict[str, Decimal | None]] = {symbol: {} for symbol in symbols}
     for provider_name, quotes in results:
         for symbol in symbols:
             raw = quotes.get(symbol)
@@ -182,8 +179,8 @@ def run_quorum_check(
     lookback_minutes: int = DEFAULT_LOOKBACK_MINUTES,
     field_name: str = "LAST_PRICE",
     threshold: Decimal = DEFAULT_QUORUM_THRESHOLD,
-    rng: Optional[random.Random] = None,
-) -> Dict:
+    rng: random.Random | None = None,
+) -> dict:
     """Run one quorum-sweep pass.
 
     Returns a structured counters dict (per the no-silent-fallback rule):
@@ -220,7 +217,7 @@ def run_quorum_check(
         service = QuorumService(default_threshold=threshold)
         # One ``check_at`` for the whole run -- simplifies the
         # idempotency story (the unique index keys off this).
-        check_at = datetime.now(timezone.utc).replace(microsecond=0)
+        check_at = datetime.now(UTC).replace(microsecond=0)
 
         counters = {
             "sampled": len(sample),
@@ -240,9 +237,7 @@ def run_quorum_check(
                 result = service.validate(
                     symbol=symbol,
                     field_name=field_name,
-                    provider_values=provider_values
-                    if provider_values
-                    else {"_no_provider": None},
+                    provider_values=provider_values if provider_values else {"_no_provider": None},
                     threshold=threshold,
                 )
                 service.persist(db, result, check_at=check_at)
@@ -251,9 +246,7 @@ def run_quorum_check(
                     counters[key] += 1
             except Exception as e:
                 counters["errors"] += 1
-                logger.warning(
-                    "quorum check failed for %s: %s", symbol, e
-                )
+                logger.warning("quorum check failed for %s: %s", symbol, e)
 
         # No-silent-fallback: assert every sample lands in exactly one
         # bucket. If this trips in prod, the counter map is out of sync
@@ -266,8 +259,7 @@ def run_quorum_check(
             + counters["errors"]
         )
         assert bucket_total == counters["sampled"], (
-            f"counter drift: bucketed {bucket_total} != sampled "
-            f"{counters['sampled']}"
+            f"counter drift: bucketed {bucket_total} != sampled {counters['sampled']}"
         )
 
         db.commit()
@@ -304,7 +296,7 @@ def run(
     sample_pct: float = DEFAULT_SAMPLE_PCT,
     max_sample: int = MAX_SAMPLE_SIZE,
     lookback_minutes: int = DEFAULT_LOOKBACK_MINUTES,
-) -> Dict:
+) -> dict:
     """Celery hourly entry point.
 
     Hard/soft time limits match the ``JobTemplate.timeout_s`` value in

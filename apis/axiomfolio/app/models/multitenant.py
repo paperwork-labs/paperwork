@@ -12,13 +12,13 @@ import enum
 from decimal import Decimal
 
 from sqlalchemy import (
+    JSON,
     Column,
     Date,
     DateTime,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     Numeric,
     String,
     Text,
@@ -27,7 +27,6 @@ from sqlalchemy import (
 from sqlalchemy.sql import func
 
 from . import Base
-
 
 # ---------------------------------------------------------------------------
 # Rate limiting
@@ -55,9 +54,7 @@ class TenantRateLimit(Base):
     endpoint_pattern = Column(String(200), nullable=False)
     bucket_size_per_minute = Column(Integer, nullable=False)
     burst_capacity = Column(Integer, nullable=False)
-    created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
         server_default=func.now(),
@@ -66,9 +63,7 @@ class TenantRateLimit(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            "user_id", "endpoint_pattern", name="uq_tenant_rate_limits_user_endpoint"
-        ),
+        UniqueConstraint("user_id", "endpoint_pattern", name="uq_tenant_rate_limits_user_endpoint"),
         Index("ix_tenant_rate_limits_endpoint", "endpoint_pattern"),
     )
 
@@ -116,18 +111,14 @@ class GDPRExportJob(Base):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     status = Column(String(32), nullable=False, default=GDPRJobStatus.PENDING.value)
-    requested_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    requested_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     download_url = Column(Text, nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)
     error_message = Column(Text, nullable=True)
     bytes_written = Column(Integer, nullable=True)
 
-    __table_args__ = (
-        Index("ix_gdpr_export_user_status", "user_id", "status"),
-    )
+    __table_args__ = (Index("ix_gdpr_export_user_status", "user_id", "status"),)
 
 
 class GDPRDeleteJob(Base):
@@ -143,16 +134,12 @@ class GDPRDeleteJob(Base):
     # SHA-256 hex of the confirmation token; plaintext is delivered out
     # of band (email link). Never stored in plaintext.
     confirmation_token_hash = Column(String(64), nullable=True)
-    requested_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    requested_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     confirmed_at = Column(DateTime(timezone=True), nullable=True)
     completed_at = Column(DateTime(timezone=True), nullable=True)
     error_message = Column(Text, nullable=True)
 
-    __table_args__ = (
-        Index("ix_gdpr_delete_user_status", "user_id", "status"),
-    )
+    __table_args__ = (Index("ix_gdpr_delete_user_status", "user_id", "status"),)
 
 
 # ---------------------------------------------------------------------------
@@ -179,9 +166,7 @@ class TenantCostRollup(Base):
     provider_call_cost_usd = Column(Numeric(12, 6), nullable=False, default=Decimal("0"))
     storage_mb = Column(Integer, nullable=False, default=0)
     total_cost_usd = Column(Numeric(12, 6), nullable=False, default=Decimal("0"))
-    created_at = Column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = (
         UniqueConstraint("user_id", "day", name="uq_tenant_cost_rollups_user_day"),
@@ -226,6 +211,4 @@ class IncidentRow(Base):
     resolved_at = Column(DateTime(timezone=True), nullable=True)
     resolved_notes = Column(Text, nullable=True)
 
-    __table_args__ = (
-        Index("ix_incidents_category_occurred", "category", "occurred_at"),
-    )
+    __table_args__ = (Index("ix_incidents_category_occurred", "category", "occurred_at"),)

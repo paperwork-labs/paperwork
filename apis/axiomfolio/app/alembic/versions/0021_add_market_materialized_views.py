@@ -47,8 +47,7 @@ def upgrade() -> None:
         WITH NO DATA;
     """)
     op.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_breadth_daily_dt "
-        "ON mv_breadth_daily (dt);"
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_breadth_daily_dt ON mv_breadth_daily (dt);"
     )
 
     op.execute("""

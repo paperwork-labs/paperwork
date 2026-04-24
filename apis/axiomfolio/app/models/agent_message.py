@@ -8,10 +8,9 @@ persisted to PostgreSQL for indefinite retention.
 """
 
 import logging
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from sqlalchemy import Column, DateTime, Integer, String, Text, JSON, func
+from sqlalchemy import JSON, Column, DateTime, Integer, String, Text, func
 
 from . import Base
 
@@ -33,9 +32,9 @@ class AgentMessage(Base):
     def __repr__(self) -> str:
         return f"<AgentMessage {self.id}: session={self.session_id} role={self.role}>"
 
-    def to_openai_format(self) -> Dict[str, Any]:
+    def to_openai_format(self) -> dict[str, Any]:
         """Convert to OpenAI message format for API replay."""
-        msg: Dict[str, Any] = {"role": self.role}
+        msg: dict[str, Any] = {"role": self.role}
 
         if self.content is not None:
             msg["content"] = self.content
@@ -53,7 +52,7 @@ class AgentMessage(Base):
         cls,
         session_id: str,
         message_index: int,
-        msg: Dict[str, Any],
+        msg: dict[str, Any],
     ) -> "AgentMessage":
         """Create an AgentMessage from OpenAI message format."""
         return cls(
@@ -69,7 +68,7 @@ class AgentMessage(Base):
 def load_conversation_from_db(
     db,
     session_id: str,
-) -> Optional[List[Dict[str, Any]]]:
+) -> list[dict[str, Any]] | None:
     """Load conversation messages from the database.
 
     Returns:
@@ -91,7 +90,7 @@ def load_conversation_from_db(
 def save_conversation_to_db(
     db,
     session_id: str,
-    conversation: List[Dict[str, Any]],
+    conversation: list[dict[str, Any]],
 ) -> bool:
     """Save conversation messages to the database.
 
@@ -101,9 +100,7 @@ def save_conversation_to_db(
         True on success, False on failure.
     """
     try:
-        db.query(AgentMessage).filter(
-            AgentMessage.session_id == session_id
-        ).delete()
+        db.query(AgentMessage).filter(AgentMessage.session_id == session_id).delete()
 
         for idx, msg in enumerate(conversation):
             agent_msg = AgentMessage.from_openai_format(session_id, idx, msg)
@@ -114,6 +111,7 @@ def save_conversation_to_db(
     except Exception:
         db.rollback()
         logging.getLogger(__name__).exception(
-            "save_conversation_to_db failed for session %s", session_id,
+            "save_conversation_to_db failed for session %s",
+            session_id,
         )
         return False

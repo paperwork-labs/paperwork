@@ -12,15 +12,16 @@ The nightly pipeline runs 10 steps in sequence:
 9. Position reconciliation
 10. Cleanup (stale data, logs)
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Callable, Dict, Optional
 
 import redis
 from celery import shared_task
@@ -33,7 +34,7 @@ _PIPELINE_RUN_KEY = "pipeline:current_run"
 _PIPELINE_RUN_TTL_S = 172800  # 48h
 
 
-def _pipeline_redis() -> Optional[redis.Redis]:
+def _pipeline_redis() -> redis.Redis | None:
     url = getattr(settings, "REDIS_URL", None) or ""
     if not url.strip():
         return None
@@ -75,14 +76,14 @@ class StepResult:
 
     step: PipelineStep
     status: StepStatus
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
-    duration_ms: Optional[int] = None
-    error: Optional[str] = None
-    records_processed: Optional[int] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    duration_ms: int | None = None
+    error: str | None = None
+    records_processed: int | None = None
 
 
-def _initial_pending_steps() -> Dict[PipelineStep, StepResult]:
+def _initial_pending_steps() -> dict[PipelineStep, StepResult]:
     return {step: StepResult(step=step, status=StepStatus.PENDING) for step in PipelineStep}
 
 
@@ -92,9 +93,9 @@ class PipelineRun:
 
     run_id: str
     started_at: datetime
-    completed_at: Optional[datetime] = None
+    completed_at: datetime | None = None
     status: str = "running"  # running, completed, failed
-    steps: Dict[PipelineStep, StepResult] = field(default_factory=_initial_pending_steps)
+    steps: dict[PipelineStep, StepResult] = field(default_factory=_initial_pending_steps)
 
 
 def _serialize_run(run: PipelineRun) -> str:
@@ -119,10 +120,10 @@ def _serialize_run(run: PipelineRun) -> str:
     )
 
 
-def _deserialize_run(raw: str) -> Optional[PipelineRun]:
+def _deserialize_run(raw: str) -> PipelineRun | None:
     try:
         data = json.loads(raw)
-        steps: Dict[PipelineStep, StepResult] = {}
+        steps: dict[PipelineStep, StepResult] = {}
         for step in PipelineStep:
             payload = data.get("steps", {}).get(step.value)
             if not payload:
@@ -169,7 +170,7 @@ def _persist_run(run: PipelineRun) -> None:
         logger.warning("Failed to persist pipeline run: %s", e)
 
 
-def get_current_run() -> Optional[PipelineRun]:
+def get_current_run() -> PipelineRun | None:
     """Load latest pipeline run status from Redis (shared across Celery workers)."""
     r = _pipeline_redis()
     if r is None:
@@ -201,7 +202,7 @@ class PipelineOrchestrator:
     ]
 
     def __init__(self) -> None:
-        self.step_handlers: Dict[PipelineStep, Callable[[], int]] = {
+        self.step_handlers: dict[PipelineStep, Callable[[], int]] = {
             PipelineStep.IBKR_SYNC: self._run_ibkr_sync,
             PipelineStep.MARKET_DATA_FETCH: self._run_market_data_fetch,
             PipelineStep.INDICATOR_COMPUTE: self._run_indicator_compute,
@@ -216,7 +217,7 @@ class PipelineOrchestrator:
 
     def run_full_pipeline(self, run_id: str) -> PipelineRun:
         """Execute the full nightly pipeline."""
-        run = PipelineRun(run_id=run_id, started_at=datetime.now(timezone.utc))
+        run = PipelineRun(run_id=run_id, started_at=datetime.now(UTC))
         _persist_run(run)
 
         logger.info("Starting nightly pipeline run %s", run_id)
@@ -236,7 +237,7 @@ class PipelineOrchestrator:
                 failed = True
                 logger.error("Pipeline step %s failed: %s", step.value, result.error)
 
-        run.completed_at = datetime.now(timezone.utc)
+        run.completed_at = datetime.now(UTC)
         run.status = "failed" if failed else "completed"
         _persist_run(run)
 
@@ -252,7 +253,9 @@ class PipelineOrchestrator:
 
     def _execute_step(self, step: PipelineStep) -> StepResult:
         """Execute a single pipeline step with tracking."""
-        result = StepResult(step=step, status=StepStatus.RUNNING, started_at=datetime.now(timezone.utc))
+        result = StepResult(
+            step=step, status=StepStatus.RUNNING, started_at=datetime.now(UTC)
+        )
 
         handler = self.step_handlers.get(step)
         if not handler:
@@ -269,7 +272,7 @@ class PipelineOrchestrator:
             result.error = str(e)
             logger.exception("Step %s failed", step.value)
         finally:
-            result.completed_at = datetime.now(timezone.utc)
+            result.completed_at = datetime.now(UTC)
             if result.started_at:
                 result.duration_ms = int(
                     (result.completed_at - result.started_at).total_seconds() * 1000
@@ -338,7 +341,7 @@ class PipelineOrchestrator:
 @shared_task(name="pipeline.nightly", time_limit=3600, soft_time_limit=3500)
 def run_nightly_pipeline() -> dict:
     """Celery task for nightly pipeline."""
-    run_id = f"nightly-{datetime.now(timezone.utc).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
+    run_id = f"nightly-{datetime.now(UTC).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8]}"
 
     orchestrator = PipelineOrchestrator()
     result = orchestrator.run_full_pipeline(run_id)

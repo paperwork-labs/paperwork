@@ -6,6 +6,7 @@ exists for any user, because attempting ``_ensure_connected`` against
 ``127.0.0.1:7497`` in that case generates noisy ``SoftTimeLimitExceeded``
 tracebacks every 5 minutes and serves no purpose.
 """
+
 import asyncio
 import logging
 
@@ -85,7 +86,12 @@ def _perform_ping() -> dict:
         return {"status": "error", "error": str(e)}
 
 
-@celery_app.task(bind=True, name="app.tasks.ibkr_watchdog.ping_ibkr_connection", soft_time_limit=30, time_limit=60)
+@celery_app.task(
+    bind=True,
+    name="app.tasks.ibkr_watchdog.ping_ibkr_connection",
+    soft_time_limit=30,
+    time_limit=60,
+)
 def ping_ibkr_connection(self):
     """Ping IB Gateway each scheduled run (every 5 minutes per job_catalog); auto-reconnect on failure, Brain alert on persistent failure."""
     return _perform_ping()

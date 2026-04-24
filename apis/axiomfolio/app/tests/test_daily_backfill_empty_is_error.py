@@ -1,3 +1,5 @@
+from datetime import UTC
+
 import pytest
 
 
@@ -49,22 +51,31 @@ def test_backfill_last_bars_counts_empty_as_error(db_session, monkeypatch):
 
 
 def test_record_daily_history_defaults_to_tracked_universe(db_session, monkeypatch):
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
 
     monkeypatch.setattr("app.tasks.market.history.SessionLocal", lambda: db_session)
     monkeypatch.setattr("app.tasks.market.history._set_task_status", lambda *args, **kwargs: None)
-    monkeypatch.setattr("app.tasks.market.history._get_tracked_symbols_safe", lambda _session: ["AAA"])
+    monkeypatch.setattr(
+        "app.tasks.market.history._get_tracked_symbols_safe", lambda _session: ["AAA"]
+    )
 
     # Ensure we have a snapshot row for the symbol
     snap = MarketSnapshot(
         symbol="AAA",
         analysis_type="technical_snapshot",
-        analysis_timestamp=datetime.now(timezone.utc),
-        as_of_timestamp=datetime(2026, 1, 9, tzinfo=timezone.utc),
-        expiry_timestamp=datetime(2026, 1, 11, tzinfo=timezone.utc),
-        raw_analysis={"current_price": 1.23, "rsi": 50, "atr_value": 1.0, "sma_50": 1.1, "macd": 0.1, "macd_signal": 0.2},
+        analysis_timestamp=datetime.now(UTC),
+        as_of_timestamp=datetime(2026, 1, 9, tzinfo=UTC),
+        expiry_timestamp=datetime(2026, 1, 11, tzinfo=UTC),
+        raw_analysis={
+            "current_price": 1.23,
+            "rsi": 50,
+            "atr_value": 1.0,
+            "sma_50": 1.1,
+            "macd": 0.1,
+            "macd_signal": 0.2,
+        },
     )
     db_session.add(snap)
     db_session.commit()
@@ -75,7 +86,9 @@ def test_record_daily_history_defaults_to_tracked_universe(db_session, monkeypat
     assert res["symbols"] == 1
     assert res["written"] == 1
 
-    rows = db_session.query(MarketSnapshotHistory).filter(MarketSnapshotHistory.symbol == "AAA").all()
+    rows = (
+        db_session.query(MarketSnapshotHistory).filter(MarketSnapshotHistory.symbol == "AAA").all()
+    )
     assert len(rows) == 1
 
 
@@ -92,5 +105,3 @@ def test_fmp_error_dict_raises(monkeypatch):
 
     with pytest.raises(RuntimeError):
         provider_router._get_historical_fmp_sync("AAA", "1y", "1d")
-
-

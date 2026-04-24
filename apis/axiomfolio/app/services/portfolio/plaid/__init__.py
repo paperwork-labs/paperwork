@@ -17,22 +17,22 @@ only (no trading — Plaid Investments doesn't expose order entry).
 medallion: silver
 """
 
-from app.services.portfolio.plaid.client import (  # noqa: F401
+from app.services.portfolio.plaid.client import (
     PlaidAPIError,
     PlaidClient,
     PlaidConfigurationError,
 )
-from app.services.portfolio.plaid.pipeline import (  # noqa: F401
+from app.services.portfolio.plaid.pipeline import (
     PipelineResult,
     persist_holdings,
 )
-from app.services.portfolio.plaid.sync_service import PlaidSyncService  # noqa: F401
+from app.services.portfolio.plaid.sync_service import PlaidSyncService
 
 __all__ = [
+    "PipelineResult",
     "PlaidAPIError",
     "PlaidClient",
     "PlaidConfigurationError",
-    "PipelineResult",
-    "persist_holdings",
     "PlaidSyncService",
+    "persist_holdings",
 ]

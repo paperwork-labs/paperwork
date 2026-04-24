@@ -2,17 +2,19 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 from fastapi.testclient import TestClient
 
 try:
-    from app.api.main import app
     from app.api.dependencies import get_current_user, get_db
+    from app.api.main import app
     from app.models import Candidate, CandidateQueueState
+    from app.models.entitlement import SubscriptionTier
     from app.models.picks import PickAction
     from app.models.user import User, UserRole
     from app.services.billing.entitlement_service import EntitlementService
-    from app.models.entitlement import SubscriptionTier
 
     AVAILABLE = True
 except Exception:  # pragma: no cover
@@ -89,12 +91,10 @@ def pro_user(db_session):
     return u
 
 
-def _published(
-    db_session, *, symbol: str = "NVDA", generator: str = "src_a", published_at=None
-):
-    from datetime import datetime, timezone
+def _published(db_session, *, symbol: str = "NVDA", generator: str = "src_a", published_at=None):
+    from datetime import datetime
 
-    when = published_at or datetime.now(timezone.utc)
+    when = published_at or datetime.now(UTC)
     c = Candidate(
         symbol=symbol,
         generator_name=generator,

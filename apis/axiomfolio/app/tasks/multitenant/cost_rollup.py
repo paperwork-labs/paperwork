@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from celery import shared_task
 
@@ -26,7 +26,7 @@ def rollup_yesterday() -> dict:
     that wires beat schedules; until then, trigger manually via
     ``/api/v1/admin/jobs/run-now``).
     """
-    yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).date()
+    yesterday = (datetime.now(UTC) - timedelta(days=1)).date()
     db = SessionLocal()
     try:
         written = CostAttributionService(db).rollup_day(yesterday)

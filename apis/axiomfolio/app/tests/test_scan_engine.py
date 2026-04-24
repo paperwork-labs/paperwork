@@ -4,18 +4,18 @@ from __future__ import annotations
 
 import pytest
 
-from app.services.market.regime_engine import REGIME_R1, REGIME_R3, REGIME_R4, REGIME_R5
+from app.services.market.regime_engine import REGIME_R1, REGIME_R3, REGIME_R5
 from app.services.market.scan_engine import (
     TIER_BREAKDOWN_ELITE,
     TIER_BREAKOUT_ELITE,
     TIER_BREAKOUT_STANDARD,
     TIER_EARLY_BASE,
     ScanInput,
-    classify_long_tier,
-    classify_short_tier,
-    classify_scan_tier,
-    compute_forward_rr,
     check_correlation_constraint,
+    classify_long_tier,
+    classify_scan_tier,
+    classify_short_tier,
+    compute_forward_rr,
     compute_sector_confirmation,
     compute_sector_divergence_pct,
 )

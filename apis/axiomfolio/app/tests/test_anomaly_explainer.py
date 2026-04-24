@@ -20,7 +20,7 @@ from __future__ import annotations
 import json
 from decimal import Decimal
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -36,8 +36,8 @@ from app.services.agent.anomaly_explainer import (
     load_runbook_chunks,
 )
 from app.services.agent.anomaly_explainer.explainer import (
-    explanation_to_dict,
     _to_decimal_confidence,
+    explanation_to_dict,
 )
 from app.services.agent.anomaly_explainer.knowledge import (
     _slugify_anchor,
@@ -45,7 +45,6 @@ from app.services.agent.anomaly_explainer.knowledge import (
 )
 from app.services.agent.anomaly_explainer.prompts import OUTPUT_JSON_SCHEMA
 from app.services.agent.anomaly_explainer.provider import AlwaysFailingProvider
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,7 +55,7 @@ def _good_payload(
     *,
     title: str = "Stage monotonicity broke for 3 symbols",
     confidence: float = 0.8,
-    steps: List[Dict[str, Any]] | None = None,
+    steps: list[dict[str, Any]] | None = None,
 ) -> str:
     # Use ``is None`` (not ``or``) so callers can pass ``steps=[]`` and
     # actually exercise the empty-steps -> fallback path. The previous
@@ -99,7 +98,7 @@ def _anomaly(
     cat: AnomalyCategory = AnomalyCategory.MONOTONICITY,
     severity: AnomalySeverity = AnomalySeverity.WARNING,
     title: str = "monotonicity_issues=3",
-    facts: Dict[str, Any] | None = None,
+    facts: dict[str, Any] | None = None,
     raw: str = "AAPL out of order at 2026-04-08",
 ) -> Anomaly:
     return Anomaly(
@@ -211,14 +210,11 @@ class TestKnowledgeRetrieval:
             raw_evidence=a.raw_evidence,
         )
         # No randomness; same input -> same output.
-        assert (
-            text
-            == query_text_for_anomaly(
-                category=a.category.value,
-                title=a.title,
-                facts=a.facts,
-                raw_evidence=a.raw_evidence,
-            )
+        assert text == query_text_for_anomaly(
+            category=a.category.value,
+            title=a.title,
+            facts=a.facts,
+            raw_evidence=a.raw_evidence,
         )
         assert "monotonicity" in text
 
@@ -260,9 +256,7 @@ class TestExplainerHappyPath:
         explainer = AnomalyExplainer(
             provider,
             kb,
-            available_tasks={
-                "tasks.admin.repair_stage_history": "Repair stage history rows."
-            },
+            available_tasks={"tasks.admin.repair_stage_history": "Repair stage history rows."},
         )
         exp = explainer.explain(_anomaly())
 
@@ -273,9 +267,7 @@ class TestExplainerHappyPath:
         assert exp.steps[0].requires_approval is False
         assert exp.steps[1].proposed_task == "tasks.admin.repair_stage_history"
         assert exp.confidence == Decimal("0.8")
-        assert exp.runbook_excerpts and exp.runbook_excerpts[0].endswith(
-            "#monotonicity"
-        )
+        assert exp.runbook_excerpts and exp.runbook_excerpts[0].endswith("#monotonicity")
         assert exp.model == "stub"
 
     def _write_runbook(self, tmp_path: Path, anchor_word: str, body: str) -> Path:

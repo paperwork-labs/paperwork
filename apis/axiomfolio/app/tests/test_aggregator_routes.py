@@ -1,14 +1,12 @@
-import asyncio
 import uuid
-import jwt
+
 import pytest
 
-from app.api.main import app
 from app.api.dependencies import get_db
+from app.api.main import app
 from app.config import settings
-from app.models.broker_account import BrokerAccount, BrokerType, AccountType
+from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.tests.auth_test_utils import approve_user_for_login_tests
-
 
 try:
     from fastapi.testclient import TestClient
@@ -40,9 +38,7 @@ def _login_token(client) -> str:
         json={"username": username, "email": email, "password": password},
     )
     approve_user_for_login_tests(username)
-    r_login = client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    r_login = client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert r_login.status_code == 200
     return r_login.json()["access_token"], username
 
@@ -95,24 +91,32 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
             self.status_code = status_code
             self._payload = payload or {}
             self.headers = {}
+
         def json(self):
             return self._payload
+
     class DummyClient:
         def __init__(self, *args, **kwargs):
             pass
+
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, exc_type, exc, tb):
             return False
+
         async def get(self, url, params=None, timeout=None):
             return DummyResponse(200)
+
         async def post(self, url, data=None):
             return DummyResponse(200, {"access_token": "AT", "refresh_token": "RT"})
 
     import httpx
+
     monkeypatch.setattr(httpx, "AsyncClient", DummyClient)
     # Stub token exchange so callback succeeds regardless of async/thread context
     from app.services.aggregator.schwab_connector import SchwabConnector
+
     monkeypatch.setattr(SchwabConnector, "exchange_code_for_tokens", _stub_exchange_code_for_tokens)
 
     try:
@@ -126,6 +130,7 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
         url = r_link.json()["url"]
         # Extract state query param from URL for callback
         import urllib.parse as _up
+
         qs = _up.urlparse(url).query
         params = dict(_up.parse_qsl(qs))
         assert "state" in params
@@ -140,5 +145,3 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
         assert "schwab=linked" in r_cb.headers.get("location", "")
     finally:
         app.dependency_overrides.pop(get_db, None)
-
-

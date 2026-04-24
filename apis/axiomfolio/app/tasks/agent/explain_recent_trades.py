@@ -28,8 +28,8 @@ notices when the explainer is silently dropping orders.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy import or_
@@ -79,9 +79,9 @@ def _has_explanation(db: Session, order_id: int) -> bool:
 def _run_backfill(
     *,
     lookback_hours: int = 24,
-    explainer: Optional[TradeDecisionExplainer] = None,
-    db: Optional[Session] = None,
-) -> Dict[str, Any]:
+    explainer: TradeDecisionExplainer | None = None,
+    db: Session | None = None,
+) -> dict[str, Any]:
     """Pure function so the Celery task and tests share one code path.
 
     Caller may pass ``db`` to drive the function inside an existing
@@ -95,7 +95,7 @@ def _run_backfill(
     session = db or SessionLocal()
     explainer = explainer or TradeDecisionExplainer()
 
-    since = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
+    since = datetime.now(UTC) - timedelta(hours=lookback_hours)
 
     counters = {
         "considered": 0,
@@ -126,9 +126,7 @@ def _run_backfill(
                 counters["skipped_cached"] += 1
                 continue
             try:
-                explainer.explain(
-                    session, order_id=order.id, user_id=order.user_id
-                )
+                explainer.explain(session, order_id=order.id, user_id=order.user_id)
                 if own_session:
                     session.commit()
                 counters["explained"] += 1
@@ -142,19 +140,17 @@ def _run_backfill(
                 if own_session:
                     session.rollback()
                 logger.warning(
-                    "explain_recent_trades: explainer failed for "
-                    "order=%s user=%s: %s",
+                    "explain_recent_trades: explainer failed for order=%s user=%s: %s",
                     order.id,
                     order.user_id,
                     e,
                 )
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 counters["failed"] += 1
                 if own_session:
                     session.rollback()
                 logger.exception(
-                    "explain_recent_trades: unexpected error for "
-                    "order=%s user=%s: %s",
+                    "explain_recent_trades: unexpected error for order=%s user=%s: %s",
                     order.id,
                     order.user_id,
                     e,
@@ -204,7 +200,7 @@ def _run_backfill(
     autoretry_for=(),
 )
 @task_run("explain_recent_trades")
-def explain_recent_trades(lookback_hours: int = 24) -> Dict[str, Any]:
+def explain_recent_trades(lookback_hours: int = 24) -> dict[str, Any]:
     """Celery entry point — wraps :func:`_run_backfill`.
 
     ``time_limit`` matches the catalog's ``timeout_s=900`` per the
@@ -213,4 +209,4 @@ def explain_recent_trades(lookback_hours: int = 24) -> Dict[str, Any]:
     return _run_backfill(lookback_hours=lookback_hours)
 
 
-__all__ = ["explain_recent_trades", "_run_backfill"]
+__all__ = ["_run_backfill", "explain_recent_trades"]

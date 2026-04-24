@@ -10,8 +10,8 @@ from celery import shared_task
 
 from app.database import SessionLocal
 from app.services.gold.options_chain_surface import OptionsChainSurface
-from app.services.market.universe import tracked_symbols
 from app.services.market.market_data_service import infra
+from app.services.market.universe import tracked_symbols
 from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
@@ -49,7 +49,7 @@ def refresh_options_chain_for_symbol(symbol: str, user_id: int) -> dict:
             "contracts_skipped_malformed": result.contracts_skipped_malformed,
             "iv_history_queries": result.iv_history_queries,
         }
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.exception("refresh_options_chain_for_symbol failed: %s", e)
         raise
     finally:
@@ -57,8 +57,7 @@ def refresh_options_chain_for_symbol(symbol: str, user_id: int) -> dict:
 
 
 @shared_task(
-    name="app.tasks.market.options_chain."
-    "refresh_options_chains_for_tracked_universe",
+    name="app.tasks.market.options_chain.refresh_options_chains_for_tracked_universe",
     soft_time_limit=590,
     time_limit=600,
 )

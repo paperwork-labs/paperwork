@@ -14,9 +14,9 @@ import json
 import logging
 import os
 import uuid
+from datetime import UTC, datetime
+from typing import Any
 from urllib.parse import urlparse
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 from sqlalchemy.orm import Session
@@ -28,8 +28,9 @@ from app.models.user import User
 from app.services.agent.byok_anomaly import record_fallback as _record_byok_fallback
 from app.services.billing.entitlement_service import EntitlementService
 from app.services.security.credential_vault import credential_vault
-from .taxonomy import RiskLevel, classify_action_risk, can_auto_execute
-from .tools import get_tools_for_openai, INLINE_ONLY_AGENT_TOOLS, TOOL_TO_CELERY_TASK
+
+from .taxonomy import RiskLevel, can_auto_execute, classify_action_risk
+from .tools import INLINE_ONLY_AGENT_TOOLS, TOOL_TO_CELERY_TASK, get_tools_for_openai
 
 logger = logging.getLogger(__name__)
 
@@ -40,13 +41,13 @@ AGENT_CONVERSATION_MAX_JSON_BYTES = 400_000
 OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"
 MODEL = "gpt-4o-mini"
 BYOK_ALLOWED_HOSTS = frozenset({"api.openai.com", "api.anthropic.com"})
-BYOK_PROVIDER_URLS: Dict[str, str] = {
+BYOK_PROVIDER_URLS: dict[str, str] = {
     "openai": "https://api.openai.com/v1/chat/completions",
     "anthropic": "https://api.anthropic.com/v1/messages",
 }
 
 
-def _resolve_backend_codebase_dir() -> Optional[str]:
+def _resolve_backend_codebase_dir() -> str | None:
     import os
 
     for candidate in ("/app/backend", "backend"):
@@ -55,7 +56,7 @@ def _resolve_backend_codebase_dir() -> Optional[str]:
     return None
 
 
-def _full_path_within_backend(base: str, relative: str) -> Tuple[bool, str]:
+def _full_path_within_backend(base: str, relative: str) -> tuple[bool, str]:
     """Resolve ``relative`` under ``base`` and ensure it stays inside ``base`` (prefix-safe)."""
     import os
 
@@ -71,10 +72,18 @@ def _full_path_within_backend(base: str, relative: str) -> Tuple[bool, str]:
 
 
 CODEBASE_ALLOWED_PREFIXES = ("services/", "api/", "tasks/", "models/", "utils/", "tests/")
-CODEBASE_DENIED_PATTERNS = (".env", ".pem", ".key", "secret", "credential", "password", "__pycache__")
+CODEBASE_DENIED_PATTERNS = (
+    ".env",
+    ".pem",
+    ".key",
+    "secret",
+    "credential",
+    "password",
+    "__pycache__",
+)
 
 
-def _assert_codebase_path_allowed(rel_path: str) -> Optional[str]:
+def _assert_codebase_path_allowed(rel_path: str) -> str | None:
     """
     Check if a relative path is allowed for codebase exploration.
     Returns an error string if denied, None if allowed.
@@ -91,7 +100,7 @@ def _assert_codebase_path_allowed(rel_path: str) -> Optional[str]:
     return f"Access denied: path must start with one of {CODEBASE_ALLOWED_PREFIXES}"
 
 
-def _sanitize_tool_calls(raw_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def _sanitize_tool_calls(raw_calls: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Filter out malformed tool_calls from OpenAI response.
     Returns only valid calls with non-empty id and function.name.
@@ -103,8 +112,7 @@ def _sanitize_tool_calls(raw_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]
         call_name = fn.get("name")
         if not call_id or not call_name:
             logger.warning(
-                "Dropping malformed tool_call[%d]: missing id=%s or name=%s",
-                i, call_id, call_name
+                "Dropping malformed tool_call[%d]: missing id=%s or name=%s", i, call_id, call_name
             )
             continue
         valid.append(tc)
@@ -200,8 +208,8 @@ Autonomy level: {autonomy_level}
 
 class AgentBrain:
     """LLM-powered agent brain for intelligent operations."""
-    
-    def __init__(self, db: Session, user_id: Optional[int] = None):
+
+    def __init__(self, db: Session, user_id: int | None = None):
         """Construct an agent scoped to a tenant.
 
         ``user_id`` MUST be passed for all per-user tools (portfolio
@@ -213,8 +221,8 @@ class AgentBrain:
         self.db = db
         self.user_id = user_id
         self.session_id = str(uuid.uuid4())[:8]
-        self._conversation: List[Dict[str, Any]] = []
-        self._last_openai_error: Optional[str] = None
+        self._conversation: list[dict[str, Any]] = []
+        self._last_openai_error: str | None = None
 
     def _require_user_id(self, tool_name: str) -> int:
         if self.user_id is None:
@@ -224,16 +232,12 @@ class AgentBrain:
             )
         return int(self.user_id)
 
-    def _resolve_llm_target(self) -> Tuple[str, str]:
+    def _resolve_llm_target(self) -> tuple[str, str]:
         """Resolve provider URL + API key, preferring paid-tier BYOK."""
         default_key = settings.OPENAI_API_KEY
         if not default_key or self.user_id is None:
             return OPENAI_API_URL, default_key or ""
-        user = (
-            self.db.query(User)
-            .filter(User.id == int(self.user_id))
-            .one_or_none()
-        )
+        user = self.db.query(User).filter(User.id == int(self.user_id)).one_or_none()
         if user is None:
             return OPENAI_API_URL, default_key
         tier = EntitlementService.effective_tier(self.db, user)
@@ -248,14 +252,10 @@ class AgentBrain:
             api_key = str(payload.get("api_key") or "").strip()
             provider_url = BYOK_PROVIDER_URLS.get(provider)
             if not provider_url:
-                _record_byok_fallback(
-                    self.user_id, "provider_not_allowed", provider=provider
-                )
+                _record_byok_fallback(self.user_id, "provider_not_allowed", provider=provider)
                 return OPENAI_API_URL, default_key
             if not api_key:
-                _record_byok_fallback(
-                    self.user_id, "empty_api_key", provider=provider
-                )
+                _record_byok_fallback(self.user_id, "empty_api_key", provider=provider)
                 return OPENAI_API_URL, default_key
             if provider != "openai":
                 # Anthropic BYOK storage is supported; wire transport in follow-up.
@@ -265,61 +265,59 @@ class AgentBrain:
                 return OPENAI_API_URL, default_key
             host = (urlparse(provider_url).hostname or "").lower()
             if host not in BYOK_ALLOWED_HOSTS:
-                _record_byok_fallback(
-                    self.user_id, "host_not_allowlisted", provider=provider
-                )
+                _record_byok_fallback(self.user_id, "host_not_allowlisted", provider=provider)
                 return OPENAI_API_URL, default_key
             return provider_url, api_key
         except Exception as e:
             logger.warning("BYOK key resolution failed for user_id=%s: %s", self.user_id, e)
             _record_byok_fallback(self.user_id, "decrypt_failed")
             return OPENAI_API_URL, default_key
-    
+
     async def analyze_and_act(
         self,
-        health_data: Dict[str, Any],
-        context: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        health_data: dict[str, Any],
+        context: str | None = None,
+    ) -> dict[str, Any]:
         """
         Analyze system health and decide on actions.
-        
+
         Args:
             health_data: Current health status from AdminHealthService
             context: Optional additional context about the situation
-            
+
         Returns:
             Summary of analysis and actions taken/proposed
         """
         if not settings.OPENAI_API_KEY:
             logger.warning("OPENAI_API_KEY not configured, falling back to rule-based")
             return {"error": "LLM not configured", "fallback": True}
-        
+
         system_msg = SYSTEM_PROMPT.format(
-            current_time=datetime.now(timezone.utc).isoformat(),
+            current_time=datetime.now(UTC).isoformat(),
             autonomy_level=settings.AGENT_AUTONOMY_LEVEL,
         )
-        
+
         user_msg = self._build_user_message(health_data, context)
-        
+
         self._conversation = [
             {"role": "system", "content": system_msg},
             {"role": "user", "content": user_msg},
         ]
-        
+
         actions_taken = []
         actions_pending = []
         max_iterations = 10
-        
+
         for iteration in range(max_iterations):
             # Force at least one tool call on first iteration
             tool_choice = "required" if iteration == 0 else "auto"
             response = await self._call_llm(tool_choice=tool_choice)
-            
+
             if not response:
                 break
-            
+
             message = response.get("choices", [{}])[0].get("message", {})
-            
+
             raw_tool_calls = message.get("tool_calls")
             if raw_tool_calls:
                 valid_tool_calls = _sanitize_tool_calls(raw_tool_calls)
@@ -329,7 +327,7 @@ class AgentBrain:
                 message_to_store = dict(message)
                 message_to_store["tool_calls"] = valid_tool_calls
                 self._conversation.append(message_to_store)
-                
+
                 for tool_call in valid_tool_calls:
                     func = tool_call.get("function", {})
                     tool_name = func.get("name")
@@ -337,17 +335,19 @@ class AgentBrain:
                         tool_args = json.loads(func.get("arguments", "{}"))
                     except json.JSONDecodeError:
                         tool_args = {}
-                    
+
                     result, action = await self._execute_tool(
                         tool_name, tool_args, message.get("content", "")
                     )
-                    
-                    self._conversation.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call["id"],
-                        "content": json.dumps(result),
-                    })
-                    
+
+                    self._conversation.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call["id"],
+                            "content": json.dumps(result),
+                        }
+                    )
+
                     if action:
                         if action.status == "completed":
                             actions_taken.append(action)
@@ -356,9 +356,9 @@ class AgentBrain:
             else:
                 self._conversation.append(message)
                 break
-        
+
         final_response = self._conversation[-1].get("content", "")
-        
+
         return {
             "session_id": self.session_id,
             "analysis": final_response,
@@ -366,11 +366,11 @@ class AgentBrain:
             "actions_pending": [self._action_to_dict(a) for a in actions_pending],
             "health_input": health_data.get("composite_status"),
         }
-    
+
     def _build_user_message(
         self,
-        health_data: Dict[str, Any],
-        context: Optional[str],
+        health_data: dict[str, Any],
+        context: str | None,
     ) -> str:
         """Build the initial user message with full health dimension details."""
         parts = [
@@ -387,7 +387,9 @@ class AgentBrain:
             parts.append(f"  [{dim_name}] status={status}")
 
             if dim_name == "coverage":
-                parts.append(f"    daily_pct={dim_data.get('daily_pct')}%  stale_daily={dim_data.get('stale_daily')}")
+                parts.append(
+                    f"    daily_pct={dim_data.get('daily_pct')}%  stale_daily={dim_data.get('stale_daily')}"
+                )
                 parts.append(f"    tracked_count={dim_data.get('tracked_count')}")
                 issues = dim_data.get("constituent_issues", [])
                 if issues:
@@ -415,7 +417,9 @@ class AgentBrain:
                     f"({drift_pct_str})"
                 )
             elif dim_name == "audit":
-                parts.append(f"    daily_fill={dim_data.get('daily_fill_pct')}%  snapshot_fill={dim_data.get('snapshot_fill_pct')}%")
+                parts.append(
+                    f"    daily_fill={dim_data.get('daily_fill_pct')}%  snapshot_fill={dim_data.get('snapshot_fill_pct')}%"
+                )
                 depth = dim_data.get("history_depth_years")
                 if depth is not None:
                     parts.append(f"    history_depth={depth} years")
@@ -423,11 +427,17 @@ class AgentBrain:
                 if missing:
                     parts.append(f"    missing_sample: {', '.join(missing[:10])}")
             elif dim_name == "fundamentals":
-                parts.append(f"    fill_pct={dim_data.get('fundamentals_fill_pct')}%  filled={dim_data.get('filled_count')}/{dim_data.get('tracked_total')}")
+                parts.append(
+                    f"    fill_pct={dim_data.get('fundamentals_fill_pct')}%  filled={dim_data.get('filled_count')}/{dim_data.get('tracked_total')}"
+                )
             elif dim_name == "regime":
-                parts.append(f"    state={dim_data.get('regime_state')}  score={dim_data.get('composite_score')}  age={dim_data.get('age_hours')}h")
+                parts.append(
+                    f"    state={dim_data.get('regime_state')}  score={dim_data.get('composite_score')}  age={dim_data.get('age_hours')}h"
+                )
             elif dim_name == "jobs":
-                parts.append(f"    success_rate={dim_data.get('success_rate')}  errors={dim_data.get('error_count')}/{dim_data.get('total')}")
+                parts.append(
+                    f"    success_rate={dim_data.get('success_rate')}  errors={dim_data.get('error_count')}/{dim_data.get('total')}"
+                )
             else:
                 message = dim_data.get("message", "")
                 if message:
@@ -436,20 +446,22 @@ class AgentBrain:
         if context:
             parts.extend(["", "Additional context:", context])
 
-        parts.extend([
-            "",
-            "Analyze the situation and take appropriate actions.",
-            "For any non-green dimensions, investigate and remediate if possible.",
-        ])
-        
+        parts.extend(
+            [
+                "",
+                "Analyze the situation and take appropriate actions.",
+                "For any non-green dimensions, investigate and remediate if possible.",
+            ]
+        )
+
         return "\n".join(parts)
-    
-    def _messages_for_openai_request(self) -> List[Dict[str, Any]]:
+
+    def _messages_for_openai_request(self) -> list[dict[str, Any]]:
         """
         Build messages safe for OpenAI Chat Completions input.
         Strips response-only fields that cause 400s when replayed (e.g. from Redis).
         """
-        out: List[Dict[str, Any]] = []
+        out: list[dict[str, Any]] = []
         for m in self._conversation:
             role = m.get("role")
             if role == "system":
@@ -457,7 +469,7 @@ class AgentBrain:
             elif role == "user":
                 out.append({"role": "user", "content": m.get("content") or ""})
             elif role == "assistant":
-                item: Dict[str, Any] = {"role": "assistant"}
+                item: dict[str, Any] = {"role": "assistant"}
                 content = m.get("content")
                 if content:
                     item["content"] = content
@@ -499,8 +511,8 @@ class AgentBrain:
                     }
                 )
         return out
-    
-    async def _call_llm(self, tool_choice: str = "auto") -> Optional[Dict[str, Any]]:
+
+    async def _call_llm(self, tool_choice: str = "auto") -> dict[str, Any] | None:
         """Call the OpenAI API."""
         self._last_openai_error = None
         target_url, target_key = self._resolve_llm_target()
@@ -508,7 +520,7 @@ class AgentBrain:
             "Authorization": f"Bearer {target_key}",
             "Content-Type": "application/json",
         }
-        
+
         messages = self._messages_for_openai_request()
         payload = {
             "model": MODEL,
@@ -518,38 +530,37 @@ class AgentBrain:
             "temperature": 0.1,
             "max_tokens": 2000,
         }
-        
+
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    target_url,
-                    headers=headers,
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=120),
-                ) as resp:
-                    if resp.status != 200:
-                        error = await resp.text()
-                        self._last_openai_error = f"HTTP {resp.status}: {error[:800]}"
-                        logger.error("OpenAI API error: %s", self._last_openai_error)
-                        return None
-                    return await resp.json()
+            async with aiohttp.ClientSession() as session, session.post(
+                target_url,
+                headers=headers,
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=120),
+            ) as resp:
+                if resp.status != 200:
+                    error = await resp.text()
+                    self._last_openai_error = f"HTTP {resp.status}: {error[:800]}"
+                    logger.error("OpenAI API error: %s", self._last_openai_error)
+                    return None
+                return await resp.json()
         except Exception as e:
             self._last_openai_error = str(e)
             logger.error("Failed to call OpenAI API: %s", e)
             return None
-    
+
     async def _execute_tool(
         self,
         tool_name: str,
-        tool_args: Dict[str, Any],
+        tool_args: dict[str, Any],
         reasoning: str,
-    ) -> Tuple[Dict[str, Any], Optional[AgentAction]]:
+    ) -> tuple[dict[str, Any], AgentAction | None]:
         """
         Execute a tool call and return the result.
 
         Resilient design: Audit trail (AgentAction) failures never block tool
         execution. Users get their results even if the audit record fails to write.
-        
+
         Returns:
             Tuple of (result_dict, AgentAction or None)
         """
@@ -557,7 +568,7 @@ class AgentBrain:
         auto_exec = can_auto_execute(tool_name, settings.AGENT_AUTONOMY_LEVEL)
 
         # Try to create audit record, but don't block on failure
-        action: Optional[AgentAction] = None
+        action: AgentAction | None = None
         try:
             action = AgentAction(
                 action_type=tool_name,
@@ -573,7 +584,9 @@ class AgentBrain:
         except Exception as db_err:
             logger.warning(
                 "Audit record failed for tool %s (proceeding anyway): %s",
-                tool_name, db_err, exc_info=True
+                tool_name,
+                db_err,
+                exc_info=True,
             )
             try:
                 self.db.rollback()
@@ -585,22 +598,19 @@ class AgentBrain:
                 )
             action = None
 
-        def _finalize_action(result: Dict[str, Any], status: str) -> None:
+        def _finalize_action(result: dict[str, Any], status: str) -> None:
             """Update and commit the action record if it exists."""
             if action is None:
                 return
             try:
                 action.status = status
                 action.result = result
-                action.executed_at = datetime.now(timezone.utc)
-                action.completed_at = datetime.now(timezone.utc)
+                action.executed_at = datetime.now(UTC)
+                action.completed_at = datetime.now(UTC)
                 action.auto_approved = True
                 self.db.commit()
             except Exception as db_err:
-                logger.warning(
-                    "Failed to finalize audit record for %s: %s",
-                    tool_name, db_err
-                )
+                logger.warning("Failed to finalize audit record for %s: %s", tool_name, db_err)
                 try:
                     self.db.rollback()
                 except Exception as rb_err:
@@ -626,14 +636,15 @@ class AgentBrain:
                     _finalize_action(result, "failed")
                 else:
                     action.status = "executing"
-                    action.executed_at = datetime.now(timezone.utc)
+                    action.executed_at = datetime.now(UTC)
                     action.auto_approved = True
                     try:
                         self.db.commit()
                     except Exception as db_err:
                         logger.warning(
                             "Failed to update audit record for celery task %s: %s",
-                            tool_name, db_err
+                            tool_name,
+                            db_err,
                         )
                         try:
                             self.db.rollback()
@@ -652,8 +663,7 @@ class AgentBrain:
                 self.db.commit()
             except Exception as db_err:
                 logger.warning(
-                    "Failed to set pending_approval status for %s: %s",
-                    tool_name, db_err
+                    "Failed to set pending_approval status for %s: %s", tool_name, db_err
                 )
                 try:
                     self.db.rollback()
@@ -669,59 +679,61 @@ class AgentBrain:
             "message": f"Action '{tool_name}' requires human approval (risk: {risk.value})",
             "action_id": action.id if action else None,
         }, action
-    
+
     async def _execute_safe_tool(
         self,
         tool_name: str,
-        args: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        args: dict[str, Any],
+    ) -> dict[str, Any]:
         """Execute a safe (read-only) tool."""
         if tool_name == "check_health":
             return await self._tool_check_health()
-        
+
         if tool_name == "query_database":
             return await self._tool_query_database(args.get("query", ""), args.get("limit", 100))
-        
+
         if tool_name == "web_search":
             return await self._tool_web_search(args.get("query", ""))
-        
+
         if tool_name == "browse_url":
             return await self._tool_browse_url(args.get("url", ""))
-        
+
         if tool_name == "send_alert":
-            return await self._tool_send_alert(args.get("message", ""), args.get("severity", "info"))
-        
+            return await self._tool_send_alert(
+                args.get("message", ""), args.get("severity", "info")
+            )
+
         if tool_name == "list_jobs":
             return await self._tool_list_jobs(args.get("status", "all"), args.get("limit", 20))
-        
+
         if tool_name == "check_broker_connection":
             return await self._tool_check_broker(args.get("broker", "all"))
-        
+
         # New holistic chat tools
         if tool_name == "get_portfolio_summary":
             return await self._tool_get_portfolio_summary()
-        
+
         if tool_name == "get_position_details":
             return await self._tool_get_position_details(args.get("symbol", ""))
-        
+
         if tool_name == "get_activity":
             return await self._tool_get_activity(args.get("limit", 20), args.get("symbol"))
-        
+
         if tool_name == "get_market_snapshot":
             return await self._tool_get_market_snapshot(args.get("symbol", ""))
-        
+
         if tool_name == "get_tracked_universe":
             return await self._tool_get_tracked_universe()
-        
+
         if tool_name == "get_constituents":
             return await self._tool_get_constituents(args.get("index", "SP500"))
-        
+
         if tool_name == "get_regime":
             return await self._tool_get_regime()
-        
+
         if tool_name == "describe_tables":
             return await self._tool_describe_tables(args.get("table_name"))
-        
+
         # Codebase exploration tools
         if tool_name == "read_file":
             return await self._tool_read_file(
@@ -729,7 +741,7 @@ class AgentBrain:
                 args.get("start_line"),
                 args.get("end_line"),
             )
-        
+
         if tool_name == "list_files":
             return await self._tool_list_files(args.get("path", ""))
 
@@ -842,19 +854,20 @@ class AgentBrain:
             return await self._tool_list_users()
 
         return {"error": f"Unknown safe tool: {tool_name}"}
-    
+
     async def _dispatch_celery_task(
         self,
         tool_name: str,
-        args: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        args: dict[str, Any],
+    ) -> dict[str, Any]:
         """Dispatch a Celery task for the tool."""
         task_path = TOOL_TO_CELERY_TASK.get(tool_name)
         if not task_path:
             return {"error": f"No Celery task mapped for tool: {tool_name}"}
-        
+
         try:
             from app.tasks.celery_app import celery_app
+
             result = celery_app.send_task(task_path, kwargs=args)
             return {
                 "status": "dispatched",
@@ -864,81 +877,88 @@ class AgentBrain:
         except Exception as e:
             logger.error("Failed to dispatch task %s: %s", task_path, e)
             return {"error": str(e)}
-    
-    async def _tool_check_health(self) -> Dict[str, Any]:
+
+    async def _tool_check_health(self) -> dict[str, Any]:
         """Check system health."""
         from app.services.market.admin_health_service import AdminHealthService
+
         try:
             svc = AdminHealthService()
             return svc.get_composite_health(self.db)
         except Exception as e:
             return {"error": str(e)}
-    
-    async def _tool_query_database(self, query: str, limit: int) -> Dict[str, Any]:
+
+    async def _tool_query_database(self, query: str, limit: int) -> dict[str, Any]:
         """Run a read-only database query."""
         import re
-        
+
         query_clean = query.strip()
         query_upper = query_clean.upper()
-        
+
         # Allow SELECT and WITH (CTEs)
         if not (query_upper.startswith("SELECT") or query_upper.startswith("WITH")):
-            return {"error": "Only SELECT/WITH queries allowed. Use describe_tables to see available tables."}
-        
+            return {
+                "error": "Only SELECT/WITH queries allowed. Use describe_tables to see available tables."
+            }
+
         # Check forbidden keywords using word boundaries (not substrings)
         forbidden = ["INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE", "CREATE"]
         for word in forbidden:
-            if re.search(rf'\b{word}\b', query_upper):
+            if re.search(rf"\b{word}\b", query_upper):
                 return {"error": f"Query contains forbidden keyword: {word}"}
-        
+
         # Only add LIMIT if not already present
         if "LIMIT" not in query_upper:
             query_clean = f"{query_clean} LIMIT {limit}"
-        
+
         try:
             from sqlalchemy import text
+
             result = self.db.execute(text(query_clean))
             rows = [dict(row._mapping) for row in result]
             return {"rows": rows, "count": len(rows)}
         except Exception as e:
-            return {"error": str(e), "hint": "Use describe_tables to see available tables and columns."}
-    
-    async def _tool_web_search(self, query: str) -> Dict[str, Any]:
+            return {
+                "error": str(e),
+                "hint": "Use describe_tables to see available tables and columns.",
+            }
+
+    async def _tool_web_search(self, query: str) -> dict[str, Any]:
         """Search the web using DuckDuckGo."""
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    "https://api.duckduckgo.com/",
-                    params={"q": query, "format": "json", "no_redirect": "1"},
-                    timeout=aiohttp.ClientTimeout(total=10),
-                ) as resp:
-                    if resp.status == 200:
-                        data = await resp.json()
-                        return {
-                            "abstract": data.get("Abstract", ""),
-                            "related": [t.get("Text", "") for t in data.get("RelatedTopics", [])[:5]],
-                        }
-                    return {"error": f"Search failed: {resp.status}"}
+            async with aiohttp.ClientSession() as session, session.get(
+                "https://api.duckduckgo.com/",
+                params={"q": query, "format": "json", "no_redirect": "1"},
+                timeout=aiohttp.ClientTimeout(total=10),
+            ) as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return {
+                        "abstract": data.get("Abstract", ""),
+                        "related": [
+                            t.get("Text", "") for t in data.get("RelatedTopics", [])[:5]
+                        ],
+                    }
+                return {"error": f"Search failed: {resp.status}"}
         except Exception as e:
             return {"error": str(e)}
-    
-    async def _tool_browse_url(self, url: str) -> Dict[str, Any]:
+
+    async def _tool_browse_url(self, url: str) -> dict[str, Any]:
         """Fetch content from a URL."""
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    url,
-                    timeout=aiohttp.ClientTimeout(total=15),
-                    headers={"User-Agent": "AxiomFolio-Agent/1.0"},
-                ) as resp:
-                    if resp.status == 200:
-                        text = await resp.text()
-                        return {"content": text[:5000], "status": resp.status}
-                    return {"error": f"Failed to fetch: {resp.status}"}
+            async with aiohttp.ClientSession() as session, session.get(
+                url,
+                timeout=aiohttp.ClientTimeout(total=15),
+                headers={"User-Agent": "AxiomFolio-Agent/1.0"},
+            ) as resp:
+                if resp.status == 200:
+                    text = await resp.text()
+                    return {"content": text[:5000], "status": resp.status}
+                return {"error": f"Failed to fetch: {resp.status}"}
         except Exception as e:
             return {"error": str(e)}
-    
-    async def _tool_send_alert(self, message: str, severity: str) -> Dict[str, Any]:
+
+    async def _tool_send_alert(self, message: str, severity: str) -> dict[str, Any]:
         """Send an alert to Brain webhook."""
         from app.services.brain.webhook_client import brain_webhook
 
@@ -955,18 +975,19 @@ class AgentBrain:
             return {"status": "sent" if ok else "failed"}
         except Exception as e:
             return {"error": str(e)}
-    
-    async def _tool_list_jobs(self, status: str, limit: int) -> Dict[str, Any]:
+
+    async def _tool_list_jobs(self, status: str, limit: int) -> dict[str, Any]:
         """List recent job runs."""
-        from app.models import JobRun
         from sqlalchemy import desc
-        
+
+        from app.models import JobRun
+
         try:
             query = self.db.query(JobRun).order_by(desc(JobRun.started_at))
             if status != "all":
                 query = query.filter(JobRun.status == status)
             jobs = query.limit(limit).all()
-            
+
             return {
                 "jobs": [
                     {
@@ -981,11 +1002,11 @@ class AgentBrain:
             }
         except Exception as e:
             return {"error": str(e)}
-    
-    async def _tool_check_broker(self, broker: str) -> Dict[str, Any]:
+
+    async def _tool_check_broker(self, broker: str) -> dict[str, Any]:
         """Check broker connection status."""
         results = {}
-        
+
         if broker in ("ibkr", "all"):
             try:
                 # Use module singleton (same as AdminHealthService), not a non-existent get_instance().
@@ -998,48 +1019,49 @@ class AgentBrain:
                 }
             except Exception as e:
                 results["ibkr"] = {"error": str(e)}
-        
+
         return results
-    
+
     # ==================== NEW HOLISTIC CHAT TOOLS ====================
-    
-    async def _tool_get_portfolio_summary(self) -> Dict[str, Any]:
+
+    async def _tool_get_portfolio_summary(self) -> dict[str, Any]:
         """Get portfolio risk metrics, sector allocation, and P&L summary."""
         try:
+            from app.models import BrokerAccount, Position
             from app.services.portfolio.portfolio_analytics_service import PortfolioAnalyticsService
-            from app.models import Position, BrokerAccount
-            
+
             svc = PortfolioAnalyticsService()
 
             user_id = self._require_user_id("_tool_get_portfolio_summary")
-            
+
             # Get risk metrics
             risk_metrics = svc.compute_risk_metrics(self.db, user_id)
-            
+
             # Get sector attribution
             sector_data = svc.compute_sector_attribution(self.db, user_id)
-            
+
             # Get account summary
-            accounts = self.db.query(BrokerAccount).filter(
-                BrokerAccount.user_id == user_id
-            ).all()
-            
+            accounts = self.db.query(BrokerAccount).filter(BrokerAccount.user_id == user_id).all()
+
             account_summary = []
             for acc in accounts:
-                account_summary.append({
-                    "broker": acc.broker,
-                    "account_number": acc.account_number[-4:] if acc.account_number else "****",
-                    "total_value": float(acc.total_value) if acc.total_value else 0,
-                    "day_pnl": float(acc.day_pnl) if acc.day_pnl else 0,
-                    "total_pnl": float(acc.total_pnl) if acc.total_pnl else 0,
-                })
-            
+                account_summary.append(
+                    {
+                        "broker": acc.broker,
+                        "account_number": acc.account_number[-4:] if acc.account_number else "****",
+                        "total_value": float(acc.total_value) if acc.total_value else 0,
+                        "day_pnl": float(acc.day_pnl) if acc.day_pnl else 0,
+                        "total_pnl": float(acc.total_pnl) if acc.total_pnl else 0,
+                    }
+                )
+
             # Get position count
-            position_count = self.db.query(Position).filter(
-                Position.user_id == user_id,
-                Position.quantity != 0
-            ).count()
-            
+            position_count = (
+                self.db.query(Position)
+                .filter(Position.user_id == user_id, Position.quantity != 0)
+                .count()
+            )
+
             return {
                 "user_id": user_id,
                 "position_count": position_count,
@@ -1050,24 +1072,28 @@ class AgentBrain:
         except Exception as e:
             logger.error("Failed to get portfolio summary: %s", e)
             return {"error": str(e)}
-    
-    async def _tool_get_position_details(self, symbol: str) -> Dict[str, Any]:
+
+    async def _tool_get_position_details(self, symbol: str) -> dict[str, Any]:
         """Get detailed position info including market snapshot."""
         if not symbol:
             return {"error": "Symbol is required"}
-        
+
         try:
-            from app.models import Position, MarketSnapshot
-            
+            from app.models import MarketSnapshot, Position
+
             symbol_upper = symbol.upper()
             user_id = self._require_user_id("_tool_get_position_details")
-            
+
             # Get position
-            position = self.db.query(Position).filter(
-                Position.user_id == user_id,
-                Position.symbol == symbol_upper,
-            ).first()
-            
+            position = (
+                self.db.query(Position)
+                .filter(
+                    Position.user_id == user_id,
+                    Position.symbol == symbol_upper,
+                )
+                .first()
+            )
+
             position_data = None
             if position:
                 position_data = {
@@ -1076,17 +1102,25 @@ class AgentBrain:
                     "average_cost": float(position.average_cost) if position.average_cost else 0,
                     "current_price": float(position.current_price) if position.current_price else 0,
                     "market_value": float(position.market_value) if position.market_value else 0,
-                    "unrealized_pnl": float(position.unrealized_pnl) if position.unrealized_pnl else 0,
-                    "unrealized_pnl_pct": float(position.unrealized_pnl_pct) if position.unrealized_pnl_pct else 0,
+                    "unrealized_pnl": float(position.unrealized_pnl)
+                    if position.unrealized_pnl
+                    else 0,
+                    "unrealized_pnl_pct": float(position.unrealized_pnl_pct)
+                    if position.unrealized_pnl_pct
+                    else 0,
                     "day_pnl": float(position.day_pnl) if position.day_pnl else 0,
                 }
-            
+
             # Get market snapshot
-            snapshot = self.db.query(MarketSnapshot).filter(
-                MarketSnapshot.symbol == symbol_upper,
-                MarketSnapshot.analysis_type == "full",
-            ).first()
-            
+            snapshot = (
+                self.db.query(MarketSnapshot)
+                .filter(
+                    MarketSnapshot.symbol == symbol_upper,
+                    MarketSnapshot.analysis_type == "full",
+                )
+                .first()
+            )
+
             snapshot_data = None
             if snapshot:
                 snapshot_data = {
@@ -1105,9 +1139,11 @@ class AgentBrain:
                     "td_buy_setup": snapshot.td_buy_setup,
                     "td_sell_setup": snapshot.td_sell_setup,
                     "regime_state": snapshot.regime_state,
-                    "as_of_timestamp": snapshot.as_of_timestamp.isoformat() if snapshot.as_of_timestamp else None,
+                    "as_of_timestamp": snapshot.as_of_timestamp.isoformat()
+                    if snapshot.as_of_timestamp
+                    else None,
                 }
-            
+
             return {
                 "symbol": symbol_upper,
                 "position": position_data,
@@ -1118,53 +1154,58 @@ class AgentBrain:
         except Exception as e:
             logger.error("Failed to get position details for %s: %s", symbol, e)
             return {"error": str(e)}
-    
-    async def _tool_get_activity(self, limit: int, symbol: Optional[str] = None) -> Dict[str, Any]:
+
+    async def _tool_get_activity(self, limit: int, symbol: str | None = None) -> dict[str, Any]:
         """Get recent portfolio activity (trades, dividends, etc.)."""
         try:
-            from app.models import Trade
             from sqlalchemy import desc
 
+            from app.models import Trade
+
             user_id = self._require_user_id("_tool_get_activity")
-            
-            query = self.db.query(Trade).filter(
-                Trade.user_id == user_id
-            ).order_by(desc(Trade.executed_at))
-            
+
+            query = (
+                self.db.query(Trade)
+                .filter(Trade.user_id == user_id)
+                .order_by(desc(Trade.executed_at))
+            )
+
             if symbol:
                 query = query.filter(Trade.symbol == symbol.upper())
-            
+
             trades = query.limit(limit).all()
-            
+
             activity = []
             for t in trades:
-                activity.append({
-                    "symbol": t.symbol,
-                    "side": t.side,
-                    "quantity": float(t.quantity) if t.quantity else 0,
-                    "price": float(t.price) if t.price else 0,
-                    "realized_pnl": float(t.realized_pnl) if t.realized_pnl else 0,
-                    "executed_at": t.executed_at.isoformat() if t.executed_at else None,
-                })
-            
+                activity.append(
+                    {
+                        "symbol": t.symbol,
+                        "side": t.side,
+                        "quantity": float(t.quantity) if t.quantity else 0,
+                        "price": float(t.price) if t.price else 0,
+                        "realized_pnl": float(t.realized_pnl) if t.realized_pnl else 0,
+                        "executed_at": t.executed_at.isoformat() if t.executed_at else None,
+                    }
+                )
+
             return {"trades": activity, "count": len(activity)}
         except Exception as e:
             logger.error("Failed to get activity: %s", e)
             return {"error": str(e)}
-    
-    async def _tool_get_market_snapshot(self, symbol: str) -> Dict[str, Any]:
+
+    async def _tool_get_market_snapshot(self, symbol: str) -> dict[str, Any]:
         """Get current market snapshot for a symbol."""
         if not symbol:
             return {"error": "Symbol is required"}
-        
+
         try:
             from app.services.market.market_data_service import snapshot_builder
 
             snapshot = snapshot_builder.get_snapshot_from_store(self.db, symbol.upper())
-            
+
             if not snapshot:
                 return {"error": f"No snapshot found for {symbol.upper()}"}
-            
+
             return {
                 "symbol": snapshot.symbol,
                 "close": float(snapshot.close) if snapshot.close else None,
@@ -1186,25 +1227,27 @@ class AgentBrain:
                 "regime_state": snapshot.regime_state,
                 "sector": snapshot.sector,
                 "industry": snapshot.industry,
-                "as_of_timestamp": snapshot.as_of_timestamp.isoformat() if snapshot.as_of_timestamp else None,
+                "as_of_timestamp": snapshot.as_of_timestamp.isoformat()
+                if snapshot.as_of_timestamp
+                else None,
             }
         except Exception as e:
             logger.error("Failed to get market snapshot for %s: %s", symbol, e)
             return {"error": str(e)}
-    
-    async def _tool_get_tracked_universe(self) -> Dict[str, Any]:
+
+    async def _tool_get_tracked_universe(self) -> dict[str, Any]:
         """Get the tracked universe of symbols with their sources."""
         try:
             from app.services.market.universe import tracked_symbols_with_source
-            
+
             result = tracked_symbols_with_source(self.db)
-            
+
             # Summarize by source
-            by_source: Dict[str, int] = {}
+            by_source: dict[str, int] = {}
             for sym_data in result:
                 source = sym_data.get("source", "unknown")
                 by_source[source] = by_source.get(source, 0) + 1
-            
+
             return {
                 "total_symbols": len(result),
                 "by_source": by_source,
@@ -1213,25 +1256,30 @@ class AgentBrain:
         except Exception as e:
             logger.error("Failed to get tracked universe: %s", e)
             return {"error": str(e)}
-    
-    async def _tool_get_constituents(self, index: str) -> Dict[str, Any]:
+
+    async def _tool_get_constituents(self, index: str) -> dict[str, Any]:
         """Get constituents of a specific index."""
         try:
             from app.models import IndexConstituent
-            
+
             valid_indexes = ["SP500", "NASDAQ100", "RUSSELL2000"]
             index_upper = index.upper()
-            
+
             if index_upper not in valid_indexes:
                 return {"error": f"Invalid index. Choose from: {', '.join(valid_indexes)}"}
-            
-            constituents = self.db.query(IndexConstituent).filter(
-                IndexConstituent.index_name == index_upper,
-                IndexConstituent.is_active.is_(True),
-            ).order_by(IndexConstituent.symbol).all()
-            
+
+            constituents = (
+                self.db.query(IndexConstituent)
+                .filter(
+                    IndexConstituent.index_name == index_upper,
+                    IndexConstituent.is_active.is_(True),
+                )
+                .order_by(IndexConstituent.symbol)
+                .all()
+            )
+
             symbols = [c.symbol for c in constituents]
-            
+
             return {
                 "index": index_upper,
                 "count": len(symbols),
@@ -1240,28 +1288,38 @@ class AgentBrain:
         except Exception as e:
             logger.error("Failed to get constituents for %s: %s", index, e)
             return {"error": str(e)}
-    
-    async def _tool_get_regime(self) -> Dict[str, Any]:
+
+    async def _tool_get_regime(self) -> dict[str, Any]:
         """Get current market regime."""
         try:
             from app.services.market.regime_engine import get_current_regime
-            
+
             regime = get_current_regime(self.db)
-            
+
             if not regime:
                 return {"error": "No regime data available"}
-            
+
             return {
                 "regime_state": regime.regime_state,
-                "composite_score": float(regime.composite_score) if regime.composite_score else None,
+                "composite_score": float(regime.composite_score)
+                if regime.composite_score
+                else None,
                 "as_of_date": regime.as_of_date.isoformat() if regime.as_of_date else None,
                 "inputs": {
                     "vix_current": float(regime.vix_current) if regime.vix_current else None,
                     "vix_sma_20": float(regime.vix_sma_20) if regime.vix_sma_20 else None,
-                    "breadth_above_200ma": float(regime.breadth_above_200ma) if regime.breadth_above_200ma else None,
-                    "breadth_above_50ma": float(regime.breadth_above_50ma) if regime.breadth_above_50ma else None,
-                    "new_highs_lows_ratio": float(regime.new_highs_lows_ratio) if regime.new_highs_lows_ratio else None,
-                    "sector_rs_dispersion": float(regime.sector_rs_dispersion) if regime.sector_rs_dispersion else None,
+                    "breadth_above_200ma": float(regime.breadth_above_200ma)
+                    if regime.breadth_above_200ma
+                    else None,
+                    "breadth_above_50ma": float(regime.breadth_above_50ma)
+                    if regime.breadth_above_50ma
+                    else None,
+                    "new_highs_lows_ratio": float(regime.new_highs_lows_ratio)
+                    if regime.new_highs_lows_ratio
+                    else None,
+                    "sector_rs_dispersion": float(regime.sector_rs_dispersion)
+                    if regime.sector_rs_dispersion
+                    else None,
                 },
                 "scores": {
                     "vix_score": regime.vix_score,
@@ -1272,56 +1330,74 @@ class AgentBrain:
                     "sector_score": regime.sector_score,
                 },
                 "portfolio_rules": {
-                    "cash_floor_pct": float(regime.cash_floor_pct) if regime.cash_floor_pct else None,
-                    "max_equity_exposure_pct": float(regime.max_equity_exposure_pct) if regime.max_equity_exposure_pct else None,
-                    "regime_multiplier": float(regime.regime_multiplier) if regime.regime_multiplier else None,
+                    "cash_floor_pct": float(regime.cash_floor_pct)
+                    if regime.cash_floor_pct
+                    else None,
+                    "max_equity_exposure_pct": float(regime.max_equity_exposure_pct)
+                    if regime.max_equity_exposure_pct
+                    else None,
+                    "regime_multiplier": float(regime.regime_multiplier)
+                    if regime.regime_multiplier
+                    else None,
                 },
             }
         except Exception as e:
             logger.error("Failed to get regime: %s", e)
             return {"error": str(e)}
-    
-    async def _tool_describe_tables(self, table_name: Optional[str] = None) -> Dict[str, Any]:
+
+    async def _tool_describe_tables(self, table_name: str | None = None) -> dict[str, Any]:
         """Describe database tables and columns for query building."""
         try:
             from sqlalchemy import text
-            
+
             if table_name:
                 # Get columns for specific table
-                result = self.db.execute(text("""
+                result = self.db.execute(
+                    text("""
                     SELECT column_name, data_type, is_nullable
                     FROM information_schema.columns
                     WHERE table_schema = 'public' AND table_name = :table_name
                     ORDER BY ordinal_position
-                """), {"table_name": table_name})
-                
+                """),
+                    {"table_name": table_name},
+                )
+
                 columns = [
                     {"name": row.column_name, "type": row.data_type, "nullable": row.is_nullable}
                     for row in result
                 ]
-                
+
                 if not columns:
                     return {"error": f"Table '{table_name}' not found"}
-                
+
                 return {"table": table_name, "columns": columns}
             else:
                 # List all tables
-                result = self.db.execute(text("""
+                result = self.db.execute(
+                    text("""
                     SELECT table_name
                     FROM information_schema.tables
                     WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
                     ORDER BY table_name
-                """))
-                
+                """)
+                )
+
                 tables = [row.table_name for row in result]
-                
+
                 # Highlight key tables
                 key_tables = [
-                    "positions", "broker_accounts", "trades", "tax_lots",
-                    "market_snapshot", "market_snapshot_history", "market_regime",
-                    "index_constituents", "price_data", "instruments"
+                    "positions",
+                    "broker_accounts",
+                    "trades",
+                    "tax_lots",
+                    "market_snapshot",
+                    "market_snapshot_history",
+                    "market_regime",
+                    "index_constituents",
+                    "price_data",
+                    "instruments",
                 ]
-                
+
                 return {
                     "tables": tables,
                     "key_tables": [t for t in key_tables if t in tables],
@@ -1330,17 +1406,17 @@ class AgentBrain:
         except Exception as e:
             logger.error("Failed to describe tables: %s", e)
             return {"error": str(e)}
-    
+
     # ==================== SCHEDULE MANAGEMENT TOOLS ====================
 
-    async def _tool_list_schedules(self) -> Dict[str, Any]:
+    async def _tool_list_schedules(self) -> dict[str, Any]:
         """List all scheduled tasks from the job catalog with last run status."""
-        from app.tasks.job_catalog import CATALOG
         from app.models.market_data import JobRun
+        from app.tasks.job_catalog import CATALOG
 
         schedules = []
         for job in CATALOG:
-            entry: Dict[str, Any] = {
+            entry: dict[str, Any] = {
                 "id": job.id,
                 "display_name": job.display_name,
                 "group": job.group,
@@ -1360,7 +1436,9 @@ class AgentBrain:
                         entry["last_run"] = {
                             "status": last.status,
                             "started_at": last.started_at.isoformat() if last.started_at else None,
-                            "finished_at": last.finished_at.isoformat() if last.finished_at else None,
+                            "finished_at": last.finished_at.isoformat()
+                            if last.finished_at
+                            else None,
                         }
                 except Exception as hist_err:
                     logger.warning(
@@ -1372,10 +1450,10 @@ class AgentBrain:
 
         return {"schedules": schedules, "count": len(schedules), "scheduler": "celery_beat"}
 
-    async def _tool_run_task_now(self, task_id: str) -> Dict[str, Any]:
+    async def _tool_run_task_now(self, task_id: str) -> dict[str, Any]:
         """Trigger a catalog task to run immediately via Celery."""
-        from app.tasks.job_catalog import CATALOG
         from app.tasks.celery_app import celery_app
+        from app.tasks.job_catalog import CATALOG
 
         catalog_map = {j.id: j for j in CATALOG}
         job = catalog_map.get(task_id)
@@ -1403,13 +1481,13 @@ class AgentBrain:
             return {"error": "Failed to dispatch task", "type": type(e).__name__}
 
     # ==================== CODEBASE EXPLORATION TOOLS ====================
-    
+
     async def _tool_read_file(
         self,
         path: str,
-        start_line: Optional[int] = None,
-        end_line: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        start_line: int | None = None,
+        end_line: int | None = None,
+    ) -> dict[str, Any]:
         """Read a file from the backend codebase."""
         import os
 
@@ -1443,7 +1521,7 @@ class AgentBrain:
 
         if end_line is not None and start_line is None:
             first_line = 1
-            last_cap: Optional[int] = end_line
+            last_cap: int | None = end_line
         elif start_line is not None and end_line is None:
             first_line = start_line
             last_cap = None
@@ -1455,12 +1533,12 @@ class AgentBrain:
             last_cap = None
 
         max_lines = 300
-        out_chunks: List[str] = []
+        out_chunks: list[str] = []
         total_lines = 0
         truncated = False
 
         try:
-            with open(full_path, "r", encoding="utf-8") as f:
+            with open(full_path, encoding="utf-8") as f:
                 for line in f:
                     total_lines += 1
                     if total_lines < first_line:
@@ -1478,9 +1556,7 @@ class AgentBrain:
 
             if total_lines > 0 and first_line > total_lines:
                 return {
-                    "error": (
-                        f"start_line ({first_line}) exceeds file length ({total_lines})"
-                    ),
+                    "error": (f"start_line ({first_line}) exceeds file length ({total_lines})"),
                 }
 
             if out_chunks:
@@ -1505,7 +1581,7 @@ class AgentBrain:
         except Exception as e:
             return {"error": f"Failed to read file: {e}"}
 
-    async def _tool_list_files(self, path: str = "") -> Dict[str, Any]:
+    async def _tool_list_files(self, path: str = "") -> dict[str, Any]:
         """List files and directories in the backend codebase."""
         import os
 
@@ -1524,25 +1600,25 @@ class AgentBrain:
 
         if not os.path.exists(full_path):
             return {"error": f"Path not found: {path}"}
-        
+
         if not os.path.isdir(full_path):
             return {"error": f"Not a directory: {path}. Use read_file for files."}
-        
+
         try:
             entries = []
             for entry in sorted(os.listdir(full_path)):
                 # Skip hidden files and __pycache__
                 if entry.startswith(".") or entry == "__pycache__":
                     continue
-                
+
                 entry_path = os.path.join(full_path, entry)
                 entry_type = "dir" if os.path.isdir(entry_path) else "file"
                 entries.append({"name": entry, "type": entry_type})
-                
+
                 # Cap at 100 entries
                 if len(entries) >= 100:
                     break
-            
+
             return {
                 "path": path or "(root)",
                 "entries": entries,
@@ -1553,10 +1629,11 @@ class AgentBrain:
 
     # ==================== MARKET INSIGHT TOOLS ====================
 
-    async def _tool_get_stage_distribution(self) -> Dict[str, Any]:
+    async def _tool_get_stage_distribution(self) -> dict[str, Any]:
         """Get distribution of stocks by stage across tracked universe."""
         try:
             from sqlalchemy import func
+
             from app.models.market_data import MarketSnapshot
 
             results = (
@@ -1582,8 +1659,10 @@ class AgentBrain:
                 "bearish_count": bearish_count,
                 "bearish_pct": round(bearish_count / total * 100, 1) if total else 0,
                 "interpretation": (
-                    "Bullish breadth" if bullish_count > bearish_count * 1.5
-                    else "Bearish breadth" if bearish_count > bullish_count * 1.5
+                    "Bullish breadth"
+                    if bullish_count > bearish_count * 1.5
+                    else "Bearish breadth"
+                    if bearish_count > bullish_count * 1.5
                     else "Mixed breadth"
                 ),
             }
@@ -1591,10 +1670,11 @@ class AgentBrain:
             logger.error("Failed to get stage distribution: %s", e)
             return {"error": str(e)}
 
-    async def _tool_get_sector_strength(self) -> Dict[str, Any]:
+    async def _tool_get_sector_strength(self) -> dict[str, Any]:
         """Rank sectors by % of stocks in constructive stages (2A/2B/2C)."""
         try:
-            from sqlalchemy import func, case
+            from sqlalchemy import case, func
+
             from app.models.market_data import MarketSnapshot
 
             bullish_stages = ["2A", "2B", "2C"]
@@ -1617,12 +1697,14 @@ class AgentBrain:
             sectors = []
             for r in results:
                 bullish_pct = round(r.bullish / r.total * 100, 1) if r.total else 0
-                sectors.append({
-                    "sector": r.sector,
-                    "total": r.total,
-                    "bullish": r.bullish,
-                    "bullish_pct": bullish_pct,
-                })
+                sectors.append(
+                    {
+                        "sector": r.sector,
+                        "total": r.total,
+                        "bullish": r.bullish,
+                        "bullish_pct": bullish_pct,
+                    }
+                )
 
             sectors.sort(key=lambda x: x["bullish_pct"], reverse=True)
 
@@ -1637,14 +1719,12 @@ class AgentBrain:
 
     async def _tool_get_top_scans(
         self, scan_tier: str = "Breakout Elite", limit: int = 10
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get top stocks passing scan overlay filters."""
         try:
             from app.models.market_data import MarketSnapshot
 
-            query = self.db.query(MarketSnapshot).filter(
-                MarketSnapshot.scan_tier.isnot(None)
-            )
+            query = self.db.query(MarketSnapshot).filter(MarketSnapshot.scan_tier.isnot(None))
 
             if scan_tier:
                 query = query.filter(MarketSnapshot.scan_tier == scan_tier)
@@ -1657,15 +1737,17 @@ class AgentBrain:
 
             stocks = []
             for r in results:
-                stocks.append({
-                    "symbol": r.symbol,
-                    "name": r.name,
-                    "stage": r.stage_label,
-                    "scan_tier": r.scan_tier,
-                    "action": r.action_label,
-                    "rs_rank": round(r.rs_mansfield_pct, 1) if r.rs_mansfield_pct else None,
-                    "sector": r.sector,
-                })
+                stocks.append(
+                    {
+                        "symbol": r.symbol,
+                        "name": r.name,
+                        "stage": r.stage_label,
+                        "scan_tier": r.scan_tier,
+                        "action": r.action_label,
+                        "rs_rank": round(r.rs_mansfield_pct, 1) if r.rs_mansfield_pct else None,
+                        "sector": r.sector,
+                    }
+                )
 
             return {
                 "tier": scan_tier,
@@ -1676,7 +1758,7 @@ class AgentBrain:
             logger.error("Failed to get top scans: %s", e)
             return {"error": str(e)}
 
-    async def _tool_get_exit_alerts(self) -> Dict[str, Any]:
+    async def _tool_get_exit_alerts(self) -> dict[str, Any]:
         """Get positions that may need attention based on stage deterioration."""
         try:
             from app.models import Position
@@ -1684,11 +1766,7 @@ class AgentBrain:
 
             warning_stages = ["3A", "3B", "4A", "4B", "4C"]
 
-            positions = (
-                self.db.query(Position)
-                .filter(Position.quantity > 0)
-                .all()
-            )
+            positions = self.db.query(Position).filter(Position.quantity > 0).all()
 
             alerts = []
             for pos in positions:
@@ -1699,17 +1777,21 @@ class AgentBrain:
                 )
 
                 if snapshot and snapshot.stage_label in warning_stages:
-                    alerts.append({
-                        "symbol": pos.symbol,
-                        "quantity": pos.quantity,
-                        "stage": snapshot.stage_label,
-                        "action": snapshot.action_label,
-                        "recommendation": (
-                            "Consider reducing" if snapshot.stage_label in ["3A", "3B"]
-                            else "Exit recommended" if snapshot.stage_label in ["4A", "4B", "4C"]
-                            else "Monitor"
-                        ),
-                    })
+                    alerts.append(
+                        {
+                            "symbol": pos.symbol,
+                            "quantity": pos.quantity,
+                            "stage": snapshot.stage_label,
+                            "action": snapshot.action_label,
+                            "recommendation": (
+                                "Consider reducing"
+                                if snapshot.stage_label in ["3A", "3B"]
+                                else "Exit recommended"
+                                if snapshot.stage_label in ["4A", "4B", "4C"]
+                                else "Monitor"
+                            ),
+                        }
+                    )
 
             return {
                 "alerts": alerts,
@@ -1720,10 +1802,11 @@ class AgentBrain:
             logger.error("Failed to get exit alerts: %s", e)
             return {"error": str(e)}
 
-    async def _tool_get_regime_history(self, days: int = 30) -> Dict[str, Any]:
+    async def _tool_get_regime_history(self, days: int = 30) -> dict[str, Any]:
         """Get regime changes over specified period."""
         try:
             from datetime import date, timedelta
+
             from app.models.market_data import MarketRegime
 
             cutoff = date.today() - timedelta(days=days)
@@ -1746,21 +1829,29 @@ class AgentBrain:
                 if prev_regime and regime != prev_regime:
                     transitions += 1
                 prev_regime = regime
-                history.append({
-                    "date": r.as_of_date.strftime("%Y-%m-%d") if r.as_of_date else None,
-                    "regime": regime,
-                    "score": float(r.composite_score) if r.composite_score else None,
-                })
+                history.append(
+                    {
+                        "date": r.as_of_date.strftime("%Y-%m-%d") if r.as_of_date else None,
+                        "regime": regime,
+                        "score": float(r.composite_score) if r.composite_score else None,
+                    }
+                )
 
             history.reverse()
 
             return {
                 "current": results[0].regime_state,
-                "current_score": float(results[0].composite_score) if results[0].composite_score else None,
+                "current_score": float(results[0].composite_score)
+                if results[0].composite_score
+                else None,
                 "days_in_current": self._count_consecutive_regime(results),
                 "history": history[:10],
                 "transitions": transitions,
-                "volatility": "High" if transitions > 3 else "Moderate" if transitions > 1 else "Stable",
+                "volatility": "High"
+                if transitions > 3
+                else "Moderate"
+                if transitions > 1
+                else "Stable",
             }
         except Exception as e:
             logger.error("Failed to get regime history: %s", e)
@@ -1781,10 +1872,11 @@ class AgentBrain:
 
     # ==================== MARKET CONTEXT TOOLS ====================
 
-    async def _tool_get_rotation_analysis(self) -> Dict[str, Any]:
+    async def _tool_get_rotation_analysis(self) -> dict[str, Any]:
         """Analyze sector rotation by comparing performance across time windows."""
         try:
             from sqlalchemy import func
+
             from app.models.market_data import MarketSnapshot
 
             results = (
@@ -1808,14 +1900,16 @@ class AgentBrain:
                 avg_20d = float(r.avg_20d) if r.avg_20d else 0
                 avg_60d = float(r.avg_60d) if r.avg_60d else 0
                 momentum = avg_5d - avg_20d
-                sectors.append({
-                    "sector": r.sector,
-                    "perf_5d": round(avg_5d, 2),
-                    "perf_20d": round(avg_20d, 2),
-                    "perf_60d": round(avg_60d, 2),
-                    "momentum": round(momentum, 2),
-                    "stocks": r.count,
-                })
+                sectors.append(
+                    {
+                        "sector": r.sector,
+                        "perf_5d": round(avg_5d, 2),
+                        "perf_20d": round(avg_20d, 2),
+                        "perf_60d": round(avg_60d, 2),
+                        "momentum": round(momentum, 2),
+                        "stocks": r.count,
+                    }
+                )
 
             sectors.sort(key=lambda x: x["momentum"], reverse=True)
             leaders = [s["sector"] for s in sectors[:3]]
@@ -1826,8 +1920,10 @@ class AgentBrain:
                 "leaders": leaders,
                 "laggards": laggards,
                 "rotation_signal": (
-                    "Risk-on" if sectors and sectors[0]["momentum"] > 1
-                    else "Risk-off" if sectors and sectors[-1]["momentum"] < -1
+                    "Risk-on"
+                    if sectors and sectors[0]["momentum"] > 1
+                    else "Risk-off"
+                    if sectors and sectors[-1]["momentum"] < -1
                     else "Neutral"
                 ),
             }
@@ -1835,10 +1931,11 @@ class AgentBrain:
             logger.error("Failed to get rotation analysis: %s", e)
             return {"error": str(e)}
 
-    async def _tool_get_breadth_momentum(self, days: int = 20) -> Dict[str, Any]:
+    async def _tool_get_breadth_momentum(self, days: int = 20) -> dict[str, Any]:
         """Get market breadth indicators over time."""
         try:
             from datetime import date, timedelta
+
             from app.models.market_data import MarketRegime
 
             cutoff = date.today() - timedelta(days=days)
@@ -1857,11 +1954,13 @@ class AgentBrain:
 
             nh_nl_trend = (
                 (float(latest.nh_nl or 0) - float(oldest.nh_nl or 0))
-                if latest.nh_nl and oldest.nh_nl else 0
+                if latest.nh_nl and oldest.nh_nl
+                else 0
             )
             pct_200d_trend = (
                 (float(latest.pct_above_200d or 0) - float(oldest.pct_above_200d or 0))
-                if latest.pct_above_200d and oldest.pct_above_200d else 0
+                if latest.pct_above_200d and oldest.pct_above_200d
+                else 0
             )
 
             return {
@@ -1876,8 +1975,10 @@ class AgentBrain:
                     "days": days,
                 },
                 "interpretation": (
-                    "Improving breadth" if nh_nl_trend > 0.1 and pct_200d_trend > 2
-                    else "Deteriorating breadth" if nh_nl_trend < -0.1 and pct_200d_trend < -2
+                    "Improving breadth"
+                    if nh_nl_trend > 0.1 and pct_200d_trend > 2
+                    else "Deteriorating breadth"
+                    if nh_nl_trend < -0.1 and pct_200d_trend < -2
                     else "Mixed breadth"
                 ),
             }
@@ -1885,17 +1986,14 @@ class AgentBrain:
             logger.error("Failed to get breadth momentum: %s", e)
             return {"error": str(e)}
 
-    async def _tool_compare_historical_regime(self, lookback_years: int = 2) -> Dict[str, Any]:
+    async def _tool_compare_historical_regime(self, lookback_years: int = 2) -> dict[str, Any]:
         """Find historical periods with similar regime characteristics."""
         try:
             from datetime import date, timedelta
+
             from app.models.market_data import MarketRegime
 
-            current = (
-                self.db.query(MarketRegime)
-                .order_by(MarketRegime.as_of_date.desc())
-                .first()
-            )
+            current = self.db.query(MarketRegime).order_by(MarketRegime.as_of_date.desc()).first()
             if not current:
                 return {"error": "No current regime data"}
 
@@ -1925,18 +2023,22 @@ class AgentBrain:
             for h in historical:
                 sim = similarity_score(h)
                 if sim > 50:
-                    matches.append({
-                        "date": h.as_of_date.strftime("%Y-%m-%d"),
-                        "regime": h.regime_state,
-                        "score": round(sim, 1),
-                        "vix": round(float(h.vix_spot), 1) if h.vix_spot else None,
-                    })
+                    matches.append(
+                        {
+                            "date": h.as_of_date.strftime("%Y-%m-%d"),
+                            "regime": h.regime_state,
+                            "score": round(sim, 1),
+                            "vix": round(float(h.vix_spot), 1) if h.vix_spot else None,
+                        }
+                    )
 
             matches.sort(key=lambda x: x["score"], reverse=True)
 
             return {
                 "current_regime": current.regime_state,
-                "current_score": round(float(current.composite_score), 1) if current.composite_score else None,
+                "current_score": round(float(current.composite_score), 1)
+                if current.composite_score
+                else None,
                 "similar_periods": matches[:10],
                 "match_count": len(matches),
             }
@@ -1944,16 +2046,12 @@ class AgentBrain:
             logger.error("Failed to compare historical regime: %s", e)
             return {"error": str(e)}
 
-    async def _tool_get_market_internals(self) -> Dict[str, Any]:
+    async def _tool_get_market_internals(self) -> dict[str, Any]:
         """Get VIX analysis and market internals."""
         try:
             from app.models.market_data import MarketRegime
 
-            latest = (
-                self.db.query(MarketRegime)
-                .order_by(MarketRegime.as_of_date.desc())
-                .first()
-            )
+            latest = self.db.query(MarketRegime).order_by(MarketRegime.as_of_date.desc()).first()
             if not latest:
                 return {"error": "No market internals data"}
 
@@ -1961,8 +2059,10 @@ class AgentBrain:
             vix3m_ratio = float(latest.vix3m_vix_ratio) if latest.vix3m_vix_ratio else None
             vvix_ratio = float(latest.vvix_vix_ratio) if latest.vvix_vix_ratio else None
 
-            term_structure = "Contango" if vix3m_ratio and vix3m_ratio > 1.05 else (
-                "Backwardation" if vix3m_ratio and vix3m_ratio < 0.95 else "Flat"
+            term_structure = (
+                "Contango"
+                if vix3m_ratio and vix3m_ratio > 1.05
+                else ("Backwardation" if vix3m_ratio and vix3m_ratio < 0.95 else "Flat")
             )
 
             return {
@@ -1973,14 +2073,20 @@ class AgentBrain:
                     "term_structure": term_structure,
                 },
                 "breadth": {
-                    "pct_above_200d": round(float(latest.pct_above_200d), 1) if latest.pct_above_200d else None,
-                    "pct_above_50d": round(float(latest.pct_above_50d), 1) if latest.pct_above_50d else None,
+                    "pct_above_200d": round(float(latest.pct_above_200d), 1)
+                    if latest.pct_above_200d
+                    else None,
+                    "pct_above_50d": round(float(latest.pct_above_50d), 1)
+                    if latest.pct_above_50d
+                    else None,
                     "nh_nl": round(float(latest.nh_nl), 2) if latest.nh_nl else None,
                 },
                 "regime": latest.regime_state,
                 "volatility_assessment": (
-                    "Elevated fear" if vix_spot and vix_spot > 25
-                    else "Complacent" if vix_spot and vix_spot < 15
+                    "Elevated fear"
+                    if vix_spot and vix_spot > 25
+                    else "Complacent"
+                    if vix_spot and vix_spot < 15
                     else "Normal"
                 ),
             }
@@ -1992,11 +2098,13 @@ class AgentBrain:
 
     async def _tool_backtest_scan(
         self, scan_tier: str = "Breakout Elite", days: int = 90, holding_period: int = 20
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get historical performance for a scan tier."""
         try:
             from datetime import date, timedelta
+
             from sqlalchemy import func
+
             from app.models.market_data import MarketSnapshotHistory
 
             cutoff = date.today() - timedelta(days=days)
@@ -2038,7 +2146,7 @@ class AgentBrain:
             logger.error("Failed to backtest scan: %s", e)
             return {"error": str(e)}
 
-    async def _tool_get_similar_setups(self, symbol: str, limit: int = 10) -> Dict[str, Any]:
+    async def _tool_get_similar_setups(self, symbol: str, limit: int = 10) -> dict[str, Any]:
         """Find stocks with similar technical setups."""
         try:
             from app.models.market_data import MarketSnapshot
@@ -2047,11 +2155,7 @@ class AgentBrain:
             if not sym:
                 return {"error": "symbol is required"}
 
-            ref = (
-                self.db.query(MarketSnapshot)
-                .filter(MarketSnapshot.symbol == sym)
-                .first()
-            )
+            ref = self.db.query(MarketSnapshot).filter(MarketSnapshot.symbol == sym).first()
             if not ref:
                 return {"error": f"No data for {sym}"}
 
@@ -2078,14 +2182,18 @@ class AgentBrain:
             for c in candidates:
                 sim = similarity(c)
                 if sim > 50:
-                    matches.append({
-                        "symbol": c.symbol,
-                        "stage": c.stage_label,
-                        "scan_tier": c.scan_tier,
-                        "rs_rank": round(float(c.rs_mansfield_pct), 1) if c.rs_mansfield_pct else None,
-                        "sector": c.sector,
-                        "similarity": round(sim, 1),
-                    })
+                    matches.append(
+                        {
+                            "symbol": c.symbol,
+                            "stage": c.stage_label,
+                            "scan_tier": c.scan_tier,
+                            "rs_rank": round(float(c.rs_mansfield_pct), 1)
+                            if c.rs_mansfield_pct
+                            else None,
+                            "sector": c.sector,
+                            "similarity": round(sim, 1),
+                        }
+                    )
 
             matches.sort(key=lambda x: x["similarity"], reverse=True)
 
@@ -2093,7 +2201,9 @@ class AgentBrain:
                 "reference": {
                     "symbol": sym,
                     "stage": ref.stage_label,
-                    "rs_rank": round(float(ref.rs_mansfield_pct), 1) if ref.rs_mansfield_pct else None,
+                    "rs_rank": round(float(ref.rs_mansfield_pct), 1)
+                    if ref.rs_mansfield_pct
+                    else None,
                 },
                 "similar": matches[:limit],
                 "count": len(matches),
@@ -2102,7 +2212,7 @@ class AgentBrain:
             logger.error("Failed to get similar setups: %s", e)
             return {"error": str(e)}
 
-    async def _tool_get_strategy_stats(self, strategy_id: Optional[int] = None) -> Dict[str, Any]:
+    async def _tool_get_strategy_stats(self, strategy_id: int | None = None) -> dict[str, Any]:
         """Get performance statistics for strategies."""
         try:
             from app.models.strategy import Strategy
@@ -2136,11 +2246,13 @@ class AgentBrain:
 
     async def _tool_analyze_historical_entry(
         self, stage: str, regime: str = "R3", days: int = 180
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Analyze how entries in a specific stage performed under a regime."""
         try:
             from datetime import date, timedelta
+
             from sqlalchemy import func
+
             from app.models.market_data import MarketSnapshotHistory
 
             cutoff = date.today() - timedelta(days=days)
@@ -2149,7 +2261,9 @@ class AgentBrain:
                     func.count(MarketSnapshotHistory.id).label("total"),
                     func.avg(MarketSnapshotHistory.perf_20d).label("avg_20d"),
                     func.avg(MarketSnapshotHistory.perf_60d).label("avg_60d"),
-                    func.count(func.nullif(MarketSnapshotHistory.perf_20d > 0, False)).label("winners_20d"),
+                    func.count(func.nullif(MarketSnapshotHistory.perf_20d > 0, False)).label(
+                        "winners_20d"
+                    ),
                 )
                 .filter(
                     MarketSnapshotHistory.stage_label == stage,
@@ -2172,14 +2286,18 @@ class AgentBrain:
                 "avg_return_60d": round(float(results.avg_60d), 2) if results.avg_60d else 0,
                 "interpretation": (
                     f"Stage {stage} entries in {regime} have "
-                    + (f"{round(winners/total*100)}% win rate" if total > 0 else "insufficient data")
+                    + (
+                        f"{round(winners / total * 100)}% win rate"
+                        if total > 0
+                        else "insufficient data"
+                    )
                 ),
             }
         except Exception as e:
             logger.error("Failed to analyze historical entry: %s", e)
             return {"error": str(e)}
 
-    async def _tool_list_strategies(self) -> Dict[str, Any]:
+    async def _tool_list_strategies(self) -> dict[str, Any]:
         """List all saved strategies."""
         try:
             from app.models.strategy import Strategy
@@ -2203,22 +2321,26 @@ class AgentBrain:
 
     async def _tool_run_backtest(
         self,
-        strategy_id: Optional[int],
-        start_date: Optional[str],
-        end_date: Optional[str],
+        strategy_id: int | None,
+        start_date: str | None,
+        end_date: str | None,
         initial_capital: float = 100000,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run a backtest for a strategy."""
         try:
             if not strategy_id or not start_date or not end_date:
                 return {"error": "strategy_id, start_date, and end_date are required"}
 
             from datetime import datetime
-            from app.models.strategy import Strategy
+
             from app.models.market_data import MarketSnapshot
+            from app.models.strategy import Strategy
             from app.services.strategy.backtest_engine import BacktestEngine
             from app.services.strategy.rule_evaluator import (
-                ConditionGroup, Condition, LogicalOperator, ConditionOperator
+                Condition,
+                ConditionGroup,
+                ConditionOperator,
+                LogicalOperator,
             )
 
             strategy = self.db.query(Strategy).filter(Strategy.id == strategy_id).first()
@@ -2287,7 +2409,9 @@ class AgentBrain:
                 "final_capital": round(result.metrics.final_capital, 2),
                 "total_return_pct": round(result.metrics.total_return_pct, 2),
                 "max_drawdown_pct": round(result.metrics.max_drawdown_pct, 2),
-                "sharpe_ratio": round(result.metrics.sharpe_ratio, 2) if result.metrics.sharpe_ratio else None,
+                "sharpe_ratio": round(result.metrics.sharpe_ratio, 2)
+                if result.metrics.sharpe_ratio
+                else None,
                 "total_trades": result.metrics.total_trades,
                 "win_rate": round(result.metrics.win_rate * 100, 1),
             }
@@ -2295,7 +2419,7 @@ class AgentBrain:
             logger.error("Failed to run backtest: %s", e)
             return {"error": str(e)}
 
-    async def _tool_list_strategy_templates(self) -> Dict[str, Any]:
+    async def _tool_list_strategy_templates(self) -> dict[str, Any]:
         """List available strategy templates."""
         try:
             from app.services.strategy.templates import list_templates
@@ -2322,19 +2446,21 @@ class AgentBrain:
         self,
         name: str,
         template_id: str,
-        description: Optional[str] = None,
-        overrides: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        description: str | None = None,
+        overrides: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Create a strategy from a template."""
         try:
             if not name or not name.strip():
                 return {"error": "Strategy name is required"}
             if not template_id:
-                return {"error": "template_id is required - use list_strategy_templates to see options"}
+                return {
+                    "error": "template_id is required - use list_strategy_templates to see options"
+                }
 
-            from app.services.strategy.templates import get_template
-            from app.models.strategy import Strategy, StrategyType
             from app.models import User
+            from app.models.strategy import Strategy, StrategyType
+            from app.services.strategy.templates import get_template
 
             template = get_template(template_id)
             if not template:
@@ -2359,11 +2485,8 @@ class AgentBrain:
             # TODO: Pass authenticated user to brain for proper ownership
             # For now, get admin user (agent is admin-only)
             from app.models.user import UserRole
-            user = (
-                self.db.query(User)
-                .filter(User.role == UserRole.OWNER)
-                .first()
-            )
+
+            user = self.db.query(User).filter(User.role == UserRole.OWNER).first()
             if not user:
                 return {"error": "No admin user found - strategy creation requires admin"}
 
@@ -2405,17 +2528,18 @@ class AgentBrain:
         self,
         symbol: str,
         lookback_days: int = 60,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Calculate support and resistance levels for a symbol.
-        
+
         Uses multiple methods:
         - Classic pivot points (high/low/close)
         - Swing highs/lows detection
         - Volume-weighted price clusters
         """
-        from app.models.market_data import PriceData
-        from datetime import datetime, timedelta
         from collections import defaultdict
+        from datetime import datetime, timedelta
+
+        from app.models.market_data import PriceData
 
         try:
             sym = symbol.upper().strip()
@@ -2426,11 +2550,10 @@ class AgentBrain:
             lookback = max(10, min(365, lookback_days))
             if lookback != lookback_days:
                 logger.info(
-                    "Clamped lookback_days from %d to %d for %s",
-                    lookback_days, lookback, sym
+                    "Clamped lookback_days from %d to %d for %s", lookback_days, lookback, sym
                 )
 
-            cutoff = datetime.now(timezone.utc) - timedelta(days=lookback)
+            cutoff = datetime.now(UTC) - timedelta(days=lookback)
             bars = (
                 self.db.query(PriceData)
                 .filter(
@@ -2473,21 +2596,25 @@ class AgentBrain:
 
             # Find nearest resistance levels (swing highs above current price)
             resistance_levels = sorted([h for h in swing_highs if h > latest_close])[:3]
-            
+
             # Find nearest support levels (swing lows below current price)
-            support_levels = sorted([lvl for lvl in swing_lows if lvl < latest_close], reverse=True)[:3]
+            support_levels = sorted(
+                [lvl for lvl in swing_lows if lvl < latest_close], reverse=True
+            )[:3]
 
             # Volume-weighted price clusters (group prices into buckets)
             price_range = max(highs) - min(lows)
             bucket_size = price_range / 20 if price_range > 0 else 1
-            vwap_clusters: Dict[int, float] = defaultdict(float)
+            vwap_clusters: dict[int, float] = defaultdict(float)
             for i, close in enumerate(closes):
                 bucket = int((close - min(lows)) / bucket_size) if bucket_size > 0 else 0
                 vwap_clusters[bucket] += volumes[i]
 
             # Find high-volume clusters
             sorted_clusters = sorted(vwap_clusters.items(), key=lambda x: x[1], reverse=True)[:5]
-            volume_clusters = [min(lows) + (b * bucket_size) + bucket_size / 2 for b, _ in sorted_clusters]
+            volume_clusters = [
+                min(lows) + (b * bucket_size) + bucket_size / 2 for b, _ in sorted_clusters
+            ]
 
             # Key statistics
             period_high = max(highs)
@@ -2506,10 +2633,15 @@ class AgentBrain:
                     "s1": round(s1, 2),
                     "s2": round(s2, 2),
                 },
-                "immediate_resistance": [round(r, 2) for r in resistance_levels[:2]] or [round(r1, 2)],
+                "immediate_resistance": [round(r, 2) for r in resistance_levels[:2]]
+                or [round(r1, 2)],
                 "immediate_support": [round(s, 2) for s in support_levels[:2]] or [round(s1, 2)],
-                "major_resistance": round(resistance_levels[0], 2) if resistance_levels else round(period_high, 2),
-                "major_support": round(support_levels[0], 2) if support_levels else round(period_low, 2),
+                "major_resistance": round(resistance_levels[0], 2)
+                if resistance_levels
+                else round(period_high, 2),
+                "major_support": round(support_levels[0], 2)
+                if support_levels
+                else round(period_low, 2),
                 "period_high": round(period_high, 2),
                 "period_low": round(period_low, 2),
                 "volume_clusters": [round(v, 2) for v in volume_clusters[:3]],
@@ -2526,9 +2658,11 @@ class AgentBrain:
 
     # ==================== DATA INTEGRITY TOOLS ====================
 
-    async def _tool_check_data_accuracy(self, **kwargs) -> Dict[str, Any]:
+    async def _tool_check_data_accuracy(self, **kwargs) -> dict[str, Any]:
         import json
+
         from app.services.market.market_data_service import infra
+
         try:
             r = infra.redis_client
             raw = r.get("ohlcv:reconciliation:last")
@@ -2538,77 +2672,103 @@ class AgentBrain:
         except Exception as exc:
             return {"error": str(exc)}
 
-    async def _tool_get_provider_metrics(self, **kwargs) -> Dict[str, Any]:
+    async def _tool_get_provider_metrics(self, **kwargs) -> dict[str, Any]:
         from app.services.market.admin_health_service import AdminHealthService
+
         try:
             svc = AdminHealthService()
             return svc._build_provider_metrics()
         except Exception as exc:
             return {"error": str(exc)}
 
-    async def _tool_check_pre_market_readiness(self, **kwargs) -> Dict[str, Any]:
+    async def _tool_check_pre_market_readiness(self, **kwargs) -> dict[str, Any]:
         import json
+
         from app.services.market.market_data_service import infra
+
         try:
             r = infra.redis_client
             cached = r.get("health:pre_market_readiness")
             if cached:
-                return json.loads(cached.decode() if isinstance(cached, (bytes, bytearray)) else cached)
+                return json.loads(
+                    cached.decode() if isinstance(cached, (bytes, bytearray)) else cached
+                )
             from app.services.market.admin_health_service import AdminHealthService
+
             svc = AdminHealthService()
             return svc.check_pre_market_readiness(self.db)
         except Exception as exc:
             return {"error": str(exc)}
 
-    async def _tool_cancel_job(self, task_id: str = "", **kwargs) -> Dict[str, Any]:
+    async def _tool_cancel_job(self, task_id: str = "", **kwargs) -> dict[str, Any]:
         """Cancel/revoke a Celery task, or list active tasks if no task_id given."""
         try:
             from app.tasks.celery_app import celery_app
+
             if not task_id:
                 inspector = celery_app.control.inspect()
                 active = inspector.active() or {}
                 tasks = []
                 for worker, task_list in active.items():
                     for t in task_list:
-                        tasks.append({
-                            "worker": worker,
-                            "task_id": t.get("id"),
-                            "name": t.get("name"),
-                            "started": t.get("time_start"),
-                        })
+                        tasks.append(
+                            {
+                                "worker": worker,
+                                "task_id": t.get("id"),
+                                "name": t.get("name"),
+                                "started": t.get("time_start"),
+                            }
+                        )
                 if not tasks:
-                    return {"status": "no_active_tasks", "note": "No tasks currently running. Nothing to cancel."}
-                return {"status": "active_tasks", "tasks": tasks, "note": "Provide a task_id to cancel a specific task."}
+                    return {
+                        "status": "no_active_tasks",
+                        "note": "No tasks currently running. Nothing to cancel.",
+                    }
+                return {
+                    "status": "active_tasks",
+                    "tasks": tasks,
+                    "note": "Provide a task_id to cancel a specific task.",
+                }
             celery_app.control.revoke(task_id, terminate=True, signal="SIGTERM")
-            return {"status": "revoked", "task_id": task_id, "note": "Termination signal sent. Task may take a moment to stop."}
+            return {
+                "status": "revoked",
+                "task_id": task_id,
+                "note": "Termination signal sent. Task may take a moment to stop.",
+            }
         except Exception as exc:
             return {"error": f"Failed to cancel job: {exc}"}
 
-    async def _tool_list_users(self, **kwargs) -> Dict[str, Any]:
+    async def _tool_list_users(self, **kwargs) -> dict[str, Any]:
         """List all users with sensitive fields redacted."""
         try:
             from app.models import User
+
             users = self.db.query(User).all()
-            return {"users": [
-                {
-                    "id": u.id,
-                    "username": u.username,
-                    "email": u.email[:2] + "***@" + u.email.split("@")[-1] if u.email and "@" in u.email else "(no email)",
-                    "role": getattr(u, "role", None),
-                    "is_active": getattr(u, "is_active", True),
-                    "created_at": str(u.created_at) if u.created_at else None,
-                }
-                for u in users
-            ]}
+            return {
+                "users": [
+                    {
+                        "id": u.id,
+                        "username": u.username,
+                        "email": u.email[:2] + "***@" + u.email.split("@")[-1]
+                        if u.email and "@" in u.email
+                        else "(no email)",
+                        "role": getattr(u, "role", None),
+                        "is_active": getattr(u, "is_active", True),
+                        "created_at": str(u.created_at) if u.created_at else None,
+                    }
+                    for u in users
+                ]
+            }
         except Exception as exc:
             return {"error": f"Failed to list users: {exc}"}
 
     # ==================== CONVERSATION PERSISTENCE ====================
-    
+
     def _get_redis(self):
         """Get Redis client from market data service."""
         try:
             from app.services.market.market_data_service import infra
+
             return infra.redis_client
         except Exception as redis_err:
             logger.warning(
@@ -2616,7 +2776,7 @@ class AgentBrain:
                 redis_err,
             )
             return None
-    
+
     def _trim_conversation_for_persistence(self) -> None:
         """Drop oldest messages after the system prompt so Redis payloads stay bounded."""
         conv = self._conversation
@@ -2659,13 +2819,12 @@ class AgentBrain:
         try:
             from app.models.agent_message import save_conversation_to_db
 
-            saved_to_db = save_conversation_to_db(
-                self.db, self.session_id, self._conversation
-            )
+            saved_to_db = save_conversation_to_db(self.db, self.session_id, self._conversation)
             if not saved_to_db:
                 logger.warning(
                     "Failed to save conversation to DB for session %s (%d messages)",
-                    self.session_id, len(self._conversation),
+                    self.session_id,
+                    len(self._conversation),
                 )
         except Exception as e:
             logger.warning("Failed to save conversation to DB: %s", e)
@@ -2716,32 +2875,32 @@ class AgentBrain:
         except Exception as e:
             logger.warning("Failed to load conversation from DB: %s", e)
             return "unavailable"
-    
-    async def chat(self, user_message: str) -> Dict[str, Any]:
+
+    async def chat(self, user_message: str) -> dict[str, Any]:
         """
         Process a user message in a multi-turn conversation.
-        
+
         This is the main entry point for the chat endpoint.
         """
         if not settings.OPENAI_API_KEY:
             return {"error": "LLM not configured (OPENAI_API_KEY missing)"}
-        
+
         # Initialize system prompt if this is a new conversation
         if not self._conversation:
             system_msg = SYSTEM_PROMPT.format(
-                current_time=datetime.now(timezone.utc).isoformat(),
+                current_time=datetime.now(UTC).isoformat(),
                 autonomy_level=settings.AGENT_AUTONOMY_LEVEL,
             )
             self._conversation = [{"role": "system", "content": system_msg}]
-        
+
         # Add user message
         self._conversation.append({"role": "user", "content": user_message})
-        
+
         tool_calls_made = []
         actions_taken = []
         max_iterations = 12
         assistant_response = None  # Track the actual assistant response
-        
+
         for iteration in range(max_iterations):
             last_msg = self._conversation[-1] if self._conversation else {}
             last_role = last_msg.get("role")
@@ -2753,7 +2912,7 @@ class AgentBrain:
                 tool_choice = "none"
             else:
                 tool_choice = "auto"
-            
+
             logger.info(
                 "Chat iteration %d, tool_choice=%s last_role=%s",
                 iteration,
@@ -2761,7 +2920,7 @@ class AgentBrain:
                 last_role,
             )
             response = await self._call_llm(tool_choice=tool_choice)
-            
+
             if not response:
                 err = getattr(self, "_last_openai_error", None) or "Unknown error"
                 logger.warning("LLM returned no response on iteration %d: %s", iteration, err)
@@ -2770,7 +2929,7 @@ class AgentBrain:
                     "Check OPENAI_API_KEY, network, and logs."
                 )
                 break
-            
+
             choice0 = (response.get("choices") or [{}])[0]
             message = choice0.get("message") or {}
             logger.info(
@@ -2779,7 +2938,7 @@ class AgentBrain:
                 len(message.get("content") or ""),
                 choice0.get("finish_reason"),
             )
-            
+
             raw_tool_calls = message.get("tool_calls")
             if raw_tool_calls:
                 valid_tool_calls = _sanitize_tool_calls(raw_tool_calls)
@@ -2789,7 +2948,7 @@ class AgentBrain:
                 message_to_store = dict(message)
                 message_to_store["tool_calls"] = valid_tool_calls
                 self._conversation.append(message_to_store)
-                
+
                 for tool_call in valid_tool_calls:
                     func = tool_call.get("function", {})
                     tool_name = func.get("name")
@@ -2798,7 +2957,7 @@ class AgentBrain:
                         tool_args = json.loads(func.get("arguments", "{}"))
                     except json.JSONDecodeError:
                         tool_args = {}
-                    
+
                     try:
                         result, action = await self._execute_tool(
                             tool_name, tool_args, message.get("content") or ""
@@ -2807,19 +2966,25 @@ class AgentBrain:
                         logger.warning("Tool execution failed for %s: %s", tool_name, tool_err)
                         result = {"error": "Tool execution failed", "type": type(tool_err).__name__}
                         action = None
-                    
-                    self._conversation.append({
-                        "role": "tool",
-                        "tool_call_id": tool_call["id"],
-                        "content": json.dumps(result),
-                    })
-                    
-                    tool_calls_made.append({
-                        "name": tool_name,
-                        "args": tool_args,
-                        "result_preview": str(result)[:200] + "..." if len(str(result)) > 200 else str(result),
-                    })
-                    
+
+                    self._conversation.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call["id"],
+                            "content": json.dumps(result),
+                        }
+                    )
+
+                    tool_calls_made.append(
+                        {
+                            "name": tool_name,
+                            "args": tool_args,
+                            "result_preview": str(result)[:200] + "..."
+                            if len(str(result)) > 200
+                            else str(result),
+                        }
+                    )
+
                     if action:
                         actions_taken.append(self._action_to_dict(action))
             else:
@@ -2828,10 +2993,10 @@ class AgentBrain:
                 self._conversation.append(message)
                 logger.info("Got final assistant response, length=%d", len(assistant_response))
                 break
-        
+
         # Save conversation for continuity
         self._save_conversation()
-        
+
         # Use tracked assistant response, or provide error message
         final_response = assistant_response
         if final_response is None:
@@ -2844,19 +3009,19 @@ class AgentBrain:
                 "I ran tools but did not get a final answer from the model. "
                 "Try **New Chat** or a shorter question. If this persists, check backend logs."
             )
-        
+
         return {
             "session_id": self.session_id,
             "response": final_response,
             "tool_calls": tool_calls_made,
             "actions": actions_taken,
         }
-    
+
     def _get_action_display_name(self, tool_name: str) -> str:
         """Get a human-readable name for an action."""
         return tool_name.replace("_", " ").title()
-    
-    def _action_to_dict(self, action: AgentAction) -> Dict[str, Any]:
+
+    def _action_to_dict(self, action: AgentAction) -> dict[str, Any]:
         """Convert an AgentAction to a dictionary."""
         return {
             "id": action.id,

@@ -9,14 +9,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Dict, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.models.market_data import MarketRegime, MarketSnapshot
-from app.services.signals.external_aggregator import external_context_bonus_points
 from app.services.gold.pick_scorer_config import (
     BASE_STAGE_LABELS,
     DIST_STAGE_LABELS,
@@ -29,6 +28,7 @@ from app.services.gold.pick_scorer_config import (
     regime_multiplier,
 )
 from app.services.market.regime_engine import get_current_regime
+from app.services.signals.external_aggregator import external_context_bonus_points
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +45,12 @@ class ComponentScore:
 class PickQualityScore:
     symbol: str
     total_score: Decimal
-    components: Dict[str, ComponentScore]
+    components: dict[str, ComponentScore]
     computed_at: datetime
     regime_multiplier: Decimal
 
 
-def _d(val: Any) -> Optional[Decimal]:
+def _d(val: Any) -> Decimal | None:
     if val is None:
         return None
     try:
@@ -67,15 +67,15 @@ def _snapshot_reference_time(row: MarketSnapshot) -> datetime:
     ref = row.as_of_timestamp or row.analysis_timestamp
     if ref is not None:
         if ref.tzinfo is None:
-            return ref.replace(tzinfo=timezone.utc)
+            return ref.replace(tzinfo=UTC)
         return ref
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class PickQualityScorer:
     """Scores a symbol for long-bias pick quality."""
 
-    def __init__(self, config: Optional[PickScorerConfig] = None) -> None:
+    def __init__(self, config: PickScorerConfig | None = None) -> None:
         self._cfg = config or default_config()
 
     def score(
@@ -84,7 +84,7 @@ class PickQualityScorer:
         symbol: str,
         user_id: int,
         *,
-        regime_row: Optional[MarketRegime] = None,
+        regime_row: MarketRegime | None = None,
     ) -> PickQualityScore:
         """Compute quality score. ``user_id`` is required for API contract;
         market snapshots are not tenant-scoped today (see module note).
@@ -102,12 +102,12 @@ class PickQualityScorer:
     def score_from_row(
         self,
         db: Session,
-        row: Optional[MarketSnapshot],
+        row: MarketSnapshot | None,
         symbol: str,
         user_id: int,
         *,
-        regime_row: Optional[MarketRegime] = None,
-        external_context_bonus: Optional[Decimal] = None,
+        regime_row: MarketRegime | None = None,
+        external_context_bonus: Decimal | None = None,
     ) -> PickQualityScore:
         """Score using a pre-fetched snapshot row (or ``None`` if missing).
 
@@ -115,7 +115,7 @@ class PickQualityScorer:
         If ``external_context_bonus`` is set, it is used instead of a per-call DB lookup.
         """
         sym = (symbol or "").upper().strip()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         regime = regime_row if regime_row is not None else get_current_regime(db)
         regime_code = regime.regime_state if regime is not None else ""
         mult = regime_multiplier(regime_code)
@@ -126,11 +126,9 @@ class PickQualityScorer:
                 sym,
                 user_id,
             )
-            return self._empty_score(
-                sym, now, mult, reason="snapshot data not available"
-            )
+            return self._empty_score(sym, now, mult, reason="snapshot data not available")
 
-        components: Dict[str, ComponentScore] = {}
+        components: dict[str, ComponentScore] = {}
         ref = _snapshot_reference_time(row)
 
         components["stage"] = self._score_stage(sym, row)
@@ -166,20 +164,16 @@ class PickQualityScorer:
         symbol: str,
         user_id: int,
         *,
-        regime_row: Optional[MarketRegime] = None,
-        snapshot_row: Optional[MarketSnapshot] = None,
+        regime_row: MarketRegime | None = None,
+        snapshot_row: MarketSnapshot | None = None,
         fetch_snapshot: bool = True,
-        external_context_bonus: Optional[Decimal] = None,
+        external_context_bonus: Decimal | None = None,
     ) -> tuple[PickQualityScore, str]:
         """Returns (score, outcome) where outcome is scored|skipped|errored."""
         sym = (symbol or "").upper().strip()
         try:
             if fetch_snapshot:
-                row = (
-                    self._load_snapshot(db, sym)
-                    if snapshot_row is None
-                    else snapshot_row
-                )
+                row = self._load_snapshot(db, sym) if snapshot_row is None else snapshot_row
             else:
                 row = snapshot_row
             pq = self.score_from_row(
@@ -205,14 +199,14 @@ class PickQualityScorer:
             return (
                 self._empty_score(
                     sym,
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                     mult,
                     reason="scoring_error",
                 ),
                 "errored",
             )
 
-    def _load_snapshot(self, db: Session, symbol: str) -> Optional[MarketSnapshot]:
+    def _load_snapshot(self, db: Session, symbol: str) -> MarketSnapshot | None:
         return (
             db.query(MarketSnapshot)
             .filter(
@@ -427,7 +421,7 @@ class PickQualityScorer:
                 cfg.weight_earnings,
             )
         if ne.tzinfo is None:
-            ne = ne.replace(tzinfo=timezone.utc)
+            ne = ne.replace(tzinfo=UTC)
         ref_d = ref.date()
         earn_d = ne.date()
         days = (earn_d - ref_d).days
@@ -457,7 +451,7 @@ class PickQualityScorer:
         return self._mk(raw, reason, cfg.weight_earnings)
 
 
-def pick_quality_to_payload(score: PickQualityScore) -> Dict[str, Any]:
+def pick_quality_to_payload(score: PickQualityScore) -> dict[str, Any]:
     """JSON-serializable dict for API and ``Candidate`` JSON storage."""
     return {
         "symbol": score.symbol,

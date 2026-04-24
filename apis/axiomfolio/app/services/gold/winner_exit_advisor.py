@@ -19,19 +19,17 @@ medallion: gold
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from decimal import Decimal, ROUND_HALF_UP
-from typing import List, Optional
+from decimal import ROUND_HALF_UP, Decimal
 
 from app.services.gold.peak_signal_engine import PeakSignal
 from app.services.gold.tax_aware_exit_calculator import TaxAwareExitResult
 
-
 # Recommendation taxonomy. Kept small on purpose; the UI summary carries the
 # nuance.
 ACTION_HOLD = "hold"
-ACTION_TRIM = "trim"           # scale a fractional position (20-33%)
-ACTION_SCALE = "scale"         # scale a larger slice (50%+)
-ACTION_EXIT = "exit"           # full exit advised
+ACTION_TRIM = "trim"  # scale a fractional position (20-33%)
+ACTION_SCALE = "scale"  # scale a larger slice (50%+)
+ACTION_EXIT = "exit"  # full exit advised
 
 VALID_ACTIONS = {ACTION_HOLD, ACTION_TRIM, ACTION_SCALE, ACTION_EXIT}
 
@@ -59,10 +57,10 @@ class WinnerExitAdvice:
 
     symbol: str
     action: str
-    suggested_scale_pct: int   # 0..100
-    confidence: str            # low | med | high
-    summary: str               # plain-English one-liner
-    reasons: List[str] = field(default_factory=list)
+    suggested_scale_pct: int  # 0..100
+    confidence: str  # low | med | high
+    summary: str  # plain-English one-liner
+    reasons: list[str] = field(default_factory=list)
 
     def to_payload(self) -> dict:
         return {
@@ -85,12 +83,12 @@ class WinnerExitAdvisor:
         peak: PeakSignal,
         tax: TaxAwareExitResult,
         current_price: Decimal,
-        stop_price: Optional[Decimal] = None,
-        atr_value: Optional[Decimal] = None,
-        regime_state: Optional[str] = None,
+        stop_price: Decimal | None = None,
+        atr_value: Decimal | None = None,
+        regime_state: str | None = None,
     ) -> WinnerExitAdvice:
         sym = (symbol or "").upper().strip()
-        reasons: List[str] = []
+        reasons: list[str] = []
 
         # Re-surface the reason stacks so UI consumers see every piece of
         # evidence in one place. We deliberately copy (not reference) so
@@ -115,9 +113,11 @@ class WinnerExitAdvisor:
         is_winner = tax.realized_gain_loss > Decimal("0")
 
         if is_winner and not tax.tax_advantaged and tax.total_tax > Decimal("0"):
-            drag_pct = _q(
-                (tax.total_tax / tax.gross_proceeds) * Decimal("100")
-            ) if tax.gross_proceeds > Decimal("0") else Decimal("0")
+            drag_pct = (
+                _q((tax.total_tax / tax.gross_proceeds) * Decimal("100"))
+                if tax.gross_proceeds > Decimal("0")
+                else Decimal("0")
+            )
             reasons.append(
                 f"tax: total tax ${_q(tax.total_tax)} on "
                 f"${_q(tax.gross_proceeds)} gross ({drag_pct}% drag)"
@@ -183,9 +183,9 @@ def _peak_points(peak: PeakSignal) -> int:
 def _stop_proximity_signal(
     *,
     current_price: Decimal,
-    stop_price: Optional[Decimal],
-    atr_value: Optional[Decimal],
-    reasons: List[str],
+    stop_price: Decimal | None,
+    atr_value: Decimal | None,
+    reasons: list[str],
 ) -> int:
     """Return 0..2; 2 = stop is very close (within 1 ATR or 3%)."""
     if stop_price is None or current_price <= Decimal("0"):
@@ -193,18 +193,14 @@ def _stop_proximity_signal(
         return 0
     if stop_price >= current_price:
         reasons.append(
-            f"stop: stop ${stop_price} >= price ${current_price} "
-            "(invert or already triggered)"
+            f"stop: stop ${stop_price} >= price ${current_price} (invert or already triggered)"
         )
         return 2
     distance = current_price - stop_price
     pct = (distance / current_price) * Decimal("100")
     if atr_value is not None and atr_value > Decimal("0"):
         atr_mult = distance / atr_value
-        reasons.append(
-            f"stop: ${stop_price} is {_q(pct)}% / {_q(atr_mult)} ATR "
-            "below price"
-        )
+        reasons.append(f"stop: ${stop_price} is {_q(pct)}% / {_q(atr_mult)} ATR below price")
         if atr_mult <= Decimal("1"):
             return 2
         if atr_mult <= Decimal("2"):
@@ -218,7 +214,7 @@ def _stop_proximity_signal(
     return 0
 
 
-def _regime_tier(regime: Optional[str], reasons: List[str]) -> str:
+def _regime_tier(regime: str | None, reasons: list[str]) -> str:
     if regime is None:
         reasons.append("regime: not available")
         return "neutral"
@@ -247,9 +243,7 @@ def _tax_friction_penalty(tax: TaxAwareExitResult) -> int:
     return 0
 
 
-def _pick_action(
-    total: int, peak: PeakSignal, stop_points: int
-) -> tuple[str, int, str]:
+def _pick_action(total: int, peak: PeakSignal, stop_points: int) -> tuple[str, int, str]:
     """Map aggregate score to (action, scale_pct, confidence)."""
     if total >= 4:
         return ACTION_EXIT, 100, CONFIDENCE_HIGH
@@ -275,11 +269,11 @@ def _plain_english_summary(
     scale_pct: int,
     peak: PeakSignal,
     tax: TaxAwareExitResult,
-    regime: Optional[str],
+    regime: str | None,
     stop_points: int,
     is_winner: bool,
 ) -> str:
-    parts: List[str] = []
+    parts: list[str] = []
 
     if action == ACTION_HOLD:
         parts.append(f"Hold {symbol} for now.")
@@ -313,13 +307,9 @@ def _plain_english_summary(
 
     if is_winner and not tax.tax_advantaged and tax.total_tax > Decimal("0"):
         parts.append(
-            f"Exit tax est. ${_q(tax.total_tax)} "
-            f"(after-tax ${_q(tax.after_tax_proceeds)})."
+            f"Exit tax est. ${_q(tax.total_tax)} (after-tax ${_q(tax.after_tax_proceeds)})."
         )
-        if (
-            tax.days_to_long_term is not None
-            and tax.breakeven_price_for_long_term_wait is not None
-        ):
+        if tax.days_to_long_term is not None and tax.breakeven_price_for_long_term_wait is not None:
             parts.append(
                 f"Waiting {tax.days_to_long_term} day(s) for long-term "
                 f"breaks even above ${_q(tax.breakeven_price_for_long_term_wait)}."

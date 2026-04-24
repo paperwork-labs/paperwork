@@ -16,7 +16,6 @@ import pytest
 
 from app.services.market.constants import WEINSTEIN_WARMUP_CALENDAR_DAYS
 
-
 # ---------------------------------------------------------------------------
 # WEINSTEIN_WARMUP_CALENDAR_DAYS constant
 # ---------------------------------------------------------------------------
@@ -35,8 +34,7 @@ def test_warmup_constant_is_used_in_backfill_task():
 
     src = inspect.getsource(snapshot_last_n_days)
     assert "WEINSTEIN_WARMUP_CALENDAR_DAYS" in src, (
-        "snapshot_last_n_days should reference "
-        "WEINSTEIN_WARMUP_CALENDAR_DAYS, not a magic number"
+        "snapshot_last_n_days should reference WEINSTEIN_WARMUP_CALENDAR_DAYS, not a magic number"
     )
     # Ensure the old magic number is not used as a bare literal
     assert "warmup_calendar_days = 400" not in src, (
@@ -189,9 +187,21 @@ def test_unknown_guard_picks_latest_date_row():
         {"as_of_date": datetime(2025, 6, 9), "stage_label": "UNKNOWN"},
     ]
     stage_run_by_date = {
-        datetime(2025, 6, 8): {"current_stage_days": 1, "previous_stage_label": None, "previous_stage_days": None},
-        datetime(2025, 6, 9): {"current_stage_days": 2, "previous_stage_label": None, "previous_stage_days": None},
-        datetime(2025, 6, 10): {"current_stage_days": 3, "previous_stage_label": "1", "previous_stage_days": 7},
+        datetime(2025, 6, 8): {
+            "current_stage_days": 1,
+            "previous_stage_label": None,
+            "previous_stage_days": None,
+        },
+        datetime(2025, 6, 9): {
+            "current_stage_days": 2,
+            "previous_stage_label": None,
+            "previous_stage_days": None,
+        },
+        datetime(2025, 6, 10): {
+            "current_stage_days": 3,
+            "previous_stage_label": "1",
+            "previous_stage_days": 7,
+        },
     }
 
     session = tracker.make_session(sym)
@@ -236,9 +246,18 @@ def test_unknown_guard_picks_latest_date_row():
         (None, False),
     ],
     ids=[
-        "2A", "1", "3", "4", "Stage_2A",
-        "UNKNOWN", "lowercase_unknown", "mixed_case",
-        "padded_unknown", "empty", "whitespace", "None",
+        "2A",
+        "1",
+        "3",
+        "4",
+        "Stage_2A",
+        "UNKNOWN",
+        "lowercase_unknown",
+        "mixed_case",
+        "padded_unknown",
+        "empty",
+        "whitespace",
+        "None",
     ],
 )
 def test_is_known_stage_classification(stage_label, expected):

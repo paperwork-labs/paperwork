@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.services.market.market_data_service import infra
 from app.tasks.market import indicators as market_indicators_tasks
@@ -19,7 +19,9 @@ def test_recompute_indicators_warns_when_benchmark_missing(db_session, monkeypat
     monkeypatch.setattr(infra, "_redis_sync", DummyRedis())
     monkeypatch.setattr(market_indicators_tasks, "SessionLocal", lambda: db_session)
     monkeypatch.setattr(market_indicators_tasks, "_set_task_status", lambda *args, **kwargs: None)
-    monkeypatch.setattr(market_indicators_tasks, "_get_tracked_symbols_safe", lambda _session: ["AAA"])
+    monkeypatch.setattr(
+        market_indicators_tasks, "_get_tracked_symbols_safe", lambda _session: ["AAA"]
+    )
 
     async def _fake_fetch_daily_for_symbols(**_kwargs):
         return [{"symbol": "SPY", "df": None, "provider": "fmp"}]
@@ -57,7 +59,9 @@ def _setup_recompute_monkeypatches(monkeypatch, db_session):
     monkeypatch.setattr(infra, "_redis_sync", DummyRedis())
     monkeypatch.setattr(market_indicators_tasks, "SessionLocal", lambda: db_session)
     monkeypatch.setattr(market_indicators_tasks, "_set_task_status", lambda *a, **kw: None)
-    monkeypatch.setattr(market_indicators_tasks, "_get_tracked_symbols_safe", lambda _s: ["TESTFRESH"])
+    monkeypatch.setattr(
+        market_indicators_tasks, "_get_tracked_symbols_safe", lambda _s: ["TESTFRESH"]
+    )
 
     async def _fake_fetch(**_kw):
         return [{"symbol": "SPY", "df": None, "provider": "fmp"}]
@@ -78,7 +82,7 @@ def test_recompute_force_bypasses_freshness_check(db_session, monkeypatch):
 
     _setup_recompute_monkeypatches(monkeypatch, db_session)
 
-    fresh_ts = datetime.now(timezone.utc) - timedelta(minutes=30)
+    fresh_ts = datetime.now(UTC) - timedelta(minutes=30)
     snap = MarketSnapshot(
         symbol="TESTFRESH",
         analysis_type="technical_snapshot",
@@ -96,10 +100,9 @@ def test_recompute_force_bypasses_freshness_check(db_session, monkeypatch):
 
 
 def test_spy_daily_bars_stale_vs_ref_trading_day_window():
-    ref = datetime(2026, 2, 2, tzinfo=timezone.utc).date()  # Monday
-    recent_fri = datetime(2026, 1, 30, 12, 0, tzinfo=timezone.utc)
+    ref = datetime(2026, 2, 2, tzinfo=UTC).date()  # Monday
+    recent_fri = datetime(2026, 1, 30, 12, 0, tzinfo=UTC)
     assert market_indicators_tasks._spy_daily_bars_stale_vs_ref(recent_fri, ref) is False
-    old_wed = datetime(2026, 1, 21, 12, 0, tzinfo=timezone.utc)
+    old_wed = datetime(2026, 1, 21, 12, 0, tzinfo=UTC)
     assert market_indicators_tasks._spy_daily_bars_stale_vs_ref(old_wed, ref) is True
     assert market_indicators_tasks._spy_daily_bars_stale_vs_ref(None, ref) is True
-

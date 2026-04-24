@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, status
 from sqlalchemy.orm import Session
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/exits", tags=["exits"])
 
 
-def _d(v: Any) -> Optional[Decimal]:
+def _d(v: Any) -> Decimal | None:
     if v is None:
         return None
     try:
@@ -43,7 +43,7 @@ def _d(v: Any) -> Optional[Decimal]:
         return None
 
 
-def _latest_snapshot(db: Session, symbol: str) -> Optional[MarketSnapshot]:
+def _latest_snapshot(db: Session, symbol: str) -> MarketSnapshot | None:
     return (
         db.query(MarketSnapshot)
         .filter(
@@ -56,13 +56,13 @@ def _latest_snapshot(db: Session, symbol: str) -> Optional[MarketSnapshot]:
     )
 
 
-def _build_lots(lots: List[TaxLot], symbol: str) -> List[ExitLot]:
+def _build_lots(lots: list[TaxLot], symbol: str) -> list[ExitLot]:
     """Order lots FIFO by acquisition date and convert to ``ExitLot``.
 
     Lots missing the fields the calculator needs (cost, date, quantity) are
     skipped with a log line; we never silently zero them.
     """
-    out: List[ExitLot] = []
+    out: list[ExitLot] = []
     for lot in sorted(
         lots,
         key=lambda x: (x.acquisition_date or date.max, x.id or 0),
@@ -105,7 +105,7 @@ async def advise_exit(
     position_id: int = Path(..., ge=1, description="Position id"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return a structured exit recommendation for one open position.
 
     The response composes three service outputs (peak signal, tax-aware
@@ -164,7 +164,7 @@ async def advise_exit(
     )
     lots = _build_lots(raw_lots, symbol)
 
-    account: Optional[BrokerAccount] = (
+    account: BrokerAccount | None = (
         db.query(BrokerAccount)
         .filter(
             BrokerAccount.id == position.account_id,
@@ -211,16 +211,16 @@ async def advise_exit(
     )
 
     atr_value = _d(snapshot.atr_14) if snapshot is not None else None
-    regime_state = (snapshot.regime_state if snapshot is not None else None)
+    regime_state = snapshot.regime_state if snapshot is not None else None
 
     advice = WinnerExitAdvisor().advise(
         symbol=symbol,
         peak=peak,
         tax=tax_result,
         current_price=current_price,
-        stop_price=None,   # ExitCascade stop is owned by a protected-region
-                           # service and must not be imported here; UI can
-                           # render the stop separately.
+        stop_price=None,  # ExitCascade stop is owned by a protected-region
+        # service and must not be imported here; UI can
+        # render the stop separately.
         atr_value=atr_value,
         regime_state=regime_state,
     )

@@ -17,7 +17,6 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from typing import Optional
 
 from opentelemetry import metrics
 from opentelemetry.metrics import Meter
@@ -29,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 _INIT_LOCK = threading.Lock()
 _INITIALIZED = False
-_METER_PROVIDER: Optional[MeterProvider] = None
+_METER_PROVIDER: MeterProvider | None = None
 
 
 def _build_resource(service_name: str) -> Resource:
@@ -42,12 +41,10 @@ def _build_resource(service_name: str) -> Resource:
     return Resource.create(attrs)
 
 
-def _build_metric_reader() -> Optional[PeriodicExportingMetricReader]:
+def _build_metric_reader() -> PeriodicExportingMetricReader | None:
     """Construct the periodic OTLP exporter, or None when unconfigured."""
     endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip()
-    metrics_endpoint = os.getenv(
-        "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", ""
-    ).strip()
+    metrics_endpoint = os.getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT", "").strip()
     if not endpoint and not metrics_endpoint:
         logger.info(
             "OTel metrics: no OTLP endpoint configured; instruments are "

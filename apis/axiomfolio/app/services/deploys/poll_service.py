@@ -20,9 +20,10 @@ medallion: ops
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Iterable, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -30,13 +31,13 @@ from sqlalchemy.orm import Session
 from app.models.deploy_health_event import DeployHealthEvent
 
 from .render_client import (
-    DeployRecord,
     IN_FLIGHT_STATUSES,
-    RenderDeployClient,
-    RenderDeployClientError,
     SUPERSEDED_STATUSES,
     TERMINAL_FAILURE_STATUSES,
     TERMINAL_SUCCESS_STATUSES,
+    DeployRecord,
+    RenderDeployClient,
+    RenderDeployClientError,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,17 +61,17 @@ class ServiceHealthSummary:
     service_type: str
     status: str  # green | yellow | red
     reason: str
-    last_status: Optional[str]
-    last_deploy_sha: Optional[str]
-    last_deploy_at: Optional[str]
-    last_live_sha: Optional[str]
-    last_live_at: Optional[str]
+    last_status: str | None
+    last_deploy_sha: str | None
+    last_deploy_at: str | None
+    last_live_sha: str | None
+    last_live_at: str | None
     consecutive_failures: int
     failures_24h: int
     deploys_24h: int
     in_flight: bool
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "service_id": self.service_id,
             "service_slug": self.service_slug,
@@ -133,11 +134,11 @@ def _upsert_event(db: Session, event: DeployHealthEvent) -> bool:
 
 def poll_and_record(
     db: Session,
-    services: List[Dict[str, str]],
+    services: list[dict[str, str]],
     *,
-    client: Optional[RenderDeployClient] = None,
+    client: RenderDeployClient | None = None,
     limit_per_service: int = 10,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Poll Render for recent deploys and record any new events.
 
     Args:
@@ -167,7 +168,7 @@ def poll_and_record(
     inserted = 0
     skipped = 0
     poll_errors = 0
-    details: List[Dict[str, Any]] = []
+    details: list[dict[str, Any]] = []
 
     if not services:
         logger.info("poll_and_record: no services configured — skipping")
@@ -184,7 +185,7 @@ def poll_and_record(
             "poll_and_record: RENDER_API_KEY not set — recording poll_error "
             "events so the admin dim surfaces the gap (fail-closed-but-observable)"
         )
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         for svc in services:
             poll_errors += 1
             detail = {
@@ -231,7 +232,7 @@ def poll_and_record(
         if not service_id:
             continue
 
-        detail: Dict[str, Any] = {
+        detail: dict[str, Any] = {
             "service_id": service_id,
             "service_slug": service_slug,
             "inserted": 0,
@@ -247,7 +248,7 @@ def poll_and_record(
                 exc,
             )
             poll_errors += 1
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             event = DeployHealthEvent(
                 service_id=service_id,
                 service_slug=service_slug,
@@ -310,7 +311,7 @@ def _recent_events(
     service_id: str,
     *,
     limit: int = _SUMMARY_WINDOW,
-) -> List[DeployHealthEvent]:
+) -> list[DeployHealthEvent]:
     return (
         db.query(DeployHealthEvent)
         .filter(DeployHealthEvent.service_id == service_id)
@@ -320,19 +321,19 @@ def _recent_events(
     )
 
 
-def _iso(dt: Optional[datetime]) -> Optional[str]:
+def _iso(dt: datetime | None) -> str | None:
     if dt is None:
         return None
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc).isoformat()
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC).isoformat()
 
 
 def summarize_service_health(
     db: Session,
-    service: Dict[str, str],
+    service: dict[str, str],
     *,
-    now: Optional[datetime] = None,
+    now: datetime | None = None,
 ) -> ServiceHealthSummary:
     """Build a ``ServiceHealthSummary`` for one Render service."""
     service_id = str(service.get("service_id") or "")
@@ -340,7 +341,7 @@ def summarize_service_health(
     service_type = str(service.get("service_type") or "")
 
     events = _recent_events(db, service_id)
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     cutoff_24h = now - timedelta(hours=24)
 
     if not events:
@@ -396,7 +397,7 @@ def summarize_service_health(
     last_live_sha = last_live.commit_sha if last_live else None
     last_live_at = _iso(last_live.render_finished_at) if last_live else None
 
-    reasons: List[str] = []
+    reasons: list[str] = []
     status = "green"
     if consecutive >= FAILURE_CONSECUTIVE_RED:
         status = "red"
@@ -405,9 +406,7 @@ def summarize_service_health(
         )
     elif failures_24h >= FAILURE_24H_RED:
         status = "red"
-        reasons.append(
-            f"{failures_24h} failed deploys in last 24h (threshold {FAILURE_24H_RED})"
-        )
+        reasons.append(f"{failures_24h} failed deploys in last 24h (threshold {FAILURE_24H_RED})")
     elif failures_24h >= FAILURE_24H_YELLOW:
         status = "yellow"
         reasons.append(
@@ -447,10 +446,10 @@ def summarize_service_health(
 
 def summarize_composite(
     db: Session,
-    services: Iterable[Dict[str, str]],
+    services: Iterable[dict[str, str]],
     *,
-    now: Optional[datetime] = None,
-) -> Dict[str, Any]:
+    now: datetime | None = None,
+) -> dict[str, Any]:
     """Build the composite-health ``deploys`` dimension payload.
 
     Composite rule:
@@ -461,7 +460,7 @@ def summarize_composite(
       info string so the UI doesn't scream pre-first-deploy)
     """
     services_list = list(services)
-    summaries: List[ServiceHealthSummary] = []
+    summaries: list[ServiceHealthSummary] = []
     for svc in services_list:
         summaries.append(summarize_service_health(db, svc, now=now))
 
@@ -476,7 +475,7 @@ def summarize_composite(
         }
 
     worst = "green"
-    reasons: List[str] = []
+    reasons: list[str] = []
     consecutive_max = 0
     failures_24h_total = 0
     for s in summaries:

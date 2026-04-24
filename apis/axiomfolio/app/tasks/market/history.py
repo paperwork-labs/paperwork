@@ -4,8 +4,7 @@ Snapshot history recording and backfill tasks.
 
 import logging
 import time
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 import pandas as pd
@@ -19,10 +18,7 @@ from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from app.services.market.constants import WEINSTEIN_WARMUP_CALENDAR_DAYS
 from app.services.market.dataframe_utils import price_data_rows_to_dataframe
 from app.services.market.indicator_engine import (
-    classify_ma_bucket_from_ma,
-    compute_core_indicators_series,
     compute_full_indicator_series,
-    compute_weinstein_stage_series_from_daily,
 )
 from app.services.market.market_data_service import snapshot_builder
 from app.services.market.snapshot_history_writer import (
@@ -66,7 +62,9 @@ def snapshot_for_date(as_of_date: str, batch_size: int = 50) -> dict:
     session = SessionLocal()
     try:
         # Parse date (YYYY-MM-DD) into a naive timestamp to match price_data.date semantics.
-        as_of_dt = datetime.fromisoformat(as_of_date).replace(hour=0, minute=0, second=0, microsecond=0)
+        as_of_dt = datetime.fromisoformat(as_of_date).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
 
         ordered = _get_tracked_symbols_safe(session)
 
@@ -138,12 +136,16 @@ def snapshot_for_date(as_of_date: str, batch_size: int = 50) -> dict:
     soft_time_limit=14400,
     time_limit=16200,
 )
-@task_run("admin_snapshots_history_backfill", lock_key=lambda **_: "snapshots_history_backfill", lock_ttl_seconds=16500)
+@task_run(
+    "admin_snapshots_history_backfill",
+    lock_key=lambda **_: "snapshots_history_backfill",
+    lock_ttl_seconds=16500,
+)
 def snapshot_last_n_days(
     days: int = 200,
     batch_size: int = 25,
-    since_date: Optional[str] = None,
-    symbols: Optional[List[str]] = None,
+    since_date: str | None = None,
+    symbols: list[str] | None = None,
 ) -> dict:
     """Backfill `market_snapshot_history` for the last N trading days (SPY calendar) from local DB prices.
 
@@ -170,7 +172,12 @@ def snapshot_last_n_days(
             try:
                 import pandas as _pd
 
-                since_dt = _pd.to_datetime(since_date, utc=True).tz_convert(None).normalize().to_pydatetime()
+                since_dt = (
+                    _pd.to_datetime(since_date, utc=True)
+                    .tz_convert(None)
+                    .normalize()
+                    .to_pydatetime()
+                )
             except Exception:
                 since_dt = None
         cal_dates = (
@@ -180,18 +187,22 @@ def snapshot_last_n_days(
             .limit(12000 if since_dt is not None else max(1, int(days)))
             .all()
         )
-        as_of_dates = [r[0] for r in cal_dates if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)]
+        as_of_dates = [
+            r[0]
+            for r in cal_dates
+            if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)
+        ]
         latest_daily_dt = (
-            session.query(func.max(PriceData.date))
-            .filter(PriceData.interval == "1d")
-            .scalar()
+            session.query(func.max(PriceData.date)).filter(PriceData.interval == "1d").scalar()
         )
         spy_latest_dt = (
             session.query(func.max(PriceData.date))
             .filter(PriceData.symbol == calendar_symbol, PriceData.interval == "1d")
             .scalar()
         )
-        if latest_daily_dt and (spy_latest_dt is None or spy_latest_dt.date() < latest_daily_dt.date()):
+        if latest_daily_dt and (
+            spy_latest_dt is None or spy_latest_dt.date() < latest_daily_dt.date()
+        ):
             alt_query = session.query(PriceData.symbol).filter(
                 PriceData.interval == "1d",
                 PriceData.date == latest_daily_dt,
@@ -208,7 +219,11 @@ def snapshot_last_n_days(
                     .limit(12000 if since_dt is not None else max(1, int(days)))
                     .all()
                 )
-                as_of_dates = [r[0] for r in cal_dates if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)]
+                as_of_dates = [
+                    r[0]
+                    for r in cal_dates
+                    if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)
+                ]
         if not as_of_dates:
             alt = (
                 session.query(PriceData.symbol, func.count(PriceData.date).label("n"))
@@ -227,11 +242,17 @@ def snapshot_last_n_days(
                     .limit(12000 if since_dt is not None else max(1, int(days)))
                     .all()
                 )
-                as_of_dates = [r[0] for r in cal_dates if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)]
+                as_of_dates = [
+                    r[0]
+                    for r in cal_dates
+                    if r and r[0] is not None and (since_dt is None or r[0] >= since_dt)
+                ]
 
         if not as_of_dates:
             err = "No daily bars found in price_data to establish a trading-day calendar (expected SPY or any 1d bars)."
-            _set_task_status("admin_snapshots_history_backfill", "error", {"status": "error", "error": err})
+            _set_task_status(
+                "admin_snapshots_history_backfill", "error", {"status": "error", "error": err}
+            )
             return {"status": "error", "error": err}
 
         # Oldest->newest list (raw timestamps) + normalized midnight UTC keys (naive).
@@ -283,23 +304,28 @@ def snapshot_last_n_days(
                 PriceData.close_price,
                 PriceData.volume,
             )
-            .filter(PriceData.symbol == calendar_symbol, PriceData.interval == "1d", PriceData.date >= warmup_start)
+            .filter(
+                PriceData.symbol == calendar_symbol,
+                PriceData.interval == "1d",
+                PriceData.date >= warmup_start,
+            )
             .order_by(PriceData.date.asc())
             .all()
         )
-        import pandas as pd
         import numpy as np
-        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
         from app.services.market.indicator_engine import (
+            classify_ma_bucket_from_ma,
             compute_core_indicators_series,
             compute_weinstein_stage_series_from_daily,
-            classify_ma_bucket_from_ma,
         )
 
         if spy_rows:
             spy_df = price_data_rows_to_dataframe(spy_rows, ascending=True)
             # Normalize to midnight UTC (naive) so membership checks align with as_of_days.
-            spy_df.index = pd.to_datetime(spy_df.index, utc=True, errors="coerce").tz_convert(None).normalize()
+            spy_df.index = (
+                pd.to_datetime(spy_df.index, utc=True, errors="coerce").tz_convert(None).normalize()
+            )
         else:
             spy_df = pd.DataFrame()
 
@@ -318,7 +344,11 @@ def snapshot_last_n_days(
                                 PriceData.close_price,
                                 PriceData.volume,
                             )
-                            .filter(PriceData.symbol == sym, PriceData.interval == "1d", PriceData.date >= warmup_start)
+                            .filter(
+                                PriceData.symbol == sym,
+                                PriceData.interval == "1d",
+                                PriceData.date >= warmup_start,
+                            )
                             .order_by(PriceData.date.asc())
                             .all()
                         )
@@ -328,7 +358,11 @@ def snapshot_last_n_days(
 
                         df = price_data_rows_to_dataframe(rows, ascending=True)
                         # Normalize to midnight UTC (naive) so membership checks align with as_of_days.
-                        df.index = pd.to_datetime(df.index, utc=True, errors="coerce").tz_convert(None).normalize()
+                        df.index = (
+                            pd.to_datetime(df.index, utc=True, errors="coerce")
+                            .tz_convert(None)
+                            .normalize()
+                        )
                         if df.empty:
                             skipped_no_data += 1
                             continue
@@ -375,7 +409,9 @@ def snapshot_last_n_days(
                             try:
                                 if not stage_daily.empty and "stage_label" in stage_daily.columns:
                                     labels = [
-                                        stage_daily.loc[d, "stage_label"] if d in stage_daily.index else None
+                                        stage_daily.loc[d, "stage_label"]
+                                        if d in stage_daily.index
+                                        else None
                                         for d in stage_daily.index
                                     ]
                                     run_info = compute_stage_run_lengths(labels)
@@ -399,12 +435,24 @@ def snapshot_last_n_days(
                                 ma_bucket = classify_ma_bucket_from_ma(
                                     {
                                         "price": float(price.loc[d]),
-                                        "sma_5": float(core.loc[d, "sma_5"]) if not pd.isna(core.loc[d, "sma_5"]) else None,
-                                        "sma_8": float(core.loc[d, "sma_8"]) if not pd.isna(core.loc[d, "sma_8"]) else None,
-                                        "sma_21": float(core.loc[d, "sma_21"]) if not pd.isna(core.loc[d, "sma_21"]) else None,
-                                        "sma_50": float(core.loc[d, "sma_50"]) if not pd.isna(core.loc[d, "sma_50"]) else None,
-                                        "sma_100": float(core.loc[d, "sma_100"]) if not pd.isna(core.loc[d, "sma_100"]) else None,
-                                        "sma_200": float(core.loc[d, "sma_200"]) if not pd.isna(core.loc[d, "sma_200"]) else None,
+                                        "sma_5": float(core.loc[d, "sma_5"])
+                                        if not pd.isna(core.loc[d, "sma_5"])
+                                        else None,
+                                        "sma_8": float(core.loc[d, "sma_8"])
+                                        if not pd.isna(core.loc[d, "sma_8"])
+                                        else None,
+                                        "sma_21": float(core.loc[d, "sma_21"])
+                                        if not pd.isna(core.loc[d, "sma_21"])
+                                        else None,
+                                        "sma_50": float(core.loc[d, "sma_50"])
+                                        if not pd.isna(core.loc[d, "sma_50"])
+                                        else None,
+                                        "sma_100": float(core.loc[d, "sma_100"])
+                                        if not pd.isna(core.loc[d, "sma_100"])
+                                        else None,
+                                        "sma_200": float(core.loc[d, "sma_200"])
+                                        if not pd.isna(core.loc[d, "sma_200"])
+                                        else None,
                                     }
                                 ).get("bucket")
                             except SoftTimeLimitExceeded:
@@ -421,58 +469,120 @@ def snapshot_last_n_days(
                                     stage_label = stage_daily.loc[d, "stage_label"]
                                     stage_slope_pct = (
                                         float(stage_daily.loc[d, "stage_slope_pct"])
-                                        if "stage_slope_pct" in stage_daily.columns and not pd.isna(stage_daily.loc[d, "stage_slope_pct"])
+                                        if "stage_slope_pct" in stage_daily.columns
+                                        and not pd.isna(stage_daily.loc[d, "stage_slope_pct"])
                                         else None
                                     )
                                     stage_dist_pct = (
                                         float(stage_daily.loc[d, "stage_dist_pct"])
-                                        if "stage_dist_pct" in stage_daily.columns and not pd.isna(stage_daily.loc[d, "stage_dist_pct"])
+                                        if "stage_dist_pct" in stage_daily.columns
+                                        and not pd.isna(stage_daily.loc[d, "stage_dist_pct"])
                                         else None
                                     )
                                     rs_mansfield_pct = (
                                         float(stage_daily.loc[d, "rs_mansfield_pct"])
-                                        if "rs_mansfield_pct" in stage_daily.columns and not pd.isna(stage_daily.loc[d, "rs_mansfield_pct"])
+                                        if "rs_mansfield_pct" in stage_daily.columns
+                                        and not pd.isna(stage_daily.loc[d, "rs_mansfield_pct"])
                                         else None
                                     )
                             except SoftTimeLimitExceeded:
                                 raise
                             except Exception as e:
-                                logger.warning("stage_indicator_extract failed for %s on %s: %s", sym, d, e)
+                                logger.warning(
+                                    "stage_indicator_extract failed for %s on %s: %s", sym, d, e
+                                )
 
                             run_info = stage_run_by_date.get(d) if stage_run_by_date else None
                             payload = {
                                 "symbol": sym,
                                 "analysis_type": "technical_snapshot",
-                                "as_of_timestamp": d.isoformat() if hasattr(d, "isoformat") else str(d),
-                                "current_price": float(price.loc[d]) if not pd.isna(price.loc[d]) else None,
-                                "rsi": float(core.loc[d, "rsi"]) if "rsi" in core.columns and not pd.isna(core.loc[d, "rsi"]) else None,
-                                "sma_5": float(core.loc[d, "sma_5"]) if not pd.isna(core.loc[d, "sma_5"]) else None,
-                                "sma_14": float(core.loc[d, "sma_14"]) if not pd.isna(core.loc[d, "sma_14"]) else None,
-                                "sma_21": float(core.loc[d, "sma_21"]) if not pd.isna(core.loc[d, "sma_21"]) else None,
-                                "sma_50": float(core.loc[d, "sma_50"]) if not pd.isna(core.loc[d, "sma_50"]) else None,
-                                "sma_100": float(core.loc[d, "sma_100"]) if not pd.isna(core.loc[d, "sma_100"]) else None,
-                                "sma_150": float(core.loc[d, "sma_150"]) if not pd.isna(core.loc[d, "sma_150"]) else None,
-                                "sma_200": float(core.loc[d, "sma_200"]) if not pd.isna(core.loc[d, "sma_200"]) else None,
-                                "atr_14": float(atr14.loc[d]) if atr14 is not None and not pd.isna(atr14.loc[d]) else None,
-                                "atr_30": float(atr30.loc[d]) if atr30 is not None and not pd.isna(atr30.loc[d]) else None,
-                                "atrp_14": float(atrp14.loc[d]) if not pd.isna(atrp14.loc[d]) else None,
-                                "atrp_30": float(atrp30.loc[d]) if not pd.isna(atrp30.loc[d]) else None,
-                                "atr_distance": float(atr_distance.loc[d]) if not pd.isna(atr_distance.loc[d]) else None,
-                                "range_pos_20d": float(range20.loc[d]) if not pd.isna(range20.loc[d]) else None,
-                                "range_pos_50d": float(range50.loc[d]) if not pd.isna(range50.loc[d]) else None,
-                                "range_pos_52w": float(range252.loc[d]) if not pd.isna(range252.loc[d]) else None,
-                                "atrx_sma_21": float(atrx_sma21.loc[d]) if not pd.isna(atrx_sma21.loc[d]) else None,
-                                "atrx_sma_50": float(atrx_sma50.loc[d]) if not pd.isna(atrx_sma50.loc[d]) else None,
-                                "atrx_sma_100": float(atrx_sma100.loc[d]) if not pd.isna(atrx_sma100.loc[d]) else None,
-                                "atrx_sma_150": float(atrx_sma150.loc[d]) if not pd.isna(atrx_sma150.loc[d]) else None,
-                                "macd": float(core.loc[d, "macd"]) if "macd" in core.columns and not pd.isna(core.loc[d, "macd"]) else None,
-                                "macd_signal": float(core.loc[d, "macd_signal"]) if "macd_signal" in core.columns and not pd.isna(core.loc[d, "macd_signal"]) else None,
+                                "as_of_timestamp": d.isoformat()
+                                if hasattr(d, "isoformat")
+                                else str(d),
+                                "current_price": float(price.loc[d])
+                                if not pd.isna(price.loc[d])
+                                else None,
+                                "rsi": float(core.loc[d, "rsi"])
+                                if "rsi" in core.columns and not pd.isna(core.loc[d, "rsi"])
+                                else None,
+                                "sma_5": float(core.loc[d, "sma_5"])
+                                if not pd.isna(core.loc[d, "sma_5"])
+                                else None,
+                                "sma_14": float(core.loc[d, "sma_14"])
+                                if not pd.isna(core.loc[d, "sma_14"])
+                                else None,
+                                "sma_21": float(core.loc[d, "sma_21"])
+                                if not pd.isna(core.loc[d, "sma_21"])
+                                else None,
+                                "sma_50": float(core.loc[d, "sma_50"])
+                                if not pd.isna(core.loc[d, "sma_50"])
+                                else None,
+                                "sma_100": float(core.loc[d, "sma_100"])
+                                if not pd.isna(core.loc[d, "sma_100"])
+                                else None,
+                                "sma_150": float(core.loc[d, "sma_150"])
+                                if not pd.isna(core.loc[d, "sma_150"])
+                                else None,
+                                "sma_200": float(core.loc[d, "sma_200"])
+                                if not pd.isna(core.loc[d, "sma_200"])
+                                else None,
+                                "atr_14": float(atr14.loc[d])
+                                if atr14 is not None and not pd.isna(atr14.loc[d])
+                                else None,
+                                "atr_30": float(atr30.loc[d])
+                                if atr30 is not None and not pd.isna(atr30.loc[d])
+                                else None,
+                                "atrp_14": float(atrp14.loc[d])
+                                if not pd.isna(atrp14.loc[d])
+                                else None,
+                                "atrp_30": float(atrp30.loc[d])
+                                if not pd.isna(atrp30.loc[d])
+                                else None,
+                                "atr_distance": float(atr_distance.loc[d])
+                                if not pd.isna(atr_distance.loc[d])
+                                else None,
+                                "range_pos_20d": float(range20.loc[d])
+                                if not pd.isna(range20.loc[d])
+                                else None,
+                                "range_pos_50d": float(range50.loc[d])
+                                if not pd.isna(range50.loc[d])
+                                else None,
+                                "range_pos_52w": float(range252.loc[d])
+                                if not pd.isna(range252.loc[d])
+                                else None,
+                                "atrx_sma_21": float(atrx_sma21.loc[d])
+                                if not pd.isna(atrx_sma21.loc[d])
+                                else None,
+                                "atrx_sma_50": float(atrx_sma50.loc[d])
+                                if not pd.isna(atrx_sma50.loc[d])
+                                else None,
+                                "atrx_sma_100": float(atrx_sma100.loc[d])
+                                if not pd.isna(atrx_sma100.loc[d])
+                                else None,
+                                "atrx_sma_150": float(atrx_sma150.loc[d])
+                                if not pd.isna(atrx_sma150.loc[d])
+                                else None,
+                                "macd": float(core.loc[d, "macd"])
+                                if "macd" in core.columns and not pd.isna(core.loc[d, "macd"])
+                                else None,
+                                "macd_signal": float(core.loc[d, "macd_signal"])
+                                if "macd_signal" in core.columns
+                                and not pd.isna(core.loc[d, "macd_signal"])
+                                else None,
                                 "ma_bucket": ma_bucket,
-                                "stage_label": stage_label if isinstance(stage_label, str) else None,
+                                "stage_label": stage_label
+                                if isinstance(stage_label, str)
+                                else None,
                                 "stage_label_5d_ago": None,  # computed below
-                                "current_stage_days": run_info.get("current_stage_days") if run_info else None,
-                                "previous_stage_label": run_info.get("previous_stage_label") if run_info else None,
-                                "previous_stage_days": run_info.get("previous_stage_days") if run_info else None,
+                                "current_stage_days": run_info.get("current_stage_days")
+                                if run_info
+                                else None,
+                                "previous_stage_label": run_info.get("previous_stage_label")
+                                if run_info
+                                else None,
+                                "previous_stage_days": run_info.get("previous_stage_days")
+                                if run_info
+                                else None,
                                 "stage_slope_pct": stage_slope_pct,
                                 "stage_dist_pct": stage_dist_pct,
                                 "rs_mansfield_pct": rs_mansfield_pct,
@@ -529,9 +639,15 @@ def snapshot_last_n_days(
                                         MarketSnapshot.analysis_type == "technical_snapshot",
                                     ).update(
                                         {
-                                            "current_stage_days": latest_info.get("current_stage_days"),
-                                            "previous_stage_label": latest_info.get("previous_stage_label"),
-                                            "previous_stage_days": latest_info.get("previous_stage_days"),
+                                            "current_stage_days": latest_info.get(
+                                                "current_stage_days"
+                                            ),
+                                            "previous_stage_label": latest_info.get(
+                                                "previous_stage_label"
+                                            ),
+                                            "previous_stage_days": latest_info.get(
+                                                "previous_stage_days"
+                                            ),
                                         },
                                         synchronize_session=False,
                                     )
@@ -653,7 +769,7 @@ def snapshot_last_n_days(
 def snapshot_for_symbol(
     symbol: str,
     start_date: str,
-    end_date: Optional[str] = None,
+    end_date: str | None = None,
 ) -> dict:
     """Backfill MarketSnapshotHistory for a single symbol over a date range.
 
@@ -667,7 +783,7 @@ def snapshot_for_symbol(
             end_cmp = pd.Timestamp(datetime.strptime(end_date, "%Y-%m-%d")).normalize()
         else:
             end_cmp = (
-                pd.Timestamp(datetime.now(timezone.utc))
+                pd.Timestamp(datetime.now(UTC))
                 .tz_convert("UTC")
                 .tz_localize(None)
                 .normalize()
@@ -675,8 +791,12 @@ def snapshot_for_symbol(
 
         rows = (
             session.query(
-                PriceData.date, PriceData.open_price, PriceData.high_price,
-                PriceData.low_price, PriceData.close_price, PriceData.volume,
+                PriceData.date,
+                PriceData.open_price,
+                PriceData.high_price,
+                PriceData.low_price,
+                PriceData.close_price,
+                PriceData.volume,
             )
             .filter(PriceData.symbol == symbol, PriceData.interval == "1d")
             .order_by(PriceData.date.asc())
@@ -694,8 +814,12 @@ def snapshot_for_symbol(
         try:
             spy_rows = (
                 session.query(
-                    PriceData.date, PriceData.open_price, PriceData.high_price,
-                    PriceData.low_price, PriceData.close_price, PriceData.volume,
+                    PriceData.date,
+                    PriceData.open_price,
+                    PriceData.high_price,
+                    PriceData.low_price,
+                    PriceData.close_price,
+                    PriceData.volume,
                 )
                 .filter(PriceData.symbol == "SPY", PriceData.interval == "1d")
                 .order_by(PriceData.date.asc())
@@ -703,13 +827,19 @@ def snapshot_for_symbol(
             )
             if spy_rows:
                 spy_df = price_data_rows_to_dataframe(spy_rows, ascending=True)
-                spy_df.index = pd.to_datetime(spy_df.index, utc=True, errors="coerce").tz_convert(None).normalize()
+                spy_df.index = (
+                    pd.to_datetime(spy_df.index, utc=True, errors="coerce")
+                    .tz_convert(None)
+                    .normalize()
+                )
         except SoftTimeLimitExceeded:
             raise
         except Exception as e:
             logger.warning("spy_benchmark_fetch failed for %s: %s", symbol, e)
 
-        indicators_df = compute_full_indicator_series(df, spy_df=spy_df if not spy_df.empty else None)
+        indicators_df = compute_full_indicator_series(
+            df, spy_df=spy_df if not spy_df.empty else None
+        )
 
         mask = (indicators_df.index >= pd.Timestamp(start_dt)) & (indicators_df.index <= end_cmp)
         target_df = indicators_df.loc[mask]
@@ -720,7 +850,7 @@ def snapshot_for_symbol(
         written = 0
         errors = 0
         for batch_start in range(0, len(target_df), 100):
-            batch = target_df.iloc[batch_start:batch_start + 100]
+            batch = target_df.iloc[batch_start : batch_start + 100]
             batch_rows = []
             for d, row in batch.iterrows():
                 r = {
@@ -737,9 +867,7 @@ def snapshot_for_symbol(
                 batch_rows.append(r)
 
             try:
-                stmt = build_snapshot_history_pg_upsert_stmt(
-                    batch_rows, conflict_update="partial"
-                )
+                stmt = build_snapshot_history_pg_upsert_stmt(batch_rows, conflict_update="partial")
                 session.execute(stmt)
                 session.commit()
                 written += len(batch_rows)
@@ -774,7 +902,7 @@ def snapshot_for_symbol(
     time_limit=600,
 )
 @task_run("admin_snapshots_history_record")
-def record_daily(symbols: Optional[List[str]] = None) -> dict:
+def record_daily(symbols: list[str] | None = None) -> dict:
     """Persist immutable daily snapshots to MarketSnapshotHistory from latest MarketSnapshot."""
     _set_task_status("admin_snapshots_history_record", "running")
     task_id = _celery_task_id_short()
@@ -789,7 +917,7 @@ def record_daily(symbols: Optional[List[str]] = None) -> dict:
         written = 0
         skipped_no_snapshot = 0
         errors = 0
-        error_samples: List[dict] = []
+        error_samples: list[dict] = []
         for n, sym in enumerate(sym_list, 1):
             try:
                 row = (
@@ -823,7 +951,7 @@ def record_daily(symbols: Optional[List[str]] = None) -> dict:
                         .limit(1)
                         .scalar()
                     )
-                as_of_date = as_of_dt or datetime.now(timezone.utc).replace(
+                as_of_date = as_of_dt or datetime.now(UTC).replace(
                     hour=0, minute=0, second=0, microsecond=0
                 )
                 upsert_snapshot_history_row(
@@ -878,12 +1006,17 @@ def record_daily(symbols: Optional[List[str]] = None) -> dict:
     soft_time_limit=3600,
     time_limit=4200,
 )
-@task_run("admin_repair_stage_history_async", lock_key=lambda **_: "repair_stage_history", lock_ttl_seconds=4500)
-def repair_stage_history_async(days: int = 3650, symbol: Optional[str] = None) -> dict:
+@task_run(
+    "admin_repair_stage_history_async",
+    lock_key=lambda **_: "repair_stage_history",
+    lock_ttl_seconds=4500,
+)
+def repair_stage_history_async(days: int = 3650, symbol: str | None = None) -> dict:
     """Async Celery wrapper around StageQualityService.repair_stage_history_window."""
     session = SessionLocal()
     try:
         from app.services.market.stage_quality_service import StageQualityService
+
         svc = StageQualityService()
         result = svc.repair_stage_history_window(session, days=days, symbol=symbol)
         session.commit()

@@ -9,12 +9,12 @@ medallion: ops
 
 import asyncio
 import logging
-import aiohttp
-import xml.etree.ElementTree as ET
-from datetime import datetime
-from typing import Dict, List, Optional
 import os
 import sys
+import xml.etree.ElementTree as ET
+from datetime import datetime
+
+import aiohttp
 
 try:
     from app.config import settings
@@ -40,7 +40,7 @@ def _is_placeholder_account(account_id: str | None) -> bool:
     aid = account_id.strip()
     if not aid:
         return True
-    if not aid[0].upper() in _IBKR_ACCT_PREFIXES:
+    if aid[0].upper() not in _IBKR_ACCT_PREFIXES:
         return True
     return not aid[1:].isdigit()
 
@@ -63,12 +63,10 @@ class IBKRFlexQueryClient:
 
     def __init__(
         self,
-        token: Optional[str] = None,
-        query_id: Optional[str] = None,
+        token: str | None = None,
+        query_id: str | None = None,
     ):
-        self.base_url = (
-            "https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService"
-        )
+        self.base_url = "https://ndcdyn.interactivebrokers.com/AccountManagement/FlexWebService"
 
         # Use provided credentials over settings
         if token is not None and token.strip():
@@ -85,9 +83,7 @@ class IBKRFlexQueryClient:
         else:
             _raw_query = getattr(settings, "IBKR_FLEX_QUERY_ID", None)
             try:
-                self.query_id = (
-                    _raw_query.strip().strip('"').strip("'") if _raw_query else None
-                )
+                self.query_id = _raw_query.strip().strip('"').strip("'") if _raw_query else None
             except Exception:
                 self.query_id = _raw_query
 
@@ -120,21 +116,20 @@ class IBKRFlexQueryClient:
         url = f"{self.base_url}/SendRequest"
         params = {"t": self.token, "q": self.query_id, "v": "3"}
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                    body = await resp.text()
-                    root = ET.fromstring(body)
-                    status = root.findtext("Status")
-                    if status == "Success":
-                        return True, "Credentials valid."
-                    err = root.findtext("ErrorMessage") or "Unknown IBKR error"
-                    return False, err
+            async with aiohttp.ClientSession() as session, session.get(
+                url, params=params, timeout=aiohttp.ClientTimeout(total=15)
+            ) as resp:
+                body = await resp.text()
+                root = ET.fromstring(body)
+                status = root.findtext("Status")
+                if status == "Success":
+                    return True, "Credentials valid."
+                err = root.findtext("ErrorMessage") or "Unknown IBKR error"
+                return False, err
         except Exception as exc:
             return False, f"Validation request failed: {exc}"
 
-    async def get_full_report(
-        self, account_id: str, cache_ttl_seconds: int = 60
-    ) -> Optional[str]:
+    async def get_full_report(self, account_id: str, cache_ttl_seconds: int = 60) -> str | None:
         """Fetch one FlexQuery report per account and cache briefly to avoid collisions.
 
         Returns full raw XML string or None if unavailable.
@@ -172,7 +167,7 @@ class IBKRFlexQueryClient:
             logger.error(f"❌ Error getting full report: {e}")
             return None
 
-    async def get_official_tax_lots(self, account_id: str) -> List[Dict]:
+    async def get_official_tax_lots(self, account_id: str) -> list[dict]:
         """
         Get official tax lots from IBKR FlexQuery.
         This is the CORRECT source for tax lot data.
@@ -203,7 +198,7 @@ class IBKRFlexQueryClient:
             logger.error(f"❌ Error getting official tax lots: {e}")
             return []
 
-    async def get_option_positions(self, account_id: str) -> List[Dict]:
+    async def get_option_positions(self, account_id: str) -> list[dict]:
         """
         Get option positions from IBKR FlexQuery OpenPositions section.
         Parses option-specific data for Option records.
@@ -229,15 +224,13 @@ class IBKRFlexQueryClient:
             logger.error(f"❌ Error getting option positions: {e}")
             return []
 
-    async def get_historical_option_exercises(self, account_id: str) -> List[Dict]:
+    async def get_historical_option_exercises(self, account_id: str) -> list[dict]:
         """
         Get historical option exercises and assignments from IBKR FlexQuery OptionEAE section.
         Parses option exercise/assignment history for tax and P&L tracking.
         """
         if not self.token or not self.query_id:
-            logger.error(
-                "❌ FlexQuery token/query_id not configured for option exercises"
-            )
+            logger.error("❌ FlexQuery token/query_id not configured for option exercises")
             return []
 
         try:
@@ -250,16 +243,14 @@ class IBKRFlexQueryClient:
             # Step 3: Parse option exercises from XML
             option_exercises = self._parse_option_exercises(report_data, account_id)
 
-            logger.info(
-                f"✅ Retrieved {len(option_exercises)} historical option exercises"
-            )
+            logger.info(f"✅ Retrieved {len(option_exercises)} historical option exercises")
             return option_exercises
 
         except Exception as e:
             logger.error(f"❌ Error getting historical option exercises: {e}")
             return []
 
-    async def _request_report(self, account_id: Optional[str] = None) -> Optional[str]:
+    async def _request_report(self, account_id: str | None = None) -> str | None:
         """Request FlexQuery report generation with exponential back-off (40→80→160 s)."""
         url = f"{self.base_url}/SendRequest"
         params = {"t": self.token, "q": self.query_id, "v": "3"}
@@ -267,9 +258,7 @@ class IBKRFlexQueryClient:
             params["acct"] = account_id
 
         # Test-aware throttling: drastically reduce waits/attempts under pytest/CI
-        is_testing = (
-            os.environ.get("AXIOMFOLIO_TESTING") == "1" or "pytest" in sys.modules
-        )
+        is_testing = os.environ.get("AXIOMFOLIO_TESTING") == "1" or "pytest" in sys.modules
         if is_testing:
             delays = [0, 0.05, 0.1]
             max_attempts = 2
@@ -303,25 +292,19 @@ class IBKRFlexQueryClient:
                             if status_tag is not None and status_tag.text == "Success":
                                 ref_code_tag = root.find("ReferenceCode")
                                 if ref_code_tag is not None:
-                                    logger.info(
-                                        f"✅ Report requested: {ref_code_tag.text}"
-                                    )
+                                    logger.info(f"✅ Report requested: {ref_code_tag.text}")
                                     return ref_code_tag.text
                             else:
                                 # Detect rate-limit / invalid account errors
                                 err_msg_tag = root.find("ErrorMessage")
-                                err_text = (
-                                    err_msg_tag.text if err_msg_tag is not None else ""
-                                )
+                                err_text = err_msg_tag.text if err_msg_tag is not None else ""
                                 if any(
                                     keyword in err_text
                                     for keyword in ["Too many requests", "rate limit"]
                                 ):
                                     logger.warning(f"⚠️  FlexQuery error: {err_text}")
                                     continue  # retry with backoff
-                                if "Account is invalid" in err_text and params.get(
-                                    "acct"
-                                ):
+                                if "Account is invalid" in err_text and params.get("acct"):
                                     # Fallback: try again WITHOUT acct filter — many Flex setups are global
                                     logger.warning(
                                         "⚠️  Account-specific FlexQuery failed; retrying without acct filter"
@@ -335,14 +318,10 @@ class IBKRFlexQueryClient:
                         else:
                             # Non-XML or other HTTP failure
                             if response.status != 200:
-                                logger.error(
-                                    f"❌ HTTP error requesting report: {response.status}"
-                                )
+                                logger.error(f"❌ HTTP error requesting report: {response.status}")
                                 continue  # retry on non-200 as well
                             # Unknown payload but status OK – break
-                            logger.error(
-                                "❌ Unexpected response while requesting report"
-                            )
+                            logger.error("❌ Unexpected response while requesting report")
                             return None
             except Exception as e:
                 logger.error(f"❌ Exception requesting report: {e}")
@@ -352,17 +331,15 @@ class IBKRFlexQueryClient:
         return None
 
     async def _get_report(
-        self, reference_code: str, account_id: Optional[str] = None
-    ) -> Optional[str]:
+        self, reference_code: str, account_id: str | None = None
+    ) -> str | None:
         """Retrieve generated FlexQuery report."""
         url = f"{self.base_url}/GetStatement"
         params = {"t": self.token, "q": reference_code, "v": "3"}
         if account_id:
             params["acct"] = account_id
 
-        is_testing = (
-            os.environ.get("AXIOMFOLIO_TESTING") == "1" or "pytest" in sys.modules
-        )
+        is_testing = os.environ.get("AXIOMFOLIO_TESTING") == "1" or "pytest" in sys.modules
         max_attempts = 2 if is_testing else 6  # keep runs fast in tests
         for attempt in range(max_attempts):
             try:
@@ -412,9 +389,7 @@ class IBKRFlexQueryClient:
                                 await asyncio.sleep(10)
                                 continue
                         else:
-                            logger.error(
-                                f"❌ HTTP error getting report: {response.status}"
-                            )
+                            logger.error(f"❌ HTTP error getting report: {response.status}")
 
             except Exception as e:
                 logger.error(f"❌ Error getting report: {e}")
@@ -425,7 +400,7 @@ class IBKRFlexQueryClient:
         logger.error("❌ Report timeout - try again later")
         return None
 
-    def _parse_tax_lots(self, xml_data: str, account_id: str) -> List[Dict]:
+    def _parse_tax_lots(self, xml_data: str, account_id: str) -> list[dict]:
         """Parse tax lots from FlexQuery Trades section - REAL COST BASIS VERSION."""
         try:
             root = ET.fromstring(xml_data)
@@ -536,9 +511,7 @@ class IBKRFlexQueryClient:
                                 remaining_to_sell -= quantity_from_lot
 
                                 # Update positions totals
-                                cost_reduction = (
-                                    quantity_from_lot * lot["cost_per_share"]
-                                )
+                                cost_reduction = quantity_from_lot * lot["cost_per_share"]
                                 positions[symbol]["total_quantity"] -= quantity_from_lot
                                 positions[symbol]["total_cost"] -= cost_reduction
 
@@ -571,14 +544,10 @@ class IBKRFlexQueryClient:
                     # Calculate values for remaining quantity
                     remaining_qty = lot["remaining_quantity"]
                     remaining_cost = remaining_qty * lot["cost_per_share"]
-                    current_value = (
-                        remaining_qty * current_price if current_price > 0 else 0
-                    )
+                    current_value = remaining_qty * current_price if current_price > 0 else 0
                     unrealized_pnl = current_value - remaining_cost
                     unrealized_pnl_pct = (
-                        (unrealized_pnl / remaining_cost * 100)
-                        if remaining_cost > 0
-                        else 0
+                        (unrealized_pnl / remaining_cost * 100) if remaining_cost > 0 else 0
                     )
 
                     tax_lot = {
@@ -596,9 +565,7 @@ class IBKRFlexQueryClient:
                         # Back-compat: downstream expects a contract_type field
                         # (STK/OPT/etc). For reconstructed equity lots, map to asset_category.
                         "contract_type": position_data["asset_category"],
-                        "asset_category": position_data[
-                            "asset_category"
-                        ],  # Use actual asset type
+                        "asset_category": position_data["asset_category"],  # Use actual asset type
                         "source": "ibkr_trades_reconstructed",
                         "acquisition_date": lot["acquisition_date"],
                         "trade_id": lot["trade_id"],
@@ -619,7 +586,7 @@ class IBKRFlexQueryClient:
             traceback.print_exc()
             return []
 
-    def _parse_option_positions(self, xml_data: str, account_id: str) -> List[Dict]:
+    def _parse_option_positions(self, xml_data: str, account_id: str) -> list[dict]:
         """Parse option positions from FlexQuery OpenPositions section."""
         try:
             root = ET.fromstring(xml_data)
@@ -631,9 +598,7 @@ class IBKRFlexQueryClient:
                 logger.warning("No OpenPositions section found in FlexQuery XML")
                 return []
 
-            logger.info(
-                f"📊 Found {len(open_positions_section)} open positions in FlexQuery"
-            )
+            logger.info(f"📊 Found {len(open_positions_section)} open positions in FlexQuery")
 
             filter_account = account_id
             if _is_placeholder_account(account_id):
@@ -651,7 +616,9 @@ class IBKRFlexQueryClient:
                         continue
 
                     # Only process SUMMARY-level option positions (skip LOT rows)
-                    asset_category = position.get("assetCategory") or position.get("assetClass") or ""
+                    asset_category = (
+                        position.get("assetCategory") or position.get("assetClass") or ""
+                    )
                     if asset_category != "OPT":
                         continue
 
@@ -676,8 +643,14 @@ class IBKRFlexQueryClient:
                         qty_attr = position.get("quantity")
                     quantity = float(qty_attr or 0)
                     market_price = float(position.get("markPrice", "0") or 0)
-                    market_value = float(position.get("positionValue", "0") or position.get("marketValue", "0") or 0)
-                    unrealized_pnl = float(position.get("unrealizedPnl", "0") or position.get("fifoPnlUnrealized", "0") or 0)
+                    market_value = float(
+                        position.get("positionValue", "0") or position.get("marketValue", "0") or 0
+                    )
+                    unrealized_pnl = float(
+                        position.get("unrealizedPnl", "0")
+                        or position.get("fifoPnlUnrealized", "0")
+                        or 0
+                    )
                     realized_pnl = float(position.get("fifoPnlRealized", "0") or 0)
                     cost_basis_price = float(position.get("costBasisPrice", "0") or 0)
                     cost_basis_money = float(position.get("costBasisMoney", "0") or 0)
@@ -685,9 +658,7 @@ class IBKRFlexQueryClient:
                     # Parse expiry date
                     try:
                         expiry_datetime = (
-                            datetime.strptime(expiry_date, "%Y%m%d")
-                            if expiry_date
-                            else None
+                            datetime.strptime(expiry_date, "%Y%m%d") if expiry_date else None
                         )
                     except ValueError:
                         expiry_datetime = None
@@ -719,9 +690,7 @@ class IBKRFlexQueryClient:
                     logger.error(f"Error parsing option position: {e}")
                     continue
 
-            logger.info(
-                f"✅ Parsed {len(option_positions)} option positions from FlexQuery"
-            )
+            logger.info(f"✅ Parsed {len(option_positions)} option positions from FlexQuery")
             return option_positions
 
         except Exception as e:
@@ -731,11 +700,11 @@ class IBKRFlexQueryClient:
             traceback.print_exc()
             return []
 
-    def _parse_stock_positions(self, xml_data: str, account_id: str) -> List[Dict]:
+    def _parse_stock_positions(self, xml_data: str, account_id: str) -> list[dict]:
         """Parse stock/ETF positions from FlexQuery OpenPositions (SUMMARY level)."""
         try:
             root = ET.fromstring(xml_data)
-            positions: List[Dict] = []
+            positions: list[dict] = []
 
             section = root.find(".//OpenPositions")
             if section is None:
@@ -771,20 +740,22 @@ class IBKRFlexQueryClient:
                     if quantity == 0:
                         continue
 
-                    positions.append({
-                        "symbol": symbol,
-                        "description": pos.get("description", ""),
-                        "quantity": quantity,
-                        "cost_basis_price": float(pos.get("costBasisPrice", "0") or 0),
-                        "cost_basis_money": float(pos.get("costBasisMoney", "0") or 0),
-                        "mark_price": float(pos.get("markPrice", "0") or 0),
-                        "market_value": float(pos.get("positionValue", "0") or 0),
-                        "unrealized_pnl": float(pos.get("fifoPnlUnrealized", "0") or 0),
-                        "pct_of_nav": pos.get("percentOfNAV", ""),
-                        "currency": pos.get("currency", "USD"),
-                        "asset_category": cat,
-                        "side": pos.get("side", "Long"),
-                    })
+                    positions.append(
+                        {
+                            "symbol": symbol,
+                            "description": pos.get("description", ""),
+                            "quantity": quantity,
+                            "cost_basis_price": float(pos.get("costBasisPrice", "0") or 0),
+                            "cost_basis_money": float(pos.get("costBasisMoney", "0") or 0),
+                            "mark_price": float(pos.get("markPrice", "0") or 0),
+                            "market_value": float(pos.get("positionValue", "0") or 0),
+                            "unrealized_pnl": float(pos.get("fifoPnlUnrealized", "0") or 0),
+                            "pct_of_nav": pos.get("percentOfNAV", ""),
+                            "currency": pos.get("currency", "USD"),
+                            "asset_category": cat,
+                            "side": pos.get("side", "Long"),
+                        }
+                    )
                 except (ValueError, TypeError):
                     continue
 
@@ -795,7 +766,7 @@ class IBKRFlexQueryClient:
             logger.error("Error parsing stock positions: %s", e)
             return []
 
-    def _parse_tax_lots_from_lot_rows(self, xml_data: str, account_id: str) -> List[Dict]:
+    def _parse_tax_lots_from_lot_rows(self, xml_data: str, account_id: str) -> list[dict]:
         """Parse individual tax lots from OpenPositions LOT-level rows.
 
         IBKR FlexQuery returns LOT rows when the query is configured with
@@ -817,7 +788,7 @@ class IBKRFlexQueryClient:
                         filter_account = aid
                         break
 
-            lots: List[Dict] = []
+            lots: list[dict] = []
             for pos in section:
                 try:
                     pos_account = pos.get("accountId", "")
@@ -851,26 +822,30 @@ class IBKRFlexQueryClient:
                     acq_date = open_dt[:8] if open_dt and len(open_dt) >= 8 else None
                     holding_dt = pos.get("holdingPeriodDateTime", "")
 
-                    lots.append({
-                        "symbol": symbol,
-                        "quantity": quantity,
-                        "cost_per_share": cps,
-                        "cost_basis": cost,
-                        "current_price": mark,
-                        "market_value": mkt_val,
-                        "unrealized_pnl": pnl,
-                        "unrealized_pnl_pct": pnl_pct,
-                        "acquisition_date": acq_date,
-                        "holding_period_date": holding_dt[:8] if holding_dt and len(holding_dt) >= 8 else None,
-                        "order_id": pos.get("originatingOrderID", ""),
-                        "trade_id": pos.get("originatingTransactionID", ""),
-                        "contract_id": pos.get("conid", ""),
-                        "currency": pos.get("currency", "USD"),
-                        "asset_category": cat,
-                        "exchange": pos.get("listingExchange", ""),
-                        "fx_rate": float(pos.get("fxRateToBase", "1") or 1),
-                        "side": pos.get("side", "Long"),
-                    })
+                    lots.append(
+                        {
+                            "symbol": symbol,
+                            "quantity": quantity,
+                            "cost_per_share": cps,
+                            "cost_basis": cost,
+                            "current_price": mark,
+                            "market_value": mkt_val,
+                            "unrealized_pnl": pnl,
+                            "unrealized_pnl_pct": pnl_pct,
+                            "acquisition_date": acq_date,
+                            "holding_period_date": holding_dt[:8]
+                            if holding_dt and len(holding_dt) >= 8
+                            else None,
+                            "order_id": pos.get("originatingOrderID", ""),
+                            "trade_id": pos.get("originatingTransactionID", ""),
+                            "contract_id": pos.get("conid", ""),
+                            "currency": pos.get("currency", "USD"),
+                            "asset_category": cat,
+                            "exchange": pos.get("listingExchange", ""),
+                            "fx_rate": float(pos.get("fxRateToBase", "1") or 1),
+                            "side": pos.get("side", "Long"),
+                        }
+                    )
                 except (ValueError, TypeError):
                     continue
 
@@ -881,7 +856,7 @@ class IBKRFlexQueryClient:
             logger.error("Error parsing LOT-level tax lots: %s", e)
             return []
 
-    def _parse_option_exercises(self, xml_data: str, account_id: str) -> List[Dict]:
+    def _parse_option_exercises(self, xml_data: str, account_id: str) -> list[dict]:
         """Parse historical option exercises/assignments from FlexQuery OptionEAE section."""
         try:
             root = ET.fromstring(xml_data)
@@ -924,12 +899,8 @@ class IBKRFlexQueryClient:
                     multiplier = float(exercise.get("multiplier", "100"))
 
                     # Exercise/Assignment details
-                    exercised_quantity = int(
-                        float(exercise.get("exercisedQuantity", "0"))
-                    )
-                    assigned_quantity = int(
-                        float(exercise.get("assignedQuantity", "0"))
-                    )
+                    exercised_quantity = int(float(exercise.get("exercisedQuantity", "0")))
+                    assigned_quantity = int(float(exercise.get("assignedQuantity", "0")))
                     exercise_date = exercise.get("exerciseDate", "")
                     exercise_price = float(exercise.get("exercisePrice", "0"))
                     assignment_date = exercise.get("assignmentDate", "")
@@ -941,18 +912,14 @@ class IBKRFlexQueryClient:
                     # Parse dates
                     try:
                         expiry_datetime = (
-                            datetime.strptime(expiry_date, "%Y%m%d")
-                            if expiry_date
-                            else None
+                            datetime.strptime(expiry_date, "%Y%m%d") if expiry_date else None
                         )
                     except ValueError:
                         expiry_datetime = None
 
                     try:
                         exercise_datetime = (
-                            datetime.strptime(exercise_date, "%Y%m%d")
-                            if exercise_date
-                            else None
+                            datetime.strptime(exercise_date, "%Y%m%d") if exercise_date else None
                         )
                     except ValueError:
                         exercise_datetime = None
@@ -1008,7 +975,7 @@ class IBKRFlexQueryClient:
             traceback.print_exc()
             return []
 
-    def _parse_enhanced_instruments(self, xml_data: str, account_id: str) -> List[Dict]:
+    def _parse_enhanced_instruments(self, xml_data: str, account_id: str) -> list[dict]:
         """Parse comprehensive instrument data from all FlexQuery sections."""
         try:
             root = ET.fromstring(xml_data)
@@ -1024,7 +991,11 @@ class IBKRFlexQueryClient:
 
             for statement in flex_statements:
                 statement_account = statement.get("accountId", "")
-                if account_id and not _is_placeholder_account(account_id) and statement_account != account_id:
+                if (
+                    account_id
+                    and not _is_placeholder_account(account_id)
+                    and statement_account != account_id
+                ):
                     continue
 
                 # 1. Parse from OpenPositions (current holdings)
@@ -1050,21 +1021,15 @@ class IBKRFlexQueryClient:
                         if asset_category == "OPT":
                             instrument_data.update(
                                 {
-                                    "underlying_symbol": position.get(
-                                        "underlyingSymbol", ""
-                                    ),
+                                    "underlying_symbol": position.get("underlyingSymbol", ""),
                                     "option_type": (
-                                        "CALL"
-                                        if position.get("putCall") == "C"
-                                        else "PUT"
+                                        "CALL" if position.get("putCall") == "C" else "PUT"
                                     ),
                                     "strike_price": float(position.get("strike", 0)),
                                     "expiry_date": self._parse_flexquery_date(
                                         position.get("expiry")
                                     ),
-                                    "multiplier": float(
-                                        position.get("multiplier", 100)
-                                    ),
+                                    "multiplier": float(position.get("multiplier", 100)),
                                 }
                             )
 
@@ -1095,21 +1060,15 @@ class IBKRFlexQueryClient:
                             if asset_category == "OPT":
                                 instrument_data.update(
                                     {
-                                        "underlying_symbol": trade.get(
-                                            "underlyingSymbol", ""
-                                        ),
+                                        "underlying_symbol": trade.get("underlyingSymbol", ""),
                                         "option_type": (
-                                            "CALL"
-                                            if trade.get("putCall") == "C"
-                                            else "PUT"
+                                            "CALL" if trade.get("putCall") == "C" else "PUT"
                                         ),
                                         "strike_price": float(trade.get("strike", 0)),
                                         "expiry_date": self._parse_flexquery_date(
                                             trade.get("expiry")
                                         ),
-                                        "multiplier": float(
-                                            trade.get("multiplier", 100)
-                                        ),
+                                        "multiplier": float(trade.get("multiplier", 100)),
                                     }
                                 )
 
@@ -1118,9 +1077,7 @@ class IBKRFlexQueryClient:
                             # Enhance existing with trade data
                             existing = instruments[symbol]
                             if existing.get("name") == existing.get("symbol"):
-                                existing["name"] = trade.get(
-                                    "description", existing["name"]
-                                )
+                                existing["name"] = trade.get("description", existing["name"])
                             if existing.get("exchange") == "UNKNOWN":
                                 existing["exchange"] = trade.get("exchange", "UNKNOWN")
 
@@ -1139,16 +1096,12 @@ class IBKRFlexQueryClient:
                                 "asset_category": "OPT",
                                 "currency": exercise.get("currency", "USD"),
                                 "exchange": "CBOE",  # Default for options
-                                "underlying_symbol": exercise.get(
-                                    "underlyingSymbol", ""
-                                ),
+                                "underlying_symbol": exercise.get("underlyingSymbol", ""),
                                 "option_type": (
                                     "CALL" if exercise.get("putCall") == "C" else "PUT"
                                 ),
                                 "strike_price": float(exercise.get("strike", 0)),
-                                "expiry_date": self._parse_flexquery_date(
-                                    exercise.get("expiry")
-                                ),
+                                "expiry_date": self._parse_flexquery_date(exercise.get("expiry")),
                                 "multiplier": float(exercise.get("multiplier", 100)),
                                 "data_source": "ibkr_flexquery_exercises",
                             }
@@ -1222,9 +1175,7 @@ class IBKRFlexQueryClient:
                 enhanced_instrument = {
                     "symbol": symbol[:20] if symbol else "UNKNOWN",  # Max 20 chars
                     "name": (
-                        data.get("name", symbol)[:200]
-                        if data.get("name")
-                        else symbol[:200]
+                        data.get("name", symbol)[:200] if data.get("name") else symbol[:200]
                     ),  # Max 200 chars
                     "instrument_type": instrument_type,
                     "exchange": mapped_exchange,
@@ -1235,19 +1186,13 @@ class IBKRFlexQueryClient:
                         else None
                     ),  # Max 20 chars
                     "option_type": (
-                        data.get("option_type", "")[:4]
-                        if data.get("option_type")
-                        else None
+                        data.get("option_type", "")[:4] if data.get("option_type") else None
                     ),  # Max 4 chars
                     "strike_price": data.get("strike_price"),
                     "expiry_date": data.get("expiry_date"),
-                    "multiplier": data.get(
-                        "multiplier", 1 if instrument_type == "STOCK" else 100
-                    ),
+                    "multiplier": data.get("multiplier", 1 if instrument_type == "STOCK" else 100),
                     "pays_dividends": data.get("pays_dividends", False),
-                    "data_source": data.get("data_source", "ibkr_flexquery")[
-                        :50
-                    ],  # Max 50 chars
+                    "data_source": data.get("data_source", "ibkr_flexquery")[:50],  # Max 50 chars
                     "is_active": True,
                     "is_tradeable": True,
                 }
@@ -1264,7 +1209,7 @@ class IBKRFlexQueryClient:
             traceback.print_exc()
             return []
 
-    def get_setup_instructions(self) -> Dict[str, str]:
+    def get_setup_instructions(self) -> dict[str, str]:
         """Get setup instructions for FlexQuery configuration."""
         return {
             "step_1": "Go to IBKR Client Portal > Reports > Flex Queries",
@@ -1281,14 +1226,12 @@ class IBKRFlexQueryClient:
             "note": "FlexQuery provides OFFICIAL IBKR tax lot data, dividends, trade history, and transfers",
         }
 
-    def _parse_trades_from_xml(
-        self, xml_data: str, account_id: str
-    ) -> Dict[str, List[Dict]]:
+    def _parse_trades_from_xml(self, xml_data: str, account_id: str) -> dict[str, list[dict]]:
         """Parse trades from FlexQuery XML, separated by levelOfDetail.
 
         Returns dict with keys: trades, closed_lots, wash_sales.
         """
-        empty: Dict[str, List[Dict]] = {
+        empty: dict[str, list[dict]] = {
             "trades": [],
             "closed_lots": [],
             "wash_sales": [],
@@ -1301,9 +1244,9 @@ class IBKRFlexQueryClient:
                 logger.warning("No Trades section found in FlexQuery XML")
                 return empty
 
-            trades: List[Dict] = []
-            closed_lots: List[Dict] = []
-            wash_sales: List[Dict] = []
+            trades: list[dict] = []
+            closed_lots: list[dict] = []
+            wash_sales: list[dict] = []
 
             for trade in trades_section:
                 try:
@@ -1319,70 +1262,40 @@ class IBKRFlexQueryClient:
 
                     base = {
                         "symbol": symbol,
-                        "side": "BUY"
-                        if trade.get("buySell") == "BUY"
-                        else "SELL",
+                        "side": "BUY" if trade.get("buySell") == "BUY" else "SELL",
                         "quantity": abs(float(trade.get("quantity", 0))),
                         "price": float(trade.get("tradePrice", 0)),
-                        "total_value": abs(
-                            float(trade.get("proceeds", 0))
-                        ),
-                        "commission": abs(
-                            float(trade.get("ibCommission", 0))
-                        ),
-                        "fees": abs(
-                            float(trade.get("otherFees", 0) or 0)
-                        ),
+                        "total_value": abs(float(trade.get("proceeds", 0))),
+                        "commission": abs(float(trade.get("ibCommission", 0))),
+                        "fees": abs(float(trade.get("otherFees", 0) or 0)),
                         "execution_id": trade.get("tradeID"),
-                        "execution_time": self._parse_flexquery_date(
-                            trade.get("tradeDate")
-                        ),
-                        "order_time": self._parse_flexquery_date(
-                            trade.get("orderTime")
-                        ),
+                        "execution_time": self._parse_flexquery_date(trade.get("tradeDate")),
+                        "order_time": self._parse_flexquery_date(trade.get("orderTime")),
                         "currency": trade.get("currency", "USD"),
                         "exchange": trade.get("exchange", ""),
-                        "asset_category": trade.get(
-                            "assetCategory", "STK"
-                        ),
+                        "asset_category": trade.get("assetCategory", "STK"),
                         "order_id": trade.get("ibOrderID", ""),
                         "settlement_date": self._parse_flexquery_date(
                             trade.get("settleDateTarget")
                         ),
-                        "realized_pnl": float(
-                            trade.get("fifoPnlRealized", 0) or 0
-                        ),
+                        "realized_pnl": float(trade.get("fifoPnlRealized", 0) or 0),
                         "is_opening": open_close == "O",
                         "notes": trade.get("notes", ""),
                         "conid": trade.get("conid", ""),
-                        "multiplier": float(
-                            trade.get("multiplier", 1) or 1
-                        ),
+                        "multiplier": float(trade.get("multiplier", 1) or 1),
                         "level_of_detail": level or "EXECUTION",
                     }
 
                     if level == "CLOSED_LOT":
-                        open_dt = self._parse_flexquery_date(
-                            trade.get("openDateTime")
-                        )
-                        holding_dt = self._parse_flexquery_date(
-                            trade.get("holdingPeriodDateTime")
-                        )
-                        when_realized = self._parse_flexquery_date(
-                            trade.get("whenRealized")
-                        )
+                        open_dt = self._parse_flexquery_date(trade.get("openDateTime"))
+                        holding_dt = self._parse_flexquery_date(trade.get("holdingPeriodDateTime"))
+                        when_realized = self._parse_flexquery_date(trade.get("whenRealized"))
                         close_dt = base["execution_time"] or when_realized
                         lot_open = open_dt or holding_dt
-                        holding_days = (
-                            (close_dt - lot_open).days
-                            if close_dt and lot_open
-                            else None
-                        )
+                        holding_days = (close_dt - lot_open).days if close_dt and lot_open else None
                         base.update(
                             {
-                                "cost_basis": float(
-                                    trade.get("costBasis", 0) or 0
-                                ),
+                                "cost_basis": float(trade.get("costBasis", 0) or 0),
                                 "open_date": lot_open,
                                 "close_date": close_dt,
                                 "when_realized": when_realized,
@@ -1390,12 +1303,8 @@ class IBKRFlexQueryClient:
                                 "is_long_term": holding_days > 365
                                 if holding_days is not None
                                 else None,
-                                "orig_trade_price": float(
-                                    trade.get("origTradePrice", 0) or 0
-                                ),
-                                "orig_trade_id": trade.get(
-                                    "origTradeID", ""
-                                ),
+                                "orig_trade_price": float(trade.get("origTradePrice", 0) or 0),
+                                "orig_trade_id": trade.get("origTradeID", ""),
                             }
                         )
                         closed_lots.append(base)
@@ -1403,12 +1312,8 @@ class IBKRFlexQueryClient:
                     elif level == "WASH_SALE":
                         base.update(
                             {
-                                "cost_basis": float(
-                                    trade.get("costBasis", 0) or 0
-                                ),
-                                "wash_sale_loss": float(
-                                    trade.get("fifoPnlRealized", 0) or 0
-                                ),
+                                "cost_basis": float(trade.get("costBasis", 0) or 0),
+                                "wash_sale_loss": float(trade.get("fifoPnlRealized", 0) or 0),
                             }
                         )
                         wash_sales.append(base)
@@ -1436,7 +1341,7 @@ class IBKRFlexQueryClient:
             logger.error(f"Error parsing trades from XML: {e}")
             return empty
 
-    def _parse_flexquery_date(self, date_str: str) -> Optional[datetime]:
+    def _parse_flexquery_date(self, date_str: str) -> datetime | None:
         """Parse FlexQuery date string to datetime object."""
         if not date_str:
             return None
@@ -1461,15 +1366,13 @@ class IBKRFlexQueryClient:
             logger.error(f"Error parsing date '{date_str}': {e}")
             return None  # Return None instead of current time for errors
 
-    def _parse_cash_transactions(self, xml_data: str, account_id: str) -> List[Dict]:
+    def _parse_cash_transactions(self, xml_data: str, account_id: str) -> list[dict]:
         """Parse cash transactions including dividends from FlexQuery CashTransactions section."""
         try:
             root = ET.fromstring(xml_data)
             cash_transactions = []
 
-            logger.info(
-                "📊 Parsing cash transactions from FlexQuery CashTransactions section"
-            )
+            logger.info("📊 Parsing cash transactions from FlexQuery CashTransactions section")
 
             flex_statements = root.find(".//FlexStatements")
             if flex_statements is None:
@@ -1478,7 +1381,11 @@ class IBKRFlexQueryClient:
 
             for statement in flex_statements:
                 statement_account = statement.get("accountId", "")
-                if account_id and not _is_placeholder_account(account_id) and statement_account != account_id:
+                if (
+                    account_id
+                    and not _is_placeholder_account(account_id)
+                    and statement_account != account_id
+                ):
                     continue
 
                 cash_tx_section = statement.find("CashTransactions")
@@ -1505,9 +1412,7 @@ class IBKRFlexQueryClient:
                                 "underlying_symbol": tx.get("underlyingSymbol", ""),
                                 "multiplier": float(tx.get("multiplier", 1)),
                                 "strike_price": (
-                                    float(tx.get("strike", 0))
-                                    if tx.get("strike")
-                                    else None
+                                    float(tx.get("strike", 0)) if tx.get("strike") else None
                                 ),
                                 "expiry_date": (
                                     self._parse_flexquery_date(tx.get("expiry"))
@@ -1517,21 +1422,19 @@ class IBKRFlexQueryClient:
                                 "option_type": (
                                     "CALL"
                                     if tx.get("putCall") == "C"
-                                    else "PUT" if tx.get("putCall") == "P" else None
+                                    else "PUT"
+                                    if tx.get("putCall") == "P"
+                                    else None
                                 ),
                                 "transaction_type": tx_type,
                                 "action": tx.get("buySell", ""),
                                 "quantity": float(tx.get("quantity", 0)),
                                 "trade_price": (
-                                    float(tx.get("tradePrice", 0))
-                                    if tx.get("tradePrice")
-                                    else None
+                                    float(tx.get("tradePrice", 0)) if tx.get("tradePrice") else None
                                 ),
                                 "amount": float(tx.get("amount", 0)),
                                 "proceeds": (
-                                    float(tx.get("proceeds", 0))
-                                    if tx.get("proceeds")
-                                    else None
+                                    float(tx.get("proceeds", 0)) if tx.get("proceeds") else None
                                 ),
                                 "commission": float(tx.get("commission", 0)),
                                 "brokerage_commission": (
@@ -1550,32 +1453,20 @@ class IBKRFlexQueryClient:
                                     else None
                                 ),
                                 "other_fees": (
-                                    float(tx.get("otherFees", 0))
-                                    if tx.get("otherFees")
-                                    else None
+                                    float(tx.get("otherFees", 0)) if tx.get("otherFees") else None
                                 ),
                                 "net_amount": float(tx.get("netCash", 0)),
                                 "currency": tx.get("currency", "USD"),
                                 "fx_rate_to_base": float(tx.get("fxRateToBase", 1)),
                                 "asset_category": tx.get("assetCategory", ""),
                                 "sub_category": tx.get("subCategory", ""),
-                                "transaction_date": self._parse_flexquery_date(
-                                    tx.get("dateTime")
-                                ),
-                                "trade_date": self._parse_flexquery_date(
-                                    tx.get("tradeDate")
-                                ),
+                                "transaction_date": self._parse_flexquery_date(tx.get("dateTime")),
+                                "trade_date": self._parse_flexquery_date(tx.get("tradeDate")),
                                 "settlement_date_target": self._parse_flexquery_date(
                                     tx.get("settleDateTarget")
                                 ),
-                                "settlement_date": self._parse_flexquery_date(
-                                    tx.get("settleDate")
-                                ),
-                                "taxes": (
-                                    float(tx.get("taxes", 0))
-                                    if tx.get("taxes")
-                                    else None
-                                ),
+                                "settlement_date": self._parse_flexquery_date(tx.get("settleDate")),
+                                "taxes": (float(tx.get("taxes", 0)) if tx.get("taxes") else None),
                                 "taxable_amount": (
                                     float(tx.get("taxableAmount", 0))
                                     if tx.get("taxableAmount")
@@ -1586,9 +1477,7 @@ class IBKRFlexQueryClient:
                                     if tx.get("taxableAmountInBase")
                                     else None
                                 ),
-                                "corporate_action_flag": tx.get(
-                                    "corporateActionFlag", ""
-                                ),
+                                "corporate_action_flag": tx.get("corporateActionFlag", ""),
                                 "corporate_action_id": tx.get("corporateActionID", ""),
                                 "source": "ibkr_flexquery_cash",
                                 "data_source": "ibkr_flexquery",
@@ -1600,9 +1489,7 @@ class IBKRFlexQueryClient:
                             logger.error(f"Error parsing cash transaction: {e}")
                             continue
 
-            logger.info(
-                f"✅ Parsed {len(cash_transactions)} cash transactions from FlexQuery"
-            )
+            logger.info(f"✅ Parsed {len(cash_transactions)} cash transactions from FlexQuery")
             return cash_transactions
 
         except Exception as e:
@@ -1612,15 +1499,13 @@ class IBKRFlexQueryClient:
             traceback.print_exc()
             return []
 
-    def _parse_account_information(self, xml_data: str, account_id: str) -> List[Dict]:
+    def _parse_account_information(self, xml_data: str, account_id: str) -> list[dict]:
         """Parse account balances from FlexQuery AccountInformation section."""
         try:
             root = ET.fromstring(xml_data)
             account_balances = []
 
-            logger.info(
-                "📊 Parsing account information from FlexQuery AccountInformation section"
-            )
+            logger.info("📊 Parsing account information from FlexQuery AccountInformation section")
 
             flex_statements = root.find(".//FlexStatements")
             if flex_statements is None:
@@ -1629,7 +1514,11 @@ class IBKRFlexQueryClient:
 
             for statement in flex_statements:
                 statement_account = statement.get("accountId", "")
-                if account_id and not _is_placeholder_account(account_id) and statement_account != account_id:
+                if (
+                    account_id
+                    and not _is_placeholder_account(account_id)
+                    and statement_account != account_id
+                ):
                     continue
 
                 # Get account info from statement attributes
@@ -1649,9 +1538,7 @@ class IBKRFlexQueryClient:
                                 ),
                                 "balance_type": "DAILY_SNAPSHOT",
                                 "base_currency": info.get("baseCurrency", "USD"),
-                                "total_cash_value": float(
-                                    info.get("totalCashValue", 0)
-                                ),
+                                "total_cash_value": float(info.get("totalCashValue", 0)),
                                 "settled_cash": (
                                     float(info.get("settledCash", 0))
                                     if info.get("settledCash")
@@ -1678,9 +1565,7 @@ class IBKRFlexQueryClient:
                                     else None
                                 ),
                                 "equity": (
-                                    float(info.get("equity", 0))
-                                    if info.get("equity")
-                                    else None
+                                    float(info.get("equity", 0)) if info.get("equity") else None
                                 ),
                                 "previous_day_equity": (
                                     float(info.get("previousDayEquity", 0))
@@ -1707,11 +1592,7 @@ class IBKRFlexQueryClient:
                                     if info.get("regTEquity")
                                     else None
                                 ),
-                                "sma": (
-                                    float(info.get("sma", 0))
-                                    if info.get("sma")
-                                    else None
-                                ),
+                                "sma": (float(info.get("sma", 0)) if info.get("sma") else None),
                                 "unrealized_pnl": (
                                     float(info.get("unrealizedPnl", 0))
                                     if info.get("unrealizedPnl")
@@ -1723,19 +1604,13 @@ class IBKRFlexQueryClient:
                                     else None
                                 ),
                                 "daily_pnl": (
-                                    float(info.get("dailyPnl", 0))
-                                    if info.get("dailyPnl")
-                                    else None
+                                    float(info.get("dailyPnl", 0)) if info.get("dailyPnl") else None
                                 ),
                                 "cushion": (
-                                    float(info.get("cushion", 0))
-                                    if info.get("cushion")
-                                    else None
+                                    float(info.get("cushion", 0)) if info.get("cushion") else None
                                 ),
                                 "leverage": (
-                                    float(info.get("leverage", 0))
-                                    if info.get("leverage")
-                                    else None
+                                    float(info.get("leverage", 0)) if info.get("leverage") else None
                                 ),
                                 "lookahead_next_change": (
                                     float(info.get("lookAheadNextChange", 0))
@@ -1791,9 +1666,7 @@ class IBKRFlexQueryClient:
                             logger.error(f"Error parsing account information: {e}")
                             continue
 
-            logger.info(
-                f"✅ Parsed {len(account_balances)} account balance records from FlexQuery"
-            )
+            logger.info(f"✅ Parsed {len(account_balances)} account balance records from FlexQuery")
             return account_balances
 
         except Exception as e:
@@ -1803,15 +1676,13 @@ class IBKRFlexQueryClient:
             traceback.print_exc()
             return []
 
-    def _parse_interest_accruals(self, xml_data: str, account_id: str) -> List[Dict]:
+    def _parse_interest_accruals(self, xml_data: str, account_id: str) -> list[dict]:
         """Parse margin interest from FlexQuery InterestAccruals section."""
         try:
             root = ET.fromstring(xml_data)
             interest_accruals = []
 
-            logger.info(
-                "📊 Parsing interest accruals from FlexQuery InterestAccruals section"
-            )
+            logger.info("📊 Parsing interest accruals from FlexQuery InterestAccruals section")
 
             flex_statements = root.find(".//FlexStatements")
             if flex_statements is None:
@@ -1820,7 +1691,11 @@ class IBKRFlexQueryClient:
 
             for statement in flex_statements:
                 statement_account = statement.get("accountId", "")
-                if account_id and not _is_placeholder_account(account_id) and statement_account != account_id:
+                if (
+                    account_id
+                    and not _is_placeholder_account(account_id)
+                    and statement_account != account_id
+                ):
                     continue
 
                 interest_section = statement.find("InterestAccruals")
@@ -1830,30 +1705,20 @@ class IBKRFlexQueryClient:
                             interest_data = {
                                 "broker_account_id": None,  # Will be set by sync service
                                 "account_alias": interest.get("accountAlias", ""),
-                                "from_date": self._parse_flexquery_date(
-                                    interest.get("fromDate")
-                                ),
-                                "to_date": self._parse_flexquery_date(
-                                    interest.get("toDate")
-                                ),
+                                "from_date": self._parse_flexquery_date(interest.get("fromDate")),
+                                "to_date": self._parse_flexquery_date(interest.get("toDate")),
                                 "starting_balance": float(
                                     interest.get("startingAccrualBalance", 0)
                                 ),
-                                "interest_accrued": float(
-                                    interest.get("interestAccrued", 0)
-                                ),
+                                "interest_accrued": float(interest.get("interestAccrued", 0)),
                                 "accrual_reversal": (
                                     float(interest.get("accrualReversal", 0))
                                     if interest.get("accrualReversal")
                                     else None
                                 ),
-                                "ending_balance": float(
-                                    interest.get("endingAccrualBalance", 0)
-                                ),
+                                "ending_balance": float(interest.get("endingAccrualBalance", 0)),
                                 "interest_rate": (
-                                    float(interest.get("rate", 0))
-                                    if interest.get("rate")
-                                    else None
+                                    float(interest.get("rate", 0)) if interest.get("rate") else None
                                 ),
                                 "daily_rate": (
                                     float(interest.get("dailyRate", 0))
@@ -1861,9 +1726,7 @@ class IBKRFlexQueryClient:
                                     else None
                                 ),
                                 "currency": interest.get("currency", "USD"),
-                                "fx_rate_to_base": float(
-                                    interest.get("fxRateToBase", 1)
-                                ),
+                                "fx_rate_to_base": float(interest.get("fxRateToBase", 1)),
                                 "interest_type": interest.get("type", "MARGIN"),
                                 "description": interest.get("description", ""),
                                 "data_source": "ibkr_flexquery_interest",
@@ -1888,7 +1751,7 @@ class IBKRFlexQueryClient:
             traceback.print_exc()
             return []
 
-    def _parse_transfers(self, xml_data: str, account_id: str) -> List[Dict]:
+    def _parse_transfers(self, xml_data: str, account_id: str) -> list[dict]:
         """Parse transfers from FlexQuery Transfers section."""
         try:
             root = ET.fromstring(xml_data)
@@ -1903,7 +1766,11 @@ class IBKRFlexQueryClient:
 
             for statement in flex_statements:
                 statement_account = statement.get("accountId", "")
-                if account_id and not _is_placeholder_account(account_id) and statement_account != account_id:
+                if (
+                    account_id
+                    and not _is_placeholder_account(account_id)
+                    and statement_account != account_id
+                ):
                     continue
 
                 transfers_section = statement.find("Transfers")
@@ -1914,9 +1781,7 @@ class IBKRFlexQueryClient:
                                 "broker_account_id": None,  # Will be set by sync service
                                 "transaction_id": transfer.get("transactionID", ""),
                                 "client_reference": transfer.get("clientReference", ""),
-                                "transfer_date": self._parse_flexquery_date(
-                                    transfer.get("date")
-                                ),
+                                "transfer_date": self._parse_flexquery_date(transfer.get("date")),
                                 "settle_date": self._parse_flexquery_date(
                                     transfer.get("settleDate")
                                 ),
@@ -1959,16 +1824,12 @@ class IBKRFlexQueryClient:
                                     else None
                                 ),
                                 "currency": transfer.get("currency", "USD"),
-                                "fx_rate_to_base": float(
-                                    transfer.get("fxRateToBase", 1)
-                                ),
+                                "fx_rate_to_base": float(transfer.get("fxRateToBase", 1)),
                                 "delivery_type": transfer.get("deliveryType", ""),
                                 "account_alias": transfer.get("accountAlias", ""),
                                 "model": transfer.get("model", ""),
                                 "notes": transfer.get("notes", ""),
-                                "external_reference": transfer.get(
-                                    "externalReference", ""
-                                ),
+                                "external_reference": transfer.get("externalReference", ""),
                                 "data_source": "ibkr_flexquery_transfers",
                                 "account_id": account_id,
                             }
@@ -1989,7 +1850,7 @@ class IBKRFlexQueryClient:
             traceback.print_exc()
             return []
 
-    async def get_cash_transactions(self, account_id: str) -> List[Dict]:
+    async def get_cash_transactions(self, account_id: str) -> list[dict]:
         """Get cash transactions including dividends from FlexQuery."""
         try:
             raw_xml = await self.get_full_report(account_id)
@@ -2002,7 +1863,7 @@ class IBKRFlexQueryClient:
             logger.error(f"❌ Error getting cash transactions: {e}")
             return []
 
-    async def get_account_balances(self, account_id: str) -> List[Dict]:
+    async def get_account_balances(self, account_id: str) -> list[dict]:
         """Get account balance information from FlexQuery."""
         try:
             raw_xml = await self.get_full_report(account_id)
@@ -2015,7 +1876,7 @@ class IBKRFlexQueryClient:
             logger.error(f"❌ Error getting account balances: {e}")
             return []
 
-    async def get_margin_interest(self, account_id: str) -> List[Dict]:
+    async def get_margin_interest(self, account_id: str) -> list[dict]:
         """Get margin interest accruals from FlexQuery."""
         try:
             raw_xml = await self.get_full_report(account_id)
@@ -2028,7 +1889,7 @@ class IBKRFlexQueryClient:
             logger.error(f"❌ Error getting margin interest: {e}")
             return []
 
-    async def get_transfers(self, account_id: str) -> List[Dict]:
+    async def get_transfers(self, account_id: str) -> list[dict]:
         """Get transfer records from FlexQuery."""
         try:
             raw_xml = await self.get_full_report(account_id)

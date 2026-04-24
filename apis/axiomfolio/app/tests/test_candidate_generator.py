@@ -11,15 +11,14 @@ Covers:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from collections.abc import Sequence
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import List, Sequence
 
 import pytest
 from sqlalchemy import event
 
 import app.services.picks.generators  # noqa: F401
-from app.services.picks.generators import stage2a_rs_strong_kell  # noqa: F401
 from app.models.market_data import MarketRegime, MarketSnapshot
 from app.models.picks import Candidate, CandidateQueueState, PickAction
 from app.services.picks.candidate_generator import (
@@ -29,6 +28,7 @@ from app.services.picks.candidate_generator import (
     registered_generators,
     run_all_generators,
 )
+from app.services.picks.generators import stage2a_rs_strong_kell  # noqa: F401
 from app.services.picks.generators.stage2a_rs_strong import (
     Stage2ARsStrongGenerator,
     Stage2AThresholds,
@@ -36,7 +36,7 @@ from app.services.picks.generators.stage2a_rs_strong import (
 
 
 def _seed_regime(db_session, *, code: str = "R1") -> None:
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
     db_session.add(
         MarketRegime(
             as_of_date=now,
@@ -54,7 +54,7 @@ def _snap_for_pick_quality(
     stage_label: str = "2A",
     rs: float = 85.0,
 ) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     price = 125.50
     vol = 500_000.0
     db_session.add(
@@ -245,7 +245,7 @@ class TestPersistCandidates:
         for sym in ("AAA", "BBB", "CCC", "DDD", "EEE"):
             _snap_for_pick_quality(db_session, symbol=sym)
 
-        snapshot_selects: List[str] = []
+        snapshot_selects: list[str] = []
 
         def _count(
             conn: object,
@@ -302,18 +302,14 @@ class _OkGen(CandidateGenerator):
     version = "v0"
 
     def generate(self, db):
-        return [
-            GeneratedCandidate(symbol="ONE", action_suggestion=PickAction.BUY)
-        ]
+        return [GeneratedCandidate(symbol="ONE", action_suggestion=PickAction.BUY)]
 
 
 class TestRunAllGenerators:
     def test_failure_in_one_does_not_block_others(self, db_session):
         _seed_regime(db_session)
         _snap_for_pick_quality(db_session, symbol="ONE")
-        reports = run_all_generators(
-            db_session, only=("test_raising", "test_ok")
-        )
+        reports = run_all_generators(db_session, only=("test_raising", "test_ok"))
         by_name = {r.generator: r for r in reports}
         assert by_name["test_raising"].error is not None
         assert by_name["test_raising"].created == 0
@@ -345,7 +341,7 @@ def _snap(
     is_valid: bool = True,
     analysis_type: str = "technical_snapshot",
 ) -> MarketSnapshot:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     row = MarketSnapshot(
         symbol=symbol,
         analysis_type=analysis_type,
@@ -445,7 +441,7 @@ class TestStage2ARsStrong:
     def test_picks_only_latest_snapshot_per_symbol(self, db_session):
         s1 = _snap(db_session, symbol="DUP", rs=80.0)
         # Older, higher-RS snapshot should be ignored in favour of latest
-        s1.analysis_timestamp = datetime.now(timezone.utc) - timedelta(days=5)
+        s1.analysis_timestamp = datetime.now(UTC) - timedelta(days=5)
         db_session.flush()
         _snap(db_session, symbol="DUP", rs=72.0, ext=2.0)
         gen = Stage2ARsStrongGenerator()

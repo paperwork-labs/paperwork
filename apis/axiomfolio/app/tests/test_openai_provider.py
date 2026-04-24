@@ -16,7 +16,7 @@ We do not hit the network. A small ``_FakeSession`` stands in for
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Optional
+from typing import Any
 
 import pytest
 
@@ -27,15 +27,14 @@ from app.services.agent.anomaly_explainer import (
     AnomalySeverity,
     LLMProviderError,
 )
-from app.services.agent.anomaly_explainer.provider import (
-    LLMProviderRateLimitedError,
-)
 from app.services.agent.anomaly_explainer.openai_provider import (
     DEFAULT_MODEL,
     OPENAI_API_URL,
     OpenAIChatProvider,
 )
-
+from app.services.agent.anomaly_explainer.provider import (
+    LLMProviderRateLimitedError,
+)
 
 # ---------------------------------------------------------------------------
 # Fake session: matches the requests.post(...) signature we use.
@@ -43,28 +42,33 @@ from app.services.agent.anomaly_explainer.openai_provider import (
 
 
 class _FakeResponse:
-    def __init__(self, status_code: int, payload: Optional[Dict[str, Any]] = None,
-                 text: str = "", json_raises: bool = False,
-                 headers: Optional[Dict[str, str]] = None) -> None:
+    def __init__(
+        self,
+        status_code: int,
+        payload: dict[str, Any] | None = None,
+        text: str = "",
+        json_raises: bool = False,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         self.status_code = status_code
         self._payload = payload
         self.text = text or json.dumps(payload or {})
         self._json_raises = json_raises
         self.headers = headers or {}
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         if self._json_raises:
             raise ValueError("not json")
         return self._payload or {}
 
 
 class _FakeSession:
-    def __init__(self, response: _FakeResponse, raise_on_post: Optional[Exception] = None):
+    def __init__(self, response: _FakeResponse, raise_on_post: Exception | None = None):
         self.response = response
         self.raise_on_post = raise_on_post
-        self.last_call: Optional[Dict[str, Any]] = None
+        self.last_call: dict[str, Any] | None = None
 
-    def post(self, url, *, headers, json, timeout):  # noqa: A002 -- shadowing 'json' is the requests signature
+    def post(self, url, *, headers, json, timeout):
         if self.raise_on_post:
             raise self.raise_on_post
         self.last_call = {
@@ -205,9 +209,7 @@ class TestCompleteJsonErrors:
             p.complete_json("s", "u")
 
     def test_empty_content_raises(self):
-        sess = _FakeSession(
-            _FakeResponse(200, {"choices": [{"message": {"content": ""}}]})
-        )
+        sess = _FakeSession(_FakeResponse(200, {"choices": [{"message": {"content": ""}}]}))
         p = OpenAIChatProvider(api_key="x", session=sess)
         with pytest.raises(LLMProviderError, match="no choices"):
             p.complete_json("s", "u")

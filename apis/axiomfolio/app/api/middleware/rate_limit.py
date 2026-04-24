@@ -12,9 +12,9 @@ from __future__ import annotations
 import logging
 import re
 import secrets
-from typing import Iterable, Optional
+from collections.abc import Iterable
 
-from fastapi import Request, Response
+from fastapi import Request
 from sqlalchemy.orm import Session
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -27,6 +27,8 @@ from app.models.user import User
 from app.services.multitenant.rate_limiter import (
     RateLimitDecision,
     TenantRateLimiter,
+)
+from app.services.multitenant.rate_limiter import (
     rate_limiter as default_rate_limiter,
 )
 
@@ -58,7 +60,7 @@ def _normalise_endpoint(path: str) -> str:
     return re.sub(r"/\d+", "/:id", path)
 
 
-def _resolve_user_id(request: Request, db: Session) -> Optional[int]:
+def _resolve_user_id(request: Request, db: Session) -> int | None:
     """Best-effort user resolution. Returns ``None`` for anonymous calls.
 
     Order:
@@ -68,9 +70,7 @@ def _resolve_user_id(request: Request, db: Session) -> Optional[int]:
          (with a deprecation warning).
     """
     # 1. JWT
-    auth = request.headers.get("authorization") or request.headers.get(
-        "Authorization"
-    )
+    auth = request.headers.get("authorization") or request.headers.get("Authorization")
     if auth and auth.lower().startswith("bearer "):
         token = auth.split(" ", 1)[1].strip()
         try:
@@ -80,25 +80,19 @@ def _resolve_user_id(request: Request, db: Session) -> Optional[int]:
         if payload:
             username = payload.get("sub")
             if username:
-                user = (
-                    db.query(User.id).filter(User.username == username).first()
-                )
+                user = db.query(User.id).filter(User.username == username).first()
                 if user:
                     return int(user[0])
 
     # 2 & 3. Brain M2M
-    brain_key = request.headers.get("x-brain-api-key") or request.headers.get(
-        "X-Brain-Api-Key"
-    )
+    brain_key = request.headers.get("x-brain-api-key") or request.headers.get("X-Brain-Api-Key")
     if brain_key and settings.BRAIN_API_KEY:
         provided = brain_key.encode("utf-8")
         expected = settings.BRAIN_API_KEY.encode("utf-8")
-        if len(provided) == len(expected) and secrets.compare_digest(
-            provided, expected
-        ):
-            override = request.headers.get(
-                "x-axiom-user-id"
-            ) or request.headers.get("X-Axiom-User-Id")
+        if len(provided) == len(expected) and secrets.compare_digest(provided, expected):
+            override = request.headers.get("x-axiom-user-id") or request.headers.get(
+                "X-Axiom-User-Id"
+            )
             if override:
                 try:
                     return int(override)
@@ -124,8 +118,8 @@ class TenantRateLimitMiddleware(BaseHTTPMiddleware):
     def __init__(
         self,
         app: ASGIApp,
-        limiter: Optional[TenantRateLimiter] = None,
-        allowlist: Optional[Iterable[re.Pattern[str]]] = None,
+        limiter: TenantRateLimiter | None = None,
+        allowlist: Iterable[re.Pattern[str]] | None = None,
     ) -> None:
         super().__init__(app)
         self._limiter = limiter or default_rate_limiter

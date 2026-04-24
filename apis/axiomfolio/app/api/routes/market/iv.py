@@ -13,7 +13,7 @@ The heavy lift -- daily ingest, rank math -- lives in
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -34,7 +34,7 @@ router = APIRouter(tags=["iv"])
 _RANK_READY_SAMPLES = 252
 
 
-def _iv_coverage_for_symbol(symbol: str, db: Session) -> Dict[str, Any]:
+def _iv_coverage_for_symbol(symbol: str, db: Session) -> dict[str, Any]:
     sym = (symbol or "").upper().strip()
     if not sym:
         raise HTTPException(status_code=400, detail="symbol required")
@@ -56,9 +56,9 @@ def _iv_coverage_for_symbol(symbol: str, db: Session) -> Dict[str, Any]:
         .first()
     )
 
-    iv_rank: Optional[float] = None
+    iv_rank: float | None = None
     has_rank = False
-    as_of: Optional[str] = None
+    as_of: str | None = None
     if latest is not None:
         if latest.iv_rank_252 is not None:
             iv_rank = float(latest.iv_rank_252)
@@ -88,7 +88,7 @@ def get_iv_coverage(
     symbol: str,
     db: Session = Depends(get_db),
     viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return IV-rank / ramping state for one symbol."""
     try:
         return _iv_coverage_for_symbol(symbol, db)
@@ -104,15 +104,15 @@ def batch_iv_coverage(
     symbols: str = Query(..., description="Comma-separated list of symbols"),
     db: Session = Depends(get_db),
     viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Batch IV-coverage lookup for a watchlist / scan result page."""
-    sym_list: List[str] = [s.strip().upper() for s in symbols.split(",") if s.strip()]
+    sym_list: list[str] = [s.strip().upper() for s in symbols.split(",") if s.strip()]
     if not sym_list:
         raise HTTPException(status_code=400, detail="symbols required")
     if len(sym_list) > 500:
         raise HTTPException(status_code=400, detail="too many symbols (max 500)")
 
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for sym in sym_list:
         try:
             out.append(_iv_coverage_for_symbol(sym, db))

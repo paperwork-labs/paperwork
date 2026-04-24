@@ -6,14 +6,14 @@ Endpoints for market regime state and history.
 """
 
 from datetime import date, datetime, timedelta
-from typing import Dict, Any
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
-from sqlalchemy.orm import Session
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from app.database import get_db
 from app.api.dependencies import get_market_data_viewer
+from app.database import get_db
 from app.models.market_data import MarketRegime
 from app.models.user import User
 
@@ -24,7 +24,7 @@ router = APIRouter(prefix="/regime", tags=["regime"])
 async def get_current_regime(
     db: Session = Depends(get_db),
     _viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get the most recent market regime state."""
     from app.services.market.regime_engine import get_current_regime as _get_regime
 
@@ -61,7 +61,7 @@ async def get_regime_history(
     days: int = Query(90, ge=1, le=365),
     db: Session = Depends(get_db),
     _viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get regime history for the last N days."""
     # MarketRegime.as_of_date is DateTime (see models/market_data.py); rows are
     # written at midnight via persist_regime(). Use a date-based window and the

@@ -1,4 +1,5 @@
 """Webhook endpoints for external integrations."""
+
 from fastapi import APIRouter
 
 from .picks import router as picks_webhook_router

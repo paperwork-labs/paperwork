@@ -36,8 +36,8 @@ Per ``engineering.mdc``:
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from celery import shared_task
 from sqlalchemy.orm import Session
@@ -45,7 +45,6 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models.conviction_pick import ConvictionPick
 from app.models.position import Position, PositionStatus, Sleeve
-from app.models.user import User
 from app.services.gold.conviction_pick_generator import (
     ConvictionPickGenerator,
     ConvictionThresholds,
@@ -68,10 +67,7 @@ def _active_user_ids(db: Session) -> set[int]:
     first time they authenticate their broker).
     """
     rows = (
-        db.query(Position.user_id)
-        .filter(Position.status == PositionStatus.OPEN)
-        .distinct()
-        .all()
+        db.query(Position.user_id).filter(Position.status == PositionStatus.OPEN).distinct().all()
     )
     return {uid for (uid,) in rows if uid is not None}
 
@@ -96,7 +92,7 @@ def _persist_for_user(
     user_id: int,
     report: GenerationReport,
     generated_at: datetime,
-    exclude: Optional[set[str]] = None,
+    exclude: set[str] | None = None,
 ) -> int:
     """Write the generator's ranked list for one user; returns rows written."""
     exclude = exclude or set()
@@ -131,8 +127,8 @@ def _persist_for_user(
 )
 @task_run("generate_conviction_picks")
 def generate_conviction_picks(
-    max_users: Optional[int] = None,
-) -> Dict[str, Any]:
+    max_users: int | None = None,
+) -> dict[str, Any]:
     """Nightly entry point. Runs the generator once, then fans out per user.
 
     Args:
@@ -145,7 +141,7 @@ def generate_conviction_picks(
     try:
         gen = ConvictionPickGenerator(ConvictionThresholds())
         report = gen.generate(db)
-        generated_at = datetime.now(timezone.utc)
+        generated_at = datetime.now(UTC)
 
         user_ids = sorted(_active_user_ids(db))
         if max_users is not None:
@@ -169,9 +165,7 @@ def generate_conviction_picks(
                     rows_written += rows
             except Exception as e:
                 errors += 1
-                logger.warning(
-                    "conviction pick persist failed for user %s: %s", uid, e
-                )
+                logger.warning("conviction pick persist failed for user %s: %s", uid, e)
 
         assert written + skipped + errors == len(user_ids), "counter drift"
 
@@ -179,12 +173,10 @@ def generate_conviction_picks(
             db.commit()
         except Exception:
             db.rollback()
-            logger.exception(
-                "conviction pick commit failed; rolling back entire run"
-            )
+            logger.exception("conviction pick commit failed; rolling back entire run")
             raise
 
-        summary: Dict[str, Any] = {
+        summary: dict[str, Any] = {
             "status": "ok",
             "users_scanned": len(user_ids),
             "written": written,

@@ -1,7 +1,6 @@
 """Tests for ConnectJobStore (Redis-backed connect job status)."""
 
 import json
-import pytest
 from unittest.mock import MagicMock
 
 

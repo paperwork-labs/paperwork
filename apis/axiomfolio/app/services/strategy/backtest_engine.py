@@ -6,20 +6,18 @@ medallion: gold
 from __future__ import annotations
 
 import logging
-import math
-from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
-from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
+from datetime import date
+from typing import Any
 
 from sqlalchemy.orm import Session
 
 from app.models.market_data import MarketSnapshotHistory
+from app.services.strategy.context_builder import add_prev_fields, history_to_context
 from app.services.strategy.rule_evaluator import (
     ConditionGroup,
     RuleEvaluator,
-    RuleEvalResult,
 )
-from app.services.strategy.context_builder import history_to_context, add_prev_fields, FIELD_ALIASES
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +38,11 @@ class BacktestMetrics:
     final_capital: float
     total_return_pct: float
     max_drawdown_pct: float
-    sharpe_ratio: Optional[float]
-    sortino_ratio: Optional[float]
+    sharpe_ratio: float | None
+    sortino_ratio: float | None
     total_trades: int
     win_rate: float
-    profit_factor: Optional[float]
+    profit_factor: float | None
     avg_trade_pnl: float
     max_win: float
     max_loss: float
@@ -53,25 +51,24 @@ class BacktestMetrics:
 @dataclass
 class BacktestResult:
     metrics: BacktestMetrics
-    equity_curve: List[Dict[str, Any]]
-    trades: List[BacktestTrade]
-    daily_returns: List[float]
+    equity_curve: list[dict[str, Any]]
+    trades: list[BacktestTrade]
+    daily_returns: list[float]
 
 
 class PositionTracker:
     """Tracks open positions during a backtest."""
 
     def __init__(self):
-        self.positions: Dict[str, Dict[str, float]] = {}
+        self.positions: dict[str, dict[str, float]] = {}
 
     def open(self, symbol: str, quantity: float, price: float) -> None:
         if symbol in self.positions:
             existing = self.positions[symbol]
             total_qty = existing["quantity"] + quantity
             existing["avg_price"] = (
-                (existing["avg_price"] * existing["quantity"] + price * quantity)
-                / total_qty
-            )
+                existing["avg_price"] * existing["quantity"] + price * quantity
+            ) / total_qty
             existing["quantity"] = total_qty
         else:
             self.positions[symbol] = {"quantity": quantity, "avg_price": price}
@@ -87,7 +84,7 @@ class PositionTracker:
             del self.positions[symbol]
         return pnl
 
-    def unrealized_pnl(self, prices: Dict[str, float]) -> float:
+    def unrealized_pnl(self, prices: dict[str, float]) -> float:
         total = 0.0
         for symbol, pos in self.positions.items():
             current = prices.get(symbol, pos["avg_price"])
@@ -108,7 +105,7 @@ class BacktestEngine:
         db: Session,
         entry_rules: ConditionGroup,
         exit_rules: ConditionGroup,
-        symbols: List[str],
+        symbols: list[str],
         start_date: date,
         end_date: date,
         initial_capital: float = 100_000.0,
@@ -119,9 +116,9 @@ class BacktestEngine:
             return self._empty_result(initial_capital)
 
         tracker = PositionTracker()
-        trades: List[BacktestTrade] = []
-        equity_curve: List[Dict[str, Any]] = []
-        daily_returns: List[float] = []
+        trades: list[BacktestTrade] = []
+        equity_curve: list[dict[str, Any]] = []
+        daily_returns: list[float] = []
 
         cash = initial_capital
         prev_equity = initial_capital
@@ -146,10 +143,16 @@ class BacktestEngine:
                         sell_price = price * (1 - self.slippage_bps / 10000)
                         pnl = tracker.close(symbol, qty, sell_price) - self.commission
                         cash += qty * sell_price - self.commission
-                        trades.append(BacktestTrade(
-                            symbol=symbol, side="sell", quantity=qty,
-                            price=sell_price, date=day, pnl=pnl,
-                        ))
+                        trades.append(
+                            BacktestTrade(
+                                symbol=symbol,
+                                side="sell",
+                                quantity=qty,
+                                price=sell_price,
+                                date=day,
+                                pnl=pnl,
+                            )
+                        )
                 else:
                     result = self.evaluator.evaluate(entry_rules, context)
                     if result.matched:
@@ -160,14 +163,18 @@ class BacktestEngine:
                             buy_price = price * (1 + self.slippage_bps / 10000)
                             tracker.open(symbol, qty, buy_price)
                             cash -= cost
-                            trades.append(BacktestTrade(
-                                symbol=symbol, side="buy", quantity=qty,
-                                price=buy_price, date=day,
-                            ))
+                            trades.append(
+                                BacktestTrade(
+                                    symbol=symbol,
+                                    side="buy",
+                                    quantity=qty,
+                                    price=buy_price,
+                                    date=day,
+                                )
+                            )
 
             equity = cash + sum(
-                tracker.positions.get(s, {}).get("quantity", 0) * prices.get(s, 0)
-                for s in prices
+                tracker.positions.get(s, {}).get("quantity", 0) * prices.get(s, 0) for s in prices
             )
             daily_return = (equity - prev_equity) / prev_equity if prev_equity else 0
             daily_returns.append(daily_return)
@@ -184,8 +191,8 @@ class BacktestEngine:
         )
 
     def _load_history(
-        self, db: Session, symbols: List[str], start: date, end: date
-    ) -> Dict[str, List[Dict[str, Any]]]:
+        self, db: Session, symbols: list[str], start: date, end: date
+    ) -> dict[str, list[dict[str, Any]]]:
         rows = (
             db.query(MarketSnapshotHistory)
             .filter(
@@ -198,15 +205,15 @@ class BacktestEngine:
             .all()
         )
         # First pass: group rows by symbol to track previous day's data
-        by_symbol: Dict[str, List[MarketSnapshotHistory]] = {}
+        by_symbol: dict[str, list[MarketSnapshotHistory]] = {}
         for r in rows:
             if r.symbol not in by_symbol:
                 by_symbol[r.symbol] = []
             by_symbol[r.symbol].append(r)
 
         # Second pass: build context with _prev fields for crossover detection
-        by_date: Dict[str, List[Dict[str, Any]]] = {}
-        symbol_prev: Dict[str, Optional[MarketSnapshotHistory]] = {}
+        by_date: dict[str, list[dict[str, Any]]] = {}
+        symbol_prev: dict[str, MarketSnapshotHistory | None] = {}
 
         for r in rows:
             d = str(r.as_of_date)
@@ -227,8 +234,8 @@ class BacktestEngine:
         self,
         initial: float,
         final: float,
-        trades: List[BacktestTrade],
-        daily_returns: List[float],
+        trades: list[BacktestTrade],
+        daily_returns: list[float],
     ) -> BacktestMetrics:
         total_return = ((final - initial) / initial) * 100 if initial else 0
 
@@ -236,7 +243,7 @@ class BacktestEngine:
         max_dd = 0.0
         running = initial
         for r in daily_returns:
-            running *= (1 + r)
+            running *= 1 + r
             equity_peak = max(equity_peak, running)
             dd = (equity_peak - running) / equity_peak if equity_peak else 0
             max_dd = max(max_dd, dd)
@@ -258,14 +265,16 @@ class BacktestEngine:
         sortino = None
         if len(daily_returns) > 1:
             mean_r = sum(daily_returns) / len(daily_returns)
-            std_r = (sum((r - mean_r) ** 2 for r in daily_returns) / (len(daily_returns) - 1)) ** 0.5
+            std_r = (
+                sum((r - mean_r) ** 2 for r in daily_returns) / (len(daily_returns) - 1)
+            ) ** 0.5
             if std_r > 0:
-                sharpe = (mean_r / std_r) * (252 ** 0.5)
+                sharpe = (mean_r / std_r) * (252**0.5)
             neg_returns = [r for r in daily_returns if r < 0]
             if neg_returns:
-                downside_std = (sum(r ** 2 for r in neg_returns) / len(neg_returns)) ** 0.5
+                downside_std = (sum(r**2 for r in neg_returns) / len(neg_returns)) ** 0.5
                 if downside_std > 0:
-                    sortino = (mean_r / downside_std) * (252 ** 0.5)
+                    sortino = (mean_r / downside_std) * (252**0.5)
 
         return BacktestMetrics(
             initial_capital=initial,
@@ -285,12 +294,18 @@ class BacktestEngine:
     def _empty_result(self, capital: float) -> BacktestResult:
         return BacktestResult(
             metrics=BacktestMetrics(
-                initial_capital=capital, final_capital=capital,
-                total_return_pct=0, max_drawdown_pct=0,
-                sharpe_ratio=None, sortino_ratio=None,
-                total_trades=0, win_rate=0,
-                profit_factor=None, avg_trade_pnl=0,
-                max_win=0, max_loss=0,
+                initial_capital=capital,
+                final_capital=capital,
+                total_return_pct=0,
+                max_drawdown_pct=0,
+                sharpe_ratio=None,
+                sortino_ratio=None,
+                total_trades=0,
+                win_rate=0,
+                profit_factor=None,
+                avg_trade_pnl=0,
+                max_win=0,
+                max_loss=0,
             ),
             equity_curve=[],
             trades=[],

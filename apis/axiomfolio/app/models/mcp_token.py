@@ -13,8 +13,8 @@ runs against ``token.user_id`` — never a client-supplied id.
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import (
     DateTime,
@@ -36,7 +36,7 @@ def _default_expires_at() -> datetime:
     Explicitly timezone-aware so naive comparisons in `is_active` are
     impossible at the call site.
     """
-    return datetime.now(timezone.utc) + timedelta(days=365)
+    return datetime.now(UTC) + timedelta(days=365)
 
 
 class MCPToken(Base):
@@ -52,23 +52,17 @@ class MCPToken(Base):
         index=True,
     )
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    token_hash: Mapped[str] = mapped_column(
-        String(64), nullable=False, unique=True, index=True
-    )
-    scopes: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    scopes: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pii_consent_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    pii_consent_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
-    revoked_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -77,18 +71,16 @@ class MCPToken(Base):
 
     user = relationship("User", lazy="joined")
 
-    __table_args__ = (
-        Index("ix_mcp_tokens_user_revoked", "user_id", "revoked_at"),
-    )
+    __table_args__ = (Index("ix_mcp_tokens_user_revoked", "user_id", "revoked_at"),)
 
-    def is_active(self, now: Optional[datetime] = None) -> bool:
+    def is_active(self, now: datetime | None = None) -> bool:
         """Return True iff the token is neither revoked nor expired."""
         if self.revoked_at is not None:
             return False
-        ts = now or datetime.now(timezone.utc)
+        ts = now or datetime.now(UTC)
         exp = self.expires_at
         if exp.tzinfo is None:
-            exp = exp.replace(tzinfo=timezone.utc)
+            exp = exp.replace(tzinfo=UTC)
         return ts < exp
 
     def __repr__(self) -> str:

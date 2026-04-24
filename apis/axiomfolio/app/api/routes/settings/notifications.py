@@ -3,9 +3,9 @@ AxiomFolio V1 - Notifications routes
 Brain webhook delivery and in-app alerts.
 """
 
-from datetime import datetime
-from typing import Any, Dict
 import logging
+from datetime import datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -24,7 +24,7 @@ router = APIRouter()
 @router.get("/status")
 async def get_notification_status(
     user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get notification settings and status."""
     return {
         "user_id": user.id,
@@ -37,7 +37,7 @@ async def get_notification_status(
 async def send_test_notification(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Send a test notification (in-app + Brain webhook when configured)."""
     try:
         await notification_service.notify_user(

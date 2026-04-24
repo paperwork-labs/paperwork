@@ -19,9 +19,11 @@ def test_snapshot_last_n_days_writes_rows(db_session, monkeypatch):
 
     import app.tasks.utils.task_utils as tu
 
-    monkeypatch.setattr(tu.infra, "_redis_sync", type("_R", (), {"get": staticmethod(_redis_get)})())
+    monkeypatch.setattr(
+        tu.infra, "_redis_sync", type("_R", (), {"get": staticmethod(_redis_get)})()
+    )
 
-    from app.models.market_data import PriceData, MarketSnapshotHistory
+    from app.models.market_data import MarketSnapshotHistory, PriceData
 
     # Create a tiny SPY calendar (5 days)
     spy_dates = [
@@ -77,7 +79,10 @@ def test_snapshot_last_n_days_writes_rows(db_session, monkeypatch):
 
     rows = (
         db_session.query(MarketSnapshotHistory)
-        .filter(MarketSnapshotHistory.symbol == "AAA", MarketSnapshotHistory.analysis_type == "technical_snapshot")
+        .filter(
+            MarketSnapshotHistory.symbol == "AAA",
+            MarketSnapshotHistory.analysis_type == "technical_snapshot",
+        )
         .order_by(MarketSnapshotHistory.as_of_date.asc())
         .all()
     )
@@ -85,5 +90,3 @@ def test_snapshot_last_n_days_writes_rows(db_session, monkeypatch):
     # Wide/flat table: verify some computed fields landed on columns.
     assert rows[0].current_price is not None
     assert rows[-1].sma_5 is not None or rows[-1].sma_14 is not None or rows[-1].sma_21 is not None
-
-

@@ -1,25 +1,28 @@
 """Celery tasks for strategy rule evaluation."""
+
 from __future__ import annotations
+
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from app.tasks.celery_app import celery_app
-from app.tasks.utils.task_utils import task_run
+from sqlalchemy import func
+
 from app.database import SessionLocal
-from app.models.strategy import Strategy, StrategyStatus, StrategyRun, RunStatus, ExecutionMode
 from app.models.market_data import MarketSnapshot
-from app.models.signals import Signal, SignalType, SignalStatus
+from app.models.signals import Signal, SignalStatus, SignalType
+from app.models.strategy import ExecutionMode, RunStatus, Strategy, StrategyRun, StrategyStatus
+from app.services.strategy.context_builder import snapshot_to_context
 from app.services.strategy.rule_evaluator import (
-    RuleEvaluator,
-    ConditionGroup,
     Condition,
+    ConditionGroup,
     ConditionOperator,
     LogicalOperator,
+    RuleEvaluator,
 )
 from app.services.strategy.signal_generator import SignalGenerator
-from app.services.strategy.context_builder import snapshot_to_context, get_regime_context
-from sqlalchemy import func
+from app.tasks.celery_app import celery_app
+from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
 
@@ -53,17 +56,15 @@ def _parse_group(data: dict) -> ConditionGroup:
     return ConditionGroup(logic=logic, conditions=conditions, groups=groups)
 
 
-@celery_app.task(name="app.tasks.strategy_tasks.evaluate_strategies_task", soft_time_limit=600, time_limit=660)
+@celery_app.task(
+    name="app.tasks.strategy_tasks.evaluate_strategies_task", soft_time_limit=600, time_limit=660
+)
 @task_run("strategy_evaluation")
 def evaluate_strategies_task() -> dict:
     """Find all active strategies, run RuleEvaluator against latest snapshot data."""
     db = SessionLocal()
     try:
-        strategies = (
-            db.query(Strategy)
-            .filter(Strategy.status == StrategyStatus.ACTIVE)
-            .all()
-        )
+        strategies = db.query(Strategy).filter(Strategy.status == StrategyStatus.ACTIVE).all()
         if not strategies:
             logger.info("No active strategies to evaluate")
             return {"evaluated": 0, "total_signals": 0}
@@ -78,14 +79,11 @@ def evaluate_strategies_task() -> dict:
             .subquery()
         )
         snapshots = (
-            db.query(MarketSnapshot)
-            .join(latest_ids, MarketSnapshot.id == latest_ids.c.id)
-            .all()
+            db.query(MarketSnapshot).join(latest_ids, MarketSnapshot.id == latest_ids.c.id).all()
         )
         # Build context with aliases and regime included
         snapshot_contexts = {
-            s.symbol: snapshot_to_context(s, include_regime=True, db=db)
-            for s in snapshots
+            s.symbol: snapshot_to_context(s, include_regime=True, db=db) for s in snapshots
         }
 
         total_signals = 0
@@ -93,7 +91,7 @@ def evaluate_strategies_task() -> dict:
         pending_order_ids: list[int] = []
 
         for strategy in strategies:
-            started = datetime.now(timezone.utc)
+            started = datetime.now(UTC)
             group = _parse_rules_from_config(strategy.parameters or {})
             if group is None:
                 logger.warning(
@@ -106,7 +104,8 @@ def evaluate_strategies_task() -> dict:
             universe_symbols = list(snapshot_contexts.keys())
             if strategy.allowed_sectors:
                 universe_symbols = [
-                    sym for sym in universe_symbols
+                    sym
+                    for sym in universe_symbols
                     if snapshot_contexts[sym].get("sector") in strategy.allowed_sectors
                 ]
             if strategy.excluded_symbols:
@@ -121,20 +120,22 @@ def evaluate_strategies_task() -> dict:
                 ctx = snapshot_contexts[sym]
                 result = _evaluator.evaluate(group, ctx)
                 if result.matched:
-                    matches.append({
-                        "symbol": sym,
-                        "action": "sell_short" if is_short else "buy",
-                        "strength": 1.0,
-                        "context": result.details,
-                        "regime_state": ctx.get("regime_state"),
-                        "regime_multiplier": ctx.get("regime_multiplier"),
-                        "scan_tier": ctx.get("scan_tier"),
-                        "action_label": ctx.get("action_label"),
-                        "stage_label": ctx.get("stage_label"),
-                        "ext_pct": ctx.get("ext_pct"),
-                        "ema10_dist_n": ctx.get("ema10_dist_n"),
-                        "sma150_slope": ctx.get("sma150_slope"),
-                    })
+                    matches.append(
+                        {
+                            "symbol": sym,
+                            "action": "sell_short" if is_short else "buy",
+                            "strength": 1.0,
+                            "context": result.details,
+                            "regime_state": ctx.get("regime_state"),
+                            "regime_multiplier": ctx.get("regime_multiplier"),
+                            "scan_tier": ctx.get("scan_tier"),
+                            "action_label": ctx.get("action_label"),
+                            "stage_label": ctx.get("stage_label"),
+                            "ext_pct": ctx.get("ext_pct"),
+                            "ema10_dist_n": ctx.get("ema10_dist_n"),
+                            "sma150_slope": ctx.get("sma150_slope"),
+                        }
+                    )
 
             signals = _signal_gen.generate_signals(db, strategy, matches)
             total_signals += len(signals)
@@ -148,7 +149,7 @@ def evaluate_strategies_task() -> dict:
                 candidates_found=len(matches),
                 signals_generated=len(signals),
                 started_at=started,
-                completed_at=datetime.now(timezone.utc),
+                completed_at=datetime.now(UTC),
             )
             db.add(run)
             db.flush()
@@ -169,14 +170,16 @@ def evaluate_strategies_task() -> dict:
                 auto_orders = n
                 pending_order_ids.extend(_oids)
 
-            results.append({
-                "strategy_id": strategy.id,
-                "name": strategy.name,
-                "universe": len(universe_symbols),
-                "matches": len(matches),
-                "signals": len(signals),
-                "auto_orders": auto_orders,
-            })
+            results.append(
+                {
+                    "strategy_id": strategy.id,
+                    "name": strategy.name,
+                    "universe": len(universe_symbols),
+                    "matches": len(matches),
+                    "signals": len(signals),
+                    "auto_orders": auto_orders,
+                }
+            )
 
         db.commit()
 
@@ -220,7 +223,7 @@ def _persist_signals(
 ) -> list[Signal]:
     """Persist generated signals to the Signal table."""
     persisted = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for sig in raw_signals:
         sym = sig["symbol"]
         action = (sig.get("action") or "buy").lower()
@@ -271,30 +274,30 @@ def _auto_execute_signals(
     """Create orders for each signal when auto_execute is enabled.
 
     Returns (count, order_ids). Celery execution is queued by the caller after commit.
-    
+
     Note: Orders are created with PREVIEW status so OrderManager.submit() will accept them.
     The user_id is inherited from the strategy owner.
-    
+
     All auto-orders are validated through RiskGate before creation.
     """
     from app.models.order import Order, OrderStatus
-    from app.services.execution.risk_gate import RiskGate, RiskViolation
     from app.services.execution.broker_base import OrderRequest
+    from app.services.execution.risk_gate import RiskGate, RiskViolation
 
     risk_gate = RiskGate()
     count = 0
     order_ids: list[int] = []
-    
+
     # Get portfolio equity for risk checks
     portfolio_equity = _get_user_portfolio_equity(db, strategy.user_id)
     params = strategy.parameters or {}
     risk_budget = params.get("risk_budget", 1000.0)
-    
+
     for sig in signals:
         try:
             order_side = _order_side_from_signal(sig)
             quantity = _compute_position_size(db, strategy, sig)
-            
+
             # Skip order creation when position size is zero (Stage cap blocks entry)
             if quantity <= 0:
                 logger.info(
@@ -302,7 +305,7 @@ def _auto_execute_signals(
                     sig.symbol,
                 )
                 continue
-            
+
             # Build OrderRequest for RiskGate validation
             price_estimate = float(sig.entry_price) if sig.entry_price else 0.0
             req = OrderRequest.from_user_input(
@@ -311,7 +314,7 @@ def _auto_execute_signals(
                 order_type="market",
                 quantity=quantity,
             )
-            
+
             # Validate through RiskGate before creating order
             try:
                 warnings = risk_gate.check(
@@ -324,15 +327,17 @@ def _auto_execute_signals(
                 if warnings:
                     logger.info(
                         "RiskGate warnings for %s: %s",
-                        sig.symbol, "; ".join(warnings),
+                        sig.symbol,
+                        "; ".join(warnings),
                     )
             except RiskViolation as rv:
                 logger.warning(
                     "RiskGate rejected auto-order for %s: %s",
-                    sig.symbol, str(rv),
+                    sig.symbol,
+                    str(rv),
                 )
                 continue
-            
+
             order = Order(
                 symbol=sig.symbol,
                 side=order_side,
@@ -372,6 +377,7 @@ def _get_user_portfolio_equity(db, user_id: int) -> float | None:
         return None
     try:
         from app.models.account_balance import AccountBalance
+
         balance = (
             db.query(AccountBalance)
             .filter(AccountBalance.user_id == user_id)
@@ -387,20 +393,20 @@ def _get_user_portfolio_equity(db, user_id: int) -> float | None:
 
 def _compute_position_size(db, strategy: Strategy, signal: Signal) -> float:
     """Compute position size using Stage Analysis sizing formula when possible.
-    
+
     Falls back to strategy parameters or defaults if sizing data unavailable.
     """
+    from app.models.market_data import MarketSnapshot
     from app.services.execution.risk_gate import compute_position_size
     from app.services.market.regime_engine import get_current_regime
-    from app.models.market_data import MarketSnapshot
-    
+
     params = strategy.parameters or {}
-    
+
     # Honor explicit fixed size from strategy params
     fixed = params.get("position_size") or params.get("quantity")
     if fixed:
         return float(fixed)
-    
+
     # Try Stage Analysis sizing
     sym = signal.symbol.upper()
     snap = (
@@ -412,15 +418,15 @@ def _compute_position_size(db, strategy: Strategy, signal: Signal) -> float:
         .order_by(MarketSnapshot.analysis_timestamp.desc())
         .first()
     )
-    
+
     if snap and snap.atrp_14 and snap.stage_label and signal.entry_price:
         regime = get_current_regime(db)
         regime_state = regime.regime_state if regime else "R3"
-        
+
         # Use strategy risk budget or default 1% of typical account ($100k = $1k risk)
         risk_budget = params.get("risk_budget", 1000.0)
         stop_multiplier = params.get("stop_multiplier", 2.0)
-        
+
         result = compute_position_size(
             risk_budget=float(risk_budget),
             atrp_14=float(snap.atrp_14),
@@ -429,20 +435,26 @@ def _compute_position_size(db, strategy: Strategy, signal: Signal) -> float:
             stage_label=snap.stage_label,
             current_price=float(signal.entry_price),
         )
-        
+
         if result.shares > 0:
             logger.debug(
                 "Sizing %s: stage=%s, regime=%s, cap=%.0f%%, shares=%d",
-                sym, snap.stage_label, regime_state, result.stage_cap * 100, result.shares
+                sym,
+                snap.stage_label,
+                regime_state,
+                result.stage_cap * 100,
+                result.shares,
             )
             return float(result.shares)
         else:
             logger.warning(
                 "Sizing %s: stage=%s in regime=%s has 0%% cap, skipping",
-                sym, snap.stage_label, regime_state
+                sym,
+                snap.stage_label,
+                regime_state,
             )
             return 0  # Stage cap blocks this entry
-    
+
     # Fallback to simple max_value sizing
     max_value = params.get("max_position_value", 5_000)
     if signal.entry_price and signal.entry_price > 0:

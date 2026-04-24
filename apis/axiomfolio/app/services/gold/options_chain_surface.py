@@ -10,13 +10,14 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Any, List, Optional, Sequence
+from typing import Any
 
-from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.orm import Session
 
 from app.models.market.options_chain_snapshot import OptionsChainSnapshot
 from app.services.market.yfinance_options_chain import fetch_yfinance_options_chain
@@ -57,8 +58,8 @@ def _clamp01(x: float) -> float:
 
 
 def compute_liquidity_score(
-    open_interest: int, volume: int, spread_rel: Optional[Decimal]
-) -> Optional[Decimal]:
+    open_interest: int, volume: int, spread_rel: Decimal | None
+) -> Decimal | None:
     """Composite liquidity score 0-1: OI, volume, tight spread (see spec)."""
     oi = max(0, int(open_interest))
     v = max(0, int(volume))
@@ -73,8 +74,8 @@ def compute_liquidity_score(
 
 
 def _mid_spread(
-    bid: Optional[Decimal], ask: Optional[Decimal]
-) -> tuple[Optional[Decimal], Optional[Decimal], Optional[Decimal]]:
+    bid: Decimal | None, ask: Decimal | None
+) -> tuple[Decimal | None, Decimal | None, Decimal | None]:
     if bid is not None and ask is not None:
         if ask < bid:
             logger.debug("options spread crossed market bid=%s ask=%s", bid, ask)
@@ -106,9 +107,7 @@ def _decile_index(strike: Decimal, s_min: Decimal, s_max: Decimal) -> int:
     return idx
 
 
-def _decile_strike_bounds(
-    s_min: Decimal, s_max: Decimal, decile: int
-) -> tuple[Decimal, Decimal]:
+def _decile_strike_bounds(s_min: Decimal, s_max: Decimal, decile: int) -> tuple[Decimal, Decimal]:
     if s_max <= s_min:
         return s_min, s_max
     w = s_max - s_min
@@ -121,7 +120,7 @@ def _decile_strike_bounds(
 
 def _iv_percentile_rank(
     current: Decimal, values: list[Decimal]
-) -> tuple[Optional[Decimal], Optional[Decimal]]:
+) -> tuple[Decimal | None, Decimal | None]:
     if not values:
         return None, None
     sorted_v = sorted(values)
@@ -144,7 +143,7 @@ def _iv_percentile_rank(
 def _snapshot_cutoff_1y(now: datetime) -> datetime:
     n = now
     if n.tzinfo is None:
-        n = n.replace(tzinfo=timezone.utc)
+        n = n.replace(tzinfo=UTC)
     return n - timedelta(days=365)
 
 
@@ -157,17 +156,14 @@ def _query_ivs_strike_bucket(
     strike_hi: Decimal,
     cutoff: datetime,
 ) -> list[Decimal]:
-    q = (
-        session.query(OptionsChainSnapshot.implied_vol)
-        .filter(
-            OptionsChainSnapshot.symbol == symbol,
-            OptionsChainSnapshot.expiry == expiry,
-            OptionsChainSnapshot.option_type == option_type,
-            OptionsChainSnapshot.strike >= strike_lo,
-            OptionsChainSnapshot.strike <= strike_hi,
-            OptionsChainSnapshot.snapshot_taken_at >= cutoff,
-            OptionsChainSnapshot.implied_vol.isnot(None),
-        )
+    q = session.query(OptionsChainSnapshot.implied_vol).filter(
+        OptionsChainSnapshot.symbol == symbol,
+        OptionsChainSnapshot.expiry == expiry,
+        OptionsChainSnapshot.option_type == option_type,
+        OptionsChainSnapshot.strike >= strike_lo,
+        OptionsChainSnapshot.strike <= strike_hi,
+        OptionsChainSnapshot.snapshot_taken_at >= cutoff,
+        OptionsChainSnapshot.implied_vol.isnot(None),
     )
     return [Decimal(str(v)) for (v,) in q.all() if v is not None]
 
@@ -179,15 +175,12 @@ def _query_ivs_expiry_otype(
     option_type: str,
     cutoff: datetime,
 ) -> list[Decimal]:
-    q = (
-        session.query(OptionsChainSnapshot.implied_vol)
-        .filter(
-            OptionsChainSnapshot.symbol == symbol,
-            OptionsChainSnapshot.expiry == expiry,
-            OptionsChainSnapshot.option_type == option_type,
-            OptionsChainSnapshot.snapshot_taken_at >= cutoff,
-            OptionsChainSnapshot.implied_vol.isnot(None),
-        )
+    q = session.query(OptionsChainSnapshot.implied_vol).filter(
+        OptionsChainSnapshot.symbol == symbol,
+        OptionsChainSnapshot.expiry == expiry,
+        OptionsChainSnapshot.option_type == option_type,
+        OptionsChainSnapshot.snapshot_taken_at >= cutoff,
+        OptionsChainSnapshot.implied_vol.isnot(None),
     )
     return [Decimal(str(v)) for (v,) in q.all() if v is not None]
 
@@ -198,7 +191,7 @@ def _batch_preload_iv_histories(
     strikes_by_exp: dict[date, tuple[Decimal, Decimal]],
     row_list: Sequence[dict[str, Any]],
     taken: datetime,
-    skip_row_indices: Optional[set[int]] = None,
+    skip_row_indices: set[int] | None = None,
 ) -> tuple[
     dict[tuple[date, str, int], list[Decimal]],
     dict[tuple[date, str], list[Decimal]],
@@ -232,7 +225,7 @@ def _batch_preload_iv_histories(
 
     bucket_hists: dict[tuple[date, str, int], list[Decimal]] = {}
     qcount = 0
-    for (ex, oty, dec) in decile_keys:
+    for ex, oty, dec in decile_keys:
         s_lo, s_hi = strikes_by_exp[ex]
         lo, hi = _decile_strike_bounds(s_lo, s_hi, dec)
         bucket_hists[(ex, oty, dec)] = _query_ivs_strike_bucket(
@@ -247,10 +240,8 @@ def _batch_preload_iv_histories(
             need_fb.add((ex, oty))
 
     fallback: dict[tuple[date, str], list[Decimal]] = {}
-    for (ex, oty) in need_fb:
-        fallback[(ex, oty)] = _query_ivs_expiry_otype(
-            session, sym, ex, oty, cutoff
-        )
+    for ex, oty in need_fb:
+        fallback[(ex, oty)] = _query_ivs_expiry_otype(session, sym, ex, oty, cutoff)
         qcount += 1
 
     return bucket_hists, fallback, qcount
@@ -264,7 +255,7 @@ def _iv_hist_for_contract(
     s_hi: Decimal,
     bucket_hists: dict[tuple[date, str, int], list[Decimal]],
     fallback: dict[tuple[date, str], list[Decimal]],
-) -> tuple[list[Decimal], Optional[str]]:
+) -> tuple[list[Decimal], str | None]:
     dec = _decile_index(strike, s_lo, s_hi)
     bhist = bucket_hists.get((ex, oty, dec), [])
     if len(bhist) >= IV_HISTORY_MIN:
@@ -282,15 +273,13 @@ class OptionsChainSurface:
     """Build and persist per-contract options surface rows."""
 
     def resolve_rows(
-        self, symbol: str, user_id: int, expiries: Optional[List[date]] = None
+        self, symbol: str, user_id: int, expiries: list[date] | None = None
     ) -> tuple[str, list[dict[str, Any]]]:
         """Resolve chain data (yfinance). user_id reserved for data-source prefs."""
         _ = user_id
         if not (symbol or "").strip():
             raise ChainSourceUnavailableError("empty symbol")
-        rows = fetch_yfinance_options_chain(
-            symbol, max_dte_days=120, expiries=expiries
-        )
+        rows = fetch_yfinance_options_chain(symbol, max_dte_days=120, expiries=expiries)
         if not rows:
             raise ChainSourceUnavailableError(f"no options chain for {symbol!r}")
         return "yfinance", rows
@@ -301,9 +290,9 @@ class OptionsChainSurface:
         user_id: int,
         *,
         session: Session,
-        expiries: Optional[List[date]] = None,
-        rows: Optional[Sequence[dict[str, Any]]] = None,
-        snapshot_taken_at: Optional[datetime] = None,
+        expiries: list[date] | None = None,
+        rows: Sequence[dict[str, Any]] | None = None,
+        snapshot_taken_at: datetime | None = None,
     ) -> ChainResult:
         """Fetch chain, compute metrics, upsert, return structured counters.
 
@@ -325,13 +314,13 @@ class OptionsChainSurface:
         symbol: str,
         user_id: int,
         *,
-        expiries: Optional[List[date]] = None,
-        rows: Optional[Sequence[dict[str, Any]]] = None,
-        snapshot_taken_at: Optional[datetime] = None,
+        expiries: list[date] | None = None,
+        rows: Sequence[dict[str, Any]] | None = None,
+        snapshot_taken_at: datetime | None = None,
     ) -> ChainResult:
-        taken = snapshot_taken_at or datetime.now(timezone.utc)
+        taken = snapshot_taken_at or datetime.now(UTC)
         if taken.tzinfo is None:
-            taken = taken.replace(tzinfo=timezone.utc)
+            taken = taken.replace(tzinfo=UTC)
         if rows is None:
             source, row_list = self.resolve_rows(symbol, user_id, expiries=expiries)
         else:
@@ -402,9 +391,9 @@ class OptionsChainSurface:
                 s_lo, s_hi = strikes_by_exp.get(ex, (strike, strike))
                 mid, s_abs, s_rel = _mid_spread(bid, ask)
                 liq = compute_liquidity_score(oi, vol, s_rel)
-                iv: Optional[Decimal] = r.get("implied_vol")
-                ivp: Optional[Decimal] = None
-                ivr: Optional[Decimal] = None
+                iv: Decimal | None = r.get("implied_vol")
+                ivp: Decimal | None = None
+                ivr: Decimal | None = None
                 if iv is not None:
                     hist, reason = _iv_hist_for_contract(
                         ex,
@@ -416,9 +405,7 @@ class OptionsChainSurface:
                         iv_fallback,
                     )
                     if reason:
-                        reasons.append(
-                            f"{sym} {ex} {strike} {otype}: {reason}"
-                        )
+                        reasons.append(f"{sym} {ex} {strike} {otype}: {reason}")
                     if len(hist) >= IV_HISTORY_MIN:
                         ivp, ivr = _iv_percentile_rank(iv, hist)
                 else:
@@ -448,10 +435,8 @@ class OptionsChainSurface:
                     "source": source,
                 }
                 db_rows.append(row_dict)
-                out_result_rows.append(
-                    {k: v for k, v in row_dict.items() if k != "source"}
-                )
-            except Exception as e:  # noqa: BLE001
+                out_result_rows.append({k: v for k, v in row_dict.items() if k != "source"})
+            except Exception as e:
                 logger.warning("options chain row error %s: %s", sym, e)
                 errored += 1
 
@@ -473,9 +458,7 @@ class OptionsChainSurface:
         else:
             session.rollback()
 
-        assert (
-            persisted + errored + skipped_malformed == processed
-        ), "counter drift"
+        assert persisted + errored + skipped_malformed == processed, "counter drift"
         assert skipped_no_iv <= persisted, "invalid skipped count"
 
         logger.info(

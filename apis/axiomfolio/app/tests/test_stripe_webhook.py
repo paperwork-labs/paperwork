@@ -5,12 +5,13 @@ a stub module + sink directly into `StripeWebhookProcessor`. The `stripe`
 package is added to ``requirements.txt`` in this PR but the test layer must
 work without network access.
 """
+
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Mapping, Optional
+from datetime import UTC
+from typing import Any
 
 import pytest
 
@@ -47,7 +48,7 @@ pytestmark = pytest.mark.no_db
 
 
 class _StubResolver:
-    def __init__(self, mapping: Dict[str, int], by_email: Optional[Dict[str, int]] = None):
+    def __init__(self, mapping: dict[str, int], by_email: dict[str, int] | None = None):
         self._by_customer = mapping
         self._by_email = by_email or {}
 
@@ -66,7 +67,7 @@ class _StubResolver:
 
 class _RecordingSink:
     def __init__(self) -> None:
-        self.applied: List[SubscriptionState] = []
+        self.applied: list[SubscriptionState] = []
         self.fail = False
 
     def apply(self, state: SubscriptionState) -> None:
@@ -92,8 +93,8 @@ class _StubStripeModule:
     """Minimal stub of the `stripe` SDK module."""
 
     Webhook: _StubWebhookNamespace = field(default_factory=_StubWebhookNamespace)
-    api_key: Optional[str] = None
-    api_version: Optional[str] = None
+    api_key: str | None = None
+    api_version: str | None = None
     Customer: Any = None
     Subscription: Any = None
     Checkout: Any = None
@@ -306,9 +307,9 @@ def _make_checkout_event(
     price_id: str = "price_pro_m",
     payment_status: str = "paid",
     mode: str = "subscription",
-    user_id_meta: Optional[int] = None,
-    email: Optional[str] = None,
-) -> Dict[str, Any]:
+    user_id_meta: int | None = None,
+    email: str | None = None,
+) -> dict[str, Any]:
     return {
         "id": event_id,
         "type": "checkout.session.completed",
@@ -334,7 +335,7 @@ def _make_subscription_event(
     price_id: str = "price_pro_m",
     status: str = "active",
     cancel_at_period_end: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "id": event_id,
         "type": event_type,
@@ -357,8 +358,8 @@ def _make_invoice_event(
     event_type: str,
     customer: str = "cus_alice",
     price_id: str = "price_pro_m",
-    subscription: Optional[str] = "sub_test_1",
-) -> Dict[str, Any]:
+    subscription: str | None = "sub_test_1",
+) -> dict[str, Any]:
     return {
         "id": event_id,
         "type": event_type,
@@ -441,7 +442,7 @@ class TestSubscriptionEvents:
         assert s.tier == TierSlug.PRO
         assert s.status == SubscriptionStatus.ACTIVE
         assert s.current_period_end is not None
-        assert s.current_period_end.tzinfo is timezone.utc
+        assert s.current_period_end.tzinfo is UTC
 
     def test_updated_past_due_status_propagates(self, processor):
         proc, sink, _ = processor
@@ -454,9 +455,7 @@ class TestSubscriptionEvents:
 
     def test_unknown_status_maps_to_past_due(self, processor):
         proc, sink, _ = processor
-        event = _make_subscription_event(
-            "evt_s3", "customer.subscription.updated", status="paused"
-        )
+        event = _make_subscription_event("evt_s3", "customer.subscription.updated", status="paused")
         result = proc.handle(event)
         assert result.acted
         assert sink.applied[0].status == SubscriptionStatus.PAST_DUE
@@ -578,7 +577,7 @@ class TestHelpers:
     def test_unix_to_dt_returns_aware_utc(self):
         out = _unix_to_dt(1_700_000_000)
         assert out is not None
-        assert out.tzinfo is timezone.utc
+        assert out.tzinfo is UTC
         assert out.year == 2023
 
     def test_unix_to_dt_handles_garbage(self):

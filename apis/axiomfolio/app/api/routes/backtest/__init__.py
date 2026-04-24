@@ -10,11 +10,11 @@ Both mount under the same aggregated ``router``.
 
 from fastapi import APIRouter
 
-from app.api.routes.backtest.walk_forward import router as walk_forward_router
 from app.api.routes.backtest.monte_carlo import router as monte_carlo_router
+from app.api.routes.backtest.walk_forward import router as walk_forward_router
 
 router = APIRouter()
 router.include_router(walk_forward_router)
 router.include_router(monte_carlo_router)
 
-__all__ = ["router", "walk_forward_router", "monte_carlo_router"]
+__all__ = ["monte_carlo_router", "router", "walk_forward_router"]

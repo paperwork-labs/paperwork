@@ -9,12 +9,11 @@ Handles tax lot calculations, cost basis, and tax optimization strategies.
 """
 
 import logging
-from typing import Dict, List, Optional
 from datetime import datetime
 
-from app.models.tax_lot import TaxLot, TaxLotMethod, TaxLotSource
-from app.models.broker_account import BrokerAccount
 from app.database import SessionLocal
+from app.models.broker_account import BrokerAccount
+from app.models.tax_lot import TaxLot, TaxLotMethod, TaxLotSource
 
 # Service imports
 from app.services.market.market_data_service import quote
@@ -28,10 +27,10 @@ class TaxLotService:
     Handles tax lots, cost basis, and tax optimization using models.
     """
 
-    def __init__(self, db_session: Optional[SessionLocal] = None):
+    def __init__(self, db_session: SessionLocal | None = None):
         self.db = db_session or SessionLocal()
 
-    def _parse_acquisition_date(self, value: Optional[str]) -> Optional[datetime]:
+    def _parse_acquisition_date(self, value: str | None) -> datetime | None:
         if not value:
             return None
         try:
@@ -60,7 +59,7 @@ class TaxLotService:
         cost_per_share: float,
         fees: float = 0.0,
         tax_treatment: str = "taxable",
-        import_job_id: Optional[int] = None,
+        import_job_id: int | None = None,
     ) -> TaxLot:
         """Create a new tax lot for a purchase (version)"""
         try:
@@ -89,9 +88,7 @@ class TaxLotService:
             self.db.commit()
             self.db.refresh(tax_lot)
 
-            logger.info(
-                f"✅ Created tax lot for {symbol}: {quantity} shares at ${cost_per_share}"
-            )
+            logger.info(f"✅ Created tax lot for {symbol}: {quantity} shares at ${cost_per_share}")
             return tax_lot
 
         except Exception as e:
@@ -103,8 +100,8 @@ class TaxLotService:
         self,
         user_id: int,
         broker_account: BrokerAccount,
-        official_lots: List[Dict],
-    ) -> Dict:
+        official_lots: list[dict],
+    ) -> dict:
         """Persist official IBKR tax lots into the database with upsert semantics.
         Uses unique lot_id when provided; otherwise deduplicates by (account_id, symbol, acquisition_date, quantity, cost_per_share).
         """
@@ -116,29 +113,21 @@ class TaxLotService:
                 if not symbol:
                     continue
                 lot_id = lot.get("lot_id")
-                quantity = float(
-                    lot.get("quantity", lot.get("remaining_quantity", 0)) or 0
-                )
+                quantity = float(lot.get("quantity", lot.get("remaining_quantity", 0)) or 0)
                 cps = lot.get("cost_per_share")
                 cost_per_share = float(cps) if cps is not None else None
                 cost_basis = (
-                    float(lot.get("cost_basis"))
-                    if lot.get("cost_basis") is not None
-                    else None
+                    float(lot.get("cost_basis")) if lot.get("cost_basis") is not None else None
                 )
                 acq_raw = (
-                    lot.get("acquisition_date")
-                    or lot.get("trade_date")
-                    or lot.get("tradeDate")
+                    lot.get("acquisition_date") or lot.get("trade_date") or lot.get("tradeDate")
                 )
                 acq_dt = self._parse_acquisition_date(acq_raw)
 
                 # Upsert target
-                existing: Optional[TaxLot] = None
+                existing: TaxLot | None = None
                 if lot_id:
-                    existing = (
-                        self.db.query(TaxLot).filter(TaxLot.lot_id == lot_id).first()
-                    )
+                    existing = self.db.query(TaxLot).filter(TaxLot.lot_id == lot_id).first()
                 if not existing and acq_dt and cost_per_share is not None:
                     existing = (
                         self.db.query(TaxLot)
@@ -188,8 +177,7 @@ class TaxLotService:
                     current_price=float(lot.get("current_price", 0) or 0) or None,
                     market_value=float(lot.get("market_value", 0) or 0) or None,
                     unrealized_pnl=float(lot.get("unrealized_pnl", 0) or 0) or None,
-                    unrealized_pnl_pct=float(lot.get("unrealized_pnl_pct", 0) or 0)
-                    or None,
+                    unrealized_pnl_pct=float(lot.get("unrealized_pnl_pct", 0) or 0) or None,
                     currency=lot.get("currency", "USD"),
                     commission=float(lot.get("commission", 0) or 0) or None,
                     fees=float(lot.get("fees", 0) or 0) or None,
@@ -209,8 +197,8 @@ class TaxLotService:
             raise
 
     async def get_tax_lots_for_user(
-        self, user_id: int, symbol: Optional[str] = None
-    ) -> List[TaxLot]:
+        self, user_id: int, symbol: str | None = None
+    ) -> list[TaxLot]:
         """Get all tax lots for a user, optionally filtered by symbol"""
         query = self.db.query(TaxLot).filter(TaxLot.user_id == user_id)
 
@@ -220,8 +208,8 @@ class TaxLotService:
         return query.order_by(TaxLot.acquisition_date).all()
 
     async def get_tax_lots_for_account(
-        self, user_id: int, account_id: str, symbol: Optional[str] = None
-    ) -> List[TaxLot]:
+        self, user_id: int, account_id: str, symbol: str | None = None
+    ) -> list[TaxLot]:
         """Get tax lots for a specific account"""
         query = self.db.query(TaxLot).filter(
             TaxLot.user_id == user_id,
@@ -234,8 +222,8 @@ class TaxLotService:
         return query.order_by(TaxLot.acquisition_date).all()
 
     async def calculate_cost_basis(
-        self, user_id: int, symbol: str, account_id: Optional[str] = None
-    ) -> Dict:
+        self, user_id: int, symbol: str, account_id: str | None = None
+    ) -> dict:
         """Calculate detailed cost basis for a position (version)"""
 
         query = self.db.query(TaxLot).filter(
@@ -259,9 +247,7 @@ class TaxLotService:
             }
 
         total_shares = sum(lot.remaining_quantity for lot in tax_lots)
-        total_cost_basis = sum(
-            lot.remaining_quantity * lot.cost_per_share for lot in tax_lots
-        )
+        total_cost_basis = sum(lot.remaining_quantity * lot.cost_per_share for lot in tax_lots)
         average_cost = total_cost_basis / total_shares if total_shares > 0 else 0
 
         # Get current price for unrealized calculations
@@ -287,9 +273,7 @@ class TaxLotService:
                     "days_held": lot.days_held,
                     "is_long_term": lot.is_long_term,
                     "account_id": lot.account_id,
-                    "tax_treatment": (
-                        lot.tax_treatment.value if lot.tax_treatment else "taxable"
-                    ),
+                    "tax_treatment": (lot.tax_treatment.value if lot.tax_treatment else "taxable"),
                 }
             )
 
@@ -301,9 +285,7 @@ class TaxLotService:
             "average_cost": float(average_cost),
             "current_price": float(current_price) if current_price else 0,
             "total_market_value": (
-                float(sum(l.quantity for l in tax_lots) * current_price)
-                if current_price
-                else 0
+                float(sum(l.quantity for l in tax_lots) * current_price) if current_price else 0
             ),
             "total_unrealized_pnl": sum(lot["unrealized_pnl"] for lot in lot_details),
             "tax_lots": lot_details,
@@ -315,9 +297,9 @@ class TaxLotService:
         symbol: str,
         shares_to_sell: float,
         sale_price: float,
-        account_id: Optional[str] = None,
+        account_id: str | None = None,
         lot_method: TaxLotMethod = TaxLotMethod.FIFO,
-    ) -> Dict:
+    ) -> dict:
         """Simulate a sale to show tax impact before execution (version)"""
 
         query = self.db.query(TaxLot).filter(
@@ -367,9 +349,7 @@ class TaxLotService:
                     "is_long_term": lot.days_held >= 365,
                     "days_held": lot.days_held,
                     "account_id": lot.account_id,
-                    "tax_treatment": (
-                        lot.tax_treatment.value if lot.tax_treatment else "taxable"
-                    ),
+                    "tax_treatment": (lot.tax_treatment.value if lot.tax_treatment else "taxable"),
                 }
             )
 
@@ -385,9 +365,7 @@ class TaxLotService:
         short_term_pnl = sum(
             lot["realized_pnl"] for lot in affected_lots if not lot["is_long_term"]
         )
-        long_term_pnl = sum(
-            lot["realized_pnl"] for lot in affected_lots if lot["is_long_term"]
-        )
+        long_term_pnl = sum(lot["realized_pnl"] for lot in affected_lots if lot["is_long_term"])
 
         return {
             "user_id": user_id,
@@ -401,9 +379,7 @@ class TaxLotService:
             "long_term_pnl": long_term_pnl,
             "lot_method": lot_method.value,
             "affected_lots": affected_lots,
-            "estimated_tax_impact": self._estimate_tax_impact(
-                short_term_pnl, long_term_pnl
-            ),
+            "estimated_tax_impact": self._estimate_tax_impact(short_term_pnl, long_term_pnl),
         }
 
     # NOTE: TaxLotSale model not defined in current models set; keep method signature generic
@@ -414,10 +390,10 @@ class TaxLotService:
         shares_to_sell: float,
         sale_price: float,
         sale_date: datetime,
-        account_id: Optional[str] = None,
+        account_id: str | None = None,
         lot_method: TaxLotMethod = TaxLotMethod.FIFO,
         fees: float = 0.0,
-    ) -> List[dict]:
+    ) -> list[dict]:
         """Execute a sale and record tax lot sales (version)"""
         try:
             # First simulate to validate
@@ -490,7 +466,7 @@ class TaxLotService:
             self.db.rollback()
             raise
 
-    async def update_market_values(self, user_id: int, symbol: Optional[str] = None):
+    async def update_market_values(self, user_id: int, symbol: str | None = None):
         """Update market values for tax lots"""
         try:
             query = self.db.query(TaxLot).filter(TaxLot.user_id == user_id)
@@ -514,17 +490,15 @@ class TaxLotService:
                     logger.warning(f"⚠️ Could not update price for {symbol}: {e}")
 
             self.db.commit()
-            logger.info(
-                f"✅ Updated market values for {len(symbols_to_update)} symbols"
-            )
+            logger.info(f"✅ Updated market values for {len(symbols_to_update)} symbols")
 
         except Exception as e:
             logger.error(f"❌ Error updating market values: {e}")
             self.db.rollback()
 
     async def generate_tax_summary(
-        self, user_id: int, tax_year: int, account_id: Optional[str] = None
-    ) -> Dict:
+        self, user_id: int, tax_year: int, account_id: str | None = None
+    ) -> dict:
         """Generate comprehensive tax report for a year (version)"""
         try:
             # Get all sales for the tax year
@@ -546,14 +520,10 @@ class TaxLotService:
                 if not sale.is_long_term and sale.realized_pnl < 0
             )
             long_term_gains = sum(
-                sale.realized_pnl
-                for sale in sales
-                if sale.is_long_term and sale.realized_pnl > 0
+                sale.realized_pnl for sale in sales if sale.is_long_term and sale.realized_pnl > 0
             )
             long_term_losses = sum(
-                sale.realized_pnl
-                for sale in sales
-                if sale.is_long_term and sale.realized_pnl < 0
+                sale.realized_pnl for sale in sales if sale.is_long_term and sale.realized_pnl < 0
             )
 
             net_short_term = short_term_gains + short_term_losses
@@ -564,9 +534,7 @@ class TaxLotService:
             unrealized_query = self.db.query(TaxLot).filter(TaxLot.user_id == user_id)
 
             if account_id:
-                unrealized_query = unrealized_query.filter(
-                    TaxLot.account_id == account_id
-                )
+                unrealized_query = unrealized_query.filter(TaxLot.account_id == account_id)
 
             current_lots = unrealized_query.all()
 
@@ -633,7 +601,7 @@ class TaxLotService:
             logger.error(f"❌ Error generating tax report: {e}")
             return {}
 
-    def _estimate_tax_impact(self, short_term_pnl: float, long_term_pnl: float) -> Dict:
+    def _estimate_tax_impact(self, short_term_pnl: float, long_term_pnl: float) -> dict:
         """Estimate tax impact (simplified calculation)"""
         # Simplified tax rates - in reality this would be much more complex
         short_term_rate = 0.37  # Assume highest bracket for short-term
@@ -664,7 +632,7 @@ class TaxLotService:
 # =============================================================================
 
 
-async def get_user_tax_summary(user_id: int, tax_year: int = None) -> Dict:
+async def get_user_tax_summary(user_id: int, tax_year: int = None) -> dict:
     """Convenience function to get tax summary for a user"""
     service = TaxLotService()
     try:

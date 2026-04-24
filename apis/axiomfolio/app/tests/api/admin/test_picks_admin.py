@@ -6,10 +6,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 try:
-    from app.api.main import app
     from app.api.dependencies import get_current_user, get_db
+    from app.api.main import app
     from app.models.picks import Candidate, CandidateQueueState, PickAction
     from app.models.user import User, UserRole
+
     AVAILABLE = True
 except Exception:  # pragma: no cover
     AVAILABLE = False

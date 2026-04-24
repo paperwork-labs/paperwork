@@ -7,12 +7,12 @@ Supports all brokerages: IBKR, TastyTrade, Schwab, etc.
 
 from sqlalchemy import (
     Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
     Integer,
     String,
-    Float,
-    DateTime,
-    ForeignKey,
-    Date,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -40,9 +40,7 @@ class MarginInterest(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    broker_account_id = Column(
-        Integer, ForeignKey("broker_accounts.id"), nullable=False
-    )
+    broker_account_id = Column(Integer, ForeignKey("broker_accounts.id"), nullable=False)
 
     # Account Information
     account_alias = Column(String(100), nullable=True)  # Account nickname/alias
@@ -100,14 +98,8 @@ class MarginInterest(Base):
     @property
     def effective_annual_rate(self) -> float:
         """Calculate effective annual interest rate based on balance."""
-        if (
-            self.starting_balance
-            and self.starting_balance != 0
-            and self.period_days > 0
-        ):
-            daily_rate = (
-                self.interest_accrued / self.starting_balance / self.period_days
-            )
+        if self.starting_balance and self.starting_balance != 0 and self.period_days > 0:
+            daily_rate = self.interest_accrued / self.starting_balance / self.period_days
             return (1 + daily_rate) ** 365 - 1
         return 0.0
 

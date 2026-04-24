@@ -55,10 +55,11 @@ import hashlib
 import logging
 import re
 from collections import defaultdict, deque
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import Deque, Dict, Iterable, List, Optional, cast
+from typing import cast
 
 from sqlalchemy.orm import Session
 
@@ -96,7 +97,7 @@ _OCC_RE = re.compile(
 class _OpenLot:
     """In-memory representation of an open FIFO lot slice."""
 
-    acquisition_time: Optional[object]  # datetime, kept loose so callers can pass naive/aware freely
+    acquisition_time: object | None  # datetime, kept loose so callers can pass naive/aware freely
     quantity: Decimal
     cost_per_share: Decimal
     commission_per_share: Decimal
@@ -127,14 +128,14 @@ class MatchResult:
     skipped: int = 0
     errors: int = 0
     unmatched_quantity: Decimal = Decimal("0")
-    warnings: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def total(self) -> int:
         return self.created + self.updated + self.skipped + self.errors
 
 
-def _parse_occ_option_symbol(symbol: str) -> Optional[Dict[str, object]]:
+def _parse_occ_option_symbol(symbol: str) -> dict[str, object] | None:
     """Parse OCC/OSI option symbol into contract fields."""
     cleaned = symbol.strip().replace(" ", "")
     m = _OCC_RE.match(cleaned)
@@ -209,7 +210,7 @@ def reconcile_closing_lots(
     # ``_STREAM_CHUNK_SIZE`` Trade rows at a time rather than the whole
     # trade ledger. ``execution_time IS NOT NULL`` excludes broker rows
     # that lack an ordering timestamp (FIFO is undefined without it).
-    by_symbol: Dict[str, List[Trade]] = defaultdict(list)
+    by_symbol: dict[str, list[Trade]] = defaultdict(list)
     streamed: Iterable[Trade] = (
         db.query(Trade)
         .filter(
@@ -225,7 +226,7 @@ def reconcile_closing_lots(
             continue
         by_symbol[t.symbol].append(t)
 
-    existing_synth: Dict[str, Trade] = {}
+    existing_synth: dict[str, Trade] = {}
     for t in (
         db.query(Trade)
         .filter(
@@ -237,7 +238,7 @@ def reconcile_closing_lots(
     ):
         existing_synth[t.execution_id] = t
 
-    existing_option_lots: Dict[tuple[int, int], OptionTaxLot] = {}
+    existing_option_lots: dict[tuple[int, int], OptionTaxLot] = {}
     for otl in (
         db.query(OptionTaxLot)
         .filter(OptionTaxLot.broker_account_id == broker_account.id)
@@ -248,15 +249,15 @@ def reconcile_closing_lots(
 
     # Pre-index BUYs for wash-sale replacement lookups across the account's
     # full history (not just within a given symbol's queue).
-    buy_log_by_symbol: Dict[str, List[Trade]] = defaultdict(list)
+    buy_log_by_symbol: dict[str, list[Trade]] = defaultdict(list)
     for sym, trades in by_symbol.items():
         for t in trades:
             if t.side == "BUY" and t.execution_time:
                 buy_log_by_symbol[sym].append(t)
 
     for sym, trades in by_symbol.items():
-        lot_queue: Deque[_OpenLot] = deque()
-        option_lot_queue: Deque[_OptionOpenLot] = deque()
+        lot_queue: deque[_OpenLot] = deque()
+        option_lot_queue: deque[_OptionOpenLot] = deque()
 
         for trade in trades:
             try:
@@ -282,12 +283,14 @@ def reconcile_closing_lots(
                         existing_synth=existing_synth,
                         result=result,
                     )
-            except Exception as exc:  # noqa: BLE001 — we log + count + continue
+            except Exception as exc:
                 result.errors += 1
                 logger.warning(
-                    "closing-lot-matcher: error applying trade_id=%s symbol=%s "
-                    "account_id=%s: %s",
-                    trade.id, sym, broker_account.id, exc,
+                    "closing-lot-matcher: error applying trade_id=%s symbol=%s account_id=%s: %s",
+                    trade.id,
+                    sym,
+                    broker_account.id,
+                    exc,
                 )
 
     db.flush()
@@ -314,24 +317,24 @@ def _persist_option_tax_slice(
     broker_account: BrokerAccount,
     user_id: int,
     symbol: str,
-    parsed: Dict[str, object],
+    parsed: dict[str, object],
     mult: int,
     open_snapshot_qty: Decimal,
     cost_basis_per_contract: Decimal,
     opened_at: object,
     opening_trade_id: int,
     quantity_closed: Decimal,
-    proceeds_per_contract: Optional[Decimal],
+    proceeds_per_contract: Decimal | None,
     closed_at: object,
     closing_trade_id: int,
-    existing_option_lots: Dict[tuple[int, int], OptionTaxLot],
+    existing_option_lots: dict[tuple[int, int], OptionTaxLot],
     result: MatchResult,
 ) -> None:
     holding = _option_holding_class(opened_at, closed_at)
-    realized: Optional[Decimal] = None
+    realized: Decimal | None = None
     if proceeds_per_contract is not None:
-        realized = (proceeds_per_contract - cost_basis_per_contract) * quantity_closed * Decimal(
-            mult
+        realized = (
+            (proceeds_per_contract - cost_basis_per_contract) * quantity_closed * Decimal(mult)
         )
 
     key = (opening_trade_id, closing_trade_id)
@@ -394,10 +397,10 @@ def _apply_option_trade(
     *,
     trade: Trade,
     symbol: str,
-    lot_queue: Deque[_OptionOpenLot],
+    lot_queue: deque[_OptionOpenLot],
     broker_account: BrokerAccount,
     db: Session,
-    existing_option_lots: Dict[tuple[int, int], OptionTaxLot],
+    existing_option_lots: dict[tuple[int, int], OptionTaxLot],
     result: MatchResult,
     user_id: int,
 ) -> None:
@@ -515,7 +518,7 @@ def _apply_option_trade(
     if side == "BUY" and not is_open:
         remaining = qty
         close_comm_per = commission / qty if qty else Decimal("0")
-        short_covers: Dict[int, Dict[str, object]] = {}
+        short_covers: dict[int, dict[str, object]] = {}
         while remaining > 0 and lot_queue:
             lot = lot_queue[0]
             if lot.quantity >= 0:
@@ -577,8 +580,7 @@ def _apply_option_trade(
 
     result.skipped += 1
     result.warnings.append(
-        f"{symbol}: skipped option trade_id={trade.id} side={side!r} "
-        f"is_opening={is_open!r}"
+        f"{symbol}: skipped option trade_id={trade.id} side={side!r} is_opening={is_open!r}"
     )
 
 
@@ -586,11 +588,11 @@ def _apply_equity_trade(
     *,
     trade: Trade,
     symbol: str,
-    lot_queue: Deque[_OpenLot],
-    buy_log: List[Trade],
+    lot_queue: deque[_OpenLot],
+    buy_log: list[Trade],
     broker_account: BrokerAccount,
     db: Session,
-    existing_synth: Dict[str, Trade],
+    existing_synth: dict[str, Trade],
     result: MatchResult,
 ) -> None:
     side = (trade.side or "").upper()
@@ -622,9 +624,7 @@ def _apply_equity_trade(
             return
         sell_price = Decimal(str(trade.price or 0))
         sell_commission = Decimal(str(trade.commission or 0))
-        sell_commission_per_share = (
-            sell_commission / remaining if remaining else Decimal("0")
-        )
+        sell_commission_per_share = sell_commission / remaining if remaining else Decimal("0")
 
         slice_idx = 0
         while remaining > 0 and lot_queue:
@@ -654,9 +654,7 @@ def _apply_equity_trade(
             # return longer). The hash is deterministic so idempotency
             # on re-sync is preserved. The raw sell key is persisted in
             # ``trade_metadata.source_sell_execution_id`` for traceability.
-            sell_key_digest = hashlib.blake2b(
-                sell_key.encode("utf-8"), digest_size=4
-            ).hexdigest()
+            sell_key_digest = hashlib.blake2b(sell_key.encode("utf-8"), digest_size=4).hexdigest()
             synth_exec_id = f"{_SYNTH_PREFIX}{sell_key_digest}:{slice_idx}"
             if len(synth_exec_id) > _SYNTH_MAX_LEN:
                 # Defence in depth — ``_SYNTH_MAX_LEN`` is 50; the
@@ -668,7 +666,7 @@ def _apply_equity_trade(
                     f"exceeds Trade.execution_id({_SYNTH_MAX_LEN}) limit"
                 )
 
-            meta: Dict[str, object] = {
+            meta: dict[str, object] = {
                 "cost_basis": float(cost_basis),
                 "proceeds": float(proceeds_net),
                 "acquisition_date": (
@@ -695,9 +693,7 @@ def _apply_equity_trade(
                 # land. Until then this flag is advisory for the UI only.
                 meta["wash_sale"] = True
                 meta["wash_sale_loss"] = float(wash_sale_loss)
-                meta["wash_sale_heuristic"] = (
-                    "same-symbol-30d-replacement"
-                )
+                meta["wash_sale_heuristic"] = "same-symbol-30d-replacement"
 
             existing = existing_synth.get(synth_exec_id)
             if existing is not None:
@@ -794,7 +790,7 @@ def _wash_sale_loss(
     sell_time,
     lot_source_trade_id: int,
     lot_acquisition_time,
-    buy_log: List[Trade],
+    buy_log: list[Trade],
 ) -> Decimal:
     """Conservative ±30d same-symbol replacement heuristic.
 

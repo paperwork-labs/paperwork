@@ -13,8 +13,8 @@ Usage:
 from __future__ import annotations
 
 import logging
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -31,9 +31,7 @@ def seed(db_session=None) -> dict[str, int]:
     own_session = db_session is None
     db = db_session or SessionLocal()
     try:
-        existing: dict[str, CronSchedule] = {
-            row.id: row for row in db.query(CronSchedule).all()
-        }
+        existing: dict[str, CronSchedule] = {row.id: row for row in db.query(CronSchedule).all()}
         seeded = 0
         updated = 0
         skipped_customized = 0

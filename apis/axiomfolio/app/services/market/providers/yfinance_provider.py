@@ -12,7 +12,6 @@ medallion: silver
 
 import logging
 from datetime import date
-from typing import Dict, List, Optional
 
 import pandas as pd
 
@@ -36,12 +35,13 @@ class YFinanceProvider(MarketDataProvider):
         """yfinance is always available (no API key needed)."""
         try:
             import yfinance
+
             return True
         except ImportError:
             logger.warning("yfinance package not installed")
             return False
 
-    async def get_quotes(self, symbols: List[str]) -> Dict[str, float]:
+    async def get_quotes(self, symbols: list[str]) -> dict[str, float]:
         """Get current prices for multiple symbols."""
         import yfinance as yf
 
@@ -84,13 +84,15 @@ class YFinanceProvider(MarketDataProvider):
                 return pd.DataFrame()
 
             # Standardize column names
-            df = df.rename(columns={
-                "Open": "Open",
-                "High": "High",
-                "Low": "Low",
-                "Close": "Close",
-                "Volume": "Volume",
-            })
+            df = df.rename(
+                columns={
+                    "Open": "Open",
+                    "High": "High",
+                    "Low": "Low",
+                    "Close": "Close",
+                    "Volume": "Volume",
+                }
+            )
 
             # Select only OHLCV columns
             cols = ["Open", "High", "Low", "Close", "Volume"]
@@ -101,7 +103,7 @@ class YFinanceProvider(MarketDataProvider):
             logger.warning("Historical fetch failed for %s: %s", symbol, e)
             return pd.DataFrame()
 
-    async def get_fundamentals(self, symbol: str) -> Dict:
+    async def get_fundamentals(self, symbol: str) -> dict:
         """Get company fundamentals."""
         import yfinance as yf
 
@@ -133,10 +135,11 @@ class YFinanceProvider(MarketDataProvider):
         """yfinance supports some intraday data."""
         return True
 
-    def rate_limit(self) -> Optional[int]:
+    def rate_limit(self) -> int | None:
         """yfinance rate limit derived from ProviderPolicy."""
         try:
             from app.config import settings
+
             return settings.provider_policy.yfinance_cpm
         except Exception:
             return 30

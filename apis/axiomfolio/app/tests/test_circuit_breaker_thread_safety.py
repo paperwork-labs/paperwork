@@ -5,10 +5,10 @@ state, and that failure/success recording works under contention.
 """
 
 import threading
+
 import pytest
 
 from app.services.risk.circuit_breaker import CircuitBreaker, CircuitBreakerConfig
-
 
 pytestmark = pytest.mark.no_db
 

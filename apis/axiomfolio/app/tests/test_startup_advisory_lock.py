@@ -8,9 +8,9 @@ The lock logic lives in _sync_deferred_startup() which runs in a
 background thread after startup_event() completes.
 """
 
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
 
 pytestmark = pytest.mark.no_db
 

@@ -11,9 +11,10 @@ Verifies the foundational trading-parity wiring is in place:
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import patch
 from decimal import Decimal
+from unittest.mock import patch
+
+import pytest
 
 from app.models.order import BrokerType
 from app.services.execution.broker_base import OrderRequest

@@ -8,18 +8,18 @@ medallion: ops
 """
 
 from enum import Enum
-from typing import Dict, Set
 
 
 class RiskLevel(str, Enum):
     """Risk classification for agent actions."""
-    SAFE = "safe"           # Auto-execute always (monitoring, read-only ops)
-    MODERATE = "moderate"   # Auto-execute in "safe" mode (backfills, recomputes)
-    RISKY = "risky"         # Requires approval (data corrections, batch operations)
-    CRITICAL = "critical"   # Always requires approval (trading, deletions)
+
+    SAFE = "safe"  # Auto-execute always (monitoring, read-only ops)
+    MODERATE = "moderate"  # Auto-execute in "safe" mode (backfills, recomputes)
+    RISKY = "risky"  # Requires approval (data corrections, batch operations)
+    CRITICAL = "critical"  # Always requires approval (trading, deletions)
 
 
-ACTION_RISK_MAP: Dict[str, RiskLevel] = {
+ACTION_RISK_MAP: dict[str, RiskLevel] = {
     # SAFE: Read-only monitoring and status checks
     "check_health": RiskLevel.SAFE,
     "query_database": RiskLevel.SAFE,
@@ -47,7 +47,6 @@ ACTION_RISK_MAP: Dict[str, RiskLevel] = {
     # MODERATE: Schedule management (triggers tasks)
     "run_task_now": RiskLevel.MODERATE,
     "cancel_job": RiskLevel.SAFE,
-
     # MODERATE: Standard remediation tasks
     "backfill_stale_daily": RiskLevel.RISKY,
     "recompute_indicators": RiskLevel.MODERATE,
@@ -60,14 +59,12 @@ ACTION_RISK_MAP: Dict[str, RiskLevel] = {
     "refresh_index_constituents": RiskLevel.MODERATE,
     "fill_missing_fundamentals": RiskLevel.MODERATE,
     "deep_backfill": RiskLevel.CRITICAL,
-    
     # RISKY: May affect data integrity or require significant compute
     "backfill_full_history": RiskLevel.RISKY,
     "recompute_all_indicators": RiskLevel.RISKY,
     "sync_broker_account": RiskLevel.RISKY,
     "clear_cache": RiskLevel.RISKY,
     "restart_service": RiskLevel.RISKY,
-    
     # CRITICAL: Trading or data destructive operations
     "execute_order": RiskLevel.CRITICAL,
     "cancel_order": RiskLevel.CRITICAL,
@@ -77,10 +74,10 @@ ACTION_RISK_MAP: Dict[str, RiskLevel] = {
 }
 
 
-SAFE_ACTIONS: Set[str] = {k for k, v in ACTION_RISK_MAP.items() if v == RiskLevel.SAFE}
-MODERATE_ACTIONS: Set[str] = {k for k, v in ACTION_RISK_MAP.items() if v == RiskLevel.MODERATE}
-RISKY_ACTIONS: Set[str] = {k for k, v in ACTION_RISK_MAP.items() if v == RiskLevel.RISKY}
-CRITICAL_ACTIONS: Set[str] = {k for k, v in ACTION_RISK_MAP.items() if v == RiskLevel.CRITICAL}
+SAFE_ACTIONS: set[str] = {k for k, v in ACTION_RISK_MAP.items() if v == RiskLevel.SAFE}
+MODERATE_ACTIONS: set[str] = {k for k, v in ACTION_RISK_MAP.items() if v == RiskLevel.MODERATE}
+RISKY_ACTIONS: set[str] = {k for k, v in ACTION_RISK_MAP.items() if v == RiskLevel.RISKY}
+CRITICAL_ACTIONS: set[str] = {k for k, v in ACTION_RISK_MAP.items() if v == RiskLevel.CRITICAL}
 
 
 def classify_action_risk(action_type: str) -> RiskLevel:
@@ -91,23 +88,23 @@ def classify_action_risk(action_type: str) -> RiskLevel:
 def can_auto_execute(action_type: str, autonomy_level: str) -> bool:
     """
     Check if an action can be auto-executed given the autonomy level.
-    
+
     Args:
         action_type: The action type to check
         autonomy_level: One of "full", "safe", "ask"
-        
+
     Returns:
         True if action can be auto-executed
     """
     if autonomy_level == "ask":
         return False
-    
+
     risk = classify_action_risk(action_type)
-    
+
     if autonomy_level == "full":
         return risk != RiskLevel.CRITICAL
-    
+
     if autonomy_level == "safe":
         return risk in (RiskLevel.SAFE, RiskLevel.MODERATE)
-    
+
     return False

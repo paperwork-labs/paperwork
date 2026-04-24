@@ -13,8 +13,8 @@ from __future__ import annotations
 
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional, Tuple
+from datetime import UTC, datetime, timedelta
+from typing import Any
 from urllib.parse import urlencode
 
 import requests
@@ -35,9 +35,7 @@ AUTHORIZE_URL = "https://login.coinbase.com/oauth2/auth"
 TOKEN_URL = "https://api.coinbase.com/oauth/token"
 API_BASE = "https://api.coinbase.com"
 
-READ_ONLY_SCOPES = (
-    "wallet:accounts:read wallet:transactions:read wallet:user:read"
-)
+READ_ONLY_SCOPES = "wallet:accounts:read wallet:transactions:read wallet:user:read"
 
 _ACCESS_TOKEN_DEFAULT_LIFETIME_S = 7200
 _REFRESH_TOKEN_DEFAULT_LIFETIME_S = 30 * 24 * 3600
@@ -51,14 +49,14 @@ def _classify_status(status: int) -> bool:
     return 400 <= status < 500
 
 
-def _parse_expires_at(expires_in: Optional[Any], default_s: int) -> datetime:
+def _parse_expires_at(expires_in: Any | None, default_s: int) -> datetime:
     try:
         seconds = int(expires_in) if expires_in is not None else default_s
     except (TypeError, ValueError):
         seconds = default_s
     if seconds <= 0:
         seconds = default_s
-    return datetime.now(timezone.utc) + timedelta(seconds=seconds)
+    return datetime.now(UTC) + timedelta(seconds=seconds)
 
 
 class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
@@ -70,15 +68,13 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
     def __init__(
         self,
         *,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        timeout_s: Optional[float] = None,
-        session: Optional[requests.Session] = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        timeout_s: float | None = None,
+        session: requests.Session | None = None,
     ) -> None:
         self._client_id = client_id or getattr(settings, "COINBASE_CLIENT_ID", None)
-        self._client_secret = (
-            client_secret or getattr(settings, "COINBASE_CLIENT_SECRET", None)
-        )
+        self._client_secret = client_secret or getattr(settings, "COINBASE_CLIENT_SECRET", None)
         self._timeout_s = (
             timeout_s
             if timeout_s is not None
@@ -86,7 +82,7 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
         )
         self._session = session or requests.Session()
 
-    def _require_credentials(self) -> Tuple[str, str]:
+    def _require_credentials(self) -> tuple[str, str]:
         if not self._client_id or not self._client_secret:
             raise OAuthError(
                 "Coinbase credentials not configured (set COINBASE_CLIENT_ID "
@@ -96,7 +92,7 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
             )
         return self._client_id, self._client_secret
 
-    def _post_token(self, payload: Dict[str, str]) -> Dict[str, Any]:
+    def _post_token(self, payload: dict[str, str]) -> dict[str, Any]:
         client_id, client_secret = self._require_credentials()
         body = dict(payload)
         body["client_id"] = client_id
@@ -118,8 +114,7 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
         status = resp.status_code
         if status >= 400:
             raise OAuthError(
-                f"Coinbase token endpoint returned HTTP {status}: "
-                f"{(resp.text or '')[:200]}",
+                f"Coinbase token endpoint returned HTTP {status}: {(resp.text or '')[:200]}",
                 permanent=_classify_status(status),
                 broker=self.broker_id,
                 provider_status=status,
@@ -136,8 +131,7 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
 
         if not isinstance(body_json, dict):
             raise OAuthError(
-                f"Coinbase token response has unexpected root type "
-                f"{type(body_json).__name__}",
+                f"Coinbase token response has unexpected root type {type(body_json).__name__}",
                 permanent=True,
                 broker=self.broker_id,
                 provider_status=status,
@@ -174,8 +168,7 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
         callback_url = str(ctx.extra.get("callback_url") or "").strip()
         if not callback_url:
             raise OAuthError(
-                "missing callback_url in OAuth state; restart the Coinbase "
-                "connection flow",
+                "missing callback_url in OAuth state; restart the Coinbase connection flow",
                 permanent=True,
                 broker=self.broker_id,
             )
@@ -198,9 +191,7 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
         return OAuthTokens(
             access_token=str(access_token),
             refresh_token=str(refresh_token) if refresh_token else None,
-            expires_at=_parse_expires_at(
-                body.get("expires_in"), _ACCESS_TOKEN_DEFAULT_LIFETIME_S
-            ),
+            expires_at=_parse_expires_at(body.get("expires_in"), _ACCESS_TOKEN_DEFAULT_LIFETIME_S),
             scope=str(body.get("scope") or "") or None,
             provider_account_id=str(user_id_raw) if user_id_raw else None,
             raw=dict(body),
@@ -210,7 +201,7 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str],
+        refresh_token: str | None,
     ) -> OAuthTokens:
         if not refresh_token:
             raise OAuthError(
@@ -218,9 +209,7 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
                 permanent=True,
                 broker=self.broker_id,
             )
-        body = self._post_token(
-            {"grant_type": "refresh_token", "refresh_token": refresh_token}
-        )
+        body = self._post_token({"grant_type": "refresh_token", "refresh_token": refresh_token})
         new_access = body.get("access_token")
         new_refresh = body.get("refresh_token") or refresh_token
         if not new_access:
@@ -233,9 +222,7 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
         return OAuthTokens(
             access_token=str(new_access),
             refresh_token=str(new_refresh),
-            expires_at=_parse_expires_at(
-                body.get("expires_in"), _ACCESS_TOKEN_DEFAULT_LIFETIME_S
-            ),
+            expires_at=_parse_expires_at(body.get("expires_in"), _ACCESS_TOKEN_DEFAULT_LIFETIME_S),
             scope=str(body.get("scope") or "") or None,
             provider_account_id=str(user_id_raw) if user_id_raw else None,
             raw=dict(body),
@@ -245,18 +232,16 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str] = None,
+        refresh_token: str | None = None,
     ) -> None:
-        logger.info(
-            "Coinbase: no explicit revoke call in adapter; tokens cleared locally."
-        )
+        logger.info("Coinbase: no explicit revoke call in adapter; tokens cleared locally.")
 
     def fetch_account_summary(
         self,
         *,
         access_token: str,
-        refresh_token: Optional[str] = None,
-    ) -> Optional[Dict[str, Any]]:
+        refresh_token: str | None = None,
+    ) -> dict[str, Any] | None:
         if not access_token:
             return None
         try:
@@ -277,8 +262,8 @@ class CoinbaseOAuthAdapter(OAuthBrokerAdapter):
 
 
 __all__ = [
-    "CoinbaseOAuthAdapter",
+    "API_BASE",
     "AUTHORIZE_URL",
     "TOKEN_URL",
-    "API_BASE",
+    "CoinbaseOAuthAdapter",
 ]

@@ -17,6 +17,7 @@ to the LLM; the LLM can still reason about the email body.
 
 medallion: gold
 """
+
 from __future__ import annotations
 
 import base64
@@ -25,10 +26,9 @@ import email.policy
 import logging
 import re
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.message import EmailMessage
 from html.parser import HTMLParser
-from typing import List, Optional, Tuple
 
 from .types import SourceFormat
 
@@ -63,16 +63,14 @@ class RawEmail:
     callers test without producing a real RFC822 envelope.
     """
 
-    raw_bytes: Optional[bytes] = None
-    sender: Optional[str] = None
-    subject: Optional[str] = None
-    received_at: Optional[datetime] = None  # timezone-aware UTC
-    body_text: Optional[str] = None
-    body_html: Optional[str] = None
-    pdf_attachments: List[bytes] = field(default_factory=list)  # raw PDF bytes
-    image_attachments: List[Tuple[str, bytes]] = field(
-        default_factory=list
-    )  # (mime, bytes)
+    raw_bytes: bytes | None = None
+    sender: str | None = None
+    subject: str | None = None
+    received_at: datetime | None = None  # timezone-aware UTC
+    body_text: str | None = None
+    body_html: str | None = None
+    pdf_attachments: list[bytes] = field(default_factory=list)  # raw PDF bytes
+    image_attachments: list[tuple[str, bytes]] = field(default_factory=list)  # (mime, bytes)
 
 
 @dataclass(frozen=True)
@@ -85,9 +83,9 @@ class NormalizedEmail:
     body: str  # plain text, forwarded blocks collapsed
     source_format: SourceFormat
     extracted_pdf_text: str  # concatenated; "" if none
-    image_b64_blocks: Tuple[str, ...]  # base64 strings ready for vision LLM
-    candidate_tickers: Tuple[str, ...]  # rough hint set, deduped + capped
-    parse_warnings: Tuple[str, ...]
+    image_b64_blocks: tuple[str, ...]  # base64 strings ready for vision LLM
+    candidate_tickers: tuple[str, ...]  # rough hint set, deduped + capped
+    parse_warnings: tuple[str, ...]
 
 
 # --------------------------------------------------------------------------- #
@@ -102,15 +100,13 @@ class _TextExtractor(HTMLParser):
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self._chunks: List[str] = []
+        self._chunks: list[str] = []
         self._suppress_depth = 0
 
     def handle_starttag(self, tag, attrs):
         if tag in self._DROP_TAGS:
             self._suppress_depth += 1
-        elif tag in {"br"}:
-            self._chunks.append("\n")
-        elif tag in {"p", "div", "tr", "li"}:
+        elif tag in {"br"} or tag in {"p", "div", "tr", "li"}:
             self._chunks.append("\n")
 
     def handle_endtag(self, tag):
@@ -145,7 +141,7 @@ def _html_to_text(html: str) -> str:
 # --------------------------------------------------------------------------- #
 
 
-def _pdf_to_text(pdf_bytes: bytes) -> Tuple[str, Optional[str]]:
+def _pdf_to_text(pdf_bytes: bytes) -> tuple[str, str | None]:
     """Return (text, warning).
 
     Tries pypdf first (lightweight). Returns ("", warning) if no PDF lib is
@@ -165,7 +161,7 @@ def _pdf_to_text(pdf_bytes: bytes) -> Tuple[str, Optional[str]]:
         from io import BytesIO
 
         reader = PdfReader(BytesIO(pdf_bytes))
-        pages: List[str] = []
+        pages: list[str] = []
         for page in reader.pages:
             try:
                 pages.append(page.extract_text() or "")
@@ -192,15 +188,52 @@ def _strip_forwarded_envelopes(text: str) -> str:
     return cleaned.strip()
 
 
-def _extract_candidate_tickers(text: str, max_count: int = 24) -> Tuple[str, ...]:
+def _extract_candidate_tickers(text: str, max_count: int = 24) -> tuple[str, ...]:
     """Return uppercased ticker-like tokens, deduped, capped, with stopwords removed."""
-    seen: List[str] = []
+    seen: list[str] = []
     stop = {
-        "I", "A", "AN", "THE", "AT", "ON", "IN", "OF", "TO", "IS",
-        "OR", "AND", "FOR", "BUT", "BY", "AS", "IT", "BE", "WE",
-        "OUR", "ME", "MY", "YOU", "YOUR", "RE", "FW", "FWD", "PS",
-        "USD", "USA", "US", "EU", "UK", "EOD", "NYSE", "NASDAQ",
-        "ETF", "IPO", "CEO", "CFO", "AI", "ML",
+        "I",
+        "A",
+        "AN",
+        "THE",
+        "AT",
+        "ON",
+        "IN",
+        "OF",
+        "TO",
+        "IS",
+        "OR",
+        "AND",
+        "FOR",
+        "BUT",
+        "BY",
+        "AS",
+        "IT",
+        "BE",
+        "WE",
+        "OUR",
+        "ME",
+        "MY",
+        "YOU",
+        "YOUR",
+        "RE",
+        "FW",
+        "FWD",
+        "PS",
+        "USD",
+        "USA",
+        "US",
+        "EU",
+        "UK",
+        "EOD",
+        "NYSE",
+        "NASDAQ",
+        "ETF",
+        "IPO",
+        "CEO",
+        "CFO",
+        "AI",
+        "ML",
     }
     for match in _TICKER_RE.finditer(text):
         tok = match.group(1).upper()
@@ -223,7 +256,7 @@ class EmailPreprocessor:
     """Stateless. Construct once and call `.normalize()` per email."""
 
     def normalize(self, raw: RawEmail) -> NormalizedEmail:
-        warnings: List[str] = []
+        warnings: list[str] = []
 
         if raw.raw_bytes:
             return self._normalize_rfc822(raw.raw_bytes, warnings)
@@ -241,7 +274,7 @@ class EmailPreprocessor:
         return NormalizedEmail(
             sender=(raw.sender or "").strip(),
             subject=(raw.subject or "").strip(),
-            received_at=raw.received_at or datetime.now(timezone.utc),
+            received_at=raw.received_at or datetime.now(UTC),
             body=body,
             source_format=source_format,
             extracted_pdf_text=pdf_text,
@@ -254,14 +287,14 @@ class EmailPreprocessor:
 
     # ------------------------------------------------------------------ #
 
-    def _normalize_inline(self, raw: RawEmail) -> Tuple[str, SourceFormat]:
+    def _normalize_inline(self, raw: RawEmail) -> tuple[str, SourceFormat]:
         if raw.body_text:
             return raw.body_text, SourceFormat.PLAIN_TEXT
         if raw.body_html:
             return _html_to_text(raw.body_html), SourceFormat.HTML
         return "", SourceFormat.PLAIN_TEXT
 
-    def _normalize_rfc822(self, raw_bytes: bytes, warnings: List[str]) -> NormalizedEmail:
+    def _normalize_rfc822(self, raw_bytes: bytes, warnings: list[str]) -> NormalizedEmail:
         msg: EmailMessage = email.message_from_bytes(  # type: ignore[assignment]
             raw_bytes, policy=email.policy.default
         )
@@ -271,8 +304,8 @@ class EmailPreprocessor:
 
         body_text = ""
         body_html = ""
-        pdf_blobs: List[bytes] = []
-        images: List[Tuple[str, bytes]] = []
+        pdf_blobs: list[bytes] = []
+        images: list[tuple[str, bytes]] = []
 
         if msg.is_multipart():
             for part in msg.walk():
@@ -321,9 +354,7 @@ class EmailPreprocessor:
             source_format=source_format,
             extracted_pdf_text=pdf_text,
             image_b64_blocks=self._encode_images(images),
-            candidate_tickers=_extract_candidate_tickers(
-                "\n".join([subject, body, pdf_text])
-            ),
+            candidate_tickers=_extract_candidate_tickers("\n".join([subject, body, pdf_text])),
             parse_warnings=tuple(warnings),
         )
 
@@ -344,25 +375,25 @@ class EmailPreprocessor:
             return ""
 
     @staticmethod
-    def _parse_date(date_header: Optional[str]) -> datetime:
+    def _parse_date(date_header: str | None) -> datetime:
         if not date_header:
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
         try:
             from email.utils import parsedate_to_datetime
 
             dt = parsedate_to_datetime(date_header)
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            return dt.astimezone(timezone.utc)
+                dt = dt.replace(tzinfo=UTC)
+            return dt.astimezone(UTC)
         except Exception:
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
     @staticmethod
-    def _extract_pdfs(blobs: List[bytes]) -> Tuple[str, List[str]]:
+    def _extract_pdfs(blobs: list[bytes]) -> tuple[str, list[str]]:
         if not blobs:
             return "", []
-        chunks: List[str] = []
-        warns: List[str] = []
+        chunks: list[str] = []
+        warns: list[str] = []
         for idx, blob in enumerate(blobs):
             text, warn = _pdf_to_text(blob)
             if warn:
@@ -372,8 +403,8 @@ class EmailPreprocessor:
         return "\n\n--- pdf attachment ---\n\n".join(chunks), warns
 
     @staticmethod
-    def _encode_images(images: List[Tuple[str, bytes]]) -> Tuple[str, ...]:
-        out: List[str] = []
+    def _encode_images(images: list[tuple[str, bytes]]) -> tuple[str, ...]:
+        out: list[str] = []
         for mime, blob in images:
             try:
                 b64 = base64.b64encode(blob).decode("ascii")

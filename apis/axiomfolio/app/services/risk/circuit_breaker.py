@@ -4,12 +4,12 @@ Based on MiFID II / FIA best practices.
 
 medallion: gold
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone, timedelta, time
-from typing import Optional, Tuple
+from datetime import UTC, datetime, time, timedelta
 
 try:
     from zoneinfo import ZoneInfo
@@ -70,7 +70,7 @@ class CircuitBreaker:
         circuit:trip_reason - str (if tripped)
         circuit:trip_time - ISO timestamp
         circuit:kill_switch - str (admin override)
-    
+
     Trading Day:
         Default resets at 4:00 AM Eastern (after overnight session ends).
         This aligns with US equity market conventions where the trading day
@@ -81,8 +81,8 @@ class CircuitBreaker:
 
     def __init__(
         self,
-        config: Optional[CircuitBreakerConfig] = None,
-        redis_client: Optional[Redis] = None,
+        config: CircuitBreakerConfig | None = None,
+        redis_client: Redis | None = None,
     ):
         self.config = config or CircuitBreakerConfig()
         self._redis = redis_client
@@ -94,7 +94,7 @@ class CircuitBreaker:
             self._redis = Redis.from_url(settings.REDIS_URL)
         return self._redis
 
-    def can_trade(self, is_exit: bool = False) -> Tuple[bool, str, int]:
+    def can_trade(self, is_exit: bool = False) -> tuple[bool, str, int]:
         """
         Check if trading is allowed.
 
@@ -153,7 +153,7 @@ class CircuitBreaker:
 
         return True, "OK", 0
 
-    def can_trade_symbol(self, symbol: str) -> Tuple[bool, str]:
+    def can_trade_symbol(self, symbol: str) -> tuple[bool, str]:
         """Check if trading a specific symbol is allowed."""
         key = f"{self.REDIS_PREFIX}order_count:{symbol}"
         count = int(self.redis.get(key) or 0)
@@ -236,7 +236,7 @@ class CircuitBreaker:
         self.redis.set(f"{self.REDIS_PREFIX}kill_switch", reason)
         self.redis.set(
             f"{self.REDIS_PREFIX}kill_switch_time",
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(UTC).isoformat(),
         )
         self.redis.set(f"{self.REDIS_PREFIX}kill_switch_user", user)
 
@@ -283,14 +283,9 @@ class CircuitBreaker:
             "consecutive_losses": int(
                 self.redis.get(f"{self.REDIS_PREFIX}consecutive_losses") or 0
             ),
-            "kill_switch_active": self.redis.get(f"{self.REDIS_PREFIX}kill_switch")
-            is not None,
-            "trip_reason": (
-                self.redis.get(f"{self.REDIS_PREFIX}trip_reason") or b""
-            ).decode(),
-            "trip_time": (
-                self.redis.get(f"{self.REDIS_PREFIX}trip_time") or b""
-            ).decode(),
+            "kill_switch_active": self.redis.get(f"{self.REDIS_PREFIX}kill_switch") is not None,
+            "trip_reason": (self.redis.get(f"{self.REDIS_PREFIX}trip_reason") or b"").decode(),
+            "trip_time": (self.redis.get(f"{self.REDIS_PREFIX}trip_time") or b"").decode(),
         }
 
     def reset_daily_counters(self) -> None:
@@ -319,9 +314,7 @@ class CircuitBreaker:
         if daily_pnl >= 0:
             return 0.0
 
-        starting_equity = float(
-            self.redis.get(f"{self.REDIS_PREFIX}starting_equity") or 100_000
-        )
+        starting_equity = float(self.redis.get(f"{self.REDIS_PREFIX}starting_equity") or 100_000)
         if starting_equity <= 0:
             return 0.0
 
@@ -334,10 +327,10 @@ class CircuitBreaker:
     def _maybe_reset_daily_counters(self) -> None:
         """
         Reset counters when trading day changes.
-        
+
         Trading day is determined by the configured timezone and reset hour.
         Default: 4:00 AM Eastern - a new trading day starts at this time.
-        
+
         Example: At 3:59 AM ET, we're still in "yesterday's" trading day.
                  At 4:00 AM ET, a new trading day begins.
         """
@@ -349,17 +342,17 @@ class CircuitBreaker:
                 self.config.trading_day_timezone,
             )
             tz = ZoneInfo("US/Eastern")
-        
+
         now_local = datetime.now(tz)
         reset_time = time(hour=self.config.trading_day_reset_hour)
-        
+
         # Determine current trading day
         # If before reset hour, we're still in previous day's trading session
         if now_local.time() < reset_time:
             trading_day = (now_local - timedelta(days=1)).date()
         else:
             trading_day = now_local.date()
-        
+
         trading_day_str = trading_day.isoformat()
         stored_day = self.redis.get(f"{self.REDIS_PREFIX}trading_day")
 
@@ -378,7 +371,7 @@ class CircuitBreaker:
         self.redis.set(f"{self.REDIS_PREFIX}trip_reason", f"{reason_code}: {message}")
         self.redis.set(
             f"{self.REDIS_PREFIX}trip_time",
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(UTC).isoformat(),
         )
         logger.warning("CircuitBreaker tripped: %s - %s", reason_code, message)
 

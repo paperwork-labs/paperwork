@@ -14,7 +14,6 @@ import pytest
 from app.models.market_data import MarketSnapshot
 from app.services.gold.peak_signal_engine import PeakSignal, PeakSignalEngine
 
-
 pytestmark = pytest.mark.no_db
 
 
@@ -56,13 +55,13 @@ def test_boundary_parabolic_climax_td_all_fire_high_severity():
         stage_label="3A",
         previous_stage_label="2C",
         rs_mansfield_pct=-5.0,
-        ext_pct=22.0,           # past PARABOLIC_EXT_PCT_DANGER
-        atr_dist_ema21=8.0,     # past PARABOLIC_ATR_DIST_DANGER
+        ext_pct=22.0,  # past PARABOLIC_EXT_PCT_DANGER
+        atr_dist_ema21=8.0,  # past PARABOLIC_ATR_DIST_DANGER
         atrx_sma_150=6.0,
         range_pos_52w=97.0,
-        vol_ratio=3.0,          # past CLIMAX_VOL_RATIO_DANGER
+        vol_ratio=3.0,  # past CLIMAX_VOL_RATIO_DANGER
         perf_1d=7.0,
-        td_sell_setup=9,        # exhaustion
+        td_sell_setup=9,  # exhaustion
         td_sell_complete=True,
         action_label="REDUCE",
     )

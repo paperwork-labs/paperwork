@@ -24,7 +24,6 @@ import binascii
 import hashlib
 import logging
 from functools import lru_cache
-from typing import List, Optional
 
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
@@ -60,14 +59,12 @@ def _normalize_key(raw: str) -> bytes:
             return raw.encode("ascii")
     except (binascii.Error, ValueError):
         pass
-    logger.warning(
-        "OAuth encryption key is not 32-byte url-safe base64; deriving via SHA-256"
-    )
+    logger.warning("OAuth encryption key is not 32-byte url-safe base64; deriving via SHA-256")
     digest = hashlib.sha256(raw.encode("utf-8")).digest()
     return base64.urlsafe_b64encode(digest)
 
 
-def _resolve_keys() -> List[bytes]:
+def _resolve_keys() -> list[bytes]:
     # Local import keeps this module importable even before settings finishes
     # loading (e.g. during alembic offline mode).
     from app.config import settings
@@ -83,7 +80,7 @@ def _resolve_keys() -> List[bytes]:
             "(preferred) or ENCRYPTION_KEY in environment."
         )
 
-    keys: List[bytes] = [_normalize_key(primary)]
+    keys: list[bytes] = [_normalize_key(primary)]
 
     retired_csv = getattr(settings, "OAUTH_TOKEN_ENCRYPTION_KEYS_RETIRED", None) or ""
     for piece in retired_csv.split(","):
@@ -136,7 +133,7 @@ def decrypt(ciphertext: str) -> str:
         ) from exc
 
 
-def decrypt_optional(ciphertext: Optional[str]) -> Optional[str]:
+def decrypt_optional(ciphertext: str | None) -> str | None:
     """Convenience wrapper that returns None for None input."""
 
     if ciphertext is None:
@@ -145,10 +142,10 @@ def decrypt_optional(ciphertext: Optional[str]) -> Optional[str]:
 
 
 __all__ = [
-    "EncryptionUnavailableError",
     "EncryptionDecryptError",
-    "encrypt",
+    "EncryptionUnavailableError",
     "decrypt",
     "decrypt_optional",
+    "encrypt",
     "reset_cache",
 ]

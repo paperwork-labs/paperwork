@@ -12,10 +12,9 @@ import base64
 import hmac
 import struct
 import time
-from typing import Optional
 
 
-def generate_totp(secret: str, digits: int = 6, interval: int = 30) -> Optional[str]:
+def generate_totp(secret: str, digits: int = 6, interval: int = 30) -> str | None:
     """Generate a TOTP code from a Base32 secret.
 
     Args:

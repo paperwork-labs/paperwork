@@ -3,19 +3,19 @@ Pre-trade validation - all checks must pass before order reaches broker.
 
 medallion: gold
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.models.market_data import MarketSnapshot
 from app.models.order import Order
 from app.models.position import Position
-from app.models.market_data import MarketSnapshot
 from app.services.risk.circuit_breaker import circuit_breaker
 
 logger = logging.getLogger(__name__)
@@ -27,7 +27,7 @@ class ValidationCheck:
 
     name: str
     passed: bool
-    reason: Optional[str] = None
+    reason: str | None = None
 
 
 @dataclass
@@ -35,16 +35,16 @@ class ValidationResult:
     """Aggregate result of all pre-trade validations."""
 
     allowed: bool
-    checks: List[ValidationCheck] = field(default_factory=list)
+    checks: list[ValidationCheck] = field(default_factory=list)
     size_multiplier: float = 1.0
 
     @property
-    def reasons(self) -> List[str]:
+    def reasons(self) -> list[str]:
         """Get list of failure reasons."""
         return [c.reason for c in self.checks if not c.passed and c.reason]
 
     @property
-    def warnings(self) -> List[str]:
+    def warnings(self) -> list[str]:
         """Get list of non-blocking warning messages."""
         return [c.reason for c in self.checks if c.passed and c.reason]
 
@@ -69,7 +69,7 @@ class PreTradeValidator:
     MAX_SECTOR_PCT = 0.25  # 25% max sector concentration
     PRICE_COLLAR_PCT = 0.05  # 5% from last price
 
-    def __init__(self, db: Session, user_id: Optional[int] = None):
+    def __init__(self, db: Session, user_id: int | None = None):
         self.db = db
         self.user_id = user_id
         self._price_cache: dict[str, float] = {}
@@ -133,37 +133,37 @@ class PreTradeValidator:
 
     def _check_circuit_breaker(self, is_exit: bool) -> ValidationCheck:
         """Check if circuit breaker allows trading.
-        
+
         Also syncs starting equity from AccountBalance if trading day reset.
         """
         # Sync starting equity if needed (lazy sync on first trade of day)
         self._ensure_starting_equity_synced()
-        
+
         allowed, reason, tier = circuit_breaker.can_trade(is_exit=is_exit)
         return ValidationCheck(
             name="circuit_breaker",
             passed=allowed,
             reason=None if allowed else reason,
         )
-    
+
     def _ensure_starting_equity_synced(self) -> None:
         """Sync starting equity to circuit breaker from latest AccountBalance.
-        
+
         Uses Redis key scoped by user_id to track if already synced today.
         This ensures circuit breaker uses real portfolio value for daily loss % calculation.
         """
         if not self.user_id:
             return
-        
+
         try:
-            from app.services.cache import redis_client
             from app.models.account_balance import AccountBalance
-            
+            from app.services.cache import redis_client
+
             # Scope key by user to prevent cross-user blocking
             sync_key = f"circuit:equity_synced:{self.user_id}"
             if redis_client.exists(sync_key):
                 return  # Already synced today for this user
-            
+
             # Get total equity across user's accounts
             balance = (
                 self.db.query(AccountBalance)
@@ -177,15 +177,12 @@ class PreTradeValidator:
                 # Set flag with TTL until next trading day reset (max 24h)
                 redis_client.setex(sync_key, 86400, "1")
                 logger.info(
-                    "Circuit breaker starting equity synced: $%.2f (user %s)",
-                    equity, self.user_id
+                    "Circuit breaker starting equity synced: $%.2f (user %s)", equity, self.user_id
                 )
         except Exception as e:
             logger.warning("Failed to sync starting equity: %s", e)
 
-    def _check_position_limit(
-        self, order: Order, portfolio_equity: float
-    ) -> ValidationCheck:
+    def _check_position_limit(self, order: Order, portfolio_equity: float) -> ValidationCheck:
         """Check if order would exceed position size limit."""
         if portfolio_equity <= 0:
             return ValidationCheck(name="position_limit", passed=True)
@@ -213,9 +210,7 @@ class PreTradeValidator:
             )
         return ValidationCheck(name="position_limit", passed=True)
 
-    def _check_sector_concentration(
-        self, order: Order, portfolio_equity: float
-    ) -> ValidationCheck:
+    def _check_sector_concentration(self, order: Order, portfolio_equity: float) -> ValidationCheck:
         """Check if order would exceed sector concentration limit."""
         if portfolio_equity <= 0 or order.side.lower() == "sell":
             return ValidationCheck(name="sector_concentration", passed=True)
@@ -289,7 +284,7 @@ class PreTradeValidator:
         identical security within 30 days before or after.
         """
         # Check if there was a recent purchase of this symbol
-        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
 
         recent_buys = (
             self.db.query(Order)
@@ -313,9 +308,7 @@ class PreTradeValidator:
 
     MAX_PORTFOLIO_HEAT_PCT = 0.06  # 6% max concurrent risk
 
-    def _check_portfolio_heat(
-        self, order: Order, portfolio_equity: float
-    ) -> ValidationCheck:
+    def _check_portfolio_heat(self, order: Order, portfolio_equity: float) -> ValidationCheck:
         """Block new entries if aggregate open risk exceeds 6% of equity.
 
         Portfolio heat = sum of (|position_value| × ATR%14 × stop_multiplier) for
@@ -337,6 +330,7 @@ class PreTradeValidator:
         all_symbols = list(set(pos_symbols + [order.symbol]))
 
         from sqlalchemy import func as sa_func
+
         latest_ids = (
             self.db.query(sa_func.max(MarketSnapshot.id).label("id"))
             .filter(
@@ -403,7 +397,7 @@ class PreTradeValidator:
         )
         if self.user_id:
             query = query.filter(Position.user_id == self.user_id)
-        
+
         position = query.first()
 
         if position and position.market_value:
@@ -432,16 +426,12 @@ class PreTradeValidator:
 
         return 0.0
 
-    def _get_sector(self, symbol: str) -> Optional[str]:
+    def _get_sector(self, symbol: str) -> str | None:
         """Get sector for a symbol."""
         if symbol in self._sector_cache:
             return self._sector_cache[symbol]
 
-        snapshot = (
-            self.db.query(MarketSnapshot)
-            .filter(MarketSnapshot.symbol == symbol)
-            .first()
-        )
+        snapshot = self.db.query(MarketSnapshot).filter(MarketSnapshot.symbol == symbol).first()
 
         if snapshot and snapshot.sector:
             self._sector_cache[symbol] = snapshot.sector
@@ -454,7 +444,7 @@ class PreTradeValidator:
         query = self.db.query(Position).filter(Position.quantity != 0)
         if self.user_id:
             query = query.filter(Position.user_id == self.user_id)
-        
+
         positions = query.all()
 
         total = 0.0

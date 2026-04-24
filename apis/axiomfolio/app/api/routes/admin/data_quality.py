@@ -26,8 +26,8 @@ loss across the wire). Filters are clamped server-side so a careless
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -65,16 +65,16 @@ class QuorumLogOut(BaseModel):
     symbol: str
     field_name: str
     check_at: datetime
-    providers_queried: Dict[str, Optional[str]]
-    quorum_value: Optional[str] = None
+    providers_queried: dict[str, str | None]
+    quorum_value: str | None = None
     quorum_threshold: str
     status: str
-    max_disagreement_pct: Optional[str] = None
+    max_disagreement_pct: str | None = None
     action_taken: str
 
 
 class QuorumLogListOut(BaseModel):
-    items: List[QuorumLogOut]
+    items: list[QuorumLogOut]
     total: int
     days: int
 
@@ -87,7 +87,7 @@ class QuorumStatusCount(BaseModel):
 class QuorumSummaryOut(BaseModel):
     days: int
     total: int
-    by_status: List[QuorumStatusCount]
+    by_status: list[QuorumStatusCount]
 
 
 class DriftAlertOut(BaseModel):
@@ -97,17 +97,17 @@ class DriftAlertOut(BaseModel):
     symbol: str
     field_name: str
     provider: str
-    expected_range: Dict[str, Any]
+    expected_range: dict[str, Any]
     actual_value: str
     deviation_pct: str
     alert_at: datetime
-    resolved_at: Optional[datetime] = None
-    resolution_note: Optional[str] = None
+    resolved_at: datetime | None = None
+    resolution_note: str | None = None
     is_open: bool
 
 
 class DriftAlertListOut(BaseModel):
-    items: List[DriftAlertOut]
+    items: list[DriftAlertOut]
     total: int
     status_filter: str
 
@@ -146,15 +146,11 @@ def _row_to_quorum_out(row: ProviderQuorumLog) -> QuorumLogOut:
         field_name=row.field_name,
         check_at=row.check_at,
         providers_queried=row.providers_queried or {},
-        quorum_value=(
-            str(row.quorum_value) if row.quorum_value is not None else None
-        ),
+        quorum_value=(str(row.quorum_value) if row.quorum_value is not None else None),
         quorum_threshold=str(row.quorum_threshold),
         status=row.status.value if row.status else "",
         max_disagreement_pct=(
-            str(row.max_disagreement_pct)
-            if row.max_disagreement_pct is not None
-            else None
+            str(row.max_disagreement_pct) if row.max_disagreement_pct is not None else None
         ),
         action_taken=row.action_taken.value if row.action_taken else "",
     )
@@ -185,14 +181,14 @@ def _row_to_drift_out(row: ProviderDriftAlert) -> DriftAlertOut:
 def list_quorum_failures(
     days: int = Query(7, ge=1, le=90, description="Lookback window in days"),
     limit: int = Query(200, ge=1, le=1000),
-    symbol: Optional[str] = Query(None, max_length=32),
-    field_name: Optional[str] = Query(None, max_length=64),
+    symbol: str | None = Query(None, max_length=32),
+    field_name: str | None = Query(None, max_length=64),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_admin_user),
 ) -> QuorumLogListOut:
     """Recent quorum failures (DISAGREEMENT / INSUFFICIENT_PROVIDERS)."""
     days = _clamp_days(days)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
     failure_statuses = [
         QuorumStatus.DISAGREEMENT,
@@ -210,9 +206,7 @@ def list_quorum_failures(
         query = query.filter(ProviderQuorumLog.field_name == field_name.upper())
 
     total = query.count()
-    rows = (
-        query.order_by(ProviderQuorumLog.check_at.desc()).limit(limit).all()
-    )
+    rows = query.order_by(ProviderQuorumLog.check_at.desc()).limit(limit).all()
     return QuorumLogListOut(
         items=[_row_to_quorum_out(r) for r in rows],
         total=total,
@@ -228,7 +222,7 @@ def quorum_summary(
 ) -> QuorumSummaryOut:
     """Counts by status over the lookback window. Powers KPI tiles."""
     days = _clamp_days(days)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
     rows = (
         db.query(
@@ -260,18 +254,16 @@ def list_drift_alerts(
     ),
     days: int = Query(30, ge=1, le=180),
     limit: int = Query(200, ge=1, le=1000),
-    symbol: Optional[str] = Query(None, max_length=32),
-    provider: Optional[str] = Query(None, max_length=64),
+    symbol: str | None = Query(None, max_length=32),
+    provider: str | None = Query(None, max_length=64),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_admin_user),
 ) -> DriftAlertListOut:
     """Drift alerts filterable by open/resolved/all."""
     days = _clamp_days(days, hi=180)
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    cutoff = datetime.now(UTC) - timedelta(days=days)
 
-    query = db.query(ProviderDriftAlert).filter(
-        ProviderDriftAlert.alert_at >= cutoff
-    )
+    query = db.query(ProviderDriftAlert).filter(ProviderDriftAlert.alert_at >= cutoff)
     if status_filter == "open":
         query = query.filter(ProviderDriftAlert.resolved_at.is_(None))
     elif status_filter == "resolved":
@@ -282,9 +274,7 @@ def list_drift_alerts(
         query = query.filter(ProviderDriftAlert.provider == provider)
 
     total = query.count()
-    rows = (
-        query.order_by(ProviderDriftAlert.alert_at.desc()).limit(limit).all()
-    )
+    rows = query.order_by(ProviderDriftAlert.alert_at.desc()).limit(limit).all()
     return DriftAlertListOut(
         items=[_row_to_drift_out(r) for r in rows],
         total=total,
@@ -309,18 +299,14 @@ def resolve_drift_alert(
     alert updates the note and ``resolved_at`` rather than 409-ing,
     so an operator can correct a typo.
     """
-    row = (
-        db.query(ProviderDriftAlert)
-        .filter(ProviderDriftAlert.id == alert_id)
-        .one_or_none()
-    )
+    row = db.query(ProviderDriftAlert).filter(ProviderDriftAlert.id == alert_id).one_or_none()
     if row is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Drift alert {alert_id} not found",
         )
 
-    row.resolved_at = datetime.now(timezone.utc)
+    row.resolved_at = datetime.now(UTC)
     row.resolution_note = payload.note.strip()
     db.commit()
     db.refresh(row)

@@ -35,7 +35,6 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -84,9 +83,7 @@ class FileFreeAccount(BaseModel):
         ..., description="Stable opaque ref, format: '<broker>:<account_number>'"
     )
     broker: str = Field(..., description="Broker slug (e.g. 'ibkr', 'tastytrade')")
-    account_type: str = Field(
-        ..., description="taxable | ira | roth_ira | hsa | trust | business"
-    )
+    account_type: str = Field(..., description="taxable | ira | roth_ira | hsa | trust | business")
     is_tax_advantaged: bool = Field(
         ..., description="True for IRA/Roth/HSA. FileFree should normally exclude."
     )
@@ -101,9 +98,7 @@ class FileFreeLot(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    lot_id: str = Field(
-        ..., description="Stable per-export id, derived from account+execution"
-    )
+    lot_id: str = Field(..., description="Stable per-export id, derived from account+execution")
     account_ref: str
     symbol: str
     description: str = Field(..., description="Human-readable, e.g. 'AAPL (100 sh)'")
@@ -114,17 +109,17 @@ class FileFreeLot(BaseModel):
     cost_basis: Decimal = Field(..., description="Adjusted cost basis, USD")
     realized_gain: Decimal = Field(..., description="proceeds - cost_basis - adjustments")
 
-    date_acquired: Optional[date] = Field(
+    date_acquired: date | None = Field(
         None, description="Lot acquisition date; None means 'VARIOUS'"
     )
     date_sold: date
 
     term: LotTerm
     is_wash_sale: bool = False
-    wash_sale_disallowed_loss: Optional[Decimal] = Field(
+    wash_sale_disallowed_loss: Decimal | None = Field(
         None, description="Positive number; only set when is_wash_sale is True"
     )
-    adjustment_code: Optional[str] = Field(
+    adjustment_code: str | None = Field(
         None,
         description="IRS Form 8949 adjustment code letter(s), e.g. 'W' for wash sale",
     )
@@ -156,10 +151,10 @@ class FileFreePackage(BaseModel):
     generated_at: datetime = Field(..., description="UTC, when the export ran")
     tax_year: int = Field(..., ge=1900)
     user_id: int = Field(..., ge=1)
-    accounts: List[FileFreeAccount]
-    lots: List[FileFreeLot]
+    accounts: list[FileFreeAccount]
+    lots: list[FileFreeLot]
     summary: FileFreeSummary
-    warnings: List[str] = Field(
+    warnings: list[str] = Field(
         default_factory=list,
         description="Non-fatal advisories the consumer should surface to the user",
     )

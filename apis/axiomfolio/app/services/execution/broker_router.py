@@ -6,7 +6,6 @@ medallion: execution
 from __future__ import annotations
 
 import logging
-from typing import Dict
 
 from app.services.execution.broker_base import BrokerExecutor
 
@@ -23,7 +22,7 @@ class BrokerRouter:
     """
 
     def __init__(self):
-        self._executors: Dict[str, BrokerExecutor] = {}
+        self._executors: dict[str, BrokerExecutor] = {}
 
     def register(self, broker_type: str, executor: BrokerExecutor) -> None:
         self._executors[broker_type.lower()] = executor
@@ -34,8 +33,7 @@ class BrokerRouter:
         if executor is None:
             available = ", ".join(self._executors.keys()) or "(none)"
             raise ValueError(
-                f"No executor registered for broker '{broker_type}'. "
-                f"Available: {available}"
+                f"No executor registered for broker '{broker_type}'. Available: {available}"
             )
         return executor
 
@@ -60,13 +58,13 @@ def create_default_router() -> BrokerRouter:
       real order until an operator explicitly flips the flag.
     """
     from app.config import settings
+    from app.services.execution.coinbase_paper_executor import CoinbasePaperExecutor
+    from app.services.execution.etrade_executor import ETradeExecutor
     from app.services.execution.ibkr_executor import IBKRExecutor
     from app.services.execution.paper_executor import PaperExecutor
-    from app.services.execution.coinbase_paper_executor import CoinbasePaperExecutor
     from app.services.execution.schwab_executor import SchwabExecutor
-    from app.services.execution.tradier_executor import TradierExecutor
-    from app.services.execution.etrade_executor import ETradeExecutor
     from app.services.execution.tastytrade_executor import TastytradeExecutor
+    from app.services.execution.tradier_executor import TradierExecutor
 
     router = BrokerRouter()
 

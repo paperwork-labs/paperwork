@@ -48,4 +48,3 @@ def test_snapshot_from_dataframe_uses_newest_bar_for_current_fields():
     assert str(snap.get("as_of_timestamp", "")).startswith("2026-02-11")
     # Perf windows must be anchored on the newest close.
     assert snap.get("perf_1d") == pytest.approx(10.0, abs=1e-6)
-

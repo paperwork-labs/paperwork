@@ -24,9 +24,10 @@ Storage choices:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     CheckConstraint,
     Column,
@@ -34,7 +35,6 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
-    JSON,
     Numeric,
     String,
     Text,
@@ -81,15 +81,9 @@ class TradeDecisionExplanation(Base):
     trigger_type = Column(String(32), nullable=False)
     model_used = Column(String(64), nullable=False)
 
-    prompt_token_count = Column(
-        Integer, nullable=False, default=0, server_default="0"
-    )
-    completion_token_count = Column(
-        Integer, nullable=False, default=0, server_default="0"
-    )
-    cost_usd = Column(
-        Numeric(10, 6), nullable=False, default=0, server_default="0"
-    )
+    prompt_token_count = Column(Integer, nullable=False, default=0, server_default="0")
+    completion_token_count = Column(Integer, nullable=False, default=0, server_default="0")
+    cost_usd = Column(Numeric(10, 6), nullable=False, default=0, server_default="0")
 
     is_fallback = Column(
         Boolean,
@@ -104,7 +98,7 @@ class TradeDecisionExplanation(Base):
     generated_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
     )
     created_at = Column(

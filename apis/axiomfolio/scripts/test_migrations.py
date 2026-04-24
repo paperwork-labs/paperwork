@@ -15,9 +15,8 @@ Exit codes:
 """
 
 import os
-import sys
 import subprocess
-import tempfile
+import sys
 from pathlib import Path
 
 # Add backend to path
@@ -41,16 +40,13 @@ def test_migrations_forward():
     print("=" * 60)
     print("Testing migrations (upgrade to head)...")
     print("=" * 60)
-    
+
     # Use a test database URL or in-memory SQLite
-    test_db_url = os.environ.get(
-        "TEST_DATABASE_URL",
-        "sqlite:///./test_migrations.db"
-    )
-    
+    test_db_url = os.environ.get("TEST_DATABASE_URL", "sqlite:///./test_migrations.db")
+
     env = os.environ.copy()
     env["DATABASE_URL"] = test_db_url
-    
+
     # Run alembic upgrade head
     result = subprocess.run(
         ["alembic", "upgrade", "head"],
@@ -59,13 +55,13 @@ def test_migrations_forward():
         text=True,
         env=env,
     )
-    
+
     if result.returncode != 0:
         print("FAILED: alembic upgrade head")
         print(f"stdout: {result.stdout}")
         print(f"stderr: {result.stderr}")
         return False
-    
+
     print("PASSED: All migrations applied successfully")
     print(f"Output: {result.stdout}")
     return True
@@ -76,15 +72,12 @@ def test_migrations_roundtrip():
     print("\n" + "=" * 60)
     print("Testing migration roundtrip (down to base, up to head)...")
     print("=" * 60)
-    
-    test_db_url = os.environ.get(
-        "TEST_DATABASE_URL",
-        "sqlite:///./test_migrations.db"
-    )
-    
+
+    test_db_url = os.environ.get("TEST_DATABASE_URL", "sqlite:///./test_migrations.db")
+
     env = os.environ.copy()
     env["DATABASE_URL"] = test_db_url
-    
+
     # Downgrade to base
     result = subprocess.run(
         ["alembic", "downgrade", "base"],
@@ -93,15 +86,15 @@ def test_migrations_roundtrip():
         text=True,
         env=env,
     )
-    
+
     if result.returncode != 0:
         print("FAILED: alembic downgrade base")
         print(f"stdout: {result.stdout}")
         print(f"stderr: {result.stderr}")
         return False
-    
+
     print("PASSED: Downgrade to base successful")
-    
+
     # Upgrade back to head
     result = subprocess.run(
         ["alembic", "upgrade", "head"],
@@ -110,13 +103,13 @@ def test_migrations_roundtrip():
         text=True,
         env=env,
     )
-    
+
     if result.returncode != 0:
         print("FAILED: alembic upgrade head (after downgrade)")
         print(f"stdout: {result.stdout}")
         print(f"stderr: {result.stderr}")
         return False
-    
+
     print("PASSED: Roundtrip migration successful")
     return True
 
@@ -126,30 +119,28 @@ def check_model_server_defaults():
     print("\n" + "=" * 60)
     print("Auditing models for missing server_default...")
     print("=" * 60)
-    
+
     import re
-    from pathlib import Path
-    
+
     models_dir = BACKEND_DIR / "models"
     issues = []
-    
+
     # Pattern to find Column definitions with nullable=False and default= but no server_default
     # This is a simplified check - the explore subagent found the full list
     pattern = re.compile(
-        r'Column\([^)]*nullable\s*=\s*False[^)]*default\s*=[^)]*\)',
-        re.MULTILINE | re.DOTALL
+        r"Column\([^)]*nullable\s*=\s*False[^)]*default\s*=[^)]*\)", re.MULTILINE | re.DOTALL
     )
-    
+
     for py_file in models_dir.glob("*.py"):
         content = py_file.read_text()
-        
+
         # Look for created_at without server_default
         if "created_at" in content:
             if "server_default" not in content:
                 # Check if it's actually nullable=False
-                if re.search(r'created_at.*nullable\s*=\s*False', content, re.DOTALL):
+                if re.search(r"created_at.*nullable\s*=\s*False", content, re.DOTALL):
                     issues.append(f"{py_file.name}: created_at may need server_default")
-    
+
     if issues:
         print(f"WARNINGS ({len(issues)}):")
         for issue in issues:
@@ -158,7 +149,7 @@ def check_model_server_defaults():
         print("Consider adding server_default=func.now() or server_default='value'")
     else:
         print("PASSED: No obvious server_default issues found")
-    
+
     return True  # This is advisory, not a hard failure
 
 
@@ -174,28 +165,28 @@ def main():
     """Run all migration tests."""
     print("AxiomFolio Migration Test Suite")
     print("=" * 60)
-    
+
     all_passed = True
-    
+
     try:
         # Clean up any previous test DB
         cleanup_test_db()
-        
+
         # Test forward migrations
         if not test_migrations_forward():
             all_passed = False
-        
+
         # Test roundtrip (only if forward passed)
         if all_passed and not test_migrations_roundtrip():
             all_passed = False
-        
+
         # Advisory check for server_defaults
         check_model_server_defaults()
-        
+
     finally:
         # Always clean up
         cleanup_test_db()
-    
+
     print("\n" + "=" * 60)
     if all_passed:
         print("ALL TESTS PASSED")

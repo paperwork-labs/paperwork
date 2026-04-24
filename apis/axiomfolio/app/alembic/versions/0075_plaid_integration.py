@@ -31,7 +31,6 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-
 revision = "0075"
 down_revision = "0074"
 branch_labels = None
@@ -73,9 +72,7 @@ def upgrade() -> None:
     # ``IF NOT EXISTS`` so re-running this migration on an environment
     # where the value was added out-of-band doesn't fail.
     with op.get_context().autocommit_block():
-        op.execute(
-            "ALTER TYPE taxlotsource ADD VALUE IF NOT EXISTS 'AGGREGATOR'"
-        )
+        op.execute("ALTER TYPE taxlotsource ADD VALUE IF NOT EXISTS 'AGGREGATOR'")
 
     # 3) plaid_connections table ---------------------------------------------
     op.create_table(
@@ -141,9 +138,7 @@ def downgrade() -> None:
     # Drop in reverse order of creation. We cannot remove enum values in
     # Postgres (no ALTER TYPE DROP VALUE), so ``'aggregator'`` lingers on
     # downgrade — that's acceptable because nothing depends on its absence.
-    op.drop_index(
-        "idx_plaid_connections_user_status", table_name="plaid_connections"
-    )
+    op.drop_index("idx_plaid_connections_user_status", table_name="plaid_connections")
     op.drop_table("plaid_connections")
 
     op.drop_constraint(

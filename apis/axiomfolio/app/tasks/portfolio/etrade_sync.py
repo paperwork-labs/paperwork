@@ -31,7 +31,7 @@ the other way around:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from celery import shared_task
 
@@ -54,7 +54,7 @@ _SOFT_TIME_LIMIT = 900
     soft_time_limit=_SOFT_TIME_LIMIT,
     time_limit=_TIME_LIMIT,
 )
-def sync_all_etrade_accounts() -> Dict[str, Any]:
+def sync_all_etrade_accounts() -> dict[str, Any]:
     """Enqueue per-account sync tasks for every enabled E*TRADE account.
 
     Multi-tenancy: we never carry a ``user_id`` parameter here (the Beat
@@ -77,7 +77,7 @@ def sync_all_etrade_accounts() -> Dict[str, Any]:
         )
         enqueued = 0
         errors = 0
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
         for acct in accounts:
             try:
                 # Import here to keep module import cheap for Beat/worker
@@ -88,25 +88,24 @@ def sync_all_etrade_accounts() -> Dict[str, Any]:
                     "app.tasks.account_sync.sync_account_task",
                     args=[acct.id, "comprehensive"],
                 )
-                results.append(
-                    {"account_id": acct.id, "user_id": acct.user_id, "task_id": task.id}
-                )
+                results.append({"account_id": acct.id, "user_id": acct.user_id, "task_id": task.id})
                 enqueued += 1
-            except Exception as exc:  # noqa: BLE001 — per-account isolation
+            except Exception as exc:
                 errors += 1
                 logger.warning(
-                    "etrade fan-out: failed to enqueue sync for account %s "
-                    "(user %s): %s",
-                    acct.id, acct.user_id, exc,
+                    "etrade fan-out: failed to enqueue sync for account %s (user %s): %s",
+                    acct.id,
+                    acct.user_id,
+                    exc,
                 )
-                results.append(
-                    {"account_id": acct.id, "user_id": acct.user_id, "error": str(exc)}
-                )
+                results.append({"account_id": acct.id, "user_id": acct.user_id, "error": str(exc)})
 
         # Structured counter logging per no-silent-fallback rule.
         logger.info(
             "etrade fan-out: total=%d enqueued=%d errors=%d",
-            len(accounts), enqueued, errors,
+            len(accounts),
+            enqueued,
+            errors,
         )
         return {
             "status": "queued",

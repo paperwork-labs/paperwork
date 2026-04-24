@@ -15,8 +15,8 @@ import json
 import logging
 import os
 import time
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 from sqlalchemy.orm import Session
@@ -42,9 +42,9 @@ CRON_ENV_VAR_KEYS = [
 ]
 
 
-def _collect_cron_env_vars() -> List[Dict[str, str]]:
+def _collect_cron_env_vars() -> list[dict[str, str]]:
     """Build env-var list for Render cron jobs from settings, falling back to os.environ."""
-    out: List[Dict[str, str]] = []
+    out: list[dict[str, str]] = []
     for key in CRON_ENV_VAR_KEYS:
         val = getattr(settings, key, None) or os.environ.get(key)
         if val:
@@ -56,14 +56,14 @@ class RenderCronSyncService:
     """Synchronise CronSchedule DB rows with Render cron-job services."""
 
     def __init__(self) -> None:
-        self._api_key: Optional[str] = settings.RENDER_API_KEY
-        self._owner_id: Optional[str] = settings.RENDER_OWNER_ID
+        self._api_key: str | None = settings.RENDER_API_KEY
+        self._owner_id: str | None = settings.RENDER_OWNER_ID
 
     @property
     def enabled(self) -> bool:
         return bool(self._api_key and self._owner_id)
 
-    def _headers(self) -> Dict[str, str]:
+    def _headers(self) -> dict[str, str]:
         return {
             "Authorization": f"Bearer {self._api_key}",
             "Accept": "application/json",
@@ -75,14 +75,16 @@ class RenderCronSyncService:
         method: str,
         path: str,
         *,
-        json: Optional[Dict[str, Any]] = None,
-        params: Optional[Dict[str, str]] = None,
+        json: dict[str, Any] | None = None,
+        params: dict[str, str] | None = None,
     ) -> httpx.Response:
         url = f"{RENDER_API_BASE}{path}"
-        resp: Optional[httpx.Response] = None
+        resp: httpx.Response | None = None
         with httpx.Client(timeout=30) as client:
             for attempt in range(2):
-                resp = client.request(method, url, headers=self._headers(), json=json, params=params)
+                resp = client.request(
+                    method, url, headers=self._headers(), json=json, params=params
+                )
                 if resp.status_code != 429:
                     break
                 retry_after_raw = resp.headers.get("Retry-After")
@@ -117,9 +119,9 @@ class RenderCronSyncService:
     # Low-level Render API wrappers
     # ------------------------------------------------------------------
 
-    def list_render_crons(self) -> List[Dict[str, Any]]:
+    def list_render_crons(self) -> list[dict[str, Any]]:
         """List all cron-job services owned by this account."""
-        params: Dict[str, str] = {"type": "cron_job", "limit": "100"}
+        params: dict[str, str] = {"type": "cron_job", "limit": "100"}
         if self._owner_id:
             params["ownerId"] = self._owner_id
         resp = self._request("GET", "/services", params=params)
@@ -136,13 +138,13 @@ class RenderCronSyncService:
             for svc in items
         ]
 
-    def create_render_cron(self, schedule: CronSchedule) -> Optional[str]:
+    def create_render_cron(self, schedule: CronSchedule) -> str | None:
         """Create a Render cron-job service. Returns the new service ID."""
         docker_command = f"{COMMAND_PREFIX} {schedule.task}"
         if schedule.kwargs_json:
             docker_command += f" --kwargs '{json.dumps(schedule.kwargs_json)}'"
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "type": "cron_job",
             "name": schedule.id,
             "ownerId": self._owner_id,
@@ -165,7 +167,11 @@ class RenderCronSyncService:
             service_id = data.get("service", data).get("id", data.get("id"))
             logger.info("Created Render cron %s -> %s", schedule.id, service_id)
             return service_id
-        logger.error("Failed to create Render cron %s: response body redacted (status=%s)", schedule.id, resp.status_code)
+        logger.error(
+            "Failed to create Render cron %s: response body redacted (status=%s)",
+            schedule.id,
+            resp.status_code,
+        )
         return None
 
     def update_render_cron(self, schedule: CronSchedule) -> bool:
@@ -176,7 +182,7 @@ class RenderCronSyncService:
         if schedule.kwargs_json:
             docker_command += f" --kwargs '{json.dumps(schedule.kwargs_json)}'"
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "schedule": schedule.cron,
             "serviceDetails": {
                 "dockerCommand": docker_command,
@@ -207,7 +213,7 @@ class RenderCronSyncService:
     # High-level sync
     # ------------------------------------------------------------------
 
-    def sync_one(self, schedule: CronSchedule, db: Session) -> Dict[str, Any]:
+    def sync_one(self, schedule: CronSchedule, db: Session) -> dict[str, Any]:
         """Sync a single schedule row to Render. Returns status dict."""
         if not self.enabled:
             return {"status": "skipped", "reason": "render_api_not_configured"}
@@ -235,7 +241,7 @@ class RenderCronSyncService:
                     ok = False
                     action = "create_failed"
 
-            now = datetime.now(timezone.utc)
+            now = datetime.now(UTC)
             if ok:
                 schedule.render_synced_at = now
                 schedule.render_sync_error = None
@@ -249,7 +255,7 @@ class RenderCronSyncService:
             db.commit()
             return {"status": "error", "error": str(exc)[:200]}
 
-    def sync_all(self, db: Session) -> Dict[str, Any]:
+    def sync_all(self, db: Session) -> dict[str, Any]:
         """Full reconciliation: DB schedules -> Render cron jobs."""
         if not self.enabled:
             logger.info("Render sync skipped (RENDER_API_KEY or RENDER_OWNER_ID not set)")
@@ -257,20 +263,23 @@ class RenderCronSyncService:
 
         counters = {"created": 0, "updated": 0, "suspended": 0, "deleted": 0, "errors": 0}
 
-        db_schedules: List[CronSchedule] = db.query(CronSchedule).all()
+        db_schedules: list[CronSchedule] = db.query(CronSchedule).all()
         db_by_id = {s.id: s for s in db_schedules}
 
         render_crons = self.list_render_crons()
-        render_by_name: Dict[str, Dict[str, Any]] = {rc["name"]: rc for rc in render_crons}
+        render_by_name: dict[str, dict[str, Any]] = {rc["name"]: rc for rc in render_crons}
 
         # Match existing Render crons to DB rows by render_service_id
-        render_by_service_id: Dict[str, Dict[str, Any]] = {rc["id"]: rc for rc in render_crons}
+        render_by_service_id: dict[str, dict[str, Any]] = {rc["id"]: rc for rc in render_crons}
 
         for schedule in db_schedules:
             try:
                 op_ok = True
                 # Try to find existing Render service
-                if schedule.render_service_id and schedule.render_service_id in render_by_service_id:
+                if (
+                    schedule.render_service_id
+                    and schedule.render_service_id in render_by_service_id
+                ):
                     existing = render_by_service_id[schedule.render_service_id]
                 elif schedule.id in render_by_name:
                     existing = render_by_name[schedule.id]
@@ -303,7 +312,7 @@ class RenderCronSyncService:
                             op_ok = False
 
                 if op_ok:
-                    schedule.render_synced_at = datetime.now(timezone.utc)
+                    schedule.render_synced_at = datetime.now(UTC)
                     schedule.render_sync_error = None
                 else:
                     schedule.render_sync_error = "sync operation failed"

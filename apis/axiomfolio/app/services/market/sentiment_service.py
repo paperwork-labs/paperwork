@@ -4,13 +4,14 @@ Aggregates social/news sentiment for symbols to enhance trading decisions.
 
 medallion: silver
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import httpx
 from sqlalchemy.orm import Session
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class SentimentLevel(str, Enum):
     """Sentiment classification levels."""
+
     VERY_BEARISH = "very_bearish"  # -1.0 to -0.6
     BEARISH = "bearish"  # -0.6 to -0.2
     NEUTRAL = "neutral"  # -0.2 to 0.2
@@ -32,10 +34,11 @@ class SentimentLevel(str, Enum):
 @dataclass
 class SentimentScore:
     """Sentiment data for a symbol."""
+
     symbol: str
     composite_score: float  # -1.0 to 1.0
     level: SentimentLevel
-    sources: Dict[str, float]  # Score by source
+    sources: dict[str, float]  # Score by source
     mention_count: int
     bullish_ratio: float  # % bullish mentions
     updated_at: datetime
@@ -45,6 +48,7 @@ class SentimentScore:
 @dataclass
 class SentimentAlert:
     """Alert for significant sentiment change."""
+
     symbol: str
     alert_type: str  # "spike", "reversal", "extreme"
     previous_score: float
@@ -55,16 +59,16 @@ class SentimentAlert:
 
 class SentimentService:
     """Aggregates sentiment from multiple sources.
-    
+
     Sources (when API keys available):
     - StockTwits: Social sentiment
     - Finnhub: News sentiment
     - Alpha Vantage: News sentiment
     - Reddit: Wallstreetbets, stocks subreddit
-    
+
     Falls back to cached/simulated data when APIs unavailable.
     """
-    
+
     # Score thresholds for sentiment levels
     THRESHOLDS = {
         "very_bearish": -0.6,
@@ -72,41 +76,41 @@ class SentimentService:
         "neutral": 0.2,
         "bullish": 0.6,
     }
-    
-    def __init__(self, db: Optional[Session] = None):
+
+    def __init__(self, db: Session | None = None):
         self.db = db
-        self._cache: Dict[str, SentimentScore] = {}
+        self._cache: dict[str, SentimentScore] = {}
         self._cache_ttl = timedelta(minutes=15)
-    
+
     async def get_sentiment(
         self,
         symbol: str,
         use_cache: bool = True,
     ) -> SentimentScore:
         """Get current sentiment for a symbol.
-        
+
         Args:
             symbol: Stock ticker
             use_cache: Use cached data if fresh
-            
+
         Returns:
             SentimentScore with composite sentiment
         """
         symbol = symbol.upper()
-        
+
         # Check cache
         if use_cache and symbol in self._cache:
             cached = self._cache[symbol]
-            age = datetime.now(timezone.utc) - cached.updated_at
+            age = datetime.now(UTC) - cached.updated_at
             if age < self._cache_ttl:
                 return cached
-        
+
         # Fetch from sources
-        sources: Dict[str, float] = {}
+        sources: dict[str, float] = {}
         total_weight = 0.0
         weighted_sum = 0.0
         mention_count = 0
-        
+
         # Try StockTwits
         stocktwits = await self._fetch_stocktwits(symbol)
         if stocktwits:
@@ -115,7 +119,7 @@ class SentimentService:
             weighted_sum += stocktwits["score"] * weight
             total_weight += weight
             mention_count += stocktwits["mentions"]
-        
+
         # Try Finnhub news sentiment
         finnhub = await self._fetch_finnhub(symbol)
         if finnhub:
@@ -124,24 +128,24 @@ class SentimentService:
             weighted_sum += finnhub["score"] * weight
             total_weight += weight
             mention_count += finnhub["articles"]
-        
+
         # Calculate composite score
         if total_weight > 0:
             composite = weighted_sum / total_weight
         else:
             # No data available - return neutral with low confidence
             composite = 0.0
-        
+
         # Determine level
         level = self._score_to_level(composite)
-        
+
         # Calculate bullish ratio
         bullish_count = sum(1 for s in sources.values() if s > 0.2)
         bullish_ratio = bullish_count / len(sources) if sources else 0.5
-        
+
         # Calculate confidence based on data availability
         confidence = min(1.0, total_weight / 2.0) * min(1.0, mention_count / 100)
-        
+
         score = SentimentScore(
             symbol=symbol,
             composite_score=round(composite, 3),
@@ -149,19 +153,19 @@ class SentimentService:
             sources=sources,
             mention_count=mention_count,
             bullish_ratio=round(bullish_ratio, 2),
-            updated_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(UTC),
             confidence=round(confidence, 2),
         )
-        
+
         # Cache result
         self._cache[symbol] = score
-        
+
         return score
-    
+
     async def get_batch_sentiment(
         self,
-        symbols: List[str],
-    ) -> Dict[str, SentimentScore]:
+        symbols: list[str],
+    ) -> dict[str, SentimentScore]:
         """Get sentiment for multiple symbols."""
         results = {}
         for symbol in symbols:
@@ -170,41 +174,41 @@ class SentimentService:
             except Exception as e:
                 logger.warning("Failed to get sentiment for %s: %s", symbol, e)
         return results
-    
+
     async def detect_alerts(
         self,
-        symbols: List[str],
+        symbols: list[str],
         change_threshold: float = 0.3,
-    ) -> List[SentimentAlert]:
+    ) -> list[SentimentAlert]:
         """Detect significant sentiment changes.
-        
+
         Args:
             symbols: List of symbols to check
             change_threshold: Minimum change to trigger alert
-            
+
         Returns:
             List of sentiment alerts
         """
         alerts = []
-        
+
         for symbol in symbols:
             symbol = symbol.upper()
-            
+
             # Get previous cached score
             previous = self._cache.get(symbol)
             if previous is None:
                 continue
-            
+
             # Get fresh score
             current = await self.get_sentiment(symbol, use_cache=False)
-            
+
             # Calculate change
             change = current.composite_score - previous.composite_score
             change_pct = abs(change) * 100
-            
+
             if abs(change) < change_threshold:
                 continue
-            
+
             # Determine alert type
             if abs(current.composite_score) >= 0.8:
                 alert_type = "extreme"
@@ -216,18 +220,20 @@ class SentimentService:
                 alert_type = "spike"
                 direction = "up" if change > 0 else "down"
                 message = f"{symbol} sentiment {direction} {change_pct:.0f}%"
-            
-            alerts.append(SentimentAlert(
-                symbol=symbol,
-                alert_type=alert_type,
-                previous_score=previous.composite_score,
-                current_score=current.composite_score,
-                change_pct=change_pct,
-                message=message,
-            ))
-        
+
+            alerts.append(
+                SentimentAlert(
+                    symbol=symbol,
+                    alert_type=alert_type,
+                    previous_score=previous.composite_score,
+                    current_score=current.composite_score,
+                    change_pct=change_pct,
+                    message=message,
+                )
+            )
+
         return alerts
-    
+
     def _score_to_level(self, score: float) -> SentimentLevel:
         """Convert numeric score to sentiment level."""
         if score <= self.THRESHOLDS["very_bearish"]:
@@ -240,8 +246,8 @@ class SentimentService:
             return SentimentLevel.BULLISH
         else:
             return SentimentLevel.VERY_BULLISH
-    
-    async def _fetch_stocktwits(self, symbol: str) -> Optional[Dict[str, Any]]:
+
+    async def _fetch_stocktwits(self, symbol: str) -> dict[str, Any] | None:
         """Fetch sentiment from StockTwits API."""
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -249,46 +255,46 @@ class SentimentService:
                     f"https://api.stocktwits.com/api/2/streams/symbol/{symbol}.json",
                     headers={"User-Agent": "AxiomFolio/1.0"},
                 )
-                
+
                 if resp.status_code != 200:
                     return None
-                
+
                 data = resp.json()
                 messages = data.get("messages", [])
-                
+
                 if not messages:
                     return None
-                
+
                 # Count sentiment
                 bullish = 0
                 bearish = 0
-                
+
                 for msg in messages:
                     sentiment = msg.get("entities", {}).get("sentiment", {})
                     if sentiment.get("basic") == "Bullish":
                         bullish += 1
                     elif sentiment.get("basic") == "Bearish":
                         bearish += 1
-                
+
                 total = bullish + bearish
                 if total == 0:
                     return None
-                
+
                 # Score: -1 to 1
                 score = (bullish - bearish) / total
-                
+
                 return {
                     "score": score,
                     "mentions": len(messages),
                     "bullish": bullish,
                     "bearish": bearish,
                 }
-                
+
         except Exception as e:
             logger.debug("StockTwits API error for %s: %s", symbol, e)
             return None
-    
-    async def _fetch_finnhub(self, symbol: str) -> Optional[Dict[str, Any]]:
+
+    async def _fetch_finnhub(self, symbol: str) -> dict[str, Any] | None:
         """Fetch company news sentiment from Finnhub (``/news-sentiment``, not company-news)."""
         api_key = getattr(settings, "FINNHUB_API_KEY", None)
         if not api_key:
@@ -338,7 +344,7 @@ class SentimentService:
             return None
 
 
-def get_sentiment_dict(score: SentimentScore) -> Dict[str, Any]:
+def get_sentiment_dict(score: SentimentScore) -> dict[str, Any]:
     """Convert SentimentScore to dict for API response."""
     return {
         "symbol": score.symbol,

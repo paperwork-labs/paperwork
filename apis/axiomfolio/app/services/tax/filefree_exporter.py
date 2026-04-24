@@ -20,8 +20,8 @@ medallion: silver
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import List, Optional, Sequence
+from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from sqlalchemy import extract
 from sqlalchemy.orm import Session
@@ -49,9 +49,9 @@ class FileFreeExporter:
         *,
         user_id: int,
         tax_year: int,
-        account_ids: Optional[Sequence[int]] = None,
+        account_ids: Sequence[int] | None = None,
         include_tax_advantaged: bool = False,
-        generated_at: Optional[datetime] = None,
+        generated_at: datetime | None = None,
     ) -> FileFreePackage:
         """Produce a :class:`FileFreePackage` for one user and one tax year.
 
@@ -87,7 +87,7 @@ class FileFreeExporter:
                 tax_year=tax_year,
                 accounts=[],
                 trades=[],
-                generated_at=generated_at or datetime.now(timezone.utc),
+                generated_at=generated_at or datetime.now(UTC),
             )
 
         scoped_account_ids = [acct.id for acct in accounts]
@@ -106,16 +106,16 @@ class FileFreeExporter:
             tax_year=tax_year,
             accounts=accounts,
             trades=trades,
-            generated_at=generated_at or datetime.now(timezone.utc),
+            generated_at=generated_at or datetime.now(UTC),
         )
 
     def _load_accounts(
         self,
         *,
         user_id: int,
-        account_ids: Optional[Sequence[int]],
+        account_ids: Sequence[int] | None,
         include_tax_advantaged: bool,
-    ) -> List[BrokerAccount]:
+    ) -> list[BrokerAccount]:
         q = self.db.query(BrokerAccount).filter(BrokerAccount.user_id == user_id)
         if account_ids:
             q = q.filter(BrokerAccount.id.in_(list(account_ids)))
@@ -129,7 +129,7 @@ class FileFreeExporter:
         *,
         account_ids: Sequence[int],
         tax_year: int,
-    ) -> List[Trade]:
+    ) -> list[Trade]:
         if not account_ids:
             return []
         return (

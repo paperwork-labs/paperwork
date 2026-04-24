@@ -6,30 +6,33 @@ Preserves existing sophisticated strategy execution capabilities while adding
 multi-user support and enhanced performance tracking.
 """
 
+import enum
+
 from sqlalchemy import (
+    DECIMAL,
+    JSON,
+    TIMESTAMP,
+    Boolean,
+    CheckConstraint,
     Column,
+    DateTime,
+    ForeignKey,
+    Index,
     Integer,
     String,
-    DateTime,
-    Boolean,
     Text,
-    ForeignKey,
     UniqueConstraint,
-    Index,
-    CheckConstraint,
-    TIMESTAMP,
+)
+from sqlalchemy import (
     Enum as SQLEnum,
-    JSON,
-    DECIMAL,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
-
-from . import Base
 
 # Import Signal so it is in the mapper registry when Strategy configures relationship("Signal", ...)
 from app.models.signals import Signal  # noqa: F401
+
+from . import Base
 
 # =============================================================================
 # ENUMS
@@ -100,9 +103,7 @@ class Strategy(Base):
 
     # Position Management
     max_positions = Column(Integer, default=10)
-    position_size_pct = Column(
-        DECIMAL(5, 2), default=2.0
-    )  # % of portfolio per position
+    position_size_pct = Column(DECIMAL(5, 2), default=2.0)  # % of portfolio per position
     max_position_value = Column(DECIMAL(15, 2))  # Max $ value per position
 
     # Risk Management
@@ -122,9 +123,7 @@ class Strategy(Base):
     min_risk_reward_ratio = Column(DECIMAL(4, 2), default=2.0)
 
     # Scheduling
-    run_frequency = Column(
-        String(50), default="daily"
-    )  # daily, weekly, intraday, on_demand
+    run_frequency = Column(String(50), default="daily")  # daily, weekly, intraday, on_demand
     run_time = Column(String(10))  # HH:MM format
     timezone = Column(String(50), default="UTC")
 
@@ -148,22 +147,20 @@ class Strategy(Base):
 
     # Audit
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now()
-    )
+    updated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Execution Audit Trail
     started_audit = Column(TIMESTAMP(timezone=True))  # When strategy execution started
-    completed_audit = Column(
-        TIMESTAMP(timezone=True)
-    )  # When strategy execution completed
-    last_health_check = Column(
-        TIMESTAMP(timezone=True)
-    )  # Last strategy health evaluation
+    completed_audit = Column(TIMESTAMP(timezone=True))  # When strategy execution completed
+    last_health_check = Column(TIMESTAMP(timezone=True))  # Last strategy health evaluation
 
     # User/System Tracking
-    created_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))  # Strategy creator
-    modified_by_user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))  # Last modifier
+    created_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL")
+    )  # Strategy creator
+    modified_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL")
+    )  # Last modifier
     execution_node = Column(String(50))  # Which server runs this strategy
 
     # Audit Context
@@ -177,9 +174,7 @@ class Strategy(Base):
     strategy_runs = relationship(
         "StrategyRun", back_populates="strategy", cascade="all, delete-orphan"
     )
-    signals = relationship(
-        "Signal", back_populates="strategy", cascade="all, delete-orphan"
-    )
+    signals = relationship("Signal", back_populates="strategy", cascade="all, delete-orphan")
     executions = relationship(
         "StrategyExecution", back_populates="strategy", cascade="all, delete-orphan"
     )
@@ -253,9 +248,7 @@ class StrategyRun(Base):
 
     # Relationships
     strategy = relationship("Strategy", back_populates="strategy_runs")
-    signals = relationship(
-        "Signal", back_populates="strategy_run", cascade="all, delete-orphan"
-    )
+    signals = relationship("Signal", back_populates="strategy_run", cascade="all, delete-orphan")
 
     __table_args__ = (
         Index("idx_strategy_run_date", "strategy_id", "run_date"),
@@ -331,9 +324,7 @@ class StrategyPerformance(Base):
     calculated_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     __table_args__ = (
-        UniqueConstraint(
-            "strategy_id", "period_start", "period_type", name="uq_strategy_period"
-        ),
+        UniqueConstraint("strategy_id", "period_start", "period_type", name="uq_strategy_period"),
         Index("idx_strategy_period", "strategy_id", "period_type"),
         Index("idx_period_dates", "period_start", "period_end"),
     )

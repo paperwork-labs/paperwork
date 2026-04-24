@@ -17,11 +17,10 @@ Per ``engineering.mdc``:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 from app.database import SessionLocal
-from app.tasks.celery_app import celery_app
-from app.tasks.utils.task_utils import task_run
 
 # Importing the generators package registers concrete generators with
 # the registry via ``__init_subclass__``. Keep this import even if it
@@ -32,7 +31,8 @@ from app.services.picks.candidate_generator import (
     registered_generators,
     run_all_generators,
 )
-
+from app.tasks.celery_app import celery_app
+from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ logger = logging.getLogger(__name__)
     queue="celery",
 )
 @task_run("generate_candidates")
-def generate_candidates_task(only: Optional[Sequence[str]] = None) -> Dict[str, Any]:
+def generate_candidates_task(only: Sequence[str] | None = None) -> dict[str, Any]:
     """Run all (or named) candidate generators and persist their output.
 
     Returns a JSON-serializable summary suitable for ``JobRun.result``.
@@ -61,7 +61,7 @@ def generate_candidates_task(only: Optional[Sequence[str]] = None) -> Dict[str, 
                 "summary": {"created": 0, "skipped_duplicate": 0, "invalid": 0, "errors": 0},
             }
 
-        reports: List[GeneratorRunReport] = run_all_generators(db, only=only)
+        reports: list[GeneratorRunReport] = run_all_generators(db, only=only)
         summary = _summarise(reports)
 
         # One commit at the end keeps the run atomic for any single
@@ -90,7 +90,7 @@ def generate_candidates_task(only: Optional[Sequence[str]] = None) -> Dict[str, 
         db.close()
 
 
-def _summarise(reports: Sequence[GeneratorRunReport]) -> Dict[str, int]:
+def _summarise(reports: Sequence[GeneratorRunReport]) -> dict[str, int]:
     out = {"created": 0, "skipped_duplicate": 0, "invalid": 0, "errors": 0}
     for r in reports:
         out["created"] += r.created

@@ -18,7 +18,7 @@ unexpected_error.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
@@ -50,8 +50,7 @@ def _coerce_sleeve(raw: str) -> Sleeve:
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"invalid sleeve '{raw}' — expected one of "
-            f"{[s.value for s in Sleeve]}",
+            detail=f"invalid sleeve '{raw}' — expected one of {[s.value for s in Sleeve]}",
         ) from e
 
 
@@ -106,22 +105,16 @@ def update_position_sleeve(
     return SleeveUpdateResponse(id=pos.id, symbol=pos.symbol, sleeve=pos.sleeve)
 
 
-def _serialize_position(pos: Position) -> Dict[str, Any]:
+def _serialize_position(pos: Position) -> dict[str, Any]:
     return {
         "id": pos.id,
         "symbol": pos.symbol,
         "account_id": pos.account_id,
         "quantity": str(pos.quantity) if pos.quantity is not None else None,
-        "market_value": (
-            str(pos.market_value) if pos.market_value is not None else None
-        ),
-        "unrealized_pnl": (
-            str(pos.unrealized_pnl) if pos.unrealized_pnl is not None else None
-        ),
+        "market_value": (str(pos.market_value) if pos.market_value is not None else None),
+        "unrealized_pnl": (str(pos.unrealized_pnl) if pos.unrealized_pnl is not None else None),
         "unrealized_pnl_pct": (
-            str(pos.unrealized_pnl_pct)
-            if pos.unrealized_pnl_pct is not None
-            else None
+            str(pos.unrealized_pnl_pct) if pos.unrealized_pnl_pct is not None else None
         ),
         "runner_since": pos.runner_since.isoformat() if pos.runner_since else None,
         "sleeve": pos.sleeve or Sleeve.ACTIVE.value,
@@ -132,9 +125,9 @@ def _serialize_position(pos: Position) -> Dict[str, Any]:
 def list_positions_by_sleeve(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return the caller's open positions grouped by sleeve."""
-    rows: List[Position] = (
+    rows: list[Position] = (
         db.query(Position)
         .filter(
             Position.user_id == current_user.id,
@@ -143,7 +136,7 @@ def list_positions_by_sleeve(
         .all()
     )
 
-    buckets: Dict[str, List[Dict[str, Any]]] = {s.value: [] for s in Sleeve}
+    buckets: dict[str, list[dict[str, Any]]] = {s.value: [] for s in Sleeve}
     for p in rows:
         key = (p.sleeve or Sleeve.ACTIVE.value).lower()
         if key not in buckets:

@@ -19,9 +19,8 @@ Guardrails:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from celery import shared_task
 
@@ -83,6 +82,7 @@ def _is_market_adjacent_hours() -> bool:
     """True if current time is between 06:00 and 22:00 US/Eastern."""
     try:
         from zoneinfo import ZoneInfo
+
         et_now = datetime.now(ZoneInfo("America/New_York"))
         return 6 <= et_now.hour < 22
     except Exception:
@@ -148,7 +148,7 @@ def _run_llm_agent_sync(health: dict) -> dict:
     except RuntimeError:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-    
+
     return loop.run_until_complete(_run_llm_agent(health))
 
 
@@ -177,7 +177,7 @@ def _dispatch_explanations(health: dict) -> None:
                 "app.tasks.ops.explain_anomaly.explain_anomaly",
                 kwargs={"payload": anomaly_to_dict(anomaly)},
             )
-        except Exception as exc:  # noqa: BLE001 - never block remediation
+        except Exception as exc:
             logger.warning(
                 "auto-ops: failed to enqueue explain_anomaly for %s: %s",
                 anomaly.id,
@@ -192,11 +192,15 @@ def _fire_health_alert(health: dict) -> None:
         return
     try:
         from app.services.brain.webhook_client import brain_webhook
-        brain_webhook.notify_sync("health_alert", {
-            "composite_status": health.get("composite_status"),
-            "composite_reason": health.get("composite_reason"),
-            "checked_at": health.get("checked_at"),
-        })
+
+        brain_webhook.notify_sync(
+            "health_alert",
+            {
+                "composite_status": health.get("composite_status"),
+                "composite_reason": health.get("composite_reason"),
+                "checked_at": health.get("checked_at"),
+            },
+        )
         if r:
             r.setex(_HEALTH_ALERT_COOLDOWN_KEY, _HEALTH_ALERT_COOLDOWN_S, "1")
     except Exception as exc:
@@ -211,7 +215,7 @@ def _fire_health_alert(health: dict) -> None:
 @task_run("auto_ops_health_check")
 def auto_remediate_health() -> dict:
     """Check all health dimensions and dispatch fixes for any that are not green.
-    
+
     Uses LLM-powered agent when OPENAI_API_KEY is configured, otherwise
     falls back to rule-based remediation logic.
     """
@@ -225,8 +229,13 @@ def auto_remediate_health() -> dict:
         # Pre-market readiness check (weekday mornings 7:00-9:29 ET)
         try:
             from zoneinfo import ZoneInfo
+
             et_now = datetime.now(ZoneInfo("America/New_York"))
-            if et_now.weekday() < 5 and 7 <= et_now.hour < 10 and et_now.hour * 60 + et_now.minute < 570:
+            if (
+                et_now.weekday() < 5
+                and 7 <= et_now.hour < 10
+                and et_now.hour * 60 + et_now.minute < 570
+            ):
                 readiness = health_svc.check_pre_market_readiness(session)
                 if not readiness.get("ready"):
                     logger.warning("auto-ops: pre-market NOT ready: %s", readiness.get("gaps"))
@@ -247,7 +256,7 @@ def auto_remediate_health() -> dict:
     # collapses flapping dimensions to one explanation per window.
     try:
         _dispatch_explanations(health)
-    except Exception as exc:  # noqa: BLE001 - never block remediation
+    except Exception as exc:
         logger.warning("auto-ops: failed to dispatch anomaly explanations: %s", exc)
 
     if settings.OPENAI_API_KEY:
@@ -258,7 +267,7 @@ def auto_remediate_health() -> dict:
             return result
         except Exception as e:
             logger.warning("auto-ops: LLM agent failed, falling back to rules: %s", e)
-    
+
     return _rule_based_remediation(health)
 
 
@@ -275,7 +284,11 @@ def _rule_based_remediation(health: dict) -> dict:
         if status in ("green", "ok"):
             _clear_retries(dim_name)
             continue
-        if status in ("warning", "yellow") and dim_name not in ("fundamentals", "coverage", "stage_quality"):
+        if status in ("warning", "yellow") and dim_name not in (
+            "fundamentals",
+            "coverage",
+            "stage_quality",
+        ):
             _clear_retries(dim_name)
             continue
 
@@ -288,11 +301,13 @@ def _rule_based_remediation(health: dict) -> dict:
         if retry_count >= 6:
             skipped.append({"dimension": dim_name, "reason": "max_retries_exceeded"})
             try:
-                _fire_health_alert({
-                    "composite_status": "red",
-                    "composite_reason": f"Escalation: {dim_name} failed {retry_count} consecutive remediation attempts",
-                    "checked_at": datetime.now(timezone.utc).isoformat(),
-                })
+                _fire_health_alert(
+                    {
+                        "composite_status": "red",
+                        "composite_reason": f"Escalation: {dim_name} failed {retry_count} consecutive remediation attempts",
+                        "checked_at": datetime.now(UTC).isoformat(),
+                    }
+                )
             except Exception:
                 logger.warning("Failed to fire escalation alert for %s", dim_name)
             continue
@@ -317,22 +332,28 @@ def _rule_based_remediation(health: dict) -> dict:
                 dispatched.append({"task": task_name, "task_id": result.id})
                 logger.info(
                     "auto-ops: dispatched %s for dimension %s (status=%s)",
-                    task_name, dim_name, status,
+                    task_name,
+                    dim_name,
+                    status,
                 )
             except Exception as exc:
                 logger.warning(
                     "auto-ops: failed to dispatch %s for %s: %s",
-                    task_name, dim_name, exc,
+                    task_name,
+                    dim_name,
+                    exc,
                 )
 
         retry_count = _get_retries(dim_name)
         _set_cooldown(dim_name, retry_count=retry_count)
         _increment_retries(dim_name)
-        actions_taken.append({
-            "dimension": dim_name,
-            "status": status,
-            "dispatched": dispatched,
-        })
+        actions_taken.append(
+            {
+                "dimension": dim_name,
+                "status": status,
+                "dispatched": dispatched,
+            }
+        )
 
     summary = {
         "mode": "rule_based",
@@ -346,9 +367,11 @@ def _rule_based_remediation(health: dict) -> dict:
     }
 
     if actions_taken:
-        logger.info("auto-ops: remediated %d dimensions: %s",
-                     len(actions_taken),
-                     [a["dimension"] for a in actions_taken])
+        logger.info(
+            "auto-ops: remediated %d dimensions: %s",
+            len(actions_taken),
+            [a["dimension"] for a in actions_taken],
+        )
     else:
         logger.info("auto-ops: all dimensions green or on cooldown")
 

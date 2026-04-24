@@ -1,11 +1,10 @@
 """Tests that production environment guards reject unsafe configurations."""
 
-from unittest.mock import patch
 import pytest
 
 from app.config import (
-    validate_production_settings,
     _GLOBAL_BROKER_CREDS_FORBIDDEN_IN_PROD,
+    validate_production_settings,
 )
 
 
@@ -22,8 +21,9 @@ def _prod_env(monkeypatch):
 
 def _reload_settings():
     """Re-instantiate settings from current env."""
-    from app.config import Settings
     import app.config as cfg
+    from app.config import Settings
+
     cfg.settings = Settings()
 
 

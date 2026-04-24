@@ -7,10 +7,9 @@ Create Date: 2026-04-21
 
 from __future__ import annotations
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision = "0055"
 down_revision = "0054"
@@ -61,8 +60,15 @@ def upgrade() -> None:
     op.create_table(
         "historical_import_runs",
         sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("account_id", sa.Integer(), sa.ForeignKey("broker_accounts.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "user_id", sa.Integer(), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+        ),
+        sa.Column(
+            "account_id",
+            sa.Integer(),
+            sa.ForeignKey("broker_accounts.id", ondelete="CASCADE"),
+            nullable=False,
+        ),
         sa.Column("source", source_enum, nullable=False),
         sa.Column(
             "status",
@@ -120,7 +126,9 @@ def upgrade() -> None:
         ),
     )
     op.create_index("ix_historical_import_runs_user_id", "historical_import_runs", ["user_id"])
-    op.create_index("ix_historical_import_runs_account_id", "historical_import_runs", ["account_id"])
+    op.create_index(
+        "ix_historical_import_runs_account_id", "historical_import_runs", ["account_id"]
+    )
     op.create_index(
         "ix_historical_import_runs_user_account",
         "historical_import_runs",

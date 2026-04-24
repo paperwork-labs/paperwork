@@ -8,22 +8,22 @@ Administrative endpoints:
 - Agent (auto-ops agent dashboard)
 """
 
-from .management import router as management_router
-from .management import _role_value
-from .scheduler import router as scheduler_router
 from .agent import router as agent_router
 from .autoops import router as autoops_router
 from .corporate_actions import router as corporate_actions_router
 from .deploy_health import router as deploy_health_router
 from .jobs import router as jobs_router
+from .management import _role_value
+from .management import router as management_router
+from .scheduler import router as scheduler_router
 
 __all__ = [
-    "management_router",
-    "scheduler_router",
+    "_role_value",
     "agent_router",
     "autoops_router",
     "corporate_actions_router",
     "deploy_health_router",
     "jobs_router",
-    "_role_value",
+    "management_router",
+    "scheduler_router",
 ]

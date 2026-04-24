@@ -5,7 +5,7 @@ medallion: silver
 
 from __future__ import annotations
 
-from typing import Dict, Any
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -23,7 +23,7 @@ class AccountCredentialsService:
     """Service for retrieving decrypted broker credentials."""
 
     @staticmethod
-    def get_decrypted(account_id: int, db: Session) -> Dict[str, Any]:
+    def get_decrypted(account_id: int, db: Session) -> dict[str, Any]:
         """
         Load AccountCredentials for the account, decrypt, and return full payload.
 
@@ -33,9 +33,7 @@ class AccountCredentialsService:
             CredentialsNotFoundError: When no credentials exist for the account.
         """
         cred = (
-            db.query(AccountCredentials)
-            .filter(AccountCredentials.account_id == account_id)
-            .first()
+            db.query(AccountCredentials).filter(AccountCredentials.account_id == account_id).first()
         )
         if not cred or not cred.encrypted_credentials:
             raise CredentialsNotFoundError(f"No credentials for account_id={account_id}")
@@ -47,12 +45,10 @@ class AccountCredentialsService:
         return payload
 
     @staticmethod
-    def update_encrypted(account_id: int, updates: Dict[str, Any], db: Session) -> None:
+    def update_encrypted(account_id: int, updates: dict[str, Any], db: Session) -> None:
         """Merge *updates* into an existing AccountCredentials payload and persist."""
         cred = (
-            db.query(AccountCredentials)
-            .filter(AccountCredentials.account_id == account_id)
-            .first()
+            db.query(AccountCredentials).filter(AccountCredentials.account_id == account_id).first()
         )
         if not cred or not cred.encrypted_credentials:
             raise CredentialsNotFoundError(f"No credentials to update for account_id={account_id}")
@@ -61,7 +57,7 @@ class AccountCredentialsService:
         cred.encrypted_credentials = credential_vault.encrypt_dict(payload)
 
     @staticmethod
-    def get_ibkr_credentials(account_id: int, db: Session) -> Dict[str, str]:
+    def get_ibkr_credentials(account_id: int, db: Session) -> dict[str, str]:
         """
         Get IBKR FlexQuery credentials (flex_token, query_id) for the account.
 
@@ -82,7 +78,7 @@ class AccountCredentialsService:
         return {"flex_token": str(flex_token).strip(), "query_id": str(query_id).strip()}
 
     @staticmethod
-    def get_ibkr_gateway_credentials(account_id: int, db: Session) -> Dict[str, Any]:
+    def get_ibkr_gateway_credentials(account_id: int, db: Session) -> dict[str, Any]:
         """
         Get IB Gateway connection settings stored alongside FlexQuery creds.
 
@@ -94,14 +90,11 @@ class AccountCredentialsService:
             payload = AccountCredentialsService.get_decrypted(account_id, db)
         except CredentialsNotFoundError:
             return {}
-        return {
-            k: v for k, v in payload.items()
-            if k.startswith("gateway_") and v is not None
-        }
+        return {k: v for k, v in payload.items() if k.startswith("gateway_") and v is not None}
 
     @staticmethod
     def save_ibkr_gateway_credentials(
-        account_id: int, gateway_settings: Dict[str, Any], db: Session
+        account_id: int, gateway_settings: dict[str, Any], db: Session
     ) -> None:
         """
         Merge gateway settings into the existing IBKR credential payload.
@@ -110,9 +103,7 @@ class AccountCredentialsService:
         from app.models.broker_account import BrokerType
 
         cred = (
-            db.query(AccountCredentials)
-            .filter(AccountCredentials.account_id == account_id)
-            .first()
+            db.query(AccountCredentials).filter(AccountCredentials.account_id == account_id).first()
         )
         if cred and cred.encrypted_credentials:
             payload = credential_vault.decrypt_dict(cred.encrypted_credentials)
@@ -120,8 +111,12 @@ class AccountCredentialsService:
             payload = {}
 
         for key in (
-            "gateway_username", "gateway_password", "gateway_trading_mode",
-            "gateway_host", "gateway_port", "gateway_client_id",
+            "gateway_username",
+            "gateway_password",
+            "gateway_trading_mode",
+            "gateway_host",
+            "gateway_port",
+            "gateway_client_id",
         ):
             if key in gateway_settings:
                 val = gateway_settings[key]

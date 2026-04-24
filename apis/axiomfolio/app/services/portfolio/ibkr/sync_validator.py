@@ -100,9 +100,7 @@ EXPECTED_FLEX_SECTIONS: tuple[FlexSectionSpec, ...] = (
     FlexSectionSpec(
         name="InterestAccruals",
         required=False,
-        description=(
-            "Margin interest accruals. Only present when the account used margin."
-        ),
+        description=("Margin interest accruals. Only present when the account used margin."),
         pipeline_result_keys=("margin_interest",),
     ),
     FlexSectionSpec(
@@ -191,9 +189,7 @@ def discover_xml_sections(report_xml: str) -> dict[str, dict[str, Any]]:
     try:
         root = ET.fromstring(report_xml)
     except ET.ParseError as exc:
-        logger.warning(
-            "FlexQuery XML could not be parsed for section discovery: %s", exc
-        )
+        logger.warning("FlexQuery XML could not be parsed for section discovery: %s", exc)
         return discovered
 
     for stmt in root.iter("FlexStatement"):
@@ -316,8 +312,7 @@ def validate_completeness(
                     )
 
     has_pipeline_error = any(
-        w["level"] == "error" and w["code"] == "pipeline_step_errored"
-        for w in warnings
+        w["level"] == "error" and w["code"] == "pipeline_step_errored" for w in warnings
     )
 
     if missing_required and len(missing_required) == sum(

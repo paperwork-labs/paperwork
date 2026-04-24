@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parseaddr, parsedate_to_datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, Header, Request
 from fastapi.responses import JSONResponse
@@ -26,7 +26,7 @@ router = APIRouter()
 _PAYLOAD_REDACT_KEYS = frozenset({"Attachments", "RawEmail"})
 
 
-def _redact_for_storage(payload: Dict[str, Any]) -> Dict[str, Any]:
+def _redact_for_storage(payload: dict[str, Any]) -> dict[str, Any]:
     """Drop bulky / sensitive Postmark fields before persisting JSON."""
     return {k: v for k, v in payload.items() if k not in _PAYLOAD_REDACT_KEYS}
 
@@ -36,21 +36,21 @@ def _extract_sender_email(from_field: str) -> str:
     return addr.strip().lower() if addr else ""
 
 
-def _parse_received_at(date_str: Optional[str]) -> datetime:
+def _parse_received_at(date_str: str | None) -> datetime:
     if not date_str or not str(date_str).strip():
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     try:
         dt = parsedate_to_datetime(str(date_str).strip())
         if dt.tzinfo is None:
-            return dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc)
+            return dt.replace(tzinfo=UTC)
+        return dt.astimezone(UTC)
     except (TypeError, ValueError):
         logger.warning("picks inbound: could not parse Date=%r; using UTC now", date_str)
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
-def _to_addresses(payload: Dict[str, Any]) -> List[str]:
-    out: List[str] = []
+def _to_addresses(payload: dict[str, Any]) -> list[str]:
+    out: list[str] = []
     full = payload.get("ToFull")
     if isinstance(full, list):
         for item in full:
@@ -67,7 +67,7 @@ def _to_addresses(payload: Dict[str, Any]) -> List[str]:
 async def postmark_picks_inbound(
     request: Request,
     db: Session = Depends(get_db),
-    x_postmark_signature: Optional[str] = Header(default=None, alias="X-Postmark-Signature"),
+    x_postmark_signature: str | None = Header(default=None, alias="X-Postmark-Signature"),
 ):
     raw_body = await request.body()
 
@@ -87,7 +87,7 @@ async def postmark_picks_inbound(
             )
 
     try:
-        payload: Dict[str, Any] = json.loads(raw_body.decode("utf-8"))
+        payload: dict[str, Any] = json.loads(raw_body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         logger.warning("picks inbound: bad JSON: %s", exc)
         return JSONResponse(
@@ -126,7 +126,7 @@ async def postmark_picks_inbound(
 
     to_header = str(payload.get("To") or "")
     to_emails = _to_addresses(payload)
-    recipients: Dict[str, Any] = {
+    recipients: dict[str, Any] = {
         "to_header": to_header,
         "to_addresses": to_emails,
     }
@@ -166,11 +166,7 @@ async def postmark_picks_inbound(
             db.add(row)
             db.flush()
     except IntegrityError:
-        dup = (
-            db.query(EmailInbox)
-            .filter(EmailInbox.message_id == message_id)
-            .one_or_none()
-        )
+        dup = db.query(EmailInbox).filter(EmailInbox.message_id == message_id).one_or_none()
         if dup is None:
             logger.warning(
                 "picks inbound: IntegrityError on insert but no row for message_id=%s",

@@ -5,8 +5,8 @@ Revises: 0003
 Create Date: 2026-03-26
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy import inspect
 
 revision = "0004"
@@ -42,7 +42,12 @@ def upgrade() -> None:
         sa.Column("time_to_fill_ms", sa.Integer(), nullable=True),
         sa.Column("fill_rate", sa.Float(), nullable=True),
         sa.Column("partial_fills", sa.Integer(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["order_id"], ["orders.id"]),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
         sa.PrimaryKeyConstraint("id"),

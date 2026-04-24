@@ -22,8 +22,6 @@ Manual operator overrides (``POST /admin``) live in
 
 from __future__ import annotations
 
-from typing import List, Optional
-
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -38,7 +36,6 @@ from app.services.billing.feature_catalog import (
     get_feature,
     is_allowed,
 )
-
 
 router = APIRouter(prefix="/entitlements", tags=["Entitlements"])
 
@@ -56,7 +53,7 @@ class FeatureSchema(BaseModel):
     min_tier: str
 
     @classmethod
-    def from_feature(cls, f: Feature) -> "FeatureSchema":
+    def from_feature(cls, f: Feature) -> FeatureSchema:
         return cls(
             key=f.key,
             title=f.title,
@@ -85,13 +82,13 @@ class MeResponse(BaseModel):
     status: str
     is_active: bool
     cancel_at_period_end: bool
-    current_period_end: Optional[str]
-    trial_ends_at: Optional[str]
-    features: List[FeatureAccessSchema]
+    current_period_end: str | None
+    trial_ends_at: str | None
+    features: list[FeatureAccessSchema]
 
 
 class CatalogResponse(BaseModel):
-    features: List[FeatureSchema]
+    features: list[FeatureSchema]
 
 
 class CheckRequest(BaseModel):
@@ -113,14 +110,12 @@ class CheckResponse(BaseModel):
 
 @router.get("/catalog", response_model=CatalogResponse)
 async def get_catalog(
-    _user: Optional[User] = Depends(get_optional_user),
+    _user: User | None = Depends(get_optional_user),
 ) -> CatalogResponse:
     """Public feature catalog — used by both in-app and marketing-site
     pricing tables. Auth is optional so a logged-out visitor can also load
     the page; the actual feature list is identical either way."""
-    return CatalogResponse(
-        features=[FeatureSchema.from_feature(f) for f in all_features()]
-    )
+    return CatalogResponse(features=[FeatureSchema.from_feature(f) for f in all_features()])
 
 
 @router.get("/me", response_model=MeResponse)
@@ -148,12 +143,8 @@ async def get_me(
         status=ent.status.value,
         is_active=ent.is_active(),
         cancel_at_period_end=bool(ent.cancel_at_period_end),
-        current_period_end=(
-            ent.current_period_end.isoformat() if ent.current_period_end else None
-        ),
-        trial_ends_at=(
-            ent.trial_ends_at.isoformat() if ent.trial_ends_at else None
-        ),
+        current_period_end=(ent.current_period_end.isoformat() if ent.current_period_end else None),
+        trial_ends_at=(ent.trial_ends_at.isoformat() if ent.trial_ends_at else None),
         features=feature_rows,
     )
 
@@ -170,9 +161,7 @@ async def check_feature(
     try:
         get_feature(body.feature)
     except KeyError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
-        ) from exc
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
     decision = EntitlementService.check(db, user, body.feature)
     return CheckResponse(

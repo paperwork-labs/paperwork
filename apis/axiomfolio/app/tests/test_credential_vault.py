@@ -1,7 +1,8 @@
 import base64
-import os
 import hashlib
+
 from cryptography.fernet import Fernet
+
 from app.services.security.credential_vault import CredentialVault
 
 
@@ -39,5 +40,3 @@ def test_vault_rejects_invalid_token():
         assert False, "Expected ValueError for invalid token"
     except ValueError:
         pass
-
-

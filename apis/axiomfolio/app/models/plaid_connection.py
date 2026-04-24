@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import enum
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -41,10 +40,10 @@ class PlaidConnectionStatus(str, enum.Enum):
     ``ALTER TYPE`` dance.
     """
 
-    ACTIVE = "active"           # token usable; sync allowed
+    ACTIVE = "active"  # token usable; sync allowed
     NEEDS_REAUTH = "needs_reauth"  # Plaid signalled ITEM_LOGIN_REQUIRED
-    REVOKED = "revoked"         # user-initiated disconnect or Plaid revoke
-    ERROR = "error"             # transient failure; sync will retry
+    REVOKED = "revoked"  # user-initiated disconnect or Plaid revoke
+    ERROR = "error"  # transient failure; sync will retry
 
 
 class PlaidConnection(Base):
@@ -115,9 +114,7 @@ class PlaidConnection(Base):
 
     user = relationship("User")
 
-    __table_args__ = (
-        Index("idx_plaid_connections_user_status", "user_id", "status"),
-    )
+    __table_args__ = (Index("idx_plaid_connections_user_status", "user_id", "status"),)
 
     # -- lifecycle helpers ---------------------------------------------------
 
@@ -144,7 +141,7 @@ class PlaidConnection(Base):
         self.status = PlaidConnectionStatus.ERROR.value
         self.last_error = (message or "unknown error")[:4000]
 
-    def mark_needs_reauth(self, message: Optional[str] = None) -> None:
+    def mark_needs_reauth(self, message: str | None = None) -> None:
         """Record that Plaid requires the user to reauthorize the Item."""
         self.status = PlaidConnectionStatus.NEEDS_REAUTH.value
         if message is not None:

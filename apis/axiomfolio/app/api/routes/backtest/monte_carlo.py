@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import logging
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
@@ -55,7 +55,7 @@ class MonteCarloRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    trade_returns: List[Decimal] = Field(
+    trade_returns: list[Decimal] = Field(
         ...,
         min_length=MIN_SAMPLES,
         description=(
@@ -74,7 +74,7 @@ class MonteCarloRequest(BaseModel):
         gt=Decimal("0"),
         description="Starting equity in account currency.",
     )
-    seed: Optional[int] = Field(
+    seed: int | None = Field(
         default=None,
         description="Optional RNG seed for reproducibility.",
     )
@@ -83,7 +83,7 @@ class MonteCarloRequest(BaseModel):
         ge=Decimal("0"),
         description="Annualized risk-free rate used in Sharpe numerator.",
     )
-    scenario: Optional[str] = Field(
+    scenario: str | None = Field(
         default=None,
         description=(
             "If set, runs only the named preset scenario "
@@ -101,7 +101,7 @@ class MonteCarloRequest(BaseModel):
 def post_monte_carlo(
     payload: MonteCarloRequest,
     user: User = Depends(require_feature("research.monte_carlo")),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run Monte Carlo simulation(s) on the supplied trade returns.
 
     Multi-tenancy: scoped to ``user.id`` via ``require_feature`` (which

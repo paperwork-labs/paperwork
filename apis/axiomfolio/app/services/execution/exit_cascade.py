@@ -11,12 +11,13 @@ Each tier fires independently; most aggressive (closest to exit) wins.
 
 medallion: execution
 """
+
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Optional
 
 from app.services.market.regime_engine import (
     REGIME_R1,
@@ -39,6 +40,7 @@ class ExitAction(str, Enum):
 @dataclass
 class ExitSignal:
     """A single exit tier's recommendation."""
+
     tier: str
     action: ExitAction
     reason: str
@@ -48,6 +50,7 @@ class ExitSignal:
 @dataclass
 class PositionContext:
     """Snapshot of a position's current state for exit evaluation."""
+
     symbol: str
     side: str  # "LONG" or "SHORT"
     entry_price: float
@@ -55,23 +58,24 @@ class PositionContext:
     atr_14: float
     atrp_14: float
     stage_label: str
-    previous_stage_label: Optional[str]
+    previous_stage_label: str | None
     current_stage_days: int
     ext_pct: float
     sma150_slope: float
     ema10_dist_n: float
     rs_mansfield: float
     regime_state: str
-    previous_regime_state: Optional[str]
+    previous_regime_state: str | None
     days_held: int
     pnl_pct: float  # unrealized P&L %
     # Peak trade price since entry (longs: highest close/high). None = use entry_price fallback in T2/T7.
-    high_water_price: Optional[float] = None
+    high_water_price: float | None = None
 
 
 @dataclass
 class CascadeResult:
     """Full cascade evaluation output."""
+
     symbol: str
     signals: list[ExitSignal] = field(default_factory=list)
     final_action: ExitAction = ExitAction.HOLD
@@ -93,11 +97,17 @@ class CascadeResult:
 
 # ── Long Exit Tiers 1–5 (Base) ──
 
+
 def _tier1_stop_loss(ctx: PositionContext) -> ExitSignal:
     """T1: Hard stop loss — 2× ATR below entry."""
     stop = ctx.entry_price - (2.0 * ctx.atr_14)
     if ctx.current_price <= stop:
-        return ExitSignal("T1", ExitAction.EXIT, f"Stop loss hit (price {ctx.current_price:.2f} <= stop {stop:.2f})", 10)
+        return ExitSignal(
+            "T1",
+            ExitAction.EXIT,
+            f"Stop loss hit (price {ctx.current_price:.2f} <= stop {stop:.2f})",
+            10,
+        )
     return ExitSignal("T1", ExitAction.HOLD, "Above stop", 0)
 
 
@@ -150,9 +160,10 @@ def _tier2_trailing_stop(ctx: PositionContext) -> ExitSignal:
     hwm = ctx.high_water_price if ctx.high_water_price is not None else ctx.entry_price
     if ctx.current_price < (hwm - trail_distance):
         return ExitSignal(
-            "T2", ExitAction.EXIT,
+            "T2",
+            ExitAction.EXIT,
             f"Trailing stop ({multiplier:.2f}× ATR, stage={ctx.stage_label}, regime={ctx.regime_state}, hwm={hwm:.2f})",
-            9
+            9,
         )
     return ExitSignal("T2", ExitAction.HOLD, "Trail not hit", 0)
 
@@ -207,7 +218,8 @@ def _tier5_profit_target(ctx: PositionContext) -> ExitSignal:
 
 # ── Long Exit Tiers 6–9 (Regime-Conditional) ──
 
-def _tier6_regime_transition(ctx: PositionContext) -> Optional[ExitSignal]:
+
+def _tier6_regime_transition(ctx: PositionContext) -> ExitSignal | None:
     """T6: Regime worsening exits.
 
     R1/R2 → R4/R5: exit all longs
@@ -281,24 +293,31 @@ def _tier9_r5_full_exit(ctx: PositionContext) -> ExitSignal:
 
 # ── Short Exit Tiers S1–S4 ──
 
+
 def _short_s1_stage_improvement(ctx: PositionContext) -> ExitSignal:
     """S1: Stage improvement cover — cover shorts when stage improves."""
     if ctx.stage_label in ("1A", "1B", "2A", "2B"):
-        return ExitSignal("S1", ExitAction.EXIT, f"Stage improved to {ctx.stage_label} — cover short", 9)
+        return ExitSignal(
+            "S1", ExitAction.EXIT, f"Stage improved to {ctx.stage_label} — cover short", 9
+        )
     return ExitSignal("S1", ExitAction.HOLD, "Stage still bearish", 0)
 
 
 def _short_s2_regime_improvement(ctx: PositionContext) -> ExitSignal:
     """S2: Regime improvement cover — cover when regime improves to R1/R2."""
     if ctx.regime_state in (REGIME_R1, REGIME_R2):
-        return ExitSignal("S2", ExitAction.EXIT, f"Regime improved to {ctx.regime_state} — cover short", 9)
+        return ExitSignal(
+            "S2", ExitAction.EXIT, f"Regime improved to {ctx.regime_state} — cover short", 9
+        )
     return ExitSignal("S2", ExitAction.HOLD, "Regime still bearish", 0)
 
 
 def _short_s3_vol_spike(ctx: PositionContext) -> ExitSignal:
     """S3: Volatility spike cover — extreme downside often reverses."""
     if ctx.ext_pct < -25:
-        return ExitSignal("S3", ExitAction.REDUCE_50, f"Extreme extension {ctx.ext_pct:.1f}% — partial cover", 6)
+        return ExitSignal(
+            "S3", ExitAction.REDUCE_50, f"Extreme extension {ctx.ext_pct:.1f}% — partial cover", 6
+        )
     return ExitSignal("S3", ExitAction.HOLD, "Extension normal", 0)
 
 
@@ -307,13 +326,15 @@ def _short_s4_target(ctx: PositionContext) -> ExitSignal:
     if ctx.pnl_pct > 35:
         return ExitSignal("S4", ExitAction.EXIT, f"Short P&L {ctx.pnl_pct:.1f}% — full cover", 7)
     if ctx.pnl_pct > 20:
-        return ExitSignal("S4", ExitAction.REDUCE_50, f"Short P&L {ctx.pnl_pct:.1f}% — take partial", 5)
+        return ExitSignal(
+            "S4", ExitAction.REDUCE_50, f"Short P&L {ctx.pnl_pct:.1f}% — take partial", 5
+        )
     return ExitSignal("S4", ExitAction.HOLD, "Target not reached", 0)
 
 
 # ── Cascade evaluation ──
 
-ExitTierFn = Callable[[PositionContext], Optional[ExitSignal]]
+ExitTierFn = Callable[[PositionContext], ExitSignal | None]
 
 LONG_TIERS: list[ExitTierFn] = [
     _tier1_stop_loss,

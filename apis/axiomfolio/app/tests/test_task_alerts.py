@@ -1,6 +1,6 @@
-from app.tasks.utils.task_utils import _emit_alerts, _is_slow_run
-from app.tasks.utils.schedule_metadata import HookConfig, ScheduleMetadata, SafetyConfig
 from app.services.notifications.alerts import alert_service
+from app.tasks.utils.schedule_metadata import HookConfig, SafetyConfig, ScheduleMetadata
+from app.tasks.utils.task_utils import _emit_alerts, _is_slow_run
 
 
 class _StubJob:
@@ -116,4 +116,3 @@ def test_slow_threshold_prefers_hook_override():
 
     assert _is_slow_run(60.0, meta, hooks) is True
     assert _is_slow_run(40.0, meta, hooks) is False
-

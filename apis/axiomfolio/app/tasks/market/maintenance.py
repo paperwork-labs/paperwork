@@ -5,7 +5,8 @@ Market data retention, job-run recovery, and quality audit tasks.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 from celery import shared_task
 
 from app.config import settings
@@ -32,7 +33,7 @@ def prune_old_bars(max_days_5m: int = 90) -> dict:
 
         effective_days = int(max_days_5m or settings.RETENTION_MAX_DAYS_5M)
         # PriceData.date is naive UTC; compare with naive bound.
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=effective_days)).replace(tzinfo=None)
+        cutoff = (datetime.now(UTC) - timedelta(days=effective_days)).replace(tzinfo=None)
         deleted = (
             session.query(PriceData)
             .filter(PriceData.interval == "5m", PriceData.date < cutoff)
@@ -69,8 +70,8 @@ def recover_jobs_impl(stale_minutes: int = STALE_JOB_RUN_MINUTES) -> dict:
     """Mark JobRun rows stuck in running as cancelled. Returns counts."""
     session = SessionLocal()
     try:
-        cutoff = datetime.now(timezone.utc) - timedelta(minutes=stale_minutes)
-        now = datetime.now(timezone.utc)
+        cutoff = datetime.now(UTC) - timedelta(minutes=stale_minutes)
+        now = datetime.now(UTC)
         msg = (
             f"Marked cancelled: run exceeded stale threshold ({stale_minutes} min). "
             "Process likely terminated (cron timeout, OOM, or worker restart)."
@@ -134,6 +135,7 @@ def warm_dashboard_cache(universe: str = "all") -> dict:
     Runs in the Celery worker -- never in the web process.
     """
     import json as _json
+
     from app.services.market.market_dashboard_service import MarketDashboardService
     from app.services.market.market_data_service import infra
 

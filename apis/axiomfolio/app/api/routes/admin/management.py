@@ -3,22 +3,23 @@ AxiomFolio V1 - Clean Admin Routes
 System administration endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy.orm import Session
-from typing import Dict, Any, Optional
 import logging
-from datetime import datetime, timedelta, timezone
 import secrets
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, EmailStr
+from sqlalchemy.orm import Session
+
+from app.api.dependencies import get_admin_user
+from app.api.rate_limit import limiter
 
 # dependencies
 from app.database import get_db
+from app.models.market_data import JobRun, MarketRegime, MarketSnapshot
 from app.models.user import User, UserRole
 from app.models.user_invite import UserInvite
-from app.api.dependencies import get_admin_user
-from app.api.rate_limit import limiter
-from app.models.market_data import MarketRegime, MarketSnapshot, JobRun
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,8 @@ class InviteUserRequest(BaseModel):
 
 
 class UpdateUserRequest(BaseModel):
-    role: Optional[str] = None
-    is_active: Optional[bool] = None
+    role: str | None = None
+    is_active: bool | None = None
 
 
 def _parse_role(role: str | None) -> UserRole:
@@ -78,11 +79,11 @@ def _role_value(role_obj: Any) -> str:
 
 @router.get("/users")
 async def list_users(
-    q: Optional[str] = Query(None, description="Filter by email or username"),
-    role: Optional[str] = Query(None, description="Role filter"),
+    q: str | None = Query(None, description="Filter by email or username"),
+    role: str | None = Query(None, description="Role filter"),
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List all users (admin only)."""
     try:
         query = db.query(User)
@@ -96,7 +97,7 @@ async def list_users(
         return {
             "users": [_user_admin_payload(user) for user in users],
             "total_users": len(users),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     except Exception as e:
@@ -107,20 +108,18 @@ async def list_users(
 @router.get("/users/invites")
 async def list_user_invites(
     admin_user: User = Depends(get_admin_user), db: Session = Depends(get_db)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """List active user invites (admin only)."""
-    invites = (
-        db.query(UserInvite)
-        .order_by(UserInvite.created_at.desc())
-        .all()
-    )
+    invites = db.query(UserInvite).order_by(UserInvite.created_at.desc()).all()
     return {
         "invites": [
             {
                 "id": inv.id,
                 "email": inv.email,
                 "role": _role_value(inv.role),
-                "token": inv.token if not inv.accepted_at and inv.expires_at > datetime.now(timezone.utc) else None,
+                "token": inv.token
+                if not inv.accepted_at and inv.expires_at > datetime.now(UTC)
+                else None,
                 "expires_at": inv.expires_at.isoformat(),
                 "accepted_at": inv.accepted_at.isoformat() if inv.accepted_at else None,
                 "created_at": inv.created_at.isoformat(),
@@ -137,26 +136,26 @@ async def invite_user(
     payload: InviteUserRequest,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Create an email invite for a user (admin only)."""
     email = payload.email.strip().lower()
     if db.query(User).filter(User.email == email).first():
         raise HTTPException(status_code=409, detail="User already exists")
     role = _parse_role(payload.role)
-    expires_at = datetime.now(timezone.utc) + timedelta(days=max(1, min(payload.expires_in_days, 30)))
-    token = secrets.token_urlsafe(32)
-    existing_invite = (
-        db.query(UserInvite)
-        .filter(UserInvite.email == email)
-        .first()
+    expires_at = datetime.now(UTC) + timedelta(
+        days=max(1, min(payload.expires_in_days, 30))
     )
+    token = secrets.token_urlsafe(32)
+    existing_invite = db.query(UserInvite).filter(UserInvite.email == email).first()
     if existing_invite:
         is_active = (
             existing_invite.accepted_at is None
-            and existing_invite.expires_at >= datetime.now(timezone.utc)
+            and existing_invite.expires_at >= datetime.now(UTC)
         )
         if is_active:
-            raise HTTPException(status_code=409, detail="Active invite already exists for this email")
+            raise HTTPException(
+                status_code=409, detail="Active invite already exists for this email"
+            )
         # Recycle an expired/used invite row so email uniqueness remains intact.
         existing_invite.role = role
         existing_invite.token = token
@@ -190,7 +189,7 @@ async def update_user(
     payload: UpdateUserRequest,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Update user role/active status (admin only)."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -210,7 +209,7 @@ async def update_user(
     }
 
 
-def _user_admin_payload(user: User) -> Dict[str, Any]:
+def _user_admin_payload(user: User) -> dict[str, Any]:
     """Serialize user for admin user-management responses."""
     return {
         "id": user.id,
@@ -233,7 +232,7 @@ async def approve_user(
     user_id: int,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Approve a user account (admin only). Sets is_approved to True."""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -249,7 +248,7 @@ async def delete_user(
     user_id: int,
     admin_user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Fully delete a user from the database (admin only). Cannot delete yourself."""
     if admin_user.id == user_id:
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
@@ -261,6 +260,7 @@ async def delete_user(
         db.commit()
     except Exception as exc:
         from sqlalchemy.exc import IntegrityError
+
         if isinstance(exc, IntegrityError):
             db.rollback()
             logger.warning("delete_user failed for user_id=%d: %s", user_id, exc)
@@ -281,9 +281,10 @@ async def delete_user(
 async def system_health_summary(
     db: Session = Depends(get_db),
     admin_user: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Aggregated system health: regime, coverage freshness, pipeline status, recent errors."""
-    from sqlalchemy import select, func as sqlfunc
+    from sqlalchemy import func as sqlfunc
+    from sqlalchemy import select
 
     # Regime
     regime_row = db.execute(
@@ -292,28 +293,30 @@ async def system_health_summary(
     regime = {
         "state": regime_row.regime_state if regime_row else None,
         "composite": regime_row.composite_score if regime_row else None,
-        "as_of": regime_row.as_of_date.isoformat() if regime_row and regime_row.as_of_date else None,
+        "as_of": regime_row.as_of_date.isoformat()
+        if regime_row and regime_row.as_of_date
+        else None,
     }
 
     # Coverage freshness
-    latest_snap = db.execute(
-        select(sqlfunc.max(MarketSnapshot.analysis_timestamp))
-    ).scalar()
-    snap_count = db.execute(
-        select(sqlfunc.count(MarketSnapshot.id))
-    ).scalar() or 0
+    latest_snap = db.execute(select(sqlfunc.max(MarketSnapshot.analysis_timestamp))).scalar()
+    snap_count = db.execute(select(sqlfunc.count(MarketSnapshot.id))).scalar() or 0
     coverage_age_min = None
     if latest_snap:
-        coverage_age_min = int((datetime.now(timezone.utc) - latest_snap).total_seconds() / 60)
+        coverage_age_min = int((datetime.now(UTC) - latest_snap).total_seconds() / 60)
 
     # Pipeline — recent job runs
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
-    recent_jobs = db.execute(
-        select(JobRun)
-        .where(JobRun.started_at >= cutoff)
-        .order_by(JobRun.started_at.desc())
-        .limit(20)
-    ).scalars().all()
+    cutoff = datetime.now(UTC) - timedelta(hours=24)
+    recent_jobs = (
+        db.execute(
+            select(JobRun)
+            .where(JobRun.started_at >= cutoff)
+            .order_by(JobRun.started_at.desc())
+            .limit(20)
+        )
+        .scalars()
+        .all()
+    )
 
     ok_count = sum(1 for j in recent_jobs if j.status == "ok")
     error_count = sum(1 for j in recent_jobs if j.status == "error")
@@ -351,4 +354,3 @@ async def system_health_summary(
             "recent_errors": errors,
         },
     }
-

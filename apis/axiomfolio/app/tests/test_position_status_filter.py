@@ -9,6 +9,7 @@ pipeline (every nightly run finished ``partial`` rather than ``success``).
 These tests assert that the SQL emitted by Position.status filters always uses
 the enum member, not a raw lowercase string.
 """
+
 from __future__ import annotations
 
 from sqlalchemy import select

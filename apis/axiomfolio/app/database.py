@@ -5,11 +5,12 @@ AxiomFolio V1 - Database Configuration
 Central database configuration and session management.
 """
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 import os
 import sys
-from typing import Generator
+from collections.abc import Generator
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 # Shared test DB safety checks (used by both app and pytest)
 from app.utils.db_safety import check_test_database_url
@@ -60,9 +61,7 @@ engine = create_engine(
     pool_recycle=300,
     pool_size=10,
     max_overflow=20,
-    connect_args={
-        "options": f"-c statement_timeout={_STATEMENT_TIMEOUT_MS}"
-    },
+    connect_args={"options": f"-c statement_timeout={_STATEMENT_TIMEOUT_MS}"},
 )
 
 # Raw factory kept private; SessionLocal wrapper enforces test safety in pytest
@@ -78,9 +77,7 @@ def _assert_test_db_guard():
     - Extra paranoia: require DATABASE_URL == TEST_DATABASE_URL so *any* accidental use of
       backend.database.engine/SessionLocal still targets the test DB.
     """
-    is_testing = bool(
-        os.getenv("PYTEST_CURRENT_TEST") or os.getenv("AXIOMFOLIO_TESTING")
-    )
+    is_testing = bool(os.getenv("PYTEST_CURRENT_TEST") or os.getenv("AXIOMFOLIO_TESTING"))
     if not is_testing:
         return
     test_db_url = os.getenv("TEST_DATABASE_URL", "")
@@ -97,11 +94,9 @@ def _assert_test_db_guard():
         required_user=required_user,
     )
     if not chk.ok:
-        raise RuntimeError(
-            f"Unsafe TEST_DATABASE_URL ({chk.reason}); refusing to run tests"
-        )
+        raise RuntimeError(f"Unsafe TEST_DATABASE_URL ({chk.reason}); refusing to run tests")
 
-    if APP_DATABASE_URL != test_db_url:
+    if test_db_url != APP_DATABASE_URL:
         raise RuntimeError(
             "In tests, DATABASE_URL must equal TEST_DATABASE_URL so accidental engine usage stays isolated. "
             f"DATABASE_URL={APP_DATABASE_URL!r} TEST_DATABASE_URL={test_db_url!r}"
@@ -113,8 +108,8 @@ def SessionLocal():
     _assert_test_db_guard()
     return _RAW_SESSION_FACTORY()
 
+
 # Base class for all models (re-export from models)
-from app.models import Base
 
 
 # Dependency for getting database sessions

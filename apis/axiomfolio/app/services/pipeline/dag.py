@@ -12,15 +12,17 @@ Redis key layout (TTL = 7 days):
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Sequence
+from collections.abc import Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -49,16 +51,18 @@ _INSPECT_TIMEOUT_S = 1.5
 # DAG node definition
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class StepDef:
     """Metadata for a single pipeline step."""
+
     deps: tuple[str, ...]
     task_path: str
     timeout_s: int
     display_name: str
 
 
-PIPELINE_DAG: Dict[str, StepDef] = {
+PIPELINE_DAG: dict[str, StepDef] = {
     "constituents": StepDef(
         deps=(),
         task_path="app.tasks.market.backfill.constituents",
@@ -150,10 +154,11 @@ PIPELINE_DAG: Dict[str, StepDef] = {
 # Topological sort (Kahn's algorithm)
 # ---------------------------------------------------------------------------
 
+
 def resolve_execution_order(
-    dag: Dict[str, StepDef],
-    steps: Optional[Sequence[str]] = None,
-) -> List[str]:
+    dag: dict[str, StepDef],
+    steps: Sequence[str] | None = None,
+) -> list[str]:
     """Return step names in a valid topological execution order.
 
     If *steps* is provided, only those steps (plus their transitive upstream
@@ -169,14 +174,14 @@ def resolve_execution_order(
     # Sort to guarantee deterministic iteration regardless of set/dict ordering
     ordered_needed = sorted(needed)
 
-    in_degree: Dict[str, int] = {s: 0 for s in ordered_needed}
+    in_degree: dict[str, int] = {s: 0 for s in ordered_needed}
     for name in ordered_needed:
         for dep in dag[name].deps:
             if dep in needed:
                 in_degree[name] += 1
 
     queue: deque[str] = deque(s for s in ordered_needed if in_degree[s] == 0)
-    order: List[str] = []
+    order: list[str] = []
 
     while queue:
         node = queue.popleft()
@@ -195,7 +200,7 @@ def resolve_execution_order(
     return order
 
 
-def _transitive_deps(dag: Dict[str, StepDef], roots: Sequence[str]) -> set[str]:
+def _transitive_deps(dag: dict[str, StepDef], roots: Sequence[str]) -> set[str]:
     """Collect *roots* plus all their transitive upstream dependencies."""
     result: set[str] = set()
     stack = list(roots)
@@ -212,7 +217,7 @@ def _transitive_deps(dag: Dict[str, StepDef], roots: Sequence[str]) -> set[str]:
     return result
 
 
-def dag_edges(dag: Dict[str, StepDef]) -> List[Dict[str, str]]:
+def dag_edges(dag: dict[str, StepDef]) -> list[dict[str, str]]:
     """Return list of {from, to} edge dicts for frontend rendering."""
     edges = []
     for name, step_def in dag.items():
@@ -249,9 +254,11 @@ RUN_UNKNOWN = "unknown"
 # Redis state helpers
 # ---------------------------------------------------------------------------
 
+
 def _redis_client():
     """Lazy import to avoid circular dependency with market_data_service."""
     from app.services.market.market_data_service import infra
+
     return infra.redis_client
 
 
@@ -267,8 +274,8 @@ def mark_run_meta(
     run_id: str,
     *,
     status: str,
-    started_at: Optional[str] = None,
-    finished_at: Optional[str] = None,
+    started_at: str | None = None,
+    finished_at: str | None = None,
     triggered_by: str = "celery_beat",
 ) -> None:
     """Create or update pipeline run metadata in Redis."""
@@ -280,7 +287,7 @@ def mark_run_meta(
     except Exception:
         existing = {}
 
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     existing["run_id"] = run_id
     existing["status"] = status
     if started_at:
@@ -313,14 +320,14 @@ def mark_step(
     step: str,
     status: str,
     *,
-    error: Optional[str] = None,
-    counters: Optional[Dict[str, Any]] = None,
-    duration_s: Optional[float] = None,
-    started_at: Optional[str] = None,
-    finished_at: Optional[str] = None,
+    error: str | None = None,
+    counters: dict[str, Any] | None = None,
+    duration_s: float | None = None,
+    started_at: str | None = None,
+    finished_at: str | None = None,
 ) -> None:
     """Write per-step state to Redis."""
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     payload = {
         "status": status,
         "started_at": started_at or now_iso,
@@ -340,7 +347,7 @@ def mark_step(
         logger.warning("Failed to persist pipeline step %s/%s: %s", run_id, step, e)
 
 
-def get_step_status(run_id: str, step: str) -> Optional[str]:
+def get_step_status(run_id: str, step: str) -> str | None:
     """Return the status string for a step, or None if not recorded."""
     try:
         raw = _redis_client().get(_step_key(run_id, step))
@@ -351,7 +358,7 @@ def get_step_status(run_id: str, step: str) -> Optional[str]:
     return None
 
 
-def get_step_state(run_id: str, step: str) -> Optional[Dict[str, Any]]:
+def get_step_state(run_id: str, step: str) -> dict[str, Any] | None:
     """Return full state dict for a step."""
     try:
         raw = _redis_client().get(_step_key(run_id, step))
@@ -365,7 +372,7 @@ def get_step_state(run_id: str, step: str) -> Optional[Dict[str, Any]]:
 def all_deps_satisfied(
     run_id: str,
     step: str,
-    dag: Dict[str, StepDef],
+    dag: dict[str, StepDef],
 ) -> bool:
     """True if every dependency of *step* has status 'ok'."""
     step_def = dag.get(step)
@@ -377,7 +384,7 @@ def all_deps_satisfied(
     return True
 
 
-def _inspect_active_tasks() -> Optional[Dict[str, List[Dict[str, Any]]]]:
+def _inspect_active_tasks() -> dict[str, list[dict[str, Any]]] | None:
     """Return Celery ``inspect().active()`` or None if no worker reachable.
 
     Wrapped here so we can mock it cleanly in tests.
@@ -386,6 +393,7 @@ def _inspect_active_tasks() -> Optional[Dict[str, List[Dict[str, Any]]]]:
         # Lazy import — keeps `dag.py` importable from environments that
         # don't have Celery configured (admin scripts, tests).
         from app.tasks.celery_app import celery_app
+
         inspector = celery_app.control.inspect(timeout=_INSPECT_TIMEOUT_S)
         return inspector.active()
     except Exception as e:
@@ -397,7 +405,7 @@ def _inspect_active_tasks() -> Optional[Dict[str, List[Dict[str, Any]]]]:
         return None
 
 
-def _classify_stale_queued(meta: Dict[str, Any]) -> Dict[str, Any]:
+def _classify_stale_queued(meta: dict[str, Any]) -> dict[str, Any]:
     """Reclassify a ``queued`` run based on Celery worker reachability.
 
     Truth table (queued runs only — other statuses are returned untouched):
@@ -445,7 +453,7 @@ def _classify_stale_queued(meta: Dict[str, Any]) -> Dict[str, Any]:
 
     # Worker(s) reachable. If anything is running, surface the longest-
     # running task so the operator knows what is blocking.
-    busiest: Optional[Dict[str, Any]] = None
+    busiest: dict[str, Any] | None = None
     busiest_age: float = 0.0
     now = time.time()
     for worker_name, tasks in active.items():
@@ -497,14 +505,14 @@ _expire_stale_queued = _classify_stale_queued
 
 def get_run_state(
     run_id: str,
-    dag: Optional[Dict[str, StepDef]] = None,
-) -> Dict[str, Any]:
+    dag: dict[str, StepDef] | None = None,
+) -> dict[str, Any]:
     """Load full pipeline run state (meta + all steps) from Redis."""
     if dag is None:
         dag = PIPELINE_DAG
 
     r = _redis_client()
-    result: Dict[str, Any] = {"run_id": run_id, "steps": {}}
+    result: dict[str, Any] = {"run_id": run_id, "steps": {}}
 
     try:
         meta_raw = r.get(_meta_key(run_id))
@@ -525,10 +533,10 @@ def get_run_state(
     return result
 
 
-def list_recent_runs(limit: int = 20) -> List[Dict[str, Any]]:
+def list_recent_runs(limit: int = 20) -> list[dict[str, Any]]:
     """Return metadata for the most recent pipeline runs."""
     r = _redis_client()
-    runs: List[Dict[str, Any]] = []
+    runs: list[dict[str, Any]] = []
     try:
         run_ids = r.zrevrange(_RUNS_INDEX_KEY, 0, limit - 1)
         if not run_ids:
@@ -553,7 +561,7 @@ def list_recent_runs(limit: int = 20) -> List[Dict[str, Any]]:
 # Ambient state — synthetic run from latest individual JobRuns
 # ---------------------------------------------------------------------------
 
-_STEP_TO_TASK_NAME: Dict[str, str] = {
+_STEP_TO_TASK_NAME: dict[str, str] = {
     "constituents": "market_indices_constituents_refresh",
     "tracked_cache": "market_universe_tracked_refresh",
     "daily_bars": "admin_backfill_daily",
@@ -570,18 +578,17 @@ _STEP_TO_TASK_NAME: Dict[str, str] = {
     "digest": "intelligence_daily_digest",
 }
 
-_TASK_PATH_TO_STEP: Dict[str, str] = {
-    step_def.task_path: step_name
-    for step_name, step_def in PIPELINE_DAG.items()
+_TASK_PATH_TO_STEP: dict[str, str] = {
+    step_def.task_path: step_name for step_name, step_def in PIPELINE_DAG.items()
 }
 
-_CELERY_NAME_OVERRIDES: Dict[str, str] = {
+_CELERY_NAME_OVERRIDES: dict[str, str] = {
     "app.tasks.strategy_tasks.evaluate_strategies_task": "strategy_eval",
     "app.tasks.intelligence_tasks.generate_daily_digest": "digest",
 }
 
 
-def celery_task_to_dag_step(task_name: Optional[str]) -> Optional[str]:
+def celery_task_to_dag_step(task_name: str | None) -> str | None:
     """Map a Celery registered task name to the corresponding DAG step name.
 
     Checks module-path-based mapping first (covers @shared_task defaults),
@@ -592,24 +599,25 @@ def celery_task_to_dag_step(task_name: Optional[str]) -> Optional[str]:
     return _TASK_PATH_TO_STEP.get(task_name) or _CELERY_NAME_OVERRIDES.get(task_name)
 
 
-_JOBRUN_STATUS_MAP: Dict[str, str] = {
+_JOBRUN_STATUS_MAP: dict[str, str] = {
     "ok": STEP_OK,
     "error": STEP_ERROR,
     "running": STEP_RUNNING,
 }
 
 
-def get_ambient_state(session: Any) -> Dict[str, Any]:
+def get_ambient_state(session: Any) -> dict[str, Any]:
     """Build a synthetic pipeline run state from the latest JobRun per step.
 
     Used as a fallback when no real pipeline run exists so the DAG always
     reflects reality.  Accepts a SQLAlchemy ``Session``.
     """
-    from app.models.market_data import JobRun
     from sqlalchemy import desc
 
-    steps: Dict[str, Any] = {}
-    overall_statuses: List[str] = []
+    from app.models.market_data import JobRun
+
+    steps: dict[str, Any] = {}
+    overall_statuses: list[str] = []
 
     for step_name, task_name in _STEP_TO_TASK_NAME.items():
         row = (
@@ -624,7 +632,7 @@ def get_ambient_state(session: Any) -> Dict[str, Any]:
             continue
 
         status = _JOBRUN_STATUS_MAP.get(row.status, STEP_PENDING)
-        duration_s: Optional[float] = None
+        duration_s: float | None = None
         if row.started_at and row.finished_at:
             duration_s = round((row.finished_at - row.started_at).total_seconds(), 2)
 
@@ -661,6 +669,7 @@ def get_ambient_state(session: Any) -> Dict[str, Any]:
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _iso_to_ts(iso_str: str) -> float:
     """Convert ISO timestamp to Unix timestamp for sorted set scoring."""
     try:
@@ -670,7 +679,7 @@ def _iso_to_ts(iso_str: str) -> float:
         return time.time()
 
 
-def _truncate(s: Optional[str], max_len: int) -> Optional[str]:
+def _truncate(s: str | None, max_len: int) -> str | None:
     if s and len(s) > max_len:
         return s[:max_len] + "..."
     return s

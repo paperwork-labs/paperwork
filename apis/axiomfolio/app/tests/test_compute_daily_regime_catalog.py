@@ -18,6 +18,7 @@ Adding a standalone catalog entry at 03:20 UTC (after fundamentals fill
 at 03:15 and before earnings sync at 03:30) acts as a safety net.  This
 test guards the contract.
 """
+
 from __future__ import annotations
 
 from celery.schedules import crontab

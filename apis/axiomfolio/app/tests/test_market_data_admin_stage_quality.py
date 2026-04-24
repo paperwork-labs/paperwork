@@ -1,11 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_admin_user
-from app.models.market_data import JobRun, MarketSnapshot, MarketSnapshotHistory
-
+from app.api.main import app
+from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
 
 client = TestClient(app, raise_server_exceptions=False)
 
@@ -21,7 +20,7 @@ def test_admin_stage_repair_payload(db_session):
     app.dependency_overrides[get_admin_user] = object
     app.dependency_overrides[get_db] = lambda: db_session
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         db_session.add(
             MarketSnapshot(
                 symbol="AAA",
@@ -69,7 +68,7 @@ def test_admin_stage_repair_payload(db_session):
 
         # Ensure snapshot sync does not use UNKNOWN latest rows when snapshot
         # stage is known.
-        now2 = datetime.now(timezone.utc)
+        now2 = datetime.now(UTC)
         db_session.add(
             MarketSnapshot(
                 symbol="CCC",

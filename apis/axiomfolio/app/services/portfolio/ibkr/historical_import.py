@@ -9,10 +9,10 @@ import csv
 import io
 import logging
 import xml.etree.ElementTree as ET
+from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Iterable, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,7 @@ from app.models.position import Position, PositionStatus, PositionType
 from app.models.trade import Trade
 from app.models.transaction import Transaction, TransactionType
 from app.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
+
 # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.account_credentials_service moves during Phase 0.C
 from app.services.portfolio.account_credentials_service import (
     CredentialsNotFoundError,
@@ -47,8 +48,8 @@ class ParsedTradeRecord:
     execution_id: str
 
 
-def build_year_chunks(start: date, end: date) -> List[tuple[date, date]]:
-    chunks: List[tuple[date, date]] = []
+def build_year_chunks(start: date, end: date) -> list[tuple[date, date]]:
+    chunks: list[tuple[date, date]] = []
     current = start
     while current <= end:
         chunk_end = min(end, date(current.year, 12, 31))
@@ -67,8 +68,8 @@ class HistoricalImportService:
         user_id: int,
         account: BrokerAccount,
         source: HistoricalImportSource,
-        date_from: Optional[date],
-        date_to: Optional[date],
+        date_from: date | None,
+        date_to: date | None,
     ) -> HistoricalImportRun:
         run = HistoricalImportRun(
             user_id=user_id,
@@ -93,7 +94,7 @@ class HistoricalImportService:
     ) -> dict:
         chunks = build_year_chunks(date_from, date_to)
         run.status = HistoricalImportStatus.RUNNING
-        run.started_at = datetime.now(timezone.utc)
+        run.started_at = datetime.now(UTC)
         run.chunk_count = len(chunks)
         self.db.commit()
 
@@ -111,7 +112,7 @@ class HistoricalImportService:
             records_written = 0
             records_skipped = 0
             records_errors = 0
-            chunk_summaries: List[dict] = []
+            chunk_summaries: list[dict] = []
             for chunk_start, chunk_end in chunks:
                 filtered = self._filter_records_by_date(
                     parsed_records,
@@ -143,7 +144,7 @@ class HistoricalImportService:
             run.records_errors = records_errors
             run.import_metadata = {"chunks": chunk_summaries}
             run.status = HistoricalImportStatus.COMPLETED
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = datetime.now(UTC)
             self.db.commit()
             return summary
         except Exception as exc:
@@ -152,7 +153,7 @@ class HistoricalImportService:
             if run is not None:
                 run.status = HistoricalImportStatus.FAILED
                 run.error_message = str(exc)[:1000]
-                run.completed_at = datetime.now(timezone.utc)
+                run.completed_at = datetime.now(UTC)
                 self.db.commit()
             raise
 
@@ -166,16 +167,14 @@ class HistoricalImportService:
         date_to: date,
     ) -> dict:
         run.status = HistoricalImportStatus.RUNNING
-        run.started_at = datetime.now(timezone.utc)
+        run.started_at = datetime.now(UTC)
         run.chunk_count = 1
         self.db.commit()
         try:
             try:
                 ET.fromstring(xml_content)
             except ET.ParseError as exc:
-                raise ValueError(
-                    f"malformed_xml: could not parse uploaded XML ({exc})"
-                ) from exc
+                raise ValueError(f"malformed_xml: could not parse uploaded XML ({exc})") from exc
             client = self._build_client(account)
             parsed = client._parse_trades_from_xml(xml_content, account.account_number)
             filtered = self._filter_records_by_date(
@@ -189,7 +188,7 @@ class HistoricalImportService:
             run.records_skipped = summary["skipped"]
             run.records_errors = summary["errors"]
             run.status = HistoricalImportStatus.COMPLETED
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = datetime.now(UTC)
             self.db.commit()
             return summary
         except Exception as exc:
@@ -198,7 +197,7 @@ class HistoricalImportService:
             if run is not None:
                 run.status = HistoricalImportStatus.FAILED
                 run.error_message = str(exc)[:1000]
-                run.completed_at = datetime.now(timezone.utc)
+                run.completed_at = datetime.now(UTC)
                 self.db.commit()
             raise
 
@@ -210,7 +209,7 @@ class HistoricalImportService:
         csv_content: str,
     ) -> dict:
         run.status = HistoricalImportStatus.RUNNING
-        run.started_at = datetime.now(timezone.utc)
+        run.started_at = datetime.now(UTC)
         self.db.commit()
         try:
             records = list(self._records_from_csv(csv_content))
@@ -221,7 +220,7 @@ class HistoricalImportService:
             run.records_errors = summary["errors"]
             run.chunk_count = 1
             run.status = HistoricalImportStatus.COMPLETED
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = datetime.now(UTC)
             self.db.commit()
             return summary
         except Exception as exc:
@@ -230,7 +229,7 @@ class HistoricalImportService:
             if run is not None:
                 run.status = HistoricalImportStatus.FAILED
                 run.error_message = str(exc)[:1000]
-                run.completed_at = datetime.now(timezone.utc)
+                run.completed_at = datetime.now(UTC)
                 self.db.commit()
             raise
 
@@ -292,7 +291,9 @@ class HistoricalImportService:
             "errors": errors,
         }
 
-    def _create_trade_and_transaction(self, account: BrokerAccount, record: ParsedTradeRecord) -> None:
+    def _create_trade_and_transaction(
+        self, account: BrokerAccount, record: ParsedTradeRecord
+    ) -> None:
         trade = Trade(
             account_id=account.id,
             symbol=record.symbol,
@@ -392,7 +393,7 @@ class HistoricalImportService:
                 side="BUY" if side == "BUY" else "SELL",
                 quantity=qty,
                 price=px,
-                executed_at=dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc),
+                executed_at=dt if dt.tzinfo else dt.replace(tzinfo=UTC),
                 execution_id=execution_id,
             )
 
@@ -412,7 +413,9 @@ class HistoricalImportService:
                 executed_at = datetime.fromisoformat(str(date_raw).replace("Z", "+00:00"))
             except Exception as exc:
                 raise ValueError(f"Invalid CSV row {idx + 1}: {exc}") from exc
-            execution_id = str(row.get("ExecID") or row.get("execution_id") or f"csv-{idx + 1}").strip()
+            execution_id = str(
+                row.get("ExecID") or row.get("execution_id") or f"csv-{idx + 1}"
+            ).strip()
             if qty <= 0 or price <= 0:
                 continue
             yield ParsedTradeRecord(
@@ -420,14 +423,14 @@ class HistoricalImportService:
                 side="BUY" if side in {"BUY", "BOT"} else "SELL",
                 quantity=qty,
                 price=price,
-                executed_at=executed_at if executed_at.tzinfo else executed_at.replace(tzinfo=timezone.utc),
+                executed_at=executed_at
+                if executed_at.tzinfo
+                else executed_at.replace(tzinfo=UTC),
                 execution_id=execution_id,
             )
 
     @staticmethod
     def _filter_records_by_date(
         records: Iterable[ParsedTradeRecord], start: date, end: date
-    ) -> List[ParsedTradeRecord]:
-        return [
-            rec for rec in records if start <= rec.executed_at.date() <= end
-        ]
+    ) -> list[ParsedTradeRecord]:
+        return [rec for rec in records if start <= rec.executed_at.date() <= end]

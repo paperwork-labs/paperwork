@@ -6,6 +6,7 @@ from app.tests.auth_test_utils import approve_user_for_login_tests
 
 try:
     from fastapi.testclient import TestClient
+
     from app.api.main import app
 
     FASTAPI_AVAILABLE = True
@@ -126,5 +127,3 @@ def test_change_password_allows_login_with_new_password(client):
     # New password should work
     good = client.post("/api/v1/auth/login", json={"email": email, "password": new_pw})
     assert good.status_code == 200
-
-

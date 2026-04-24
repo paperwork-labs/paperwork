@@ -4,22 +4,22 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Callable, TypeVar
+from datetime import UTC, datetime, timedelta
+from typing import Any, TypeVar
 
-from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session, load_only
 
+from app.models import Position
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from app.models.market_tracked_plan import MarketTrackedPlan
-from app.models import Position
 from app.services.market.constants import (
     SECTOR_ETF_DISPLAY_NAMES,
     SECTOR_ETF_PROXY_SYMBOLS,
     SECTOR_ETF_SYMBOLS_ORDER,
 )
-from app.services.market.market_data_service import coverage_analytics, infra
+from app.services.market.market_data_service import infra
 from app.services.market.universe import tracked_symbols
 
 logger = logging.getLogger(__name__)
@@ -73,7 +73,9 @@ class MarketDashboardService:
             logger.warning("market dashboard section %s failed: %s", section, e)
             return default
 
-    def _fetch_rows(self, db: Session, *, universe: str = "all") -> tuple[list[str], list[_SummaryRow], dict[str, MarketTrackedPlan], datetime | None]:
+    def _fetch_rows(
+        self, db: Session, *, universe: str = "all"
+    ) -> tuple[list[str], list[_SummaryRow], dict[str, MarketTrackedPlan], datetime | None]:
         def _coalesce(primary, secondary):
             return primary if primary is not None else secondary
 
@@ -85,11 +87,7 @@ class MarketDashboardService:
             etf_set = set(SECTOR_ETF_SYMBOLS_ORDER)
             tracked = [s for s in tracked if s in etf_set]
         elif universe == "holdings":
-            held = {
-                str(s).upper()
-                for (s,) in db.query(Position.symbol).distinct()
-                if s
-            }
+            held = {str(s).upper() for (s,) in db.query(Position.symbol).distinct() if s}
             tracked = [s for s in tracked if s in held]
 
         if not tracked:
@@ -97,28 +95,46 @@ class MarketDashboardService:
 
         rows = (
             db.query(MarketSnapshot)
-            .options(load_only(
-                MarketSnapshot.symbol, MarketSnapshot.analysis_timestamp,
-                MarketSnapshot.analysis_type,
-                MarketSnapshot.stage_label, MarketSnapshot.previous_stage_label,
-                MarketSnapshot.current_stage_days, MarketSnapshot.current_price,
-                MarketSnapshot.perf_1d, MarketSnapshot.perf_5d,
-                MarketSnapshot.perf_20d, MarketSnapshot.perf_252d,
-                MarketSnapshot.rs_mansfield_pct,
-                MarketSnapshot.atr_14, MarketSnapshot.sma_21,
-                MarketSnapshot.sma_50, MarketSnapshot.sma_200,
-                MarketSnapshot.sector, MarketSnapshot.industry,
-                MarketSnapshot.atrx_sma_21, MarketSnapshot.atrx_sma_50,
-                MarketSnapshot.range_pos_52w, MarketSnapshot.rsi,
-                MarketSnapshot.pe_ttm, MarketSnapshot.eps_growth_yoy,
-                MarketSnapshot.revenue_growth_yoy, MarketSnapshot.next_earnings,
-                MarketSnapshot.scan_tier,
-                MarketSnapshot.action_label,
-                MarketSnapshot.td_buy_setup, MarketSnapshot.td_sell_setup,
-                MarketSnapshot.td_buy_countdown, MarketSnapshot.td_sell_countdown,
-                MarketSnapshot.td_perfect_buy, MarketSnapshot.td_perfect_sell,
-                MarketSnapshot.gaps_unfilled_up, MarketSnapshot.gaps_unfilled_down,
-            ))
+            .options(
+                load_only(
+                    MarketSnapshot.symbol,
+                    MarketSnapshot.analysis_timestamp,
+                    MarketSnapshot.analysis_type,
+                    MarketSnapshot.stage_label,
+                    MarketSnapshot.previous_stage_label,
+                    MarketSnapshot.current_stage_days,
+                    MarketSnapshot.current_price,
+                    MarketSnapshot.perf_1d,
+                    MarketSnapshot.perf_5d,
+                    MarketSnapshot.perf_20d,
+                    MarketSnapshot.perf_252d,
+                    MarketSnapshot.rs_mansfield_pct,
+                    MarketSnapshot.atr_14,
+                    MarketSnapshot.sma_21,
+                    MarketSnapshot.sma_50,
+                    MarketSnapshot.sma_200,
+                    MarketSnapshot.sector,
+                    MarketSnapshot.industry,
+                    MarketSnapshot.atrx_sma_21,
+                    MarketSnapshot.atrx_sma_50,
+                    MarketSnapshot.range_pos_52w,
+                    MarketSnapshot.rsi,
+                    MarketSnapshot.pe_ttm,
+                    MarketSnapshot.eps_growth_yoy,
+                    MarketSnapshot.revenue_growth_yoy,
+                    MarketSnapshot.next_earnings,
+                    MarketSnapshot.scan_tier,
+                    MarketSnapshot.action_label,
+                    MarketSnapshot.td_buy_setup,
+                    MarketSnapshot.td_sell_setup,
+                    MarketSnapshot.td_buy_countdown,
+                    MarketSnapshot.td_sell_countdown,
+                    MarketSnapshot.td_perfect_buy,
+                    MarketSnapshot.td_perfect_sell,
+                    MarketSnapshot.gaps_unfilled_up,
+                    MarketSnapshot.gaps_unfilled_down,
+                )
+            )
             .filter(
                 MarketSnapshot.analysis_type == "technical_snapshot",
                 MarketSnapshot.symbol.in_(tracked),
@@ -136,20 +152,31 @@ class MarketDashboardService:
 
         history_rows = (
             db.query(MarketSnapshotHistory)
-            .options(load_only(
-                MarketSnapshotHistory.symbol, MarketSnapshotHistory.as_of_date,
-                MarketSnapshotHistory.analysis_type,
-                MarketSnapshotHistory.stage_label, MarketSnapshotHistory.previous_stage_label,
-                MarketSnapshotHistory.current_stage_days, MarketSnapshotHistory.current_price,
-                MarketSnapshotHistory.perf_1d, MarketSnapshotHistory.perf_5d,
-                MarketSnapshotHistory.perf_20d,
-                MarketSnapshotHistory.rs_mansfield_pct,
-                MarketSnapshotHistory.atr_14, MarketSnapshotHistory.sma_21,
-                MarketSnapshotHistory.sma_50, MarketSnapshotHistory.sma_200,
-                MarketSnapshotHistory.sector, MarketSnapshotHistory.industry,
-                MarketSnapshotHistory.atrx_sma_21, MarketSnapshotHistory.atrx_sma_50,
-                MarketSnapshotHistory.range_pos_52w, MarketSnapshotHistory.rsi,
-            ))
+            .options(
+                load_only(
+                    MarketSnapshotHistory.symbol,
+                    MarketSnapshotHistory.as_of_date,
+                    MarketSnapshotHistory.analysis_type,
+                    MarketSnapshotHistory.stage_label,
+                    MarketSnapshotHistory.previous_stage_label,
+                    MarketSnapshotHistory.current_stage_days,
+                    MarketSnapshotHistory.current_price,
+                    MarketSnapshotHistory.perf_1d,
+                    MarketSnapshotHistory.perf_5d,
+                    MarketSnapshotHistory.perf_20d,
+                    MarketSnapshotHistory.rs_mansfield_pct,
+                    MarketSnapshotHistory.atr_14,
+                    MarketSnapshotHistory.sma_21,
+                    MarketSnapshotHistory.sma_50,
+                    MarketSnapshotHistory.sma_200,
+                    MarketSnapshotHistory.sector,
+                    MarketSnapshotHistory.industry,
+                    MarketSnapshotHistory.atrx_sma_21,
+                    MarketSnapshotHistory.atrx_sma_50,
+                    MarketSnapshotHistory.range_pos_52w,
+                    MarketSnapshotHistory.rsi,
+                )
+            )
             .filter(
                 MarketSnapshotHistory.analysis_type == "technical_snapshot",
                 MarketSnapshotHistory.symbol.in_(list(latest_by_symbol.keys())),
@@ -178,23 +205,42 @@ class MarketDashboardService:
             out.append(
                 _SummaryRow(
                     symbol=sym,
-                    stage_label=str(_coalesce(getattr(r, "stage_label", None), getattr(h, "stage_label", None)) or "UNKNOWN"),
-                    previous_stage_label=_coalesce(getattr(r, "previous_stage_label", None), getattr(h, "previous_stage_label", None)),
-                    current_stage_days=_coalesce(getattr(r, "current_stage_days", None), getattr(h, "current_stage_days", None)),
-                    current_price=_coalesce(getattr(r, "current_price", None), getattr(h, "current_price", None)),
+                    stage_label=str(
+                        _coalesce(getattr(r, "stage_label", None), getattr(h, "stage_label", None))
+                        or "UNKNOWN"
+                    ),
+                    previous_stage_label=_coalesce(
+                        getattr(r, "previous_stage_label", None),
+                        getattr(h, "previous_stage_label", None),
+                    ),
+                    current_stage_days=_coalesce(
+                        getattr(r, "current_stage_days", None),
+                        getattr(h, "current_stage_days", None),
+                    ),
+                    current_price=_coalesce(
+                        getattr(r, "current_price", None), getattr(h, "current_price", None)
+                    ),
                     perf_1d=_coalesce(getattr(r, "perf_1d", None), getattr(h, "perf_1d", None)),
                     perf_5d=_coalesce(getattr(r, "perf_5d", None), getattr(h, "perf_5d", None)),
                     perf_20d=_coalesce(getattr(r, "perf_20d", None), getattr(h, "perf_20d", None)),
-                    rs_mansfield_pct=_coalesce(getattr(r, "rs_mansfield_pct", None), getattr(h, "rs_mansfield_pct", None)),
+                    rs_mansfield_pct=_coalesce(
+                        getattr(r, "rs_mansfield_pct", None), getattr(h, "rs_mansfield_pct", None)
+                    ),
                     atr_14=_coalesce(getattr(r, "atr_14", None), getattr(h, "atr_14", None)),
                     sma_21=_coalesce(getattr(r, "sma_21", None), getattr(h, "sma_21", None)),
                     sector=_coalesce(getattr(r, "sector", None), getattr(h, "sector", None)),
                     industry=_coalesce(getattr(r, "industry", None), getattr(h, "industry", None)),
                     sma_50=_coalesce(getattr(r, "sma_50", None), getattr(h, "sma_50", None)),
                     sma_200=_coalesce(getattr(r, "sma_200", None), getattr(h, "sma_200", None)),
-                    atrx_sma_21=_coalesce(getattr(r, "atrx_sma_21", None), getattr(h, "atrx_sma_21", None)),
-                    atrx_sma_50=_coalesce(getattr(r, "atrx_sma_50", None), getattr(h, "atrx_sma_50", None)),
-                    range_pos_52w=_coalesce(getattr(r, "range_pos_52w", None), getattr(h, "range_pos_52w", None)),
+                    atrx_sma_21=_coalesce(
+                        getattr(r, "atrx_sma_21", None), getattr(h, "atrx_sma_21", None)
+                    ),
+                    atrx_sma_50=_coalesce(
+                        getattr(r, "atrx_sma_50", None), getattr(h, "atrx_sma_50", None)
+                    ),
+                    range_pos_52w=_coalesce(
+                        getattr(r, "range_pos_52w", None), getattr(h, "range_pos_52w", None)
+                    ),
                     rsi=getattr(r, "rsi", None),
                     pe_ttm=getattr(r, "pe_ttm", None),
                     eps_growth_yoy=getattr(r, "eps_growth_yoy", None),
@@ -210,7 +256,11 @@ class MarketDashboardService:
                     gaps_unfilled_down=getattr(r, "gaps_unfilled_down", None),
                 )
             )
-        timestamps = [getattr(r, "analysis_timestamp", None) for r in latest_by_symbol.values() if getattr(r, "analysis_timestamp", None) is not None]
+        timestamps = [
+            getattr(r, "analysis_timestamp", None)
+            for r in latest_by_symbol.values()
+            if getattr(r, "analysis_timestamp", None) is not None
+        ]
         latest_ts = max(timestamps) if timestamps else None
         return tracked, out, plan_map, latest_ts
 
@@ -236,16 +286,18 @@ class MarketDashboardService:
         if raw in {"2", "STAGE 2"}:
             # Legacy coarse stage "2" maps to the first Stage 2 bucket.
             return "2A"
-        if "1" == raw or raw.endswith(" 1") or raw == "STAGE 1":
+        if raw == "1" or raw.endswith(" 1") or raw == "STAGE 1":
             return "1"
-        if "3" == raw or raw.endswith(" 3") or raw == "STAGE 3":
+        if raw == "3" or raw.endswith(" 3") or raw == "STAGE 3":
             return "3"
-        if "4" == raw or raw.endswith(" 4") or raw == "STAGE 4":
+        if raw == "4" or raw.endswith(" 4") or raw == "STAGE 4":
             return "4"
         return None
 
     @staticmethod
-    def _to_item(r: _SummaryRow, include_score: bool = False, score: float | None = None) -> dict[str, Any]:
+    def _to_item(
+        r: _SummaryRow, include_score: bool = False, score: float | None = None
+    ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "symbol": r.symbol,
             "stage_label": r.stage_label,
@@ -271,8 +323,12 @@ class MarketDashboardService:
         return round((0.45 * perf20) + (0.35 * rs) + (0.20 * perf5), 2)
 
     @staticmethod
-    def _abs_percent_distance(current_price: float | None, target_price: float | None) -> float | None:
-        if not isinstance(current_price, (int, float)) or not isinstance(target_price, (int, float)):
+    def _abs_percent_distance(
+        current_price: float | None, target_price: float | None
+    ) -> float | None:
+        if not isinstance(current_price, (int, float)) or not isinstance(
+            target_price, (int, float)
+        ):
             return None
         if float(target_price) <= 0:
             return None
@@ -280,14 +336,18 @@ class MarketDashboardService:
 
     @staticmethod
     def _abs_atr_distance(r: _SummaryRow, target_price: float | None) -> float | None:
-        if not isinstance(r.current_price, (int, float)) or not isinstance(target_price, (int, float)):
+        if not isinstance(r.current_price, (int, float)) or not isinstance(
+            target_price, (int, float)
+        ):
             return None
         if not isinstance(r.atr_14, (int, float)) or float(r.atr_14) <= 0:
             return None
         return abs((float(r.current_price) - float(target_price)) / float(r.atr_14))
 
     @staticmethod
-    def _price_vs_sma_atr(current_price: float | None, sma: float | None, atr: float | None) -> float | None:
+    def _price_vs_sma_atr(
+        current_price: float | None, sma: float | None, atr: float | None
+    ) -> float | None:
         if not isinstance(current_price, (int, float)):
             return None
         if not isinstance(sma, (int, float)):
@@ -305,10 +365,7 @@ class MarketDashboardService:
             idx = min(int(float(v) / 10), 9)
             idx = max(0, idx)
             bins[idx] += 1
-        return [
-            {"bin": f"{i * 10}-{(i + 1) * 10}%", "count": bins[i]}
-            for i in range(10)
-        ]
+        return [{"bin": f"{i * 10}-{(i + 1) * 10}%", "count": bins[i]} for i in range(10)]
 
     def _build_breadth_series(self, db: Session, tracked: list[str]) -> list[dict[str, Any]]:
         """Breadth over full technical_snapshot universe (MV → raw fallback).
@@ -318,6 +375,7 @@ class MarketDashboardService:
         MV and raw paths produce identical results.
         """
         from app.services.market.market_mv_service import market_mv_service
+
         return market_mv_service.get_breadth_series(db, days=120)
 
     def _build_rrg_sectors(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
@@ -334,16 +392,18 @@ class MarketDashboardService:
                 continue
             rs_ratio = float(rs)
             rs_momentum = float(perf5) if isinstance(perf5, (int, float)) else 0.0
-            result.append({
-                "symbol": sym,
-                "name": SECTOR_ETF_DISPLAY_NAMES.get(sym, sym),
-                "rs_ratio": round(rs_ratio, 2),
-                "rs_momentum": round(rs_momentum, 2),
-            })
+            result.append(
+                {
+                    "symbol": sym,
+                    "name": SECTOR_ETF_DISPLAY_NAMES.get(sym, sym),
+                    "rs_ratio": round(rs_ratio, 2),
+                    "rs_momentum": round(rs_momentum, 2),
+                }
+            )
         return result
 
     def _build_upcoming_earnings(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         horizon = now + timedelta(days=7)
         result = []
         for r in rows:
@@ -351,18 +411,20 @@ class MarketDashboardService:
                 continue
             ne = r.next_earnings
             ne_utc = (
-                ne.replace(tzinfo=timezone.utc)
+                ne.replace(tzinfo=UTC)
                 if ne.tzinfo is None
-                else ne.astimezone(timezone.utc)
+                else ne.astimezone(UTC)
             )
             if now <= ne_utc <= horizon:
-                result.append({
-                    "symbol": r.symbol,
-                    "next_earnings": r.next_earnings.isoformat(),
-                    "stage_label": r.stage_label,
-                    "rs_mansfield_pct": r.rs_mansfield_pct,
-                    "sector": r.sector,
-                })
+                result.append(
+                    {
+                        "symbol": r.symbol,
+                        "next_earnings": r.next_earnings.isoformat(),
+                        "stage_label": r.stage_label,
+                        "rs_mansfield_pct": r.rs_mansfield_pct,
+                        "sector": r.sector,
+                    }
+                )
         return sorted(result, key=lambda x: x["next_earnings"])
 
     def _build_fundamental_leaders(self, rows: list[_SummaryRow]) -> list[dict[str, Any]]:
@@ -373,15 +435,19 @@ class MarketDashboardService:
             if not isinstance(eps, (int, float)) or not isinstance(rs, (int, float)):
                 continue
             composite = round(0.5 * float(eps) + 0.5 * float(rs), 2)
-            scored.append({
-                "symbol": r.symbol,
-                "eps_growth_yoy": round(float(eps), 2),
-                "rs_mansfield_pct": round(float(rs), 2),
-                "pe_ttm": round(float(r.pe_ttm), 2) if isinstance(r.pe_ttm, (int, float)) else None,
-                "stage_label": r.stage_label,
-                "sector": r.sector,
-                "composite_score": composite,
-            })
+            scored.append(
+                {
+                    "symbol": r.symbol,
+                    "eps_growth_yoy": round(float(eps), 2),
+                    "rs_mansfield_pct": round(float(rs), 2),
+                    "pe_ttm": round(float(r.pe_ttm), 2)
+                    if isinstance(r.pe_ttm, (int, float))
+                    else None,
+                    "stage_label": r.stage_label,
+                    "sector": r.sector,
+                    "composite_score": composite,
+                }
+            )
         return sorted(scored, key=lambda x: x["composite_score"], reverse=True)[:10]
 
     def _build_rsi_divergences(self, rows: list[_SummaryRow]) -> dict[str, list[dict[str, Any]]]:
@@ -393,21 +459,25 @@ class MarketDashboardService:
             if not isinstance(perf20, (int, float)) or not isinstance(rsi, (int, float)):
                 continue
             if float(perf20) > 5 and float(rsi) < 50:
-                bearish.append({
-                    "symbol": r.symbol,
-                    "perf_20d": round(float(perf20), 1),
-                    "rsi": round(float(rsi), 1),
-                    "stage_label": r.stage_label,
-                    "sector": r.sector,
-                })
+                bearish.append(
+                    {
+                        "symbol": r.symbol,
+                        "perf_20d": round(float(perf20), 1),
+                        "rsi": round(float(rsi), 1),
+                        "stage_label": r.stage_label,
+                        "sector": r.sector,
+                    }
+                )
             elif float(perf20) < -5 and float(rsi) > 50:
-                bullish.append({
-                    "symbol": r.symbol,
-                    "perf_20d": round(float(perf20), 1),
-                    "rsi": round(float(rsi), 1),
-                    "stage_label": r.stage_label,
-                    "sector": r.sector,
-                })
+                bullish.append(
+                    {
+                        "symbol": r.symbol,
+                        "perf_20d": round(float(perf20), 1),
+                        "rsi": round(float(rsi), 1),
+                        "stage_label": r.stage_label,
+                        "sector": r.sector,
+                    }
+                )
         bearish.sort(key=lambda x: x["perf_20d"], reverse=True)
         bullish.sort(key=lambda x: x["perf_20d"])
         return {"bearish": bearish[:10], "bullish": bullish[:10]}
@@ -429,13 +499,15 @@ class MarketDashboardService:
             if r.td_perfect_sell:
                 signals.append("Perfect Sell")
             if signals:
-                result.append({
-                    "symbol": r.symbol,
-                    "signals": signals,
-                    "stage_label": r.stage_label,
-                    "perf_1d": r.perf_1d,
-                    "sector": r.sector,
-                })
+                result.append(
+                    {
+                        "symbol": r.symbol,
+                        "signals": signals,
+                        "stage_label": r.stage_label,
+                        "perf_1d": r.perf_1d,
+                        "sector": r.sector,
+                    }
+                )
         result.sort(
             key=lambda x: (
                 len(x["signals"]),
@@ -453,23 +525,29 @@ class MarketDashboardService:
             total = up + down
             if total <= 0:
                 continue
-            result.append({
-                "symbol": r.symbol,
-                "gaps_up": up,
-                "gaps_down": down,
-                "total_gaps": total,
-                "stage_label": r.stage_label,
-                "sector": r.sector,
-            })
+            result.append(
+                {
+                    "symbol": r.symbol,
+                    "gaps_up": up,
+                    "gaps_down": down,
+                    "total_gaps": total,
+                    "stage_label": r.stage_label,
+                    "sector": r.sector,
+                }
+            )
         return sorted(result, key=lambda x: x["total_gaps"], reverse=True)[:10]
 
-    def _build_metric_rankings(self, rows: list[_SummaryRow]) -> dict[str, dict[str, list[dict[str, Any]]]]:
+    def _build_metric_rankings(
+        self, rows: list[_SummaryRow]
+    ) -> dict[str, dict[str, list[dict[str, Any]]]]:
         def _entries(metric_name: str, value_getter) -> list[dict[str, Any]]:
             values = []
             for r in rows:
                 value = value_getter(r)
                 if isinstance(value, (int, float)):
-                    values.append({"symbol": r.symbol, "value": float(value), "metric": metric_name})
+                    values.append(
+                        {"symbol": r.symbol, "value": float(value), "metric": metric_name}
+                    )
             return values
 
         metric_values = {
@@ -495,7 +573,7 @@ class MarketDashboardService:
 
     def build_dashboard(self, db: Session, *, universe: str = "all") -> dict[str, Any]:
         empty_payload: dict[str, Any] = {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "latest_snapshot_at": None,
             "tracked_count": 0,
             "snapshot_count": 0,
@@ -540,7 +618,9 @@ class MarketDashboardService:
             return [
                 {
                     "symbol": configured_symbol,
-                    "sector_name": SECTOR_ETF_DISPLAY_NAMES.get(configured_symbol, configured_symbol),
+                    "sector_name": SECTOR_ETF_DISPLAY_NAMES.get(
+                        configured_symbol, configured_symbol
+                    ),
                     "change_1d": None,
                     "change_5d": None,
                     "change_20d": None,
@@ -569,9 +649,17 @@ class MarketDashboardService:
                         down_1d += 1
                     else:
                         flat_1d += 1
-                if self._is_num(r.current_price) and self._is_num(r.sma_50) and float(r.current_price or 0.0) > float(r.sma_50 or 0.0):
+                if (
+                    self._is_num(r.current_price)
+                    and self._is_num(r.sma_50)
+                    and float(r.current_price or 0.0) > float(r.sma_50 or 0.0)
+                ):
                     above_50 += 1
-                if self._is_num(r.current_price) and self._is_num(r.sma_200) and float(r.current_price or 0.0) > float(r.sma_200 or 0.0):
+                if (
+                    self._is_num(r.current_price)
+                    and self._is_num(r.sma_200)
+                    and float(r.current_price or 0.0) > float(r.sma_200 or 0.0)
+                ):
                     above_200 += 1
             return stage_counts, up_1d, down_1d, flat_1d, above_50, above_200
 
@@ -581,9 +669,15 @@ class MarketDashboardService:
             (defaultdict(int), 0, 0, 0, 0, 0),
         )
 
-        def leaders_and_setups() -> tuple[list[dict[str, Any]], list[_SummaryRow], list[_SummaryRow], list[_SummaryRow]]:
+        def leaders_and_setups() -> tuple[
+            list[dict[str, Any]], list[_SummaryRow], list[_SummaryRow], list[_SummaryRow]
+        ]:
             scored = sorted(
-                [(self._momentum_score(r), r) for r in rows if self._is_num(r.perf_20d) and self._is_num(r.rs_mansfield_pct)],
+                [
+                    (self._momentum_score(r), r)
+                    for r in rows
+                    if self._is_num(r.perf_20d) and self._is_num(r.rs_mansfield_pct)
+                ],
                 key=lambda x: x[0],
                 reverse=True,
             )
@@ -633,7 +727,9 @@ class MarketDashboardService:
             sector_momentum_local: list[dict[str, Any]] = []
             for sec, sec_rows in by_sector.items():
                 perfs = [float(x.perf_20d) for x in sec_rows if self._is_num(x.perf_20d)]
-                rs_vals = [float(x.rs_mansfield_pct) for x in sec_rows if self._is_num(x.rs_mansfield_pct)]
+                rs_vals = [
+                    float(x.rs_mansfield_pct) for x in sec_rows if self._is_num(x.rs_mansfield_pct)
+                ]
                 if not perfs and not rs_vals:
                     continue
                 sector_momentum_local.append(
@@ -641,7 +737,9 @@ class MarketDashboardService:
                         "sector": sec,
                         "count": len(sec_rows),
                         "avg_perf_20d": round(sum(perfs) / len(perfs), 2) if perfs else None,
-                        "avg_rs_mansfield_pct": round(sum(rs_vals) / len(rs_vals), 2) if rs_vals else None,
+                        "avg_rs_mansfield_pct": round(sum(rs_vals) / len(rs_vals), 2)
+                        if rs_vals
+                        else None,
                     }
                 )
             return sorted(
@@ -664,17 +762,23 @@ class MarketDashboardService:
                 return score
 
             aq_candidates = [
-                r for r in rows
+                r
+                for r in rows
                 if (r.previous_stage_label and r.previous_stage_label != r.stage_label)
                 or (self._is_num(r.perf_1d) and abs(float(r.perf_1d or 0.0)) >= 3.0)
-                or (self._is_num(r.rs_mansfield_pct) and abs(float(r.rs_mansfield_pct or 0.0)) >= 6.0)
+                or (
+                    self._is_num(r.rs_mansfield_pct)
+                    and abs(float(r.rs_mansfield_pct or 0.0)) >= 6.0
+                )
             ]
             aq_candidates.sort(key=_aq_urgency, reverse=True)
             return [self._to_item(r) for r in aq_candidates[:30]]
 
         action_queue = self._safe_section("action_queue", action_queue_section, [])
 
-        def stage_transitions_section() -> tuple[dict[str, int], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+        def stage_transitions_section() -> tuple[
+            dict[str, int], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]
+        ]:
             stage_counts_normalized = {
                 "1": 0,
                 "2A": 0,
@@ -725,10 +829,12 @@ class MarketDashboardService:
             ]
             return stage_counts_normalized, entering_2a, entering_3, entering_4
 
-        stage_counts_normalized, entering_stage_2a, entering_stage_3, entering_stage_4 = self._safe_section(
-            "stage_transitions",
-            stage_transitions_section,
-            (dict(stage_norm_default), [], [], []),
+        stage_counts_normalized, entering_stage_2a, entering_stage_3, entering_stage_4 = (
+            self._safe_section(
+                "stage_transitions",
+                stage_transitions_section,
+                (dict(stage_norm_default), [], [], []),
+            )
         )
 
         def proximity_section() -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
@@ -788,11 +894,20 @@ class MarketDashboardService:
                     configured_symbol,
                     [configured_symbol],
                 )
-                row = next((row_by_symbol.get(candidate) for candidate in candidate_symbols if row_by_symbol.get(candidate)), None)
+                row = next(
+                    (
+                        row_by_symbol.get(candidate)
+                        for candidate in candidate_symbols
+                        if row_by_symbol.get(candidate)
+                    ),
+                    None,
+                )
                 sector_etf_table_local.append(
                     {
                         "symbol": configured_symbol,
-                        "sector_name": SECTOR_ETF_DISPLAY_NAMES.get(configured_symbol, configured_symbol),
+                        "sector_name": SECTOR_ETF_DISPLAY_NAMES.get(
+                            configured_symbol, configured_symbol
+                        ),
                         "change_1d": row.perf_1d if row else None,
                         "change_5d": row.perf_5d if row else None,
                         "change_20d": row.perf_20d if row else None,
@@ -804,7 +919,9 @@ class MarketDashboardService:
                 )
             return sector_etf_table_local
 
-        sector_etf_table = self._safe_section("sector_etf_table", sector_etf_section, empty_sector_etf_table())
+        sector_etf_table = self._safe_section(
+            "sector_etf_table", sector_etf_section, empty_sector_etf_table()
+        )
 
         matrix = self._safe_section(
             "metric_rankings",
@@ -857,7 +974,7 @@ class MarketDashboardService:
         coverage_out: dict[str, Any] | None = None
 
         return {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "latest_snapshot_at": latest_snapshot_ts.isoformat() if latest_snapshot_ts else None,
             "tracked_count": tracked_count,
             "snapshot_count": snapshot_count,

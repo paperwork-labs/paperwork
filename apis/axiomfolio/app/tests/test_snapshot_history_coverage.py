@@ -1,7 +1,10 @@
+from datetime import UTC
+
+
 def test_coverage_snapshot_uses_snapshot_history(db_session, monkeypatch):
     """Regression: snapshot_fill_by_date should come from MarketSnapshotHistory (ledger), not MarketSnapshot (latest-only)."""
     import time
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.models.market_data import MarketSnapshotHistory
     from app.services.market.market_data_service import coverage_analytics, infra
@@ -19,7 +22,8 @@ def test_coverage_snapshot_uses_snapshot_history(db_session, monkeypatch):
 
     # Use recent dates so they always fall inside the lookback window
     from datetime import timedelta
-    today = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    today = datetime.now(UTC).replace(tzinfo=None)
     d1 = (today - timedelta(days=2)).replace(hour=0, minute=0, second=0, microsecond=0)
     d2 = (today - timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     db_session.add(
@@ -48,5 +52,3 @@ def test_coverage_snapshot_uses_snapshot_history(db_session, monkeypatch):
     d2_str = d2.strftime("%Y-%m-%d")
     assert d1_str in dates
     assert d2_str in dates
-
-

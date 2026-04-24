@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -24,7 +23,7 @@ class AIKeyPutRequest(BaseModel):
 
 
 class AIKeyStatusResponse(BaseModel):
-    provider: Optional[str]
+    provider: str | None
     has_key: bool
 
 

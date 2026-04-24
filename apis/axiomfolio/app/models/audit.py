@@ -6,21 +6,24 @@ Comprehensive audit logging for compliance, security, and debugging.
 Tracks all user actions, system events, and data changes.
 """
 
+import enum
+
 from sqlalchemy import (
+    JSON,
+    Boolean,
     Column,
+    DateTime,
+    ForeignKey,
+    Index,
     Integer,
     String,
-    DateTime,
-    Boolean,
     Text,
-    ForeignKey,
+)
+from sqlalchemy import (
     Enum as SQLEnum,
-    Index,
-    JSON,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
 
 from . import Base
 

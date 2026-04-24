@@ -5,13 +5,12 @@ Intelligence Routes
 Endpoints for intelligence briefs (daily, weekly, monthly).
 """
 
-from typing import Dict, Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.database import get_db
 from app.api.dependencies import get_market_data_viewer
+from app.database import get_db
 from app.models.market_data import JobRun
 from app.models.user import User
 
@@ -30,7 +29,7 @@ def _brief_summary(meta: dict) -> dict:
 
 @router.get("/briefs")
 def list_intelligence_briefs(
-    brief_type: Optional[str] = Query(None, description="daily, weekly, or monthly"),
+    brief_type: str | None = Query(None, description="daily, weekly, or monthly"),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0, description="Number of briefs to skip for pagination"),
     db: Session = Depends(get_db),

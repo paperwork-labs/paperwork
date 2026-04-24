@@ -33,9 +33,9 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from plaid import Configuration, ApiClient, Environment
+from plaid import ApiClient, Configuration, Environment
 from plaid.api import plaid_api
 from plaid.exceptions import ApiException
 from plaid.model.accounts_get_request import AccountsGetRequest
@@ -81,10 +81,10 @@ class PlaidAPIError(RuntimeError):
         self,
         message: str,
         *,
-        error_code: Optional[str] = None,
-        error_type: Optional[str] = None,
-        display_message: Optional[str] = None,
-        request_id: Optional[str] = None,
+        error_code: str | None = None,
+        error_type: str | None = None,
+        display_message: str | None = None,
+        request_id: str | None = None,
     ) -> None:
         super().__init__(message)
         self.error_code = error_code
@@ -103,7 +103,7 @@ _ENV_MAP = {
 }
 
 
-_COUNTRY_CODES: Tuple[CountryCode, ...] = (CountryCode("US"),)
+_COUNTRY_CODES: tuple[CountryCode, ...] = (CountryCode("US"),)
 
 
 # Known Plaid product tokens we validate against. plaid-python's
@@ -133,7 +133,7 @@ _VALID_PLAID_PRODUCTS: frozenset[str] = frozenset(
 )
 
 
-def _resolve_products() -> List[Products]:
+def _resolve_products() -> list[Products]:
     """Parse ``PLAID_PRODUCTS`` into typed SDK enums.
 
     Invalid product tokens raise rather than being silently dropped; a
@@ -143,10 +143,8 @@ def _resolve_products() -> List[Products]:
 
     raw = (settings.PLAID_PRODUCTS or "").strip()
     if not raw:
-        raise PlaidConfigurationError(
-            "PLAID_PRODUCTS is empty; configure at least 'investments'."
-        )
-    products: List[Products] = []
+        raise PlaidConfigurationError("PLAID_PRODUCTS is empty; configure at least 'investments'.")
+    products: list[Products] = []
     for token in (p.strip() for p in raw.split(",") if p.strip()):
         if token not in _VALID_PLAID_PRODUCTS:
             raise PlaidConfigurationError(
@@ -162,7 +160,7 @@ def _resolve_products() -> List[Products]:
     return products
 
 
-def _extract_plaid_error(exc: ApiException) -> Dict[str, Optional[str]]:
+def _extract_plaid_error(exc: ApiException) -> dict[str, str | None]:
     """Best-effort parse of a Plaid ``ApiException`` body.
 
     Plaid wraps errors in a JSON envelope; we parse defensively so
@@ -176,7 +174,7 @@ def _extract_plaid_error(exc: ApiException) -> Dict[str, Optional[str]]:
             body = body.decode("utf-8")
         except UnicodeDecodeError:
             body = None
-    parsed: Dict[str, Any] = {}
+    parsed: dict[str, Any] = {}
     if isinstance(body, str):
         try:
             parsed = json.loads(body) or {}
@@ -213,8 +211,7 @@ class PlaidClient:
         host = _ENV_MAP.get(env_key)
         if host is None:
             raise PlaidConfigurationError(
-                f"Unknown PLAID_ENV {env_key!r}; expected 'sandbox' or "
-                "'production'."
+                f"Unknown PLAID_ENV {env_key!r}; expected 'sandbox' or 'production'."
             )
 
         config = Configuration(
@@ -262,9 +259,7 @@ class PlaidClient:
 
     # -- API methods ------------------------------------------------------
 
-    def create_link_token(
-        self, *, user_id: int, client_name: str = "AxiomFolio"
-    ) -> str:
+    def create_link_token(self, *, user_id: int, client_name: str = "AxiomFolio") -> str:
         """Mint a short-lived Plaid Link token for the given user.
 
         ``user_id`` is stringified into ``client_user_id`` — Plaid uses it
@@ -290,12 +285,10 @@ class PlaidClient:
                 details.get("error_code"),
                 details.get("request_id"),
             )
-            raise PlaidAPIError(
-                "Failed to create Plaid link token", **details
-            ) from exc
+            raise PlaidAPIError("Failed to create Plaid link token", **details) from exc
         return response["link_token"]
 
-    def exchange_public_token(self, public_token: str) -> Tuple[str, str]:
+    def exchange_public_token(self, public_token: str) -> tuple[str, str]:
         """Exchange a short-lived public token for ``(access_token, item_id)``.
 
         Returned ``access_token`` is PLAINTEXT — the caller is responsible
@@ -308,17 +301,14 @@ class PlaidClient:
         except ApiException as exc:
             details = _extract_plaid_error(exc)
             logger.error(
-                "plaid item_public_token_exchange failed: error_code=%s "
-                "request_id=%s",
+                "plaid item_public_token_exchange failed: error_code=%s request_id=%s",
                 details.get("error_code"),
                 details.get("request_id"),
             )
-            raise PlaidAPIError(
-                "Failed to exchange Plaid public token", **details
-            ) from exc
+            raise PlaidAPIError("Failed to exchange Plaid public token", **details) from exc
         return response["access_token"], response["item_id"]
 
-    def get_accounts(self, access_token_ciphertext: str) -> List[Dict[str, Any]]:
+    def get_accounts(self, access_token_ciphertext: str) -> list[dict[str, Any]]:
         """Return Plaid's ``accounts`` array for an Item.
 
         Each element includes ``account_id``, ``name``, ``type``,
@@ -329,12 +319,10 @@ class PlaidClient:
             response = self._api.accounts_get(AccountsGetRequest(access_token=token))
         except ApiException as exc:
             details = _extract_plaid_error(exc)
-            raise PlaidAPIError(
-                "Failed to fetch Plaid accounts", **details
-            ) from exc
+            raise PlaidAPIError("Failed to fetch Plaid accounts", **details) from exc
         return [a.to_dict() for a in response["accounts"]]
 
-    def get_holdings(self, access_token_ciphertext: str) -> Dict[str, Any]:
+    def get_holdings(self, access_token_ciphertext: str) -> dict[str, Any]:
         """Return ``{"accounts": [...], "holdings": [...], "securities": [...]}``.
 
         The return shape matches Plaid's ``/investments/holdings/get`` so
@@ -346,9 +334,7 @@ class PlaidClient:
             response = self._api.investments_holdings_get(request)
         except ApiException as exc:
             details = _extract_plaid_error(exc)
-            raise PlaidAPIError(
-                "Failed to fetch Plaid holdings", **details
-            ) from exc
+            raise PlaidAPIError("Failed to fetch Plaid holdings", **details) from exc
         return {
             "accounts": [a.to_dict() for a in response["accounts"]],
             "holdings": [h.to_dict() for h in response["holdings"]],
@@ -362,9 +348,7 @@ class PlaidClient:
             self._api.item_remove(ItemRemoveRequest(access_token=token))
         except ApiException as exc:
             details = _extract_plaid_error(exc)
-            raise PlaidAPIError(
-                "Failed to revoke Plaid item", **details
-            ) from exc
+            raise PlaidAPIError("Failed to revoke Plaid item", **details) from exc
 
 
 __all__ = [

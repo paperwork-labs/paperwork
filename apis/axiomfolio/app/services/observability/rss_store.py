@@ -17,8 +17,8 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from datetime import datetime, timedelta, timezone
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from app.api.middleware import rate_limit as rate_limit_mod
 
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 _RSS_TTL_S = 72 * 3600
 _RSS_LOG_MAX = 50_000
 
-_RSS_DEGRADE: Dict[str, Any] = {
+_RSS_DEGRADE: dict[str, Any] = {
     "count": 0,
     "last_error": None,
     "last_at": None,
@@ -45,7 +45,7 @@ def maxrss_to_bytes(ru_maxrss: int) -> int:
 
 
 def _hour_bucket_utc() -> str:
-    return datetime.now(timezone.utc).strftime("%Y%m%d%H")
+    return datetime.now(UTC).strftime("%Y%m%d%H")
 
 
 def _zkey(bucket: str) -> str:
@@ -63,15 +63,15 @@ def _countkey(bucket: str) -> str:
 def _record_degradation(exc: Exception) -> None:
     _RSS_DEGRADE["count"] = int(_RSS_DEGRADE.get("count", 0)) + 1
     _RSS_DEGRADE["last_error"] = f"{type(exc).__name__}: {exc}"
-    _RSS_DEGRADE["last_at"] = datetime.now(timezone.utc).isoformat()
+    _RSS_DEGRADE["last_at"] = datetime.now(UTC).isoformat()
     logger.warning("rss observability: redis write failed (fail open): %s", exc, exc_info=True)
 
 
-def rss_redis_degradation_snapshot() -> Dict[str, Any]:
+def rss_redis_degradation_snapshot() -> dict[str, Any]:
     return dict(_RSS_DEGRADE)
 
 
-def _percentile_from_sorted(sorted_bytes: List[int], p: float) -> float:
+def _percentile_from_sorted(sorted_bytes: list[int], p: float) -> float:
     if not sorted_bytes:
         return 0.0
     n = len(sorted_bytes)
@@ -86,13 +86,15 @@ def _percentile_from_sorted(sorted_bytes: List[int], p: float) -> float:
     return d0 + (k - f) * (d1 - d0)
 
 
-def _percentile(values: List[int], p: float) -> float:
+def _percentile(values: list[int], p: float) -> float:
     if not values:
         return 0.0
     return _percentile_from_sorted(sorted(values), p)
 
 
-def record_request_rss_peak(redis, method: str, path_template: str, start_bytes: int, end_bytes: int) -> None:
+def record_request_rss_peak(
+    redis, method: str, path_template: str, start_bytes: int, end_bytes: int
+) -> None:
     """Persist maxrss growth for this request (``end - start`` bytes, floored at 0)."""
     if redis is None:
         return
@@ -100,7 +102,9 @@ def record_request_rss_peak(redis, method: str, path_template: str, start_bytes:
     try:
         delta = max(0, int(end_bytes) - int(start_bytes))
     except Exception as e:
-        logger.warning("rss observability: invalid maxrss start=%s end=%s: %s", start_bytes, end_bytes, e)
+        logger.warning(
+            "rss observability: invalid maxrss start=%s end=%s: %s", start_bytes, end_bytes, e
+        )
         return
 
     pnorm = rate_limit_mod._normalise_endpoint(path_template)
@@ -125,14 +129,14 @@ def record_request_rss_peak(redis, method: str, path_template: str, start_bytes:
         _record_degradation(e)
 
 
-def _read_log_for_bucket(redis, bucket: str) -> List[Dict[str, Any]]:
+def _read_log_for_bucket(redis, bucket: str) -> list[dict[str, Any]]:
     lkey = _logkey(bucket)
     try:
         raw = redis.lrange(lkey, 0, -1)
     except Exception as e:
         logger.warning("rss observability: log read failed for %s: %s", lkey, e)
         return []
-    out: List[Dict[str, Any]] = []
+    out: list[dict[str, Any]] = []
     for line in raw:
         s = line.decode() if isinstance(line, (bytes, bytearray)) else str(line)
         try:
@@ -156,13 +160,13 @@ def _read_count(redis, bucket: str) -> int:
         return 0
 
 
-def _build_top_list(rows: List[Dict[str, Any]], redis, bucket: str) -> Dict[str, Any]:
-    by_key: Dict[str, List[int]] = {}
+def _build_top_list(rows: list[dict[str, Any]], redis, bucket: str) -> dict[str, Any]:
+    by_key: dict[str, list[int]] = {}
     for r in rows:
-        key = f'{r["m"]}:{r["p"]}'
+        key = f"{r['m']}:{r['p']}"
         by_key.setdefault(key, []).append(int(r["d"]))
 
-    items: List[Dict[str, Any]] = []
+    items: list[dict[str, Any]] = []
     for key, dvals in by_key.items():
         first = key.find(":")
         if first <= 0:
@@ -198,7 +202,7 @@ def _build_top_list(rows: List[Dict[str, Any]], redis, bucket: str) -> Dict[str,
     }
 
 
-def get_rss_health_payload(redis) -> Dict[str, Any]:
+def get_rss_health_payload(redis) -> dict[str, Any]:
     """Additive fields for ``/api/v1/market-data/admin/health``."""
     if redis is None:
         return {
@@ -223,8 +227,8 @@ def get_rss_cli_table(redis, hours: int, top_n: int) -> str:
 
     from collections import defaultdict
 
-    agg: DefaultDict[Tuple[str, str], List[int]] = defaultdict(list)
-    now = datetime.now(timezone.utc)
+    agg: defaultdict[tuple[str, str], list[int]] = defaultdict(list)
+    now = datetime.now(UTC)
     for h in range(hours):
         dt = now - timedelta(hours=h)
         b = dt.strftime("%Y%m%d%H")
@@ -235,7 +239,7 @@ def get_rss_cli_table(redis, hours: int, top_n: int) -> str:
     if not agg:
         return f"No RSS samples in the last {hours} hour(s).\n"
 
-    lines_out: List[Tuple[Tuple[str, str], int, int, int, int, int, int, float]] = []
+    lines_out: list[tuple[tuple[str, str], int, int, int, int, int, int, float]] = []
     for (method, path), dvals in agg.items():
         n = len(dvals)
         s = sorted(dvals)
@@ -247,7 +251,7 @@ def get_rss_cli_table(redis, hours: int, top_n: int) -> str:
         lines_out.append(((method, path), n, p50k, p95k, p99k, maxk, sumk, float(p99k)))
     lines_out.sort(key=lambda t: t[7], reverse=True)
 
-    buf: List[str] = [
+    buf: list[str] = [
         f"Top {top_n} by p99 peak RSS delta (KiB) — last {hours} UTC hour(s)\n",
         f"{'endpoint':<50}  {'n':>5}  {'p50':>5}  {'p95':>5}  {'p99':>5}  {'max':>5}  {'sum':>6}\n",
         "-" * 90 + "\n",
@@ -255,7 +259,5 @@ def get_rss_cli_table(redis, hours: int, top_n: int) -> str:
     for row in lines_out[:top_n]:
         (method, path), n, p50k, p95k, p99k, maxk, sumk, _p99f = row
         ep = f"{method}:{path}"[:48]
-        buf.append(
-            f"{ep:<50}  {n:5d}  {p50k:5d}  {p95k:5d}  {p99k:5d}  {maxk:5d}  {sumk:6d}\n"
-        )
+        buf.append(f"{ep:<50}  {n:5d}  {p50k:5d}  {p95k:5d}  {p99k:5d}  {maxk:5d}  {sumk:6d}\n")
     return "".join(buf)

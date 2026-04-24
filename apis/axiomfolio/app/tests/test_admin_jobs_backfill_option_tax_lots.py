@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_admin_user
+from app.api.main import app
 from app.models.user import User, UserRole
 
 client = TestClient(app, raise_server_exceptions=False)
@@ -48,10 +48,7 @@ def test_admin_jobs_backfill_enqueues_celery_task() -> None:
             assert body["user_id"] == 1
             send.assert_called_once()
             call = send.call_args
-            assert (
-                call.args[0]
-                == "app.tasks.portfolio.reconciliation.backfill_option_tax_lots"
-            )
+            assert call.args[0] == "app.tasks.portfolio.reconciliation.backfill_option_tax_lots"
             assert call.kwargs["kwargs"] == {"user_id": 1}
     finally:
         app.dependency_overrides.pop(get_admin_user, None)

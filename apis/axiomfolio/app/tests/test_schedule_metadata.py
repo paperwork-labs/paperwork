@@ -65,4 +65,3 @@ def test_metadata_patch_updates_hooks():
     assert updated.hooks.discord_webhook == "signals"
     assert updated.hooks.discord_channels == ["system_status", "playground"]
     assert "slow" in updated.hooks.alert_on
-

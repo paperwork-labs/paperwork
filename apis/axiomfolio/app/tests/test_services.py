@@ -7,9 +7,10 @@ Comprehensive tests for all major services.
 Tests service initialization, core functionality, and integration.
 """
 
-import pytest
 import asyncio
 import logging
+
+import pytest
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,7 +31,9 @@ class TestMarketDataService:
 
             assert quote is not None and hasattr(quote, "get_current_price")
             assert provider_router is not None and hasattr(provider_router, "get_historical_data")
-            assert snapshot_builder is not None and hasattr(snapshot_builder, "get_technical_analysis")
+            assert snapshot_builder is not None and hasattr(
+                snapshot_builder, "get_technical_analysis"
+            )
 
             logger.info("✅ Market Data Service import test passed")
 
@@ -49,9 +52,7 @@ class TestMarketDataService:
             if price and price > 0:
                 assert isinstance(price, (int, float))
                 assert price > 0
-                logger.info(
-                    f"✅ Current price test passed: {test_symbol} = ${price:.2f}"
-                )
+                logger.info(f"✅ Current price test passed: {test_symbol} = ${price:.2f}")
             else:
                 logger.warning(f"⚠️ Current price not available for {test_symbol}")
 
@@ -65,9 +66,7 @@ class TestMarketDataService:
             from app.services.market.market_data_service import provider_router
 
             test_symbol = "AAPL"
-            data = await provider_router.get_historical_data(
-                test_symbol, period="1mo"
-            )
+            data = await provider_router.get_historical_data(test_symbol, period="1mo")
 
             if data is not None and not data.empty:
                 assert len(data) > 10, "Should have reasonable amount of data"
@@ -117,9 +116,7 @@ class TestIndexConstituentsService:
                 assert isinstance(dow30_symbols, list)
                 assert all(isinstance(symbol, str) for symbol in dow30_symbols)
                 assert all(len(symbol) <= 5 for symbol in dow30_symbols)
-                logger.info(
-                    f"✅ Dow 30 constituents test passed: {len(dow30_symbols)} symbols"
-                )
+                logger.info(f"✅ Dow 30 constituents test passed: {len(dow30_symbols)} symbols")
             else:
                 logger.warning(
                     f"⚠️ Limited Dow 30 data: {len(dow30_symbols) if dow30_symbols else 0} symbols"
@@ -134,7 +131,7 @@ class TestIndexConstituentsService:
         try:
             from app.services.market.market_data_service import index_universe
 
-            data = await index_universe.get_all_tradeable_symbols(["SP500","NASDAQ100"])  # example
+            data = await index_universe.get_all_tradeable_symbols(["SP500", "NASDAQ100"])  # example
             universe = sorted({s for lst in data.values() for s in lst})
 
             if universe and len(universe) > 50:

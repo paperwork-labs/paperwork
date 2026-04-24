@@ -2,6 +2,7 @@
 # needs ~50 more.  We load 250+ trading days (≈400 calendar days) before
 # the backfill start so Weinstein stages are valid from the first row.
 """medallion: silver"""
+
 WEINSTEIN_WARMUP_CALENDAR_DAYS: int = 400
 
 # Snapshot fundamental keys: name, sub_industry, then sector/industry/market_cap + extended.

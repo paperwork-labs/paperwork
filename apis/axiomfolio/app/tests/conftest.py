@@ -9,10 +9,9 @@ import os
 # pytest collection, not only after session fixtures run.
 os.environ["AXIOMFOLIO_TESTING"] = "1"
 
-import pytest
 import sys
-import inspect as pyinspect
 
+import pytest
 from sqlalchemy import text
 
 from app.utils.db_safety import check_test_database_url
@@ -31,9 +30,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Fix imports to use correct model names from __init__.py
 try:
-    from app.models import Base, User, BrokerAccount, Instrument  # Fixed imports
     from sqlalchemy import inspect
     from sqlalchemy.engine import Engine
+
+    from app.models import Base, BrokerAccount, Instrument, User  # Fixed imports
+
     MODELS_AVAILABLE = True
 except ImportError as e:
     MODELS_AVAILABLE = False
@@ -93,9 +94,7 @@ def test_db(request):
                 f"CI: app.models import failed; refusing to run with skipped DB tests. "
                 f"Import error: {IMPORT_ERROR if not MODELS_AVAILABLE else ''}"
             )
-        pytest.skip(
-            f"Models not available: {IMPORT_ERROR if not MODELS_AVAILABLE else ''}"
-        )
+        pytest.skip(f"Models not available: {IMPORT_ERROR if not MODELS_AVAILABLE else ''}")
 
     # Pure unit sessions (every test marked ``no_db``) never touch Postgres.
     try:
@@ -109,10 +108,12 @@ def test_db(request):
         return
 
     import os
-    from sqlalchemy import create_engine
-    from app.database import DATABASE_URL as APP_DATABASE_URL
-    from alembic.config import Config as AlembicConfig
+
     from alembic import command as alembic_command
+    from alembic.config import Config as AlembicConfig
+    from sqlalchemy import create_engine
+
+    from app.database import DATABASE_URL as APP_DATABASE_URL
 
     TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "")
     if not TEST_DATABASE_URL:
@@ -121,9 +122,7 @@ def test_db(request):
                 "CI: TEST_DATABASE_URL is unset. Refusing to silently skip DB tests "
                 "(this exact failure mode masked broken migrations for 8 days)."
             )
-        pytest.skip(
-            "TEST_DATABASE_URL not set; skipping DB tests to protect development database"
-        )
+        pytest.skip("TEST_DATABASE_URL not set; skipping DB tests to protect development database")
 
     expected_host = os.getenv("TEST_DB_EXPECTED_HOST", "postgres_test")
     required_user = os.getenv("POSTGRES_TEST_USER") or None
@@ -132,8 +131,7 @@ def test_db(request):
     )
     if not chk.ok:
         raise pytest.UsageError(
-            f"Unsafe TEST_DATABASE_URL ({chk.reason}). "
-            "Refusing to run any DB tests."
+            f"Unsafe TEST_DATABASE_URL ({chk.reason}). Refusing to run any DB tests."
         )
     if APP_DATABASE_URL != TEST_DATABASE_URL:
         raise pytest.UsageError(
@@ -219,8 +217,9 @@ def db_session(test_db, request):
         # Session-scoped fixture opted out of DB; provide None for this test
         yield None
         return
-    from sqlalchemy.orm import sessionmaker
     from sqlalchemy import event
+    from sqlalchemy.orm import sessionmaker
+
     connection = test_db.connect()
     transaction = connection.begin()
     SessionForTests = sessionmaker(bind=connection, autocommit=False, autoflush=False)
@@ -233,6 +232,7 @@ def db_session(test_db, request):
         # When the nested transaction ends, open a new one
         if trans.nested and not getattr(trans._parent, "nested", False):  # type: ignore[attr-defined]
             sess.begin_nested()
+
     try:
         yield session
     finally:
@@ -298,6 +298,7 @@ def pytest_collection_modifyitems(items):
         if name == "engine":
             try:
                 from sqlalchemy.engine import Engine as _Engine
+
                 return isinstance(obj, _Engine)
             except Exception:
                 return False
@@ -322,9 +323,8 @@ def pytest_collection_modifyitems(items):
 
     if items:
         cfg = items[0].config
-        allow_destructive = (
-            os.getenv("ALLOW_DESTRUCTIVE_TESTS") == "1"
-            or cfg.getoption("--allow-destructive-tests", default=False)
+        allow_destructive = os.getenv("ALLOW_DESTRUCTIVE_TESTS") == "1" or cfg.getoption(
+            "--allow-destructive-tests", default=False
         )
         if destructive_items and not allow_destructive:
             skip_marker = pytest.mark.skip(

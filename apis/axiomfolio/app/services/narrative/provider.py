@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 class NarrativeProviderError(RuntimeError):
@@ -18,9 +18,9 @@ class NarrativeProviderError(RuntimeError):
 class NarrativeResult:
     text: str
     provider: str
-    model: Optional[str]
-    tokens_used: Optional[int]
-    cost_usd: Optional[Decimal]
+    model: str | None
+    tokens_used: int | None
+    cost_usd: Decimal | None
     is_fallback: bool
     prompt_hash: str
 

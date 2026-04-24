@@ -2,21 +2,12 @@
 
 from __future__ import annotations
 
-from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
 
-from app.models.broker_account import (
-    AccountStatus,
-    AccountType,
-    BrokerAccount,
-    BrokerType,
-    SyncStatus,
-)
 from app.models.entitlement import Entitlement, EntitlementStatus, SubscriptionTier
 from app.models.market_data import JobRun
-from app.models.position import Position, PositionStatus, PositionType, Sleeve
 from app.models.user import User
 from app.services.picks.candidate_generator import GeneratorRunReport
 from app.tasks.candidates import generate_candidates_daily
@@ -45,9 +36,7 @@ def _ent(db_session, user_id: int, tier: SubscriptionTier) -> None:
 
 
 @pytest.mark.usefixtures("db_session")
-def test_generate_candidates_daily_tier_gating_and_counters(
-    db_session, monkeypatch
-) -> None:
+def test_generate_candidates_daily_tier_gating_and_counters(db_session, monkeypatch) -> None:
     if db_session is None:
         return
 
@@ -68,9 +57,7 @@ def test_generate_candidates_daily_tier_gating_and_counters(
 
     monkeypatch.setattr(db_session, "query", _scoped_query)
     monkeypatch.setattr(db_session, "close", lambda: None)
-    monkeypatch.setattr(
-        "app.tasks.candidates.SessionLocal", lambda: db_session
-    )
+    monkeypatch.setattr("app.tasks.candidates.SessionLocal", lambda: db_session)
 
     fake_report = [
         GeneratorRunReport(
@@ -83,9 +70,7 @@ def test_generate_candidates_daily_tier_gating_and_counters(
         )
     ]
 
-    with patch(
-        "app.tasks.candidates.run_all_generators", return_value=fake_report
-    ) as m_run:
+    with patch("app.tasks.candidates.run_all_generators", return_value=fake_report) as m_run:
         out = generate_candidates_daily.run()
 
     m_run.assert_called_once()
@@ -97,9 +82,9 @@ def test_generate_candidates_daily_tier_gating_and_counters(
     assert out["errors"] == 0
     assert out["symbols_scanned"] == 5
     assert out["candidates_written"] == 2
-    assert out["users_processed"] + out["users_skipped_no_tier"] + out["errors"] == out[
-        "total_users"
-    ]
+    assert (
+        out["users_processed"] + out["users_skipped_no_tier"] + out["errors"] == out["total_users"]
+    )
 
     latest = (
         db_session.query(JobRun)

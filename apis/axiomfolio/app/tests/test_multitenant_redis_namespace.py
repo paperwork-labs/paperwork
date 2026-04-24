@@ -9,7 +9,6 @@ from app.services.multitenant.redis_namespace import (
     tenant_scan_pattern,
 )
 
-
 pytestmark = pytest.mark.no_db
 
 
@@ -28,7 +27,7 @@ def test_tenant_key_rejects_empty_key():
 
 def test_tenant_key_coerces_user_id_to_int():
     # int('5') == 5; str(5) == '5'
-    assert tenant_key("5", "k") == "tenant:5:k"  # noqa: PLW2901
+    assert tenant_key("5", "k") == "tenant:5:k"
 
 
 def test_tenant_keys_are_isolated_between_tenants():

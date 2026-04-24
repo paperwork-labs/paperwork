@@ -14,9 +14,7 @@ from drift (actual counter corruption).
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
-
-import pytest
+from datetime import UTC, date, datetime, timedelta
 
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from app.services.market.admin_health_service import AdminHealthService
@@ -24,7 +22,7 @@ from app.services.market.market_data_service import stage_quality
 
 
 def _recent_day(days_ago: int) -> date:
-    return (datetime.now(timezone.utc) - timedelta(days=days_ago)).date()
+    return (datetime.now(UTC) - timedelta(days=days_ago)).date()
 
 
 def test_valid_stage_with_null_current_days_is_not_critical(db_session):
@@ -32,7 +30,7 @@ def test_valid_stage_with_null_current_days_is_not_critical(db_session):
     snapshot row with stage "2A" (same), both with null current_stage_days.
     Pre-fix: drift_pct=100% → critical. Post-fix: unknown_stage_days_count=2,
     drift_pct=0 → healthy."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     db_session.add(
         MarketSnapshot(
             symbol="ZZDTRM",
@@ -83,7 +81,7 @@ def test_actual_counter_drift_still_flags_red(db_session):
     that fails to increment between consecutive trading days) must still
     flip the dim to red. We are loosening null handling only, not the
     actual drift check."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     db_session.add(
         MarketSnapshot(
             symbol="ZZDRIFT",
@@ -110,16 +108,14 @@ def test_actual_counter_drift_still_flags_red(db_session):
     db_session.commit()
 
     summary = stage_quality.stage_quality_summary(db_session, lookback_days=60)
-    assert summary["monotonicity_issues"] >= 10, (
-        "real drift must still be counted"
-    )
+    assert summary["monotonicity_issues"] >= 10, "real drift must still be counted"
 
 
 def test_empty_stage_label_is_unknown_not_invalid(db_session):
     """Null / empty stage_label on MarketSnapshot is "not yet computed",
     not "invalid". Previously it flipped invalid_stage_count > 0, which
     pinned the dim red (stage_invalid_max = 0)."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     db_session.add(
         MarketSnapshot(
             symbol="ZZEMP",

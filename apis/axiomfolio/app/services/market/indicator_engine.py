@@ -16,7 +16,7 @@ medallion: silver
 from __future__ import annotations
 
 import logging
-from typing import Dict, Any, Optional, List
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -27,7 +27,7 @@ from app.services.market.atr_series import calculate_atr_series
 logger = logging.getLogger(__name__)
 
 
-def extract_latest_values(indicator_df: pd.DataFrame) -> Dict[str, Any]:
+def extract_latest_values(indicator_df: pd.DataFrame) -> dict[str, Any]:
     """Extract latest (most recent) values from indicator series DataFrame.
 
     Use with compute_full_indicator_series() when you need scalar values
@@ -42,7 +42,7 @@ def extract_latest_values(indicator_df: pd.DataFrame) -> Dict[str, Any]:
     if indicator_df is None or indicator_df.empty:
         return {}
 
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     for col in indicator_df.columns:
         series = indicator_df[col]
         if series.empty:
@@ -298,9 +298,7 @@ def compute_full_indicator_series(
     rsi_s = out["rsi"]
     rsi_min = rsi_s.rolling(14).min()
     rsi_max = rsi_s.rolling(14).max()
-    out["stoch_rsi"] = ((rsi_s - rsi_min) / (rsi_max - rsi_min)).replace(
-        [np.inf, -np.inf], np.nan
-    )
+    out["stoch_rsi"] = ((rsi_s - rsi_min) / (rsi_max - rsi_min)).replace([np.inf, -np.inf], np.nan)
 
     out["high_52w"] = high.rolling(252).max() if has_hlc else close.rolling(252).max()
     out["low_52w"] = low.rolling(252).min() if has_hlc else close.rolling(252).min()
@@ -314,18 +312,16 @@ def compute_full_indicator_series(
     out["current_price"] = close
     out["atrp_14"] = (atr14 / close * 100).replace([np.inf, -np.inf], np.nan)
     out["atrp_30"] = (out["atr_30"] / close * 100).replace([np.inf, -np.inf], np.nan)
-    out["atr_distance"] = ((close - out["sma_50"]) / atr14).replace(
-        [np.inf, -np.inf], np.nan
-    )
+    out["atr_distance"] = ((close - out["sma_50"]) / atr14).replace([np.inf, -np.inf], np.nan)
     out["atr_value"] = atr14
     out["atr_percent"] = out["atrp_14"]
 
     for label, window in [("20d", 20), ("50d", 50), ("52w", 252)]:
         roll_lo = low.rolling(window).min()
         roll_hi = high.rolling(window).max()
-        out[f"range_pos_{label}"] = (
-            ((close - roll_lo) / (roll_hi - roll_lo)) * 100
-        ).replace([np.inf, -np.inf], np.nan)
+        out[f"range_pos_{label}"] = (((close - roll_lo) / (roll_hi - roll_lo)) * 100).replace(
+            [np.inf, -np.inf], np.nan
+        )
 
     for suffix, sma_col in [
         ("sma_21", "sma_21"),
@@ -333,9 +329,7 @@ def compute_full_indicator_series(
         ("sma_100", "sma_100"),
         ("sma_150", "sma_150"),
     ]:
-        out[f"atrx_{suffix}"] = ((close - out[sma_col]) / atr14).replace(
-            [np.inf, -np.inf], np.nan
-        )
+        out[f"atrx_{suffix}"] = ((close - out[sma_col]) / atr14).replace([np.inf, -np.inf], np.nan)
 
     for suffix, ema_col in [("ema8", "ema_8"), ("ema21", "ema_21"), ("ema200", "ema_200")]:
         out[f"pct_dist_{suffix}"] = ((close / out[ema_col] - 1) * 100).replace(
@@ -350,9 +344,7 @@ def compute_full_indicator_series(
     # ── 5. MA bucket (per-bar classification) ──
 
     sma_cols = ["sma_5", "sma_8", "sma_21", "sma_50", "sma_100", "sma_200"]
-    sma_stack = pd.concat(
-        [close.rename("price")] + [out[c] for c in sma_cols], axis=1
-    )
+    sma_stack = pd.concat([close.rename("price")] + [out[c] for c in sma_cols], axis=1)
     any_nan = sma_stack.isna().any(axis=1)
     vals = sma_stack.values
     diffs = np.diff(vals, axis=1)
@@ -394,9 +386,7 @@ def compute_full_indicator_series(
     out["ema10_dist_n"] = (out["ema10_dist_pct"] / out["atrp_14"]).replace(
         [np.inf, -np.inf], np.nan
     )
-    out["vol_ratio"] = (volume / out["volume_avg_20d"]).replace(
-        [np.inf, -np.inf], np.nan
-    )
+    out["vol_ratio"] = (volume / out["volume_avg_20d"]).replace([np.inf, -np.inf], np.nan)
 
     # ── 9. Stage / RS (Stage Analysis spec — SMA150 anchor, 10 sub-stages) ──
 
@@ -405,11 +395,20 @@ def compute_full_indicator_series(
         spy_newest = spy_df.iloc[::-1]
         stage_df = compute_weinstein_stage_series_from_daily(ohlcv_newest, spy_newest)
         stage_analysis_cols = [
-            "stage_label", "stage_slope_pct", "stage_dist_pct",
-            "ext_pct", "sma150_slope", "sma50_slope",
-            "ema10_dist_pct", "ema10_dist_n", "vol_ratio",
+            "stage_label",
+            "stage_slope_pct",
+            "stage_dist_pct",
+            "ext_pct",
+            "sma150_slope",
+            "sma50_slope",
+            "ema10_dist_pct",
+            "ema10_dist_n",
+            "vol_ratio",
             "rs_mansfield_pct",
-            "atre_promoted", "pass_count", "action_override", "manual_review",
+            "atre_promoted",
+            "pass_count",
+            "action_override",
+            "manual_review",
         ]
         for col in stage_analysis_cols:
             if col in stage_df.columns:
@@ -428,11 +427,11 @@ def compute_full_indicator_series(
 
 def calculate_performance_windows(
     data_newest_first: pd.DataFrame,
-) -> Dict[str, Optional[float]]:
+) -> dict[str, float | None]:
     """Compute performance windows from newest-first DataFrame of OHLCV.
     Returns percentage moves for 1/3/5/20/60/120/252d and MTD/QTD/YTD.
     """
-    out: Dict[str, Optional[float]] = {
+    out: dict[str, float | None] = {
         "perf_1d": None,
         "perf_3d": None,
         "perf_5d": None,
@@ -453,8 +452,14 @@ def calculate_performance_windows(
 
     close = data_newest_first["Close"]
 
-    def pct(n: int) -> Optional[float]:
-        if len(close) > n and pd.notna(close.iloc[0]) and close.iloc[0] != 0 and pd.notna(close.iloc[n]) and close.iloc[n] != 0:
+    def pct(n: int) -> float | None:
+        if (
+            len(close) > n
+            and pd.notna(close.iloc[0])
+            and close.iloc[0] != 0
+            and pd.notna(close.iloc[n])
+            and close.iloc[n] != 0
+        ):
             try:
                 return float((close.iloc[0] / close.iloc[n] - 1.0) * 100.0)
             except Exception as e:
@@ -481,9 +486,7 @@ def calculate_performance_windows(
         ystart = ts0.replace(month=1, day=1)
 
         def nearest_close_on_or_after(target):
-            matches = idx.get_indexer(
-                [target], method="nearest", tolerance=pd.Timedelta(days=7)
-            )
+            matches = idx.get_indexer([target], method="nearest", tolerance=pd.Timedelta(days=7))
             pos = matches[0]
             return close.iloc[pos] if pos >= 0 else None
 
@@ -501,7 +504,7 @@ def calculate_performance_windows(
     return out
 
 
-def calculate_rsi_series(closes: pd.Series, period: int = 14) -> Optional[pd.Series]:
+def calculate_rsi_series(closes: pd.Series, period: int = 14) -> pd.Series | None:
     """RSI using Wilder's exponential smoothing (industry standard, matches Bloomberg).
 
     First `period` bars use SMA to seed, then exponential smoothing:
@@ -545,10 +548,10 @@ def calculate_rsi_series(closes: pd.Series, period: int = 14) -> Optional[pd.Ser
 # Higher-level analyses
 # ----------------------------
 def compute_atr_matrix_metrics(
-    data_oldest_first: pd.DataFrame, indicators: Dict[str, Any]
-) -> Dict[str, Any]:
+    data_oldest_first: pd.DataFrame, indicators: dict[str, Any]
+) -> dict[str, Any]:
     """Compute ATR Matrix-related metrics (atr_distance, atr_percent, ma_alignment, price_position_20d)."""
-    metrics: Dict[str, Any] = {}
+    metrics: dict[str, Any] = {}
     try:
         current_price = indicators.get("current_price") or indicators.get("close")
         if not current_price and len(data_oldest_first) > 0:
@@ -569,9 +572,7 @@ def compute_atr_matrix_metrics(
         sma_200 = indicators.get("sma_200")
         mas = [ema_21, sma_21, sma_50, sma_100, sma_200]
         if all(m is not None for m in mas):
-            metrics["ma_aligned"] = all(
-                mas[i] >= mas[i + 1] for i in range(len(mas) - 1)
-            )
+            metrics["ma_aligned"] = all(mas[i] >= mas[i + 1] for i in range(len(mas) - 1))
             metrics["ma_alignment"] = metrics["ma_aligned"]
 
         # 20-day price position
@@ -580,13 +581,10 @@ def compute_atr_matrix_metrics(
             hi = recent["High"].max()
             lo = recent["Low"].min()
             if hi > lo:
-                metrics["price_position_20d"] = float(
-                    (current_price - lo) / (hi - lo) * 100
-                )
+                metrics["price_position_20d"] = float((current_price - lo) / (hi - lo) * 100)
     except Exception as e:
         logger.warning("Derived metrics calculation failed: %s", e)
     return metrics
-
 
 
 # ---------------------------------------------------------------------------
@@ -596,18 +594,18 @@ def compute_atr_matrix_metrics(
 # preferred package-level re-export path once imports are migrated.
 # ---------------------------------------------------------------------------
 from app.services.market.stage_classifier import (  # noqa: E402, F401
-    weekly_from_daily,
-    classify_stage_for_timeframe,
-    classify_stage_scalar,
-    classify_stage_full,
-    classify_stage_series,
     StageResult,
+    classify_stage_for_timeframe,
+    classify_stage_full,
+    classify_stage_scalar,
+    classify_stage_series,
     compute_weinstein_stage_from_daily,
     compute_weinstein_stage_series_from_daily,
+    weekly_from_daily,
 )
 
 
-def classify_ma_bucket_from_ma(ma: Dict[str, Any]) -> Dict[str, Any]:
+def classify_ma_bucket_from_ma(ma: dict[str, Any]) -> dict[str, Any]:
     """Classify leading/lagging/neutral from moving averages dict (includes price)."""
     seq = [
         ma.get("price"),
@@ -621,9 +619,7 @@ def classify_ma_bucket_from_ma(ma: Dict[str, Any]) -> Dict[str, Any]:
     if all(isinstance(x, (int, float)) for x in seq):
         strictly_desc = all(seq[i] > seq[i + 1] for i in range(len(seq) - 1))
         strictly_asc = all(seq[i] < seq[i + 1] for i in range(len(seq) - 1))
-        bucket = (
-            "LEADING" if strictly_desc else ("LAGGING" if strictly_asc else "NEUTRAL")
-        )
+        bucket = "LEADING" if strictly_desc else ("LAGGING" if strictly_asc else "NEUTRAL")
     else:
         bucket = "UNKNOWN"
     return {"bucket": bucket, "data": ma}
@@ -632,7 +628,7 @@ def classify_ma_bucket_from_ma(ma: Dict[str, Any]) -> Dict[str, Any]:
 # -------------------------------------------------------------
 # Chart metrics (TD Sequential, gaps, trendlines)
 # -------------------------------------------------------------
-def compute_td_sequential_counts(closes: List[float]) -> Dict[str, Optional[int]]:
+def compute_td_sequential_counts(closes: list[float]) -> dict[str, int | None]:
     """Compute simplified TD Sequential buy/sell setup counts from a close series.
 
     Expects newest-first closes; returns last observed setup counts.
@@ -672,7 +668,7 @@ def compute_td_sequential_counts(closes: List[float]) -> Dict[str, Optional[int]
 def compute_gap_counts(
     data_newest_first: pd.DataFrame,
     min_gap_percent: float = 0.5,
-) -> Dict[str, Optional[int]]:
+) -> dict[str, int | None]:
     """Count unfilled gaps up/down over recent window.
 
     A gap up if Low[t] > High[t+1] and pct gap >= min_gap_percent.
@@ -725,7 +721,7 @@ def compute_trendline_counts(
     data_oldest_first: pd.DataFrame,
     pivot_period: int = 20,
     max_lines: int = 3,
-) -> Dict[str, Optional[int]]:
+) -> dict[str, int | None]:
     """Simple trendline counts based on pivot highs/lows over a rolling window.
 
     Returns number of uptrend lines (connecting rising pivot lows) and
@@ -812,12 +808,7 @@ def detect_volume_events(ohlcv: pd.DataFrame, lookback: int = 20) -> pd.DataFram
     with np.errstate(divide="ignore", invalid="ignore"):
         rel = body / atr.replace(0, np.nan)
 
-    climax = (
-        (vol >= 1.5 * vol_avg)
-        & (rel >= 1.5)
-        & vol_avg.notna()
-        & atr.notna()
-    )
+    climax = (vol >= 1.5 * vol_avg) & (rel >= 1.5) & vol_avg.notna() & atr.notna()
     dry = (vol <= 0.5 * vol_avg) & vol_avg.notna() & (vol > 0)
 
     ev = np.full(len(ohlcv), None, dtype=object)
@@ -830,7 +821,7 @@ def detect_volume_events(ohlcv: pd.DataFrame, lookback: int = 20) -> pd.DataFram
     return out
 
 
-def _norm_stage(v: Any) -> Optional[str]:
+def _norm_stage(v: Any) -> str | None:
     if v is None or (isinstance(v, float) and np.isnan(v)):
         return None
     s = str(v).strip().upper()
@@ -855,10 +846,12 @@ def detect_kell_patterns(ohlcv: pd.DataFrame, stage_series: pd.Series) -> pd.Dat
         and ``confidence`` (0.0-1.0, ``NaN`` when no pattern).
     """
     n = len(ohlcv.index) if ohlcv is not None else 0
-    pat: list[Optional[str]] = [None] * n
+    pat: list[str | None] = [None] * n
     conf = np.full(n, np.nan, dtype=float)
     if ohlcv is None or ohlcv.empty:
-        return pd.DataFrame({"pattern": pat, "confidence": conf}, index=ohlcv.index if ohlcv is not None else [])
+        return pd.DataFrame(
+            {"pattern": pat, "confidence": conf}, index=ohlcv.index if ohlcv is not None else []
+        )
 
     need = {"Open", "High", "Low", "Close", "Volume"}
     if not need.issubset(set(ohlcv.columns)):
@@ -915,11 +908,20 @@ def detect_kell_patterns(ohlcv: pd.DataFrame, stage_series: pd.Series) -> pd.Dat
         st_ok_ppb = st_i in ("2A", "2B") or st_i in ("2C",)  # 2C allowed but lower confidence
         if st_ok_ppb and np.isfinite(sma20.iloc[i]) and i >= 1:
             sm = float(sma20.iloc[i])
-            if sm > 0 and np.isfinite(l.iloc[i]) and l.iloc[i] <= sm * 1.01 and l.iloc[i] >= sm * 0.99:
+            if (
+                sm > 0
+                and np.isfinite(l.iloc[i])
+                and l.iloc[i] <= sm * 1.01
+                and l.iloc[i] >= sm * 0.99
+            ):
                 if c.iloc[i] > o.iloc[i] and c.iloc[i] >= c.iloc[i - 1]:
                     base = 0.55 if st_i in ("2A", "2B") else 0.5
                     pat[i] = "PPB"
-                    conf[i] = min(0.85, base + 0.1 * min(1.0, rel_body.iloc[i] if np.isfinite(rel_body.iloc[i]) else 0))
+                    conf[i] = min(
+                        0.85,
+                        base
+                        + 0.1 * min(1.0, rel_body.iloc[i] if np.isfinite(rel_body.iloc[i]) else 0),
+                    )
                     continue
 
         # EBC: wide bearish climax bar, then reclaim the midpoint within 1-2 sessions.
@@ -938,7 +940,10 @@ def detect_kell_patterns(ohlcv: pd.DataFrame, stage_series: pd.Series) -> pd.Dat
                     break
                 if c.iloc[j] > mid and c.iloc[j] > o.iloc[j]:
                     pat[j] = "EBC"
-                    conf[j] = min(0.88, 0.62 + 0.1 * (1.0 if st_prev in ("3A", "3B", "4A", "4B", "4C") else 0.0))
+                    conf[j] = min(
+                        0.88,
+                        0.62 + 0.1 * (1.0 if st_prev in ("3A", "3B", "4A", "4B", "4C") else 0.0),
+                    )
                     break
 
     return pd.DataFrame({"pattern": pat, "confidence": conf}, index=ohlcv.index)

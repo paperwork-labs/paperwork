@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from cryptography.fernet import Fernet
@@ -21,24 +21,24 @@ os.environ.setdefault(
     "https://app.example/cb",
 )
 
-from app.api.dependencies import get_current_user  # noqa: E402
-from app.api.main import app  # noqa: E402
-from app.database import get_db  # noqa: E402
-from app.models.broker_oauth_connection import (  # noqa: E402
+from app.api.dependencies import get_current_user
+from app.api.main import app
+from app.database import get_db
+from app.models.broker_oauth_connection import (
     BrokerOAuthConnection,
     OAuthConnectionStatus,
 )
-from app.models.user import User, UserRole  # noqa: E402
-from app.services.oauth import (  # noqa: E402
+from app.models.user import User, UserRole
+from app.services.oauth import (
     OAuthError,
     OAuthInitiateResult,
     OAuthTokens,
     register_adapter,
+    state_store,
 )
-from app.services.oauth.base import OAuthBrokerAdapter  # noqa: E402
-from app.services.oauth.encryption import encrypt  # noqa: E402
-from app.services.oauth.etrade import ETradeSandboxAdapter  # noqa: E402
-from app.services.oauth import state_store  # noqa: E402
+from app.services.oauth.base import OAuthBrokerAdapter
+from app.services.oauth.encryption import encrypt
+from app.services.oauth.etrade import ETradeSandboxAdapter
 
 
 def _make_user(db_session) -> User:
@@ -200,7 +200,7 @@ def test_cross_tenant_cannot_consume_state(client, route_user, other_user):
             return OAuthTokens(
                 access_token="a",
                 refresh_token="r",
-                expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
+                expires_at=datetime.now(UTC) + timedelta(hours=1),
             )
 
         def refresh(self, *, access_token, refresh_token):

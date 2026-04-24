@@ -25,10 +25,10 @@ medallion: ops
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 SCHEMA_VERSION = "1.0.0"
 
@@ -71,11 +71,11 @@ class Anomaly:
     category: AnomalyCategory
     severity: AnomalySeverity
     title: str
-    facts: Dict[str, Any] = field(default_factory=dict)
+    facts: dict[str, Any] = field(default_factory=dict)
     raw_evidence: str = ""
-    detected_at: Optional[datetime] = None
+    detected_at: datetime | None = None
 
-    def normalized(self) -> "Anomaly":
+    def normalized(self) -> Anomaly:
         """Return a copy with ``detected_at`` filled in and forced to UTC.
 
         * Missing -> ``datetime.now(timezone.utc)``.
@@ -85,13 +85,13 @@ class Anomaly:
           local tz, Brain webhook payloads, etc.).
         """
         if self.detected_at is None:
-            ts = datetime.now(timezone.utc)
+            ts = datetime.now(UTC)
         elif self.detected_at.tzinfo is None:
-            ts = self.detected_at.replace(tzinfo=timezone.utc)
-        elif self.detected_at.tzinfo is timezone.utc:
+            ts = self.detected_at.replace(tzinfo=UTC)
+        elif self.detected_at.tzinfo is UTC:
             return self
         else:
-            ts = self.detected_at.astimezone(timezone.utc)
+            ts = self.detected_at.astimezone(UTC)
         return Anomaly(
             id=self.id,
             category=self.category,
@@ -109,10 +109,12 @@ class RemediationStep:
 
     order: int
     description: str
-    runbook_section: Optional[str] = None  # e.g. "MARKET_DATA_RUNBOOK.md#stale-snapshots"
-    proposed_task: Optional[str] = None  # job_catalog task id, e.g. "tasks.market.refresh_snapshots"
+    runbook_section: str | None = None  # e.g. "MARKET_DATA_RUNBOOK.md#stale-snapshots"
+    proposed_task: str | None = (
+        None  # job_catalog task id, e.g. "tasks.market.refresh_snapshots"
+    )
     requires_approval: bool = True
-    rationale: Optional[str] = None
+    rationale: str | None = None
 
 
 @dataclass(frozen=True)
@@ -133,9 +135,9 @@ class Explanation:
     summary: str
     root_cause_hypothesis: str
     narrative: str
-    steps: List[RemediationStep]
+    steps: list[RemediationStep]
     confidence: Decimal
-    runbook_excerpts: List[str]
+    runbook_excerpts: list[str]
     generated_at: datetime
     model: str
     is_fallback: bool = False

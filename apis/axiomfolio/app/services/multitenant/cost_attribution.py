@@ -21,9 +21,9 @@ medallion: ops
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from collections.abc import Iterable
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Iterable
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -59,7 +59,7 @@ class CostAttributionService:
 
     def rollup_day(self, day: date) -> int:
         """Compute and upsert rollup rows for ``day``. Returns row count."""
-        start = datetime.combine(day, datetime.min.time(), tzinfo=timezone.utc)
+        start = datetime.combine(day, datetime.min.time(), tzinfo=UTC)
         end = start + timedelta(days=1)
 
         rows_written = 0
@@ -69,10 +69,7 @@ class CostAttributionService:
         # Iterate every active user. We deliberately skip soft-deleted
         # users (``is_active = False``) — their cost has stopped accruing.
         user_ids = [
-            uid
-            for (uid,) in self.db.execute(
-                select(User.id).where(User.is_active.is_(True))
-            ).all()
+            uid for (uid,) in self.db.execute(select(User.id).where(User.is_active.is_(True))).all()
         ]
         rows_total = len(user_ids)
 
@@ -104,9 +101,7 @@ class CostAttributionService:
                 rows_written += 1
             except Exception as exc:
                 rows_failed += 1
-                logger.warning(
-                    "cost_rollup: user_id=%s day=%s failed: %s", uid, day, exc
-                )
+                logger.warning("cost_rollup: user_id=%s day=%s failed: %s", uid, day, exc)
 
         self.db.commit()
 
@@ -176,11 +171,12 @@ class CostAttributionService:
         total_rows = 0
         for table in _user_scoped_tables():
             try:
-                cnt = self.db.execute(
-                    select(func.count())
-                    .select_from(table)
-                    .where(table.c.user_id == user_id)
-                ).scalar() or 0
+                cnt = (
+                    self.db.execute(
+                        select(func.count()).select_from(table).where(table.c.user_id == user_id)
+                    ).scalar()
+                    or 0
+                )
             except Exception as exc:
                 logger.warning(
                     "cost_rollup: row-count failed for table=%s user=%s: %s",

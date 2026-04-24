@@ -9,16 +9,19 @@ medallion: silver
 """
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 class PipelineStage(Enum):
     """Standard pipeline stages for market data."""
+
     CONSTITUENTS = "constituents"
     TRACKED = "tracked"
     DAILY_BARS = "daily_bars"
@@ -31,23 +34,25 @@ class PipelineStage(Enum):
 @dataclass
 class StageResult:
     """Result of a single pipeline stage."""
+
     stage: str
     success: bool
     duration_s: float
     records_processed: int = 0
-    error: Optional[str] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    error: str | None = None
+    details: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
 class PipelineResult:
     """Result of a full pipeline run."""
+
     success: bool
     total_duration_s: float
-    stages: List[StageResult] = field(default_factory=list)
-    error: Optional[str] = None
+    stages: list[StageResult] = field(default_factory=list)
+    error: str | None = None
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to JSON-serializable dict."""
         return {
             "success": self.success,
@@ -78,15 +83,15 @@ class PipelineRunner:
 
     def __init__(self, name: str = "market_data"):
         self.name = name
-        self._stages: List[Dict] = []
-        self._progress_callback: Optional[Callable[[str, str], None]] = None
+        self._stages: list[dict] = []
+        self._progress_callback: Callable[[str, str], None] | None = None
 
     def add_stage(
         self,
         name: str,
         func: Callable,
         args: tuple = (),
-        kwargs: Optional[Dict] = None,
+        kwargs: dict | None = None,
         timeout: int = 300,
         continue_on_error: bool = False,
     ) -> "PipelineRunner":
@@ -103,19 +108,19 @@ class PipelineRunner:
         Returns:
             self for chaining
         """
-        self._stages.append({
-            "name": name,
-            "func": func,
-            "args": args,
-            "kwargs": kwargs or {},
-            "timeout": timeout,
-            "continue_on_error": continue_on_error,
-        })
+        self._stages.append(
+            {
+                "name": name,
+                "func": func,
+                "args": args,
+                "kwargs": kwargs or {},
+                "timeout": timeout,
+                "continue_on_error": continue_on_error,
+            }
+        )
         return self
 
-    def set_progress_callback(
-        self, callback: Callable[[str, str], None]
-    ) -> "PipelineRunner":
+    def set_progress_callback(self, callback: Callable[[str, str], None]) -> "PipelineRunner":
         """Set a callback for progress updates.
 
         Args:
@@ -159,9 +164,7 @@ class PipelineRunner:
                 # task level, or cooperative checks inside each stage function.
                 executor = ThreadPoolExecutor(max_workers=1)
                 try:
-                    future = executor.submit(
-                        stage["func"], *stage["args"], **stage["kwargs"]
-                    )
+                    future = executor.submit(stage["func"], *stage["args"], **stage["kwargs"])
                     result = future.result(timeout=timeout_s)
                 finally:
                     executor.shutdown(wait=False, cancel_futures=True)
@@ -187,13 +190,13 @@ class PipelineRunner:
 
                 logger.info(
                     "Pipeline [%s]: Stage '%s' completed in %.1fs",
-                    self.name, stage_name, stage_result.duration_s
+                    self.name,
+                    stage_name,
+                    stage_result.duration_s,
                 )
 
             except FuturesTimeoutError:
-                err_msg = (
-                    f"Stage '{stage_name}' exceeded timeout of {timeout_s}s"
-                )
+                err_msg = f"Stage '{stage_name}' exceeded timeout of {timeout_s}s"
                 logger.error(
                     "Pipeline [%s]: %s",
                     self.name,
@@ -240,4 +243,3 @@ class PipelineRunner:
             stages=results,
             error=overall_error,
         )
-

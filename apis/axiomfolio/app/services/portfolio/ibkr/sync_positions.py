@@ -7,23 +7,24 @@ import asyncio
 import json
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.models import BrokerAccount, PortfolioSnapshot, TaxLot, PriceData
+from app.models import BrokerAccount, PortfolioSnapshot, TaxLot
 from app.models.instrument import Exchange, Instrument, InstrumentType
 from app.models.options import Option
 from app.models.portfolio import PositionCategory
 from app.models.position import Position, PositionStatus, PositionType
 from app.models.tax_lot import TaxLotSource
 from app.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
+
 # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.day_pnl_service moves during Phase 0.C
 from app.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 
-from .helpers import coerce_date, safe_float, DEFAULT_CURRENCY, DEFAULT_ASSET_CATEGORY
+from .helpers import DEFAULT_ASSET_CATEGORY, DEFAULT_CURRENCY, coerce_date, safe_float
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ def _parse_occ_symbol(symbol: str) -> dict | None:
     if not m:
         return None
     from datetime import date
+
     try:
         expiry = date(
             2000 + int(m.group("year")),
@@ -97,7 +99,7 @@ async def sync_instruments(
     account_number: str,
     report_xml: str | None,
     fc: IBKRFlexQueryClient,
-) -> Dict:
+) -> dict:
     """Sync instrument master data from FlexQuery sections."""
     try:
         logger.info("Syncing instruments for %s", account_number)
@@ -153,7 +155,10 @@ async def sync_instruments(
 
                 if existing:
                     if inst_data.get("name"):
-                        if not existing.name or existing.name.strip().upper() == existing.symbol.strip().upper():
+                        if (
+                            not existing.name
+                            or existing.name.strip().upper() == existing.symbol.strip().upper()
+                        ):
                             existing.name = inst_data["name"]
                     if inst_data.get("exchange") and inst_data["exchange"] != "UNKNOWN":
                         existing.exchange = _to_exchange(inst_data["exchange"])
@@ -167,7 +172,7 @@ async def sync_instruments(
                         existing.expiration_date = inst_data["expiry_date"]
                     if inst_data.get("multiplier"):
                         existing.multiplier = inst_data["multiplier"]
-                    existing.last_updated = datetime.now(timezone.utc)
+                    existing.last_updated = datetime.now(UTC)
                     updated_count += 1
                 else:
                     instrument = Instrument(
@@ -184,12 +189,14 @@ async def sync_instruments(
                         is_tradeable=inst_data.get("is_tradeable", True),
                         is_active=inst_data.get("is_active", True),
                         data_source=inst_data.get("data_source", "ibkr_flexquery_enhanced"),
-                        last_updated=datetime.now(timezone.utc),
+                        last_updated=datetime.now(UTC),
                     )
                     db.add(instrument)
                     synced_count += 1
             except Exception as exc:
-                logger.error("Error processing instrument %s: %s", inst_data.get("symbol", "?"), exc)
+                logger.error(
+                    "Error processing instrument %s: %s", inst_data.get("symbol", "?"), exc
+                )
                 continue
 
         db.flush()
@@ -211,7 +218,7 @@ async def sync_tax_lots(
     account_number: str,
     report_xml: str | None,
     fc: IBKRFlexQueryClient,
-) -> Dict:
+) -> dict:
     """Sync tax lots using three-tier priority: LOT-level -> trade FIFO -> SUMMARY."""
     try:
         synced_count = 0
@@ -232,28 +239,30 @@ async def sync_tax_lots(
                             continue
                         cost = safe_float(ld.get("cost_basis"))
                         mkt = safe_float(ld.get("market_value"))
-                        db.add(TaxLot(
-                            user_id=broker_account.user_id,
-                            account_id=broker_account.id,
-                            lot_id=f"IBKR_LOT_{symbol}_{synced_count}",
-                            symbol=symbol,
-                            quantity=safe_float(ld.get("quantity")),
-                            cost_per_share=safe_float(ld.get("cost_per_share")),
-                            cost_basis=cost,
-                            acquisition_date=coerce_date(ld.get("acquisition_date")),
-                            current_price=safe_float(ld.get("current_price")),
-                            market_value=mkt,
-                            unrealized_pnl=safe_float(ld.get("unrealized_pnl")),
-                            unrealized_pnl_pct=safe_float(ld.get("unrealized_pnl_pct")),
-                            currency=ld.get("currency", DEFAULT_CURRENCY),
-                            asset_category=ld.get("asset_category", DEFAULT_ASSET_CATEGORY),
-                            contract_id=ld.get("contract_id") or None,
-                            trade_id=ld.get("trade_id") or None,
-                            order_id=ld.get("order_id") or None,
-                            exchange=ld.get("exchange") or None,
-                            fx_rate=safe_float(ld.get("fx_rate", 1)),
-                            source=TaxLotSource.OFFICIAL_STATEMENT,
-                        ))
+                        db.add(
+                            TaxLot(
+                                user_id=broker_account.user_id,
+                                account_id=broker_account.id,
+                                lot_id=f"IBKR_LOT_{symbol}_{synced_count}",
+                                symbol=symbol,
+                                quantity=safe_float(ld.get("quantity")),
+                                cost_per_share=safe_float(ld.get("cost_per_share")),
+                                cost_basis=cost,
+                                acquisition_date=coerce_date(ld.get("acquisition_date")),
+                                current_price=safe_float(ld.get("current_price")),
+                                market_value=mkt,
+                                unrealized_pnl=safe_float(ld.get("unrealized_pnl")),
+                                unrealized_pnl_pct=safe_float(ld.get("unrealized_pnl_pct")),
+                                currency=ld.get("currency", DEFAULT_CURRENCY),
+                                asset_category=ld.get("asset_category", DEFAULT_ASSET_CATEGORY),
+                                contract_id=ld.get("contract_id") or None,
+                                trade_id=ld.get("trade_id") or None,
+                                order_id=ld.get("order_id") or None,
+                                exchange=ld.get("exchange") or None,
+                                fx_rate=safe_float(ld.get("fx_rate", 1)),
+                                source=TaxLotSource.OFFICIAL_STATEMENT,
+                            )
+                        )
                         synced_count += 1
                         total_cost += cost
                         total_value += mkt
@@ -278,25 +287,30 @@ async def sync_tax_lots(
                             continue
                         cost = safe_float(ld.get("cost_basis"))
                         mkt = safe_float(ld.get("market_value", ld.get("current_value", 0)) or 0)
-                        db.add(TaxLot(
-                            user_id=broker_account.user_id,
-                            account_id=broker_account.id,
-                            lot_id=f"IBKR_{symbol}_{synced_count}",
-                            symbol=symbol,
-                            quantity=safe_float(ld.get("quantity")),
-                            cost_per_share=safe_float(ld.get("cost_per_share")),
-                            cost_basis=cost,
-                            acquisition_date=coerce_date(ld.get("acquisition_date")),
-                            current_price=safe_float(ld.get("current_price")),
-                            market_value=mkt,
-                            unrealized_pnl=safe_float(ld.get("unrealized_pnl")),
-                            unrealized_pnl_pct=safe_float(ld.get("unrealized_pnl_pct")),
-                            currency=ld.get("currency", DEFAULT_CURRENCY),
-                            asset_category=ld.get("asset_category", ld.get("contract_type", DEFAULT_ASSET_CATEGORY)),
-                            trade_id=ld.get("trade_id"),
-                            exchange=ld.get("exchange"),
-                            source=TaxLotSource.CALCULATED,
-                        ))
+                        db.add(
+                            TaxLot(
+                                user_id=broker_account.user_id,
+                                account_id=broker_account.id,
+                                lot_id=f"IBKR_{symbol}_{synced_count}",
+                                symbol=symbol,
+                                quantity=safe_float(ld.get("quantity")),
+                                cost_per_share=safe_float(ld.get("cost_per_share")),
+                                cost_basis=cost,
+                                acquisition_date=coerce_date(ld.get("acquisition_date")),
+                                current_price=safe_float(ld.get("current_price")),
+                                market_value=mkt,
+                                unrealized_pnl=safe_float(ld.get("unrealized_pnl")),
+                                unrealized_pnl_pct=safe_float(ld.get("unrealized_pnl_pct")),
+                                currency=ld.get("currency", DEFAULT_CURRENCY),
+                                asset_category=ld.get(
+                                    "asset_category",
+                                    ld.get("contract_type", DEFAULT_ASSET_CATEGORY),
+                                ),
+                                trade_id=ld.get("trade_id"),
+                                exchange=ld.get("exchange"),
+                                source=TaxLotSource.CALCULATED,
+                            )
+                        )
                         synced_count += 1
                         total_cost += cost
                         total_value += mkt
@@ -320,22 +334,24 @@ async def sync_tax_lots(
                         mkt_val = safe_float(sp.get("market_value"))
                         pnl = safe_float(sp.get("unrealized_pnl"))
                         pnl_pct = (pnl / cost * 100) if cost else 0.0
-                        db.add(TaxLot(
-                            user_id=broker_account.user_id,
-                            account_id=broker_account.id,
-                            lot_id=f"IBKR_SUM_{sp['symbol']}_{synced_count}",
-                            symbol=sp["symbol"],
-                            quantity=qty,
-                            cost_per_share=safe_float(sp.get("cost_basis_price")),
-                            cost_basis=cost,
-                            current_price=safe_float(sp.get("mark_price")),
-                            market_value=mkt_val,
-                            unrealized_pnl=pnl,
-                            unrealized_pnl_pct=pnl_pct,
-                            currency=sp.get("currency", DEFAULT_CURRENCY),
-                            asset_category=sp.get("asset_category", DEFAULT_ASSET_CATEGORY),
-                            source=TaxLotSource.CALCULATED,
-                        ))
+                        db.add(
+                            TaxLot(
+                                user_id=broker_account.user_id,
+                                account_id=broker_account.id,
+                                lot_id=f"IBKR_SUM_{sp['symbol']}_{synced_count}",
+                                symbol=sp["symbol"],
+                                quantity=qty,
+                                cost_per_share=safe_float(sp.get("cost_basis_price")),
+                                cost_basis=cost,
+                                current_price=safe_float(sp.get("mark_price")),
+                                market_value=mkt_val,
+                                unrealized_pnl=pnl,
+                                unrealized_pnl_pct=pnl_pct,
+                                currency=sp.get("currency", DEFAULT_CURRENCY),
+                                asset_category=sp.get("asset_category", DEFAULT_ASSET_CATEGORY),
+                                source=TaxLotSource.CALCULATED,
+                            )
+                        )
                         synced_count += 1
                         total_cost += cost
                         total_value += mkt_val
@@ -361,21 +377,18 @@ async def sync_tax_lots(
 def _clear_positions(db: Session, broker_account: BrokerAccount) -> None:
     """Delete existing positions and FK dependents for a broker account."""
     existing_pos_ids = [
-        r[0]
-        for r in db.query(Position.id).filter(Position.account_id == broker_account.id).all()
+        r[0] for r in db.query(Position.id).filter(Position.account_id == broker_account.id).all()
     ]
     if existing_pos_ids:
         db.query(PositionCategory).filter(
             PositionCategory.position_id.in_(existing_pos_ids)
         ).delete(synchronize_session="fetch")
-        db.query(Position).filter(
-            Position.id.in_(existing_pos_ids)
-        ).delete(synchronize_session="fetch")
+        db.query(Position).filter(Position.id.in_(existing_pos_ids)).delete(
+            synchronize_session="fetch"
+        )
 
 
-async def sync_positions_from_tax_lots(
-    db: Session, broker_account: BrokerAccount
-) -> Dict:
+async def sync_positions_from_tax_lots(db: Session, broker_account: BrokerAccount) -> dict:
     """Aggregate tax lots by symbol into Position rows."""
     try:
         tax_lots = db.query(TaxLot).filter(TaxLot.account_id == broker_account.id).all()
@@ -405,7 +418,9 @@ async def sync_positions_from_tax_lots(
                 continue
             avg_cost = data["total_cost"] / data["quantity"] if data["quantity"] != 0 else 0
             unrealized_pnl = data["total_value"] - data["total_cost"]
-            unrealized_pnl_pct = (unrealized_pnl / data["total_cost"] * 100) if data["total_cost"] != 0 else 0
+            unrealized_pnl_pct = (
+                (unrealized_pnl / data["total_cost"] * 100) if data["total_cost"] != 0 else 0
+            )
 
             new_pos = Position(
                 user_id=broker_account.user_id,
@@ -421,7 +436,7 @@ async def sync_positions_from_tax_lots(
                 market_value=Decimal(str(data["total_value"])),
                 unrealized_pnl=Decimal(str(unrealized_pnl)),
                 unrealized_pnl_pct=Decimal(str(unrealized_pnl_pct)),
-                position_updated_at=datetime.now(timezone.utc),
+                position_updated_at=datetime.now(UTC),
             )
             db.add(new_pos)
             touched_rows.append(new_pos)
@@ -445,7 +460,7 @@ async def sync_positions_from_open_positions(
     account_number: str,
     report_xml: str | None,
     fc: IBKRFlexQueryClient,
-) -> Dict:
+) -> dict:
     """Fallback: sync positions from FlexQuery OpenPositions SUMMARY rows."""
     try:
         raw_xml = report_xml or await fc.get_full_report(account_number)
@@ -483,7 +498,7 @@ async def sync_positions_from_open_positions(
                     market_value=mkt_val,
                     unrealized_pnl=pnl,
                     unrealized_pnl_pct=pnl_pct,
-                    position_updated_at=datetime.now(timezone.utc),
+                    position_updated_at=datetime.now(UTC),
                 )
                 db.add(new_pos)
                 touched_rows.append(new_pos)
@@ -514,7 +529,7 @@ async def sync_option_positions(
     account_number: str,
     report_xml: str | None,
     fc: IBKRFlexQueryClient,
-) -> Dict:
+) -> dict:
     """Sync option positions from FlexQuery OpenPositions section."""
     try:
         logger.info("Syncing option positions for %s", account_number)
@@ -529,9 +544,11 @@ async def sync_option_positions(
         if not option_positions_data:
             try:
                 from app.services.clients.ibkr_client import ibkr_client as _ib
+
                 rt_positions = await _ib.get_positions(account_number)
                 opt_positions = [
-                    p for p in rt_positions
+                    p
+                    for p in rt_positions
                     if str(p.get("contract_type", "")).upper() in {"OPT", "OPTION"}
                 ]
                 option_positions_data = []
@@ -547,20 +564,22 @@ async def sync_option_positions(
                             p.get("symbol", ""),
                         )
                         continue
-                    option_positions_data.append({
-                        "symbol": p.get("symbol", ""),
-                        "underlying_symbol": parsed["underlying"],
-                        "strike_price": parsed["strike"],
-                        "expiry_date": parsed["expiry"],
-                        "option_type": parsed["option_type"],
-                        "multiplier": 100,
-                        "open_quantity": qty,
-                        "current_price": 0.0,
-                        "market_value": safe_float(p.get("market_value")),
-                        "unrealized_pnl": safe_float(p.get("unrealized_pnl")),
-                        "currency": p.get("currency", DEFAULT_CURRENCY),
-                        "data_source": "ibkr_realtime",
-                    })
+                    option_positions_data.append(
+                        {
+                            "symbol": p.get("symbol", ""),
+                            "underlying_symbol": parsed["underlying"],
+                            "strike_price": parsed["strike"],
+                            "expiry_date": parsed["expiry"],
+                            "option_type": parsed["option_type"],
+                            "multiplier": 100,
+                            "open_quantity": qty,
+                            "current_price": 0.0,
+                            "market_value": safe_float(p.get("market_value")),
+                            "unrealized_pnl": safe_float(p.get("unrealized_pnl")),
+                            "currency": p.get("currency", DEFAULT_CURRENCY),
+                            "data_source": "ibkr_realtime",
+                        }
+                    )
             except Exception:
                 option_positions_data = []
 
@@ -579,8 +598,17 @@ async def sync_option_positions(
         dropped_no_underlying = 0
         dropped_no_expiry = 0
 
-        def _opt_row_preview(od: Dict[str, Any]) -> Dict[str, Any]:
-            return {k: od.get(k) for k in ("symbol", "underlying_symbol", "expiry_date", "strike_price", "open_quantity")}
+        def _opt_row_preview(od: dict[str, Any]) -> dict[str, Any]:
+            return {
+                k: od.get(k)
+                for k in (
+                    "symbol",
+                    "underlying_symbol",
+                    "expiry_date",
+                    "strike_price",
+                    "open_quantity",
+                )
+            }
 
         for option_data in option_positions_data:
             if not option_data.get("underlying_symbol"):
@@ -604,55 +632,66 @@ async def sync_option_positions(
                 )
                 continue
             try:
-                db.add(Option(
-                    user_id=broker_account.user_id,
-                    account_id=broker_account.id,
-                    symbol=option_data["symbol"],
-                    underlying_symbol=option_data["underlying_symbol"],
-                    strike_price=option_data["strike_price"],
-                    expiry_date=option_data["expiry_date"],
-                    option_type=option_data["option_type"],
-                    multiplier=option_data["multiplier"],
-                    open_quantity=option_data["open_quantity"],
-                    current_price=option_data["current_price"],
-                    total_cost=option_data.get("cost_basis_money") or None,
-                    unrealized_pnl=option_data["unrealized_pnl"],
-                    realized_pnl=option_data.get("realized_pnl") or None,
-                    currency=option_data["currency"],
-                    data_source=option_data["data_source"],
-                ))
+                db.add(
+                    Option(
+                        user_id=broker_account.user_id,
+                        account_id=broker_account.id,
+                        symbol=option_data["symbol"],
+                        underlying_symbol=option_data["underlying_symbol"],
+                        strike_price=option_data["strike_price"],
+                        expiry_date=option_data["expiry_date"],
+                        option_type=option_data["option_type"],
+                        multiplier=option_data["multiplier"],
+                        open_quantity=option_data["open_quantity"],
+                        current_price=option_data["current_price"],
+                        total_cost=option_data.get("cost_basis_money") or None,
+                        unrealized_pnl=option_data["unrealized_pnl"],
+                        realized_pnl=option_data.get("realized_pnl") or None,
+                        currency=option_data["currency"],
+                        data_source=option_data["data_source"],
+                    )
+                )
                 synced_count += 1
             except Exception as exc:
-                logger.error("Error creating option position for %s: %s", option_data.get("symbol", "?"), exc)
+                logger.error(
+                    "Error creating option position for %s: %s", option_data.get("symbol", "?"), exc
+                )
                 skipped_count += 1
                 continue
 
         for exercise_data in option_exercises_data:
             try:
-                db.add(Option(
-                    user_id=broker_account.user_id,
-                    account_id=broker_account.id,
-                    symbol=exercise_data["symbol"],
-                    underlying_symbol=exercise_data["underlying_symbol"],
-                    strike_price=exercise_data["strike_price"],
-                    expiry_date=exercise_data["expiry_date"],
-                    option_type=exercise_data["option_type"],
-                    multiplier=exercise_data["multiplier"],
-                    exercised_quantity=exercise_data.get("exercised_quantity", 0),
-                    assigned_quantity=exercise_data.get("assigned_quantity", 0),
-                    open_quantity=0,
-                    exercise_date=exercise_data.get("exercise_date"),
-                    exercise_price=exercise_data.get("exercise_price"),
-                    assignment_date=exercise_data.get("assignment_date"),
-                    realized_pnl=exercise_data.get("realized_pnl"),
-                    total_cost=exercise_data.get("proceeds", 0) - exercise_data.get("commission", 0),
-                    commission=exercise_data.get("commission"),
-                    currency=exercise_data["currency"],
-                    data_source=exercise_data["data_source"],
-                ))
+                db.add(
+                    Option(
+                        user_id=broker_account.user_id,
+                        account_id=broker_account.id,
+                        symbol=exercise_data["symbol"],
+                        underlying_symbol=exercise_data["underlying_symbol"],
+                        strike_price=exercise_data["strike_price"],
+                        expiry_date=exercise_data["expiry_date"],
+                        option_type=exercise_data["option_type"],
+                        multiplier=exercise_data["multiplier"],
+                        exercised_quantity=exercise_data.get("exercised_quantity", 0),
+                        assigned_quantity=exercise_data.get("assigned_quantity", 0),
+                        open_quantity=0,
+                        exercise_date=exercise_data.get("exercise_date"),
+                        exercise_price=exercise_data.get("exercise_price"),
+                        assignment_date=exercise_data.get("assignment_date"),
+                        realized_pnl=exercise_data.get("realized_pnl"),
+                        total_cost=exercise_data.get("proceeds", 0)
+                        - exercise_data.get("commission", 0),
+                        commission=exercise_data.get("commission"),
+                        currency=exercise_data["currency"],
+                        data_source=exercise_data["data_source"],
+                    )
+                )
                 exercises_count += 1
             except Exception as exc:
-                logger.error("Error creating option exercise for %s: %s", exercise_data.get("symbol", "?"), exc)
+                logger.error(
+                    "Error creating option exercise for %s: %s",
+                    exercise_data.get("symbol", "?"),
+                    exc,
+                )
                 skipped_count += 1
                 continue
 
@@ -663,9 +702,12 @@ async def sync_option_positions(
         db.flush()
         logger.info(
             "Options: %d current + %d exercises = %d total, %d skipped",
-            synced_count, exercises_count, total_synced, skipped_count,
+            synced_count,
+            exercises_count,
+            total_synced,
+            skipped_count,
         )
-        out: Dict[str, Any] = {
+        out: dict[str, Any] = {
             "synced": total_synced,
             "current_positions": synced_count,
             "historical_exercises": exercises_count,
@@ -694,7 +736,7 @@ async def sync_option_positions(
         return {"error": str(exc)}
 
 
-async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
+async def refresh_prices(db: Session, broker_account: BrokerAccount) -> dict:
     """Refresh current prices for positions and tax lots."""
     # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.market.market_data_service moves during Phase 0.C
     from app.services.market.market_data_service import quote
@@ -752,7 +794,9 @@ async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
             cost_basis = float(lot.cost_basis or 0)
             market_value = qty_abs * price
             unrealized = market_value - cost_basis
-            unrealized_pct = ((unrealized / cost_basis) * 100) if cost_basis and abs(cost_basis) > 1e-9 else 0.0
+            unrealized_pct = (
+                ((unrealized / cost_basis) * 100) if cost_basis and abs(cost_basis) > 1e-9 else 0.0
+            )
             lot.current_price = price
             lot.market_value = market_value
             lot.unrealized_pnl = unrealized
@@ -774,10 +818,10 @@ async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
     }
 
 
-async def create_portfolio_snapshot(db: Session, broker_account: BrokerAccount) -> Dict:
+async def create_portfolio_snapshot(db: Session, broker_account: BrokerAccount) -> dict:
     """Create daily portfolio snapshot for tracking."""
     try:
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         existing = (
             db.query(PortfolioSnapshot)
             .filter(
@@ -793,12 +837,20 @@ async def create_portfolio_snapshot(db: Session, broker_account: BrokerAccount) 
         total_value = sum(h.market_value for h in positions)
         unrealized_pnl = sum(h.unrealized_pnl for h in positions)
 
-        options = db.query(Option).filter(
-            Option.account_id == broker_account.id,
-            Option.open_quantity != 0,
-        ).all()
+        options = (
+            db.query(Option)
+            .filter(
+                Option.account_id == broker_account.id,
+                Option.open_quantity != 0,
+            )
+            .all()
+        )
         for opt in options:
-            mv = float(opt.current_price or 0) * abs(opt.open_quantity or 0) * (opt.multiplier or 100)
+            mv = (
+                float(opt.current_price or 0)
+                * abs(opt.open_quantity or 0)
+                * (opt.multiplier or 100)
+            )
             total_value += mv
             unrealized_pnl += float(opt.unrealized_pnl or 0)
 
@@ -809,20 +861,22 @@ async def create_portfolio_snapshot(db: Session, broker_account: BrokerAccount) 
 
         snapshot = PortfolioSnapshot(
             account_id=broker_account.id,
-            snapshot_date=datetime.now(timezone.utc),
+            snapshot_date=datetime.now(UTC),
             total_value=total_value,
             total_cash=0,
             total_equity_value=total_value,
             unrealized_pnl=unrealized_pnl,
-            positions_snapshot=json.dumps([
-                {
-                    "symbol": h.symbol,
-                    "quantity": _to_float(h.quantity),
-                    "value": _to_float(h.market_value),
-                    "pnl": _to_float(h.unrealized_pnl),
-                }
-                for h in positions
-            ]),
+            positions_snapshot=json.dumps(
+                [
+                    {
+                        "symbol": h.symbol,
+                        "quantity": _to_float(h.quantity),
+                        "value": _to_float(h.market_value),
+                        "pnl": _to_float(h.unrealized_pnl),
+                    }
+                    for h in positions
+                ]
+            ),
         )
         db.add(snapshot)
         db.flush()

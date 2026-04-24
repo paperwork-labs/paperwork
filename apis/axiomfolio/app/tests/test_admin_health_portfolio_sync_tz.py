@@ -1,6 +1,6 @@
 """Regression: portfolio_sync dimension must not mix naive/aware datetimes."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock
 
 from app.services.market.admin_health_service import AdminHealthService
@@ -43,7 +43,7 @@ def test_portfolio_sync_naive_last_successful_sync_does_not_error():
 
 
 def test_portfolio_sync_aware_last_successful_sync_still_compares():
-    aware_recent = datetime.now(timezone.utc) - timedelta(hours=1)
+    aware_recent = datetime.now(UTC) - timedelta(hours=1)
     account = _make_account_mock(
         last_successful_sync=aware_recent,
         account_number="U999002",

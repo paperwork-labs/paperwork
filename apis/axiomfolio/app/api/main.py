@@ -2,113 +2,114 @@
 AxiomFolio - FastAPI Application
 """
 
-from fastapi import FastAPI, Request, Depends
-from fastapi.openapi.utils import get_openapi
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import asyncio
-import os
-import tracemalloc
 import logging
 import logging.config
-from datetime import datetime, timezone
+import os
+import tracemalloc
 import uuid
+from datetime import UTC, datetime
 
+from fastapi import Depends, FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.openapi.utils import get_openapi
+from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.api.dependencies import require_non_market_access
+from app.api.middleware.peak_rss import PeakRssMiddleware
+from app.api.middleware.rate_limit import TenantRateLimitMiddleware
+from app.api.middleware.rss_observability import RssObservabilityMiddleware
 from app.api.rate_limit import limiter
-
-# Route imports - organized by domain
-from app.api.routes.admin import picks as admin_picks_routes
-from app.api.routes.picks import router as picks_public_router
-from app.api.routes.trade_cards import router as trade_cards_router
 from app.api.routes import (
-    # Auth
-    auth,
-    # Portfolio (from portfolio/ folder)
-    portfolio,
-    portfolio_live,
-    portfolio_dashboard,
-    portfolio_stocks,
-    portfolio_statements,
-    portfolio_options,
-    portfolio_categories,
-    portfolio_dividends,
-    portfolio_income,
-    portfolio_orders,
-    portfolio_tax_export,
-    portfolio_options_tax,
-    portfolio_allocation,
-    portfolio_discipline_trajectory,
-    # Strategy
-    strategies,
+    # Settings (from settings/ folder)
+    account_management,
+    # Root-level
+    activity,
     # Admin (from admin/ folder)
     admin,
-    admin_scheduler,
     admin_agent,
     admin_autoops,
     admin_corporate_actions,
     admin_data_quality,
     admin_deploy_health,
     admin_jobs,
-    # Settings (from settings/ folder)
-    account_management,
-    app_settings,
-    historical_import,
-    # Root-level
-    activity,
+    admin_scheduler,
     aggregator,
-    watchlist,
+    app_settings,
+    # Auth
+    auth,
+    historical_import,
     oauth,
+    # Portfolio (from portfolio/ folder)
+    portfolio,
+    portfolio_allocation,
+    portfolio_categories,
+    portfolio_dashboard,
+    portfolio_discipline_trajectory,
+    portfolio_dividends,
+    portfolio_income,
+    portfolio_live,
+    portfolio_options,
+    portfolio_options_tax,
+    portfolio_orders,
+    portfolio_statements,
+    portfolio_stocks,
+    portfolio_tax_export,
+    # Strategy
+    strategies,
+    watchlist,
 )
 from app.api.routes import connections as connections_routes
 from app.api.routes import plaid as plaid_routes
-# Market data (from market/ package)
-from app.api.routes.market import router as market_router
-# Webhooks
-from app.api.routes.webhooks import router as webhooks_router
-from app.api.routes.risk import router as risk_router
 from app.api.routes.account_risk_profile import router as account_risk_profile_router
-from app.api.routes.entitlements import router as entitlements_router
-from app.api.routes.public.stats import router as public_stats_router
-from app.api.routes.pricing import router as pricing_router
-from app.api.routes.share.chart_og import router as share_chart_router
-from app.api.routes.brain_tools import router as brain_tools_router
+
+# Route imports - organized by domain
+from app.api.routes.admin import picks as admin_picks_routes
 from app.api.routes.agent_trade_decision import router as agent_trade_decision_router
-from app.api.routes.symbols import router as symbols_router
-from app.api.routes.signals import router as signals_router
+from app.api.routes.auth import get_password_hash
+from app.api.routes.backtest import router as backtest_router
+from app.api.routes.brain_tools import router as brain_tools_router
+from app.api.routes.entitlements import router as entitlements_router
 from app.api.routes.execution import router as execution_router
 from app.api.routes.exits import router as exits_router
-from app.api.routes.pipeline import router as pipeline_router
-from app.api.routes.backtest import router as backtest_router
-from app.api.routes.options import router as options_chain_router
-from app.api.routes.shadow_trades import router as shadow_trades_router
-from app.api.routes.portfolio.narrative import router as portfolio_narrative
-from app.api.middleware.peak_rss import PeakRssMiddleware
-from app.api.middleware.rss_observability import RssObservabilityMiddleware
-from app.api.middleware.rate_limit import TenantRateLimitMiddleware
+
+# Market data (from market/ package)
+from app.api.routes.market import router as market_router
+from app.api.routes.mcp import router as mcp_router
 from app.api.routes.multitenant import (
     admin_costs_router,
     gdpr_router,
 )
+from app.api.routes.notify import router as notify_router
+from app.api.routes.options import router as options_chain_router
+from app.api.routes.picks import router as picks_public_router
+from app.api.routes.pipeline import router as pipeline_router
 from app.api.routes.portfolio.connection_options import (
     router as portfolio_connection_options,
 )
+from app.api.routes.portfolio.narrative import router as portfolio_narrative
 from app.api.routes.positions import router as positions_router
-from app.api.routes.notify import router as notify_router
-from app.api.routes.mcp import router as mcp_router
-from app.api.dependencies import require_non_market_access
+from app.api.routes.pricing import router as pricing_router
+from app.api.routes.public.stats import router as public_stats_router
+from app.api.routes.risk import router as risk_router
+from app.api.routes.shadow_trades import router as shadow_trades_router
+from app.api.routes.share.chart_og import router as share_chart_router
+from app.api.routes.signals import router as signals_router
+from app.api.routes.symbols import router as symbols_router
+from app.api.routes.trade_cards import router as trade_cards_router
+
+# Webhooks
+from app.api.routes.webhooks import router as webhooks_router
+from app.config import LOGGING_CONFIG, settings, validate_production_settings
+from app.database import SessionLocal, engine
 
 # Model imports
-from app.models import Base
-from app.database import engine, SessionLocal
-from app.config import settings, validate_production_settings, LOGGING_CONFIG
-from app.utils.request_context import set_request_id, reset_request_id
 from app.models.user import User, UserRole
 from app.services.portfolio.account_config_service import account_config_service
-from app.api.routes.auth import get_password_hash
+from app.utils.request_context import reset_request_id, set_request_id
 
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
@@ -144,7 +145,7 @@ else:
             fastapi_app=app,
         )
         init_metrics(service_name="axiomfolio-api")
-    except Exception as _otel_exc:  # noqa: BLE001 — observability must never crash boot
+    except Exception as _otel_exc:
         logger.warning(
             "OTel initialization failed (continuing without instrumentation): %s",
             _otel_exc,
@@ -201,15 +202,14 @@ app.add_middleware(TenantRateLimitMiddleware)
 
 # GZip responses (>1KB)
 from starlette.middleware.gzip import GZipMiddleware
+
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        origin.strip()
-        for origin in (settings.CORS_ORIGINS or "").split(",")
-        if origin.strip()
+        origin.strip() for origin in (settings.CORS_ORIGINS or "").split(",") if origin.strip()
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -236,45 +236,59 @@ def _auto_warm_if_stale():
     MarketSnapshot timestamp — if older than AUTO_WARM_STALE_MINUTES, fires
     the full nightly pipeline via Celery (non-blocking).
     """
+    from sqlalchemy import func as sqlfunc
+    from sqlalchemy import select
+
     from app.models.market_data import MarketSnapshot
-    from sqlalchemy import func as sqlfunc, select
 
     db = SessionLocal()
     try:
-        latest_ts = db.execute(
-            select(sqlfunc.max(MarketSnapshot.analysis_timestamp))
-        ).scalar()
+        latest_ts = db.execute(select(sqlfunc.max(MarketSnapshot.analysis_timestamp))).scalar()
 
         stale_threshold = settings.AUTO_WARM_STALE_MINUTES
         needs_warm = True
 
         if latest_ts:
             from datetime import timedelta
-            age_minutes = (datetime.now(timezone.utc) - latest_ts).total_seconds() / 60
+
+            age_minutes = (datetime.now(UTC) - latest_ts).total_seconds() / 60
             if age_minutes < stale_threshold:
                 logger.info(
                     "Auto-warm: data is fresh (%.0f min old, threshold=%d min). Skipping.",
-                    age_minutes, stale_threshold,
+                    age_minutes,
+                    stale_threshold,
                 )
                 needs_warm = False
             else:
                 logger.info(
                     "Auto-warm: data is stale (%.0f min old, threshold=%d min). Queuing pipeline.",
-                    age_minutes, stale_threshold,
+                    age_minutes,
+                    stale_threshold,
                 )
         else:
-            logger.info("Auto-warm: empty DB (cold start). Queuing %d-year deep backfill.", settings.HISTORY_TARGET_YEARS)
+            logger.info(
+                "Auto-warm: empty DB (cold start). Queuing %d-year deep backfill.",
+                settings.HISTORY_TARGET_YEARS,
+            )
 
         if needs_warm:
             from app.tasks.celery_app import celery_app
+
             if latest_ts is None:
                 from datetime import date, timedelta
-                history_start = (date.today() - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)).isoformat()
+
+                history_start = (
+                    date.today() - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)
+                ).isoformat()
                 result = celery_app.send_task(
                     "app.tasks.market.backfill.full_historical",
                     kwargs={"since_date": history_start},
                 )
-                logger.info("Auto-warm: deep backfill queued (since=%s, task_id=%s)", history_start, result.id)
+                logger.info(
+                    "Auto-warm: deep backfill queued (since=%s, task_id=%s)",
+                    history_start,
+                    result.id,
+                )
             else:
                 result = celery_app.send_task(
                     "app.tasks.market.coverage.daily_bootstrap",
@@ -292,6 +306,7 @@ def _run_migrations() -> None:
     full Alembic upgrade machinery (saves ~5-6 seconds on remote Postgres).
     """
     import os
+
     from alembic.config import Config as _AlembicConfig
 
     if not settings.AUTO_MIGRATE_ON_STARTUP:
@@ -304,10 +319,13 @@ def _run_migrations() -> None:
     cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
 
     try:
-        from sqlalchemy import text as _text
         from alembic.script import ScriptDirectory
+        from sqlalchemy import text as _text
+
         with engine.connect() as conn:
-            current = conn.execute(_text("SELECT version_num FROM alembic_version LIMIT 1")).scalar()
+            current = conn.execute(
+                _text("SELECT version_num FROM alembic_version LIMIT 1")
+            ).scalar()
         if current:
             script = ScriptDirectory.from_config(cfg)
             head = script.get_current_head()
@@ -319,6 +337,7 @@ def _run_migrations() -> None:
         logger.info("Alembic fast-check skipped (%s), running full upgrade", e)
 
     from alembic import command as _alembic_command
+
     logger.info("Starting Alembic migration (lock_timeout=10s, statement_timeout=30s)...")
     _alembic_command.upgrade(cfg, "head")
     logger.info("Alembic migrations applied (upgrade head)")
@@ -335,9 +354,7 @@ def _sync_deferred_startup() -> None:
     _startup_conn = engine.connect()
     _got_lock = False
     try:
-        _got_lock = _startup_conn.execute(
-            _sa_text("SELECT pg_try_advisory_lock(42)")
-        ).scalar()
+        _got_lock = _startup_conn.execute(_sa_text("SELECT pg_try_advisory_lock(42)")).scalar()
 
         if not _got_lock:
             logger.info("Startup lock held by another worker -- skipping seed/admin")
@@ -346,6 +363,7 @@ def _sync_deferred_startup() -> None:
         # Seed schedules from catalog
         try:
             from app.scripts.seed_schedules import seed
+
             _db = SessionLocal()
             try:
                 seed_result = seed(_db)
@@ -405,6 +423,7 @@ def _sync_deferred_startup() -> None:
         if getattr(settings, "SEED_ACCOUNTS_ON_STARTUP", False):
             try:
                 from app.services.portfolio.ibkr_sync_service import portfolio_sync_service
+
                 db = SessionLocal()
                 try:
                     norm = portfolio_sync_service.normalize_instruments_from_activity(db)
@@ -431,6 +450,7 @@ def _sync_deferred_startup() -> None:
         if getattr(settings, "BACKFILL_OPTION_TAX_LOTS_ON_STARTUP", False):
             try:
                 from app.tasks.celery_app import celery_app as _celery
+
                 res = _celery.send_task(
                     "app.tasks.portfolio.reconciliation.backfill_option_tax_lots",
                     kwargs={},
@@ -440,9 +460,7 @@ def _sync_deferred_startup() -> None:
                     res.id,
                 )
             except Exception as bf_e:
-                logger.warning(
-                    "OptionTaxLot startup backfill skipped/failed: %s", bf_e
-                )
+                logger.warning("OptionTaxLot startup backfill skipped/failed: %s", bf_e)
         else:
             logger.info(
                 "OptionTaxLot backfill disabled (BACKFILL_OPTION_TAX_LOTS_ON_STARTUP=false)"
@@ -500,7 +518,8 @@ async def startup_event():
     except Exception as mig_e:
         logger.error(
             "Alembic migration FAILED -- refusing to start with stale schema: %s",
-            mig_e, exc_info=True,
+            mig_e,
+            exc_info=True,
         )
         raise SystemExit(1)
 
@@ -537,8 +556,9 @@ async def health_check():
 @app.get("/health/full")
 async def health_check_full():
     """Full health check with DB connectivity. Use /health for probes."""
-    from app.database import SessionLocal
     from sqlalchemy import text
+
+    from app.database import SessionLocal
 
     db_ok = False
     db_error = None
@@ -548,7 +568,9 @@ async def health_check_full():
     try:
         db = SessionLocal()
         try:
-            result = db.execute(text("SELECT count(*) FROM information_schema.tables WHERE table_schema='public'"))
+            result = db.execute(
+                text("SELECT count(*) FROM information_schema.tables WHERE table_schema='public'")
+            )
             db_tables = result.scalar()
 
             try:
@@ -734,12 +756,8 @@ app.include_router(
     dependencies=[Depends(require_non_market_access)],
 )
 app.include_router(strategies, prefix="/api/v1/strategies", tags=["Strategies"])
-app.include_router(
-    account_management, dependencies=[Depends(require_non_market_access)]
-)
-app.include_router(
-    historical_import, dependencies=[Depends(require_non_market_access)]
-)
+app.include_router(account_management, dependencies=[Depends(require_non_market_access)])
+app.include_router(historical_import, dependencies=[Depends(require_non_market_access)])
 app.include_router(app_settings, prefix="/api/v1", tags=["Settings"])
 app.include_router(market_router, prefix="/api/v1/market-data", tags=["Market Data & Technicals"])
 app.include_router(
@@ -965,11 +983,7 @@ async def cors_safe_exception_handler(request: Request, exc: Exception):
         exc_info=True,
     )
     origin = request.headers.get("origin") or ""
-    allowed = [
-        o.strip()
-        for o in (settings.CORS_ORIGINS or "").split(",")
-        if o.strip()
-    ]
+    allowed = [o.strip() for o in (settings.CORS_ORIGINS or "").split(",") if o.strip()]
     allow_origin = origin if origin in allowed else ""
     cors_headers = (
         {

@@ -1,8 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
+
 import jwt
 import pytest
-from app.services.security.oauth_state import OAuthStateService
+
 from app.config import settings
+from app.services.security.oauth_state import OAuthStateService
 
 
 def test_issue_and_validate_state():
@@ -15,7 +17,7 @@ def test_issue_and_validate_state():
 def test_expired_state_rejected():
     svc = OAuthStateService(secret=settings.SECRET_KEY)
     # Manually craft expired token
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": "oauth_state",
         "uid": 1,
@@ -27,5 +29,3 @@ def test_expired_state_rejected():
     token = jwt.encode(payload, settings.SECRET_KEY.encode("utf-8"), algorithm="HS256")
     with pytest.raises(jwt.ExpiredSignatureError):
         svc.validate_state(token)
-
-

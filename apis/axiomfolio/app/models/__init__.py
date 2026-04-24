@@ -12,17 +12,100 @@ from sqlalchemy.ext.declarative import declarative_base
 Base = declarative_base()
 
 # Essential Core Models (verified to exist)
-from .user import User, UserRole
-from .user_invite import UserInvite
-from .entitlement import Entitlement, EntitlementStatus, SubscriptionTier
-from .broker_account import BrokerAccount, BrokerType, AccountType, AccountStatus, SyncStatus
+# Account Balances & Margin
+from .account_balance import AccountBalance, AccountBalanceType
 from .account_risk_profile import BrokerAccountRiskProfile
+
+# Agent / Auto-Ops
+from .agent_action import AgentAction
+from .agent_message import AgentMessage, load_conversation_from_db, save_conversation_to_db
+from .auto_ops_explanation import AutoOpsExplanation
+
+# Backtesting
+from .backtest import BacktestStatus, StrategyBacktest
+from .broker_account import AccountStatus, AccountType, BrokerAccount, BrokerType, SyncStatus
 from .broker_oauth_connection import (
     BrokerOAuthConnection,
     OAuthBrokerType,
     OAuthConnectionStatus,
 )
-from .plaid_connection import PlaidConnection, PlaidConnectionStatus
+from .conviction_pick import ConvictionPick
+
+# Corporate Actions (splits, dividends, mergers)
+from .corporate_action import (
+    AppliedCorporateAction,
+    CorporateAction,
+    CorporateActionSource,
+    CorporateActionStatus,
+    CorporateActionType,
+)
+
+# Deploy health guardrail (G28, D120)
+from .deploy_health_event import DeployHealthEvent
+from .entitlement import Entitlement, EntitlementStatus, SubscriptionTier
+from .execution import ExecutionMetrics
+
+# Auxiliary external signals (Finviz/Zacks scaffolds; not primary strategy inputs)
+from .external_signal import ExternalSignal
+from .historical_import_run import (
+    HistoricalImportRun,
+    HistoricalImportSource,
+    HistoricalImportStatus,
+)
+from .historical_iv import HistoricalIV
+from .index_constituent import IndexConstituent
+from .institutional_holding import InstitutionalHolding
+
+# Instruments & Market Data
+from .instrument import Instrument, InstrumentType
+
+# Margin Interest Tracking
+from .margin_interest import MarginInterest
+from .market.options_chain_snapshot import OptionsChainSnapshot
+from .market_data import (
+    EarningsCalendarEvent,
+    JobRun,
+    MarketRegime,
+    MarketSnapshot,
+    MarketSnapshotHistory,
+    PriceData,
+)
+from .market_tracked_plan import MarketTrackedPlan
+
+# MCP (Model Context Protocol) bearer tokens for read-only AI agent access
+from .mcp_token import MCPToken
+
+# Multi-tenant hardening (rate limits, GDPR jobs, cost rollup, incidents)
+from .multitenant import (
+    GDPRDeleteJob,
+    GDPRExportJob,
+    GDPRJobStatus,
+    IncidentRow,
+    IncidentSeverity,
+    RateLimitViolation,
+    TenantCostRollup,
+    TenantRateLimit,
+)
+
+# Narrative
+from .narrative import PortfolioNarrative
+
+# Notifications (required for User.notifications ↔ Notification.user)
+from .notification import (
+    Notification,
+    NotificationChannel,
+    NotificationDelivery,
+    NotificationPreference,
+    NotificationStatus,
+    NotificationTemplate,
+    NotificationType,
+    Priority,
+)
+from .option_tax_lot import OptionTaxLot
+
+# Options Trading
+from .options import Option, OptionType
+from .order import Order, OrderSide, OrderStatus, OrderType
 
 # Picks pipeline (validator-curated buy/sell/trim/add)
 from .picks import (
@@ -36,18 +119,32 @@ from .picks import (
     MacroOutlook,
     PickAction,
     PickEngagement,
-    PickStatus,
     PicksAuditLog,
+    PickStatus,
     PositionChange,
     SourceAttribution,
     SourceType,
     ValidatedPick,
 )
+from .plaid_connection import PlaidConnection, PlaidConnectionStatus
 
-# Instruments & Market Data
-from .instrument import Instrument, InstrumentType
-from .market_data import PriceData, MarketSnapshot, MarketSnapshotHistory, MarketRegime, JobRun, EarningsCalendarEvent
-from .market_tracked_plan import MarketTrackedPlan
+# Portfolio Management
+from .portfolio import Category, PortfolioHistory, PortfolioSnapshot, PositionCategory
+
+# Trading & Positions
+from .position import Position, PositionStatus, PositionType, Sleeve
+
+# Data Quality (multi-source quorum + per-provider drift)
+from .provider_quorum import (
+    ProviderDriftAlert,
+    ProviderQuorumLog,
+    QuorumAction,
+    QuorumStatus,
+)
+from .shadow_order import ShadowOrder, ShadowOrderStatus
+
+# Strategy & Signals (required for User.strategies / User.strategy_executions)
+from .strategy import Strategy, StrategyExecution
 
 # Symbol Master — single source of truth for symbol identity over time.
 # Global table (no user_id); see app/services/symbols/ for callers.
@@ -60,113 +157,23 @@ from .symbol_master import (
     SymbolMaster,
     SymbolStatus,
 )
-from .index_constituent import IndexConstituent
-from .market.options_chain_snapshot import OptionsChainSnapshot
-from .historical_iv import HistoricalIV
-from .institutional_holding import InstitutionalHolding
-from .historical_import_run import (
-    HistoricalImportRun,
-    HistoricalImportSource,
-    HistoricalImportStatus,
-)
-
-# Trading & Positions
-from .position import Position, PositionType, PositionStatus, Sleeve
-from .conviction_pick import ConvictionPick
-from .trade import Trade, TradeSignal
-from .order import Order, OrderSide, OrderType, OrderStatus
-from .shadow_order import ShadowOrder, ShadowOrderStatus
-from .execution import ExecutionMetrics
-
-# Portfolio Management
-from .portfolio import PortfolioHistory, PortfolioSnapshot, Category, PositionCategory
 
 # Tax Lots & Cost Basis
 from .tax_lot import TaxLot, TaxLotMethod, TaxLotSource
-from .option_tax_lot import OptionTaxLot
+from .trade import Trade, TradeSignal
+from .trade_decision_explanation import TradeDecisionExplanation
 
-# Account Balances & Margin
-from .account_balance import AccountBalance, AccountBalanceType
-
-# Margin Interest Tracking
-from .margin_interest import MarginInterest
+# Transactions & Dividends
+from .transaction import Dividend, Transaction, TransactionType
 
 # Transfers & Position Movements
 from .transfer import Transfer, TransferType
-
-# Transactions & Dividends
-from .transaction import Transaction, TransactionType, Dividend
-
-# Options Trading
-from .options import Option, OptionType
-
-# Strategy & Signals (required for User.strategies / User.strategy_executions)
-from .strategy import Strategy, StrategyExecution
-
-# Backtesting
-from .backtest import StrategyBacktest, BacktestStatus
-from .walk_forward_study import WalkForwardStudy, WalkForwardStatus
+from .user import User, UserRole
+from .user_invite import UserInvite
+from .walk_forward_study import WalkForwardStatus, WalkForwardStudy
 
 # Watchlist
 from .watchlist import Watchlist
-
-# Narrative
-from .narrative import PortfolioNarrative
-
-# Agent / Auto-Ops
-from .agent_action import AgentAction
-from .agent_message import AgentMessage, load_conversation_from_db, save_conversation_to_db
-from .auto_ops_explanation import AutoOpsExplanation
-from .trade_decision_explanation import TradeDecisionExplanation
-
-# Deploy health guardrail (G28, D120)
-from .deploy_health_event import DeployHealthEvent
-
-# Multi-tenant hardening (rate limits, GDPR jobs, cost rollup, incidents)
-from .multitenant import (
-    GDPRDeleteJob,
-    GDPRExportJob,
-    GDPRJobStatus,
-    IncidentRow,
-    IncidentSeverity,
-    RateLimitViolation,
-    TenantCostRollup,
-    TenantRateLimit,
-)
-# MCP (Model Context Protocol) bearer tokens for read-only AI agent access
-from .mcp_token import MCPToken
-
-# Corporate Actions (splits, dividends, mergers)
-from .corporate_action import (
-    AppliedCorporateAction,
-    CorporateAction,
-    CorporateActionSource,
-    CorporateActionStatus,
-    CorporateActionType,
-)
-
-# Auxiliary external signals (Finviz/Zacks scaffolds; not primary strategy inputs)
-from .external_signal import ExternalSignal
-
-# Data Quality (multi-source quorum + per-provider drift)
-from .provider_quorum import (
-    ProviderDriftAlert,
-    ProviderQuorumLog,
-    QuorumAction,
-    QuorumStatus,
-)
-
-# Notifications (required for User.notifications ↔ Notification.user)
-from .notification import (
-    Notification,
-    NotificationChannel,
-    NotificationDelivery,
-    NotificationPreference,
-    NotificationStatus,
-    NotificationTemplate,
-    NotificationType,
-    Priority,
-)
 
 # Essential models list
 __all__ = [

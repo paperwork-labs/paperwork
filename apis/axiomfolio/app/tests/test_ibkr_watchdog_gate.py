@@ -5,6 +5,7 @@ Background: with no IBKR account configured, the watchdog was attempting
 generating ``SoftTimeLimitExceeded`` tracebacks in production logs. The
 fix: short-circuit when no enabled BrokerAccount of broker=IBKR exists.
 """
+
 from __future__ import annotations
 
 from unittest.mock import patch
@@ -13,9 +14,7 @@ from app.tasks.ops import ibkr_watchdog
 
 
 def test_skips_when_account_lookup_returns_none():
-    with patch.object(
-        ibkr_watchdog, "_has_enabled_ibkr_account", return_value=False
-    ):
+    with patch.object(ibkr_watchdog, "_has_enabled_ibkr_account", return_value=False):
         result = ibkr_watchdog._perform_ping()
     assert result == {"status": "skipped", "reason": "no_enabled_ibkr_account"}
 
@@ -32,13 +31,13 @@ def test_proceeds_when_account_present_but_handles_disconnect():
         async def disconnect(self):
             return None
 
-    with patch.object(
-        ibkr_watchdog, "_has_enabled_ibkr_account", return_value=True
-    ), patch(
-        "app.services.clients.ibkr_client.ibkr_client", _FakeIbkr()
-    ), patch(
-        "app.services.notifications.order_notifications.send_risk_alert",
-        return_value=None,
+    with (
+        patch.object(ibkr_watchdog, "_has_enabled_ibkr_account", return_value=True),
+        patch("app.services.clients.ibkr_client.ibkr_client", _FakeIbkr()),
+        patch(
+            "app.services.notifications.order_notifications.send_risk_alert",
+            return_value=None,
+        ),
     ):
         result = ibkr_watchdog._perform_ping()
 
@@ -49,7 +48,5 @@ def test_account_lookup_swallows_db_failure_and_returns_false():
     """If the DB itself is unreachable, the lookup must return False so the
     watchdog skips rather than blowing up. We never want a watchdog that
     raises every minute when the DB is recovering."""
-    with patch(
-        "app.database.SessionLocal", side_effect=RuntimeError("db down")
-    ):
+    with patch("app.database.SessionLocal", side_effect=RuntimeError("db down")):
         assert ibkr_watchdog._has_enabled_ibkr_account() is False

@@ -16,10 +16,8 @@ emitted spans without needing a collector. They cover:
 from __future__ import annotations
 
 import asyncio
-from typing import List
 
 import pytest
-
 from opentelemetry import trace
 from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
@@ -53,7 +51,7 @@ def in_memory_provider(monkeypatch):
     tracing_module.reset_for_tests()
 
 
-def _span_names(spans: List[ReadableSpan]) -> List[str]:
+def _span_names(spans: list[ReadableSpan]) -> list[str]:
     return [s.name for s in spans]
 
 
@@ -138,9 +136,7 @@ def test_traced_decorator_records_exception(
     spans = in_memory_provider.get_finished_spans()
     failing = next(s for s in spans if s.name == "test_failing_op")
     assert failing.status.status_code == trace.StatusCode.ERROR
-    assert any(
-        ev.name == "exception" for ev in failing.events
-    ), "exception event was not recorded"
+    assert any(ev.name == "exception" for ev in failing.events), "exception event was not recorded"
 
 
 def test_traced_decorator_async(

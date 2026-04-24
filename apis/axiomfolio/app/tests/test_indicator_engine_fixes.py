@@ -9,12 +9,11 @@ import pandas as pd
 import pytest
 
 from app.services.market.indicator_engine import (
-    calculate_rsi_series,
     _compute_td_sequential_series,
     calculate_performance_windows,
+    calculate_rsi_series,
     compute_gap_counts,
 )
-
 
 pytestmark = pytest.mark.no_db
 

@@ -4,17 +4,17 @@ Auto-Backtest Pipeline.
 Automatically runs backtests when strategies are created or updated.
 Provides confidence scoring and veto gates before a strategy goes live.
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, datetime, timedelta
 
 from celery import shared_task
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
-from app.models.backtest import StrategyBacktest, BacktestStatus
+from app.models.backtest import BacktestStatus, StrategyBacktest
 from app.models.strategy import Strategy, StrategyStatus
 from app.services.strategy.backtest_engine import BacktestEngine, BacktestResult
 from app.services.strategy.rule_evaluator import ConditionGroup
@@ -40,8 +40,8 @@ def run_auto_backtest(
     self,
     strategy_id: int,
     triggered_by: str = "auto",
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
     initial_capital: float = 100000,
 ) -> dict:
     """
@@ -58,7 +58,7 @@ def run_auto_backtest(
         Dict with backtest_id and summary
     """
     db: Session = SessionLocal()
-    start_time = datetime.now(timezone.utc)
+    start_time = datetime.now(UTC)
 
     try:
         # Load strategy
@@ -71,7 +71,7 @@ def run_auto_backtest(
         if end_date:
             end_dt = datetime.fromisoformat(end_date)
         else:
-            end_dt = datetime.now(timezone.utc) - timedelta(days=1)
+            end_dt = datetime.now(UTC) - timedelta(days=1)
 
         if start_date:
             start_dt = datetime.fromisoformat(start_date)
@@ -110,7 +110,7 @@ def run_auto_backtest(
         # Get entry/exit rules from strategy parameters and convert to ConditionGroup
         entry_rules_json = strategy.parameters.get("entry_rules", []) if strategy.parameters else []
         exit_rules_json = strategy.parameters.get("exit_rules", []) if strategy.parameters else []
-        
+
         try:
             entry_rules = ConditionGroup.from_json(entry_rules_json)
             exit_rules = ConditionGroup.from_json(exit_rules_json)
@@ -118,7 +118,7 @@ def run_auto_backtest(
             logger.error("Invalid strategy rules for %s: %s", strategy_id, e)
             backtest.status = BacktestStatus.FAILED
             backtest.error_message = f"Invalid rules: {e}"
-            backtest.completed_at = datetime.now(timezone.utc)
+            backtest.completed_at = datetime.now(UTC)
             db.commit()
             return {"error": str(e), "status": "failed"}
 
@@ -145,9 +145,9 @@ def run_auto_backtest(
 
         # Update status
         backtest.status = BacktestStatus.COMPLETED
-        backtest.completed_at = datetime.now(timezone.utc)
+        backtest.completed_at = datetime.now(UTC)
         backtest.execution_time_ms = int(
-            (datetime.now(timezone.utc) - start_time).total_seconds() * 1000
+            (datetime.now(UTC) - start_time).total_seconds() * 1000
         )
 
         db.commit()
@@ -180,7 +180,7 @@ def run_auto_backtest(
         if "backtest" in locals():
             backtest.status = BacktestStatus.FAILED
             backtest.error_message = str(e)
-            backtest.completed_at = datetime.now(timezone.utc)
+            backtest.completed_at = datetime.now(UTC)
             db.commit()
 
         return {"error": str(e), "status": "failed"}
@@ -288,7 +288,9 @@ def _check_veto_gates(result: BacktestResult) -> tuple:
         reasons.append(f"Profit factor {metrics.profit_factor:.2f} < {VETO_MIN_PROFIT_FACTOR}")
 
     if metrics.total_trades < VETO_MIN_TRADES:
-        reasons.append(f"Only {metrics.total_trades} trades (need {VETO_MIN_TRADES}+ for significance)")
+        reasons.append(
+            f"Only {metrics.total_trades} trades (need {VETO_MIN_TRADES}+ for significance)"
+        )
 
     passed = len(reasons) == 0
     return passed, reasons
@@ -366,7 +368,7 @@ def trigger_auto_backtest_on_change(
             db.query(StrategyBacktest)
             .filter(
                 StrategyBacktest.strategy_id == strategy_id,
-                StrategyBacktest.created_at >= datetime.now(timezone.utc) - timedelta(hours=1),
+                StrategyBacktest.created_at >= datetime.now(UTC) - timedelta(hours=1),
                 StrategyBacktest.status == BacktestStatus.COMPLETED,
             )
             .first()

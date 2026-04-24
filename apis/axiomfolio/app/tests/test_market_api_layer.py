@@ -1,13 +1,13 @@
 """Tests for API layer: /snapshots/table, /snapshots/aggregates, /quad, /regime."""
 
-import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_market_data_viewer
+from app.api.main import app
 from app.database import get_db
-from app.models.market_data import MarketSnapshot, MarketQuad, MarketRegime
+from app.models.market_data import MarketQuad, MarketRegime, MarketSnapshot
 from app.models.user import UserRole
 
 
@@ -51,7 +51,7 @@ def _make_snapshot(**overrides) -> MarketSnapshot:
         quad_monthly="Q1",
         quad_divergence_flag=False,
         quad_depth="Deep",
-        analysis_timestamp=datetime.now(timezone.utc),
+        analysis_timestamp=datetime.now(UTC),
     )
     defaults.update(overrides)
     row = MarketSnapshot()
@@ -144,10 +144,23 @@ def test_snapshot_table_accepts_new_sort_columns(monkeypatch):
     app.dependency_overrides[get_db] = lambda: _FakeTableDB([row])
     try:
         client = TestClient(app, raise_server_exceptions=False)
-        for sort_col in ["sector", "ext_pct", "atrp_14", "vol_ratio", "ema10_dist_n",
-                         "range_pos_52w", "perf_1d", "perf_5d", "scan_tier",
-                         "current_stage_days", "forward_rr", "action_label"]:
-            resp = client.get(f"/api/v1/market-data/snapshots/table?sort_by={sort_col}&sort_dir=desc")
+        for sort_col in [
+            "sector",
+            "ext_pct",
+            "atrp_14",
+            "vol_ratio",
+            "ema10_dist_n",
+            "range_pos_52w",
+            "perf_1d",
+            "perf_5d",
+            "scan_tier",
+            "current_stage_days",
+            "forward_rr",
+            "action_label",
+        ]:
+            resp = client.get(
+                f"/api/v1/market-data/snapshots/table?sort_by={sort_col}&sort_dir=desc"
+            )
             assert resp.status_code == 200, f"sort_by={sort_col} failed: {resp.status_code}"
     finally:
         app.dependency_overrides.pop(get_db, None)
@@ -575,7 +588,12 @@ def test_snapshot_table_accepts_preset_filter(monkeypatch):
     app.dependency_overrides[get_db] = lambda: _FakeTableDB([row])
     try:
         client = TestClient(app, raise_server_exceptions=False)
-        for preset_name in ["pullback_buy_zone", "ma_alignment", "large_cap_leaders", "squeeze_setup"]:
+        for preset_name in [
+            "pullback_buy_zone",
+            "ma_alignment",
+            "large_cap_leaders",
+            "squeeze_setup",
+        ]:
             resp = client.get(f"/api/v1/market-data/snapshots/table?preset={preset_name}")
             assert resp.status_code == 200, f"preset={preset_name} failed: {resp.status_code}"
     finally:
@@ -679,7 +697,6 @@ def test_preset_filters_registry_has_expected_keys():
 
 def test_intelligence_briefs_accepts_offset():
     """GET /intelligence/briefs accepts offset query param for pagination."""
-    from app.models.market_data import JobRun
 
     app.dependency_overrides[get_market_data_viewer] = _viewer_override
 

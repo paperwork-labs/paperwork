@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
+from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
-from sqlalchemy import func, distinct
 
 from app.config import settings
-from app.models.market_data import PriceData, MarketSnapshotHistory
 from app.models.index_constituent import IndexConstituent
-from app.services.market.universe import tracked_symbols_with_source
+from app.models.market_data import MarketSnapshotHistory, PriceData
 from app.services.market.coverage_utils import compute_coverage_status
+from app.services.market.universe import tracked_symbols_with_source
 
 if TYPE_CHECKING:
     from app.services.market.market_infra import MarketInfra
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class CoverageAnalytics:
     """Coverage computation, freshness metrics, and benchmark health."""
 
-    def __init__(self, infra: "MarketInfra") -> None:
+    def __init__(self, infra: MarketInfra) -> None:
         self._infra = infra
 
     def benchmark_health(
@@ -34,7 +34,7 @@ class CoverageAnalytics:
         benchmark_symbol: str = "SPY",
         required_bars: int | None = None,
         latest_daily_dt: datetime | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Return benchmark health stats for Stage/RS diagnostics."""
         required = required_bars or max(
             260, int(getattr(settings, "SNAPSHOT_DAILY_BARS_LIMIT", 400))
@@ -75,20 +75,20 @@ class CoverageAnalytics:
         self,
         db: Session,
         *,
-        symbols: List[str],
+        symbols: list[str],
         interval: str,
         now_utc: datetime | None = None,
         stale_sample_limit: int | None = None,
         return_full_stale: bool = False,
-    ) -> tuple[Dict[str, Any], List[str] | None]:
+    ) -> tuple[dict[str, Any], list[str] | None]:
         """Compute freshness buckets and stale/missing sets for a given symbol universe."""
-        now = now_utc or datetime.now(timezone.utc)
+        now = now_utc or datetime.now(UTC)
         safe_symbols = sorted({str(s).upper() for s in (symbols or []) if s})
         sym_set = set(safe_symbols)
         if stale_sample_limit is None:
             stale_sample_limit = int(settings.COVERAGE_STALE_SAMPLE)
 
-        last_dt: Dict[str, datetime | None] = {s: None for s in safe_symbols}
+        last_dt: dict[str, datetime | None] = {s: None for s in safe_symbols}
         if sym_set:
             rows = (
                 db.query(PriceData.symbol, PriceData.date)
@@ -105,9 +105,9 @@ class CoverageAnalytics:
             if not ts:
                 return "none"
             ts_utc = (
-                ts.replace(tzinfo=timezone.utc)
+                ts.replace(tzinfo=UTC)
                 if ts.tzinfo is None
-                else ts.astimezone(timezone.utc)
+                else ts.astimezone(UTC)
             )
             age = now - ts_utc
             if age <= timedelta(hours=24):
@@ -117,8 +117,8 @@ class CoverageAnalytics:
             return ">48h"
 
         freshness = {"<=24h": 0, "24-48h": 0, ">48h": 0, "none": 0}
-        stale_items: List[Dict[str, Any]] = []
-        stale_full: List[str] = []
+        stale_items: list[dict[str, Any]] = []
+        stale_full: list[str] = []
 
         for sym in safe_symbols:
             dt = last_dt.get(sym)
@@ -144,9 +144,11 @@ class CoverageAnalytics:
         stale_48h = int(freshness[">48h"])
         missing = int(freshness["none"])
 
-        last_iso_map: Dict[str, str | None] = {s: (last_dt[s].isoformat() if last_dt[s] else None) for s in safe_symbols}
+        last_iso_map: dict[str, str | None] = {
+            s: (last_dt[s].isoformat() if last_dt[s] else None) for s in safe_symbols
+        }
 
-        section: Dict[str, Any] = {
+        section: dict[str, Any] = {
             "count": fresh_24 + fresh_48,
             "last": last_iso_map,
             "freshness": freshness,
@@ -164,11 +166,11 @@ class CoverageAnalytics:
         db: Session,
         *,
         fill_lookback_days: int | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Compute coverage freshness, stale lists, and tracked stats for instrumentation/UI."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
-        idx_counts: Dict[str, int] = {}
+        idx_counts: dict[str, int] = {}
         for idx in ("SP500", "NASDAQ100", "DOW30", "RUSSELL2000"):
             idx_counts[idx] = (
                 db.query(IndexConstituent)
@@ -184,15 +186,11 @@ class CoverageAnalytics:
             universe = sorted(set(tracked_list))
         else:
             universe = sorted(
-                {
-                    str(s).upper()
-                    for (s,) in db.query(PriceData.symbol).distinct().all()
-                    if s
-                }
+                {str(s).upper() for (s,) in db.query(PriceData.symbol).distinct().all() if s}
             )
         total_symbols = len(universe)
 
-        def _fill_by_date(interval: str, days: int | None = None) -> List[Dict[str, Any]]:
+        def _fill_by_date(interval: str, days: int | None = None) -> list[dict[str, Any]]:
             """Return date buckets for 'has OHLCV row on that date' coverage."""
             if not universe or total_symbols == 0:
                 return []
@@ -206,7 +204,11 @@ class CoverageAnalytics:
                 )
             )
             start_dt = (now - timedelta(days=lookback)).replace(
-                hour=0, minute=0, second=0, microsecond=0, tzinfo=None,
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+                tzinfo=None,
             )
             rows = (
                 db.query(
@@ -222,7 +224,7 @@ class CoverageAnalytics:
                 .order_by(func.date(PriceData.date).asc())
                 .all()
             )
-            out: List[Dict[str, Any]] = []
+            out: list[dict[str, Any]] = []
             for d, symbol_count in rows:
                 if not d:
                     continue
@@ -231,12 +233,14 @@ class CoverageAnalytics:
                     {
                         "date": str(d),
                         "symbol_count": n,
-                        "pct_of_universe": round((n / total_symbols) * 100.0, 1) if total_symbols else 0.0,
+                        "pct_of_universe": round((n / total_symbols) * 100.0, 1)
+                        if total_symbols
+                        else 0.0,
                     }
                 )
             return out
 
-        def _snapshot_fill_by_date(days: int | None = None) -> List[Dict[str, Any]]:
+        def _snapshot_fill_by_date(days: int | None = None) -> list[dict[str, Any]]:
             """Per-date snapshot coverage for technical snapshots (MarketSnapshotHistory ledger)."""
             if not universe or total_symbols == 0:
                 return []
@@ -250,7 +254,11 @@ class CoverageAnalytics:
                 )
             )
             start_dt = (now - timedelta(days=lookback)).replace(
-                hour=0, minute=0, second=0, microsecond=0, tzinfo=None,
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
+                tzinfo=None,
             )
             snap_dt = MarketSnapshotHistory.as_of_date
             rows = (
@@ -267,7 +275,7 @@ class CoverageAnalytics:
                 .order_by(func.date(snap_dt).asc())
                 .all()
             )
-            out: List[Dict[str, Any]] = []
+            out: list[dict[str, Any]] = []
             for d, symbol_count in rows:
                 if not d:
                     continue
@@ -276,7 +284,9 @@ class CoverageAnalytics:
                     {
                         "date": str(d),
                         "symbol_count": n,
-                        "pct_of_universe": round((n / total_symbols) * 100.0, 1) if total_symbols else 0.0,
+                        "pct_of_universe": round((n / total_symbols) * 100.0, 1)
+                        if total_symbols
+                        else 0.0,
                     }
                 )
             return out
@@ -330,20 +340,20 @@ class CoverageAnalytics:
         *,
         fill_trading_days_window: int | None = None,
         fill_lookback_days: int | None = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Return coverage summary with cache, history sparkline, KPI cards, and SLA thresholds."""
-        snapshot: Dict[str, Any] | None = None
+        snapshot: dict[str, Any] | None = None
         updated_at: str | None = None
         source = "cache"
-        history_entries: List[Dict[str, Any]] = []
+        history_entries: list[dict[str, Any]] = []
         backfill_5m_enabled = self._infra.is_backfill_5m_enabled()
 
-        def _ensure_status(snap: Dict[str, Any]) -> Dict[str, Any]:
+        def _ensure_status(snap: dict[str, Any]) -> dict[str, Any]:
             if "status" not in snap or not snap["status"]:
                 snap["status"] = compute_coverage_status(snap)
             return snap["status"]
 
-        def _is_valid_cached_payload(payload: Dict[str, Any]) -> bool:
+        def _is_valid_cached_payload(payload: dict[str, Any]) -> bool:
             if not isinstance(payload, dict):
                 return False
             if payload.get("schema_version") != self.COVERAGE_CACHE_SCHEMA_VERSION:
@@ -359,7 +369,9 @@ class CoverageAnalytics:
             try:
                 raw = self._infra.redis_client.get("coverage:health:last")
                 if raw:
-                    cached = json.loads(raw.decode() if isinstance(raw, (bytes, bytearray)) else raw)
+                    cached = json.loads(
+                        raw.decode() if isinstance(raw, (bytes, bytearray)) else raw
+                    )
                     if _is_valid_cached_payload(cached):
                         snapshot = cached.get("snapshot")
                         updated_at = cached.get("updated_at")
@@ -400,7 +412,9 @@ class CoverageAnalytics:
             raw_history = self._infra.redis_client.lrange("coverage:health:history", 0, 47)
             for entry in raw_history or []:
                 try:
-                    payload = json.loads(entry.decode() if isinstance(entry, (bytes, bytearray)) else entry)
+                    payload = json.loads(
+                        entry.decode() if isinstance(entry, (bytes, bytearray)) else entry
+                    )
                     history_entries.append(payload)
                 except Exception as entry_err:
                     logger.warning("Skipping invalid coverage history Redis entry: %s", entry_err)
@@ -433,15 +447,37 @@ class CoverageAnalytics:
             "stale_m5": [int(entry.get("stale_m5") or 0) for entry in history_entries],
         }
 
-        def _kpi_cards() -> List[Dict[str, Any]]:
+        def _kpi_cards() -> list[dict[str, Any]]:
             tracked = int(snapshot.get("tracked_count") or 0)
             total_symbols = int(snapshot.get("symbols") or 0)
             stale_m5 = int(status_info.get("stale_m5") or 0)
             return [
-                {"id": "tracked", "label": "Tracked Symbols", "value": tracked, "help": "Universe size"},
-                {"id": "daily_pct", "label": "Daily Coverage %", "value": status_info.get("daily_pct"), "unit": "%", "help": f"{snapshot.get('daily', {}).get('count', 0)} / {total_symbols} bars"},
-                {"id": "m5_pct", "label": "5m Coverage %", "value": status_info.get("m5_pct"), "unit": "%", "help": f"{snapshot.get('m5', {}).get('count', 0)} / {total_symbols} bars"},
-                {"id": "stale_daily", "label": "Stale (>48h)", "value": status_info.get("stale_daily"), "help": "All 5m covered" if stale_m5 == 0 else f"{stale_m5} missing 5m"},
+                {
+                    "id": "tracked",
+                    "label": "Tracked Symbols",
+                    "value": tracked,
+                    "help": "Universe size",
+                },
+                {
+                    "id": "daily_pct",
+                    "label": "Daily Coverage %",
+                    "value": status_info.get("daily_pct"),
+                    "unit": "%",
+                    "help": f"{snapshot.get('daily', {}).get('count', 0)} / {total_symbols} bars",
+                },
+                {
+                    "id": "m5_pct",
+                    "label": "5m Coverage %",
+                    "value": status_info.get("m5_pct"),
+                    "unit": "%",
+                    "help": f"{snapshot.get('m5', {}).get('count', 0)} / {total_symbols} bars",
+                },
+                {
+                    "id": "stale_daily",
+                    "label": "Stale (>48h)",
+                    "value": status_info.get("stale_daily"),
+                    "help": "All 5m covered" if stale_m5 == 0 else f"{stale_m5} missing 5m",
+                },
             ]
 
         sla_meta = {
@@ -465,7 +501,9 @@ class CoverageAnalytics:
         fresh_24 = int(daily_section.get("fresh_24h") or 0)
         fresh_48 = int(daily_section.get("fresh_48h") or 0)
         stale_48h = int(daily_section.get("stale_48h") or 0)
-        missing = int(daily_section.get("missing") or (daily_section.get("freshness") or {}).get("none") or 0)
+        missing = int(
+            daily_section.get("missing") or (daily_section.get("freshness") or {}).get("none") or 0
+        )
         fresh_gt48 = max(0, total_symbols - fresh_24 - fresh_48 - stale_48h - missing)
 
         snapshot["daily"] = {
@@ -483,10 +521,12 @@ class CoverageAnalytics:
             try:
                 parsed = datetime.fromisoformat(updated_at.replace("Z", "+00:00"))
                 if parsed.tzinfo is None:
-                    parsed = parsed.replace(tzinfo=timezone.utc)
-                age_seconds = (datetime.now(timezone.utc) - parsed).total_seconds()
+                    parsed = parsed.replace(tzinfo=UTC)
+                age_seconds = (datetime.now(UTC) - parsed).total_seconds()
             except Exception as e:
-                logger.warning("coverage snapshot_age parse failed for updated_at=%r: %s", updated_at, e)
+                logger.warning(
+                    "coverage snapshot_age parse failed for updated_at=%r: %s", updated_at, e
+                )
                 age_seconds = None
 
         meta = snapshot.setdefault("meta", {})
@@ -499,11 +539,13 @@ class CoverageAnalytics:
         meta["history"] = history_entries
         meta["backfill_5m_enabled"] = backfill_5m_enabled
         meta["fill_lookback_days"] = int(
-            int(fill_lookback_days) if fill_lookback_days is not None
+            int(fill_lookback_days)
+            if fill_lookback_days is not None
             else getattr(settings, "COVERAGE_FILL_LOOKBACK_DAYS", 90)
         )
         meta["fill_trading_days_window"] = int(
-            int(fill_trading_days_window) if fill_trading_days_window is not None
+            int(fill_trading_days_window)
+            if fill_trading_days_window is not None
             else getattr(settings, "COVERAGE_FILL_TRADING_DAYS_WINDOW", 50)
         )
 

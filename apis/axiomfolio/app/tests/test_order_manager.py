@@ -4,13 +4,14 @@ Covers: MAX_ORDER_VALUE blocking, preview + submit happy path,
 and RiskViolation propagation.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.execution.order_manager import OrderManager
-from app.services.execution.risk_gate import RiskGate, RiskViolation, MAX_ORDER_VALUE
-from app.services.execution.broker_base import OrderRequest
+import pytest
+
 from app.models.order import OrderStatus
+from app.services.execution.broker_base import OrderRequest
+from app.services.execution.order_manager import OrderManager
+from app.services.execution.risk_gate import RiskGate, RiskViolation
 
 
 def _make_mock_db(snapshot_price=None):
@@ -63,7 +64,7 @@ class TestRiskGate:
 
 class TestPriceEstimation:
     """RiskGate.estimate_price() fallback logic."""
-    
+
     def setup_method(self):
         self.gate = RiskGate()
 
@@ -109,7 +110,7 @@ class TestOrderManagerPreview:
         req = OrderRequest.from_user_input(
             symbol="AAPL", side="buy", order_type="market", quantity=1000
         )
-        
+
         with pytest.raises(RiskViolation):
             await manager.preview(db=db, req=req, user_id=1)
 
@@ -118,22 +119,23 @@ class TestOrderManagerPreview:
         """Small order should pass risk checks and create preview."""
         db = _make_mock_db(snapshot_price=150.0)
         req = OrderRequest.from_user_input(
-            symbol="AAPL", side="buy", order_type="limit", 
-            quantity=5, limit_price=150.0
+            symbol="AAPL", side="buy", order_type="limit", quantity=5, limit_price=150.0
         )
-        
+
         # Mock broker preview
         with patch("app.services.execution.order_manager.broker_router") as mock_router:
             mock_executor = MagicMock()
-            mock_executor.preview_order = AsyncMock(return_value=MagicMock(
-                ok=True,
-                estimated_commission=1.0,
-                estimated_margin_impact=500.0,
-                estimated_equity_with_loan=50000.0,
-                raw={"test": True},
-            ))
+            mock_executor.preview_order = AsyncMock(
+                return_value=MagicMock(
+                    ok=True,
+                    estimated_commission=1.0,
+                    estimated_margin_impact=500.0,
+                    estimated_equity_with_loan=50000.0,
+                    raw={"test": True},
+                )
+            )
             mock_router.get.return_value = mock_executor
-            
+
             # Mock Order creation
             with patch("app.services.execution.order_manager.Order") as MockOrder:
                 mock_order = MagicMock()
@@ -143,9 +145,9 @@ class TestOrderManagerPreview:
                 db.add = MagicMock()
                 db.commit = MagicMock()
                 db.refresh = MagicMock()
-                
+
                 result = await manager.preview(db=db, req=req, user_id=1)
-                
+
                 assert result["order_id"] == 1
                 assert result["status"] == OrderStatus.PREVIEW.value
 
@@ -167,9 +169,7 @@ class TestOrderManagerSubmit:
     def _disable_shadow_mode(self, monkeypatch):
         from app.config import settings as app_settings
 
-        monkeypatch.setattr(
-            app_settings, "SHADOW_TRADING_MODE", False, raising=False
-        )
+        monkeypatch.setattr(app_settings, "SHADOW_TRADING_MODE", False, raising=False)
 
     @pytest.mark.asyncio
     async def test_submit_rejects_non_preview_order(self, manager):
@@ -178,7 +178,7 @@ class TestOrderManagerSubmit:
         mock_order = MagicMock()
         mock_order.status = OrderStatus.SUBMITTED.value
         db.query.return_value.filter.return_value.first.return_value = mock_order
-        
+
         result = await manager.submit(db=db, order_id=1, user_id=1)
         assert "error" in result
         assert "cannot submit" in result["error"].lower()
@@ -188,6 +188,6 @@ class TestOrderManagerSubmit:
         """Non-existent order should return error."""
         db = MagicMock()
         db.query.return_value.filter.return_value.first.return_value = None
-        
+
         result = await manager.submit(db=db, order_id=999, user_id=1)
         assert result["error"] == "Order not found"

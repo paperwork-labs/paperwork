@@ -27,9 +27,8 @@ Revises: 0033
 Create Date: 2026-04-18
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0034"
 down_revision = "0033"
@@ -83,9 +82,7 @@ def upgrade() -> None:
     op.create_index(
         "ix_email_inbox_source_received", "email_inbox", ["source_label", "received_at"]
     )
-    op.create_index(
-        "ix_email_inbox_sender_received", "email_inbox", ["sender", "received_at"]
-    )
+    op.create_index("ix_email_inbox_sender_received", "email_inbox", ["sender", "received_at"])
 
     # ------------------------------------------------------------------
     # email_parses
@@ -121,14 +118,14 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
         sa.UniqueConstraint(
-            "email_id", "schema_version", "parser_model",
+            "email_id",
+            "schema_version",
+            "parser_model",
             name="uq_email_parse_schema_model",
         ),
     )
     op.create_index("ix_email_parses_email_id", "email_parses", ["email_id"])
-    op.create_index(
-        "ix_email_parse_status_parsed", "email_parses", ["status", "parsed_at"]
-    )
+    op.create_index("ix_email_parse_status_parsed", "email_parses", ["status", "parsed_at"])
 
     # ------------------------------------------------------------------
     # validated_picks (created before candidates because candidates carries
@@ -160,9 +157,7 @@ def upgrade() -> None:
         ),
         sa.Column("symbol", sa.String(20), nullable=False),
         sa.Column("action", sa.String(16), nullable=False),
-        sa.Column(
-            "conviction", sa.Integer(), nullable=False, server_default=sa.text("3")
-        ),
+        sa.Column("conviction", sa.Integer(), nullable=False, server_default=sa.text("3")),
         sa.Column("reason_summary", sa.Text(), nullable=False),
         sa.Column("full_rationale", sa.Text(), nullable=True),
         sa.Column("suggested_entry", sa.Numeric(18, 6), nullable=True),
@@ -219,9 +214,7 @@ def upgrade() -> None:
     )
     op.create_index("ix_validated_picks_symbol", "validated_picks", ["symbol"])
     op.create_index("ix_validated_picks_status", "validated_picks", ["status"])
-    op.create_index(
-        "ix_validated_picks_expires_at", "validated_picks", ["expires_at"]
-    )
+    op.create_index("ix_validated_picks_expires_at", "validated_picks", ["expires_at"])
     op.create_index(
         "ix_picks_symbol_status_published",
         "validated_picks",
@@ -269,12 +262,8 @@ def upgrade() -> None:
     op.create_index("ix_candidates_symbol", "candidates", ["symbol"])
     op.create_index("ix_candidates_generator_name", "candidates", ["generator_name"])
     op.create_index("ix_candidates_status", "candidates", ["status"])
-    op.create_index(
-        "ix_candidates_symbol_generated", "candidates", ["symbol", "generated_at"]
-    )
-    op.create_index(
-        "ix_candidates_status_score", "candidates", ["status", "score"]
-    )
+    op.create_index("ix_candidates_symbol_generated", "candidates", ["symbol", "generated_at"])
+    op.create_index("ix_candidates_status_score", "candidates", ["status", "score"])
 
     # Now backfill the FK from validated_picks → candidates.
     op.create_foreign_key(
@@ -313,7 +302,9 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
         sa.UniqueConstraint(
-            "pick_id", "user_id", "engagement_type",
+            "pick_id",
+            "user_id",
+            "engagement_type",
             name="uq_pick_engagement_user_type",
         ),
     )
@@ -351,17 +342,13 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
     )
-    op.create_index(
-        "ix_attribution_artifact_kind", "source_attributions", ["artifact_kind"]
-    )
+    op.create_index("ix_attribution_artifact_kind", "source_attributions", ["artifact_kind"])
     op.create_index(
         "ix_attribution_artifact",
         "source_attributions",
         ["artifact_kind", "artifact_id"],
     )
-    op.create_index(
-        "ix_attribution_source_email", "source_attributions", ["source_email_id"]
-    )
+    op.create_index("ix_attribution_source_email", "source_attributions", ["source_email_id"])
 
     # ------------------------------------------------------------------
     # macro_outlooks

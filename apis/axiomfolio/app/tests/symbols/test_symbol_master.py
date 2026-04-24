@@ -37,7 +37,6 @@ from app.services.symbols.symbol_master_service import (
     UnknownTickerError,
 )
 
-
 # ---------------------------------------------------------------------------
 # Schema shape — verifies the migration created what the model expects
 # ---------------------------------------------------------------------------
@@ -191,16 +190,11 @@ class TestFbToMetaResolution:
         service = SymbolMasterService(db_session)
         service.get_or_create_master("META", asset_class=AssetClass.EQUITY)
 
-        first = service.record_ticker_change(
-            "FB", "META", effective_date=date(2022, 6, 9)
-        )
-        second = service.record_ticker_change(
-            "FB", "META", effective_date=date(2022, 6, 9)
-        )
+        first = service.record_ticker_change("FB", "META", effective_date=date(2022, 6, 9))
+        second = service.record_ticker_change("FB", "META", effective_date=date(2022, 6, 9))
         assert first.master.id == second.master.id
         assert first.alias.id == second.alias.id, (
-            "Re-running with the same args must reuse the alias row, "
-            "not create a duplicate."
+            "Re-running with the same args must reuse the alias row, not create a duplicate."
         )
         assert first.history.id == second.history.id, (
             "Audit ledger must dedupe on (master, change_type, effective_date, "
@@ -236,9 +230,7 @@ class TestResolveEdgeCases:
 
     def test_resolve_normalizes_case_and_whitespace(self, db_session):
         service = SymbolMasterService(db_session)
-        master, _ = service.get_or_create_master(
-            "AAPL_TST", asset_class=AssetClass.EQUITY
-        )
+        master, _ = service.get_or_create_master("AAPL_TST", asset_class=AssetClass.EQUITY)
         for variant in ("aapl_tst", "  AAPL_TST", "AAPL_TST  ", "AaPl_TsT"):
             resolved = service.resolve(variant)
             assert resolved is not None, f"normalization failed for {variant!r}"
@@ -251,9 +243,7 @@ class TestResolveEdgeCases:
 
     def test_resolve_preserves_internal_punctuation(self, db_session):
         service = SymbolMasterService(db_session)
-        master, _ = service.get_or_create_master(
-            "BRK.B_TST", asset_class=AssetClass.EQUITY
-        )
+        master, _ = service.get_or_create_master("BRK.B_TST", asset_class=AssetClass.EQUITY)
         assert service.resolve("brk.b_tst").id == master.id
         assert service.resolve("BRK.A_TST") is None  # not the same ticker
 
@@ -261,9 +251,7 @@ class TestResolveEdgeCases:
         """A non-sticky alias bounded by ``[valid_from, valid_to)`` must
         only resolve inside its window when an as_of_date is given."""
         service = SymbolMasterService(db_session)
-        master, _ = service.get_or_create_master(
-            "NEWCO_TST", asset_class=AssetClass.EQUITY
-        )
+        master, _ = service.get_or_create_master("NEWCO_TST", asset_class=AssetClass.EQUITY)
         service.register_alias(
             master.id,
             "OLDCO_TST",
@@ -283,12 +271,8 @@ class TestResolveEdgeCases:
         """If the same ticker has been reused (e.g. delisted then reissued
         to a different entity) we want the most recently-effective alias."""
         service = SymbolMasterService(db_session)
-        m_old, _ = service.get_or_create_master(
-            "OLD_REUSE_TST", asset_class=AssetClass.EQUITY
-        )
-        m_new, _ = service.get_or_create_master(
-            "NEW_REUSE_TST", asset_class=AssetClass.EQUITY
-        )
+        m_old, _ = service.get_or_create_master("OLD_REUSE_TST", asset_class=AssetClass.EQUITY)
+        m_new, _ = service.get_or_create_master("NEW_REUSE_TST", asset_class=AssetClass.EQUITY)
 
         service.register_alias(
             m_old.id,
@@ -310,9 +294,7 @@ class TestResolveEdgeCases:
 
     def test_register_alias_rejects_inverted_window(self, db_session):
         service = SymbolMasterService(db_session)
-        master, _ = service.get_or_create_master(
-            "SOMECO_TST", asset_class=AssetClass.EQUITY
-        )
+        master, _ = service.get_or_create_master("SOMECO_TST", asset_class=AssetClass.EQUITY)
         with pytest.raises(SymbolMasterError):
             service.register_alias(
                 master.id,
@@ -325,9 +307,7 @@ class TestResolveEdgeCases:
     def test_record_ticker_change_rejects_self_rename(self, db_session):
         service = SymbolMasterService(db_session)
         with pytest.raises(SymbolMasterError):
-            service.record_ticker_change(
-                "FOO_TST", "FOO_TST", effective_date=date(2024, 1, 1)
-            )
+            service.record_ticker_change("FOO_TST", "FOO_TST", effective_date=date(2024, 1, 1))
 
     def test_record_ticker_change_creates_master_when_missing(self, db_session):
         """If neither the old nor new ticker has an existing master row,
@@ -377,10 +357,7 @@ class TestResolveEdgeCases:
 
         # Even an as_of well before the actual ticker existed resolves
         # because the alias is sticky.
-        assert (
-            service.resolve("FB_FLR_TST", as_of_date=date(2005, 1, 1)).id
-            == result.master.id
-        )
+        assert service.resolve("FB_FLR_TST", as_of_date=date(2005, 1, 1)).id == result.master.id
 
 
 # ---------------------------------------------------------------------------
@@ -394,9 +371,7 @@ class TestConvenienceHelpers:
         service.get_or_create_master("BULK_AAPL", asset_class=AssetClass.EQUITY)
         service.get_or_create_master("BULK_MSFT", asset_class=AssetClass.EQUITY)
 
-        result = service.bulk_resolve(
-            ["BULK_AAPL", "bulk_msft", "ZZZZ_BULK_NONE", "  ", ""]
-        )
+        result = service.bulk_resolve(["BULK_AAPL", "bulk_msft", "ZZZZ_BULK_NONE", "  ", ""])
         assert set(result.keys()) == {"BULK_AAPL", "BULK_MSFT", "ZZZZ_BULK_NONE"}
         assert result["BULK_AAPL"] is not None
         assert result["BULK_MSFT"] is not None
@@ -404,9 +379,7 @@ class TestConvenienceHelpers:
 
     def test_history_and_aliases_return_oldest_first(self, db_session):
         service = SymbolMasterService(db_session)
-        master, _ = service.get_or_create_master(
-            "HISTSORT_TST", asset_class=AssetClass.EQUITY
-        )
+        master, _ = service.get_or_create_master("HISTSORT_TST", asset_class=AssetClass.EQUITY)
 
         service.register_alias(
             master.id,
@@ -460,6 +433,5 @@ class TestGlobalScope:
         for table in ("symbol_master", "symbol_alias", "symbol_history"):
             cols = {c["name"] for c in inspector.get_columns(table)}
             assert "user_id" not in cols, (
-                f"{table} must remain global; user_id column would break "
-                "the documented contract."
+                f"{table} must remain global; user_id column would break the documented contract."
             )

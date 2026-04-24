@@ -1,11 +1,12 @@
+from datetime import UTC, datetime, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 
 from app.api.main import app
-from app.tests.auth_test_utils import approve_user_for_login_tests
-from app.models.market_data import MarketSnapshot
 from app.models.index_constituent import IndexConstituent
-from datetime import datetime, timedelta, timezone
+from app.models.market_data import MarketSnapshot
+from app.tests.auth_test_utils import approve_user_for_login_tests
 
 
 def _register_and_login_admin(client: TestClient, db_session) -> str:
@@ -34,9 +35,9 @@ def _register_and_login_admin(client: TestClient, db_session) -> str:
 @pytest.mark.asyncio
 async def test_admin_snapshot_digest_sends_via_brain(monkeypatch, db_session):
     client = TestClient(app, raise_server_exceptions=False)
-    from app.database import get_db
     from app.api.routes.market import admin as admin_routes
-    from app.services.brain.webhook_client import brain_webhook, BrainWebhookClient
+    from app.database import get_db
+    from app.services.brain.webhook_client import BrainWebhookClient, brain_webhook
 
     def _override_get_db():
         yield db_session
@@ -49,7 +50,7 @@ async def test_admin_snapshot_digest_sends_via_brain(monkeypatch, db_session):
         db_session.add(IndexConstituent(index_name="SP500", symbol="BBB", is_active=True))
         db_session.commit()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         db_session.add(
             MarketSnapshot(
                 symbol="AAA",

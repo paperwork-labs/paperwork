@@ -8,8 +8,8 @@ Adds strategy_id and entry_signal_id to positions table for attribution of
 positions to the strategies that generated them.
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "bce73e98544e"
 down_revision = "0004"

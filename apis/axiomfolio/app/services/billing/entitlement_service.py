@@ -31,9 +31,10 @@ medallion: ops
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Mapping, Optional
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -84,11 +85,7 @@ class EntitlementService:
         no-op outcome (still FREE). That is acceptable for a row that
         never carries paid state at this stage of its lifecycle.
         """
-        ent = (
-            db.query(Entitlement)
-            .filter(Entitlement.user_id == user.id)
-            .one_or_none()
-        )
+        ent = db.query(Entitlement).filter(Entitlement.user_id == user.id).one_or_none()
         if ent is not None:
             return ent
 
@@ -126,9 +123,7 @@ class EntitlementService:
         if allowed:
             reason = f"Allowed at {current.value}"
         else:
-            reason = (
-                f"Requires {feature.min_tier.value}; you are on {current.value}"
-            )
+            reason = f"Requires {feature.min_tier.value}; you are on {current.value}"
         return AccessDecision(
             allowed=allowed,
             feature=feature,
@@ -148,7 +143,7 @@ class EntitlementService:
         user: User,
         new_tier: SubscriptionTier,
         actor: str,
-        note: Optional[str] = None,
+        note: str | None = None,
     ) -> Entitlement:
         """Operator-issued tier change (comp accounts, validator pseudonyms,
         the founding partners). Marked with ``status=MANUAL`` so subsequent
@@ -175,8 +170,12 @@ class EntitlementService:
             {
                 "event": "manual_set_tier",
                 "actor": actor,
-                "from_tier": old_tier.value if isinstance(old_tier, SubscriptionTier) else str(old_tier),
-                "from_status": old_status.value if isinstance(old_status, EntitlementStatus) else str(old_status),
+                "from_tier": old_tier.value
+                if isinstance(old_tier, SubscriptionTier)
+                else str(old_tier),
+                "from_status": old_status.value
+                if isinstance(old_status, EntitlementStatus)
+                else str(old_status),
                 "to_tier": new_tier.value,
                 "note": note,
                 "at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
@@ -199,14 +198,14 @@ class EntitlementService:
         user: User,
         tier: SubscriptionTier,
         status: EntitlementStatus,
-        stripe_customer_id: Optional[str],
-        stripe_subscription_id: Optional[str],
-        stripe_price_id: Optional[str],
-        current_period_start: Optional[datetime],
-        current_period_end: Optional[datetime],
-        trial_ends_at: Optional[datetime],
+        stripe_customer_id: str | None,
+        stripe_subscription_id: str | None,
+        stripe_price_id: str | None,
+        current_period_start: datetime | None,
+        current_period_end: datetime | None,
+        trial_ends_at: datetime | None,
         cancel_at_period_end: bool,
-        stripe_event_id: Optional[str] = None,
+        stripe_event_id: str | None = None,
     ) -> Entitlement:
         """Apply a Stripe-driven state update.
 
@@ -267,7 +266,7 @@ class EntitlementService:
 
 
 def _append_audit(
-    existing: Optional[Mapping[str, Any]], event: Mapping[str, Any]
+    existing: Mapping[str, Any] | None, event: Mapping[str, Any]
 ) -> dict[str, Any]:
     """Append ``event`` to a bounded audit list inside the JSON column.
 

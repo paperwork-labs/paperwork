@@ -39,7 +39,8 @@ medallion: execution
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -58,7 +59,7 @@ from app.services.oauth.encryption import decrypt
 logger = logging.getLogger(__name__)
 
 
-ContextResolver = Callable[[], Tuple[Session, BrokerOAuthConnection]]
+ContextResolver = Callable[[], tuple[Session, BrokerOAuthConnection]]
 ClientFactory = Callable[[], Any]
 
 
@@ -67,8 +68,8 @@ class SchwabExecutor:
 
     def __init__(
         self,
-        context_resolver: Optional[ContextResolver] = None,
-        client_factory: Optional[ClientFactory] = None,
+        context_resolver: ContextResolver | None = None,
+        client_factory: ClientFactory | None = None,
     ) -> None:
         self._context_resolver = context_resolver
         self._client_factory = client_factory
@@ -113,12 +114,13 @@ class SchwabExecutor:
             return self._client_factory()
         # Lazy import to avoid circulars: SchwabClient imports settings.
         from app.services.clients.schwab_client import SchwabClient
+
         return SchwabClient()
 
     async def _prepare(
         self,
-        account_id_override: Optional[str] = None,
-    ) -> Tuple[Any, str, Dict[str, Any]]:
+        account_id_override: str | None = None,
+    ) -> tuple[Any, str, dict[str, Any]]:
         """Resolve context + credentials + a fresh account hash.
 
         Returns a triple ``(client, account_hash, raw_context)`` where
@@ -148,7 +150,8 @@ class SchwabExecutor:
         except TokenRefreshError as exc:
             logger.warning(
                 "SchwabExecutor token refresh failed for connection=%s: %s",
-                connection.id, exc,
+                connection.id,
+                exc,
             )
             raise RuntimeError(f"token refresh failed: {exc}") from exc
 
@@ -158,7 +161,8 @@ class SchwabExecutor:
         except Exception as exc:
             logger.warning(
                 "SchwabExecutor token decrypt failed for connection=%s: %s",
-                connection.id, exc,
+                connection.id,
+                exc,
             )
             raise RuntimeError(f"token decrypt failed: {exc}") from exc
 
@@ -172,9 +176,7 @@ class SchwabExecutor:
         client = self._build_client()
         connected = await client.connect_with_credentials(access_token, refresh_token)
         if not connected:
-            raise RuntimeError(
-                "SchwabExecutor: schwab client failed to connect with credentials"
-            )
+            raise RuntimeError("SchwabExecutor: schwab client failed to connect with credentials")
 
         account_hash = await client.resolve_account_hash_fresh(account_id)
         if not account_hash:
@@ -182,15 +184,19 @@ class SchwabExecutor:
                 f"SchwabExecutor: could not resolve account_hash for account_id={account_id!r}"
             )
 
-        return client, account_hash, {
-            "connection_id": connection.id,
-            "account_id": account_id,
-        }
+        return (
+            client,
+            account_hash,
+            {
+                "connection_id": connection.id,
+                "account_id": account_id,
+            },
+        )
 
     # Map our internal IBKR-style IBOrderType enum to Schwab's vocabulary.
     # IBKR style is the canonical one in OrderRequest (see
     # app/services/execution/broker_base.py ``IBOrderType``).
-    _SCHWAB_ORDER_TYPE_MAP: Dict[str, str] = {
+    _SCHWAB_ORDER_TYPE_MAP: dict[str, str] = {
         "MKT": "MARKET",
         "LMT": "LIMIT",
         "STP": "STOP",
@@ -198,7 +204,7 @@ class SchwabExecutor:
     }
 
     @classmethod
-    def _payload_for(cls, req: OrderRequest) -> Dict[str, Any]:
+    def _payload_for(cls, req: OrderRequest) -> dict[str, Any]:
         from app.services.clients.schwab_client import SchwabClient
 
         schwab_type = cls._SCHWAB_ORDER_TYPE_MAP.get(req.order_type.value)

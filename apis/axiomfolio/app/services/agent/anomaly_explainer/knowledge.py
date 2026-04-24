@@ -26,25 +26,62 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
 _TOKEN_RE = re.compile(r"[a-z0-9_]+")
 _STOPWORDS = frozenset(
     {
-        "a", "an", "and", "are", "as", "at", "be", "by", "for", "from",
-        "has", "have", "in", "is", "it", "its", "of", "on", "or", "that",
-        "the", "this", "to", "was", "were", "will", "with", "you", "your",
-        "we", "our", "if", "when", "than", "then", "but", "not", "no",
-        "do", "does", "did", "so",
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "has",
+        "have",
+        "in",
+        "is",
+        "it",
+        "its",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "this",
+        "to",
+        "was",
+        "were",
+        "will",
+        "with",
+        "you",
+        "your",
+        "we",
+        "our",
+        "if",
+        "when",
+        "than",
+        "then",
+        "but",
+        "not",
+        "no",
+        "do",
+        "does",
+        "did",
+        "so",
     }
 )
 
 
-def _tokenize(text: str) -> List[str]:
+def _tokenize(text: str) -> list[str]:
     return [tok for tok in _TOKEN_RE.findall(text.lower()) if tok not in _STOPWORDS]
 
 
@@ -81,7 +118,7 @@ def _slugify_anchor(heading: str) -> str:
     return slug or "section"
 
 
-def load_runbook_chunks(path: Path | str) -> List[RunbookChunk]:
+def load_runbook_chunks(path: Path | str) -> list[RunbookChunk]:
     """Parse a markdown file into H2-bounded :class:`RunbookChunk` objects.
 
     Anything before the first H2 (introduction, top-level H1) is captured
@@ -94,9 +131,9 @@ def load_runbook_chunks(path: Path | str) -> List[RunbookChunk]:
         return []
     raw = p.read_text(encoding="utf-8")
 
-    sections: List[tuple] = []  # (heading, body_lines)
+    sections: list[tuple] = []  # (heading, body_lines)
     current_heading = "Overview"
-    current_body: List[str] = []
+    current_body: list[str] = []
 
     for line in raw.splitlines():
         if line.startswith("## "):
@@ -109,7 +146,7 @@ def load_runbook_chunks(path: Path | str) -> List[RunbookChunk]:
     if current_body:
         sections.append((current_heading, "\n".join(current_body).strip()))
 
-    chunks: List[RunbookChunk] = []
+    chunks: list[RunbookChunk] = []
     for heading, body in sections:
         if not body:
             continue
@@ -136,19 +173,19 @@ class RunbookKnowledge:
     """
 
     def __init__(self, chunks: Sequence[RunbookChunk]) -> None:
-        self._chunks: List[RunbookChunk] = list(chunks)
+        self._chunks: list[RunbookChunk] = list(chunks)
 
     def __len__(self) -> int:
         return len(self._chunks)
 
-    def find_relevant(self, query_text: str, top_k: int = 3) -> List[RunbookChunk]:
+    def find_relevant(self, query_text: str, top_k: int = 3) -> list[RunbookChunk]:
         if not self._chunks or top_k <= 0:
             return []
         query_tokens = set(_tokenize(query_text))
         if not query_tokens:
             return []
 
-        scored: List[tuple] = []
+        scored: list[tuple] = []
         for idx, chunk in enumerate(self._chunks):
             overlap = len(query_tokens & chunk.keywords)
             if overlap > 0:
@@ -157,9 +194,9 @@ class RunbookKnowledge:
         return [chunk for _, _, chunk in scored[:top_k]]
 
     @classmethod
-    def from_paths(cls, paths: Iterable[Path | str]) -> "RunbookKnowledge":
+    def from_paths(cls, paths: Iterable[Path | str]) -> RunbookKnowledge:
         """Convenience: load multiple files and concatenate their chunks."""
-        all_chunks: List[RunbookChunk] = []
+        all_chunks: list[RunbookChunk] = []
         for p in paths:
             all_chunks.extend(load_runbook_chunks(p))
         return cls(all_chunks)
@@ -186,7 +223,7 @@ def query_text_for_anomaly(
     *,
     category: str,
     title: str,
-    facts: Optional[Dict] = None,
+    facts: dict | None = None,
     raw_evidence: str = "",
 ) -> str:
     """Compose a single string the keyword scorer can chew on."""

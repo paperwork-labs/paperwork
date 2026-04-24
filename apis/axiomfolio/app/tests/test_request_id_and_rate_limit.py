@@ -10,9 +10,9 @@ def _build_client(rate_limit: str = "2/minute") -> TestClient:
     os.environ["RATE_LIMIT_STORAGE_URL"] = ""
     os.environ["AUTO_MIGRATE_ON_STARTUP"] = "false"
 
-    import app.config as config
-    import app.api.rate_limit as rate_limit
     import app.api.main as main
+    import app.api.rate_limit as rate_limit
+    import app.config as config
 
     importlib.reload(config)
     # Limiter reads settings at import time; recreate it before main rebinds app.state.

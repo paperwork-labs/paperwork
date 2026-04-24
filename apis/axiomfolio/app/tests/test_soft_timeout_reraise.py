@@ -5,10 +5,10 @@ before ``except Exception`` correctly propagate the soft timeout instead
 of swallowing it.
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-from celery.exceptions import SoftTimeLimitExceeded
+from unittest.mock import MagicMock
 
+import pytest
+from celery.exceptions import SoftTimeLimitExceeded
 
 pytestmark = pytest.mark.no_db
 

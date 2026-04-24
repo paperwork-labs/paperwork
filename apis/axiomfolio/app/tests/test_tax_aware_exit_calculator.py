@@ -19,7 +19,6 @@ from app.services.gold.tax_aware_exit_calculator import (
     long_term_cutoff_date,
 )
 
-
 pytestmark = pytest.mark.no_db
 
 
@@ -51,14 +50,10 @@ def test_happy_path_short_term_gain_single_lot():
         DEFAULT_FEDERAL_ST_RATE + DEFAULT_STATE_RATE + DEFAULT_NIIT_RATE
     )
     assert out.total_tax == expected_total.quantize(Decimal("0.01"))
-    assert out.after_tax_proceeds == (
-        Decimal("15000") - out.total_tax
-    ).quantize(Decimal("0.01"))
+    assert out.after_tax_proceeds == (Decimal("15000") - out.total_tax).quantize(Decimal("0.01"))
     # Days to long-term: match TaxLot (>365); 90 held -> 366 - 90
     assert out.days_to_long_term == 366 - 90
-    assert out.days_to_long_term == days_to_long_term(
-        lot.acquired_on, as_of=TODAY
-    )
+    assert out.days_to_long_term == days_to_long_term(lot.acquired_on, as_of=TODAY)
     assert out.breakeven_price_for_long_term_wait is not None
     assert out.breakeven_price_for_long_term_wait < Decimal("150")
     assert out.tax_advantaged is False
@@ -89,15 +84,12 @@ def test_boundary_mixed_short_and_long_lots_are_split_correctly():
     assert out.short_term_gain_loss == Decimal("4000.00")
     assert out.realized_gain_loss == Decimal("10000.00")
     expected_federal = (
-        Decimal("4000") * DEFAULT_FEDERAL_ST_RATE
-        + Decimal("6000") * DEFAULT_FEDERAL_LT_RATE
+        Decimal("4000") * DEFAULT_FEDERAL_ST_RATE + Decimal("6000") * DEFAULT_FEDERAL_LT_RATE
     )
     assert out.federal_tax == expected_federal.quantize(Decimal("0.01"))
     # days_to_long_term is the minimum remaining on any ST lot
     assert out.days_to_long_term == 366 - 100
-    assert out.days_to_long_term == days_to_long_term(
-        st_lot.acquired_on, as_of=TODAY
-    )
+    assert out.days_to_long_term == days_to_long_term(st_lot.acquired_on, as_of=TODAY)
 
 
 def test_empty_zero_exit_shares_returns_zeroed_result():

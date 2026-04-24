@@ -13,13 +13,13 @@ executable trade card. These tests cover:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
 
-from app.api.main import app
 from app.api.dependencies import get_current_user
+from app.api.main import app
 from app.database import get_db
 from app.models.broker_account import (
     AccountStatus,
@@ -40,7 +40,6 @@ from app.services.gold.trade_card_composer import (
     _resolve_contract_status_for_earnings,
     trade_card_to_payload,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures (inline helpers; keep tests hermetic)
@@ -86,7 +85,7 @@ def _broker_account(
 
 def _regime(db_session, *, code: str) -> MarketRegime:
     row = MarketRegime(
-        as_of_date=datetime.now(timezone.utc).replace(tzinfo=None),
+        as_of_date=datetime.now(UTC).replace(tzinfo=None),
         regime_state=code,
         composite_score=2.0,
     )
@@ -109,7 +108,7 @@ def _snapshot(
     td_buy: int | None = 8,
     td_sell: int | None = 0,
 ) -> MarketSnapshot:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     row = MarketSnapshot(
         symbol=symbol,
         analysis_type="technical_snapshot",
@@ -149,7 +148,7 @@ def _candidate(
         pick_quality_score=pick_quality_score,
         action_suggestion=PickAction.BUY,
         status=CandidateQueueState.DRAFT,
-        generated_at=datetime.now(timezone.utc),
+        generated_at=datetime.now(UTC),
     )
     db_session.add(row)
     db_session.flush()
@@ -183,7 +182,7 @@ def _contract_rec(
     strike: Decimal = Decimal("100"),
 ) -> ContractRecommendation:
     if expiry is None:
-        expiry = (datetime.now(timezone.utc) + timedelta(days=expiry_days)).date()
+        expiry = (datetime.now(UTC) + timedelta(days=expiry_days)).date()
     bid = (mid - Decimal("0.05")).quantize(Decimal("0.01"))
     ask = (mid + Decimal("0.05")).quantize(Decimal("0.01"))
     return ContractRecommendation(
@@ -212,7 +211,7 @@ def _underlying_with_earnings_on(earn_d: date) -> UnderlyingView:
         perf_5d=None,
         td_buy_setup=None,
         td_sell_setup=None,
-        next_earnings=datetime(earn_d.year, earn_d.month, earn_d.day, tzinfo=timezone.utc),
+        next_earnings=datetime(earn_d.year, earn_d.month, earn_d.day, tzinfo=UTC),
         days_to_earnings=None,
         atr_14=None,
         atrp_14=None,
@@ -275,12 +274,8 @@ def test_regime_r3_still_sizes_but_applies_smaller_stage_cap(db_session):
     chain = _FakeChain(_contract_rec())
     composer = TradeCardComposer(options_surface=chain)
 
-    card_r1 = composer.compose(
-        db_session, candidate=cand, user=user, rank=1, regime=regime_r1
-    )
-    card_r3 = composer.compose(
-        db_session, candidate=cand, user=user, rank=1, regime=regime_r3
-    )
+    card_r1 = composer.compose(db_session, candidate=cand, user=user, rank=1, regime=regime_r1)
+    card_r3 = composer.compose(db_session, candidate=cand, user=user, rank=1, regime=regime_r3)
 
     assert card_r1.sizing_status is SizingStatus.COMPUTED
     assert card_r3.sizing_status is SizingStatus.COMPUTED
@@ -325,7 +320,9 @@ def test_stage_4a_in_r4_yields_regime_blocked_sizing(db_session):
     assert card.sizing_status is SizingStatus.REGIME_BLOCKED
     assert card.sizing is not None
     assert card.sizing.capped_position_dollars == Decimal("0.00")
-    assert any(a.alert_type == "regime_blocked" and a.level.value == "critical" for a in card.alerts)
+    assert any(
+        a.alert_type == "regime_blocked" and a.level.value == "critical" for a in card.alerts
+    )
     # No options surface is wired — composer should surface the stock-only
     # status rather than pretending a chain was consulted.
     assert card.contract_status is ContractStatus.STOCK_ONLY

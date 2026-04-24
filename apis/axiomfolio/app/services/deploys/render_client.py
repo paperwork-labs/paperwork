@@ -29,8 +29,8 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
@@ -79,13 +79,13 @@ class DeployRecord:
     service_id: str
     deploy_id: str
     status: str
-    trigger: Optional[str]
-    commit_sha: Optional[str]
-    commit_message: Optional[str]
+    trigger: str | None
+    commit_sha: str | None
+    commit_message: str | None
     created_at: datetime
-    finished_at: Optional[datetime]
-    duration_seconds: Optional[float]
-    raw: Dict[str, Any] = field(default_factory=dict, compare=False)
+    finished_at: datetime | None
+    duration_seconds: float | None
+    raw: dict[str, Any] = field(default_factory=dict, compare=False)
 
     @property
     def is_terminal(self) -> bool:
@@ -112,27 +112,27 @@ class DeployRecord:
         return (self.commit_sha or "")[:8]
 
 
-def _parse_iso(value: Any) -> Optional[datetime]:
+def _parse_iso(value: Any) -> datetime | None:
     """Parse ``2026-04-21T04:11:05.827366Z`` etc. into a UTC-aware datetime."""
     if not value:
         return None
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     try:
         s = str(value).replace("Z", "+00:00")
         dt = datetime.fromisoformat(s)
-        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+        return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
     except ValueError:
         return None
 
 
-def _duration_seconds(created: Optional[datetime], finished: Optional[datetime]) -> Optional[float]:
+def _duration_seconds(created: datetime | None, finished: datetime | None) -> float | None:
     if not created or not finished:
         return None
     return max(0.0, (finished - created).total_seconds())
 
 
-def _record_from_api(payload: Dict[str, Any], *, service_id: str) -> DeployRecord:
+def _record_from_api(payload: dict[str, Any], *, service_id: str) -> DeployRecord:
     """Convert one Render API deploy payload into a :class:`DeployRecord`.
 
     Render returns slightly different shapes across endpoints; we defensively
@@ -149,7 +149,7 @@ def _record_from_api(payload: Dict[str, Any], *, service_id: str) -> DeployRecor
         trigger=payload.get("trigger"),
         commit_sha=(commit.get("id") if isinstance(commit, dict) else None),
         commit_message=(commit.get("message") if isinstance(commit, dict) else None),
-        created_at=created or datetime.now(timezone.utc),
+        created_at=created or datetime.now(UTC),
         finished_at=finished,
         duration_seconds=_duration_seconds(created, finished),
         raw=dict(payload),
@@ -169,7 +169,7 @@ class RenderDeployClient:
     def __init__(
         self,
         *,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         base_url: str = RENDER_API_BASE,
         timeout_s: float = 10.0,
     ) -> None:
@@ -187,13 +187,13 @@ class RenderDeployClient:
         """
         return bool(self._api_key)
 
-    def _headers(self) -> Dict[str, str]:
+    def _headers(self) -> dict[str, str]:
         return {
             "Authorization": f"Bearer {self._api_key}",
             "Accept": "application/json",
         }
 
-    def list_deploys(self, service_id: str, *, limit: int = 10) -> List[DeployRecord]:
+    def list_deploys(self, service_id: str, *, limit: int = 10) -> list[DeployRecord]:
         """Fetch the ``limit`` most recent deploys for one service, newest first.
 
         Raises :class:`RenderDeployClientError` on non-2xx responses or
@@ -220,8 +220,7 @@ class RenderDeployClient:
 
         if resp.status_code >= 400:
             raise RenderDeployClientError(
-                f"Render API {resp.status_code} listing deploys for {service_id}: "
-                f"{resp.text[:200]}"
+                f"Render API {resp.status_code} listing deploys for {service_id}: {resp.text[:200]}"
             )
 
         try:
@@ -231,7 +230,7 @@ class RenderDeployClient:
                 f"Render API returned non-JSON listing deploys for {service_id}: {exc}"
             ) from exc
 
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         if isinstance(payload, list):
             # The v1 list endpoint returns either a bare list or a list of
             # ``{"deploy": {...}, "cursor": "..."}`` pairs depending on the
@@ -252,7 +251,7 @@ class RenderDeployClient:
 
         return [_record_from_api(r, service_id=service_id) for r in rows]
 
-    def get_service(self, service_id: str) -> Dict[str, Any]:
+    def get_service(self, service_id: str) -> dict[str, Any]:
         """Fetch service metadata (slug, name, type) for UI labeling."""
         if not self.enabled:
             raise RenderDeployClientError(
@@ -267,8 +266,7 @@ class RenderDeployClient:
             ) from exc
         if resp.status_code >= 400:
             raise RenderDeployClientError(
-                f"Render API {resp.status_code} fetching service {service_id}: "
-                f"{resp.text[:200]}"
+                f"Render API {resp.status_code} fetching service {service_id}: {resp.text[:200]}"
             )
         try:
             return resp.json() or {}
@@ -279,12 +277,12 @@ class RenderDeployClient:
 
 
 __all__ = [
-    "DeployRecord",
     "IN_FLIGHT_STATUSES",
     "RENDER_API_BASE",
-    "RenderDeployClient",
-    "RenderDeployClientError",
     "SUPERSEDED_STATUSES",
     "TERMINAL_FAILURE_STATUSES",
     "TERMINAL_SUCCESS_STATUSES",
+    "DeployRecord",
+    "RenderDeployClient",
+    "RenderDeployClientError",
 ]

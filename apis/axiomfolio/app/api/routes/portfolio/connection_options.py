@@ -18,7 +18,6 @@ from __future__ import annotations
 import logging
 from collections import defaultdict
 from datetime import datetime
-from typing import DefaultDict, Dict, List, Optional
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -59,7 +58,7 @@ class BrokerUserState(BaseModel):
 
     connected: bool
     account_count: int = 0
-    last_synced_at: Optional[datetime] = None
+    last_synced_at: datetime | None = None
 
 
 class BrokerOption(BaseModel):
@@ -74,7 +73,7 @@ class BrokerOption(BaseModel):
 
 
 class ConnectionOptionsResponse(BaseModel):
-    brokers: List[BrokerOption]
+    brokers: list[BrokerOption]
 
 
 # -----------------------------------------------------------------------------
@@ -82,7 +81,7 @@ class ConnectionOptionsResponse(BaseModel):
 # -----------------------------------------------------------------------------
 
 
-def _broker_type_for_slug(slug: str) -> Optional[BrokerType]:
+def _broker_type_for_slug(slug: str) -> BrokerType | None:
     """Resolve a catalog slug to its ``BrokerType`` enum, if any.
 
     Returns None for catalog slugs we do not (yet) persist to
@@ -102,9 +101,7 @@ def _broker_type_for_slug(slug: str) -> Optional[BrokerType]:
         return None
 
 
-def _active_accounts_by_broker(
-    db: Session, user_id: int
-) -> Dict[BrokerType, List[BrokerAccount]]:
+def _active_accounts_by_broker(db: Session, user_id: int) -> dict[BrokerType, list[BrokerAccount]]:
     """Load all active ``BrokerAccount`` rows for ``user_id`` once.
 
     Used by ``list_connection_options`` to avoid an N+1 query per catalog entry.
@@ -118,7 +115,7 @@ def _active_accounts_by_broker(
         )
         .all()
     )
-    grouped: DefaultDict[BrokerType, List[BrokerAccount]] = defaultdict(list)
+    grouped: defaultdict[BrokerType, list[BrokerAccount]] = defaultdict(list)
     for row in rows:
         grouped[row.broker].append(row)
     return dict(grouped)
@@ -126,7 +123,7 @@ def _active_accounts_by_broker(
 
 def _build_user_state(
     entry: BrokerCatalogEntry,
-    accounts_by_broker: Dict[BrokerType, List[BrokerAccount]],
+    accounts_by_broker: dict[BrokerType, list[BrokerAccount]],
 ) -> BrokerUserState:
     """Build the per-user state for one broker from a pre-grouped account map.
 
@@ -177,7 +174,7 @@ async def list_connection_options(
 
     catalog = get_catalog()
     accounts_by_broker = _active_accounts_by_broker(db, current_user.id)
-    options: List[BrokerOption] = []
+    options: list[BrokerOption] = []
     for entry in catalog:
         user_state = _build_user_state(entry, accounts_by_broker)
         options.append(

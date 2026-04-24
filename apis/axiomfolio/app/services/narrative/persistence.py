@@ -6,8 +6,7 @@ medallion: gold
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
-from typing import Optional
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -22,7 +21,7 @@ _FRESH_WINDOW = timedelta(hours=1)
 
 def fetch_fresh_narrative(
     db: Session, user_id: int, narrative_date: date
-) -> Optional[PortfolioNarrative]:
+) -> PortfolioNarrative | None:
     """Return existing row if written within the last hour (idempotency / dedupe)."""
     row = (
         db.query(PortfolioNarrative)
@@ -36,8 +35,8 @@ def fetch_fresh_narrative(
         return None
     created = row.created_at
     if created.tzinfo is None:
-        created = created.replace(tzinfo=timezone.utc)
-    age = datetime.now(timezone.utc) - created
+        created = created.replace(tzinfo=UTC)
+    age = datetime.now(UTC) - created
     if age < _FRESH_WINDOW:
         return row
     return None
@@ -62,8 +61,8 @@ def persist_narrative(
     if existing is not None:
         created = existing.created_at
         if created.tzinfo is None:
-            created = created.replace(tzinfo=timezone.utc)
-        if datetime.now(timezone.utc) - created < _FRESH_WINDOW:
+            created = created.replace(tzinfo=UTC)
+        if datetime.now(UTC) - created < _FRESH_WINDOW:
             logger.info(
                 "narrative: fresh row exists user=%s date=%s id=%s",
                 user_id,
@@ -72,7 +71,7 @@ def persist_narrative(
             )
             return existing
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     def _apply_update(target: PortfolioNarrative) -> None:
         target.text = result.text
@@ -125,8 +124,8 @@ def persist_narrative(
             raise
         created = concurrent.created_at
         if created.tzinfo is None:
-            created = created.replace(tzinfo=timezone.utc)
-        if datetime.now(timezone.utc) - created < _FRESH_WINDOW:
+            created = created.replace(tzinfo=UTC)
+        if datetime.now(UTC) - created < _FRESH_WINDOW:
             return concurrent
         _apply_update(concurrent)
         db.flush()

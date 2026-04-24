@@ -45,30 +45,29 @@ validators in the future.
 from __future__ import annotations
 
 from datetime import datetime
-from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy import (
+    JSON,
+    TIMESTAMP,
     Boolean,
     Column,
-    Enum as SQLEnum,
     ForeignKey,
     Index,
     Integer,
-    JSON,
     Numeric,
     String,
-    TIMESTAMP,
     Text,
     UniqueConstraint,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from . import Base
-
 
 # =============================================================================
 # ENUMS
@@ -176,12 +175,8 @@ class EmailInbox(Base):
     body_text = Column(Text, nullable=True)
     body_html = Column(Text, nullable=True)
     received_at = Column(TIMESTAMP(timezone=True), nullable=False, index=True)
-    has_pdf = Column(
-        Boolean, nullable=False, default=False, server_default=sa.text("false")
-    )
-    attachment_count = Column(
-        Integer, nullable=False, default=0, server_default=sa.text("0")
-    )
+    has_pdf = Column(Boolean, nullable=False, default=False, server_default=sa.text("false"))
+    attachment_count = Column(Integer, nullable=False, default=0, server_default=sa.text("0"))
     attachments_meta = Column(JSON, nullable=True)
     raw_blob_url = Column(String(512), nullable=True)
     raw_payload = Column(JSON, nullable=True)
@@ -190,9 +185,7 @@ class EmailInbox(Base):
         nullable=False,
         server_default="RECEIVED",
     )
-    ingested_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    ingested_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     parses = relationship(
         "EmailParse",
@@ -244,9 +237,7 @@ class EmailParse(Base):
         server_default=EmailParseStatus.PENDING.value,
     )
     error_message = Column(Text, nullable=True)
-    parsed_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    parsed_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     email = relationship("EmailInbox", back_populates="parses")
     picks = relationship("ValidatedPick", back_populates="source_parse")
@@ -317,9 +308,7 @@ class Candidate(Base):
     promoted_to_pick_id = Column(
         Integer, ForeignKey("validated_picks.id", ondelete="SET NULL"), nullable=True
     )
-    generated_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    generated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     decided_at = Column(TIMESTAMP(timezone=True), nullable=True)
     state_transitioned_at = Column(TIMESTAMP(timezone=True), nullable=True)
     state_transitioned_by = Column(
@@ -335,9 +324,7 @@ class Candidate(Base):
     suggested_stop = Column(Numeric(18, 6), nullable=True)
     published_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
 
-    promoted_pick = relationship(
-        "ValidatedPick", foreign_keys=[promoted_to_pick_id]
-    )
+    promoted_pick = relationship("ValidatedPick", foreign_keys=[promoted_to_pick_id])
     source_email_parse = relationship(
         "EmailParse",
         foreign_keys=[source_email_parse_id],
@@ -368,15 +355,11 @@ class PicksAuditLog(Base):
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
     )
     reason = Column(Text, nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     candidate = relationship("Candidate", backref="audit_entries")
 
-    __table_args__ = (
-        Index("ix_picks_audit_log_candidate_created", "candidate_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_picks_audit_log_candidate_created", "candidate_id", "created_at"),)
 
 
 # =============================================================================
@@ -427,9 +410,7 @@ class ValidatedPick(Base):
         nullable=False,
         index=True,
     )
-    validator_pseudonym = Column(
-        String(64), nullable=False, server_default="Twisted Slice"
-    )
+    validator_pseudonym = Column(String(64), nullable=False, server_default="Twisted Slice")
 
     # Pick body
     symbol = Column(String(20), nullable=False, index=True)
@@ -476,9 +457,7 @@ class ValidatedPick(Base):
         nullable=True,
     )
 
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
@@ -507,7 +486,7 @@ class ValidatedPick(Base):
     # Helpers
     # ------------------------------------------------------------------
 
-    def is_active(self, now: Optional[datetime] = None) -> bool:
+    def is_active(self, now: datetime | None = None) -> bool:
         """A pick is active if published, not superseded, and not expired."""
         if self.status != PickStatus.PUBLISHED:
             return False
@@ -554,15 +533,15 @@ class PickEngagement(Base):
         nullable=False,
     )
     metadata_json = Column("metadata", JSON, nullable=True)
-    occurred_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    occurred_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     pick = relationship("ValidatedPick", back_populates="engagements")
 
     __table_args__ = (
         UniqueConstraint(
-            "pick_id", "user_id", "engagement_type",
+            "pick_id",
+            "user_id",
+            "engagement_type",
             name="uq_pick_engagement_user_type",
         ),
         Index("ix_pick_engagement_user_occurred", "user_id", "occurred_at"),
@@ -608,9 +587,7 @@ class SourceAttribution(Base):
     excerpt = Column(Text, nullable=True)
     confidence = Column(Numeric(4, 3), nullable=True)
     metadata_json = Column("metadata", JSON, nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = (
         Index("ix_attribution_artifact", "artifact_kind", "artifact_id"),
@@ -637,9 +614,7 @@ class MacroOutlook(Base):
         nullable=False,
         index=True,
     )
-    validator_pseudonym = Column(
-        String(64), nullable=False, server_default="Twisted Slice"
-    )
+    validator_pseudonym = Column(String(64), nullable=False, server_default="Twisted Slice")
     regime_call = Column(String(8), nullable=True)
     thesis = Column(Text, nullable=False)
     time_horizon_days = Column(Integer, nullable=True)
@@ -658,13 +633,9 @@ class MacroOutlook(Base):
     )
     published_at = Column(TIMESTAMP(timezone=True), nullable=True)
     expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
-    __table_args__ = (
-        Index("ix_macro_outlook_published", "published_at"),
-    )
+    __table_args__ = (Index("ix_macro_outlook_published", "published_at"),)
 
 
 class PositionChange(Base):
@@ -690,9 +661,7 @@ class PositionChange(Base):
         nullable=False,
         index=True,
     )
-    validator_pseudonym = Column(
-        String(64), nullable=False, server_default="Twisted Slice"
-    )
+    validator_pseudonym = Column(String(64), nullable=False, server_default="Twisted Slice")
     symbol = Column(String(20), nullable=False, index=True)
     action = Column(
         SQLEnum(
@@ -720,9 +689,7 @@ class PositionChange(Base):
     )
     published_at = Column(TIMESTAMP(timezone=True), nullable=True)
     expires_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    created_at = Column(
-        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
-    )
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     __table_args__ = (
         Index(

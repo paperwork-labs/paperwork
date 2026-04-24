@@ -5,8 +5,8 @@ Institutional Holdings Model
 13F filings data from SEC EDGAR for institutional ownership tracking.
 """
 
-from datetime import date
-from sqlalchemy import Column, Integer, String, BigInteger, Float, Date, Index, UniqueConstraint
+from sqlalchemy import BigInteger, Column, Date, Float, Index, Integer, String, UniqueConstraint
+
 from app.models import Base
 
 
@@ -47,8 +47,10 @@ class InstitutionalHolding(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "symbol", "filing_date", "institution_cik",
-            name="uq_institutional_holding_symbol_date_inst"
+            "symbol",
+            "filing_date",
+            "institution_cik",
+            name="uq_institutional_holding_symbol_date_inst",
         ),
         Index("ix_institutional_holdings_symbol_period", "symbol", "period_date"),
     )

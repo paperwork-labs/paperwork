@@ -5,12 +5,12 @@ broken migrations were silently skipping ~500 tests under green CI.
 We can't actually flip CI=true within a test (it would break our own
 session), so we test the helper and the guard logic directly.
 """
+
 from __future__ import annotations
 
 import pytest
 
 from app.tests import conftest as ct
-
 
 _CI_ENV_VARS = ("CI", "GITHUB_ACTIONS", "GITHUB_RUN_ID")
 
@@ -30,9 +30,7 @@ def test_in_ci_helper_recognizes_truthy_values(monkeypatch):
 
 def test_in_ci_helper_recognizes_falsy_or_missing(monkeypatch):
     _clear_all_ci_env(monkeypatch)
-    assert (
-        ct._in_ci() is False
-    ), "_in_ci() must be False when no CI env vars are set"
+    assert ct._in_ci() is False, "_in_ci() must be False when no CI env vars are set"
 
     for val in ("", "0", "false", "no", "anything-else"):
         _clear_all_ci_env(monkeypatch)

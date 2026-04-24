@@ -43,9 +43,9 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any
 
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
@@ -122,7 +122,7 @@ class ExplainerResult:
     cost_usd: Decimal
     prompt_token_count: int
     completion_token_count: int
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
     narrative: str
     generated_at: datetime
     reused: bool
@@ -136,22 +136,22 @@ class ExplainerResult:
 @dataclass
 class _OrderContext:
     order: Order
-    trade: Optional[Trade]
+    trade: Trade | None
     trigger_type: str
-    pick: Optional[ValidatedPick]
-    signal: Optional[TradeSignal]
-    strategy: Optional[Strategy]
-    market_snapshot: Optional[MarketSnapshot]
-    market_regime: Optional[MarketRegime]
-    extras: Dict[str, Any] = field(default_factory=dict)
+    pick: ValidatedPick | None
+    signal: TradeSignal | None
+    strategy: Strategy | None
+    market_snapshot: MarketSnapshot | None
+    market_regime: MarketRegime | None
+    extras: dict[str, Any] = field(default_factory=dict)
 
 
 def _resolve_trigger_type(
     *,
     order: Order,
-    pick: Optional[ValidatedPick],
-    signal: Optional[TradeSignal],
-    strategy: Optional[Strategy],
+    pick: ValidatedPick | None,
+    signal: TradeSignal | None,
+    strategy: Strategy | None,
 ) -> str:
     """Pick exactly one trigger label for the order.
 
@@ -180,8 +180,8 @@ def _resolve_trigger_type(
 
 
 def _try_load_pick_from_engagements(
-    db: Session, *, user_id: int, symbol: str, before: Optional[datetime]
-) -> Optional[ValidatedPick]:
+    db: Session, *, user_id: int, symbol: str, before: datetime | None
+) -> ValidatedPick | None:
     """Find the most recent EXECUTED PickEngagement for this user/symbol.
 
     There is no FK from ``Order`` to ``ValidatedPick`` today; the
@@ -207,8 +207,8 @@ def _try_load_pick_from_engagements(
 
 
 def _load_snapshot_at_or_before(
-    db: Session, *, symbol: str, at: Optional[datetime]
-) -> Optional[MarketSnapshot]:
+    db: Session, *, symbol: str, at: datetime | None
+) -> MarketSnapshot | None:
     """Most recent ``technical_snapshot`` whose ``as_of_timestamp`` is on
     or before ``at`` (defensive against intraday / future timestamps)."""
     q = db.query(MarketSnapshot).filter(
@@ -226,16 +226,14 @@ def _load_snapshot_at_or_before(
     return q.first()
 
 
-def _load_regime_at_or_before(
-    db: Session, *, at: Optional[datetime]
-) -> Optional[MarketRegime]:
+def _load_regime_at_or_before(db: Session, *, at: datetime | None) -> MarketRegime | None:
     q = db.query(MarketRegime)
     if at is not None:
         q = q.filter(MarketRegime.as_of_date <= at)
     return q.order_by(desc(MarketRegime.as_of_date)).first()
 
 
-def _order_timestamp(order: Order) -> Optional[datetime]:
+def _order_timestamp(order: Order) -> datetime | None:
     """Best date to anchor "context at order time" lookups."""
     return order.filled_at or order.submitted_at or order.created_at
 
@@ -247,23 +245,15 @@ def build_order_context(db: Session, *, order: Order) -> _OrderContext:
     """
     at = _order_timestamp(order)
 
-    signal: Optional[TradeSignal] = None
+    signal: TradeSignal | None = None
     if order.signal_id is not None:
-        signal = (
-            db.query(TradeSignal)
-            .filter(TradeSignal.id == order.signal_id)
-            .one_or_none()
-        )
+        signal = db.query(TradeSignal).filter(TradeSignal.id == order.signal_id).one_or_none()
 
-    strategy: Optional[Strategy] = None
+    strategy: Strategy | None = None
     if order.strategy_id is not None:
-        strategy = (
-            db.query(Strategy)
-            .filter(Strategy.id == order.strategy_id)
-            .one_or_none()
-        )
+        strategy = db.query(Strategy).filter(Strategy.id == order.strategy_id).one_or_none()
 
-    pick: Optional[ValidatedPick] = None
+    pick: ValidatedPick | None = None
     if order.user_id is not None:
         pick = _try_load_pick_from_engagements(
             db, user_id=order.user_id, symbol=order.symbol, before=at
@@ -272,9 +262,7 @@ def build_order_context(db: Session, *, order: Order) -> _OrderContext:
     snapshot = _load_snapshot_at_or_before(db, symbol=order.symbol, at=at)
     regime = _load_regime_at_or_before(db, at=at)
 
-    trigger_type = _resolve_trigger_type(
-        order=order, pick=pick, signal=signal, strategy=strategy
-    )
+    trigger_type = _resolve_trigger_type(order=order, pick=pick, signal=signal, strategy=strategy)
 
     trade = (
         db.query(Trade)
@@ -302,7 +290,7 @@ def build_order_context(db: Session, *, order: Order) -> _OrderContext:
 # -----------------------------------------------------------------------------
 
 
-def _json_prompt_scalar(value: Optional[Any]) -> Optional[Any]:
+def _json_prompt_scalar(value: Any | None) -> Any | None:
     """Serialize numeric order fields for JSON blocks in the LLM user prompt.
 
     Never cast :class:`Decimal` to ``float`` (monetary iron law). Decimals are
@@ -315,7 +303,7 @@ def _json_prompt_scalar(value: Optional[Any]) -> Optional[Any]:
     return value
 
 
-def _as_decimal(value: Any) -> Optional[Decimal]:
+def _as_decimal(value: Any) -> Decimal | None:
     """Coerce ORM numeric (float or Decimal) to Decimal for safe arithmetic."""
     if value is None:
         return None
@@ -327,7 +315,7 @@ def _as_decimal(value: Any) -> Optional[Decimal]:
         return None
 
 
-def _order_payload(order: Order, trade: Optional[Trade]) -> Dict[str, Any]:
+def _order_payload(order: Order, trade: Trade | None) -> dict[str, Any]:
     return {
         "order_id": order.id,
         "symbol": order.symbol,
@@ -341,9 +329,7 @@ def _order_payload(order: Order, trade: Optional[Trade]) -> Dict[str, Any]:
         "filled_avg_price": _json_prompt_scalar(order.filled_avg_price),
         "broker_type": order.broker_type,
         "source": order.source,
-        "submitted_at": order.submitted_at.isoformat()
-        if order.submitted_at
-        else None,
+        "submitted_at": order.submitted_at.isoformat() if order.submitted_at else None,
         "filled_at": order.filled_at.isoformat() if order.filled_at else None,
         "created_at": order.created_at.isoformat() if order.created_at else None,
         "decision_price": _json_prompt_scalar(order.decision_price),
@@ -355,8 +341,8 @@ def _order_payload(order: Order, trade: Optional[Trade]) -> Dict[str, Any]:
     }
 
 
-def _lineage_payload(ctx: _OrderContext) -> Dict[str, Any]:
-    out: Dict[str, Any] = {"trigger_type": ctx.trigger_type}
+def _lineage_payload(ctx: _OrderContext) -> dict[str, Any]:
+    out: dict[str, Any] = {"trigger_type": ctx.trigger_type}
     if ctx.pick is not None:
         p = ctx.pick
         out["pick"] = {
@@ -366,18 +352,10 @@ def _lineage_payload(ctx: _OrderContext) -> Dict[str, Any]:
             "conviction": p.conviction,
             "validator_pseudonym": p.validator_pseudonym,
             "reason_summary": p.reason_summary,
-            "suggested_entry": str(p.suggested_entry)
-            if p.suggested_entry is not None
-            else None,
-            "suggested_stop": str(p.suggested_stop)
-            if p.suggested_stop is not None
-            else None,
-            "suggested_target": str(p.suggested_target)
-            if p.suggested_target is not None
-            else None,
-            "published_at": p.published_at.isoformat()
-            if p.published_at
-            else None,
+            "suggested_entry": str(p.suggested_entry) if p.suggested_entry is not None else None,
+            "suggested_stop": str(p.suggested_stop) if p.suggested_stop is not None else None,
+            "suggested_target": str(p.suggested_target) if p.suggested_target is not None else None,
+            "published_at": p.published_at.isoformat() if p.published_at else None,
         }
     if ctx.signal is not None:
         s = ctx.signal
@@ -387,13 +365,9 @@ def _lineage_payload(ctx: _OrderContext) -> Dict[str, Any]:
             "signal_type": s.signal_type,
             "strategy_name": s.strategy_name,
             "signal_strength": s.signal_strength,
-            "trigger_price": str(s.trigger_price)
-            if s.trigger_price is not None
-            else None,
+            "trigger_price": str(s.trigger_price) if s.trigger_price is not None else None,
             "stop_loss": str(s.stop_loss) if s.stop_loss is not None else None,
-            "target_price": str(s.target_price)
-            if s.target_price is not None
-            else None,
+            "target_price": str(s.target_price) if s.target_price is not None else None,
             "rsi": s.rsi,
             "adx": s.adx,
             "atr_value": s.atr_value,
@@ -409,14 +383,12 @@ def _lineage_payload(ctx: _OrderContext) -> Dict[str, Any]:
     return out
 
 
-def _market_snapshot_payload(ctx: _OrderContext) -> Dict[str, Any]:
-    out: Dict[str, Any] = {}
+def _market_snapshot_payload(ctx: _OrderContext) -> dict[str, Any]:
+    out: dict[str, Any] = {}
     snap = ctx.market_snapshot
     if snap is not None:
         out["snapshot"] = {
-            "as_of_timestamp": snap.as_of_timestamp.isoformat()
-            if snap.as_of_timestamp
-            else None,
+            "as_of_timestamp": snap.as_of_timestamp.isoformat() if snap.as_of_timestamp else None,
             "current_price": snap.current_price,
             "stage_label": snap.stage_label,
             "rsi": snap.rsi,
@@ -434,9 +406,7 @@ def _market_snapshot_payload(ctx: _OrderContext) -> Dict[str, Any]:
     regime = ctx.market_regime
     if regime is not None:
         out["regime"] = {
-            "as_of_date": regime.as_of_date.isoformat()
-            if regime.as_of_date
-            else None,
+            "as_of_date": regime.as_of_date.isoformat() if regime.as_of_date else None,
             "regime_state": regime.regime_state,
             "composite_score": regime.composite_score,
             "regime_multiplier": regime.regime_multiplier,
@@ -445,7 +415,7 @@ def _market_snapshot_payload(ctx: _OrderContext) -> Dict[str, Any]:
     return out
 
 
-def _outcome_payload(ctx: _OrderContext) -> Dict[str, Any]:
+def _outcome_payload(ctx: _OrderContext) -> dict[str, Any]:
     """Compute outcome-so-far context.
 
     For a closed/realized order we surface ``realized_pnl``. For an open
@@ -455,7 +425,7 @@ def _outcome_payload(ctx: _OrderContext) -> Dict[str, Any]:
     """
     o = ctx.order
     snap = ctx.market_snapshot
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     realized_raw = getattr(o, "realized_pnl", None)
     if realized_raw is not None:
         out["status"] = "closed"
@@ -489,7 +459,7 @@ class _MalformedLLMOutput(ValueError):
     """Internal signal that the LLM payload didn't pass our schema gate."""
 
 
-def _validate_payload(raw: str) -> Dict[str, Any]:
+def _validate_payload(raw: str) -> dict[str, Any]:
     if not raw or not raw.strip():
         raise _MalformedLLMOutput("empty response")
     try:
@@ -565,7 +535,7 @@ def _build_provider() -> LLMProvider:
     )
     try:
         return OpenAIChatProvider(api_key=api_key, model=model)
-    except Exception as exc:  # noqa: BLE001 -- degrade, don't crash
+    except Exception as exc:
         logger.warning(
             "trade_decision_explainer: failed to construct OpenAIChatProvider "
             "(%s); falling back to StubLLMProvider.",
@@ -578,7 +548,7 @@ def _build_provider() -> LLMProvider:
         )
 
 
-_DETERMINISTIC_FALLBACK_PAYLOAD: Dict[str, Any] = {
+_DETERMINISTIC_FALLBACK_PAYLOAD: dict[str, Any] = {
     "trigger": "unknown",
     "headline": "Trade decision explainer unavailable",
     "rationale_bullets": [
@@ -615,16 +585,14 @@ class TradeDecisionExplainer:
 
     SCHEMA_VERSION = SCHEMA_VERSION
 
-    def __init__(self, provider: Optional[LLMProvider] = None) -> None:
+    def __init__(self, provider: LLMProvider | None = None) -> None:
         self.provider: LLMProvider = provider or _build_provider()
 
     # ------------------------------------------------------------------
     # Public
     # ------------------------------------------------------------------
 
-    def explain(
-        self, db: Session, *, order_id: int, user_id: int
-    ) -> ExplainerResult:
+    def explain(self, db: Session, *, order_id: int, user_id: int) -> ExplainerResult:
         """Return the (cached or freshly generated) explanation."""
         cached = _latest_explanation(db, order_id=order_id, user_id=user_id)
         if cached is not None:
@@ -633,9 +601,7 @@ class TradeDecisionExplainer:
             db, order_id=order_id, user_id=user_id, force_new_version=False
         )
 
-    def regenerate(
-        self, db: Session, *, order_id: int, user_id: int
-    ) -> ExplainerResult:
+    def regenerate(self, db: Session, *, order_id: int, user_id: int) -> ExplainerResult:
         """Force a new explanation row with ``version = previous + 1``."""
         return self._generate_and_persist(
             db, order_id=order_id, user_id=user_id, force_new_version=True
@@ -653,15 +619,9 @@ class TradeDecisionExplainer:
         user_id: int,
         force_new_version: bool,
     ) -> ExplainerResult:
-        order = (
-            db.query(Order)
-            .filter(Order.id == order_id, Order.user_id == user_id)
-            .one_or_none()
-        )
+        order = db.query(Order).filter(Order.id == order_id, Order.user_id == user_id).one_or_none()
         if order is None:
-            raise OrderNotFoundError(
-                f"Order id={order_id} not found for user_id={user_id}"
-            )
+            raise OrderNotFoundError(f"Order id={order_id} not found for user_id={user_id}")
 
         ctx = build_order_context(db, order=order)
         order_payload = _order_payload(ctx.order, ctx.trade)
@@ -693,7 +653,7 @@ class TradeDecisionExplainer:
             )
             payload, narrative = _fallback_for(ctx)
             is_fallback = True
-        except Exception as e:  # noqa: BLE001 -- belt-and-suspenders
+        except Exception as e:
             logger.exception(
                 "trade_decision_explainer: unexpected error for order=%s: %s",
                 order_id,
@@ -734,7 +694,7 @@ class TradeDecisionExplainer:
             is_fallback=is_fallback,
             payload_json=payload,
             narrative=narrative[:4000],
-            generated_at=datetime.now(timezone.utc),
+            generated_at=datetime.now(UTC),
         )
         db.add(row)
         db.flush()
@@ -758,7 +718,7 @@ class TradeDecisionExplainer:
 
 def _latest_explanation(
     db: Session, *, order_id: int, user_id: int
-) -> Optional[TradeDecisionExplanation]:
+) -> TradeDecisionExplanation | None:
     return (
         db.query(TradeDecisionExplanation)
         .filter(
@@ -782,9 +742,7 @@ def _max_version(db: Session, *, order_id: int) -> int:
     return int(row.version or 0)
 
 
-def _row_to_result(
-    row: TradeDecisionExplanation, *, reused: bool
-) -> ExplainerResult:
+def _row_to_result(row: TradeDecisionExplanation, *, reused: bool) -> ExplainerResult:
     return ExplainerResult(
         row_id=row.id,
         order_id=row.order_id,
@@ -804,7 +762,7 @@ def _row_to_result(
     )
 
 
-def explainer_result_to_dict(result: ExplainerResult) -> Dict[str, Any]:
+def explainer_result_to_dict(result: ExplainerResult) -> dict[str, Any]:
     """Centralized API serializer (Decimal -> str, datetime -> ISO)."""
     return {
         "row_id": result.row_id,
@@ -820,14 +778,12 @@ def explainer_result_to_dict(result: ExplainerResult) -> Dict[str, Any]:
         "completion_token_count": result.completion_token_count,
         "payload": result.payload,
         "narrative": result.narrative,
-        "generated_at": result.generated_at.isoformat()
-        if result.generated_at
-        else None,
+        "generated_at": result.generated_at.isoformat() if result.generated_at else None,
         "reused": result.reused,
     }
 
 
-def _fallback_for(ctx: _OrderContext) -> tuple[Dict[str, Any], str]:
+def _fallback_for(ctx: _OrderContext) -> tuple[dict[str, Any], str]:
     """Return a deterministic-fallback payload + narrative for ``ctx``.
 
     Used when the LLM provider failed or returned malformed output. The
@@ -835,9 +791,9 @@ def _fallback_for(ctx: _OrderContext) -> tuple[Dict[str, Any], str]:
     degradation -- the persisted row sets ``is_fallback=True`` so the UI
     can show a "degraded" badge (no silent fallback).
     """
-    payload: Dict[str, Any] = dict(_DETERMINISTIC_FALLBACK_PAYLOAD)
+    payload: dict[str, Any] = dict(_DETERMINISTIC_FALLBACK_PAYLOAD)
     payload["trigger"] = ctx.trigger_type
-    bullets: List[str] = []
+    bullets: list[str] = []
     bullets.append(
         f"Order {ctx.order.symbol} {ctx.order.side} qty="
         f"{ctx.order.quantity} (status={ctx.order.status})."
@@ -876,9 +832,9 @@ def _fallback_for(ctx: _OrderContext) -> tuple[Dict[str, Any], str]:
 
 
 __all__ = [
+    "SCHEMA_VERSION",
     "ExplainerResult",
     "OrderNotFoundError",
-    "SCHEMA_VERSION",
     "TradeDecisionExplainer",
     "TradeDecisionExplainerError",
     "build_order_context",

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import date
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
@@ -31,7 +31,7 @@ def _incr_narrative_timeout_counter() -> None:
         logger.warning("narrative: timeout counter redis incr failed: %s", e)
 
 
-def _serialize(row: PortfolioNarrative) -> Dict[str, Any]:
+def _serialize(row: PortfolioNarrative) -> dict[str, Any]:
     created = row.created_at
     if created.tzinfo is None:
         created_iso = created.isoformat() + "Z"
@@ -47,7 +47,7 @@ def _serialize(row: PortfolioNarrative) -> Dict[str, Any]:
     }
 
 
-def _fetch_latest_row_in_thread(user_id: int) -> Optional[PortfolioNarrative]:
+def _fetch_latest_row_in_thread(user_id: int) -> PortfolioNarrative | None:
     """Load latest narrative in a dedicated session (for asyncio.to_thread; sessions are not thread-safe)."""
     db = SessionLocal()
     try:
@@ -61,7 +61,7 @@ def _fetch_latest_row_in_thread(user_id: int) -> Optional[PortfolioNarrative]:
         db.close()
 
 
-def _pending_payload() -> Dict[str, Any]:
+def _pending_payload() -> dict[str, Any]:
     return {
         "narrative": None,
         "status": "pending",
@@ -78,7 +78,7 @@ async def get_latest_narrative(
             asyncio.to_thread(_fetch_latest_row_in_thread, user.id),
             timeout=_FETCH_LATEST_TIMEOUT_S,
         )
-    except asyncio.TimeoutError:
+    except TimeoutError:
         _incr_narrative_timeout_counter()
         logger.warning(
             "narrative latest fetch timed out user_id=%s timeout_s=%s",

@@ -7,8 +7,8 @@ AAII and Fear & Greed are stubbed until a free feed is wired; see ``_fetch_aaii`
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -25,17 +25,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/sentiment", tags=["sentiment"])
 
 
-def _fetch_aaii() -> Optional[Dict[str, float]]:
+def _fetch_aaii() -> dict[str, float] | None:
     # TODO(c6-data): wire real AAII/F&G feed
     return None
 
 
-def _fetch_fear_greed() -> Optional[Dict[str, Any]]:
+def _fetch_fear_greed() -> dict[str, Any] | None:
     # TODO(c6-data): wire real AAII/F&G feed
     return None
 
 
-def _vix_from_snapshot(db: Session) -> Optional[float]:
+def _vix_from_snapshot(db: Session) -> float | None:
     """Latest ^VIX spot from market_snapshot (technical_snapshot)."""
     stmt = (
         select(MarketSnapshot.current_price, MarketSnapshot.as_of_timestamp)
@@ -58,37 +58,37 @@ def _vix_from_snapshot(db: Session) -> Optional[float]:
     return float(price)
 
 
-def _latest_regime_row(db: Session) -> Optional[MarketRegime]:
+def _latest_regime_row(db: Session) -> MarketRegime | None:
     stmt = select(MarketRegime).order_by(MarketRegime.as_of_date.desc()).limit(1)
     return db.execute(stmt).scalar_one_or_none()
 
 
 def _iso_asof(
-    regime: Optional[MarketRegime],
+    regime: MarketRegime | None,
 ) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     candidates: list[datetime] = [now]
     if regime and regime.as_of_date is not None:
         ad = regime.as_of_date
         if ad.tzinfo is None:
-            ad = ad.replace(tzinfo=timezone.utc)
+            ad = ad.replace(tzinfo=UTC)
         else:
-            ad = ad.astimezone(timezone.utc)
+            ad = ad.astimezone(UTC)
         candidates.append(ad)
     latest = max(candidates)
     return latest.isoformat()
 
 
-def build_sentiment_composite_payload(db: Session) -> Dict[str, Any]:
+def build_sentiment_composite_payload(db: Session) -> dict[str, Any]:
     """Assemble the composite JSON body (used by the route and tests)."""
     regime = _latest_regime_row(db)
-    vix: Optional[float] = None
+    vix: float | None = None
     if regime and regime.vix_spot is not None:
         vix = float(regime.vix_spot)
     if vix is None:
         vix = _vix_from_snapshot(db)
 
-    regime_out: Optional[Dict[str, Any]] = None
+    regime_out: dict[str, Any] | None = None
     if regime is not None and regime.regime_state:
         comp = regime.composite_score
         regime_out = {
@@ -114,7 +114,7 @@ async def get_sentiment_composite(
     request: Request,
     db: Session = Depends(get_db),
     _viewer: User = Depends(get_market_data_viewer),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     try:
         return build_sentiment_composite_payload(db)
     except Exception as e:

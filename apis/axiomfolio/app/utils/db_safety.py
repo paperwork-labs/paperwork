@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from sqlalchemy.engine.url import make_url
 
@@ -17,7 +16,7 @@ def check_test_database_url(
     *,
     expected_host: str = "postgres_test",
     required_db_suffix: str = "_test",
-    required_user: Optional[str] = None,
+    required_user: str | None = None,
 ) -> DbUrlCheck:
     """Validate that a DB URL is *unambiguously* a test DB URL.
 
@@ -51,5 +50,3 @@ def check_test_database_url(
             return DbUrlCheck(False, f"user_mismatch:{u.username}!= {required_user}")
 
     return DbUrlCheck(True, "ok")
-
-

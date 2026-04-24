@@ -31,10 +31,9 @@ Revises: 0040
 Create Date: 2026-04-19
 """
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 from sqlalchemy.dialects import postgresql
-
 
 revision = "0049"
 down_revision = "0047"
@@ -105,9 +104,7 @@ def upgrade() -> None:
             nullable=False,
         ),
     )
-    op.create_index(
-        "ix_provider_quorum_log_symbol", "provider_quorum_log", ["symbol"]
-    )
+    op.create_index("ix_provider_quorum_log_symbol", "provider_quorum_log", ["symbol"])
     op.create_index(
         "ix_provider_quorum_log_field_name",
         "provider_quorum_log",
@@ -242,9 +239,5 @@ def downgrade() -> None:
     op.drop_table("provider_quorum_log")
 
     bind = op.get_bind()
-    postgresql.ENUM(name=QUORUM_ACTION_ENUM, create_type=False).drop(
-        bind, checkfirst=True
-    )
-    postgresql.ENUM(name=QUORUM_STATUS_ENUM, create_type=False).drop(
-        bind, checkfirst=True
-    )
+    postgresql.ENUM(name=QUORUM_ACTION_ENUM, create_type=False).drop(bind, checkfirst=True)
+    postgresql.ENUM(name=QUORUM_STATUS_ENUM, create_type=False).drop(bind, checkfirst=True)

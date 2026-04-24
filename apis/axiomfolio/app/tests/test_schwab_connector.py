@@ -1,5 +1,5 @@
 import asyncio
-from types import SimpleNamespace
+
 from app.services.aggregator.schwab_connector import SchwabConnector
 
 
@@ -55,5 +55,3 @@ def test_exchange_code_and_refresh_tokens(monkeypatch):
     assert tokens["access_token"] == "at" and tokens["refresh_token"] == "rt"
     tokens2 = asyncio.get_event_loop().run_until_complete(conn.refresh_tokens("rt"))
     assert tokens2["access_token"] == "at2" and tokens2["refresh_token"] == "rt2"
-
-

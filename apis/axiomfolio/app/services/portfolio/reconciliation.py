@@ -5,12 +5,12 @@ and generates discrepancy alerts.
 
 medallion: silver
 """
+
 import logging
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -36,8 +36,8 @@ class PositionDiscrepancy:
 
     symbol: str
     discrepancy_type: DiscrepancyType
-    internal_value: Optional[str]
-    broker_value: Optional[str]
+    internal_value: str | None
+    broker_value: str | None
     account_id: int
     detected_at: datetime
     severity: str  # "low", "medium", "high"
@@ -78,7 +78,7 @@ class ReconciliationService:
             return []
 
         discrepancies = []
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Check internal positions against broker
         for symbol, internal_pos in internal_positions.items():
@@ -175,7 +175,7 @@ class ReconciliationService:
             for p in positions
         }
 
-    def _fetch_broker_positions(self, account: BrokerAccount) -> Optional[dict[str, dict]]:
+    def _fetch_broker_positions(self, account: BrokerAccount) -> dict[str, dict] | None:
         """Fetch positions from broker API.
 
         Returns None when the broker adapter is not implemented yet (skip reconcile).
@@ -187,7 +187,7 @@ class ReconciliationService:
         logger.warning("Broker %s not supported for reconciliation", account.broker)
         return {}
 
-    def _fetch_ibkr_positions(self, account: BrokerAccount) -> Optional[dict[str, dict]]:
+    def _fetch_ibkr_positions(self, account: BrokerAccount) -> dict[str, dict] | None:
         """Fetch positions from IBKR."""
         # This would integrate with the IBKR client
         # Return None until implemented — empty dict would mark all internal rows MISSING_IN_BROKER

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, List
+from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
@@ -30,16 +30,20 @@ def _serialize_public(c: Candidate) -> dict[str, Any]:
     }
 
 
-def _preview_candidates(db: Session, limit: int) -> List[Candidate]:
+def _preview_candidates(db: Session, limit: int) -> list[Candidate]:
     """Latest published row per ``generator_name`` (source), newest first.
 
     Uses ``row_number()`` so we return up to ``limit`` distinct sources without
     scanning an arbitrary row cap in Python.
     """
-    row_num = func.row_number().over(
-        partition_by=Candidate.generator_name,
-        order_by=(Candidate.published_at.desc(), Candidate.id.desc()),
-    ).label("rn")
+    row_num = (
+        func.row_number()
+        .over(
+            partition_by=Candidate.generator_name,
+            order_by=(Candidate.published_at.desc(), Candidate.id.desc()),
+        )
+        .label("rn")
+    )
     ranked = (
         select(Candidate.id, row_num)
         .where(

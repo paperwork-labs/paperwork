@@ -5,8 +5,9 @@ medallion: ops
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -14,7 +15,7 @@ from app.models.broker_account import BrokerAccount, BrokerType, SyncStatus
 from app.models.broker_oauth_connection import BrokerOAuthConnection, OAuthConnectionStatus
 
 # Canonical broker slugs shown in the connections UI (order preserved).
-CONNECTION_HEALTH_BROKERS: Tuple[str, ...] = (
+CONNECTION_HEALTH_BROKERS: tuple[str, ...] = (
     "ibkr",
     "schwab",
     "tastytrade",
@@ -23,7 +24,7 @@ CONNECTION_HEALTH_BROKERS: Tuple[str, ...] = (
     "coinbase",
 )
 
-_BROKER_TYPES_BY_SLUG: Dict[str, Tuple[BrokerType, ...]] = {
+_BROKER_TYPES_BY_SLUG: dict[str, tuple[BrokerType, ...]] = {
     "ibkr": (BrokerType.IBKR,),
     "schwab": (BrokerType.SCHWAB,),
     "tastytrade": (BrokerType.TASTYTRADE,),
@@ -32,7 +33,7 @@ _BROKER_TYPES_BY_SLUG: Dict[str, Tuple[BrokerType, ...]] = {
     "coinbase": (BrokerType.COINBASE,),
 }
 
-_OAUTH_BROKER_KEYS_BY_SLUG: Dict[str, Tuple[str, ...]] = {
+_OAUTH_BROKER_KEYS_BY_SLUG: dict[str, tuple[str, ...]] = {
     "ibkr": ("ibkr",),
     "schwab": ("schwab",),
     "tastytrade": (),
@@ -60,33 +61,29 @@ _BAD_SYNC = frozenset(
 )
 
 
-def _max_dt(*values: Optional[datetime]) -> Optional[datetime]:
-    found: List[datetime] = [v for v in values if v is not None]
+def _max_dt(*values: datetime | None) -> datetime | None:
+    found: list[datetime] = [v for v in values if v is not None]
     if not found:
         return None
     return max(found)
 
 
-def build_connections_health(db: Session, user_id: int) -> Dict[str, Any]:
+def build_connections_health(db: Session, user_id: int) -> dict[str, Any]:
     """Return a JSON-serializable health payload scoped to ``user_id``."""
 
     accounts: Sequence[BrokerAccount] = (
-        db.query(BrokerAccount)
-        .filter(BrokerAccount.user_id == user_id)
-        .all()
+        db.query(BrokerAccount).filter(BrokerAccount.user_id == user_id).all()
     )
     oauth_rows: Sequence[BrokerOAuthConnection] = (
-        db.query(BrokerOAuthConnection)
-        .filter(BrokerOAuthConnection.user_id == user_id)
-        .all()
+        db.query(BrokerOAuthConnection).filter(BrokerOAuthConnection.user_id == user_id).all()
     )
 
-    oauth_by_key: Dict[str, List[BrokerOAuthConnection]] = {}
+    oauth_by_key: dict[str, list[BrokerOAuthConnection]] = {}
     for row in oauth_rows:
         oauth_by_key.setdefault(row.broker, []).append(row)
 
-    global_last_sync: Optional[datetime] = None
-    by_broker: List[Dict[str, Any]] = []
+    global_last_sync: datetime | None = None
+    by_broker: list[dict[str, Any]] = []
     connected_slugs = 0
 
     for slug in CONNECTION_HEALTH_BROKERS:
@@ -95,13 +92,13 @@ def build_connections_health(db: Session, user_id: int) -> Dict[str, Any]:
         has_accounts = len(slug_accounts) > 0
 
         oauth_keys = _OAUTH_BROKER_KEYS_BY_SLUG.get(slug, ())
-        slug_oauth: List[BrokerOAuthConnection] = []
+        slug_oauth: list[BrokerOAuthConnection] = []
         for key in oauth_keys:
             slug_oauth.extend(oauth_by_key.get(key, []))
 
         last_sync = _max_dt(*[a.last_successful_sync for a in slug_accounts])
 
-        err_msg: Optional[str] = None
+        err_msg: str | None = None
         for a in slug_accounts:
             if a.sync_error_message:
                 err_msg = a.sync_error_message

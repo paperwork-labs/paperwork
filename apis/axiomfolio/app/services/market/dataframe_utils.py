@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Sequence
+from collections.abc import Sequence
 
 import pandas as pd
 
@@ -44,12 +44,12 @@ def price_data_rows_to_dataframe(
         if isinstance(r, (tuple, list)):
             date, open_p, high_p, low_p, close_p, volume = r
         else:
-            date = getattr(r, "date")
-            open_p = getattr(r, "open_price")
-            high_p = getattr(r, "high_price")
-            low_p = getattr(r, "low_price")
-            close_p = getattr(r, "close_price")
-            volume = getattr(r, "volume")
+            date = r.date
+            open_p = r.open_price
+            high_p = r.high_price
+            low_p = r.low_price
+            close_p = r.close_price
+            volume = r.volume
         close_val = float(close_p or 0)
         for col_name, raw in (("Open", open_p), ("High", high_p), ("Low", low_p)):
             if raw is None and col_name not in warned_missing:

@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -27,20 +27,18 @@ class BrokerPosition:
     symbol: str
     quantity: Decimal
     average_cost: Decimal
-    current_price: Optional[Decimal] = None
-    market_value: Optional[Decimal] = None
-    unrealized_pnl: Optional[Decimal] = None
-    unrealized_pnl_pct: Optional[float] = None
+    current_price: Decimal | None = None
+    market_value: Decimal | None = None
+    unrealized_pnl: Decimal | None = None
+    unrealized_pnl_pct: float | None = None
 
-    def to_dict(self, account_id: str) -> Dict[str, Any]:
+    def to_dict(self, account_id: str) -> dict[str, Any]:
         """Shape aligned with IBKR-style position dicts for sync pipelines."""
         return {
             "account": account_id,
             "symbol": self.symbol,
             "position": float(self.quantity),
-            "market_value": float(self.market_value)
-            if self.market_value is not None
-            else 0.0,
+            "market_value": float(self.market_value) if self.market_value is not None else 0.0,
             "avg_cost": float(self.average_cost),
             "unrealized_pnl": float(self.unrealized_pnl)
             if self.unrealized_pnl is not None
@@ -57,17 +55,17 @@ class BrokerOrder:
     """Order snapshot (adapter-neutral)."""
 
     order_id: str
-    symbol: Optional[str]
+    symbol: str | None
     side: str
     quantity: Decimal
     order_type: str
     status: str
     filled_quantity: Decimal
-    filled_price: Optional[Decimal] = None
-    submitted_at: Optional[datetime] = None
-    filled_at: Optional[datetime] = None
+    filled_price: Decimal | None = None
+    submitted_at: datetime | None = None
+    filled_at: datetime | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "order_id": self.order_id,
             "symbol": self.symbol,
@@ -91,7 +89,7 @@ class BrokerBalance:
     buying_power: Decimal
     margin_used: Decimal = Decimal("0")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "total_value": float(self.total_value),
             "cash": float(self.cash),
@@ -109,8 +107,8 @@ class OrderRequest:
     side: str
     quantity: Decimal
     order_type: str
-    limit_price: Optional[Decimal] = None
-    stop_price: Optional[Decimal] = None
+    limit_price: Decimal | None = None
+    stop_price: Decimal | None = None
 
 
 @dataclass
@@ -118,24 +116,23 @@ class OrderResult:
     """Outcome of a submit attempt via adapter-layer ``place_order``."""
 
     success: bool
-    order_id: Optional[str] = None
+    order_id: str | None = None
     message: str = ""
 
 
 class BrokerAdapter(ABC):
-
     @abstractmethod
     async def connect(self, **kwargs) -> bool:
         """Establish connection to the broker. Returns True on success."""
         ...
 
     @abstractmethod
-    async def get_positions(self, account_id: str) -> List[Dict]:
+    async def get_positions(self, account_id: str) -> list[dict]:
         """Return current positions for the given account."""
         ...
 
     @abstractmethod
-    async def get_balances(self, account_id: str) -> Dict:
+    async def get_balances(self, account_id: str) -> dict:
         """Return account balance summary."""
         ...
 
@@ -146,20 +143,20 @@ class BrokerAdapter(ABC):
         action: str,
         quantity: float,
         order_type: str,
-        limit_price: Optional[float] = None,
-        stop_price: Optional[float] = None,
+        limit_price: float | None = None,
+        stop_price: float | None = None,
         **kwargs,
-    ) -> Dict:
+    ) -> dict:
         """Submit an order to the broker. Returns dict with broker_order_id + status."""
         ...
 
     @abstractmethod
-    async def cancel_order(self, broker_order_id: str) -> Dict:
+    async def cancel_order(self, broker_order_id: str) -> dict:
         """Cancel a pending order by its broker-assigned ID."""
         ...
 
     @abstractmethod
-    async def get_order_status(self, broker_order_id: str) -> Dict:
+    async def get_order_status(self, broker_order_id: str) -> dict:
         """Query current status of a placed order."""
         ...
 

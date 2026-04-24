@@ -1,6 +1,5 @@
 """Tests for RegimeMonitor."""
 
-from datetime import datetime
 from unittest.mock import MagicMock
 
 from app.models.market_data import MarketRegime

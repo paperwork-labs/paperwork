@@ -20,7 +20,6 @@ import pytest
 from app.config import settings
 
 try:
-    from app.services.portfolio.plaid import client as plaid_client_module
     from app.services.portfolio.plaid.client import (
         PlaidAPIError,
         PlaidClient,
@@ -28,6 +27,7 @@ try:
         _extract_plaid_error,
         _resolve_products,
     )
+
     AVAILABLE = True
 except Exception:  # pragma: no cover - skip when plaid sdk is not installed
     AVAILABLE = False

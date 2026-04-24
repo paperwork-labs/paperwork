@@ -13,22 +13,28 @@ Administrative endpoints for market data operations:
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Dict, Any, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
-from sqlalchemy.orm import Session
-from sqlalchemy import func, distinct
 from pydantic import BaseModel
+from sqlalchemy import distinct, func
+from sqlalchemy.orm import Session
 
+from app.api.dependencies import get_admin_user
+from app.api.rate_limit import limiter
+from app.api.routes.utils import serialize_job_runs
+from app.config import settings
 from app.database import get_db
-from app.models.user import User
 from app.models.market_data import (
+    JobRun,
     MarketSnapshot,
     MarketSnapshotHistory,
     PriceData,
-    JobRun,
 )
+from app.models.user import User
+from app.services.brain.webhook_client import brain_webhook
+from app.services.market.admin_health_service import AdminHealthService
 from app.services.market.market_data_service import (
     coverage_analytics,
     infra,
@@ -36,12 +42,6 @@ from app.services.market.market_data_service import (
     stage_quality,
 )
 from app.services.market.universe import tracked_symbols_async
-from app.services.market.admin_health_service import AdminHealthService
-from app.services.brain.webhook_client import brain_webhook
-from app.api.dependencies import get_admin_user
-from app.api.rate_limit import limiter
-from app.api.routes.utils import serialize_job_runs
-from app.config import settings
 from app.tasks.market.backfill import (
     daily_bars,
     daily_since,
@@ -55,7 +55,8 @@ from app.tasks.market.history import record_daily, snapshot_last_n_days
 from app.tasks.market.indicators import recompute_universe
 from app.tasks.market.intraday import bars_5m_last_n_days, bars_5m_symbols
 from app.tasks.market.maintenance import prune_old_bars, recover_jobs_impl
-from ._shared import enqueue_task, TASK_ACTIONS
+
+from ._shared import TASK_ACTIONS, enqueue_task
 
 logger = logging.getLogger(__name__)
 
@@ -65,26 +66,28 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 def _default_history_start() -> str:
     """Derive the default since_date from HISTORY_TARGET_YEARS."""
     from datetime import date, timedelta
+
     return (date.today() - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)).isoformat()
 
 
 # ── Pydantic models for auto-fix ──
 
+
 class AutoFixPlanItem(BaseModel):
     task: str
     reason: str
-    task_id: Optional[str] = None
+    task_id: str | None = None
     status: str = "pending"
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
-    duration_seconds: Optional[float] = None
-    error: Optional[str] = None
+    started_at: str | None = None
+    finished_at: str | None = None
+    duration_seconds: float | None = None
+    error: str | None = None
 
 
 class AutoFixResponse(BaseModel):
     status: str
-    job_id: Optional[str] = None
-    plan: List[AutoFixPlanItem] = []
+    job_id: str | None = None
+    plan: list[AutoFixPlanItem] = []
     estimated_minutes: int = 0
     message: str = ""
 
@@ -92,22 +95,23 @@ class AutoFixResponse(BaseModel):
 class AutoFixStatusResponse(BaseModel):
     job_id: str
     status: str
-    plan: List[AutoFixPlanItem] = []
+    plan: list[AutoFixPlanItem] = []
     completed_count: int = 0
     total_count: int = 0
-    current_task: Optional[str] = None
-    error: Optional[str] = None
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
+    current_task: str | None = None
+    error: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
 
 
 # ── Health endpoints ──
+
 
 @router.get("/health")
 async def admin_composite_health(
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Composite health check across coverage, stage quality, jobs, and audit."""
     svc = AdminHealthService()
     return svc.get_composite_health(db)
@@ -117,7 +121,7 @@ async def admin_composite_health(
 async def get_pre_market_readiness(
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Check system readiness for next trading session."""
     svc = AdminHealthService()
     return svc.check_pre_market_readiness(db)
@@ -127,18 +131,14 @@ async def get_pre_market_readiness(
 async def admin_sanity_coverage(
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Quick DB sanity checks for coverage (no Redis cache dependence)."""
     r = await infra._get_redis()
     tracked = await tracked_symbols_async(db, redis_async=r)
     tracked_set = set(tracked)
     tracked_total = len(tracked_set)
 
-    latest_daily_dt = (
-        db.query(func.max(PriceData.date))
-        .filter(PriceData.interval == "1d")
-        .scalar()
-    )
+    latest_daily_dt = db.query(func.max(PriceData.date)).filter(PriceData.interval == "1d").scalar()
     latest_daily_date = None
     if latest_daily_dt:
         d0 = latest_daily_dt.date() if hasattr(latest_daily_dt, "date") else latest_daily_dt
@@ -205,17 +205,20 @@ async def admin_sanity_coverage(
 
 # ── Backfill endpoints ──
 
+
 @router.post("/backfill/snapshots/history")
 @limiter.limit("10/minute")
 async def admin_backfill_snapshot_history_last_n_days(
     request: Request,
     days: int = Query(200, ge=1, le=3000),
     since_date: str | None = Query(None, description="Optional YYYY-MM-DD"),
-    symbols: str | None = Query(None, description="Comma-separated symbols for targeted fill (e.g. 'QQQ,IWM,RSP')"),
+    symbols: str | None = Query(
+        None, description="Comma-separated symbols for targeted fill (e.g. 'QQQ,IWM,RSP')"
+    ),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Backfill MarketSnapshotHistory for the last N trading days.
-    
+
     If symbols is provided, only those symbols are processed (much faster).
     """
     symbol_list = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else None
@@ -226,12 +229,16 @@ async def admin_backfill_snapshot_history_last_n_days(
 @limiter.limit("10/minute")
 async def admin_backfill_daily_since_date(
     request: Request,
-    since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
+    since_date: str | None = Query(
+        None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"
+    ),
     batch_size: int = Query(25, ge=1, le=200),
-    index: Optional[str] = Query(None, description="DOW30, NASDAQ100, SP500, or RUSSELL2000"),
-    confirm_bandwidth: bool = Query(False, description="Must be true to confirm FMP bandwidth spend"),
+    index: str | None = Query(None, description="DOW30, NASDAQ100, SP500, or RUSSELL2000"),
+    confirm_bandwidth: bool = Query(
+        False, description="Must be true to confirm FMP bandwidth spend"
+    ),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Deep daily OHLCV backfill since a given date.
 
     WARNING: Downloads full history from FMP (bypasses DB cache). Consumes
@@ -243,13 +250,13 @@ async def admin_backfill_daily_since_date(
         raise HTTPException(
             status_code=403,
             detail="Deep backfill is disabled (ALLOW_DEEP_BACKFILL=False). "
-                   "This setting protects against accidental FMP bandwidth exhaustion.",
+            "This setting protects against accidental FMP bandwidth exhaustion.",
         )
     if not confirm_bandwidth:
         raise HTTPException(
             status_code=400,
             detail="This endpoint downloads full OHLCV from FMP and consumes significant bandwidth. "
-                   "Pass confirm_bandwidth=true to proceed.",
+            "Pass confirm_bandwidth=true to proceed.",
         )
     effective_since = since_date or _default_history_start()
     return enqueue_task(daily_since, effective_since, batch_size, index=index)
@@ -259,12 +266,16 @@ async def admin_backfill_daily_since_date(
 @limiter.limit("10/minute")
 async def admin_backfill_since_date(
     request: Request,
-    since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
+    since_date: str | None = Query(
+        None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"
+    ),
     daily_batch_size: int = Query(25, ge=1, le=200),
     history_batch_size: int = Query(50, ge=1, le=200),
-    confirm_bandwidth: bool = Query(False, description="Must be true to confirm FMP bandwidth spend"),
+    confirm_bandwidth: bool = Query(
+        False, description="Must be true to confirm FMP bandwidth spend"
+    ),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Backfill daily bars + indicators + snapshot history since a given date.
 
     WARNING: Downloads full history from FMP (bypasses DB cache). Consumes
@@ -274,13 +285,13 @@ async def admin_backfill_since_date(
         raise HTTPException(
             status_code=403,
             detail="Deep backfill is disabled (ALLOW_DEEP_BACKFILL=False). "
-                   "This setting protects against accidental FMP bandwidth exhaustion.",
+            "This setting protects against accidental FMP bandwidth exhaustion.",
         )
     if not confirm_bandwidth:
         raise HTTPException(
             status_code=400,
             detail="This endpoint downloads full OHLCV from FMP and consumes significant bandwidth. "
-                   "Pass confirm_bandwidth=true to proceed.",
+            "Pass confirm_bandwidth=true to proceed.",
         )
     effective_since = since_date or _default_history_start()
     return enqueue_task(
@@ -297,7 +308,7 @@ async def admin_backfill_daily_last_bars(
     request: Request,
     days: int = Query(200, ge=30, le=3000),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Backfill last N daily bars for the tracked universe."""
     return enqueue_task(daily_bars, days=days)
 
@@ -305,7 +316,7 @@ async def admin_backfill_daily_last_bars(
 @router.get("/backfill/5m/toggle")
 async def get_backfill_5m_toggle(
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {"backfill_5m_enabled": await infra.is_backfill_5m_enabled_async()}
 
 
@@ -315,7 +326,7 @@ async def set_backfill_5m_toggle(
     request: Request,
     enabled: bool = Body(..., embed=True),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     try:
         r = await infra._get_redis()
         await r.set("coverage:backfill_5m_enabled", "true" if enabled else "false")
@@ -331,17 +342,23 @@ async def backfill_stale_daily(
     request: Request,
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Backfill daily bars for symbols currently marked stale (>48h) in coverage."""
     try:
         r = await infra._get_redis()
         tracked = await tracked_symbols_async(db, redis_async=r)
         tracked = sorted({str(s).upper() for s in (tracked or []) if s})
         if not tracked:
-            tracked = sorted({str(s).upper() for (s,) in db.query(PriceData.symbol).distinct().all() if s})
+            tracked = sorted(
+                {str(s).upper() for (s,) in db.query(PriceData.symbol).distinct().all() if s}
+            )
 
         _, stale_full = coverage_analytics._compute_interval_coverage_for_symbols(
-            db, symbols=tracked, interval="1d", now_utc=datetime.now(timezone.utc), return_full_stale=True,
+            db,
+            symbols=tracked,
+            interval="1d",
+            now_utc=datetime.now(UTC),
+            return_full_stale=True,
         )
         stale_candidates = len(stale_full or [])
         enq = enqueue_task(stale_daily)
@@ -356,7 +373,7 @@ async def backfill_stale_daily(
 async def admin_refresh_coverage(
     request: Request,
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Trigger the coverage health monitor to refresh Redis cache."""
     return enqueue_task(health_check)
 
@@ -368,7 +385,7 @@ async def admin_backfill_daily_tracked(
     history_days: int | None = Query(None, ge=1, le=300),
     history_batch_size: int = Query(25, ge=1, le=200),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run the guided daily coverage backfill chain for the tracked universe."""
     return enqueue_task(
         daily_bootstrap,
@@ -381,11 +398,11 @@ async def admin_backfill_daily_tracked(
 async def admin_backfill_daily_tracked_preview(
     history_days: int | None = Query(None, ge=1, le=300),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     from app.tasks.utils.task_utils import _resolve_history_days
 
     resolved_days = _resolve_history_days(history_days)
-    end_date = datetime.now(timezone.utc).date()
+    end_date = datetime.now(UTC).date()
     start_date = end_date - timedelta(days=resolved_days)
     return {
         "requested_history_days": history_days,
@@ -401,21 +418,24 @@ async def post_backfill_5m(
     n_days: int = Query(5, ge=1, le=60),
     batch_size: int = Query(50, ge=10, le=200),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return enqueue_task(bars_5m_last_n_days, n_days=n_days, batch_size=batch_size)
 
 
 # ── Indicators and snapshots ──
 
+
 @router.post("/recompute/since-date")
 @limiter.limit("10/minute")
 async def admin_recompute_since_date(
     request: Request,
-    since_date: Optional[str] = Query(None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"),
+    since_date: str | None = Query(
+        None, description="YYYY-MM-DD; omit for HISTORY_TARGET_YEARS"
+    ),
     batch_size: int = Query(50, ge=10, le=200),
     history_batch_size: int = Query(25, ge=1, le=200),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Recompute indicators + rebuild snapshot history from existing DB data.
 
     Safe operation — never fetches from external market data providers.
@@ -435,7 +455,7 @@ async def post_recompute_universe(
     request: Request,
     batch_size: int = Query(50, ge=10, le=200),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return enqueue_task(recompute_universe, batch_size)
 
 
@@ -443,9 +463,9 @@ async def post_recompute_universe(
 @limiter.limit("10/minute")
 async def admin_record_history(
     request: Request,
-    symbols: List[str] | None = Query(None),
+    symbols: list[str] | None = Query(None),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return enqueue_task(record_daily, symbols=symbols)
 
 
@@ -457,7 +477,7 @@ async def admin_send_snapshot_digest_to_discord(
     limit: int = Query(12, ge=1, le=25),
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Send a compact MarketSnapshot digest to Brain (path name kept for API compatibility)."""
     if not brain_webhook.webhook_url:
         raise HTTPException(status_code=400, detail="BRAIN_WEBHOOK_URL not configured")
@@ -471,7 +491,9 @@ async def admin_send_snapshot_digest_to_discord(
     sym_set = set(tracked)
     rows = (
         db.query(MarketSnapshot)
-        .filter(MarketSnapshot.analysis_type == "technical_snapshot", MarketSnapshot.symbol.in_(sym_set))
+        .filter(
+            MarketSnapshot.analysis_type == "technical_snapshot", MarketSnapshot.symbol.in_(sym_set)
+        )
         .order_by(MarketSnapshot.symbol.asc(), MarketSnapshot.analysis_timestamp.desc())
         .distinct(MarketSnapshot.symbol)
         .all()
@@ -480,7 +502,7 @@ async def admin_send_snapshot_digest_to_discord(
     total = len(tracked)
     have = len(rows)
 
-    stage_counts: Dict[str, int] = {}
+    stage_counts: dict[str, int] = {}
     for r in rows:
         lbl = getattr(r, "stage_label", None) or "UNKNOWN"
         stage_counts[str(lbl)] = stage_counts.get(str(lbl), 0) + 1
@@ -493,8 +515,8 @@ async def admin_send_snapshot_digest_to_discord(
         except Exception:
             return float("-inf")
 
-    top_rs = sorted(rows, key=rs_val, reverse=True)[:int(limit)]
-    top_lines: List[str] = []
+    top_rs = sorted(rows, key=rs_val, reverse=True)[: int(limit)]
+    top_lines: list[str] = []
     for r in top_rs:
         sym = getattr(r, "symbol", "")
         rs = getattr(r, "rs_mansfield_pct", None)
@@ -505,7 +527,7 @@ async def admin_send_snapshot_digest_to_discord(
             rs_fmt = "-"
         top_lines.append(f"- {sym}: RS {rs_fmt} - Stage {stage}")
 
-    now = datetime.now(timezone.utc).replace(microsecond=0).isoformat() + "Z"
+    now = datetime.now(UTC).replace(microsecond=0).isoformat() + "Z"
     lines = [f"AxiomFolio - MarketSnapshot digest ({now})", f"Universe: {have}/{total} symbols"]
     if stage_counts_sorted:
         lines.append("Stage distribution:")
@@ -529,6 +551,7 @@ async def admin_send_snapshot_digest_to_discord(
 
 # ── DB history and maintenance ──
 
+
 @router.get("/db/history")
 async def get_db_history(
     symbol: str = Query(...),
@@ -538,21 +561,30 @@ async def get_db_history(
     limit: int | None = Query(None, ge=1, le=20000),
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Return OHLCV bars for a symbol from price_data."""
     try:
         parse = lambda s: datetime.fromisoformat(s) if s else None
-        df = price_bars.get_db_history(db, symbol=symbol.upper(), interval=interval, start=parse(start), end=parse(end), limit=limit)
+        df = price_bars.get_db_history(
+            db,
+            symbol=symbol.upper(),
+            interval=interval,
+            start=parse(start),
+            end=parse(end),
+            limit=limit,
+        )
         bars = []
         for ts, row in df.iterrows():
-            bars.append({
-                "time": ts.isoformat() if hasattr(ts, "isoformat") else str(ts),
-                "open": float(row.get("Open", 0) or 0),
-                "high": float(row.get("High", 0) or 0),
-                "low": float(row.get("Low", 0) or 0),
-                "close": float(row.get("Close", 0) or 0),
-                "volume": float(row.get("Volume", 0) or 0),
-            })
+            bars.append(
+                {
+                    "time": ts.isoformat() if hasattr(ts, "isoformat") else str(ts),
+                    "open": float(row.get("Open", 0) or 0),
+                    "high": float(row.get("High", 0) or 0),
+                    "low": float(row.get("Low", 0) or 0),
+                    "close": float(row.get("Close", 0) or 0),
+                    "volume": float(row.get("Volume", 0) or 0),
+                }
+            )
         return {"symbol": symbol.upper(), "interval": interval, "bars": bars}
     except Exception as e:
         logger.exception("get_db_history failed: %s", e)
@@ -565,7 +597,7 @@ async def post_retention_enforce(
     request: Request,
     max_days_5m: int = Query(90, ge=7, le=365),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return enqueue_task(prune_old_bars, max_days_5m=max_days_5m)
 
 
@@ -574,10 +606,10 @@ async def post_retention_enforce(
 async def admin_repair_stage_history(
     request: Request,
     days: int = Query(120, ge=7, le=3650),
-    symbol: Optional[str] = Query(None),
+    symbol: str | None = Query(None),
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return stage_quality.repair_stage_history_window(db, days=days, symbol=symbol)
 
 
@@ -586,9 +618,9 @@ async def admin_repair_stage_history(
 async def admin_repair_stage_history_async(
     request: Request,
     days: int = Query(3650, ge=7, le=3650),
-    symbol: Optional[str] = Query(None),
+    symbol: str | None = Query(None),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Queue async stage repair — use for large day windows that timeout synchronously."""
     from app.tasks.market.history import repair_stage_history_async
 
@@ -600,7 +632,7 @@ async def admin_repair_stage_history_async(
 async def admin_fill_missing_fundamentals(
     request: Request,
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return enqueue_task(fill_missing)
 
 
@@ -609,7 +641,7 @@ async def admin_fill_missing_fundamentals(
 async def admin_reconciliation_spot_check(
     request: Request,
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Trigger OHLCV spot-check reconciliation."""
     from app.tasks.celery_app import celery_app
 
@@ -619,15 +651,16 @@ async def admin_reconciliation_spot_check(
 
 # ── Job management ──
 
+
 @router.get("/jobs")
 async def admin_get_jobs(
-    limit: Optional[int] = Query(None, ge=1, le=1000),
+    limit: int | None = Query(None, ge=1, le=1000),
     offset: int = Query(0, ge=0, le=100000),
     all: bool = Query(False),
-    exclude_task: Optional[str] = Query(None),
+    exclude_task: str | None = Query(None),
     _admin: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     base_query = db.query(JobRun)
     if exclude_task:
         excluded = [t.strip() for t in exclude_task.split(",") if t.strip()]
@@ -640,7 +673,12 @@ async def admin_get_jobs(
         return {"jobs": serialize_job_runs(rows), "total": total, "limit": total, "offset": 0}
     effective_limit = limit or 50
     rows = query.offset(offset).limit(effective_limit).all()
-    return {"jobs": serialize_job_runs(rows), "total": total, "limit": effective_limit, "offset": offset}
+    return {
+        "jobs": serialize_job_runs(rows),
+        "total": total,
+        "limit": effective_limit,
+        "offset": offset,
+    }
 
 
 @router.post("/jobs/recover-stale")
@@ -649,19 +687,20 @@ async def admin_recover_stale_jobs(
     request: Request,
     stale_minutes: int = Query(120, ge=30, le=10080),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Mark job runs stuck in RUNNING as cancelled."""
     return recover_jobs_impl(stale_minutes=stale_minutes)
 
 
 # ── Regime admin ──
 
+
 @router.post("/regime/compute")
 @limiter.limit("10/minute")
 async def admin_compute_regime(
     request: Request,
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Manually trigger daily regime computation."""
     from app.tasks.market.regime import compute_daily
 
@@ -671,10 +710,11 @@ async def admin_compute_regime(
 
 # ── Tasks discovery ──
 
+
 @router.get("/tasks")
 async def admin_list_tasks(
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Discover available market-data task actions."""
     return {"tasks": TASK_ACTIONS}
 
@@ -684,10 +724,10 @@ async def admin_list_tasks(
 async def admin_run_task(
     request: Request,
     task_name: str = Query(...),
-    symbols: List[str] | None = Query(None),
+    symbols: list[str] | None = Query(None),
     n_days: int | None = Query(None),
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Manually trigger selected tasks."""
     if task_name == "admin_backfill_5m_symbols":
         if not symbols:
@@ -700,12 +740,13 @@ async def admin_run_task(
 
 # ── Intelligence admin ──
 
+
 @router.post("/backtest/system-validation")
 @limiter.limit("10/minute")
 async def admin_system_backtest_validation(
     request: Request,
     _admin: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Run Stage Analysis backtest across all regime periods (1999-2026)."""
     from app.tasks.strategy.system_validation import validate_stage_analysis
 
@@ -729,21 +770,28 @@ def trigger_brief_generation(
     if not task_name:
         raise HTTPException(status_code=400, detail=f"Invalid brief type: {brief_type}")
     from app.tasks.celery_app import celery_app
+
     celery_app.send_task(task_name)
     return {"status": "queued", "type": brief_type}
 
 
 # ── Auto-fix ──
 
-def _build_remediation_plan(health: Dict[str, Any]) -> List[AutoFixPlanItem]:
+
+def _build_remediation_plan(health: dict[str, Any]) -> list[AutoFixPlanItem]:
     dims = health.get("dimensions", {})
-    plan: List[AutoFixPlanItem] = []
+    plan: list[AutoFixPlanItem] = []
 
     coverage = dims.get("coverage", {})
     if coverage.get("status") != "green":
         stale_daily = coverage.get("stale_daily", 0)
         if stale_daily > 0:
-            plan.append(AutoFixPlanItem(task="backfill_stale_daily", reason=f"{stale_daily} symbols with stale daily data"))
+            plan.append(
+                AutoFixPlanItem(
+                    task="backfill_stale_daily",
+                    reason=f"{stale_daily} symbols with stale daily data",
+                )
+            )
 
     stage = dims.get("stage_quality", {})
     if stage.get("status") != "green":
@@ -752,7 +800,7 @@ def _build_remediation_plan(health: Dict[str, Any]) -> List[AutoFixPlanItem]:
         if unknown_rate > 0.01 or invalid_count > 0:
             reasons = []
             if unknown_rate > 0.01:
-                reasons.append(f"{unknown_rate*100:.1f}% unknown stages")
+                reasons.append(f"{unknown_rate * 100:.1f}% unknown stages")
             if invalid_count > 0:
                 reasons.append(f"{invalid_count} invalid")
             plan.append(AutoFixPlanItem(task="recompute_indicators", reason=", ".join(reasons)))
@@ -762,18 +810,26 @@ def _build_remediation_plan(health: Dict[str, Any]) -> List[AutoFixPlanItem]:
         daily_fill = audit.get("daily_fill_pct", 100)
         snapshot_fill = audit.get("snapshot_fill_pct", 100)
         if daily_fill < 95 or snapshot_fill < 90:
-            plan.append(AutoFixPlanItem(task="record_snapshot_history", reason=f"Daily fill {daily_fill:.1f}%"))
+            plan.append(
+                AutoFixPlanItem(
+                    task="record_snapshot_history", reason=f"Daily fill {daily_fill:.1f}%"
+                )
+            )
 
     regime = dims.get("regime", {})
     if regime.get("status") != "green":
         age_hours = regime.get("age_hours", 0)
-        plan.append(AutoFixPlanItem(task="compute_regime", reason=f"Regime data {age_hours:.1f}h old"))
+        plan.append(
+            AutoFixPlanItem(task="compute_regime", reason=f"Regime data {age_hours:.1f}h old")
+        )
 
     jobs = dims.get("jobs", {})
     if jobs.get("status") != "green":
         error_count = jobs.get("error_count", 0)
         if error_count > 0:
-            plan.append(AutoFixPlanItem(task="recover_stale_jobs", reason=f"{error_count} failed jobs"))
+            plan.append(
+                AutoFixPlanItem(task="recover_stale_jobs", reason=f"{error_count} failed jobs")
+            )
 
     return plan
 
@@ -805,7 +861,9 @@ async def start_auto_fix(
 
     plan = _build_remediation_plan(health)
     if not plan:
-        return AutoFixResponse(status="ok", message="Red dimensions detected but no remediation actions available")
+        return AutoFixResponse(
+            status="ok", message="Red dimensions detected but no remediation actions available"
+        )
 
     job_id = str(uuid.uuid4())[:8]
     r = await infra._get_redis()
@@ -814,7 +872,7 @@ async def start_auto_fix(
         "job_id": job_id,
         "status": "running",
         "plan": [item.model_dump() for item in plan],
-        "started_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": datetime.now(UTC).isoformat(),
         "completed_count": 0,
         "total_count": len(plan),
         "current_task": plan[0].task if plan else None,
@@ -823,10 +881,16 @@ async def start_auto_fix(
 
     await _execute_autofix_plan(job_id, plan, r)
 
-    return AutoFixResponse(status="fixing", job_id=job_id, plan=plan, estimated_minutes=len(plan) * 2, message=f"Agent fixing {len(plan)} issues")
+    return AutoFixResponse(
+        status="fixing",
+        job_id=job_id,
+        plan=plan,
+        estimated_minutes=len(plan) * 2,
+        message=f"Agent fixing {len(plan)} issues",
+    )
 
 
-async def _execute_autofix_plan(job_id: str, plan: List[AutoFixPlanItem], r) -> None:
+async def _execute_autofix_plan(job_id: str, plan: list[AutoFixPlanItem], r) -> None:
     from app.tasks.celery_app import celery_app
 
     task_map = {
@@ -849,7 +913,7 @@ async def _execute_autofix_plan(job_id: str, plan: List[AutoFixPlanItem], r) -> 
             result = celery_app.send_task(celery_task, kwargs=kwargs)
             item.task_id = result.id
             item.status = "running"
-            item.started_at = datetime.now(timezone.utc).isoformat()
+            item.started_at = datetime.now(UTC).isoformat()
 
     key = _get_autofix_redis_key(job_id)
     raw = await r.get(key)
@@ -868,6 +932,7 @@ async def get_auto_fix_status(
 ) -> AutoFixStatusResponse:
     """Get the status of an auto-fix job."""
     from celery.result import AsyncResult
+
     from app.tasks.celery_app import celery_app
 
     r = await infra._get_redis()
@@ -895,7 +960,7 @@ async def get_auto_fix_status(
                 if result.successful():
                     item.status = "done"
                     if not item.finished_at:
-                        item.finished_at = datetime.now(timezone.utc).isoformat()
+                        item.finished_at = datetime.now(UTC).isoformat()
                     completed_count += 1
                 else:
                     item.status = "failed"
@@ -927,12 +992,18 @@ async def get_auto_fix_status(
     data["completed_count"] = completed_count
     data["current_task"] = current_task
     if overall_status in ("completed", "failed"):
-        data["finished_at"] = datetime.now(timezone.utc).isoformat()
+        data["finished_at"] = datetime.now(UTC).isoformat()
 
     await r.setex(key, _AUTOFIX_REDIS_TTL_S, json.dumps(data))
 
     return AutoFixStatusResponse(
-        job_id=job_id, status=overall_status, plan=plan, completed_count=completed_count,
-        total_count=len(plan), current_task=current_task, error=error_msg,
-        started_at=data.get("started_at"), finished_at=data.get("finished_at"),
+        job_id=job_id,
+        status=overall_status,
+        plan=plan,
+        completed_count=completed_count,
+        total_count=len(plan),
+        current_task=current_task,
+        error=error_msg,
+        started_at=data.get("started_at"),
+        finished_at=data.get("finished_at"),
     )

@@ -12,9 +12,10 @@ We stub the HTTP layer with a callable so no network is touched.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
@@ -38,10 +39,10 @@ def _require_schema(db_session):
         pytest.skip("corporate_actions table not present in test DB")
 
 
-def _stub_http(payloads: Dict[str, Any]) -> Callable[..., Any]:
+def _stub_http(payloads: dict[str, Any]) -> Callable[..., Any]:
     """Build a fake ``requests.get`` that returns canned payloads keyed by URL."""
 
-    def _get(url: str, *, params: Optional[Dict[str, Any]] = None, timeout: int = 30):
+    def _get(url: str, *, params: dict[str, Any] | None = None, timeout: int = 30):
         body = None
         for needle, value in payloads.items():
             if needle in url:
@@ -97,9 +98,7 @@ def test_fetcher_inserts_split_and_dividend_actions(db_session):
     assert report.actions_inserted == 2
 
     rows = (
-        db.execute(select(CorporateAction).where(CorporateAction.symbol == "AAPL"))
-        .scalars()
-        .all()
+        db.execute(select(CorporateAction).where(CorporateAction.symbol == "AAPL")).scalars().all()
     )
     assert len(rows) == 2
 
@@ -110,9 +109,7 @@ def test_fetcher_inserts_split_and_dividend_actions(db_session):
     assert split.source == CorporateActionSource.FMP.value
     assert split.status == CorporateActionStatus.PENDING.value
 
-    div = next(
-        r for r in rows if r.action_type == CorporateActionType.CASH_DIVIDEND.value
-    )
+    div = next(r for r in rows if r.action_type == CorporateActionType.CASH_DIVIDEND.value)
     assert div.cash_amount == Decimal("0.25")
     assert div.payment_date == date(2025, 5, 15)
 
@@ -143,11 +140,7 @@ def test_fetcher_is_idempotent_on_symbol_type_exdate(db_session):
     assert second.actions_skipped_duplicate == 1
 
     count = (
-        db.execute(
-            select(CorporateAction).where(CorporateAction.symbol == "MSFT")
-        )
-        .scalars()
-        .all()
+        db.execute(select(CorporateAction).where(CorporateAction.symbol == "MSFT")).scalars().all()
     )
     assert len(count) == 1
 
@@ -165,9 +158,7 @@ def test_fetcher_isolates_per_symbol_http_failure(db_session):
         return resp
 
     fetcher = CorporateActionFetcher(db, api_key="fake", http_get=_get)
-    report = fetcher.fetch_for_symbols(
-        ["GOOD", "BORK", "ALSO_GOOD"], since_date=date(2025, 1, 1)
-    )
+    report = fetcher.fetch_for_symbols(["GOOD", "BORK", "ALSO_GOOD"], since_date=date(2025, 1, 1))
 
     assert report.symbols_total == 3
     assert report.symbols_fetched == 2
@@ -201,9 +192,7 @@ def test_fetcher_filters_out_actions_before_since_date(db_session):
 
     assert report.actions_inserted == 1
     rows = (
-        db.execute(select(CorporateAction).where(CorporateAction.symbol == "AMZN"))
-        .scalars()
-        .all()
+        db.execute(select(CorporateAction).where(CorporateAction.symbol == "AMZN")).scalars().all()
     )
     assert len(rows) == 1
     assert rows[0].ex_date == date(2025, 6, 1)
@@ -237,10 +226,7 @@ def test_fetcher_classifies_reverse_split_when_numerator_lt_denominator(db_sessi
     fetcher.fetch_for_symbols(["REVS"], since_date=date(2025, 1, 1))
     db.flush()
 
-    row = (
-        db.execute(select(CorporateAction).where(CorporateAction.symbol == "REVS"))
-        .scalar_one()
-    )
+    row = db.execute(select(CorporateAction).where(CorporateAction.symbol == "REVS")).scalar_one()
     assert row.action_type == CorporateActionType.REVERSE_SPLIT.value
     assert row.ratio_numerator == Decimal("1")
     assert row.ratio_denominator == Decimal("10")

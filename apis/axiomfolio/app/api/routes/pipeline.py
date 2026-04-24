@@ -2,16 +2,16 @@
 
 All endpoints require admin authentication.
 """
+
 from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
-
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_admin_user
@@ -20,7 +20,6 @@ from app.services.pipeline.dag import (
     PIPELINE_DAG,
     STEP_OK,
     STEP_PENDING,
-    StepDef,
     all_deps_satisfied,
     dag_edges,
     get_ambient_state,
@@ -47,6 +46,7 @@ def _get_db():
 # ---------------------------------------------------------------------------
 # Response models
 # ---------------------------------------------------------------------------
+
 
 class DAGNodeResponse(BaseModel):
     name: str
@@ -82,6 +82,7 @@ class RetryResponse(BaseModel):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/dag", response_model=DAGDefinitionResponse)
 def get_dag_definition(_user=Depends(get_admin_user)):
     """Return the static DAG topology for frontend rendering."""
@@ -94,10 +95,7 @@ def get_dag_definition(_user=Depends(get_admin_user)):
         )
         for name, step in PIPELINE_DAG.items()
     ]
-    edges = [
-        DAGEdgeResponse(source=e["from"], target=e["to"])
-        for e in dag_edges(PIPELINE_DAG)
-    ]
+    edges = [DAGEdgeResponse(source=e["from"], target=e["to"]) for e in dag_edges(PIPELINE_DAG)]
     return DAGDefinitionResponse(nodes=nodes, edges=edges)
 
 
@@ -180,7 +178,7 @@ def trigger_pipeline(_user=Depends(get_admin_user)):
     try:
         if settings.PIPELINE_DAG_ENABLED:
             run_id = f"manual-{uuid.uuid4().hex[:12]}"
-            now_iso = datetime.now(timezone.utc).isoformat()
+            now_iso = datetime.now(UTC).isoformat()
             mark_run_meta(
                 run_id,
                 status="queued",
@@ -208,16 +206,17 @@ def trigger_pipeline(_user=Depends(get_admin_user)):
 # Active tasks / Stop-all (operator kill switch)
 # ---------------------------------------------------------------------------
 
+
 class ActiveTaskInfo(BaseModel):
     id: str
-    name: Optional[str] = None
-    worker: Optional[str] = None
-    started: Optional[float] = None
-    dag_step: Optional[str] = None
+    name: str | None = None
+    worker: str | None = None
+    started: float | None = None
+    dag_step: str | None = None
 
 
 class ActiveTasksResponse(BaseModel):
-    tasks: List[ActiveTaskInfo]
+    tasks: list[ActiveTaskInfo]
     total: int
     inspect_ok: bool = True
 
@@ -236,7 +235,7 @@ def get_active_tasks(_user=Depends(get_admin_user)):
 
     try:
         inspector = celery_app.control.inspect(timeout=5.0)
-        active: Optional[Dict[str, List[Dict[str, Any]]]] = inspector.active()
+        active: dict[str, list[dict[str, Any]]] | None = inspector.active()
     except Exception as exc:
         logger.warning("Failed to inspect active tasks: %s", exc)
         return ActiveTasksResponse(tasks=[], total=0, inspect_ok=False)
@@ -244,17 +243,19 @@ def get_active_tasks(_user=Depends(get_admin_user)):
     if not active:
         return ActiveTasksResponse(tasks=[], total=0)
 
-    tasks: List[ActiveTaskInfo] = []
+    tasks: list[ActiveTaskInfo] = []
     for worker_name, worker_tasks in active.items():
         for t in worker_tasks:
             task_name = t.get("name")
-            tasks.append(ActiveTaskInfo(
-                id=t.get("id", ""),
-                name=task_name,
-                worker=worker_name,
-                started=t.get("time_start"),
-                dag_step=celery_task_to_dag_step(task_name),
-            ))
+            tasks.append(
+                ActiveTaskInfo(
+                    id=t.get("id", ""),
+                    name=task_name,
+                    worker=worker_name,
+                    started=t.get("time_start"),
+                    dag_step=celery_task_to_dag_step(task_name),
+                )
+            )
 
     return ActiveTasksResponse(tasks=tasks, total=len(tasks))
 
@@ -267,14 +268,16 @@ def stop_all_tasks(_user=Depends(get_admin_user)):
     revoked = 0
     try:
         inspector = celery_app.control.inspect(timeout=3.0)
-        active: Optional[Dict[str, List[Dict[str, Any]]]] = inspector.active()
+        active: dict[str, list[dict[str, Any]]] | None = inspector.active()
         if active:
             for worker_tasks in active.values():
                 for t in worker_tasks:
                     task_id = t.get("id")
                     if task_id:
                         celery_app.control.revoke(
-                            task_id, terminate=True, signal="SIGTERM",
+                            task_id,
+                            terminate=True,
+                            signal="SIGTERM",
                         )
                         revoked += 1
     except Exception as exc:
@@ -312,7 +315,7 @@ def revoke_task_by_name(
     revoked = 0
     try:
         inspector = celery_app.control.inspect(timeout=3.0)
-        active: Optional[Dict[str, List[Dict[str, Any]]]] = inspector.active()
+        active: dict[str, list[dict[str, Any]]] | None = inspector.active()
         if active:
             for worker_tasks in active.values():
                 for t in worker_tasks:
@@ -323,7 +326,9 @@ def revoke_task_by_name(
                     dag_step = celery_task_to_dag_step(t_name)
                     if t_name == task_name or dag_step == task_name:
                         celery_app.control.revoke(
-                            t_id, terminate=True, signal="SIGTERM",
+                            t_id,
+                            terminate=True,
+                            signal="SIGTERM",
                         )
                         revoked += 1
     except Exception as exc:
@@ -334,5 +339,7 @@ def revoke_task_by_name(
     return RevokeTaskResponse(
         revoked=revoked,
         task_name=task_name,
-        message=f"Revoked {revoked} instance(s) of {task_name}." if revoked > 0 else f"No active tasks matching '{task_name}'.",
+        message=f"Revoked {revoked} instance(s) of {task_name}."
+        if revoked > 0
+        else f"No active tasks matching '{task_name}'.",
     )

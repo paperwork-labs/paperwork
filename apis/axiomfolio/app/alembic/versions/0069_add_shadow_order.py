@@ -15,7 +15,6 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-
 revision = "0069"
 down_revision = "0067"
 branch_labels = None
@@ -54,9 +53,7 @@ def upgrade() -> None:
         sa.Column("intended_fill_price", sa.Numeric(18, 6), nullable=True),
         sa.Column("intended_fill_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("simulated_pnl", sa.Numeric(18, 6), nullable=True),
-        sa.Column(
-            "simulated_pnl_as_of", sa.DateTime(timezone=True), nullable=True
-        ),
+        sa.Column("simulated_pnl_as_of", sa.DateTime(timezone=True), nullable=True),
         sa.Column("last_mark_price", sa.Numeric(18, 6), nullable=True),
         sa.Column(
             "source_order_id",
@@ -78,15 +75,9 @@ def upgrade() -> None:
             server_default=sa.text("now()"),
         ),
     )
-    op.create_index(
-        "ix_shadow_orders_user_id", "shadow_orders", ["user_id"], unique=False
-    )
-    op.create_index(
-        "ix_shadow_orders_symbol", "shadow_orders", ["symbol"], unique=False
-    )
-    op.create_index(
-        "ix_shadow_orders_status", "shadow_orders", ["status"], unique=False
-    )
+    op.create_index("ix_shadow_orders_user_id", "shadow_orders", ["user_id"], unique=False)
+    op.create_index("ix_shadow_orders_symbol", "shadow_orders", ["symbol"], unique=False)
+    op.create_index("ix_shadow_orders_status", "shadow_orders", ["status"], unique=False)
     op.create_index(
         "ix_shadow_orders_source_order_id",
         "shadow_orders",
@@ -110,9 +101,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_index("ix_shadow_orders_user_created", table_name="shadow_orders")
     op.drop_index("ix_shadow_orders_user_status", table_name="shadow_orders")
-    op.drop_index(
-        "ix_shadow_orders_source_order_id", table_name="shadow_orders"
-    )
+    op.drop_index("ix_shadow_orders_source_order_id", table_name="shadow_orders")
     op.drop_index("ix_shadow_orders_status", table_name="shadow_orders")
     op.drop_index("ix_shadow_orders_symbol", table_name="shadow_orders")
     op.drop_index("ix_shadow_orders_user_id", table_name="shadow_orders")

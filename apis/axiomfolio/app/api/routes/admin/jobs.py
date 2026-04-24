@@ -12,7 +12,7 @@ task id and can poll ``JobRun`` for status.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -37,7 +37,7 @@ class BackfillOptionTaxLotsRequest(BaseModel):
     (``broker-agnostic.mdc``).
     """
 
-    user_id: Optional[int] = Field(
+    user_id: int | None = Field(
         default=None,
         description=(
             "Restrict the backfill to one user. Omit to run across all "
@@ -52,7 +52,7 @@ async def trigger_backfill_option_tax_lots(
     request: Request,
     payload: BackfillOptionTaxLotsRequest = BackfillOptionTaxLotsRequest(),
     admin_user: User = Depends(get_admin_user),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Enqueue the FIFO closing-lot matcher across enabled accounts.
 
     Produces ``OptionTaxLot`` rows and equity ``CLOSED_LOT`` trades from
@@ -64,7 +64,7 @@ async def trigger_backfill_option_tax_lots(
     ``/admin/scheduler/schedules/history`` or the ``JobRun`` table.
     """
     try:
-        kwargs: Dict[str, Any] = {}
+        kwargs: dict[str, Any] = {}
         if payload.user_id is not None:
             kwargs["user_id"] = payload.user_id
         res = celery_app.send_task(

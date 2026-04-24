@@ -68,7 +68,6 @@ from sqlalchemy.sql import func
 
 from . import Base
 
-
 # =============================================================================
 # ENUMS (persisted as VARCHAR — see module docstring)
 # =============================================================================

@@ -9,12 +9,13 @@ from sqlalchemy import (
     Column,
     Date,
     DateTime,
-    Enum as SQLEnum,
     ForeignKey,
     Index,
     Integer,
-    String,
     Text,
+)
+from sqlalchemy import (
+    Enum as SQLEnum,
 )
 from sqlalchemy.sql import func
 
@@ -37,8 +38,12 @@ class HistoricalImportRun(Base):
     __tablename__ = "historical_import_runs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    account_id = Column(Integer, ForeignKey("broker_accounts.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    account_id = Column(
+        Integer, ForeignKey("broker_accounts.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     source = Column(
         SQLEnum(
@@ -80,6 +85,4 @@ class HistoricalImportRun(Base):
         nullable=False,
     )
 
-    __table_args__ = (
-        Index("ix_historical_import_runs_user_account", "user_id", "account_id"),
-    )
+    __table_args__ = (Index("ix_historical_import_runs_user_account", "user_id", "account_id"),)

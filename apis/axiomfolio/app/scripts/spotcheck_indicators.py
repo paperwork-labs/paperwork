@@ -6,12 +6,12 @@ Usage:
 
 Compares our indicator_engine output against FMP /v3/technical_indicator/{interval}/{symbol}
 """
+
 from __future__ import annotations
 
 import argparse
 import logging
 import sys
-from typing import Optional
 
 import pandas as pd
 import requests
@@ -47,7 +47,7 @@ def fetch_fmp_indicator(symbol: str, indicator: str, period: int = 14) -> pd.Dat
     return df.sort_values("date").reset_index(drop=True)
 
 
-def _our_column(indicator: str, period: int) -> Optional[str]:
+def _our_column(indicator: str, period: int) -> str | None:
     if indicator == "rsi":
         if period != _OUR_RSI_PERIOD:
             logger.warning(
@@ -77,7 +77,7 @@ def _our_column(indicator: str, period: int) -> Optional[str]:
     return None
 
 
-def _fmp_value(row: pd.Series, indicator: str) -> Optional[float]:
+def _fmp_value(row: pd.Series, indicator: str) -> float | None:
     if indicator in row.index and pd.notna(row[indicator]):
         return float(row[indicator])
     if "technicalIndicator" in row.index and pd.notna(row["technicalIndicator"]):
@@ -181,8 +181,7 @@ def compare_indicators(
             flag = " !!!" if abs(diff_pct) > 5 else ""
             dp = f"{diff_pct:>7.2f}%" if fmp_val != 0 else "   n/a "
             print(
-                f"{str(fmp_date):>12}  {our_f:>10.2f}  {fmp_val:>10.2f}  "
-                f"{diff:>10.4f}  {dp}{flag}"
+                f"{fmp_date!s:>12}  {our_f:>10.2f}  {fmp_val:>10.2f}  {diff:>10.4f}  {dp}{flag}"
             )
 
         print()

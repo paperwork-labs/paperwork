@@ -7,8 +7,9 @@ Tests for database operations and API endpoints after V1 rebuild.
 Critical for validating the system works correctly post-rebuild.
 """
 
-import pytest
 import asyncio
+
+import pytest
 
 # Will be available after database rebuild
 # from app.database import SessionLocal, engine

@@ -3,13 +3,11 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import redis
 from celery import shared_task
 
-from app.config import settings
 from app.database import SessionLocal
 from app.models.market_data import MarketRegime
 from app.services.market.regime_monitor import RegimeMonitor
@@ -20,7 +18,7 @@ logger = logging.getLogger(__name__)
 _REGIME_STATE_TTL_S = 172800  # 48h — covers holiday gaps
 
 
-def _regime_redis() -> Optional[redis.Redis]:
+def _regime_redis() -> redis.Redis | None:
     try:
         from app.services.market.market_data_service import infra
 
@@ -31,7 +29,7 @@ def _regime_redis() -> Optional[redis.Redis]:
 
 
 def _persist_regime_day_state(
-    r: redis.Redis, day_key: str, vix_open: Optional[float], alerts_sent: set[str]
+    r: redis.Redis, day_key: str, vix_open: float | None, alerts_sent: set[str]
 ) -> None:
     prefix = f"regime_monitor:day:{day_key}"
     pipe = r.pipeline()
@@ -58,10 +56,10 @@ def check_regime_alerts() -> dict:
     db = SessionLocal()
     try:
         monitor = RegimeMonitor(db)
-        day_key = datetime.now(timezone.utc).date().isoformat()
+        day_key = datetime.now(UTC).date().isoformat()
         r = _regime_redis()
         prefix = f"regime_monitor:day:{day_key}"
-        vix_open: Optional[float] = None
+        vix_open: float | None = None
         alerts_sent: set[str] = set()
         if r is not None:
             try:
@@ -69,9 +67,7 @@ def check_regime_alerts() -> dict:
                 if raw_open is not None:
                     vix_open = float(raw_open)
                 raw = r.smembers(f"{prefix}:alerts_sent") or []
-                alerts_sent = {
-                    v.decode() if isinstance(v, bytes) else v for v in raw
-                }
+                alerts_sent = {v.decode() if isinstance(v, bytes) else v for v in raw}
             except Exception as e:
                 logger.warning("Failed to load regime monitor state from Redis: %s", e)
         monitor.restore_day_state(vix_open, alerts_sent)
@@ -113,6 +109,7 @@ def check_regime_alerts() -> dict:
             regime_shifts = [a for a in alerts if a.alert_type == "regime_shift"]
             if regime_shifts:
                 from app.services.brain.webhook_client import brain_webhook
+
                 for shift in regime_shifts:
                     brain_webhook.notify_sync(
                         "regime_change",
@@ -126,7 +123,7 @@ def check_regime_alerts() -> dict:
                     )
 
         return {
-            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "checked_at": datetime.now(UTC).isoformat(),
             "alerts": [
                 {
                     "type": a.alert_type,

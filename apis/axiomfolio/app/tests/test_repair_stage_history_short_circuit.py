@@ -12,7 +12,8 @@ The fix:
 - Universe path uses an index-only scan on the new
   (analysis_type, symbol) composite index from migration 0022
 """
-from datetime import date, datetime, timedelta, timezone
+
+from datetime import UTC, date, datetime, timedelta
 
 from app.models.market_data import MarketSnapshotHistory
 from app.services.market.stage_quality_service import (
@@ -30,15 +31,13 @@ def _row(symbol: str, dt: date, stage: str = "2A") -> MarketSnapshotHistory:
     )
 
 
-def test_repair_with_target_symbol_does_not_scan_universe(
-    db_session, monkeypatch
-):
+def test_repair_with_target_symbol_does_not_scan_universe(db_session, monkeypatch):
     """When a single symbol is given, the universe DISTINCT query is
     skipped entirely (the actual perf fix for R39)."""
     if db_session is None:
         return
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     db_session.add(_row("AAA", today - timedelta(days=2)))
     db_session.add(_row("AAA", today - timedelta(days=1)))
     db_session.add(_row("BBB", today - timedelta(days=2)))
@@ -68,9 +67,9 @@ def test_repair_with_target_symbol_does_not_scan_universe(
     distinct_universe_scans = [
         s for s in executed if "DISTINCT" in s.upper() and "symbol" in s.lower()
     ]
-    assert (
-        not distinct_universe_scans
-    ), f"single-symbol repair should not issue a universe DISTINCT scan; got {distinct_universe_scans}"
+    assert not distinct_universe_scans, (
+        f"single-symbol repair should not issue a universe DISTINCT scan; got {distinct_universe_scans}"
+    )
 
 
 def test_repair_universe_path_returns_all_distinct_symbols(
@@ -81,7 +80,7 @@ def test_repair_universe_path_returns_all_distinct_symbols(
     if db_session is None:
         return
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     for sym in ("CCC", "AAA", "BBB"):
         db_session.add(_row(sym, today - timedelta(days=1)))
     db_session.commit()
@@ -103,9 +102,7 @@ def test_repair_with_unknown_symbol_returns_zero_touched(db_session):
         return
 
     svc = StageQualityService()
-    out = svc.repair_stage_history_window(
-        db_session, days=30, symbol="NEVER_EXISTED"
-    )
+    out = svc.repair_stage_history_window(db_session, days=30, symbol="NEVER_EXISTED")
     assert isinstance(out, dict)
     assert out.get("touched_rows", 0) == 0
     assert out.get("touched_symbols", 0) == 0

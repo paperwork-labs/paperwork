@@ -30,7 +30,6 @@ medallion: ops
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 import redis
 
@@ -38,7 +37,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-_redis_client: Optional[redis.Redis] = None
+_redis_client: redis.Redis | None = None
 
 
 def get_redis_client() -> redis.Redis:

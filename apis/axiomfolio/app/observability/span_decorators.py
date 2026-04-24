@@ -20,7 +20,8 @@ from __future__ import annotations
 import functools
 import inspect
 import logging
-from typing import Any, Callable, Dict, Optional, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from opentelemetry import trace
 from opentelemetry.trace import Status, StatusCode
@@ -33,7 +34,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 def traced(
     span_name: str,
     *,
-    attrs: Optional[Dict[str, Any]] = None,
+    attrs: dict[str, Any] | None = None,
     record_exceptions: bool = True,
 ) -> Callable[[F], F]:
     """Wrap a function in an OTel span.
@@ -65,6 +66,7 @@ def traced(
         is_coro = inspect.iscoroutinefunction(func)
 
         if is_coro:
+
             @functools.wraps(func)
             async def async_wrapper(*args, **kwargs) -> Any:
                 # Resolve tracer per call so spans attach to whatever
@@ -82,9 +84,7 @@ def traced(
                         if record_exceptions:
                             try:
                                 span.record_exception(exc)
-                                span.set_status(
-                                    Status(StatusCode.ERROR, str(exc)[:200])
-                                )
+                                span.set_status(Status(StatusCode.ERROR, str(exc)[:200]))
                             except Exception:
                                 pass
                         raise
@@ -106,9 +106,7 @@ def traced(
                     if record_exceptions:
                         try:
                             span.record_exception(exc)
-                            span.set_status(
-                                Status(StatusCode.ERROR, str(exc)[:200])
-                            )
+                            span.set_status(Status(StatusCode.ERROR, str(exc)[:200]))
                         except Exception:
                             pass
                     raise

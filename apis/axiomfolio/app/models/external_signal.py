@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import Date, DateTime, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
@@ -28,14 +28,12 @@ class ExternalSignal(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     symbol: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
-    source: Mapped[str] = mapped_column(
-        String(32), nullable=False, doc="finviz | zacks"
-    )
+    source: Mapped[str] = mapped_column(String(32), nullable=False, doc="finviz | zacks")
     signal_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     signal_type: Mapped[str] = mapped_column(
         String(64), nullable=False, doc="e.g. analyst_upgrade, zacks_rank_1"
     )
-    value: Mapped[Optional[Decimal]] = mapped_column(
+    value: Mapped[Decimal | None] = mapped_column(
         Numeric(20, 8), nullable=True, doc="Nullable for categorical flags"
     )
     raw_payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)

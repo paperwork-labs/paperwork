@@ -1,4 +1,3 @@
-import pytest
 
 
 def test_backfill_symbols_passes_max_bars_to_provider(monkeypatch):
@@ -13,7 +12,9 @@ def test_backfill_symbols_passes_max_bars_to_provider(monkeypatch):
 
     calls = []
 
-    async def _stub_get_historical_data(*, symbol, period, interval, max_bars=None, return_provider=False, **_kwargs):
+    async def _stub_get_historical_data(
+        *, symbol, period, interval, max_bars=None, return_provider=False, **_kwargs
+    ):
         calls.append(
             {
                 "symbol": symbol,
@@ -40,5 +41,3 @@ def test_backfill_symbols_passes_max_bars_to_provider(monkeypatch):
     assert all(c["period"] == "1y" for c in calls)
     assert all(c["return_provider"] is True for c in calls)
     assert all(c["max_bars"] == 270 for c in calls)
-
-

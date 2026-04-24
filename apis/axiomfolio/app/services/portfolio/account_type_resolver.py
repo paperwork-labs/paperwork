@@ -6,7 +6,6 @@ medallion: silver
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 from app.models.broker_account import AccountType, BrokerType
 
@@ -14,10 +13,10 @@ from app.models.broker_account import AccountType, BrokerType
 @dataclass(frozen=True)
 class AccountTypeResolution:
     account_type: AccountType
-    warning: Optional[dict]
+    warning: dict | None
 
 
-def _map_label(raw: Optional[str]) -> Optional[AccountType]:
+def _map_label(raw: str | None) -> AccountType | None:
     if not raw:
         return None
     label = str(raw).strip().lower()
@@ -40,8 +39,8 @@ def resolve_account_type(
     *,
     broker: BrokerType,
     account_number: str,
-    ibkr_account_type_label: Optional[str],
-    oauth_account_type_label: Optional[str],
+    ibkr_account_type_label: str | None,
+    oauth_account_type_label: str | None,
     fallback: AccountType = AccountType.TAXABLE,
 ) -> AccountTypeResolution:
     """Reconcile provider-level account-type hints into one enum value."""

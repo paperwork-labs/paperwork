@@ -9,13 +9,12 @@ medallion: silver
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import func, and_
 from sqlalchemy.orm import Session
 
-from app.models.market_data import MarketSnapshot, MarketSnapshotHistory, MarketRegime
+from app.models.market_data import MarketRegime, MarketSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -41,9 +40,7 @@ def generate_daily_digest(db: Session, as_of: date | None = None) -> dict[str, A
     regime_section = _build_regime_section(regime, prev_regime)
 
     snapshots = (
-        db.query(MarketSnapshot)
-        .filter(MarketSnapshot.analysis_type == "technical_snapshot")
-        .all()
+        db.query(MarketSnapshot).filter(MarketSnapshot.analysis_type == "technical_snapshot").all()
     )
 
     stage_transitions = _find_stage_transitions(snapshots)
@@ -54,22 +51,25 @@ def generate_daily_digest(db: Session, as_of: date | None = None) -> dict[str, A
     exit_alerts: list[dict] = []
     try:
         from app.models.position import Position
+
         positions = db.query(Position).filter(Position.is_open.is_(True)).all()
         for pos in positions:
             snap = next((s for s in snapshots if s.symbol == pos.symbol), None)
-            if snap and snap.stage_label and snap.stage_label.startswith(('3', '4')):
-                exit_alerts.append({
-                    "symbol": pos.symbol,
-                    "stage": snap.stage_label,
-                    "pnl_pct": _calc_pnl_pct(pos, snap),
-                })
+            if snap and snap.stage_label and snap.stage_label.startswith(("3", "4")):
+                exit_alerts.append(
+                    {
+                        "symbol": pos.symbol,
+                        "stage": snap.stage_label,
+                        "pnl_pct": _calc_pnl_pct(pos, snap),
+                    }
+                )
     except Exception as e:
         logger.warning("Could not compute exit alerts: %s", e)
 
     return {
         "type": "daily",
         "as_of": today.isoformat(),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "regime": regime_section,
         "stage_transitions": stage_transitions,
         "scan_changes": scan_changes,
@@ -92,14 +92,16 @@ def generate_weekly_brief(db: Session, as_of: date | None = None) -> dict[str, A
         .all()
     )
     regime_trend = [
-        {"date": r.as_of_date.isoformat(), "state": r.regime_state, "score": float(r.composite_score or 0)}
+        {
+            "date": r.as_of_date.isoformat(),
+            "state": r.regime_state,
+            "score": float(r.composite_score or 0),
+        }
         for r in regimes
     ]
 
     snapshots = (
-        db.query(MarketSnapshot)
-        .filter(MarketSnapshot.analysis_type == "technical_snapshot")
-        .all()
+        db.query(MarketSnapshot).filter(MarketSnapshot.analysis_type == "technical_snapshot").all()
     )
 
     current_distribution = _compute_stage_distribution(snapshots)
@@ -118,7 +120,7 @@ def generate_weekly_brief(db: Session, as_of: date | None = None) -> dict[str, A
         "type": "weekly",
         "as_of": today.isoformat(),
         "week_start": week_ago.isoformat(),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "regime_trend": regime_trend,
         "stage_distribution": current_distribution,
         "set1_entries": set1_entries[:20],
@@ -146,14 +148,16 @@ def generate_monthly_review(db: Session, as_of: date | None = None) -> dict[str,
             regime_transitions += 1
 
     regime_history = [
-        {"date": r.as_of_date.isoformat(), "state": r.regime_state, "score": float(r.composite_score or 0)}
+        {
+            "date": r.as_of_date.isoformat(),
+            "state": r.regime_state,
+            "score": float(r.composite_score or 0),
+        }
         for r in regimes
     ]
 
     snapshots = (
-        db.query(MarketSnapshot)
-        .filter(MarketSnapshot.analysis_type == "technical_snapshot")
-        .all()
+        db.query(MarketSnapshot).filter(MarketSnapshot.analysis_type == "technical_snapshot").all()
     )
 
     performance_summary = _compute_performance_summary(snapshots)
@@ -162,7 +166,7 @@ def generate_monthly_review(db: Session, as_of: date | None = None) -> dict[str,
         "type": "monthly",
         "as_of": today.isoformat(),
         "period_start": month_ago.isoformat(),
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "regime_history": regime_history,
         "regime_transitions": regime_transitions,
         "performance_summary": performance_summary,
@@ -173,6 +177,7 @@ def generate_monthly_review(db: Session, as_of: date | None = None) -> dict[str,
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _build_regime_section(regime: MarketRegime | None, prev: MarketRegime | None) -> dict:
     if not regime:
@@ -201,12 +206,14 @@ def _find_stage_transitions(snapshots: list) -> list[dict]:
         prev = getattr(s, "previous_stage_label", None) or getattr(s, "prior_stage", None)
         curr = s.stage_label
         if prev and curr and prev != curr:
-            transitions.append({
-                "symbol": s.symbol,
-                "from_stage": prev,
-                "to_stage": curr,
-                "days_in_stage": getattr(s, "current_stage_days", None),
-            })
+            transitions.append(
+                {
+                    "symbol": s.symbol,
+                    "from_stage": prev,
+                    "to_stage": curr,
+                    "days_in_stage": getattr(s, "current_stage_days", None),
+                }
+            )
     return sorted(transitions, key=lambda x: x.get("to_stage", ""))
 
 
@@ -216,12 +223,14 @@ def _find_scan_changes(snapshots: list) -> list[dict]:
         if s.scan_tier and s.stage_label:
             tier_str = str(s.scan_tier)
             if "Breakout Elite" in tier_str or "Breakdown" in tier_str:
-                changes.append({
-                    "symbol": s.symbol,
-                    "scan_tier": tier_str,
-                    "stage": s.stage_label,
-                    "action": getattr(s, "action_label", None),
-                })
+                changes.append(
+                    {
+                        "symbol": s.symbol,
+                        "scan_tier": tier_str,
+                        "stage": s.stage_label,
+                        "action": getattr(s, "action_label", None),
+                    }
+                )
     return changes[:30]
 
 
@@ -229,8 +238,12 @@ def _compute_breadth(snapshots: list) -> dict:
     total = len(snapshots)
     if total == 0:
         return {"above_50d": 0, "above_200d": 0, "total": 0}
-    above_50 = sum(1 for s in snapshots if s.sma_50 and s.current_price and s.current_price > s.sma_50)
-    above_200 = sum(1 for s in snapshots if s.sma_200 and s.current_price and s.current_price > s.sma_200)
+    above_50 = sum(
+        1 for s in snapshots if s.sma_50 and s.current_price and s.current_price > s.sma_50
+    )
+    above_200 = sum(
+        1 for s in snapshots if s.sma_200 and s.current_price and s.current_price > s.sma_200
+    )
     return {
         "above_50d": above_50,
         "above_50d_pct": round(above_50 / total * 100, 1),
@@ -260,13 +273,19 @@ def _compute_sector_analysis(snapshots: list) -> list[dict]:
     for sector, stocks in sectors.items():
         n = len(stocks)
         avg_rs = sum(getattr(s, "rs_mansfield_pct", 0) or 0 for s in stocks) / n if n else 0
-        stage2_pct = sum(1 for s in stocks if s.stage_label and s.stage_label.startswith("2")) / n * 100 if n else 0
-        result.append({
-            "sector": sector,
-            "count": n,
-            "avg_rs": round(avg_rs, 2),
-            "stage2_pct": round(stage2_pct, 0),
-        })
+        stage2_pct = (
+            sum(1 for s in stocks if s.stage_label and s.stage_label.startswith("2")) / n * 100
+            if n
+            else 0
+        )
+        result.append(
+            {
+                "sector": sector,
+                "count": n,
+                "avg_rs": round(avg_rs, 2),
+                "stage2_pct": round(stage2_pct, 0),
+            }
+        )
     return sorted(result, key=lambda x: x["avg_rs"], reverse=True)
 
 
@@ -274,7 +293,10 @@ def _compute_top_picks(snapshots: list) -> dict:
     buy_list = [
         {"symbol": s.symbol, "stage": s.stage_label, "scan_tier": s.scan_tier}
         for s in snapshots
-        if s.stage_label and s.stage_label.startswith("2") and s.scan_tier and "Breakout Elite" in str(s.scan_tier)
+        if s.stage_label
+        and s.stage_label.startswith("2")
+        and s.scan_tier
+        and "Breakout Elite" in str(s.scan_tier)
     ]
     watch_list = [
         {"symbol": s.symbol, "stage": s.stage_label}

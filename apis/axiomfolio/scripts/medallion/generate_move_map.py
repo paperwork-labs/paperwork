@@ -14,6 +14,7 @@ Usage:
     python scripts/medallion/generate_move_map.py > medallion_move_map.yaml
     python scripts/medallion/generate_move_map.py --stats   # dry-run summary
 """
+
 from __future__ import annotations
 
 import argparse
@@ -42,12 +43,12 @@ def classify(rel: str) -> tuple[str | None, str]:
     # Pass 1 — leaf utilities (pure math, no dependencies).
     pass1_leaves = {
         "market/dataframe_utils.py": "silver/math/dataframe_utils.py",
-        "market/atr_series.py":       "silver/math/atr_series.py",
-        "market/coverage_utils.py":   "silver/math/coverage_utils.py",
-        "market/stage_utils.py":      "silver/math/stage_utils.py",
-        "market/backfill_params.py":  "silver/math/backfill_params.py",
-        "market/constants.py":        "silver/math/constants.py",
-        "market/rate_limiter.py":     "silver/math/rate_limiter.py",
+        "market/atr_series.py": "silver/math/atr_series.py",
+        "market/coverage_utils.py": "silver/math/coverage_utils.py",
+        "market/stage_utils.py": "silver/math/stage_utils.py",
+        "market/backfill_params.py": "silver/math/backfill_params.py",
+        "market/constants.py": "silver/math/constants.py",
+        "market/rate_limiter.py": "silver/math/rate_limiter.py",
     }
     if rel in pass1_leaves:
         return pass1_leaves[rel], "pass1_leaf_utilities"
@@ -55,21 +56,39 @@ def classify(rel: str) -> tuple[str | None, str]:
     # Pass 2 — silver core.
     if rel.startswith("market/providers/"):
         # market data providers are bronze (external I/O), not silver
-        return f"bronze/market/providers/{rel.removeprefix('market/providers/')}", "pass3_bronze_market_providers"
+        return (
+            f"bronze/market/providers/{rel.removeprefix('market/providers/')}",
+            "pass3_bronze_market_providers",
+        )
     if rel.startswith("market/"):
         # Everything else in market/ is silver (indicators, regime, stage).
         fname = rel.removeprefix("market/")
         # Subdivide known families
-        if fname in ("indicator_engine.py", "stage_classifier.py", "stage_quality_service.py",
-                     "multi_timeframe.py", "regime_engine.py", "regime_inputs.py", "regime_monitor.py",
-                     "quad_engine.py"):
-            subdir = "indicators" if "indicator" in fname or "multi_timeframe" in fname else "regime"
+        if fname in (
+            "indicator_engine.py",
+            "stage_classifier.py",
+            "stage_quality_service.py",
+            "multi_timeframe.py",
+            "regime_engine.py",
+            "regime_inputs.py",
+            "regime_monitor.py",
+            "quad_engine.py",
+        ):
+            subdir = (
+                "indicators" if "indicator" in fname or "multi_timeframe" in fname else "regime"
+            )
             return f"silver/{subdir}/{fname}", "pass2_silver_core"
         return f"silver/market/{fname}", "pass2_silver_core"
     if rel == "tax" or rel.startswith("tax/"):
-        return f"silver/tax/{rel.removeprefix('tax/')}" if "/" in rel else "silver/tax/__init__.py", "pass2_silver_core"
+        return (
+            f"silver/tax/{rel.removeprefix('tax/')}" if "/" in rel else "silver/tax/__init__.py",
+            "pass2_silver_core",
+        )
     if rel.startswith("corporate_actions/"):
-        return f"silver/corporate_actions/{rel.removeprefix('corporate_actions/')}", "pass2_silver_core"
+        return (
+            f"silver/corporate_actions/{rel.removeprefix('corporate_actions/')}",
+            "pass2_silver_core",
+        )
     if rel.startswith("data_quality/"):
         return f"silver/data_quality/{rel.removeprefix('data_quality/')}", "pass2_silver_core"
     if rel.startswith("intelligence/"):
@@ -95,23 +114,27 @@ def classify(rel: str) -> tuple[str | None, str]:
 
     # Remaining portfolio/* — analytics (silver).
     portfolio_silver_families = {
-        "portfolio_analytics_service.py":  "silver/portfolio/analytics.py",
-        "closing_lot_matcher.py":          "silver/portfolio/closing_lot_matcher.py",
-        "activity_aggregator.py":          "silver/portfolio/activity_aggregator.py",
-        "tax_lot_service.py":              "silver/portfolio/tax_lot_service.py",
-        "tax_loss_harvester.py":           "silver/portfolio/tax_loss_harvester.py",
-        "day_pnl_service.py":              "silver/portfolio/day_pnl_service.py",
+        "portfolio_analytics_service.py": "silver/portfolio/analytics.py",
+        "closing_lot_matcher.py": "silver/portfolio/closing_lot_matcher.py",
+        "activity_aggregator.py": "silver/portfolio/activity_aggregator.py",
+        "tax_lot_service.py": "silver/portfolio/tax_lot_service.py",
+        "tax_loss_harvester.py": "silver/portfolio/tax_loss_harvester.py",
+        "day_pnl_service.py": "silver/portfolio/day_pnl_service.py",
         "discipline_trajectory_service.py": "silver/portfolio/discipline_trajectory_service.py",
-        "drawdown.py":                     "silver/portfolio/drawdown.py",
-        "reconciliation.py":               "silver/portfolio/reconciliation.py",
-        "broker_catalog.py":               "silver/portfolio/broker_catalog.py",
-        "monitoring.py":                   "silver/portfolio/monitoring.py",
+        "drawdown.py": "silver/portfolio/drawdown.py",
+        "reconciliation.py": "silver/portfolio/reconciliation.py",
+        "broker_catalog.py": "silver/portfolio/broker_catalog.py",
+        "monitoring.py": "silver/portfolio/monitoring.py",
     }
     if rel.startswith("portfolio/"):
         fname = rel.removeprefix("portfolio/")
         if fname in portfolio_silver_families:
             return portfolio_silver_families[fname], "pass2_silver_portfolio"
-        if fname in ("account_config_service.py", "account_credentials_service.py", "account_type_resolver.py"):
+        if fname in (
+            "account_config_service.py",
+            "account_credentials_service.py",
+            "account_type_resolver.py",
+        ):
             # account/credentials helpers — ops (cross-cutting infra).
             return None, "ops_stays_portfolio_helpers"
         # Everything else in portfolio/ stays as silver/portfolio/ default.
@@ -133,10 +156,10 @@ def classify(rel: str) -> tuple[str | None, str]:
 
     # risk/ — per-file decision (B4 blocker).
     risk_split = {
-        "risk/pre_trade_validator.py":     "execution/risk/pre_trade_validator.py",   # pre-trade = execution
-        "risk/circuit_breaker.py":         "gold/risk/circuit_breaker.py",            # portfolio-level signal = gold
-        "risk/firm_caps.py":               "gold/risk/firm_caps.py",                  # policy = gold
-        "risk/account_risk_profile.py":    "gold/risk/account_risk_profile.py",       # portfolio-level = gold
+        "risk/pre_trade_validator.py": "execution/risk/pre_trade_validator.py",  # pre-trade = execution
+        "risk/circuit_breaker.py": "gold/risk/circuit_breaker.py",  # portfolio-level signal = gold
+        "risk/firm_caps.py": "gold/risk/firm_caps.py",  # policy = gold
+        "risk/account_risk_profile.py": "gold/risk/account_risk_profile.py",  # portfolio-level = gold
     }
     if rel.startswith("risk/"):
         if rel in risk_split:
@@ -149,9 +172,23 @@ def classify(rel: str) -> tuple[str | None, str]:
 
     # Ops dirs — stay put (escape hatch).
     ops_dirs = {
-        "agent", "billing", "brain", "clients", "connections", "core", "deploys",
-        "engine", "gdpr", "multitenant", "notifications", "oauth", "observability",
-        "ops", "pipeline", "security", "share"
+        "agent",
+        "billing",
+        "brain",
+        "clients",
+        "connections",
+        "core",
+        "deploys",
+        "engine",
+        "gdpr",
+        "multitenant",
+        "notifications",
+        "oauth",
+        "observability",
+        "ops",
+        "pipeline",
+        "security",
+        "share",
     }
     top = rel.split("/", 1)[0]
     if top in ops_dirs:

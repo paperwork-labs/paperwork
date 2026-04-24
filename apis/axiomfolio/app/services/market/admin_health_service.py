@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from sqlalchemy import distinct, func
 from sqlalchemy.orm import Session
@@ -37,14 +37,14 @@ logger = logging.getLogger(__name__)
 def _datetime_as_utc_aware(dt: datetime) -> datetime:
     """Coerce to timezone-aware UTC for comparisons against ``datetime.now(timezone.utc)``."""
     if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt.astimezone(timezone.utc)
+        return dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
 
 # ---------------------------------------------------------------------------
 # Thresholds -- tune here, not scattered across code
 # ---------------------------------------------------------------------------
-HEALTH_THRESHOLDS: Dict[str, float] = {
+HEALTH_THRESHOLDS: dict[str, float] = {
     "coverage_daily_pct_min": 95.0,
     "coverage_stale_daily_max": 25,
     # Stage-quality thresholds. Historical note: we used to have a single
@@ -54,11 +54,11 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
     # a ~2500-symbol × 120-day universe. The counter is now evaluated as a
     # *drift percentage* of history rows checked, with separate warn/crit
     # thresholds. See docs/handoffs/STAGE_QUALITY_DIAGNOSIS_2026Q2.md.
-    "stage_unknown_rate_max": 0.35,       # warn if unknowns exceed this
-    "stage_unknown_rate_crit": 0.60,      # critical if unknowns exceed this
-    "stage_invalid_max": 0,               # any invalid row == critical
-    "stage_days_drift_pct_warn": 2.0,     # warn if drift_pct above this
-    "stage_days_drift_pct_crit": 10.0,    # critical if drift_pct above this
+    "stage_unknown_rate_max": 0.35,  # warn if unknowns exceed this
+    "stage_unknown_rate_crit": 0.60,  # critical if unknowns exceed this
+    "stage_invalid_max": 0,  # any invalid row == critical
+    "stage_days_drift_pct_warn": 2.0,  # warn if drift_pct above this
+    "stage_days_drift_pct_crit": 10.0,  # critical if drift_pct above this
     "jobs_success_rate_min": 0.90,
     "jobs_lookback_hours": 24,
     "audit_daily_fill_pct_min": 95.0,
@@ -75,7 +75,16 @@ HEALTH_THRESHOLDS: Dict[str, float] = {
     "iv_coverage_warmup_days": 30,
 }
 
-MARKET_DIMS = {"coverage", "stage_quality", "jobs", "audit", "regime", "fundamentals", "data_accuracy", "iv_coverage"}
+MARKET_DIMS = {
+    "coverage",
+    "stage_quality",
+    "jobs",
+    "audit",
+    "regime",
+    "fundamentals",
+    "data_accuracy",
+    "iv_coverage",
+}
 BROKER_DIMS = {"portfolio_sync", "ibkr_gateway", "plaid"}
 # G28: deploys dim is infra-level — not part of the market/broker split.
 # It still counts toward composite; a red deploy dim must surface regardless
@@ -86,35 +95,37 @@ _COMPOSITE_HEALTH_CACHE_KEY = "admin:composite_health"
 _COMPOSITE_HEALTH_TTL_S = 60
 
 # Task-status keys we pull from Redis for the Agent Activity panel.
-_TASK_STATUS_KEYS: List[str] = sorted({
-    "admin_backfill_5m",
-    "admin_backfill_daily",
-    "admin_backfill_daily_since_date",
-    "admin_backfill_daily_symbols",
-    "admin_backfill_since_date",
-    "admin_coverage_backfill",
-    "admin_coverage_backfill_stale",
-    "admin_coverage_refresh",
-    "admin_indicators_recompute_universe",
-    "admin_market_data_audit",
-    "admin_recover_stale_job_runs",
-    "admin_snapshots_history_backfill",
-    "admin_snapshots_history_backfill_date",
-    "admin_snapshots_history_record",
-    "auto_ops_health_check",
-    "compute_daily_regime",
-    "market_indices_constituents_refresh",
-    "market_snapshots_fundamentals_fill",
-    "ohlcv_reconciliation",
-    "market_universe_tracked_refresh",
-})
+_TASK_STATUS_KEYS: list[str] = sorted(
+    {
+        "admin_backfill_5m",
+        "admin_backfill_daily",
+        "admin_backfill_daily_since_date",
+        "admin_backfill_daily_symbols",
+        "admin_backfill_since_date",
+        "admin_coverage_backfill",
+        "admin_coverage_backfill_stale",
+        "admin_coverage_refresh",
+        "admin_indicators_recompute_universe",
+        "admin_market_data_audit",
+        "admin_recover_stale_job_runs",
+        "admin_snapshots_history_backfill",
+        "admin_snapshots_history_backfill_date",
+        "admin_snapshots_history_record",
+        "auto_ops_health_check",
+        "compute_daily_regime",
+        "market_indices_constituents_refresh",
+        "market_snapshots_fundamentals_fill",
+        "ohlcv_reconciliation",
+        "market_universe_tracked_refresh",
+    }
+)
 
 
 def _dim_status(ok: bool) -> str:
     return "green" if ok else "red"
 
 
-def _composite_dimension_ok(status: Optional[str]) -> bool:
+def _composite_dimension_ok(status: str | None) -> bool:
     """True if dimension passes composite aggregation.
 
     Accepts green/ok (fully healthy) and yellow/warning (degraded but operational).
@@ -129,9 +140,9 @@ class AdminHealthService:
     # Public API
     # ------------------------------------------------------------------
 
-    def get_composite_health(self, db: Session) -> Dict[str, Any]:
+    def get_composite_health(self, db: Session) -> dict[str, Any]:
         r = infra.redis_client
-        payload: Optional[Dict[str, Any]] = None
+        payload: dict[str, Any] | None = None
         try:
             raw = r.get(_COMPOSITE_HEALTH_CACHE_KEY)
             if raw:
@@ -155,7 +166,7 @@ class AdminHealthService:
         self._merge_peak_hottest_endpoints(payload, r)
         return payload
 
-    def _merge_peak_hottest_endpoints(self, payload: Dict[str, Any], r: Any) -> None:
+    def _merge_peak_hottest_endpoints(self, payload: dict[str, Any], r: Any) -> None:
         """S2: top-10 endpoints by recent sampled peak-RSS; explicit null + error on failure."""
         if not getattr(settings, "ENABLE_PEAK_RSS_MIDDLEWARE", True):
             payload["hottest_endpoints"] = None
@@ -165,7 +176,7 @@ class AdminHealthService:
             from app.services.observability.peak_rss_store import get_hottest_endpoints_aggregated
 
             rows, err = get_hottest_endpoints_aggregated(r)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             logger.warning("peak_rss: hottest merge failed: %s", e, exc_info=True)
             payload["hottest_endpoints"] = None
             payload["hottest_endpoints_error"] = "error"
@@ -177,7 +188,7 @@ class AdminHealthService:
         payload["hottest_endpoints"] = rows
         payload["hottest_endpoints_error"] = None
 
-    def _merge_rss_observability_fields(self, payload: Dict[str, Any], r: Any) -> None:
+    def _merge_rss_observability_fields(self, payload: dict[str, Any], r: Any) -> None:
         """Add ``top_rss_endpoints`` + counts; never from composite cache (always fresh from Redis)."""
         if not settings.ENABLE_RSS_OBSERVABILITY:
             payload["top_rss_endpoints"] = []
@@ -202,11 +213,13 @@ class AdminHealthService:
                 },
             }
         payload["top_rss_endpoints"] = block.get("top_rss_endpoints", [])
-        payload["worker_request_count_last_hour"] = int(block.get("worker_request_count_last_hour", 0) or 0)
+        payload["worker_request_count_last_hour"] = int(
+            block.get("worker_request_count_last_hour", 0) or 0
+        )
         ro = block.get("rss_observability", {})
         payload["rss_observability"] = ro
 
-    def _compute_composite_health(self, db: Session) -> Dict[str, Any]:
+    def _compute_composite_health(self, db: Session) -> dict[str, Any]:
         coverage = self._build_coverage_dimension(db)
         stage = self._build_stage_dimension(db)
         jobs = self._build_jobs_dimension(db)
@@ -222,7 +235,7 @@ class AdminHealthService:
         iv_coverage = self._build_iv_coverage_dimension(db)
         task_runs = self._build_task_runs()
 
-        dims: Dict[str, Any] = {
+        dims: dict[str, Any] = {
             "coverage": coverage,
             "stage_quality": stage,
             "jobs": jobs,
@@ -248,7 +261,11 @@ class AdminHealthService:
 
         # Composite scoring: all dimensions including broker sync / gateway.
         scored_dims = dims
-        failures = [name for name, dim in scored_dims.items() if not _composite_dimension_ok(dim.get("status"))]
+        failures = [
+            name
+            for name, dim in scored_dims.items()
+            if not _composite_dimension_ok(dim.get("status"))
+        ]
 
         if not failures:
             composite_status = "green"
@@ -266,14 +283,14 @@ class AdminHealthService:
             "dimensions": dims,
             "task_runs": task_runs,
             "thresholds": dict(HEALTH_THRESHOLDS),
-            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "checked_at": datetime.now(UTC).isoformat(),
             "provider_metrics": self._build_provider_metrics() or None,
             "byok_anomaly": self._build_byok_anomaly(),
             "reconcile_anomaly": self._build_reconcile_anomaly(),
             "hot_path_cache": self._build_hot_path_cache_metrics(),
         }
 
-    def _build_byok_anomaly(self) -> Dict[str, Any]:
+    def _build_byok_anomaly(self) -> dict[str, Any]:
         """BYOK fallback counter snapshot.
 
         Reports separately from the composite so a BYOK hiccup is
@@ -294,7 +311,7 @@ class AdminHealthService:
                 "available": False,
             }
 
-    def _build_reconcile_anomaly(self) -> Dict[str, Any]:
+    def _build_reconcile_anomaly(self) -> dict[str, Any]:
         """Schwab (and similar) closing-lot reconciliation failure counter (Redis)."""
         from app.services.market.market_data_service import infra
         from app.services.portfolio.schwab_sync_service import (
@@ -314,7 +331,7 @@ class AdminHealthService:
             logger.warning("reconcile_anomaly snapshot failed: %s", e)
             return {"total": 0, "available": False}
 
-    def _build_hot_path_cache_metrics(self) -> Dict[str, Any]:
+    def _build_hot_path_cache_metrics(self) -> dict[str, Any]:
         """Portfolio response-cache bypass + narrative timeout counters (Redis)."""
         from app.api.middleware.response_cache import REDIS_BYPASS_COUNTER_KEY
         from app.services.market.market_data_service import infra
@@ -348,7 +365,7 @@ class AdminHealthService:
                 "available": False,
             }
 
-    def check_pre_market_readiness(self, db: Session) -> Dict[str, Any]:
+    def check_pre_market_readiness(self, db: Session) -> dict[str, Any]:
         """Check if the system is ready for the next trading session.
 
         Validates:
@@ -358,7 +375,7 @@ class AdminHealthService:
         """
         from app.services.market.market_data_service import _last_n_trading_sessions
 
-        gaps: List[str] = []
+        gaps: list[str] = []
         sessions = _last_n_trading_sessions(1)
         last_session = sessions[0] if sessions else None
 
@@ -385,7 +402,7 @@ class AdminHealthService:
             "daily_pct": daily_pct,
             "snapshot_fill_pct": snapshot_fill,
             "regime_age_hours": round(age_hours, 1),
-            "checked_at": datetime.now(timezone.utc).isoformat(),
+            "checked_at": datetime.now(UTC).isoformat(),
         }
 
         try:
@@ -403,7 +420,7 @@ class AdminHealthService:
     # Dimension builders
     # ------------------------------------------------------------------
 
-    def _build_coverage_dimension(self, db: Session) -> Dict[str, Any]:
+    def _build_coverage_dimension(self, db: Session) -> dict[str, Any]:
         try:
             from app.services.market.coverage_utils import compute_coverage_status
 
@@ -417,7 +434,7 @@ class AdminHealthService:
             )
 
             indices = snapshot.get("indices", {})
-            constituent_issues: List[str] = []
+            constituent_issues: list[str] = []
             tracked_indices = ["SP500", "NASDAQ100", "DOW30", "RUSSELL2000"]
             for idx_name in tracked_indices:
                 idx_value = indices.get(idx_name)
@@ -436,6 +453,7 @@ class AdminHealthService:
             curated_etf_count = 0
             try:
                 from app.services.market.constants import CURATED_MARKET_SYMBOLS
+
                 curated_etf_count = len(CURATED_MARKET_SYMBOLS)
             except Exception:
                 logger.debug("Failed to read CURATED_MARKET_SYMBOLS for ETF count")
@@ -458,7 +476,7 @@ class AdminHealthService:
             logger.exception("coverage dimension failed: %s", exc)
             return {"status": "red", "error": str(exc)}
 
-    def _build_stage_dimension(self, db: Session) -> Dict[str, Any]:
+    def _build_stage_dimension(self, db: Session) -> dict[str, Any]:
         """Evaluate the stage-quality dimension with scale-aware thresholds.
 
         Returns a three-state status:
@@ -485,11 +503,9 @@ class AdminHealthService:
             # Drift percentage: fraction of row-pairs with stage_days
             # discontinuities. Absent data reported as None, not 0 —
             # downstream decision branches on that explicitly.
-            drift_pct: Optional[float]
+            drift_pct: float | None
             if rows_checked > 0:
-                drift_pct = round(
-                    100.0 * stage_days_drift_count / rows_checked, 3
-                )
+                drift_pct = round(100.0 * stage_days_drift_count / rows_checked, 3)
             else:
                 drift_pct = None
 
@@ -542,9 +558,7 @@ class AdminHealthService:
                 # treated as "unknown" (not drift) and counted here. High
                 # values during warmup are expected; persistent high values
                 # indicate a write-path gap in the snapshot pipeline.
-                "unknown_stage_days_count": int(
-                    data.get("unknown_stage_days_count") or 0
-                ),
+                "unknown_stage_days_count": int(data.get("unknown_stage_days_count") or 0),
                 "empty_label_count": int(data.get("empty_label_count") or 0),
                 "stale_stage_count": int(data.get("stale_stage_count") or 0),
                 "total_symbols": total_symbols,
@@ -554,18 +568,16 @@ class AdminHealthService:
             logger.exception("stage dimension failed: %s", exc)
             return {"status": "red", "error": str(exc)}
 
-    def _build_jobs_dimension(self, db: Session) -> Dict[str, Any]:
+    def _build_jobs_dimension(self, db: Session) -> dict[str, Any]:
         try:
             from app.models.market_data import JobRun
 
             lookback = int(HEALTH_THRESHOLDS["jobs_lookback_hours"])
-            since = datetime.now(timezone.utc) - timedelta(hours=lookback)
+            since = datetime.now(UTC) - timedelta(hours=lookback)
             base = db.query(JobRun).filter(JobRun.started_at >= since)
 
             status_rows = (
-                base.with_entities(JobRun.status, func.count())
-                .group_by(JobRun.status)
-                .all()
+                base.with_entities(JobRun.status, func.count()).group_by(JobRun.status).all()
             )
             by_status = {row[0]: int(row[1]) for row in status_rows if row[0] is not None}
             total = sum(by_status.values())
@@ -577,9 +589,7 @@ class AdminHealthService:
             success_rate = (ok_count / completed) if completed else 0.0
 
             latest_failed = (
-                base.filter(JobRun.status == "error")
-                .order_by(JobRun.started_at.desc())
-                .first()
+                base.filter(JobRun.status == "error").order_by(JobRun.started_at.desc()).first()
             )
 
             ok = (completed == 0) or (success_rate >= HEALTH_THRESHOLDS["jobs_success_rate_min"])
@@ -614,15 +624,11 @@ class AdminHealthService:
             logger.exception("jobs dimension failed: %s", exc)
             return {"status": "red", "error": str(exc)}
 
-    def _build_regime_dimension(self, db: Session) -> Dict[str, Any]:
+    def _build_regime_dimension(self, db: Session) -> dict[str, Any]:
         try:
             from app.models.market_data import MarketRegime
 
-            latest = (
-                db.query(MarketRegime)
-                .order_by(MarketRegime.as_of_date.desc())
-                .first()
-            )
+            latest = db.query(MarketRegime).order_by(MarketRegime.as_of_date.desc()).first()
             if latest is None:
                 return {"status": "red", "error": "no regime data computed"}
 
@@ -630,8 +636,8 @@ class AdminHealthService:
             if latest.as_of_date:
                 as_of = latest.as_of_date
                 if as_of.tzinfo is None:
-                    as_of = as_of.replace(tzinfo=timezone.utc)
-                age_hours = (datetime.now(timezone.utc) - as_of).total_seconds() / 3600
+                    as_of = as_of.replace(tzinfo=UTC)
+                age_hours = (datetime.now(UTC) - as_of).total_seconds() / 3600
 
             ok = age_hours < 48
             return {
@@ -651,7 +657,7 @@ class AdminHealthService:
     _AUDIT_CACHE_KEY = "market_audit:computed"
     _AUDIT_CACHE_TTL = 300  # 5 minutes
 
-    def compute_audit_metrics(self, db: Session) -> Dict[str, Any]:
+    def compute_audit_metrics(self, db: Session) -> dict[str, Any]:
         """Canonical audit computation — single source of truth.
 
         Queries DB directly with analysis_type='technical_snapshot' filter
@@ -659,19 +665,15 @@ class AdminHealthService:
         for 5 min. Called by _build_audit_dimension and by the audit_quality
         Celery task (cache-warmer).
         """
-        from app.models.market_data import PriceData, MarketSnapshotHistory
+        from app.models.market_data import MarketSnapshotHistory, PriceData
         from app.services.market.universe import tracked_symbols_with_source
 
-        tracked_list, _ = tracked_symbols_with_source(
-            db, redis_client=infra.redis_client
-        )
+        tracked_list, _ = tracked_symbols_with_source(db, redis_client=infra.redis_client)
         tracked_set = {str(s).upper() for s in (tracked_list or []) if s}
         tracked_total = len(tracked_set)
 
         latest_daily_dt = (
-            db.query(func.max(PriceData.date))
-            .filter(PriceData.interval == "1d")
-            .scalar()
+            db.query(func.max(PriceData.date)).filter(PriceData.interval == "1d").scalar()
         )
         daily_count = 0
         if latest_daily_dt and tracked_set:
@@ -691,7 +693,7 @@ class AdminHealthService:
             .scalar()
         )
         hist_count = 0
-        missing_sample: List[str] = []
+        missing_sample: list[str] = []
         if latest_hist_dt and tracked_set:
             hist_syms = (
                 db.query(MarketSnapshotHistory.symbol)
@@ -710,10 +712,10 @@ class AdminHealthService:
         daily_fill = round((int(daily_count) / tracked_total) * 100.0, 1) if tracked_total else 0.0
         snapshot_fill = round((hist_count / tracked_total) * 100.0, 1) if tracked_total else 0.0
 
-        history_depth_years: Optional[float] = None
-        earliest_date_str: Optional[str] = None
-        ohlcv_earliest_str: Optional[str] = None
-        ohlcv_symbol_count: Optional[int] = None
+        history_depth_years: float | None = None
+        earliest_date_str: str | None = None
+        ohlcv_earliest_str: str | None = None
+        ohlcv_symbol_count: int | None = None
         try:
             earliest = (
                 db.query(func.min(MarketSnapshotHistory.as_of_date))
@@ -727,22 +729,39 @@ class AdminHealthService:
                     earliest_date = earliest
                 earliest_date_str = earliest_date.isoformat()
                 from datetime import date as _date
+
                 delta = _date.today() - earliest_date
                 history_depth_years = round(delta.days / 365.25, 1)
 
-            ohlcv_min = db.query(func.min(PriceData.date)).filter(PriceData.interval == "1d").scalar()
+            ohlcv_min = (
+                db.query(func.min(PriceData.date)).filter(PriceData.interval == "1d").scalar()
+            )
             if ohlcv_min:
-                ohlcv_earliest_str = (ohlcv_min.date() if callable(getattr(ohlcv_min, "date", None)) else ohlcv_min).isoformat()
-            ohlcv_symbol_count = db.query(func.count(func.distinct(PriceData.symbol))).filter(PriceData.interval == "1d").scalar()
+                ohlcv_earliest_str = (
+                    ohlcv_min.date() if callable(getattr(ohlcv_min, "date", None)) else ohlcv_min
+                ).isoformat()
+            ohlcv_symbol_count = (
+                db.query(func.count(func.distinct(PriceData.symbol)))
+                .filter(PriceData.interval == "1d")
+                .scalar()
+            )
         except Exception:
             logger.debug("Failed to compute history depth / OHLCV depth in audit metrics")
 
         payload = {
             "tracked_total": tracked_total,
-            "latest_daily_date": latest_daily_dt.isoformat() if hasattr(latest_daily_dt, "isoformat") else str(latest_daily_dt) if latest_daily_dt else None,
+            "latest_daily_date": latest_daily_dt.isoformat()
+            if hasattr(latest_daily_dt, "isoformat")
+            else str(latest_daily_dt)
+            if latest_daily_dt
+            else None,
             "latest_daily_symbol_count": int(daily_count),
             "daily_fill_pct": daily_fill,
-            "latest_snapshot_history_date": latest_hist_dt.isoformat() if hasattr(latest_hist_dt, "isoformat") else str(latest_hist_dt) if latest_hist_dt else None,
+            "latest_snapshot_history_date": latest_hist_dt.isoformat()
+            if hasattr(latest_hist_dt, "isoformat")
+            else str(latest_hist_dt)
+            if latest_hist_dt
+            else None,
             "latest_snapshot_history_symbol_count": hist_count,
             "snapshot_fill_pct": snapshot_fill,
             "missing_snapshot_history_sample": missing_sample,
@@ -750,7 +769,7 @@ class AdminHealthService:
             "earliest_date": earliest_date_str,
             "ohlcv_earliest_date": ohlcv_earliest_str,
             "ohlcv_symbol_count": ohlcv_symbol_count,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
         }
 
         try:
@@ -762,7 +781,7 @@ class AdminHealthService:
 
         return payload
 
-    def _build_audit_dimension(self, db: Session) -> Dict[str, Any]:
+    def _build_audit_dimension(self, db: Session) -> dict[str, Any]:
         try:
             raw = infra.redis_client.get(self._AUDIT_CACHE_KEY)
             if raw:
@@ -793,14 +812,12 @@ class AdminHealthService:
             logger.exception("audit dimension failed: %s", exc)
             return {"status": "red", "error": str(exc)}
 
-    def _build_fundamentals_dimension(self, db: Session) -> Dict[str, Any]:
+    def _build_fundamentals_dimension(self, db: Session) -> dict[str, Any]:
         try:
             from app.models.market_data import MarketSnapshot
             from app.services.market.universe import tracked_symbols_with_source
 
-            tracked_list, _ = tracked_symbols_with_source(
-                db, redis_client=infra.redis_client
-            )
+            tracked_list, _ = tracked_symbols_with_source(db, redis_client=infra.redis_client)
             universe = sorted({str(s).upper() for s in (tracked_list or []) if s})
             total = len(universe)
             if total == 0:
@@ -843,7 +860,7 @@ class AdminHealthService:
             logger.exception("fundamentals dimension failed: %s", exc)
             return {"status": "error", "error": str(exc)}
 
-    def _build_data_accuracy_dimension(self) -> Dict[str, Any]:
+    def _build_data_accuracy_dimension(self) -> dict[str, Any]:
         """Data accuracy from OHLCV spot-check reconciliation results."""
         try:
             r = infra.redis_client
@@ -874,14 +891,12 @@ class AdminHealthService:
                 try:
                     checked_dt = datetime.fromisoformat(checked_at.replace("Z", "+00:00"))
                     if checked_dt.tzinfo is None:
-                        checked_dt = checked_dt.replace(tzinfo=timezone.utc)
-                    age_days = (datetime.now(timezone.utc) - checked_dt).days
+                        checked_dt = checked_dt.replace(tzinfo=UTC)
+                    age_days = (datetime.now(UTC) - checked_dt).days
                 except Exception:
                     logger.debug("Failed to parse checked_at timestamp for age calculation")
 
-            if age_days > max_age_days:
-                status = "red"
-            elif mismatch_count > max_mismatches:
+            if age_days > max_age_days or mismatch_count > max_mismatches:
                 status = "red"
             elif mismatch_count > 0:
                 status = "yellow"
@@ -917,15 +932,13 @@ class AdminHealthService:
                 "mismatches": [],
             }
 
-    def _build_portfolio_sync_dimension(self, db: Session) -> Dict[str, Any]:
+    def _build_portfolio_sync_dimension(self, db: Session) -> dict[str, Any]:
         """Check if broker accounts have synced recently (within 24h)."""
         try:
             from app.models import BrokerAccount
 
-            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
-            accounts = db.query(BrokerAccount).filter(
-                BrokerAccount.is_enabled.is_(True)
-            ).all()
+            cutoff = datetime.now(UTC) - timedelta(hours=24)
+            accounts = db.query(BrokerAccount).filter(BrokerAccount.is_enabled.is_(True)).all()
 
             if not accounts:
                 return {
@@ -953,9 +966,7 @@ class AdminHealthService:
                 except Exception:
                     continue
                 if isinstance(parsed, list):
-                    account_type_warnings.extend(
-                        item for item in parsed if isinstance(item, dict)
-                    )
+                    account_type_warnings.extend(item for item in parsed if isinstance(item, dict))
 
             status = "red" if stale else ("yellow" if account_type_warnings else "green")
             return {
@@ -969,7 +980,7 @@ class AdminHealthService:
             logger.exception("portfolio_sync dimension failed: %s", exc)
             return {"status": "error", "error": str(exc)}
 
-    def _build_plaid_dimension(self, db: Session) -> Dict[str, Any]:
+    def _build_plaid_dimension(self, db: Session) -> dict[str, Any]:
         """Plaid aggregator health: connection statuses + last sync age.
 
         Status buckets:
@@ -997,33 +1008,26 @@ class AdminHealthService:
                 and getattr(settings, "PLAID_SECRET", None)
             )
 
-            rows: List[PlaidConnection] = (
+            rows: list[PlaidConnection] = (
                 db.query(PlaidConnection)
-                .filter(
-                    PlaidConnection.status != PlaidConnectionStatus.REVOKED.value
-                )
+                .filter(PlaidConnection.status != PlaidConnectionStatus.REVOKED.value)
                 .all()
             )
 
             total = len(rows)
-            status_counts: Dict[str, int] = {}
+            status_counts: dict[str, int] = {}
             for r in rows:
                 status_counts[r.status] = status_counts.get(r.status, 0) + 1
 
-            cutoff = datetime.now(timezone.utc) - timedelta(hours=26)
+            cutoff = datetime.now(UTC) - timedelta(hours=26)
             stale = [
                 r
                 for r in rows
-                if r.last_sync_at is None
-                or _datetime_as_utc_aware(r.last_sync_at) < cutoff
+                if r.last_sync_at is None or _datetime_as_utc_aware(r.last_sync_at) < cutoff
             ]
 
-            error_count = status_counts.get(
-                PlaidConnectionStatus.ERROR.value, 0
-            )
-            reauth_count = status_counts.get(
-                PlaidConnectionStatus.NEEDS_REAUTH.value, 0
-            )
+            error_count = status_counts.get(PlaidConnectionStatus.ERROR.value, 0)
+            reauth_count = status_counts.get(PlaidConnectionStatus.NEEDS_REAUTH.value, 0)
 
             if not configured and total > 0:
                 status = "red"
@@ -1049,19 +1053,19 @@ class AdminHealthService:
             logger.exception("plaid dimension failed: %s", exc)
             return {"status": "error", "error": str(exc)}
 
-    def _build_ibkr_gateway_dimension(self) -> Dict[str, Any]:
+    def _build_ibkr_gateway_dimension(self) -> dict[str, Any]:
         """Check IBKR Gateway connection status.
-        
+
         Uses the connection_health property from the IBKR client which is
         updated by the ibkr_watchdog task.
         """
         try:
             from app.services.clients.ibkr_client import ibkr_client
-            
+
             health = getattr(ibkr_client, "connection_health", {})
             status = health.get("status", "unknown")
             last_ping = health.get("last_ping")
-            
+
             # Check if last ping was recent (within 10 minutes)
             is_stale = True
             if last_ping:
@@ -1071,18 +1075,18 @@ class AdminHealthService:
                     else:
                         last_ping_dt = last_ping
                     if last_ping_dt.tzinfo is None:
-                        last_ping_dt = last_ping_dt.replace(tzinfo=timezone.utc)
-                    is_stale = (datetime.now(timezone.utc) - last_ping_dt) > timedelta(minutes=10)
+                        last_ping_dt = last_ping_dt.replace(tzinfo=UTC)
+                    is_stale = (datetime.now(UTC) - last_ping_dt) > timedelta(minutes=10)
                 except Exception:
                     logger.debug("Failed to parse last_ping timestamp for staleness check")
-            
+
             if status == "connected" and not is_stale:
                 dim_status = "green"
             elif status in ("connected", "reconnected"):
                 dim_status = "yellow"  # Connected but stale ping
             else:
                 dim_status = "red"
-            
+
             return {
                 "status": dim_status,
                 "connection_status": status,
@@ -1093,7 +1097,7 @@ class AdminHealthService:
             logger.warning("ibkr_gateway dimension failed: %s", exc)
             return {"status": "yellow", "error": str(exc), "note": "IBKR client not available"}
 
-    def _build_deploys_dimension(self, db: Session) -> Dict[str, Any]:
+    def _build_deploys_dimension(self, db: Session) -> dict[str, Any]:
         """Build the deploys dimension payload (G28, D120).
 
         Reads ``DEPLOY_HEALTH_SERVICE_IDS`` from settings (comma-separated
@@ -1120,7 +1124,7 @@ class AdminHealthService:
                 "failures_24h_total": 0,
             }
 
-    def _build_iv_coverage_dimension(self, db: Session) -> Dict[str, Any]:
+    def _build_iv_coverage_dimension(self, db: Session) -> dict[str, Any]:
         """G5: daily IV-coverage stats over the tracked universe.
 
         Six sub-metrics required by ``docs/plans/G5_IV_RANK_SURFACE.md`` §6:
@@ -1158,20 +1162,13 @@ class AdminHealthService:
 
             # Row counts for today.
             q_today = db.query(HistoricalIV).filter(HistoricalIV.date == today)
-            with_iv_30d_today = int(
-                q_today.filter(HistoricalIV.iv_30d.isnot(None)).count() or 0
-            )
-            with_hv_20d_today = int(
-                q_today.filter(HistoricalIV.hv_20d.isnot(None)).count() or 0
-            )
+            with_iv_30d_today = int(q_today.filter(HistoricalIV.iv_30d.isnot(None)).count() or 0)
+            with_hv_20d_today = int(q_today.filter(HistoricalIV.hv_20d.isnot(None)).count() or 0)
             with_iv_rank_252 = int(
-                db.query(HistoricalIV)
-                .filter(HistoricalIV.iv_rank_252.isnot(None))
-                .count()
-                or 0
+                db.query(HistoricalIV).filter(HistoricalIV.iv_rank_252.isnot(None)).count() or 0
             )
 
-            coverage_pct: Optional[float] = None
+            coverage_pct: float | None = None
             if n_tracked > 0:
                 coverage_pct = round(100.0 * with_iv_30d_today / n_tracked, 2)
 
@@ -1202,7 +1199,7 @@ class AdminHealthService:
                 in_warmup = True
 
             status: str
-            reason: Optional[str] = None
+            reason: str | None = None
             if n_tracked == 0:
                 status = "yellow"
                 reason = "Tracked universe empty; IV coverage cannot be evaluated."
@@ -1252,7 +1249,7 @@ class AdminHealthService:
                 "available": False,
             }
 
-    def _build_universe_coverage_dimension(self) -> Dict[str, Any]:
+    def _build_universe_coverage_dimension(self) -> dict[str, Any]:
         """G11: last startup snapshot of held symbols vs tracked universe (Redis)."""
         try:
             from app.services.ops import universe_coverage as uc
@@ -1275,7 +1272,7 @@ class AdminHealthService:
                 status = "yellow"
             else:
                 status = "red"
-            out: Dict[str, Any] = {
+            out: dict[str, Any] = {
                 "state": st_raw,
                 "status": status,
                 "users_checked": raw.get("users_checked"),
@@ -1289,10 +1286,12 @@ class AdminHealthService:
             if st_raw == "degraded" and raw.get("gaps_total") is not None:
                 out["reason"] = (
                     f"Universe gap: {raw.get('gaps_total')} open position(s) "
-                    "not in tracked set (see API logs for \"universe gap\")."
+                    'not in tracked set (see API logs for "universe gap").'
                 )
             elif st_raw == "error":
-                out["reason"] = "Startup universe coverage check failed or reported errors (see error_detail and API logs)."
+                out["reason"] = (
+                    "Startup universe coverage check failed or reported errors (see error_detail and API logs)."
+                )
             return out
         except Exception as exc:
             logger.exception("universe_coverage dimension failed: %s", exc)
@@ -1303,8 +1302,8 @@ class AdminHealthService:
                 "reason": str(exc)[:2000],
             }
 
-    def _build_task_runs(self) -> Dict[str, Any]:
-        out: Dict[str, Any] = {}
+    def _build_task_runs(self) -> dict[str, Any]:
+        out: dict[str, Any] = {}
         try:
             r = infra.redis_client
             keys = [f"taskstatus:{tn}:last" for tn in _TASK_STATUS_KEYS]
@@ -1323,11 +1322,11 @@ class AdminHealthService:
     # Provider metrics
     # ------------------------------------------------------------------
 
-    def _build_provider_metrics(self) -> Dict[str, Any]:
+    def _build_provider_metrics(self) -> dict[str, Any]:
         """Read today's provider call counters from Redis."""
         try:
             r = infra.redis_client
-            date_key = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+            date_key = datetime.now(UTC).strftime("%Y-%m-%d")
             raw = r.hgetall(f"provider:calls:{date_key}")
             if not raw:
                 return {}
@@ -1372,15 +1371,20 @@ class AdminHealthService:
 
             fmp_7d_total = 0
             from datetime import timedelta
+
             for i in range(7):
-                day = (datetime.now(timezone.utc) - timedelta(days=i)).strftime("%Y-%m-%d")
+                day = (datetime.now(UTC) - timedelta(days=i)).strftime("%Y-%m-%d")
                 redis_key = f"provider:calls:{day}"
                 try:
                     day_val = r.hget(redis_key, "fmp")
                     if day_val:
-                        fmp_7d_total += int(day_val.decode() if isinstance(day_val, bytes) else day_val)
+                        fmp_7d_total += int(
+                            day_val.decode() if isinstance(day_val, bytes) else day_val
+                        )
                 except Exception as exc:
-                    logger.debug("failed to read provider metrics for day=%s key=%s: %s", day, redis_key, exc)
+                    logger.debug(
+                        "failed to read provider metrics for day=%s key=%s: %s", day, redis_key, exc
+                    )
             result["fmp_7d_total"] = fmp_7d_total
 
             return result
@@ -1395,7 +1399,7 @@ class AdminHealthService:
     _PROVIDER_PROBE_CACHE_KEY = "health:provider_keys"
     _PROVIDER_PROBE_TTL = 1800  # 30 min
 
-    def _check_provider_keys(self) -> Dict[str, str]:
+    def _check_provider_keys(self) -> dict[str, str]:
         """Return cached provider key health status.
 
         The probe is populated by auto_remediate_health (Celery) which runs
@@ -1411,17 +1415,18 @@ class AdminHealthService:
             logger.debug("Failed to read provider probe cache")
         return {"fmp": "unchecked", "finnhub": "unchecked"}
 
-    def refresh_provider_probe(self) -> Dict[str, str]:
+    def refresh_provider_probe(self) -> dict[str, str]:
         """Actually probe provider APIs and cache the result.
 
         Called from sync Celery context (auto_ops), NOT from the API path.
         """
         r = infra.redis_client
-        result: Dict[str, str] = {}
+        result: dict[str, str] = {}
 
         if getattr(settings, "FMP_API_KEY", None):
             try:
                 import httpx
+
                 resp = httpx.get(
                     f"https://financialmodelingprep.com/stable/quote?symbol=SPY&apikey={settings.FMP_API_KEY}",
                     timeout=10,
@@ -1435,6 +1440,7 @@ class AdminHealthService:
         if getattr(settings, "FINNHUB_API_KEY", None):
             try:
                 import httpx
+
                 resp = httpx.get(
                     f"https://finnhub.io/api/v1/quote?symbol=SPY&token={settings.FINNHUB_API_KEY}",
                     timeout=10,

@@ -14,7 +14,7 @@ detail thanks to the ``OAuthBrokerAdapter`` abstraction.
 from __future__ import annotations
 
 import enum
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
@@ -41,12 +41,12 @@ class OAuthBrokerType(str, enum.Enum):
 class OAuthConnectionStatus(str, enum.Enum):
     """Lifecycle states for a stored OAuth connection."""
 
-    PENDING = "PENDING"           # initiate started, no token yet
-    ACTIVE = "ACTIVE"             # token usable
-    EXPIRED = "EXPIRED"           # token past expiry; needs refresh
-    REVOKED = "REVOKED"           # user or provider revoked
+    PENDING = "PENDING"  # initiate started, no token yet
+    ACTIVE = "ACTIVE"  # token usable
+    EXPIRED = "EXPIRED"  # token past expiry; needs refresh
+    REVOKED = "REVOKED"  # user or provider revoked
     REFRESH_FAILED = "REFRESH_FAILED"  # permanent refresh failure; reauth required
-    ERROR = "ERROR"               # transient/unknown error; retry safe
+    ERROR = "ERROR"  # transient/unknown error; retry safe
 
 
 class BrokerOAuthConnection(Base):
@@ -118,10 +118,10 @@ class BrokerOAuthConnection(Base):
 
         if self.token_expires_at is None:
             return False
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         expires_at = self.token_expires_at
         if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+            expires_at = expires_at.replace(tzinfo=UTC)
         return expires_at <= now + window
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper

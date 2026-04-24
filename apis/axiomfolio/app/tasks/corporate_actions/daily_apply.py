@@ -29,8 +29,8 @@ Idempotency
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from celery import shared_task
 
@@ -57,7 +57,7 @@ _HARD_LIMIT_SECONDS = 1800
     queue="heavy",
 )
 @task_run("daily_corporate_actions", lock_ttl_seconds=_HARD_LIMIT_SECONDS + 100)
-def daily_corporate_actions(fetch_lookback_days: int = 7) -> Dict[str, Any]:
+def daily_corporate_actions(fetch_lookback_days: int = 7) -> dict[str, Any]:
     """Fetch + apply pending corporate actions for the tracked universe.
 
     Args:
@@ -71,7 +71,7 @@ def daily_corporate_actions(fetch_lookback_days: int = 7) -> Dict[str, Any]:
         can render a single, structured payload.
     """
     _set_task_status("daily_corporate_actions", "running")
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     since = today - timedelta(days=fetch_lookback_days)
 
     session = SessionLocal()
@@ -102,9 +102,7 @@ def daily_corporate_actions(fetch_lookback_days: int = 7) -> Dict[str, Any]:
                 "symbols_fetched": fetch_report.symbols_fetched,
                 "symbols_errored": fetch_report.symbols_errored,
                 "actions_inserted": fetch_report.actions_inserted,
-                "actions_skipped_duplicate": (
-                    fetch_report.actions_skipped_duplicate
-                ),
+                "actions_skipped_duplicate": (fetch_report.actions_skipped_duplicate),
             }
 
         applier = CorporateActionApplier(session)

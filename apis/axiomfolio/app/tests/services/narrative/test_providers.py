@@ -38,9 +38,12 @@ def test_fallback_template_from_summary():
     assert res.provider == "fallback_template"
     assert "AAPL" in res.text
     assert "Macro regime" in res.text
-    assert res.prompt_hash == hashlib.sha256(
-        json.dumps(dict(summary), sort_keys=True, default=str).encode("utf-8")
-    ).hexdigest()
+    assert (
+        res.prompt_hash
+        == hashlib.sha256(
+            json.dumps(dict(summary), sort_keys=True, default=str).encode("utf-8")
+        ).hexdigest()
+    )
 
 
 class _RaisingNarrativeProvider:

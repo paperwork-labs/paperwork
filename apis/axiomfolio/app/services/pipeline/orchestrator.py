@@ -16,13 +16,15 @@ error/timeout so that the outer Celery task wrapper can handle it.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import importlib
 import logging
 import time as _time
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
+from typing import Any
 
 from celery.exceptions import SoftTimeLimitExceeded
 
@@ -30,7 +32,6 @@ from app.services.pipeline.dag import (
     PIPELINE_DAG,
     STEP_ERROR,
     STEP_OK,
-    STEP_PENDING,
     STEP_RUNNING,
     STEP_SKIPPED,
     StepDef,
@@ -48,7 +49,7 @@ logger = logging.getLogger(__name__)
 # Step callable resolution
 # ---------------------------------------------------------------------------
 
-_STEP_KWARGS: Dict[str, Dict[str, Any]] = {
+_STEP_KWARGS: dict[str, dict[str, Any]] = {
     "indicators": {"batch_size": 50},
     "digest": {"deliver_brain": True},
     "snapshot_history": {"days": 20, "batch_size": 25},
@@ -63,7 +64,9 @@ def _resolve_callable(task_path: str) -> Callable[..., Any]:
     return fn
 
 
-def _call_step(step_name: str, step_def: StepDef, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _call_step(
+    step_name: str, step_def: StepDef, params: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Call a step's task function and return its result dict."""
     fn = _resolve_callable(step_def.task_path)
     kwargs = {}
@@ -82,7 +85,7 @@ def _call_step(step_name: str, step_def: StepDef, params: Optional[Dict[str, Any
 # Step summary (reused from coverage.py for backward compat)
 # ---------------------------------------------------------------------------
 
-_STEP_TO_LEGACY_NAME: Dict[str, str] = {
+_STEP_TO_LEGACY_NAME: dict[str, str] = {
     "constituents": "market_indices_constituents_refresh",
     "tracked_cache": "market_universe_tracked_refresh",
     "daily_bars": "admin_backfill_daily",
@@ -99,7 +102,7 @@ _STEP_TO_LEGACY_NAME: Dict[str, str] = {
 }
 
 
-def _summarize(step_name: str, result: Optional[Dict[str, Any]]) -> str:
+def _summarize(step_name: str, result: dict[str, Any] | None) -> str:
     """Produce a one-line summary for a completed step."""
     from app.tasks.market.coverage import _summarize_bootstrap_step
 
@@ -114,14 +117,15 @@ def _summarize(step_name: str, result: Optional[Dict[str, Any]]) -> str:
 # Orchestrator
 # ---------------------------------------------------------------------------
 
+
 def run_pipeline(
     run_id: str,
     *,
-    steps: Optional[Sequence[str]] = None,
-    params: Optional[Dict[str, Any]] = None,
+    steps: Sequence[str] | None = None,
+    params: dict[str, Any] | None = None,
     triggered_by: str = "celery_beat",
-    dag: Optional[Dict[str, StepDef]] = None,
-) -> Dict[str, Any]:
+    dag: dict[str, StepDef] | None = None,
+) -> dict[str, Any]:
     """Execute the pipeline DAG with full state tracking.
 
     Args:
@@ -138,7 +142,7 @@ def run_pipeline(
     if dag is None:
         dag = PIPELINE_DAG
 
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = datetime.now(UTC).isoformat()
     mark_run_meta(run_id, status="running", started_at=now_iso, triggered_by=triggered_by)
 
     execution_order = resolve_execution_order(dag, steps)
@@ -149,8 +153,8 @@ def run_pipeline(
         " -> ".join(execution_order),
     )
 
-    rollup_steps: List[Dict[str, Any]] = []
-    step_results: Dict[str, str] = {}  # step_name -> final status
+    rollup_steps: list[dict[str, Any]] = []
+    step_results: dict[str, str] = {}  # step_name -> final status
     pipeline_start = _time.monotonic()
 
     for step_name in execution_order:
@@ -161,30 +165,33 @@ def run_pipeline(
         if existing_status == STEP_OK:
             logger.info("Pipeline %s: step %s already ok — skipping", run_id, step_name)
             step_results[step_name] = STEP_OK
-            rollup_steps.append({
-                "name": _STEP_TO_LEGACY_NAME.get(step_name, step_name),
-                "summary": "Resumed (already ok)",
-                "result": {"status": "ok", "resumed": True},
-                "duration_s": 0.0,
-            })
+            rollup_steps.append(
+                {
+                    "name": _STEP_TO_LEGACY_NAME.get(step_name, step_name),
+                    "summary": "Resumed (already ok)",
+                    "result": {"status": "ok", "resumed": True},
+                    "duration_s": 0.0,
+                }
+            )
             continue
 
         # 2) Cascade skip: any dep failed or was skipped
         failed_deps = [
-            dep for dep in step_def.deps
-            if step_results.get(dep) in (STEP_ERROR, STEP_SKIPPED)
+            dep for dep in step_def.deps if step_results.get(dep) in (STEP_ERROR, STEP_SKIPPED)
         ]
         if failed_deps:
             reason = f"dependency failed: {', '.join(failed_deps)}"
             mark_step(run_id, step_name, STEP_SKIPPED, error=reason)
             step_results[step_name] = STEP_SKIPPED
             logger.info("Pipeline %s: step %s skipped — %s", run_id, step_name, reason)
-            rollup_steps.append({
-                "name": _STEP_TO_LEGACY_NAME.get(step_name, step_name),
-                "summary": f"Skipped ({reason})",
-                "result": {"status": "skipped", "reason": reason},
-                "duration_s": 0.0,
-            })
+            rollup_steps.append(
+                {
+                    "name": _STEP_TO_LEGACY_NAME.get(step_name, step_name),
+                    "summary": f"Skipped ({reason})",
+                    "result": {"status": "skipped", "reason": reason},
+                    "duration_s": 0.0,
+                }
+            )
             continue
 
         # 3) Verify deps are truly ok in Redis (handles retry scenarios)
@@ -193,30 +200,34 @@ def run_pipeline(
             mark_step(run_id, step_name, STEP_SKIPPED, error=reason)
             step_results[step_name] = STEP_SKIPPED
             logger.info("Pipeline %s: step %s skipped — %s", run_id, step_name, reason)
-            rollup_steps.append({
-                "name": _STEP_TO_LEGACY_NAME.get(step_name, step_name),
-                "summary": f"Skipped ({reason})",
-                "result": {"status": "skipped", "reason": reason},
-                "duration_s": 0.0,
-            })
+            rollup_steps.append(
+                {
+                    "name": _STEP_TO_LEGACY_NAME.get(step_name, step_name),
+                    "summary": f"Skipped ({reason})",
+                    "result": {"status": "skipped", "reason": reason},
+                    "duration_s": 0.0,
+                }
+            )
             continue
 
         # 4) Execute
         t0 = _time.monotonic()
-        started_iso = datetime.now(timezone.utc).isoformat()
+        started_iso = datetime.now(UTC).isoformat()
         mark_step(run_id, step_name, STEP_RUNNING, started_at=started_iso)
         logger.info("Pipeline %s: step %s starting", run_id, step_name)
 
         try:
             result = _call_step(step_name, step_def, params)
             duration = _time.monotonic() - t0
-            finished_iso = datetime.now(timezone.utc).isoformat()
+            finished_iso = datetime.now(UTC).isoformat()
 
             is_error = isinstance(result, dict) and result.get("status") == "error"
             final_status = STEP_ERROR if is_error else STEP_OK
 
             mark_step(
-                run_id, step_name, final_status,
+                run_id,
+                step_name,
+                final_status,
                 counters=result if isinstance(result, dict) else None,
                 duration_s=duration,
                 started_at=started_iso,
@@ -226,28 +237,37 @@ def run_pipeline(
             step_results[step_name] = final_status
             logger.info(
                 "Pipeline %s: step %s %s in %.1fs",
-                run_id, step_name, final_status, duration,
+                run_id,
+                step_name,
+                final_status,
+                duration,
             )
-            rollup_steps.append({
-                "name": _STEP_TO_LEGACY_NAME.get(step_name, step_name),
-                "summary": _summarize(step_name, result),
-                "result": result,
-                "duration_s": round(duration, 2),
-            })
+            rollup_steps.append(
+                {
+                    "name": _STEP_TO_LEGACY_NAME.get(step_name, step_name),
+                    "summary": _summarize(step_name, result),
+                    "result": result,
+                    "duration_s": round(duration, 2),
+                }
+            )
 
         except SoftTimeLimitExceeded:
             duration = _time.monotonic() - t0
             mark_step(
-                run_id, step_name, STEP_ERROR,
+                run_id,
+                step_name,
+                STEP_ERROR,
                 error="timeout (SoftTimeLimitExceeded)",
                 duration_s=duration,
                 started_at=started_iso,
-                finished_at=datetime.now(timezone.utc).isoformat(),
+                finished_at=datetime.now(UTC).isoformat(),
             )
             step_results[step_name] = STEP_ERROR
             logger.warning(
                 "Pipeline %s: step %s timed out after %.1fs",
-                run_id, step_name, duration,
+                run_id,
+                step_name,
+                duration,
             )
             _finalize_run(run_id, rollup_steps, step_results, pipeline_start)
             raise
@@ -255,33 +275,40 @@ def run_pipeline(
         except Exception as exc:
             duration = _time.monotonic() - t0
             mark_step(
-                run_id, step_name, STEP_ERROR,
+                run_id,
+                step_name,
+                STEP_ERROR,
                 error=str(exc),
                 duration_s=duration,
                 started_at=started_iso,
-                finished_at=datetime.now(timezone.utc).isoformat(),
+                finished_at=datetime.now(UTC).isoformat(),
             )
             step_results[step_name] = STEP_ERROR
             logger.warning(
                 "Pipeline %s: step %s failed in %.1fs: %s",
-                run_id, step_name, duration, exc,
+                run_id,
+                step_name,
+                duration,
+                exc,
             )
-            rollup_steps.append({
-                "name": _STEP_TO_LEGACY_NAME.get(step_name, step_name),
-                "summary": f"Error: {str(exc)[:120]}",
-                "result": {"status": "error", "error": str(exc)},
-                "duration_s": round(duration, 2),
-            })
+            rollup_steps.append(
+                {
+                    "name": _STEP_TO_LEGACY_NAME.get(step_name, step_name),
+                    "summary": f"Error: {str(exc)[:120]}",
+                    "result": {"status": "error", "error": str(exc)},
+                    "duration_s": round(duration, 2),
+                }
+            )
 
     return _finalize_run(run_id, rollup_steps, step_results, pipeline_start)
 
 
 def _finalize_run(
     run_id: str,
-    rollup_steps: List[Dict[str, Any]],
-    step_results: Dict[str, str],
+    rollup_steps: list[dict[str, Any]],
+    step_results: dict[str, str],
     pipeline_start: float,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Compute final run status and persist to Redis."""
     total = len(step_results)
     ok_count = sum(1 for s in step_results.values() if s == STEP_OK)
@@ -295,12 +322,12 @@ def _finalize_run(
     else:
         status = "partial"
 
-    finished_iso = datetime.now(timezone.utc).isoformat()
+    finished_iso = datetime.now(UTC).isoformat()
     mark_run_meta(run_id, status=status, finished_at=finished_iso)
 
     total_duration = _time.monotonic() - pipeline_start
 
-    rollup: Dict[str, Any] = {
+    rollup: dict[str, Any] = {
         "status": status,
         "run_id": run_id,
         "steps": rollup_steps,
@@ -309,12 +336,15 @@ def _finalize_run(
         "steps_skipped": skip_count,
         "steps_total": total,
         "duration_s": round(total_duration, 2),
-        "overall_summary": "; ".join(
-            s["summary"] for s in rollup_steps if s.get("summary")
-        ),
+        "overall_summary": "; ".join(s["summary"] for s in rollup_steps if s.get("summary")),
     }
     logger.info(
         "Pipeline %s finished — status=%s, ok=%d, error=%d, skipped=%d, %.1fs",
-        run_id, status, ok_count, err_count, skip_count, total_duration,
+        run_id,
+        status,
+        ok_count,
+        err_count,
+        skip_count,
+        total_duration,
     )
     return rollup

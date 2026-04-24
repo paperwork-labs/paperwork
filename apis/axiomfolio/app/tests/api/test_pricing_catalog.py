@@ -92,9 +92,7 @@ def test_each_tier_has_required_fields(client: TestClient):
     body = client.get("/api/v1/pricing/catalog").json()
     for tier in body["tiers"]:
         missing = _REQUIRED_TIER_FIELDS - set(tier.keys())
-        assert not missing, (
-            f"Tier {tier.get('tier')!r} is missing fields: {missing}"
-        )
+        assert not missing, f"Tier {tier.get('tier')!r} is missing fields: {missing}"
 
 
 def test_free_tier_pricing_is_zero(client: TestClient):
@@ -125,12 +123,8 @@ def test_paid_tiers_have_decimal_prices(client: TestClient):
         # "20.00000001".
         monthly = Decimal(tier["monthly_price_usd"])
         annual = Decimal(tier["annual_price_usd"])
-        assert monthly > 0, (
-            f"{tier['tier']} monthly price must be positive"
-        )
-        assert annual > 0, (
-            f"{tier['tier']} annual price must be positive"
-        )
+        assert monthly > 0, f"{tier['tier']} monthly price must be positive"
+        assert annual > 0, f"{tier['tier']} annual price must be positive"
         # Annual should be cheaper than monthly * 12 (we offer a
         # discount) OR equal (no discount). Never more expensive.
         assert annual <= monthly * 12, (
@@ -144,9 +138,7 @@ def test_paid_tiers_have_transparent_covers_copy(client: TestClient):
     """Per D106: every paid tier must surface 'your subscription covers X'."""
     body = client.get("/api/v1/pricing/catalog").json()
     for tier in body["tiers"]:
-        assert tier["covers_copy"], (
-            f"Tier {tier['tier']} is missing the transparency microcopy"
-        )
+        assert tier["covers_copy"], f"Tier {tier['tier']} is missing the transparency microcopy"
 
 
 # -----------------------------------------------------------------------------
@@ -166,8 +158,7 @@ def test_features_per_tier_match_feature_catalog_ladder(
         tier.value: {
             f.key
             for f in all_features()
-            if SubscriptionTier.rank(f.min_tier)
-            <= SubscriptionTier.rank(tier)
+            if SubscriptionTier.rank(f.min_tier) <= SubscriptionTier.rank(tier)
         }
         for tier in SubscriptionTier
     }
@@ -184,9 +175,7 @@ def test_new_features_are_those_introduced_at_each_tier(
 ):
     body = client.get("/api/v1/pricing/catalog").json()
     expected_new = {
-        tier.value: {
-            f.key for f in all_features() if f.min_tier == tier
-        }
+        tier.value: {f.key for f in all_features() if f.min_tier == tier}
         for tier in SubscriptionTier
     }
     for tier in body["tiers"]:
@@ -200,9 +189,7 @@ def test_each_feature_has_required_fields(client: TestClient):
     for tier in body["tiers"]:
         for feature in tier["features"]:
             missing = required - set(feature.keys())
-            assert not missing, (
-                f"Feature missing fields: {missing}"
-            )
+            assert not missing, f"Feature missing fields: {missing}"
 
 
 # -----------------------------------------------------------------------------

@@ -22,13 +22,13 @@ from __future__ import annotations
 
 from sqlalchemy import (
     JSON,
+    TIMESTAMP,
     Column,
     ForeignKey,
     Index,
     Integer,
     Numeric,
     String,
-    TIMESTAMP,
     Text,
 )
 from sqlalchemy.orm import relationship

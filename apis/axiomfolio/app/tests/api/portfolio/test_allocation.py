@@ -241,9 +241,7 @@ def test_group_by_asset_class_uses_instrument_type(client, db_session, primary_a
     assert equity["total_value"] == pytest.approx(5000.0)
 
 
-def test_group_by_account_buckets_per_brokerage(
-    client, db_session, auth_user, primary_account
-):
+def test_group_by_account_buckets_per_brokerage(client, db_session, auth_user, primary_account):
     if db_session is None:
         pytest.skip("database not configured")
     secondary = _make_account(db_session, auth_user, name="Roth IRA", broker=BrokerType.SCHWAB)

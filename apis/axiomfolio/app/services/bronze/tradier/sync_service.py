@@ -44,9 +44,9 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from sqlalchemy.orm import Session
 
@@ -69,6 +69,7 @@ from app.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
+
 # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.closing_lot_matcher moves during Phase 0.C
 from app.services.portfolio.closing_lot_matcher import reconcile_closing_lots
 
@@ -77,15 +78,13 @@ logger = logging.getLogger(__name__)
 
 # Connection rows this service is willing to consume. Both live and sandbox
 # are supported — the client chooses the base URL based on the broker id.
-_TRADIER_LIVE_BROKER_IDS: Tuple[str, ...] = ("tradier",)
-_TRADIER_SANDBOX_BROKER_IDS: Tuple[str, ...] = ("tradier_sandbox",)
-_TRADIER_ALL_BROKER_IDS: Tuple[str, ...] = (
-    _TRADIER_LIVE_BROKER_IDS + _TRADIER_SANDBOX_BROKER_IDS
-)
+_TRADIER_LIVE_BROKER_IDS: tuple[str, ...] = ("tradier",)
+_TRADIER_SANDBOX_BROKER_IDS: tuple[str, ...] = ("tradier_sandbox",)
+_TRADIER_ALL_BROKER_IDS: tuple[str, ...] = _TRADIER_LIVE_BROKER_IDS + _TRADIER_SANDBOX_BROKER_IDS
 
 # ``BrokerAccount.broker`` must pair with the matching OAuth row slug
 # (``tradier`` vs ``tradier_sandbox``) — see ``_oauth_broker_slug_for_account``.
-_TRADIER_ACCOUNT_BROKER_TYPES: Tuple[BrokerType, ...] = (
+_TRADIER_ACCOUNT_BROKER_TYPES: tuple[BrokerType, ...] = (
     BrokerType.TRADIER,
     BrokerType.TRADIER_SANDBOX,
 )
@@ -97,9 +96,9 @@ _EXECUTION_ID_MAX_LEN = 50
 # Map Tradier's ``type`` (top-level) + ``trade.transaction_type`` (nested)
 # into our canonical ``TransactionType`` enum. Observed values come from
 # Tradier's v1 docs (``/accounts/{id}/history``).
-_TRADIER_HISTORY_TYPE_MAP: Dict[str, TransactionType] = {
-    "trade": TransactionType.OTHER,       # overridden below via transaction_type
-    "option": TransactionType.OTHER,      # overridden below via transaction_type
+_TRADIER_HISTORY_TYPE_MAP: dict[str, TransactionType] = {
+    "trade": TransactionType.OTHER,  # overridden below via transaction_type
+    "option": TransactionType.OTHER,  # overridden below via transaction_type
     "dividend": TransactionType.DIVIDEND,
     "interest": TransactionType.BROKER_INTEREST_RECEIVED,
     "fee": TransactionType.OTHER_FEE,
@@ -115,7 +114,7 @@ _TRADIER_HISTORY_TYPE_MAP: Dict[str, TransactionType] = {
 # ``trade.transaction_type`` -> canonical + trade-side.
 # Tradier uses: ``buy``, ``buy_to_cover``, ``buy_to_open``, ``buy_to_close``,
 # ``sell``, ``sell_short``, ``sell_to_open``, ``sell_to_close``.
-_TRADIER_TRADE_ACTION_MAP: Dict[str, TransactionType] = {
+_TRADIER_TRADE_ACTION_MAP: dict[str, TransactionType] = {
     "buy": TransactionType.BUY,
     "buy_to_cover": TransactionType.BUY,
     "buy_to_open": TransactionType.BUY,
@@ -133,7 +132,7 @@ _OSI_SYMBOL_MAX_LEN = 21
 _OSI_SYMBOL_RE = re.compile(r"^[A-Z]{1,6}\d{6}[CP]\d{8}$")
 
 
-def _to_decimal(value: Any) -> Optional[Decimal]:
+def _to_decimal(value: Any) -> Decimal | None:
     """Coerce Tradier's JSON numbers into :class:`Decimal`.
 
     Tradier returns ``0`` as an int and prices as floats; we normalize
@@ -169,11 +168,11 @@ def _parse_tradier_datetime(value: Any) -> datetime:
     """
 
     if value is None or value == "":
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
     if isinstance(value, datetime):
-        return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
     if isinstance(value, date):
-        return datetime.combine(value, datetime.min.time(), tzinfo=timezone.utc)
+        return datetime.combine(value, datetime.min.time(), tzinfo=UTC)
     try:
         raw = str(value).strip()
         # ``Z`` suffix isn't ISO 8601 per ``fromisoformat`` pre-3.11 spec.
@@ -182,7 +181,7 @@ def _parse_tradier_datetime(value: Any) -> datetime:
         try:
             return datetime.fromisoformat(str(value)[:10])
         except (TypeError, ValueError):
-            return datetime.now(timezone.utc)
+            return datetime.now(UTC)
 
 
 def _is_option_symbol(symbol: str) -> bool:
@@ -196,7 +195,7 @@ def _is_option_symbol(symbol: str) -> bool:
     return bool(_OSI_SYMBOL_RE.match(sym))
 
 
-def _parse_osi_symbol(osi: str) -> Optional[Dict[str, Any]]:
+def _parse_osi_symbol(osi: str) -> dict[str, Any] | None:
     """Split an OSI-style ``AAPL230616C00165000`` into its fields.
 
     Returns ``None`` on shape mismatch so callers can skip the row
@@ -239,13 +238,13 @@ class TradierSyncService:
     commit — the caller controls the transaction boundary.
     """
 
-    def __init__(self, client: Optional[TradierBronzeClient] = None) -> None:
+    def __init__(self, client: TradierBronzeClient | None = None) -> None:
         # ``client`` is optional so the broker dispatcher can instantiate
         # the service cheaply and tests can inject a fake. The real
         # client needs the decrypted access token so we defer
         # construction until ``_connect``.
-        self._client: Optional[TradierBronzeClient] = client
-        self._connection_broker_id: Optional[str] = None
+        self._client: TradierBronzeClient | None = client
+        self._connection_broker_id: str | None = None
 
     # ------------------------------------------------------------------
     # Credentials + account discovery
@@ -258,13 +257,9 @@ class TradierSyncService:
             return "tradier"
         if account.broker == BrokerType.TRADIER_SANDBOX:
             return "tradier_sandbox"
-        raise ConnectionError(
-            "This account is not a Tradier broker; cannot load Tradier OAuth."
-        )
+        raise ConnectionError("This account is not a Tradier broker; cannot load Tradier OAuth.")
 
-    def _load_connection(
-        self, account: BrokerAccount, session: Session
-    ) -> BrokerOAuthConnection:
+    def _load_connection(self, account: BrokerAccount, session: Session) -> BrokerOAuthConnection:
         """Load the ACTIVE OAuth connection for this user + Tradier.
 
         Picks the connection whose ``broker`` string matches the account's
@@ -274,7 +269,7 @@ class TradierSyncService:
         """
 
         expected_slug = self._oauth_broker_slug_for_account(account)
-        conn: Optional[BrokerOAuthConnection] = (
+        conn: BrokerOAuthConnection | None = (
             session.query(BrokerOAuthConnection)
             .filter(
                 BrokerOAuthConnection.user_id == account.user_id,
@@ -329,7 +324,7 @@ class TradierSyncService:
 
     def _resolve_or_discover(
         self, account: BrokerAccount, session: Session
-    ) -> Tuple[Optional[str], Optional[str]]:
+    ) -> tuple[str | None, str | None]:
         """Map the local ``account_number`` to Tradier's ``account_number``.
 
         Tradier keys every data endpoint off the account number directly
@@ -346,18 +341,15 @@ class TradierSyncService:
         if not accounts:
             logger.warning(
                 "tradier sync: account %s (user %s) — /user/profile returned 0 accounts",
-                account.id, account.user_id,
+                account.id,
+                account.user_id,
             )
             return None, self._RESOLVE_REASON_NO_ACCOUNTS
 
         target = (account.account_number or "").strip()
-        placeholder = (
-            not target
-            or target == "TRADIER_OAUTH"
-            or target.startswith("TRADIER_")
-        )
+        placeholder = not target or target == "TRADIER_OAUTH" or target.startswith("TRADIER_")
 
-        match: Optional[Dict[str, Any]] = None
+        match: dict[str, Any] | None = None
         if not placeholder:
             match = next(
                 (a for a in accounts if str(a.get("account_number", "")) == target),
@@ -367,11 +359,7 @@ class TradierSyncService:
         if match is None:
             # Placeholder or drift: take the first non-CLOSED account.
             match = next(
-                (
-                    a
-                    for a in accounts
-                    if (a.get("status") or "").upper() != "CLOSED"
-                ),
+                (a for a in accounts if (a.get("status") or "").upper() != "CLOSED"),
                 accounts[0],
             )
             real_id = str(match.get("account_number") or "").strip()
@@ -390,21 +378,27 @@ class TradierSyncService:
                         "tradier sync: placeholder account %d collides with "
                         "real account %d for user %d (account_number=%s); "
                         "disabling placeholder and skipping this run.",
-                        account.id, existing.id, account.user_id, real_id,
+                        account.id,
+                        existing.id,
+                        account.user_id,
+                        real_id,
                     )
                     try:
                         account.is_enabled = False
                         session.flush()
-                    except Exception as exc:  # noqa: BLE001
+                    except Exception as exc:
                         logger.warning(
                             "tradier sync: failed to disable placeholder %d: %s",
-                            account.id, exc,
+                            account.id,
+                            exc,
                         )
                     return None, self._RESOLVE_REASON_PLACEHOLDER_COLLISION
                 logger.info(
-                    "tradier sync: auto-correcting account %d for user %d: "
-                    "'%s' -> '%s'",
-                    account.id, account.user_id, target, real_id,
+                    "tradier sync: auto-correcting account %d for user %d: '%s' -> '%s'",
+                    account.id,
+                    account.user_id,
+                    target,
+                    real_id,
                 )
                 account.account_number = real_id
                 session.flush()
@@ -422,8 +416,8 @@ class TradierSyncService:
         account_number: str,
         session: Session,
         *,
-        user_id: Optional[int] = None,
-    ) -> Dict[str, Any]:
+        user_id: int | None = None,
+    ) -> dict[str, Any]:
         """Sync a single Tradier account end-to-end.
 
         ``account_number`` is not unique across tenants; ``user_id`` is
@@ -473,7 +467,7 @@ class TradierSyncService:
                 ),
             }
 
-        results: Dict[str, Any] = {"status": "success"}
+        results: dict[str, Any] = {"status": "success"}
 
         try:
             assert self._client is not None
@@ -489,7 +483,10 @@ class TradierSyncService:
         except TradierAPIError as exc:
             logger.warning(
                 "tradier sync: API error for user %s account %s: %s (permanent=%s)",
-                account.user_id, account.id, exc, exc.permanent,
+                account.user_id,
+                account.id,
+                exc,
+                exc.permanent,
             )
             return {
                 "status": "error",
@@ -514,10 +511,11 @@ class TradierSyncService:
                     match_result.unmatched_quantity,
                     match_result.warnings[0] if match_result.warnings else "n/a",
                 )
-        except Exception as exc:  # noqa: BLE001 — log + continue; sync is still successful
+        except Exception as exc:
             logger.warning(
                 "tradier sync: closing-lot reconciliation failed for account %s: %s",
-                account.id, exc,
+                account.id,
+                exc,
             )
             results["closed_lots_error"] = str(exc)
 
@@ -526,7 +524,11 @@ class TradierSyncService:
         total_items = sum(v for v in results.values() if isinstance(v, int))
         logger.info(
             "tradier sync: user %s account %s (%s) synced %d total items: %s",
-            account.user_id, account.id, account.account_number, total_items, results,
+            account.user_id,
+            account.id,
+            account.account_number,
+            total_items,
+            results,
         )
         return results
 
@@ -536,9 +538,9 @@ class TradierSyncService:
     def _sync_positions(
         self,
         account: BrokerAccount,
-        raw: List[Dict[str, Any]],
+        raw: list[dict[str, Any]],
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Write stock positions from a pre-fetched ``/positions`` payload.
 
         Rows whose ``symbol`` parses as OSI (16–21 chars + OSI regex) are
@@ -564,7 +566,7 @@ class TradierSyncService:
 
                 qty = _to_decimal(pos_raw.get("quantity")) or Decimal("0")
                 cost_basis = _to_decimal(pos_raw.get("cost_basis"))
-                avg_cost: Optional[Decimal] = None
+                avg_cost: Decimal | None = None
                 if cost_basis is not None and qty not in (Decimal("0"), None):
                     # Tradier gives total cost basis, not per-share. Derive
                     # the per-share avg so downstream (Position.average_cost)
@@ -574,22 +576,18 @@ class TradierSyncService:
                     except (InvalidOperation, ZeroDivisionError):
                         avg_cost = None
 
-                fields: Dict[str, Any] = {
+                fields: dict[str, Any] = {
                     "quantity": qty,
                     "instrument_type": "STOCK",
-                    "position_type": (
-                        PositionType.LONG if qty >= 0 else PositionType.SHORT
-                    ),
-                    "status": (
-                        PositionStatus.OPEN if qty != 0 else PositionStatus.CLOSED
-                    ),
+                    "position_type": (PositionType.LONG if qty >= 0 else PositionType.SHORT),
+                    "status": (PositionStatus.OPEN if qty != 0 else PositionStatus.CLOSED),
                 }
                 if avg_cost is not None:
                     fields["average_cost"] = avg_cost
                 if cost_basis is not None:
                     fields["total_cost_basis"] = cost_basis
 
-                existing: Optional[Position] = (
+                existing: Position | None = (
                     session.query(Position)
                     .filter(
                         Position.user_id == account.user_id,
@@ -612,22 +610,28 @@ class TradierSyncService:
                         )
                     )
                 written += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
                     "tradier sync: failed to upsert position for user %s account %s: %s",
-                    account.user_id, account.id, exc,
+                    account.user_id,
+                    account.id,
+                    exc,
                 )
 
         session.flush()
         assert written + skipped + errors == total, (
-            f"tradier positions counter drift: "
-            f"{written}+{skipped}+{errors} != {total}"
+            f"tradier positions counter drift: {written}+{skipped}+{errors} != {total}"
         )
         logger.info(
             "tradier sync positions: user=%s account=%s written=%d skipped=%d "
             "errors=%d options_in_portfolio=%d",
-            account.user_id, account.id, written, skipped, errors, options_seen,
+            account.user_id,
+            account.id,
+            written,
+            skipped,
+            errors,
+            options_seen,
         )
         return {
             "positions_synced": written,
@@ -638,15 +642,12 @@ class TradierSyncService:
     def _sync_options(
         self,
         account: BrokerAccount,
-        raw: List[Dict[str, Any]],
+        raw: list[dict[str, Any]],
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Write option positions from the same ``/positions`` payload."""
 
-        options = [
-            p for p in raw
-            if _is_option_symbol((p.get("symbol") or "").upper())
-        ]
+        options = [p for p in raw if _is_option_symbol((p.get("symbol") or "").upper())]
 
         written = 0
         skipped = 0
@@ -671,7 +672,7 @@ class TradierSyncService:
                     skipped += 1
                     continue
 
-                existing: Optional[Option] = (
+                existing: Option | None = (
                     session.query(Option)
                     .filter(
                         Option.user_id == account.user_id,
@@ -705,11 +706,13 @@ class TradierSyncService:
                         )
                     )
                 written += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
                     "tradier sync: failed to upsert option for user %s account %s: %s",
-                    account.user_id, account.id, exc,
+                    account.user_id,
+                    account.id,
+                    exc,
                 )
 
         if written > 0 and not account.options_enabled:
@@ -717,12 +720,15 @@ class TradierSyncService:
 
         session.flush()
         assert written + skipped + errors == total, (
-            f"tradier options counter drift: "
-            f"{written}+{skipped}+{errors} != {total}"
+            f"tradier options counter drift: {written}+{skipped}+{errors} != {total}"
         )
         logger.info(
             "tradier sync options: user=%s account=%s written=%d skipped=%d errors=%d",
-            account.user_id, account.id, written, skipped, errors,
+            account.user_id,
+            account.id,
+            written,
+            skipped,
+            errors,
         )
         return {
             "options_synced": written,
@@ -734,7 +740,7 @@ class TradierSyncService:
     # Helpers for history-feed extraction
     # ------------------------------------------------------------------
     @staticmethod
-    def _history_external_id(event: Dict[str, Any]) -> str:
+    def _history_external_id(event: dict[str, Any]) -> str:
         """Stable short id for a history row (Transaction + Trade idempotency).
 
         Tradier does not always include an explicit id. We form a raw key
@@ -770,7 +776,7 @@ class TradierSyncService:
         return out
 
     @staticmethod
-    def _trade_subrecord(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _trade_subrecord(event: dict[str, Any]) -> dict[str, Any] | None:
         """Return the nested ``trade`` / ``option`` subrecord if present."""
 
         for key in ("trade", "option"):
@@ -782,9 +788,9 @@ class TradierSyncService:
     def _sync_transactions(
         self,
         account: BrokerAccount,
-        raw: List[Dict[str, Any]],
+        raw: list[dict[str, Any]],
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Upsert ``Transaction`` rows from the history feed."""
 
         written = 0
@@ -804,16 +810,14 @@ class TradierSyncService:
                     skipped += 1
                     continue
 
-                txn_type = _TRADIER_HISTORY_TYPE_MAP.get(
-                    event_type, TransactionType.OTHER
-                )
+                txn_type = _TRADIER_HISTORY_TYPE_MAP.get(event_type, TransactionType.OTHER)
                 sub = self._trade_subrecord(event)
                 symbol = ""
                 qty = 0.0
                 price = 0.0
                 commission = 0.0
-                description: Optional[str] = None
-                action: Optional[str] = None
+                description: str | None = None
+                action: str | None = None
 
                 if sub is not None:
                     action = (sub.get("transaction_type") or "").lower() or None
@@ -859,23 +863,26 @@ class TradierSyncService:
                     written += 1
                 else:
                     skipped += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
-                    "tradier sync: failed to upsert transaction for user %s "
-                    "account %s: %s",
-                    account.user_id, account.id, exc,
+                    "tradier sync: failed to upsert transaction for user %s account %s: %s",
+                    account.user_id,
+                    account.id,
+                    exc,
                 )
 
         session.flush()
         assert written + skipped + errors == total, (
-            f"tradier transactions counter drift: "
-            f"{written}+{skipped}+{errors} != {total}"
+            f"tradier transactions counter drift: {written}+{skipped}+{errors} != {total}"
         )
         logger.info(
-            "tradier sync transactions: user=%s account=%s written=%d "
-            "skipped=%d errors=%d",
-            account.user_id, account.id, written, skipped, errors,
+            "tradier sync transactions: user=%s account=%s written=%d skipped=%d errors=%d",
+            account.user_id,
+            account.id,
+            written,
+            skipped,
+            errors,
         )
         return {
             "transactions_synced": written,
@@ -886,9 +893,9 @@ class TradierSyncService:
     def _sync_trades(
         self,
         account: BrokerAccount,
-        raw: List[Dict[str, Any]],
+        raw: list[dict[str, Any]],
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mirror BUY/SELL history events into ``Trade`` rows.
 
         The closing-lot matcher (silver layer) consumes ``Trade`` rows —
@@ -920,11 +927,7 @@ class TradierSyncService:
                     skipped += 1
                     continue
 
-                side = (
-                    "BUY"
-                    if _TRADIER_TRADE_ACTION_MAP[action] == TransactionType.BUY
-                    else "SELL"
-                )
+                side = "BUY" if _TRADIER_TRADE_ACTION_MAP[action] == TransactionType.BUY else "SELL"
                 # Opening vs closing semantics match the action name.
                 # ``buy``/``buy_to_open``/``sell_short``/``sell_to_open``
                 # are opening; the ``_to_close`` / ``buy_to_cover`` /
@@ -978,22 +981,26 @@ class TradierSyncService:
                     )
                 )
                 written += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
-                    "tradier sync: failed to upsert trade for user %s "
-                    "account %s: %s",
-                    account.user_id, account.id, exc,
+                    "tradier sync: failed to upsert trade for user %s account %s: %s",
+                    account.user_id,
+                    account.id,
+                    exc,
                 )
 
         session.flush()
         assert written + skipped + errors == total, (
-            f"tradier trades counter drift: "
-            f"{written}+{skipped}+{errors} != {total}"
+            f"tradier trades counter drift: {written}+{skipped}+{errors} != {total}"
         )
         logger.info(
             "tradier sync trades: user=%s account=%s written=%d skipped=%d errors=%d",
-            account.user_id, account.id, written, skipped, errors,
+            account.user_id,
+            account.id,
+            written,
+            skipped,
+            errors,
         )
         return {
             "trades_synced": written,
@@ -1004,9 +1011,9 @@ class TradierSyncService:
     def _sync_dividends(
         self,
         account: BrokerAccount,
-        raw: List[Dict[str, Any]],
+        raw: list[dict[str, Any]],
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Mirror ``dividend``-typed history rows into ``Dividend`` rows."""
 
         written = 0
@@ -1063,22 +1070,26 @@ class TradierSyncService:
                     )
                 )
                 written += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 errors += 1
                 logger.warning(
-                    "tradier sync: failed to upsert dividend for user %s "
-                    "account %s: %s",
-                    account.user_id, account.id, exc,
+                    "tradier sync: failed to upsert dividend for user %s account %s: %s",
+                    account.user_id,
+                    account.id,
+                    exc,
                 )
 
         session.flush()
         assert written + skipped + errors == total, (
-            f"tradier dividends counter drift: "
-            f"{written}+{skipped}+{errors} != {total}"
+            f"tradier dividends counter drift: {written}+{skipped}+{errors} != {total}"
         )
         logger.info(
             "tradier sync dividends: user=%s account=%s written=%d skipped=%d errors=%d",
-            account.user_id, account.id, written, skipped, errors,
+            account.user_id,
+            account.id,
+            written,
+            skipped,
+            errors,
         )
         return {
             "dividends_synced": written,
@@ -1091,7 +1102,7 @@ class TradierSyncService:
         account: BrokerAccount,
         account_id: str,
         session: Session,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Write a single :class:`AccountBalance` snapshot."""
 
         assert self._client is not None
@@ -1099,7 +1110,8 @@ class TradierSyncService:
         if not bal:
             logger.warning(
                 "tradier sync balances: user=%s account=%s — empty balance payload",
-                account.user_id, account.id,
+                account.user_id,
+                account.id,
             )
             return {"balances_synced": 0, "balances_skipped": 1, "balances_errors": 0}
 
@@ -1122,7 +1134,7 @@ class TradierSyncService:
         new_bal = AccountBalance(
             user_id=account.user_id,
             broker_account_id=account.id,
-            balance_date=datetime.now(timezone.utc),
+            balance_date=datetime.now(UTC),
             cash_balance=cash_balance,
             net_liquidation=net_liq,
             buying_power=buying_power,
@@ -1134,7 +1146,8 @@ class TradierSyncService:
         session.flush()
         logger.info(
             "tradier sync balances: user=%s account=%s written=1",
-            account.user_id, account.id,
+            account.user_id,
+            account.id,
         )
         return {"balances_synced": 1, "balances_skipped": 0, "balances_errors": 0}
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from app.mcp.tools.portfolio import get_holdings, get_recent_explanations
@@ -105,7 +105,7 @@ def test_get_recent_explanations_filters_by_user_id(db_session):
     """Rows for another user must never appear in the MCP tool result."""
     user_a = _user(db_session, suffix="ex_a")
     user_b = _user(db_session, suffix="ex_b")
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     def _row(uid: int, aid: str, title: str) -> AutoOpsExplanation:
         return AutoOpsExplanation(

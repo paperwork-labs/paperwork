@@ -24,7 +24,6 @@ medallion: ops
 from __future__ import annotations
 
 import logging
-from typing import Dict, List
 
 from app.config import settings
 from app.services.deploys.render_client import RenderDeployClient
@@ -32,12 +31,10 @@ from app.services.deploys.render_client import RenderDeployClient
 logger = logging.getLogger(__name__)
 
 
-_SERVICE_META_CACHE: Dict[str, Dict[str, str]] = {}
+_SERVICE_META_CACHE: dict[str, dict[str, str]] = {}
 
 
-def _resolve_service_meta(
-    client: RenderDeployClient, service_id: str
-) -> Dict[str, str]:
+def _resolve_service_meta(client: RenderDeployClient, service_id: str) -> dict[str, str]:
     """Return ``{service_id, service_slug, service_type}`` for one service.
 
     Cached per-process since Render service metadata is effectively static.
@@ -69,7 +66,7 @@ def _resolve_service_meta(
     return meta
 
 
-def configured_service_ids() -> List[str]:
+def configured_service_ids() -> list[str]:
     """Return the raw list of service ids from
     ``DEPLOY_HEALTH_SERVICE_IDS``, stripped and de-blanked."""
     raw = (getattr(settings, "DEPLOY_HEALTH_SERVICE_IDS", "") or "").strip()
@@ -80,7 +77,7 @@ def configured_service_ids() -> List[str]:
 
 def resolve_services(
     client: RenderDeployClient | None = None,
-) -> List[Dict[str, str]]:
+) -> list[dict[str, str]]:
     """Read configured service ids and enrich with slug/type.
 
     ``client`` is injectable so tests can stub out the Render client.

@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import urllib.parse
-from typing import Dict, Any, Optional
+from typing import Any
+
 import httpx
 
 from app.config import settings
@@ -22,9 +23,9 @@ class SchwabConnector:
 
     def __init__(
         self,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        redirect_uri: Optional[str] = None,
+        client_id: str | None = None,
+        client_secret: str | None = None,
+        redirect_uri: str | None = None,
         timeout_seconds: int = 20,
     ):
         self.client_id = client_id or settings.SCHWAB_CLIENT_ID
@@ -42,7 +43,9 @@ class SchwabConnector:
         # Schwab Accounts & Trading typically expects both read and trade scopes available.
         # Request both; trading execution is still gated by server feature flags.
         scopes = ["read", "trade"]
-        client_id_to_use = f"{self.client_id}{self.client_id_suffix}" if self.client_id_suffix else self.client_id
+        client_id_to_use = (
+            f"{self.client_id}{self.client_id_suffix}" if self.client_id_suffix else self.client_id
+        )
         query = {
             "response_type": "code",
             "client_id": client_id_to_use,
@@ -52,10 +55,12 @@ class SchwabConnector:
         }
         return f"{self.auth_base}?{urllib.parse.urlencode(query)}"
 
-    async def exchange_code_for_tokens(self, code: str, code_verifier: Optional[str] = None) -> Dict[str, Any]:
+    async def exchange_code_for_tokens(
+        self, code: str, code_verifier: str | None = None
+    ) -> dict[str, Any]:
         if not (self.client_id and self.client_secret and self.redirect_uri):
             raise ValueError("Schwab OAuth not configured")
-        data: Dict[str, str] = {
+        data: dict[str, str] = {
             "grant_type": "authorization_code",
             "code": code,
             "redirect_uri": self.redirect_uri,
@@ -69,7 +74,7 @@ class SchwabConnector:
                 raise RuntimeError(f"Token exchange failed: {res.status_code} {res.text[:200]}")
             return res.json()
 
-    async def refresh_tokens(self, refresh_token: str) -> Dict[str, Any]:
+    async def refresh_tokens(self, refresh_token: str) -> dict[str, Any]:
         if not (self.client_id and self.client_secret and self.redirect_uri):
             raise ValueError("Schwab OAuth not configured")
         data = {
@@ -82,5 +87,3 @@ class SchwabConnector:
             if res.status_code >= 400:
                 raise RuntimeError(f"Token refresh failed: {res.status_code} {res.text[:200]}")
             return res.json()
-
-

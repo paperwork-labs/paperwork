@@ -44,9 +44,7 @@ def test_get_og_png_returns_png(client, monkeypatch):
 
     monkeypatch.setattr(chart_og_mod.provider_router, "get_historical_data", fake_hist)
 
-    token = create_chart_share_token(
-        user_id=1, symbol="TEST", period="1y", indicators=[]
-    )
+    token = create_chart_share_token(user_id=1, symbol="TEST", period="1y", indicators=[])
     r = client.get(f"/api/v1/share/chart/{token}/og.png")
     assert r.status_code == 200
     assert r.headers.get("content-type", "").startswith("image/png")
@@ -61,9 +59,7 @@ def test_get_share_bars_ok(client, monkeypatch):
 
     monkeypatch.setattr(chart_og_mod.provider_router, "get_historical_data", fake_hist)
 
-    token = create_chart_share_token(
-        user_id=1, symbol="TEST", period="1y", indicators=["emas"]
-    )
+    token = create_chart_share_token(user_id=1, symbol="TEST", period="1y", indicators=["emas"])
     r = client.get(f"/api/v1/share/chart/{token}/bars")
     assert r.status_code == 200
     body = r.json()

@@ -9,6 +9,7 @@ This test guards the routing rules in ``app/tasks/celery_app.py`` so a
 future contributor cannot accidentally route a long-running job to the
 fast queue, or remove the heavy queue entirely.
 """
+
 from __future__ import annotations
 
 from app.tasks.celery_app import celery_app
@@ -29,7 +30,9 @@ def _route(task_name: str) -> str:
 
 def test_heavy_queue_is_declared():
     queue_names = {q.name for q in celery_app.conf.task_queues}
-    assert "heavy" in queue_names, "heavy queue must be declared so axiomfolio-worker-heavy can consume it"
+    assert "heavy" in queue_names, (
+        "heavy queue must be declared so axiomfolio-worker-heavy can consume it"
+    )
     assert "celery" in queue_names
     assert "account_sync" in queue_names
     assert "orders" in queue_names

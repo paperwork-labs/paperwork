@@ -14,8 +14,7 @@ flip the dimension red before the 8th deploy.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
-from typing import Dict
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -32,7 +31,7 @@ from app.services.deploys.render_client import DeployRecord
 
 
 @pytest.fixture
-def SERVICE() -> Dict[str, str]:
+def SERVICE() -> dict[str, str]:
     """Unique synthetic service per-test so ``(service_id, deploy_id, status)``
     unique constraint doesn't collide across tests that happen to share
     the DB connection when nested-transaction rollback misbehaves."""
@@ -58,7 +57,7 @@ class _StubClient:
 
 
 def _make_record(
-    service: Dict[str, str],
+    service: dict[str, str],
     deploy_id: str,
     status: str,
     *,
@@ -81,7 +80,7 @@ def _make_record(
 
 def _seed(
     db_session,
-    service: Dict[str, str],
+    service: dict[str, str],
     deploy_id: str,
     status: str,
     *,
@@ -90,11 +89,9 @@ def _seed(
     sha: str | None = None,
     finished: bool = True,
 ) -> None:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     created_at = now - timedelta(minutes=minutes_ago)
-    finished_at = (
-        created_at + timedelta(seconds=duration_s) if finished else None
-    )
+    finished_at = created_at + timedelta(seconds=duration_s) if finished else None
     db_session.add(
         DeployHealthEvent(
             service_id=service["service_id"],
@@ -113,7 +110,7 @@ def _seed(
 
 
 def test_poll_and_record_inserts_new_and_skips_duplicates(db_session, SERVICE):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     records = [
         _make_record(SERVICE, "d-1", "live", created=now - timedelta(minutes=1)),
         _make_record(SERVICE, "d-2", "build_failed", created=now - timedelta(minutes=10)),
@@ -155,6 +152,7 @@ def test_poll_and_record_records_api_error_as_poll_error(db_session, SERVICE):
 
         def list_deploys(self, *_a, **_kw):
             from app.services.deploys.render_client import RenderDeployClientError
+
             raise RenderDeployClientError("Render 503")
 
     result = poll_and_record(db_session, [SERVICE], client=_BoomClient())

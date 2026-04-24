@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from app.services.market.admin_health_service import AdminHealthService, _RSS_OBSERVABILITY_KEYS
+from app.services.market.admin_health_service import _RSS_OBSERVABILITY_KEYS, AdminHealthService
 from app.services.observability import rss_store
 
 
@@ -14,24 +14,26 @@ class _MemoryRedis:
         self.lists: dict[str, list[bytes]] = {}
         self.kv: dict[str, bytes] = {}
 
-    def lrange(self, k: str, a: int, b: int) -> list[bytes]:  # noqa: ARG002
+    def lrange(self, k: str, a: int, b: int) -> list[bytes]:
         return list(self.lists.get(k, []))
 
     def get(self, k: str):
         return self.kv.get(k)
 
-    def set(self, k: str, v) -> bool:  # noqa: ARG002
+    def set(self, k: str, v) -> bool:
         self.kv[k] = str(v).encode() if not isinstance(v, (bytes, bytearray)) else v
         return True
 
 
 def test_get_rss_health_payload_top_and_percentiles():
     r = _MemoryRedis()
-    bucket = datetime.now(timezone.utc).strftime("%Y%m%d%H")
-    lkey = rss_store._logkey(bucket)  # noqa: SLF001
-    ckey = rss_store._countkey(bucket)  # noqa: SLF001
+    bucket = datetime.now(UTC).strftime("%Y%m%d%H")
+    lkey = rss_store._logkey(bucket)
+    ckey = rss_store._countkey(bucket)
     for d in (1024, 2048, 4096, 5120, 10240, 25600, 100000, 200000, 200000, 200000):
-        row = json.dumps({"m": "GET", "p": "/api/v1/foo", "d": d}, separators=(",", ":"), sort_keys=True)
+        row = json.dumps(
+            {"m": "GET", "p": "/api/v1/foo", "d": d}, separators=(",", ":"), sort_keys=True
+        )
         r.lists.setdefault(lkey, []).append(row.encode())
     r.set(ckey, 10)
 
@@ -50,8 +52,8 @@ def test_get_rss_health_payload_top_and_percentiles():
 
 def test_admin_merge_includes_rss_keys(monkeypatch):
     r = _MemoryRedis()
-    bucket = datetime.now(timezone.utc).strftime("%Y%m%d%H")
-    lkey = rss_store._logkey(bucket)  # noqa: SLF001
+    bucket = datetime.now(UTC).strftime("%Y%m%d%H")
+    lkey = rss_store._logkey(bucket)
     r.lists[lkey] = [
         json.dumps(
             {"m": "GET", "p": "/x", "d": 10240},
@@ -59,7 +61,7 @@ def test_admin_merge_includes_rss_keys(monkeypatch):
             sort_keys=True,
         ).encode()
     ]
-    r.set(rss_store._countkey(bucket), 1)  # noqa: SLF001
+    r.set(rss_store._countkey(bucket), 1)
 
     monkeypatch.setattr("app.config.settings.ENABLE_RSS_OBSERVABILITY", True, raising=False)
 
@@ -70,7 +72,7 @@ def test_admin_merge_includes_rss_keys(monkeypatch):
         "dimensions": {},
         "task_runs": {},
     }
-    svc._merge_rss_observability_fields(payload, r)  # noqa: SLF001
+    svc._merge_rss_observability_fields(payload, r)
     assert "top_rss_endpoints" in payload
     assert "worker_request_count_last_hour" in payload
     assert "rss_observability" in payload
@@ -81,7 +83,7 @@ def test_rss_flag_disabled_empties_block(monkeypatch):
     monkeypatch.setattr("app.config.settings.ENABLE_RSS_OBSERVABILITY", False, raising=False)
     svc = AdminHealthService()
     payload = {"composite_status": "green"}
-    svc._merge_rss_observability_fields(payload, _MemoryRedis())  # noqa: SLF001
+    svc._merge_rss_observability_fields(payload, _MemoryRedis())
     assert payload["top_rss_endpoints"] == []
     assert payload["worker_request_count_last_hour"] == 0
     assert payload["rss_observability"].get("disabled") is True

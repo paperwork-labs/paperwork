@@ -9,8 +9,8 @@ medallion: ops
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
 import aiohttp
 
@@ -64,10 +64,10 @@ class SchwabClient:
 
     def __init__(self) -> None:
         self.connected = False
-        self._access_token: Optional[str] = None
-        self._refresh_token: Optional[str] = None
-        self._account_hash_map: Dict[str, str] = {}  # account_number -> hashValue
-        self._on_token_refresh: Optional[Any] = None  # callback(access_token, refresh_token)
+        self._access_token: str | None = None
+        self._refresh_token: str | None = None
+        self._account_hash_map: dict[str, str] = {}  # account_number -> hashValue
+        self._on_token_refresh: Any | None = None  # callback(access_token, refresh_token)
 
     def set_token_refresh_callback(self, callback: Any) -> None:
         """Set a callback invoked after a successful token refresh.
@@ -161,7 +161,7 @@ class SchwabClient:
         self,
         method: str,
         path: str,
-        params: Optional[Dict[str, Any]] = None,
+        params: dict[str, Any] | None = None,
     ) -> Any:
         """
         Perform authenticated request. On 401, refresh and retry once.
@@ -189,7 +189,9 @@ class SchwabClient:
             if refresh_ok and self._access_token:
                 status, data = await _do_request(self._access_token)
         if status != 200:
-            logger.warning("Schwab API %s %s: status=%s body=%s", method, path, status, str(data)[:300])
+            logger.warning(
+                "Schwab API %s %s: status=%s body=%s", method, path, status, str(data)[:300]
+            )
             return None
         return data
 
@@ -198,10 +200,10 @@ class SchwabClient:
         method: str,
         path: str,
         *,
-        params: Optional[Dict[str, Any]] = None,
-        json_body: Optional[Dict[str, Any]] = None,
-        expected_statuses: Optional[tuple[int, ...]] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        json_body: dict[str, Any] | None = None,
+        expected_statuses: tuple[int, ...] | None = None,
+    ) -> dict[str, Any]:
         """
         Perform authenticated request returning full response metadata.
 
@@ -230,7 +232,7 @@ class SchwabClient:
         url = f"{BASE_URL}{path}"
         ok_statuses = expected_statuses or (200, 201, 204)
 
-        async def _do_request(token: str) -> tuple[int, Any, Dict[str, str]]:
+        async def _do_request(token: str) -> tuple[int, Any, dict[str, str]]:
             headers_req = {
                 "Authorization": f"Bearer {token}",
                 "Accept": "application/json",
@@ -239,7 +241,8 @@ class SchwabClient:
                 headers_req["Content-Type"] = "application/json"
             async with aiohttp.ClientSession(timeout=DEFAULT_TIMEOUT) as session:
                 async with session.request(
-                    method, url,
+                    method,
+                    url,
                     headers=headers_req,
                     params=params,
                     json=json_body,
@@ -255,7 +258,9 @@ class SchwabClient:
             status, data, resp_headers = await _do_request(self._access_token)
             if status == 401:
                 logger.info(
-                    "Schwab API %s %s: 401, attempting token refresh", method, path,
+                    "Schwab API %s %s: 401, attempting token refresh",
+                    method,
+                    path,
                 )
                 refreshed = await self._ensure_token()
                 if refreshed and self._access_token:
@@ -269,11 +274,15 @@ class SchwabClient:
                 "error": f"transport error: {exc}",
             }
 
-        err: Optional[str] = None
+        err: str | None = None
         if status not in ok_statuses:
             body_preview = str(data)[:300] if data is not None else ""
             logger.warning(
-                "Schwab API %s %s: status=%s body=%s", method, path, status, body_preview,
+                "Schwab API %s %s: status=%s body=%s",
+                method,
+                path,
+                status,
+                body_preview,
             )
             err = f"HTTP {status}: {body_preview}" if body_preview else f"HTTP {status}"
         return {
@@ -283,7 +292,7 @@ class SchwabClient:
             "error": err,
         }
 
-    async def resolve_account_hash_fresh(self, account_number: str) -> Optional[str]:
+    async def resolve_account_hash_fresh(self, account_number: str) -> str | None:
         """Resolve ``account_number`` -> ``hashValue`` without reusing a cached hash.
 
         The sync-path ``_resolve_account_hash`` caches for the lifetime of the
@@ -298,7 +307,7 @@ class SchwabClient:
         self._account_hash_map.pop(account_number, None)
         return await self._resolve_account_hash(account_number)
 
-    def _get_account_hash(self, account_number: str, account_list: List[Dict]) -> Optional[str]:
+    def _get_account_hash(self, account_number: str, account_list: list[dict]) -> str | None:
         """
         Resolve account_number to hashValue from GET accounts/accountNumbers response.
         Matches by exact accountNumber or by suffix (last 4 digits) if API returns masked.
@@ -315,7 +324,7 @@ class SchwabClient:
                 return str(hv)
         return None
 
-    async def get_accounts(self) -> List[Dict[str, Any]]:
+    async def get_accounts(self) -> list[dict[str, Any]]:
         """
         GET /accounts/accountNumbers - list of {accountNumber, hashValue}.
         Returns empty list when not configured.
@@ -336,19 +345,23 @@ class SchwabClient:
         results = []
         for item in items:
             if isinstance(item, dict):
-                results.append({
-                    "account_number": item.get("accountNumber", ""),
-                    "hash_value": item.get("hashValue") or item.get("hash", ""),
-                })
+                results.append(
+                    {
+                        "account_number": item.get("accountNumber", ""),
+                        "hash_value": item.get("hashValue") or item.get("hash", ""),
+                    }
+                )
         return results
 
-    async def _resolve_account_hash(self, account_number: str) -> Optional[str]:
+    async def _resolve_account_hash(self, account_number: str) -> str | None:
         """Resolve account_number to hashValue, caching in _account_hash_map."""
         if account_number in self._account_hash_map:
             return self._account_hash_map[account_number]
         accounts = await self.get_accounts()
         if not accounts:
-            logger.warning("Schwab API: no accounts returned, cannot resolve hash for %s", account_number)
+            logger.warning(
+                "Schwab API: no accounts returned, cannot resolve hash for %s", account_number
+            )
             return None
         # Build map from account_number to hash
         for a in accounts:
@@ -358,7 +371,10 @@ class SchwabClient:
                 self._account_hash_map[anum] = hv
         hv = self._get_account_hash(
             account_number,
-            [{"accountNumber": a.get("account_number"), "hashValue": a.get("hash_value")} for a in accounts],
+            [
+                {"accountNumber": a.get("account_number"), "hashValue": a.get("hash_value")}
+                for a in accounts
+            ],
         )
         if hv:
             self._account_hash_map[account_number] = hv
@@ -372,9 +388,11 @@ class SchwabClient:
             )
         return hv
 
-    async def _fetch_positions_raw(self, account_hash: str) -> List[Dict[str, Any]]:
+    async def _fetch_positions_raw(self, account_hash: str) -> list[dict[str, Any]]:
         """Fetch the raw positions array from GET /accounts/{hash}?fields=positions."""
-        data = await self._request("GET", f"/accounts/{account_hash}", params={"fields": "positions"})
+        data = await self._request(
+            "GET", f"/accounts/{account_hash}", params={"fields": "positions"}
+        )
         if not data or not isinstance(data, dict):
             return []
         securities = data.get("securitiesAccount", data)
@@ -385,7 +403,7 @@ class SchwabClient:
             return []
         return positions_raw
 
-    async def get_positions(self, account_number: str) -> List[Dict[str, Any]]:
+    async def get_positions(self, account_number: str) -> list[dict[str, Any]]:
         """
         GET /accounts/{accountHash}?fields=positions — equity positions.
         Returns list of position dicts with symbol, quantity, average_cost, total_cost_basis.
@@ -410,10 +428,17 @@ class SchwabClient:
             symbol = (inst.get("symbol") or p.get("symbol") or "").upper()
             if not symbol:
                 continue
-            qty = float(p.get("longQuantity") or p.get("quantity") or 0) - float(p.get("shortQuantity") or 0)
+            qty = float(p.get("longQuantity") or p.get("quantity") or 0) - float(
+                p.get("shortQuantity") or 0
+            )
             avg_cost = None
             cost_basis = None
-            for field in ("taxLotAverageLongPrice", "averageLongPrice", "averagePrice", "averageCost"):
+            for field in (
+                "taxLotAverageLongPrice",
+                "averageLongPrice",
+                "averagePrice",
+                "averageCost",
+            ):
                 val = p.get(field)
                 if val is not None and float(val) > 0:
                     avg_cost = float(val)
@@ -422,23 +447,23 @@ class SchwabClient:
                 avg_cost = float(p["currentDayCost"])
             if p.get("cost"):
                 cost_basis = float(p["cost"])
-            results.append({
-                "symbol": symbol,
-                "quantity": qty,
-                "average_cost": avg_cost,
-                "total_cost_basis": cost_basis,
-                "market_value": float(p.get("marketValue", 0) or 0),
-                "day_pnl": float(p.get("currentDayProfitLoss", 0) or 0),
-                "day_pnl_pct": float(p.get("currentDayProfitLossPercentage", 0) or 0),
-                "maintenance_requirement": float(p.get("maintenanceRequirement", 0) or 0),
-                "long_open_pnl": float(p.get("longOpenProfitLoss", 0) or 0),
-            })
+            results.append(
+                {
+                    "symbol": symbol,
+                    "quantity": qty,
+                    "average_cost": avg_cost,
+                    "total_cost_basis": cost_basis,
+                    "market_value": float(p.get("marketValue", 0) or 0),
+                    "day_pnl": float(p.get("currentDayProfitLoss", 0) or 0),
+                    "day_pnl_pct": float(p.get("currentDayProfitLossPercentage", 0) or 0),
+                    "maintenance_requirement": float(p.get("maintenanceRequirement", 0) or 0),
+                    "long_open_pnl": float(p.get("longOpenProfitLoss", 0) or 0),
+                }
+            )
         logger.info("Schwab API: get_positions returned %d equity positions", len(results))
         return results
 
-    async def get_transactions(
-        self, account_number: str, days: int = 365
-    ) -> List[Dict[str, Any]]:
+    async def get_transactions(self, account_number: str, days: int = 365) -> list[dict[str, Any]]:
         """
         GET /accounts/{accountHash}/transactions with start_date/end_date.
         Schwab supports up to 540 days of history; we clamp to 540. Callers
@@ -455,7 +480,7 @@ class SchwabClient:
 
         eff = 365 if days is None or int(days) <= 0 else int(days)
         effective_days = min(eff, 540)
-        end = datetime.now(timezone.utc)
+        end = datetime.now(UTC)
         start = end - timedelta(days=effective_days)
         params = {
             "startDate": start.strftime("%Y-%m-%dT%H:%M:%S.000Z"),
@@ -467,7 +492,9 @@ class SchwabClient:
             return []
 
         transactions_raw = (
-            data.get("transactions") if isinstance(data, dict) else (data if isinstance(data, list) else [])
+            data.get("transactions")
+            if isinstance(data, dict)
+            else (data if isinstance(data, list) else [])
         )
         if not isinstance(transactions_raw, list):
             return []
@@ -482,7 +509,7 @@ class SchwabClient:
             qty = 0.0
             price = 0.0
             transfer_cost_basis = None
-            item: Dict[str, Any] = {}
+            item: dict[str, Any] = {}
             if transfer_items and isinstance(transfer_items, list):
                 item = transfer_items[0] if transfer_items else {}
                 inst = item.get("instrument") or {}
@@ -495,28 +522,33 @@ class SchwabClient:
             pe_raw = item.get("positionEffect") or item.get("position_effect") or ""
             position_effect = str(pe_raw).upper()
             inst_asset = (inst.get("assetType") or inst.get("type") or "").upper()
-            results.append({
-                "id": str(t.get("activityId") or t.get("transactionId") or t.get("id") or ""),
-                "account_number": account_number,
-                "symbol": symbol,
-                "action": t.get("type", t.get("transactionType", "")),
-                "activity_type": t.get("activityType", ""),
-                "sub_account": t.get("subAccount", ""),
-                "quantity": qty or float(t.get("quantity", 0) or 0),
-                "price": price or float(t.get("price", 0) or 0),
-                "amount": net_amt,
-                "commission": float(t.get("commission", 0) or 0),
-                "transfer_cost_basis": transfer_cost_basis,
-                "position_id": t.get("positionId"),
-                "order_id": t.get("orderId"),
-                "date": t.get("tradeDate") or t.get("settlementDate") or t.get("transactionDate") or t.get("date"),
-                "description": t.get("description") or "",
-                "instrument_asset_type": inst_asset,
-                "position_effect": position_effect,
-            })
+            results.append(
+                {
+                    "id": str(t.get("activityId") or t.get("transactionId") or t.get("id") or ""),
+                    "account_number": account_number,
+                    "symbol": symbol,
+                    "action": t.get("type", t.get("transactionType", "")),
+                    "activity_type": t.get("activityType", ""),
+                    "sub_account": t.get("subAccount", ""),
+                    "quantity": qty or float(t.get("quantity", 0) or 0),
+                    "price": price or float(t.get("price", 0) or 0),
+                    "amount": net_amt,
+                    "commission": float(t.get("commission", 0) or 0),
+                    "transfer_cost_basis": transfer_cost_basis,
+                    "position_id": t.get("positionId"),
+                    "order_id": t.get("orderId"),
+                    "date": t.get("tradeDate")
+                    or t.get("settlementDate")
+                    or t.get("transactionDate")
+                    or t.get("date"),
+                    "description": t.get("description") or "",
+                    "instrument_asset_type": inst_asset,
+                    "position_effect": position_effect,
+                }
+            )
         return results
 
-    async def get_account_balances(self, account_number: str) -> Dict[str, Any]:
+    async def get_account_balances(self, account_number: str) -> dict[str, Any]:
         """
         GET /accounts/{accountHash} (balances). Returns dict with cash and net liquidating value.
         Returns empty dict when not configured.
@@ -562,11 +594,15 @@ class SchwabClient:
             "sma": _f("sma"),
             "account_type": (securities.get("type") or "").upper(),
         }
-        logger.info("Schwab API: get_account_balances NLV=%.2f equity=%.2f margin_req=%.2f",
-                     result["net_liquidating_value"], result["equity"], result["maintenance_requirement"])
+        logger.info(
+            "Schwab API: get_account_balances NLV=%.2f equity=%.2f margin_req=%.2f",
+            result["net_liquidating_value"],
+            result["equity"],
+            result["maintenance_requirement"],
+        )
         return result
 
-    async def get_options_positions(self, account_number: str) -> List[Dict[str, Any]]:
+    async def get_options_positions(self, account_number: str) -> list[dict[str, Any]]:
         """Extract option positions from GET /accounts/{hash}?fields=positions."""
         if not self.connected or not self._access_token:
             return []
@@ -595,18 +631,24 @@ class SchwabClient:
             )
             if not expiration:
                 expiration = _option_expiry_iso_from_occ_symbol(option_symbol) or ""
-            results.append({
-                "symbol": symbol,
-                "option_symbol": option_symbol,
-                "quantity": qty,
-                "strike": float(inst.get("strikePrice") or 0),
-                "expiration": expiration,
-                "put_call": (inst.get("putCall") or inst.get("optionType") or "").upper(),
-                "average_cost": float(p.get("averageCost", 0) or 0),
-                "market_value": float(p.get("marketValue", 0) or 0),
-                "net_change": p.get("netChange") if p.get("netChange") is not None else p.get("currentDayProfitLoss"),
-                "average_price": p.get("averagePrice") if p.get("averagePrice") is not None else inst.get("averagePrice"),
-            })
+            results.append(
+                {
+                    "symbol": symbol,
+                    "option_symbol": option_symbol,
+                    "quantity": qty,
+                    "strike": float(inst.get("strikePrice") or 0),
+                    "expiration": expiration,
+                    "put_call": (inst.get("putCall") or inst.get("optionType") or "").upper(),
+                    "average_cost": float(p.get("averageCost", 0) or 0),
+                    "market_value": float(p.get("marketValue", 0) or 0),
+                    "net_change": p.get("netChange")
+                    if p.get("netChange") is not None
+                    else p.get("currentDayProfitLoss"),
+                    "average_price": p.get("averagePrice")
+                    if p.get("averagePrice") is not None
+                    else inst.get("averagePrice"),
+                }
+            )
         logger.info("Schwab API: get_options_positions returned %d option positions", len(results))
         return results
 
@@ -626,12 +668,12 @@ class SchwabClient:
         side: str,
         quantity: float,
         order_type: str,
-        limit_price: Optional[float] = None,
-        stop_price: Optional[float] = None,
+        limit_price: float | None = None,
+        stop_price: float | None = None,
         duration: str = "DAY",
         session_type: str = "NORMAL",
         asset_type: str = "EQUITY",
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Construct a Schwab Trader API order payload.
 
         Schwab expects ``orderType`` in MARKET / LIMIT / STOP / STOP_LIMIT
@@ -651,7 +693,7 @@ class SchwabClient:
         if normalized_type in ("STOP", "STOP_LIMIT") and stop_price is None:
             raise ValueError(f"{normalized_type} order requires stop_price")
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "orderType": normalized_type,
             "session": session_type,
             "duration": duration,
@@ -674,7 +716,7 @@ class SchwabClient:
         return payload
 
     @staticmethod
-    def _extract_order_id_from_location(location: str) -> Optional[str]:
+    def _extract_order_id_from_location(location: str) -> str | None:
         """Parse the trailing order id out of Schwab's ``Location`` header.
 
         Schwab returns ``Location: https://.../accounts/{hash}/orders/{id}``
@@ -686,9 +728,7 @@ class SchwabClient:
         tail = location.rstrip("/").rsplit("/", 1)[-1]
         return tail or None
 
-    async def place_order(
-        self, account_hash: str, payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def place_order(self, account_hash: str, payload: dict[str, Any]) -> dict[str, Any]:
         """POST ``/accounts/{accountHash}/orders``.
 
         Returns a dict with keys:
@@ -743,9 +783,7 @@ class SchwabClient:
             "error": None,
         }
 
-    async def cancel_order(
-        self, account_hash: str, broker_order_id: str
-    ) -> Dict[str, Any]:
+    async def cancel_order(self, account_hash: str, broker_order_id: str) -> dict[str, Any]:
         """DELETE ``/accounts/{accountHash}/orders/{orderId}``.
 
         Schwab returns 200/204 when accepted. If the order already filled
@@ -779,9 +817,7 @@ class SchwabClient:
             "error": None,
         }
 
-    async def get_order_status(
-        self, account_hash: str, broker_order_id: str
-    ) -> Dict[str, Any]:
+    async def get_order_status(self, account_hash: str, broker_order_id: str) -> dict[str, Any]:
         """GET ``/accounts/{accountHash}/orders/{orderId}``.
 
         Schwab does not push order status updates, so the executor polls
@@ -832,7 +868,7 @@ class SchwabClient:
         mapped = status_map.get(raw_status, raw_status.lower() or "unknown")
         filled_qty = float(data.get("filledQuantity") or 0.0)
         avg_price = data.get("orderActivityCollection") or []
-        avg_fill_price: Optional[float] = None
+        avg_fill_price: float | None = None
         if isinstance(avg_price, list) and avg_price:
             exec_legs = []
             for activity in avg_price:
@@ -860,9 +896,7 @@ class SchwabClient:
             "error": None,
         }
 
-    async def preview_order(
-        self, account_hash: str, payload: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    async def preview_order(self, account_hash: str, payload: dict[str, Any]) -> dict[str, Any]:
         """POST ``/accounts/{accountHash}/previewOrder``.
 
         Schwab returns an estimate for commission, margin impact, and buying
@@ -897,7 +931,7 @@ class SchwabClient:
         order_balance = data.get("orderBalance") or {}
         commission_info = data.get("commissionAndFee") or data.get("commission") or {}
 
-        def _opt_float(d: Dict[str, Any], *keys: str) -> Optional[float]:
+        def _opt_float(d: dict[str, Any], *keys: str) -> float | None:
             for key in keys:
                 val = d.get(key)
                 if val is not None:
@@ -909,15 +943,21 @@ class SchwabClient:
 
         est_commission = _opt_float(
             commission_info if isinstance(commission_info, dict) else {},
-            "totalCommission", "commission", "total",
+            "totalCommission",
+            "commission",
+            "total",
         )
         return {
             "estimated_commission": est_commission,
             "estimated_margin_impact": _opt_float(
-                order_balance, "orderValue", "projectedBalance", "projectedAvailableFunds",
+                order_balance,
+                "orderValue",
+                "projectedBalance",
+                "projectedAvailableFunds",
             ),
             "estimated_equity_with_loan": _opt_float(
-                order_balance, "projectedAvailableFunds",
+                order_balance,
+                "projectedAvailableFunds",
             ),
             "http_status": resp["status"],
             "raw": data,

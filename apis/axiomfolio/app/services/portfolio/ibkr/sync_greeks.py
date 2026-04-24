@@ -4,7 +4,6 @@ medallion: bronze
 """
 
 import logging
-from typing import Dict
 
 from sqlalchemy.orm import Session
 
@@ -13,13 +12,14 @@ from app.models.options import Option
 logger = logging.getLogger(__name__)
 
 
-async def sync_option_greeks_from_gateway(db: Session, broker_account) -> Dict[str, int]:
+async def sync_option_greeks_from_gateway(db: Session, broker_account) -> dict[str, int]:
     """Enrich open option positions with live Greeks from IB Gateway.
 
     Gracefully skips if Gateway is unreachable.
     """
     try:
-        from app.services.clients.ibkr_client import ibkr_client, IBKR_AVAILABLE
+        from app.services.clients.ibkr_client import IBKR_AVAILABLE, ibkr_client
+
         if not IBKR_AVAILABLE or not ibkr_client.is_connected():
             logger.info("IB Gateway not connected — skipping Greeks enrichment")
             return {"greeks_enriched": 0, "status": "gateway_offline"}

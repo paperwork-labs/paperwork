@@ -26,11 +26,10 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
-from typing import Optional
 
 
 def validate_postmark_signature(
-    raw_body: bytes, signature_header: Optional[str], secret: str
+    raw_body: bytes, signature_header: str | None, secret: str
 ) -> bool:
     """Return True if ``signature_header`` matches the HMAC-SHA256 of ``raw_body``.
 

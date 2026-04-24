@@ -35,8 +35,9 @@ medallion: ops
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Mapping, Optional
+from collections.abc import Iterable, Mapping
+from datetime import UTC, datetime
+from typing import Any
 
 from .schemas import Anomaly, AnomalyCategory, AnomalySeverity
 
@@ -80,7 +81,7 @@ def deterministic_id(
     dimension: str,
     status: str,
     *,
-    when: Optional[datetime] = None,
+    when: datetime | None = None,
 ) -> str:
     """Stable id for a (dimension, status, UTC-day) triple.
 
@@ -89,13 +90,13 @@ def deterministic_id(
     (handy in tests and grep-driven debugging) while still being safe to
     use as a primary key column value.
     """
-    when = when or datetime.now(timezone.utc)
+    when = when or datetime.now(UTC)
     if when.tzinfo is None:
-        when = when.replace(tzinfo=timezone.utc)
+        when = when.replace(tzinfo=UTC)
     else:
-        when = when.astimezone(timezone.utc)
+        when = when.astimezone(UTC)
     day = when.strftime("%Y%m%d")
-    raw = f"{dimension}|{status}|{day}".encode("utf-8")
+    raw = f"{dimension}|{status}|{day}".encode()
     digest = hashlib.sha256(raw).hexdigest()[:8]
     return f"{dimension}:{status}:{day}:{digest}"
 
@@ -107,7 +108,7 @@ def _title_for_dimension(dimension: str, status: str, dim_data: Mapping[str, Any
     return f"{pretty} dimension is {status.upper()}{suffix}"[:200]
 
 
-def _flatten_facts(dim_data: Mapping[str, Any]) -> Dict[str, Any]:
+def _flatten_facts(dim_data: Mapping[str, Any]) -> dict[str, Any]:
     """Pick a JSON-serializable subset of dim_data so the LLM prompt stays bounded.
 
     Drops any value that's not directly serializable (datetime is
@@ -134,12 +135,12 @@ def _flatten_facts(dim_data: Mapping[str, Any]) -> Dict[str, Any]:
         "warn_count",
         "queue_depth",
     }
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     for key, value in dim_data.items():
         if key not in keep_keys:
             continue
         if isinstance(value, datetime):
-            out[key] = value.astimezone(timezone.utc).isoformat()
+            out[key] = value.astimezone(UTC).isoformat()
         elif isinstance(value, (str, int, float, bool, list, dict)) or value is None:
             out[key] = value
         else:
@@ -151,8 +152,8 @@ def build_anomaly_from_dimension(
     dimension: str,
     dim_data: Mapping[str, Any],
     *,
-    detected_at: Optional[datetime] = None,
-) -> Optional[Anomaly]:
+    detected_at: datetime | None = None,
+) -> Anomaly | None:
     """Return an :class:`Anomaly` for one composite-health dimension, or None if green.
 
     Treats ``advisory: True`` broker dimensions as worth still surfacing when
@@ -164,7 +165,7 @@ def build_anomaly_from_dimension(
         return None
     severity = _coerce_severity(status)
     category = _category_for_dimension(dimension)
-    detected_at = detected_at or datetime.now(timezone.utc)
+    detected_at = detected_at or datetime.now(UTC)
     return Anomaly(
         id=deterministic_id(dimension, status, when=detected_at),
         category=category,
@@ -182,9 +183,9 @@ def build_anomaly_from_dimension(
 def build_anomalies_from_health(
     health: Mapping[str, Any],
     *,
-    detected_at: Optional[datetime] = None,
+    detected_at: datetime | None = None,
     include_advisory: bool = True,
-) -> List[Anomaly]:
+) -> list[Anomaly]:
     """Convert a full composite-health payload into a list of anomalies.
 
     ``include_advisory=False`` drops broker-only dimensions when the
@@ -192,8 +193,8 @@ def build_anomalies_from_health(
     skip behavior.
     """
     dimensions = health.get("dimensions") or {}
-    detected_at = detected_at or datetime.now(timezone.utc)
-    out: List[Anomaly] = []
+    detected_at = detected_at or datetime.now(UTC)
+    out: list[Anomaly] = []
     for name, data in dimensions.items():
         if not isinstance(data, Mapping):
             continue
@@ -223,7 +224,7 @@ def anomaly_from_dict(payload: Mapping[str, Any]) -> Anomaly:
     except ValueError:
         severity = AnomalySeverity.WARNING
     detected_at_raw = payload.get("detected_at")
-    detected_at: Optional[datetime] = None
+    detected_at: datetime | None = None
     if isinstance(detected_at_raw, datetime):
         detected_at = detected_at_raw
     elif isinstance(detected_at_raw, str) and detected_at_raw:
@@ -235,9 +236,8 @@ def anomaly_from_dict(payload: Mapping[str, Any]) -> Anomaly:
     if not isinstance(facts, Mapping):
         facts = {}
     return Anomaly(
-        id=str(payload.get("id") or "").strip() or deterministic_id(
-            str(payload.get("category", "other")), "unknown"
-        ),
+        id=str(payload.get("id") or "").strip()
+        or deterministic_id(str(payload.get("category", "other")), "unknown"),
         category=category,
         severity=severity,
         title=str(payload.get("title") or "Untitled anomaly")[:200],
@@ -247,13 +247,13 @@ def anomaly_from_dict(payload: Mapping[str, Any]) -> Anomaly:
     )
 
 
-def anomaly_to_dict(anomaly: Anomaly) -> Dict[str, Any]:
+def anomaly_to_dict(anomaly: Anomaly) -> dict[str, Any]:
     """JSON-friendly representation suitable for Celery payloads / API responses."""
     detected_at = anomaly.detected_at
     if detected_at is not None:
         if detected_at.tzinfo is None:
-            detected_at = detected_at.replace(tzinfo=timezone.utc)
-        detected_iso: Optional[str] = detected_at.astimezone(timezone.utc).isoformat()
+            detected_at = detected_at.replace(tzinfo=UTC)
+        detected_iso: str | None = detected_at.astimezone(UTC).isoformat()
     else:
         detected_iso = None
     return {

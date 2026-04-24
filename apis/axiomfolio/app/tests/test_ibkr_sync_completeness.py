@@ -19,7 +19,6 @@ from app.services.portfolio.ibkr.sync_validator import (
     validate_completeness,
 )
 
-
 pytestmark = pytest.mark.no_db
 
 
@@ -65,10 +64,7 @@ def test_discover_counts_rows_per_section():
     xml = _make_xml({"Trades": 3, "CashTransactions": 5})
     discovered = discover_xml_sections(xml)
     assert "Trades" in discovered and discovered["Trades"]["row_count"] == 3
-    assert (
-        "CashTransactions" in discovered
-        and discovered["CashTransactions"]["row_count"] == 5
-    )
+    assert "CashTransactions" in discovered and discovered["CashTransactions"]["row_count"] == 5
 
 
 def test_discover_returns_empty_dict_for_unparseable_xml():
@@ -145,24 +141,18 @@ def test_missing_only_optional_sections_is_success_with_info_warnings():
 def test_missing_open_positions_is_partial_with_error_warning():
     """The exact founder-anchor failure: Trades + CashTransactions came through
     but OpenPositions did not, so positions and tax_lots were silently empty."""
-    xml = _make_xml(
-        {"AccountInformation": 1, "Trades": 50, "CashTransactions": 20}
-    )
+    xml = _make_xml({"AccountInformation": 1, "Trades": 50, "CashTransactions": 20})
     report = validate_completeness(xml)
     assert report.status == SyncCompletenessStatus.PARTIAL
     assert "OpenPositions" in report.missing_required
     assert any(
-        w["section"] == "OpenPositions"
-        and w["code"] == "section_missing"
-        and w["level"] == "error"
+        w["section"] == "OpenPositions" and w["code"] == "section_missing" and w["level"] == "error"
         for w in report.warnings
     )
 
 
 def test_missing_account_information_is_partial():
-    xml = _make_xml(
-        {"OpenPositions": 5, "Trades": 50, "CashTransactions": 20}
-    )
+    xml = _make_xml({"OpenPositions": 5, "Trades": 50, "CashTransactions": 20})
     report = validate_completeness(xml)
     assert report.status == SyncCompletenessStatus.PARTIAL
     assert "AccountInformation" in report.missing_required
@@ -200,9 +190,7 @@ def test_pipeline_step_error_promotes_to_partial_even_if_xml_complete():
 def test_unparseable_xml_returns_error():
     report = validate_completeness("<<<not-xml>>>")
     assert report.status == SyncCompletenessStatus.ERROR
-    assert any(
-        w["code"] == "report_unparseable_or_empty" for w in report.warnings
-    )
+    assert any(w["code"] == "report_unparseable_or_empty" for w in report.warnings)
 
 
 def test_empty_xml_returns_error():
@@ -242,9 +230,7 @@ def test_to_dict_round_trip_preserves_all_fields():
 
 
 def test_missing_sections_property_is_union_of_required_and_optional():
-    xml = _make_xml(
-        {"AccountInformation": 1, "Trades": 50, "CashTransactions": 20}
-    )
+    xml = _make_xml({"AccountInformation": 1, "Trades": 50, "CashTransactions": 20})
     report = validate_completeness(xml)
     assert "OpenPositions" in report.missing_sections
     assert set(report.missing_sections) == set(report.missing_required) | set(

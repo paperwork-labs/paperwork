@@ -25,7 +25,7 @@ medallion: bronze
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import requests
 
@@ -51,8 +51,8 @@ class TradierAPIError(Exception):
         message: str,
         *,
         permanent: bool,
-        status: Optional[int] = None,
-        path: Optional[str] = None,
+        status: int | None = None,
+        path: str | None = None,
     ) -> None:
         super().__init__(message)
         self.permanent = permanent
@@ -72,7 +72,7 @@ def _classify_permanent(status: int) -> bool:
     return 400 <= status < 500
 
 
-def _as_list(value: Any) -> List[Dict[str, Any]]:
+def _as_list(value: Any) -> list[dict[str, Any]]:
     """Normalize Tradier's "object when single, array when many" shape.
 
     Every collection endpoint collapses its inner array to a bare object
@@ -112,9 +112,9 @@ class TradierBronzeClient:
         *,
         access_token: str,
         sandbox: bool = False,
-        base_url: Optional[str] = None,
-        session: Optional[requests.Session] = None,
-        timeout_s: Optional[float] = None,
+        base_url: str | None = None,
+        session: requests.Session | None = None,
+        timeout_s: float | None = None,
     ) -> None:
         if not access_token:
             raise TradierAPIError(
@@ -123,14 +123,11 @@ class TradierBronzeClient:
             )
         self._token = access_token
         self._base_url = (
-            base_url.rstrip("/") if base_url
-            else (_SANDBOX_BASE if sandbox else _LIVE_BASE)
+            base_url.rstrip("/") if base_url else (_SANDBOX_BASE if sandbox else _LIVE_BASE)
         )
         self._session = session or requests.Session()
         self._timeout_s = (
-            timeout_s
-            if timeout_s is not None
-            else settings.TRADIER_OAUTH_REQUEST_TIMEOUT_S
+            timeout_s if timeout_s is not None else settings.TRADIER_OAUTH_REQUEST_TIMEOUT_S
         )
 
     # ------------------------------------------------------------------
@@ -140,16 +137,16 @@ class TradierBronzeClient:
         self,
         path: str,
         *,
-        params: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         return self._request_json("GET", path, params=params)
 
     def _post_json(
         self,
         path: str,
         *,
-        data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         """Form-encoded POST returning parsed JSON.
 
         Tradier's order-write endpoints accept ``application/x-www-form-
@@ -160,7 +157,7 @@ class TradierBronzeClient:
 
         return self._request_json("POST", path, data=data)
 
-    def _delete_json(self, path: str) -> Dict[str, Any]:
+    def _delete_json(self, path: str) -> dict[str, Any]:
         """HTTP DELETE returning parsed JSON (order cancellation)."""
 
         return self._request_json("DELETE", path)
@@ -170,9 +167,9 @@ class TradierBronzeClient:
         method: str,
         path: str,
         *,
-        params: Optional[Dict[str, Any]] = None,
-        data: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        params: dict[str, Any] | None = None,
+        data: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
         url = f"{self._base_url}{path}"
         headers = {
             "Authorization": f"Bearer {self._token}",
@@ -188,9 +185,7 @@ class TradierBronzeClient:
                 timeout=self._timeout_s,
             )
         except requests.RequestException as exc:
-            logger.warning(
-                "tradier client: network failure on %s %s: %s", method, path, exc
-            )
+            logger.warning("tradier client: network failure on %s %s: %s", method, path, exc)
             raise TradierAPIError(
                 f"network failure calling Tradier {method} {path}: {exc}",
                 permanent=False,
@@ -201,11 +196,13 @@ class TradierBronzeClient:
         if status >= 400:
             logger.warning(
                 "tradier client: HTTP %s on %s %s body=%s",
-                status, method, path, (resp.text or "")[:200],
+                status,
+                method,
+                path,
+                (resp.text or "")[:200],
             )
             raise TradierAPIError(
-                f"Tradier {method} {path} returned HTTP {status}: "
-                f"{(resp.text or '')[:200]}",
+                f"Tradier {method} {path} returned HTTP {status}: {(resp.text or '')[:200]}",
                 permanent=_classify_permanent(status),
                 status=status,
                 path=path,
@@ -215,8 +212,7 @@ class TradierBronzeClient:
             body = resp.json() if resp.content else {}
         except ValueError as exc:
             raise TradierAPIError(
-                f"Tradier {method} {path} returned non-JSON body: "
-                f"{(resp.text or '')[:200]}",
+                f"Tradier {method} {path} returned non-JSON body: {(resp.text or '')[:200]}",
                 permanent=True,
                 status=status,
                 path=path,
@@ -224,8 +220,7 @@ class TradierBronzeClient:
 
         if not isinstance(body, dict):
             raise TradierAPIError(
-                f"Tradier {method} {path} returned unexpected root type "
-                f"{type(body).__name__}",
+                f"Tradier {method} {path} returned unexpected root type {type(body).__name__}",
                 permanent=True,
                 status=status,
                 path=path,
@@ -235,7 +230,7 @@ class TradierBronzeClient:
     # ------------------------------------------------------------------
     # Public wrappers
     # ------------------------------------------------------------------
-    def get_accounts(self) -> List[Dict[str, Any]]:
+    def get_accounts(self) -> list[dict[str, Any]]:
         """Return a flat list of account dicts from ``/user/profile``.
 
         Tradier nests at ``{"profile": {"account": [...]}}`` (or a single
@@ -246,7 +241,7 @@ class TradierBronzeClient:
         profile = body.get("profile") or {}
         return _as_list(profile.get("account"))
 
-    def get_balances(self, account_id: str) -> Dict[str, Any]:
+    def get_balances(self, account_id: str) -> dict[str, Any]:
         """Return the balances object for ``account_id``.
 
         Tradier returns ``{"balances": { ...fields... }}``; we unwrap. A
@@ -265,7 +260,7 @@ class TradierBronzeClient:
             return bal
         return {}
 
-    def get_positions(self, account_id: str) -> List[Dict[str, Any]]:
+    def get_positions(self, account_id: str) -> list[dict[str, Any]]:
         """Return open positions (stocks + options) for ``account_id``.
 
         Tradier returns ``{"positions": "null"}`` (literal string) when
@@ -289,10 +284,10 @@ class TradierBronzeClient:
         self,
         account_id: str,
         *,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-        history_type: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        start: str | None = None,
+        end: str | None = None,
+        history_type: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Return transaction/trade/dividend history for ``account_id``.
 
         ``history_type`` maps to Tradier's ``type=`` query param
@@ -307,7 +302,7 @@ class TradierBronzeClient:
                 "get_history requires a non-empty account_id",
                 permanent=True,
             )
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if start:
             params["start"] = start
         if end:
@@ -330,9 +325,9 @@ class TradierBronzeClient:
         self,
         account_id: str,
         *,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        start: str | None = None,
+        end: str | None = None,
+    ) -> list[dict[str, Any]]:
         """Return realized gain/loss rows for ``account_id``.
 
         Tradier exposes realized gains directly at ``/gainloss`` — useful
@@ -345,7 +340,7 @@ class TradierBronzeClient:
                 "get_gainloss requires a non-empty account_id",
                 permanent=True,
             )
-        params: Dict[str, Any] = {}
+        params: dict[str, Any] = {}
         if start:
             params["start"] = start
         if end:
@@ -375,8 +370,8 @@ class TradierBronzeClient:
         self,
         *,
         account_id: str,
-        payload: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
         """POST ``/v1/accounts/{id}/orders`` with ``preview=true``.
 
         ``payload`` is the form-encoded shape built by
@@ -401,8 +396,8 @@ class TradierBronzeClient:
         self,
         *,
         account_id: str,
-        payload: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        payload: dict[str, Any],
+    ) -> dict[str, Any]:
         """POST ``/v1/accounts/{id}/orders`` (no preview).
 
         The Tradier-assigned order identifier lives at ``order.id`` in the
@@ -426,7 +421,7 @@ class TradierBronzeClient:
         *,
         account_id: str,
         order_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """DELETE ``/v1/accounts/{id}/orders/{order_id}``.
 
         Tradier returns ``{"order": {"id": ..., "status": "ok"}}`` on a
@@ -444,16 +439,14 @@ class TradierBronzeClient:
                 "cancel_order requires a non-empty order_id",
                 permanent=True,
             )
-        return self._delete_json(
-            f"/v1/accounts/{account_id}/orders/{order_id}"
-        )
+        return self._delete_json(f"/v1/accounts/{account_id}/orders/{order_id}")
 
     def get_order(
         self,
         *,
         account_id: str,
         order_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """GET ``/v1/accounts/{id}/orders/{order_id}``.
 
         Returns the raw ``{"order": {...}}`` envelope. The executor maps
@@ -471,9 +464,7 @@ class TradierBronzeClient:
                 "get_order requires a non-empty order_id",
                 permanent=True,
             )
-        return self._get_json(
-            f"/v1/accounts/{account_id}/orders/{order_id}"
-        )
+        return self._get_json(f"/v1/accounts/{account_id}/orders/{order_id}")
 
 
 def build_tradier_order_payload(
@@ -483,10 +474,10 @@ def build_tradier_order_payload(
     quantity: float,
     order_type: str,
     duration: str = "day",
-    limit_price: Optional[float] = None,
-    stop_price: Optional[float] = None,
+    limit_price: float | None = None,
+    stop_price: float | None = None,
     order_class: str = "equity",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build the form-encoded payload Tradier's order endpoint expects.
 
     Kept as a module-level helper so the executor can test payload shaping
@@ -503,13 +494,11 @@ def build_tradier_order_payload(
             permanent=True,
         )
     qty_float = float(quantity)
-    payload: Dict[str, Any] = {
+    payload: dict[str, Any] = {
         "class": order_class,
         "symbol": symbol.upper(),
         "side": side.lower(),
-        "quantity": (
-            str(int(qty_float)) if qty_float.is_integer() else str(qty_float)
-        ),
+        "quantity": (str(int(qty_float)) if qty_float.is_integer() else str(qty_float)),
         "type": order_type.lower(),
         "duration": duration.lower(),
     }

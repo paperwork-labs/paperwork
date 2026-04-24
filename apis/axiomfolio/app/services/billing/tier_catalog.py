@@ -29,15 +29,14 @@ every copy tweak touches the policy file.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Optional, Tuple
 
 from app.models.entitlement import SubscriptionTier
 from app.services.billing.feature_catalog import Feature, all_features
-
 
 # -----------------------------------------------------------------------------
 # Tier display dataclass
@@ -76,14 +75,14 @@ class TierDisplay:
     tier: SubscriptionTier
     name: str
     tagline: str
-    monthly_price_usd: Optional[Decimal]
-    annual_price_usd: Optional[Decimal]
+    monthly_price_usd: Decimal | None
+    annual_price_usd: Decimal | None
     covers_copy: str
     cta_label: str
     is_contact_sales: bool
-    cta_route: Optional[str]
+    cta_route: str | None
     mcp_tool_scope: tuple[str, ...]
-    native_chat_daily_limit: Optional[int]
+    native_chat_daily_limit: int | None
     byok_enabled: bool
 
 
@@ -101,16 +100,14 @@ class TierDisplay:
 # inherit float imprecision from the parser.
 
 
-_TIERS: Tuple[TierDisplay, ...] = (
+_TIERS: tuple[TierDisplay, ...] = (
     TierDisplay(
         tier=SubscriptionTier.FREE,
         name="Free",
         tagline="Gorgeous charts. Forever free.",
         monthly_price_usd=Decimal("0"),
         annual_price_usd=Decimal("0"),
-        covers_copy=(
-            "Built so we can stay free. No ads. No data sale. Ever."
-        ),
+        covers_copy=("Built so we can stay free. No ads. No data sale. Ever."),
         cta_label="Get started",
         is_contact_sales=False,
         cta_route="/register",
@@ -241,7 +238,7 @@ _validate_tier_coverage()
 # -----------------------------------------------------------------------------
 
 
-def all_tiers() -> Tuple[TierDisplay, ...]:
+def all_tiers() -> tuple[TierDisplay, ...]:
     """Return every tier in display order (Free → Enterprise)."""
     return _TIERS
 
@@ -254,7 +251,7 @@ def mcp_scopes_for_tier(tier: SubscriptionTier) -> tuple[str, ...]:
     return ()
 
 
-def mcp_daily_call_limit(tier: SubscriptionTier) -> Optional[int]:
+def mcp_daily_call_limit(tier: SubscriptionTier) -> int | None:
     """Daily MCP call caps by tier. None means unlimited."""
     limits = {
         SubscriptionTier.FREE: 100,
@@ -266,7 +263,7 @@ def mcp_daily_call_limit(tier: SubscriptionTier) -> Optional[int]:
     return limits.get(tier, 100)
 
 
-def features_for_tier(tier: SubscriptionTier) -> Tuple[Feature, ...]:
+def features_for_tier(tier: SubscriptionTier) -> tuple[Feature, ...]:
     """Return every feature included at ``tier`` (i.e. min_tier <= tier).
 
     Order follows the catalog's natural grouping (data, picks, brain,
@@ -275,15 +272,12 @@ def features_for_tier(tier: SubscriptionTier) -> Tuple[Feature, ...]:
     comparison.
     """
     target_rank = SubscriptionTier.rank(tier)
-    return tuple(
-        f for f in all_features()
-        if SubscriptionTier.rank(f.min_tier) <= target_rank
-    )
+    return tuple(f for f in all_features() if SubscriptionTier.rank(f.min_tier) <= target_rank)
 
 
 def features_introduced_at_tier(
     tier: SubscriptionTier,
-) -> Tuple[Feature, ...]:
+) -> tuple[Feature, ...]:
     """Return only the features whose ``min_tier`` equals ``tier``.
 
     Useful when rendering "What's new at this tier" highlight blocks so

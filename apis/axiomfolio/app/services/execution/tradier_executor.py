@@ -40,7 +40,8 @@ medallion: execution
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
 import requests
 from sqlalchemy.orm import Session
@@ -103,7 +104,7 @@ def _default_session_factory() -> Session:
     return SessionLocal()
 
 
-def _as_float(value: Any) -> Optional[float]:
+def _as_float(value: Any) -> float | None:
     """Coerce Tradier's string/number fields to float, None on failure."""
 
     if value is None or value == "":
@@ -121,13 +122,12 @@ class TradierExecutor:
         self,
         *,
         environment: str = "sandbox",
-        session_factory: Optional[Callable[[], Session]] = None,
-        http_session: Optional[requests.Session] = None,
+        session_factory: Callable[[], Session] | None = None,
+        http_session: requests.Session | None = None,
     ) -> None:
         if environment not in ("sandbox", "prod"):
             raise ValueError(
-                f"TradierExecutor environment must be 'sandbox' or 'prod'; "
-                f"got {environment!r}"
+                f"TradierExecutor environment must be 'sandbox' or 'prod'; got {environment!r}"
             )
         self._environment = environment
         self._session_factory = session_factory or _default_session_factory
@@ -171,7 +171,7 @@ class TradierExecutor:
     def _load_connection_by_account(
         self,
         db: Session,
-        account_id: Optional[str],
+        account_id: str | None,
     ) -> BrokerOAuthConnection:
         """Resolve the OAuth connection for ``(broker, provider_account_id)``.
 
@@ -188,7 +188,7 @@ class TradierExecutor:
                 f"{self._broker_slug} executor requires req.account_id "
                 "(Tradier account number) to resolve an OAuth connection"
             )
-        conn: Optional[BrokerOAuthConnection] = (
+        conn: BrokerOAuthConnection | None = (
             db.query(BrokerOAuthConnection)
             .filter(
                 BrokerOAuthConnection.broker == self._broker_slug,
@@ -204,8 +204,7 @@ class TradierExecutor:
             )
         if conn.status == OAuthConnectionStatus.REVOKED.value:
             raise ValueError(
-                f"{self._broker_slug} connection {conn.id} is REVOKED; "
-                "user must re-authorize"
+                f"{self._broker_slug} connection {conn.id} is REVOKED; user must re-authorize"
             )
         if not conn.access_token_encrypted:
             raise ValueError(
@@ -218,7 +217,7 @@ class TradierExecutor:
         self,
         db: Session,
         broker_order_id: str,
-    ) -> Tuple[BrokerOAuthConnection, str]:
+    ) -> tuple[BrokerOAuthConnection, str]:
         """Find the OAuth connection for a previously-placed order.
 
         The executor persists ``Order.broker_order_id`` alongside
@@ -230,10 +229,9 @@ class TradierExecutor:
 
         if not broker_order_id:
             raise ValueError(
-                f"{self._broker_slug} cancel/get_status requires a non-empty "
-                "broker_order_id"
+                f"{self._broker_slug} cancel/get_status requires a non-empty broker_order_id"
             )
-        order: Optional[Order] = (
+        order: Order | None = (
             db.query(Order)
             .filter(
                 Order.broker_order_id == broker_order_id,
@@ -284,7 +282,7 @@ class TradierExecutor:
         verbatim into ``PreviewResult.error``.
         """
 
-        db: Optional[Session] = None
+        db: Session | None = None
         try:
             db = self._open_db()
             conn = self._load_connection_by_account(db, req.account_id)
@@ -302,7 +300,10 @@ class TradierExecutor:
         except (TradierAPIError, TokenRefreshError) as exc:
             logger.warning(
                 "tradier executor: preview_order failed broker=%s account=%s symbol=%s err=%s",
-                self._broker_slug, req.account_id, req.symbol, exc,
+                self._broker_slug,
+                req.account_id,
+                req.symbol,
+                exc,
             )
             return PreviewResult(error=str(exc), raw={"broker": self._broker_slug})
         except ValueError as exc:
@@ -310,7 +311,9 @@ class TradierExecutor:
             # are caller-side misconfigurations; log WARN and surface.
             logger.warning(
                 "tradier executor: preview_order refused broker=%s account=%s err=%s",
-                self._broker_slug, req.account_id, exc,
+                self._broker_slug,
+                req.account_id,
+                exc,
             )
             return PreviewResult(error=str(exc), raw={"broker": self._broker_slug})
         finally:
@@ -319,7 +322,7 @@ class TradierExecutor:
     async def place_order(self, req: OrderRequest) -> OrderResult:
         """Tradier ``POST /v1/accounts/{id}/orders`` (live placement)."""
 
-        db: Optional[Session] = None
+        db: Session | None = None
         try:
             db = self._open_db()
             conn = self._load_connection_by_account(db, req.account_id)
@@ -335,7 +338,10 @@ class TradierExecutor:
         except (TradierAPIError, TokenRefreshError) as exc:
             logger.warning(
                 "tradier executor: place_order failed broker=%s account=%s symbol=%s err=%s",
-                self._broker_slug, req.account_id, req.symbol, exc,
+                self._broker_slug,
+                req.account_id,
+                req.symbol,
+                exc,
             )
             return OrderResult(
                 status="error",
@@ -345,7 +351,9 @@ class TradierExecutor:
         except ValueError as exc:
             logger.warning(
                 "tradier executor: place_order refused broker=%s account=%s err=%s",
-                self._broker_slug, req.account_id, exc,
+                self._broker_slug,
+                req.account_id,
+                exc,
             )
             return OrderResult(
                 status="error",
@@ -365,7 +373,7 @@ class TradierExecutor:
         ``get_order_status`` if needed.
         """
 
-        db: Optional[Session] = None
+        db: Session | None = None
         try:
             db = self._open_db()
             conn, account_id = self._load_connection_by_order_id(db, broker_order_id)
@@ -393,7 +401,9 @@ class TradierExecutor:
         except (TradierAPIError, TokenRefreshError) as exc:
             logger.warning(
                 "tradier executor: cancel_order failed broker=%s order_id=%s err=%s",
-                self._broker_slug, broker_order_id, exc,
+                self._broker_slug,
+                broker_order_id,
+                exc,
             )
             return OrderResult(
                 status="error",
@@ -403,7 +413,9 @@ class TradierExecutor:
         except ValueError as exc:
             logger.warning(
                 "tradier executor: cancel_order refused broker=%s order_id=%s err=%s",
-                self._broker_slug, broker_order_id, exc,
+                self._broker_slug,
+                broker_order_id,
+                exc,
             )
             return OrderResult(
                 status="error",
@@ -416,7 +428,7 @@ class TradierExecutor:
     async def get_order_status(self, broker_order_id: str) -> OrderResult:
         """Tradier ``GET /v1/accounts/{id}/orders/{order_id}``."""
 
-        db: Optional[Session] = None
+        db: Session | None = None
         try:
             db = self._open_db()
             conn, account_id = self._load_connection_by_order_id(db, broker_order_id)
@@ -430,7 +442,9 @@ class TradierExecutor:
         except (TradierAPIError, TokenRefreshError) as exc:
             logger.warning(
                 "tradier executor: get_order_status failed broker=%s order_id=%s err=%s",
-                self._broker_slug, broker_order_id, exc,
+                self._broker_slug,
+                broker_order_id,
+                exc,
             )
             return OrderResult(
                 broker_order_id=broker_order_id,
@@ -441,7 +455,9 @@ class TradierExecutor:
         except ValueError as exc:
             logger.warning(
                 "tradier executor: get_order_status refused broker=%s order_id=%s err=%s",
-                self._broker_slug, broker_order_id, exc,
+                self._broker_slug,
+                broker_order_id,
+                exc,
             )
             return OrderResult(
                 broker_order_id=broker_order_id,
@@ -455,12 +471,10 @@ class TradierExecutor:
     # ------------------------------------------------------------------
     # Payload + response shaping
     # ------------------------------------------------------------------
-    def _build_payload(self, req: OrderRequest) -> Dict[str, Any]:
+    def _build_payload(self, req: OrderRequest) -> dict[str, Any]:
         tradier_type = _TRADIER_ORDER_TYPE.get(req.order_type)
         if tradier_type is None:
-            raise ValueError(
-                f"Tradier executor does not support order type {req.order_type!r}"
-            )
+            raise ValueError(f"Tradier executor does not support order type {req.order_type!r}")
         return build_tradier_order_payload(
             symbol=req.symbol,
             side=_tradier_side(req.side),
@@ -470,7 +484,7 @@ class TradierExecutor:
             stop_price=req.stop_price,
         )
 
-    def _parse_preview(self, raw: Dict[str, Any]) -> PreviewResult:
+    def _parse_preview(self, raw: dict[str, Any]) -> PreviewResult:
         order_body = raw.get("order") if isinstance(raw, dict) else None
         if not isinstance(order_body, dict):
             return PreviewResult(
@@ -495,7 +509,7 @@ class TradierExecutor:
             raw={"broker": self._broker_slug, "provider_raw": raw},
         )
 
-    def _parse_place(self, raw: Dict[str, Any]) -> OrderResult:
+    def _parse_place(self, raw: dict[str, Any]) -> OrderResult:
         order_body = raw.get("order") if isinstance(raw, dict) else None
         if not isinstance(order_body, dict):
             return OrderResult(
@@ -530,9 +544,7 @@ class TradierExecutor:
             raw={"broker": self._broker_slug, "provider_raw": raw},
         )
 
-    def _parse_status(
-        self, broker_order_id: str, raw: Dict[str, Any]
-    ) -> OrderResult:
+    def _parse_status(self, broker_order_id: str, raw: dict[str, Any]) -> OrderResult:
         order_body = raw.get("order") if isinstance(raw, dict) else None
         if not isinstance(order_body, dict):
             return OrderResult(
@@ -556,7 +568,7 @@ class TradierExecutor:
     # Helpers
     # ------------------------------------------------------------------
     @staticmethod
-    def _safe_close(db: Optional[Session]) -> None:
+    def _safe_close(db: Session | None) -> None:
         if db is None:
             return
         try:

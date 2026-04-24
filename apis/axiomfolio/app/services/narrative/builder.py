@@ -10,7 +10,7 @@ import json
 import logging
 from datetime import date
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 TECH_SNAPSHOT = "technical_snapshot"
 MOVE_THRESHOLD_PCT = 2.0
 
-_REGIME_LABELS: Dict[str, str] = {
+_REGIME_LABELS: dict[str, str] = {
     "R1": "R1 (Bull)",
     "R2": "R2 (Bull Extended)",
     "R3": "R3 (Chop)",
@@ -42,15 +42,15 @@ _REGIME_LABELS: Dict[str, str] = {
 }
 
 
-def _regime_display(regime_state: Optional[str]) -> str:
+def _regime_display(regime_state: str | None) -> str:
     if not regime_state:
         return "unknown"
     return _REGIME_LABELS.get(regime_state, regime_state)
 
 
-def build_portfolio_summary(db: Session, user_id: int, target_date: date) -> Dict[str, Any]:
+def build_portfolio_summary(db: Session, user_id: int, target_date: date) -> dict[str, Any]:
     """Collect structured facts for the narrative. Best-effort: omits sections on failure."""
-    summary: Dict[str, Any] = {
+    summary: dict[str, Any] = {
         "target_date": target_date.isoformat(),
         "top_movers": [],
         "n_movers_over_threshold": 0,
@@ -83,7 +83,7 @@ def build_portfolio_summary(db: Session, user_id: int, target_date: date) -> Dic
         summary["data_gaps"].append("no_open_stock_positions")
         return summary
 
-    movers: List[Dict[str, Any]] = []
+    movers: list[dict[str, Any]] = []
     for p in positions:
         pct = p.day_pnl_pct
         if pct is None:
@@ -99,7 +99,7 @@ def build_portfolio_summary(db: Session, user_id: int, target_date: date) -> Dic
         1 for m in movers if abs(m["day_pnl_pct"]) >= MOVE_THRESHOLD_PCT
     )
 
-    transitions: List[Dict[str, Any]] = []
+    transitions: list[dict[str, Any]] = []
     try:
         latest_today_sq = (
             db.query(
@@ -280,7 +280,7 @@ Macro regime: {regime}
 Output: a single paragraph, markdown allowed for emphasis. No headers."""
 
 
-def build_narrative_prompt(summary: Dict[str, Any]) -> str:
+def build_narrative_prompt(summary: dict[str, Any]) -> str:
     def _fmt_pct(key: str) -> str:
         v = summary.get(key)
         if v is None:
@@ -297,7 +297,7 @@ def build_narrative_prompt(summary: Dict[str, Any]) -> str:
     )
 
 
-def render_narrative(summary: Dict[str, Any], provider: NarrativeProvider) -> NarrativeResult:
+def render_narrative(summary: dict[str, Any], provider: NarrativeProvider) -> NarrativeResult:
     """Call LLM; on failure return template-based :class:`NarrativeResult` (never raises)."""
     prompt = build_narrative_prompt(summary)
     try:
@@ -314,7 +314,7 @@ def render_narrative(summary: Dict[str, Any], provider: NarrativeProvider) -> Na
             is_fallback=True,
             prompt_hash=hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
         )
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.exception("narrative: unexpected provider error: %s", e)
         fb = render_from_summary(summary)
         return NarrativeResult(

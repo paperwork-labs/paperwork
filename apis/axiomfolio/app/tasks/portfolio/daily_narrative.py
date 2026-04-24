@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime
-from typing import Optional
 from zoneinfo import ZoneInfo
 
 from celery import shared_task
@@ -19,7 +18,7 @@ from app.services.narrative.providers.openai_chat import OpenAIChatProvider
 logger = logging.getLogger(__name__)
 
 
-def _target_date(iso: Optional[str]) -> date:
+def _target_date(iso: str | None) -> date:
     if iso:
         return date.fromisoformat(iso)
     return datetime.now(ZoneInfo("America/New_York")).date()
@@ -30,7 +29,7 @@ def _target_date(iso: Optional[str]) -> date:
     soft_time_limit=90,
     time_limit=120,
 )
-def generate_daily_narrative(user_id: int, target_date_iso: Optional[str] = None) -> dict:
+def generate_daily_narrative(user_id: int, target_date_iso: str | None = None) -> dict:
     """Build summary, call LLM (or fallback), persist one row per user per date."""
     d = _target_date(target_date_iso)
     db = SessionLocal()

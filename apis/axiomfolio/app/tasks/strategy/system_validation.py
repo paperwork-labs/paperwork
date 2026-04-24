@@ -8,7 +8,7 @@ entry/exit rules against different market environments.
 import logging
 from dataclasses import asdict
 from datetime import date
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from celery import shared_task
 
@@ -24,7 +24,7 @@ from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
 
-REGIME_PERIODS: List[Dict[str, Any]] = [
+REGIME_PERIODS: list[dict[str, Any]] = [
     {"name": "Dot-Com Bubble", "start": "1999-01-01", "end": "2001-12-31", "type": "bubble_burst"},
     {"name": "Post Dot-Com Recovery", "start": "2003-01-01", "end": "2007-06-30", "type": "bull"},
     {"name": "GFC", "start": "2007-07-01", "end": "2009-06-30", "type": "bear"},
@@ -49,16 +49,46 @@ ENTRY_RULES = ConditionGroup(
 EXIT_RULES = ConditionGroup(
     logic=LogicalOperator.OR,
     conditions=[
-        Condition(field="stage_label", operator=ConditionOperator.IN, value=["3B", "4A", "4B", "4C"]),
+        Condition(
+            field="stage_label", operator=ConditionOperator.IN, value=["3B", "4A", "4B", "4C"]
+        ),
         Condition(field="rs_mansfield_pct", operator=ConditionOperator.LT, value=-5),
     ],
 )
 
 TOP_SYMBOLS = [
-    "AAPL", "MSFT", "AMZN", "GOOGL", "META", "NVDA", "TSLA", "JPM",
-    "JNJ", "V", "PG", "UNH", "HD", "MA", "DIS", "NFLX", "ADBE",
-    "CRM", "COST", "PEP", "ABBV", "TMO", "ACN", "MRK", "LLY",
-    "AVGO", "TXN", "QCOM", "ORCL", "INTC", "CSCO", "IBM",
+    "AAPL",
+    "MSFT",
+    "AMZN",
+    "GOOGL",
+    "META",
+    "NVDA",
+    "TSLA",
+    "JPM",
+    "JNJ",
+    "V",
+    "PG",
+    "UNH",
+    "HD",
+    "MA",
+    "DIS",
+    "NFLX",
+    "ADBE",
+    "CRM",
+    "COST",
+    "PEP",
+    "ABBV",
+    "TMO",
+    "ACN",
+    "MRK",
+    "LLY",
+    "AVGO",
+    "TXN",
+    "QCOM",
+    "ORCL",
+    "INTC",
+    "CSCO",
+    "IBM",
 ]
 
 
@@ -68,7 +98,7 @@ TOP_SYMBOLS = [
 )
 @task_run("system_backtest_validation")
 def validate_stage_analysis(
-    symbols: Optional[List[str]] = None,
+    symbols: list[str] | None = None,
     initial_capital: float = 100_000,
 ) -> dict:
     """Run Stage Analysis backtest across all regime periods and report metrics."""
@@ -76,7 +106,7 @@ def validate_stage_analysis(
     try:
         use_symbols = symbols or TOP_SYMBOLS
         engine = BacktestEngine(slippage_bps=10.0, commission_per_trade=1.0)
-        results: List[Dict[str, Any]] = []
+        results: list[dict[str, Any]] = []
 
         for period in REGIME_PERIODS:
             try:
@@ -92,23 +122,27 @@ def validate_stage_analysis(
                     initial_capital=initial_capital,
                     position_size_pct=0.05,
                 )
-                results.append({
-                    "period": period["name"],
-                    "type": period["type"],
-                    "start": period["start"],
-                    "end": period["end"],
-                    "metrics": asdict(result.metrics),
-                    "trade_count": len(result.trades),
-                })
+                results.append(
+                    {
+                        "period": period["name"],
+                        "type": period["type"],
+                        "start": period["start"],
+                        "end": period["end"],
+                        "metrics": asdict(result.metrics),
+                        "trade_count": len(result.trades),
+                    }
+                )
             except Exception as exc:
                 logger.warning("Backtest failed for %s: %s", period["name"], exc)
-                results.append({
-                    "period": period["name"],
-                    "type": period["type"],
-                    "start": period["start"],
-                    "end": period["end"],
-                    "error": str(exc),
-                })
+                results.append(
+                    {
+                        "period": period["name"],
+                        "type": period["type"],
+                        "start": period["start"],
+                        "end": period["end"],
+                        "error": str(exc),
+                    }
+                )
 
         passing = sum(
             1

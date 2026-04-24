@@ -27,11 +27,12 @@ reads the snapshot via :func:`snapshot`.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +60,7 @@ def _get_redis_client():
         return None
 
 
-def record_fallback(
-    user_id: Optional[int], reason: str, *, provider: Optional[str] = None
-) -> None:
+def record_fallback(user_id: int | None, reason: str, *, provider: str | None = None) -> None:
     """Increment the anomaly counter for ``reason``.
 
     Never raises — observability is best-effort. If Redis is down the
@@ -88,7 +87,7 @@ def record_fallback(
         client.expire(_KEY, _KEY_TTL_S)
         client.set(
             _LAST_AT_KEY,
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(UTC).isoformat(),
             ex=_KEY_TTL_S,
         )
     except Exception as e:  # pragma: no cover - best-effort write
@@ -107,7 +106,7 @@ def record_fallback(
     )
 
 
-def snapshot() -> Dict[str, Any]:
+def snapshot() -> dict[str, Any]:
     """Return a JSON-ready snapshot of recent BYOK fallback counts.
 
     Shape::
@@ -142,7 +141,7 @@ def snapshot() -> Dict[str, Any]:
             "last_at": None,
             "available": False,
         }
-    by_reason: Dict[str, int] = {}
+    by_reason: dict[str, int] = {}
     for k, v in raw.items():
         key = k.decode() if isinstance(k, (bytes, bytearray)) else str(k)
         val = v.decode() if isinstance(v, (bytes, bytearray)) else str(v)

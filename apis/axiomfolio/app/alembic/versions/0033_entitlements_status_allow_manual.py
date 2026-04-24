@@ -21,7 +21,6 @@ Create Date: 2026-04-18
 
 from alembic import op
 
-
 revision = "0033"
 down_revision = "0031"
 branch_labels = None
@@ -29,9 +28,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.drop_constraint(
-        "ck_entitlements_status", "entitlements", type_="check"
-    )
+    op.drop_constraint("ck_entitlements_status", "entitlements", type_="check")
     op.create_check_constraint(
         "ck_entitlements_status",
         "entitlements",
@@ -40,9 +37,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint(
-        "ck_entitlements_status", "entitlements", type_="check"
-    )
+    op.drop_constraint("ck_entitlements_status", "entitlements", type_="check")
     op.create_check_constraint(
         "ck_entitlements_status",
         "entitlements",

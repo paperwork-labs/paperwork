@@ -25,7 +25,7 @@ from __future__ import annotations
 import logging
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict
@@ -58,20 +58,20 @@ class CorporateActionOut(BaseModel):
     symbol: str
     action_type: str
     ex_date: date
-    record_date: Optional[date] = None
-    payment_date: Optional[date] = None
-    declaration_date: Optional[date] = None
-    ratio_numerator: Optional[Decimal] = None
-    ratio_denominator: Optional[Decimal] = None
-    cash_amount: Optional[Decimal] = None
-    cash_currency: Optional[str] = None
-    target_symbol: Optional[str] = None
+    record_date: date | None = None
+    payment_date: date | None = None
+    declaration_date: date | None = None
+    ratio_numerator: Decimal | None = None
+    ratio_denominator: Decimal | None = None
+    cash_amount: Decimal | None = None
+    cash_currency: str | None = None
+    target_symbol: str | None = None
     source: str
     status: str
     ohlcv_adjusted: bool
-    error_message: Optional[str] = None
-    applied_at: Optional[datetime] = None
-    created_at: Optional[datetime] = None
+    error_message: str | None = None
+    applied_at: datetime | None = None
+    created_at: datetime | None = None
 
 
 class AppliedCorporateActionOut(BaseModel):
@@ -79,16 +79,16 @@ class AppliedCorporateActionOut(BaseModel):
 
     id: int
     user_id: int
-    position_id: Optional[int]
-    tax_lot_id: Optional[int]
+    position_id: int | None
+    tax_lot_id: int | None
     symbol: str
     original_qty: Decimal
     original_cost_basis: Decimal
-    original_avg_cost: Optional[Decimal]
+    original_avg_cost: Decimal | None
     adjusted_qty: Decimal
     adjusted_cost_basis: Decimal
-    adjusted_avg_cost: Optional[Decimal]
-    cash_credited: Optional[Decimal]
+    adjusted_avg_cost: Decimal | None
+    cash_credited: Decimal | None
     applied_at: datetime
 
 
@@ -96,7 +96,7 @@ class CorporateActionDetail(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     action: CorporateActionOut
-    applications: List[AppliedCorporateActionOut]
+    applications: list[AppliedCorporateActionOut]
 
 
 class ApplyResponse(BaseModel):
@@ -104,7 +104,7 @@ class ApplyResponse(BaseModel):
 
     action_id: int
     status: str
-    counters: Dict[str, Any]
+    counters: dict[str, Any]
 
 
 # ---------------------------------------------------------------------------
@@ -112,27 +112,27 @@ class ApplyResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
-@router.get("", response_model=List[CorporateActionOut])
+@router.get("", response_model=list[CorporateActionOut])
 def list_corporate_actions(
-    status: Optional[str] = Query(
+    status: str | None = Query(
         default=None,
         description="Filter by CorporateActionStatus value (e.g. 'pending', 'applied').",
     ),
-    symbol: Optional[str] = Query(
+    symbol: str | None = Query(
         default=None,
         description="Case-insensitive symbol filter.",
     ),
-    since: Optional[date] = Query(
+    since: date | None = Query(
         default=None, description="Earliest ex_date to include (inclusive)."
     ),
-    until: Optional[date] = Query(
+    until: date | None = Query(
         default=None, description="Latest ex_date to include (inclusive)."
     ),
     limit: int = Query(default=100, ge=1, le=1000),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _admin: User = Depends(get_admin_user),
-) -> List[CorporateActionOut]:
+) -> list[CorporateActionOut]:
     stmt = select(CorporateAction)
     if status is not None:
         # Validate up-front so a typo returns 400, not "no rows".

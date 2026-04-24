@@ -5,18 +5,19 @@ Maps to brokerage account information sections from any data source.
 Completely broker-agnostic - supports all brokerages (IBKR, TastyTrade, etc.)
 """
 
+import enum
+
 from sqlalchemy import (
     Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
     Integer,
     String,
-    Float,
-    DateTime,
-    ForeignKey,
-    Enum,
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import enum
 
 from app.models import Base
 
@@ -60,9 +61,7 @@ class AccountBalance(Base):
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    broker_account_id = Column(
-        Integer, ForeignKey("broker_accounts.id"), nullable=False
-    )
+    broker_account_id = Column(Integer, ForeignKey("broker_accounts.id"), nullable=False)
 
     # Core balance info
     balance_date = Column(DateTime, nullable=False, default=func.now())
@@ -88,9 +87,7 @@ class AccountBalance(Base):
     # Margin Information
     buying_power = Column(Float, nullable=True)  # Available buying power
     initial_margin_req = Column(Float, nullable=True)  # Initial margin requirement
-    maintenance_margin_req = Column(
-        Float, nullable=True
-    )  # Maintenance margin requirement
+    maintenance_margin_req = Column(Float, nullable=True)  # Maintenance margin requirement
     reg_t_equity = Column(Float, nullable=True)  # Regulation T equity
     sma = Column(Float, nullable=True)  # Special Memorandum Account
 
@@ -141,11 +138,7 @@ class AccountBalance(Base):
     @property
     def margin_utilization_pct(self) -> float:
         """Calculate margin utilization percentage."""
-        if (
-            self.net_liquidation
-            and self.initial_margin_req
-            and self.net_liquidation > 0
-        ):
+        if self.net_liquidation and self.initial_margin_req and self.net_liquidation > 0:
             return (self.initial_margin_req / self.net_liquidation) * 100
         return 0.0
 

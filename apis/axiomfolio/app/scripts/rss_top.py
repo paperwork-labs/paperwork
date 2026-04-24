@@ -7,6 +7,7 @@ Usage::
 
 Environment: ``REDIS_URL`` must be set (same as the API process).
 """
+
 from __future__ import annotations
 
 import argparse

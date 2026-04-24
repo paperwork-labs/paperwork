@@ -15,9 +15,8 @@ Revises: 0045
 Create Date: 2026-04-19
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "0046"
 down_revision = "0045"
@@ -47,12 +46,8 @@ def upgrade() -> None:
         sa.Column("symbols", sa.JSON(), nullable=False),
         sa.Column("train_window_days", sa.Integer(), nullable=False),
         sa.Column("test_window_days", sa.Integer(), nullable=False),
-        sa.Column(
-            "n_splits", sa.Integer(), nullable=False, server_default=sa.text("5")
-        ),
-        sa.Column(
-            "n_trials", sa.Integer(), nullable=False, server_default=sa.text("50")
-        ),
+        sa.Column("n_splits", sa.Integer(), nullable=False, server_default=sa.text("5")),
+        sa.Column("n_trials", sa.Integer(), nullable=False, server_default=sa.text("50")),
         sa.Column("regime_filter", sa.String(length=8), nullable=True),
         sa.Column("dataset_start", sa.DateTime(), nullable=False),
         sa.Column("dataset_end", sa.DateTime(), nullable=False),
@@ -70,9 +65,7 @@ def upgrade() -> None:
         ),
         sa.Column("best_params", sa.JSON(), nullable=True),
         sa.Column("best_score", sa.Numeric(18, 8), nullable=True),
-        sa.Column(
-            "total_trials", sa.Integer(), nullable=False, server_default=sa.text("0")
-        ),
+        sa.Column("total_trials", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column("per_split_results", sa.JSON(), nullable=True),
         sa.Column("regime_attribution", sa.JSON(), nullable=True),
         sa.Column("started_at", sa.DateTime(), nullable=True),

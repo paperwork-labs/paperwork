@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import datetime as dt
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -42,10 +42,10 @@ class _FakeClient:
     def __init__(self) -> None:
         self._account_id = "111"
 
-    def get_accounts(self) -> List[Dict[str, Any]]:
+    def get_accounts(self) -> list[dict[str, Any]]:
         return [{"account_number": self._account_id, "status": "ACTIVE"}]
 
-    def get_positions(self, account_id: str) -> List[Dict[str, Any]]:
+    def get_positions(self, account_id: str) -> list[dict[str, Any]]:
         assert account_id == self._account_id
         return [
             {
@@ -61,10 +61,10 @@ class _FakeClient:
         self,
         account_id: str,
         *,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-        history_type: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        start: str | None = None,
+        end: str | None = None,
+        history_type: str | None = None,
+    ) -> list[dict[str, Any]]:
         return [
             {
                 "amount": -500.0,
@@ -82,7 +82,7 @@ class _FakeClient:
             }
         ]
 
-    def get_balances(self, account_id: str) -> Dict[str, Any]:
+    def get_balances(self, account_id: str) -> dict[str, Any]:
         return {
             "total_cash": 1000.0,
             "total_equity": 1550.0,
@@ -94,9 +94,9 @@ class _FakeClient:
         self,
         account_id: str,
         *,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+        start: str | None = None,
+        end: str | None = None,
+    ) -> list[dict[str, Any]]:
         return []
 
 
@@ -112,9 +112,7 @@ def _user(session, name: str) -> User:
     return u
 
 
-def _tradier_account(
-    session, user: User, account_number: str
-) -> BrokerAccount:
+def _tradier_account(session, user: User, account_number: str) -> BrokerAccount:
     a = BrokerAccount(
         user_id=user.id,
         broker=BrokerType.TRADIER_SANDBOX,
@@ -186,7 +184,7 @@ def test_sync_does_not_touch_other_users_rows(db_session) -> None:
         net_amount=-500.0,
         commission=0,
         currency="USD",
-        transaction_date=dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc),
+        transaction_date=dt.datetime(2020, 1, 1, tzinfo=dt.UTC),
         description="USER_B_SENTINEL",
         source="SEED",
     )
@@ -224,33 +222,21 @@ def test_sync_does_not_touch_other_users_rows(db_session) -> None:
 
     # User B still has exactly one position, one transaction, zero
     # balances from User A's sync.
-    user_b_positions = (
-        db_session.query(Position).filter(Position.user_id == user_b.id).all()
-    )
-    user_b_txns = (
-        db_session.query(Transaction)
-        .filter(Transaction.account_id == acct_b.id)
-        .all()
-    )
+    user_b_positions = db_session.query(Position).filter(Position.user_id == user_b.id).all()
+    user_b_txns = db_session.query(Transaction).filter(Transaction.account_id == acct_b.id).all()
     user_b_balances = (
-        db_session.query(AccountBalance)
-        .filter(AccountBalance.user_id == user_b.id)
-        .all()
+        db_session.query(AccountBalance).filter(AccountBalance.user_id == user_b.id).all()
     )
     assert len(user_b_positions) == 1
     assert len(user_b_txns) == 1
     assert len(user_b_balances) == 0
 
     # User A got the expected new rows under their own user_id.
-    user_a_positions = (
-        db_session.query(Position).filter(Position.user_id == user_a.id).all()
-    )
+    user_a_positions = db_session.query(Position).filter(Position.user_id == user_a.id).all()
     assert len(user_a_positions) == 1
     assert user_a_positions[0].account_id == acct_a.id
     user_a_balances = (
-        db_session.query(AccountBalance)
-        .filter(AccountBalance.user_id == user_a.id)
-        .all()
+        db_session.query(AccountBalance).filter(AccountBalance.user_id == user_a.id).all()
     )
     assert len(user_a_balances) == 1
 
@@ -270,6 +256,4 @@ def test_load_connection_ignores_other_users_oauth(db_session) -> None:
 
     service = TradierSyncService()
     with pytest.raises(ConnectionError):
-        service.sync_account_comprehensive(
-            account_number=acct_a.account_number, session=db_session
-        )
+        service.sync_account_comprehensive(account_number=acct_a.account_number, session=db_session)
