@@ -32,9 +32,11 @@ from app.tools.github import (
     commit_github_file,
     create_github_issue,
     get_github_pr,
+    get_github_pr_diff,
     list_github_prs,
     merge_github_pr,
     read_github_file,
+    review_github_pr,
     search_github_code,
 )
 from app.tools.infra import (
@@ -76,6 +78,18 @@ mcp.tool(name="get_github_pr", description="Get details of a specific pull reque
     get_github_pr
 )
 mcp.tool(
+    name="get_github_pr_diff",
+    description="Fetch the unified diff for a PR (capped at 60k chars).",
+)(get_github_pr_diff)
+mcp.tool(
+    name="review_github_pr",
+    description=(
+        "Post a review on a PR (Tier 2: write action). "
+        "event: COMMENT | APPROVE | REQUEST_CHANGES. "
+        "Optional inline comments: list of {path, line, body}."
+    ),
+)(review_github_pr)
+mcp.tool(
     name="create_github_issue", description="Create a new issue on the repository."
 )(create_github_issue)
 mcp.tool(
@@ -86,6 +100,83 @@ mcp.tool(
     name="merge_github_pr",
     description="Merge a pull request (Tier 2: write action).",
 )(merge_github_pr)
+
+
+# -- Brain PR reviewer (2) -----------------------------------------------------
+# These wrap the full pipeline (fetch metadata + diff + memory context, call
+# Claude, post review, persist episode) so Brain's agent loop can invoke them
+# directly. No external webhook/cron is needed — Brain drives itself.
+
+
+async def _brain_review_pr_wrapper(pr_number: int, organization_id: str = "paperwork-labs") -> str:
+    """Run Brain's full PR review pipeline on one PR (fetch, analyze, post, remember)."""
+    from app.database import async_session_factory
+    from app.services.pr_review import review_pr
+
+    async with async_session_factory() as session:
+        result = await review_pr(session, pr_number=pr_number, org_id=organization_id)
+    if result.get("posted"):
+        return (
+            f"Reviewed PR #{pr_number}: {result.get('verdict')} "
+            f"(model={result.get('model')}). {result.get('summary', '')[:400]}"
+        )
+    return f"PR #{pr_number} review did not post: {result.get('error') or result.get('review_result')}"
+
+
+async def _brain_sweep_open_prs_wrapper(
+    limit: int = 30,
+    organization_id: str = "paperwork-labs",
+    force: bool = False,
+) -> str:
+    """Review every open non-bot PR Brain hasn't reviewed at its current head SHA.
+
+    Uses memory (episodes) to skip PRs already reviewed at the same SHA — so
+    calling this repeatedly is cheap: it only spends tokens on genuinely-new work.
+    """
+    from app.database import async_session_factory
+    from app.services.pr_review import sweep_open_prs
+
+    async with async_session_factory() as session:
+        report = await sweep_open_prs(
+            session, org_id=organization_id, limit=limit, force=force
+        )
+    reviewed = report.get("reviewed") or []
+    skipped = report.get("skipped") or []
+    errors = report.get("errors") or []
+    lines = [
+        f"Scanned: {report.get('scanned', 0)}",
+        f"Reviewed: {len(reviewed)}",
+    ]
+    for r in reviewed[:10]:
+        lines.append(f"  #{r.get('number')}: {r.get('verdict')}")
+    if skipped:
+        lines.append(f"Skipped: {len(skipped)}")
+        for s in skipped[:8]:
+            lines.append(f"  #{s.get('number')}: {s.get('reason')}")
+    if errors:
+        lines.append(f"Errors: {len(errors)}")
+        for e in errors[:5]:
+            lines.append(f"  #{e.get('number')}: {e.get('error')}")
+    return "\n".join(lines)
+
+
+mcp.tool(
+    name="brain_review_pr",
+    description=(
+        "Brain's executive PR reviewer: fetches PR metadata + diff, pulls "
+        "historical context from memory, calls Claude, posts a structured "
+        "review on GitHub, and stores the episode. Tier 2: write action."
+    ),
+)(_brain_review_pr_wrapper)
+mcp.tool(
+    name="brain_sweep_open_prs",
+    description=(
+        "Review every open non-bot PR Brain hasn't already reviewed at its "
+        "current head SHA. Skips Dependabot/Renovate/GH-Actions PRs and any PR "
+        "labeled skip-brain-review / deps:major / dependencies / do-not-merge. "
+        "Idempotent: memory (episodes) tracks reviewed PRs."
+    ),
+)(_brain_sweep_open_prs_wrapper)
 
 # -- Infrastructure health tools (5) ------------------------------------------
 

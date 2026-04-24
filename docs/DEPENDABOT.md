@@ -126,10 +126,21 @@ done
 
 ## Interaction with Brain PR review
 
-The Brain PR reviewer (`.github/workflows/brain-pr-review.yaml`) **skips**
-Dependabot PRs — checked in its `if:` guard. Dependency bumps are mechanical
-changes; rate-limiting the LLM reviewer on them is wasted spend.
+Brain reviews PRs itself — see [`BRAIN_PR_REVIEW.md`](./BRAIN_PR_REVIEW.md).
+Brain's sweep **skips** Dependabot PRs by default (labels `dependencies` /
+`deps:major` and the `dependabot[bot]` author are on its skip-list). Dependency
+bumps are mechanical changes; spending LLM tokens reviewing them is wasted.
 
 If a major bump needs Brain to weigh in (e.g. Next.js 15 → 16 that requires
-real migration code), remove the `dependencies` / `deps:major` labels and the
-Brain reviewer will run on the next `synchronize`.
+real migration code):
+
+```bash
+# Ask Brain to review just this one PR, even though it's Dependabot:
+curl -X POST "$BRAIN_URL/api/v1/admin/pr-review" \
+  -H "X-Brain-Secret: $BRAIN_API_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"pr_number": 123}'
+```
+
+Or (cleaner) remove the `dependencies` / `deps:major` labels and the next
+sweep — via chat, MCP, or the scheduled curl — will pick it up.

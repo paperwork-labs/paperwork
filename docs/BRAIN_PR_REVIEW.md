@@ -1,113 +1,141 @@
 # Brain PR Review
 
-Brain is Paperwork Labs' executive reviewer. Every non-bot PR triggers a review
-that fetches the diff, pulls historical context from memory, calls Claude, and
-posts a verdict on the PR. Dependabot PRs bypass this path (see
-[`DEPENDABOT.md`](./DEPENDABOT.md)).
+Brain is Paperwork Labs' executive reviewer. Brain drives the review itself —
+no external webhook, no cron. Brain has its own memory, its own GitHub tools,
+and its own agent loop; reviewing a PR is just another thing it can do when
+asked (or when it decides it's time).
 
-## Flow
+Dependabot PRs go through the cheap Haiku triage pipeline instead — see
+[`DEPENDABOT.md`](./DEPENDABOT.md). Brain stays out of bot-authored PRs by
+default.
+
+## How it works
 
 ```
-pull_request → .github/workflows/brain-pr-review.yaml
-    → HMAC-signed POST to brain.paperworklabs.com/api/v1/webhooks/github/pr-review
-    → routers/pr_review.py verifies signature, queues background task
-    → services/pr_review.review_pr():
-          1. get_github_pr()           # metadata + file list
-          2. get_github_pr_diff()      # raw unified diff (capped 60k chars)
-          3. memory.search_episodes()  # prior reviews touching same paths
-          4. _choose_model()           # Haiku for routine, Sonnet for critical
-          5. direct Anthropic call     # strict-JSON review
-          6. review_github_pr()        # post as a PR review on GitHub
-          7. memory.store_episode()    # persist for future context
+              ┌──────────────────────────────────────────────────┐
+              │                    Brain                         │
+              │                                                  │
+              │  ┌────────────┐       ┌────────────────────┐     │
+              │  │  MCP tool  │       │  agent loop (chat) │     │
+              │  │ brain_*    │──┐ ┌──┤  e.g. "review PRs" │     │
+              │  └────────────┘  │ │  └────────────────────┘     │
+              │                  ▼ ▼                             │
+              │            ┌───────────────┐                     │
+              │            │ sweep_open_prs│                     │
+              │            └───────┬───────┘                     │
+              │                    │                             │
+              │   list open PRs   ─┤                             │
+              │   skip bots + labeled ones                       │
+              │   for each, check memory: reviewed @ head SHA?   │
+              │   if new: run review_pr() pipeline ──┐           │
+              │                                      ▼           │
+              │              ┌─────────────────────────────┐     │
+              │              │  review_pr (per PR)         │     │
+              │              │   1. get_github_pr          │     │
+              │              │   2. get_github_pr_diff     │     │
+              │              │   3. memory.search_episodes │     │
+              │              │   4. _choose_model          │     │
+              │              │   5. Anthropic call         │     │
+              │              │   6. review_github_pr       │     │
+              │              │   7. memory.store_episode   │     │
+              │              └─────────────────────────────┘     │
+              └──────────────────────────────────────────────────┘
 ```
+
+Memory is the source of truth for "already reviewed?" — episodes are keyed
+by `source_ref=<pr_number>` with `metadata.head_sha=<sha>`. If the PR gets
+new commits, the SHA changes, and Brain reviews again.
+
+## How to trigger it
+
+Brain decides when it runs. There are four entry points:
+
+| Trigger | When to use |
+|---|---|
+| **Chat with Brain** ("review open PRs") | Interactive / ad-hoc. Agent loop picks up the intent, calls `brain_sweep_open_prs`. |
+| **MCP tool** `brain_sweep_open_prs` | Any MCP client (Cursor, external script, another agent). |
+| **MCP tool** `brain_review_pr(pr_number)` | Force a full review on one specific PR. |
+| **Admin endpoint** `POST /api/v1/admin/pr-sweep` | Automation (cron on Render, curl from CI, etc.). Auth: `X-Brain-Secret`. |
+
+No GitHub Action pings Brain. The old `brain-pr-review.yaml` workflow + HMAC
+webhook was removed — it was a dumb RPC on top of an agent that already has
+repo access.
+
+If you want periodic autonomous sweeps, add a Render cron job that hits
+`/api/v1/admin/pr-sweep` (one curl, auth header). Don't rebuild the webhook.
+
+## MCP tools (in `apis/brain/app/mcp_server.py`)
+
+| Tool | Purpose |
+|---|---|
+| `list_github_prs` | Find open PRs. |
+| `get_github_pr` | Metadata + file list for one PR. |
+| `get_github_pr_diff` | Unified diff (≤60k chars). |
+| `review_github_pr` | Post a review (raw — body + inline comments). Tier 2 write. |
+| `brain_review_pr` | Full pipeline on one PR (fetch → analyze → post → remember). Tier 2 write. |
+| `brain_sweep_open_prs` | Full pipeline on every unreviewed open non-bot PR. Tier 2 write. |
+
+## Admin endpoints (in `apis/brain/app/routers/admin.py`)
+
+Auth header: `X-Brain-Secret: <BRAIN_API_SECRET>`.
+
+| Endpoint | Body | Effect |
+|---|---|---|
+| `POST /api/v1/admin/pr-sweep` | `{organization_id, limit, force}` | Queue sweep in background, return 202. |
+| `POST /api/v1/admin/pr-review` | `{pr_number, organization_id}` | Review one PR in background, return 202. |
 
 ## Escalation
 
-Critical paths auto-escalate to Sonnet 4. Defined in
+Critical paths auto-escalate to Sonnet. Defined in
 [`services/pr_review.py::_CRITICAL_PATHS`](../apis/brain/app/services/pr_review.py):
 
 - `apis/axiomfolio/app/services/execution/` — real money
 - `apis/axiomfolio/app/services/gold/risk/` — risk gates
 - `alembic/versions/` — schema migrations
-- `apis/brain/app/services/llm.py` — Brain's model router itself
+- `apis/brain/app/services/llm.py` — Brain's model router
 - `apis/brain/app/routers/admin.py` — admin surface
 - `infra/` — Docker, compose, deploy config
 - `scripts/medallion/` — data-layer enforcement
 
-Override per-deploy via `BRAIN_PR_REVIEW_MODEL` env var on the Brain service.
+Override per-deploy via `BRAIN_PR_REVIEW_MODEL` env var on Brain.
+
+## Opt-out
+
+Brain's sweep skips a PR if **any** of these apply:
+
+- Author is a bot (`dependabot[bot]`, `renovate[bot]`, `dependabot-preview[bot]`, `github-actions[bot]`)
+- Label: `skip-brain-review`, `deps:major`, `dependencies`, or `do-not-merge`
+- Draft PR
+- An episode already exists for the PR at its current head SHA (idempotency)
 
 ## Cost
 
 Typical PR (Haiku 4.5, ~15k input tokens, 1k output): **~$0.01–0.03**.
 Critical PR (Sonnet 4, ~30k input, 2k output): **~$0.15–0.30**.
-At 50 non-dep PRs/month with 10% critical: **~$2/month**.
+Sweep on an empty backlog: **~$0** (memory skip fires before any LLM call).
 
-## Required secrets
+## Required env vars on Brain
 
-Set at the `paperwork-labs/paperwork` repo level:
-
-| Secret | Description |
+| Var | Purpose |
 |---|---|
-| `BRAIN_WEBHOOK_URL` | Full URL: `https://brain.paperworklabs.com/api/v1/webhooks/github/pr-review` |
-| `BRAIN_GITHUB_WEBHOOK_SECRET` | Random 32-byte hex. Also set on Brain service as same-named env var. |
+| `GITHUB_TOKEN` | Brain's existing GitHub PAT (already set). |
+| `GITHUB_REPO` | `owner/repo` (already set). |
+| `ANTHROPIC_API_KEY` | Existing Brain key; also powers the reviewer. |
+| `BRAIN_API_SECRET` | Gate for admin endpoints (`X-Brain-Secret`). |
+| `BRAIN_PR_REVIEW_MODEL` | (Optional) Model override. Empty = auto-select. |
 
-Set on Brain service (Render/production env):
-
-| Env var | Description |
-|---|---|
-| `BRAIN_GITHUB_WEBHOOK_SECRET` | Must match the repo secret exactly. HMAC-SHA256 over request body. |
-| `ANTHROPIC_API_KEY` | Already set — the reviewer uses the existing Brain key. |
-| `GITHUB_TOKEN` | Already set — same token Brain uses for its other GitHub tools. |
-| `BRAIN_PR_REVIEW_MODEL` | (Optional) Override model. Empty = auto-select Haiku/Sonnet by path. |
-
-## Opt-out
-
-Any of these will skip the review:
-
-- Label `skip-brain-review` on the PR
-- Label `dependencies` or `deps:major` (handled by dependabot workflows)
-- Draft PR
-- PR author is a bot (`dependabot[bot]`, `renovate[bot]`, `github-actions[bot]`)
-
-## What the review looks like
-
-```
-### 🧠 Brain review
-
-Renames `foo` → `bar` in two places and updates tests. Clean refactor
-with no behavior change; tests cover both call sites.
-
-**Concerns**
-- `app/services/silver/portfolio/analytics.py:241` still references the old name
-  in a docstring — cosmetic but will confuse search.
-
-**Strengths**
-- Rename is exhaustive (no stale imports)
-- Tests updated in the same PR
-
-<sub>model: `claude-haiku-4-5-20251001` · generated by Brain</sub>
-```
-
-Inline suggestions appear as PR review comments attached to specific lines.
-
-## Disabling temporarily
-
-Comment out the workflow or add the `skip-brain-review` label default via
-branch protection. The dev-ops escape hatch: unset `BRAIN_WEBHOOK_URL` in
-repo secrets — workflow no-ops gracefully.
+No repo-level GitHub secrets are needed anymore — `BRAIN_WEBHOOK_URL` and
+`BRAIN_GITHUB_WEBHOOK_SECRET` were decommissioned along with the webhook.
 
 ## Future: sprint + quarterly review
 
-The same `services/pr_review.py` pattern extends to:
+Same `services/pr_review.py` pattern — memory + GitHub + Claude — extends to:
 
-- **Sprint planning** — weekly job that asks Brain: "given last week's merged
-  PRs, open issues, and Linear state, what should the team ship next?"
-- **Quarterly OKR review** — monthly job that asks Brain: "given this
-  quarter's work vs the stated OKRs, what's drifting?"
-- **Executive decisions** — ad-hoc tool call from Slack that asks Brain to
-  weigh in on architectural choices with full repo context.
+- **Sprint planning** — weekly tool call: "given last week's merged PRs, open
+  issues, and Linear state, what should we ship next?"
+- **Quarterly OKR review** — monthly tool call: "given this quarter's work
+  vs stated OKRs, what's drifting?"
+- **Executive decisions** — ad-hoc Slack tool call asking Brain to weigh in
+  with full repo context + historical memory.
 
-These live outside this doc for now — the seed is the same
-(`services/pr_review.*`, `memory.store_episode`). See
-[`docs/INFRA_PHILOSOPHY.md`](./INFRA_PHILOSOPHY.md) for the "Brain as dev OS"
-design.
+These live outside this doc for now — the seed is the same.
