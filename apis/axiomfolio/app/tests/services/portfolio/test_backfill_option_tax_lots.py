@@ -237,7 +237,7 @@ def test_backfill_account_failure_does_not_poison_batch(
     if db_session is None:
         pytest.skip("no db")
     from app.tasks.portfolio.reconciliation import backfill_option_tax_lots
-    from app.services.portfolio import closing_lot_matcher as _matcher
+    from app.services.silver.portfolio import closing_lot_matcher as _matcher
 
     user = _make_user(db_session, "partial")
     good = _make_account(db_session, user, BrokerType.IBKR, "good")
@@ -257,7 +257,7 @@ def test_backfill_account_failure_does_not_poison_batch(
         return real(session, account, **kw)
 
     with patch(
-        "app.services.portfolio.closing_lot_matcher.reconcile_closing_lots",
+        "app.services.silver.portfolio.closing_lot_matcher.reconcile_closing_lots",
         new=_selective,
     ):
         result = backfill_option_tax_lots.run(user_id=user.id)

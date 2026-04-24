@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from app.models.broker_account import AccountType, BrokerAccount
-from app.services.strategy.account_strategy import get_strategy_profile
+from app.services.gold.strategy.account_strategy import get_strategy_profile
 
 
 pytestmark = pytest.mark.no_db

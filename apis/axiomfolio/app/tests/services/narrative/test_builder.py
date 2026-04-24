@@ -14,7 +14,7 @@ from app.models.market_data import MarketRegime, MarketSnapshotHistory
 from app.models.portfolio import PortfolioHistory
 from app.models.position import Position, PositionStatus, PositionType
 from app.models.user import User
-from app.services.narrative.builder import build_portfolio_summary
+from app.services.gold.narrative.builder import build_portfolio_summary
 
 
 def test_build_portfolio_summary_shape(db_session):

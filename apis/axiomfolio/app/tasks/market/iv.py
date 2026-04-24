@@ -44,8 +44,8 @@ def _tracked_symbols(db) -> List[str]:
     """
     try:
         from app.config import settings
-        from app.services.market.market_data_service import infra
-        from app.services.market.universe import tracked_symbols
+        from app.services.silver.market.market_data_service import infra
+        from app.services.silver.market.universe import tracked_symbols
 
         symbols = tracked_symbols(db, redis_client=infra.redis_client) or []
     except Exception as e:
@@ -76,7 +76,7 @@ def _last_trading_day() -> "datetime.date":
     Holiday-aware dating is not needed -- upserts are idempotent, so a
     holiday run simply overwrites a row with the same data.
     """
-    from app.services.market.historical_iv_service import last_trading_day
+    from app.services.silver.market.historical_iv_service import last_trading_day
 
     return last_trading_day()
 
@@ -107,7 +107,7 @@ def sync_gateway(
     Keyword arguments are injection seams for the matching unit test --
     callers in prod should leave them ``None``.
     """
-    from app.services.market.historical_iv_service import (
+    from app.services.silver.market.historical_iv_service import (
         atm_iv_from_ibkr,
         atm_iv_from_yahoo,
         compute_hv,

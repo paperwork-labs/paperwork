@@ -22,8 +22,8 @@ from app.services.execution.exit_cascade import (
     ExitAction,
     CascadeResult,
 )
-from app.services.market.regime_engine import get_current_and_previous_regime
-from app.services.strategy.exit_cascade_planner import build_exit_planner_context
+from app.services.silver.regime.regime_engine import get_current_and_previous_regime
+from app.services.gold.strategy.exit_cascade_planner import build_exit_planner_context
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def _auto_submit_exit_order(order_id: int, exit_tier: str) -> None:
         order_id: Database ID of the order to submit
         exit_tier: Exit tier that triggered this order (for logging)
     """
-    from app.services.risk.circuit_breaker import circuit_breaker
+    from app.services.gold.risk.circuit_breaker import circuit_breaker
     
     # Check circuit breaker - exits are allowed in tier 2 but not tier 3
     allowed, reason, tier = circuit_breaker.can_trade(is_exit=True)

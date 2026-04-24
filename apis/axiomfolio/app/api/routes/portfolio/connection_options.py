@@ -32,7 +32,7 @@ from app.models.broker_account import (
     BrokerType,
 )
 from app.models.user import User
-from app.services.portfolio.broker_catalog import (
+from app.services.silver.portfolio.broker_catalog import (
     SLUG_TO_BROKER_TYPE,
     BrokerCatalogEntry,
     get_catalog,

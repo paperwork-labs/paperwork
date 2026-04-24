@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock
 
-from app.services.market.admin_health_service import AdminHealthService
+from app.services.silver.market.admin_health_service import AdminHealthService
 
 
 def _make_account_mock(*, last_successful_sync, account_number: str) -> MagicMock:

@@ -38,7 +38,7 @@ try:
     )
     from app.models.user import User, UserRole
     from app.services.billing.entitlement_service import EntitlementService
-    from app.services.portfolio.plaid import client as plaid_client_module
+    from app.services.bronze.plaid import client as plaid_client_module
     AVAILABLE = True
 except Exception:  # pragma: no cover
     AVAILABLE = False

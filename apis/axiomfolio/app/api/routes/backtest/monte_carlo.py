@@ -24,12 +24,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.dependencies import require_feature
 from app.models.user import User
-from app.services.backtest.monte_carlo import (
+from app.services.gold.backtest.monte_carlo import (
     MAX_ITERATIONS,
     MIN_SAMPLES,
     MonteCarloSimulator,
 )
-from app.services.backtest.scenarios import (
+from app.services.gold.backtest.scenarios import (
     SCENARIO_DESCRIPTIONS,
     run_all_scenarios,
     run_scenario,

@@ -16,7 +16,7 @@ from typing import Any, Dict, Optional
 from sqlalchemy.orm import Session
 
 from app.models.market_data import MarketRegime, MarketSnapshot
-from app.services.signals.external_aggregator import external_context_bonus_points
+from app.services.gold.signals.external_aggregator import external_context_bonus_points
 from app.services.gold.pick_scorer_config import (
     BASE_STAGE_LABELS,
     DIST_STAGE_LABELS,
@@ -28,7 +28,7 @@ from app.services.gold.pick_scorer_config import (
     regime_alignment_raw_score,
     regime_multiplier,
 )
-from app.services.market.regime_engine import get_current_regime
+from app.services.silver.regime.regime_engine import get_current_regime
 
 logger = logging.getLogger(__name__)
 

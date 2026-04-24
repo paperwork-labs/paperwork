@@ -7,8 +7,8 @@ from datetime import date, datetime, timedelta, timezone
 
 from app.models.narrative import PortfolioNarrative
 from app.models.user import User
-from app.services.narrative.persistence import persist_narrative
-from app.services.narrative.provider import NarrativeResult
+from app.services.gold.narrative.persistence import persist_narrative
+from app.services.gold.narrative.provider import NarrativeResult
 
 
 def test_persist_narrative_idempotent_within_fresh_window(db_session):

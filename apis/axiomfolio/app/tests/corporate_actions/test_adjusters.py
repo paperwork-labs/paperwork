@@ -16,7 +16,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.services.corporate_actions.adjusters import (
+from app.services.silver.corporate_actions.adjusters import (
     adjust_for_cash_dividend,
     adjust_for_merger_cash,
     adjust_for_merger_stock,

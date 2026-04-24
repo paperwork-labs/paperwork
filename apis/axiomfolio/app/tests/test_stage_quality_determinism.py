@@ -19,8 +19,8 @@ from datetime import date, datetime, timedelta, timezone
 import pytest
 
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
-from app.services.market.admin_health_service import AdminHealthService
-from app.services.market.market_data_service import stage_quality
+from app.services.silver.market.admin_health_service import AdminHealthService
+from app.services.silver.market.market_data_service import stage_quality
 
 
 def _recent_day(days_ago: int) -> date:

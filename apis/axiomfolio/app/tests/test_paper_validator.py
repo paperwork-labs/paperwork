@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
-from app.services.strategy.paper_validator import (
+from app.services.gold.strategy.paper_validator import (
     PaperValidator,
     ValidationConfig,
     ValidationResult,
@@ -109,7 +109,7 @@ class TestStartValidation:
         validator = PaperValidator(db, config=config)
         
         with patch(
-            "app.services.strategy.paper_validator.datetime"
+            "app.services.gold.strategy.paper_validator.datetime"
         ) as mock_datetime:
             mock_now = datetime(2026, 3, 28, 12, 0, 0, tzinfo=timezone.utc)
             mock_datetime.now.return_value = mock_now

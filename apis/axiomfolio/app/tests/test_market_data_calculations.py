@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from app.services.market.market_data_service import provider_router, snapshot_builder
+from app.services.silver.market.market_data_service import provider_router, snapshot_builder
 
 
 @pytest.mark.asyncio

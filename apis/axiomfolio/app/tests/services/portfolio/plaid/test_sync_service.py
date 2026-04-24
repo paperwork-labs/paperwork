@@ -1,4 +1,4 @@
-"""Tests for :class:`app.services.portfolio.plaid.sync_service.PlaidSyncService`.
+"""Tests for :class:`app.services.bronze.plaid.sync_service.PlaidSyncService`.
 
 These are **integration** tests: they use the `db_session` fixture to
 exercise SQLAlchemy models, but stub the Plaid SDK via a fake
@@ -33,8 +33,8 @@ try:
     from app.models.position import Position
     from app.models.tax_lot import TaxLot, TaxLotSource
     from app.models.user import User, UserRole
-    from app.services.portfolio.plaid.client import PlaidAPIError
-    from app.services.portfolio.plaid.sync_service import PlaidSyncService
+    from app.services.bronze.plaid.client import PlaidAPIError
+    from app.services.bronze.plaid.sync_service import PlaidSyncService
     AVAILABLE = True
 except Exception:  # pragma: no cover
     AVAILABLE = False

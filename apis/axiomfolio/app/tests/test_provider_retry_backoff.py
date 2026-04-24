@@ -17,7 +17,7 @@ from typing import List
 
 import pytest
 
-from app.services.market import provider_router as pr_module
+from app.services.silver.market import provider_router as pr_module
 
 
 class _FakeProviderRouter:

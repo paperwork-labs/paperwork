@@ -19,7 +19,7 @@ from app.models.margin_interest import MarginInterest
 from app.models.options import Option
 from app.api.dependencies import get_current_user
 from app.api.middleware.response_cache import redis_response_cache
-from app.services.portfolio.portfolio_analytics_service import portfolio_analytics_service
+from app.services.silver.portfolio.analytics import portfolio_analytics_service
 
 logger = logging.getLogger(__name__)
 

@@ -37,7 +37,7 @@ from app.models.symbol_master import (
     SymbolMaster,
 )
 from app.models.user import User
-from app.services.symbols import SymbolMasterService
+from app.services.silver.symbols import SymbolMasterService
 
 
 router = APIRouter(prefix="/symbols", tags=["Symbols"])

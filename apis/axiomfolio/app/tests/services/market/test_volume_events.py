@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.services.market.indicator_engine import detect_volume_events
+from app.services.silver.indicators.indicator_engine import detect_volume_events
 
 pytestmark = pytest.mark.no_db
 

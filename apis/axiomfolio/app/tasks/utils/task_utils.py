@@ -15,7 +15,7 @@ from app.config import settings
 from app.database import SessionLocal
 from app.tasks.job_catalog import JOB_CATALOG
 from app.models import JobRun, PriceData
-from app.services.market.market_data_service import infra, price_bars, provider_router
+from app.services.silver.market.market_data_service import infra, price_bars, provider_router
 from app.services.notifications.alerts import alert_service
 from app.tasks.utils.schedule_metadata import HookConfig, ScheduleMetadata
 
@@ -390,7 +390,7 @@ def get_tracked_symbols_safe(session: Session) -> List[str]:
     Returns:
         Sorted list of uppercase symbol strings
     """
-    from app.services.market.universe import tracked_symbols, tracked_symbols_from_db
+    from app.services.silver.market.universe import tracked_symbols, tracked_symbols_from_db
     
     symbols = tracked_symbols(session, redis_client=infra.redis_client)
     symbols = sorted({str(s).upper() for s in (symbols or []) if s})
@@ -412,7 +412,7 @@ def get_tracked_universe_from_db(session: Session) -> Set[str]:
     Returns:
         Set of uppercase symbol strings
     """
-    from app.services.market.universe import tracked_symbols_from_db
+    from app.services.silver.market.universe import tracked_symbols_from_db
     return set(tracked_symbols_from_db(session))
 
 

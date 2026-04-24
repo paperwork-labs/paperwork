@@ -24,7 +24,7 @@ from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.models.market_data import MarketSnapshotHistory
 from app.models.portfolio import PortfolioSnapshot
 from app.models.user import User
-from app.services.portfolio.portfolio_analytics_service import (
+from app.services.silver.portfolio.analytics import (
     MIN_DAYS_FOR_SHARPE,
     MIN_RETURNS_FOR_BETA,
     MIN_SNAPSHOTS_FOR_VOLATILITY,

@@ -11,7 +11,7 @@ from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.models.option_tax_lot import OptionTaxLot
 from app.models.trade import Trade
 from app.models.user import User
-from app.services.portfolio.closing_lot_matcher import reconcile_closing_lots
+from app.services.silver.portfolio.closing_lot_matcher import reconcile_closing_lots
 
 
 def _user(session, name: str) -> User:

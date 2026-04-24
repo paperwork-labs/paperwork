@@ -21,12 +21,12 @@ try:
     from app.models.account_risk_profile import BrokerAccountRiskProfile
     from app.models.user import UserRole
     from app.models.broker_account import AccountType, BrokerType, SyncStatus
-    from app.services.risk.account_risk_profile import (
+    from app.services.gold.risk.account_risk_profile import (
         AccountNotFoundError,
         apply_override,
         get_effective_limits,
     )
-    from app.services.risk.firm_caps import get_firm_caps
+    from app.services.gold.risk.firm_caps import get_firm_caps
 
     AVAILABLE = True
 except Exception:

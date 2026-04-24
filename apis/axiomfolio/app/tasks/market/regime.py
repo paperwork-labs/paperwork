@@ -53,8 +53,8 @@ def compute_daily() -> dict:
     """
     session = SessionLocal()
     try:
-        from app.services.market.regime_engine import compute_regime, persist_regime
-        from app.services.market.regime_inputs import gather_regime_inputs
+        from app.services.silver.regime.regime_engine import compute_regime, persist_regime
+        from app.services.silver.regime.regime_inputs import gather_regime_inputs
 
         inputs = gather_regime_inputs(session)
         as_of = _regime_as_of_date(session)
@@ -137,8 +137,8 @@ def vix_alert(
             )
 
             try:
-                from app.services.market.regime_engine import compute_regime, persist_regime
-                from app.services.market.regime_inputs import gather_regime_inputs
+                from app.services.silver.regime.regime_engine import compute_regime, persist_regime
+                from app.services.silver.regime.regime_inputs import gather_regime_inputs
 
                 inputs = gather_regime_inputs(session)
                 as_of = _regime_as_of_date(session)

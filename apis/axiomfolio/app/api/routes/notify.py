@@ -25,7 +25,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from app.api.dependencies import get_current_user
 from app.models.user import User
-from app.services.portfolio.broker_catalog import get_broker_by_slug
+from app.services.silver.portfolio.broker_catalog import get_broker_by_slug
 
 logger = logging.getLogger(__name__)
 

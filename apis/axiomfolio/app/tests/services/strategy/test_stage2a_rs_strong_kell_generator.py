@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from app.config import settings
 from app.models.market_data import MarketSnapshot
-from app.services.picks.generators.stage2a_rs_strong_kell import (
+from app.services.gold.picks.generators.stage2a_rs_strong_kell import (
     Stage2ARsStrongKellGenerator,
 )
 

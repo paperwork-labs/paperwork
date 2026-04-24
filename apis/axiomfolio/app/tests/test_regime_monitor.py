@@ -4,7 +4,7 @@ from datetime import datetime
 from unittest.mock import MagicMock
 
 from app.models.market_data import MarketRegime
-from app.services.market.regime_monitor import RegimeMonitor
+from app.services.silver.regime.regime_monitor import RegimeMonitor
 
 
 def test_check_vix_absolute_critical_once_per_day() -> None:

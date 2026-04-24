@@ -13,7 +13,7 @@ from unittest.mock import patch
 from sqlalchemy import inspect
 
 from app.models import BrokerAccount, TaxLot, Instrument, Position, User, PortfolioSnapshot
-from app.services.portfolio.ibkr_sync_service import IBKRSyncService
+from app.services.bronze.ibkr.sync_service import IBKRSyncService
 
 
 class TestIBKRSyncService:

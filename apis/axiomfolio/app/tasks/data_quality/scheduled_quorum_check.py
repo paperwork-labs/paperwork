@@ -38,8 +38,8 @@ from celery import shared_task
 
 from app.database import SessionLocal
 from app.models.market_data import MarketSnapshot
-from app.services.data_quality import QuorumService
-from app.services.data_quality.tolerances import DEFAULT_QUORUM_THRESHOLD
+from app.services.silver.data_quality import QuorumService
+from app.services.silver.data_quality.tolerances import DEFAULT_QUORUM_THRESHOLD
 from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ async def _gather_provider_quotes(
     Imports happen inside the function so that test runs that monkey-
     patch this function don't pay the import cost of yfinance / fmpsdk.
     """
-    from app.services.market.providers import (
+    from app.services.bronze.market.providers import (
         FMPProvider,
         YFinanceProvider,
     )

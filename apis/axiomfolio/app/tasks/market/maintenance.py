@@ -114,7 +114,7 @@ def recover_jobs(stale_minutes: int = STALE_JOB_RUN_MINUTES) -> dict:
 @task_run("admin_refresh_market_mvs")
 def refresh_market_mvs() -> dict:
     """Refresh market data materialized views (breadth, stage distribution, sector)."""
-    from app.services.market.market_mv_service import market_mv_service
+    from app.services.silver.market.market_mv_service import market_mv_service
 
     session = SessionLocal()
     try:
@@ -134,8 +134,8 @@ def warm_dashboard_cache(universe: str = "all") -> dict:
     Runs in the Celery worker -- never in the web process.
     """
     import json as _json
-    from app.services.market.market_dashboard_service import MarketDashboardService
-    from app.services.market.market_data_service import infra
+    from app.services.silver.market.market_dashboard_service import MarketDashboardService
+    from app.services.silver.market.market_data_service import infra
 
     cache_key = f"dashboard:{universe}"
     session = SessionLocal()
@@ -165,7 +165,7 @@ def audit_quality(sample_limit: int = 25) -> dict:
     (including the analysis_type='technical_snapshot' filter) and writes
     the result to Redis with a 5-min TTL.
     """
-    from app.services.market.admin_health_service import AdminHealthService
+    from app.services.silver.market.admin_health_service import AdminHealthService
 
     session = SessionLocal()
     try:

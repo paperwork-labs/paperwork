@@ -16,20 +16,20 @@ from sqlalchemy import func
 from app.database import SessionLocal
 from app.models import PriceData
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
-from app.services.market.constants import WEINSTEIN_WARMUP_CALENDAR_DAYS
-from app.services.market.dataframe_utils import price_data_rows_to_dataframe
-from app.services.market.indicator_engine import (
+from app.services.silver.math.constants import WEINSTEIN_WARMUP_CALENDAR_DAYS
+from app.services.silver.math.dataframe_utils import price_data_rows_to_dataframe
+from app.services.silver.indicators.indicator_engine import (
     classify_ma_bucket_from_ma,
     compute_core_indicators_series,
     compute_full_indicator_series,
     compute_weinstein_stage_series_from_daily,
 )
-from app.services.market.market_data_service import snapshot_builder
-from app.services.market.snapshot_history_writer import (
+from app.services.silver.market.market_data_service import snapshot_builder
+from app.services.silver.market.snapshot_history_writer import (
     build_snapshot_history_pg_upsert_stmt,
     upsert_snapshot_history_row,
 )
-from app.services.market.stage_utils import compute_stage_run_lengths
+from app.services.silver.math.stage_utils import compute_stage_run_lengths
 from app.tasks.utils.task_utils import _get_tracked_symbols_safe, _set_task_status, task_run
 
 logger = logging.getLogger(__name__)
@@ -290,7 +290,7 @@ def snapshot_last_n_days(
         import pandas as pd
         import numpy as np
         from sqlalchemy.dialects.postgresql import insert as pg_insert
-        from app.services.market.indicator_engine import (
+        from app.services.silver.indicators.indicator_engine import (
             compute_core_indicators_series,
             compute_weinstein_stage_series_from_daily,
             classify_ma_bucket_from_ma,
@@ -883,7 +883,7 @@ def repair_stage_history_async(days: int = 3650, symbol: Optional[str] = None) -
     """Async Celery wrapper around StageQualityService.repair_stage_history_window."""
     session = SessionLocal()
     try:
-        from app.services.market.stage_quality_service import StageQualityService
+        from app.services.silver.regime.stage_quality_service import StageQualityService
         svc = StageQualityService()
         result = svc.repair_stage_history_window(session, days=days, symbol=symbol)
         session.commit()

@@ -39,7 +39,7 @@ from app.models.corporate_action import (
     CorporateAction,
     CorporateActionStatus,
 )
-from app.services.corporate_actions.applier import CorporateActionApplier
+from app.services.silver.corporate_actions.applier import CorporateActionApplier
 
 logger = logging.getLogger(__name__)
 

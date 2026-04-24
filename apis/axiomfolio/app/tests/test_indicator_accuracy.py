@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from app.services.market.indicator_engine import (
+from app.services.silver.indicators.indicator_engine import (
     _compute_td_sequential_series,
     calculate_atr_series,
     calculate_rsi_series,

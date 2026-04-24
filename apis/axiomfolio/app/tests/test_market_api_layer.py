@@ -439,7 +439,7 @@ def test_quad_history_returns_rows():
 def test_regime_current_includes_weights():
     app.dependency_overrides[get_market_data_viewer] = _viewer_override
 
-    from app.services.market import regime_engine
+    from app.services.silver.regime import regime_engine
 
     regime = MarketRegime()
     regime.as_of_date = datetime(2026, 4, 1)

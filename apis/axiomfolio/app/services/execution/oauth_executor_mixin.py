@@ -119,7 +119,7 @@ def ensure_broker_token(
         return conn
 
     # Lazy imports: see module docstring.
-    from app.services.market.market_data_service import infra
+    from app.services.silver.market.market_data_service import infra
     from app.tasks.portfolio.oauth_token_refresh import _refresh_one
 
     r = infra.redis_client

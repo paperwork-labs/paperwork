@@ -10,7 +10,7 @@ from starlette.responses import PlainTextResponse
 
 from app.api.middleware import peak_rss
 from app.api.middleware.peak_rss import PeakRssMiddleware, is_observability_bypass_path, should_sample_for_request_id
-from app.services.market.admin_health_service import AdminHealthService
+from app.services.silver.market.admin_health_service import AdminHealthService
 from app.services.observability import peak_rss_store
 from app.services.observability.peak_rss_store import get_hottest_endpoints_aggregated, ru_maxrss_raw_to_kib
 

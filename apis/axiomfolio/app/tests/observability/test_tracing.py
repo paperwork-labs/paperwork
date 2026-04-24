@@ -186,7 +186,7 @@ def test_compute_full_indicator_series_emits_span(
     """
     import pandas as pd
 
-    from app.services.market.indicator_engine import (
+    from app.services.silver.indicators.indicator_engine import (
         compute_full_indicator_series,
     )
 

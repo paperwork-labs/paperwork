@@ -867,7 +867,7 @@ class AgentBrain:
     
     async def _tool_check_health(self) -> Dict[str, Any]:
         """Check system health."""
-        from app.services.market.admin_health_service import AdminHealthService
+        from app.services.silver.market.admin_health_service import AdminHealthService
         try:
             svc = AdminHealthService()
             return svc.get_composite_health(self.db)
@@ -1006,7 +1006,7 @@ class AgentBrain:
     async def _tool_get_portfolio_summary(self) -> Dict[str, Any]:
         """Get portfolio risk metrics, sector allocation, and P&L summary."""
         try:
-            from app.services.portfolio.portfolio_analytics_service import PortfolioAnalyticsService
+            from app.services.silver.portfolio.analytics import PortfolioAnalyticsService
             from app.models import Position, BrokerAccount
             
             svc = PortfolioAnalyticsService()
@@ -1158,7 +1158,7 @@ class AgentBrain:
             return {"error": "Symbol is required"}
         
         try:
-            from app.services.market.market_data_service import snapshot_builder
+            from app.services.silver.market.market_data_service import snapshot_builder
 
             snapshot = snapshot_builder.get_snapshot_from_store(self.db, symbol.upper())
             
@@ -1195,7 +1195,7 @@ class AgentBrain:
     async def _tool_get_tracked_universe(self) -> Dict[str, Any]:
         """Get the tracked universe of symbols with their sources."""
         try:
-            from app.services.market.universe import tracked_symbols_with_source
+            from app.services.silver.market.universe import tracked_symbols_with_source
             
             result = tracked_symbols_with_source(self.db)
             
@@ -1244,7 +1244,7 @@ class AgentBrain:
     async def _tool_get_regime(self) -> Dict[str, Any]:
         """Get current market regime."""
         try:
-            from app.services.market.regime_engine import get_current_regime
+            from app.services.silver.regime.regime_engine import get_current_regime
             
             regime = get_current_regime(self.db)
             
@@ -2216,8 +2216,8 @@ class AgentBrain:
             from datetime import datetime
             from app.models.strategy import Strategy
             from app.models.market_data import MarketSnapshot
-            from app.services.strategy.backtest_engine import BacktestEngine
-            from app.services.strategy.rule_evaluator import (
+            from app.services.gold.strategy.backtest_engine import BacktestEngine
+            from app.services.gold.strategy.rule_evaluator import (
                 ConditionGroup, Condition, LogicalOperator, ConditionOperator
             )
 
@@ -2298,7 +2298,7 @@ class AgentBrain:
     async def _tool_list_strategy_templates(self) -> Dict[str, Any]:
         """List available strategy templates."""
         try:
-            from app.services.strategy.templates import list_templates
+            from app.services.gold.strategy.templates import list_templates
 
             templates = list_templates()
             return {
@@ -2332,7 +2332,7 @@ class AgentBrain:
             if not template_id:
                 return {"error": "template_id is required - use list_strategy_templates to see options"}
 
-            from app.services.strategy.templates import get_template
+            from app.services.gold.strategy.templates import get_template
             from app.models.strategy import Strategy, StrategyType
             from app.models import User
 
@@ -2528,7 +2528,7 @@ class AgentBrain:
 
     async def _tool_check_data_accuracy(self, **kwargs) -> Dict[str, Any]:
         import json
-        from app.services.market.market_data_service import infra
+        from app.services.silver.market.market_data_service import infra
         try:
             r = infra.redis_client
             raw = r.get("ohlcv:reconciliation:last")
@@ -2539,7 +2539,7 @@ class AgentBrain:
             return {"error": str(exc)}
 
     async def _tool_get_provider_metrics(self, **kwargs) -> Dict[str, Any]:
-        from app.services.market.admin_health_service import AdminHealthService
+        from app.services.silver.market.admin_health_service import AdminHealthService
         try:
             svc = AdminHealthService()
             return svc._build_provider_metrics()
@@ -2548,13 +2548,13 @@ class AgentBrain:
 
     async def _tool_check_pre_market_readiness(self, **kwargs) -> Dict[str, Any]:
         import json
-        from app.services.market.market_data_service import infra
+        from app.services.silver.market.market_data_service import infra
         try:
             r = infra.redis_client
             cached = r.get("health:pre_market_readiness")
             if cached:
                 return json.loads(cached.decode() if isinstance(cached, (bytes, bytearray)) else cached)
-            from app.services.market.admin_health_service import AdminHealthService
+            from app.services.silver.market.admin_health_service import AdminHealthService
             svc = AdminHealthService()
             return svc.check_pre_market_readiness(self.db)
         except Exception as exc:
@@ -2608,7 +2608,7 @@ class AgentBrain:
     def _get_redis(self):
         """Get Redis client from market data service."""
         try:
-            from app.services.market.market_data_service import infra
+            from app.services.silver.market.market_data_service import infra
             return infra.redis_client
         except Exception as redis_err:
             logger.warning(

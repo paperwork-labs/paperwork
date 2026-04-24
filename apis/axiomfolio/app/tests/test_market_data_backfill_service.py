@@ -2,8 +2,8 @@ import pandas as pd
 import pytest
 from datetime import datetime, timedelta, timezone
 
-from app.services.market.market_data_service import price_bars, quote, snapshot_builder
-from app.services.market import snapshot_builder as sb_module
+from app.services.silver.market.market_data_service import price_bars, quote, snapshot_builder
+from app.services.silver.market import snapshot_builder as sb_module
 from app.models import PriceData, MarketSnapshot
 from app.models.market_data import MarketSnapshotHistory
 

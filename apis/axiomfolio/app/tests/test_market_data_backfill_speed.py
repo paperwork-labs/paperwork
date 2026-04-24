@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from app.services.market.market_data_service import (
+from app.services.silver.market.market_data_service import (
     APIProvider,
     _cb_failures,
     _cb_open_until,

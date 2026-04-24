@@ -4,7 +4,7 @@ from datetime import date
 
 import pytest
 
-from app.services.market.regime_engine import (
+from app.services.silver.regime.regime_engine import (
     REGIME_R1,
     REGIME_R2,
     REGIME_R3,

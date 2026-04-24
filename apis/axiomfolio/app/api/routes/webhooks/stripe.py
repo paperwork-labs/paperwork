@@ -86,7 +86,7 @@ def _build_idempotency_store():
     default dict store inside the processor — never blocks the webhook.
     """
     try:
-        from app.services.market.market_infra import MarketInfra
+        from app.services.silver.market.market_infra import MarketInfra
     except ImportError:
         return None
     try:

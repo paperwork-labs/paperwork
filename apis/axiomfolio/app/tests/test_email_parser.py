@@ -11,7 +11,7 @@ from decimal import Decimal
 
 import pytest
 
-from app.services.picks.email_parser import (
+from app.services.gold.picks.email_parser import (
     EmailPreprocessor,
     LLMParseProvider,
     LLMRequest,
@@ -22,12 +22,12 @@ from app.services.picks.email_parser import (
     SourceFormat,
     StubLLMParseProvider,
 )
-from app.services.picks.email_parser.preprocessor import (
+from app.services.gold.picks.email_parser.preprocessor import (
     _extract_candidate_tickers,
     _html_to_text,
     _strip_forwarded_envelopes,
 )
-from app.services.picks.email_parser.types import (
+from app.services.gold.picks.email_parser.types import (
     PickActionHint,
     clamp_confidence,
     clamp_sentiment,
@@ -512,7 +512,7 @@ class TestParseResultShape:
 
     def test_warnings_passed_through(self):
         # Build a NormalizedEmail with a warning baked in.
-        from app.services.picks.email_parser.preprocessor import NormalizedEmail
+        from app.services.gold.picks.email_parser.preprocessor import NormalizedEmail
 
         norm = NormalizedEmail(
             sender="a@b.com",

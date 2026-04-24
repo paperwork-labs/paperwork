@@ -1,6 +1,6 @@
 import asyncio
 from types import SimpleNamespace
-from app.services.aggregator.schwab_connector import SchwabConnector
+from app.services.bronze.aggregator.schwab_connector import SchwabConnector
 
 
 def test_auth_url_contains_params(monkeypatch):

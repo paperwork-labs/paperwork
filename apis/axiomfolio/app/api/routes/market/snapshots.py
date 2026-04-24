@@ -18,8 +18,8 @@ from app.models.user import User
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
 from app.models.index_constituent import IndexConstituent
 from app.models.market_tracked_plan import MarketTrackedPlan
-from app.services.market.market_data_service import infra
-from app.services.market.universe import tracked_symbols
+from app.services.silver.market.market_data_service import infra
+from app.services.silver.market.universe import tracked_symbols
 from app.api.dependencies import get_market_data_viewer
 from app.api.rate_limit import limiter
 from app.api.schemas.market import SnapshotSingleResponse, SnapshotsListResponse

@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Optional
 
-from app.services.market.regime_engine import (
+from app.services.silver.regime.regime_engine import (
     REGIME_R1,
     REGIME_R2,
     REGIME_R3,

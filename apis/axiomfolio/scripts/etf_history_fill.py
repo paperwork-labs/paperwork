@@ -19,11 +19,11 @@ from sqlalchemy.orm import sessionmaker
 
 # Import indicator computation from the app
 sys.path.insert(0, "/Users/axiomfolio/development/axiomfolio")
-from app.services.market.indicator_engine import (
+from app.services.silver.indicators.indicator_engine import (
     compute_core_indicators_series,
     compute_weinstein_stage_series_from_daily,
 )
-from app.services.market.constants import WEINSTEIN_WARMUP_CALENDAR_DAYS
+from app.services.silver.math.constants import WEINSTEIN_WARMUP_CALENDAR_DAYS
 
 
 ETF_SYMBOLS = [

@@ -18,12 +18,12 @@ from app.database import get_db
 from app.models.user import User
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory, PriceData
 from app.services.billing.entitlement_service import EntitlementService
-from app.services.market.indicator_engine import (
+from app.services.silver.indicators.indicator_engine import (
     compute_rs_mansfield,
     detect_kell_patterns,
     detect_volume_events,
 )
-from app.services.market.market_data_service import provider_router, quote
+from app.services.silver.market.market_data_service import provider_router, quote
 from app.api.dependencies import get_market_data_viewer, require_feature
 from app.api.schemas.market import CurrentPriceResponse, PriceHistoryResponse
 

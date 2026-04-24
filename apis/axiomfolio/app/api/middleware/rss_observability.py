@@ -30,7 +30,7 @@ def _get_sync_redis():
     if not settings.ENABLE_RSS_OBSERVABILITY:
         return None
     try:
-        from app.services.market.market_data_service import infra
+        from app.services.silver.market.market_data_service import infra
 
         return infra.redis_client
     except Exception as e:

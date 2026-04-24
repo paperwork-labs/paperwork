@@ -24,13 +24,13 @@ from app.models.symbol_master import (
     SymbolHistory,
     SymbolMaster,
 )
-from app.services.symbols.initial_load import (
+from app.services.silver.symbols.initial_load import (
     SEED_TICKER_CHANGES,
     InitialLoadCounters,
     TickerChangeSeed,
     run_initial_load,
 )
-from app.services.symbols.symbol_master_service import SymbolMasterService
+from app.services.silver.symbols.symbol_master_service import SymbolMasterService
 
 
 # A small, deterministic seed list used by the idempotency tests so

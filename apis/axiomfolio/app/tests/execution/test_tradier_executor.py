@@ -614,7 +614,7 @@ class TestTokenRefresh:
         # to: the Redis client (for the lock) and ``_refresh_one`` (for
         # the actual refresh). Everything else in the mixin runs as-is.
         with patch(
-            "app.services.market.market_data_service.infra"
+            "app.services.silver.market.market_data_service.infra"
         ) as mock_infra, patch(
             "app.tasks.portfolio.oauth_token_refresh._refresh_one",
             side_effect=fake_refresh_one,

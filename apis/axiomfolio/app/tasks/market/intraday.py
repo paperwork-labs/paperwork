@@ -11,11 +11,11 @@ from celery import shared_task
 from celery.exceptions import SoftTimeLimitExceeded
 
 from app.database import SessionLocal
-from app.services.market.fmp_5m_tier_gate import (
+from app.services.silver.market.fmp_5m_tier_gate import (
     fmp_5m_intraday_backfill_blocked_tier,
     log_skip_intraday_5m_backfill,
 )
-from app.services.market.market_data_service import infra, price_bars, provider_router
+from app.services.silver.market.market_data_service import infra, price_bars, provider_router
 from app.tasks.utils.task_utils import (
     _get_tracked_universe_from_db,
     _increment_provider_usage,

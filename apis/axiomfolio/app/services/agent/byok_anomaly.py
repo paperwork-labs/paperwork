@@ -22,7 +22,7 @@ The counter is deliberately Redis-only (no DB row) because:
 3. Losing the counter on a Redis flush is acceptable — nothing about
    billing or auth depends on it.
 
-Module owner: :mod:`app.services.market.admin_health_service`
+Module owner: :mod:`app.services.silver.market.admin_health_service`
 reads the snapshot via :func:`snapshot`.
 
 medallion: ops
@@ -51,7 +51,7 @@ def _get_redis_client():
     one less place to authenticate.
     """
     try:
-        from app.services.market.market_data_service import infra
+        from app.services.silver.market.market_data_service import infra
 
         return infra.redis_client
     except Exception as e:  # pragma: no cover - defensive import guard

@@ -161,7 +161,7 @@ def run_reconciliation(db: Session) -> Dict[str, Any]:
     }
 
     try:
-        from app.services.market.market_data_service import infra
+        from app.services.silver.market.market_data_service import infra
 
         r = infra.redis_client
         r.setex(REDIS_KEY, REDIS_TTL, json.dumps(result))

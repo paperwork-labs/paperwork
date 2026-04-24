@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models.picks import EmailInbox, IngestionStatus
-from app.services.picks.postmark_signature import validate_postmark_signature
+from app.services.gold.picks.postmark_signature import validate_postmark_signature
 from app.tasks.picks.parse_inbound import parse_inbound_email
 
 logger = logging.getLogger(__name__)

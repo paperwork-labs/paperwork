@@ -249,7 +249,7 @@ def _warm_caches(sender, **kwargs):
     that could delay worker readiness or hit statement_timeout.
     """
     try:
-        from app.services.market.market_mv_service import market_mv_service
+        from app.services.silver.market.market_mv_service import market_mv_service
         from app.database import SessionLocal
 
         db = SessionLocal()

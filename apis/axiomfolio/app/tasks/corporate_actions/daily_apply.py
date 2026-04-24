@@ -35,8 +35,8 @@ from typing import Any, Dict
 from celery import shared_task
 
 from app.database import SessionLocal
-from app.services.corporate_actions.applier import CorporateActionApplier
-from app.services.corporate_actions.fetcher import CorporateActionFetcher
+from app.services.silver.corporate_actions.applier import CorporateActionApplier
+from app.services.silver.corporate_actions.fetcher import CorporateActionFetcher
 from app.tasks.utils.task_utils import (
     _get_tracked_symbols_safe,
     _set_task_status,

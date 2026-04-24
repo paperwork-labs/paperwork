@@ -31,7 +31,7 @@ from typing import Dict, Any
 from app.api.dependencies import get_current_user
 from app.models.user import User
 from app.services.execution.runner_state_service import compute_runner_state
-from app.services.portfolio.day_pnl_service import (
+from app.services.silver.portfolio.day_pnl_service import (
     has_ambiguous_corporate_action,
     recompute_position_day_pnl,
     resolve_prior_close,
@@ -661,7 +661,7 @@ async def refresh_prices(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Dict[str, Any]:
-    from app.services.market.market_data_service import quote
+    from app.services.silver.market.market_data_service import quote
 
     try:
         if account_id is not None:

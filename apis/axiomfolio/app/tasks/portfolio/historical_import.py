@@ -14,7 +14,7 @@ from app.models.historical_import_run import (
     HistoricalImportRun,
     HistoricalImportSource,
 )
-from app.services.portfolio.ibkr.historical_import import HistoricalImportService
+from app.services.bronze.ibkr.historical_import import HistoricalImportService
 
 logger = logging.getLogger(__name__)
 

@@ -1,4 +1,4 @@
-"""Unit + integration tests for :mod:`app.services.portfolio.day_pnl_service`.
+"""Unit + integration tests for :mod:`app.services.silver.portfolio.day_pnl_service`.
 
 Pins the architectural contract introduced in D141:
 
@@ -33,7 +33,7 @@ from app.models.corporate_action import (
 from app.models.market_data import PriceData
 from app.models.position import Position, PositionStatus, PositionType
 from app.models.user import User
-from app.services.portfolio.day_pnl_service import (
+from app.services.silver.portfolio.day_pnl_service import (
     compute_day_pnl,
     has_ambiguous_corporate_action,
     recompute_day_pnl_for_rows,

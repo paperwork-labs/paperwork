@@ -7,11 +7,11 @@ import json
 
 import pytest
 
-from app.services.narrative.builder import build_narrative_prompt, render_narrative
-from app.services.narrative.provider import NarrativeProviderError, NarrativeResult
-from app.services.narrative.providers.fallback_template import render_from_summary
-from app.services.narrative.providers.openai_chat import OpenAIChatProvider
-from app.services.narrative.providers.stub import StubNarrativeProvider
+from app.services.gold.narrative.builder import build_narrative_prompt, render_narrative
+from app.services.gold.narrative.provider import NarrativeProviderError, NarrativeResult
+from app.services.gold.narrative.providers.fallback_template import render_from_summary
+from app.services.gold.narrative.providers.openai_chat import OpenAIChatProvider
+from app.services.gold.narrative.providers.stub import StubNarrativeProvider
 
 
 def test_stub_narrative_provider_deterministic():

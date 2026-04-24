@@ -7,7 +7,7 @@ import logging
 from typing import List, Dict, Any, Callable
 
 from app.api.dependencies import market_visibility_scope, market_exposed_to_all
-from app.services.market.constants import (
+from app.services.silver.math.constants import (
     SNAPSHOT_PREFERRED_COLUMNS,
     SNAPSHOTS_PREFERRED_COLUMNS,
     SNAPSHOT_HISTORY_PREFERRED_COLUMNS,

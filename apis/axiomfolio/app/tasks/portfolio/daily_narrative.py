@@ -12,9 +12,9 @@ from celery import shared_task
 from app.database import SessionLocal
 from app.models.position import Position, PositionStatus
 from app.models.user import User
-from app.services.narrative.builder import build_portfolio_summary, render_narrative
-from app.services.narrative.persistence import fetch_fresh_narrative, persist_narrative
-from app.services.narrative.providers.openai_chat import OpenAIChatProvider
+from app.services.gold.narrative.builder import build_portfolio_summary, render_narrative
+from app.services.gold.narrative.persistence import fetch_fresh_narrative, persist_narrative
+from app.services.gold.narrative.providers.openai_chat import OpenAIChatProvider
 
 logger = logging.getLogger(__name__)
 

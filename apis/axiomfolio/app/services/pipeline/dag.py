@@ -251,7 +251,7 @@ RUN_UNKNOWN = "unknown"
 
 def _redis_client():
     """Lazy import to avoid circular dependency with market_data_service."""
-    from app.services.market.market_data_service import infra
+    from app.services.silver.market.market_data_service import infra
     return infra.redis_client
 
 

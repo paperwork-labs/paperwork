@@ -1,5 +1,5 @@
 """
-Tests for app.services.backtest.monte_carlo
+Tests for app.services.gold.backtest.monte_carlo
 
 Acceptance criteria:
 
@@ -25,13 +25,13 @@ import pytest
 
 pytestmark = pytest.mark.no_db
 
-from app.services.backtest.monte_carlo import (
+from app.services.gold.backtest.monte_carlo import (
     MAX_ITERATIONS,
     MIN_SAMPLES,
     MonteCarloResult,
     MonteCarloSimulator,
 )
-from app.services.backtest.scenarios import (
+from app.services.gold.backtest.scenarios import (
     SCENARIO_DESCRIPTIONS,
     run_all_scenarios,
     run_scenario,

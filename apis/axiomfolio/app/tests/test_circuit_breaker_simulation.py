@@ -5,7 +5,7 @@ Verifies tier progression, kill switch, and daily reset behavior.
 import pytest
 from datetime import datetime, timedelta, timezone
 
-from app.services.risk.circuit_breaker import (
+from app.services.gold.risk.circuit_breaker import (
     CircuitBreaker,
     CircuitBreakerConfig,
 )

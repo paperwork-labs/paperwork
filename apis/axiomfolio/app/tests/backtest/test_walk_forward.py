@@ -29,18 +29,18 @@ from typing import Any, Dict, List, Sequence
 
 import pytest
 
-from app.services.backtest.objectives import (
+from app.services.gold.backtest.objectives import (
     expectancy,
     sharpe_ratio,
     sortino_ratio,
     win_rate_x_avg_win,
 )
-from app.services.backtest.regime_attribution import (
+from app.services.gold.backtest.regime_attribution import (
     REGIME_LABELS,
     attribute_trades_by_regime,
     filter_trades_by_regime,
 )
-from app.services.backtest.walk_forward import (
+from app.services.gold.backtest.walk_forward import (
     SplitResult,
     StudyResult,
     TradeResult,

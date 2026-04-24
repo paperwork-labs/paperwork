@@ -1,4 +1,4 @@
-"""Tests for :mod:`app.services.portfolio.plaid.client`.
+"""Tests for :mod:`app.services.bronze.plaid.client`.
 
 Scope:
 * ``PlaidClient.__init__`` raises :class:`PlaidConfigurationError` when env
@@ -20,8 +20,8 @@ import pytest
 from app.config import settings
 
 try:
-    from app.services.portfolio.plaid import client as plaid_client_module
-    from app.services.portfolio.plaid.client import (
+    from app.services.bronze.plaid import client as plaid_client_module
+    from app.services.bronze.plaid.client import (
         PlaidAPIError,
         PlaidClient,
         PlaidConfigurationError,

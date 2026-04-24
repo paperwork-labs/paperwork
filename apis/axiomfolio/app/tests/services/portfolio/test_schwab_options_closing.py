@@ -13,7 +13,7 @@ import pytest
 from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.models.option_tax_lot import OptionTaxLot
 from app.models.user import User
-from app.services.portfolio.schwab_sync_service import SchwabSyncService
+from app.services.bronze.schwab.sync_service import SchwabSyncService
 
 OPT = "AAPL  250117C00200000"
 
@@ -105,7 +105,7 @@ def test_schwab_sync_creates_option_tax_lot_with_pnl(
 ) -> None:
     if db_session is None:
         pytest.skip("no db")
-    from app.services.portfolio import schwab_sync_service
+    from app.services.bronze.schwab import sync_service as schwab_sync_service
 
     monkeypatch.setattr(
         schwab_sync_service.account_credentials_service,
@@ -141,7 +141,7 @@ def test_schwab_option_tax_lots_idempotent_second_sync(
 ) -> None:
     if db_session is None:
         pytest.skip("no db")
-    from app.services.portfolio import schwab_sync_service
+    from app.services.bronze.schwab import sync_service as schwab_sync_service
 
     monkeypatch.setattr(
         schwab_sync_service.account_credentials_service,

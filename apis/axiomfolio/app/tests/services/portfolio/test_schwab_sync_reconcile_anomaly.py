@@ -14,7 +14,7 @@ import pytest
 from app.config import settings
 from app.models.broker_account import BrokerAccount, BrokerType, AccountType
 from app.models.user import User
-from app.services.portfolio.schwab_sync_service import (
+from app.services.bronze.schwab.sync_service import (
     RECONCILE_ANOMALY_KEY,
     SchwabSyncService,
 )
@@ -113,7 +113,7 @@ def test_reconcile_error_production_continues_and_records_anomaly(
     if db_session is None:
         pytest.skip("database not configured")
 
-    from app.services.portfolio import schwab_sync_service
+    from app.services.bronze.schwab import sync_service as schwab_sync_service
 
     def _fake_get_decrypted(_account_id: int, _session: Any) -> dict[str, str]:
         return {"access_token": "fake", "refresh_token": "fake"}
@@ -128,7 +128,7 @@ def test_reconcile_error_production_continues_and_records_anomaly(
     )
     fake_r = _FakeRedis()
     monkeypatch.setattr(
-        "app.services.market.market_data_service.infra",
+        "app.services.silver.market.market_data_service.infra",
         SimpleNamespace(redis_client=fake_r),
     )
     monkeypatch.setattr(settings, "ENVIRONMENT", "production", raising=False)
@@ -169,7 +169,7 @@ def test_reconcile_error_development_re_raises(
     if db_session is None:
         pytest.skip("database not configured")
 
-    from app.services.portfolio import schwab_sync_service
+    from app.services.bronze.schwab import sync_service as schwab_sync_service
 
     def _fake_get_decrypted(_account_id: int, _session: Any) -> dict[str, str]:
         return {"access_token": "fake", "refresh_token": "fake"}
@@ -184,7 +184,7 @@ def test_reconcile_error_development_re_raises(
     )
     fake_r = _FakeRedis()
     monkeypatch.setattr(
-        "app.services.market.market_data_service.infra",
+        "app.services.silver.market.market_data_service.infra",
         SimpleNamespace(redis_client=fake_r),
     )
     monkeypatch.setattr(settings, "ENVIRONMENT", "development", raising=False)

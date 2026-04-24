@@ -25,12 +25,12 @@ from sqlalchemy.orm import Session
 from app.api.dependencies import get_current_user
 from app.database import get_db
 from app.models.user import User
-from app.services.risk.account_risk_profile import (
+from app.services.gold.risk.account_risk_profile import (
     AccountNotFoundError,
     apply_override,
     get_effective_limits,
 )
-from app.services.risk.firm_caps import FIRM_CAP_FIELDS, FirmCapsUnavailable
+from app.services.gold.risk.firm_caps import FIRM_CAP_FIELDS, FirmCapsUnavailable
 
 
 router = APIRouter(prefix="/accounts", tags=["accounts", "risk"])

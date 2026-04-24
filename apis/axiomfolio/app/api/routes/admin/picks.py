@@ -19,7 +19,7 @@ from app.models.picks import (
     PickAction,
 )
 from app.models.user import User
-from app.services.picks.state_machine import InvalidStateTransition, transition
+from app.services.gold.picks.state_machine import InvalidStateTransition, transition
 
 router = APIRouter(dependencies=[Depends(get_admin_user)])
 

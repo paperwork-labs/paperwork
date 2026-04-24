@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 import aiohttp
 
 from app.config import settings
-from app.services.aggregator.schwab_connector import SchwabConnector
+from app.services.bronze.aggregator.schwab_connector import SchwabConnector
 
 logger = logging.getLogger(__name__)
 

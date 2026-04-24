@@ -97,7 +97,7 @@ REDIS_KEY_AUTONOMY_LEVEL = "agent:settings:autonomy_level"
 def _get_autonomy_level() -> str:
     """Get autonomy level from Redis, falling back to config default."""
     from app.config import settings
-    from app.services.market.market_data_service import infra
+    from app.services.silver.market.market_data_service import infra
 
     redis = infra.redis_client
     if redis:
@@ -114,7 +114,7 @@ def _get_autonomy_level() -> str:
 
 def _set_autonomy_level(level: str) -> None:
     """Persist autonomy level to Redis for cross-worker consistency."""
-    from app.services.market.market_data_service import infra
+    from app.services.silver.market.market_data_service import infra
 
     redis = infra.redis_client
     if redis:
@@ -243,7 +243,7 @@ def get_session_messages(
 
     Returns the full message history for resuming a past conversation.
     """
-    from app.services.market.market_data_service import infra
+    from app.services.silver.market.market_data_service import infra
     from app.models.agent_message import load_conversation_from_db
     import json
 
@@ -373,7 +373,7 @@ async def trigger_agent_run(
     _admin: User = Depends(get_admin_user),
 ):
     """Manually trigger an agent analysis and remediation run."""
-    from app.services.market.admin_health_service import AdminHealthService
+    from app.services.silver.market.admin_health_service import AdminHealthService
     from app.services.agent.brain import AgentBrain
     from app.config import settings
 

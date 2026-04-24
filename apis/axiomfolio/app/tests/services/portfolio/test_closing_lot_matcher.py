@@ -22,7 +22,7 @@ from app.models.broker_account import (
 )
 from app.models.trade import Trade
 from app.models.user import User
-from app.services.portfolio.closing_lot_matcher import (
+from app.services.silver.portfolio.closing_lot_matcher import (
     MatchResult,
     reconcile_closing_lots,
 )

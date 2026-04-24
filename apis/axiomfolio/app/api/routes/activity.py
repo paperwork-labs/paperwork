@@ -12,7 +12,7 @@ from app.api.dependencies import get_current_user, require_role
 from app.database import SessionLocal
 from app.models.broker_account import BrokerAccount
 from app.models.user import User, UserRole
-from app.services.portfolio.activity_aggregator import activity_aggregator
+from app.services.silver.portfolio.activity_aggregator import activity_aggregator
 
 router = APIRouter()
 

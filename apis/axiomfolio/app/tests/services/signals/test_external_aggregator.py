@@ -1,4 +1,4 @@
-"""Tests for :mod:`app.services.signals.external_aggregator`."""
+"""Tests for :mod:`app.services.gold.signals.external_aggregator`."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 
 from app.models.external_signal import ExternalSignal
-from app.services.signals.external_aggregator import (
+from app.services.gold.signals.external_aggregator import (
     external_context_bonus_points_map,
     fetch_finviz_signals,
     fetch_zacks_signals,

@@ -10,10 +10,10 @@ import pandas as pd
 import pytest
 
 from app.models.market_data import EarningsCalendarEvent, MarketRegime, MarketSnapshot
-from app.services.market.constants import CURATED_MARKET_SYMBOLS
-from app.services.market.indicator_engine import compute_full_indicator_series, extract_latest_values
-from app.services.market.market_data_service import price_bars, snapshot_builder
-from app.services.market.snapshot_builder import next_earnings_utc_from_calendar
+from app.services.silver.math.constants import CURATED_MARKET_SYMBOLS
+from app.services.silver.indicators.indicator_engine import compute_full_indicator_series, extract_latest_values
+from app.services.silver.market.market_data_service import price_bars, snapshot_builder
+from app.services.silver.market.snapshot_builder import next_earnings_utc_from_calendar
 
 
 @pytest.fixture(autouse=True)
@@ -96,7 +96,7 @@ def test_next_earnings_utc_today_eod_stays_future_dated(db_session, monkeypatch)
             return stdlib_datetime.datetime.combine(d, t, tzinfo=tzinfo)
 
     monkeypatch.setattr(
-        "app.services.market.snapshot_builder.datetime",
+        "app.services.silver.market.snapshot_builder.datetime",
         _FauxDateTime,
     )
     d_today = fixed.date()
@@ -221,7 +221,7 @@ def test_earnings_calendar_exception_preserves_next_earnings_and_increments_erro
         raise RuntimeError("transient calendar db")
 
     monkeypatch.setattr(
-        "app.services.market.snapshot_builder.next_earnings_utc_from_calendar",
+        "app.services.silver.market.snapshot_builder.next_earnings_utc_from_calendar",
         _raise,
     )
     m: dict[str, int] = {}
@@ -272,7 +272,7 @@ def test_compute_full_indicator_volume_avg_matches_rolling_volume_mean():
         },
         index=idx,
     )
-    from app.services.market.dataframe_utils import ensure_newest_first, ensure_oldest_first
+    from app.services.silver.math.dataframe_utils import ensure_newest_first, ensure_oldest_first
 
     df_oldest = ensure_oldest_first(ensure_newest_first(df))
     series = compute_full_indicator_series(df_oldest)

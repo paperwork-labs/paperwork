@@ -57,11 +57,11 @@ _ALLOWLIST: tuple[tuple[str, str], ...] = (
     ("app/services/agent/brain.py", "``user_id=1`` (the old prod-corruption hazard, D88)"),
     ("app/tasks/ops/auto_ops.py", "``user_id=1`` (D88 hazard)"),
     (
-        "app/services/portfolio/portfolio_analytics_service.py",
+        "app/services/silver/portfolio/analytics.py",
         "``user_id=1`` defaults) — D88.",
     ),
     (
-        "app/services/portfolio/portfolio_analytics_service.py",
+        "app/services/silver/portfolio/analytics.py",
         "D88 — no ``user_id=1`` defaults",
     ),
 )

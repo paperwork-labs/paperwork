@@ -29,7 +29,7 @@ def _setup_loop():
 @task_run("intelligence_daily_digest")
 def generate_daily_digest_task(deliver_brain: bool = True) -> dict:
     """Generate daily intelligence digest and optionally deliver to Brain webhook."""
-    from app.services.intelligence.brief_generator import generate_daily_digest
+    from app.services.silver.intelligence.brief_generator import generate_daily_digest
 
     session = SessionLocal()
     try:
@@ -38,7 +38,7 @@ def generate_daily_digest_task(deliver_brain: bool = True) -> dict:
         _store_brief(session, brief)
 
         if deliver_brain:
-            from app.services.intelligence.brief_delivery import deliver_daily_digest_brain
+            from app.services.silver.intelligence.brief_delivery import deliver_daily_digest_brain
             loop = _setup_loop()
             try:
                 loop.run_until_complete(deliver_daily_digest_brain(brief))
@@ -67,7 +67,7 @@ def generate_daily_digest_task(deliver_brain: bool = True) -> dict:
 @task_run("intelligence_weekly_brief")
 def generate_weekly_brief_task(deliver_brain: bool = True) -> dict:
     """Generate weekly strategy brief and optionally deliver to Brain webhook."""
-    from app.services.intelligence.brief_generator import generate_weekly_brief
+    from app.services.silver.intelligence.brief_generator import generate_weekly_brief
 
     session = SessionLocal()
     try:
@@ -76,7 +76,7 @@ def generate_weekly_brief_task(deliver_brain: bool = True) -> dict:
         _store_brief(session, brief)
 
         if deliver_brain:
-            from app.services.intelligence.brief_delivery import deliver_weekly_brief_brain
+            from app.services.silver.intelligence.brief_delivery import deliver_weekly_brief_brain
             loop = _setup_loop()
             try:
                 loop.run_until_complete(deliver_weekly_brief_brain(brief))
@@ -104,7 +104,7 @@ def generate_weekly_brief_task(deliver_brain: bool = True) -> dict:
 @task_run("intelligence_monthly_review")
 def generate_monthly_review_task(deliver_brain: bool = True) -> dict:
     """Generate monthly review and optionally deliver to Brain webhook."""
-    from app.services.intelligence.brief_generator import generate_monthly_review
+    from app.services.silver.intelligence.brief_generator import generate_monthly_review
 
     session = SessionLocal()
     try:

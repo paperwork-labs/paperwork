@@ -15,7 +15,7 @@ from unittest.mock import Mock, patch, AsyncMock
 
 from app.models import User, BrokerAccount
 from app.models.broker_account import BrokerType, AccountType, SyncStatus
-from app.services.portfolio.broker_sync_service import BrokerSyncService
+from app.services.bronze.broker_sync_service import BrokerSyncService
 
 
 class TestBrokerSyncService:
@@ -92,7 +92,7 @@ class TestBrokerSyncService:
 
         print("✅ Available brokers listing working correctly")
 
-    @patch("app.services.portfolio.broker_sync_service.IBKRSyncService")
+    @patch("app.services.bronze.broker_sync_service.IBKRSyncService")
     def test_sync_ibkr_account(
         self, mock_ibkr_service, broker_sync_service, db_session, test_ibkr_account
     ):
@@ -123,7 +123,7 @@ class TestBrokerSyncService:
 
         print("✅ IBKR account sync routing working correctly")
 
-    @patch("app.services.portfolio.broker_sync_service.TastyTradeSyncService")
+    @patch("app.services.bronze.broker_sync_service.TastyTradeSyncService")
     def test_sync_tastytrade_account(
         self, mock_tt_service, broker_sync_service, db_session, test_tastytrade_account
     ):
@@ -161,7 +161,7 @@ class TestBrokerSyncService:
         """TastyTrade sync uses AccountCredentials when present."""
         from app.models.broker_account import AccountCredentials
         from app.services.security.credential_vault import credential_vault
-        from app.services.portfolio.tastytrade_sync_service import (
+        from app.services.bronze.tastytrade.sync_service import (
             TastyTradeSyncService,
         )
 
@@ -237,7 +237,7 @@ class TestBrokerSyncService:
     @pytest.mark.asyncio
     async def test_tastytrade_sync_falls_back_to_env(self, db_session, test_user):
         """TastyTrade sync uses env vars when no stored credentials."""
-        from app.services.portfolio.tastytrade_sync_service import (
+        from app.services.bronze.tastytrade.sync_service import (
             TastyTradeSyncService,
         )
 
@@ -322,8 +322,8 @@ class TestBrokerSyncService:
 
         print("✅ Unknown broker handling working correctly")
 
-    @patch("app.services.portfolio.broker_sync_service.IBKRSyncService")
-    @patch("app.services.portfolio.broker_sync_service.TastyTradeSyncService")
+    @patch("app.services.bronze.broker_sync_service.IBKRSyncService")
+    @patch("app.services.bronze.broker_sync_service.TastyTradeSyncService")
     def test_sync_all_accounts(
         self,
         mock_tt_service,
@@ -366,7 +366,7 @@ class TestBrokerSyncService:
         """Test that account sync status is updated properly."""
         # Mock successful sync
         with patch(
-            "app.services.portfolio.broker_sync_service.IBKRSyncService"
+            "app.services.bronze.broker_sync_service.IBKRSyncService"
         ) as mock_service:
             mock_instance = Mock()
             mock_service.return_value = mock_instance
@@ -392,7 +392,7 @@ class TestBrokerSyncService:
         """Test error handling during sync operations."""
         # Mock sync failure
         with patch(
-            "app.services.portfolio.broker_sync_service.IBKRSyncService"
+            "app.services.bronze.broker_sync_service.IBKRSyncService"
         ) as mock_service:
             mock_instance = Mock()
             mock_service.return_value = mock_instance
@@ -433,7 +433,7 @@ class TestBrokerSyncServiceArchitecture:
 
     def test_dry_principle_no_broker_duplication(self):
         """Test that broker-specific logic is not duplicated."""
-        from app.services.portfolio.broker_sync_service import BrokerSyncService
+        from app.services.bronze.broker_sync_service import BrokerSyncService
         import inspect
 
         source = inspect.getsource(BrokerSyncService)
@@ -464,7 +464,7 @@ class TestBrokerSyncServiceArchitecture:
 
     def test_extensibility_for_new_brokers(self):
         """Test that adding new brokers doesn't require changing existing code."""
-        from app.services.portfolio.broker_sync_service import BrokerSyncService
+        from app.services.bronze.broker_sync_service import BrokerSyncService
         import inspect
 
         source = inspect.getsource(BrokerSyncService)
@@ -481,7 +481,7 @@ class TestBrokerSyncServiceArchitecture:
 
     def test_single_responsibility_coordination_only(self):
         """Test that service only coordinates, doesn't implement sync logic."""
-        from app.services.portfolio.broker_sync_service import BrokerSyncService
+        from app.services.bronze.broker_sync_service import BrokerSyncService
         import inspect
 
         source = inspect.getsource(BrokerSyncService)
@@ -506,7 +506,7 @@ class TestBrokerSyncServiceArchitecture:
 
     def test_dependency_injection_pattern(self):
         """Test that service uses dependency injection for broker services."""
-        from app.services.portfolio.broker_sync_service import BrokerSyncService
+        from app.services.bronze.broker_sync_service import BrokerSyncService
 
         service = BrokerSyncService()
 
@@ -530,7 +530,7 @@ class TestBrokerSyncServiceIntegration:
         from app.services.portfolio.account_config_service import (
             AccountConfigService,
         )
-        from app.services.portfolio.broker_sync_service import BrokerSyncService
+        from app.services.bronze.broker_sync_service import BrokerSyncService
 
         config_service = AccountConfigService()
         sync_service = BrokerSyncService()
@@ -543,7 +543,7 @@ class TestBrokerSyncServiceIntegration:
 
     def test_broker_account_model_compatibility(self):
         """Test compatibility with BrokerAccount model."""
-        from app.services.portfolio.broker_sync_service import BrokerSyncService
+        from app.services.bronze.broker_sync_service import BrokerSyncService
 
         service = BrokerSyncService()
 
@@ -562,7 +562,7 @@ class TestBrokerSyncServiceIntegration:
 
     def test_database_transaction_handling(self, db_session):
         """Test that service handles database transactions properly."""
-        from app.services.portfolio.broker_sync_service import BrokerSyncService
+        from app.services.bronze.broker_sync_service import BrokerSyncService
 
         service = BrokerSyncService()
 

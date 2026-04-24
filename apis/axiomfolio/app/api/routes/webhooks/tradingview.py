@@ -20,7 +20,7 @@ from app.models.user import User
 from app.models.order import Order, OrderStatus
 from app.services.execution.broker_base import OrderRequest
 from app.services.execution.risk_gate import RiskGate, RiskViolation
-from app.services.risk.circuit_breaker import circuit_breaker
+from app.services.gold.risk.circuit_breaker import circuit_breaker
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

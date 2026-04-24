@@ -28,9 +28,9 @@ from app.models.walk_forward_study import (
     WalkForwardStatus,
     WalkForwardStudy,
 )
-from app.services.backtest.objectives import list_objectives
-from app.services.backtest.regime_attribution import REGIME_LABELS
-from app.services.backtest.walk_forward import validate_param_space
+from app.services.gold.backtest.objectives import list_objectives
+from app.services.gold.backtest.regime_attribution import REGIME_LABELS
+from app.services.gold.backtest.walk_forward import validate_param_space
 
 logger = logging.getLogger(__name__)
 

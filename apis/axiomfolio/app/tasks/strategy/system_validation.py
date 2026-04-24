@@ -13,8 +13,8 @@ from typing import Any, Dict, List, Optional
 from celery import shared_task
 
 from app.database import SessionLocal
-from app.services.strategy.backtest_engine import BacktestEngine
-from app.services.strategy.rule_evaluator import (
+from app.services.gold.strategy.backtest_engine import BacktestEngine
+from app.services.gold.strategy.rule_evaluator import (
     Condition,
     ConditionGroup,
     ConditionOperator,

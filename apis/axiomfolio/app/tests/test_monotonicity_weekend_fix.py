@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from app.api.main import app
 from app.api.dependencies import get_admin_user
 from app.models.market_data import MarketSnapshot, MarketSnapshotHistory
-from app.services.market.market_data_service import stage_quality
+from app.services.silver.market.market_data_service import stage_quality
 
 
 client = TestClient(app, raise_server_exceptions=False)

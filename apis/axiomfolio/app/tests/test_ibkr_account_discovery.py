@@ -4,7 +4,7 @@ import pytest
 
 from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.models.user import User
-from app.services.portfolio.ibkr.pipeline import IBKRSyncService
+from app.services.bronze.ibkr.pipeline import IBKRSyncService
 
 def _make_user(db_session, suffix: str) -> User:
     user = User(

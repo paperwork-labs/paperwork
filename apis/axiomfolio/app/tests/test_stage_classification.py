@@ -11,7 +11,7 @@ from typing import Dict, Optional
 import pandas as pd
 import pytest
 
-from app.services.market.indicator_engine import (
+from app.services.silver.indicators.indicator_engine import (
     classify_stage_for_timeframe,
     classify_stage_full,
     classify_stage_scalar,

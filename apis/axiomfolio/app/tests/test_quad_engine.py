@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.services.market.quad_engine import (
+from app.services.silver.regime.quad_engine import (
     QuadConcentrationLimits,
     QuadState,
     classify_quad,

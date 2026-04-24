@@ -19,7 +19,7 @@ from app.models.user import User
 from app.models.broker_account import (
     BrokerAccount, AccountCredentials, AccountType, AccountStatus, SyncStatus,
 )
-from app.services.aggregator.schwab_connector import SchwabConnector
+from app.services.bronze.aggregator.schwab_connector import SchwabConnector
 import httpx
 from app.services.security.oauth_state import oauth_state_service
 from app.services.security.credential_vault import credential_vault

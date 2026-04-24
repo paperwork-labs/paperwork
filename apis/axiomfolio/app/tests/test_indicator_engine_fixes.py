@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from app.services.market.indicator_engine import (
+from app.services.silver.indicators.indicator_engine import (
     calculate_rsi_series,
     _compute_td_sequential_series,
     calculate_performance_windows,

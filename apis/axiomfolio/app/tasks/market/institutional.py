@@ -28,7 +28,7 @@ def sync_13f(days_back: int = 90, max_filings: int = 50) -> dict:
     """
     session = SessionLocal()
     try:
-        from app.services.market.sec_edgar import (
+        from app.services.silver.market.sec_edgar import (
             fetch_and_parse_13f,
             fetch_recent_13f_filings,
             persist_13f_holdings,

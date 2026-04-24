@@ -22,7 +22,7 @@ class TestMarketDataService:
     async def test_market_data_service_import(self):
         """Test market data service can be imported."""
         try:
-            from app.services.market.market_data_service import (
+            from app.services.silver.market.market_data_service import (
                 provider_router,
                 quote,
                 snapshot_builder,
@@ -41,7 +41,7 @@ class TestMarketDataService:
     async def test_current_price_retrieval(self):
         """Test current price retrieval."""
         try:
-            from app.services.market.market_data_service import quote
+            from app.services.silver.market.market_data_service import quote
 
             test_symbol = "AAPL"
             price = await quote.get_current_price(test_symbol)
@@ -62,7 +62,7 @@ class TestMarketDataService:
     async def test_historical_data_retrieval(self):
         """Test historical data retrieval."""
         try:
-            from app.services.market.market_data_service import provider_router
+            from app.services.silver.market.market_data_service import provider_router
 
             test_symbol = "AAPL"
             data = await provider_router.get_historical_data(
@@ -94,7 +94,7 @@ class TestIndexConstituentsService:
     async def test_index_service_import(self):
         """Test index service can be imported."""
         try:
-            from app.services.market.market_data_service import index_universe
+            from app.services.silver.market.market_data_service import index_universe
 
             assert index_universe is not None
             assert hasattr(index_universe, "get_index_constituents")
@@ -109,7 +109,7 @@ class TestIndexConstituentsService:
     async def test_dow30_constituents(self):
         """Test getting Dow 30 constituents."""
         try:
-            from app.services.market.market_data_service import index_universe
+            from app.services.silver.market.market_data_service import index_universe
 
             dow30_symbols = await index_universe.get_index_constituents("DOW30")
 
@@ -132,7 +132,7 @@ class TestIndexConstituentsService:
     async def test_atr_universe_generation(self):
         """Test ATR universe generation."""
         try:
-            from app.services.market.market_data_service import index_universe
+            from app.services.silver.market.market_data_service import index_universe
 
             data = await index_universe.get_all_tradeable_symbols(["SP500","NASDAQ100"])  # example
             universe = sorted({s for lst in data.values() for s in lst})
@@ -195,7 +195,7 @@ class TestServiceIntegration:
     async def test_market_data_to_indicator_integration(self):
         """Test market data to indicator engine integration."""
         try:
-            from app.services.market.market_data_service import quote
+            from app.services.silver.market.market_data_service import quote
 
             test_symbol = "AAPL"
             price = await quote.get_current_price(test_symbol)

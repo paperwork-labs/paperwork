@@ -18,7 +18,7 @@ from app.models.entitlement import Entitlement, EntitlementStatus, SubscriptionT
 from app.models.market_data import JobRun
 from app.models.position import Position, PositionStatus, PositionType, Sleeve
 from app.models.user import User
-from app.services.picks.candidate_generator import GeneratorRunReport
+from app.services.gold.picks.candidate_generator import GeneratorRunReport
 from app.tasks.candidates import generate_candidates_daily
 
 

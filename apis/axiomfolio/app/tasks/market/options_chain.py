@@ -10,8 +10,8 @@ from celery import shared_task
 
 from app.database import SessionLocal
 from app.services.gold.options_chain_surface import OptionsChainSurface
-from app.services.market.universe import tracked_symbols
-from app.services.market.market_data_service import infra
+from app.services.silver.market.universe import tracked_symbols
+from app.services.silver.market.market_data_service import infra
 from app.tasks.utils.task_utils import task_run
 
 logger = logging.getLogger(__name__)

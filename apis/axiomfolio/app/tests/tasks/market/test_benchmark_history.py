@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from app.models.market_data import MarketSnapshotHistory, PriceData
-from app.services.portfolio.portfolio_analytics_service import BENCHMARK_ANALYSIS_TYPE
+from app.services.silver.portfolio.analytics import BENCHMARK_ANALYSIS_TYPE
 from app.tasks.market import benchmark_history as benchmark_history
 
 

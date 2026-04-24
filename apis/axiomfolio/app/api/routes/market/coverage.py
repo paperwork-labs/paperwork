@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
 from app.models.market_data import PriceData
-from app.services.market.market_data_service import coverage_analytics
+from app.services.silver.market.market_data_service import coverage_analytics
 from app.api.dependencies import get_market_data_viewer
 from ._shared import visibility_scope, coverage_education, coverage_actions
 

@@ -8,7 +8,7 @@ import pytest
 from app.models.broker_account import AccountType, BrokerAccount, BrokerType
 from app.models.position import Position, PositionStatus, PositionType
 from app.models.user import User
-from app.services.portfolio.ibkr.historical_import import (
+from app.services.bronze.ibkr.historical_import import (
     HistoricalImportService,
     ParsedTradeRecord,
     build_year_chunks,

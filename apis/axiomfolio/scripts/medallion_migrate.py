@@ -68,9 +68,9 @@ SCAN_DIRS = ["app", "scripts"]
 def _path_to_module(rel: str) -> str:
     """Convert a services-relative path to a dotted module name.
 
-    ``market/providers/__init__.py`` -> ``app.services.market.providers``
-    ``market/atr_series.py``         -> ``app.services.market.atr_series``
-    ``market/providers``             -> ``app.services.market.providers``
+    ``market/providers/__init__.py`` -> ``app.services.bronze.market.providers``
+    ``market/atr_series.py``         -> ``app.services.silver.math.atr_series``
+    ``market/providers``             -> ``app.services.bronze.market.providers``
     """
     if rel.endswith("/__init__.py"):
         rel = rel[: -len("/__init__.py")]
@@ -265,19 +265,50 @@ def ensure_clean_tree() -> None:
         sys.exit(2)
 
 
-def ensure_init_pys(target_dirs: set[Path], apply: bool) -> int:
+_STUB_INIT_RE = re.compile(r'^\s*"""medallion:\s*\w+\s*"""\s*$', re.MULTILINE)
+
+
+def _is_stub_init(path: Path) -> bool:
+    """True iff path is an __init__.py containing only a medallion docstring.
+
+    Wave 0.B scaffolded stub __init__.py files at every target layer
+    directory. When a pass moves a source __init__.py (which has real
+    imports) to a path the scaffold already touched, ``git mv`` refuses
+    because the destination exists. Detect those stubs so ``git_mv`` can
+    replace them safely.
+    """
+    if path.name != "__init__.py" or not path.exists():
+        return False
+    try:
+        text = path.read_text()
+    except (UnicodeDecodeError, OSError):
+        return False
+    stripped = text.strip()
+    if not stripped:
+        return True
+    # Accept only: a single medallion: <layer> docstring, nothing else.
+    return bool(_STUB_INIT_RE.fullmatch(stripped))
+
+
+def ensure_init_pys(
+    target_dirs: set[Path], move_targets: set[Path], apply: bool,
+) -> int:
     """Ensure each new package dir under app/services/ has __init__.py.
 
     Does not overwrite an existing __init__.py — it only creates missing
     ones. The medallion tag is deliberately minimal; check_imports.py
     will infer the layer from the path.
+
+    ``move_targets`` is the set of absolute target paths the current pass
+    will ``git mv`` into. We skip creating __init__.py for those (it would
+    conflict with the subsequent move).
     """
     created = 0
     for d in sorted(target_dirs):
         cur = d
         while cur != SERVICES and cur.is_relative_to(SERVICES):
             init = cur / "__init__.py"
-            if not init.exists() and not (cur / "__init__.py").exists():
+            if init not in move_targets and not init.exists():
                 if apply:
                     cur.mkdir(parents=True, exist_ok=True)
                     layer = cur.relative_to(SERVICES).parts[0]
@@ -293,6 +324,12 @@ def git_mv(source: Path, target: Path, apply: bool) -> str:
     """Move ``source`` to ``target`` via ``git mv`` (or report what would).
 
     Returns a status string: moved | skipped-already | skipped-missing.
+
+    If ``target`` already exists and is a Wave 0.B scaffold stub (an
+    __init__.py containing only a ``medallion: <layer>`` docstring), we
+    remove the stub first so the source's richer content can take its
+    place. A non-stub collision is a genuine conflict and is surfaced as
+    a hard error.
     """
     if not source.exists():
         if target.exists():
@@ -300,6 +337,16 @@ def git_mv(source: Path, target: Path, apply: bool) -> str:
         return "skipped-missing"
     if apply:
         target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists():
+            if _is_stub_init(target):
+                subprocess.run(
+                    ["git", "rm", "-f", str(target.relative_to(REPO))],
+                    check=True, cwd=REPO,
+                )
+            else:
+                raise RuntimeError(
+                    f"refusing to overwrite non-stub target: {target}"
+                )
         subprocess.run(
             ["git", "mv", str(source.relative_to(REPO)),
              str(target.relative_to(REPO))],
@@ -330,7 +377,7 @@ def run_smoke_tests() -> None:
     """Run lightweight checks: imports, medallion lints, pytest collect."""
     print("  → python -m compileall (syntax check)")
     subprocess.run(
-        [sys.executable, "-m", "compileall", "-q", "backend"],
+        [sys.executable, "-m", "compileall", "-q", "app"],
         check=True, cwd=REPO,
     )
     print("  → make medallion-check (import layering)")
@@ -360,7 +407,8 @@ def run_pass(
 
     # 1. git mv every file in the pass (and ensure parent packages exist)
     target_dirs = {m.abs_target.parent for m in pass_moves}
-    created = ensure_init_pys(target_dirs, apply=apply)
+    move_targets = {m.abs_target for m in pass_moves}
+    created = ensure_init_pys(target_dirs, move_targets, apply=apply)
     if created:
         print(f"  {'would create' if not apply else 'created'} "
               f"{created} new __init__.py")

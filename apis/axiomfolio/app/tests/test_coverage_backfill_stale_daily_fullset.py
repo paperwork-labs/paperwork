@@ -10,8 +10,8 @@ from app.api.dependencies import get_admin_user
 from app.database import get_db
 from app.models.user import UserRole
 from app.models.market_data import PriceData
-from app.services.market.market_data_service import coverage_analytics, infra
-from app.services.market.universe import TRACKED_ALL_UPDATED_AT_KEY
+from app.services.silver.market.market_data_service import coverage_analytics, infra
+from app.services.silver.market.universe import TRACKED_ALL_UPDATED_AT_KEY
 
 
 @pytest.fixture(autouse=True)
