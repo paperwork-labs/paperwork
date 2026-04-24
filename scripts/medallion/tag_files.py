@@ -29,6 +29,7 @@ LAYER_MAP: dict[str, str] = {
     "bronze": "bronze",
     "aggregator": "bronze",
     # Silver: enrichment, indicators, analytics, cross-broker reconciliation.
+    "silver": "silver",
     "market": "silver",
     "tax": "silver",
     "corporate_actions": "silver",
@@ -167,21 +168,30 @@ def update_file(path: Path, layer: str, apply: bool) -> tuple[str, str]:
             path.write_text(new_source, encoding="utf-8")
         return "added", "tag appended to existing docstring"
 
-    # No docstring. Insert new one at top, preserving shebang and __future__.
+    # No docstring. Insert new one at top, preserving only shebang + encoding
+    # declarations. Python requires the module docstring to be the FIRST
+    # statement — so it must come BEFORE `from __future__` imports too.
     lines = source.splitlines(keepends=True)
     insert_at = 0
     while insert_at < len(lines):
         l = lines[insert_at].strip()
-        if l.startswith("#!") or l.startswith("#") or l == "" or l.startswith("from __future__"):
+        if l.startswith("#!"):
+            insert_at += 1
+            continue
+        if l.startswith("# -*- coding") or l.startswith("# coding"):
             insert_at += 1
             continue
         break
     new_docstring = f'"""{new_tag}"""\n'
-    new_lines = lines[:insert_at] + [new_docstring] + lines[insert_at:]
+    # Ensure a blank line after docstring if next non-empty line is code.
+    suffix = ""
+    if insert_at < len(lines) and lines[insert_at].strip() != "":
+        suffix = "\n"
+    new_lines = lines[:insert_at] + [new_docstring + suffix] + lines[insert_at:]
     new_source = "".join(new_lines)
     if apply:
         path.write_text(new_source, encoding="utf-8")
-    return "added", "new docstring inserted"
+    return "added", "new docstring inserted at true module-docstring position"
 
 
 def main() -> int:

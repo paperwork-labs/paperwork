@@ -1,6 +1,7 @@
+"""medallion: silver"""
+
 from __future__ import annotations
 
-"""medallion: silver"""
 import logging
 from typing import Any, Dict
 from datetime import datetime, timezone

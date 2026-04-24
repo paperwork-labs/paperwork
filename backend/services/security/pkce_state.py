@@ -1,6 +1,7 @@
+"""medallion: ops"""
+
 from __future__ import annotations
 
-"""medallion: ops"""
 import base64
 import hashlib
 import logging

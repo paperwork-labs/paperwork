@@ -69,6 +69,7 @@ from backend.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
+# medallion: allow cross-layer import (bronze -> silver); resolves when backend.services.portfolio.closing_lot_matcher moves during Phase 0.C
 from backend.services.portfolio.closing_lot_matcher import reconcile_closing_lots
 
 logger = logging.getLogger(__name__)

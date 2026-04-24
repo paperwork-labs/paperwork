@@ -49,6 +49,7 @@ from backend.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
+# medallion: allow cross-layer import (bronze -> silver); resolves when backend.services.portfolio.day_pnl_service moves during Phase 0.C
 from backend.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 
 logger = logging.getLogger(__name__)

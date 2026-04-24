@@ -1,6 +1,7 @@
+"""medallion: bronze"""
+
 from __future__ import annotations
 
-"""medallion: bronze"""
 import urllib.parse
 from typing import Dict, Any, Optional
 import httpx

@@ -1,6 +1,7 @@
+"""medallion: ops"""
+
 from __future__ import annotations
 
-"""medallion: ops"""
 from datetime import datetime, timedelta, timezone
 from typing import Dict, Any, Optional
 import jwt

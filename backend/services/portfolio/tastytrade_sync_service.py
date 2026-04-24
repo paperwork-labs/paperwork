@@ -27,11 +27,14 @@ from backend.models import (
     TaxLot,
 )
 from backend.models.tax_lot import TaxLotSource
+# medallion: allow cross-layer import (bronze -> silver); resolves when backend.services.portfolio.account_credentials_service moves during Phase 0.C
 from backend.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
 )
+# medallion: allow cross-layer import (bronze -> silver); resolves when backend.services.portfolio.closing_lot_matcher moves during Phase 0.C
 from backend.services.portfolio.closing_lot_matcher import reconcile_closing_lots
+# medallion: allow cross-layer import (bronze -> silver); resolves when backend.services.portfolio.day_pnl_service moves during Phase 0.C
 from backend.services.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 from backend.models.position import PositionType
 from backend.models.transaction import TransactionType
@@ -153,6 +156,7 @@ class TastyTradeSyncService:
         db.commit()
 
         try:
+            # medallion: allow cross-layer import (bronze -> silver); resolves when backend.services.portfolio.activity_aggregator moves during Phase 0.C
             from backend.services.portfolio.activity_aggregator import activity_aggregator
             activity_aggregator.refresh_materialized_views(db)
         except Exception as e:

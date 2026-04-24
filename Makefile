@@ -5,7 +5,8 @@
 	frontend-install frontend-lint frontend-typecheck frontend-test frontend-check \
 	ib-up ib-down ib-logs ib-verify \
 	tunnel-up tunnel-down tunnel-logs tunnel-on tunnel-off \
-	backup-db
+	backup-db \
+	medallion-check medallion-tag
 
 DOCKER ?= docker
 PROJECT ?= axiomfolio
@@ -202,3 +203,11 @@ ib-verify: ## Verify IB Gateway connectivity end-to-end
 		echo "✓ Gateway API reachable" || \
 		echo "⚠ Backend not running or gateway-status endpoint unreachable (start backend first)"
 
+
+# ---------- Medallion architecture (Wave 0) ----------
+
+medallion-check:
+	@python3 scripts/medallion/check_imports.py --stats
+
+medallion-tag:
+	@python3 scripts/medallion/tag_files.py --apply

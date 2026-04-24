@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+"""medallion: silver"""
+
 from __future__ import annotations
 
-"""medallion: silver"""
 """
 Tax Lot Service - Production Implementation
 Handles tax lot calculations, cost basis, and tax optimization strategies.

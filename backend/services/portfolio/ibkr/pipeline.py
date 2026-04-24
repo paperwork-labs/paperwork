@@ -27,11 +27,14 @@ from backend.models.position import Position
 from backend.models.transfer import Transfer
 from backend.models.transaction import Transaction as TxModel
 from backend.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
+# medallion: allow cross-layer import (bronze -> silver); resolves when backend.services.portfolio.account_type_resolver moves during Phase 0.C
 from backend.services.portfolio.account_type_resolver import resolve_account_type
+# medallion: allow cross-layer import (bronze -> silver); resolves when backend.services.portfolio.account_credentials_service moves during Phase 0.C
 from backend.services.portfolio.account_credentials_service import (
     CredentialsNotFoundError,
     account_credentials_service,
 )
+# medallion: allow cross-layer import (bronze -> silver); resolves when backend.services.portfolio.closing_lot_matcher moves during Phase 0.C
 from backend.services.portfolio.closing_lot_matcher import (
     MatchResult,
     reconcile_closing_lots,
@@ -389,6 +392,7 @@ class IBKRSyncService:
     @staticmethod
     def _refresh_activity_views(db: Session) -> None:
         try:
+            # medallion: allow cross-layer import (bronze -> silver); resolves when backend.services.portfolio.activity_aggregator moves during Phase 0.C
             from backend.services.portfolio.activity_aggregator import activity_aggregator
             activity_aggregator.refresh_materialized_views(db)
         except Exception as exc:

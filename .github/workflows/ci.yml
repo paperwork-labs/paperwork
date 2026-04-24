@@ -165,3 +165,21 @@ jobs:
     steps:
       - name: No frontend changes
         run: echo "No frontend changes; skipping real checks."
+
+  medallion-check:
+    name: Medallion import-layer gate
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Setup Python
+        uses: actions/setup-python@f677139bbe7f9c59b41e40162b753c062f5d49a3 # v5.2.0
+        with:
+          python-version: "3.11"
+
+      - name: Run medallion-check
+        run: make medallion-check

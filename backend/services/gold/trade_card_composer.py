@@ -35,6 +35,7 @@ from backend.models.broker_account import AccountStatus, BrokerAccount
 from backend.models.market_data import MarketRegime, MarketSnapshot
 from backend.models.picks import Candidate, PickAction
 from backend.models.user import User
+# medallion: allow cross-layer import (gold -> execution); resolves when backend.services.execution.risk_gate moves during Phase 0.C
 from backend.services.execution.risk_gate import (
     DEFAULT_STOP_MULTIPLIER,
     compute_position_size,
