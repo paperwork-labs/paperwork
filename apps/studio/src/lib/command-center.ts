@@ -449,10 +449,24 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
   const checks: Promise<InfraStatus>[] = [
     // Core services
     checkWithLatency(
+      "Brain API",
+      "core",
+      `${normalizeBaseUrl(process.env.BRAIN_API_URL) || "https://brain-api-zo5t.onrender.com"}/health`,
+      "https://dashboard.render.com/web/srv-d74f3cmuk2gs73a4013g",
+      { validateJson: true },
+    ),
+    checkWithLatency(
       "FileFree API",
       "core",
       `${normalizeBaseUrl(process.env.FILEFREE_API_URL) || "https://api.filefree.ai"}/health`,
-      "https://dashboard.render.com",
+      "https://dashboard.render.com/web/srv-d70o3jvkijhs73a0ee7g",
+      { validateJson: true },
+    ),
+    checkWithLatency(
+      "AxiomFolio API",
+      "core",
+      `${normalizeBaseUrl(process.env.AXIOMFOLIO_API_URL) || "https://axiomfolio-api-02ei.onrender.com"}/health`,
+      "https://dashboard.render.com/web/srv-d7lg0o77f7vs73b2k7m0",
       { validateJson: true },
     ),
     checkWithLatency(

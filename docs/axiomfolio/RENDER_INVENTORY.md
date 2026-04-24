@@ -1,5 +1,10 @@
 # Render Inventory — AxiomFolio Team (pre-migration snapshot)
 
+> **⚠️ DEPRECATED — 2026-04-24.** This doc is a historical snapshot from before the
+> monorepo consolidation. The live source of truth is
+> [../infra/RENDER_INVENTORY.md](../infra/RENDER_INVENTORY.md). Do not update this
+> file; leave it as a frozen record of the pre-migration state.
+
 _Generated 2026-04-23. Owner: `tea-d64meenpm1nc738rhdsg` (team "AxiomFolio", contact sankalp404@gmail.com)._
 
 ## Services
