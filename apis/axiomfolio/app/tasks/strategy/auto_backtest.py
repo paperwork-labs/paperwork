@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session
 from app.database import SessionLocal
 from app.models.backtest import StrategyBacktest, BacktestStatus
 from app.models.strategy import Strategy, StrategyStatus
-from app.services.strategy.backtest_engine import BacktestEngine, BacktestResult
-from app.services.strategy.rule_evaluator import ConditionGroup
+from app.services.gold.strategy.backtest_engine import BacktestEngine, BacktestResult
+from app.services.gold.strategy.rule_evaluator import ConditionGroup
 
 logger = logging.getLogger(__name__)
 

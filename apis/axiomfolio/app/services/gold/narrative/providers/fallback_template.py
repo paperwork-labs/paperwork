@@ -9,7 +9,7 @@ import hashlib
 import json
 from typing import Any, List, Mapping, Optional
 
-from app.services.narrative.provider import NarrativeResult
+from app.services.gold.narrative.provider import NarrativeResult
 
 
 def _pct(v: Optional[float]) -> str:

@@ -21,12 +21,12 @@ from app.models.portfolio import PortfolioHistory
 from app.models.position import Position, PositionStatus
 from app.models.transaction import Dividend
 from app.services.silver.regime.regime_engine import get_regime_for_date
-from app.services.narrative.provider import (
+from app.services.gold.narrative.provider import (
     NarrativeProvider,
     NarrativeProviderError,
     NarrativeResult,
 )
-from app.services.narrative.providers.fallback_template import render_from_summary
+from app.services.gold.narrative.providers.fallback_template import render_from_summary
 
 logger = logging.getLogger(__name__)
 

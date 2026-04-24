@@ -15,7 +15,7 @@ from app.database import get_db
 from app.models import User
 from app.models.entitlement import SubscriptionTier
 from app.models.user import UserRole
-from app.services.backtest.monte_carlo import MIN_SAMPLES
+from app.services.gold.backtest.monte_carlo import MIN_SAMPLES
 from app.services.billing.entitlement_service import EntitlementService
 
 

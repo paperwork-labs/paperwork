@@ -18,18 +18,18 @@ from typing import List, Sequence
 import pytest
 from sqlalchemy import event
 
-import app.services.picks.generators  # noqa: F401
-from app.services.picks.generators import stage2a_rs_strong_kell  # noqa: F401
+import app.services.gold.picks.generators  # noqa: F401
+from app.services.gold.picks.generators import stage2a_rs_strong_kell  # noqa: F401
 from app.models.market_data import MarketRegime, MarketSnapshot
 from app.models.picks import Candidate, CandidateQueueState, PickAction
-from app.services.picks.candidate_generator import (
+from app.services.gold.picks.candidate_generator import (
     CandidateGenerator,
     GeneratedCandidate,
     persist_candidates,
     registered_generators,
     run_all_generators,
 )
-from app.services.picks.generators.stage2a_rs_strong import (
+from app.services.gold.picks.generators.stage2a_rs_strong import (
     Stage2ARsStrongGenerator,
     Stage2AThresholds,
 )

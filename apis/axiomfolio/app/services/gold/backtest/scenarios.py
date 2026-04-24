@@ -25,7 +25,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import Dict, List, Optional, Sequence
 
-from app.services.backtest.monte_carlo import (
+from app.services.gold.backtest.monte_carlo import (
     MonteCarloResult,
     MonteCarloSimulator,
 )

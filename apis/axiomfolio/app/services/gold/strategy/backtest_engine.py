@@ -14,12 +14,12 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
 from app.models.market_data import MarketSnapshotHistory
-from app.services.strategy.rule_evaluator import (
+from app.services.gold.strategy.rule_evaluator import (
     ConditionGroup,
     RuleEvaluator,
     RuleEvalResult,
 )
-from app.services.strategy.context_builder import history_to_context, add_prev_fields, FIELD_ALIASES
+from app.services.gold.strategy.context_builder import history_to_context, add_prev_fields, FIELD_ALIASES
 
 logger = logging.getLogger(__name__)
 

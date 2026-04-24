@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Sequence
 from sqlalchemy.orm import Session
 
 if TYPE_CHECKING:
-    from app.services.backtest.walk_forward import TradeResult
+    from app.services.gold.backtest.walk_forward import TradeResult
 
 logger = logging.getLogger(__name__)
 

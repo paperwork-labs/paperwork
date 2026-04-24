@@ -10,15 +10,15 @@ from app.database import SessionLocal
 from app.models.strategy import Strategy, StrategyStatus, StrategyRun, RunStatus, ExecutionMode
 from app.models.market_data import MarketSnapshot
 from app.models.signals import Signal, SignalType, SignalStatus
-from app.services.strategy.rule_evaluator import (
+from app.services.gold.strategy.rule_evaluator import (
     RuleEvaluator,
     ConditionGroup,
     Condition,
     ConditionOperator,
     LogicalOperator,
 )
-from app.services.strategy.signal_generator import SignalGenerator
-from app.services.strategy.context_builder import snapshot_to_context, get_regime_context
+from app.services.gold.strategy.signal_generator import SignalGenerator
+from app.services.gold.strategy.context_builder import snapshot_to_context, get_regime_context
 from sqlalchemy import func
 
 logger = logging.getLogger(__name__)

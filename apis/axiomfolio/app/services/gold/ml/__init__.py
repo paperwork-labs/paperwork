@@ -3,7 +3,7 @@
 medallion: gold
 """
 
-from app.services.ml.slippage_predictor import (
+from app.services.gold.ml.slippage_predictor import (
     SlippagePredictor,
     SlippagePrediction,
     TrainingResult,

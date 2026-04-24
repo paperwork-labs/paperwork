@@ -47,20 +47,20 @@ import optuna
 from optuna.samplers import TPESampler
 from sqlalchemy.orm import Session
 
-from app.services.backtest.objectives import (
+from app.services.gold.backtest.objectives import (
     OBJECTIVES,
     ObjectiveFn,
     get_objective,
     list_objectives,
 )
-from app.services.backtest.regime_attribution import (
+from app.services.gold.backtest.regime_attribution import (
     REGIME_LABELS,
     RegimeLookup,
     attribute_trades_by_regime,
     filter_trades_by_regime,
 )
-from app.services.strategy.backtest_engine import BacktestEngine, BacktestTrade
-from app.services.strategy.rule_evaluator import ConditionGroup
+from app.services.gold.strategy.backtest_engine import BacktestEngine, BacktestTrade
+from app.services.gold.strategy.rule_evaluator import ConditionGroup
 
 logger = logging.getLogger(__name__)
 

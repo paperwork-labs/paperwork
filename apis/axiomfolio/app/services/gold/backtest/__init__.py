@@ -15,7 +15,7 @@ analysis type does not break the whole package.
 medallion: gold
 """
 
-from app.services.backtest.walk_forward import (
+from app.services.gold.backtest.walk_forward import (
     StrategyBuilder,
     SplitResult,
     StudyResult,

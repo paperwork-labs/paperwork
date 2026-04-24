@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from app.models.broker_account import BrokerAccount
-from app.services.strategy.account_strategy import get_strategy_profile
+from app.services.gold.strategy.account_strategy import get_strategy_profile
 
 
 def build_exit_planner_context(account: BrokerAccount) -> Dict[str, Any]:

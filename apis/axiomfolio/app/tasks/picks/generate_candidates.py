@@ -26,8 +26,8 @@ from app.tasks.utils.task_utils import task_run
 # Importing the generators package registers concrete generators with
 # the registry via ``__init_subclass__``. Keep this import even if it
 # looks unused.
-from app.services.picks import generators  # noqa: F401
-from app.services.picks.candidate_generator import (
+from app.services.gold.picks import generators  # noqa: F401
+from app.services.gold.picks.candidate_generator import (
     GeneratorRunReport,
     registered_generators,
     run_all_generators,

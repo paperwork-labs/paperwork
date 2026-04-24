@@ -31,7 +31,7 @@ from app.services.silver.regime.regime_engine import (
     REGIME_R5,
     REGIME_RULES,
 )
-from app.services.strategy.account_strategy import get_strategy_profile
+from app.services.gold.strategy.account_strategy import get_strategy_profile
 
 logger = logging.getLogger(__name__)
 

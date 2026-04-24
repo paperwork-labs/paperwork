@@ -16,7 +16,7 @@ import app.config as app_config
 from app.api.main import app
 from app.database import get_db
 from app.models.picks import EmailInbox
-from app.services.picks.postmark_signature import validate_postmark_signature
+from app.services.gold.picks.postmark_signature import validate_postmark_signature
 
 URL = "/api/v1/webhooks/picks/inbound"
 

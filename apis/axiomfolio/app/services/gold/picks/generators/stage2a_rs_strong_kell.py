@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.picks import PickAction
-from app.services.picks.candidate_generator import (
+from app.services.gold.picks.candidate_generator import (
     CandidateGenerator,
     GeneratedCandidate,
 )

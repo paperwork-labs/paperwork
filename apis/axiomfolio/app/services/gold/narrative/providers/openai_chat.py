@@ -15,7 +15,7 @@ try:
 except ImportError:  # pragma: no cover
     requests = None  # type: ignore[assignment]
 
-from app.services.narrative.provider import NarrativeProviderError, NarrativeResult
+from app.services.gold.narrative.provider import NarrativeProviderError, NarrativeResult
 
 DEFAULT_MODEL = "gpt-4o-mini"
 OPENAI_API_URL = "https://api.openai.com/v1/chat/completions"

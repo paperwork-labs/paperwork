@@ -15,21 +15,21 @@ from app.models.user import User
 from app.models.strategy import Strategy, StrategyType, StrategyStatus, BacktestRun, RunStatus
 from app.models.backtest import StrategyBacktest, BacktestStatus
 from app.models.market_data import MarketSnapshot
-from app.services.strategy.rule_evaluator import (
+from app.services.gold.strategy.rule_evaluator import (
     RuleEvaluator,
     ConditionGroup,
     Condition,
     ConditionOperator,
     LogicalOperator,
 )
-from app.services.strategy.signal_generator import SignalGenerator
-from app.services.strategy.backtest_engine import BacktestEngine
-from app.services.strategy.templates import (
+from app.services.gold.strategy.signal_generator import SignalGenerator
+from app.services.gold.strategy.backtest_engine import BacktestEngine
+from app.services.gold.strategy.templates import (
     get_template,
     list_templates as _list_templates,
     STRATEGY_TEMPLATES,
 )
-from app.services.strategy.context_builder import snapshot_to_context
+from app.services.gold.strategy.context_builder import snapshot_to_context
 
 import logging
 
@@ -770,7 +770,7 @@ def start_paper_validation(
     - Win rate >= 40%
     - Max drawdown <= 15%
     """
-    from app.services.strategy.paper_validator import PaperValidator
+    from app.services.gold.strategy.paper_validator import PaperValidator
     
     validator = PaperValidator(db)
     result = validator.start_validation(strategy_id, user.id)
@@ -789,7 +789,7 @@ def get_paper_validation_status(
     user: User = Depends(get_current_user),
 ):
     """Get current paper validation status and metrics."""
-    from app.services.strategy.paper_validator import PaperValidator
+    from app.services.gold.strategy.paper_validator import PaperValidator
     
     validator = PaperValidator(db)
     result = validator.check_validation(strategy_id, user.id)
@@ -818,7 +818,7 @@ def promote_to_live(
     
     Only succeeds if paper validation has passed all checks.
     """
-    from app.services.strategy.paper_validator import PaperValidator
+    from app.services.gold.strategy.paper_validator import PaperValidator
     
     validator = PaperValidator(db)
     result = validator.promote_to_live(strategy_id, user.id)
@@ -837,7 +837,7 @@ def reset_paper_validation(
     user: User = Depends(get_current_user),
 ):
     """Reset paper validation to start over."""
-    from app.services.strategy.paper_validator import PaperValidator
+    from app.services.gold.strategy.paper_validator import PaperValidator
     
     validator = PaperValidator(db)
     result = validator.reset_validation(strategy_id, user.id)

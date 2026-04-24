@@ -2216,8 +2216,8 @@ class AgentBrain:
             from datetime import datetime
             from app.models.strategy import Strategy
             from app.models.market_data import MarketSnapshot
-            from app.services.strategy.backtest_engine import BacktestEngine
-            from app.services.strategy.rule_evaluator import (
+            from app.services.gold.strategy.backtest_engine import BacktestEngine
+            from app.services.gold.strategy.rule_evaluator import (
                 ConditionGroup, Condition, LogicalOperator, ConditionOperator
             )
 
@@ -2298,7 +2298,7 @@ class AgentBrain:
     async def _tool_list_strategy_templates(self) -> Dict[str, Any]:
         """List available strategy templates."""
         try:
-            from app.services.strategy.templates import list_templates
+            from app.services.gold.strategy.templates import list_templates
 
             templates = list_templates()
             return {
@@ -2332,7 +2332,7 @@ class AgentBrain:
             if not template_id:
                 return {"error": "template_id is required - use list_strategy_templates to see options"}
 
-            from app.services.strategy.templates import get_template
+            from app.services.gold.strategy.templates import get_template
             from app.models.strategy import Strategy, StrategyType
             from app.models import User
 

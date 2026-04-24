@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.strategy import Strategy, StrategyType, StrategyStatus
-from app.services.strategy.rule_evaluator import (
+from app.services.gold.strategy.rule_evaluator import (
     ConditionGroup,
     Condition,
     ConditionOperator,

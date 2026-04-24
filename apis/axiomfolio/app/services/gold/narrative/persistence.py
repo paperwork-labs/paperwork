@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.narrative import PortfolioNarrative
-from app.services.narrative.provider import NarrativeResult
+from app.services.gold.narrative.provider import NarrativeResult
 
 logger = logging.getLogger(__name__)
 

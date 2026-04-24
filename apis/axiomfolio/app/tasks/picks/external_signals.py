@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 from app.config import settings
 from app.database import SessionLocal
-from app.services.signals.external_aggregator import (
+from app.services.gold.signals.external_aggregator import (
     fetch_finviz_signals,
     fetch_zacks_signals,
     persist_signals,

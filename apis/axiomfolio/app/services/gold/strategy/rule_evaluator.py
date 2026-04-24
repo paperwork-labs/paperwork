@@ -11,7 +11,7 @@ from enum import Enum
 from typing import Any, Dict, List, Optional
 
 from app.models.broker_account import BrokerAccount
-from app.services.strategy.account_strategy import get_strategy_profile
+from app.services.gold.strategy.account_strategy import get_strategy_profile
 
 logger = logging.getLogger(__name__)
 

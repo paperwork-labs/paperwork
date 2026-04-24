@@ -26,13 +26,13 @@ from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.walk_forward_study import WalkForwardStatus, WalkForwardStudy
-from app.services.backtest.regime_attribution import db_regime_lookup
-from app.services.backtest.walk_forward import (
+from app.services.gold.backtest.regime_attribution import db_regime_lookup
+from app.services.gold.backtest.walk_forward import (
     StrategyBuilder,
     WalkForwardOptimizer,
     build_default_runner,
 )
-from app.services.strategy.rule_evaluator import (
+from app.services.gold.strategy.rule_evaluator import (
     Condition,
     ConditionGroup,
     ConditionOperator,

@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
-from app.services.strategy.paper_validator import (
+from app.services.gold.strategy.paper_validator import (
     PaperValidator,
     ValidationConfig,
     ValidationResult,

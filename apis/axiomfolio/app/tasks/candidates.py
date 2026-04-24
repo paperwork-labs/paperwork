@@ -11,8 +11,8 @@ from app.services.billing.entitlement_service import EntitlementService
 from app.tasks.celery_app import celery_app
 from app.tasks.utils.task_utils import task_run
 
-from app.services.picks import generators  # noqa: F401 — register generators
-from app.services.picks.candidate_generator import run_all_generators
+from app.services.gold.picks import generators  # noqa: F401 — register generators
+from app.services.gold.picks.candidate_generator import run_all_generators
 
 logger = logging.getLogger(__name__)
 

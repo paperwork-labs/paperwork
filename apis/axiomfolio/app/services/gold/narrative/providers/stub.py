@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import hashlib
 
-from app.services.narrative.provider import NarrativeResult
+from app.services.gold.narrative.provider import NarrativeResult
 
 
 class StubNarrativeProvider:

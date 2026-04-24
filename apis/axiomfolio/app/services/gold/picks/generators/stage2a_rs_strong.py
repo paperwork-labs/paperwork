@@ -44,7 +44,7 @@ from sqlalchemy.orm import Session, load_only
 
 from app.models.market_data import MarketSnapshot
 from app.models.picks import PickAction
-from app.services.picks.candidate_generator import (
+from app.services.gold.picks.candidate_generator import (
     CandidateGenerator,
     GeneratedCandidate,
 )

@@ -3,7 +3,7 @@
 medallion: gold
 """
 
-from app.services.signals.external_aggregator import (
+from app.services.gold.signals.external_aggregator import (
     external_context_bonus_points,
     external_context_bonus_points_map,
     fetch_finviz_signals,
