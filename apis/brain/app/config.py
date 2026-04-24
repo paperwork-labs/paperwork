@@ -44,7 +44,6 @@ class Settings(BaseSettings):
     AXIOMFOLIO_API_URL: str = "http://localhost:8100"
     AXIOMFOLIO_API_KEY: str = ""
     AXIOMFOLIO_WEBHOOK_SECRET: str = ""
-    BRAIN_GITHUB_WEBHOOK_SECRET: str = ""
     BRAIN_PR_REVIEW_MODEL: str = ""
     MAX_ITERATIONS: int = 5
     LANGFUSE_PUBLIC_KEY: str = ""

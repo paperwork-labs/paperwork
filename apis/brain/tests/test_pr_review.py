@@ -1,20 +1,18 @@
 """Unit tests for Brain's PR review pipeline (pure-function pieces only).
 
-The full review_pr() path hits GitHub + Anthropic + the DB, so it's covered
-by integration in staging. This file locks down the logic that lives
-entirely in-process: model selection, file extraction, review formatting,
-and HMAC verification on the webhook router.
+The full review_pr() / sweep_open_prs() path hits GitHub + Anthropic + the DB,
+so it's covered by integration in staging. This file locks down the logic that
+lives entirely in-process: model selection, file extraction, review formatting,
+user-content composition, and the skip predicates inside ``sweep_open_prs``.
 """
 
 from __future__ import annotations
 
-import hashlib
-import hmac
-import json
-
 from app.services.pr_review import (
     BIG_MODEL,
     DEFAULT_MODEL,
+    _SKIP_AUTHORS,
+    _SKIP_LABELS,
     _choose_model,
     _compose_user_content,
     _extract_files,
@@ -51,13 +49,13 @@ class TestExtractFiles:
             "\n"
             "Files:\n"
             "apis/brain/app/main.py\n"
-            "apis/brain/app/routers/pr_review.py\n"
+            "apis/brain/app/services/pr_review.py\n"
             "docs/BRAIN_PR_REVIEW.md\n"
         )
         files = _extract_files(meta)
         assert files == [
             "apis/brain/app/main.py",
-            "apis/brain/app/routers/pr_review.py",
+            "apis/brain/app/services/pr_review.py",
             "docs/BRAIN_PR_REVIEW.md",
         ]
 
@@ -123,14 +121,28 @@ class TestComposeUserContent:
         assert "prior thing" in out
 
 
-class TestWebhookHMAC:
-    """Smoke-test the HMAC computation in routers/pr_review."""
+class TestSweepSkipConstants:
+    """The sweep filters on two frozensets — lock them down so we don't
+    accidentally widen the scope Brain auto-reviews."""
 
-    def test_signature_matches_expected(self) -> None:
-        secret = "s3cr3t"
-        body = json.dumps({"pr_number": 1, "action": "opened", "organization_id": "paperwork-labs"}, separators=(",", ":")).encode()
-        expected = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-        # Same computation the workflow performs via `openssl dgst`.
-        shell_form = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-        assert expected == shell_form
-        assert len(expected) == 64
+    def test_bots_are_skipped(self) -> None:
+        assert "dependabot[bot]" in _SKIP_AUTHORS
+        assert "renovate[bot]" in _SKIP_AUTHORS
+        assert "github-actions[bot]" in _SKIP_AUTHORS
+
+    def test_dependency_labels_are_skipped(self) -> None:
+        # Brain deliberately stays out of Dependabot-land — those go through
+        # the Haiku triage pipeline in dependabot-major-triage.yaml.
+        assert "deps:major" in _SKIP_LABELS
+        assert "dependencies" in _SKIP_LABELS
+
+    def test_opt_out_labels_respected(self) -> None:
+        assert "skip-brain-review" in _SKIP_LABELS
+        assert "do-not-merge" in _SKIP_LABELS
+
+    def test_no_accidental_default_skip(self) -> None:
+        # If someone adds a PR with no labels, the sweep MUST review it.
+        # Regression guard against someone putting "" or "enhancement" in here.
+        assert "" not in _SKIP_LABELS
+        for lbl in _SKIP_LABELS:
+            assert lbl.strip() == lbl, f"whitespace in skip label: {lbl!r}"
