@@ -44,11 +44,11 @@ AxiomFolio connects to the shared services on their dev defaults:
 
 | Service      | URL from inside a container                                       |
 | ------------ | ----------------------------------------------------------------- |
-| postgres     | `postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_dev` |
+| postgres     | `postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_dev` |
 | redis        | `redis://redis:6379/3`                                            |
 | celery broker| `redis://redis:6379/3`                                            |
 
-The postgres role `filefree` owns every product's DB in dev — this is a
+The postgres role `paperwork` owns every product's DB in dev — this is a
 dev-only convenience. Production Render deploys use per-service managed
 databases with scoped roles (see `apis/axiomfolio/render.yaml`).
 

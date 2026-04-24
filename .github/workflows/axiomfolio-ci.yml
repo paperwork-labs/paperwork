@@ -100,7 +100,7 @@ jobs:
           # Wait for postgres to accept connections and init-test-db.sh to run.
           for i in $(seq 1 30); do
             if docker compose -f compose.dev.yaml exec -T postgres \
-                pg_isready -U filefree -d axiomfolio_test >/dev/null 2>&1; then
+                pg_isready -U paperwork -d axiomfolio_test >/dev/null 2>&1; then
               echo "postgres ready"; break
             fi
             echo "waiting for postgres... ($i/30)"; sleep 2
@@ -116,7 +116,7 @@ jobs:
           docker compose --project-name paperwork \
             -f ../../infra/compose.dev.yaml \
             run --rm --no-deps \
-            -e DATABASE_URL=postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_test \
+            -e DATABASE_URL=postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_test \
             api-axiomfolio python -c "
           from alembic.config import Config
           from alembic.script import ScriptDirectory

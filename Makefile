@@ -137,7 +137,7 @@ shell-web: ## Open a shell in a web container (default: web-filefree)
 	$(COMPOSE) exec $(WEB_SERVICE) sh
 
 db: ## Open psql in shared dev database
-	$(COMPOSE) exec postgres psql -U filefree -d filefree_dev
+	$(COMPOSE) exec postgres psql -U paperwork -d filefree_dev
 
 env-pull: ## Pull Vercel production env vars to Studio .env.local
 	cd apps/studio && vercel env pull .env.local --environment=production

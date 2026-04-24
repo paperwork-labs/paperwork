@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Paperwork Labs — Dev Portal</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📎%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111111;
+      --surface-hover: #1a1a1a;
+      --border: #262626;
+      --border-hover: #3a3a3a;
+      --text: #fafafa;
+      --text-muted: #a1a1aa;
+      --text-dim: #71717a;
+      --accent: #f97316;
+      --accent-soft: #f9731620;
+      --green: #22c55e;
+      --blue: #3b82f6;
+      --purple: #a855f7;
+      --yellow: #eab308;
+      --pink: #ec4899;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100vh;
+      padding: 3rem 2rem 4rem;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 3rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+    }
+
+    .brand-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent);
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      max-width: 640px;
+    }
+
+    .subtitle code {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 0.85rem;
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      color: var(--text);
+    }
+
+    section {
+      margin-bottom: 3rem;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .section-meta {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .card {
+      display: block;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.125rem;
+      text-decoration: none;
+      color: inherit;
+      transition: all 0.12s ease;
+      position: relative;
+    }
+
+    .card:hover {
+      background: var(--surface-hover);
+      border-color: var(--border-hover);
+      transform: translateY(-1px);
+    }
+
+    .card.card-info {
+      cursor: default;
+    }
+    .card.card-info:hover {
+      background: var(--surface);
+      border-color: var(--border);
+      transform: none;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      margin-bottom: 0.375rem;
+    }
+
+    .card-name {
+      font-weight: 500;
+      font-size: 0.95rem;
+      letter-spacing: -0.01em;
+    }
+
+    .card-port {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+    }
+
+    .card-desc {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .card-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+    }
+
+    .tag {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+
+    .tag-nextjs    { background: #ffffff12; color: #ffffff; }
+    .tag-vite      { background: #646cff22; color: #a5abff; }
+    .tag-fastapi   { background: #009688aa; color: #c1fff9; }
+    .tag-celery    { background: #37814a33; color: #7eec9d; }
+    .tag-postgres  { background: #336791aa; color: #b5d4ff; }
+    .tag-redis     { background: #dc382c33; color: #ff9d95; }
+    .tag-profile   { background: var(--accent-soft); color: var(--accent); }
+    .tag-host      { background: #a855f733; color: #d8b4fe; }
+    .tag-docs      { background: #3b82f633; color: #93c5fd; }
+    .tag-external  { background: #71717a33; color: var(--text-muted); }
+
+    .card-code {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 0.5rem 0.625rem;
+      margin-top: 0.5rem;
+      user-select: all;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      margin-right: 0.375rem;
+    }
+    .status-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.offline { background: var(--border); }
+
+    footer {
+      margin-top: 4rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    footer code {
+      font-family: "JetBrains Mono", ui-monospace, monospace;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <span class="brand-dot"></span>
+        Paperwork Labs — Dev Portal
+      </div>
+      <div class="subtitle">
+        One <code>docker compose up</code> boots every product. This portal is the map — ports, APIs, docs, and ops tools all in one place.
+        Services are reachable on <code>localhost</code> only. See <a href="https://github.com/paperwork-labs/paperwork/blob/main/docs/INFRA.md" style="color:var(--accent);text-decoration:none;">docs/INFRA.md</a> for the full architecture.
+      </div>
+    </header>
+
+    <section>
+      <div class="section-header">
+        <div class="section-title">Frontends</div>
+        <div class="section-meta">apps/</div>
+      </div>
+      <div class="grid">
+        <a class="card" href="http://localhost:3001" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:3001"></span>Studio</span><span class="card-port">:3001</span></div>
+          <div class="card-desc">Paperwork Labs admin & dashboards</div>
+          <div class="card-tags"><span class="tag tag-nextjs">Next.js</span></div>
+        </a>
+
+        <a class="card" href="http://localhost:3002" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:3002"></span>FileFree</span><span class="card-port">:3002</span></div>
+          <div class="card-desc">Free AI-powered tax filing — filefree.ai</div>
+          <div class="card-tags"><span class="tag tag-nextjs">Next.js</span></div>
+        </a>
+
+        <a class="card" href="http://localhost:3003" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:3003"></span>LaunchFree</span><span class="card-port">:3003</span></div>
+          <div class="card-desc">Free LLC formation — launchfree.ai</div>
+          <div class="card-tags"><span class="tag tag-nextjs">Next.js</span></div>
+        </a>
+
+        <a class="card" href="http://localhost:3004" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:3004"></span>Distill</span><span class="card-port">:3004</span></div>
+          <div class="card-desc">B2B tax compliance APIs — distill.tax</div>
+          <div class="card-tags"><span class="tag tag-nextjs">Next.js</span></div>
+        </a>
+
+        <a class="card" href="http://localhost:3005" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:3005"></span>Trinkets</span><span class="card-port">:3005</span></div>
+          <div class="card-desc">Micro-products & experiments</div>
+          <div class="card-tags"><span class="tag tag-nextjs">Next.js</span></div>
+        </a>
+
+        <a class="card" href="http://localhost:5173" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:5173"></span>AxiomFolio</span><span class="card-port">:5173</span></div>
+          <div class="card-desc">Portfolio intelligence — run <code style="color:var(--accent)">pnpm dev:axiomfolio</code></div>
+          <div class="card-tags"><span class="tag tag-vite">Vite + React 19</span><span class="tag tag-host">host-side</span></div>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <div class="section-title">Backends — API docs</div>
+        <div class="section-meta">apis/  ·  FastAPI auto-generated /docs</div>
+      </div>
+      <div class="grid">
+        <a class="card" href="http://localhost:8001/docs" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:8001/docs"></span>FileFree API</span><span class="card-port">:8001</span></div>
+          <div class="card-desc">Tax filing pipeline, MeF integration</div>
+          <div class="card-tags"><span class="tag tag-fastapi">FastAPI</span><span class="tag tag-postgres">filefree_dev</span></div>
+        </a>
+
+        <a class="card" href="http://localhost:8002/docs" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:8002/docs"></span>LaunchFree API</span><span class="card-port">:8002</span></div>
+          <div class="card-desc">LLC formation state machine</div>
+          <div class="card-tags"><span class="tag tag-fastapi">FastAPI</span><span class="tag tag-postgres">launchfree_dev</span></div>
+        </a>
+
+        <a class="card" href="http://localhost:8003/docs" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:8003/docs"></span>Brain API</span><span class="card-port">:8003</span></div>
+          <div class="card-desc">AI life intelligence — Slack/SMS orchestration</div>
+          <div class="card-tags"><span class="tag tag-fastapi">FastAPI</span><span class="tag tag-postgres">brain_dev</span></div>
+        </a>
+
+        <a class="card" href="http://localhost:8004/docs" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:8004/health"></span>AxiomFolio API</span><span class="card-port">:8004</span></div>
+          <div class="card-desc">Portfolio sync, stage analysis, Celery tasks</div>
+          <div class="card-tags"><span class="tag tag-fastapi">FastAPI</span><span class="tag tag-celery">Celery</span><span class="tag tag-postgres">axiomfolio_dev</span></div>
+        </a>
+
+        <a class="card" href="http://localhost:8004/health" target="_blank">
+          <div class="card-header"><span class="card-name">AxiomFolio · Health</span><span class="card-port">/health</span></div>
+          <div class="card-desc">Liveness probe (same endpoint Render uses)</div>
+          <div class="card-tags"><span class="tag tag-fastapi">FastAPI</span></div>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <div class="section-title">Ops & infra (opt-in profiles)</div>
+        <div class="section-meta">docker compose --profile &lt;name&gt; up</div>
+      </div>
+      <div class="grid">
+        <a class="card" href="http://localhost:5555" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:5555"></span>Flower — Celery monitor</span><span class="card-port">:5555</span></div>
+          <div class="card-desc">Task queue state, worker health, retries</div>
+          <div class="card-tags"><span class="tag tag-profile">--profile ops</span><span class="tag tag-celery">Celery</span></div>
+        </a>
+
+        <a class="card" href="http://localhost:6080" target="_blank">
+          <div class="card-header"><span class="card-name"><span class="status-dot" data-probe="http://localhost:6080"></span>IB Gateway (VNC)</span><span class="card-port">:6080</span></div>
+          <div class="card-desc">Interactive Brokers live/paper gateway UI</div>
+          <div class="card-tags"><span class="tag tag-profile">--profile ibkr</span></div>
+        </a>
+
+        <div class="card card-info">
+          <div class="card-header"><span class="card-name">Postgres</span><span class="card-port">:5433</span></div>
+          <div class="card-desc">pg18-alpine, shared across all products</div>
+          <div class="card-code">postgresql://paperwork:paperwork_dev@localhost:5433/axiomfolio_dev</div>
+          <div class="card-tags" style="margin-top:0.5rem;"><span class="tag tag-postgres">Postgres 18</span></div>
+        </div>
+
+        <div class="card card-info">
+          <div class="card-header"><span class="card-name">Redis</span><span class="card-port">:6380</span></div>
+          <div class="card-desc">redis 7-alpine, DBs /0..3 per product</div>
+          <div class="card-code">redis://localhost:6380/3   # axiomfolio</div>
+          <div class="card-tags" style="margin-top:0.5rem;"><span class="tag tag-redis">Redis 7</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <div class="section-title">Philosophy docs</div>
+        <div class="section-meta">docs/</div>
+      </div>
+      <div class="grid">
+        <a class="card" href="https://github.com/paperwork-labs/paperwork/blob/main/docs/INFRA.md" target="_blank">
+          <div class="card-header"><span class="card-name">INFRA.md</span></div>
+          <div class="card-desc">One dev stack, service map, port table, pg upgrade</div>
+          <div class="card-tags"><span class="tag tag-docs">architecture</span></div>
+        </a>
+        <a class="card" href="https://github.com/paperwork-labs/paperwork/blob/main/docs/INFRA_PHILOSOPHY.md" target="_blank">
+          <div class="card-header"><span class="card-name">INFRA_PHILOSOPHY.md</span></div>
+          <div class="card-desc">Tier-1 (Render) vs Tier-2 (Hetzner); why + when</div>
+          <div class="card-tags"><span class="tag tag-docs">philosophy</span></div>
+        </a>
+        <a class="card" href="https://github.com/paperwork-labs/paperwork/blob/main/docs/DATA_PHILOSOPHY.md" target="_blank">
+          <div class="card-header"><span class="card-name">DATA_PHILOSOPHY.md</span></div>
+          <div class="card-desc">Five iron laws of data; medallion layering; CI-enforced</div>
+          <div class="card-tags"><span class="tag tag-docs">data</span></div>
+        </a>
+        <a class="card" href="https://github.com/paperwork-labs/paperwork/blob/main/docs/ORCHESTRATION_PHILOSOPHY.md" target="_blank">
+          <div class="card-header"><span class="card-name">ORCHESTRATION_PHILOSOPHY.md</span></div>
+          <div class="card-desc">Celery vs Airflow/Prefect/Dagster/Temporal — why Celery</div>
+          <div class="card-tags"><span class="tag tag-docs">ops</span></div>
+        </a>
+        <a class="card" href="https://github.com/paperwork-labs/paperwork/blob/main/AGENTS.md" target="_blank">
+          <div class="card-header"><span class="card-name">AGENTS.md</span></div>
+          <div class="card-desc">Personas, git workflow, AI agent entry points</div>
+          <div class="card-tags"><span class="tag tag-docs">agents</span></div>
+        </a>
+        <a class="card" href="https://github.com/paperwork-labs/paperwork/blob/main/apis/axiomfolio/AGENTS.md" target="_blank">
+          <div class="card-header"><span class="card-name">AxiomFolio · Agent entry</span></div>
+          <div class="card-desc">Iron laws, danger zones, stage analysis playbook</div>
+          <div class="card-tags"><span class="tag tag-docs">axiomfolio</span></div>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <div class="section-header">
+        <div class="section-title">External dashboards</div>
+        <div class="section-meta">prod ops & deploy</div>
+      </div>
+      <div class="grid">
+        <a class="card" href="https://github.com/paperwork-labs/paperwork" target="_blank">
+          <div class="card-header"><span class="card-name">GitHub — paperwork</span></div>
+          <div class="card-desc">Monorepo (main) · PRs · Actions</div>
+          <div class="card-tags"><span class="tag tag-external">GitHub</span></div>
+        </a>
+        <a class="card" href="https://dashboard.render.com" target="_blank">
+          <div class="card-header"><span class="card-name">Render</span></div>
+          <div class="card-desc">Tier-1 deploys for every product backend</div>
+          <div class="card-tags"><span class="tag tag-external">Render</span></div>
+        </a>
+        <a class="card" href="https://vercel.com/paperwork-labs" target="_blank">
+          <div class="card-header"><span class="card-name">Vercel</span></div>
+          <div class="card-desc">Frontend deploys · preview URLs per PR</div>
+          <div class="card-tags"><span class="tag tag-external">Vercel</span></div>
+        </a>
+        <a class="card" href="https://paperworklabs.slack.com" target="_blank">
+          <div class="card-header"><span class="card-name">Slack</span></div>
+          <div class="card-desc">#decisions · #daily-briefing · Brain agents</div>
+          <div class="card-tags"><span class="tag tag-external">Slack</span></div>
+        </a>
+      </div>
+    </section>
+
+    <footer>
+      <div>
+        Served by <code>nginx:alpine</code> from <code>infra/portal/</code>.
+        Rebuild on change: <code>docker compose -f infra/compose.dev.yaml restart portal</code>
+      </div>
+      <div>
+        <span id="probe-summary">probing services…</span>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    // Live status dots — fire-and-forget HEAD probes with a 1 s timeout.
+    // CORS will block reading the response body, but network-level
+    // reachability is what we care about. If the host responds at all
+    // (even with a CORS error), the fetch promise resolves with an
+    // opaque response; if nothing's listening, it rejects with TypeError.
+    async function probe(url) {
+      try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 1200);
+        await fetch(url, {
+          method: "GET",
+          mode: "no-cors",
+          cache: "no-cache",
+          signal: controller.signal,
+        });
+        clearTimeout(timer);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+
+    (async () => {
+      const dots = document.querySelectorAll("[data-probe]");
+      let online = 0;
+      const total = dots.length;
+      await Promise.all(
+        Array.from(dots).map(async (dot) => {
+          const url = dot.getAttribute("data-probe");
+          const ok = await probe(url);
+          dot.classList.add(ok ? "online" : "offline");
+          if (ok) online += 1;
+        })
+      );
+      const summary = document.getElementById("probe-summary");
+      if (summary) {
+        summary.textContent = `${online}/${total} services responding`;
+      }
+    })();
+  </script>
+</body>
+</html>

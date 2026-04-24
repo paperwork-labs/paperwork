@@ -59,25 +59,42 @@ APIs) gets its own `infra/<product>/` folder following the same pattern.
 
 | Service    | Port host:container | Purpose                                    |
 | ---------- | ------------------- | ------------------------------------------ |
+| `portal`   | 3000:80             | dev portal — <http://localhost:3000>        |
 | `postgres` | 5433:5432           | postgres 18-alpine, all product DBs        |
 | `redis`    | 6380:6379           | redis 7-alpine, logical DBs `/0..3`        |
 
+The **portal** is a static landing page (`infra/portal/index.html`,
+served by `nginx:alpine`) that links to every frontend, API `/docs`,
+ops tool, and philosophy doc. It's the "where is everything?" map —
+open <http://localhost:3000> any time the stack is up. Edits to the
+HTML hot-reload (no rebuild needed); structural changes go via
+`docker compose restart portal`.
+
 **Databases (auto-created by `init-test-db.sh`):**
 
-| DB                 | Owner      | Purpose                    |
-| ------------------ | ---------- | -------------------------- |
-| `filefree_dev`     | `filefree` | FileFree backend           |
-| `filefree_test`    | `filefree` | FileFree pytest            |
-| `launchfree_dev`   | `filefree` | LaunchFree backend         |
-| `launchfree_test`  | `filefree` | LaunchFree pytest          |
-| `brain_dev`        | `filefree` | Brain backend              |
-| `brain_test`       | `filefree` | Brain pytest               |
-| `axiomfolio_dev`   | `filefree` | AxiomFolio backend         |
-| `axiomfolio_test`  | `filefree` | AxiomFolio pytest          |
+| DB                 | Owner       | Purpose                    |
+| ------------------ | ----------- | -------------------------- |
+| `filefree_dev`     | `paperwork` | FileFree backend           |
+| `filefree_test`    | `paperwork` | FileFree pytest            |
+| `launchfree_dev`   | `paperwork` | LaunchFree backend         |
+| `launchfree_test`  | `paperwork` | LaunchFree pytest          |
+| `brain_dev`        | `paperwork` | Brain backend              |
+| `brain_test`       | `paperwork` | Brain pytest               |
+| `axiomfolio_dev`   | `paperwork` | AxiomFolio backend         |
+| `axiomfolio_test`  | `paperwork` | AxiomFolio pytest          |
 
-All products share the `filefree` postgres role (owner of all DBs). This
-is dev-only; production Render deploys provision per-service managed
-databases with scoped roles.
+All products share the `paperwork` postgres role (owner of all DBs).
+This is dev-only; production Render deploys provision per-service
+managed databases with scoped roles. The role was renamed from
+`filefree` to `paperwork` on 2026-04-24 — if you have a pre-existing
+`pgdata` volume, wipe it (see "Upgrading an existing dev environment"
+below; the same `down -v` resets both the pg18 bump and the role).
+
+Dev connection string (inside a container):
+
+```
+postgresql://paperwork:paperwork_dev@postgres:5432/<product>_dev
+```
 
 **Redis logical DBs:**
 

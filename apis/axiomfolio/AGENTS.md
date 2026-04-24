@@ -2,10 +2,13 @@
 
 > **Canonical location (as of 2026-04-23)**: `apis/axiomfolio/` inside the
 > [paperwork monorepo](https://github.com/paperwork-labs/paperwork). The
-> standalone `paperwork-labs/axiomfolio` repo is being archived — do not
-> open new PRs against it. CI, Render blueprint, and agent coordination
-> all live at the monorepo root; see [.github/workflows/axiomfolio-ci.yml](../../.github/workflows/axiomfolio-ci.yml)
-> and [apis/axiomfolio/.github/WORKFLOWS_MOVED.md](.github/WORKFLOWS_MOVED.md).
+> standalone `paperwork-labs/axiomfolio` repo is archived — do not open
+> new PRs against it. CI lives at the monorepo root
+> ([.github/workflows/axiomfolio-ci.yml](../../.github/workflows/axiomfolio-ci.yml))
+> and the dev stack is driven from
+> [infra/compose.dev.yaml](../../infra/compose.dev.yaml). See
+> [docs/INFRA.md](../../docs/INFRA.md) for the full architecture and
+> [AGENTS.md (root)](../../AGENTS.md) for cross-product persona rules.
 
 Welcome, agent. This is a quantitative portfolio intelligence platform built for swing trading using Stage Analysis (Oliver Kell / Weinstein refined). Read this file first, then dive into the relevant domain.
 
@@ -13,7 +16,7 @@ Welcome, agent. This is a quantitative portfolio intelligence platform built for
 
 | Layer | Stack |
 |-------|-------|
-| Backend | Python 3.11, FastAPI, Celery, PostgreSQL 18 (dev Docker; test compose uses 16-alpine), Redis, SQLAlchemy 2.0, Alembic |
+| Backend | Python 3.11, FastAPI, Celery, PostgreSQL 18 (shared across monorepo dev stack; tests use `axiomfolio_test` DB on same instance), Redis, SQLAlchemy 2.0, Alembic |
 | Frontend | React 19, TypeScript 5, Vite, Radix UI, Tailwind CSS, shadcn/ui-style components, TanStack Query, Recharts, lightweight-charts |
 | Infra | Docker Compose (dev), Render (prod), Cloudflare (DNS/CDN), GitHub Actions (CI) |
 | Brokers | IBKR (FlexQuery + Gateway), TastyTrade (SDK), Schwab (OAuth) |
@@ -55,14 +58,14 @@ These paths match `.cursor/rules/protected-regions.mdc`. Get explicit approval b
 
 ### Configuration (system stability)
 
-- `backend/config.py` — Environment variables, feature flags
+- `app/config.py` — Environment variables, feature flags
 - `app/alembic/versions/*.py` — Database migrations
 - `app/tasks/job_catalog.py` — Celery schedules, timeouts
 
 ### Dependency manifests (supply chain / reproducible builds)
 
 - `pyproject.toml` and lock files — Python dependencies
-- `frontend/package.json` and lock files — Frontend dependencies  
+- `apps/axiomfolio/package.json` and lock files — Frontend dependencies  
   Use the same approval bar as other danger zones for major upgrades or security-sensitive dependency changes.
 
 ## Three Pillars
@@ -143,9 +146,9 @@ Context-specific AI rules activate based on which files you're editing:
 | Order manager | `app/services/execution/order_manager.py` | Single execution path |
 | Risk gate | `app/services/execution/risk_gate.py` | Position sizing, limits |
 | Job catalog | `app/tasks/job_catalog.py` | All scheduled tasks with metadata |
-| Market dashboard | `frontend/src/pages/MarketDashboard.tsx` | Main market view |
-| Theme | `frontend/src/styles/` | Tailwind config, design tokens |
-| Chart constants | `frontend/src/constants/chart.ts` | Stage colors, heat scales |
+| Market dashboard | `../../apps/axiomfolio/src/pages/MarketDashboard.tsx` | Main market view |
+| Theme | `../../apps/axiomfolio/src/styles/` | Tailwind config, design tokens |
+| Chart constants | `../../apps/axiomfolio/src/constants/chart.ts` | Stage colors, heat scales |
 
 ## Development Commands
 

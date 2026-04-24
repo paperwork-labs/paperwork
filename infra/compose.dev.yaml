@@ -1,12 +1,15 @@
-name: filefree
+name: paperwork
 
 services:
   postgres:
     container_name: paperwork-postgres
     image: postgres:18-alpine
     environment:
-      POSTGRES_USER: filefree
-      POSTGRES_PASSWORD: filefree_dev
+      # Shared role owns every per-product DB (filefree_dev, axiomfolio_dev,
+      # brain_dev, launchfree_dev). Dev-only — prod Render deploys provision
+      # managed databases per-service with scoped credentials.
+      POSTGRES_USER: paperwork
+      POSTGRES_PASSWORD: paperwork_dev
       POSTGRES_DB: filefree_dev
     ports:
       - "5433:5432"
@@ -14,7 +17,7 @@ services:
       - pgdata:/var/lib/postgresql/data
       - ./init-test-db.sh:/docker-entrypoint-initdb.d/init-test-db.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U filefree -d filefree_dev"]
+      test: ["CMD-SHELL", "pg_isready -U paperwork -d filefree_dev"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -29,6 +32,26 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # ─── Dev portal ────────────────────────────────────────────────────
+  # Single landing page at http://localhost:3000 linking to every
+  # frontend, API /docs, ops tool, and philosophy doc in the monorepo.
+  # Static HTML served by nginx-alpine; rebuild-free (hot-reload via
+  # volume mount). See infra/portal/index.html.
+  portal:
+    container_name: paperwork-portal
+    image: nginx:alpine
+    ports:
+      - "3000:80"
+    volumes:
+      - ./portal:/usr/share/nginx/html:ro
+      - ./portal/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
 
   api-filefree:
     container_name: filefree-api
@@ -45,8 +68,8 @@ services:
       - ../.env.secrets
     environment:
       PORT: 8001
-      DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/filefree_dev
-      TEST_DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/filefree_test
+      DATABASE_URL: postgresql+asyncpg://paperwork:paperwork_dev@postgres:5432/filefree_dev
+      TEST_DATABASE_URL: postgresql+asyncpg://paperwork:paperwork_dev@postgres:5432/filefree_test
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
     depends_on:
       postgres:
@@ -75,7 +98,7 @@ services:
     environment:
       PORT: 8002
       FRONTEND_URL: http://localhost:3002
-      DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/launchfree_dev
+      DATABASE_URL: postgresql+asyncpg://paperwork:paperwork_dev@postgres:5432/launchfree_dev
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]
     depends_on:
       postgres:
@@ -102,7 +125,7 @@ services:
       - env.dev.defaults
       - ../.env.secrets
     environment:
-      DATABASE_URL: postgresql+asyncpg://filefree:filefree_dev@postgres:5432/brain_dev
+      DATABASE_URL: postgresql+asyncpg://paperwork:paperwork_dev@postgres:5432/brain_dev
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     depends_on:
       postgres:
@@ -135,7 +158,7 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
       # AxiomFolio speaks sync SQLAlchemy; plain postgresql:// scheme (not +asyncpg).
-      DATABASE_URL: postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_dev
+      DATABASE_URL: postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_dev
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
       CELERY_RESULT_BACKEND: redis://redis:6379/3
@@ -174,7 +197,7 @@ services:
       PYTHONPATH: /app
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
-      DATABASE_URL: postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_dev
+      DATABASE_URL: postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_dev
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
       CELERY_RESULT_BACKEND: redis://redis:6379/3
@@ -212,7 +235,7 @@ services:
       PYTHONPATH: /app
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
-      DATABASE_URL: postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_dev
+      DATABASE_URL: postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_dev
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
       CELERY_RESULT_BACKEND: redis://redis:6379/3
@@ -241,7 +264,7 @@ services:
       PYTHONPATH: /app
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
-      DATABASE_URL: postgresql://filefree:filefree_dev@postgres:5432/axiomfolio_dev
+      DATABASE_URL: postgresql://paperwork:paperwork_dev@postgres:5432/axiomfolio_dev
       REDIS_URL: redis://redis:6379/3
       CELERY_BROKER_URL: redis://redis:6379/3
       CELERY_RESULT_BACKEND: redis://redis:6379/3
