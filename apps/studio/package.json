@@ -18,6 +18,8 @@
     "@paperwork-labs/ui": "workspace:*",
     "@tanstack/react-query": "^5.100.1",
     "@vercel/analytics": "^2.0.1",
+    "@xyflow/react": "^12.10.2",
+    "dagre": "^0.8.5",
     "framer-motion": "^12.38.0",
     "gray-matter": "^4.0.3",
     "js-yaml": "^4.1.1",
@@ -32,6 +34,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.4",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/dagre": "^0.7.54",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.0",
