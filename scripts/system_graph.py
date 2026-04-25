@@ -77,7 +77,7 @@ NODES: list[dict] = [
         "kind": "api",
         "module_path": "apis/axiomfolio/app/services/bronze",
         "description": "Raw provider clients: price, fundamentals, corporate actions.",
-        "owner_persona": "market-data-guardian",
+        "owner_persona": "trading",
         "depends_on": [],
     },
     {
@@ -88,7 +88,7 @@ NODES: list[dict] = [
         "kind": "api",
         "module_path": "apis/axiomfolio/app/services/silver",
         "description": "Stage analysis, indicators, point-in-time enrichments.",
-        "owner_persona": "quant-analyst",
+        "owner_persona": "trading",
         "depends_on": ["axiomfolio.bronze.market_data"],
     },
     {
@@ -99,7 +99,7 @@ NODES: list[dict] = [
         "kind": "api",
         "module_path": "apis/axiomfolio/app/services/gold",
         "description": "Decision surfaces: scanner output, shadow trades, portfolio views.",
-        "owner_persona": "portfolio-manager",
+        "owner_persona": "trading",
         "depends_on": ["axiomfolio.silver.features"],
     },
     {
@@ -110,7 +110,7 @@ NODES: list[dict] = [
         "kind": "worker",
         "module_path": "apis/axiomfolio/app/services/execution",
         "description": "Order routing, risk gate, circuit breakers.",
-        "owner_persona": "risk-manager",
+        "owner_persona": "trading",
         "depends_on": ["axiomfolio.gold.picks"],
     },
     {
@@ -245,7 +245,7 @@ NODES: list[dict] = [
         "kind": "mcp",
         "module_path": "apis/brain/app/mcp_server.py",
         "description": "32 MCP tools: GitHub, Render, Vercel, Neon, Upstash, n8n, memory, trading.",
-        "owner_persona": "brain-skill-engineer",
+        "owner_persona": "agent-ops",
         "llm_backed": True,
         "depends_on": ["brain.api"],
     },
@@ -292,7 +292,7 @@ NODES: list[dict] = [
         "health_url": "https://n8n.paperworklabs.com",
         "admin_url": "https://n8n.paperworklabs.com",
         "description": "Scheduler + shuttle. LLM calls being migrated to Brain personas.",
-        "owner_persona": "workflows",
+        "owner_persona": "agent-ops",
         "depends_on": ["brain.api"],
     },
     {
@@ -304,7 +304,7 @@ NODES: list[dict] = [
         "module_path": "apis/brain/app/models",
         "admin_url": "https://console.neon.tech",
         "description": "Primary data store — Brain, AxiomFolio, FileFree branches.",
-        "owner_persona": "prod-database",
+        "owner_persona": "infra-ops",
         "depends_on": [],
     },
     {
