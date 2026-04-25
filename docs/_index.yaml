@@ -31,10 +31,18 @@ categories:
     label: Reference
     description: Canonical product, brand, and partner specs. Read when you need the spec; update when reality diverges.
     order: 4
+  plans:
+    label: Plans
+    description: Long-lived per-product master plans, gap audits, and migration roadmaps.
+    order: 5
+  sprints:
+    label: Sprints
+    description: Cross-cutting time-boxed work logs. Each sprint links back to a PR + lessons.
+    order: 6
   generated:
     label: Generated
     description: Auto-produced from code (personas, PR automation, etc). Do not edit by hand; fix the generator.
-    order: 5
+    order: 7
 
 docs:
   # ── Philosophy (immutable) ───────────────────────────────────────────
@@ -66,6 +74,69 @@ docs:
     tags: [knowledge]
     owners: [strategy, qa]
     category: philosophy
+  - slug: philosophy-index
+    path: docs/philosophy/README.md
+    title: Philosophy Index
+    summary: Map of all immutable domain philosophy docs and how they pair with architecture.
+    tags: [philosophy, index]
+    owners: [strategy]
+    category: philosophy
+  - slug: brain-philosophy
+    path: docs/philosophy/BRAIN_PHILOSOPHY.md
+    title: Brain Philosophy
+    summary: Refusal triggers, memory red lines, cost ceilings — what Brain MUST and MUST NOT do.
+    tags: [philosophy, brain, agent-ops]
+    owners: [agent-ops, strategy]
+    category: philosophy
+  - slug: infra-philosophy
+    path: docs/philosophy/INFRA_PHILOSOPHY.md
+    title: Infra Philosophy
+    summary: Tier-1 vs Tier-2 placement, vendor doctrine, change-freeze rules.
+    tags: [philosophy, infra]
+    owners: [infra-ops, engineering]
+    category: philosophy
+  - slug: data-philosophy
+    path: docs/philosophy/DATA_PHILOSOPHY.md
+    title: Data Philosophy
+    summary: Medallion iron laws, source-of-truth hierarchy, append-only ledgers, PII rules.
+    tags: [philosophy, data, medallion, pii]
+    owners: [engineering, qa]
+    category: philosophy
+  - slug: ai-model-philosophy
+    path: docs/philosophy/AI_MODEL_PHILOSOPHY.md
+    title: AI Model Philosophy
+    summary: Multi-vendor, model selection, cost ceilings, eval requirements.
+    tags: [philosophy, llm, cost]
+    owners: [agent-ops, cfo]
+    category: philosophy
+  - slug: automation-philosophy
+    path: docs/philosophy/AUTOMATION_PHILOSOPHY.md
+    title: Automation Philosophy
+    summary: Auto-merge rules, no-silent-merges, when automation must stop.
+    tags: [philosophy, automation, ci]
+    owners: [agent-ops, engineering]
+    category: philosophy
+  - slug: tax-philosophy
+    path: docs/philosophy/TAX_PHILOSOPHY.md
+    title: Tax Philosophy
+    summary: What FileFree and the CPA persona will and will not do — disclaimers, EFIN rules.
+    tags: [philosophy, tax, compliance]
+    owners: [cpa, tax-domain]
+    category: philosophy
+  - slug: formation-philosophy
+    path: docs/philosophy/FORMATION_PHILOSOPHY.md
+    title: Formation Philosophy
+    summary: What LaunchFree will and will not do — multi-state, RA, KYC.
+    tags: [philosophy, formation, legal]
+    owners: [legal]
+    category: philosophy
+  - slug: trading-principles
+    path: docs/axiomfolio/TRADING_PRINCIPLES.md
+    title: Trading Principles (AxiomFolio)
+    summary: Risk discipline, breaker logic, what the trading agent will not do.
+    tags: [philosophy, trading, risk]
+    owners: [trading]
+    category: philosophy
 
   # ── Architecture ─────────────────────────────────────────────────────
   - slug: architecture
@@ -82,13 +153,6 @@ docs:
     tags: [brain, personas, llm]
     owners: [agent-ops, engineering]
     category: architecture
-  - slug: brain-personas
-    path: docs/BRAIN_PERSONAS.md
-    title: Brain Personas
-    summary: Who the 16 employees are and what channel each owns.
-    tags: [brain, personas]
-    owners: [agent-ops]
-    category: architecture
   - slug: brain-pr-review
     path: docs/BRAIN_PR_REVIEW.md
     title: Brain PR Review
@@ -104,18 +168,18 @@ docs:
     owners: [agent-ops, cfo]
     category: architecture
   - slug: axiomfolio-integration
-    path: docs/AXIOMFOLIO_INTEGRATION.md
-    title: AxiomFolio Integration
-    summary: How the trading agent talks to Paperwork Brain.
-    tags: [axiomfolio, brain, trading]
+    path: docs/AXIOMFOLIO_INTEGRATION.generated.md
+    title: AxiomFolio Integration (generated)
+    summary: How the trading agent delegates to Paperwork Brain. Auto-generated.
+    tags: [axiomfolio, brain, trading, generated]
     owners: [trading, engineering]
-    category: architecture
-  - slug: axiomfolio-handoff
-    path: docs/AXIOMFOLIO_HANDOFF.md
-    title: AxiomFolio Handoff Notes
-    summary: Migration notes from the standalone repo into the monorepo.
-    tags: [axiomfolio, migration]
-    owners: [engineering]
+    category: generated
+  - slug: axiomfolio-architecture
+    path: docs/axiomfolio/ARCHITECTURE.md
+    title: AxiomFolio Architecture
+    summary: Trading agent, Plaid, brokers, market data, and persistence.
+    tags: [axiomfolio, architecture]
+    owners: [trading, engineering]
     category: architecture
 
   # ── Runbooks ─────────────────────────────────────────────────────────
@@ -220,11 +284,57 @@ docs:
     owners: [cfo]
     category: reference
 
-  # ── Generated ────────────────────────────────────────────────────────
+  # ── Plans (per-product master plans + cross-cutting roadmaps) ────────
   - slug: tasks
     path: docs/TASKS.md
-    title: Tasks (generated)
-    summary: Active TODO list. Regenerated from code comments + todos.
-    tags: [tasks, generated]
+    title: Company Tasks (TASKS.md)
+    summary: Top-level company tracker — critical dates, pre-code blockers, phases.
+    tags: [tasks, company, tracker]
+    owners: [strategy, engineering]
+    category: plans
+  - slug: axiomfolio-master-plan
+    path: docs/axiomfolio/plans/MASTER_PLAN_2026.md
+    title: AxiomFolio Master Plan 2026
+    summary: AxiomFolio product roadmap — waves, gates, ship plan.
+    tags: [axiomfolio, plan]
+    owners: [trading, engineering]
+    category: plans
+  - slug: axiomfolio-gaps
+    path: docs/axiomfolio/plans/GAPS_2026Q2.md
+    title: AxiomFolio Gaps 2026 Q2
+    summary: Open gaps blocking AxiomFolio v1 — prioritized.
+    tags: [axiomfolio, plan, gaps]
+    owners: [trading]
+    category: plans
+  - slug: axiomfolio-nextjs-migration
+    path: docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md
+    title: AxiomFolio Next.js Migration 2026 Q3
+    summary: Vite → Next.js migration plan and live status.
+    tags: [axiomfolio, migration, next]
     owners: [engineering]
+    category: plans
+  - slug: docs-streamline-2026q2
+    path: docs/DOCS_STREAMLINE_2026Q2.md
+    title: Docs Streamline 2026 Q2
+    summary: Audit + migration plan for the 102-doc consolidation.
+    tags: [docs, plan, audit]
+    owners: [engineering, strategy]
+    category: plans
+
+  # ── Sprints (cross-cutting time-boxed work logs) ─────────────────────
+  - slug: sprint-infra-automation-hardening-2026q2
+    path: docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md
+    title: Infra & Automation Hardening (2026 Q2)
+    summary: 4-week sprint — persona platform, n8n streamline, Studio command-center.
+    tags: [sprint, infra, automation]
+    owners: [engineering, agent-ops]
+    category: sprints
+
+  # ── Generated ────────────────────────────────────────────────────────
+  - slug: brain-personas-generated
+    path: docs/BRAIN_PERSONAS.md
+    title: Brain Personas (generated)
+    summary: Auto-generated persona registry from PersonaSpec definitions.
+    tags: [brain, personas, generated]
+    owners: [agent-ops]
     category: generated

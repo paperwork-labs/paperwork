@@ -1,0 +1,274 @@
+{
+  "company": {
+    "critical_dates": [
+      {
+        "deadline": "TODAY",
+        "milestone": "LLC filing (CA SOS) + EIN",
+        "notes": "Blocks EFIN, bank account, Stripe, trademarks. Do FIRST. See instructions below.",
+        "status": "NOT STARTED"
+      },
+      {
+        "deadline": "TODAY (after LLC + EIN)",
+        "milestone": "EFIN application (Form 8633)",
+        "notes": "45-day IRS processing. Blocks entire MeF certification chain. See instructions below.",
+        "status": "NOT STARTED"
+      },
+      {
+        "deadline": "Before first SSN collected",
+        "milestone": "Cyber liability insurance ($1M)",
+        "notes": "Non-negotiable for handling SSNs. Company-ending risk without it.",
+        "status": "NOT STARTED"
+      },
+      {
+        "deadline": "Start June 2026",
+        "milestone": "MeF XML generator development",
+        "notes": "Must begin 4 months before ATS testing window.",
+        "status": "NOT STARTED"
+      },
+      {
+        "deadline": "October 2026",
+        "milestone": "ATS testing (IRS)",
+        "notes": "13 federal test scenarios + 42 state schema validations.",
+        "status": "NOT STARTED"
+      },
+      {
+        "deadline": "October 2026",
+        "milestone": "Column Tax partnership",
+        "notes": "Fallback e-file partner for CA/MA and unsupported forms.",
+        "status": "NOT STARTED"
+      },
+      {
+        "deadline": "November 2026",
+        "milestone": "Communication test (IRS)",
+        "notes": "End-to-end transmission verification.",
+        "status": "NOT STARTED"
+      },
+      {
+        "deadline": "January 2027",
+        "milestone": "Tax season launch",
+        "notes": "IRS accepts returns ~late January. Hard external deadline.",
+        "status": "NOT STARTED"
+      },
+      {
+        "deadline": "June 13, 2026",
+        "milestone": "GitHub PAT rotation",
+        "notes": "\"Paperwork Labs Vault\" PAT created 2026-03-29, expires Jun 27, 2026. Updated in: vault, GitHub Actions (GH_PAT_FINEGRAINED), Render (brain-api GITHUB_TOKEN). Still needs: n8n credentials UI + Hetzner .env. Rotate 2 weeks before Jun 27.",
+        "status": "DONE (partial)"
+      },
+      {
+        "deadline": "ASAP",
+        "milestone": "Slack bot token rotation",
+        "notes": "Bot token exposed in git history. Click \"Reinstall to Paperwork Labs\" in Slack app settings. Then update: vault, .env.local, n8n, Hetzner .env.",
+        "status": "NOT STARTED"
+      },
+      {
+        "deadline": "ASAP",
+        "milestone": "Hetzner credential rotation",
+        "notes": "Postgres password, Redis password, n8n admin password, n8n encryption key, Postiz JWT secret \u2014 all exposed in git history. SSH to Hetzner to rotate.",
+        "status": "NOT STARTED"
+      },
+      {
+        "deadline": "After all rotations",
+        "milestone": "BFG git history scrub",
+        "notes": "23 secrets in git history (commits 4b30760, af1264e). Run BFG, force push, all collaborators re-clone.",
+        "status": "NOT STARTED"
+      }
+    ],
+    "owner": "engineering",
+    "path": "docs/TASKS.md",
+    "title": "Paperwork Labs \u2014 Venture Build Tasks",
+    "updated": "2026-03-22",
+    "version": "11.0"
+  },
+  "content_hash": "399ec735d89a",
+  "products": [
+    {
+      "label": "AxiomFolio",
+      "plans": [
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-22",
+          "owner": "trading",
+          "path": "docs/axiomfolio/plans/BROKER_COVERAGE_TRACKER.md",
+          "product": "axiomfolio",
+          "slug": "broker-coverage-tracker",
+          "status": "active",
+          "title": "Broker Coverage Tracker \u2014 Evergreen"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-22",
+          "owner": "trading",
+          "path": "docs/axiomfolio/plans/G5_IV_RANK_SURFACE.md",
+          "product": "axiomfolio",
+          "slug": "g5-iv-rank-surface",
+          "status": "active",
+          "title": "G5 \u2014 Implied Volatility / IV-Rank Surface (Free-Providers First)"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-20",
+          "owner": "trading",
+          "path": "docs/axiomfolio/plans/GAPS_2026Q2.md",
+          "product": "axiomfolio",
+          "slug": "gaps-2026q2",
+          "status": "active",
+          "title": "Production Gaps \u2014 2026 Q2"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-09",
+          "owner": "engineering",
+          "path": "docs/axiomfolio/plans/MASTER_PLAN_2026.md",
+          "product": "axiomfolio",
+          "slug": "master-plan-2026",
+          "status": "active",
+          "title": "AxiomFolio Master Plan 2026"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-23",
+          "owner": "engineering",
+          "path": "docs/axiomfolio/plans/MEDALLION_AUDIT_2026Q2.md",
+          "product": "axiomfolio",
+          "slug": "medallion-audit-2026q2",
+          "status": "active",
+          "title": "Medallion Audit \u2014 2026 Q2"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-24",
+          "owner": "engineering",
+          "path": "docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md",
+          "product": "axiomfolio",
+          "slug": "nextjs-migration-2026q3",
+          "status": "active",
+          "title": "AxiomFolio \u2192 Next.js 16 App Router \u2014 Migration Plan"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-22",
+          "owner": "engineering",
+          "path": "docs/axiomfolio/plans/PLAID_FIDELITY_401K.md",
+          "product": "axiomfolio",
+          "slug": "plaid-fidelity-401k",
+          "status": "active",
+          "title": "Plaid Investments \u2014 Single-Phase Pro-Tier Feature"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-22",
+          "owner": "engineering",
+          "path": "docs/axiomfolio/plans/PLATFORM_REVIEW_2026Q2.md",
+          "product": "axiomfolio",
+          "slug": "platform-review-2026q2",
+          "status": "active",
+          "title": "AxiomFolio Platform McKinsey Review \u2014 2026 Q2"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-22",
+          "owner": "trading",
+          "path": "docs/axiomfolio/plans/PORTFOLIO_SYNC_COMPLETENESS_2026Q2.md",
+          "product": "axiomfolio",
+          "slug": "portfolio-sync-completeness-2026q2",
+          "status": "active",
+          "title": "Portfolio Sync Completeness \u2014 2026 Q2 (Wave 8 spec)"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-22",
+          "owner": "engineering",
+          "path": "docs/axiomfolio/plans/SETTINGS_NAV_STUDY_2026Q2.md",
+          "product": "axiomfolio",
+          "slug": "settings-nav-study-2026q2",
+          "status": "active",
+          "title": "Settings IA Study \u2014 2026 Q2"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-22",
+          "owner": "engineering",
+          "path": "docs/axiomfolio/plans/UX_AUDIT_2026Q2.md",
+          "product": "axiomfolio",
+          "slug": "ux-audit-2026q2",
+          "status": "active",
+          "title": "UX Audit \u2014 2026 Q2 (PR C0 input spec)"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-22",
+          "owner": "trading",
+          "path": "docs/axiomfolio/plans/WAVE_F_TRADING_PARITY.md",
+          "product": "axiomfolio",
+          "slug": "wave-f-trading-parity",
+          "status": "active",
+          "title": "Wave F \u2014 Trading Parity Across All Six Brokers"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-22",
+          "owner": "engineering",
+          "path": "docs/axiomfolio/plans/strategy-market-nav-restructure.md",
+          "product": "axiomfolio",
+          "slug": "strategy-market-nav-restructure",
+          "status": "active",
+          "title": "Strategy \u2192 Market Navigation Restructure Plan"
+        }
+      ],
+      "plans_dir": "docs/axiomfolio/plans",
+      "slug": "axiomfolio"
+    },
+    {
+      "label": "FileFree",
+      "plans": [],
+      "plans_dir": null,
+      "slug": "filefree"
+    },
+    {
+      "label": "LaunchFree",
+      "plans": [],
+      "plans_dir": null,
+      "slug": "launchfree"
+    },
+    {
+      "label": "Distill",
+      "plans": [],
+      "plans_dir": null,
+      "slug": "distill"
+    },
+    {
+      "label": "Trinkets",
+      "plans": [],
+      "plans_dir": null,
+      "slug": "trinkets"
+    }
+  ],
+  "sprints": [
+    {
+      "domain": "company",
+      "duration_weeks": 4,
+      "end": "2026-04-23",
+      "owner": "engineering",
+      "path": "docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md",
+      "personas": [
+        "agent-ops",
+        "engineering",
+        "infra-ops",
+        "qa"
+      ],
+      "pr": 141,
+      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/141",
+      "ships": [
+        "studio",
+        "brain",
+        "axiomfolio",
+        "n8n"
+      ],
+      "slug": "infra-automation-hardening-2026q2",
+      "start": "2026-04-01",
+      "status": "shipped",
+      "title": "Infra & Automation Hardening \u2014 2026 Q2"
+    }
+  ]
+}
