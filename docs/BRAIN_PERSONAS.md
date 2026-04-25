@@ -221,3 +221,11 @@ _Generated from `apis/brain/app/personas/specs/*.yaml`. 16 personas. Run `python
 | `ux` | `tokens>3500` | `#ux` |
 
 <!-- END GENERATED: persona-registry -->
+
+## Slack tracker slash commands (Brain)
+
+These use the same `POST /api/v1/webhooks/slack/command` entrypoint as `/persona` and read `apps/studio/src/data/tracker-index.json`:
+
+- `/sprint` — active sprints; `/sprint shipped` — last five shipped sprints with PR links.
+- `/tasks` — open company critical dates (excludes DONE/COMPLETE); `/tasks all` — all critical dates with status emojis.
+- `/plan` — plan counts per product; `/plan <slug>` — that product’s plans with GitHub source links.
