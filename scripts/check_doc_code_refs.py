@@ -50,6 +50,10 @@ EXPECTED_DEAD: set[str] = {
     ".github/workflows/auto-merge-sweep.yaml",
     ".github/workflows/dependabot-auto-approve.yaml",
     ".github/workflows/dependabot-major-triage.yaml",
+    # .cursor/ is gitignored so the file exists locally for IDE config but
+    # never lands in the CI checkout. The references are intentional and
+    # correct from a developer's perspective.
+    ".cursor/mcp.json",
 }
 
 # Match:

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-24T20:58:04.497323+00:00",
+  "generated_at": "2026-04-25T01:33:03.176818+00:00",
   "source": "infra/hetzner/workflows/*.json",
   "workflows": [
     {

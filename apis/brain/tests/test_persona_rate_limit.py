@@ -9,7 +9,6 @@ medallion: ops
 from __future__ import annotations
 
 import time
-from typing import Any
 
 import pytest
 

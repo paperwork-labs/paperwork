@@ -38,6 +38,10 @@ EXCLUDED_FILES = {
     "docs/SLACK_SPRINT_TEMPLATE.md",
     "docs/PHASE2-COMPOSER-HANDOFFS.md",
     "docs/NEXTJS_MIGRATION_2026Q3.md",
+    # Auto-generated from docs/axiomfolio/brain/axiomfolio_tools.yaml by
+    # scripts/generate_axiomfolio_integration_doc.py — surfaced in /admin/docs
+    # via a generated entry, not the hand-maintained _index.yaml.
+    "docs/AXIOMFOLIO_INTEGRATION.generated.md",
 }
 
 

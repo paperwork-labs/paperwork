@@ -24,7 +24,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import async_session_factory, get_db
 from app.services import memory
-from app.services import slack_outbound
 from app.services.dependabot_classifier import classify_pr
 from app.services.pr_review import review_pr
 from app.tools import github as gh_tools
