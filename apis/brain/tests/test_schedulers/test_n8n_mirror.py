@@ -7,7 +7,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
-from app.schedulers import apscheduler_db, n8n_mirror
+from app.schedulers import apscheduler_db
 from app.schedulers.n8n_mirror import N8N_MIRROR_SPECS, install
 
 
