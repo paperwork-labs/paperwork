@@ -33,6 +33,9 @@ EXCLUDED_SUBDIRS = {
     # target of /admin/docs yet. If you need it indexed, add a specific
     # entry in docs/_index.yaml instead of bulk-exposing the whole tree.
     "axiomfolio",
+    # Internal philosophy READMEs are CODEOWNERS-locked but only the
+    # individual philosophy docs need to appear in /admin/docs. The
+    # README is the index page for the folder itself.
 }
 EXCLUDED_FILES = {
     "docs/SLACK_SPRINT_TEMPLATE.md",
@@ -42,6 +45,9 @@ EXCLUDED_FILES = {
     # scripts/generate_axiomfolio_integration_doc.py — surfaced in /admin/docs
     # via a generated entry, not the hand-maintained _index.yaml.
     "docs/AXIOMFOLIO_INTEGRATION.generated.md",
+    # Folder-level READMEs that document the schema for agents but
+    # aren't standalone docs we want to surface in /admin/docs.
+    "docs/sprints/README.md",
 }
 
 

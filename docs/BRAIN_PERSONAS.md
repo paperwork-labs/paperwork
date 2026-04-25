@@ -221,7 +221,6 @@ _Generated from `apis/brain/app/personas/specs/*.yaml`. 16 personas. Run `python
 | `ux` | `tokens>3500` | `#ux` |
 
 <!-- END GENERATED: persona-registry -->
-
 ## Slack tracker slash commands (Brain)
 
 These use the same `POST /api/v1/webhooks/slack/command` entrypoint as `/persona` and read `apps/studio/src/data/tracker-index.json`:
