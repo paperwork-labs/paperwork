@@ -26,6 +26,12 @@ from app.database import async_session_factory, get_db
 from app.services import memory
 from app.services.dependabot_classifier import classify_pr
 from app.services.pr_review import review_pr
+from app.services.tracker_slash import (
+    load_tracker_index,
+    slack_response_plan,
+    slack_response_sprint,
+    slack_response_tasks,
+)
 from app.tools import github as gh_tools
 
 logger = logging.getLogger(__name__)
@@ -811,12 +817,13 @@ async def slack_slash_command(
     request: Request,
     background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
-    """Handle Slack slash commands — currently just ``/persona``.
+    """Handle Slack slash commands: ``/persona``, ``/sprint``, ``/tasks``, ``/plan``.
 
     Slack sends ``application/x-www-form-urlencoded`` with fields:
     ``command``, ``text``, ``user_id``, ``channel_id``, ``response_url``.
-    We respond within 3 seconds with an ack and do the real work in the
-    background, posting results to the ``response_url``.
+    For ``/persona`` we respond within 3 seconds with an ack and do the real
+    work in the background, posting results to the ``response_url``. Tracker
+    commands return their payload immediately.
     """
     raw_body = await request.body()
     await _verify_slack_signature(request, raw_body)
@@ -834,10 +841,21 @@ async def slack_slash_command(
     channel_id = form.get("channel_id", "")
     response_url = form.get("response_url", "")
 
+    if command == "/sprint":
+        return slack_response_sprint(load_tracker_index(), text)
+
+    if command == "/tasks":
+        return slack_response_tasks(load_tracker_index(), text)
+
+    if command == "/plan":
+        return slack_response_plan(load_tracker_index(), text)
+
     if command != "/persona":
         return {
             "response_type": "ephemeral",
-            "text": f"Unknown command `{command}`. Try `/persona <slug> <message>`.",
+            "text": (
+                f"Unknown command `{command}`. Try `/persona`, `/sprint`, `/tasks`, or `/plan`."
+            ),
         }
 
     parts = text.split(None, 1)

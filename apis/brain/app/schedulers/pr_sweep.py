@@ -113,6 +113,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
     except Exception:
         logger.exception("Failed to install qa_weekly_report job")
 
+    try:
+        from app.schedulers import cfo_friday_digest
+        cfo_friday_digest.install(sched)
+    except Exception:
+        logger.exception("Failed to install cfo_friday_digest job")
+
     sched.start()
     _scheduler = sched
     logger.info("APScheduler started: pr_sweep every %d min + proactive_cadence hourly", minutes)
