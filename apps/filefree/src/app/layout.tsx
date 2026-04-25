@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "@/components/providers";
@@ -78,12 +79,14 @@ export default function RootLayout({
         data-theme="filefree"
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
-        <Providers>
-          <Nav />
-          {/* Pages provide their own <main>; wrapper is a div to avoid nested mains. */}
-          <div className="pt-14">{children}</div>
-        </Providers>
-        <Analytics />
+        <ClerkProvider>
+          <Providers>
+            <Nav />
+            {/* Pages provide their own <main>; wrapper is a div to avoid nested mains. */}
+            <div className="pt-14">{children}</div>
+          </Providers>
+          <Analytics />
+        </ClerkProvider>
       </body>
     </html>
   );

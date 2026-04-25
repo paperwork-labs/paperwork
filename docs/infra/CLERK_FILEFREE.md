@@ -1,0 +1,38 @@
+# Clerk SSO — FileFree (Next.js)
+
+Runbook for the FileFree app (`apps/filefree`) identity layer: **Clerk** (primary SSO) for admin surfaces, with **Basic Auth** as an operator escape hatch until removed in a follow-up. **Legacy session cookies** for `/file` and `/auth/*` are unchanged.
+
+## Environment variables (standard names)
+
+| Variable | Where used | Source |
+| -------- | ------------ | ------ |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Client + server bootstrap | [Vercel Marketplace — Clerk](https://vercel.com/integrations) for the **FileFree** Vercel project; copy to local from your secrets vault for dev |
+| `CLERK_SECRET_KEY` | Server (session verification, middleware) | Same as above |
+
+**No custom prefix** — use these exact names on the FileFree project, not a `FILEFREE_` prefix.
+
+**Basic Auth** (admin escape hatch) uses the same variable names as Studio when present:
+
+- `ADMIN_EMAILS` — comma-separated allowlist
+- `ADMIN_ACCESS_PASSWORD` — shared password (rotate per ops)
+
+## How Clerk, Basic, and the legacy session coexist
+
+- **Clerk** handles interactive SSO for `/admin` and `/api/admin` when keys are set.
+- **Basic Auth** still works in **production** on those paths for scripts or emergency access. Either a valid **Clerk session** or valid **Basic** credentials is enough.
+- **Session cookie** gating for `/file`, `/dashboard`, and `/auth/*` is the same as before this layer (no Clerk required for the core filing flow).
+
+**Development:** the admin wall is not enforced on `/admin` and `/api/admin` (local DX). **Production:** the dual gate applies.
+
+**Precedence** (enforced in `apps/filefree/src/middleware.ts` for admin routes in production): legacy session redirects run first, then: public routes pass through, then (for `/admin*`) 1) `auth().userId` → allow, 2) else valid Basic → allow, 3) else sign-in redirect or 401 for APIs.
+
+## Test sign-in locally
+
+1. Add `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` to `apps/filefree/.env.local` (do not commit).
+2. `pnpm --filter @paperwork-labs/filefree dev` (port **3001** by default).
+3. Open `http://localhost:3001/sign-in` and complete the Clerk dev flow.
+
+## Related
+
+- Studio runbook: `docs/infra/CLERK_STUDIO.md`
+- Sprint: `docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`

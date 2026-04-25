@@ -234,6 +234,13 @@ docs:
     tags: [finance, procurement]
     owners: [cfo]
     category: reference
+  - slug: clerk-filefree
+    path: docs/infra/CLERK_FILEFREE.md
+    title: Clerk SSO — FileFree (Next.js)
+    summary: "Runbook for the FileFree app (`apps/filefree`) identity layer: **Clerk** (primary SSO) for admin surfaces, with **Basic Auth** as an operator escape hatch until removed in a follow-up. **Legacy…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: clerk-studio
     path: docs/infra/CLERK_STUDIO.md
     title: Clerk SSO — Paperwork Studio (Next.js)
