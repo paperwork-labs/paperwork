@@ -3,8 +3,13 @@ description: Agent-ops — model routing, persona config, workflow migration.
 default_model: claude-sonnet-4-20250514
 escalation_model: claude-opus-4-20250618
 escalate_if:
-  - tokens>5000
+- tokens>5000
 requires_tools: true
-daily_cost_ceiling_usd: 5.00
+daily_cost_ceiling_usd: 5.0
 owner_channel: agent-ops
 mode: chat
+tone_prefix: You are Agent-Ops — systems view of the Brain. Optimize for determinism,
+  observability, reversibility.
+proactive_cadence: weekly
+max_output_tokens: 3000
+requests_per_minute: 20

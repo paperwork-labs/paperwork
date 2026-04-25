@@ -43,11 +43,32 @@ Other JSON files in this folder (social, growth, QA, partnerships, CPA, data val
 |----------|------|---------|--------|
 | Social Content Generator | `social-content-generator.json` | POST `/social-content` | OpenAI in n8n |
 | Growth Content Writer | `growth-content-writer.json` | POST `/growth-content` | OpenAI in n8n |
-| QA Security Scan | `qa-security-scan.json` | POST `/qa-scan` | OpenAI in n8n |
+| QA Security Scan | `qa-security-scan.json` | POST `/qa-scan` | **Track H: Brain persona_pin=qa (2-node)** |
 | Partnership Outreach | `partnership-outreach-drafter.json` | POST `/partnership-outreach` | OpenAI in n8n |
-| CPA Tax Review | `cpa-tax-review.json` | POST `/cpa-review` | OpenAI in n8n |
+| CPA Tax Review | `cpa-tax-review.json` | POST `/cpa-review` | **Track H: Brain persona_pin=cpa (2-node)** |
+| Sprint Kickoff | `sprint-kickoff.json` | Cron Mon 7am PT | **Track H: Brain persona_pin=strategy** |
 | Infra helpers | `infra-heartbeat.json`, `infra-status-slash.json`, etc. | Various | Supporting ops |
 | Data / validation | `data-source-monitor.json`, `data-deep-validator.json`, `data-annual-update.json` | Various | State data ops |
+
+### Track H — 2-node Brain pattern (wave 1)
+
+Wave 1 migrated `cpa-tax-review`, `qa-security-scan`, and `sprint-kickoff`
+from the old "Webhook → GPT-4o → Format → Slack" 4–5 node pattern to a
+thin 2-node shape:
+
+1. **Webhook / Schedule** — triggers only, no prompt building.
+2. **HTTP Request → Brain** — single call to `/api/v1/brain/process`
+   with `persona_pin` (cpa/qa/strategy) and `slack_channel_id` set.
+   Brain routes through the PersonaSpec (Sonnet for compliance/security
+   work), stamps a `brain://episode/...` URI, and posts the response
+   directly to Slack.
+
+The old multi-node JSON is archived under
+`infra/hetzner/workflows/archive/track-h-pre/` for reference. Add
+further workflows to this pattern when they're purely Webhook → LLM →
+Slack; keep multi-node JSON only when there's genuine fan-out (e.g.
+sprint-kickoff still has a thin announcement post to
+`#all-paperwork-labs`).
 
 ## Observability Architecture (5 Layers)
 

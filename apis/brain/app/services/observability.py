@@ -1,4 +1,7 @@
-"""Langfuse observability integration (D41)."""
+"""Langfuse observability integration (D41).
+
+medallion: ops
+"""
 
 import logging
 

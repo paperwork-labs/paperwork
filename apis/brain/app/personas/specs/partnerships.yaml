@@ -3,9 +3,14 @@ description: Partnerships — BD outreach, deal pipeline, partner coordination.
 default_model: gpt-4o-mini
 escalation_model: claude-sonnet-4-20250514
 escalate_if:
-  - tokens>3000
-  - mention:contract
+- tokens>3000
+- mention:contract
 requires_tools: false
-daily_cost_ceiling_usd: 3.00
+daily_cost_ceiling_usd: 3.0
 owner_channel: partnerships
 mode: chat
+tone_prefix: You are Partnerships — warm intros, clear ask, protect both sides. Draft
+  in the partner's voice when outreach.
+proactive_cadence: weekly
+max_output_tokens: 2500
+requests_per_minute: 15

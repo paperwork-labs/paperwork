@@ -198,9 +198,28 @@ Autonomy level: {autonomy_level}
 """
 
 
-class AgentBrain:
-    """LLM-powered agent brain for intelligent operations."""
-    
+class TradingAgent:
+    """AxiomFolio's trading-specific agent.
+
+    Track M.5 renamed this from ``AgentBrain`` to end the semantic
+    overload with Paperwork Brain (the platform orchestrator). The
+    ``AgentBrain`` name is preserved as a deprecation alias at the
+    bottom of this module — callers should migrate to ``TradingAgent``
+    but nothing breaks today.
+
+    Responsibilities that live HERE (product-specific, never delegated):
+      * Broker integration (TastyTrade/IBKR).
+      * Approval queue + autonomy-level gating.
+      * BYOK routing for paid-tier self-directed investors.
+      * Tool catalogue that the LLM can call.
+
+    Responsibilities that live in Paperwork Brain (when
+    ``AXIOMFOLIO_USE_PAPERWORK_BRAIN=True`` and no BYOK):
+      * Model selection (Sonnet via persona router, not gpt-4o-mini).
+      * Cost ledger, rate limits, PII scrubbing, persona tone.
+      * Episode memory and provenance stamps.
+    """
+
     def __init__(self, db: Session, user_id: Optional[int] = None):
         """Construct an agent scoped to a tenant.
 
@@ -2717,12 +2736,199 @@ class AgentBrain:
             logger.warning("Failed to load conversation from DB: %s", e)
             return "unavailable"
     
+    def _should_delegate_to_paperwork_brain(self) -> bool:
+        """Track M.1 — decide whether to delegate this chat turn to Brain.
+
+        We delegate when the operator flag is on, Brain auth is present,
+        and the caller is on the *platform* LLM key (no BYOK). BYOK users
+        always get their own direct path.
+        """
+        if not settings.AXIOMFOLIO_USE_PAPERWORK_BRAIN:
+            return False
+        if not settings.BRAIN_API_KEY:
+            return False
+        try:
+            _url, resolved_key = self._resolve_llm_target()
+        except Exception:
+            return False
+        platform_key = settings.OPENAI_API_KEY or ""
+        # If _resolve_llm_target handed back a different key than the
+        # platform key, a BYOK override is active — don't delegate.
+        if resolved_key and platform_key and resolved_key != platform_key:
+            return False
+        return True
+
+    async def _chat_via_paperwork_brain(
+        self,
+        user_message: str,
+        *,
+        strategy: str = "classify_route",
+    ) -> Dict[str, Any]:
+        """Track M.1 — run one chat turn through Paperwork Brain.
+
+        Brain runs classification, persona routing, model selection, cost
+        tracking, PII scrubbing, and returns ``{response, tool_calls,
+        episode_id, ...}``. We then execute any tool calls locally —
+        broker integration, approval queue, and autonomy-level gating all
+        stay here, unchanged. The episode_id flows through to AgentAction
+        rows so downstream auditors can trace any action back to the
+        Brain exchange that produced it.
+
+        ``strategy`` is the Brain chain-strategy override. Default is
+        ``classify_route`` (Gemini Flash picks the model). Callers doing
+        heavy trade analysis can request ``extract_reason`` (P3 two-hop)
+        so Flash pre-extracts facts before Sonnet reasons.
+        """
+        from app.services.agent.paperwork_brain_client import (
+            PaperworkBrainClient,
+            PaperworkBrainUnavailable,
+        )
+
+        client = PaperworkBrainClient()
+        if not self._conversation:
+            self._conversation = [
+                {
+                    "role": "system",
+                    "content": SYSTEM_PROMPT.format(
+                        current_time=datetime.now(timezone.utc).isoformat(),
+                        autonomy_level=settings.AGENT_AUTONOMY_LEVEL,
+                    ),
+                }
+            ]
+        thread_context = list(self._conversation)
+        self._conversation.append({"role": "user", "content": user_message})
+
+        try:
+            result = await client.process(
+                message=user_message,
+                session_id=self.session_id,
+                user_id=self.user_id,
+                thread_context=thread_context,
+                strategy=strategy,
+            )
+        except PaperworkBrainUnavailable as exc:
+            logger.warning(
+                "Paperwork Brain delegation failed (%s); falling back to direct LLM",
+                exc.reason,
+            )
+            raise
+
+        final_text: str = result.get("response") or ""
+        tool_calls_made: list[Dict[str, Any]] = []
+        actions_taken: list[Dict[str, Any]] = []
+        episode_uri: Optional[str] = result.get("episode_uri")
+
+        for tc in result.get("tool_calls") or []:
+            func = tc.get("function") or {}
+            tool_name = func.get("name") or tc.get("name")
+            if not tool_name:
+                continue
+            try:
+                tool_args = json.loads(func.get("arguments") or tc.get("arguments") or "{}")
+            except json.JSONDecodeError:
+                tool_args = {}
+            try:
+                tool_result, action = await self._execute_tool(
+                    tool_name, tool_args, final_text
+                )
+            except Exception as tool_err:
+                logger.warning(
+                    "Tool execution failed for %s via brain: %s", tool_name, tool_err
+                )
+                tool_result = {
+                    "error": "Tool execution failed",
+                    "type": type(tool_err).__name__,
+                }
+                action = None
+            tool_calls_made.append(
+                {
+                    "name": tool_name,
+                    "args": tool_args,
+                    "result_preview": (
+                        str(tool_result)[:200] + "..."
+                        if len(str(tool_result)) > 200
+                        else str(tool_result)
+                    ),
+                }
+            )
+            if action is not None:
+                if episode_uri:
+                    try:
+                        meta = dict(getattr(action, "metadata", None) or {})
+                        meta["brain_episode_uri"] = episode_uri
+                        action.metadata = meta
+                        self.db.add(action)
+                        self.db.commit()
+                    except Exception:
+                        logger.debug("could not stamp brain_episode_uri on action", exc_info=True)
+                actions_taken.append(self._action_to_dict(action))
+
+        self._conversation.append({"role": "assistant", "content": final_text})
+        self._save_conversation()
+
+        return {
+            "session_id": self.session_id,
+            "response": final_text,
+            "tool_calls": tool_calls_made,
+            "actions": actions_taken,
+            "brain_episode_uri": episode_uri,
+            "brain_model": result.get("model"),
+            "brain_cost_usd": result.get("cost_usd"),
+        }
+
+    async def deep_analyze(self, user_message: str) -> Dict[str, Any]:
+        """Buffer Week 4 — first post-hardening feature.
+
+        Runs a deep trading analysis through Paperwork Brain's
+        ``extract_reason`` (P3) chain strategy: Gemini Flash extracts the
+        load-bearing facts (ticker, size, timeframe, user intent), then
+        Sonnet reasons over the digest. Result: roughly half the Sonnet
+        token bill for heavy asks like "analyze this trade thesis",
+        "explain this regime change", or "walk me through the drawdown"
+        because the big model doesn't have to parse unstructured prose
+        on every turn.
+
+        Falls back to the standard ``chat`` path if Brain is unavailable
+        or if BYOK is active (P3 is a platform-side optimization; BYOK
+        users already pay their own token bill so the extraction hop
+        doesn't save them anything).
+        """
+        if not self._should_delegate_to_paperwork_brain():
+            return await self.chat(user_message)
+
+        from app.services.agent.paperwork_brain_client import (
+            PaperworkBrainUnavailable,
+        )
+
+        try:
+            return await self._chat_via_paperwork_brain(
+                user_message, strategy="extract_reason"
+            )
+        except PaperworkBrainUnavailable:
+            logger.info(
+                "deep_analyze falling back to chat: Brain delegation unavailable"
+            )
+            return await self.chat(user_message)
+
     async def chat(self, user_message: str) -> Dict[str, Any]:
         """
         Process a user message in a multi-turn conversation.
         
         This is the main entry point for the chat endpoint.
         """
+        if self._should_delegate_to_paperwork_brain():
+            from app.services.agent.paperwork_brain_client import (
+                PaperworkBrainUnavailable,
+            )
+
+            try:
+                return await self._chat_via_paperwork_brain(user_message)
+            except PaperworkBrainUnavailable:
+                # Fail-open: fall through to the direct-OpenAI path so the
+                # user still gets an answer when Brain is down. We log at
+                # WARNING above; CFO dashboard will also notice the gap.
+                pass
+
         if not settings.OPENAI_API_KEY:
             return {"error": "LLM not configured (OPENAI_API_KEY missing)"}
         
@@ -2867,3 +3073,11 @@ class AgentBrain:
             "auto_approved": action.auto_approved,
             "created_at": action.created_at.isoformat() if action.created_at else None,
         }
+
+
+# Track M.5 — deprecation alias. The class was renamed from
+# ``AgentBrain`` to ``TradingAgent`` on 2026-04-23 so that "Brain"
+# unambiguously means the Paperwork Brain platform orchestrator.
+# Existing imports keep working; migrate on touch.
+AgentBrain = TradingAgent
+

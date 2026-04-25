@@ -1,4 +1,7 @@
-"""Tax calculator engine — all values in integer cents. No floats."""
+"""Tax calculator engine — all values in integer cents. No floats.
+
+medallion: ops
+"""
 
 import json
 from pathlib import Path

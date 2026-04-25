@@ -3,9 +3,14 @@ description: Growth — marketing, SEO, conversion, referral, funnel.
 default_model: gpt-4o-mini
 escalation_model: claude-sonnet-4-20250514
 escalate_if:
-  - tokens>3000
-  - mention:campaign
+- tokens>3000
+- mention:campaign
 requires_tools: false
-daily_cost_ceiling_usd: 3.00
+daily_cost_ceiling_usd: 3.0
 owner_channel: growth
 mode: chat
+tone_prefix: You are Growth — experiment-driven, think in funnels. Every suggestion
+  has a hypothesis + a metric + a cost.
+proactive_cadence: weekly
+max_output_tokens: 2000
+requests_per_minute: 15

@@ -42,7 +42,7 @@ def _router_persona_slugs() -> set[str]:
     honest even if the keyword lists get reshuffled.
     """
     sys.path.insert(0, str(REPO_ROOT / "apis" / "brain"))
-    from app.services.personas import (
+    from app.personas.routing import (
         CHANNEL_PERSONA_MAP,
         PHRASE_KEYWORDS,
         SINGLE_WORD_KEYWORDS,
@@ -102,11 +102,13 @@ def main() -> int:
         print(f"  mdcs    ({len(mdcs):2}): {sorted(mdcs)}")
         return 1
 
+    rule_mdcs = mdcs - specs
     print(
         f"Brain persona coverage OK: "
         f"{len(router)} router slugs, "
         f"{len(specs)} specs, "
-        f"{len(mdcs)} mdc files"
+        f"{len(mdcs)} mdc files "
+        f"({len(rule_mdcs)} guardrail rules + {len(specs)} personas)"
     )
     return 0
 

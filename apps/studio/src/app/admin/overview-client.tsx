@@ -45,6 +45,13 @@ type PullRequest = {
   created_at: string;
   draft: boolean;
   user?: { login?: string };
+  brain_review?: {
+    verdict: string;
+    head_sha: string;
+    model: string;
+    summary: string;
+    created_at: string;
+  };
 };
 type InfraService = {
   service: string;
@@ -65,12 +72,23 @@ type CIRun = {
   updatedAt: string;
 };
 
+type SlackActivityEntry = {
+  id: number;
+  persona: string;
+  channel_id: string;
+  summary: string;
+  created_at: string;
+  model: string;
+  persona_pinned: boolean;
+};
+
 type OverviewData = {
   workflows: N8nWorkflow[];
   executions: N8nExecution[];
   prs: PullRequest[];
   infrastructure: InfraService[];
   ciRuns: CIRun[];
+  slackActivity?: SlackActivityEntry[];
   fetchedAt: string;
 };
 
@@ -158,6 +176,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
   }, [refresh]);
 
   const { workflows, executions, prs, infrastructure, ciRuns, fetchedAt } = data;
+  const slackActivity = data.slackActivity ?? [];
 
   const activeWorkflows = workflows.filter((w) => w.active).length;
   const workflowNameById = useMemo(
@@ -248,14 +267,27 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           status,
         };
       }),
-      ...prs.slice(0, 10).map((pr) => ({
-        id: `pr-${pr.number}`,
-        timestamp: pr.created_at,
-        label: `PR #${pr.number} opened`,
-        detail: pr.title,
-        href: pr.html_url,
-        status: "neutral" as const,
-      })),
+      ...prs.slice(0, 10).map((pr) => {
+        const verdictTag = pr.brain_review
+          ? pr.brain_review.verdict === "APPROVE"
+            ? "✓"
+            : pr.brain_review.verdict === "REQUEST_CHANGES"
+              ? "!"
+              : "•"
+          : "";
+        return {
+          id: `pr-${pr.number}`,
+          timestamp: pr.created_at,
+          label: `PR #${pr.number} ${verdictTag}`.trim(),
+          detail: pr.title,
+          href: pr.html_url,
+          status: (pr.brain_review?.verdict === "REQUEST_CHANGES"
+            ? "error"
+            : pr.brain_review?.verdict === "APPROVE"
+              ? "success"
+              : "neutral") as "error" | "success" | "neutral",
+        };
+      }),
     ]
       .filter((item) => Boolean(item.timestamp))
       .sort((a, b) => parseTs(b.timestamp) - parseTs(a.timestamp))
@@ -398,7 +430,24 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
             <p className="text-xs uppercase tracking-wide text-zinc-400">Open PRs</p>
           </div>
           <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-100">{prs.length}</p>
-          <p className="text-sm text-zinc-500">paperwork-labs/paperwork</p>
+          <p className="text-sm text-zinc-500">
+            <span className="text-emerald-400">
+              {prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length}
+            </span>{" "}
+            approved ·{" "}
+            <span className="text-amber-400">
+              {prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length}
+            </span>{" "}
+            commented ·{" "}
+            <span className="text-rose-400">
+              {prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length}
+            </span>{" "}
+            changes ·{" "}
+            <span className="text-zinc-500">
+              {prs.filter((pr) => !pr.brain_review).length}
+            </span>{" "}
+            unreviewed
+          </p>
         </motion.div>
 
         <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
@@ -501,7 +550,52 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         </section>
       </div>
 
-      {/* Activity Feed + Quick Links */}
+      {/* Slack Activity + Activity Feed + Quick Links */}
+      <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-sm font-medium text-zinc-200">Brain · Slack activity</p>
+          <span className="text-[10px] uppercase tracking-wide text-zinc-500">
+            {slackActivity.length} recent
+          </span>
+        </div>
+        <div className="space-y-1.5 max-h-72 overflow-y-auto">
+          {slackActivity.length === 0 ? (
+            <p className="py-2 text-sm text-zinc-500">
+              No Slack conversations in memory yet. Brain posts here when personas
+              reply in threads or proactive cadences fire.
+            </p>
+          ) : (
+            slackActivity.map((entry) => (
+              <div key={entry.id} className="rounded-md bg-zinc-800/40 px-3 py-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
+                  <span className="font-medium text-zinc-100">
+                    {entry.persona}
+                  </span>
+                  {entry.persona_pinned ? (
+                    <span className="rounded-full bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
+                      pinned
+                    </span>
+                  ) : null}
+                  <span className="truncate text-xs text-zinc-500">
+                    #{entry.channel_id}
+                  </span>
+                  <span className="ml-auto shrink-0 text-xs text-zinc-600">
+                    {relativeTime(entry.created_at)}
+                  </span>
+                </div>
+                <p className="mt-0.5 truncate pl-[14px] text-xs text-zinc-400">
+                  {entry.summary}
+                </p>
+                {entry.model ? (
+                  <p className="pl-[14px] text-[10px] text-zinc-600">{entry.model}</p>
+                ) : null}
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
           <p className="mb-3 text-sm font-medium text-zinc-200">Activity Feed</p>
@@ -553,9 +647,8 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           <p className="mb-3 text-sm font-medium text-zinc-200">Quick Links</p>
           <div className="space-y-1">
             {[
-              { label: "Operations", href: "/admin/ops", internal: true },
+              { label: "Workflows", href: "/admin/workflows", internal: true },
               { label: "Sprint tracker", href: "/admin/sprints", internal: true },
-              { label: "Agent monitor", href: "/admin/agents", internal: true },
               { label: "Infrastructure", href: "/admin/infrastructure", internal: true },
               { label: "Secrets vault", href: "/admin/secrets", internal: true },
             ].map((link) => (

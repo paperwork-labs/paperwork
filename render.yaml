@@ -73,7 +73,11 @@ services:
     plan: starter
     numInstances: 1
     dockerfilePath: apis/brain/Dockerfile
-    dockerContext: apis/brain
+    # Track F / H12: build from repo root so Dockerfile can COPY .cursor/rules/*.mdc
+    # into the image. Without this, persona instructions required a live GitHub round
+    # trip on every cold start (and silently fell back to empty instructions when
+    # the GITHUB_TOKEN was rate-limited).
+    dockerContext: .
     healthCheckPath: /health
     envVars:
       # Set in Dashboard, link from a Render Postgres in this Blueprint, or use fromDatabase when a DB is defined below.

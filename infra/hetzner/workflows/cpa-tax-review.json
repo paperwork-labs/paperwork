@@ -1,5 +1,6 @@
 {
   "name": "CPA Tax Review",
+  "_comment": "Track H migration: was Webhook -> GPT-4o -> Format -> Slack (4 nodes, hardcoded model). Now Webhook -> Brain (persona_pin=cpa). PersonaSpec routes CPA to Sonnet with escalation, Brain posts directly to #engineering, cost flows through the unified CostTracker.",
   "nodes": [
     {
       "parameters": {
@@ -19,144 +20,41 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
-      "position": [
-        250,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "text",
-        "operation": "response",
-        "modelId": {
-          "__rl": true,
-          "mode": "list",
-          "value": "gpt-4o"
-        },
-        "responses": {
-          "values": [
-            {
-              "type": "text",
-              "role": "system",
-              "content": "You are a CPA reviewing tax content for Paperwork Labs (paperworklabs.com). FileFree (filefree.ai) is the consumer tax filing product; Distill (distill.tax) is the B2B compliance automation platform that also serves CPA firms. Every insight must pass this test: 'Would I stake my CPA license on this being correct and helpful?'\n\nAdvisory quality standards \u2014 every AI tip must be:\n1. Specific to the user's data\n2. Actionable\n3. Correct (verified against current tax law)\n4. Conservative (understate when in doubt)\n5. Within Circular 230 bounds (education, not 'advice')\n\nReview checklist:\n- Dollar amounts mathematically correct\n- Tax law citations current (2025 tax year)\n- Specific to THIS user\n- Actionable\n- Within Circular 230 bounds\n- Appropriate caveats\n- No guarantees ('you WILL save' -> 'you could save')\n- Consistent across FileFree (consumer) and Distill (B2B) contexts\n\nWhen given tax content, produce:\n1. accuracy_verdict: pass/fail with explanation\n2. issues: list of problems found\n3. suggested_fixes: corrected versions\n4. circular_230_check: education vs advice\n5. tone_check: user-friendly and jargon-free\n\nReturn as structured JSON."
-            }
-          ]
-        },
-        "simplify": true,
-        "options": {
-          "temperature": 0.3,
-          "textFormat": {
-            "textOptions": [
-              {
-                "type": "json_object"
-              }
-            ]
-          },
-          "store": false
-        }
-      },
-      "id": "openai-cpa",
-      "name": "CPA Review",
-      "type": "@n8n/n8n-nodes-langchain.openAi",
-      "typeVersion": 2.1,
-      "position": [
-        500,
-        300
-      ],
-      "credentials": {
-        "openAiApi": {
-          "id": "openai-cred",
-          "name": "OpenAI"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "function sanitizeSlackMrkdwn(text) {\n  return String(text || '')\n    .replace(/```\\w*\\n?/g, '```')\n    .replace(/^#{1,6}\\s+(.+)$/gm, '*$1*')\n    .replace(/^[-*_]{3,}\\s*$/gm, '')\n    .replace(/\\*\\*(.+?)\\*\\*/g, '*$1*')\n    .replace(/\\[([^\\]]+)\\]\\(([^)]+)\\)/g, '<$2|$1>')\n    .replace(/\\n{3,}/g, '\\n\\n');\n}\n\nconst raw = (($json.output || [])[0]?.content || []).find(c => c.type === 'output_text')?.text || '';\nconst date = new Date().toISOString().slice(0, 10);\nconst header = '*CPA Tax Review \\u2014 ' + date + '*';\nconst footer = '_Thread router: reply with a persona name for a focused take._';\nif (!raw.trim()) {\n  return [{ json: { formatted: sanitizeSlackMrkdwn(':warning: No output generated. Check workflow logs.\\n\\n' + footer) } }];\n}\nlet body;\ntry {\n  const obj = JSON.parse(raw);\n  body = Object.entries(obj).map(([k, v]) => {\n    const label = k.replace(/_/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());\n    if (Array.isArray(v)) {\n      return '\\u2022 *' + label + '*:\\n' + v.map(item => '  - ' + (typeof item === 'object' ? JSON.stringify(item) : item)).join('\\n');\n    }\n    if (typeof v === 'object' && v !== null) {\n      return '\\u2022 *' + label + '*: ' + JSON.stringify(v);\n    }\n    return '\\u2022 *' + label + '*: ' + v;\n  }).join('\\n');\n} catch (e) {\n  body = raw;\n}\nreturn [{ json: { formatted: sanitizeSlackMrkdwn(header + '\\n\\n' + body + '\\n\\n' + footer) } }];"
-      },
-      "id": "format-cpa-slack",
-      "name": "Format for Slack",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        750,
-        300
-      ]
+      "position": [240, 300]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://slack.com/api/chat.postMessage",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "url": "={{ $env.BRAIN_API_URL }}/api/v1/brain/process",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "X-Brain-Secret", "value": "={{ $env.BRAIN_API_SECRET }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ channel: 'C0AM01NHQ3Y', text: $json.formatted, username: 'CPA Advisor', icon_emoji: ':nerd_face:' }) }}"
+        "jsonBody": "={{ JSON.stringify({ organization_id: 'paperwork-labs', message: $json.body.message || 'Run CPA tax review on latest filings and flag any Circular 230 issues.', user_id: $json.body.user_id || 'n8n-cpa-tax-review', channel: 'n8n', request_id: ($workflow.id + '-' + Date.now()), persona_pin: 'cpa', slack_channel_id: 'C0AM01NHQ3Y', slack_username: 'CPA Advisor', slack_icon_emoji: ':nerd_face:' }) }}",
+        "options": { "timeout": 60000 }
       },
-      "id": "slack-cpa",
-      "name": "Post to Slack",
+      "id": "call-brain-cpa",
+      "name": "Call Brain (persona_pin=cpa)",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.4,
-      "position": [
-        1000,
-        300
-      ],
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "slack-cred",
-          "name": "Slack Bot Token"
-        }
-      }
+      "typeVersion": 4.2,
+      "position": [460, 300]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [
-        [
-          {
-            "node": "CPA Review",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "CPA Review": {
-      "main": [
-        [
-          {
-            "node": "Format for Slack",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Format for Slack": {
-      "main": [
-        [
-          {
-            "node": "Post to Slack",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Call Brain (persona_pin=cpa)", "type": "main", "index": 0 }]]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
-  },
+  "settings": { "executionOrder": "v1" },
   "tags": [
-    {
-      "name": "persona"
-    },
-    {
-      "name": "cpa"
-    },
-    {
-      "name": "slack"
-    }
+    { "name": "persona" },
+    { "name": "cpa" },
+    { "name": "track-h" }
   ],
   "id": "4db09e98-3543-4b8c-9f3e-dc85a261937a"
 }

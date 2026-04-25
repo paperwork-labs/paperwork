@@ -1,3 +1,5 @@
+"""medallion: ops"""
+
 import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession

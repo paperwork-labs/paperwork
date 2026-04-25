@@ -126,3 +126,103 @@ class TestAxiomFolioWebhookAuth:
 
         assert response.status_code == 503
         assert "not configured" in response.json()["detail"]
+
+
+class TestGitHubWebhookAuth:
+    """HMAC-SHA256 (X-Hub-Signature-256) verification on /webhooks/github."""
+
+    @pytest.fixture
+    def github_payload(self) -> dict:
+        return {
+            "action": "opened",
+            "number": 999,
+            "pull_request": {
+                "number": 999,
+                "draft": False,
+                "title": "chore(deps): bump lodash from 4.17.20 to 4.17.21",
+                "user": {"login": "dependabot[bot]"},
+                "labels": [],
+            },
+        }
+
+    @pytest.fixture
+    def github_secret(self) -> str:
+        return "gh_webhook_secret_xyz"
+
+    def _sign(self, payload: dict, secret: str) -> tuple[bytes, str]:
+        body = json.dumps(payload, separators=(",", ":")).encode()
+        sig = hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+        return body, f"sha256={sig}"
+
+    @pytest.mark.asyncio
+    async def test_ping_event_short_circuits(self, client, github_secret):
+        body, sig = self._sign({}, github_secret)
+        with patch("app.config.settings.GITHUB_WEBHOOK_SECRET", github_secret):
+            with patch("app.config.settings.ENVIRONMENT", "production"):
+                res = await client.post(
+                    "/api/v1/webhooks/github",
+                    content=body,
+                    headers={
+                        "X-Hub-Signature-256": sig,
+                        "X-GitHub-Event": "ping",
+                        "X-GitHub-Delivery": "abc-123",
+                        "Content-Type": "application/json",
+                    },
+                )
+        assert res.status_code == 200
+        assert res.json() == {"received": True, "ping": True}
+
+    @pytest.mark.asyncio
+    async def test_unknown_event_acknowledged_but_ignored(self, client, github_secret):
+        body, sig = self._sign({}, github_secret)
+        with patch("app.config.settings.GITHUB_WEBHOOK_SECRET", github_secret):
+            with patch("app.config.settings.ENVIRONMENT", "production"):
+                res = await client.post(
+                    "/api/v1/webhooks/github",
+                    content=body,
+                    headers={
+                        "X-Hub-Signature-256": sig,
+                        "X-GitHub-Event": "push",
+                        "X-GitHub-Delivery": "abc-456",
+                        "Content-Type": "application/json",
+                    },
+                )
+        assert res.status_code == 200
+        assert res.json()["ignored"] == "push"
+
+    @pytest.mark.asyncio
+    async def test_invalid_signature_rejected(self, client, github_payload, github_secret):
+        with patch("app.config.settings.GITHUB_WEBHOOK_SECRET", github_secret):
+            with patch("app.config.settings.ENVIRONMENT", "production"):
+                res = await client.post(
+                    "/api/v1/webhooks/github",
+                    json=github_payload,
+                    headers={
+                        "X-Hub-Signature-256": "sha256=0" * 64,
+                        "X-GitHub-Event": "pull_request",
+                    },
+                )
+        # Either invalid or malformed depending on length — both 401.
+        assert res.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_missing_signature_rejected(self, client, github_payload, github_secret):
+        with patch("app.config.settings.GITHUB_WEBHOOK_SECRET", github_secret):
+            with patch("app.config.settings.ENVIRONMENT", "production"):
+                res = await client.post(
+                    "/api/v1/webhooks/github",
+                    json=github_payload,
+                    headers={"X-GitHub-Event": "pull_request"},
+                )
+        assert res.status_code == 401
+
+    @pytest.mark.asyncio
+    async def test_production_requires_secret(self, client, github_payload):
+        with patch("app.config.settings.GITHUB_WEBHOOK_SECRET", ""):
+            with patch("app.config.settings.ENVIRONMENT", "production"):
+                res = await client.post(
+                    "/api/v1/webhooks/github",
+                    json=github_payload,
+                    headers={"X-GitHub-Event": "pull_request"},
+                )
+        assert res.status_code == 503

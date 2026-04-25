@@ -1,1 +1,4 @@
-"""LaunchFree API package."""
+"""LaunchFree API package.
+
+medallion: ops
+"""

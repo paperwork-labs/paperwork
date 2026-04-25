@@ -56,6 +56,12 @@ async def process_message(
         channel_id=body.channel_id,
         request_id=body.request_id,
         thread_context=body.thread_context,
+        thread_id=body.thread_id,
+        persona_pin=body.persona_pin,
+        strategy=body.strategy,
+        slack_channel_id=body.slack_channel_id,
+        slack_username=body.slack_username,
+        slack_icon_emoji=body.slack_icon_emoji,
     )
 
     return success_response(result)

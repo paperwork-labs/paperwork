@@ -1,3 +1,5 @@
+"""medallion: ops"""
+
 from fastapi import APIRouter, Depends
 
 from app.dependencies import require_session

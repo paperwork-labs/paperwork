@@ -166,3 +166,51 @@ meaningful telemetry. Neither returns fake content.
 - **D9** — Re-introduce `allowed_tools` once D7 wires per-persona MCP
   tool filtering at the server level. (Removed in H5 to avoid
   declared-but-unenforced contracts.)
+
+<!-- BEGIN GENERATED: persona-registry -->
+
+## Registered personas
+
+_Generated from `apis/brain/app/personas/specs/*.yaml`. 16 personas. Run `python scripts/generate_brain_personas_doc.py` to refresh._
+
+| Persona | Default model | Escalation | Ceiling/day | RPM | Max out | Tools | Compliance | Cadence |
+|---|---|---|---|---|---|---|---|---|
+| `agent-ops` | `sonnet-4` | `opus-4` | $5.00 | 20 | 3000 | ✅ | — | weekly |
+| `brand` | `gpt-4o-mini` | `sonnet-4` | $2.00 | 15 | 2000 | — | — | monthly |
+| `cfo` | `sonnet-4` | `opus-4` | $5.00 | 15 | 3000 | ✅ | — | daily |
+| `cpa` | `sonnet-4` | `opus-4` | $5.00 | 20 | 3000 | — | ✅ | weekly |
+| `ea` | `gpt-4o-mini` | `sonnet-4` | $2.00 | 30 | 2000 | ✅ | — | daily |
+| `engineering` | `sonnet-4` | `opus-4` | $10.00 | 40 | 4000 | ✅ | — | daily |
+| `growth` | `gpt-4o-mini` | `sonnet-4` | $3.00 | 15 | 2000 | — | — | weekly |
+| `infra-ops` | `sonnet-4` | `opus-4` | $5.00 | 30 | 3000 | ✅ | — | never |
+| `legal` | `sonnet-4` | `opus-4` | $4.00 | 20 | 3000 | — | ✅ | monthly |
+| `partnerships` | `gpt-4o-mini` | `sonnet-4` | $3.00 | 15 | 2500 | — | — | weekly |
+| `qa` | `sonnet-4` | `opus-4` | $5.00 | 30 | 3000 | ✅ | ✅ | weekly |
+| `social` | `gpt-4o-mini` | `sonnet-4` | $3.00 | 15 | 1500 | — | — | daily |
+| `strategy` | `sonnet-4` | `opus-4` | $6.00 | 10 | 4000 | ✅ | — | weekly |
+| `tax-domain` | `o4-mini` | `sonnet-4` | $3.00 | 20 | 3000 | — | ✅ | never |
+| `trading` | `sonnet-4` | `opus-4` | $6.00 | 30 | 3000 | ✅ | — | daily |
+| `ux` | `gpt-4o-mini` | `sonnet-4` | $3.00 | 15 | 2500 | ✅ | — | weekly |
+
+### Escalation rules
+
+| Persona | `escalate_if` | Owner channel |
+|---|---|---|
+| `agent-ops` | `tokens>5000` | `#agent-ops` |
+| `brand` | `tokens>4000` | `#social` |
+| `cfo` | `tokens>5000`, `mention:forecast` | `#cfo` |
+| `cpa` | `compliance`, `tokens>6000` | `#cpa` |
+| `ea` | `tokens>4000` | `#ea` |
+| `engineering` | `tokens>8000`, `mention:architecture` | `#engineering` |
+| `growth` | `tokens>3000`, `mention:campaign` | `#growth` |
+| `infra-ops` | `compliance`, `tokens>6000`, `mention:outage`, `mention:incident` | `#engineering` |
+| `legal` | `compliance`, `tokens>4000` | `#legal` |
+| `partnerships` | `tokens>3000`, `mention:contract` | `#partnerships` |
+| `qa` | `compliance`, `mention:vulnerability`, `mention:exploit` | `#qa` |
+| `social` | `tokens>3000` | `#social` |
+| `strategy` | `tokens>6000`, `mention:quarterly` | `#strategy` |
+| `tax-domain` | `compliance` | `#tax` |
+| `trading` | `tokens>5000`, `mention:execute`, `mention:live_order` | `#trading` |
+| `ux` | `tokens>3500` | `#ux` |
+
+<!-- END GENERATED: persona-registry -->

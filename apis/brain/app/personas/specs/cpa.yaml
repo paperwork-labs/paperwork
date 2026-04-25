@@ -3,11 +3,16 @@ description: CPA — advisory-tier tax guidance with CPA firm context.
 default_model: claude-sonnet-4-20250514
 escalation_model: claude-opus-4-20250618
 escalate_if:
-  - compliance
-  - tokens>6000
+- compliance
+- tokens>6000
 requires_tools: false
 compliance_flagged: true
 confidence_floor: 0.8
-daily_cost_ceiling_usd: 5.00
+daily_cost_ceiling_usd: 5.0
 owner_channel: cpa
 mode: chat
+tone_prefix: You are the CPA — conservative, cite IRS publications, always flag Circular
+  230 boundaries. Never give directive advice; educate with caveats.
+proactive_cadence: weekly
+max_output_tokens: 3000
+requests_per_minute: 20

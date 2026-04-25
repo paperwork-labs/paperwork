@@ -1,0 +1,168 @@
+# Track G — golden persona-pin regression fixtures.
+#
+# These capture the "realistic shape" of n8n → Brain calls that we
+# migrated in Track H (cpa-tax-review, qa-security-scan, sprint-kickoff)
+# plus the broader set of 16 PersonaSpecs. One scenario per persona so
+# the matrix stays balanced; each scenario's expectations are a
+# *structural* contract (default_model matches spec, compliance flag
+# honoured, tools flag honoured) rather than a semantic assertion on
+# the generated text.
+#
+# The regression test in test_persona_pin_golden.py:
+#  1. Loads each scenario.
+#  2. Looks up the PersonaSpec from the registry.
+#  3. Asserts fixture ↔ spec agree on default_model / compliance_flagged
+#     / requires_tools / proactive_cadence.
+#  4. Fails loudly if a persona is missing or if a spec drifts from the
+#     golden file, so "is my persona still routing the way I think it
+#     is?" is a `pytest` run away from an answer.
+#
+# To refresh: run `pytest -q tests/test_persona_pin_golden.py`. When we
+# add a new persona, add its scenario here or the coverage test fails.
+
+scenarios:
+  - id: cpa_tax_review
+    persona: cpa
+    message: "Run a CPA tax review on the latest filings and flag any Circular 230 issues."
+    expected:
+      default_model: claude-sonnet-4-20250514
+      escalation_model: claude-opus-4-20250618
+      compliance_flagged: true
+      requires_tools: false
+      proactive_cadence: weekly
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: qa_security_scan
+    persona: qa
+    message: "Run a security audit on the latest PR and return critical_issues, high_issues, medium_issues, test_cases."
+    expected:
+      default_model: claude-sonnet-4-20250514
+      escalation_model: claude-opus-4-20250618
+      compliance_flagged: true
+      requires_tools: true
+      proactive_cadence: weekly
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: sprint_kickoff_strategy
+    persona: strategy
+    message: "Monday sprint kickoff: generate 5-day sprint plan with goals, engineering plan, risks, top 3 priorities."
+    expected:
+      default_model: claude-sonnet-4-20250514
+      escalation_model: claude-opus-4-20250618
+      compliance_flagged: false
+      requires_tools: true
+      proactive_cadence: weekly
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: engineering_architecture
+    persona: engineering
+    message: "Review the medallion architecture and identify import-layer violations in apis/brain."
+    expected:
+      compliance_flagged: false
+      requires_tools: true
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: tax_domain_safe_harbor
+    persona: tax-domain
+    message: "Explain how safe harbor withholding works for Q4 estimated tax payments."
+    expected:
+      compliance_flagged: true
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: legal_formation_question
+    persona: legal
+    message: "Compare Delaware C-corp vs LLC from a formation perspective (education, not advice)."
+    expected:
+      compliance_flagged: true
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: cfo_runway_check
+    persona: cfo
+    message: "What's our current LLM spend per persona and how does it compare to last month?"
+    expected:
+      compliance_flagged: false
+      requires_tools: true
+      proactive_cadence: daily
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: trading_portfolio_status
+    persona: trading
+    message: "Show current portfolio positions and relative strength on the top 5 holdings."
+    expected:
+      compliance_flagged: false
+      requires_tools: true
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: ea_daily_brief
+    persona: ea
+    message: "Morning brief: yesterday's wins, today's focus, blockers across the company."
+    expected:
+      compliance_flagged: false
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: agent_ops_health
+    persona: agent-ops
+    message: "Any agent regressions today? Persona coverage, mdc drift, or routing weirdness?"
+    expected:
+      compliance_flagged: false
+      requires_tools: true
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: infra_ops_deploy_status
+    persona: infra-ops
+    message: "Are all Render services healthy? Any failed deploys in the last 24h?"
+    expected:
+      compliance_flagged: false
+      requires_tools: true
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: ux_copy_review
+    persona: ux
+    message: "Review the FileFree upload copy for clarity and accessibility."
+    expected:
+      compliance_flagged: false
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: brand_voice_check
+    persona: brand
+    message: "Does this social post match the Paperwork Labs voice? Tone + vocab review."
+    expected:
+      compliance_flagged: false
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: social_post_draft
+    persona: social
+    message: "Draft a LinkedIn post on why we moved off multi-repo to a monorepo."
+    expected:
+      compliance_flagged: false
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: growth_ab_test_idea
+    persona: growth
+    message: "Propose an A/B test for the FileFree landing page hero section."
+    expected:
+      compliance_flagged: false
+      has_ceiling: true
+      has_rate_limit: true
+
+  - id: partnerships_outreach
+    persona: partnerships
+    message: "Draft a first-touch partnership email to a mid-market CPA firm evaluating Distill."
+    expected:
+      compliance_flagged: false
+      has_ceiling: true
+      has_rate_limit: true

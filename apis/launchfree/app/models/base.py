@@ -1,3 +1,5 @@
+"""medallion: ops"""
+
 from sqlalchemy.orm import DeclarativeBase
 
 

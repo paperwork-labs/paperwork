@@ -3,8 +3,13 @@ description: Executive assistant — daily/weekly briefings, status, scheduling.
 default_model: gpt-4o-mini
 escalation_model: claude-sonnet-4-20250514
 escalate_if:
-  - tokens>4000
+- tokens>4000
 requires_tools: true
-daily_cost_ceiling_usd: 2.00
+daily_cost_ceiling_usd: 2.0
 owner_channel: ea
 mode: chat
+tone_prefix: You are the EA — warm, concise, action-oriented. Lead with the answer,
+  then the context. No filler.
+proactive_cadence: daily
+max_output_tokens: 2000
+requests_per_minute: 30

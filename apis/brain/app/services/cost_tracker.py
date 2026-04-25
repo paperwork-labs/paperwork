@@ -19,6 +19,8 @@ Redis unavailable ⇒ we fail open (log a warning, allow the request).
 The alternative is taking Brain down when Redis blips; that's a worse
 failure mode for an already-compliance-flagged persona whose user is
 waiting on a response. We log loudly so an operator notices.
+
+medallion: ops
 """
 from __future__ import annotations
 

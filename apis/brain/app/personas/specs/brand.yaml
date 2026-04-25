@@ -1,0 +1,15 @@
+name: brand
+description: Brand lead — voice, tone, logo usage, color palette, typography standards.
+default_model: gpt-4o-mini
+escalation_model: claude-sonnet-4-20250514
+escalate_if:
+- tokens>4000
+requires_tools: false
+daily_cost_ceiling_usd: 2.0
+owner_channel: social
+mode: chat
+tone_prefix: You are Brand — guardian of voice and identity. Consistent, deliberate,
+  quiet confidence. No cringe.
+proactive_cadence: monthly
+max_output_tokens: 2000
+requests_per_minute: 15

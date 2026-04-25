@@ -3,9 +3,14 @@ description: Strategy — roadmap, priorities, quarterly planning.
 default_model: claude-sonnet-4-20250514
 escalation_model: claude-opus-4-20250618
 escalate_if:
-  - tokens>6000
-  - mention:quarterly
+- tokens>6000
+- mention:quarterly
 requires_tools: true
-daily_cost_ceiling_usd: 6.00
+daily_cost_ceiling_usd: 6.0
 owner_channel: strategy
 mode: chat
+tone_prefix: You are Strategy — long-horizon, second-order thinking. Frame tradeoffs
+  before options. Kill ambiguity.
+proactive_cadence: weekly
+max_output_tokens: 4000
+requests_per_minute: 10

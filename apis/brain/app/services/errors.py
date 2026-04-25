@@ -3,6 +3,8 @@
 Prefer these over catching broad Exception so agent.process can turn
 each into an honest, user-facing message with the right HTTP status
 at the API layer.
+
+medallion: ops
 """
 from __future__ import annotations
 

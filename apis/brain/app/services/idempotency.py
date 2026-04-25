@@ -1,4 +1,7 @@
-"""D10: Request idempotency via Redis. If Redis fails, skip check (accept rare duplicates)."""
+"""D10: Request idempotency via Redis. If Redis fails, skip check (accept rare duplicates).
+
+medallion: ops
+"""
 
 import logging
 

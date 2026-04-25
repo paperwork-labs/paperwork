@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Paperwork Labs — Dev Portal</title>
+  <title>Paperwork Labs — Localhost Index</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E📎%3C/text%3E%3C/svg%3E" />
   <style>
     :root {
@@ -411,11 +411,11 @@
     <header>
       <div class="brand">
         <span class="brand-dot"></span>
-        Paperwork Labs — Dev Portal
+        Paperwork Labs — Localhost Index
       </div>
       <div class="subtitle">
-        One <code>docker compose up</code> boots every product. This portal is the map — ports, APIs, docs, and ops tools all in one place.
-        Services are reachable on <code>localhost</code> only. See <a href="https://github.com/paperwork-labs/paperwork/blob/main/docs/INFRA.md" style="color:var(--accent);text-decoration:none;">docs/INFRA.md</a> for the full architecture.
+        One <code>docker compose up</code> boots every product. This index is a local dev shortcut — ports, APIs, and docker-only ops tools.
+        Production dashboards (Render, Vercel, Slack, GitHub) live in <a href="https://paperworklabs.com/admin" style="color:var(--accent);text-decoration:none;">Studio</a>, the command center. Services below are reachable on <code>localhost</code> only.
       </div>
     </header>
 
@@ -594,36 +594,21 @@
 
     <section>
       <div class="section-header">
-        <div class="section-title">External dashboards</div>
-        <div class="section-meta">prod ops & deploy</div>
+        <div class="section-title">Production ops</div>
+        <div class="section-meta">single source — Studio</div>
       </div>
       <div class="grid">
-        <a class="card" href="https://github.com/paperwork-labs/paperwork" target="_blank">
-          <div class="card-header"><span class="card-name">GitHub — paperwork</span></div>
-          <div class="card-desc">Monorepo (main) · PRs · Actions</div>
-          <div class="card-tags"><span class="tag tag-external">GitHub</span></div>
-        </a>
-        <a class="card" href="https://dashboard.render.com" target="_blank">
-          <div class="card-header"><span class="card-name">Render</span></div>
-          <div class="card-desc">Tier-1 deploys for every product backend</div>
-          <div class="card-tags"><span class="tag tag-external">Render</span></div>
-        </a>
-        <a class="card" href="https://vercel.com/paperwork-labs" target="_blank">
-          <div class="card-header"><span class="card-name">Vercel</span></div>
-          <div class="card-desc">Frontend deploys · preview URLs per PR</div>
-          <div class="card-tags"><span class="tag tag-external">Vercel</span></div>
-        </a>
-        <a class="card" href="https://paperworklabs.slack.com" target="_blank">
-          <div class="card-header"><span class="card-name">Slack</span></div>
-          <div class="card-desc">#decisions · #daily-briefing · Brain agents</div>
-          <div class="card-tags"><span class="tag tag-external">Slack</span></div>
+        <a class="card" href="https://paperworklabs.com/admin" target="_blank">
+          <div class="card-header"><span class="card-name">Studio · command center</span></div>
+          <div class="card-desc">Prod dashboards for Render, Vercel, Slack, GitHub, n8n DAGs — one surface instead of five tabs. This index deliberately does not duplicate those links.</div>
+          <div class="card-tags"><span class="tag tag-docs">/admin</span></div>
         </a>
       </div>
     </section>
 
     <footer>
       <div>
-        Served by <code>nginx:alpine</code> from <code>infra/portal/</code>.
+        Served by <code>nginx:alpine</code> from <code>infra/portal/</code> — local dev only.
         Rebuild on change: <code>docker compose -f infra/compose.dev.yaml restart portal</code>
       </div>
       <div>

@@ -51,8 +51,9 @@ Rules:
 
 - **Added by**: `qa` (baseline)
 - **Added at**: 2026-04-24
-- **Claim**: bronze → silver → gold → execution. Ledgers are append-only (Iron Law #1). `scripts/medallion/check_imports.py` gates cross-layer imports in CI.
-- **Verification**: `python3 scripts/medallion/check_imports.py`
+- **Updated**: 2026-04-24 (Track D lift)
+- **Claim**: bronze → silver → gold → execution. Ledgers are append-only (Iron Law #1). `scripts/medallion/check_imports.py` is parametric over `--app-dir` and runs against axiomfolio, brain, filefree, and launchfree via the `medallion-lint` workflow on every PR. Per-app maps live in `scripts/medallion/apps.yaml`. `apis/axiomfolio/scripts/medallion/*` are shims that forward to the root scripts for backward compatibility.
+- **Verification**: `python3 scripts/medallion/check_imports.py --app-dir apis/axiomfolio` (or brain/filefree/launchfree)
 
 ## R-006 — GDrive is served over MCP from Brain, not a standalone service
 
@@ -68,13 +69,13 @@ Rules:
 - **Claim**: The paperwork bot is a member of every Slack channel. Brain can DM and post to any channel. Slack health has a probe row on `/admin/infrastructure` (added in Week 0 Track J follow-up).
 - **Verification**: `@paperwork status` in `#deployment` responds via `brain-slack-adapter.json` within 10s, with a persona avatar (not a generic bot name).
 
-## R-008 — 14 personas in `/admin/agents`; 48 `.mdc` rules in `.cursor/rules/`
+## R-008 — 16 personas in the router; 48 `.mdc` files (16 personas + 32 guardrail rules)
 
 - **Added by**: `qa` (baseline)
-- **Added at**: 2026-04-24
-- **Status**: **drift flagged** — Track F reconciles these two registries into a single `PersonaSpec` YAML + Neon editor. Until then, the router ignores .mdc files.
-- **Claim**: There are two separate persona sources of truth today: Brain's hardcoded router slugs (`apis/brain/app/services/personas.py`, 14 entries) and `.cursor/rules/*.mdc` (48 files). Week 2 Track F unifies.
-- **Verification**: `ls .cursor/rules/*.mdc | wc -l` (expect `48`); `python3 -c "from apis.brain.app.services.personas import ROUTING; print(len(ROUTING))"` (expect `14`).
+- **Updated**: 2026-04-24 (Track F H11/H12)
+- **Status**: **partially reconciled** — router slugs now match PersonaSpec YAMLs 1:1 (brand + infra-ops added). The remaining 32 .mdc files are intentional *rules*, not personas (git-workflow, token-efficiency, no-silent-fallback, trading sub-personas like alpha-researcher/portfolio-manager, etc). `scripts/check_persona_coverage.py` is green.
+- **Claim**: Persona routing lives in `apis/brain/app/personas/routing.py` (moved from `app/services/personas.py`, which is now a deprecation shim). Each router slug has a matching `app/personas/specs/<slug>.yaml` PersonaSpec **and** a `.cursor/rules/<slug>.mdc` instruction file. The image bundles all .mdc files at `/app/cursor-rules/` so cold starts don't hit GitHub.
+- **Verification**: `ls .cursor/rules/*.mdc | wc -l` (expect `48`); `.venv/bin/python apis/brain/scripts/check_persona_coverage.py` (expect `OK: 16 router slugs, 16 specs, 48 mdc files (32 guardrail rules + 16 personas)`).
 
 ## R-009 — AxiomFolio has its own agent; it delegates LLM to Paperwork Brain
 

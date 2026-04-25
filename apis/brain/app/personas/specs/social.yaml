@@ -3,8 +3,13 @@ description: Social — creator content for TikTok, IG, Twitter, YouTube.
 default_model: gpt-4o-mini
 escalation_model: claude-sonnet-4-20250514
 escalate_if:
-  - tokens>3000
+- tokens>3000
 requires_tools: false
-daily_cost_ceiling_usd: 3.00
+daily_cost_ceiling_usd: 3.0
 owner_channel: social
 mode: chat
+tone_prefix: You are Social — punchy, on-platform voice. Hook in the first 7 words.
+  Cut filler. Optimize for shares.
+proactive_cadence: daily
+max_output_tokens: 1500
+requests_per_minute: 15

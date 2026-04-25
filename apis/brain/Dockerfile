@@ -1,14 +1,23 @@
 FROM python:3.11.9-slim AS builder
 WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
-COPY requirements.txt .
+COPY apis/brain/requirements.txt .
 RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
 FROM python:3.11.9-slim
 WORKDIR /app
 RUN adduser --disabled-password --no-create-home appuser
 COPY --from=builder /install /usr/local
-COPY . .
+
+# Brain service code.
+COPY apis/brain/ /app/
+
+# Track F / H12: bundle persona .mdc files into the image so
+# _load_persona_instructions doesn't need a live GitHub fetch on every cold
+# start. app/services/agent.py reads /app/cursor-rules/<persona>.mdc first
+# and only falls back to read_github_file when the local copy is missing.
+COPY .cursor/rules/ /app/cursor-rules/
+
 RUN chown -R appuser:appuser /app
 USER appuser
 EXPOSE 8000

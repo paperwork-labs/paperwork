@@ -1,3 +1,5 @@
+"""medallion: ops"""
+
 from fastapi import APIRouter
 
 router = APIRouter(tags=["health"])

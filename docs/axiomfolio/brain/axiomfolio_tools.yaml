@@ -143,8 +143,7 @@ tools:
         required: true
         description: "Catalog task ID, e.g. admin_coverage_backfill"
 
-
-- name: pending_approvals
+  - name: pending_approvals
     description: "List orders currently awaiting approval with timeout info"
     method: GET
     path: /api/v1/tools/pending-approvals

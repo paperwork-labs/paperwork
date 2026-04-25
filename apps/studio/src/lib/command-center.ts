@@ -268,6 +268,105 @@ export async function getRecentPullRequests(limit = 5) {
   return data ?? [];
 }
 
+export type BrainPRReview = {
+  pr_number: number;
+  head_sha: string;
+  verdict: "APPROVE" | "COMMENT" | "REQUEST_CHANGES" | string;
+  model: string;
+  summary: string;
+  created_at: string;
+};
+
+/**
+ * Most recent Brain PR-review episodes, keyed by PR number. Used by the
+ * Overview to show a verdict + SHA badge alongside the open PR list.
+ *
+ * Never throws — a Brain outage must not break the dashboard.
+ */
+export async function getBrainPRReviews(limit = 50): Promise<Map<number, BrainPRReview>> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) return new Map();
+  type RawEpisode = {
+    source?: string;
+    summary?: string;
+    metadata?: { pr_number?: number; head_sha?: string; verdict?: string; model?: string };
+    full_context?: string;
+    created_at?: string;
+  };
+  const data = await fetchJson<{ success?: boolean; data?: { episodes?: RawEpisode[] } }>(
+    `${apiRoot}/admin/memory/episodes?source_prefix=brain:pr-review&limit=${limit}`,
+    { headers: { "X-Brain-Secret": secret } },
+  );
+  const episodes = data?.data?.episodes ?? [];
+  const byPr = new Map<number, BrainPRReview>();
+  for (const ep of episodes) {
+    const prNum = ep?.metadata?.pr_number;
+    if (!prNum) continue;
+    const existing = byPr.get(prNum);
+    const ts = ep.created_at ? Date.parse(ep.created_at) : 0;
+    const existingTs = existing?.created_at ? Date.parse(existing.created_at) : 0;
+    if (existing && existingTs >= ts) continue;
+    byPr.set(prNum, {
+      pr_number: prNum,
+      head_sha: ep.metadata?.head_sha ?? "",
+      verdict: ep.metadata?.verdict ?? "COMMENT",
+      model: ep.metadata?.model ?? "",
+      summary: (ep.summary ?? "").slice(0, 200),
+      created_at: ep.created_at ?? "",
+    });
+  }
+  return byPr;
+}
+
+export type SlackActivityEntry = {
+  id: number;
+  persona: string;
+  channel_id: string;
+  summary: string;
+  created_at: string;
+  model: string;
+  persona_pinned: boolean;
+};
+
+/**
+ * Track C: Brain-originated Slack activity for the Studio overview tile.
+ *
+ * We pull recent Brain episodes where ``source`` starts with ``brain:slack``
+ * and project them into a compact shape for the dashboard. Never throws.
+ */
+export async function getRecentSlackActivity(limit = 15): Promise<SlackActivityEntry[]> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) return [];
+  type RawEpisode = {
+    id?: number;
+    source?: string;
+    persona?: string;
+    channel?: string;
+    summary?: string;
+    metadata?: { pinned?: boolean; persona_pin?: string };
+    model_used?: string;
+    created_at?: string;
+  };
+  const data = await fetchJson<{ success?: boolean; data?: { episodes?: RawEpisode[] } }>(
+    `${apiRoot}/admin/memory/episodes?source_prefix=brain:slack&limit=${limit}`,
+    { headers: { "X-Brain-Secret": secret } },
+  );
+  const episodes = data?.data?.episodes ?? [];
+  return episodes
+    .filter((ep) => ep.id != null && ep.persona && ep.persona !== "router")
+    .map((ep) => ({
+      id: ep.id as number,
+      persona: ep.persona as string,
+      channel_id: ep.channel ?? "",
+      summary: (ep.summary ?? "").slice(0, 200),
+      created_at: ep.created_at ?? "",
+      model: ep.model_used ?? "",
+      persona_pinned: Boolean(ep.metadata?.pinned || ep.metadata?.persona_pin),
+    }));
+}
+
 export type CIRun = {
   id: number;
   name: string;

@@ -1,3 +1,5 @@
+"""medallion: ops"""
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.waitlist import Waitlist
