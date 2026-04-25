@@ -9,8 +9,13 @@ sprint:
   end: 2026-04-23
   duration_weeks: 4
   pr: 141
+  prs: [141]
   ships: [studio, brain, axiomfolio, n8n]
   personas: [agent-ops, engineering, infra-ops, qa]
+  plans:
+    - docs/INFRA.md
+    - docs/BRAIN_ARCHITECTURE.md
+    - docs/PERSONA_PLATFORM.md
 ---
 
 # Infra & Automation Hardening — 2026 Q2

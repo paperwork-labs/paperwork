@@ -10,6 +10,9 @@ import {
 import OverviewClient from "./overview-client";
 import { TrackersRail } from "./_components/trackers-rail";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminOverviewPage() {
   const [workflows, executions, prs, infrastructure, ciRuns, brainReviews, slackActivity] =
     await Promise.all([

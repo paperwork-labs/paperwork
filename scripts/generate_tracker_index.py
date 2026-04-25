@@ -88,41 +88,105 @@ FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?\n)---\s*\n", re.DOTALL)
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
-    """Tiny YAML parser — handles flat scalars and one-level nested
-    mappings under the `sprint:` key (the only nested structure we use)."""
+    """Tiny YAML parser — handles flat scalars, one-level nested mappings,
+    and nested lists. Sufficient for our sprint/plan/doc frontmatter; falls
+    back to PyYAML if available for anything more exotic."""
     match = FRONTMATTER_RE.match(text)
     if not match:
         return {}, text
     raw = match.group(1)
     body = text[match.end():]
-    parsed: dict[str, Any] = {}
-    current_key: str | None = None
+
+    try:
+        import datetime as _dt
+
+        import yaml  # type: ignore
+
+        parsed = yaml.safe_load(raw) or {}
+
+        def _normalize(value: Any) -> Any:
+            if isinstance(value, dict):
+                return {k: _normalize(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [_normalize(v) for v in value]
+            if isinstance(value, (_dt.datetime, _dt.date)):
+                return value.isoformat()
+            return value
+
+        if isinstance(parsed, dict):
+            return _normalize(parsed), body
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
+    parsed_local: dict[str, Any] = {}
     current_obj: dict[str, Any] | None = None
+    pending_list_key: str | None = None
+    pending_list_target: dict[str, Any] | None = None
+    pending_list: list[Any] | None = None
+
+    def flush_list() -> None:
+        nonlocal pending_list, pending_list_key, pending_list_target
+        if pending_list is not None and pending_list_key is not None and pending_list_target is not None:
+            pending_list_target[pending_list_key] = pending_list
+        pending_list = None
+        pending_list_key = None
+        pending_list_target = None
+
     for line in raw.splitlines():
         if not line.strip() or line.strip().startswith("#"):
             continue
-        if line.startswith("  ") and current_obj is not None:
-            sub = line.strip()
-            if ":" not in sub:
+        stripped = line.strip()
+        indent = len(line) - len(line.lstrip(" "))
+
+        if pending_list is not None and stripped.startswith("- "):
+            min_indent = 2 if pending_list_target is parsed_local else 4
+            if indent >= min_indent:
+                pending_list.append(parse_scalar(stripped[2:].strip()))
                 continue
-            k, _, v = sub.partition(":")
-            current_obj[k.strip()] = parse_scalar(v.strip())
+            flush_list()
+
+        if indent >= 2 and current_obj is not None:
+            if ":" not in stripped:
+                continue
+            k, _, v = stripped.partition(":")
+            k = k.strip()
+            v = v.strip()
+            if not v:
+                flush_list()
+                pending_list = []
+                pending_list_key = k
+                pending_list_target = current_obj
+                current_obj[k] = pending_list
+                continue
+            flush_list()
+            current_obj[k] = parse_scalar(v)
             continue
-        if line.startswith(" "):
-            continue
-        if ":" not in line:
-            continue
-        key, _, value = line.partition(":")
-        key = key.strip()
-        value = value.strip()
-        if not value:
-            current_key = key
-            current_obj = {}
-            parsed[key] = current_obj
-            continue
-        parsed[key] = parse_scalar(value)
-        current_key, current_obj = None, None
-    return parsed, body
+
+        flush_list()
+        current_obj = None
+
+        if indent == 0 and ":" in stripped:
+            key, _, value = stripped.partition(":")
+            key = key.strip()
+            value = value.strip()
+            if not value:
+                current_obj = {}
+                parsed_local[key] = current_obj
+                pending_list = []
+                pending_list_key = key
+                pending_list_target = parsed_local
+                continue
+            parsed_local[key] = parse_scalar(value)
+
+    flush_list()
+
+    for key, value in list(parsed_local.items()):
+        if isinstance(value, dict) and not value:
+            parsed_local[key] = parsed_local.get(f"_{key}_list") or []
+
+    return parsed_local, body
 
 
 def parse_scalar(v: str) -> Any:
@@ -197,12 +261,125 @@ def parse_company_tasks() -> dict[str, Any]:
     }
 
 
+SECTION_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$", re.MULTILINE)
+BULLET_RE = re.compile(r"^\s*[-*]\s+(?P<text>.+?)\s*$", re.MULTILINE)
+PR_MENTION_RE = re.compile(r"#(\d{2,5})\b|/pull/(\d{2,5})\b")
+
+
+def extract_section(body: str, *titles: str, max_lines: int = 200) -> str | None:
+    """Return the body of the first '## <title>' section, or None.
+    Matches case-insensitively and accepts multiple aliases."""
+    titles_lower = [t.lower() for t in titles]
+    matches = list(SECTION_RE.finditer(body))
+    for i, m in enumerate(matches):
+        if m.group("title").strip().lower() in titles_lower:
+            start = m.end()
+            end = matches[i + 1].start() if i + 1 < len(matches) else len(body)
+            chunk = body[start:end].strip()
+            lines = chunk.splitlines()
+            if len(lines) > max_lines:
+                lines = lines[:max_lines]
+            return "\n".join(lines).strip() or None
+    return None
+
+
+def first_paragraph(text: str | None) -> str | None:
+    if not text:
+        return None
+    for chunk in re.split(r"\n\s*\n", text):
+        chunk = chunk.strip()
+        if chunk and not chunk.startswith(("#", "|", "-")):
+            return chunk
+    return None
+
+
+def extract_bullets(text: str | None, limit: int = 8) -> list[str]:
+    if not text:
+        return []
+    out: list[str] = []
+    for m in BULLET_RE.finditer(text):
+        line = m.group("text").strip()
+        # Strip leading bold "Foo:" decorations to keep cards tidy
+        line = re.sub(r"^\*\*([^*]+)\*\*\s*[-—:]?\s*", r"\1: ", line)
+        if line and len(line) < 320:
+            out.append(line)
+        if len(out) >= limit:
+            break
+    return out
+
+
+def extract_pr_numbers(*texts: str | None) -> list[int]:
+    seen: set[int] = set()
+    ordered: list[int] = []
+    for text in texts:
+        if not text:
+            continue
+        for m in PR_MENTION_RE.finditer(text):
+            num = int(m.group(1) or m.group(2))
+            if num in seen:
+                continue
+            seen.add(num)
+            ordered.append(num)
+    return ordered
+
+
+def coerce_int_list(value: Any) -> list[int]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        out: list[int] = []
+        for v in value:
+            try:
+                out.append(int(str(v).strip().lstrip("#")))
+            except (TypeError, ValueError):
+                continue
+        return out
+    return []
+
+
+def coerce_str_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if str(v).strip()]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
 def parse_sprint(p: Path) -> dict[str, Any]:
     raw = p.read_text(encoding="utf-8")
     fm, body = parse_frontmatter(raw)
     sprint = fm.get("sprint") if isinstance(fm.get("sprint"), dict) else {}
     title = first_h1(body) or p.stem
     pr = sprint.get("pr")
+
+    goal = first_paragraph(extract_section(body, "Goal", "Why", "Objective"))
+    outcome_text = extract_section(body, "Outcome", "What shipped", "Result")
+    outcome_bullets = extract_bullets(outcome_text)
+    lessons_bullets = extract_bullets(
+        extract_section(body, "What we learned", "Lessons", "Lessons learned")
+    )
+    followups_bullets = extract_bullets(
+        extract_section(body, "Follow-ups", "Next", "Next steps")
+    )
+
+    plans = coerce_str_list(sprint.get("plans") or sprint.get("plan") or fm.get("plan"))
+    declared_prs = coerce_int_list(sprint.get("prs") or fm.get("prs"))
+    body_prs = extract_pr_numbers(outcome_text, body[:8000])
+    if pr:
+        try:
+            declared_prs.append(int(pr))
+        except (TypeError, ValueError):
+            pass
+    seen_pr: set[int] = set()
+    related_prs: list[int] = []
+    for n in declared_prs + body_prs:
+        if n in seen_pr:
+            continue
+        seen_pr.add(n)
+        related_prs.append(n)
+
     return {
         "slug": slugify(p.stem),
         "path": str(p.relative_to(REPO_ROOT)),
@@ -217,8 +394,14 @@ def parse_sprint(p: Path) -> dict[str, Any]:
         "pr_url": (
             f"https://github.com/paperwork-labs/paperwork/pull/{pr}" if pr else None
         ),
-        "ships": sprint.get("ships") or [],
-        "personas": sprint.get("personas") or [],
+        "ships": coerce_str_list(sprint.get("ships")),
+        "personas": coerce_str_list(sprint.get("personas")),
+        "plans": plans,
+        "related_prs": related_prs,
+        "goal": goal,
+        "outcome_bullets": outcome_bullets,
+        "lessons": lessons_bullets,
+        "followups": followups_bullets,
     }
 
 

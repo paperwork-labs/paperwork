@@ -39,7 +39,7 @@ export type PullRequestSummary = {
 
 export type InfraStatus = {
   service: string;
-  category: "core" | "ops" | "data" | "cache" | "hosting";
+  category: "core" | "frontend" | "ops" | "data" | "cache" | "hosting";
   configured: boolean;
   healthy: boolean;
   detail: string;
@@ -568,6 +568,46 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
       "https://dashboard.render.com/web/srv-d7lg0o77f7vs73b2k7m0",
       { validateJson: true },
     ),
+    checkWithLatency(
+      "LaunchFree API",
+      "core",
+      `${normalizeBaseUrl(process.env.LAUNCHFREE_API_URL) || "https://launchfree-api.onrender.com"}/health`,
+      "https://dashboard.render.com",
+      { validateJson: true },
+    ),
+
+    // Frontends
+    checkWithLatency(
+      "Studio (Vercel)",
+      "frontend",
+      `${normalizeBaseUrl(process.env.STUDIO_URL) || "https://www.paperworklabs.com"}/`,
+      "https://vercel.com/paperwork-labs/studio",
+    ),
+    checkWithLatency(
+      "AxiomFolio frontend (Vite)",
+      "frontend",
+      `${normalizeBaseUrl(process.env.AXIOMFOLIO_WEB_URL) || "https://axiomfolio.paperworklabs.com"}/`,
+      "https://dashboard.render.com/static/srv-d7lg0dv7f7vs73b2k1u0",
+    ),
+    checkWithLatency(
+      "FileFree frontend",
+      "frontend",
+      `${normalizeBaseUrl(process.env.FILEFREE_URL) || "https://filefree.ai"}/`,
+      "https://vercel.com/paperwork-labs/filefree",
+    ),
+    checkWithLatency(
+      "LaunchFree frontend",
+      "frontend",
+      `${normalizeBaseUrl(process.env.LAUNCHFREE_URL) || "https://launchfree.ai"}/`,
+      "https://vercel.com/paperwork-labs/launchfree",
+    ),
+    checkWithLatency(
+      "Distill frontend",
+      "frontend",
+      `${normalizeBaseUrl(process.env.DISTILL_URL) || "https://distill.paperworklabs.com"}/`,
+      "https://vercel.com/paperwork-labs/distill",
+    ),
+
     checkWithLatency(
       "Hetzner VPS (n8n)",
       "ops",
