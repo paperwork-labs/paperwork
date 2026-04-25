@@ -11,6 +11,8 @@ const categoryIcon: Record<DocCategory, string> = {
   architecture: "Architecture",
   runbooks: "Runbooks",
   reference: "Reference",
+  plans: "Plans",
+  sprints: "Sprints",
   generated: "Generated",
 };
 
