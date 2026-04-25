@@ -149,3 +149,24 @@ env-check: ## Validate env vars across all environments (Vercel, local, Hetzner)
 n8n-activate-inactive: ## Activate Brain Slack Adapter + Credential Expiry Check (needs N8N_API_KEY and N8N_API_URL or N8N_HOST in .env.local)
 	@chmod +x scripts/n8n-activate-workflows.sh
 	@./scripts/n8n-activate-workflows.sh "Brain Slack Adapter" "Credential Expiry Check"
+
+# ── Trackers (TASKS, sprints, plans → Studio command center) ───────────
+tracker-index: ## Regenerate apps/studio/src/data/tracker-index.json
+	@python3 scripts/generate_tracker_index.py
+
+tracker-check: ## Fail if tracker-index.json is stale (CI gate)
+	@python3 scripts/generate_tracker_index.py --check --no-pr-fetch
+
+sprint-shipped: ## Mark the most recent active sprint as shipped — usage: make sprint-shipped PR=141
+	@if [ -z "$(PR)" ]; then \
+	  echo "Usage: make sprint-shipped PR=<number>"; \
+	  exit 1; \
+	fi
+	@python3 scripts/mark_sprint_shipped.py --pr $(PR)
+	@$(MAKE) tracker-index
+
+plan-status: ## Print active plans across products with last-reviewed dates
+	@python3 scripts/plan_status.py
+
+docs-freshness: ## Report docs whose last_reviewed > 90d (warn-only)
+	@python3 scripts/check_doc_freshness.py --warn-only
