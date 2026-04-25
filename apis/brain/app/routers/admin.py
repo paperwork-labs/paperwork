@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import async_session_factory, get_db
 from app.models.episode import Episode
+from app.schedulers import n8n_mirror
 from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
 from app.services.pr_merge_sweep import merge_ready_prs
@@ -62,6 +63,16 @@ async def trigger_sprint_lessons_ingestion(
     """
     report = await ingest_sprint_lessons(db, _repo_root())
     return success_response(report)
+
+
+@router.get("/scheduler/n8n-mirror/status")
+async def n8n_mirror_scheduler_status(
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Per-job n8n shadow flags + 24h run counts and last run (T1.1)."""
+    data = await n8n_mirror.n8n_mirror_status_payload(db)
+    return success_response(data)
 
 
 @router.get("/personas")
