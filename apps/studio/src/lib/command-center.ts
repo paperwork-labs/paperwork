@@ -475,6 +475,80 @@ async function checkTokenApi(
   });
 }
 
+// Hetzner Cloud probe — counts running servers via the public Cloud API.
+// We split this from the n8n probe because they're answering different
+// questions: the n8n card says "is the workflow runtime serving traffic",
+// the Hetzner card says "is the underlying VPS healthy and how many
+// servers do we own". Without a token we still render the card so the
+// user has a one-click link to the console; we just say "no probe".
+async function checkHetznerCloud(token: string | undefined): Promise<InfraStatus> {
+  const dashboardUrl = "https://console.hetzner.cloud";
+  if (!token) {
+    return {
+      service: "Hetzner Cloud",
+      category: "ops",
+      configured: false,
+      healthy: false,
+      detail: "HETZNER_API_TOKEN not set — console link only",
+      latencyMs: null,
+      dashboardUrl,
+    };
+  }
+  const start = Date.now();
+  try {
+    const res = await fetch("https://api.hetzner.cloud/v1/servers", {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    const latencyMs = Date.now() - start;
+    if (!res.ok) {
+      return {
+        service: "Hetzner Cloud",
+        category: "ops",
+        configured: true,
+        healthy: false,
+        detail: `HTTP ${res.status}`,
+        latencyMs,
+        dashboardUrl,
+      };
+    }
+    const body = (await res.json()) as {
+      servers?: Array<{ name: string; status: string }>;
+    };
+    const servers = body.servers ?? [];
+    const running = servers.filter((s) => s.status === "running").length;
+    const total = servers.length;
+    const detail = total === 0
+      ? "0 servers"
+      : `${running}/${total} running` +
+        (running === total
+          ? ""
+          : ` — ${servers
+              .filter((s) => s.status !== "running")
+              .map((s) => `${s.name}:${s.status}`)
+              .join(", ")}`);
+    return {
+      service: "Hetzner Cloud",
+      category: "ops",
+      configured: true,
+      healthy: running === total && total > 0,
+      detail,
+      latencyMs,
+      dashboardUrl,
+    };
+  } catch (err) {
+    return {
+      service: "Hetzner Cloud",
+      category: "ops",
+      configured: true,
+      healthy: false,
+      detail: err instanceof Error ? err.message : "Hetzner probe failed",
+      latencyMs: null,
+      dashboardUrl,
+    };
+  }
+}
+
 // Slack Web API returns HTTP 200 with { ok: false } on auth failure, so the
 // generic token probe reports green falsely. Use auth.test and parse the body.
 async function checkSlackBot(token: string | undefined): Promise<InfraStatus> {
@@ -550,6 +624,7 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   const slackToken = process.env.SLACK_BOT_TOKEN?.trim();
+  const hetznerToken = process.env.HETZNER_API_TOKEN?.trim();
 
   const checks: Promise<InfraStatus>[] = [
     // Core services
@@ -614,12 +689,18 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
       "https://vercel.com/paperwork-labs/distill",
     ),
 
+    // Two distinct cards on purpose: the "n8n" card answers "is the workflow
+    // runtime up" (probes the n8n REST API), the "Hetzner Cloud" card answers
+    // "is the VPS itself healthy" (probes the Hetzner Cloud API + links to
+    // console.hetzner.cloud). Splitting them makes infra-level outages
+    // (runtime OK but billing/snapshot issue) immediately visible.
     checkWithLatency(
-      "Hetzner VPS (n8n)",
+      "n8n (Hetzner)",
       "ops",
       n8nUrl,
       "https://n8n.paperworklabs.com",
     ),
+    checkHetznerCloud(hetznerToken),
     checkWithLatency(
       "Postiz",
       "ops",

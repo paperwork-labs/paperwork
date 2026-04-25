@@ -366,6 +366,75 @@ MEDALLION_TAG_RE = re.compile(
 )
 
 
+# Folder names that are scaffolding noise — don't surface as subgroups.
+SUBGROUP_SKIP = {"__pycache__", "tests", "test", ".pytest_cache", "migrations"}
+
+
+def _count_python_files(folder: Path) -> int:
+    """Count Python files inside a folder (recursive), skipping noise dirs."""
+    if not folder.is_dir():
+        return 0
+    n = 0
+    for py in folder.rglob("*.py"):
+        if py.name == "__init__.py":
+            continue
+        if any(part in SUBGROUP_SKIP for part in py.parts):
+            continue
+        n += 1
+    return n
+
+
+def discover_subgroups(root: Path, module_path: str) -> list[dict]:
+    """Surface immediate-child folders as subgroups so the architecture page
+    can show real detail inside an umbrella node (e.g. bronze → ibkr,
+    schwab, plaid, market...).
+
+    Returns subgroups sorted by file count descending. Each entry has:
+      { name, file_count, github_url }
+
+    A synthetic ``"(top)"`` entry is included if the folder has top-level
+    Python files (excluding ``__init__.py``); without it executor-style
+    flat folders look empty.
+    """
+    if not root.is_dir():
+        return []
+
+    subgroups: list[dict] = []
+
+    for child in sorted(root.iterdir()):
+        if not child.is_dir():
+            continue
+        if child.name in SUBGROUP_SKIP or child.name.startswith("."):
+            continue
+        count = _count_python_files(child)
+        if count == 0:
+            continue
+        subgroups.append(
+            {
+                "name": child.name,
+                "file_count": count,
+                "github_url": f"{GITHUB_TREE}/{module_path}/{child.name}",
+            }
+        )
+
+    top_level = sum(
+        1
+        for f in root.iterdir()
+        if f.is_file() and f.suffix == ".py" and f.name != "__init__.py"
+    )
+    if top_level > 0:
+        subgroups.append(
+            {
+                "name": "(top)",
+                "file_count": top_level,
+                "github_url": f"{GITHUB_TREE}/{module_path}",
+            }
+        )
+
+    subgroups.sort(key=lambda s: (-s["file_count"], s["name"]))
+    return subgroups
+
+
 def count_medallion_layers(root: Path) -> dict[str, int]:
     """Walk `root` and count medallion-tagged .py files by layer tag."""
     counts: dict[str, int] = {}
@@ -444,6 +513,13 @@ def build_graph() -> dict:
             counts = count_medallion_layers(path)
             if counts:
                 out["medallion_summary"] = counts
+            # Skip subgroups for the catch-all `axiomfolio.api` node — it
+            # points at the whole apis/axiomfolio tree and the chips would
+            # be a meaningless dump of every folder.
+            if node["id"] != "axiomfolio.api":
+                subgroups = discover_subgroups(path, node["module_path"])
+                if subgroups:
+                    out["subgroups"] = subgroups
 
         enriched.append(out)
 
