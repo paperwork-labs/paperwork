@@ -11,7 +11,8 @@ sprint:
   duration_weeks: 2
 opened: 2026-04-25
 target_close: 2026-05-09
-related_prs: []
+related_prs:
+  - 151
 ---
 
 # Streamline + SSO + Real DAGs (2026 Q2)
@@ -63,7 +64,7 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
   - `[ ]` CI gate blocks drift between Brain specs and Studio / graph / automation references.
 
 - **T3 — Clerk SSO (cross-product)** `[~]`
-  - `[x]` Adopt Clerk via Vercel Marketplace; auto-provisioned env vars across linked Vercel projects. (T3.1: Studio foundation — add PR# to `related_prs` when merged)
+  - `[x]` Adopt Clerk via Vercel Marketplace; auto-provisioned env vars across linked Vercel projects. (T3.1: Studio foundation — PR #151)
   - `[ ]` Roll out per-product theming (Appearance API) while preserving a single identity graph.
   - `[ ]` Plan verifier paths for AxiomFolio APIs post–Next.js migration; retire parallel JWT/session schemes safely.
   - `[ ]` Communicate session cutover; keep documented Basic Auth escape hatch for Studio until explicitly removed.
