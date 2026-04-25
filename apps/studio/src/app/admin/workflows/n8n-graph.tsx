@@ -8,8 +8,9 @@
 // Brain with a persona_pin, that pin is highlighted on the node so
 // operators can see at a glance which persona runs this wiring.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { Maximize2, X } from "lucide-react";
 
 import graph from "@/data/n8n-graph.json";
 
@@ -71,10 +72,16 @@ function patternLabel(pattern: string): string {
   return "Unknown trigger";
 }
 
-function WorkflowDAG({ wf }: { wf: WorkflowGraph }) {
-  // Normalise coordinates into an SVG viewBox. n8n positions are pixel
-  // offsets in the editor; we just want a compact layout.
-  const layout = useMemo(() => {
+type DagLayout = {
+  minX: number;
+  minY: number;
+  width: number;
+  height: number;
+  byName: Map<string, WorkflowNode>;
+};
+
+function useDagLayout(wf: WorkflowGraph): DagLayout | null {
+  return useMemo(() => {
     if (wf.nodes.length === 0) return null;
     const xs = wf.nodes.map((n) => n.x);
     const ys = wf.nodes.map((n) => n.y);
@@ -88,24 +95,32 @@ function WorkflowDAG({ wf }: { wf: WorkflowGraph }) {
     for (const n of wf.nodes) byName.set(n.name, n);
     return { minX, minY, width, height, byName };
   }, [wf]);
+}
 
-  if (!layout) {
-    return (
-      <p className="text-xs italic text-zinc-500">
-        No nodes in this workflow snapshot.
-      </p>
-    );
-  }
-
+function DagSVG({
+  wf,
+  layout,
+  variant,
+}: {
+  wf: WorkflowGraph;
+  layout: DagLayout;
+  variant: "thumb" | "zoom";
+}) {
   const { minX, minY, width, height, byName } = layout;
-  const padding = 40;
+  const padding = variant === "zoom" ? 80 : 40;
+  const nodeRadius = variant === "zoom" ? 22 : 14;
+  const labelDx = variant === "zoom" ? 30 : 18;
+  const labelSize = variant === "zoom" ? 14 : 10;
+  const subSize = variant === "zoom" ? 12 : 9;
+  const className =
+    variant === "zoom" ? "h-full w-full" : "h-auto w-full max-h-64";
 
   return (
     <svg
       role="img"
       aria-label={`n8n graph for ${wf.name}`}
       viewBox={`${-padding} ${-padding} ${width + padding * 2} ${height + padding * 2}`}
-      className="h-auto w-full max-h-64"
+      className={className}
     >
       {wf.edges.map((e, i) => {
         const src = byName.get(e.from);
@@ -119,28 +134,38 @@ function WorkflowDAG({ wf }: { wf: WorkflowGraph }) {
             x2={tgt.x - minX}
             y2={tgt.y - minY}
             stroke="currentColor"
-            strokeOpacity={0.3}
-            strokeWidth={1.5}
+            strokeOpacity={variant === "zoom" ? 0.45 : 0.3}
+            strokeWidth={variant === "zoom" ? 2 : 1.5}
             className="text-zinc-500"
           />
         );
       })}
       {wf.nodes.map((n) => (
         <g key={n.id} transform={`translate(${n.x - minX}, ${n.y - minY})`}>
-          <circle r={14} className="fill-zinc-900 stroke-zinc-600" strokeWidth={1} />
+          <circle
+            r={nodeRadius}
+            className="fill-zinc-900 stroke-zinc-500"
+            strokeWidth={variant === "zoom" ? 1.5 : 1}
+          />
           <text
-            x={18}
+            x={labelDx}
             y={4}
-            className="fill-zinc-300 text-[10px]"
-            style={{ fontFamily: "var(--font-jetbrains, monospace)" }}
+            className="fill-zinc-100"
+            style={{
+              fontFamily: "var(--font-jetbrains, monospace)",
+              fontSize: labelSize,
+            }}
           >
             {n.name}
           </text>
           <text
-            x={18}
-            y={18}
-            className="fill-zinc-500 text-[9px]"
-            style={{ fontFamily: "var(--font-jetbrains, monospace)" }}
+            x={labelDx}
+            y={labelSize + 8}
+            className="fill-zinc-400"
+            style={{
+              fontFamily: "var(--font-jetbrains, monospace)",
+              fontSize: subSize,
+            }}
           >
             {shortType(n.type)}
           </text>
@@ -150,9 +175,114 @@ function WorkflowDAG({ wf }: { wf: WorkflowGraph }) {
   );
 }
 
+function WorkflowDAG({
+  wf,
+  onZoom,
+}: {
+  wf: WorkflowGraph;
+  onZoom: () => void;
+}) {
+  const layout = useDagLayout(wf);
+
+  if (!layout) {
+    return (
+      <p className="text-xs italic text-zinc-500">
+        No nodes in this workflow snapshot.
+      </p>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onZoom}
+      className="group relative block w-full cursor-zoom-in rounded-md ring-zinc-700 transition focus:outline-none focus:ring-2"
+      aria-label={`Zoom DAG for ${wf.name}`}
+    >
+      <DagSVG wf={wf} layout={layout} variant="thumb" />
+      <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-zinc-900/80 px-1.5 py-1 text-[10px] text-zinc-300 opacity-0 ring-1 ring-zinc-700 transition group-hover:opacity-100">
+        <Maximize2 className="h-3 w-3" /> zoom
+      </span>
+    </button>
+  );
+}
+
+function DagZoomModal({
+  wf,
+  onClose,
+}: {
+  wf: WorkflowGraph;
+  onClose: () => void;
+}) {
+  const layout = useDagLayout(wf);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  if (!layout) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Zoomed DAG: ${wf.name}`}
+    >
+      <div
+        className="relative flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <header className="flex items-start justify-between gap-3 border-b border-zinc-800 px-5 py-3">
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-semibold text-zinc-100">
+              {wf.name}
+            </h3>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              {wf.file} · {wf.node_count} nodes ·{" "}
+              {wf.calls_brain ? "calls Brain" : "no Brain call"}
+              {wf.persona_pin ? ` · persona: ${wf.persona_pin}` : ""}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              href={`https://github.com/paperwork-labs/paperwork/blob/main/infra/hetzner/workflows/${wf.file}`}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded-md border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-[11px] text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100"
+            >
+              source ↗
+            </Link>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md p-1.5 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
+              aria-label="Close zoom view"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </header>
+        <div className="flex-1 overflow-auto bg-zinc-950 p-6">
+          <DagSVG wf={wf} layout={layout} variant="zoom" />
+        </div>
+        <footer className="border-t border-zinc-800 px-5 py-2 text-[11px] text-zinc-500">
+          Press <kbd className="rounded bg-zinc-800 px-1 py-0.5 font-mono">Esc</kbd> or click outside to close.
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 export function N8nGraphList() {
   const [query, setQuery] = useState("");
   const [brainOnly, setBrainOnly] = useState(false);
+  const [zoomFile, setZoomFile] = useState<string | null>(null);
   const workflows = snapshot.workflows;
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -240,7 +370,7 @@ export function N8nGraphList() {
             </div>
 
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2">
-              <WorkflowDAG wf={wf} />
+              <WorkflowDAG wf={wf} onZoom={() => setZoomFile(wf.file)} />
             </div>
 
             <div className="flex flex-wrap gap-1 text-[10px] text-zinc-500">
@@ -254,7 +384,7 @@ export function N8nGraphList() {
               ))}
             </div>
 
-            <div className="text-[11px]">
+            <div className="flex items-center justify-between text-[11px]">
               <Link
                 href={`https://github.com/paperwork-labs/paperwork/blob/main/infra/hetzner/workflows/${wf.file}`}
                 target="_blank"
@@ -263,10 +393,24 @@ export function N8nGraphList() {
               >
                 View source on GitHub ↗
               </Link>
+              <button
+                type="button"
+                onClick={() => setZoomFile(wf.file)}
+                className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100"
+              >
+                <Maximize2 className="h-3 w-3" /> Zoom DAG
+              </button>
             </div>
           </li>
         ))}
       </ul>
+
+      {zoomFile &&
+        (() => {
+          const wf = workflows.find((w) => w.file === zoomFile);
+          if (!wf) return null;
+          return <DagZoomModal wf={wf} onClose={() => setZoomFile(null)} />;
+        })()}
     </section>
   );
 }

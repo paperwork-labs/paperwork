@@ -39,6 +39,35 @@ curl -sS https://brain-api-zo5t.onrender.com/health
 
 If `main` is red → **stop**; fix CI before repointing. If Brain health fails → treat as separate incident, then return here.
 
+## Path: brain-api dockerContext fix
+
+Symptom: every push to `main` builds with errors of the form:
+
+```
+#16 ERROR: failed to compute cache key: "/apis/brain/requirements.txt": not found
+#15 ERROR: "/apis/brain": not found
+#14 ERROR: "/.cursor/rules": not found
+```
+
+Cause: live `brain-api` has `dockerContext: apis/brain`, but `apis/brain/Dockerfile` references monorepo-root paths (it bundles `.cursor/rules/` for persona cold-start). See [RENDER_INVENTORY.md → F-6](RENDER_INVENTORY.md#f-6--brain-api-dockercontext-drifted-from-blueprint-every-push-to-main-fails-).
+
+Steps (one service, ~5 min):
+
+1. Open [`brain-api` settings](https://dashboard.render.com/web/srv-d74f3cmuk2gs73a4013g/settings).
+2. **Build & Deploy** → **Root Directory**: clear to empty (this field maps to `dockerContext`). Blueprint already declares `.`.
+3. **Dockerfile Path**: leave as `apis/brain/Dockerfile`. Save.
+4. Render auto-triggers a build from the monorepo root.
+5. Verify:
+
+   ```bash
+   curl -sS https://brain-api-zo5t.onrender.com/health
+   gh run list --branch main --limit 3 --workflow brain-tests.yml
+   ```
+
+   Both should be green; new commit hash on the deploy matches `git rev-parse origin/main`.
+
+Rollback: re-set Root Directory to `apis/brain` and rebuild — but you'll be back on the broken combo, so only do this if the monorepo build itself regresses.
+
 ## Path: Monorepo repoint (dashboard)
 
 For **each** of the four services, in Render: **Settings** → **Build & Deploy**.
