@@ -18,7 +18,7 @@ import { motion } from "framer-motion";
 
 type InfraService = {
   service: string;
-  category: "core" | "ops" | "data" | "cache" | "hosting";
+  category: "core" | "frontend" | "ops" | "data" | "cache" | "hosting";
   configured: boolean;
   healthy: boolean;
   detail: string;
@@ -27,7 +27,8 @@ type InfraService = {
 };
 
 const categoryMeta: Record<string, { label: string; icon: typeof Server }> = {
-  core: { label: "Core Services", icon: Server },
+  core: { label: "Core APIs", icon: Server },
+  frontend: { label: "Frontends", icon: Globe },
   ops: { label: "Operations", icon: Cpu },
   hosting: { label: "Hosting & Deploys", icon: Globe },
   data: { label: "Data", icon: Database },
@@ -134,7 +135,7 @@ export default function InfraClient({
     grouped.set(s.category, list);
   }
 
-  const categoryOrder = ["core", "ops", "hosting", "data", "cache"];
+  const categoryOrder = ["core", "frontend", "ops", "hosting", "data", "cache"];
 
   return (
     <div className="space-y-6">

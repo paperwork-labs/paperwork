@@ -32,6 +32,12 @@ export type Sprint = {
   pr_state?: string;
   ships?: string[];
   personas?: string[];
+  plans?: string[];
+  related_prs?: number[];
+  goal?: string | null;
+  outcome_bullets?: string[];
+  lessons?: string[];
+  followups?: string[];
 };
 
 export type Plan = {

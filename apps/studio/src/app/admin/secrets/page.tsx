@@ -1,6 +1,9 @@
 import { sql, ensureSecretsTable } from "@/lib/db";
 import SecretsClient from "./secrets-client";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 type SecretRow = {
   id: string;
   name: string;
