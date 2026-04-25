@@ -163,6 +163,13 @@ docs:
     owners: [engineering, infra-ops]
     category: architecture
   # ── Runbooks ─────────────────────────────────────────
+  - slug: brain-scheduler
+    path: docs/infra/BRAIN_SCHEDULER.md
+    title: Brain APScheduler — SQLAlchemy job store and n8n shadow mirrors
+    summary: "[Brain](https://github.com/paperwork-labs/paperwork/tree/main/apis/brain) runs in-process [APScheduler](https://apscheduler.readthedocs.io/) jobs (PR sweep, proactive cadence, optional n8n shadow…"
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
   - slug: credentials
     path: docs/CREDENTIALS.md
     title: Credential Rotation

@@ -24,6 +24,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
+from app.schedulers import apscheduler_db, n8n_mirror
 from app.database import async_session_factory
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import sweep_open_prs
@@ -82,7 +83,8 @@ def start_scheduler() -> AsyncIOScheduler | None:
         return _scheduler
 
     minutes = max(1, int(settings.SCHEDULER_PR_SWEEP_MINUTES or 30))
-    sched = AsyncIOScheduler(timezone="UTC")
+    jobstores = apscheduler_db.build_sqlalchemy_jobstores()
+    sched = AsyncIOScheduler(jobstores=jobstores, timezone="UTC")
     sched.add_job(
         _run_pr_sweep,
         trigger=IntervalTrigger(minutes=minutes),
@@ -124,6 +126,11 @@ def start_scheduler() -> AsyncIOScheduler | None:
         sprint_lessons.install(sched)
     except Exception:
         logger.exception("Failed to install sprint_lessons job")
+
+    try:
+        n8n_mirror.install(sched)
+    except Exception:
+        logger.exception("Failed to install n8n_mirror shadow jobs")
 
     sched.start()
     _scheduler = sched

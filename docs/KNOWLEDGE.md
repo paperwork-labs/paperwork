@@ -1,6 +1,6 @@
 ---
 owner: ea
-last_reviewed: 2026-03-29
+last_reviewed: 2026-04-25
 doc_kind: reference
 domain: personas
 status: active
@@ -9,8 +9,8 @@ status: active
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-03-29
-**Version**: 10.6 (D88 — Brain baseline audit + fixes)
+**Last Updated**: 2026-04-25
+**Version**: 10.7 (D89 — Brain APScheduler SQLAlchemy job store)
 
 ---
 
@@ -448,4 +448,13 @@ Context: Today persona vocabulary is fragmented across four sources: 16 Brain Pe
 Alternatives: (a) Keep WORKFLOW_META labels as a Studio-only display convention, (b) Status quo with documentation, (c) Map labels to slugs but allow both.
 Rationale: Removes drift. If a workflow says "growth" and Brain has a "growth" PersonaSpec, the link is unambiguous. CI can enforce. Studio displays the same name everywhere. Eliminates the four-source confusion.
 Reversibility: Easy. Renaming labels is mechanical; if user-facing labels need to differ from internal slugs we can add a label field to PersonaSpec.
+
+---
+
+Date: 2026-04-25
+Decision: Enable SQLAlchemyJobStore in Brain APScheduler (Postgres, table `apscheduler_jobs`) and ship opt-in n8n cron shadow jobs (`SCHEDULER_N8N_MIRROR_ENABLED`, default off) posting only to `#engineering-cron-shadow`.
+Context: The earlier same-day decision set Brain as the single cron owner, but the codebase still used the in-memory default job store. Restarts on Render would drop the in-process schedule until the process re-registered jobs; ops wanted parity with a durable queue.
+Alternatives: (a) Only document "scheduler restarts = benign," (b) Redis job store, (c) external cron hitting HTTP.
+Rationale: The app already has Postgres; `SQLAlchemyJobStore` is one import and a sync URL (`postgresql://` from `DATABASE_URL` with `+asyncpg` stripped). Shadow mirrors validate cadence before T2.4 n8n disable. `psycopg2-binary` supplies the sync driver for the job store engine.
+Reversibility: Easy. Set job store back to default (dev-only) or clear `apscheduler_jobs` if a bad migration; mirrors are off by default.
 
