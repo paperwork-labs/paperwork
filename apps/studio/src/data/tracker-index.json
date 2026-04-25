@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "36525965e307",
+  "content_hash": "cfabe31f1503",
   "products": [
     {
       "label": "AxiomFolio",
@@ -247,8 +247,31 @@
   "sprints": [
     {
       "domain": "company",
-      "duration_weeks": null,
-      "end": null,
+      "duration_weeks": 2,
+      "end": "2026-05-09",
+      "followups": [],
+      "goal": "Ship an aggressive end-to-end streamline: one orchestration brain for scheduled work, one persona vocabulary everywhere, Clerk-backed SSO so a LaunchFree user can use FileFree without re-registering, workflow DAGs that are actually legible (and not embarrassing in demos), and AxiomFolio absorbed into the Next.js / Vercel stack when the migration shell is far enough along.",
+      "lessons": [],
+      "outcome_bullets": [
+        "_Tracking \u2014 updates as each track ships_"
+      ],
+      "owner": "engineering",
+      "path": "docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md",
+      "personas": [],
+      "plans": [],
+      "pr": null,
+      "pr_url": null,
+      "related_prs": [],
+      "ships": [],
+      "slug": "streamline-sso-dags-2026q2",
+      "start": "2026-04-25",
+      "status": "in_progress",
+      "title": "Streamline + SSO + Real DAGs (2026 Q2)"
+    },
+    {
+      "domain": "company",
+      "duration_weeks": 1,
+      "end": "2026-04-26",
       "followups": [
         "shipped 2026-04-25: **F-1 (operator, single click)** completed \u2014 all AxiomFolio + brain-api + filefree-api services now associated with the consolidated root `render.yaml` Blueprint via Render Dashboard's \"New Blueprint \u2192 Associate existing services\" flow. (PR #143)",
         "shipped 2026-04-25: **F-2 launchfree-api decision** \u2014 commented out (not deleted) in `render.yaml` with re-enable workflow documented inline. Frontend renders mocks, $7/mo for empty backend defers. (PR #144)",
@@ -277,26 +300,40 @@
       ],
       "owner": "engineering",
       "path": "docs/sprints/DOCS_STREAMLINE_AND_TRACKERS_2026Q2.md",
-      "personas": [],
-      "plans": [],
-      "pr": null,
-      "pr_url": null,
+      "personas": [
+        "agent-ops",
+        "engineering",
+        "cfo",
+        "qa",
+        "infra-ops"
+      ],
+      "plans": [
+        "docs/DOCS_STREAMLINE_2026Q2.md",
+        "docs/sprints/README.md"
+      ],
+      "pr": 142,
+      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/142",
       "related_prs": [
-        144,
         142,
         143,
+        144,
         140
       ],
-      "ships": [],
+      "ships": [
+        "studio",
+        "docs",
+        "brain",
+        "infra"
+      ],
       "slug": "docs-streamline-and-trackers-2026q2",
-      "start": null,
+      "start": "2026-04-24",
       "status": "active",
       "title": "Docs Streamline + Trackers Spine \u2014 2026 Q2"
     },
     {
       "domain": "company",
-      "duration_weeks": null,
-      "end": null,
+      "duration_weeks": 4,
+      "end": "2026-04-23",
       "followups": [
         "`/admin/tasks` (renders `docs/TASKS.md` as company tracker) \u2014 moving to follow-up sprint",
         "`/admin/products/<slug>/plan` per-product master plan views \u2014 moving to follow-up sprint",
@@ -323,41 +360,32 @@
       ],
       "owner": "engineering",
       "path": "docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md",
-      "personas": [],
-      "plans": [],
-      "pr": null,
-      "pr_url": null,
+      "personas": [
+        "agent-ops",
+        "engineering",
+        "infra-ops",
+        "qa"
+      ],
+      "plans": [
+        "docs/INFRA.md",
+        "docs/BRAIN_ARCHITECTURE.md",
+        "docs/PERSONA_PLATFORM.md"
+      ],
+      "pr": 141,
+      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/141",
       "related_prs": [
         141
       ],
-      "ships": [],
+      "ships": [
+        "studio",
+        "brain",
+        "axiomfolio",
+        "n8n"
+      ],
       "slug": "infra-automation-hardening-2026q2",
-      "start": null,
+      "start": "2026-04-01",
       "status": "shipped",
       "title": "Infra & Automation Hardening \u2014 2026 Q2"
-    },
-    {
-      "domain": "company",
-      "duration_weeks": null,
-      "end": null,
-      "followups": [],
-      "goal": "Ship an aggressive end-to-end streamline: one orchestration brain for scheduled work, one persona vocabulary everywhere, Clerk-backed SSO so a LaunchFree user can use FileFree without re-registering, workflow DAGs that are actually legible (and not embarrassing in demos), and AxiomFolio absorbed into the Next.js / Vercel stack when the migration shell is far enough along.",
-      "lessons": [],
-      "outcome_bullets": [
-        "_Tracking \u2014 updates as each track ships_"
-      ],
-      "owner": "engineering",
-      "path": "docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md",
-      "personas": [],
-      "plans": [],
-      "pr": null,
-      "pr_url": null,
-      "related_prs": [],
-      "ships": [],
-      "slug": "streamline-sso-dags-2026q2",
-      "start": null,
-      "status": "in_progress",
-      "title": "Streamline + SSO + Real DAGs (2026 Q2)"
     }
   ]
 }
