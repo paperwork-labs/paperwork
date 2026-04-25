@@ -1,4 +1,7 @@
-"""Format Slack slash command replies from ``tracker-index.json`` (Studio)."""
+"""Format Slack slash command replies from ``tracker-index.json`` (Studio).
+
+medallion: ops
+"""
 
 from __future__ import annotations
 
