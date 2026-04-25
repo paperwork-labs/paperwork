@@ -14,6 +14,7 @@ target_close: 2026-05-09
 related_prs:
   - 151
   - 153
+  - 160
 ---
 
 # Streamline + SSO + Real DAGs (2026 Q2)
@@ -44,7 +45,7 @@ Acceptance theme for the window: operators can name the single system that fires
 - _Tracking — updates as each track ships_
 - shipped 2026-04-25: **T1.1** — Per-job `SCHEDULER_N8N_MIRROR_<ID>` flags (uppercased n8n mirror job id) with global fallback, `agent_scheduler_runs` history for each shadow execution, and `GET /api/v1/admin/scheduler/n8n-mirror/status` for last run + 24h success/error counts. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). Migration: `apis/brain/alembic/versions/002_agent_scheduler_runs.py`.
 - shipped 2026-04-25: **T3.1 (foundation)** — Studio has `@clerk/nextjs` with `ClerkProvider`, `sign-in` / `sign-up` catch-all routes, and `clerkMiddleware` composed with the existing Basic Auth escape hatch on `/admin` and `/api/admin` in production; public routes and `/api/secrets*` skip this gate. Operator runbook: [docs/infra/CLERK_STUDIO.md](../infra/CLERK_STUDIO.md).
-- shipped 2026-04-25: **T1.2** — First real Brain APScheduler job for the **Brain Daily Trigger** n8n flow: `BRAIN_OWNS_DAILY_BRIEFING` enables `brain_daily_briefing` (07:00 UTC) calling `agent.process` + `#daily-briefing`, and suppresses `n8n_shadow_brain_daily` so the mirror cannot double with production. Code: `apis/brain/app/schedulers/brain_daily_briefing.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). Builds on [PR #153](https://github.com/paperwork-labs/paperwork/pull/153) (per-job mirror flags + `agent_scheduler_runs`).
+- shipped 2026-04-25: **T1.2** — First real Brain APScheduler job for the **Brain Daily Trigger** n8n flow: `BRAIN_OWNS_DAILY_BRIEFING` enables `brain_daily_briefing` (07:00 UTC) calling `agent.process` + `#daily-briefing`, and suppresses `n8n_shadow_brain_daily` so the mirror cannot double with production. Code: `apis/brain/app/schedulers/brain_daily_briefing.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR [#160](https://github.com/paperwork-labs/paperwork/pull/160); builds on [PR #153](https://github.com/paperwork-labs/paperwork/pull/153) (per-job mirror flags + `agent_scheduler_runs`).
 
 ## What we learned
 
