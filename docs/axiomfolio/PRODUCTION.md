@@ -4,30 +4,23 @@ last_reviewed: 2026-04-24
 doc_kind: runbook
 domain: infra
 status: active
+severity_default: red
 ---
-# Production Operations Guide
+# Runbook: AxiomFolio Production Operations
 
-## Table of contents
+> One-line summary: Day-to-day and incident response for AxiomFolio on Render, Cloudflare, and GitHub — deploys, health, DNS, data, and scheduling. Use this when production is wrong or you need the authoritative production reference.
 
-- [At a glance](#at-a-glance)
-- [Goals](#goals)
-- [Core Services](#core-services)
-- [Required Env Vars](#required-env-vars-minimum)
-- [CI/CD](#cicd-github-actions)
-- [Domains](#domains)
-- [DNS, TLS, and Cloudflare](#dns-tls-and-cloudflare)
-- [Cloudflare Tunnel (Local Dev OAuth)](#cloudflare-tunnel-local-dev-oauth)
-- [Request Path](#request-path-production)
-- [Database migration](#database-migration-rename--preserve-data)
-- [Scheduling](#scheduling-celery-beat)
-- [Admin access bootstrap](#admin-access-bootstrap)
-- [Backups](#backups)
-- [Scaling](#scaling)
-- [Rollback](#rollback)
+## When this fires
 
----
+Recurring and incident signals. Open this runbook for:
 
-## At a glance
+- **User-visible outage or severe degradation** — `https://axiomfolio.com` or `https://api.axiomfolio.com` unreachable, HTTP 5xx, or app errors blocking core flows.
+- **Provider / deploy red** — Render dashboard shows `axiomfolio-api`, `axiomfolio-worker`, or `axiomfolio-frontend` failing; GitHub Actions deploy or migration job red; image push or hook failure.
+- **Health / smoke failure** — `https://api.axiomfolio.com/health` not `200` with expected body; post-deploy smoke that hits `/health` fails (see [CI/CD](#cicd-github-actions) in Appendix).
+- **Data or migration cutover** — need DB rename/migrate, `DATABASE_URL` change, or `alembic` upgrade path blocked (see [Database migration](#database-migration-rename--preserve-data) in Appendix).
+- **Celery / Beat / queue issues** — scheduled jobs not running, queue backing up, or worker service unhealthy (see [Scheduling](#scheduling-celery-beat) in Appendix).
+- **DNS / TLS / CORS** — custom domain or certificate errors; `CORS_ORIGINS` misconfiguration (see [DNS, TLS, and Cloudflare](#dns-tls-and-cloudflare) and [Cors](#cors) in Appendix).
+- **Reference lookup** — any time you need domains, env vars, Render service names, or tunnel/dev OAuth context (see Appendix).
 
 | Item | Value |
 |------|-------|
@@ -35,22 +28,90 @@ status: active
 | **Provider** | Render (API, worker, frontend, Postgres, Redis); DNS/TLS via Cloudflare |
 | **Key env** | `DATABASE_URL`, `REDIS_URL`, `ENCRYPTION_KEY`, `CORS_ORIGINS`; optional Brain integration: `BRAIN_API_KEY`, `BRAIN_WEBHOOK_URL`, `BRAIN_WEBHOOK_SECRET`. Legacy (retained): `RENDER_API_KEY`, `RENDER_OWNER_ID` (for Render cron sync, if ever re-enabled) |
 
----
+_TODO: document alert or dashboard tile names that page on-call (e.g. Studio `/admin/infrastructure` or Render notifications)._
 
-## Goals
+## Triage (≤5 min)
+
+```bash
+# API liveness
+curl -fsS "https://api.axiomfolio.com/health"
+
+# Frontend (headers only)
+curl -fsSI "https://axiomfolio.com"
+
+# Optional: follow redirects and show final code
+curl -fsSIL -o /dev/null -w "final_http=%{http_code}\n" "https://axiomfolio.com"
+```
+
+1. **Render** — [Render dashboard](https://dashboard.render.com) → services `axiomfolio-api`, `axiomfolio-worker`, `axiomfolio-frontend`, `axiomfolio-db`, `axiomfolio-redis` — check deploy status, logs, and recent deploys.
+2. **CI** — GitHub Actions: latest deploy and migration job for the repo (image build, `alembic upgrade head`, smoke `/health`).
+
+If API health fails and Render is green → [Path: app or config](#verification). If Render is red → [Path: deploy or provider](#rollback). If only frontend fails → CORS, static site, or Cloudflare (see [Appendix: DNS, TLS, and Cloudflare](#dns-tls-and-cloudflare)). If triage is inconclusive in 5 min → [Escalation](#escalation).
+
+_TODO: document one log query (e.g. host + request id pattern) for 5xx on `axiomfolio-api`._
+
+## Verification
+
+- `curl` to `https://api.axiomfolio.com/health` returns `200` with the expected health payload (match service contract).
+- `https://axiomfolio.com` returns `200` (or expected SPA behavior) and assets load; no cert errors in the browser.
+- **Post-deploy (CI):** pipeline smoke test to `/health` passes (see [CI/CD (GitHub Actions)](#cicd-github-actions) in Appendix).
+- **Render:** services show live/successful deploy; no error storm in the last few minutes in service logs.
+- **Optional (DB):** if the incident touched migrations, confirm migration revision and app connectivity — _TODO: document read-only `alembic current` or SQL check for operators._
+
+## Rollback
+
+- **Deploy:** roll back by redeploying the previous image tag in Render (Service → **Deploys** → previous good deploy → **Redeploy**), or the equivalent in your release process.
+- **Migrations:** if migrations are non-reversible, use guarded feature flags until data migrations complete; do not YOLO a second one-way migration without a plan.
+- **Config:** if a bad env var change caused the issue, restore the prior value in Render and redeploy; for secrets, use the team’s secure rotation path (see [ENCRYPTION_KEY_ROTATION.md](ENCRYPTION_KEY_ROTATION.md) for vault key context).
+
+## Escalation
+
+- **Primary:** _TODO: name Slack channel (e.g. `#ops`)_ — on-call or owner `infra-ops` persona; include Render service link, commit SHA, and whether `/health` fails.
+- **Provider:** [Render](https://dashboard.render.com) status or support; [Cloudflare](https://dash.cloudflare.com) if DNS/SSL; **Spaceship** registrar only if delegation/nameserver issues (see [Domain Registrar](#domain-registrar) in Appendix).
+- **RED / production-impacting:** if customer-facing impact is ongoing and triage is stuck after ~15–30 min, _TODO: document PagerDuty or explicit phone tree_.
+
+## Post-incident
+
+- Add a row to `docs/KNOWLEDGE.md` (or the team’s incident log) under **Recent incidents** — what broke, what fixed it, and a pointer to this runbook + Appendix section.
+- If a new guardrail is needed (e.g. CI check, env validation), file a follow-up in the engineering backlog and consider `.cursor/rules` or `validate_production_settings()` updates in the app repo.
+- If this file was wrong or stale, **update the procedure** and bump `last_reviewed` in the frontmatter before closing the incident.
+- _TODO: link Linear or sprint project if the team files incidents there._
+
+## Appendix
+
+**Reference and procedures preserved from the prior Production Operations Guide** (restructured only; not removed).
+
+### Table of contents (appendix)
+
+- [Goals](#goals)
+- [Core Services](#core-services)
+- [Required Env Vars (minimum)](#required-env-vars-minimum)
+- [CI/CD (GitHub Actions)](#cicd-github-actions)
+- [Domains](#domains)
+- [DNS, TLS, and Cloudflare](#dns-tls-and-cloudflare)
+- [Cloudflare Tunnel (Local Dev OAuth)](#cloudflare-tunnel-local-dev-oauth)
+- [Request Path (Production)](#request-path-production)
+- [Cors](#cors)
+- [Database migration (rename + preserve data)](#database-migration-rename--preserve-data)
+- [Scheduling (Celery Beat)](#scheduling-celery-beat)
+- [Admin access bootstrap](#admin-access-bootstrap)
+- [Backups](#backups)
+- [Scaling](#scaling)
+
+### Goals
 - Provider-agnostic deployment (Render + Fly supported)
 - Immutable Docker images
 - Release-time DB migrations (no auto-migrate on app startup)
 - Celery Beat scheduling (embedded in worker, catalog-driven from `job_catalog.py`)
 
-## Core Services
+### Core Services
 - API (FastAPI web service)
 - Worker (Celery)
 - Celery Beat (embedded in worker, `--beat`; see `render.yaml` `dockerCommand`)
 - Postgres (managed)
 - Redis (managed)
 
-## Required Env Vars (minimum)
+### Required Env Vars (minimum)
 - `ENVIRONMENT=production`
 - `SECRET_KEY` (non-default)
 - `DATABASE_URL`
@@ -79,30 +140,30 @@ Optional:
 - `CELERY_TASK_SOFT_TIME_LIMIT` (default 300s)
 - `CELERY_TASK_TIME_LIMIT` (default 360s)
 
-## CI/CD (GitHub Actions)
+### CI/CD (GitHub Actions)
 1. Build and push Docker images to GHCR.
 2. Run DB migrations using backend image.
 3. Trigger provider deploy hooks or run Fly deploys.
 4. Smoke test `/health`.
 
-### Option A migration policy
+#### Option A migration policy
 - Keep `AUTO_MIGRATE_ON_STARTUP=false` in production runtimes.
 - Require `DATABASE_URL_PRODUCTION` GitHub secret so the production workflow always runs:
   - `alembic -c app/alembic.ini upgrade head`
 - Treat missing migration secret as a hard deploy failure.
 
-## Domains
+### Domains
 
 - Frontend (static): `https://axiomfolio.com`
 - API: `https://api.axiomfolio.com`
 
-## DNS, TLS, and Cloudflare
+### DNS, TLS, and Cloudflare
 
-### Domain Registrar
+#### Domain Registrar
 
 **Spaceship** is the domain registrar (owns `axiomfolio.com`). DNS is delegated to Cloudflare.
 
-### Cloudflare DNS
+#### Cloudflare DNS
 
 Nameservers (configured in Spaceship):
 
@@ -117,11 +178,11 @@ DNS records (configured in Cloudflare dashboard):
 | CNAME | `@` (root) | Render frontend `.onrender.com` hostname | Proxied |
 | CNAME | `www` | `axiomfolio.com` | Proxied |
 
-### Cloudflare SSL/TLS
+#### Cloudflare SSL/TLS
 
 Mode: **Full (strict)**. Both Cloudflare and Render terminate TLS. Cloudflare encrypts the connection to Render's origin, and Render provides its own certificate. Any other mode causes redirect loops.
 
-### Render Custom Domains
+#### Render Custom Domains
 
 | Service | Custom Domain | Status |
 |---------|--------------|--------|
@@ -130,10 +191,10 @@ Mode: **Full (strict)**. Both Cloudflare and Render terminate TLS. Cloudflare en
 
 Render subdomains remain enabled as fallbacks: `axiomfolio-api.onrender.com`.
 
-### Render Services
+#### Render Services
 
 | Service | Type | Plan | Purpose |
-|---------|------|------|---------|
+|---------|------|------|----------|
 | `axiomfolio-api` | Web (Docker) | Standard (1 CPU / 2 GB) | FastAPI backend |
 | `axiomfolio-worker` | Worker (Docker) | Standard | Celery worker + embedded Beat (`--beat`) |
 | `axiomfolio-frontend` | Static | Free | React SPA |
@@ -200,7 +261,7 @@ User -> Cloudflare CDN (TLS termination, DDoS, WAF)
      -> axiomfolio-api container (uvicorn :8000)
 ```
 
-### CORS
+### Cors
 
 Ensure `CORS_ORIGINS` includes the frontend domain. Current production value:
 
@@ -208,7 +269,7 @@ Ensure `CORS_ORIGINS` includes the frontend domain. Current production value:
 CORS_ORIGINS=https://axiomfolio.com,https://staging.axiomfolio.com
 ```
 
-## Database migration (rename + preserve data)
+### Database migration (rename + preserve data)
 If you are renaming the database (e.g., `old_db` → `axiomfolio`), migrate data before cutover:
 1. Create the new database in the provider (empty).
 2. Export from the old database: `pg_dump --format=custom --no-owner --no-acl "$OLD_DATABASE_URL" -f axiomfolio.dump`.
@@ -216,7 +277,7 @@ If you are renaming the database (e.g., `old_db` → `axiomfolio`), migrate data
 4. Validate row counts for key tables and keep a rollback snapshot of the old DB.
 5. Point `DATABASE_URL` and related env vars at the new DB and run migrations via CI.
 
-## Scheduling (Celery Beat)
+### Scheduling (Celery Beat)
 Production uses **Celery Beat embedded in the worker** (`--beat` in `render.yaml`). Tasks and default crons are defined in `app/tasks/job_catalog.py`.
 
 Representative Celery targets (see catalog for full list):
@@ -253,22 +314,22 @@ Representative Celery targets (see catalog for full list):
 To see all schedules: query the internal agent tool `list_schedules`, or the Admin Schedules UI at `/settings/admin/schedules`.
 To trigger a task immediately: use `run_task_now` with a catalog `task_id`.
 
-### Execution flow (production)
+#### Execution flow (production)
 ![Production execution flow](assets/production_execution_flow.png)
 
-### System flow (Beat → queue → workers → DB)
+#### System flow (Beat → queue → workers → DB)
 ![Production system flow](assets/production_system_flow.png)
 
-### Example tick (UTC)
+#### Example tick (UTC)
 1. Celery Beat publishes a periodic task when the cron fires.
 2. Worker consumes the task from Redis.
 3. Task runs in the worker process; data updates land in Postgres; status is recorded in JobRun.
 
-### Dev vs prod behavior
+#### Dev vs prod behavior
 - **Production:** Beat in the worker enqueues tasks from the catalog (and DB-backed schedule rows where used). Legacy Render Cron Jobs (`admin_coverage_backfill`, `admin_retention_enforce`, `ibkr-daily-flex-sync`) are **suspended** (see Render Services table). Optional: `RENDER_API_KEY` and `RENDER_OWNER_ID` only if you re-enable Render cron sync (`render_sync_service.py`).
 - **Development:** Same catalog and DB-backed schedules as production; Render sync is a no-op locally. Use "Run Now" in Admin > Schedules to trigger tasks manually.
 
-## Admin access bootstrap
+### Admin access bootstrap
 To create the first admin user in production:
 1. Set `ADMIN_SEED_ENABLED=true` plus `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
 2. Deploy once; the admin user is created if it does not already exist.
@@ -276,15 +337,11 @@ To create the first admin user in production:
 
 Admin-only endpoints (all `/api/v1/market-data/admin/*` plus task triggers like `/market-data/indices/constituents/refresh` and `/market-data/symbols/{symbol}/refresh`) require an admin user.
 
-## Backups
+### Backups
 - Postgres: enable provider backups and periodic exports.
 - Redis: used for caching and Celery broker; persistence is lower priority since schedules are now DB-backed.
 
-## Scaling
+### Scaling
 - Scale API based on latency and request rate.
 - Scale workers based on queue depth and job duration.
 - Use rate limiting to protect upstream providers and DB.
-
-## Rollback
-- Roll back by redeploying the previous image tag.
-- If migrations are non-reversible, use guarded feature flags until data migrations complete.

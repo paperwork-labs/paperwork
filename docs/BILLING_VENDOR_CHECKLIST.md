@@ -1,7 +1,7 @@
 ---
 owner: cfo
-last_reviewed: 2026-03-17
-doc_kind: runbook
+last_reviewed: 2026-04-24
+doc_kind: reference
 domain: infra
 status: active
 ---

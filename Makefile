@@ -170,3 +170,6 @@ plan-status: ## Print active plans across products with last-reviewed dates
 
 docs-freshness: ## Report docs whose last_reviewed > 90d (warn-only)
 	@python3 scripts/check_doc_freshness.py --warn-only
+
+runbook-check: ## Verify every runbook follows docs/RUNBOOK_TEMPLATE.md (warn-only)
+	@python3 scripts/check_runbook_template.py --warn-only

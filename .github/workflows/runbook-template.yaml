@@ -1,0 +1,30 @@
+name: Runbook template
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "scripts/check_runbook_template.py"
+      - ".github/workflows/runbook-template.yaml"
+  schedule:
+    - cron: "0 14 * * 1"
+
+concurrency:
+  group: runbook-template-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Runbook template structure
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify every runbook has the required sections (warn-only)
+        run: python3 scripts/check_runbook_template.py --warn-only
