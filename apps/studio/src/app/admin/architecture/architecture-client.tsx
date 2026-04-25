@@ -180,6 +180,12 @@ export default function ArchitectureClient({
   const renderCard = (node: SystemNode) => {
     const h = healthById.get(node.id);
     const hasHealth = h?.configured;
+    // Show top-N subgroups as chips, then a "+N more" overflow so
+    // dense layers (silver has ~10 subdirs) still fit in a card.
+    const SUBGROUP_CHIP_LIMIT = 6;
+    const subgroups = node.subgroups ?? [];
+    const visibleSubgroups = subgroups.slice(0, SUBGROUP_CHIP_LIMIT);
+    const overflowSubgroups = subgroups.length - visibleSubgroups.length;
     return (
       <motion.button
         key={node.id}
@@ -222,6 +228,25 @@ export default function ArchitectureClient({
         <p className="mt-2 line-clamp-2 text-[11px] text-zinc-400">
           {node.description}
         </p>
+        {visibleSubgroups.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {visibleSubgroups.map((g) => (
+              <span
+                key={g.name}
+                title={`${g.file_count} files`}
+                className="rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5 font-mono text-[10px] text-zinc-300"
+              >
+                {g.name}
+                <span className="ml-1 text-zinc-500">{g.file_count}</span>
+              </span>
+            ))}
+            {overflowSubgroups > 0 && (
+              <span className="rounded border border-zinc-800 bg-zinc-900/60 px-1.5 py-0.5 font-mono text-[10px] text-zinc-500">
+                +{overflowSubgroups}
+              </span>
+            )}
+          </div>
+        )}
         {h && h.configured && (
           <div className="mt-auto flex items-center gap-1 pt-2 text-[10px] text-zinc-500">
             <Activity className="h-2.5 w-2.5" />
@@ -446,6 +471,44 @@ export default function ArchitectureClient({
                           </span>
                         ),
                       )}
+                    </div>
+                  </section>
+                )}
+
+                {selected.subgroups && selected.subgroups.length > 0 && (
+                  <section>
+                    <div className="mb-2 flex items-baseline justify-between text-xs font-semibold uppercase tracking-widest text-zinc-500">
+                      <span>Submodules</span>
+                      <span className="font-mono text-[10px] normal-case tracking-normal text-zinc-600">
+                        {selected.subgroups.length}{" "}
+                        {selected.subgroups.length === 1 ? "group" : "groups"}{" "}
+                        ·{" "}
+                        {selected.subgroups.reduce(
+                          (n, g) => n + g.file_count,
+                          0,
+                        )}{" "}
+                        files
+                      </span>
+                    </div>
+                    <div className="grid gap-1">
+                      {selected.subgroups.map((g) => (
+                        <a
+                          key={g.name}
+                          href={g.github_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-1.5 text-xs text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800/60"
+                        >
+                          <Github className="h-3 w-3 opacity-50" />
+                          <span className="font-mono text-zinc-200">
+                            {g.name}
+                          </span>
+                          <span className="ml-auto font-mono text-[11px] text-zinc-500">
+                            {g.file_count}
+                          </span>
+                          <ExternalLink className="h-3 w-3 opacity-40" />
+                        </a>
+                      ))}
                     </div>
                   </section>
                 )}

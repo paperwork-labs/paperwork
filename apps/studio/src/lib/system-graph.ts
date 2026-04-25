@@ -19,6 +19,12 @@ export type SystemKind =
   | "workflow"
   | "platform";
 
+export type SystemSubgroup = {
+  name: string;
+  file_count: number;
+  github_url: string;
+};
+
 export type SystemNode = {
   id: string;
   label: string;
@@ -36,6 +42,7 @@ export type SystemNode = {
   llm_backed?: boolean;
   severity?: "critical" | "high" | "low";
   medallion_summary?: Partial<Record<SystemLayer, number>>;
+  subgroups?: SystemSubgroup[];
 };
 
 export type SystemGraph = {

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-04-24T19:22:49+00:00",
-  "commit_sha": "9369192",
+  "generated_at": "2026-04-25T08:23:33+00:00",
+  "commit_sha": "d4c5e667",
   "layers": [
     "bronze",
     "silver",
@@ -24,7 +24,59 @@
       "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze",
       "medallion_summary": {
         "bronze": 33
-      }
+      },
+      "subgroups": [
+        {
+          "name": "ibkr",
+          "file_count": 9,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze/ibkr"
+        },
+        {
+          "name": "plaid",
+          "file_count": 4,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze/plaid"
+        },
+        {
+          "name": "market",
+          "file_count": 3,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze/market"
+        },
+        {
+          "name": "coinbase",
+          "file_count": 2,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze/coinbase"
+        },
+        {
+          "name": "etrade",
+          "file_count": 2,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze/etrade"
+        },
+        {
+          "name": "tradier",
+          "file_count": 2,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze/tradier"
+        },
+        {
+          "name": "(top)",
+          "file_count": 1,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze"
+        },
+        {
+          "name": "aggregator",
+          "file_count": 1,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze/aggregator"
+        },
+        {
+          "name": "schwab",
+          "file_count": 1,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze/schwab"
+        },
+        {
+          "name": "tastytrade",
+          "file_count": 1,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/bronze/tastytrade"
+        }
+      ]
     },
     {
       "id": "axiomfolio.silver.features",
@@ -41,7 +93,59 @@
       "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver",
       "medallion_summary": {
         "silver": 56
-      }
+      },
+      "subgroups": [
+        {
+          "name": "market",
+          "file_count": 25,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver/market"
+        },
+        {
+          "name": "portfolio",
+          "file_count": 11,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver/portfolio"
+        },
+        {
+          "name": "math",
+          "file_count": 7,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver/math"
+        },
+        {
+          "name": "regime",
+          "file_count": 6,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver/regime"
+        },
+        {
+          "name": "corporate_actions",
+          "file_count": 4,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver/corporate_actions"
+        },
+        {
+          "name": "tax",
+          "file_count": 4,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver/tax"
+        },
+        {
+          "name": "data_quality",
+          "file_count": 3,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver/data_quality"
+        },
+        {
+          "name": "indicators",
+          "file_count": 2,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver/indicators"
+        },
+        {
+          "name": "intelligence",
+          "file_count": 2,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver/intelligence"
+        },
+        {
+          "name": "symbols",
+          "file_count": 2,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/silver/symbols"
+        }
+      ]
     },
     {
       "id": "axiomfolio.gold.picks",
@@ -58,7 +162,49 @@
       "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold",
       "medallion_summary": {
         "gold": 56
-      }
+      },
+      "subgroups": [
+        {
+          "name": "strategy",
+          "file_count": 11,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold/strategy"
+        },
+        {
+          "name": "picks",
+          "file_count": 10,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold/picks"
+        },
+        {
+          "name": "(top)",
+          "file_count": 8,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold"
+        },
+        {
+          "name": "narrative",
+          "file_count": 6,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold/narrative"
+        },
+        {
+          "name": "backtest",
+          "file_count": 5,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold/backtest"
+        },
+        {
+          "name": "risk",
+          "file_count": 3,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold/risk"
+        },
+        {
+          "name": "ml",
+          "file_count": 1,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold/ml"
+        },
+        {
+          "name": "signals",
+          "file_count": 1,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold/signals"
+        }
+      ]
     },
     {
       "id": "axiomfolio.execution.orders",
@@ -75,7 +221,19 @@
       "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/execution",
       "medallion_summary": {
         "execution": 21
-      }
+      },
+      "subgroups": [
+        {
+          "name": "(top)",
+          "file_count": 19,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/execution"
+        },
+        {
+          "name": "risk",
+          "file_count": 1,
+          "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/execution/risk"
+        }
+      ]
     },
     {
       "id": "axiomfolio.api",
@@ -95,7 +253,7 @@
       ],
       "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio",
       "medallion_summary": {
-        "ops": 74,
+        "ops": 75,
         "bronze": 33,
         "gold": 56,
         "execution": 21,
