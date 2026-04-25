@@ -1,11 +1,13 @@
 ---
 owner: agent-ops
 last_reviewed: 2026-04-24
-doc_kind: runbook
+doc_kind: reference
 domain: automation
 status: active
 ---
 # Dependabot automation
+
+> Reference: Brain-owned flow (GitHub webhook → classifier → labels/review → 30m sweep/merge), secrets, risk tiers, and operator overrides. Not a failure-mode runbook; use manual overrides and [`BRAIN_PR_REVIEW.md`](./BRAIN_PR_REVIEW.md) for the shared reviewer.
 
 Paperwork Labs ships a Brain-owned Dependabot flow: GitHub webhook → Brain
 classifier → approve/merge or LLM triage. All logic lives in the Brain service;

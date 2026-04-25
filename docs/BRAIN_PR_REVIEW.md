@@ -1,7 +1,7 @@
 ---
 owner: agent-ops
-last_reviewed: 2026-04-23
-doc_kind: runbook
+last_reviewed: 2026-04-24
+doc_kind: reference
 domain: automation
 status: active
 ---
