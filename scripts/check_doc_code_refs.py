@@ -56,6 +56,9 @@ EXPECTED_DEAD: set[str] = {
     ".cursor/mcp.json",
     # Archived to docs/archive/MARKET_DATA_FLOWS.md; merge note in MARKET_DATA.md keeps provenance path.
     "docs/axiomfolio/MARKET_DATA_FLOWS.md",
+    # Archived to docs/archive/VMP-SUMMARY-2026-03-18.md; merge notes in
+    # VENTURE_MASTER_PLAN.md + DOCS_STREAMLINE_2026Q2.md keep provenance path.
+    "docs/VMP-SUMMARY.md",
 }
 
 # Match:

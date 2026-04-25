@@ -8,6 +8,8 @@ import {
   FileText,
   Lightbulb,
   ArrowRight,
+  CheckCircle2,
+  Clock3,
 } from "lucide-react";
 
 import { loadTrackerIndex, type Sprint } from "@/lib/tracker";
@@ -55,6 +57,68 @@ function planLabel(plan: string): string {
 
 function planUrl(plan: string): string {
   return `https://github.com/paperwork-labs/paperwork/blob/main/${plan}`;
+}
+
+const PR_REF_RE = /(?:#|PR\s*#|pull\/)(\d{2,5})/i;
+const SHIPPED_DATE_RE = /(?:^shipped\s+|\bshipped\s+)(\d{4}-\d{2}-\d{2})/i;
+const SCROLLED_PREFIX_RE = /^(?:✅|✓|✔|⏳|⏰|⏱|🟢|🟡)\s*/u;
+const STATUS_TOKEN_RE = /^(?:shipped|pending|active|paused|abandoned)\b\s*[:—-]?\s*/i;
+
+type TrackerItem = {
+  status: "shipped" | "pending";
+  text: string;
+  date?: string;
+  pr?: number;
+};
+
+function classifyItem(raw: string, defaultStatus: TrackerItem["status"]): TrackerItem {
+  let text = raw.replace(SCROLLED_PREFIX_RE, "").trim();
+  let status = defaultStatus;
+  let date: string | undefined;
+  let pr: number | undefined;
+
+  // Allow inline status overrides like "shipped 2026-04-25: foo" inside
+  // outcome bullets so a single section can mix in-progress work.
+  const statusToken = text.match(/^(shipped|pending|active|paused|abandoned)\b/i);
+  if (statusToken) {
+    const token = statusToken[1].toLowerCase();
+    if (token === "shipped") status = "shipped";
+    else if (token === "pending" || token === "active") status = "pending";
+    text = text.replace(STATUS_TOKEN_RE, "").trim();
+  }
+
+  const dateMatch = text.match(SHIPPED_DATE_RE);
+  if (dateMatch) {
+    date = dateMatch[1];
+    text = text.replace(SHIPPED_DATE_RE, "").replace(/^[\s—:–-]+/, "").trim();
+  }
+
+  const prMatch = text.match(PR_REF_RE);
+  if (prMatch) {
+    pr = Number(prMatch[1]);
+  }
+  return { status, text, date, pr };
+}
+
+function buildTracker(sprint: Sprint): TrackerItem[] {
+  const shipped = (sprint.outcome_bullets ?? []).map((line) => classifyItem(line, "shipped"));
+  const pending = (sprint.followups ?? []).map((line) => classifyItem(line, "pending"));
+
+  const items = [...shipped, ...pending];
+  // Stable chronological-ish order: shipped first (newest-first by date if
+  // present, otherwise authoring order), pending after (in authoring order
+  // since these are the next things on deck).
+  return items.sort((a, b) => {
+    if (a.status !== b.status) return a.status === "shipped" ? -1 : 1;
+    if (a.status === "shipped") {
+      const ad = a.date ?? "";
+      const bd = b.date ?? "";
+      if (ad && bd) return bd.localeCompare(ad);
+      if (ad) return -1;
+      if (bd) return 1;
+    }
+    return 0;
+  });
 }
 
 export default function SprintsPage() {
@@ -270,21 +334,7 @@ function FeaturedSprint({ sprint }: { sprint: Sprint }) {
         </div>
       </div>
 
-      {(sprint.outcome_bullets ?? []).length > 0 ? (
-        <div className="mt-6">
-          <p className="mb-2 text-[10px] uppercase tracking-wide text-zinc-500">
-            Outcome
-          </p>
-          <ul className="space-y-1.5 text-sm leading-relaxed text-zinc-200">
-            {(sprint.outcome_bullets ?? []).slice(0, 6).map((line, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="mt-2 inline-block h-1 w-1 shrink-0 rounded-full bg-emerald-400" />
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <LivingTracker sprint={sprint} />
 
       {(sprint.lessons ?? []).length > 0 ? (
         <details className="mt-6 rounded-lg border border-zinc-800/60 bg-zinc-950/40 p-3">
@@ -302,6 +352,73 @@ function FeaturedSprint({ sprint }: { sprint: Sprint }) {
         </details>
       ) : null}
     </section>
+  );
+}
+
+function LivingTracker({ sprint }: { sprint: Sprint }) {
+  const items = buildTracker(sprint);
+  if (items.length === 0) return null;
+
+  const shipped = items.filter((i) => i.status === "shipped");
+  const pending = items.filter((i) => i.status === "pending");
+
+  return (
+    <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <p className="flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-zinc-400">
+          <ArrowRight className="h-3 w-3" /> Living tracker
+        </p>
+        <p className="text-[10px] uppercase tracking-wide text-zinc-500">
+          <span className="text-emerald-300">{shipped.length} shipped</span>
+          <span className="mx-1.5 text-zinc-600">·</span>
+          <span className="text-amber-300">{pending.length} pending</span>
+        </p>
+      </div>
+      <ol className="space-y-2 text-sm leading-relaxed text-zinc-200">
+        {items.map((item, i) => (
+          <TrackerRow key={`${item.status}-${i}`} item={item} />
+        ))}
+      </ol>
+      <p className="mt-3 text-[10px] text-zinc-600">
+        Promote a follow-up: <code className="rounded bg-zinc-900/60 px-1.5 py-0.5 text-zinc-400">scripts/sprint_promote_followup.py {sprint.path} &lt;match&gt; --pr &lt;n&gt;</code>
+      </p>
+    </div>
+  );
+}
+
+function TrackerRow({ item }: { item: TrackerItem }) {
+  const isShipped = item.status === "shipped";
+  const Icon = isShipped ? CheckCircle2 : Clock3;
+  const iconColor = isShipped ? "text-emerald-400" : "text-amber-300";
+  const pillClass = isShipped
+    ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+    : "bg-amber-500/10 text-amber-300 border-amber-500/30";
+
+  return (
+    <li className="flex items-start gap-2.5">
+      <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${iconColor}`} />
+      <div className="min-w-0 flex-1">
+        <p className="text-zinc-200">{item.text}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wide">
+          <span className={`rounded-full border px-1.5 py-0.5 ${pillClass}`}>
+            {item.status}
+          </span>
+          {item.date ? (
+            <span className="text-zinc-500">{item.date}</span>
+          ) : null}
+          {item.pr ? (
+            <a
+              href={prUrl(item.pr)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sky-300 hover:text-sky-200"
+            >
+              PR #{item.pr}
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </li>
   );
 }
 
@@ -329,6 +446,9 @@ function SprintRail({
           {sprints.map((s) => {
             const t = tone(s.status);
             const Icon = t.icon;
+            const tracker = buildTracker(s);
+            const shippedCount = tracker.filter((i) => i.status === "shipped").length;
+            const pendingCount = tracker.filter((i) => i.status === "pending").length;
             return (
               <li
                 key={s.slug}
@@ -348,6 +468,14 @@ function SprintRail({
                       ) : (
                         <code>{s.path}</code>
                       )}
+                      {tracker.length > 0 ? (
+                        <span className="ml-2 text-zinc-600">
+                          ·{" "}
+                          <span className="text-emerald-300">{shippedCount} shipped</span>
+                          <span className="mx-1 text-zinc-600">/</span>
+                          <span className="text-amber-300">{pendingCount} pending</span>
+                        </span>
+                      ) : null}
                     </p>
                   </div>
                   <span

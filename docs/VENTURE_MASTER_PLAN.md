@@ -1,13 +1,85 @@
 ---
 owner: strategy
-last_reviewed: 2026-03-12
+last_reviewed: 2026-04-25
 doc_kind: plan
 domain: company
 status: active
 ---
 # Paperwork Labs — Venture Master Plan v1
 
-**Date**: March 12, 2026 | **Supersedes**: All prior strategy plans including deep_research_tightening (5 plans archived)
+**Date**: March 12, 2026 (last meaningful refresh) | **Supersedes**: All prior strategy plans including deep_research_tightening (5 plans archived). The previous standalone `docs/VMP-SUMMARY.md` was folded into the **TL;DR** below on 2026-04-25 and archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`.
+
+---
+
+## TL;DR (compact summary)
+
+> Read this section if you have 5 minutes; the rest is the full strategy at ~3,500 lines. The compact summary used to live in a separate `VMP-SUMMARY.md` so n8n workflows and cheap models could load it cheaply; with the persona platform doing routing centrally that split is no longer needed and the summary is folded back in here.
+
+**Entity**: Paperwork Labs LLC (California). DBAs: FileFree, LaunchFree, Trinkets, Distill.
+
+**Products**:
+
+| Product | Domain | Status | Launch |
+|---------|--------|--------|--------|
+| FileFree | filefree.ai | In development | January 2027 |
+| LaunchFree | launchfree.ai | In development | Summer 2026 |
+| Distill | distill.tax | In development | Summer 2026 |
+| Trinkets | tools.filefree.ai | Scaffolded | Phase 1.5 |
+| Studio / Command Center | paperworklabs.com | Live (Tier 1 complete) | Live |
+| AxiomFolio | axiomfolio.com | Absorbed into monorepo 2026-04-23 | Live (Render) |
+
+**Team**: Two co-founders. Founder 1 (product / engineering) owns code. Founder 2 (partnerships / revenue) sources financial-product partnerships.
+
+**Monthly burn**: ~$278/mo. Vercel / Neon / Upstash on free tier until scale triggers.
+
+**North stars**:
+
+- **FileFree** — own IRS MeF Transmitter (January 2027), e-file at $0/return.
+- **LaunchFree** — State Filing Engine across all 50 states (Summer 2026), automate LLC formation via state APIs + portal automation + print-and-mail.
+- **Distill** — full B2B compliance automation platform (Summer 2026): CPA SaaS + Formation API + Tax API + Compliance API at api.distill.tax.
+- **Venture-wide** — shared compliance infrastructure powering both free consumer products and paid B2B APIs. The infrastructure is the product.
+
+**Revenue model**:
+
+- **Consumer (free forever)**: partnership referrals, refund routing, financial-product recommendations, audit shield, Tax Optimization Plan ($29/yr), RA credits (LaunchFree), Compliance-as-a-Service ($49–99/yr). No filing fees from consumers.
+- **B2B (Distill)**: CPA SaaS $49–199/mo; Formation API $20–40/filing; Tax API $5–15/return; Compliance API per-action.
+- Cost per user: $0.06 (FileFree); ~$0.50/filing (LaunchFree).
+- Year-1 projections: pessimistic $15K, moderate $64K, aggressive $264K.
+- Plan B: self-serve affiliates (Betterment, SoFi, Wealthfront, Impact.com, CJ) — ~$6.5K–37K Year 1.
+
+**Phase status (Apr 2026)**:
+
+- Complete: Phase 1 (monorepo restructure), Phase 4 Tier 1 (Studio / Mission Control / Agent Monitor / Infra Health).
+- In progress: Phase 0 (LLC, EFIN, domain migration, GDrive, social handles, legal setup), Phase 1.5 (Trinket Factory pilot), Phase 2 (50-state data infrastructure).
+- Upcoming: LaunchFree MVP, Distill B2B, FileFree season prep / launch, agent restructure + social pipeline. See [TASKS.md](TASKS.md) for the full task breakdown.
+
+**Pre-code blockers**: EFIN application this week (45-day IRS processing); cyber liability insurance ($1M) before first SSN; data breach response plan; 1 hr attorney consult before Phase 3.
+
+**Competitive moat (6 points)**:
+
+1. Proprietary 50-state State Filing Engine (Delaware ICIS API + portal automation + Tier-3 print-and-mail) shared by LaunchFree ($0) and Distill Formation API ($20–40/filing).
+2. Cross-product data compound — tax + formation + quarterly estimates → 20+ data-point profile per user; competitors need 2–3 years of build to replicate.
+3. Agent-maintained 50-state compliance data — n8n workflows + Brain detect rule changes and update configs; both data layer and maintenance system are proprietary.
+4. Cost moat — ~$278/mo burn vs CK's 1,300+ FTE; profitability at Scenario A (~$65K revenue).
+5. Retention lock-in — 80 % of tax filers stick with the same software year-over-year (PCMag); capture a 22-year-old, own them 10+ years.
+6. B2B distribution flywheel — Distill CPA firms refer to consumer FileFree; consumer users convert to CPA leads. No competitor combines free consumer tax + free LLC formation + B2B CPA + compliance SaaS.
+
+**Tech stack**:
+
+- Frontend: Next.js 14+ App Router · TypeScript strict · Tailwind 4+ · shadcn/ui · Framer Motion · Vercel AI SDK · React Hook Form + Zod · TanStack Query · Zustand. Per-product themes via `[data-theme]`.
+- Backend: FastAPI (Python 3.11+) · SQLAlchemy 2 async · PostgreSQL 15+ (Neon) · Redis (Upstash) · Pydantic v2 · Alembic.
+- Infra: Vercel (frontend) · Render Starter ×2 (APIs) · GCP (Cloud Vision, Cloud Storage) · Hetzner CX33 (n8n, Postiz, Redis). Zero AWS.
+- AI routing: Cloud Vision DOCUMENT_TEXT_DETECTION → GPT-4o-mini structured extraction → GPT-4o vision fallback (<85 % confidence). SSN regex-extracted locally, **never** sent to LLMs. State data: Gemini 2.5 Flash / Pro. Tax verification: o4-mini. Brand / social: GPT-4o. Code / compliance: Claude Sonnet. Authoritative routing: [docs/AI_MODEL_REGISTRY.md](AI_MODEL_REGISTRY.md).
+- Monorepo target: `apps/` (filefree, launchfree, distill, studio, trinkets, axiomfolio, axiomfolio-next), `apis/` (filefree, brain, axiomfolio, launchfree-future), `packages/` (ui, auth, analytics, data, tax-engine, document-processing, filing-engine, intelligence, email, pwa).
+
+**Agent architecture**:
+
+- 16 personas in `.cursor/rules/*.mdc` and `apis/brain/app/personas/*.yaml`: ea, engineering, strategy, legal, cfo, qa, partnerships, ux, growth, social, tax-domain, cpa, agent-ops, brand, workflows, infra-ops, git-workflow.
+- n8n workflows on Hetzner are now **2-node webhook → brain** wires. Heavy lifting is centralised in Paperwork Brain (persona platform + chain strategies). See [docs/BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) and [docs/INFRA.md](INFRA.md).
+- Slack: Brain bot is installed in every channel; persona pin routes per-channel. Use Brain webhook / Slack adapter, not the Slack MCP, for outbound posts.
+- EA cadence: daily briefing 7am PT → `#daily-briefing`; weekly plan Sunday 6pm PT → `#weekly-plan`; CFO Friday digest 18:00 UTC → `#cfo`.
+
+**Open / active decisions**: see [KNOWLEDGE.md](KNOWLEDGE.md) Front-and-Center. Must-act-on: D29 (brand assets), D37 (domain migration), D56 (shared auth), D62 (reliability patterns), Q3 (Column Tax). Should-track: Q1 (OCR accuracy), D25 (legal review), D34 (n8n credentials), D24 (Sentry).
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-24
+last_reviewed: 2026-04-25
 doc_kind: runbook
 domain: infra
 status: active
@@ -9,39 +9,42 @@ related_runbooks: []
 ---
 # Runbook: Render Repoint to Monorepo
 
-> Four axiomfolio Render services still point at the old standalone repo; repoint them to `paperwork-labs/paperwork` so deploys use live code. Operator-driven (~15 min); Brain cannot reassign repository via API.
+> Four AxiomFolio Render services still point at the archived
+> `paperwork-labs/axiomfolio` repo. With one consolidated `render.yaml`
+> at the monorepo root, repointing is now a **single Blueprint Sync**
+> instead of four per-service dashboard sessions.
 
 ## When this fires
 
-- [RENDER_INVENTORY.md](RENDER_INVENTORY.md) Finding **F-1** is open, or a migration plan schedules cutover of `axiomfolio-api`, `axiomfolio-worker`, `axiomfolio-worker-heavy`, and `axiomfolio-frontend` to the monorepo.
-- Deliberate change window (not a surprise outage) — you are switching **Repository** / **Root Directory** / **Blueprint** in Render, not hot-fixing a crash loop.
+- [RENDER_INVENTORY.md](RENDER_INVENTORY.md) Finding **F-1** is open, or
+  a migration plan schedules cutover of `axiomfolio-api`,
+  `axiomfolio-worker`, `axiomfolio-worker-heavy`, and
+  `axiomfolio-frontend` to the monorepo.
+- Deliberate change window — you are switching the **Blueprint** in
+  Render, not hot-fixing a crash loop.
 
 | Level | Trigger | Action |
 | --- | --- | --- |
-| YELLOW | Planned repoint, CI green, no user-visible outage yet | Run this runbook, coordinate in `#deployment`, no merge halt required unless you widen scope. |
+| YELLOW | Planned repoint, CI green, no user-visible outage yet | Run this runbook, coordinate in `#deployment`. |
 | RED | Repoint caused failed deploys, health red, or customer impact | Rollback first (see [Rollback](#rollback)), then [Escalation](#escalation). |
 
-**Prereqs (blockers if missing):** Read [RENDER_INVENTORY.md](RENDER_INVENTORY.md) (F-1). Render dashboard: [dashboard.render.com](https://dashboard.render.com). `gh` CLI for archive step. _TODO: add any org-specific sign-off if required._
+**Prereqs (blockers if missing):** Read [RENDER_INVENTORY.md](RENDER_INVENTORY.md) (F-1, F-6). Render dashboard: [dashboard.render.com](https://dashboard.render.com). `gh` CLI for archive step.
 
 ## Triage (≤5 min)
 
 ```bash
 # Monorepo main is healthy
 gh run list --branch main --limit 5
-# Optional: open PRs you care about
-gh pr list --state open
-```
 
-```bash
-# Brain reachable (baseline for post-repoint health checks)
+# Brain reachable (baseline)
 curl -sS https://brain-api-zo5t.onrender.com/health
 ```
 
 If `main` is red → **stop**; fix CI before repointing. If Brain health fails → treat as separate incident, then return here.
 
-## Path: brain-api dockerContext fix
+## Path A: `brain-api` Docker Build Context Directory fix (F-6)
 
-Symptom: every push to `main` builds with errors of the form:
+Symptom: every push to `main` builds with errors of the form
 
 ```
 #16 ERROR: failed to compute cache key: "/apis/brain/requirements.txt": not found
@@ -49,13 +52,27 @@ Symptom: every push to `main` builds with errors of the form:
 #14 ERROR: "/.cursor/rules": not found
 ```
 
-Cause: live `brain-api` has `dockerContext: apis/brain`, but `apis/brain/Dockerfile` references monorepo-root paths (it bundles `.cursor/rules/` for persona cold-start). See [RENDER_INVENTORY.md → F-6](RENDER_INVENTORY.md#f-6--brain-api-dockercontext-drifted-from-blueprint-every-push-to-main-fails-).
+Cause: Render exposes the build context override as **two separate
+fields** in **Settings → Build & Deploy**:
 
-Steps (one service, ~5 min):
+| Render field | What it does | What blueprint maps to |
+| --- | --- | --- |
+| **Root Directory** | Where commands run (`buildCommand`, `preDeployCommand`, etc.) | `rootDir:` |
+| **Docker Build Context Directory** | Path passed as `docker build <context>` | `dockerContext:` |
 
-1. Open [`brain-api` settings](https://dashboard.render.com/web/srv-d74f3cmuk2gs73a4013g/settings).
-2. **Build & Deploy** → **Root Directory**: clear to empty (this field maps to `dockerContext`). Blueprint already declares `.`.
-3. **Dockerfile Path**: leave as `apis/brain/Dockerfile`. Save.
+The blueprint declares `dockerContext: .` (build from monorepo root)
+but the **Docker Build Context Directory** field on the live service
+was set to `apis/brain`. With that override, `COPY apis/brain/requirements.txt`
+in [`apis/brain/Dockerfile`](../../apis/brain/Dockerfile) tries to
+resolve `apis/brain/apis/brain/requirements.txt` and fails. **Root
+Directory was already empty** — the wrong field was being blamed.
+
+Steps (one click, ~5 min):
+
+1. Open [`brain-api` Settings → Build & Deploy](https://dashboard.render.com/web/srv-d74f3cmuk2gs73a4013g/settings).
+2. Find the **Docker Build Context Directory** field. Clear it to empty.
+   (Leave **Root Directory** alone if it's already empty.)
+3. **Dockerfile Path**: confirm `apis/brain/Dockerfile`. Save.
 4. Render auto-triggers a build from the monorepo root.
 5. Verify:
 
@@ -64,95 +81,136 @@ Steps (one service, ~5 min):
    gh run list --branch main --limit 3 --workflow brain-tests.yml
    ```
 
-   Both should be green; new commit hash on the deploy matches `git rev-parse origin/main`.
+   Both should be green; Render's **Deploys** tab shows the latest
+   `main` SHA matching `git rev-parse origin/main`.
 
-Rollback: re-set Root Directory to `apis/brain` and rebuild — but you'll be back on the broken combo, so only do this if the monorepo build itself regresses.
+Rollback: re-set the field to `apis/brain` and rebuild — but that puts
+you back on the broken combo, so only do this if the monorepo build
+itself regresses.
 
-## Path: Monorepo repoint (dashboard)
+## Path B: AxiomFolio repoint via consolidated Blueprint (F-1)
 
-For **each** of the four services, in Render: **Settings** → **Build & Deploy**.
+Since 2026-04-25 there is **one** `render.yaml` at the monorepo root
+declaring every Paperwork-managed service (FileFree, Brain, AxiomFolio
+API + workers + frontend, axiomfolio-redis, axiomfolio-db). The
+`apis/axiomfolio/render.yaml` is now a stub pointer.
 
-**Service links (direct):**
+**Why this works:** Render's "Associate existing services" Blueprint
+flow looks up each service in your workspace **by name**. When the
+new Blueprint is created against `paperwork-labs/paperwork`, the
+existing AxiomFolio services attach to it and Render flips their
+underlying repo pointer to the monorepo automatically. Zero per-service
+clicks.
 
-- [`axiomfolio-api`](https://dashboard.render.com/web/srv-d7lg0o77f7vs73b2k7m0)
-- [`axiomfolio-worker`](https://dashboard.render.com/worker/srv-d7lg0o77f7vs73b2k7lg)
-- [`axiomfolio-worker-heavy`](https://dashboard.render.com/worker/srv-d7lg0o77f7vs73b2k7kg)
-- [`axiomfolio-frontend`](https://dashboard.render.com/static/srv-d7lg0dv7f7vs73b2k1u0)
+> If your Blueprint preview screen shows only `filefree-api` /
+> `brain-api` and you don't see the AxiomFolio services, you are
+> reading the **old** `render.yaml`. Pull `main`, confirm the file
+> declares 6+ services, and try again.
 
-1. Under **Repository**: **Disconnect** the old connection → confirm.
-2. **Connect a repository** → `paperwork-labs/paperwork` → `main`.
-3. **Root Directory**:
-   - Three backend services → `apis/axiomfolio`
-   - `axiomfolio-frontend` → `apps/axiomfolio`
-4. **Dockerfile Path** (backend only): `./Dockerfile` (not `./Dockerfile.backend`).
-5. `axiomfolio-frontend` (static): **Build Command**:
+Steps (~10 min, single dashboard session):
 
-   ```bash
-   cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && pnpm install --frozen-lockfile --filter=@paperwork-labs/axiomfolio... && pnpm --filter=@paperwork-labs/axiomfolio build
-   ```
+1. **Render dashboard** → **Blueprints** → **New Blueprint**.
+2. **Repository**: `paperwork-labs/paperwork`.
+3. **Branch**: `main`.
+4. **Blueprint Path**: leave as `render.yaml` (the default).
+5. **Name**: `Paperwork Products` (or any label).
+6. Render shows a preview titled "Specified configurations" with one
+   row per service. Expected:
+   - **Associate** existing service `filefree-api`.
+   - **Associate** existing service `brain-api`.
+   - **Associate** existing service `axiomfolio-api`.
+   - **Associate** existing service `axiomfolio-worker`.
+   - **Associate** existing service `axiomfolio-worker-heavy`.
+   - **Associate** existing service `axiomfolio-frontend`.
+   - **Associate** existing key-value store `axiomfolio-redis`.
+   - **Associate** existing database `axiomfolio-db`.
+   - Plus a handful of "Update health check path / Dockerfile path"
+     adjustments — that's expected, the blueprint is now the source of
+     truth.
+7. **Choose**: `Associate existing services`. (Do **not** pick "Create
+   all as new services" — that would spin up duplicates.)
+8. **Create Blueprint**. Render begins a build for any service whose
+   config changed (most importantly `axiomfolio-frontend` whose
+   `buildCommand` and `staticPublishPath` are repointed at the
+   monorepo).
+9. After the syncs, repo pointer for every AxiomFolio service is
+   `paperwork-labs/paperwork` and `Dockerfile.backend` is replaced by
+   `Dockerfile`.
 
-   **Publish Path:** `dist`
-6. Save. Render starts a build from the monorepo.
-7. **Blueprint (optional but recommended):** same page → set **Blueprint file path** to `apis/axiomfolio/render.yaml` so future changes propagate on push to `main`.
+Render's API doesn't expose `repository` reassignment on existing
+services; the Blueprint flow does. That's the only documented path.
 
-_Why not API/MCP only:_ Render’s API supports create/update and env, but not repository reassignment on an existing service on the surface we use — one-shot human clicks. After repoint, Brain can drive more via MCP. _TODO: re-check if Render API adds repo switch; update runbook if automated._
+## Path C: drop the orphaned Blueprint(s)
+
+If you previously created a Blueprint pointing at
+`apis/axiomfolio/render.yaml`, delete it once Path B is confirmed
+green — otherwise Render will sync from a stub file and overwrite the
+working config. **Dashboard → Blueprints → old Blueprint → Settings →
+Delete.** This does **not** delete the underlying services.
 
 ## Verification
 
-After each service’s build finishes (about 2–5 min):
+After each service's build finishes (about 2–5 min):
 
 ```bash
-# Expect 200 + useful payload
 curl -sS https://axiomfolio-api-02ei.onrender.com/health
 curl -sS https://axiomfolio-frontend-ia2b.onrender.com/
 ```
 
-Workers: no HTTP — confirm recent **Deploys** in the dashboard or via Brain, e.g. in Cursor: `@brain render: show me recent deploys for axiomfolio-worker`.
+Workers: no HTTP — confirm recent **Deploys** tab in the dashboard or
+ask Brain in Cursor: `@brain render: show me recent deploys for axiomfolio-worker`.
 
-- All four **Deploy** tabs show success for monorepo `main` within the last deploy.
-- _TODO: add any org smoke test (auth, key flows) if required beyond `/health`._
+DoD checklist (lives in [RENDER_INVENTORY.md](RENDER_INVENTORY.md)):
+
+- All four AxiomFolio service `repo` fields read `paperwork-labs/paperwork`.
+- Latest `main` SHA matches the deploy of every service.
+- `/admin/infrastructure` in Studio shows all six services green.
 
 ## Rollback
 
-If the monorepo Dockerfile or build is wrong, prefer rollback over editing env in panic:
+If the monorepo build is wrong, prefer rollback over panic-edits:
 
-1. **Settings** → **Build & Deploy** → **Repository**: reconnect `paperwork-labs/axiomfolio` (or last known good remote).
-2. **Dockerfile Path** (backend): `./Dockerfile.backend`.
-3. **Manual Deploy** → last known-green commit (not delete/recreate the service — preserves `srv-d7…` IDs and hostnames).
-
-Do **not** delete a service; recreating breaks hardcoded `srv-…` or hostname assumptions.
+1. Render → service → **Manual Deploy** → last known-green commit. This
+   preserves the `srv-…` IDs and hostnames.
+2. If a Blueprint sync set the wrong build command on
+   `axiomfolio-frontend`, revert by re-running the Blueprint Sync from
+   a known-good commit (top-right "Sync" on the Blueprint detail page).
+3. Do **not** delete a service; recreating breaks hardcoded `srv-…` or
+   hostname assumptions.
 
 ## Escalation
 
-- **`#deployment`:** `@paperwork status axiomfolio` if services go red; don’t “fix” by random env changes mid-flight.
-- **Pager / owner:** _TODO: PagerDuty or primary on-call for infra-ops if RED customer impact after rollback attempt._
-- **Vendor:** [Render support](https://render.com) if dashboard/API blocks you — link the ticket in `#deployment`.
-
-`RENDER_API_KEY` and other tokens stay where you already store them; this runbook does not require pasting new secrets. _TODO: link to internal secret location if not standard._
+- **`#deployment`:** post `@paperwork status axiomfolio` if services go
+  red; don't "fix" by random env changes mid-flight.
+- **Vendor:** [Render support](https://render.com) if dashboard/API
+  blocks you — link the ticket in `#deployment`.
 
 ## Post-incident
 
-- Tick **F-1** in [RENDER_INVENTORY.md](RENDER_INVENTORY.md) when four services are on the monorepo and verified.
-- After all four are green on the monorepo for **≥ 24h**, archive the old repo (read-only history):
+- Tick **F-1** in [RENDER_INVENTORY.md](RENDER_INVENTORY.md) when six
+  services are on the consolidated Blueprint and verified.
+- After all services are green on the monorepo for **≥ 24 h**, archive
+  the old repo (read-only history):
 
   ```bash
   gh repo archive paperwork-labs/axiomfolio --yes
   ```
 
-- Add a line under **Recent incidents** or sprint notes in `docs/KNOWLEDGE.md` if your process requires it. _TODO: link sprint doc if applicable._
 - Bump `last_reviewed` on this file when the migration is done.
 
 ## Appendix
 
-### Axiomfolio on Render (repoint targets)
+### Service IDs (current Render)
 
-- API: <https://dashboard.render.com/web/srv-d7lg0o77f7vs73b2k7m0>
-- Worker: <https://dashboard.render.com/worker/srv-d7lg0o77f7vs73b2k7lg>
-- Worker heavy: <https://dashboard.render.com/worker/srv-d7lg0o77f7vs73b2k7kg>
-- Frontend: <https://dashboard.render.com/static/srv-d7lg0dv7f7vs73b2k1u0>
-- Blueprint source: `apis/axiomfolio/render.yaml` (monorepo)
+- `axiomfolio-api`        — `srv-d7lg0o77f7vs73b2k7m0`
+- `axiomfolio-worker`     — `srv-d7lg0o77f7vs73b2k7lg`
+- `axiomfolio-worker-heavy` — `srv-d7lg0o77f7vs73b2k7kg`
+- `axiomfolio-frontend`   — `srv-d7lg0dv7f7vs73b2k1u0`
+- `brain-api`             — `srv-d74f3cmuk2gs73a4013g`
+- `filefree-api`          — `srv-d70o3jvkijhs73a0ee7g`
+- Blueprint source: `/render.yaml` at monorepo root.
 
 ### Related
 
-- [RENDER_INVENTORY.md](RENDER_INVENTORY.md) — F-1, DoD checkboxes
+- [RENDER_INVENTORY.md](RENDER_INVENTORY.md) — F-1, F-6 DoD.
 - [dashboard.render.com](https://dashboard.render.com)

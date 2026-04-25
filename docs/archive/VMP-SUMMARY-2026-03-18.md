@@ -1,10 +1,27 @@
 ---
 owner: strategy
-last_reviewed: 2026-04-24
+last_reviewed: 2026-04-25
 doc_kind: spec
 domain: company
-status: active
+status: archived
+archived_at: 2026-04-25
+archived_by: docs-streamline phase 4
+superseded_by: docs/VENTURE_MASTER_PLAN.md (TL;DR section at top)
 ---
+
+# ARCHIVED — Paperwork Labs Venture Master Plan (Summary)
+
+> **This file is archived.** The compact summary lives at the top of
+> [`docs/VENTURE_MASTER_PLAN.md`](../VENTURE_MASTER_PLAN.md) under
+> "TL;DR (compact summary)" since 2026-04-25. The split (a separate
+> file just for cheap n8n workflows and lighter models to load) is
+> obsolete now that the Brain persona platform handles routing
+> centrally and personas pull strategy context from the canonical
+> Master Plan directly. The full content below is retained verbatim as
+> a snapshot of what shipped on 2026-03-18.
+
+---
+
 # Paperwork Labs — Venture Master Plan (Summary)
 
 **Derived from**: VENTURE_MASTER_PLAN.md (full version: 3509 lines)

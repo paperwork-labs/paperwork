@@ -1,177 +1,26 @@
-# AxiomFolio Render Blueprint.
+# RETIRED — see /render.yaml.
 #
-# As of 2026-04-23 AxiomFolio lives inside the paperwork monorepo at
-# apis/axiomfolio/. The Render blueprint service is configured to read
-# THIS file (Blueprint file path: apis/axiomfolio/render.yaml) from the
-# paperwork repo. Each service sets rootDir: apis/axiomfolio so build
-# context, Dockerfile paths, and relative buildCommand paths resolve
-# correctly against the subtree root.
-services:
-  - type: web
-    name: axiomfolio-api
-    runtime: docker
-    rootDir: apis/axiomfolio
-    plan: standard
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /health
-    autoDeploy: true
-    # Render Docker services don't reliably inject env vars (fromDatabase/fromService)
-    # for preDeployCommand, so migrations run at API startup instead. Alembic upgrade
-    # is idempotent — if already at head it's a no-op.
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: SECRET_KEY
-        generateValue: true
-      - key: AUTO_MIGRATE_ON_STARTUP
-        value: "true"
-      - key: LOG_FORMAT
-        value: json
-      - key: DATABASE_URL
-        fromDatabase:
-          name: axiomfolio-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: RATE_LIMIT_STORAGE_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-
-  - type: worker
-    name: axiomfolio-worker
-    runtime: docker
-    rootDir: apis/axiomfolio
-    # Fast worker — handles short-running tasks (default `celery` queue,
-    # `account_sync`, `orders`) plus Celery Beat scheduling. Concurrency=2
-    # because per-task memory is small (<200 MiB) so two children fit
-    # comfortably under the 750 MiB child cap on a 2 GiB Standard plan.
-    # Long-running tasks (snapshot history backfill, fundamentals fill,
-    # daily/intraday backfill, repair_stage_history) route to the heavy
-    # queue handled by axiomfolio-worker-heavy.
-    plan: standard
-    dockerfilePath: ./Dockerfile
-    autoDeploy: true
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: LOG_FORMAT
-        value: json
-      - key: WORKER_ROLE
-        value: fast
-      - key: DATABASE_URL
-        fromDatabase:
-          name: axiomfolio-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-    # 750,000 KiB ≈ 732 MiB per child. With concurrency=2 that's ~1.46 GiB
-    # peak across both children, leaving ~550 MiB for Beat + scheduler +
-    # overhead on the 2 GiB Standard plan.
-    dockerCommand: celery -A app.tasks.celery_app worker --beat -Q celery,account_sync,orders --loglevel=info --max-memory-per-child=750000 --concurrency=2
-
-  - type: worker
-    name: axiomfolio-worker-heavy
-    runtime: docker
-    rootDir: apis/axiomfolio
-    # Heavy worker — exclusively handles the `heavy` queue: long-running
-    # market-data jobs that previously starved the fast worker (a single
-    # `repair_stage_history` would block dashboard warming for an hour).
-    # Concurrency=1 because individual jobs touch 2,500+ symbols and can
-    # peak at >1 GiB. Beat runs only on the fast worker to avoid duplicate
-    # schedules.
-    plan: standard
-    dockerfilePath: ./Dockerfile
-    autoDeploy: true
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: LOG_FORMAT
-        value: json
-      - key: WORKER_ROLE
-        value: heavy
-      - key: DATABASE_URL
-        fromDatabase:
-          name: axiomfolio-db
-          property: connectionString
-      - key: REDIS_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_BROKER_URL
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-      - key: CELERY_RESULT_BACKEND
-        fromService:
-          type: keyvalue
-          name: axiomfolio-redis
-          property: connectionString
-    # 1,500,000 KiB ≈ 1.46 GiB child cap on 2 GiB Standard plan. Concurrency=1
-    # so peak per-process memory matches what we measured for the worst
-    # historical job (snapshot_last_n_days over 2,500 symbols ~ 1.2 GiB).
-    dockerCommand: celery -A app.tasks.celery_app worker -Q heavy --loglevel=info --max-memory-per-child=1500000 --concurrency=1
-
-  - type: web
-    name: axiomfolio-frontend
-    runtime: static
-    # Frontend lives at apps/axiomfolio/ (pnpm workspace member). There is no
-    # per-app lockfile; dependencies are resolved by pnpm from the monorepo
-    # root. Build runs in rootDir (apps/axiomfolio) then cd's back to the
-    # repo root to invoke pnpm with a workspace filter — mirrors the pattern
-    # used by every Vercel app in this repo.
-    rootDir: apps/axiomfolio
-    autoDeploy: true
-    buildCommand: "cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && pnpm install --frozen-lockfile --filter=@paperwork-labs/axiomfolio... && pnpm --filter=@paperwork-labs/axiomfolio build"
-    staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_BASE_URL
-        value: https://api.axiomfolio.com/api/v1
-
-  - type: keyvalue
-    name: axiomfolio-redis
-    plan: starter
-    ipAllowList: []
-
-  # Deploy policy: all services auto-deploy on commit to main (branch protection gates CI).
-  # All scheduling is via Celery Beat (beat_schedule in celery_app.py).
-  # Render cron jobs have been retired — they added cost (3 extra Docker builds)
-  # and provided zero additional resilience (they just called .delay() to the worker).
-  # Default schedules are seeded from app/tasks/job_catalog.py.
-
-databases:
-  - name: axiomfolio-db
-    plan: basic-1gb
+# This file used to define the AxiomFolio Render Blueprint while the
+# service was being migrated into the monorepo. As of 2026-04-25 every
+# Paperwork-managed Render service (FileFree, Brain, AxiomFolio API,
+# AxiomFolio workers, AxiomFolio frontend, axiomfolio-redis,
+# axiomfolio-db) is declared in the root /render.yaml. Render's Blueprint
+# Sync expects exactly one render.yaml per repo; keeping a second one
+# alive caused split-brain (the dashboard "New Blueprint" preview only
+# showed services from whichever path you pointed it at, never both).
+#
+# To repoint Render at the consolidated blueprint:
+#   1. Dashboard → Blueprints → New Blueprint
+#   2. Repository: paperwork-labs/paperwork
+#   3. Branch: main
+#   4. Blueprint Path: render.yaml      ← the root file (the default)
+#   5. Choose "Associate existing services" so axiomfolio-api,
+#      axiomfolio-worker, axiomfolio-worker-heavy, axiomfolio-frontend,
+#      axiomfolio-redis, and axiomfolio-db all attach to this Blueprint
+#      instead of being orphaned by the old paperwork-labs/axiomfolio
+#      repo pointer.
+#
+# Runbook with screenshots: docs/infra/RENDER_REPOINT.md
+#
+# Do not re-introduce service definitions here. CI does not parse this
+# file. If you need a deeper history, see git log on this path.

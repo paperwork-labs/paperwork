@@ -62,7 +62,7 @@ Every domain should have a paired (Architecture = mutable "how", Philosophy = im
 | `docs/AXIOMFOLIO_HANDOFF.md` vs `docs/axiomfolio/PAPERWORK_HANDOFF.md` | Retire both; the migration is done | Both are point-in-time; integration contract = `.generated.md` |
 | `docs/axiomfolio/RENDER_INVENTORY.md` vs `docs/infra/RENDER_INVENTORY.md` | Retire AxiomFolio copy | Self-deprecates; `docs/infra/` is monorepo SoT |
 | `docs/KNOWLEDGE.md` vs `docs/axiomfolio/KNOWLEDGE.md` | Rename AxiomFolio to `DECISIONS.md` | Same filename, different audiences (org memory vs ADR log) — collision |
-| `docs/VENTURE_MASTER_PLAN.md` vs `docs/VMP-SUMMARY.md` | Defer merge | Summary is read-only excerpt for cheap models; either regenerate from VMP via script or deep-link only |
+| `docs/VENTURE_MASTER_PLAN.md` vs `docs/VMP-SUMMARY.md` | Folded summary into VMP TL;DR | 2026-04-25: persona platform centralised routing → no need for a separate cheap-model file. Summary now lives at the top of VMP; original archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. |
 
 ---
 
@@ -147,7 +147,7 @@ Plus: `CODEOWNERS` lock on `docs/philosophy/**` requiring human review (founder 
 ## Phase 2 (follow-up PR — out of scope here)
 
 **Merges — status:**
-- ⏳ Pending: `docs/VMP-SUMMARY.md` → fold into `docs/VENTURE_MASTER_PLAN.md` (or auto-regenerate via script)
+- ✅ Shipped 2026-04-25: `docs/VMP-SUMMARY.md` folded into `docs/VENTURE_MASTER_PLAN.md` TL;DR; original archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. _Index, CODEOWNERS, sprint trackers updated._
 - ✅ Shipped 2026-04-24: AxiomFolio audit findings folded into [`docs/axiomfolio/DECISIONS.md`](axiomfolio/DECISIONS.md); verbatim archive at `docs/archive/AUDIT_FINDINGS_2026-04.md`.
 - ✅ Shipped 2026-04-24: AxiomFolio market-data flows folded into [`docs/axiomfolio/MARKET_DATA.md`](axiomfolio/MARKET_DATA.md); verbatim archive at `docs/archive/MARKET_DATA_FLOWS.md`.
 - ✅ Shipped 2026-04-24: AxiomFolio section roadmap merged into [`docs/axiomfolio/plans/MASTER_PLAN_2026.md`](axiomfolio/plans/MASTER_PLAN_2026.md); verbatim archive at `docs/archive/AXIOMFOLIO_ROADMAP.md`.
