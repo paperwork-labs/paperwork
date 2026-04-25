@@ -13,8 +13,6 @@
 #     the root file so the Render Blueprint sync flow shows every service in
 #     one preview (was: two split blueprints, neither aware of the other).
 #     apis/axiomfolio/render.yaml is now a stub pointer (see below).
-#   - 2026-04-25: launchfree-api stub removed pending product decision
-#     (apis/launchfree/ exists but is not deploy-ready). Re-add when ready.
 
 services:
   # ---------------------------------------------------------------------
@@ -46,6 +44,41 @@ services:
         sync: false
       - key: FRONTEND_URL
         value: https://filefree.ai
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
+  # ---------------------------------------------------------------------
+  # LaunchFree API — LLC formation backend (state filings, articles,
+  # registered-agent flow). Code lives at apis/launchfree/. Listed in
+  # the blueprint so a future `Sync Blueprint` provisions the service
+  # without rewriting the file. If the service has never been provisioned
+  # in the dashboard, F-2 in docs/infra/RENDER_INVENTORY.md tracks the
+  # decision (deploy vs defer).
+  # ---------------------------------------------------------------------
+  - type: web
+    name: launchfree-api
+    runtime: python
+    region: oregon
+    plan: starter
+    buildCommand: cd apis/launchfree && pip install -r requirements.txt
+    preDeployCommand: cd apis/launchfree && alembic upgrade head
+    startCommand: cd apis/launchfree && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://launchfree.ai
       - key: ENVIRONMENT
         value: production
       - key: DEBUG

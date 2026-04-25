@@ -55,13 +55,20 @@ All four axiomfolio services (`axiomfolio-api`, `axiomfolio-worker`, `axiomfolio
 
 ### F-2 — `launchfree-api` is defined in `render.yaml` but not deployed
 
-The root [`render.yaml`](../../render.yaml) defined a `launchfree-api`
-service stub, but Render returned no service by that name and
-`apis/launchfree/` is not deploy-ready.
+The root [`render.yaml`](../../render.yaml) declares a `launchfree-api`
+service backed by `apis/launchfree/` (FastAPI app, Alembic migrations,
+state-filing code), but no service by that name is currently running
+on Render — the Blueprint has never been synced for it.
 
-**Resolution (2026-04-25):** stub removed from `render.yaml`. Re-add
-when the LaunchFree API is ready to ship; until then the Blueprint
-preview no longer surfaces it as a missing service.
+**Decision (2026-04-25)**: keep the entry in `render.yaml`. LaunchFree
+is a real product (frontend at `launchfree.ai`, backend code at
+`apis/launchfree/`); the blueprint is the canonical "this is the
+service we want when we run sync." A briefly-attempted PR #143 cleanup
+removed the entry on the assumption that it was a stub — that was
+incorrect, the entry is restored. F-2 closes when the operator either
+(a) provisions the service via the Path B Blueprint Sync, or
+(b) explicitly retires the LaunchFree backend product, in which case
+this block can be dropped from `render.yaml`.
 
 ### F-3 — Env var naming drift: `VERCEL_API_TOKEN` vs `VERCEL_TOKEN`
 
@@ -158,7 +165,7 @@ Runbook: [RENDER_REPOINT.md → Path A](RENDER_REPOINT.md#path-a-brain-api-docke
 - [x] Render MCP shows one account, zero suspended services.
 - [x] Inventory (this doc) exists.
 - [ ] F-1: AxiomFolio services repointed to monorepo via consolidated Blueprint Sync; old `paperwork-labs/axiomfolio` repo archived after 24h green.
-- [x] F-2: `launchfree-api` stub removed from `render.yaml` until the API is deploy-ready.
+- [ ] F-2: `launchfree-api` decision — entry restored to `render.yaml` (2026-04-25); closes when operator either provisions via Path B Blueprint Sync or formally retires the backend product.
 - [ ] F-3: env var naming reconciled to `VERCEL_API_TOKEN`.
 - [x] F-4: single `render.yaml` is the source of truth; `apis/axiomfolio/render.yaml` reduced to a stub pointer.
 - [ ] F-5: `GITHUB_WEBHOOK_SECRET` added to `brain-api` env (declared in blueprint with `sync: false`; operator must paste actual value).

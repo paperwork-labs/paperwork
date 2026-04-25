@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Github, Lock } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 import { loadDocContent, loadDocsIndex } from "@/lib/docs";
 
@@ -103,8 +104,8 @@ export default async function DocPage({ params }: { params: Params }) {
       ) : null}
 
       <article className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-6">
-        <div className="prose prose-invert prose-zinc max-w-none prose-headings:text-zinc-100 prose-a:text-sky-400 prose-code:text-amber-300 prose-code:before:content-[''] prose-code:after:content-[''] prose-pre:bg-zinc-900/80 prose-pre:border prose-pre:border-zinc-800">
-          <ReactMarkdown>{markdown}</ReactMarkdown>
+        <div className="prose prose-invert prose-zinc max-w-none prose-headings:text-zinc-100 prose-a:text-sky-400 prose-code:text-amber-300 prose-code:before:content-[''] prose-code:after:content-[''] prose-pre:bg-zinc-900/80 prose-pre:border prose-pre:border-zinc-800 prose-table:my-6 prose-thead:border-zinc-800 prose-th:border-b prose-th:border-zinc-800 prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:text-zinc-300 prose-td:border-b prose-td:border-zinc-900 prose-td:px-3 prose-td:py-2 prose-td:text-zinc-300 prose-tr:border-zinc-800">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
         </div>
       </article>
     </div>
