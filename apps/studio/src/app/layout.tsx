@@ -1,7 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+
+import { StudioInstallPrompt } from "@/components/pwa/StudioInstallPrompt";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -18,6 +20,14 @@ export const metadata: Metadata = {
   description:
     "Paperwork Labs builds free tools that eliminate paperwork. FileFree (free tax filing), LaunchFree (free LLC formation), Distill (B2B compliance automation), and Trinkets (utility tools).",
   metadataBase: new URL("https://paperworklabs.com"),
+  // Track M.7 — wire Studio's web app manifest. Auto-detected by Next
+  // because the file lives at app/manifest.ts.
+  applicationName: "Paperwork Studio",
+  appleWebApp: {
+    capable: true,
+    title: "Paperwork Studio",
+    statusBarStyle: "black-translucent",
+  },
   openGraph: {
     title: "Paperwork Labs",
     description: "We build tools that eliminate paperwork.",
@@ -29,6 +39,10 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@paperworklabs",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0b0f14",
 };
 
 export default function RootLayout({
@@ -43,6 +57,7 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
       >
         {children}
+        <StudioInstallPrompt />
         <Analytics />
       </body>
     </html>

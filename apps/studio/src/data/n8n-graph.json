@@ -1,0 +1,1238 @@
+{
+  "generated_at": "2026-04-24T20:58:04.497323+00:00",
+  "source": "infra/hetzner/workflows/*.json",
+  "workflows": [
+    {
+      "name": "Brain Daily Trigger",
+      "file": "brain-daily-trigger.json",
+      "node_count": 3,
+      "nodes": [
+        {
+          "id": "cron-daily-pt",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 240,
+          "y": 300
+        },
+        {
+          "id": "call-brain-daily",
+          "name": "Call Brain API",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "post-slack-daily",
+          "name": "Post to Slack",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 760,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Schedule Trigger",
+          "to": "Call Brain API"
+        },
+        {
+          "from": "Call Brain API",
+          "to": "Post to Slack"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": true,
+      "persona_pin": null
+    },
+    {
+      "name": "Brain PR Summary",
+      "file": "brain-pr-summary.json",
+      "node_count": 4,
+      "nodes": [
+        {
+          "id": "webhook-pr-brain",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "x": 240,
+          "y": 300
+        },
+        {
+          "id": "extract-pr-context",
+          "name": "Extract PR Context",
+          "type": "n8n-nodes-base.code",
+          "x": 480,
+          "y": 300
+        },
+        {
+          "id": "call-brain-pr",
+          "name": "Call Brain API",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 720,
+          "y": 300
+        },
+        {
+          "id": "post-slack-pr",
+          "name": "Post to Slack",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 960,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Webhook",
+          "to": "Extract PR Context"
+        },
+        {
+          "from": "Extract PR Context",
+          "to": "Call Brain API"
+        },
+        {
+          "from": "Call Brain API",
+          "to": "Post to Slack"
+        }
+      ],
+      "pattern": "webhook",
+      "calls_brain": true,
+      "persona_pin": null
+    },
+    {
+      "name": "Brain Slack Adapter",
+      "file": "brain-slack-adapter.json",
+      "node_count": 10,
+      "nodes": [
+        {
+          "id": "webhook",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "x": 240,
+          "y": 300
+        },
+        {
+          "id": "filter",
+          "name": "Filter Events",
+          "type": "n8n-nodes-base.code",
+          "x": 460,
+          "y": 300
+        },
+        {
+          "id": "challenge_switch",
+          "name": "Is Challenge?",
+          "type": "n8n-nodes-base.if",
+          "x": 640,
+          "y": 300
+        },
+        {
+          "id": "respond_challenge",
+          "name": "Respond Challenge",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "x": 860,
+          "y": 200
+        },
+        {
+          "id": "respond",
+          "name": "Respond OK",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "x": 860,
+          "y": 500
+        },
+        {
+          "id": "fetch_thread",
+          "name": "Fetch Thread History",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1060,
+          "y": 500
+        },
+        {
+          "id": "build_request",
+          "name": "Build Brain Request",
+          "type": "n8n-nodes-base.code",
+          "x": 1280,
+          "y": 500
+        },
+        {
+          "id": "call_brain",
+          "name": "Call Brain API",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1500,
+          "y": 500
+        },
+        {
+          "id": "format_reply",
+          "name": "Format Reply",
+          "type": "n8n-nodes-base.code",
+          "x": 1720,
+          "y": 500
+        },
+        {
+          "id": "post_reply",
+          "name": "Post Reply",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1940,
+          "y": 500
+        }
+      ],
+      "edges": [
+        {
+          "from": "Webhook",
+          "to": "Filter Events"
+        },
+        {
+          "from": "Filter Events",
+          "to": "Is Challenge?"
+        },
+        {
+          "from": "Is Challenge?",
+          "to": "Respond Challenge"
+        },
+        {
+          "from": "Is Challenge?",
+          "to": "Respond OK"
+        },
+        {
+          "from": "Respond OK",
+          "to": "Fetch Thread History"
+        },
+        {
+          "from": "Fetch Thread History",
+          "to": "Build Brain Request"
+        },
+        {
+          "from": "Build Brain Request",
+          "to": "Call Brain API"
+        },
+        {
+          "from": "Call Brain API",
+          "to": "Format Reply"
+        },
+        {
+          "from": "Format Reply",
+          "to": "Post Reply"
+        }
+      ],
+      "pattern": "webhook",
+      "calls_brain": true,
+      "persona_pin": null
+    },
+    {
+      "name": "Brain Weekly Trigger",
+      "file": "brain-weekly-trigger.json",
+      "node_count": 3,
+      "nodes": [
+        {
+          "id": "cron-weekly-pt",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 240,
+          "y": 300
+        },
+        {
+          "id": "call-brain-weekly",
+          "name": "Call Brain API",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "post-slack-weekly",
+          "name": "Post to Slack",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 760,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Schedule Trigger",
+          "to": "Call Brain API"
+        },
+        {
+          "from": "Call Brain API",
+          "to": "Post to Slack"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": true,
+      "persona_pin": null
+    },
+    {
+      "name": "CPA Tax Review",
+      "file": "cpa-tax-review.json",
+      "node_count": 2,
+      "nodes": [
+        {
+          "id": "webhook-cpa",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "x": 240,
+          "y": 300
+        },
+        {
+          "id": "call-brain-cpa",
+          "name": "Call Brain (persona_pin=cpa)",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 460,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Webhook",
+          "to": "Call Brain (persona_pin=cpa)"
+        }
+      ],
+      "pattern": "webhook",
+      "calls_brain": true,
+      "persona_pin": "cpa"
+    },
+    {
+      "name": "Credential Expiry Check",
+      "file": "credential-expiry-check.json",
+      "node_count": 6,
+      "nodes": [
+        {
+          "id": "schedule-expiry",
+          "name": "Daily 8am PT",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "fetch-secrets",
+          "name": "Fetch Vault Secrets",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "check-expiry",
+          "name": "Check Expiry Dates",
+          "type": "n8n-nodes-base.code",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "should-alert",
+          "name": "Has Expiring?",
+          "type": "n8n-nodes-base.if",
+          "x": 1000,
+          "y": 300
+        },
+        {
+          "id": "post-slack",
+          "name": "Post to #alerts",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1250,
+          "y": 250
+        },
+        {
+          "id": "no-op",
+          "name": "No Action",
+          "type": "n8n-nodes-base.noOp",
+          "x": 1250,
+          "y": 400
+        }
+      ],
+      "edges": [
+        {
+          "from": "Daily 8am PT",
+          "to": "Fetch Vault Secrets"
+        },
+        {
+          "from": "Fetch Vault Secrets",
+          "to": "Check Expiry Dates"
+        },
+        {
+          "from": "Check Expiry Dates",
+          "to": "Has Expiring?"
+        },
+        {
+          "from": "Has Expiring?",
+          "to": "Post to #alerts"
+        },
+        {
+          "from": "Has Expiring?",
+          "to": "No Action"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Annual Data Update Trigger (P2.10)",
+      "file": "data-annual-update.json",
+      "node_count": 4,
+      "nodes": [
+        {
+          "id": "schedule-october",
+          "name": "October 1 Trigger (9am PT)",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "build-checklist",
+          "name": "Build Update Checklist",
+          "type": "n8n-nodes-base.code",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "format-message",
+          "name": "Format Checklist Message",
+          "type": "n8n-nodes-base.code",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "post-slack",
+          "name": "Post to Slack #engineering",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1000,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "October 1 Trigger (9am PT)",
+          "to": "Build Update Checklist"
+        },
+        {
+          "from": "Build Update Checklist",
+          "to": "Format Checklist Message"
+        },
+        {
+          "from": "Format Checklist Message",
+          "to": "Post to Slack #engineering"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Data Deep Validator (P2.9)",
+      "file": "data-deep-validator.json",
+      "node_count": 6,
+      "nodes": [
+        {
+          "id": "schedule-monthly",
+          "name": "Monthly Trigger (1st, 3am PT)",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "list-sources",
+          "name": "List Source Files",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "pick-sample",
+          "name": "Pick Random Sample (10 states)",
+          "type": "n8n-nodes-base.code",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "cross-validate",
+          "name": "Cross-Validate Against DOR",
+          "type": "n8n-nodes-base.code",
+          "x": 1000,
+          "y": 300
+        },
+        {
+          "id": "format-report",
+          "name": "Format Report",
+          "type": "n8n-nodes-base.code",
+          "x": 1250,
+          "y": 300
+        },
+        {
+          "id": "post-slack",
+          "name": "Post to Slack",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1500,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Monthly Trigger (1st, 3am PT)",
+          "to": "List Source Files"
+        },
+        {
+          "from": "List Source Files",
+          "to": "Pick Random Sample (10 states)"
+        },
+        {
+          "from": "Pick Random Sample (10 states)",
+          "to": "Cross-Validate Against DOR"
+        },
+        {
+          "from": "Cross-Validate Against DOR",
+          "to": "Format Report"
+        },
+        {
+          "from": "Format Report",
+          "to": "Post to Slack"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Data Source Monitor (P2.8)",
+      "file": "data-source-monitor.json",
+      "node_count": 4,
+      "nodes": [
+        {
+          "id": "schedule-weekly",
+          "name": "Weekly Trigger (Mon 6am PT)",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "check-sources",
+          "name": "Check Sources",
+          "type": "n8n-nodes-base.code",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "format-alert",
+          "name": "Format Alert",
+          "type": "n8n-nodes-base.code",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "post-slack",
+          "name": "Post to Slack",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1000,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Weekly Trigger (Mon 6am PT)",
+          "to": "Check Sources"
+        },
+        {
+          "from": "Check Sources",
+          "to": "Format Alert"
+        },
+        {
+          "from": "Format Alert",
+          "to": "Post to Slack"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Decision Logger",
+      "file": "decision-logger.json",
+      "node_count": 8,
+      "nodes": [
+        {
+          "id": "webhook-decisions",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "filter-decision-messages",
+          "name": "Filter Decision Messages",
+          "type": "n8n-nodes-base.code",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "fetch-decision-thread",
+          "name": "Fetch Thread History",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "fetch-knowledge-for-decision",
+          "name": "Fetch KNOWLEDGE.md",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1000,
+          "y": 300
+        },
+        {
+          "id": "format-decision",
+          "name": "Format Decision",
+          "type": "n8n-nodes-base.code",
+          "x": 1250,
+          "y": 300
+        },
+        {
+          "id": "prepare-commit",
+          "name": "Prepare Commit",
+          "type": "n8n-nodes-base.code",
+          "x": 1500,
+          "y": 300
+        },
+        {
+          "id": "commit-to-github",
+          "name": "Commit to GitHub",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1750,
+          "y": 300
+        },
+        {
+          "id": "confirm-in-thread",
+          "name": "Confirm in Thread",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 2000,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Fetch Thread History",
+          "to": "Fetch KNOWLEDGE.md"
+        },
+        {
+          "from": "Fetch KNOWLEDGE.md",
+          "to": "Format Decision"
+        },
+        {
+          "from": "Format Decision",
+          "to": "Prepare Commit"
+        },
+        {
+          "from": "Prepare Commit",
+          "to": "Commit to GitHub"
+        },
+        {
+          "from": "Commit to GitHub",
+          "to": "Confirm in Thread"
+        },
+        {
+          "from": "Webhook",
+          "to": "Filter Decision Messages"
+        },
+        {
+          "from": "Filter Decision Messages",
+          "to": "Fetch Thread History"
+        }
+      ],
+      "pattern": "webhook",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Error Notification",
+      "file": "error-notification.json",
+      "node_count": 3,
+      "nodes": [
+        {
+          "id": "error-trigger",
+          "name": "On Workflow Error",
+          "type": "n8n-nodes-base.errorTrigger",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "format-error",
+          "name": "Format Error",
+          "type": "n8n-nodes-base.code",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "post-alert",
+          "name": "Post to #alerts",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 750,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "On Workflow Error",
+          "to": "Format Error"
+        },
+        {
+          "from": "Format Error",
+          "to": "Post to #alerts"
+        }
+      ],
+      "pattern": "unknown",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Growth Content Writer",
+      "file": "growth-content-writer.json",
+      "node_count": 4,
+      "nodes": [
+        {
+          "id": "webhook-growth",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "openai-growth",
+          "name": "Generate Growth Content",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "format-growth-slack",
+          "name": "Format for Slack",
+          "type": "n8n-nodes-base.code",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "slack-growth",
+          "name": "Post to Slack",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1000,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Webhook",
+          "to": "Generate Growth Content"
+        },
+        {
+          "from": "Generate Growth Content",
+          "to": "Format for Slack"
+        },
+        {
+          "from": "Format for Slack",
+          "to": "Post to Slack"
+        }
+      ],
+      "pattern": "webhook",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Infra Health Check",
+      "file": "infra-health-check.json",
+      "node_count": 4,
+      "nodes": [
+        {
+          "id": "schedule-trigger",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "run-health-checks",
+          "name": "Run Health Checks",
+          "type": "n8n-nodes-base.code",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "evaluate-dedup",
+          "name": "Evaluate and Dedup",
+          "type": "n8n-nodes-base.code",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "post-to-slack",
+          "name": "Post to Slack",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1000,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Schedule Trigger",
+          "to": "Run Health Checks"
+        },
+        {
+          "from": "Run Health Checks",
+          "to": "Evaluate and Dedup"
+        },
+        {
+          "from": "Evaluate and Dedup",
+          "to": "Post to Slack"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Infra Heartbeat",
+      "file": "infra-heartbeat.json",
+      "node_count": 4,
+      "nodes": [
+        {
+          "id": "schedule-heartbeat",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "run-health-checks",
+          "name": "Run Health Checks",
+          "type": "n8n-nodes-base.code",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "format-heartbeat",
+          "name": "Format Heartbeat",
+          "type": "n8n-nodes-base.code",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "post-heartbeat",
+          "name": "Post Heartbeat",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1000,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Schedule Trigger",
+          "to": "Run Health Checks"
+        },
+        {
+          "from": "Run Health Checks",
+          "to": "Format Heartbeat"
+        },
+        {
+          "from": "Format Heartbeat",
+          "to": "Post Heartbeat"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Infra Status Slash Command",
+      "file": "infra-status-slash.json",
+      "node_count": 4,
+      "nodes": [
+        {
+          "id": "webhook-status",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "run-health-checks",
+          "name": "Run Health Checks",
+          "type": "n8n-nodes-base.code",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "format-response",
+          "name": "Format Response",
+          "type": "n8n-nodes-base.code",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "respond-status",
+          "name": "Respond",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "x": 1000,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Webhook",
+          "to": "Run Health Checks"
+        },
+        {
+          "from": "Run Health Checks",
+          "to": "Format Response"
+        },
+        {
+          "from": "Format Response",
+          "to": "Respond"
+        }
+      ],
+      "pattern": "webhook",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Partnership Outreach Drafter",
+      "file": "partnership-outreach-drafter.json",
+      "node_count": 4,
+      "nodes": [
+        {
+          "id": "webhook-partnerships",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "openai-partnerships",
+          "name": "Draft Partnership Content",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "format-partnerships-slack",
+          "name": "Format for Slack",
+          "type": "n8n-nodes-base.code",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "slack-partnerships",
+          "name": "Post to Slack",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1000,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Webhook",
+          "to": "Draft Partnership Content"
+        },
+        {
+          "from": "Draft Partnership Content",
+          "to": "Format for Slack"
+        },
+        {
+          "from": "Format for Slack",
+          "to": "Post to Slack"
+        }
+      ],
+      "pattern": "webhook",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "QA Security Scan",
+      "file": "qa-security-scan.json",
+      "node_count": 2,
+      "nodes": [
+        {
+          "id": "webhook-qa",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "x": 240,
+          "y": 300
+        },
+        {
+          "id": "call-brain-qa",
+          "name": "Call Brain (persona_pin=qa)",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 460,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Webhook",
+          "to": "Call Brain (persona_pin=qa)"
+        }
+      ],
+      "pattern": "webhook",
+      "calls_brain": true,
+      "persona_pin": "qa"
+    },
+    {
+      "name": "Social Content Generator",
+      "file": "social-content-generator.json",
+      "node_count": 4,
+      "nodes": [
+        {
+          "id": "webhook-social",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "openai-social",
+          "name": "Generate Social Content",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "format-social-slack",
+          "name": "Format for Slack",
+          "type": "n8n-nodes-base.code",
+          "x": 750,
+          "y": 300
+        },
+        {
+          "id": "slack-social",
+          "name": "Post to Slack",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1000,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Webhook",
+          "to": "Generate Social Content"
+        },
+        {
+          "from": "Generate Social Content",
+          "to": "Format for Slack"
+        },
+        {
+          "from": "Format for Slack",
+          "to": "Post to Slack"
+        }
+      ],
+      "pattern": "webhook",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Sprint Close",
+      "file": "sprint-close.json",
+      "node_count": 10,
+      "nodes": [
+        {
+          "id": "schedule-sprint-close",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 250,
+          "y": 340
+        },
+        {
+          "id": "fetch-tasks-close",
+          "name": "Fetch TASKS.md",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 500,
+          "y": 220
+        },
+        {
+          "id": "fetch-knowledge-close",
+          "name": "Fetch KNOWLEDGE.md",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 500,
+          "y": 340
+        },
+        {
+          "id": "fetch-commits-close",
+          "name": "Fetch Recent Commits",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 500,
+          "y": 460
+        },
+        {
+          "id": "fetch-prs-close",
+          "name": "Fetch Recent PRs",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 750,
+          "y": 340
+        },
+        {
+          "id": "build-close-prompt",
+          "name": "Build Close Prompt",
+          "type": "n8n-nodes-base.code",
+          "x": 1000,
+          "y": 340
+        },
+        {
+          "id": "generate-close",
+          "name": "Generate Retro",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "x": 1250,
+          "y": 340
+        },
+        {
+          "id": "prepare-close-output",
+          "name": "Prepare Close Output",
+          "type": "n8n-nodes-base.code",
+          "x": 1500,
+          "y": 340
+        },
+        {
+          "id": "post-close-sprints",
+          "name": "Post to #sprints",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1750,
+          "y": 240
+        },
+        {
+          "id": "commit-close",
+          "name": "Commit Sprint Summary",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 1750,
+          "y": 440
+        }
+      ],
+      "edges": [
+        {
+          "from": "Schedule Trigger",
+          "to": "Fetch TASKS.md"
+        },
+        {
+          "from": "Schedule Trigger",
+          "to": "Fetch KNOWLEDGE.md"
+        },
+        {
+          "from": "Schedule Trigger",
+          "to": "Fetch Recent Commits"
+        },
+        {
+          "from": "Fetch TASKS.md",
+          "to": "Fetch Recent PRs"
+        },
+        {
+          "from": "Fetch KNOWLEDGE.md",
+          "to": "Fetch Recent PRs"
+        },
+        {
+          "from": "Fetch Recent Commits",
+          "to": "Fetch Recent PRs"
+        },
+        {
+          "from": "Fetch Recent PRs",
+          "to": "Build Close Prompt"
+        },
+        {
+          "from": "Build Close Prompt",
+          "to": "Generate Retro"
+        },
+        {
+          "from": "Generate Retro",
+          "to": "Prepare Close Output"
+        },
+        {
+          "from": "Prepare Close Output",
+          "to": "Post to #sprints"
+        },
+        {
+          "from": "Prepare Close Output",
+          "to": "Commit Sprint Summary"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": false,
+      "persona_pin": null
+    },
+    {
+      "name": "Sprint Kickoff",
+      "file": "sprint-kickoff.json",
+      "node_count": 3,
+      "nodes": [
+        {
+          "id": "schedule-sprint-kickoff",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 240,
+          "y": 320
+        },
+        {
+          "id": "brain-sprint",
+          "name": "Call Brain (persona_pin=strategy)",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 500,
+          "y": 320
+        },
+        {
+          "id": "post-all-paperwork-labs",
+          "name": "Post announcement to #all-paperwork-labs",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 800,
+          "y": 320
+        }
+      ],
+      "edges": [
+        {
+          "from": "Schedule Trigger",
+          "to": "Call Brain (persona_pin=strategy)"
+        },
+        {
+          "from": "Call Brain (persona_pin=strategy)",
+          "to": "Post announcement to #all-paperwork-labs"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": true,
+      "persona_pin": "strategy"
+    },
+    {
+      "name": "Weekly Strategy Check-in",
+      "file": "weekly-strategy-checkin.json",
+      "node_count": 4,
+      "nodes": [
+        {
+          "id": "cron-strategy",
+          "name": "Monday 9am",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "x": 250,
+          "y": 300
+        },
+        {
+          "id": "openai-strategy",
+          "name": "Generate Strategy Report",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "x": 500,
+          "y": 300
+        },
+        {
+          "id": "format-strategy-report",
+          "name": "Format Strategy Report",
+          "type": "n8n-nodes-base.code",
+          "x": 625,
+          "y": 300
+        },
+        {
+          "id": "slack-strategy",
+          "name": "Post to Slack",
+          "type": "n8n-nodes-base.httpRequest",
+          "x": 750,
+          "y": 300
+        }
+      ],
+      "edges": [
+        {
+          "from": "Monday 9am",
+          "to": "Generate Strategy Report"
+        },
+        {
+          "from": "Generate Strategy Report",
+          "to": "Format Strategy Report"
+        },
+        {
+          "from": "Format Strategy Report",
+          "to": "Post to Slack"
+        }
+      ],
+      "pattern": "schedule",
+      "calls_brain": false,
+      "persona_pin": null
+    }
+  ]
+}

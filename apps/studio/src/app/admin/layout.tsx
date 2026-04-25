@@ -4,25 +4,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Activity,
   Settings2,
   Shield,
   KeyRound,
   Rocket,
   Bot,
   BarChart3,
+  BookOpen,
   Workflow,
 } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/architecture", label: "Architecture", icon: Workflow },
+  { href: "/admin/workflows", label: "Workflows", icon: Bot },
+  { href: "/admin/docs", label: "Docs", icon: BookOpen },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/ops", label: "Ops", icon: Activity },
   { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
   { href: "/admin/secrets", label: "Secrets", icon: KeyRound },
   { href: "/admin/sprints", label: "Sprints", icon: Rocket },
-  { href: "/admin/agents", label: "Agents", icon: Bot },
 ];
 
 export default function AdminLayout({
