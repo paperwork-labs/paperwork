@@ -8,11 +8,27 @@
 // Brain with a persona_pin, that pin is highlighted on the node so
 // operators can see at a glance which persona runs this wiring.
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Maximize2, X } from "lucide-react";
+import type { Edge, Node } from "@xyflow/react";
+import { X } from "lucide-react";
 
 import graph from "@/data/n8n-graph.json";
+import type { CardNodeData, DagTone } from "@/components/dag/InteractiveDag";
+
+const InteractiveDag = dynamic(
+  () =>
+    import("@/components/dag/InteractiveDag").then((mod) => mod.InteractiveDag),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-zinc-800 bg-zinc-950 text-xs text-zinc-500">
+        Loading workflow graph…
+      </div>
+    ),
+  },
+);
 
 type WorkflowNode = {
   id: string;
@@ -48,21 +64,39 @@ type Snapshot = {
 const snapshot = graph as Snapshot;
 
 function shortType(type: string): string {
-  // "n8n-nodes-base.scheduleTrigger" -> "scheduleTrigger"
   const parts = type.split(".");
   return parts[parts.length - 1] || type;
 }
 
-function nodeTone(type: string): string {
+function n8nTypeToTone(type: string): DagTone {
   const t = type.toLowerCase();
-  if (t.includes("webhook")) return "bg-emerald-500/20 text-emerald-200 ring-emerald-500/40";
-  if (t.includes("schedule") || t.includes("cron"))
-    return "bg-sky-500/20 text-sky-200 ring-sky-500/40";
-  if (t.includes("httprequest")) return "bg-indigo-500/20 text-indigo-200 ring-indigo-500/40";
-  if (t.includes("slack")) return "bg-purple-500/20 text-purple-200 ring-purple-500/40";
-  if (t.includes("code") || t.includes("function"))
-    return "bg-amber-500/20 text-amber-200 ring-amber-500/40";
-  return "bg-zinc-800 text-zinc-300 ring-zinc-700";
+  if (t.includes("webhook")) return "webhook";
+  if (t.includes("schedule") || t.includes("cron")) return "schedule";
+  if (t.includes("httprequest")) return "http";
+  if (t.includes("langchain") && t.includes("openai")) return "ai";
+  if (t.includes("openai")) return "ai";
+  if (t.includes("code") || t.includes("function")) return "code";
+  if (t.includes("slack")) return "data";
+  return "default";
+}
+
+function badgeToneClass(tone: DagTone): string {
+  switch (tone) {
+    case "webhook":
+      return "bg-emerald-500/20 text-emerald-200 ring-emerald-500/40";
+    case "schedule":
+      return "bg-amber-500/20 text-amber-200 ring-amber-500/40";
+    case "http":
+      return "bg-sky-500/20 text-sky-200 ring-sky-500/40";
+    case "ai":
+      return "bg-violet-500/20 text-violet-200 ring-violet-500/40";
+    case "code":
+      return "bg-zinc-700/50 text-zinc-200 ring-zinc-600";
+    case "data":
+      return "bg-purple-500/20 text-purple-200 ring-purple-500/40";
+    default:
+      return "bg-zinc-800 text-zinc-300 ring-zinc-700";
+  }
 }
 
 function patternLabel(pattern: string): string {
@@ -72,138 +106,71 @@ function patternLabel(pattern: string): string {
   return "Unknown trigger";
 }
 
-type DagLayout = {
-  minX: number;
-  minY: number;
-  width: number;
-  height: number;
-  byName: Map<string, WorkflowNode>;
-};
+function workflowToFlow(
+  wf: WorkflowGraph,
+  compact: boolean,
+): { nodes: Node<CardNodeData, "card">[]; edges: Edge[] } {
+  const nameToId = new Map(wf.nodes.map((n) => [n.name, n.id]));
+  const nodes: Node<CardNodeData, "card">[] = wf.nodes.map((n) => ({
+    id: n.id,
+    type: "card",
+    position: { x: 0, y: 0 },
+    data: {
+      label: n.name,
+      subtitle: shortType(n.type),
+      tone: n8nTypeToTone(n.type),
+      compact,
+    },
+  }));
 
-function useDagLayout(wf: WorkflowGraph): DagLayout | null {
-  return useMemo(() => {
-    if (wf.nodes.length === 0) return null;
-    const xs = wf.nodes.map((n) => n.x);
-    const ys = wf.nodes.map((n) => n.y);
-    const minX = Math.min(...xs);
-    const minY = Math.min(...ys);
-    const maxX = Math.max(...xs);
-    const maxY = Math.max(...ys);
-    const width = Math.max(maxX - minX, 240);
-    const height = Math.max(maxY - minY, 120);
-    const byName = new Map<string, WorkflowNode>();
-    for (const n of wf.nodes) byName.set(n.name, n);
-    return { minX, minY, width, height, byName };
-  }, [wf]);
+  const edges: Edge[] = [];
+  wf.edges.forEach((e, i) => {
+    const src = nameToId.get(e.from);
+    const tgt = nameToId.get(e.to);
+    if (src && tgt) {
+      edges.push({
+        id: `${wf.file}-e-${i}`,
+        source: src,
+        target: tgt,
+        style: { stroke: "rgb(113 113 122)", strokeWidth: 1.5 },
+      });
+    }
+  });
+
+  return { nodes, edges };
 }
 
-function DagSVG({
+function WorkflowDagPanel({
   wf,
-  layout,
-  variant,
+  compact,
+  showMiniMap,
+  className,
 }: {
   wf: WorkflowGraph;
-  layout: DagLayout;
-  variant: "thumb" | "zoom";
+  compact: boolean;
+  showMiniMap: boolean;
+  className?: string;
 }) {
-  const { minX, minY, width, height, byName } = layout;
-  const padding = variant === "zoom" ? 80 : 40;
-  const nodeRadius = variant === "zoom" ? 22 : 14;
-  const labelDx = variant === "zoom" ? 30 : 18;
-  const labelSize = variant === "zoom" ? 14 : 10;
-  const subSize = variant === "zoom" ? 12 : 9;
-  const className =
-    variant === "zoom" ? "h-full w-full" : "h-auto w-full max-h-64";
-
-  return (
-    <svg
-      role="img"
-      aria-label={`n8n graph for ${wf.name}`}
-      viewBox={`${-padding} ${-padding} ${width + padding * 2} ${height + padding * 2}`}
-      className={className}
-    >
-      {wf.edges.map((e, i) => {
-        const src = byName.get(e.from);
-        const tgt = byName.get(e.to);
-        if (!src || !tgt) return null;
-        return (
-          <line
-            key={`${e.from}->${e.to}-${i}`}
-            x1={src.x - minX}
-            y1={src.y - minY}
-            x2={tgt.x - minX}
-            y2={tgt.y - minY}
-            stroke="currentColor"
-            strokeOpacity={variant === "zoom" ? 0.45 : 0.3}
-            strokeWidth={variant === "zoom" ? 2 : 1.5}
-            className="text-zinc-500"
-          />
-        );
-      })}
-      {wf.nodes.map((n) => (
-        <g key={n.id} transform={`translate(${n.x - minX}, ${n.y - minY})`}>
-          <circle
-            r={nodeRadius}
-            className="fill-zinc-900 stroke-zinc-500"
-            strokeWidth={variant === "zoom" ? 1.5 : 1}
-          />
-          <text
-            x={labelDx}
-            y={4}
-            className="fill-zinc-100"
-            style={{
-              fontFamily: "var(--font-jetbrains, monospace)",
-              fontSize: labelSize,
-            }}
-          >
-            {n.name}
-          </text>
-          <text
-            x={labelDx}
-            y={labelSize + 8}
-            className="fill-zinc-400"
-            style={{
-              fontFamily: "var(--font-jetbrains, monospace)",
-              fontSize: subSize,
-            }}
-          >
-            {shortType(n.type)}
-          </text>
-        </g>
-      ))}
-    </svg>
+  const { nodes, edges } = useMemo(
+    () => workflowToFlow(wf, compact),
+    [wf, compact],
   );
-}
 
-function WorkflowDAG({
-  wf,
-  onZoom,
-}: {
-  wf: WorkflowGraph;
-  onZoom: () => void;
-}) {
-  const layout = useDagLayout(wf);
-
-  if (!layout) {
+  if (wf.nodes.length === 0) {
     return (
-      <p className="text-xs italic text-zinc-500">
-        No nodes in this workflow snapshot.
-      </p>
+      <p className="text-xs italic text-zinc-500">No nodes in this workflow snapshot.</p>
     );
   }
 
   return (
-    <button
-      type="button"
-      onClick={onZoom}
-      className="group relative block w-full cursor-zoom-in rounded-md ring-zinc-700 transition focus:outline-none focus:ring-2"
-      aria-label={`Zoom DAG for ${wf.name}`}
-    >
-      <DagSVG wf={wf} layout={layout} variant="thumb" />
-      <span className="pointer-events-none absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-zinc-900/80 px-1.5 py-1 text-[10px] text-zinc-300 opacity-0 ring-1 ring-zinc-700 transition group-hover:opacity-100">
-        <Maximize2 className="h-3 w-3" /> zoom
-      </span>
-    </button>
+    <InteractiveDag
+      nodes={nodes}
+      edges={edges}
+      direction="TB"
+      showMiniMap={showMiniMap}
+      fitViewPadding={0.15}
+      className={className}
+    />
   );
 }
 
@@ -214,8 +181,6 @@ function DagZoomModal({
   wf: WorkflowGraph;
   onClose: () => void;
 }) {
-  const layout = useDagLayout(wf);
-
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -224,15 +189,13 @@ function DagZoomModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  if (!layout) return null;
-
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-label={`Zoomed DAG: ${wf.name}`}
+      aria-label={`Expanded graph: ${wf.name}`}
     >
       <div
         className="relative flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950 shadow-2xl"
@@ -268,11 +231,13 @@ function DagZoomModal({
             </button>
           </div>
         </header>
-        <div className="flex-1 overflow-auto bg-zinc-950 p-6">
-          <DagSVG wf={wf} layout={layout} variant="zoom" />
+        <div className="flex min-h-0 flex-1 flex-col p-4">
+          <WorkflowDagPanel wf={wf} compact={false} showMiniMap className="min-h-0 flex-1 border-0" />
         </div>
         <footer className="border-t border-zinc-800 px-5 py-2 text-[11px] text-zinc-500">
-          Press <kbd className="rounded bg-zinc-800 px-1 py-0.5 font-mono">Esc</kbd> or click outside to close.
+          Press{" "}
+          <kbd className="rounded bg-zinc-800 px-1 py-0.5 font-mono">Esc</kbd> or
+          click outside to close.
         </footer>
       </div>
     </div>
@@ -312,7 +277,10 @@ export function N8nGraphList() {
               ? new Date(snapshot.generated_at).toLocaleString()
               : `content ${snapshot.content_hash ?? "unknown"}`}
             . Refresh with{" "}
-            <code className="rounded bg-zinc-800 px-1">python scripts/snapshot_n8n_graphs.py</code>.
+            <code className="rounded bg-zinc-800 px-1">
+              python scripts/snapshot_n8n_graphs.py
+            </code>
+            .
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -357,12 +325,16 @@ export function N8nGraphList() {
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-1">
                 {wf.calls_brain && (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${nodeTone("httprequest")}`}>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${badgeToneClass("http")}`}
+                  >
                     Brain
                   </span>
                 )}
                 {wf.persona_pin && (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${nodeTone("code")}`}>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${badgeToneClass("code")}`}
+                  >
                     persona: {wf.persona_pin}
                   </span>
                 )}
@@ -370,18 +342,27 @@ export function N8nGraphList() {
             </div>
 
             <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-2">
-              <WorkflowDAG wf={wf} onZoom={() => setZoomFile(wf.file)} />
+              <div className="flex h-[320px] w-full flex-col">
+                <WorkflowDagPanel
+                  wf={wf}
+                  compact
+                  showMiniMap={false}
+                  className="min-h-0 flex-1 !border-0"
+                />
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-1 text-[10px] text-zinc-500">
-              {Array.from(new Set(wf.nodes.map((n) => shortType(n.type)))).map((t) => (
-                <span
-                  key={t}
-                  className={`rounded px-1.5 py-0.5 ring-1 ${nodeTone(t)}`}
-                >
-                  {t}
-                </span>
-              ))}
+              {Array.from(new Set(wf.nodes.map((n) => shortType(n.type)))).map(
+                (t) => (
+                  <span
+                    key={t}
+                    className={`rounded px-1.5 py-0.5 ring-1 ${badgeToneClass(n8nTypeToTone(`n8n-nodes-base.${t}`))}`}
+                  >
+                    {t}
+                  </span>
+                ),
+              )}
             </div>
 
             <div className="flex items-center justify-between text-[11px]">
@@ -396,9 +377,9 @@ export function N8nGraphList() {
               <button
                 type="button"
                 onClick={() => setZoomFile(wf.file)}
-                className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100"
+                className="rounded-md border border-zinc-800 bg-zinc-900/60 px-2 py-1 text-zinc-300 transition hover:border-zinc-700 hover:text-zinc-100"
               >
-                <Maximize2 className="h-3 w-3" /> Zoom DAG
+                Expand graph
               </button>
             </div>
           </li>

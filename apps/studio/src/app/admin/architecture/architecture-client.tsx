@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useMemo, useState } from "react";
+import type { Edge, Node } from "@xyflow/react";
 import {
   ExternalLink,
   RefreshCw,
@@ -10,6 +12,8 @@ import {
   Activity,
   Sparkles,
   Workflow,
+  Network,
+  LayoutGrid,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -20,6 +24,38 @@ import {
   LAYER_LABELS,
   LAYER_DESCRIPTIONS,
 } from "@/lib/system-graph";
+import type { CardNodeData, DagTone } from "@/components/dag/InteractiveDag";
+
+const InteractiveDag = dynamic(
+  () =>
+    import("@/components/dag/InteractiveDag").then((mod) => mod.InteractiveDag),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 text-sm text-zinc-500">
+        Loading interactive graph…
+      </div>
+    ),
+  },
+);
+
+function architectureLayerToTone(layer: SystemLayer): DagTone {
+  switch (layer) {
+    case "bronze":
+    case "silver":
+      return "data";
+    case "gold":
+      return "core";
+    case "execution":
+      return "execution";
+    case "frontend":
+      return "frontend";
+    case "platform":
+      return "core";
+    case "infra":
+      return "ops";
+  }
+}
 
 type Props = {
   graph: SystemGraph;
@@ -73,6 +109,7 @@ export default function ArchitectureClient({
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [askingId, setAskingId] = useState<string | null>(null);
   const [askResponse, setAskResponse] = useState<string>("");
+  const [catalogView, setCatalogView] = useState<"dag" | "layers">("dag");
 
   const nodesByLayer = useMemo(() => {
     const map = new Map<SystemLayer, SystemNode[]>();
@@ -88,6 +125,53 @@ export default function ArchitectureClient({
   const healthById = useMemo(
     () => new Map(health.map((h) => [h.id, h])),
     [health],
+  );
+
+  const nodeIdSet = useMemo(
+    () => new Set(graph.nodes.map((n) => n.id)),
+    [graph.nodes],
+  );
+
+  const dagNodes = useMemo((): Node<CardNodeData, "card">[] => {
+    return graph.nodes.map((n) => {
+      const h = healthById.get(n.id);
+      return {
+        id: n.id,
+        type: "card",
+        position: { x: 0, y: 0 },
+        data: {
+          label: n.label,
+          subtitle: `${KIND_BADGE[n.kind]} · ${LAYER_LABELS[n.layer]}`,
+          tone: architectureLayerToTone(n.layer),
+          pill: n.llm_backed ? "LLM" : undefined,
+          status: h?.configured ? h.status : undefined,
+        },
+      };
+    });
+  }, [graph.nodes, healthById]);
+
+  const dagEdges = useMemo((): Edge[] => {
+    const out: Edge[] = [];
+    let i = 0;
+    for (const n of graph.nodes) {
+      for (const dep of n.depends_on) {
+        if (!nodeIdSet.has(dep)) continue;
+        out.push({
+          id: `dep-${i++}`,
+          source: dep,
+          target: n.id,
+          style: { stroke: "rgb(113 113 122)", strokeWidth: 1.5 },
+        });
+      }
+    }
+    return out;
+  }, [graph.nodes, nodeIdSet]);
+
+  const onDagNodeClick = useCallback(
+    (_e: React.MouseEvent, node: Node<CardNodeData, "card">) => {
+      setSelectedId(node.id);
+    },
+    [],
   );
 
   const summary = useMemo(() => {
@@ -305,7 +389,62 @@ export default function ArchitectureClient({
         </div>
       </header>
 
-      {medallionLayersShown.length > 0 && (
+      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-2">
+        <span className="px-2 text-[11px] font-medium text-zinc-500">
+          Catalog view
+        </span>
+        <button
+          type="button"
+          onClick={() => setCatalogView("dag")}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            catalogView === "dag"
+              ? "bg-zinc-800 text-zinc-100 ring-1 ring-zinc-600"
+              : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"
+          }`}
+        >
+          <Network className="h-3.5 w-3.5" />
+          Interactive graph
+        </button>
+        <button
+          type="button"
+          onClick={() => setCatalogView("layers")}
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+            catalogView === "layers"
+              ? "bg-zinc-800 text-zinc-100 ring-1 ring-zinc-600"
+              : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200"
+          }`}
+        >
+          <LayoutGrid className="h-3.5 w-3.5" />
+          Layered catalog
+        </button>
+      </div>
+
+      {catalogView === "dag" && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-300">
+              Service dependency graph
+            </h2>
+            <p className="mt-1 max-w-3xl text-[11px] text-zinc-500">
+              Left-to-right layout from{" "}
+              <code className="rounded bg-zinc-800/80 px-1 font-mono">depends_on</code> in
+              the system graph. Pan, zoom, and minimap; click a node to open the same
+              detail drawer as the layered cards. Refresh health to update status dots.
+            </p>
+          </div>
+          <div className="flex h-[min(72vh,620px)] min-h-[380px] w-full flex-col">
+            <InteractiveDag
+              nodes={dagNodes}
+              edges={dagEdges}
+              direction="LR"
+              onNodeClick={onDagNodeClick}
+              fitViewPadding={0.18}
+            />
+          </div>
+        </section>
+      )}
+
+      {catalogView === "layers" && medallionLayersShown.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-baseline justify-between">
             <div>
@@ -346,7 +485,7 @@ export default function ArchitectureClient({
         </section>
       )}
 
-      {operationalLayersShown.length > 0 && (
+      {catalogView === "layers" && operationalLayersShown.length > 0 && (
         <section className="space-y-3">
           <div>
             <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-300">
