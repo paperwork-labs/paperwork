@@ -14,6 +14,8 @@ export type DocCategory =
   | "architecture"
   | "runbooks"
   | "reference"
+  | "plans"
+  | "sprints"
   | "generated";
 
 export type DocEntry = {
@@ -149,15 +151,24 @@ export function groupDocsByCategory(): {
   byCategory: DocsByCategory;
 } {
   const { entries, categories } = loadDocsIndex();
-  const byCategory: DocsByCategory = {
+  const byCategory = {
     philosophy: [],
     architecture: [],
     runbooks: [],
     reference: [],
+    plans: [],
+    sprints: [],
     generated: [],
-  };
+  } as DocsByCategory;
   for (const entry of entries) {
-    byCategory[entry.category].push(entry);
+    const bucket = byCategory[entry.category];
+    if (bucket) {
+      bucket.push(entry);
+    } else {
+      console.warn(
+        `[docs] unknown category "${entry.category}" for ${entry.path} — extend DocCategory type`,
+      );
+    }
   }
   for (const cat of Object.keys(byCategory) as DocCategory[]) {
     byCategory[cat].sort((a, b) => a.title.localeCompare(b.title));
