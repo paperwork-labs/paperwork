@@ -8,6 +8,7 @@ import {
   getRecentSlackActivity,
 } from "@/lib/command-center";
 import OverviewClient from "./overview-client";
+import { TrackersRail } from "./_components/trackers-rail";
 
 export default async function AdminOverviewPage() {
   const [workflows, executions, prs, infrastructure, ciRuns, brainReviews, slackActivity] =
@@ -37,16 +38,19 @@ export default async function AdminOverviewPage() {
   });
 
   return (
-    <OverviewClient
-      initial={{
-        workflows,
-        executions,
-        prs: prsWithReview,
-        infrastructure,
-        ciRuns,
-        slackActivity,
-        fetchedAt: new Date().toISOString(),
-      }}
-    />
+    <div className="space-y-6">
+      <TrackersRail />
+      <OverviewClient
+        initial={{
+          workflows,
+          executions,
+          prs: prsWithReview,
+          infrastructure,
+          ciRuns,
+          slackActivity,
+          fetchedAt: new Date().toISOString(),
+        }}
+      />
+    </div>
   );
 }
