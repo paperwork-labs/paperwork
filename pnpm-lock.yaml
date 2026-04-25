@@ -339,6 +339,9 @@ importers:
       react-markdown:
         specifier: ^10.1.0
         version: 10.1.0(@types/react@19.2.14)(react@19.2.5)
+      react-plaid-link:
+        specifier: ^4.1.1
+        version: 4.1.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react-select:
         specifier: ^5.10.2
         version: 5.10.2(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
