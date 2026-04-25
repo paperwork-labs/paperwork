@@ -1,9 +1,13 @@
 import { SignUp } from "@clerk/nextjs";
 
+import { ClerkAuthPageShell } from "@/components/clerk/ClerkAuthPageShell";
+
 export default function SignUpPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
-      <SignUp />
-    </div>
+    <ClerkAuthPageShell>
+      <div className="w-full max-w-md">
+        <SignUp />
+      </div>
+    </ClerkAuthPageShell>
   );
 }

@@ -29,7 +29,7 @@ _n/a for pure application incidents — use product runbooks unless the failure 
 ## Triage (≤5 min)
 
 1. Confirm `BRAIN_SCHEDULER_ENABLED` is `true` on the `brain-api` service and the process started without scheduler import errors in logs.
-2. If mirror issues: confirm `SCHEDULER_N8N_MIRROR_ENABLED` and that `DATABASE_URL` reaches Postgres (job store is sync `postgresql://`, no `+asyncpg`).
+2. If mirror issues: confirm `SCHEDULER_N8N_MIRROR_ENABLED` or any `SCHEDULER_N8N_MIRROR_<ID>` you set, and that `DATABASE_URL` reaches Postgres (job store is sync `postgresql://`, no `+asyncpg`).
 3. Run the SQL in [Verification](#verification) to list stored job ids and next run times.
 
 ## Mirrored n8n schedule-trigger workflows (from `infra/hetzner/workflows/`, `archive/` excluded)
@@ -58,14 +58,33 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `SCHEDULER_N8N_MIRROR_ENABLED` | `false` | When `true`, register shadow mirror jobs (requires the rest of the scheduler: `BRAIN_SCHEDULER_ENABLED=true`). |
+| `SCHEDULER_N8N_MIRROR_ENABLED` | `false` | When `true`, register **all** n8n shadow mirror jobs (subject to per-job overrides below). Requires the rest of the scheduler: `BRAIN_SCHEDULER_ENABLED=true`. |
+| `SCHEDULER_N8N_MIRROR_<ID>` | _(unset)_ | **Per-mirror opt-in (or opt-out).** When set, that job uses this boolean instead of the global. `<ID>` is the mirror **job_id** in uppercase with underscores, e.g. `SCHEDULER_N8N_MIRROR_N8N_SHADOW_BRAIN_DAILY=true`. If unset, the job follows `SCHEDULER_N8N_MIRROR_ENABLED`. |
 | `BRAIN_SCHEDULER_ENABLED` | `true` | Master switch for starting APScheduler (including job store and mirrors). |
 | `DATABASE_URL` | (dev default) | Must be reachably Postgres. Async URL uses `+asyncpg`; the job store uses a sync `postgresql://` form (no `+asyncpg`). |
 
+### Read-only mirror status
+
+- **Path:** `GET /api/v1/admin/scheduler/n8n-mirror/status`
+- **Auth:** same as other admin routes (`X-Brain-Secret` = `BRAIN_API_SECRET`).
+
+**Example (replace the secret and host):**
+
+```bash
+curl -sS -H "X-Brain-Secret: $BRAIN_API_SECRET" \
+  "https://brain.paperworklabs.com/api/v1/admin/scheduler/n8n-mirror/status"
+```
+
+Response `data` includes `global_enabled` and `per_job` (each entry: `key`, `enabled`, `last_run`, `last_status`, `success_count_24h`, `error_count_24h`).
+
+### Cutover order (T1.1)
+
+Prefer **one mirror at a time** with per-job env vars, watch a few green shadow runs, then widen — instead of a single big-bang global toggle for every workflow. **Lower risk first:** start with internal / operational mirrors (e.g. `n8n_shadow_infra_heartbeat`, `n8n_shadow_infra_health`) before flows that post toward **user-facing** or high-visibility product channels. The Brain in-process `pr_sweep` job is separate from n8n; cut that over on its own cadence. Document which `n8n_shadow_*` job id is live in each phase.
+
 ## Cutover playbook (shadow → active)
 
-1. **Verify shadow** — Enable `SCHEDULER_N8N_MIRROR_ENABLED=true` in staging or a canary, confirm messages appear in `#engineering-cron-shadow` on the expected cadence, and `SELECT * FROM apscheduler_jobs;` shows job rows. Fix timezone alignment for LA workflows if needed before prod cutover.
-2. **Switch handler** — In a follow-up (e.g. T2.4), replace each shadow `async def _run_shadow_*` body in `n8n_mirror.py` (or a successor module) with the real work (or delegate to a service), still keeping side-effects off until you disable n8n.
+1. **Verify shadow** — In staging or a canary, enable a **single** mirror with `SCHEDULER_N8N_MIRROR_<ID>=true` (or set the global to `true` for all). Confirm messages in `#engineering-cron-shadow`, `SELECT * FROM apscheduler_jobs;` shows the expected job row(s), the status endpoint shows `enabled` and rising `success_count_24h`, and `SELECT * FROM agent_scheduler_runs ORDER BY finished_at DESC LIMIT 20;` looks sane. Fix timezone alignment for LA workflows if needed before prod cutover.
+2. **Switch handler** — In a follow-up (e.g. T2.4), replace each shadow handler in `n8n_mirror.py` (or a successor module) with the real work (or delegate to a service), still keeping side-effects off until you disable n8n.
 3. **Disable n8n cron** — In n8n, turn off the schedule trigger (or pause the workflow) for that workflow *after* Brain active path is proven. Do not leave duplicate schedules firing without intent.
 4. **Naming** — Keep job ids stable (`n8n_shadow_*` → rename in the same PR as behavior switch if you want cleaner ops names).
 
@@ -87,7 +106,7 @@ ORDER BY id;
 
 ## Rollback
 
-- **Shadow off:** set `SCHEDULER_N8N_MIRROR_ENABLED` back to `false` and redeploy; re-enable the n8n schedule if you had disabled it. Job rows may remain in `apscheduler_jobs` but unused rows are harmless.
+- **Shadow off:** set `SCHEDULER_N8N_MIRROR_ENABLED` back to `false`, clear per-job `SCHEDULER_N8N_MIRROR_*` you set, and redeploy; re-enable the n8n schedule if you had disabled it. Job rows may remain in `apscheduler_jobs` but unused rows are harmless.
 - **Scheduler off:** set `BRAIN_SCHEDULER_ENABLED=false` (stops all in-process schedules, including mirrors) — use only for maintenance; n8n crons remain until you change n8n separately.
 - **Job store issues:** revert to a deploy without `SQLAlchemyJobStore` only in an emergency branch (not recommended long term); prefer fixing `DATABASE_URL` / network.
 
@@ -109,4 +128,4 @@ ORDER BY id;
 
 ---
 
-**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`.
+**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`.

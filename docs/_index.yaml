@@ -241,6 +241,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: clerk-launchfree
+    path: docs/infra/CLERK_LAUNCHFREE.md
+    title: Clerk SSO — LaunchFree (Next.js)
+    summary: "Runbook for the LaunchFree app (`apps/launchfree`) identity stack: Clerk (primary SSO) with the legacy `session` cookie on `/dashboard`, plus Basic Auth as an operator escape hatch on `/admin` and…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: clerk-studio
     path: docs/infra/CLERK_STUDIO.md
     title: Clerk SSO — Paperwork Studio (Next.js)

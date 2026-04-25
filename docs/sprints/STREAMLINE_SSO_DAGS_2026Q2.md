@@ -13,6 +13,7 @@ opened: 2026-04-25
 target_close: 2026-05-09
 related_prs:
   - 151
+  - 153
 ---
 
 # Streamline + SSO + Real DAGs (2026 Q2)
@@ -41,10 +42,12 @@ Acceptance theme for the window: operators can name the single system that fires
 ## Outcome
 
 - _Tracking — updates as each track ships_
+- shipped 2026-04-25: **T1.1** — Per-job `SCHEDULER_N8N_MIRROR_<ID>` flags (uppercased n8n mirror job id) with global fallback, `agent_scheduler_runs` history for each shadow execution, and `GET /api/v1/admin/scheduler/n8n-mirror/status` for last run + 24h success/error counts. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). Migration: `apis/brain/alembic/versions/002_agent_scheduler_runs.py`.
 - shipped 2026-04-25: **T3.1 (foundation)** — Studio has `@clerk/nextjs` with `ClerkProvider`, `sign-in` / `sign-up` catch-all routes, and `clerkMiddleware` composed with the existing Basic Auth escape hatch on `/admin` and `/api/admin` in production; public routes and `/api/secrets*` skip this gate. Operator runbook: [docs/infra/CLERK_STUDIO.md](../infra/CLERK_STUDIO.md).
 
 ## What we learned
 
+- Per-job `SCHEDULER_N8N_MIRROR_*` must use the same uppercased job id as `N8N_MIRROR_SPECS` (e.g. `N8N_SHADOW_BRAIN_DAILY`, not a short name like `pr_sweep` — the in-process `pr_sweep` scheduler is separate from n8n mirror ids).
 - A single `clerkMiddleware` handler can grant production admin access if either `auth().userId` (Clerk) is present or the legacy Basic `Authorization` header matches `ADMIN_EMAILS` / `ADMIN_ACCESS_PASSWORD`, while local dev can keep admin routes open by short-circuiting on `NODE_ENV === "development"`.
 
 

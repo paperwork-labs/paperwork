@@ -142,7 +142,7 @@ export default function AdminLayout({
         </aside>
         <main className="min-w-0 flex-1">
           <div className="mb-6 flex items-center justify-end border-b border-zinc-800/60 pb-4">
-            <UserButton appearance={{ elements: { userButtonAvatarBox: "h-8 w-8" } }} />
+            <UserButton />
           </div>
           {children}
         </main>

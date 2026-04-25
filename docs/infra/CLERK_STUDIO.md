@@ -47,6 +47,41 @@ Optional Clerk URLs (e.g. sign-in/after-sign-in redirects) can be set per [Clerk
 3. Simplify `middleware.ts`: delete Basic parsing and the second branch; keep `clerkMiddleware` with `auth.protect()`-style gating (or keep custom redirect only) for `/admin` and `/api/admin`.
 4. Update this doc and the sprint/infra inventory to mark Basic Auth as retired.
 
+## Theming
+
+Clerk UI is aligned with Studio’s dark zinc palette via the **Appearance** API ([Clerk docs: `appearance` prop](https://clerk.com/docs/customization/overview#appearance-prop)).
+
+### Where configuration lives
+
+| Piece | Path |
+| ----- | ---- |
+| Global `appearance` (all Clerk surfaces: SignIn, SignUp, `UserButton`, modals) | `apps/studio/src/lib/studio-clerk-appearance.ts`, passed to `<ClerkProvider>` in `apps/studio/src/app/layout.tsx` |
+| Auth route layout (full-viewport gradient shell, centers the form) | `apps/studio/src/components/clerk/ClerkAuthPageShell.tsx`, used by `apps/studio/src/app/sign-in/[[...sign-in]]/page.tsx` and `apps/studio/src/app/sign-up/[[...sign-up]]/page.tsx` |
+
+`baseTheme` is `@clerk/themes`’s `dark` theme; CSS variables and `elements` extend it for Paperwork Studio.
+
+### Studio palette → Clerk variables
+
+Colors resolve at runtime from `[data-theme="studio"]` in `packages/ui/src/themes.css` (also mirrored in `:root` in `apps/studio/src/app/globals.css`). Use the same HSL tokens when adjusting the table below.
+
+| Clerk `appearance.variables` | Studio source (HSL custom property) |
+| ---------------------------- | ----------------------------------- |
+| `colorPrimary` | `--primary` |
+| `colorBackground` | `--background` |
+| `colorInputBackground` | `--input` |
+| `colorInputText` | `--foreground` |
+| `colorText` | `--foreground` |
+| `colorTextSecondary` | `--muted-foreground` |
+| `colorDanger` | `--destructive` |
+| `borderRadius` | `globals.css` `@theme` `--radius` (`0.5rem`) |
+| `fontFamily` | `var(--font-inter)` from `next/font` in `layout.tsx` |
+
+Additional card, button, header, and `userButton*` tweaks use `appearance.elements` (Tailwind classes) where variables are not enough — see `studio-clerk-appearance.ts`.
+
+### Per-route overrides (future)
+
+Some products may need a different sign-in shell or extra `appearance` props on `<SignIn />` (e.g. FileFree on its own host). In that case import `studioClerkAppearance` and pass `appearance={{ ...studioClerkAppearance, elements: { ... } }}` to the page-level Clerk component, or build a product-specific object — keep the **provider** in `layout.tsx` as the default so modals and `UserButton` stay consistent unless you intentionally override at the component. Not implemented in Studio today; this is the intended extension point.
+
 ## Related
 
 - Sprint: `docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md` (T3)

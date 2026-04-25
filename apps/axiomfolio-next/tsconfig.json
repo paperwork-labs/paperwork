@@ -35,7 +35,6 @@
     "src/components/layout/AuthLayout.tsx",
     "src/components/layout/DashboardLayout.tsx",
     "src/components/layout/SidebarStatusDot.tsx",
-    "src/components/layout/TabbedPageShell.tsx",
     "src/components/layout/TopBarAccountSelector.tsx",
     "src/hooks/useUpgradePrompt.ts"
   ]
