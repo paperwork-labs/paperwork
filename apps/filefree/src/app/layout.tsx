@@ -4,6 +4,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "@/components/providers";
 import { Nav } from "@/components/nav";
+import { fileFreeClerkAppearance } from "@/lib/filefree-clerk-appearance";
 import "./globals.css";
 
 const inter = Inter({
@@ -79,7 +80,7 @@ export default function RootLayout({
         data-theme="filefree"
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
-        <ClerkProvider>
+        <ClerkProvider appearance={fileFreeClerkAppearance}>
           <Providers>
             <Nav />
             {/* Pages provide their own <main>; wrapper is a div to avoid nested mains. */}
