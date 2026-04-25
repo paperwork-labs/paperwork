@@ -12,17 +12,45 @@ import {
   BarChart3,
   BookOpen,
   Workflow,
+  Target,
+  Boxes,
 } from "lucide-react";
 
-const navItems = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard },
-  { href: "/admin/architecture", label: "Architecture", icon: Workflow },
-  { href: "/admin/workflows", label: "Workflows", icon: Bot },
-  { href: "/admin/docs", label: "Docs", icon: BookOpen },
-  { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
-  { href: "/admin/secrets", label: "Secrets", icon: KeyRound },
-  { href: "/admin/sprints", label: "Sprints", icon: Rocket },
+type NavItem = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+};
+
+type NavGroup = {
+  label: string | null;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
+  {
+    label: null,
+    items: [{ href: "/admin", label: "Overview", icon: LayoutDashboard }],
+  },
+  {
+    label: "Trackers",
+    items: [
+      { href: "/admin/tasks", label: "Tasks (company)", icon: Target },
+      { href: "/admin/products", label: "Products", icon: Boxes },
+      { href: "/admin/sprints", label: "Sprints", icon: Rocket },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { href: "/admin/architecture", label: "Architecture", icon: Workflow },
+      { href: "/admin/workflows", label: "Workflows", icon: Bot },
+      { href: "/admin/docs", label: "Docs", icon: BookOpen },
+      { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+      { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
+      { href: "/admin/secrets", label: "Secrets", icon: KeyRound },
+    ],
+  },
 ];
 
 export default function AdminLayout({
@@ -40,27 +68,43 @@ export default function AdminLayout({
             <p className="mb-5 bg-gradient-to-r from-zinc-300 to-zinc-500 bg-clip-text text-xs font-semibold uppercase tracking-widest text-transparent">
               Command Center
             </p>
-            <nav className="space-y-1">
-              {navItems.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  (item.href !== "/admin" && pathname.startsWith(item.href));
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
-                      isActive
-                        ? "border-l-2 border-zinc-400 bg-zinc-800/80 font-medium text-zinc-100"
-                        : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
-                    }`}
-                  >
-                    <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-zinc-300" : "text-zinc-500"}`} />
-                    {item.label}
-                  </Link>
-                );
-              })}
+            <nav className="space-y-4">
+              {navGroups.map((group, groupIdx) => (
+                <div
+                  key={group.label ?? `group-${groupIdx}`}
+                  className="space-y-1"
+                >
+                  {group.label ? (
+                    <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+                      {group.label}
+                    </p>
+                  ) : null}
+                  {group.items.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      (item.href !== "/admin" && pathname.startsWith(item.href));
+                    const Icon = item.icon;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${
+                          isActive
+                            ? "border-l-2 border-zinc-400 bg-zinc-800/80 font-medium text-zinc-100"
+                            : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+                        }`}
+                      >
+                        <Icon
+                          className={`h-4 w-4 shrink-0 ${
+                            isActive ? "text-zinc-300" : "text-zinc-500"
+                          }`}
+                        />
+                        {item.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ))}
             </nav>
             <div className="mt-6 border-t border-zinc-800/60 pt-4">
               <div className="space-y-1.5 text-xs">
