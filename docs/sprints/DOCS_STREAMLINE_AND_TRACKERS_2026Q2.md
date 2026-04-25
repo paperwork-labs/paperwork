@@ -48,6 +48,13 @@ Land Phase 1 of the docs streamline, give the company a repo-native long-term tr
 - Crispness pass (TL;DR blocks + cross-links + stale-flag comments) on the 5 highest-traffic docs: `PRD`, `ARCHITECTURE`, `BRAIN_ARCHITECTURE` ↔ `BRAIN_PHILOSOPHY`, `INFRA` ↔ `INFRA_PHILOSOPHY`, `AI_MODEL_REGISTRY` ↔ `AI_MODEL_PHILOSOPHY`. Architecture/Philosophy pairs now consistently split "how" from "why / non-goals".
 - `generate_axiomfolio_integration_doc.py` now emits frontmatter — fixes the only doc that was failing the freshness gate by being auto-generated without a `last_reviewed`.
 
+**Phase 3 (architecture / DAG UX, infra honesty):**
+
+- `/admin/architecture` redesigned: medallion (bronze / silver / gold) is now a **3-column primary row** at top; operational lanes (execution / frontend / platform / infra) are full-width swim-lanes below, each in a 2-/3-/4-col grid. Cards no longer get squashed at 22 nodes. Click still opens the right drawer.
+- `/admin/workflows` Graph tab: every n8n DAG card is now click-to-zoom. Modal opens at 88vh, larger node radius, readable labels, ESC + click-outside to close, with deep-link to source on GitHub. Fixes the "I can't read the DAGs" feedback.
+- `/admin/infrastructure` honesty fix: AxiomFolio API was reporting "Healthy (db: disconnected)" — Studio was reading a `db_connected` field that AxiomFolio's `/health` doesn't expose. Probe now shows `Healthy v<version>` and only appends `(db: connected/disconnected)` when the field is actually a boolean. Brain, FileFree, LaunchFree, AxiomFolio all benefit.
+- F-6 added to [`docs/infra/RENDER_INVENTORY.md`](../infra/RENDER_INVENTORY.md) and a new section in [`RENDER_REPOINT.md`](../infra/RENDER_REPOINT.md): `brain-api`'s live Render config has `dockerContext: apis/brain` but the Dockerfile uses monorepo-root paths (`.cursor/rules/`, `apis/brain/requirements.txt`). Every push to `main` since the monorepo cutover has produced `build_failed` deploys silently — Brain is still serving from PR #140's commit. Fix is one operator click: clear Root Directory in `brain-api` settings.
+
 ## Tracks
 
 | Track | Lane | What shipped |
@@ -56,6 +63,10 @@ Land Phase 1 of the docs streamline, give the company a repo-native long-term tr
 | C2 | Docs Phase 2 — runbooks | `RUNBOOK_TEMPLATE.md`, linter, 7 restructured + 5 reclassified, CI gate |
 | C3 | Docs Phase 2 — merges | 6/7 §6 duplicate pairs folded into canonical targets w/ verbatim archive |
 | C4 | Docs Phase 2 — crispness | TL;DR + cross-links + stale flags on PRD / ARCHITECTURE / BRAIN / INFRA / AI_MODEL trios |
+| E1 | Studio UX — architecture | Medallion-first 3-col layout, ops lanes below, no more squashed cards |
+| E2 | Studio UX — DAG zoom | Click-to-zoom modal for every n8n graph (88vh, ESC-closable, labels readable) |
+| E3 | Studio honesty — health probe | `db_connected` only shown when API exposes the field; otherwise `Healthy v<version>` |
+| F-6 | Infra finding | `brain-api` dockerContext drift documented in `RENDER_INVENTORY.md` + `RENDER_REPOINT.md` runbook section |
 | B | Trackers spine | TASKS.md, sprints/, plans/, generator + JSON, Studio pages |
 | D | Brain wiring | CFO Friday digest, `/sprint` `/tasks` `/plan` slash commands |
 | A | Studio fit-and-finish | Trackers nav, overview rail, force-dynamic on data pages, expanded infra probes, featured-sprint card |
@@ -75,3 +86,5 @@ Land Phase 1 of the docs streamline, give the company a repo-native long-term tr
 - Severity vocabulary review: existing 7 runbooks use yellow/red; if we want S0–S3 vocabulary across the company, that's a one-shot rename (defer until cross-product alignment).
 - Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`.
 - `mark_sprint_shipped.py PR=142` once #142 merges to flip this sprint's status.
+- **F-6 (operator)**: clear `brain-api` Root Directory in [Render dashboard](https://dashboard.render.com/web/srv-d74f3cmuk2gs73a4013g/settings) → next push to `main` deploys cleanly. Brain is still serving PR #140's code until this happens.
+- **Studio enhancement (next sprint)**: surface Render deploy status (`live` / `build_failed`) per service inline in `/admin/infrastructure` so F-6-style silent build breakage cannot happen again. `RENDER_API_KEY` is already wired.

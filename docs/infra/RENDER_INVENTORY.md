@@ -83,6 +83,48 @@ But the four `axiomfolio-*` blueprint entries at [apis/axiomfolio/render.yaml](.
 
 Week 1 Track B wires a GitHub webhook to Brain. Neither `render.yaml` nor the live service declares `GITHUB_WEBHOOK_SECRET`. Add it (with `sync: false`) before Track B ships.
 
+### F-6 — `brain-api` dockerContext drifted from blueprint, every push to `main` fails ⚠️
+
+Live `brain-api` service config (Render API):
+
+```json
+"envSpecificDetails": {
+  "dockerCommand": "",
+  "dockerContext": "apis/brain",        // ← stale; blueprint says "."
+  "dockerfilePath": "apis/brain/Dockerfile"
+}
+```
+
+But [`apis/brain/Dockerfile`](../../apis/brain/Dockerfile) does:
+
+```dockerfile
+COPY apis/brain/requirements.txt .
+COPY apis/brain/ /app/
+COPY .cursor/rules/ /app/cursor-rules/   # ← monorepo-root path
+```
+
+With `dockerContext: apis/brain`, those paths resolve under `apis/brain/apis/brain/...` which does not exist, so every build since the monorepo cutover fails:
+
+```
+#16 ERROR: failed to compute cache key: "/apis/brain/requirements.txt": not found
+#15 ERROR: "/apis/brain": not found
+#14 ERROR: "/.cursor/rules": not found
+```
+
+The currently live deploy is the **previous** commit (PR #140). PR #141 merged to `main` and its Render auto-deploy `dep-d7m4kgf41pts738qcpeg` failed at 2026-04-25T05:00Z. Brain itself is still serving from old code; new commits silently don't ship.
+
+The blueprint is correct (`render.yaml` declares `dockerContext: .`) — the live service was created before the monorepo move and never re-synced.
+
+**Why we can't COPY the .cursor/rules into apis/brain to dodge this:** persona `.mdc` files live at `.cursor/rules/` at the monorepo root, used by `app/services/agent.py` for cold-start persona instructions. Pulling them in via `apis/brain/` is the wrong layering — agent context belongs at repo root, not inside the API.
+
+**Fix**: Render dashboard → `brain-api` → **Settings** → **Build & Deploy**:
+
+1. **Root Directory**: clear to empty (the field maps to `dockerContext`).
+2. **Dockerfile Path**: leave as `apis/brain/Dockerfile`.
+3. Save → Render triggers a fresh build from monorepo root → succeeds.
+
+See [RENDER_REPOINT.md → brain-api dockerContext fix](RENDER_REPOINT.md#path-brain-api-dockercontext-fix).
+
 ## Definition of Done
 
 - [x] Render MCP shows one account, zero suspended services.
@@ -92,6 +134,7 @@ Week 1 Track B wires a GitHub webhook to Brain. Neither `render.yaml` nor the li
 - [ ] F-3: env var naming reconciled to `VERCEL_API_TOKEN`.
 - [ ] F-4: both blueprints are what production actually uses.
 - [ ] F-5: `GITHUB_WEBHOOK_SECRET` added to `brain-api`.
+- [ ] F-6: `brain-api` Root Directory cleared so monorepo paths resolve; latest `main` deploys.
 - [ ] Studio `/admin/infrastructure` shows all six services green (currently only probes a subset).
 
 ## Verification commands

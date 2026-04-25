@@ -157,9 +157,81 @@ export default function ArchitectureClient({
     }
   }
 
-  const layersShown = graph.layers.filter(
+  // Two-tier layout:
+  //   Top row:  medallion data layers (bronze / silver / gold) — the conceptual
+  //             frame. Three wide columns so service cards aren't squashed.
+  //   Bottom:   operational layers (execution, frontend, platform, infra) as
+  //             full-width swim-lanes — these aren't medallion stages, they're
+  //             cross-cutting concerns and deserve their own row.
+  const MEDALLION_LAYERS: SystemLayer[] = ["bronze", "silver", "gold"];
+  const OPERATIONAL_LAYERS: SystemLayer[] = [
+    "execution",
+    "frontend",
+    "platform",
+    "infra",
+  ];
+  const medallionLayersShown = MEDALLION_LAYERS.filter(
     (l) => (nodesByLayer.get(l)?.length ?? 0) > 0,
   );
+  const operationalLayersShown = OPERATIONAL_LAYERS.filter(
+    (l) => (nodesByLayer.get(l)?.length ?? 0) > 0,
+  );
+
+  const renderCard = (node: SystemNode) => {
+    const h = healthById.get(node.id);
+    const hasHealth = h?.configured;
+    return (
+      <motion.button
+        key={node.id}
+        onClick={() => setSelectedId(node.id)}
+        whileHover={{ scale: 1.01 }}
+        whileTap={{ scale: 0.99 }}
+        className="group flex h-full w-full flex-col rounded-lg border border-zinc-800 bg-zinc-900/80 p-3 text-left transition hover:border-zinc-700 hover:bg-zinc-800/80"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              {hasHealth && statusDot(h.status)}
+              <span className="truncate text-sm font-medium text-zinc-100">
+                {node.label}
+              </span>
+            </div>
+            <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-zinc-500">
+              <span>{KIND_BADGE[node.kind]}</span>
+              <span className="opacity-50">·</span>
+              <span className="truncate">{node.product}</span>
+              {node.llm_backed && (
+                <>
+                  <span className="opacity-50">·</span>
+                  <Sparkles className="h-3 w-3 text-amber-400" />
+                </>
+              )}
+            </div>
+          </div>
+          {node.medallion_summary && (
+            <div className="flex gap-1 text-[10px] font-mono text-zinc-500">
+              {Object.entries(node.medallion_summary).map(([k, v]) => (
+                <span key={k} className="rounded bg-zinc-800/60 px-1">
+                  {k[0]}
+                  {v}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <p className="mt-2 line-clamp-2 text-[11px] text-zinc-400">
+          {node.description}
+        </p>
+        {h && h.configured && (
+          <div className="mt-auto flex items-center gap-1 pt-2 text-[10px] text-zinc-500">
+            <Activity className="h-2.5 w-2.5" />
+            <span className="truncate">{h.detail}</span>
+            {h.latencyMs !== null && <span>· {h.latencyMs}ms</span>}
+          </div>
+        )}
+      </motion.button>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -172,9 +244,10 @@ export default function ArchitectureClient({
             Paperwork system architecture
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-zinc-400">
-            Every production service, grouped by medallion layer. Nodes are
-            generated from the monorepo — this DAG cannot drift. Click a node
-            for deploys, source, and an “ask Brain” drawer.
+            Top row is the medallion data spine (bronze → silver → gold). Below
+            sit the operational lanes that consume it — agents, frontends,
+            platform, infra. Click any card for a zoomed-in detail view, deploys,
+            source, and an “ask Brain” drawer.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -207,85 +280,87 @@ export default function ArchitectureClient({
         </div>
       </header>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-        {layersShown.map((layer) => {
-          const nodes = nodesByLayer.get(layer) ?? [];
-          return (
-            <section
-              key={layer}
-              className="flex flex-col gap-3 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3"
-            >
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                  {LAYER_LABELS[layer]}
-                </div>
-                <div className="mt-0.5 text-[11px] leading-tight text-zinc-500">
-                  {LAYER_DESCRIPTIONS[layer]}
-                </div>
-              </div>
-              <div className="space-y-2">
-                {nodes.map((node) => {
-                  const h = healthById.get(node.id);
-                  const hasHealth = h?.configured;
-                  return (
-                    <motion.button
-                      key={node.id}
-                      onClick={() => setSelectedId(node.id)}
-                      whileHover={{ scale: 1.01 }}
-                      whileTap={{ scale: 0.99 }}
-                      className="group w-full rounded-lg border border-zinc-800 bg-zinc-900/80 p-3 text-left transition hover:border-zinc-700 hover:bg-zinc-800/80"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            {hasHealth && statusDot(h.status)}
-                            <span className="truncate text-sm font-medium text-zinc-100">
-                              {node.label}
-                            </span>
-                          </div>
-                          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-zinc-500">
-                            <span>{KIND_BADGE[node.kind]}</span>
-                            <span className="opacity-50">·</span>
-                            <span className="truncate">{node.product}</span>
-                            {node.llm_backed && (
-                              <>
-                                <span className="opacity-50">·</span>
-                                <Sparkles className="h-3 w-3 text-amber-400" />
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        {node.medallion_summary && (
-                          <div className="flex gap-1 text-[10px] font-mono text-zinc-500">
-                            {Object.entries(node.medallion_summary).map(
-                              ([k, v]) => (
-                                <span key={k} className="rounded bg-zinc-800/60 px-1">
-                                  {k[0]}
-                                  {v}
-                                </span>
-                              ),
-                            )}
-                          </div>
-                        )}
+      {medallionLayersShown.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-300">
+                Medallion data layers
+              </h2>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                Bronze → silver → gold. The shape of the data spine.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {medallionLayersShown.map((layer) => {
+              const nodes = nodesByLayer.get(layer) ?? [];
+              return (
+                <section
+                  key={layer}
+                  className="flex flex-col gap-3 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-4"
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-semibold text-zinc-100">
+                        {LAYER_LABELS[layer]}
                       </div>
-                      <p className="mt-2 line-clamp-2 text-[11px] text-zinc-400">
-                        {node.description}
-                      </p>
-                      {h && h.configured && (
-                        <div className="mt-2 flex items-center gap-1 text-[10px] text-zinc-500">
-                          <Activity className="h-2.5 w-2.5" />
-                          <span>{h.detail}</span>
-                          {h.latencyMs !== null && <span>· {h.latencyMs}ms</span>}
-                        </div>
-                      )}
-                    </motion.button>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
-      </div>
+                      <span className="text-[10px] font-mono text-zinc-500">
+                        {nodes.length} {nodes.length === 1 ? "service" : "services"}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-[11px] leading-tight text-zinc-500">
+                      {LAYER_DESCRIPTIONS[layer]}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">{nodes.map(renderCard)}</div>
+                </section>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {operationalLayersShown.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-zinc-300">
+              Operational lanes
+            </h2>
+            <p className="mt-1 text-[11px] text-zinc-500">
+              Cross-cutting consumers — agents, customer UIs, platform, hosting.
+            </p>
+          </div>
+          <div className="space-y-3">
+            {operationalLayersShown.map((layer) => {
+              const nodes = nodesByLayer.get(layer) ?? [];
+              return (
+                <section
+                  key={layer}
+                  className="rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-4"
+                >
+                  <div className="mb-3 flex items-baseline justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-zinc-100">
+                        {LAYER_LABELS[layer]}
+                      </div>
+                      <div className="mt-0.5 text-[11px] leading-tight text-zinc-500">
+                        {LAYER_DESCRIPTIONS[layer]}
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono text-zinc-500">
+                      {nodes.length} {nodes.length === 1 ? "service" : "services"}
+                    </span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {nodes.map(renderCard)}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       <AnimatePresence>
         {selected && (

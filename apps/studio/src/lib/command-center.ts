@@ -436,8 +436,14 @@ async function checkWithLatency(
     if (response.ok && options?.validateJson) {
       try {
         const json = await response.json();
-        if (json.status === "healthy") {
-          detail = `Healthy (db: ${json.db_connected ? "connected" : "disconnected"})`;
+        if (json.status === "healthy" || json.success === true || json?.data?.status === "ok") {
+          const version = json.version ?? json?.data?.version;
+          const dbField = json.db_connected;
+          const dbBit =
+            typeof dbField === "boolean"
+              ? ` (db: ${dbField ? "connected" : "disconnected"})`
+              : "";
+          detail = `Healthy${version ? ` v${version}` : ""}${dbBit}`;
         }
       } catch {
         // JSON parse failed but endpoint is reachable
