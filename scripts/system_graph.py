@@ -256,7 +256,7 @@ NODES: list[dict] = [
         "layer": "execution",
         "kind": "agent",
         "module_path": ".cursor/rules",
-        "description": "48 .mdc persona rule files: ea, cpa, qa, cfo, trading, growth, etc.",
+        "description": "16 PersonaSpecs (Brain runtime) + 32 IDE/CI guardrails (.cursor/rules/*.mdc)",
         "owner_persona": "agent-ops",
         "llm_backed": True,
         "depends_on": ["brain.api"],
