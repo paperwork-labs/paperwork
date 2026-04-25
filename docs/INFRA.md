@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-23
+last_reviewed: 2026-04-24
 doc_kind: architecture
 domain: infra
 status: active
@@ -9,33 +9,46 @@ status: active
 
 **Status**: Adopted 2026-04-23. Supersedes per-product dev compose files.
 
-Companion docs: `docs/INFRA_PHILOSOPHY.md` (Tier-1 vs Tier-2, Render vs
-Hetzner), `docs/ORCHESTRATION_PHILOSOPHY.md` (Celery vs Airflow/Dagster),
-`docs/DATA_PHILOSOPHY.md` (medallion + five iron laws).
+- **How (mutable architecture)**: this document. **Why, constraints, and non-goals** (CODEOWNERS-locked): [`docs/philosophy/INFRA_PHILOSOPHY.md`](philosophy/INFRA_PHILOSOPHY.md).
+- **See also** — `docs/ORCHESTRATION_PHILOSOPHY.md` (Celery vs Airflow/Dagster), `docs/DATA_PHILOSOPHY.md` (medallion + five iron laws).
+
+## TL;DR
+
+1. **Where things run in production** — **Vercel**: Next.js apps with a root [`vercel.json`](../apps/studio/vercel.json) under [`apps/filefree`](../apps/filefree), [`apps/launchfree`](../apps/launchfree), [`apps/studio`](../apps/studio), [`apps/trinkets`](../apps/trinkets), [`apps/distill`](../apps/distill), and [`apps/axiomfolio-next`](../apps/axiomfolio-next). **Render**: see [Render service inventory (mirror)](#render-service-inventory-mirror) (authoritative list: [`docs/infra/RENDER_INVENTORY.md`](../docs/infra/RENDER_INVENTORY.md)). **Hetzner**: [`infra/hetzner`](../infra/hetzner) (n8n, Postiz, and related). **AxiomFolio** customer UI today: static [Render `axiomfolio-frontend`](../docs/infra/RENDER_INVENTORY.md#live-services) from [`apps/axiomfolio`](../apps/axiomfolio) build, not the `axiomfolio-next` Vercel app until migration ships.
+2. **The number to watch** — ~$108/mo for AxiomFolio on Render Standard plans (2026-04, order-of-magnitude; use dashboard for truth). <!-- STALE 2026-04-24: re-verify after F-1 repoint and plan changes. -->
+3. **What is changing** — F-1: repoint [four `axiomfolio-*` services](../docs/infra/RENDER_INVENTORY.md#f-1--four-axiomfolio--services-still-point-to-the-old-standalone-repo-) to `paperwork-labs/paperwork` per [`docs/infra/RENDER_REPOINT.md`](../docs/infra/RENDER_REPOINT.md). Dev: [`web-axiomfolio` in root compose](../infra/compose.dev.yaml) phase 2 (Vite in Docker). `launchfree-api`: [defined in `render.yaml` but not in live inventory](../docs/infra/RENDER_INVENTORY.md#f-2--launchfree-api-is-defined-in-renderyaml-but-not-deployed).
+
+## Render service inventory (mirror)
+
+Same tables as [`docs/infra/RENDER_INVENTORY.md`](../docs/infra/RENDER_INVENTORY.md) (last verified 2026-04-24). Service names link to the monorepo path that should build them.
+
+**Live services**
+
+| Service | Type | ID | Repo pointer | Root dir | Dockerfile / runtime | Plan | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| [`brain-api`](../apis/brain) | web | `srv-d74f3cmuk2gs73a4013g` | `paperwork-labs/paperwork` ✅ | — | `apis/brain/Dockerfile` (docker) | starter | running |
+| [`filefree-api`](../apis/filefree) | web | `srv-d70o3jvkijhs73a0ee7g` | `paperwork-labs/paperwork` ✅ | — | python (`cd apis/filefree && …`) | starter | running |
+| [`axiomfolio-api`](../apis/axiomfolio) | web | `srv-d7lg0o77f7vs73b2k7m0` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
+| [`axiomfolio-worker`](../apis/axiomfolio) | worker | `srv-d7lg0o77f7vs73b2k7lg` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
+| [`axiomfolio-worker-heavy`](../apis/axiomfolio) | worker | `srv-d7lg0o77f7vs73b2k7kg` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
+| [`axiomfolio-frontend`](../apps/axiomfolio) | static | `srv-d7lg0dv7f7vs73b2k1u0` | **`paperwork-labs/axiomfolio` ⚠️** | — | `cd frontend && npm ci && npm run build` | starter | running |
+
+**Data stores**
+
+| Name | Type | ID | Plan | Status |
+| --- | --- | --- | --- | --- |
+| `axiomfolio-db` | postgres 18 | `dpg-d7lg0e77f7vs73b2k220-a` | basic_1gb (15 GiB) | available |
+| `axiomfolio-redis` | keyvalue (Redis 8.1.4) | `red-d7lg0dv7f7vs73b2k1t0` | starter | available |
+
+Provisioned in [`apis/axiomfolio/render.yaml`](../apis/axiomfolio/render.yaml) when the Blueprint is applied; see [F-4 in RENDER_INVENTORY](../docs/infra/RENDER_INVENTORY.md#f-4--blueprint-contents-disagree-with-live-services).
+
+`launchfree-api` is [not listed as live in the inventory](../docs/infra/RENDER_INVENTORY.md#f-2--launchfree-api-is-defined-in-renderyaml-but-not-deployed); source for when deployed is [`apis/launchfree`](../apis/launchfree) and [`render.yaml`](../render.yaml).
 
 ---
 
-## TL;DR — the rules
+## Monorepo dev stack (local)
 
-1. **One dev stack.** A single `docker compose -f infra/compose.dev.yaml up`
-   boots every product — postgres, redis, all backends, all frontends. No
-   per-product dev compose.
-2. **One postgres, one redis.** Each product gets its own logical database
-   (`axiomfolio_dev`, `brain_dev`, `filefree_dev`, `launchfree_dev`) on a
-   single `postgres:17-alpine` instance. Each product gets its own redis
-   logical DB index (`/0..3`).
-3. **Opt-in extras are profiles.** Interactive Brokers gateway, Cloudflare
-   tunnel, Celery Flower — all live behind `docker compose --profile`
-   flags and in `infra/<product>/compose.profiles.yaml` overlays.
-4. **Per-product infra lives under `infra/<product>/`.** Observability
-   configs, env templates, profile overlays — everything that is
-   product-specific but dev-infra-shaped.
-5. **Render deploys are per-product `render.yaml`.** Each backend sets
-   `rootDir: apis/<product>`; each frontend sets `rootDir: apps/<product>`.
-   Dev compose and prod Render are independent orchestrations of the
-   same monorepo.
-
----
+**Normative dev-stack rules** (one compose, one postgres/redis, profiles, per-product `infra/`, per-product `render.yaml`) are in [§8 — `docs/philosophy/INFRA_PHILOSOPHY.md`](philosophy/INFRA_PHILOSOPHY.md#8-monorepo-dev-stack-rules). Below: ports, env, and operations only.
 
 ## Directory layout
 
@@ -284,7 +297,7 @@ Performed as part of PR #80 (AxiomFolio monorepo absorption):
 
 Every other paperwork app (studio, distill, filefree, launchfree,
 trinkets) is Next.js. Axiomfolio is the lone Vite + React 19 holdout,
-carried over from its pre-monorepo life. Next.js brings:
+carried over from its pre-monorepo life. <!-- STALE 2026-04-24: AxiomFolio app code is in the monorepo; "pre-monorepo" refers to the historical stack choice, not the live Render repo pointer (see F-1 in RENDER_INVENTORY). --> Next.js brings:
 
 - **SSR / RSC** for data-heavy authenticated dashboards (fetch holdings
   server-side, stream to client).
@@ -305,8 +318,8 @@ Medallion Phase 0.C is shipped. Target: Q3. Tracked in `docs/axiomfolio/`
 as a separate plan.
 
 Until then, the Vite dev server runs host-side (`pnpm dev:axiomfolio`);
-the static build is deployed to Render via `apis/axiomfolio/render.yaml`
-→ `axiomfolio-frontend` service.
+the static build is intended to deploy from `apis/axiomfolio/render.yaml`
+to the `axiomfolio-frontend` service <!-- STALE 2026-04-24: F-1 — services still build from the legacy `paperwork-labs/axiomfolio` repo, not the monorepo; see RENDER_INVENTORY. -->.
 
 ### Python tooling consolidation → ruff
 
@@ -352,7 +365,7 @@ second developer who needs to reason about the vault.
 
 ### Hetzner tier-2 for axiomfolio heavy batch jobs
 
-Per `docs/INFRA_PHILOSOPHY.md`, nightly historical backtests and
+Per [`docs/philosophy/INFRA_PHILOSOPHY.md`](philosophy/INFRA_PHILOSOPHY.md), nightly historical backtests and
 market-data warming (2am–5am, failure-tolerant, compute-heavy) are a
 better fit for Hetzner than paying Render Pro. The dev compose already
 supports this pattern via queue routing — `heavy` queue can be pinned
@@ -406,4 +419,13 @@ isolation. In the new architecture, tests run against the same postgres
 using the `*_test` database (already the pattern for filefree/brain).
 The test compose file is retained in git history (reachable via `git log
 -- infra/axiomfolio/compose.test.yaml`) for reference, but is not used
-by the new `make test` path.
+by the new `make test` path. <!-- STALE 2026-04-24: exact historical path for the deleted test compose may differ; search git history for `compose.test` under `apis/axiomfolio` or pre-move `infra/`. -->
+
+---
+
+## Related docs
+
+- [`docs/ARCHITECTURE.md`](ARCHITECTURE.md) — production system map and product boundaries
+- [`docs/philosophy/INFRA_PHILOSOPHY.md`](philosophy/INFRA_PHILOSOPHY.md) — placement doctrine and non-goals
+- [`docs/infra/RENDER_INVENTORY.md`](../docs/infra/RENDER_INVENTORY.md) — live Render services (source of truth for the inventory mirror above)
+- [`docs/infra/RENDER_REPOINT.md`](../docs/infra/RENDER_REPOINT.md) — runbook: repoint AxiomFolio services to the monorepo
