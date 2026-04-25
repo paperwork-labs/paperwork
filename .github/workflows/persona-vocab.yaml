@@ -1,0 +1,36 @@
+name: persona-vocabulary
+
+# Ensures Studio WORKFLOW_META, system-graph, and n8n persona_pin use only
+# Brain PersonaSpec slugs (apis/brain/app/personas/specs/*.yaml).
+
+on:
+  pull_request:
+    paths:
+      - "apis/brain/app/personas/specs/**"
+      - "apps/studio/src/lib/command-center.ts"
+      - "apps/studio/src/data/system-graph.json"
+      - "scripts/system_graph.py"
+      - "scripts/check_persona_vocabulary.py"
+      - "infra/hetzner/workflows/**"
+      - "data/n8n/workflows/**"
+      - ".github/workflows/persona-vocab.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: persona-vocabulary-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: PersonaSpec slug alignment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: check_persona_vocabulary
+        run: python3.12 scripts/check_persona_vocabulary.py --verbose
