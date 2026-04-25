@@ -45,6 +45,10 @@ export type InfraStatus = {
   detail: string;
   latencyMs: number | null;
   dashboardUrl: string | null;
+  // Optional secondary link for services with a separate console (e.g. n8n
+  // running on Hetzner — primary link points to the n8n UI, console link
+  // points to console.hetzner.cloud for the underlying VPS).
+  consoleUrl?: string | null;
 };
 
 export type WorkflowMeta = {
@@ -52,34 +56,63 @@ export type WorkflowMeta = {
   costPerRun: string;
   trigger: string;
   role: string;
-  deviation?: string;
 };
 
 // Source: docs/AI_MODEL_REGISTRY.md + infra/hetzner/workflows/*.json
 export const WORKFLOW_META: Record<string, WorkflowMeta> = {
-  "Agent Thread Handler": {
-    model: "gpt-4o-mini",
-    costPerRun: "~$0.002",
-    trigger: "Slack webhook",
-    role: "Intern",
+  "Annual Data Update Trigger (P2.10)": {
+    model: null,
+    costPerRun: "$0",
+    trigger: "Cron Oct 1, 9am PT",
+    role: "No AI",
   },
-  "EA Daily Briefing": {
-    model: "gpt-4o-mini",
+  "Brain Daily Trigger": {
+    model: "Brain-routed",
     costPerRun: "~$0.003",
-    trigger: "Cron 7am PT",
-    role: "Intern",
+    trigger: "Cron 7am (daily briefing)",
+    role: "ea",
   },
-  "EA Weekly Plan": {
-    model: "gpt-4o-mini",
-    costPerRun: "~$0.005",
-    trigger: "Cron Sun 6pm PT",
-    role: "Intern",
-  },
-  "PR Summary": {
-    model: "gpt-4o-mini",
+  "Brain PR Summary": {
+    model: "Brain-routed",
     costPerRun: "~$0.001",
     trigger: "GitHub webhook",
-    role: "Intern",
+    role: "engineering",
+  },
+  "Brain Slack Adapter": {
+    model: "Brain-routed",
+    costPerRun: "~$0.02",
+    trigger: "Slack webhook (POST /brain-slack)",
+    role: "thread-resolved persona",
+  },
+  "Brain Weekly Trigger": {
+    model: "Brain-routed",
+    costPerRun: "~$0.005",
+    trigger: "Cron Sun 6pm (weekly plan)",
+    role: "ea",
+  },
+  "CPA Tax Review": {
+    model: "gpt-4o",
+    costPerRun: "~$0.04",
+    trigger: "POST webhook",
+    role: "Creative Director",
+  },
+  "Credential Expiry Check": {
+    model: null,
+    costPerRun: "$0",
+    trigger: "Cron 8am PT",
+    role: "No AI",
+  },
+  "Data Deep Validator (P2.9)": {
+    model: null,
+    costPerRun: "$0",
+    trigger: "Cron monthly (1st, 3am PT)",
+    role: "No AI",
+  },
+  "Data Source Monitor (P2.8)": {
+    model: null,
+    costPerRun: "$0",
+    trigger: "Cron Mon 6am PT",
+    role: "No AI",
   },
   "Decision Logger": {
     model: null,
@@ -87,54 +120,16 @@ export const WORKFLOW_META: Record<string, WorkflowMeta> = {
     trigger: "Slack webhook",
     role: "No AI",
   },
-  "Social Content Generator": {
-    model: "gpt-4o",
-    costPerRun: "~$0.05",
-    trigger: "POST webhook",
-    role: "Creative Director",
+  "Error Notification": {
+    model: null,
+    costPerRun: "$0",
+    trigger: "n8n workflow error hook",
+    role: "No AI",
   },
   "Growth Content Writer": {
     model: "gpt-4o",
     costPerRun: "~$0.05",
     trigger: "POST webhook",
-    role: "Creative Director",
-  },
-  "Partnership Outreach Drafter": {
-    model: "gpt-4o",
-    costPerRun: "~$0.03",
-    trigger: "POST webhook",
-    role: "Creative Director",
-  },
-  "CPA Tax Review": {
-    model: "gpt-4o",
-    costPerRun: "~$0.04",
-    trigger: "POST webhook",
-    role: "Creative Director",
-    deviation: "Should be Claude Sonnet (compliance)",
-  },
-  "QA Security Scan": {
-    model: "gpt-4o",
-    costPerRun: "~$0.04",
-    trigger: "POST webhook",
-    role: "Creative Director",
-    deviation: "Should be Claude Sonnet (code/security)",
-  },
-  "Weekly Strategy Check-in": {
-    model: "gpt-4o",
-    costPerRun: "~$0.04",
-    trigger: "Cron Mon 9am PT",
-    role: "Creative Director",
-  },
-  "Sprint Kickoff": {
-    model: "gpt-4o",
-    costPerRun: "~$0.04",
-    trigger: "Cron Mon 7am PT",
-    role: "Creative Director",
-  },
-  "Sprint Close": {
-    model: "gpt-4o",
-    costPerRun: "~$0.04",
-    trigger: "Cron Fri 9pm PT",
     role: "Creative Director",
   },
   "Infra Health Check": {
@@ -154,6 +149,42 @@ export const WORKFLOW_META: Record<string, WorkflowMeta> = {
     costPerRun: "$0",
     trigger: "Slack slash command",
     role: "No AI",
+  },
+  "Partnership Outreach Drafter": {
+    model: "gpt-4o",
+    costPerRun: "~$0.03",
+    trigger: "POST webhook",
+    role: "Creative Director",
+  },
+  "QA Security Scan": {
+    model: "gpt-4o",
+    costPerRun: "~$0.04",
+    trigger: "POST webhook",
+    role: "Creative Director",
+  },
+  "Social Content Generator": {
+    model: "gpt-4o",
+    costPerRun: "~$0.05",
+    trigger: "POST webhook",
+    role: "Creative Director",
+  },
+  "Sprint Close": {
+    model: "gpt-4o",
+    costPerRun: "~$0.04",
+    trigger: "Cron Fri 9pm PT",
+    role: "Creative Director",
+  },
+  "Sprint Kickoff": {
+    model: "gpt-4o",
+    costPerRun: "~$0.04",
+    trigger: "Cron Mon 7am PT",
+    role: "Creative Director",
+  },
+  "Weekly Strategy Check-in": {
+    model: "gpt-4o",
+    costPerRun: "~$0.04",
+    trigger: "Cron Mon 9am PT",
+    role: "Creative Director",
   },
 };
 
@@ -413,10 +444,11 @@ async function checkWithLatency(
   category: InfraStatus["category"],
   url: string | undefined,
   dashboardUrl: string | null,
-  options?: { headers?: Record<string, string>; validateJson?: boolean }
+  options?: { headers?: Record<string, string>; validateJson?: boolean; consoleUrl?: string | null }
 ): Promise<InfraStatus> {
+  const consoleUrl = options?.consoleUrl ?? null;
   if (!url) {
-    return { service, category, configured: false, healthy: false, detail: "Not configured", latencyMs: null, dashboardUrl };
+    return { service, category, configured: false, healthy: false, detail: "Not configured", latencyMs: null, dashboardUrl, consoleUrl };
   }
 
   const controller = new AbortController();
@@ -450,10 +482,10 @@ async function checkWithLatency(
       }
     }
 
-    return { service, category, configured: true, healthy: response.ok, detail, latencyMs, dashboardUrl };
+    return { service, category, configured: true, healthy: response.ok, detail, latencyMs, dashboardUrl, consoleUrl };
   } catch (err) {
     const detail = err instanceof DOMException && err.name === "AbortError" ? "Timeout (8s)" : "Unreachable";
-    return { service, category, configured: true, healthy: false, detail, latencyMs: null, dashboardUrl };
+    return { service, category, configured: true, healthy: false, detail, latencyMs: null, dashboardUrl, consoleUrl };
   } finally {
     clearTimeout(timeout);
   }
@@ -699,6 +731,7 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
       "ops",
       n8nUrl,
       "https://n8n.paperworklabs.com",
+      { consoleUrl: "https://console.hetzner.cloud" },
     ),
     checkHetznerCloud(hetznerToken),
     checkWithLatency(

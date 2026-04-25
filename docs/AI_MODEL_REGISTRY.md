@@ -1,246 +1,120 @@
 ---
 owner: agent-ops
-last_reviewed: 2026-04-24
+last_reviewed: 2026-04-25
 doc_kind: reference
 domain: ai-models
 status: active
 ---
 
-# Paperwork Labs — AI Model Registry
+# Paperwork Labs — AI model registry
 
-**Companion (why / policy):** [`docs/philosophy/AI_MODEL_PHILOSOPHY.md`](philosophy/AI_MODEL_PHILOSOPHY.md)
+This file is the single source of truth for which AI model serves which workflow at Paperwork Labs. Update it whenever routing, persona defaults, or n8n wiring change. **Authority for routing policy:** the AI Operations Lead rules in [`.cursor/rules/agent-ops.mdc`](../.cursor/rules/agent-ops.mdc) (use the **decision tree** below, not the legacy “Current Model Assignments (March 2026)” table in that file).
 
-## TL;DR
+**Companion (policy, not model math):** [`docs/philosophy/AI_MODEL_PHILOSOPHY.md`](philosophy/AI_MODEL_PHILOSOPHY.md)
 
-- **Tiers:** *cheap* — `gpt-4o-mini`, `gemini-2.5-flash`, `gemini-2.0-flash-exp` (ExtractAndReason only), `claude-haiku-4-5-20251001` (PR review default); *capable* — `claude-sonnet-4-20250514`, `gpt-4o`, `o4-mini`; *critical / escalation* — `claude-opus-4-20250618`.
-- **Routing rule:** Pinned persona → `apis/brain/app/personas/specs/<persona>.yaml` (`default_model` / `escalation_model` + `escalate_if`). No pin → `ClassifyAndRoute` with Gemini Flash classification (`llm.classify_query` in `apis/brain/app/services/llm.py`). Optional `strategy=extract_reason` → `ExtractAndReason` (Flash extract → Sonnet) in `apis/brain/app/services/router.py`.
-- **Latest review (2026-04-24):** Roster reconciled with `apis/brain/app/model_registry.json` and Brain code; rows below that are not in that JSON are called out inline. Persona→model table added from YAML.
+## Routing path
 
-**Owner**: AI Operations Lead (`agent-ops.mdc`)
+1. Inbound (Slack, n8n webhooks/cron, or other triggers) either posts to the Brain `POST /api/v1/brain/process` with optional `persona_pin`, or—only in a shrinking set of workflows—calls **OpenAI directly** via n8n `@n8n/n8n-nodes-langchain.openAi` with a hardcoded `modelId`.
+2. The Brain service resolves [`apis/brain/app/personas/specs/*.yaml`](../apis/brain/app/personas/specs/) (PersonaSpec) plus classifier / router logic (`ClassifyAndRoute`, optional `strategy=extract_reason` paths) to choose a provider and model.
+3. Approved slugs and math inputs live in [`apis/brain/app/model_registry.json`](../apis/brain/app/model_registry.json) for cost and capability checks.
 
-**Code sources of truth:** `apis/brain/app/model_registry.json` (pricing + approved slugs for cost math), persona contracts `apis/brain/app/personas/specs/*.yaml`, router `apis/brain/app/services/router.py`, LLM execution `apis/brain/app/services/llm.py`.
+**Track 2.1 (streamline sprint):** remaining n8n `langchain.openAi` jobs are expected to move onto Brain; until then, those runs bypass PersonaSpec and are marked below.
 
-This document is updated when model slugs or persona defaults change.
+## Model routing decision tree (authoritative)
 
----
+Use for **all new AI tasks** (per `agent-ops.mdc` — numbered 1–9, verbatim):
 
-## Model Roster (Brain-approved slugs)
+1. Can it be done deterministically (code/rules)? → No AI needed ($0)
+2. Is it high-volume + simple (classification, extraction, summaries)? → GPT-4o-mini ($0.15/$0.60)
+3. Does it need math/financial reasoning? → o4-mini ($1.10/$4.40)
+4. Is it brand voice / creative copy? → GPT-4o ($2.50/$10)
+5. Does it need autonomous web browsing? → GPT-5.4 ($2.50/$15)
+6. Is it code generation or legal compliance? → Claude Sonnet 4.6 ($3/$15)
+7. Default for everything else → Gemini 2.5 Flash ($0.30/$2.50)
+8. Escalation only (>32K output, multi-hour sessions) → Claude Opus 4.6 ($5/$25)
+9. Nuclear (complex multi-step reasoning) → o3 ($10/$40)
 
-Pricing below matches `apis/brain/app/model_registry.json` (`2026-03-29`).
+*Implementation note:* running Brain code maps API model IDs (e.g. `claude-sonnet-4-20250514`, `gemini-2.5-flash`, `o4-mini`) to these product tiers. When the decision tree names a “4.6” or “2.5 Flash” label, the deployed slug in PersonaSpec / `model_registry.json` is the source of truth.
 
-| # | Model slug | Input/1M | Output/1M | Context | Role |
-|---|---|---:|---:|---:|---|
-| 1 | `gemini-2.5-flash` | $0.075 | $0.30 | 1M | Classifier + cheap text (`llm` defaults) |
-| 2 | `gpt-4o-mini` | $0.15 | $0.60 | 128K | Bulk text, many persona defaults |
-| 3 | `o4-mini` | $1.10 | $4.40 | 200K | Tax / financial reasoning (`tax-domain` default) |
-| 4 | `gpt-4o` | $2.50 | $10.00 | 128K | OpenAI MCP path, Anthropic fallback |
-| 5 | `claude-sonnet-4-20250514` | $3.00 | $15.00 | 200K | Primary Sonnet — tools/MCP, most “serious” personas |
-| 6 | `claude-opus-4-20250618` | $15.00 | $75.00 | 200K | Escalation model in specs — legal, CPA, QA, etc. |
+## How the Brain service maps the tree to slugs (production code)
 
-<!-- MISSING IN REGISTRY: gemini-2.0-flash-exp used in apis/brain/app/services/router.py (ExtractAndReason.EXTRACTION_MODEL) -->
-<!-- MISSING IN REGISTRY: claude-haiku-4-5-20251001 used in apis/brain/app/services/pr_review.py (DEFAULT_MODEL) -->
+The decision tree is the **policy** layer; the repo uses explicit **API slugs** and helpers:
 
-### Non-chat
+- **Unpinned / classify:** `llm` routing uses the classifier in [`apis/brain/app/services/llm.py`](../apis/brain/app/services/llm.py); the approved classifier slug in [`model_registry.json`](../apis/brain/app/model_registry.json) is `gemini-2.5-flash` (`routing_defaults.classifier`).
+- **Persona present:** `resolve_model` in [`apis/brain/app/personas/registry.py`](../apis/brain/app/personas/registry.py) against each [`specs/*.yaml`](../apis/brain/app/personas/specs/) file.
+- **Extract then reason:** `ExtractAndReason` in [`apis/brain/app/services/router.py`](../apis/brain/app/services/router.py) — extraction pass uses `gemini-2.0-flash-exp` (constant `EXTRACTION_MODEL`) before the main model completes.
+- **Embeddings (episodes / memory):** [`apis/brain/app/services/embeddings.py`](../apis/brain/app/services/embeddings.py) calls OpenAI `text-embedding-3-small`.
+- **PR review endpoint path:** [`apis/brain/app/services/pr_review.py`](../apis/brain/app/services/pr_review.py) uses `claude-haiku-4-5-20251001` by default and `claude-sonnet-4-20250514` for critical file prefixes or env override `BRAIN_PR_REVIEW_MODEL` (see `_choose_model`).
 
-| Slug | Role |
-|---|---|
-| `text-embedding-3-small` | Episode / memory embeddings (`apis/brain/app/services/embeddings.py`) |
-| `mock` | No API keys — `llm.py` test path |
+`mock` in tests and local no-key modes may stand in for live providers; never treat `mock` as production routing.
 
----
+**n8n workflows in `infra/hetzner/workflows/` (active tree) with no LLM node:** `decision-logger`, `data-annual-update`, `data-source-monitor`, `data-deep-validator`, `credential-expiry-check`, `error-notification`, `infra-status-slash`, `infra-health-check`, `infra-heartbeat` — determinism, HTTP, and Slack only; no registry row required unless an AI node is added.
 
-## STALE — Documented elsewhere or not in Brain `model_registry.json`
+## Deployed assignments
 
-The following appeared in older registry versions or planning docs. They are **not** first-class rows in `model_registry.json` today. Do not assume pricing or routing without re-verifying.
+**Last verified:** 2026-04-25 (against `apis/brain/app/personas/specs/*.yaml` and `infra/hetzner/workflows/*.json`, excluding `archive/` and `_reference/`). Cost band is a **rough** all-in guess per call (classifier + main completion + small overhead); true spend varies with tokens and escalations.
 
-| Name / claim | Notes |
-|---|---|
-| GPT-5.4, o3, Gemini 2.5 Pro | **STALE** — not in `model_registry.json` or Brain routing defaults in this repo snapshot. |
-| “GPT-4o is the default” for Brain personas | **STALE** — many personas default to `claude-sonnet-4-20250514` or `gpt-4o-mini` per YAML; see Persona map below. |
-| “n8n picks the model” as sole routing | **STALE** for Brain API — Brain uses persona YAML + `router.py` / `llm.py`. External n8n workflows may still use their own env vars (separate from this table). |
-| “Composer-1 cheap tier” | **STALE** — not a Brain `model_registry.json` slug. |
+### Brain PersonaSpec (default → escalation on `escalate_if` match)
 
----
+| Persona | Entry / trigger | Default model | Escalation model | Est. $ / run |
+| --- | --- | --- | --- | --- |
+| agent-ops | Brain `process` | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | $0.05–0.60 |
+| brand | Brain `process` | `gpt-4o-mini` | `claude-sonnet-4-20250514` | $0.01–0.10 |
+| cfo | Brain `process` | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | $0.05–0.60 |
+| cpa | Brain `process` | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | $0.05–0.60 |
+| ea | Brain `process` | `gpt-4o-mini` | `claude-sonnet-4-20250514` | $0.01–0.10 |
+| engineering | Brain `process` | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | $0.05–0.80 |
+| growth | Brain `process` | `gpt-4o-mini` | `claude-sonnet-4-20250514` | $0.01–0.10 |
+| infra-ops | Brain `process` | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | $0.05–0.60 |
+| legal | Brain `process` | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | $0.05–0.60 |
+| partnerships | Brain `process` | `gpt-4o-mini` | `claude-sonnet-4-20250514` | $0.01–0.10 |
+| qa | Brain `process` | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | $0.05–0.60 |
+| social | Brain `process` | `gpt-4o-mini` | `claude-sonnet-4-20250514` | $0.01–0.10 |
+| strategy | Brain `process` | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | $0.05–0.60 |
+| tax-domain | Brain `process` | `o4-mini` | `claude-sonnet-4-20250514` | $0.02–0.20 |
+| trading | Brain `process` | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | $0.05–0.60 |
+| ux | Brain `process` | `gpt-4o-mini` | `claude-sonnet-4-20250514` | $0.01–0.10 |
 
-## Persona → default model → escalation → cost
+### n8n workflows (repo: `infra/hetzner/workflows/*.json`, active tree only)
 
-Source: `apis/brain/app/personas/specs/*.yaml`. **Override conditions** = `escalate_if` (see `resolve_model` in `apis/brain/app/personas/registry.py`). **Cost** = `daily_cost_ceiling_usd` (per-org daily, USD). **Per-call / monthly caps:** _TBD per persona spec_ (not in YAML today).
+| Persona or label | Workflow trigger | Model (today) | Est. $ / run |
+| --- | --- | --- | --- |
+| (classifier) | **Brain Daily Trigger** — cron, `POST …/brain/process` | **Brain-routed** (no `persona_pin`; `ClassifyAndRoute`) | $0.02–0.30 |
+| (classifier) | **Brain Weekly Trigger** — cron, same API | **Brain-routed** (no pin) | $0.02–0.30 |
+| (classifier) | **Brain PR Summary** — GitHub webhook, same API | **Brain-routed** (no pin) | $0.05–0.40 |
+| (thread persona) | **Brain Slack Adapter** — Slack events → same API, thread context | **Brain-routed** (no pin; sticky / classify) | $0.02–0.50 |
+| strategy | **Sprint kickoff** — schedule, `persona_pin: strategy` | **Brain-routed via `strategy` PersonaSpec** | $0.05–0.50 |
+| cpa | **CPA tax review** — webhook, `persona_pin: cpa` | **Brain-routed via `cpa` PersonaSpec** | $0.05–0.60 |
+| qa | **QA security scan** — webhook, `persona_pin: qa` | **Brain-routed via `qa` PersonaSpec** | $0.05–0.60 |
+| — | **Sprint close** — Fri cron, `langchain.openAi` | **Direct OpenAI `gpt-4o` (Track 2.1 migration pending)** | $0.10–0.50 |
+| — | **Weekly strategy check-in** — Mon cron, `langchain.openAi` | **Direct OpenAI `gpt-4o` (Track 2.1 migration pending)** | $0.10–0.50 |
+| — | **Social content generator** — webhook, `langchain.openAi` | **Direct OpenAI `gpt-4o` (Track 2.1 migration pending)** | $0.10–0.50 |
+| — | **Growth content writer** — webhook, `langchain.openAi` | **Direct OpenAI `gpt-4o` (Track 2.1 migration pending)** | $0.10–0.50 |
+| — | **Partnership outreach drafter** — webhook, `langchain.openAi` | **Direct OpenAI `gpt-4o` (Track 2.1 migration pending)** | $0.10–0.50 |
 
-| Persona | default_model | escalation_model | Override (`escalate_if`) | Daily $ cap |
-|---|---|---|---|---:|
-| agent-ops | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | `tokens>5000` | 5.0 |
-| brand | `gpt-4o-mini` | `claude-sonnet-4-20250514` | `tokens>4000` | 2.0 |
-| cfo | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | `tokens>5000`, `mention:forecast` | 5.0 |
-| cpa | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | `compliance`, `tokens>6000` | 5.0 |
-| ea | `gpt-4o-mini` | `claude-sonnet-4-20250514` | `tokens>4000` | 2.0 |
-| engineering | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | `tokens>8000`, `mention:architecture` | 10.0 |
-| growth | `gpt-4o-mini` | `claude-sonnet-4-20250514` | `tokens>3000`, `mention:campaign` | 3.0 |
-| infra-ops | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | `compliance`, `tokens>6000`, `mention:outage`, `mention:incident` | 5.0 |
-| legal | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | `compliance`, `tokens>4000` | 4.0 |
-| partnerships | `gpt-4o-mini` | `claude-sonnet-4-20250514` | `tokens>3000`, `mention:contract` | 3.0 |
-| qa | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | `compliance`, `mention:vulnerability`, `mention:exploit` | 5.0 |
-| social | `gpt-4o-mini` | `claude-sonnet-4-20250514` | `tokens>3000` | 3.0 |
-| strategy | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | `tokens>6000`, `mention:quarterly` | 6.0 |
-| tax-domain | `o4-mini` | `claude-sonnet-4-20250514` | `compliance` | 3.0 |
-| trading | `claude-sonnet-4-20250514` | `claude-opus-4-20250618` | `tokens>5000`, `mention:execute`, `mention:live_order` | 6.0 |
-| ux | `gpt-4o-mini` | `claude-sonnet-4-20250514` | `tokens>3500` | 3.0 |
+Other exported workflows in the same folder (e.g. decision logger, data monitors, infra health, credential checks) are **not LLM-backed**; they are omitted here.
 
-**Per-persona** — monthly budget: _TBD per persona spec_ · per-call cap: _TBD per persona spec_ (not in `PersonaSpec` today; enforcement is `daily_cost_ceiling_usd` in `agent.py`).
+*Known gap:* the decision tree **labels** (GPT-5.4, Gemini 2.5 Pro, Claude “4.6” marketing names) are not all mirrored as one-to-one `model_registry.json` slugs today. When a task requires a slug that is not in PersonaSpec + registry, the AI Ops lead must add it in code and registry first.
 
----
-
-## Deployed & external automations (n8n, other services)
-
-| Area | Notes |
-|---|---|
-| n8n workflows | **STALE** — not re-verified 2026-04-24; see archived table below. |
-| FileFree / Studio | See product env and routes; not re-verified in this pass. |
-| Cursor IDE | Product guidance; not `model_registry.json`. |
-
-### STALE — Archived “Model Roster” (pre-2026-04-24, 9 model rows)
-
-**Do not use for pricing** — Brain `model_registry.json` only lists six chat slugs + routing defaults. Kept for history.
-
-| # | Model | Input/1M | Output/1M | Context | Role |
-|---|---|---:|---:|---:|---|
-| 1 | GPT-4o-mini | $0.15 | $0.60 | 128K | The Intern — bulk extraction, classification, summaries |
-| 2 | Gemini 2.5 Flash | $0.30 | $2.50 | 1M | The Workhorse — default for non-specialized tasks — **STALE** — pricing differed from `model_registry.json` |
-| 3 | o4-mini | $1.10 | $4.40 | 200K | The Math Brain — tax/financial reasoning |
-| 4 | Gemini 2.5 Pro | $1.25 | $10.00 | 1M | The Researcher — **STALE** — not in Brain `model_registry.json` |
-| 5 | GPT-4o | $2.50 | $10.00 | 128K | The Creative Director — brand voice, marketing copy |
-| 6 | GPT-5.4 | $2.50 | $15.00 | 1M | The Autonomous Agent — **STALE** — not in `model_registry.json` |
-| 7 | Claude Sonnet 4.6 | $3.00 | $15.00 | 200K | The Senior Engineer — **STALE** — code uses `claude-sonnet-4-20250514` API id |
-| 8 | Claude Opus 4.6 | $5.00 | $25.00 | 1M | The Principal Engineer — **STALE** — `model_registry.json` has different Opus $/1M |
-| 9 | o3 | $10.00 | $40.00 | 200K | Nuclear Option — **STALE** — not in `model_registry.json` |
-
-### STALE — Archived n8n workflow env mapping (unverified 2026-04-24)
-
-| Workflow | Model | Expected Role | Deviation? | Env Var |
-|---|---|---|---|---|
-| agent-thread-handler | gpt-4o-mini | Intern | No | THREAD_HANDLER_MODEL |
-| ea-daily | gpt-4o-mini | Intern | No | EA_DAILY_MODEL |
-| ea-weekly | gpt-4o-mini | Intern | No | EA_WEEKLY_MODEL |
-| sprint-kickoff | gpt-4o | Creative Director | No | SPRINT_KICKOFF_MODEL |
-| sprint-close | gpt-4o | Creative Director | No | SPRINT_CLOSE_MODEL |
-| pr-summary | gpt-4o-mini | Intern | No | PR_SUMMARY_MODEL |
-| social-content-generator | gpt-4o | Creative Director | No — fixed 2026-03-18 (was gpt-4o-mini) | SOCIAL_CONTENT_MODEL |
-| growth-content-writer | gpt-4o | Creative Director | No — fixed 2026-03-18 (was gpt-4o-mini) | GROWTH_CONTENT_MODEL |
-| partnership-outreach-drafter | gpt-4o | Creative Director | No | PARTNERSHIP_MODEL |
-| cpa-tax-review | gpt-4o | Creative Director | Yes — should be Claude Sonnet (compliance) | CPA_REVIEW_MODEL |
-| qa-security-scan | gpt-4o | Creative Director | Yes — should be Claude Sonnet (code/security) | QA_SCAN_MODEL |
-| weekly-strategy-checkin | gpt-4o | Creative Director | No | STRATEGY_MODEL |
-| decision-logger | (no AI node) | N/A | N/A | N/A |
-
-### STALE — Archived API / product snippets (unverified 2026-04-24)
-
-| Endpoint / area | Model | Notes |
-|---|---|---|
-| FileFree advisory (`/api/advisory`) | gpt-4o (env: ADVISORY_MODEL) | **STALE** — verify in app code |
-| FileFree OCR extraction | gpt-4o-mini | **STALE** — verify in app code |
-| FileFree OCR fallback | gpt-4o (vision) | **STALE** — verify in app code |
-
-### STALE — Archived Cursor session recommendations (product, not Brain slugs)
-
-| Session Type | Recommended Model | Rationale |
-|---|---|---|
-| Strategy / architecture / deep reasoning | Claude Opus 4.6 | Quality delta for high-stakes — **STALE** — label/version may not match `model_registry` |
-| Complex multi-file refactors | Claude Opus 4.6 | 1M context, SWE-bench claims — **STALE** |
-| Routine coding / component building | Claude Sonnet 4.6 | **STALE** — match Cursor product names to API slugs in registry |
-| Quick fixes / single-file edits | Fast model | **STALE** — vague |
-
----
-
-## Activation / roadmap
-
-| Model | Target Use | Blocked By | ETA |
-|---|---|---|---|
-| Claude Sonnet 4.6 | CPA Tax Review, QA Security Scan | Anthropic API key not configured in n8n | **STALE** — Brain paths use `claude-sonnet-4-20250514` today; n8n claim unverified |
-| o4-mini | Tax calculation verification | Tax engine not yet built | Phase 2 — **STALE** — `o4-mini` is in `model_registry.json` for `tax-domain` |
-| Gemini 2.5 Flash | State data extraction (LaunchFree) | LaunchFree not yet in development | Phase 3 — **STALE** — planning |
-| GPT-5.4 | Trinket market discovery | Trinkets pipeline not yet built | Phase 1.5 — **STALE** — not in `model_registry.json` |
-| Gemini 2.5 Pro | Competitive intel, SEO drafts | No current workflow needs it | Phase 5 — **STALE** |
-
-**STALE** — Reconcile with `model_registry.json` and infra before treating ETAs as commitments.
-
----
-
-## Decision tree (Quick reference)
-
-1. Deterministic (code / rules)? → No chat model ($0).
-2. Persona known? → Use persona YAML (`default_model` / `escalation_model` + `escalate_if`).
-3. High-volume, simple text, no tools? → Often `gpt-4o-mini` or classifier-driven `gpt-4o-mini` / `o4-mini` (see classifier rules in `llm.classify_query`).
-4. Tax math / structured financial reasoning? → `o4-mini` when tax-domain or classifier selects it.
-5. Tool use / MCP? → `claude-sonnet-4-20250514` or `gpt-4o` per path (circuit breaker may swap).
-6. Escalation in spec? → `claude-opus-4-20250618` when `escalate_if` matches.
-7. `strategy=extract_reason`? → `gemini-2.0-flash-exp` extract → Sonnet (see `ExtractAndReason`).
-
----
-
-## Monthly cost tracking
-
-Fill from provider dashboards. Prefer the slugs in `model_registry.json` when aggregating.
-
-| Month | Notes |
-|---|---|
-| Mar 2026 | Pre-revenue placeholder |
-| Apr 2026 | |
-
-### STALE — Archived wide cost grid (pre-2026-04-24)
-
-| Month | GPT-4o-mini | Gemini Flash | o4-mini | Gemini Pro | GPT-4o | GPT-5.4 | Sonnet | Opus | o3 | **Total** |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Mar 2026 | -- | -- | -- | -- | -- | -- | -- | -- | -- | **Pre-revenue** |
-| Apr 2026 | | | | | | | | | | |
-
-**STALE** — Mixes models not all in current `model_registry.json`; Opus pricing was doc-only.
-
----
-
-## Swap history
-
-| Date | Old Model | New Model | Workflows Affected | Reason | Monthly Cost Impact |
-|---|---|---|---|---|---|
-| 2026-03-18 | gpt-4o-mini | gpt-4o | social-content-generator, growth-content-writer | Brand voice requires higher quality model | ~+$0.50/run |
-| 2026-03-18 | gpt-4o-mini | gpt-4o | FileFree advisory route.ts | User-facing advisory quality | ~+$0.02/request |
-| 2026-03-18 | gpt-4o | gpt-4o-mini | ea-daily, ea-weekly | Briefings don't need full gpt-4o; token limit fix | ~-$0.10/run |
-| 2026-04-24 | (doc) | (doc) | — | Registry + philosophy pass; code-aligned roster | — |
-
-**STALE** — Rows before 2026-04-24 are n8n/product swap log; not automatically Brain persona YAML.
-
----
-
-## Model evaluation queue
-
-| Model | Status | Notes |
-|---|---|---|
-| (none pending) | | |
-
-When a new model releases, AI Ops Lead evaluates per `agent-ops.mdc`.
-
----
+**Upcoming (planned, not current product):** See [`docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`](sprints/STREAMLINE_SSO_DAGS_2026Q2.md) — Track 1 migrates the remaining n8n direct-OpenAI nodes onto Brain personas (so model selection routes through `agent-ops` policy instead of being pinned in workflow JSON).
 
 ## Provider dashboards
 
-- **OpenAI**: https://platform.openai.com/usage
-- **Anthropic**: https://console.anthropic.com/settings/billing
-- **Google Cloud**: https://console.cloud.google.com/billing
+- **OpenAI (platform usage + keys):** https://platform.openai.com/usage — n8n direct-OpenAI workflows and any OpenAI-backed paths in the Brain stack.
+- **Anthropic (console + billing):** https://console.anthropic.com/settings/billing — Claude Sonnet/Opus traffic from Brain.
+- **Google Cloud (billing; Gemini):** https://console.cloud.google.com/billing — Classifier and other Gemini call paths.
 
----
+## Non-negotiables (safety, from `agent-ops`)
 
-## Key constraints
+- Never send SSNs, full account numbers, or other unmasked PII to any LLM.
+- “Brand voice” and “compliance” routing follow **this registry + PersonaSpec** and the decision tree, not ad-hoc n8n defaults.
 
-- **Brand / marketing voice:** cheaper defaults often `gpt-4o-mini` in YAML; **STALE blanket rule** “never Claude for brand” — many brand-adjacent personas still escalate to **Sonnet** on token thresholds. Follow YAML.
-- **Compliance:** compliance-flagged personas escalate per `escalate_if` + `compliance_flagged` — not “GPT for compliance.”
-- **PII:** NEVER send SSNs or unmasked PII to any model.
-- **Brain routing:** Classifier + persona pins live in `apis/brain` — not exclusively n8n.
-- **STALE — “n8n is the implementation layer for all automated model routing”** — **false** for Brain API; n8n may still automate **separate** jobs with their own env config.
+**n8n operational notes** (import paths, creds, env for non-Brain nodes): [infra/hetzner/workflows/README.md](../../infra/hetzner/workflows/README.md#model-configuration).
 
-See `agent-ops.mdc` for workflow checklists. See [`AI_MODEL_PHILOSOPHY.md`](philosophy/AI_MODEL_PHILOSOPHY.md) for refusal and ceiling policy.
+## Update protocol
 
----
+- **Update this file** when: (1) a `default_model` / `escalation_model` or `escalate_if` change lands in a PersonaSpec; (2) a new n8n workflow is added that calls the Brain or OpenAI; (3) a `langchain.openAi` `modelId` is changed; (4) the agent-ops lead completes a model audit; (5) provider pricing or `model_registry.json` structure changes in a way that affects cost tables.
+- **Code sources of truth:** `apis/brain/app/model_registry.json`, `apis/brain/app/personas/specs/`, and router/LLM services under `apis/brain/app/services/`.
+- **Review:** any PR that touches the above should get `agent-ops` review; merge only after the Deployed assignments table reflects production intent.
 
-## Quality-First routing (from prior doc)
-
-Use the best model for the task. **STALE — “Venture Master Plan Section 0E”** as sole authority — cross-check with `model_registry.json` and persona specs; routing code wins on conflicts.
-
-Only downgrade when a cheaper model produces **equivalent quality** — not merely “good enough.” Cost optimization is by **tier and routing**, not by starving high-stakes personas.
+See also: [`AGENTS.md`](../AGENTS.md) for org-wide agent context.

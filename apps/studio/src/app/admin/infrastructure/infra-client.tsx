@@ -24,6 +24,7 @@ type InfraService = {
   detail: string;
   latencyMs: number | null;
   dashboardUrl: string | null;
+  consoleUrl?: string | null;
 };
 
 const categoryMeta: Record<string, { label: string; icon: typeof Server }> = {
@@ -277,16 +278,28 @@ export default function InfraClient({
                       </div>
                     </div>
                     <p className="mt-2 text-sm text-zinc-400">{svc.detail}</p>
-                    {svc.dashboardUrl && (
-                      <a
-                        href={svc.dashboardUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mt-2 inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
-                      >
-                        Dashboard <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      {svc.dashboardUrl && (
+                        <a
+                          href={svc.dashboardUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
+                        >
+                          Dashboard <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                      {svc.consoleUrl && (
+                        <a
+                          href={svc.consoleUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
+                        >
+                          Console <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
