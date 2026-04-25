@@ -51,6 +51,10 @@ class Settings(BaseSettings):
     # migration windows or when running multi-instance.
     BRAIN_SCHEDULER_ENABLED: bool = True
     SCHEDULER_PR_SWEEP_MINUTES: int = 30
+    # Track: sprint-lessons ingest cadence (hours). Bullets under
+    # ``## What we learned`` in docs/sprints/*.md become memory episodes.
+    # 6h is plenty — sprint markdown changes ship via PR, not continuously.
+    SCHEDULER_SPRINT_LESSONS_HOURS: int = 6
     # #engineering Slack channel ID for per-PR Brain review summaries.
     SLACK_ENGINEERING_CHANNEL_ID: str = ""
     # Track I: #cfo Slack channel ID for the daily cost dashboard.

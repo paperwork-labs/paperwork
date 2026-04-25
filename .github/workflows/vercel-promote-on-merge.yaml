@@ -1,0 +1,174 @@
+name: Vercel auto-promote on merge
+
+# Why this workflow exists
+# ------------------------
+# Vercel's GitHub App webhook missed two consecutive merges to `main`
+# (PR #142 → commit f0255542, PR #143 → commit 83477e70). That left
+# production stuck on stale builds while previews were green. The fix
+# pattern was always the same: manually `vercel promote <preview-id>` —
+# which doesn't burn a build slot, just flips the prod alias.
+#
+# This workflow automates that fix as a redundant trigger:
+#
+#   1. PR merges to `main`.
+#   2. We find the latest READY preview deployment for the PR's head SHA.
+#   3. We promote it to production via Vercel's API (no rebuild).
+#   4. We comment on the PR so the audit log shows what happened.
+#
+# Properties:
+#   • No new builds → no Vercel free-tier daily-limit pressure.
+#   • Independent of Vercel's webhook delivery → if the webhook landed
+#     and prod is already on this SHA, we exit cleanly (idempotent).
+#   • Works for any project that has a linked `.vercel/project.json`
+#     in the repo. We start with `studio`; add more under `matrix.project`.
+#
+# Setup (one-time, see docs/infra/VERCEL_AUTO_PROMOTE.md):
+#   gh secret set VERCEL_API_TOKEN  # from Vercel → Settings → Tokens
+#
+# Tracked in: docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "PR number to promote (manual fallback)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  promote:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: studio
+            project_id: prj_FZvJJnDdQqawjBpJAwC0SuwyMzFT
+    env:
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      TEAM_ID: team_RwfzJ9ySyLuVcoWdKJfXC7h5
+      PROJECT_ID: ${{ matrix.project_id }}
+      PROJECT_NAME: ${{ matrix.project }}
+    steps:
+      - name: Verify Vercel API token configured
+        run: |
+          if [ -z "$VERCEL_API_TOKEN" ]; then
+            echo "::warning::VERCEL_API_TOKEN secret is not set — skipping promote."
+            echo "::warning::Set it via: gh secret set VERCEL_API_TOKEN"
+            echo "::warning::See docs/infra/VERCEL_AUTO_PROMOTE.md for setup."
+            exit 0
+          fi
+          echo "secret_ok=true" >> $GITHUB_ENV
+
+      - name: Resolve PR head SHA
+        id: pr
+        if: env.secret_ok == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PR_NUMBER="$INPUT_PR_NUMBER"
+            PR_HEAD=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.sha')
+            PR_TITLE=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.title')
+          else
+            PR_NUMBER="${{ github.event.pull_request.number }}"
+            PR_HEAD="${{ github.event.pull_request.head.sha }}"
+            PR_TITLE='${{ github.event.pull_request.title }}'
+          fi
+          echo "Resolved PR #$PR_NUMBER head SHA: $PR_HEAD"
+          echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "pr_head=$PR_HEAD" >> $GITHUB_OUTPUT
+          echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
+
+      - name: Check if production already on this SHA (idempotency)
+        id: check
+        if: env.secret_ok == 'true'
+        env:
+          PR_HEAD: ${{ steps.pr.outputs.pr_head }}
+        run: |
+          PROD_SHA=$(curl -sf -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&target=production&limit=1&state=READY" \
+            | jq -r '.deployments[0].meta.githubCommitSha // ""')
+          echo "Current prod SHA for $PROJECT_NAME: $PROD_SHA"
+          echo "Target SHA: $PR_HEAD"
+          if [ "$PROD_SHA" = "$PR_HEAD" ]; then
+            echo "Production already on target SHA — webhook fired correctly. Nothing to do."
+            echo "already_promoted=true" >> $GITHUB_OUTPUT
+          else
+            echo "already_promoted=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Find READY preview deployment for PR head
+        id: find
+        if: env.secret_ok == 'true' && steps.check.outputs.already_promoted == 'false'
+        env:
+          PR_HEAD: ${{ steps.pr.outputs.pr_head }}
+        run: |
+          # Vercel's webhook can take ~30-90s to mark a deployment READY,
+          # so we retry up to 6 times over 6 minutes.
+          DEPLOY_ID=""
+          for attempt in 1 2 3 4 5 6; do
+            echo "Attempt $attempt: searching for READY deployment with githubCommitSha=$PR_HEAD"
+            DEPLOY_ID=$(curl -sf -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+              "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&state=READY&limit=50" \
+              | jq -r --arg SHA "$PR_HEAD" \
+                '[.deployments[] | select(.meta.githubCommitSha == $SHA)] | first | .uid // ""')
+            if [ -n "$DEPLOY_ID" ]; then
+              echo "Found deployment: $DEPLOY_ID"
+              break
+            fi
+            echo "No match yet; sleeping 60s."
+            sleep 60
+          done
+          if [ -z "$DEPLOY_ID" ]; then
+            echo "::error::No READY deployment found for SHA $PR_HEAD after 6 minutes."
+            echo "::error::This usually means the preview build itself failed. Check Vercel dashboard."
+            exit 1
+          fi
+          echo "deploy_id=$DEPLOY_ID" >> $GITHUB_OUTPUT
+
+      - name: Promote to production
+        id: promote
+        if: env.secret_ok == 'true' && steps.check.outputs.already_promoted == 'false'
+        env:
+          DEPLOY_ID: ${{ steps.find.outputs.deploy_id }}
+        run: |
+          RESPONSE=$(curl -sf -X POST -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+            "https://api.vercel.com/v10/projects/$PROJECT_ID/promote/$DEPLOY_ID?teamId=$TEAM_ID")
+          echo "Promote API response: $RESPONSE"
+          echo "url=https://vercel.com/paperwork-labs/$PROJECT_NAME/$DEPLOY_ID" >> $GITHUB_OUTPUT
+          echo "Promoted $DEPLOY_ID to production for $PROJECT_NAME (no rebuild)."
+
+      - name: Comment on PR
+        if: env.secret_ok == 'true' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const alreadyPromoted = '${{ steps.check.outputs.already_promoted }}' === 'true';
+            const project = '${{ env.PROJECT_NAME }}';
+            const deployId = '${{ steps.find.outputs.deploy_id }}';
+            const promoteUrl = '${{ steps.promote.outputs.url }}';
+            const prNumber = ${{ steps.pr.outputs.pr_number }};
+
+            const body = alreadyPromoted
+              ? `Vercel webhook fired correctly for **${project}** — production already on this SHA.`
+              : `Auto-promoted preview \`${deployId}\` to **${project}** production (no rebuild).\n\n` +
+                `${promoteUrl}\n\n` +
+                `_This is the redundant trigger from \`.github/workflows/vercel-promote-on-merge.yaml\` — your Vercel webhook may have missed this merge._`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body,
+            });

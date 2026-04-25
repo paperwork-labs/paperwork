@@ -15,7 +15,7 @@ from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import review_pr, sweep_open_prs
-from app.services.seed import ingest_docs
+from app.services.seed import ingest_docs, ingest_sprint_lessons
 
 logger = logging.getLogger(__name__)
 
@@ -30,16 +30,38 @@ def _require_admin(x_brain_secret: str | None = Header(None, alias="X-Brain-Secr
         raise HTTPException(status_code=401, detail="Admin access required")
 
 
+def _repo_root() -> str:
+    return os.environ.get(
+        "REPO_ROOT",
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
+    )
+
+
 @router.post("/seed")
 async def trigger_seed_ingestion(
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
 ):
-    repo_root = os.environ.get(
-        "REPO_ROOT", os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-    )
-    count = await ingest_docs(db, repo_root)
+    count = await ingest_docs(db, _repo_root())
     return success_response({"episodes_created": count})
+
+
+@router.post("/seed-lessons")
+async def trigger_sprint_lessons_ingestion(
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Lift every sprint's `## What we learned` bullets into memory episodes.
+
+    Idempotent — each lesson is keyed by SHA1 of its text under
+    ``source = "sprint:lessons"``, so re-runs only insert new lessons.
+
+    Driven on demand from CI (``scripts/ingest_sprint_lessons.py`` after a
+    sprint markdown change merges) and on a 6-hour cadence by Brain's own
+    scheduler (``app/schedulers/sprint_lessons.py``).
+    """
+    report = await ingest_sprint_lessons(db, _repo_root())
+    return success_response(report)
 
 
 @router.get("/personas")

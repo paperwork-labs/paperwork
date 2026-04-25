@@ -10,6 +10,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
+  ChevronDown,
 } from "lucide-react";
 
 import { loadTrackerIndex, type Sprint } from "@/lib/tracker";
@@ -126,9 +127,6 @@ export default function SprintsPage() {
 
   const active: Sprint[] = sprints.filter((s) => s.status === "active");
   const shipped: Sprint[] = sprints.filter((s) => s.status === "shipped");
-  const other: Sprint[] = sprints.filter(
-    (s) => s.status !== "active" && s.status !== "shipped"
-  );
 
   const featured: Sprint | undefined = active[0] ?? shipped[0];
   const remaining = sprints.filter((s) => s.slug !== featured?.slug);
@@ -169,6 +167,7 @@ export default function SprintsPage() {
           ) : (
             <span>{shipped.length} shipped</span>
           )}
+          <span className="ml-2 text-zinc-500">· click any sprint to expand its full brief</span>
         </p>
       </header>
 
@@ -247,111 +246,134 @@ function FeaturedSprint({ sprint }: { sprint: Sprint }) {
         </p>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap items-center gap-2 text-xs">
-        {(sprint.ships ?? []).map((ship) => (
-          <span
-            key={ship}
-            className="rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-300"
-          >
-            {ship}
-          </span>
-        ))}
-        {(sprint.personas ?? []).slice(0, 6).map((p) => (
-          <span
-            key={p}
-            className="rounded-full bg-fuchsia-500/10 px-2 py-0.5 text-fuchsia-300"
-          >
-            {p}
-          </span>
-        ))}
-      </div>
+      <SprintTagRow sprint={sprint} />
+      <SprintBriefBlocks sprint={sprint} />
+      <LivingTracker sprint={sprint} />
+      <LessonsBlock sprint={sprint} startOpen={isActive} />
+    </section>
+  );
+}
 
-      <div className="mt-6 grid gap-4 lg:grid-cols-3">
-        {(sprint.plans ?? []).length > 0 ? (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4">
-            <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
-              <FileText className="h-3 w-3" /> Plan
-            </p>
-            <ul className="space-y-1.5 text-sm">
-              {(sprint.plans ?? []).map((plan) => (
-                <li key={plan}>
-                  <a
-                    href={planUrl(plan)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-sky-300 hover:text-sky-200"
-                  >
-                    {planLabel(plan)}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+function SprintTagRow({ sprint }: { sprint: Sprint }) {
+  if ((sprint.ships ?? []).length === 0 && (sprint.personas ?? []).length === 0) return null;
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-2 text-xs">
+      {(sprint.ships ?? []).map((ship) => (
+        <span key={ship} className="rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-300">
+          {ship}
+        </span>
+      ))}
+      {(sprint.personas ?? []).slice(0, 6).map((p) => (
+        <span key={p} className="rounded-full bg-fuchsia-500/10 px-2 py-0.5 text-fuchsia-300">
+          {p}
+        </span>
+      ))}
+    </div>
+  );
+}
 
-        {(sprint.related_prs ?? []).length > 0 ? (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4">
-            <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
-              <GitMerge className="h-3 w-3" /> PRs that landed
-            </p>
-            <ul className="space-y-1.5 text-sm">
-              {(sprint.related_prs ?? []).map((num) => (
-                <li key={num}>
-                  <a
-                    href={prUrl(num)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1 text-zinc-200 hover:text-zinc-50"
-                  >
-                    PR #{num}
-                    {sprint.pr === num && sprint.pr_state ? (
-                      <span className="text-[10px] uppercase text-zinc-500">
-                        {sprint.pr_state.toLowerCase()}
-                      </span>
-                    ) : null}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
+function SprintBriefBlocks({ sprint }: { sprint: Sprint }) {
+  const hasPlans = (sprint.plans ?? []).length > 0;
+  const hasPrs = (sprint.related_prs ?? []).length > 0;
 
+  return (
+    <div className="mt-6 grid gap-4 lg:grid-cols-3">
+      {hasPlans ? (
         <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4">
           <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
-            <ArrowRight className="h-3 w-3" /> Source
+            <FileText className="h-3 w-3" /> Plan
           </p>
-          <a
-            href={`https://github.com/paperwork-labs/paperwork/blob/main/${sprint.path}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-sm text-sky-300 hover:text-sky-200"
-          >
-            <code className="text-xs">{sprint.path}</code>
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        </div>
-      </div>
-
-      <LivingTracker sprint={sprint} />
-
-      {(sprint.lessons ?? []).length > 0 ? (
-        <details className="mt-6 rounded-lg border border-zinc-800/60 bg-zinc-950/40 p-3">
-          <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-wide text-zinc-400 hover:text-zinc-200">
-            <Lightbulb className="mr-1 inline-block h-3 w-3" /> Lessons learned ({(sprint.lessons ?? []).length})
-          </summary>
-          <ul className="mt-3 space-y-1.5 text-sm leading-relaxed text-zinc-300">
-            {(sprint.lessons ?? []).map((line, i) => (
-              <li key={i} className="flex gap-2">
-                <span className="mt-2 inline-block h-1 w-1 shrink-0 rounded-full bg-amber-300" />
-                <span>{line}</span>
+          <ul className="space-y-1.5 text-sm">
+            {(sprint.plans ?? []).map((plan) => (
+              <li key={plan}>
+                <a
+                  href={planUrl(plan)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-sky-300 hover:text-sky-200"
+                >
+                  {planLabel(plan)}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
               </li>
             ))}
           </ul>
-        </details>
+        </div>
       ) : null}
-    </section>
+
+      {hasPrs ? (
+        <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4">
+          <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
+            <GitMerge className="h-3 w-3" /> PRs that landed
+          </p>
+          <ul className="space-y-1.5 text-sm">
+            {(sprint.related_prs ?? []).map((num) => (
+              <li key={num}>
+                <a
+                  href={prUrl(num)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-zinc-200 hover:text-zinc-50"
+                >
+                  PR #{num}
+                  {sprint.pr === num && sprint.pr_state ? (
+                    <span className="text-[10px] uppercase text-zinc-500">
+                      {sprint.pr_state.toLowerCase()}
+                    </span>
+                  ) : null}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 p-4">
+        <p className="mb-2 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-zinc-500">
+          <ArrowRight className="h-3 w-3" /> Source
+        </p>
+        <a
+          href={`https://github.com/paperwork-labs/paperwork/blob/main/${sprint.path}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-sm text-sky-300 hover:text-sky-200"
+        >
+          <code className="text-xs">{sprint.path}</code>
+          <ExternalLink className="h-3 w-3" />
+        </a>
+      </div>
+    </div>
+  );
+}
+
+function LessonsBlock({ sprint, startOpen }: { sprint: Sprint; startOpen?: boolean }) {
+  const lessons = sprint.lessons ?? [];
+  if (lessons.length === 0) return null;
+  return (
+    <details
+      className="mt-6 rounded-lg border border-zinc-800/60 bg-zinc-950/40 p-3"
+      {...(startOpen ? { open: true } : {})}
+    >
+      <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-wide text-zinc-400 hover:text-zinc-200">
+        <Lightbulb className="mr-1 inline-block h-3 w-3" /> Lessons learned ({lessons.length})
+      </summary>
+      <ul className="mt-3 space-y-1.5 text-sm leading-relaxed text-zinc-300">
+        {lessons.map((line, i) => (
+          <li key={i} className="flex gap-2">
+            <span className="mt-2 inline-block h-1 w-1 shrink-0 rounded-full bg-amber-300" />
+            <span>{line}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-[10px] text-zinc-600">
+        Brain ingests these as memory episodes via{" "}
+        <code className="rounded bg-zinc-900/60 px-1.5 py-0.5 text-zinc-400">
+          scripts/ingest_sprint_lessons.py
+        </code>{" "}
+        — searchable in chat with the same retrieval that runs on docs.
+      </p>
+    </details>
   );
 }
 
@@ -380,7 +402,10 @@ function LivingTracker({ sprint }: { sprint: Sprint }) {
         ))}
       </ol>
       <p className="mt-3 text-[10px] text-zinc-600">
-        Promote a follow-up: <code className="rounded bg-zinc-900/60 px-1.5 py-0.5 text-zinc-400">scripts/sprint_promote_followup.py {sprint.path} &lt;match&gt; --pr &lt;n&gt;</code>
+        Promote a follow-up:{" "}
+        <code className="rounded bg-zinc-900/60 px-1.5 py-0.5 text-zinc-400">
+          scripts/sprint_promote_followup.py {sprint.path} &lt;match&gt; --pr &lt;n&gt;
+        </code>
       </p>
     </div>
   );
@@ -403,9 +428,7 @@ function TrackerRow({ item }: { item: TrackerItem }) {
           <span className={`rounded-full border px-1.5 py-0.5 ${pillClass}`}>
             {item.status}
           </span>
-          {item.date ? (
-            <span className="text-zinc-500">{item.date}</span>
-          ) : null}
+          {item.date ? <span className="text-zinc-500">{item.date}</span> : null}
           {item.pr ? (
             <a
               href={prUrl(item.pr)}
@@ -443,92 +466,112 @@ function SprintRail({
         <p className="text-sm text-zinc-500">{emptyHint}</p>
       ) : (
         <ol className="space-y-3">
-          {sprints.map((s) => {
-            const t = tone(s.status);
-            const Icon = t.icon;
-            const tracker = buildTracker(s);
-            const shippedCount = tracker.filter((i) => i.status === "shipped").length;
-            const pendingCount = tracker.filter((i) => i.status === "pending").length;
-            return (
-              <li
-                key={s.slug}
-                className={`rounded-lg border bg-zinc-950/40 p-4 ${t.className.split(" ").filter((c) => c.startsWith("border-")).join(" ")}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-medium text-zinc-100">
-                      {s.title}
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      {s.start && s.end ? (
-                        <>
-                          {s.start} → {s.end}
-                          {s.duration_weeks ? <> · {s.duration_weeks} weeks</> : null}
-                        </>
-                      ) : (
-                        <code>{s.path}</code>
-                      )}
-                      {tracker.length > 0 ? (
-                        <span className="ml-2 text-zinc-600">
-                          ·{" "}
-                          <span className="text-emerald-300">{shippedCount} shipped</span>
-                          <span className="mx-1 text-zinc-600">/</span>
-                          <span className="text-amber-300">{pendingCount} pending</span>
-                        </span>
-                      ) : null}
-                    </p>
-                  </div>
-                  <span
-                    className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${t.className}`}
-                  >
-                    <Icon className="h-3 w-3" />
-                    {t.label}
-                  </span>
-                </div>
-                <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
-                  {(s.ships ?? []).map((ship) => (
-                    <span
-                      key={ship}
-                      className="rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-300"
-                    >
-                      {ship}
-                    </span>
-                  ))}
-                  {(s.personas ?? []).slice(0, 4).map((p) => (
-                    <span
-                      key={p}
-                      className="rounded-full bg-fuchsia-500/10 px-2 py-0.5 text-fuchsia-300"
-                    >
-                      {p}
-                    </span>
-                  ))}
-                  <span className="ml-auto inline-flex items-center gap-3">
-                    {(s.related_prs ?? []).slice(0, 3).map((num) => (
-                      <a
-                        key={num}
-                        href={prUrl(num)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 transition hover:text-zinc-200"
-                      >
-                        #{num}
-                      </a>
-                    ))}
-                    <a
-                      href={`https://github.com/paperwork-labs/paperwork/blob/main/${s.path}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 transition hover:text-zinc-200"
-                    >
-                      Source <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </span>
-                </div>
-              </li>
-            );
-          })}
+          {sprints.map((s) => (
+            <ExpandableSprintCard key={s.slug} sprint={s} />
+          ))}
         </ol>
       )}
     </section>
+  );
+}
+
+function ExpandableSprintCard({ sprint }: { sprint: Sprint }) {
+  const t = tone(sprint.status);
+  const Icon = t.icon;
+  const tracker = buildTracker(sprint);
+  const shippedCount = tracker.filter((i) => i.status === "shipped").length;
+  const pendingCount = tracker.filter((i) => i.status === "pending").length;
+  const lessonsCount = (sprint.lessons ?? []).length;
+  const borderTone = t.className.split(" ").filter((c) => c.startsWith("border-")).join(" ");
+
+  return (
+    <li className={`rounded-lg border bg-zinc-950/40 ${borderTone}`}>
+      <details className="group overflow-hidden">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-4 transition hover:bg-zinc-900/40">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-zinc-500 transition-transform group-open:rotate-0" />
+              <p className="truncate text-base font-medium text-zinc-100">{sprint.title}</p>
+            </div>
+            <p className="mt-1 ml-6 text-xs text-zinc-500">
+              {sprint.start && sprint.end ? (
+                <>
+                  {sprint.start} → {sprint.end}
+                  {sprint.duration_weeks ? <> · {sprint.duration_weeks} weeks</> : null}
+                </>
+              ) : (
+                <code>{sprint.path}</code>
+              )}
+              {tracker.length > 0 ? (
+                <span className="ml-2 text-zinc-600">
+                  ·{" "}
+                  <span className="text-emerald-300">{shippedCount} shipped</span>
+                  <span className="mx-1 text-zinc-600">/</span>
+                  <span className="text-amber-300">{pendingCount} pending</span>
+                </span>
+              ) : null}
+              {lessonsCount > 0 ? (
+                <span className="ml-2 text-amber-300/80">
+                  · {lessonsCount} lesson{lessonsCount === 1 ? "" : "s"}
+                </span>
+              ) : null}
+            </p>
+            {sprint.goal ? (
+              <p className="mt-2 ml-6 line-clamp-2 max-w-3xl text-xs leading-relaxed text-zinc-400 group-open:line-clamp-none group-open:text-zinc-300">
+                {sprint.goal}
+              </p>
+            ) : null}
+            <div className="mt-2 ml-6 flex flex-wrap items-center gap-2 text-xs text-zinc-400">
+              {(sprint.ships ?? []).map((ship) => (
+                <span key={ship} className="rounded-full bg-zinc-800 px-2 py-0.5 text-zinc-300">
+                  {ship}
+                </span>
+              ))}
+              {(sprint.personas ?? []).slice(0, 4).map((p) => (
+                <span
+                  key={p}
+                  className="rounded-full bg-fuchsia-500/10 px-2 py-0.5 text-fuchsia-300"
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+          </div>
+          <span
+            className={`inline-flex shrink-0 items-center gap-1 self-start rounded-full px-2 py-0.5 text-[10px] font-medium ${t.className}`}
+          >
+            <Icon className="h-3 w-3" />
+            {t.label}
+          </span>
+        </summary>
+
+        <div className="border-t border-zinc-800/60 bg-zinc-950/30 px-4 pb-4 pt-2">
+          <SprintBriefBlocks sprint={sprint} />
+          <LivingTracker sprint={sprint} />
+          <LessonsBlock sprint={sprint} />
+          <div className="mt-4 flex items-center justify-end gap-3 text-xs text-zinc-500">
+            {(sprint.related_prs ?? []).slice(0, 3).map((num) => (
+              <a
+                key={num}
+                href={prUrl(num)}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 transition hover:text-zinc-200"
+              >
+                #{num}
+              </a>
+            ))}
+            <a
+              href={`https://github.com/paperwork-labs/paperwork/blob/main/${sprint.path}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 transition hover:text-zinc-200"
+            >
+              Source <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </div>
+      </details>
+    </li>
   );
 }

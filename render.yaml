@@ -52,39 +52,53 @@ services:
         value: "3.11.0"
 
   # ---------------------------------------------------------------------
-  # LaunchFree API — LLC formation backend (state filings, articles,
-  # registered-agent flow). Code lives at apis/launchfree/. Listed in
-  # the blueprint so a future `Sync Blueprint` provisions the service
-  # without rewriting the file. If the service has never been provisioned
-  # in the dashboard, F-2 in docs/infra/RENDER_INVENTORY.md tracks the
-  # decision (deploy vs defer).
+  # LaunchFree API — DEFERRED (commented-out, not provisioned).
+  #
+  # Why commented out (2026-04-25 wrap-up sprint):
+  #   • apps/launchfree/src/lib/dashboard-formations.ts:118 still has
+  #     `// TODO: session user id → GET /api/v1/formations` — the
+  #     frontend renders MOCK_FORMATIONS, no live API calls.
+  #   • Provisioning today = $7/mo Render Starter for zero traffic.
+  #   • Render's "Sync Blueprint" forces creation of any new service in
+  #     the file; we don't want that pop-up on every other unrelated
+  #     sync. So the spec is preserved here as a comment, not a service.
+  #
+  # Re-enable workflow (10-line revert PR):
+  #   1. Uncomment the block below.
+  #   2. Run "Sync Blueprint" in Render dashboard.
+  #   3. Paste DATABASE_URL (Neon) and REDIS_URL (Upstash redis URI form,
+  #      not the REST URL) when prompted.
+  #   4. Wire the frontend's getUserFormations() to fetch
+  #      `${LAUNCHFREE_API_URL}/api/v1/formations`.
+  #
+  # Tracking: F-2 in docs/infra/RENDER_INVENTORY.md.
   # ---------------------------------------------------------------------
-  - type: web
-    name: launchfree-api
-    runtime: python
-    region: oregon
-    plan: starter
-    buildCommand: cd apis/launchfree && pip install -r requirements.txt
-    preDeployCommand: cd apis/launchfree && alembic upgrade head
-    startCommand: cd apis/launchfree && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
-    healthCheckPath: /health
-    envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: SECRET_KEY
-        generateValue: true
-      - key: ENCRYPTION_KEY
-        generateValue: true
-      - key: FRONTEND_URL
-        value: https://launchfree.ai
-      - key: ENVIRONMENT
-        value: production
-      - key: DEBUG
-        value: "false"
-      - key: PYTHON_VERSION
-        value: "3.11.0"
+  # - type: web
+  #   name: launchfree-api
+  #   runtime: python
+  #   region: oregon
+  #   plan: starter
+  #   buildCommand: cd apis/launchfree && pip install -r requirements.txt
+  #   preDeployCommand: cd apis/launchfree && alembic upgrade head
+  #   startCommand: cd apis/launchfree && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+  #   healthCheckPath: /health
+  #   envVars:
+  #     - key: DATABASE_URL
+  #       sync: false
+  #     - key: REDIS_URL
+  #       sync: false
+  #     - key: SECRET_KEY
+  #       generateValue: true
+  #     - key: ENCRYPTION_KEY
+  #       generateValue: true
+  #     - key: FRONTEND_URL
+  #       value: https://launchfree.ai
+  #     - key: ENVIRONMENT
+  #       value: production
+  #     - key: DEBUG
+  #       value: "false"
+  #     - key: PYTHON_VERSION
+  #       value: "3.11.0"
 
   # ---------------------------------------------------------------------
   # Brain API — Paperwork Labs command-center / agent backend.

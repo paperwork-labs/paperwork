@@ -53,22 +53,28 @@ All four axiomfolio services (`axiomfolio-api`, `axiomfolio-worker`, `axiomfolio
 
 **Fix**: repoint each of the 4 services at `paperwork-labs/paperwork` via the Render dashboard, then re-sync from `apis/axiomfolio/render.yaml` as a Blueprint. See [RENDER_REPOINT.md](RENDER_REPOINT.md).
 
-### F-2 — `launchfree-api` is defined in `render.yaml` but not deployed
+### F-2 — `launchfree-api` deferred (entry commented out in `render.yaml`) ✅
 
-The root [`render.yaml`](../../render.yaml) declares a `launchfree-api`
-service backed by `apis/launchfree/` (FastAPI app, Alembic migrations,
-state-filing code), but no service by that name is currently running
-on Render — the Blueprint has never been synced for it.
+**Status**: closed (deferred) — 2026-04-25 (PR #144).
 
-**Decision (2026-04-25)**: keep the entry in `render.yaml`. LaunchFree
-is a real product (frontend at `launchfree.ai`, backend code at
-`apis/launchfree/`); the blueprint is the canonical "this is the
-service we want when we run sync." A briefly-attempted PR #143 cleanup
-removed the entry on the assumption that it was a stub — that was
-incorrect, the entry is restored. F-2 closes when the operator either
-(a) provisions the service via the Path B Blueprint Sync, or
-(b) explicitly retires the LaunchFree backend product, in which case
-this block can be dropped from `render.yaml`.
+The root [`render.yaml`](../../render.yaml) used to declare a
+`launchfree-api` service backed by `apis/launchfree/` (FastAPI app,
+Alembic migrations, state-filing code). After the consolidated-Blueprint
+sync (F-1) made every `render.yaml` entry forced into provisioning on
+the next sync, we faced a binary: pay $7/mo for a Render Starter that
+serves zero traffic, or remove the entry.
+
+The frontend at `apps/launchfree/src/lib/dashboard-formations.ts:118`
+still has a `// TODO: session user id → GET /api/v1/formations` and
+renders `MOCK_FORMATIONS`. So provisioning today gives an empty,
+unused backend that costs money.
+
+**Decision (PR #144)**: comment out (not delete) the `launchfree-api`
+block in `render.yaml`, with the rationale and re-enable workflow
+documented inline. The spec is preserved as a comment so re-enabling is
+a 10-line revert PR plus one Sync Blueprint click. F-2 reopens if the
+LaunchFree frontend is wired to a live API and the service still isn't
+provisioned.
 
 ### F-3 — Env var naming drift: `VERCEL_API_TOKEN` vs `VERCEL_TOKEN`
 
@@ -165,7 +171,7 @@ Runbook: [RENDER_REPOINT.md → Path A](RENDER_REPOINT.md#path-a-brain-api-docke
 - [x] Render MCP shows one account, zero suspended services.
 - [x] Inventory (this doc) exists.
 - [ ] F-1: AxiomFolio services repointed to monorepo via consolidated Blueprint Sync; old `paperwork-labs/axiomfolio` repo archived after 24h green.
-- [ ] F-2: `launchfree-api` decision — entry restored to `render.yaml` (2026-04-25); closes when operator either provisions via Path B Blueprint Sync or formally retires the backend product.
+- [x] F-2: `launchfree-api` decision — commented out in `render.yaml` (2026-04-25, PR #144); reopens if frontend wires to live API and service still isn't provisioned.
 - [ ] F-3: env var naming reconciled to `VERCEL_API_TOKEN`.
 - [x] F-4: single `render.yaml` is the source of truth; `apis/axiomfolio/render.yaml` reduced to a stub pointer.
 - [ ] F-5: `GITHUB_WEBHOOK_SECRET` added to `brain-api` env (declared in blueprint with `sync: false`; operator must paste actual value).

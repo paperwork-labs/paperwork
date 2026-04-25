@@ -119,6 +119,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
     except Exception:
         logger.exception("Failed to install cfo_friday_digest job")
 
+    try:
+        from app.schedulers import sprint_lessons
+        sprint_lessons.install(sched)
+    except Exception:
+        logger.exception("Failed to install sprint_lessons job")
+
     sched.start()
     _scheduler = sched
     logger.info("APScheduler started: pr_sweep every %d min + proactive_cadence hourly", minutes)

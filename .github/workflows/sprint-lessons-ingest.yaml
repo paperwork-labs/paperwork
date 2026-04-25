@@ -1,0 +1,57 @@
+name: Brain ingests sprint lessons on merge
+
+# Why this exists
+# ---------------
+# Sprints capture "What we learned" bullets that are higher-signal than the
+# rest of the doc — they're the things you'd hand-write into a personal
+# notebook so you don't repeat the mistake. We want Brain (and through Brain,
+# Studio chat / Slack / persona memory) to find these via the same retrieval
+# that runs over docs/, not as a separate "sprint history" silo.
+#
+# The Brain scheduler also runs this every 6h as a safety net. This workflow
+# adds a synchronous "right after the change merges" trigger so a fresh lesson
+# is searchable within seconds, not hours.
+#
+# Tracked in: docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/sprints/**.md"
+      - "scripts/ingest_sprint_lessons.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Verify Brain admin secret configured
+        env:
+          BRAIN_API_SECRET: ${{ secrets.BRAIN_API_SECRET }}
+        run: |
+          if [ -z "$BRAIN_API_SECRET" ]; then
+            echo "::warning::BRAIN_API_SECRET secret not set — skipping ingest."
+            echo "::warning::Set it via: gh secret set BRAIN_API_SECRET (read from Render brain-api env)."
+            echo "secret_ok=false" >> $GITHUB_ENV
+            exit 0
+          fi
+          echo "secret_ok=true" >> $GITHUB_ENV
+
+      - name: Trigger ingest
+        if: env.secret_ok == 'true'
+        env:
+          BRAIN_API_SECRET: ${{ secrets.BRAIN_API_SECRET }}
+          BRAIN_URL: https://brain.paperworklabs.com
+        run: python scripts/ingest_sprint_lessons.py
