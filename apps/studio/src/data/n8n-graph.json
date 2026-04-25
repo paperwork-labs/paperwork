@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-25T01:33:03.176818+00:00",
+  "content_hash": "88def1fa6d57",
   "source": "infra/hetzner/workflows/*.json",
   "workflows": [
     {

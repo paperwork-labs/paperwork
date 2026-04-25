@@ -38,7 +38,8 @@ type WorkflowGraph = {
 };
 
 type Snapshot = {
-  generated_at: string;
+  content_hash?: string;
+  generated_at?: string;
   source: string;
   workflows: WorkflowGraph[];
 };
@@ -176,8 +177,12 @@ export function N8nGraphList() {
             {workflows.length} n8n workflows — {brainCount} call Paperwork Brain
           </p>
           <p className="text-xs text-zinc-500">
-            Snapshot: {new Date(snapshot.generated_at).toLocaleString()}. Refresh
-            with <code className="rounded bg-zinc-800 px-1">python scripts/snapshot_n8n_graphs.py</code>.
+            Snapshot:{" "}
+            {snapshot.generated_at
+              ? new Date(snapshot.generated_at).toLocaleString()
+              : `content ${snapshot.content_hash ?? "unknown"}`}
+            . Refresh with{" "}
+            <code className="rounded bg-zinc-800 px-1">python scripts/snapshot_n8n_graphs.py</code>.
           </p>
         </div>
         <div className="flex items-center gap-2">

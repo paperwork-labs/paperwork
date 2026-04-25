@@ -222,6 +222,8 @@ jobs:
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
         with:
           python-version: "3.11"
+      - name: Install medallion deps
+        run: pip install pyyaml
       - name: Run medallion-check
         run: make medallion-check
 

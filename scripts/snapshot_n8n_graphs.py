@@ -42,9 +42,9 @@ medallion: ops
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
-from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -146,8 +146,11 @@ def main() -> int:
             workflows.append(_summarise(f))
         except Exception as exc:
             print(f"skip {f.name}: {exc}")
+    content_hash = hashlib.sha256(
+        json.dumps(workflows, sort_keys=True).encode("utf-8")
+    ).hexdigest()[:12]
     payload = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "content_hash": content_hash,
         "source": "infra/hetzner/workflows/*.json",
         "workflows": workflows,
     }
