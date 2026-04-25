@@ -20,7 +20,6 @@ type WorkflowMeta = {
   costPerRun: string;
   trigger: string;
   role: string;
-  deviation?: string;
 };
 
 type Workflow = {
@@ -274,9 +273,6 @@ export default function OpsClient({ initial }: { initial: OpsData }) {
                           <span className="ml-1.5 text-zinc-600">{meta.costPerRun}/run</span>
                         )}
                       </p>
-                    )}
-                    {meta?.deviation && (
-                      <p className="mt-0.5 text-[10px] text-amber-400/70">{meta.deviation}</p>
                     )}
                   </div>
                 </motion.div>

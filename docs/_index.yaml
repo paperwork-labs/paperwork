@@ -212,6 +212,13 @@ docs:
     tags: [runbook, secrets]
     owners: [infra-ops]
     category: runbooks
+  - slug: studio-env
+    path: docs/infra/STUDIO_ENV.md
+    title: Studio Vercel environment variables — setup runbook
+    summary: "[Studio](https://paperworklabs.com) `admin` routes probe n8n, Vercel, Render, Hetzner, GitHub, Slack, and the Paperwork Brain. Several optional integrations degrade gracefully when a secret is…"
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
   # ── Reference ─────────────────────────────────────────
   - slug: billing-vendor-checklist
     path: docs/BILLING_VENDOR_CHECKLIST.md
@@ -326,6 +333,13 @@ docs:
     summary: "4-week sprint — persona platform, n8n streamline, Studio command-center."
     tags: [sprint, infra, automation]
     owners: [engineering, agent-ops]
+    category: sprints
+  - slug: streamline-sso-dags-2026q2
+    path: docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md
+    title: Streamline + SSO + Real DAGs (2026 Q2)
+    summary: "**Sprint window**: 2026-04-25 → 2026-05-09 (~2 weeks) **Status**: in_progress — Track 1 cleanup PR opens the spine; Tracks 2–5 roll forward through early May. **Predecessor**:…"
+    tags: [company, sprint]
+    owners: [engineering]
     category: sprints
   # ── Generated ─────────────────────────────────────────
   - slug: axiomfolio-integration

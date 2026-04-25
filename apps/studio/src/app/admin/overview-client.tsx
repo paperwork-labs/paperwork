@@ -478,9 +478,9 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
               <ArrowRight className="ml-auto h-3.5 w-3.5 text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-zinc-300" />
             </div>
             <p className="text-sm leading-relaxed text-zinc-400">
-              Live DAG of every production service — bronze, silver, gold, execution,
-              frontend, platform, infra — with health probes, drilldown, and an
-              Ask-Brain drawer. Generated from the monorepo; cannot drift.
+              Layered service catalog with live health probes — bronze, silver, gold,
+              execution, frontend, platform, infra. Click any service for the dependency
+              drawer and Ask-Brain. Real DAG view shipping in the streamline sprint.
             </p>
           </div>
           <div className="mt-5 flex items-center gap-3 text-xs text-zinc-500">

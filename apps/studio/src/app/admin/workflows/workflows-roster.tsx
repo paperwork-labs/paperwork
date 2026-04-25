@@ -197,11 +197,6 @@ export default function WorkflowsRoster({
                       {meta.trigger}
                     </span>
                   )}
-                  {meta?.deviation && (
-                    <span className="rounded-full bg-amber-900/30 px-2 py-0.5 text-xs text-amber-400">
-                      {meta.deviation}
-                    </span>
-                  )}
                 </div>
                 <p className="mt-1.5 text-zinc-400">
                   {workflow.active ? "active" : "inactive"} · last run {relativeTime(latest?.timestamp)}

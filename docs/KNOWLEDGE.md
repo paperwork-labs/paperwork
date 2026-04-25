@@ -419,3 +419,33 @@ VC-backed, ~100K users, SEC RIA, AI tax filing via April Tax. But: charges $12.9
 
 ### Q6: April Tax as Column Tax Alternative
 AI-native tax infrastructure, IRS-authorized transmitter, powers Origin's 100K users. Evaluate as interim partner. Does NOT change MeF transmitter north star (D4).
+
+---
+
+## Decision Log (2026-04-25)
+
+Date: 2026-04-25
+Decision: Adopt Clerk via Vercel Marketplace as the unified identity provider across FileFree, LaunchFree, Studio admin, Distill, and AxiomFolio (after Next.js migration). Start on Free tier (10K MAUs).
+Context: Multiple products today have separate auth: FileFree uses Redis-backed opaque sessions, AxiomFolio uses qm_token JWTs in localStorage, Studio uses HTTP Basic. No cross-product session sharing. User wants "LaunchFree user logs into FileFree without re-registering" experience.
+Alternatives: (a) DIY unified-cookie SSO via shared *.paperworklabs.com cookie + custom JWT issuer in Brain, (b) NextAuth.js self-hosted, (c) Auth0, (d) Defer SSO indefinitely.
+Rationale: Clerk Marketplace auto-provisions env vars to all linked Vercel projects (saves ~2 days of integration work). Free tier is generous (10K MAUs). Embedded `<SignIn>` + Appearance API allows per-product gradient theming (FileFree violet, LaunchFree teal, Distill blue-slate). Native cross-origin session works. Vercel handles billing.
+Reversibility: Medium. Clerk JWTs are standard JWS, verifiable against any JWKS endpoint, so AxiomFolio API verifier code is portable. UI components (`<SignIn>` etc.) are Clerk-specific; replacing them on a frontend would require rewrite. Migration off Clerk would take 2-3 sprints.
+
+---
+
+Date: 2026-04-25
+Decision: Brain APScheduler becomes the single owner of all scheduled work; n8n becomes webhook/event-only. APScheduler must use SQLAlchemyJobStore for restart-safe persistence.
+Context: Today both n8n (10 cron workflows) and Brain (3 APScheduler jobs) run scheduled work. Duplicate Slack noise, two places to debug, two places to update when a schedule changes. Persona vocabulary forks across the two systems.
+Alternatives: (a) Keep dual orchestrators with strict ownership boundaries documented, (b) Move everything to n8n (hide Brain APScheduler entirely), (c) Status quo.
+Rationale: Brain already owns persona routing, model selection, memory, and PII scrubbing. Moving crons to Brain colocates "what runs and when" with "what model and which persona." Cuts Slack noise, single place to debug. n8n's strength is visual webhook/event flows — keep it for those. SQLAlchemyJobStore against Postgres makes Brain restart-safe (n8n queue mode equivalent).
+Reversibility: Medium. Cron jobs are small Python files; if APScheduler proves unreliable in production we can move them back to n8n in ~1 day. Job state is in Postgres; migration script could lift them.
+
+---
+
+Date: 2026-04-25
+Decision: PersonaSpec slugs (the 16 specs in apis/brain/app/personas/) become the only persona identifier across all systems. Studio WORKFLOW_META role labels, system-graph.json owner_persona fields, and n8n persona_pin values must use spec slugs verbatim. CI gate enforces this.
+Context: Today persona vocabulary is fragmented across four sources: 16 Brain PersonaSpecs (production runtime), 48 .mdc files in .cursor/rules/ (which conflate personas with 32 IDE/CI guardrails), informal WORKFLOW_META role labels (e.g., "Intern", "Creative Director"), and sparse persona_pin values in n8n. User confused about whether everything flows through Brain personas (it doesn't yet — many n8n workflows skip Brain).
+Alternatives: (a) Keep WORKFLOW_META labels as a Studio-only display convention, (b) Status quo with documentation, (c) Map labels to slugs but allow both.
+Rationale: Removes drift. If a workflow says "growth" and Brain has a "growth" PersonaSpec, the link is unambiguous. CI can enforce. Studio displays the same name everywhere. Eliminates the four-source confusion.
+Reversibility: Easy. Renaming labels is mechanical; if user-facing labels need to differ from internal slugs we can add a label field to PersonaSpec.
+
