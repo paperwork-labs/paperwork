@@ -1,0 +1,53 @@
+# Clerk SSO — Paperwork Studio (Next.js)
+
+Runbook for the Studio app (`apps/studio`) identity stack: Clerk (primary SSO) with Basic Auth as a documented operator escape hatch until that path is removed by an explicit follow-up.
+
+## Environment variables (standard names)
+
+| Variable | Where used | Source |
+| -------- | ------------ | ------ |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Client + server bootstrap | [Vercel Marketplace — Clerk](https://vercel.com/integrations) auto-provision on the linked Studio project; copy to local from **Studio Secrets Vault** for dev |
+| `CLERK_SECRET_KEY` | Server (session verification, middleware) | Same as above |
+
+**Custom prefix** is not used (empty) — do not add a `STUDIO_` or other prefix to these variable names in Vercel or `.env`.
+
+Optional Clerk URLs (e.g. sign-in/after-sign-in redirects) can be set per [Clerk environment variable docs](https://clerk.com/docs/guides/development/clerk-environment-variables) if the dashboard defaults are insufficient.
+
+**Basic Auth** (unchanged) still uses:
+
+- `ADMIN_EMAILS` — comma-separated allowlist
+- `ADMIN_ACCESS_PASSWORD` — shared password (rotate via ops process)
+
+## How Clerk and Basic Auth coexist
+
+- **Clerk** handles interactive SSO (email/OAuth, session cookies, `UserButton` in `/admin` UI) once keys are set.
+- **Basic Auth** remains available on `/admin` and `/api/admin` in **production** so operators can use tools that do not have a browser session to Clerk (e.g. scripts, or emergency access). Either a valid **Clerk session** or a valid **Basic** credential is sufficient — both are not required.
+- The **`/api/secrets*`** routes are **not** gated by this layer; they use `src/lib/secrets-auth.ts` (Basic + machine tokens) as before.
+
+**Development:** the Studio wall on `/admin` and `/api/admin` is not enforced (so local work does not require Basic or Clerk in `.env` unless you are testing them). **Production:** the dual gate above applies.
+
+**Precedence** (enforced in `apps/studio/src/middleware.ts`):
+
+1. Public routes and secrets API: no Studio Clerk/Basic wall.
+2. If `auth().userId` is set → allow.
+3. Else if valid Basic Auth → allow.
+4. Else → sign-in redirect (pages) or `401` with `WWW-Authenticate` (API).
+
+## Test sign-in locally
+
+1. Copy `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` from the Studio vault into `apps/studio/.env.local` (never commit these files).
+2. Run: `cd apps/studio && pnpm dev` (port **3004** by default).
+3. Open `http://localhost:3004/sign-in` and complete the Clerk dev flow. After success, open `/admin` and confirm the **User** menu appears; use sign-out to verify session clears.
+4. **Production-like Basic Auth (optional):** on Vercel Preview, use Basic credentials from the vault and hit `/api/admin/...` with an `Authorization: Basic` header, or use the browser with Basic when not signed in to Clerk.
+
+## When Basic Auth is ready to be removed
+
+1. Confirm all operators use Clerk for day-to-day access and on-call is comfortable without Basic.
+2. Remove `ADMIN_EMAILS` / `ADMIN_ACCESS_PASSWORD` from the Studio project environment (and vault references).
+3. Simplify `middleware.ts`: delete Basic parsing and the second branch; keep `clerkMiddleware` with `auth.protect()`-style gating (or keep custom redirect only) for `/admin` and `/api/admin`.
+4. Update this doc and the sprint/infra inventory to mark Basic Auth as retired.
+
+## Related
+
+- Sprint: `docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md` (T3)
+- Decision log: `docs/KNOWLEDGE.md` (Clerk via Vercel Marketplace)

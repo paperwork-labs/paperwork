@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "cfabe31f1503",
+  "content_hash": "a5f728084ca0",
   "products": [
     {
       "label": "AxiomFolio",
@@ -251,7 +251,9 @@
       "end": "2026-05-09",
       "followups": [],
       "goal": "Ship an aggressive end-to-end streamline: one orchestration brain for scheduled work, one persona vocabulary everywhere, Clerk-backed SSO so a LaunchFree user can use FileFree without re-registering, workflow DAGs that are actually legible (and not embarrassing in demos), and AxiomFolio absorbed into the Next.js / Vercel stack when the migration shell is far enough along.",
-      "lessons": [],
+      "lessons": [
+        "A single `clerkMiddleware` handler can grant production admin access if either `auth().userId` (Clerk) is present or the legacy Basic `Authorization` header matches `ADMIN_EMAILS` / `ADMIN_ACCESS_PASSWORD`, while local dev can keep admin routes open by short-circuiting on `NODE_ENV === \"development\"`."
+      ],
       "outcome_bullets": [
         "_Tracking \u2014 updates as each track ships_"
       ],
@@ -261,7 +263,9 @@
       "plans": [],
       "pr": null,
       "pr_url": null,
-      "related_prs": [],
+      "related_prs": [
+        151
+      ],
       "ships": [],
       "slug": "streamline-sso-dags-2026q2",
       "start": "2026-04-25",
