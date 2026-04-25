@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-23
+last_reviewed: 2026-04-24
 doc_kind: philosophy
 domain: infra
 status: active
@@ -10,13 +10,19 @@ status: active
 
 Immutable rules for placing services, choosing vendors, and changing infrastructure. Edits require founder + `infra-ops` persona ack.
 
-Companion: [`docs/INFRA.md`](../INFRA.md) (mutable "how").
+**Mutable architecture ("how"):** [`docs/INFRA.md`](../INFRA.md).
+
+## TL;DR
+
+1. **When we add a new service vs. reuse** — default is **do not** add; see [§2](#2-when-not-to-add-a-service). A new service needs compliance requirement, true blast-radius isolation, or 90-day run-rate cost proof — otherwise refactor in place.
+2. **Non-negotiables** — [vendor exit path, SOC 2, per-env scoping (§5)](#5-vendor-doctrine); [Tier-1 / Tier-2](#1-tier-1-vs-tier-2-placement) placement and public-surface rules; [cost/blast & region-like moves (e.g. Render `region`, DNS) via escalation (§3)](#3-cost--blast-radius-escalation); we **will not** add Kubernetes, self-hosted LLM inference, or a bespoke time-series / search / queue layer [§7](#7-what-we-will-not-do).
+3. **What requires founder sign-off** — [blast-radius 3+](#3-cost--blast-radius-escalation) (e.g. DNS, CDN, TLS, `cloudflared`), production DB schema (4+), vendor migrations (5+), and changes to *this* locked doc; [§4](#4-change-freeze-triggers) freezes; [§7 Friday deploy ban](#7-what-we-will-not-do).
 
 ## 1. Tier-1 vs Tier-2 placement
 
 **Tier-1 (Render):** customer-facing APIs and frontends. Anything a user URL eventually hits in production.
 
-**Tier-2 (Hetzner):** internal automation, batch workers, n8n, fleet of cron jobs, anything that can tolerate a cold restart.
+**Tier-2 (Hetzner):** internal automation, batch workers, n8n, fleet of cron jobs, anything that can tolerate a cold restart. <!-- STALE 2026-04-24: "cluster" is misleading — n8n/Postiz run on the Hetzner VM stack in `infra/hetzner`, not a multi-node n8n cluster. -->
 
 Rules:
 
@@ -95,10 +101,32 @@ We do not adopt a vendor that does not have:
 - We will **not** ship to production on Friday after 12:00 PT without explicit founder ack.
 - We will **not** let infra knowledge live only in one person's head. Every recurring task gets a runbook within 2 occurrences.
 
+## 8. Monorepo dev stack rules
+
+_(moved from [`INFRA`](../INFRA.md) on 2026-04-24)._
+
+1. **One dev stack.** A single `docker compose -f infra/compose.dev.yaml up`
+   boots every product — postgres, redis, all backends, all frontends. No
+   per-product dev compose.
+2. **One postgres, one redis.** Each product gets its own logical database
+   (`axiomfolio_dev`, `brain_dev`, `filefree_dev`, `launchfree_dev`) on a
+   single `postgres:17-alpine` instance. Each product gets its own redis
+   logical DB index (`/0..3`).
+3. **Opt-in extras are profiles.** Interactive Brokers gateway, Cloudflare
+   tunnel, Celery Flower — all live behind `docker compose --profile`
+   flags and in `infra/<product>/compose.profiles.yaml` overlays.
+4. **Per-product infra lives under `infra/<product>/`.** Observability
+   configs, env templates, profile overlays — everything that is
+   product-specific but dev-infra-shaped.
+5. **Render deploys are per-product `render.yaml`.** Each backend sets
+   `rootDir: apis/<product>`; each frontend sets `rootDir: apps/<product>`.
+   Dev compose and prod Render are independent orchestrations of the
+   same monorepo.
+
 ## Lineage & amendments
 
 Authored 2026-04-23 as part of Docs Streamline 2026 Q2. Append-only.
 
 ### Amendments
 
-_None yet._
+- **2026-04-24** — [§8](#8-monorepo-dev-stack-rules) added; five dev-stack rules moved from [`docs/INFRA.md`](../INFRA.md) to keep INFRA as operational "how" and PHILOSOPHY as normative "why" + locked rules.
