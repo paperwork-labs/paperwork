@@ -30,24 +30,36 @@ Land Phase 1 of the docs streamline, give the company a repo-native long-term tr
 
 ## Outcome
 
+**Phase 1 (initial sprint scope):**
+
 - 17 stale docs retired to `docs/archive/`, 70 retained docs got standardized YAML frontmatter, 1 collision rename (`docs/axiomfolio/KNOWLEDGE.md` → `DECISIONS.md`).
 - `docs/philosophy/` folder bootstrapped with 7 immutable philosophy docs (Brain, Infra, Data, AI Model, Automation, Tax, Formation) + `README.md` index, all CODEOWNERS-locked to `@paperwork-labs/founders`.
 - Three-tier tracker spine: company (`docs/TASKS.md`), per-product (`docs/<product>/plans/*`), cross-cutting sprints (`docs/sprints/*`). Generator: `scripts/generate_tracker_index.py` → `apps/studio/src/data/tracker-index.json` (deterministic, content-hash, CI-gated).
 - Studio: `/admin/tasks`, `/admin/products`, `/admin/products/<slug>/plan`, rebuilt `/admin/sprints`, plus `TrackersRail` on `/admin` overview. Nav reorganized into Overview / Trackers / System.
 - Brain: `apis/brain/app/schedulers/cfo_friday_digest.py` (Fridays 18:00 UTC, `persona_pin=cfo`, `#cfo` channel) + `/sprint`, `/tasks`, `/plan` Slack slash commands reading the same `tracker-index.json`.
 - Make helpers: `make tracker-index`, `make tracker-check`, `make sprint-shipped PR=NNN`, `make plan-status`, `make docs-freshness`.
-- CI gates: `tracker-index.yaml` (drift), `docs-freshness.yaml` (warn-only on `last_reviewed > 90d`).
-- Studio bug fixes shipped same sprint: `/admin/secrets` and `/admin/infrastructure` made `force-dynamic` (were silently statically prerendered, hiding live data); infra page extended to cover all frontends (Studio, AxiomFolio Vite, FileFree, LaunchFree, Distill) and the LaunchFree API.
+- CI gates: `tracker-index.yaml` (drift), `docs-freshness.yaml` (warn-only on `last_reviewed > 90d`), `runbook-template.yaml` (warn-only on missing required sections).
+- Studio bug fixes shipped same sprint: `/admin/secrets` and `/admin/infrastructure` made `force-dynamic` (were silently statically prerendered, hiding live data); infra page extended to cover all frontends (Studio, AxiomFolio Vite, FileFree, LaunchFree, Distill) and the LaunchFree API. Sprint tracker UI rebuilt with featured-current-sprint card showing goal, outcome bullets, lessons, plans, and PR links.
+
+**Phase 2 (extended same PR after re-scope):**
+
+- Runbook template (`docs/RUNBOOK_TEMPLATE.md`) authored + linter (`scripts/check_runbook_template.py`) + CI gate. 7 runbooks restructured to template (`SECRETS`, AxiomFolio `ENCRYPTION_KEY_ROTATION`, `MARKET_DATA_RUNBOOK`, `PRODUCTION`, deploy + restart runbooks, `RENDER_REPOINT`); 5 docs reclassified `runbook → reference` (Dependabot, BillingVendorChecklist, BrainPRReview, EFinFiling, DriveSetup) since they are checklists, not incident response.
+- 6 of 7 §6 duplicate-pair merges shipped (only `VMP-SUMMARY` deferred): AxiomFolio `AUDIT_FINDINGS`, `MARKET_DATA_FLOWS`, `ROADMAP`, `TASKS`, `ROTATION_BACKLOG`, and the 2026-04-22 medallion wave-0 handoff all folded into canonical targets with verbatim archive copies under `docs/archive/`.
+- Crispness pass (TL;DR blocks + cross-links + stale-flag comments) on the 5 highest-traffic docs: `PRD`, `ARCHITECTURE`, `BRAIN_ARCHITECTURE` ↔ `BRAIN_PHILOSOPHY`, `INFRA` ↔ `INFRA_PHILOSOPHY`, `AI_MODEL_REGISTRY` ↔ `AI_MODEL_PHILOSOPHY`. Architecture/Philosophy pairs now consistently split "how" from "why / non-goals".
+- `generate_axiomfolio_integration_doc.py` now emits frontmatter — fixes the only doc that was failing the freshness gate by being auto-generated without a `last_reviewed`.
 
 ## Tracks
 
 | Track | Lane | What shipped |
 |---|---|---|
-| C | Docs Phase 1 | Frontmatter inject, 17 retirements, philosophy folder + 7 stubs |
+| C1 | Docs Phase 1 | Frontmatter inject, 17 retirements, philosophy folder + 7 stubs |
+| C2 | Docs Phase 2 — runbooks | `RUNBOOK_TEMPLATE.md`, linter, 7 restructured + 5 reclassified, CI gate |
+| C3 | Docs Phase 2 — merges | 6/7 §6 duplicate pairs folded into canonical targets w/ verbatim archive |
+| C4 | Docs Phase 2 — crispness | TL;DR + cross-links + stale flags on PRD / ARCHITECTURE / BRAIN / INFRA / AI_MODEL trios |
 | B | Trackers spine | TASKS.md, sprints/, plans/, generator + JSON, Studio pages |
 | D | Brain wiring | CFO Friday digest, `/sprint` `/tasks` `/plan` slash commands |
-| A | Studio fit-and-finish | Trackers nav, overview rail, force-dynamic on data pages |
-| K | CI gates | tracker drift gate, docs freshness gate |
+| A | Studio fit-and-finish | Trackers nav, overview rail, force-dynamic on data pages, expanded infra probes, featured-sprint card |
+| K | CI gates | tracker drift gate, docs freshness gate, runbook template gate |
 
 ## What we learned
 
@@ -57,6 +69,9 @@ Land Phase 1 of the docs streamline, give the company a repo-native long-term tr
 
 ## Follow-ups
 
-- Phase 2 docs: merge duplicate pairs called out in `DOCS_STREAMLINE_2026Q2.md` §6, runbook templating pass.
+- VMP-SUMMARY → VENTURE_MASTER_PLAN merge (the only §6 pair still pending — needs editor judgment on whether to fold or auto-regenerate from VMP via script).
 - Auto-generate `docs/_index.yaml` from frontmatter so manual sync goes away (`c3c-index-generated`).
+- AxiomFolio Next.js migration: 4/102 routes ported (`/`, `/system-status`, `/portfolio`, `/scanner` shells); plan target Q3, decommissions Render static hosting in favor of Vercel — see [docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md](../axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).
+- Severity vocabulary review: existing 7 runbooks use yellow/red; if we want S0–S3 vocabulary across the company, that's a one-shot rename (defer until cross-product alignment).
+- Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`.
 - `mark_sprint_shipped.py PR=142` once #142 merges to flip this sprint's status.
