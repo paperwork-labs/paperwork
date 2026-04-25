@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 import { StudioInstallPrompt } from "@/components/pwa/StudioInstallPrompt";
+import { studioClerkAppearance } from "@/lib/studio-clerk-appearance";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -57,7 +58,7 @@ export default function RootLayout({
         data-theme="studio"
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
       >
-        <ClerkProvider>
+        <ClerkProvider appearance={studioClerkAppearance}>
           {children}
           <StudioInstallPrompt />
           <Analytics />
