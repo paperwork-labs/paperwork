@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "e908becb19c5",
+  "content_hash": "c31bf826d4a5",
   "products": [
     {
       "label": "AxiomFolio",
@@ -245,6 +245,27 @@
     }
   ],
   "sprints": [
+    {
+      "domain": "company",
+      "duration_weeks": "~3",
+      "end": "2026-05-16",
+      "followups": [],
+      "goal": null,
+      "lessons": [],
+      "outcome_bullets": [],
+      "owner": "brand",
+      "path": "docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md",
+      "personas": [],
+      "plans": [],
+      "pr": null,
+      "pr_url": null,
+      "related_prs": [],
+      "ships": [],
+      "slug": "brand-design-deepdive-2026q2",
+      "start": "2026-04-25",
+      "status": "research",
+      "title": "Brand & design system deep-dive (2026 Q2)"
+    },
     {
       "domain": "company",
       "duration_weeks": 2,
