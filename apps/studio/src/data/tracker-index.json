@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "09439cd65ec3",
+  "content_hash": "b950cf232c76",
   "products": [
     {
       "label": "AxiomFolio",
@@ -250,14 +250,13 @@
       "duration_weeks": 1,
       "end": "2026-04-26",
       "followups": [
-        "VMP-SUMMARY \u2192 VENTURE_MASTER_PLAN merge (the only \u00a76 pair still pending \u2014 needs editor judgment on whether to fold or auto-regenerate from VMP via script).",
-        "Auto-generate `docs/_index.yaml` from frontmatter so manual sync goes away (`c3c-index-generated`).",
+        "F-3 env var naming: reconcile `VERCEL_API_TOKEN` (root `render.yaml`) vs `VERCEL_TOKEN` (Studio) \u2014 pick one and update both ends.",
+        "F-5 `brain-api` `GITHUB_WEBHOOK_SECRET`: declare with `sync: false` in `render.yaml`, then operator pastes the value once. Until then GitHub webhooks land but skip signature verification.",
+        "Studio `/admin/infrastructure` six-service health: extend probes so AxiomFolio API + 2 workers + frontend + Redis + DB all show green alongside FileFree and Brain. `RENDER_API_KEY` already wired \u2014 pull `live`/`build_failed` per service so F-6-style silent breakage is impossible.",
         "AxiomFolio Next.js migration: 4/102 routes ported (`/`, `/system-status`, `/portfolio`, `/scanner` shells); plan target Q3, decommissions Render static hosting in favor of Vercel \u2014 see [docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md](../axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).",
         "Severity vocabulary review: existing 7 runbooks use yellow/red; if we want S0\u2013S3 vocabulary across the company, that's a one-shot rename (defer until cross-product alignment).",
         "Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`.",
-        "`mark_sprint_shipped.py PR=142` once #142 merges to flip this sprint's status.",
-        "F-6 (operator): clear `brain-api` Root Directory in [Render dashboard](https://dashboard.render.com/web/srv-d74f3cmuk2gs73a4013g/settings) \u2192 next push to `main` deploys cleanly. Brain is still serving PR #140's code until this happens.",
-        "Studio enhancement (next sprint): surface Render deploy status (`live` / `build_failed`) per service inline in `/admin/infrastructure` so F-6-style silent build breakage cannot happen again. `RENDER_API_KEY` is already wired."
+        "`make sprint-shipped PR=143` once #143 merges to flip this sprint's status to `shipped` and bake the date."
       ],
       "goal": "Land Phase 1 of the docs streamline, give the company a repo-native long-term tracker (no Jira / Notion), and wire Brain into both so a CFO digest and Slack slash commands work off the same JSON the UI reads.",
       "lessons": [
@@ -266,14 +265,14 @@
         "Cheap-model parallel delegation (8 explore subagents) cleared the docs inventory in minutes; Sonnet then consolidated. Pattern reusable for every audit-style task."
       ],
       "outcome_bullets": [
+        "shipped 2026-04-25: VMP-SUMMARY \u2192 VENTURE_MASTER_PLAN TL;DR merge (final \u00a76 pair). Compact summary now lives at the top of the canonical plan; verbatim copy archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. (PR #143)",
         "17 stale docs retired to `docs/archive/`, 70 retained docs got standardized YAML frontmatter, 1 collision rename (`docs/axiomfolio/KNOWLEDGE.md` \u2192 `DECISIONS.md`).",
         "`docs/philosophy/` folder bootstrapped with 7 immutable philosophy docs (Brain, Infra, Data, AI Model, Automation, Tax, Formation) + `README.md` index, all CODEOWNERS-locked to `@paperwork-labs/founders`.",
         "Three-tier tracker spine: company (`docs/TASKS.md`), per-product (`docs/<product>/plans/*`), cross-cutting sprints (`docs/sprints/*`). Generator: `scripts/generate_tracker_index.py` \u2192 `apps/studio/src/data/tracker-index.json` (deterministic, content-hash, CI-gated).",
         "Studio: `/admin/tasks`, `/admin/products`, `/admin/products/<slug>/plan`, rebuilt `/admin/sprints`, plus `TrackersRail` on `/admin` overview. Nav reorganized into Overview / Trackers / System.",
         "Brain: `apis/brain/app/schedulers/cfo_friday_digest.py` (Fridays 18:00 UTC, `persona_pin=cfo`, `#cfo` channel) + `/sprint`, `/tasks`, `/plan` Slack slash commands reading the same `tracker-index.json`.",
         "Make helpers: `make tracker-index`, `make tracker-check`, `make sprint-shipped PR=NNN`, `make plan-status`, `make docs-freshness`.",
-        "CI gates: `tracker-index.yaml` (drift), `docs-freshness.yaml` (warn-only on `last_reviewed > 90d`), `runbook-template.yaml` (warn-only on missing required sections).",
-        "6 of 7 \u00a76 duplicate-pair merges shipped (only `VMP-SUMMARY` deferred): AxiomFolio `AUDIT_FINDINGS`, `MARKET_DATA_FLOWS`, `ROADMAP`, `TASKS`, `ROTATION_BACKLOG`, and the 2026-04-22 medallion wave-0 handoff all folded into canonical targets with verbatim archive copies under `docs/archive/`."
+        "CI gates: `tracker-index.yaml` (drift), `docs-freshness.yaml` (warn-only on `last_reviewed > 90d`), `runbook-template.yaml` (warn-only on missing required sections)."
       ],
       "owner": "engineering",
       "path": "docs/sprints/DOCS_STREAMLINE_AND_TRACKERS_2026Q2.md",
@@ -281,22 +280,26 @@
         "agent-ops",
         "engineering",
         "cfo",
-        "qa"
+        "qa",
+        "infra-ops"
       ],
       "plans": [
         "docs/DOCS_STREAMLINE_2026Q2.md",
         "docs/sprints/README.md"
       ],
       "pr": 142,
+      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/142",
       "related_prs": [
         142,
+        143,
         140
       ],
       "ships": [
         "studio",
         "docs",
-        "brain"
+        "brain",
+        "infra"
       ],
       "slug": "docs-streamline-and-trackers-2026q2",
       "start": "2026-04-24",
@@ -345,6 +348,7 @@
         "docs/PERSONA_PLATFORM.md"
       ],
       "pr": 141,
+      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/141",
       "related_prs": [
         141

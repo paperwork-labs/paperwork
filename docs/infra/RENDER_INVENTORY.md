@@ -1,11 +1,11 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-24
+last_reviewed: 2026-04-25
 doc_kind: reference
 domain: infra
 status: active
 ---
-# Render inventory — 2026-04-24
+# Render inventory — 2026-04-25
 
 **Owner**: `infra-ops` persona (Track A).
 **Source of truth**: Render MCP (`list_services`, `list_postgres_instances`, `list_key_value`) against workspace `tea-d6uflspj16oc73ft6gj0` (Paperwork team, `billing@paperworklabs.com`).
@@ -55,11 +55,13 @@ All four axiomfolio services (`axiomfolio-api`, `axiomfolio-worker`, `axiomfolio
 
 ### F-2 — `launchfree-api` is defined in `render.yaml` but not deployed
 
-The root [`render.yaml`](../../render.yaml) defines a `launchfree-api` service (lines 41–66), but Render returns no service by that name. Either:
-- The blueprint was never synced, or
-- It was deleted in the dashboard and the yaml wasn't updated.
+The root [`render.yaml`](../../render.yaml) defined a `launchfree-api`
+service stub, but Render returned no service by that name and
+`apis/launchfree/` is not deploy-ready.
 
-**Fix**: decide — either deploy (blueprint sync) or delete from `render.yaml` if launchfree's API isn't needed yet.
+**Resolution (2026-04-25):** stub removed from `render.yaml`. Re-add
+when the LaunchFree API is ready to ship; until then the Blueprint
+preview no longer surfaces it as a missing service.
 
 ### F-3 — Env var naming drift: `VERCEL_API_TOKEN` vs `VERCEL_TOKEN`
 
@@ -71,19 +73,25 @@ The root [`render.yaml`](../../render.yaml) defines a `launchfree-api` service (
 
 ### F-4 — Blueprint contents disagree with live services
 
-The root `render.yaml` declares `brain-api` at `plan: starter` with `numInstances: 1`, `runtime: docker` — which matches the live service. Good.
+The root `render.yaml` declares `brain-api` at `plan: starter` with
+`numInstances: 1`, `runtime: docker` — matches live.
 
-But the four `axiomfolio-*` blueprint entries at [apis/axiomfolio/render.yaml](../../apis/axiomfolio/render.yaml) are NOT what's live:
-- Blueprint says `rootDir: apis/axiomfolio`, `dockerfilePath: ./Dockerfile`. Live says `rootDir: ""`, `dockerfilePath: ./Dockerfile.backend`.
-- Blueprint declares `axiomfolio-redis` (keyvalue) and `axiomfolio-db` (postgres basic-1gb). Live has these but they were provisioned directly, not via Blueprint.
+The four `axiomfolio-*` blueprint entries lived at
+`apis/axiomfolio/render.yaml`, which Render's "New Blueprint" preview
+won't show alongside the root file. Resolved on 2026-04-25 by
+**consolidating** the AxiomFolio blocks into the root `render.yaml`
+([commit](../../render.yaml)) and reducing
+`apis/axiomfolio/render.yaml` to a stub pointer comment.
 
-**Fix**: after F-1 repoints are done, sync the blueprint from the monorepo and let it take over.
+**Remaining action (Path B in [RENDER_REPOINT.md](RENDER_REPOINT.md)):**
+the operator runs the Blueprint Sync once. After that, blueprint and
+live config track each other automatically.
 
 ### F-5 — `brain-api` missing `GITHUB_WEBHOOK_SECRET`
 
 Week 1 Track B wires a GitHub webhook to Brain. Neither `render.yaml` nor the live service declares `GITHUB_WEBHOOK_SECRET`. Add it (with `sync: false`) before Track B ships.
 
-### F-6 — `brain-api` dockerContext drifted from blueprint, every push to `main` fails ⚠️
+### F-6 — `brain-api` Docker Build Context Directory drifted from blueprint, every push to `main` failed ⚠️ (resolved 2026-04-25)
 
 Live `brain-api` service config (Render API):
 
@@ -103,7 +111,9 @@ COPY apis/brain/ /app/
 COPY .cursor/rules/ /app/cursor-rules/   # ← monorepo-root path
 ```
 
-With `dockerContext: apis/brain`, those paths resolve under `apis/brain/apis/brain/...` which does not exist, so every build since the monorepo cutover fails:
+With `dockerContext: apis/brain`, those paths resolved under
+`apis/brain/apis/brain/...` (does not exist), so every build since
+the monorepo cutover failed:
 
 ```
 #16 ERROR: failed to compute cache key: "/apis/brain/requirements.txt": not found
@@ -111,30 +121,48 @@ With `dockerContext: apis/brain`, those paths resolve under `apis/brain/apis/bra
 #14 ERROR: "/.cursor/rules": not found
 ```
 
-The currently live deploy is the **previous** commit (PR #140). PR #141 merged to `main` and its Render auto-deploy `dep-d7m4kgf41pts738qcpeg` failed at 2026-04-25T05:00Z. Brain itself is still serving from old code; new commits silently don't ship.
+PR #141's Render auto-deploy `dep-d7m4kgf41pts738qcpeg` failed at
+2026-04-25T05:00Z. Brain kept serving the PR #140 image.
 
-The blueprint is correct (`render.yaml` declares `dockerContext: .`) — the live service was created before the monorepo move and never re-synced.
+The blueprint was already correct (`render.yaml` declares
+`dockerContext: .`); the live service was created before the
+monorepo move and never resynced.
 
-**Why we can't COPY the .cursor/rules into apis/brain to dodge this:** persona `.mdc` files live at `.cursor/rules/` at the monorepo root, used by `app/services/agent.py` for cold-start persona instructions. Pulling them in via `apis/brain/` is the wrong layering — agent context belongs at repo root, not inside the API.
+**Field-name correction (important for future runbooks):** Render's
+Settings UI exposes **two** separate fields:
 
-**Fix**: Render dashboard → `brain-api` → **Settings** → **Build & Deploy**:
+| Render field | Blueprint maps to | What it does |
+| --- | --- | --- |
+| **Root Directory** | `rootDir:` | Where commands run (e.g. `buildCommand`, `preDeployCommand`). |
+| **Docker Build Context Directory** | `dockerContext:` | Path passed as `docker build <context>`. |
 
-1. **Root Directory**: clear to empty (the field maps to `dockerContext`).
-2. **Dockerfile Path**: leave as `apis/brain/Dockerfile`.
-3. Save → Render triggers a fresh build from monorepo root → succeeds.
+The drifted value lived in **Docker Build Context Directory**, not
+Root Directory (Root Directory was already empty). Earlier drafts of
+the runbook called out the wrong field; corrected on 2026-04-25.
 
-See [RENDER_REPOINT.md → brain-api dockerContext fix](RENDER_REPOINT.md#path-brain-api-dockercontext-fix).
+**Why we can't COPY the .cursor/rules into apis/brain to dodge this:**
+persona `.mdc` files live at `.cursor/rules/` at the monorepo root,
+used by `app/services/agent.py` for cold-start persona instructions.
+Pulling them in via `apis/brain/` is the wrong layering — agent
+context belongs at repo root, not inside the API.
+
+**Resolution:** operator cleared **Docker Build Context Directory**
+on 2026-04-25; deploy `dep-d7m63jeffeas73bmkeeg` (PR #142 SHA
+`f0255542`) went **live** at 06:49:55Z. Brain now serves the persona
+platform + PR sweep + chain strategy code shipped in #141 + #142.
+
+Runbook: [RENDER_REPOINT.md → Path A](RENDER_REPOINT.md#path-a-brain-api-docker-build-context-directory-fix-f-6).
 
 ## Definition of Done
 
 - [x] Render MCP shows one account, zero suspended services.
 - [x] Inventory (this doc) exists.
-- [ ] F-1: four axiomfolio services repointed to monorepo; old `paperwork-labs/axiomfolio` repo archived.
-- [ ] F-2: `launchfree-api` decision — deploy or remove.
+- [ ] F-1: AxiomFolio services repointed to monorepo via consolidated Blueprint Sync; old `paperwork-labs/axiomfolio` repo archived after 24h green.
+- [x] F-2: `launchfree-api` stub removed from `render.yaml` until the API is deploy-ready.
 - [ ] F-3: env var naming reconciled to `VERCEL_API_TOKEN`.
-- [ ] F-4: both blueprints are what production actually uses.
-- [ ] F-5: `GITHUB_WEBHOOK_SECRET` added to `brain-api`.
-- [ ] F-6: `brain-api` Root Directory cleared so monorepo paths resolve; latest `main` deploys.
+- [x] F-4: single `render.yaml` is the source of truth; `apis/axiomfolio/render.yaml` reduced to a stub pointer.
+- [ ] F-5: `GITHUB_WEBHOOK_SECRET` added to `brain-api` env (declared in blueprint with `sync: false`; operator must paste actual value).
+- [x] F-6: `brain-api` Docker Build Context Directory cleared; latest `main` SHA `f0255542` is live (deploy `dep-d7m63jeffeas73bmkeeg`).
 - [ ] Studio `/admin/infrastructure` shows all six services green (currently only probes a subset).
 
 ## Verification commands

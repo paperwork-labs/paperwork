@@ -1,18 +1,14 @@
 # Studio docs hub taxonomy.
 #
-# Track N of the Infra & Automation Hardening Sprint — consumed by
-# apps/studio/src/lib/docs.ts to render /admin/docs. Edit here when you
-# add, rename, or re-categorize a doc. Philosophy docs are immutable
-# (CODEOWNERS-locked); see docs/philosophy/README.md.
+# Auto-maintained by scripts/generate_docs_index.py.
 #
-# Each entry:
-#   slug       — URL slug under /admin/docs/<slug> (no extension)
-#   path       — path relative to repo root (must exist)
-#   title      — display title (overrides H1 in list views)
-#   summary    — one-line description for list + search hits
-#   tags       — free-form tags for filtering
-#   owners     — persona slugs responsible for keeping the doc honest
-#   category   — philosophy | architecture | runbooks | generated | reference
+# - Discovery, removal, and ordering happen automatically.
+# - To override the auto-derived title / summary / tags /
+#   owners / slug / category for a doc, edit this file —
+#   the generator preserves overrides keyed by `path`.
+# - To exclude a doc, add it to EXCLUDED_FILES /
+#   EXCLUDED_SUBDIRS in the generator (and check_docs_index).
+# - The `categories:` block below is hand-maintained.
 
 categories:
   philosophy:
@@ -21,19 +17,19 @@ categories:
     order: 1
   architecture:
     label: Architecture
-    description: System design, data flows, and long-lived contracts between services.
+    description: "System design, data flows, and long-lived contracts between services."
     order: 2
   runbooks:
     label: Runbooks
-    description: Operational playbooks — deploy, rotate, respond, repair.
+    description: "Operational playbooks — deploy, rotate, respond, repair."
     order: 3
   reference:
     label: Reference
-    description: Canonical product, brand, and partner specs. Read when you need the spec; update when reality diverges.
+    description: "Canonical product, brand, and partner specs. Read when you need the spec; update when reality diverges."
     order: 4
   plans:
     label: Plans
-    description: Long-lived per-product master plans, gap audits, and migration roadmaps.
+    description: "Long-lived per-product master plans, gap audits, and migration roadmaps."
     order: 5
   sprints:
     label: Sprints
@@ -41,31 +37,31 @@ categories:
     order: 6
   generated:
     label: Generated
-    description: Auto-produced from code (personas, PR automation, etc). Do not edit by hand; fix the generator.
+    description: "Auto-produced from code (personas, PR automation, etc). Do not edit by hand; fix the generator."
     order: 7
 
 docs:
-  # ── Philosophy (immutable) ───────────────────────────────────────────
-  - slug: venture-master-plan
-    path: docs/VENTURE_MASTER_PLAN.md
-    title: Venture Master Plan
-    summary: The "why" — products, stages, and the shape of the company.
-    tags: [strategy, company]
-    owners: [strategy, cfo]
+  # ── Philosophy ─────────────────────────────────────────
+  - slug: ai-model-philosophy
+    path: docs/philosophy/AI_MODEL_PHILOSOPHY.md
+    title: AI Model Philosophy
+    summary: "Multi-vendor, model selection, cost ceilings, eval requirements."
+    tags: [philosophy, llm, cost]
+    owners: [agent-ops, cfo]
     category: philosophy
-  - slug: vmp-summary
-    path: docs/VMP-SUMMARY.md
-    title: VMP Summary
-    summary: Executive summary of the Venture Master Plan.
-    tags: [strategy, company]
-    owners: [strategy]
+  - slug: automation-philosophy
+    path: docs/philosophy/AUTOMATION_PHILOSOPHY.md
+    title: Automation Philosophy
+    summary: "Auto-merge rules, no-silent-merges, when automation must stop."
+    tags: [philosophy, automation, ci]
+    owners: [agent-ops, engineering]
     category: philosophy
-  - slug: ground-truth
-    path: docs/GROUND_TRUTH.md
-    title: Ground Truth
-    summary: Invariants every persona must respect. Tagged with owner + verification.
-    tags: [invariants, qa]
-    owners: [qa]
+  - slug: brain-philosophy
+    path: docs/philosophy/BRAIN_PHILOSOPHY.md
+    title: Brain Philosophy
+    summary: "Refusal triggers, memory red lines, cost ceilings — what Brain MUST and MUST NOT do."
+    tags: [philosophy, brain, agent-ops]
+    owners: [agent-ops, strategy]
     category: philosophy
   - slug: knowledge
     path: docs/KNOWLEDGE.md
@@ -74,6 +70,34 @@ docs:
     tags: [knowledge]
     owners: [strategy, qa]
     category: philosophy
+  - slug: data-philosophy
+    path: docs/philosophy/DATA_PHILOSOPHY.md
+    title: Data Philosophy
+    summary: "Medallion iron laws, source-of-truth hierarchy, append-only ledgers, PII rules."
+    tags: [philosophy, data, medallion, pii]
+    owners: [engineering, qa]
+    category: philosophy
+  - slug: formation-philosophy
+    path: docs/philosophy/FORMATION_PHILOSOPHY.md
+    title: Formation Philosophy
+    summary: "What LaunchFree will and will not do — multi-state, RA, KYC."
+    tags: [philosophy, formation, legal]
+    owners: [legal]
+    category: philosophy
+  - slug: ground-truth
+    path: docs/GROUND_TRUTH.md
+    title: Ground Truth
+    summary: Invariants every persona must respect. Tagged with owner + verification.
+    tags: [invariants, qa]
+    owners: [qa]
+    category: philosophy
+  - slug: infra-philosophy
+    path: docs/philosophy/INFRA_PHILOSOPHY.md
+    title: Infra Philosophy
+    summary: "Tier-1 vs Tier-2 placement, vendor doctrine, change-freeze rules."
+    tags: [philosophy, infra]
+    owners: [infra-ops, engineering]
+    category: philosophy
   - slug: philosophy-index
     path: docs/philosophy/README.md
     title: Philosophy Index
@@ -81,142 +105,77 @@ docs:
     tags: [philosophy, index]
     owners: [strategy]
     category: philosophy
-  - slug: brain-philosophy
-    path: docs/philosophy/BRAIN_PHILOSOPHY.md
-    title: Brain Philosophy
-    summary: Refusal triggers, memory red lines, cost ceilings — what Brain MUST and MUST NOT do.
-    tags: [philosophy, brain, agent-ops]
-    owners: [agent-ops, strategy]
-    category: philosophy
-  - slug: infra-philosophy
-    path: docs/philosophy/INFRA_PHILOSOPHY.md
-    title: Infra Philosophy
-    summary: Tier-1 vs Tier-2 placement, vendor doctrine, change-freeze rules.
-    tags: [philosophy, infra]
-    owners: [infra-ops, engineering]
-    category: philosophy
-  - slug: data-philosophy
-    path: docs/philosophy/DATA_PHILOSOPHY.md
-    title: Data Philosophy
-    summary: Medallion iron laws, source-of-truth hierarchy, append-only ledgers, PII rules.
-    tags: [philosophy, data, medallion, pii]
-    owners: [engineering, qa]
-    category: philosophy
-  - slug: ai-model-philosophy
-    path: docs/philosophy/AI_MODEL_PHILOSOPHY.md
-    title: AI Model Philosophy
-    summary: Multi-vendor, model selection, cost ceilings, eval requirements.
-    tags: [philosophy, llm, cost]
-    owners: [agent-ops, cfo]
-    category: philosophy
-  - slug: automation-philosophy
-    path: docs/philosophy/AUTOMATION_PHILOSOPHY.md
-    title: Automation Philosophy
-    summary: Auto-merge rules, no-silent-merges, when automation must stop.
-    tags: [philosophy, automation, ci]
-    owners: [agent-ops, engineering]
-    category: philosophy
   - slug: tax-philosophy
     path: docs/philosophy/TAX_PHILOSOPHY.md
     title: Tax Philosophy
-    summary: What FileFree and the CPA persona will and will not do — disclaimers, EFIN rules.
+    summary: "What FileFree and the CPA persona will and will not do — disclaimers, EFIN rules."
     tags: [philosophy, tax, compliance]
     owners: [cpa, tax-domain]
-    category: philosophy
-  - slug: formation-philosophy
-    path: docs/philosophy/FORMATION_PHILOSOPHY.md
-    title: Formation Philosophy
-    summary: What LaunchFree will and will not do — multi-state, RA, KYC.
-    tags: [philosophy, formation, legal]
-    owners: [legal]
     category: philosophy
   - slug: trading-principles
     path: docs/axiomfolio/TRADING_PRINCIPLES.md
     title: Trading Principles (AxiomFolio)
-    summary: Risk discipline, breaker logic, what the trading agent will not do.
+    summary: "Risk discipline, breaker logic, what the trading agent will not do."
     tags: [philosophy, trading, risk]
     owners: [trading]
     category: philosophy
-
-  # ── Architecture ─────────────────────────────────────────────────────
-  - slug: architecture
-    path: docs/ARCHITECTURE.md
-    title: Paperwork Architecture
-    summary: Top-level system map — monorepo, backends, frontends, data flow.
-    tags: [architecture, infra]
-    owners: [engineering, infra-ops]
+  - slug: venture-master-plan
+    path: docs/VENTURE_MASTER_PLAN.md
+    title: Venture Master Plan
+    summary: "The \"why\" — products, stages, and the shape of the company."
+    tags: [strategy, company]
+    owners: [strategy, cfo]
+    category: philosophy
+  # ── Architecture ─────────────────────────────────────────
+  - slug: ai-model-registry
+    path: docs/AI_MODEL_REGISTRY.md
+    title: AI Model Registry
+    summary: "Model choices by persona, escalation rules, cost envelopes."
+    tags: [brain, llm, cost]
+    owners: [agent-ops, cfo]
+    category: architecture
+  - slug: axiomfolio-architecture
+    path: docs/axiomfolio/ARCHITECTURE.md
+    title: AxiomFolio Architecture
+    summary: "Trading agent, Plaid, brokers, market data, and persistence."
+    tags: [axiomfolio, architecture]
+    owners: [trading, engineering]
     category: architecture
   - slug: brain-architecture
     path: docs/BRAIN_ARCHITECTURE.md
     title: Brain Architecture
-    summary: Persona registry, chain strategies, memory, cost governance.
+    summary: "Persona registry, chain strategies, memory, cost governance."
     tags: [brain, personas, llm]
     owners: [agent-ops, engineering]
     category: architecture
   - slug: brain-pr-review
     path: docs/BRAIN_PR_REVIEW.md
     title: Brain PR Review
-    summary: How Brain reviews, approves, and merges PRs.
+    summary: "How Brain reviews, approves, and merges PRs."
     tags: [brain, pr, automation]
     owners: [engineering, qa]
     category: architecture
-  - slug: ai-model-registry
-    path: docs/AI_MODEL_REGISTRY.md
-    title: AI Model Registry
-    summary: Model choices by persona, escalation rules, cost envelopes.
-    tags: [brain, llm, cost]
-    owners: [agent-ops, cfo]
-    category: architecture
-  - slug: axiomfolio-integration
-    path: docs/AXIOMFOLIO_INTEGRATION.generated.md
-    title: AxiomFolio Integration (generated)
-    summary: How the trading agent delegates to Paperwork Brain. Auto-generated.
-    tags: [axiomfolio, brain, trading, generated]
-    owners: [trading, engineering]
-    category: generated
-  - slug: axiomfolio-architecture
-    path: docs/axiomfolio/ARCHITECTURE.md
-    title: AxiomFolio Architecture
-    summary: Trading agent, Plaid, brokers, market data, and persistence.
-    tags: [axiomfolio, architecture]
-    owners: [trading, engineering]
-    category: architecture
-
-  # ── Runbooks ─────────────────────────────────────────────────────────
-  - slug: dependabot
-    path: docs/DEPENDABOT.md
-    title: Dependabot Runbook
-    summary: Classification, auto-merge sweep, manual overrides.
-    tags: [runbook, dependabot, pr]
+  - slug: architecture
+    path: docs/ARCHITECTURE.md
+    title: Paperwork Architecture
+    summary: "Top-level system map — monorepo, backends, frontends, data flow."
+    tags: [architecture, infra]
     owners: [engineering, infra-ops]
-    category: runbooks
+    category: architecture
+  # ── Runbooks ─────────────────────────────────────────
   - slug: credentials
     path: docs/CREDENTIALS.md
     title: Credential Rotation
-    summary: Every key, where it lives, when to rotate.
+    summary: "Every key, where it lives, when to rotate."
     tags: [runbook, secrets, security]
     owners: [infra-ops, qa]
     category: runbooks
-  - slug: secrets
-    path: docs/SECRETS.md
-    title: Secrets Inventory
-    summary: Canonical list of secrets + their owners.
-    tags: [runbook, secrets]
-    owners: [infra-ops]
-    category: runbooks
-  - slug: render-inventory
-    path: docs/infra/RENDER_INVENTORY.md
-    title: Render Inventory
-    summary: Services on Render — owner, plan, repoint status.
-    tags: [runbook, render, infra]
-    owners: [infra-ops]
-    category: runbooks
-  - slug: render-repoint
-    path: docs/infra/RENDER_REPOINT.md
-    title: Render Repoint Runbook
-    summary: How we moved services off the archived account.
-    tags: [runbook, render, infra]
-    owners: [infra-ops]
+  - slug: dependabot
+    path: docs/DEPENDABOT.md
+    title: Dependabot Runbook
+    summary: "Classification, auto-merge sweep, manual overrides."
+    tags: [runbook, dependabot, pr]
+    owners: [engineering, infra-ops]
     category: runbooks
   - slug: efin-filing
     path: docs/EFIN_FILING_INSTRUCTIONS.md
@@ -232,35 +191,55 @@ docs:
     tags: [runbook, drive, mcp]
     owners: [agent-ops, ea]
     category: runbooks
-
-  # ── Reference ────────────────────────────────────────────────────────
+  - slug: render-inventory
+    path: docs/infra/RENDER_INVENTORY.md
+    title: Render Inventory
+    summary: "Services on Render — owner, plan, repoint status."
+    tags: [runbook, render, infra]
+    owners: [infra-ops]
+    category: runbooks
+  - slug: render-repoint
+    path: docs/infra/RENDER_REPOINT.md
+    title: Render Repoint Runbook
+    summary: How we moved services off the archived account.
+    tags: [runbook, render, infra]
+    owners: [infra-ops]
+    category: runbooks
+  - slug: secrets
+    path: docs/SECRETS.md
+    title: Secrets Inventory
+    summary: Canonical list of secrets + their owners.
+    tags: [runbook, secrets]
+    owners: [infra-ops]
+    category: runbooks
+  # ── Reference ─────────────────────────────────────────
+  - slug: billing-vendor-checklist
+    path: docs/BILLING_VENDOR_CHECKLIST.md
+    title: Billing + Vendor Checklist
+    summary: Must-have checks before onboarding a paid vendor.
+    tags: [finance, procurement]
+    owners: [cfo]
+    category: reference
+  - slug: financials
+    path: docs/FINANCIALS.md
+    title: Financials
+    summary: "Runway, burn, forecast."
+    tags: [finance, cfo]
+    owners: [cfo]
+    category: reference
+  - slug: infra
+    path: docs/INFRA.md
+    title: Infra Overview
+    summary: "What runs where — Render, Vercel, Hetzner, Neon."
+    tags: [infra]
+    owners: [infra-ops]
+    category: reference
   - slug: prd
     path: docs/PRD.md
     title: Paperwork PRD
     summary: Top-level product requirements across the portfolio.
     tags: [product, prd]
     owners: [strategy, ux]
-    category: reference
-  - slug: product-spec
-    path: docs/PRODUCT_SPEC.md
-    title: Product Spec
-    summary: Detailed spec for every in-flight feature.
-    tags: [product, spec]
-    owners: [engineering, ux]
-    category: reference
-  - slug: pitch-package
-    path: docs/PITCH_PACKAGE.md
-    title: Pitch Package
-    summary: External-facing company pitch + deck notes.
-    tags: [growth, brand]
-    owners: [strategy, brand]
-    category: reference
-  - slug: financials
-    path: docs/FINANCIALS.md
-    title: Financials
-    summary: Runway, burn, forecast.
-    tags: [finance, cfo]
-    owners: [cfo]
     category: reference
   - slug: partnerships
     path: docs/PARTNERSHIPS.md
@@ -269,19 +248,19 @@ docs:
     tags: [partnerships, growth]
     owners: [partnerships]
     category: reference
-  - slug: infra
-    path: docs/INFRA.md
-    title: Infra Overview
-    summary: What runs where — Render, Vercel, Hetzner, Neon.
-    tags: [infra]
-    owners: [infra-ops]
+  - slug: pitch-package
+    path: docs/PITCH_PACKAGE.md
+    title: Pitch Package
+    summary: External-facing company pitch + deck notes.
+    tags: [growth, brand]
+    owners: [strategy, brand]
     category: reference
-  - slug: billing-vendor-checklist
-    path: docs/BILLING_VENDOR_CHECKLIST.md
-    title: Billing + Vendor Checklist
-    summary: Must-have checks before onboarding a paid vendor.
-    tags: [finance, procurement]
-    owners: [cfo]
+  - slug: product-spec
+    path: docs/PRODUCT_SPEC.md
+    title: Product Spec
+    summary: Detailed spec for every in-flight feature.
+    tags: [product, spec]
+    owners: [engineering, ux]
     category: reference
   - slug: runbook-template
     path: docs/RUNBOOK_TEMPLATE.md
@@ -290,28 +269,20 @@ docs:
     tags: [runbook, template, ops]
     owners: [agent-ops]
     category: reference
-
-  # ── Plans (per-product master plans + cross-cutting roadmaps) ────────
-  - slug: tasks
-    path: docs/TASKS.md
-    title: Company Tasks (TASKS.md)
-    summary: Top-level company tracker — critical dates, pre-code blockers, phases.
-    tags: [tasks, company, tracker]
-    owners: [strategy, engineering]
-    category: plans
-  - slug: axiomfolio-master-plan
-    path: docs/axiomfolio/plans/MASTER_PLAN_2026.md
-    title: AxiomFolio Master Plan 2026
-    summary: AxiomFolio product roadmap — waves, gates, ship plan.
-    tags: [axiomfolio, plan]
-    owners: [trading, engineering]
-    category: plans
+  # ── Plans ─────────────────────────────────────────
   - slug: axiomfolio-gaps
     path: docs/axiomfolio/plans/GAPS_2026Q2.md
     title: AxiomFolio Gaps 2026 Q2
     summary: Open gaps blocking AxiomFolio v1 — prioritized.
     tags: [axiomfolio, plan, gaps]
     owners: [trading]
+    category: plans
+  - slug: axiomfolio-master-plan
+    path: docs/axiomfolio/plans/MASTER_PLAN_2026.md
+    title: AxiomFolio Master Plan 2026
+    summary: "AxiomFolio product roadmap — waves, gates, ship plan."
+    tags: [axiomfolio, plan]
+    owners: [trading, engineering]
     category: plans
   - slug: axiomfolio-nextjs-migration
     path: docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md
@@ -320,6 +291,13 @@ docs:
     tags: [axiomfolio, migration, next]
     owners: [engineering]
     category: plans
+  - slug: tasks
+    path: docs/TASKS.md
+    title: Company Tasks (TASKS.md)
+    summary: "Top-level company tracker — critical dates, pre-code blockers, phases."
+    tags: [tasks, company, tracker]
+    owners: [strategy, engineering]
+    category: plans
   - slug: docs-streamline-2026q2
     path: docs/DOCS_STREAMLINE_2026Q2.md
     title: Docs Streamline 2026 Q2
@@ -327,24 +305,29 @@ docs:
     tags: [docs, plan, audit]
     owners: [engineering, strategy]
     category: plans
-
-  # ── Sprints (cross-cutting time-boxed work logs) ─────────────────────
-  - slug: sprint-infra-automation-hardening-2026q2
-    path: docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md
-    title: Infra & Automation Hardening (2026 Q2)
-    summary: 4-week sprint — persona platform, n8n streamline, Studio command-center.
-    tags: [sprint, infra, automation]
-    owners: [engineering, agent-ops]
-    category: sprints
+  # ── Sprints ─────────────────────────────────────────
   - slug: sprint-docs-streamline-and-trackers-2026q2
     path: docs/sprints/DOCS_STREAMLINE_AND_TRACKERS_2026Q2.md
     title: Docs Streamline + Trackers Spine (2026 Q2)
-    summary: Mini-sprint — Phase 1 docs cleanup, repo-native tracker spine, CFO digest, slash commands.
+    summary: "Mini-sprint — Phase 1 docs cleanup, repo-native tracker spine, CFO digest, slash commands."
     tags: [sprint, docs, trackers]
     owners: [engineering, agent-ops]
     category: sprints
-
-  # ── Generated ────────────────────────────────────────────────────────
+  - slug: sprint-infra-automation-hardening-2026q2
+    path: docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md
+    title: Infra & Automation Hardening (2026 Q2)
+    summary: "4-week sprint — persona platform, n8n streamline, Studio command-center."
+    tags: [sprint, infra, automation]
+    owners: [engineering, agent-ops]
+    category: sprints
+  # ── Generated ─────────────────────────────────────────
+  - slug: axiomfolio-integration
+    path: docs/AXIOMFOLIO_INTEGRATION.generated.md
+    title: AxiomFolio Integration (generated)
+    summary: How the trading agent delegates to Paperwork Brain. Auto-generated.
+    tags: [axiomfolio, brain, trading, generated]
+    owners: [trading, engineering]
+    category: generated
   - slug: brain-personas-generated
     path: docs/BRAIN_PERSONAS.md
     title: Brain Personas (generated)

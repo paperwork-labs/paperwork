@@ -1,10 +1,25 @@
-# Render Blueprints — Production Infrastructure as Code
+# Render Blueprint — Paperwork Labs production infrastructure as code.
 # https://render.com/docs/blueprint-spec
 #
-# Deploy: connect this repo to Render, it auto-detects render.yaml.
-# Database and Redis are provisioned via Neon and Upstash (not Render).
+# Single source of truth: one Blueprint per repo. All apps that deploy to
+# Render live in this file. Vercel apps (apps/studio, apps/distill,
+# apps/filefree, apps/launchfree, apps/axiomfolio-next) are managed by
+# Vercel's git integration and are not represented here.
+#
+# History:
+#   - 2026-04-23: AxiomFolio absorbed into the monorepo at apis/axiomfolio,
+#     blueprint kept locally at apis/axiomfolio/render.yaml.
+#   - 2026-04-25: blueprints consolidated — axiomfolio services merged into
+#     the root file so the Render Blueprint sync flow shows every service in
+#     one preview (was: two split blueprints, neither aware of the other).
+#     apis/axiomfolio/render.yaml is now a stub pointer (see below).
+#   - 2026-04-25: launchfree-api stub removed pending product decision
+#     (apis/launchfree/ exists but is not deploy-ready). Re-add when ready.
 
 services:
+  # ---------------------------------------------------------------------
+  # FileFree API — receipts intake / OCR / GCS ingest pipeline.
+  # ---------------------------------------------------------------------
   - type: web
     name: filefree-api
     runtime: python
@@ -38,34 +53,9 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.0"
 
-  - type: web
-    name: launchfree-api
-    runtime: python
-    region: oregon
-    plan: starter
-    buildCommand: cd apis/launchfree && pip install -r requirements.txt
-    preDeployCommand: cd apis/launchfree && alembic upgrade head
-    startCommand: cd apis/launchfree && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
-    healthCheckPath: /health
-    envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: REDIS_URL
-        sync: false
-      - key: SECRET_KEY
-        generateValue: true
-      - key: ENCRYPTION_KEY
-        generateValue: true
-      - key: FRONTEND_URL
-        value: https://launchfree.ai
-      - key: ENVIRONMENT
-        value: production
-      - key: DEBUG
-        value: "false"
-      - key: PYTHON_VERSION
-        value: "3.11.0"
-
+  # ---------------------------------------------------------------------
   # Brain API — Paperwork Labs command-center / agent backend.
+  # ---------------------------------------------------------------------
   - type: web
     name: brain-api
     runtime: docker
@@ -80,7 +70,6 @@ services:
     dockerContext: .
     healthCheckPath: /health
     envVars:
-      # Set in Dashboard, link from a Render Postgres in this Blueprint, or use fromDatabase when a DB is defined below.
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL
@@ -140,3 +129,169 @@ services:
         value: production
       - key: DEBUG
         value: "false"
+
+  # ---------------------------------------------------------------------
+  # AxiomFolio API — portfolio / market-data / agent runtime.
+  # rootDir: apis/axiomfolio so Dockerfile COPY paths and relative
+  # buildCommand paths resolve against the subtree root (the Dockerfile
+  # there is self-contained — no monorepo-root references).
+  # ---------------------------------------------------------------------
+  - type: web
+    name: axiomfolio-api
+    runtime: docker
+    rootDir: apis/axiomfolio
+    plan: standard
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    # Render Docker services don't reliably inject env vars (fromDatabase/fromService)
+    # for preDeployCommand, so migrations run at API startup instead. Alembic upgrade
+    # is idempotent — if already at head it's a no-op.
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: AUTO_MIGRATE_ON_STARTUP
+        value: "true"
+      - key: LOG_FORMAT
+        value: json
+      - key: DATABASE_URL
+        fromDatabase:
+          name: axiomfolio-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: axiomfolio-redis
+          property: connectionString
+      - key: RATE_LIMIT_STORAGE_URL
+        fromService:
+          type: keyvalue
+          name: axiomfolio-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: axiomfolio-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: axiomfolio-redis
+          property: connectionString
+
+  # ---------------------------------------------------------------------
+  # AxiomFolio fast worker — short tasks + Celery Beat.
+  # Concurrency=2, child memory cap 750 MiB ≈ 1.46 GiB peak on 2 GiB plan.
+  # ---------------------------------------------------------------------
+  - type: worker
+    name: axiomfolio-worker
+    runtime: docker
+    rootDir: apis/axiomfolio
+    plan: standard
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_FORMAT
+        value: json
+      - key: WORKER_ROLE
+        value: fast
+      - key: DATABASE_URL
+        fromDatabase:
+          name: axiomfolio-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: axiomfolio-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: axiomfolio-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: axiomfolio-redis
+          property: connectionString
+    dockerCommand: celery -A app.tasks.celery_app worker --beat -Q celery,account_sync,orders --loglevel=info --max-memory-per-child=750000 --concurrency=2
+
+  # ---------------------------------------------------------------------
+  # AxiomFolio heavy worker — long tasks (snapshot history, fundamentals,
+  # daily/intraday backfill, repair_stage_history). Concurrency=1, child
+  # memory cap 1.46 GiB. Beat does NOT run here (only the fast worker has
+  # --beat) so we don't get duplicate schedules.
+  # ---------------------------------------------------------------------
+  - type: worker
+    name: axiomfolio-worker-heavy
+    runtime: docker
+    rootDir: apis/axiomfolio
+    plan: standard
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_FORMAT
+        value: json
+      - key: WORKER_ROLE
+        value: heavy
+      - key: DATABASE_URL
+        fromDatabase:
+          name: axiomfolio-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: axiomfolio-redis
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          type: keyvalue
+          name: axiomfolio-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          type: keyvalue
+          name: axiomfolio-redis
+          property: connectionString
+    dockerCommand: celery -A app.tasks.celery_app worker -Q heavy --loglevel=info --max-memory-per-child=1500000 --concurrency=1
+
+  # ---------------------------------------------------------------------
+  # AxiomFolio frontend — Vite SPA hosted as a Render static site.
+  # Builds from apps/axiomfolio (pnpm workspace member). The Next.js
+  # rewrite (apps/axiomfolio-next) will go to Vercel; this static target
+  # stays here until the Next.js cutover lands (see
+  # docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).
+  # ---------------------------------------------------------------------
+  - type: web
+    name: axiomfolio-frontend
+    runtime: static
+    rootDir: apps/axiomfolio
+    autoDeploy: true
+    buildCommand: "cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && pnpm install --frozen-lockfile --filter=@paperwork-labs/axiomfolio... && pnpm --filter=@paperwork-labs/axiomfolio build"
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://api.axiomfolio.com/api/v1
+
+  - type: keyvalue
+    name: axiomfolio-redis
+    plan: starter
+    ipAllowList: []
+
+  # Deploy policy: all services autoDeploy on commit to main; branch
+  # protection gates CI. AxiomFolio scheduling is via Celery Beat
+  # (apps.tasks.celery_app.beat_schedule) — Render cron jobs are retired.
+
+databases:
+  - name: axiomfolio-db
+    plan: basic-1gb

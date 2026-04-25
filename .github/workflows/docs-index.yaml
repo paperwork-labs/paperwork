@@ -7,12 +7,14 @@ on:
       - "docs/**/*.md"
       - "docs/_index.yaml"
       - "scripts/check_docs_index.py"
+      - "scripts/generate_docs_index.py"
       - ".github/workflows/docs-index.yaml"
   pull_request:
     paths:
       - "docs/**/*.md"
       - "docs/_index.yaml"
       - "scripts/check_docs_index.py"
+      - "scripts/generate_docs_index.py"
       - ".github/workflows/docs-index.yaml"
 
 concurrency:
@@ -29,4 +31,11 @@ jobs:
         with:
           python-version: "3.11"
       - run: python -m pip install "pyyaml>=6.0"
+      # Sanity check: every entry in docs/_index.yaml resolves on disk and
+      # nothing on disk is silently missing from the index.
       - run: python scripts/check_docs_index.py
+      # Source-of-truth check: docs/_index.yaml is in sync with what the
+      # generator would produce from frontmatter. Fix drift by running
+      # `python scripts/generate_docs_index.py --write` locally and
+      # committing the result.
+      - run: python scripts/generate_docs_index.py --check
