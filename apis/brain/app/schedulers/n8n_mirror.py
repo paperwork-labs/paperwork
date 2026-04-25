@@ -1,27 +1,35 @@
 """Shadow mirror of n8n cron workflows (T2.2 / STREAMLINE_SSO_DAGS).
 
-When ``SCHEDULER_N8N_MIRROR_ENABLED`` is true, register matching schedules on the
-shared Brain :class:`AsyncIOScheduler` with no-op handlers that post to
-``#engineering-cron-shadow`` only. Real n8n crons stay enabled until cutover
-(T2.4). See ``docs/infra/BRAIN_SCHEDULER.md``.
+When ``SCHEDULER_N8N_MIRROR_ENABLED`` (global) or a per-job
+``SCHEDULER_N8N_MIRROR_<JOB_ID_UPPER>`` opt-in is true, register matching
+schedules on the shared Brain :class:`AsyncIOScheduler` with no-op handlers
+that post to ``#engineering-cron-shadow`` only. Real n8n crons stay enabled
+until cutover (T2.4). See ``docs/infra/BRAIN_SCHEDULER.md``.
 """
 from __future__ import annotations
 
 import logging
+import os
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Literal
+from datetime import datetime, timedelta, timezone
+from typing import Any, Literal
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.database import async_session_factory
+from app.models.scheduler_run import SchedulerRun
 from app.services import slack_outbound
 
 logger = logging.getLogger(__name__)
 
 SHADOW_SLACK_CHANNEL = "#engineering-cron-shadow"
+N8N_MIRROR_ENV_PREFIX = "SCHEDULER_N8N_MIRROR_"
 
 
 @dataclass(frozen=True)
@@ -118,6 +126,33 @@ N8N_MIRROR_SPECS: tuple[MirrorSpec, ...] = (
 )
 
 
+def n8n_mirror_env_var_name(job_id: str) -> str:
+    """``SCHEDULER_N8N_MIRROR_`` + uppercased job id (e.g. ``N8N_SHADOW_BRAIN_DAILY``)."""
+    return f"{N8N_MIRROR_ENV_PREFIX}{job_id.upper()}"
+
+
+def _parse_truthy_env(raw: str) -> bool:
+    v = raw.strip().lower()
+    if v in ("1", "true", "t", "yes", "y", "on"):
+        return True
+    if v in ("0", "false", "f", "no", "n", "off", ""):
+        return False
+    logger.warning("Unrecognized n8n mirror env value %r — treating as false", raw)
+    return False
+
+
+def is_n8n_mirror_enabled_for_job(job_id: str) -> bool:
+    """True when this spec should register: per-job env if set, else global default."""
+    name = n8n_mirror_env_var_name(job_id)
+    if name in os.environ:
+        return _parse_truthy_env(os.environ[name])
+    return settings.SCHEDULER_N8N_MIRROR_ENABLED
+
+
+class N8nMirrorRunSkipped(Exception):
+    """Inner body may raise this to persist ``skipped`` (not ``error``)."""
+
+
 async def _post_shadow(n8n_workflow_name: str, job_id: str) -> None:
     now = datetime.now(timezone.utc).isoformat()
     text = f"[shadow] {n8n_workflow_name} ({job_id}) fired at {now}"
@@ -129,82 +164,84 @@ async def _post_shadow(n8n_workflow_name: str, job_id: str) -> None:
     )
 
 
-# --- Per-job coroutines (stable ids for job store) ---
+async def _run_with_scheduler_record(
+    job_id: str,
+    runner: Callable[[], Awaitable[None]],
+    *,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    started = datetime.now(timezone.utc)
+    status: Literal["success", "error", "skipped"] = "success"
+    error_text: str | None = None
+    try:
+        await runner()
+    except N8nMirrorRunSkipped:
+        status = "skipped"
+    except Exception as e:
+        status = "error"
+        error_text = str(e)[:20000]
+        logger.exception("n8n shadow job %s failed", job_id)
+    finally:
+        finished = datetime.now(timezone.utc)
+        row = SchedulerRun(
+            job_id=job_id,
+            started_at=started,
+            finished_at=finished,
+            status=status,
+            error_text=error_text,
+            metadata_json=metadata,
+        )
+        try:
+            async with async_session_factory() as db:
+                db.add(row)
+                await db.commit()
+        except Exception:
+            logger.exception("Failed to persist scheduler_run for job_id=%s", job_id)
 
 
-async def _run_shadow_brain_daily() -> None:
-    await _post_shadow("Brain Daily Trigger", "n8n_shadow_brain_daily")
+async def _run_shadow_for_spec(spec: MirrorSpec) -> None:
+    async def _body() -> None:
+        await _post_shadow(spec.n8n_workflow_name, spec.job_id)
+
+    await _run_with_scheduler_record(
+        spec.job_id,
+        _body,
+        metadata={
+            "n8n_workflow_name": spec.n8n_workflow_name,
+            "summary": spec.summary,
+        },
+    )
 
 
-async def _run_shadow_brain_weekly() -> None:
-    await _post_shadow("Brain Weekly Trigger", "n8n_shadow_brain_weekly")
+def _bind_spec(spec: MirrorSpec) -> Callable[[], Awaitable[None]]:
+    async def _fn() -> None:
+        await _run_shadow_for_spec(spec)
 
-
-async def _run_shadow_sprint_kickoff() -> None:
-    await _post_shadow("Sprint Kickoff", "n8n_shadow_sprint_kickoff")
-
-
-async def _run_shadow_sprint_close() -> None:
-    await _post_shadow("Sprint Close", "n8n_shadow_sprint_close")
-
-
-async def _run_shadow_weekly_strategy() -> None:
-    await _post_shadow("Weekly Strategy Check-in", "n8n_shadow_weekly_strategy")
-
-
-async def _run_shadow_infra_heartbeat() -> None:
-    await _post_shadow("Infra Heartbeat", "n8n_shadow_infra_heartbeat")
-
-
-async def _run_shadow_data_source_monitor() -> None:
-    await _post_shadow("Data Source Monitor (P2.8)", "n8n_shadow_data_source_monitor")
-
-
-async def _run_shadow_data_deep_validator() -> None:
-    await _post_shadow("Data Deep Validator (P2.9)", "n8n_shadow_data_deep_validator")
-
-
-async def _run_shadow_annual_data() -> None:
-    await _post_shadow("Annual Data Update Trigger (P2.10)", "n8n_shadow_annual_data")
-
-
-async def _run_shadow_infra_health() -> None:
-    await _post_shadow("Infra Health Check", "n8n_shadow_infra_health")
-
-
-async def _run_shadow_credential_expiry() -> None:
-    await _post_shadow("Credential Expiry Check", "n8n_shadow_credential_expiry")
+    return _fn
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register n8n shadow jobs when the env opt-in is set."""
-    if not settings.SCHEDULER_N8N_MIRROR_ENABLED:
-        logger.info("SCHEDULER_N8N_MIRROR_ENABLED=false — n8n shadow mirrors not registered")
+    """Register n8n shadow jobs when the global and/or per-job opt-in is set."""
+    enabled = [s for s in N8N_MIRROR_SPECS if is_n8n_mirror_enabled_for_job(s.job_id)]
+    if not enabled:
+        logger.info(
+            "No n8n shadow mirror jobs enabled; set %s (global) or per-job %s<N8N_SHADOW_…>",
+            "SCHEDULER_N8N_MIRROR_ENABLED",
+            N8N_MIRROR_ENV_PREFIX,
+        )
         return
 
-    _register_all(scheduler)
+    _register_specs(scheduler, enabled)
     logger.info(
-        "Registered %d n8n cron shadow mirror job(s) on APScheduler",
+        "Registered %d n8n cron shadow mirror job(s) on APScheduler (of %d known specs)",
+        len(enabled),
         len(N8N_MIRROR_SPECS),
     )
 
 
-def _register_all(scheduler: AsyncIOScheduler) -> None:
-    mapping: dict[str, object] = {
-        "n8n_shadow_brain_daily": _run_shadow_brain_daily,
-        "n8n_shadow_brain_weekly": _run_shadow_brain_weekly,
-        "n8n_shadow_sprint_kickoff": _run_shadow_sprint_kickoff,
-        "n8n_shadow_sprint_close": _run_shadow_sprint_close,
-        "n8n_shadow_weekly_strategy": _run_shadow_weekly_strategy,
-        "n8n_shadow_infra_heartbeat": _run_shadow_infra_heartbeat,
-        "n8n_shadow_data_source_monitor": _run_shadow_data_source_monitor,
-        "n8n_shadow_data_deep_validator": _run_shadow_data_deep_validator,
-        "n8n_shadow_annual_data": _run_shadow_annual_data,
-        "n8n_shadow_infra_health": _run_shadow_infra_health,
-        "n8n_shadow_credential_expiry": _run_shadow_credential_expiry,
-    }
-    for spec in N8N_MIRROR_SPECS:
-        fn = mapping[spec.job_id]
+def _register_specs(scheduler: AsyncIOScheduler, specs: list[MirrorSpec]) -> None:
+    for spec in specs:
+        fn = _bind_spec(spec)
         if spec.kind == "interval":
             assert spec.schedule.endswith("m")
             minutes = int(spec.schedule[:-1])
@@ -220,3 +257,54 @@ def _register_all(scheduler: AsyncIOScheduler) -> None:
             coalesce=True,
             replace_existing=True,
         )
+
+
+async def n8n_mirror_status_payload(db: AsyncSession) -> dict[str, Any]:
+    """Data for ``GET /admin/scheduler/n8n-mirror/status``."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    per_job: list[dict[str, Any]] = []
+    for spec in N8N_MIRROR_SPECS:
+        last = (
+            await db.execute(
+                select(SchedulerRun)
+                .where(SchedulerRun.job_id == spec.job_id)
+                .order_by(SchedulerRun.finished_at.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        last_run = last.finished_at.isoformat() if last else None
+        last_status: str | None = last.status if last else None
+        success_count = int(
+            await db.scalar(
+                select(func.count(SchedulerRun.id)).where(
+                    SchedulerRun.job_id == spec.job_id,
+                    SchedulerRun.finished_at >= cutoff,
+                    SchedulerRun.status == "success",
+                )
+            )
+            or 0
+        )
+        error_count = int(
+            await db.scalar(
+                select(func.count(SchedulerRun.id)).where(
+                    SchedulerRun.job_id == spec.job_id,
+                    SchedulerRun.finished_at >= cutoff,
+                    SchedulerRun.status == "error",
+                )
+            )
+            or 0
+        )
+        per_job.append(
+            {
+                "key": spec.job_id,
+                "enabled": is_n8n_mirror_enabled_for_job(spec.job_id),
+                "last_run": last_run,
+                "last_status": last_status,
+                "success_count_24h": success_count,
+                "error_count_24h": error_count,
+            }
+        )
+    return {
+        "global_enabled": settings.SCHEDULER_N8N_MIRROR_ENABLED,
+        "per_job": per_job,
+    }
