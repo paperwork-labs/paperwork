@@ -1,4 +1,7 @@
-"""Filing engine status API — read for authenticated users, write for internal workers."""
+"""Filing engine status API — read for authenticated users, write for internal workers.
+
+medallion: ops
+"""
 
 from __future__ import annotations
 

@@ -1,62 +1,76 @@
 # Dependabot automation
 
-Paperwork Labs ships a two-tier Dependabot flow so `pnpm`/`pip`/GitHub Actions
-bumps don't consume human attention. Safe bumps auto-approve and auto-merge;
-majors go through a cheap Claude Haiku triage before they need human eyes.
+Paperwork Labs ships a Brain-owned Dependabot flow: GitHub webhook → Brain
+classifier → approve/merge or LLM triage. All logic lives in the Brain service;
+the old three GitHub Actions workflows (`dependabot-auto-approve.yaml`,
+`dependabot-major-triage.yaml`, `auto-merge-sweep.yaml`) and the companion
+`dependabot_triage.py` script were deleted in Track B, Week 1 of the Infra &
+Automation Hardening Sprint.
 
 ## Pipeline
 
 ```
-dependabot opens PR
+dependabot opens/updates PR
   │
   ▼
-dependabot-auto-approve.yaml                           dependabot-major-triage.yaml
-  ├── patch | minor | grouped-minor  ──►  approve                  ▲
-  ├── major                          ──►  label `deps:major` ─────┘
-  └── unknown                        ──►  label `needs-human-review`
-                                          (fetch-metadata couldn't classify)
-  │                                           │
-  │                                           ▼
-  │                              .github/scripts/dependabot_triage.py
-  │                                           │
-  │                                           ▼
-  │                                 Anthropic Claude Haiku
-  │                                           │
-  │                                           ▼
-  │              PR comment + label: risk:low | risk:medium | risk:high
+GitHub webhook  POST https://brain.paperworklabs.com/api/v1/webhooks/github
+  │
+  ▼  app/routers/webhooks.py: _handle_pull_request_event
+  │
+  ▼  app/services/dependabot_classifier.py
+  ├── patch / minor (or semver-patch/minor metadata)   ──►  approve + label `deps:safe`
+  ├── major (or semver-major metadata)                 ──►  label `deps:major` + `needs-human-review`
+  │                                                          + Brain review (Claude Haiku → risk tier comment)
+  └── unknown                                          ──►  label `needs-human-review`
   │
   ▼
-auto-merge.yaml   (event-driven: on review + on check_suite completed)
+app/schedulers/pr_sweep.py   (AsyncIOScheduler every 30 min)
+  │  Calls:
+  │   1. sweep_open_prs (review new heads)
+  │   2. merge_ready_prs (squash-merge approved + green + mergeable)
   │
   ▼
-auto-merge-sweep.yaml   (scheduled every 10 min — catches races)
-  │
-  ▼
-squash-merge when APPROVED + all CI green + no deps:major / needs-human-review / do-not-merge labels
+squash-merge when APPROVED + all CI green + no deps:major/needs-human-review/do-not-merge labels
 ```
 
-**Why two merge workflows?** GitHub Free + private repo doesn't support the
-native auto-merge feature (`allow_auto_merge: false` is enforced by the plan).
-The event-driven `auto-merge.yaml` merges on approval when CI is already green;
-the scheduled `auto-merge-sweep.yaml` catches the race where a PR gets approved
-first and CI finishes later.
+**Why one place.** Brain is already the authority for PR reviews, memory, and
+model routing. Duplicating that decision tree in GitHub Actions meant two
+sources of truth with no shared context. The webhook path gives Brain the same
+episode history it uses for human PRs.
 
-**Why the event-driven workflow defers bot PRs to the sweep.** Dependabot-authored
-PRs run workflows with a read-only `GITHUB_TOKEN` — `pull_request_review` and
-`check_suite` events inherit that reduced permission set, so `github.rest.pulls.merge`
-403s. The scheduled sweep (a first-party `schedule` event) runs with full repo
-permissions, which is why it's the source of truth for Dependabot merges.
-Human-authored PRs still merge instantly via the event-driven path.
+**Why still a scheduled sweep.** The webhook path fires on PR events. A 30-min
+APScheduler tick catches:
+- PRs that flipped from red to green between webhook fires (race between
+  review approval and CI completion),
+- historical backlog (after a migration or a day the webhook endpoint was down),
+- and anything Brain missed on first open.
 
-## Files
+## Code
 
 | Path | Purpose |
 |---|---|
-| `.github/workflows/dependabot-auto-approve.yaml` | Classifier + approver for safe bumps. Labels majors `deps:major`. |
-| `.github/workflows/dependabot-major-triage.yaml` | LLM triage for `deps:major` PRs. |
-| `.github/workflows/auto-merge.yaml` | Merges approved + green PRs on review or check_suite events. |
-| `.github/workflows/auto-merge-sweep.yaml` | Scheduled poll (10m) — catches approval-before-CI-done races. |
-| `.github/scripts/dependabot_triage.py` | Python script: calls Claude Haiku, renders markdown comment. |
+| `apis/brain/app/routers/webhooks.py` | `POST /webhooks/github` — HMAC-verified entry point. |
+| `apis/brain/app/services/dependabot_classifier.py` | Pure classifier. Patch/minor → safe, major → major, else unknown. |
+| `apis/brain/app/services/pr_review.py` | `review_pr` + `sweep_open_prs` — Brain's reviewer. |
+| `apis/brain/app/services/pr_merge_sweep.py` | `merge_ready_prs` — squash-merge approved + green + mergeable PRs. |
+| `apis/brain/app/schedulers/pr_sweep.py` | AsyncIOScheduler running review + merge every 30 min. |
+| `apis/brain/app/services/slack_outbound.py` | Posts Brain review summaries to `#engineering`. |
+
+## Secrets required
+
+All set on the `brain-api` Render service:
+
+| Secret | Used by |
+|---|---|
+| `GITHUB_TOKEN` | `github` tool — auth for approve / label / merge REST calls. |
+| `GITHUB_WEBHOOK_SECRET` | `_verify_github_webhook` — HMAC-SHA256 of request body. |
+| `ANTHROPIC_API_KEY` | `pr_review._call_anthropic` — Claude Haiku / Sonnet. |
+| `SLACK_BOT_TOKEN` | `slack_outbound` — optional; review posts to #engineering. |
+| `SLACK_ENGINEERING_CHANNEL_ID` | Target channel for review posts. |
+
+If `ANTHROPIC_API_KEY` is absent, `review_pr` returns
+`{"posted": false, "error": "llm_empty"}` and the sweep logs a warning —
+nothing crashes.
 
 ## Risk tiering (from the LLM prompt)
 
@@ -66,81 +80,62 @@ Human-authored PRs still merge instantly via the event-driven path.
 | `medium` | Semantic changes in APIs this repo uses; needs a smoke test or quick manual sweep. |
 | `high` | Breaks an API used widely, requires cross-file code changes, OR is in a security-critical path (auth, crypto, broker SDK, billing). |
 
-## Secrets required
-
-All set at the **repo** level (`paperwork-labs/paperwork`):
-
-| Secret | Used by |
-|---|---|
-| `GITHUB_TOKEN` | auto-approve workflow — standard Actions token (injected). |
-| `ANTHROPIC_API_KEY` | major-triage workflow — calls Claude Haiku. |
-
-If `ANTHROPIC_API_KEY` is absent the triage gracefully degrades: it labels the
-PR `risk:medium` with a "human review required" comment instead of failing.
-
 ## Costs
 
-Claude Haiku 4.5, ~8k input + ~500 output per major:
-- **~$0.002 per major triage**.
-- At Paperwork's cadence (1–5 majors/week) that's **cents per month**.
+Claude Haiku 4.5, ~8k input + ~500 output per review:
+- **~$0.002 per PR**.
+- At Paperwork's cadence (~5 dep majors / week, ~15 human PRs / week) that's
+  **~$0.04 / week**.
 
 ## Manual overrides
 
 | What you want | How to do it |
 |---|---|
-| Force triage for a specific PR | `gh workflow run dependabot-major-triage.yaml -F pr_number=<N>` |
-| Skip auto-approve for a safe bump | Add label `needs-human-review` to the PR (workflow already handles it) |
-| Skip the entire Brain PR review (separate system, see [BRAIN_PR_REVIEW.md](./BRAIN_PR_REVIEW.md)) | Add label `skip-brain-review` |
-| Disable the full pipeline | Delete or disable the workflow files (automerge will stall, flow is safe) |
+| Force a review for a PR | `curl -X POST $BRAIN_URL/api/v1/admin/pr-review -H "X-Brain-Secret: $BRAIN_API_SECRET" -d '{"pr_number": N}'` |
+| Kick the sweep by hand | `curl -X POST $BRAIN_URL/api/v1/admin/pr-sweep -H "X-Brain-Secret: $BRAIN_API_SECRET"` |
+| Kick the merge sweep by hand | `curl -X POST $BRAIN_URL/api/v1/admin/pr-merge-sweep -H "X-Brain-Secret: $BRAIN_API_SECRET"` |
+| Skip auto-approve for a safe bump | Add label `needs-human-review` to the PR. Classifier short-circuits to `unknown`. |
+| Skip Brain review on a human PR | Add label `skip-brain-review`. `sweep_open_prs` honours it. |
+| Disable the scheduler | `BRAIN_SCHEDULER_ENABLED=false` on `brain-api`. Webhook path still works. |
 
 ## Labels used
 
 Already present in the repo (verified via `gh label list`):
 
-- `deps:major` — red. Applied by auto-approve when bump is a major.
-- `dependencies` — black. Applied alongside `deps:major`.
-- `risk:low` / `risk:medium` / `risk:high` — green/yellow/red. Applied by triage.
-- `needs-human-review` — if not present, create with `gh label create needs-human-review --color fbca04 --description "Bot classifier unsure; human should look"`.
+- `deps:safe` — green. Applied by Brain webhook on patch/minor bumps.
+- `deps:major` — red. Applied by Brain webhook on major bumps.
+- `risk:low` / `risk:medium` / `risk:high` — green / yellow / red. Applied by
+  Brain's review in the LLM body (text, not label — tied to the PR comment).
+- `needs-human-review` — yellow. Applied on `unknown` classifications and all
+  majors.
+- `skip-brain-review` — neutral. Opt-out for `sweep_open_prs`.
 
 ## Backlog drain
 
-To process an existing Dependabot backlog without waiting for Dependabot to push a
-new commit and re-trigger the workflows, use `scripts/dependabot/drain-backlog.sh`
-— it classifies open bot PRs (patch/minor/group vs. major), approves safe ones,
-and labels majors to trigger the Haiku triage workflow.
-
 ```bash
-./scripts/dependabot/drain-backlog.sh
+curl -X POST "$BRAIN_URL/api/v1/admin/pr-sweep" \
+  -H "X-Brain-Secret: $BRAIN_API_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"limit": 50, "force": true}'
 ```
 
-After draining, re-run Haiku triage for every major (in case the first pass ran
-without `ANTHROPIC_API_KEY` set and fell back to `risk:medium`):
-
-```bash
-gh pr list --author "app/dependabot" --label "deps:major" --state open --limit 50 \
-  --json number --jq '.[].number' | while IFS= read -r n; do
-  gh workflow run dependabot-major-triage.yaml -F pr_number=$n
-  sleep 2
-done
-```
+This scans every open PR and re-reviews at the current head SHA. `force:true`
+ignores the "already reviewed at this SHA" memory check.
 
 ## Interaction with Brain PR review
 
-Brain reviews PRs itself — see [`BRAIN_PR_REVIEW.md`](./BRAIN_PR_REVIEW.md).
-Brain's sweep **skips** Dependabot PRs by default (labels `dependencies` /
-`deps:major` and the `dependabot[bot]` author are on its skip-list). Dependency
-bumps are mechanical changes; spending LLM tokens reviewing them is wasted.
+This document *is* the Brain PR review path for dependency bumps. Human-authored
+PRs go through the same codepath, minus the classifier branch — their first
+webhook calls `review_pr` directly. See
+[`BRAIN_PR_REVIEW.md`](./BRAIN_PR_REVIEW.md) for the reviewer internals.
 
-If a major bump needs Brain to weigh in (e.g. Next.js 15 → 16 that requires
-real migration code):
+## Migration note (2026-04-24)
 
-```bash
-# Ask Brain to review just this one PR, even though it's Dependabot:
-curl -X POST "$BRAIN_URL/api/v1/admin/pr-review" \
-  -H "X-Brain-Secret: $BRAIN_API_SECRET" \
-  -H "Content-Type: application/json" \
-  -d '{"pr_number": 123}'
-```
+Track B, Week 1 of the Infra & Automation Hardening Sprint deleted:
+- `.github/workflows/dependabot-auto-approve.yaml`
+- `.github/workflows/dependabot-major-triage.yaml`
+- `.github/workflows/auto-merge-sweep.yaml`
+- `.github/scripts/dependabot_triage.py`
 
-Or (cleaner) remove the `dependencies` / `deps:major` labels and the next
-sweep — via chat, MCP, or the scheduled curl — will pick it up.
+Behaviour is byte-for-byte compatible with the old workflows. Unit tests in
+`apis/brain/tests/test_dependabot_classifier.py` lock that down.

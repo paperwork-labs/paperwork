@@ -1,3 +1,5 @@
+"""medallion: ops"""
+
 import secrets
 import uuid
 

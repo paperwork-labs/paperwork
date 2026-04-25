@@ -1,4 +1,7 @@
-"""Image preprocessing for OCR: auto-rotate, contrast normalize, resize."""
+"""Image preprocessing for OCR: auto-rotate, contrast normalize, resize.
+
+medallion: ops
+"""
 
 import io
 import logging

@@ -1,4 +1,7 @@
-"""Tiered OCR pipeline: Cloud Vision text -> GPT-4o-mini mapping -> GPT-4o vision fallback."""
+"""Tiered OCR pipeline: Cloud Vision text -> GPT-4o-mini mapping -> GPT-4o vision fallback.
+
+medallion: ops
+"""
 
 import json
 import logging

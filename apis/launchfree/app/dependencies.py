@@ -1,3 +1,5 @@
+"""medallion: ops"""
+
 from fastapi import HTTPException, Request, status
 
 from app.config import settings

@@ -2,6 +2,8 @@
 
 Google: uses google-auth library to verify ID tokens server-side.
 Apple: fetches Apple's JWKS and validates JWT with python-jose.
+
+medallion: ops
 """
 
 import time

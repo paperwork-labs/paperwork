@@ -1,3 +1,5 @@
+"""medallion: ops"""
+
 from typing import Generic, TypeVar
 
 from fastapi.responses import JSONResponse

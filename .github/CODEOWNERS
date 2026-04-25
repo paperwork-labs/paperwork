@@ -1,0 +1,22 @@
+# CODEOWNERS — Track N (Studio docs hub)
+#
+# The files listed below are "philosophy" in our docs taxonomy: they are
+# the truths we've agreed to hold constant. Changes require explicit
+# approval from the owners, not just "looks good to me" on a PR.
+#
+# See docs/_index.yaml for the authoritative taxonomy and apps/studio
+# /admin/docs for the human-readable browser.
+
+# Philosophy (immutable without org-wide sign-off)
+/docs/VENTURE_MASTER_PLAN.md @paperwork-labs/founders
+/docs/VMP-SUMMARY.md         @paperwork-labs/founders
+/docs/GROUND_TRUTH.md        @paperwork-labs/founders
+/docs/KNOWLEDGE.md           @paperwork-labs/founders
+
+# Docs taxonomy itself — keep it honest
+/docs/_index.yaml            @paperwork-labs/founders
+
+# Architecture canon
+/docs/ARCHITECTURE.md        @paperwork-labs/engineering
+/docs/BRAIN_ARCHITECTURE.md  @paperwork-labs/engineering @paperwork-labs/agent-ops
+/docs/AI_MODEL_REGISTRY.md   @paperwork-labs/agent-ops

@@ -1,11 +1,11 @@
 {
-  "name": "CPA Tax Review",
-  "_comment": "Track H migration: was Webhook -> GPT-4o -> Format -> Slack (4 nodes, hardcoded model). Now Webhook -> Brain (persona_pin=cpa). PersonaSpec routes CPA to Sonnet with escalation, Brain posts directly to #engineering, cost flows through the unified CostTracker.",
+  "name": "Brain Persona Webhook (reference)",
+  "_comment": "Track F / Track H reference template. Copy this and set persona_pin to cpa, qa, growth, social, ux, engineering, tax-domain, trading, ea, strategy, legal, cfo, agent-ops, partnerships, brand, or infra-ops. The 2-node pattern: receive webhook payload, forward to Brain with persona_pin + channel_id, let Brain pick the model via PersonaSpec (cpa/qa -> Sonnet, ea/growth -> 4o-mini, etc).",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "cpa-review",
+        "path": "brain-persona",
         "responseMode": "lastNode",
         "options": {},
         "authentication": "headerAuth"
@@ -16,7 +16,7 @@
           "name": "Webhook Secret"
         }
       },
-      "id": "webhook-cpa",
+      "id": "webhook",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
@@ -35,11 +35,11 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ organization_id: 'paperwork-labs', message: $json.body.message || 'Run CPA tax review on latest filings and flag any Circular 230 issues.', user_id: $json.body.user_id || 'n8n-cpa-tax-review', channel: 'n8n', request_id: ($workflow.id + '-' + Date.now()), persona_pin: 'cpa', slack_channel_id: 'C0AM01NHQ3Y', slack_username: 'CPA Advisor', slack_icon_emoji: ':nerd_face:' }) }}",
+        "jsonBody": "={{ JSON.stringify({ organization_id: 'paperwork-labs', message: $json.body.message, user_id: $json.body.user_id || 'n8n-automation', channel: 'n8n', channel_id: $json.body.channel_id || null, request_id: $json.body.request_id || ($workflow.id + '-' + Date.now()), persona_pin: 'REPLACE_WITH_PERSONA_SLUG' }) }}",
         "options": { "timeout": 60000 }
       },
-      "id": "call-brain-cpa",
-      "name": "Call Brain (persona_pin=cpa)",
+      "id": "call_brain",
+      "name": "Call Brain (persona_pin)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [460, 300]
@@ -47,14 +47,9 @@
   ],
   "connections": {
     "Webhook": {
-      "main": [[{ "node": "Call Brain (persona_pin=cpa)", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Call Brain (persona_pin)", "type": "main", "index": 0 }]]
     }
   },
   "settings": { "executionOrder": "v1" },
-  "tags": [
-    { "name": "persona" },
-    { "name": "cpa" },
-    { "name": "track-h" }
-  ],
-  "id": "4db09e98-3543-4b8c-9f3e-dc85a261937a"
+  "tags": [{ "name": "reference" }, { "name": "persona" }]
 }

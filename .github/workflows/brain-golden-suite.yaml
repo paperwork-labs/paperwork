@@ -1,0 +1,121 @@
+name: Brain golden suite
+
+# Track G — nightly regression run for the Brain golden suite + persona
+# pin contracts. We run this on every PR against apis/brain, every push
+# to main, AND nightly at 06:15 UTC (22:15 PT) so regressions from
+# upstream dep upgrades or silent spec drift land in #qa overnight.
+#
+# The matrix intentionally runs the same scenarios under each supported
+# LLM provider path. We use mocked LLM calls (see tests/conftest fixtures)
+# so this doesn't spend real money — the goal is to catch routing /
+# schema drift, not evaluate model quality.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apis/brain/**"
+      - "docs/_index.yaml"
+      - ".github/workflows/brain-golden-suite.yaml"
+  pull_request:
+    paths:
+      - "apis/brain/**"
+      - "docs/_index.yaml"
+      - ".github/workflows/brain-golden-suite.yaml"
+  schedule:
+    # Nightly at 06:15 UTC. Early enough that the #qa Monday digest
+    # already has fresh data to reference.
+    - cron: "15 6 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: brain-golden-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  golden:
+    name: golden (${{ matrix.suite }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        suite:
+          # Each suite is a targeted pytest selector so we know *which*
+          # layer of the golden surface failed overnight without parsing
+          # a giant matrix run.
+          - structural
+          - persona_pin
+          - classify_and_route
+          - guardrails
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Brain test deps
+        working-directory: apis/brain
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+      - name: Run structural regression
+        if: matrix.suite == 'structural'
+        working-directory: apis/brain
+        run: |
+          pytest -q tests/test_persona_specs.py tests/test_personas.py \
+            tests/test_golden_scenarios.py -k "not asyncio"
+      - name: Run persona pin golden
+        if: matrix.suite == 'persona_pin'
+        working-directory: apis/brain
+        run: pytest -q tests/test_persona_pin_golden.py
+      - name: Run classify + routing golden
+        if: matrix.suite == 'classify_and_route'
+        working-directory: apis/brain
+        run: pytest -q tests/test_golden_scenarios.py tests/test_persona_pinned_route.py
+      - name: Run guardrail regressions
+        if: matrix.suite == 'guardrails'
+        working-directory: apis/brain
+        run: |
+          pytest -q tests/test_persona_rate_limit.py \
+            tests/test_cost_dashboard.py \
+            tests/test_slack_outbound.py \
+            tests/test_pii.py
+
+  summary:
+    name: Post nightly summary to #qa
+    needs: golden
+    runs-on: ubuntu-latest
+    # Only post from the scheduled run — we don't want a Slack ping on
+    # every PR.
+    if: github.event_name == 'schedule' && always()
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build digest
+        id: digest
+        run: |
+          status="${{ needs.golden.result }}"
+          if [ "$status" = "success" ]; then
+            emoji=":white_check_mark:"
+            line="all four golden suites passed overnight"
+          else
+            emoji=":rotating_light:"
+            line="one or more golden suites failed — see GH Actions"
+          fi
+          {
+            echo "text<<EOF"
+            echo "${emoji} *Brain golden suite — $(date -u +%Y-%m-%d)*"
+            echo ""
+            echo "${line}."
+            echo ""
+            echo "Run: <https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}|view logs>"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+      - name: Post to Slack #qa
+        if: env.SLACK_QA_WEBHOOK_URL != ''
+        env:
+          SLACK_QA_WEBHOOK_URL: ${{ secrets.SLACK_QA_WEBHOOK_URL }}
+          DIGEST: ${{ steps.digest.outputs.text }}
+        run: |
+          curl -sS -X POST -H 'Content-Type: application/json' \
+            --data "$(jq -n --arg text "$DIGEST" '{text: $text}')" \
+            "$SLACK_QA_WEBHOOK_URL"
