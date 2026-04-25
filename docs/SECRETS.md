@@ -1,3 +1,10 @@
+---
+owner: infra-ops
+last_reviewed: 2026-04-23
+doc_kind: runbook
+domain: infra
+status: active
+---
 # Secrets & Environment Management
 
 ## Architecture

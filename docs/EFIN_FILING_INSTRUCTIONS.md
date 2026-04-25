@@ -1,3 +1,10 @@
+---
+owner: cpa
+last_reviewed: 2026-03-17
+doc_kind: runbook
+domain: tax
+status: active
+---
 # EFIN Filing Instructions — Do Today
 
 **Purpose**: Step-by-step guide to file Form 8633 (EFIN application) so Paperwork Labs can become an IRS-authorized e-file provider. Required for the MeF transmitter (January 2027 launch). 45-day IRS processing — every day of delay compresses the October ATS window.

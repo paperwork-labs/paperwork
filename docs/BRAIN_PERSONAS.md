@@ -1,3 +1,10 @@
+---
+owner: agent-ops
+last_reviewed: 2026-04-23
+doc_kind: reference
+domain: personas
+status: active
+---
 # Brain Persona Platform
 
 Typed contracts that govern how each Brain persona is routed, budgeted,

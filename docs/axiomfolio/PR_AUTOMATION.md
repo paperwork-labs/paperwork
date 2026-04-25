@@ -1,3 +1,10 @@
+---
+owner: agent-ops
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: automation
+status: active
+---
 # PR automation
 
 How this repo opens PRs, runs CI, merges **Dependabot** updates, and (for `agent/**` branches) auto-merge after approval. Use this as the operator playbook for “branch → PR → review → green → merge”.

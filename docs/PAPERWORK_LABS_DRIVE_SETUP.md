@@ -1,3 +1,10 @@
+---
+owner: ea
+last_reviewed: 2026-03-17
+doc_kind: runbook
+domain: other
+status: active
+---
 # Paperwork Labs — Google Drive Setup
 
 **Purpose**: Central hub for agent outputs (briefings, trinket one-pagers, competitive intel). Cursor can read via GDrive MCP. Create this structure in Drive to prove connection + organize outputs.

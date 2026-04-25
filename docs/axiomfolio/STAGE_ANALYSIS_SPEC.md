@@ -1,3 +1,10 @@
+---
+owner: trading
+last_reviewed: 2026-04-24
+doc_kind: spec
+domain: trading
+status: active
+---
 # Stage Analysis Specification — In-Repo Reference
 
 > Canonical reference for AxiomFolio's Stage Analysis implementation.

@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-22
+doc_kind: plan
+domain: design
+status: active
+---
 # Strategy → Market Navigation Restructure Plan
 
 ## Current State

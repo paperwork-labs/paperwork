@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-22
+doc_kind: plan
+domain: design
+status: active
+---
 # Settings IA Study — 2026 Q2
 
 **Status:** Study only. Reorg ships as the PR immediately after J4B (this doc lands alongside J4B follow-up).

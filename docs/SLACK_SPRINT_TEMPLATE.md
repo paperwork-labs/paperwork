@@ -1,3 +1,10 @@
+---
+owner: agent-ops
+last_reviewed: 2026-04-23
+doc_kind: template
+domain: automation
+status: active
+---
 # Slack Sprint Messaging (Agent-Only)
 
 Sprint operations run as high-quality agent output in Slack. We do not depend on Canvas or List templates.

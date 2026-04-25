@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-09
+doc_kind: architecture
+domain: trading
+status: active
+---
 # Architecture Overview
 
 > **2026-04-09 update**: This document reflects the v0 architecture. The current product strategy and v1+World-Class roadmap live in [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md). Sections marked **(v1 update)** below describe components shipping in the v1 milestone (target 2026-06-21). New sections at end: [Picks Pipeline (v1)](#picks-pipeline-v1), [Subscription Tiers (v1)](#subscription-tiers-v1), [Two-Worker Topology (v1)](#two-worker-topology-v1).

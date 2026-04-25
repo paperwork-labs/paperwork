@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-09
+doc_kind: plan
+domain: trading
+status: active
+---
 # AxiomFolio Master Plan 2026
 
 **Status**: ACTIVE — source of truth for sprint planning. Supersedes all prior production-stabilization plans.

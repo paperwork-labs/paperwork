@@ -1,3 +1,10 @@
+---
+owner: agent-ops
+last_reviewed: 2026-03-18
+doc_kind: reference
+domain: ai-models
+status: active
+---
 # Paperwork Labs — AI Model Registry
 
 **Owner**: AI Operations Lead (`agent-ops.mdc`)

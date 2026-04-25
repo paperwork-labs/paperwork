@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-24
+doc_kind: template
+domain: company
+status: active
+---
 # Onboarding (Humans + Agents)
 
 This repo is a Docker-first monorepo.

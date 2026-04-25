@@ -1,3 +1,10 @@
+---
+owner: ux
+last_reviewed: 2026-03-18
+doc_kind: spec
+domain: design
+status: active
+---
 ## FileFree UX & Product Specification
 **Version**: 4.1 | **Updated**: 2026-03-18
 **Company**: Paperwork Labs LLC

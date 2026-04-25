@@ -1,3 +1,10 @@
+---
+owner: trading
+last_reviewed: 2026-04-24
+doc_kind: philosophy
+domain: trading
+status: active
+---
 # AxiomFolio Trading North Star
 
 14 non-negotiable principles derived from Mark Minervini, Paul Tudor Jones, Stan Weinstein, Ed Seykota, and Van Tharp. Every automated trade must align.

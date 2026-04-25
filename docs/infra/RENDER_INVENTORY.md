@@ -1,3 +1,10 @@
+---
+owner: infra-ops
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: infra
+status: active
+---
 # Render inventory — 2026-04-24
 
 **Owner**: `infra-ops` persona (Track A).

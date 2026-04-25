@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-22
+doc_kind: plan
+domain: design
+status: active
+---
 # UX Audit — 2026 Q2 (PR C0 input spec)
 
 > Feeds PR C1 (IA + routing), PR C2 (Home), PR C3 (Signals shells), PR C4 (journey polish).

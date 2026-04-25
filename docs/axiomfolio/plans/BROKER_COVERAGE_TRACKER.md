@@ -1,3 +1,10 @@
+---
+owner: trading
+last_reviewed: 2026-04-22
+doc_kind: plan
+domain: data
+status: active
+---
 # Broker Coverage Tracker — Evergreen
 
 **Status**: EVERGREEN — single source of truth for broker support (read + write). Update when any broker capability ships or changes tier.

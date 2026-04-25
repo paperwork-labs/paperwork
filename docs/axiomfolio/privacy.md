@@ -1,3 +1,10 @@
+---
+owner: legal
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: company
+status: active
+---
 # Privacy & Sub-Processors
 
 AxiomFolio processes sensitive financial data on behalf of end users.

@@ -1,3 +1,10 @@
+---
+owner: trading
+last_reviewed: 2026-04-22
+doc_kind: plan
+domain: data
+status: active
+---
 # G5 — Implied Volatility / IV-Rank Surface (Free-Providers First)
 
 > Wires the empty IV pipeline to free providers first (Yahoo + IBKR Gateway) and defers the paid-provider decision until after 30 days of coverage measurement. Resolves R-IV01 (silent-zero in Options tab) and the explicit NOOP in `app/tasks/market/iv.py`.

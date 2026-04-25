@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: trading
+status: active
+---
 # Brokers and Data Services
 
 **Broker implementation guide** — per-broker auth, sync architecture, how to add a broker. Connections page and OAuth flows: [CONNECTIONS.md](CONNECTIONS.md).

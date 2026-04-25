@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-23
+doc_kind: plan
+domain: data
+status: active
+---
 # Medallion Audit — 2026 Q2
 
 > **Status**: Phase 0.A output. Read before touching `app/services/` during the Wave 0 migration.

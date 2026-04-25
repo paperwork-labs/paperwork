@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: trading
+status: active
+---
 # Portfolio Pillar
 
 Architecture, data flow, and file inventory for the Portfolio section of AxiomFolio. Broker setup (IBKR, TastyTrade, Schwab): [CONNECTIONS.md](CONNECTIONS.md).

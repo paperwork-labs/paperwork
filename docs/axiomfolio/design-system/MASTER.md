@@ -1,3 +1,10 @@
+---
+owner: ux
+last_reviewed: 2026-03-24
+doc_kind: reference
+domain: design
+status: active
+---
 # Design System Master File
 
 > **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.

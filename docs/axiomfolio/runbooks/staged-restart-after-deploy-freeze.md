@@ -1,3 +1,10 @@
+---
+owner: infra-ops
+last_reviewed: 2026-04-24
+doc_kind: runbook
+domain: infra
+status: active
+---
 # Staged Restart After Deploy Freeze
 
 Use this runbook when Render deploys are frozen/unreliable and you must restart safely without introducing stale queue state.

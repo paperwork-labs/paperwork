@@ -1,3 +1,10 @@
+---
+owner: agent-ops
+last_reviewed: 2026-04-23
+doc_kind: runbook
+domain: automation
+status: active
+---
 # Brain PR Review
 
 Brain is Paperwork Labs' executive reviewer. Brain drives the review itself —

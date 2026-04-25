@@ -1,3 +1,10 @@
+---
+owner: trading
+last_reviewed: 2026-04-22
+doc_kind: plan
+domain: data
+status: active
+---
 # Portfolio Sync Completeness — 2026 Q2 (Wave 8 spec)
 
 **Status**: ACTIVE — Wave 8 spec (blocks W3.7 FileFree 1.1.0).

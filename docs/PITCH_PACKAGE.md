@@ -1,3 +1,10 @@
+---
+owner: growth
+last_reviewed: 2026-03-18
+doc_kind: plan
+domain: company
+status: active
+---
 # Paperwork Labs — Executive Pitch Package
 
 **Canonical location**: Google Drive > Paperwork Labs HQ > Strategy > PITCH_PACKAGE.md

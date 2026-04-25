@@ -1,3 +1,10 @@
+---
+owner: agent-ops
+last_reviewed: 2026-04-24
+doc_kind: runbook
+domain: automation
+status: active
+---
 # Dependabot automation
 
 Paperwork Labs ships a Brain-owned Dependabot flow: GitHub webhook → Brain

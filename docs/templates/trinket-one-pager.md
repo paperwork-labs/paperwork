@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-03-17
+doc_kind: template
+domain: company
+status: active
+---
 # Trinket One-Pager: [Tool Name]
 
 **Date**: [YYYY-MM-DD]

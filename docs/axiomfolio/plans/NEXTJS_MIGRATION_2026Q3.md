@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-24
+doc_kind: plan
+domain: other
+status: active
+---
 # AxiomFolio → Next.js 16 App Router — Migration Plan
 
 Status: **Phase E scaffolded (Week 3)** · Owner: engineering · Target: 2026Q3 · Scope: `apps/axiomfolio/` → `apps/axiomfolio-next/`
