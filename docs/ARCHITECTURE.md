@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-03-16
+doc_kind: architecture
+domain: company
+status: active
+---
 # Paperwork Labs — Architecture Reference
 
 **Last updated**: 2026-03-16

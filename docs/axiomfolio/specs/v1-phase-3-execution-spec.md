@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-21
+doc_kind: spec
+domain: trading
+status: active
+---
 # v1 Phase 3 — Execution Engineering Spec
 
 **Status**: DRAFT — for founder-supervised implementation session

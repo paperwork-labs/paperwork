@@ -1,3 +1,10 @@
+---
+owner: trading
+last_reviewed: 2026-04-22
+doc_kind: plan
+domain: trading
+status: active
+---
 # Wave F — Trading Parity Across All Six Brokers
 
 > Source-of-truth plan for Wave F. Supersedes ad-hoc trading-parity notes. Written so each sub-wave (F0 through F5) is a single merge-able PR executable by a single Background Agent (exception: F0 is Opus-only — see gating note).

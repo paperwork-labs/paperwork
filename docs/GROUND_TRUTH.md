@@ -1,3 +1,10 @@
+---
+owner: qa
+last_reviewed: 2026-04-24
+doc_kind: audit
+domain: personas
+status: active
+---
 # Ground truth
 
 **Owner**: `qa` persona (Track K)

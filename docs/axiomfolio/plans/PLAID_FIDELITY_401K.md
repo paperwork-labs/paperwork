@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-22
+doc_kind: plan
+domain: data
+status: active
+---
 # Plaid Investments — Single-Phase Pro-Tier Feature
 
 > Supersedes the "no Plaid in v1" clause of D129 (see `docs/KNOWLEDGE.md`). Founder decision on 2026-04-22 (see D130 in the same file): ship Plaid as a first-class Pro-tier feature from day one — no allowlist stop-gap. Founder is currently on `PRO_PLUS` so gating is friction-free; ripping out an allowlist later is more work than wiring tier-gating once.

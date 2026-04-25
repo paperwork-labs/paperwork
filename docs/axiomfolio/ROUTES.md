@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: trading
+status: active
+---
 # Frontend Route Map
 
 Complete route tree, navigation structure, access control, and component mapping for the Axiomfolio frontend.

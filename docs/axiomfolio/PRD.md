@@ -1,3 +1,10 @@
+---
+owner: strategy
+last_reviewed: 2026-04-09
+doc_kind: reference
+domain: trading
+status: active
+---
 # Product Requirements Document
 
 > **STRATEGIC UPDATE — 2026-04-09**: This PRD is **historically frozen** and reflects the v0 single-operator vision. The current product strategy, milestones, and scope live in [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md).

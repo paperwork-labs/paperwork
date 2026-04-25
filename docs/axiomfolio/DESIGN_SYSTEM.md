@@ -1,3 +1,10 @@
+---
+owner: ux
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: design
+status: active
+---
 # Design System
 
 AxiomFolio’s frontend uses **Radix UI** primitives, **Tailwind CSS v4**, and shadcn-style components. Visual language is defined by **CSS custom properties** on `:root` / `.dark` in `frontend/src/index.css` (with Tailwind `@theme inline` for mapped colors). This document summarizes palettes, semantic tokens, typography, and shared components.

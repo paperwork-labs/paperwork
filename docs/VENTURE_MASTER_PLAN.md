@@ -1,3 +1,10 @@
+---
+owner: strategy
+last_reviewed: 2026-03-12
+doc_kind: plan
+domain: company
+status: active
+---
 # Paperwork Labs — Venture Master Plan v1
 
 **Date**: March 12, 2026 | **Supersedes**: All prior strategy plans including deep_research_tightening (5 plans archived)

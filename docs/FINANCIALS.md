@@ -1,3 +1,10 @@
+---
+owner: cfo
+last_reviewed: 2026-03-16
+doc_kind: reference
+domain: company
+status: active
+---
 # Paperwork Labs — Financial Tracker
 
 **Maintained by**: Executive Assistant agent (`ea.mdc`)

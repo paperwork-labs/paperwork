@@ -1,3 +1,10 @@
+---
+owner: ux
+last_reviewed: 2026-03-24
+doc_kind: spec
+domain: design
+status: active
+---
 # System Status Page Overrides
 
 > **PROJECT:** AxiomFolio

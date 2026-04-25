@@ -1,3 +1,10 @@
+---
+owner: cfo
+last_reviewed: 2026-03-17
+doc_kind: runbook
+domain: infra
+status: active
+---
 # Paperwork Labs — Billing Email Migration Checklist
 
 **Goal**: Use `billing@paperworklabs.com` for all vendor accounts (subscriptions, servers, APIs, domains). Keeps business expenses separate from personal, clean audit trail.

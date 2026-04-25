@@ -1,3 +1,10 @@
+---
+owner: infra-ops
+last_reviewed: 2026-04-24
+doc_kind: runbook
+domain: infra
+status: active
+---
 # Runbook: Deploy Pipeline Failure
 
 **Owner:** On-call ops  

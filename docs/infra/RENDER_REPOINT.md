@@ -1,3 +1,10 @@
+---
+owner: infra-ops
+last_reviewed: 2026-04-24
+doc_kind: runbook
+domain: infra
+status: active
+---
 # Render repoint runbook — axiomfolio services
 
 **Who runs this**: User (operator). Brain can't click dashboard buttons.

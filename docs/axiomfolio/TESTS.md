@@ -1,3 +1,10 @@
+---
+owner: qa
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: automation
+status: active
+---
 # Testing Strategy
 
 **How to run:** See [How to run](#how-to-run) below. Never run tests against the dev database; see [ONBOARDING.md](ONBOARDING.md) (golden rules).

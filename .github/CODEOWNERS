@@ -1,22 +1,50 @@
-# CODEOWNERS — Track N (Studio docs hub)
+# CODEOWNERS — docs philosophy + long-lived trackers
 #
-# The files listed below are "philosophy" in our docs taxonomy: they are
-# the truths we've agreed to hold constant. Changes require explicit
-# approval from the owners, not just "looks good to me" on a PR.
+# The files listed below are "philosophy" or trackers in our docs
+# taxonomy: they are the truths we've agreed to hold constant. Changes
+# require explicit approval from the owners, not just "looks good to me"
+# on a PR.
 #
 # See docs/_index.yaml for the authoritative taxonomy and apps/studio
 # /admin/docs for the human-readable browser.
 
+# ─────────────────────────────────────────────────────────────────────
 # Philosophy (immutable without org-wide sign-off)
-/docs/VENTURE_MASTER_PLAN.md @paperwork-labs/founders
-/docs/VMP-SUMMARY.md         @paperwork-labs/founders
-/docs/GROUND_TRUTH.md        @paperwork-labs/founders
-/docs/KNOWLEDGE.md           @paperwork-labs/founders
+# ─────────────────────────────────────────────────────────────────────
+/docs/VENTURE_MASTER_PLAN.md   @paperwork-labs/founders
+/docs/VMP-SUMMARY.md           @paperwork-labs/founders
+/docs/GROUND_TRUTH.md          @paperwork-labs/founders
+/docs/KNOWLEDGE.md             @paperwork-labs/founders
+
+# Domain philosophy folder — append-only, founder + persona ack required
+/docs/philosophy/                          @paperwork-labs/founders
+/docs/philosophy/BRAIN_PHILOSOPHY.md       @paperwork-labs/founders @paperwork-labs/agent-ops
+/docs/philosophy/INFRA_PHILOSOPHY.md       @paperwork-labs/founders @paperwork-labs/engineering
+/docs/philosophy/DATA_PHILOSOPHY.md        @paperwork-labs/founders @paperwork-labs/engineering
+/docs/philosophy/AI_MODEL_PHILOSOPHY.md    @paperwork-labs/founders @paperwork-labs/agent-ops
+/docs/philosophy/AUTOMATION_PHILOSOPHY.md  @paperwork-labs/founders @paperwork-labs/agent-ops
+/docs/philosophy/TAX_PHILOSOPHY.md         @paperwork-labs/founders
+/docs/philosophy/FORMATION_PHILOSOPHY.md   @paperwork-labs/founders
+/docs/axiomfolio/TRADING_PRINCIPLES.md     @paperwork-labs/founders
 
 # Docs taxonomy itself — keep it honest
-/docs/_index.yaml            @paperwork-labs/founders
+/docs/_index.yaml             @paperwork-labs/founders
 
+# ─────────────────────────────────────────────────────────────────────
+# Long-lived trackers — founder approves scope, anyone can append status
+# ─────────────────────────────────────────────────────────────────────
+/docs/TASKS.md                              @paperwork-labs/founders
+/docs/sprints/                              @paperwork-labs/founders
+/docs/axiomfolio/plans/MASTER_PLAN_2026.md  @paperwork-labs/founders
+/docs/axiomfolio/plans/GAPS_2026Q2.md       @paperwork-labs/founders
+
+# ─────────────────────────────────────────────────────────────────────
 # Architecture canon
-/docs/ARCHITECTURE.md        @paperwork-labs/engineering
-/docs/BRAIN_ARCHITECTURE.md  @paperwork-labs/engineering @paperwork-labs/agent-ops
-/docs/AI_MODEL_REGISTRY.md   @paperwork-labs/agent-ops
+# ─────────────────────────────────────────────────────────────────────
+/docs/ARCHITECTURE.md         @paperwork-labs/engineering
+/docs/BRAIN_ARCHITECTURE.md   @paperwork-labs/engineering @paperwork-labs/agent-ops
+/docs/AI_MODEL_REGISTRY.md    @paperwork-labs/agent-ops
+/docs/BRAIN_PERSONAS.md       @paperwork-labs/agent-ops
+/docs/EFIN_FILING_INSTRUCTIONS.md @paperwork-labs/founders
+/docs/SECRETS.md              @paperwork-labs/founders
+/docs/CREDENTIALS.md          @paperwork-labs/founders

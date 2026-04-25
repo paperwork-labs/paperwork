@@ -1,3 +1,10 @@
+---
+owner: infra-ops
+last_reviewed: 2026-04-24
+doc_kind: runbook
+domain: data
+status: active
+---
 # Market Data Runbook
 
 Operational procedures for the market data pipeline. For architecture details, see [MARKET_DATA.md](MARKET_DATA.md). For decision rationale, see [KNOWLEDGE.md](KNOWLEDGE.md).

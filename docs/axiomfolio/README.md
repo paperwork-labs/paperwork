@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: company
+status: active
+---
 # AxiomFolio documentation
 
 This folder contains onboarding, architecture, domain pillars (connections, portfolio, market data), operations runbooks, and reference docs. Use the tables below to find the right doc for your task.

@@ -1,3 +1,10 @@
+---
+owner: agent-ops
+last_reviewed: 2026-04-23
+doc_kind: plan
+domain: automation
+status: active
+---
 # Agent-Driven PR Automation — Plan Set
 
 > **STATUS (2026-04-23): IMPLEMENTATION DIRECTION SUPERSEDED — PLANNING TRAIL PRESERVED.**

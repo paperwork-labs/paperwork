@@ -1,3 +1,10 @@
+---
+owner: trading
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: trading
+status: active
+---
 # Strategy System
 
 ## Overview

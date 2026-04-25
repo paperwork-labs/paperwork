@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: design
+status: active
+---
 # Frontend UI (Radix + Tailwind + Ladle)
 
 Frontend structure, theming, and Ladle. For route-to-page mapping see [ARCHITECTURE.md](ARCHITECTURE.md#frontend-pages).

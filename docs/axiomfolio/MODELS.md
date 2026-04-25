@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: trading
+status: active
+---
 # Models Reference
 
 Data models (Position, Trade, Option, TaxLot, etc.) for DB and API. Inventory and table list: [ARCHITECTURE.md](ARCHITECTURE.md#data-model-inventory). Domain context: [PORTFOLIO.md](PORTFOLIO.md), [MARKET_DATA.md](MARKET_DATA.md).

@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-03-08
+doc_kind: reference
+domain: infra
+status: active
+---
 # Paperwork Labs — Credential Registry
 
 Single source of truth for every credential across all systems. QA audits against this document. Any new credential MUST be added here before merge.

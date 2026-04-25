@@ -1,3 +1,10 @@
+---
+owner: trading
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: trading
+status: active
+---
 # Trading & Order Execution
 
 Axiomfolio supports order execution via Interactive Brokers Gateway. Orders follow a **preview → confirm → execute** lifecycle with risk guardrails. All order endpoints require authentication; orders are scoped to the authenticated user's email.

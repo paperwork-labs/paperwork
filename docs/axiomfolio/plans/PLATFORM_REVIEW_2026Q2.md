@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-22
+doc_kind: plan
+domain: company
+status: active
+---
 # AxiomFolio Platform McKinsey Review — 2026 Q2
 
 **Status**: ACTIVE — strategic direction doc. Not a plan; the plan is [MASTER_PLAN_2026.md](MASTER_PLAN_2026.md). The 15-wave roadmap in Chapter 11 is the unit of execution.

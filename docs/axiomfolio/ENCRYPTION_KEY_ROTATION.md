@@ -1,3 +1,10 @@
+---
+owner: infra-ops
+last_reviewed: 2026-04-24
+doc_kind: runbook
+domain: infra
+status: active
+---
 # Encryption Key Rotation
 
 Referenced from [CONNECTIONS.md](CONNECTIONS.md) (credential storage) and [PRODUCTION.md](PRODUCTION.md) (env/security).

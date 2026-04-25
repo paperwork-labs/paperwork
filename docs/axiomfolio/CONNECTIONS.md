@@ -1,3 +1,10 @@
+---
+owner: ux
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: trading
+status: active
+---
 # Connections
 
 **Settings → Connections** is the unified hub for all external service integrations (brokerages, live data, charting preferences, and future data providers). Previously named "Brokerages," the page now encompasses every service AxiomFolio connects to.

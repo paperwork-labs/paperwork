@@ -1,3 +1,10 @@
+---
+owner: infra-ops
+last_reviewed: 2026-04-23
+doc_kind: architecture
+domain: infra
+status: active
+---
 # Paperwork Labs — Infra Architecture
 
 **Status**: Adopted 2026-04-23. Supersedes per-product dev compose files.

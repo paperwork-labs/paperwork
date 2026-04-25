@@ -1,3 +1,10 @@
+---
+owner: ea
+last_reviewed: 2026-03-29
+doc_kind: reference
+domain: personas
+status: active
+---
 # Paperwork Labs — Knowledge Base
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
