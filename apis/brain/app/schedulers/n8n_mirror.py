@@ -1,10 +1,11 @@
 """Shadow mirror of n8n cron workflows (T2.2 / STREAMLINE_SSO_DAGS).
 
-When ``SCHEDULER_N8N_MIRROR_ENABLED`` (global) or a per-job
-``SCHEDULER_N8N_MIRROR_<JOB_ID_UPPER>`` opt-in is true, register matching
-schedules on the shared Brain :class:`AsyncIOScheduler` with no-op handlers
-that post to ``#engineering-cron-shadow`` only. Real n8n crons stay enabled
-until cutover (T2.4). See ``docs/infra/BRAIN_SCHEDULER.md``.
+When ``SCHEDULER_N8N_MIRROR_ENABLED`` (global) and/or
+``SCHEDULER_N8N_MIRROR_<UPPERCASE_JOB_ID>`` (per spec) is true, register
+matching schedules on the shared Brain :class:`AsyncIOScheduler` with no-op
+handlers that post to ``#engineering-cron-shadow`` only. If a per-spec env var
+is unset, the global default applies. Real n8n crons stay enabled until cutover
+(T2.4). See ``docs/infra/BRAIN_SCHEDULER.md``.
 """
 from __future__ import annotations
 
