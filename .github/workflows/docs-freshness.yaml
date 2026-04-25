@@ -1,0 +1,28 @@
+name: Docs freshness
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+  schedule:
+    - cron: "0 14 * * 1"
+
+concurrency:
+  group: docs-freshness-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Docs freshness (last_reviewed)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Report stale last_reviewed (warn-only)
+        run: python3 scripts/check_doc_freshness.py --warn-only
