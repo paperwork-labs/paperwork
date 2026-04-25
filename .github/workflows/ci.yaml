@@ -27,6 +27,7 @@ jobs:
       studioWeb: ${{ steps.filter.outputs.studioWeb }}
       trinketsWeb: ${{ steps.filter.outputs.trinketsWeb }}
       distillWeb: ${{ steps.filter.outputs.distillWeb }}
+      axiomfolioNextWeb: ${{ steps.filter.outputs.axiomfolioNextWeb }}
       sharedPackages: ${{ steps.filter.outputs.sharedPackages }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
@@ -52,6 +53,8 @@ jobs:
               - 'apps/trinkets/**'
             distillWeb:
               - 'apps/distill/**'
+            axiomfolioNextWeb:
+              - 'apps/axiomfolio-next/**'
             sharedPackages:
               - 'packages/**'
               - 'pnpm-workspace.yaml'
@@ -218,7 +221,7 @@ jobs:
     name: Web Type Check
     runs-on: ubuntu-latest
     needs: changes
-    if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.launchfreeWeb == 'true' || needs.changes.outputs.studioWeb == 'true' || needs.changes.outputs.trinketsWeb == 'true' || needs.changes.outputs.distillWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
+    if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.launchfreeWeb == 'true' || needs.changes.outputs.studioWeb == 'true' || needs.changes.outputs.trinketsWeb == 'true' || needs.changes.outputs.distillWeb == 'true' || needs.changes.outputs.axiomfolioNextWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v6
@@ -232,6 +235,7 @@ jobs:
       - run: pnpm --filter @paperwork-labs/trinkets exec tsc --noEmit
       - run: pnpm --filter @paperwork-labs/studio exec tsc --noEmit
       - run: pnpm --filter @paperwork-labs/distill exec tsc --noEmit
+      - run: pnpm --filter @paperwork-labs/axiomfolio-next exec tsc --noEmit
 
   web-test:
     name: FileFree Web Tests
@@ -267,7 +271,9 @@ jobs:
             when: studioWeb
           - app: "@paperwork-labs/distill"
             when: distillWeb
-    if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.launchfreeWeb == 'true' || needs.changes.outputs.studioWeb == 'true' || needs.changes.outputs.trinketsWeb == 'true' || needs.changes.outputs.distillWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
+          - app: "@paperwork-labs/axiomfolio-next"
+            when: axiomfolioNextWeb
+    if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.launchfreeWeb == 'true' || needs.changes.outputs.studioWeb == 'true' || needs.changes.outputs.trinketsWeb == 'true' || needs.changes.outputs.distillWeb == 'true' || needs.changes.outputs.axiomfolioNextWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v6
