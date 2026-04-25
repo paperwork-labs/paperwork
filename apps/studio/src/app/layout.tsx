@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
@@ -56,9 +57,11 @@ export default function RootLayout({
         data-theme="studio"
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
       >
-        {children}
-        <StudioInstallPrompt />
-        <Analytics />
+        <ClerkProvider>
+          {children}
+          <StudioInstallPrompt />
+          <Analytics />
+        </ClerkProvider>
       </body>
     </html>
   );

@@ -40,8 +40,11 @@ Acceptance theme for the window: operators can name the single system that fires
 ## Outcome
 
 - _Tracking — updates as each track ships_
+- shipped 2026-04-25: **T3.1 (foundation)** — Studio has `@clerk/nextjs` with `ClerkProvider`, `sign-in` / `sign-up` catch-all routes, and `clerkMiddleware` composed with the existing Basic Auth escape hatch on `/admin` and `/api/admin` in production; public routes and `/api/secrets*` skip this gate. Operator runbook: [docs/infra/CLERK_STUDIO.md](../infra/CLERK_STUDIO.md).
 
 ## What we learned
+
+- A single `clerkMiddleware` handler can grant production admin access if either `auth().userId` (Clerk) is present or the legacy Basic `Authorization` header matches `ADMIN_EMAILS` / `ADMIN_ACCESS_PASSWORD`, while local dev can keep admin routes open by short-circuiting on `NODE_ENV === "development"`.
 
 
 ## Tracker
@@ -59,8 +62,8 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
   - `[ ]` Align Studio `WORKFLOW_META` role labels, `system-graph.json` `owner_persona`, and n8n `persona_pin` to those slugs verbatim.
   - `[ ]` CI gate blocks drift between Brain specs and Studio / graph / automation references.
 
-- **T3 — Clerk SSO (cross-product)** `[ ]`
-  - `[ ]` Adopt Clerk via Vercel Marketplace; auto-provisioned env vars across linked Vercel projects.
+- **T3 — Clerk SSO (cross-product)** `[~]`
+  - `[x]` Adopt Clerk via Vercel Marketplace; auto-provisioned env vars across linked Vercel projects. (T3.1: Studio foundation — add PR# to `related_prs` when merged)
   - `[ ]` Roll out per-product theming (Appearance API) while preserving a single identity graph.
   - `[ ]` Plan verifier paths for AxiomFolio APIs post–Next.js migration; retire parallel JWT/session schemes safely.
   - `[ ]` Communicate session cutover; keep documented Basic Auth escape hatch for Studio until explicitly removed.

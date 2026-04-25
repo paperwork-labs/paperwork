@@ -234,6 +234,13 @@ docs:
     tags: [finance, procurement]
     owners: [cfo]
     category: reference
+  - slug: clerk-studio
+    path: docs/infra/CLERK_STUDIO.md
+    title: Clerk SSO — Paperwork Studio (Next.js)
+    summary: "Runbook for the Studio app (`apps/studio`) identity stack: Clerk (primary SSO) with Basic Auth as a documented operator escape hatch until that path is removed by an explicit follow-up."
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: financials
     path: docs/FINANCIALS.md
     title: Financials

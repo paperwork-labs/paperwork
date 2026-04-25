@@ -1,6 +1,19 @@
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+/**
+ * Studio auth: Clerk SSO + Basic Auth (escape hatch) on admin surfaces.
+ *
+ * Precedence (per request, for `/admin` and `/api/admin` in production only):
+ * 1) Public and self-authenticated routes: no Studio gate (Clerk may still run for session state).
+ * 2) `auth().userId` (Clerk session) → allow.
+ * 3) Valid Basic Auth against ADMIN_EMAILS + ADMIN_ACCESS_PASSWORD → allow.
+ * 4) Otherwise: browser navigations → redirect to sign-in; `/api/*` → 401 + WWW-Authenticate.
+ *
+ * Development: same public rules; `/admin` + `/api/admin` stay ungated (preserves pre-Clerk local DX).
+ * Secrets API routes use `secrets-auth.ts` only — we do not apply this Basic/Clerk wall there.
+ */
 function parseBasicAuth(authHeader: string | null): { username: string; password: string } | null {
   if (!authHeader || !authHeader.startsWith("Basic ")) {
     return null;
@@ -19,18 +32,7 @@ function parseBasicAuth(authHeader: string | null): { username: string; password
   }
 }
 
-function unauthorizedResponse() {
-  return new NextResponse("Unauthorized", {
-    status: 401,
-    headers: { "WWW-Authenticate": 'Basic realm="Paperwork Labs Admin"' },
-  });
-}
-
-export function middleware(request: NextRequest) {
-  if (process.env.NODE_ENV === "development") {
-    return NextResponse.next();
-  }
-
+function basicAuthAllows(request: NextRequest): boolean {
   const allowedEmailsRaw = process.env.ADMIN_EMAILS || "";
   const requiredPassword = process.env.ADMIN_ACCESS_PASSWORD || "";
 
@@ -42,24 +44,68 @@ export function middleware(request: NextRequest) {
   );
 
   if (allowedEmails.size === 0 || !requiredPassword) {
-    return new NextResponse("Admin access is not configured.", { status: 503 });
+    return false;
   }
 
   const auth = parseBasicAuth(request.headers.get("authorization"));
-  if (!auth) return unauthorizedResponse();
+  if (!auth) return false;
 
   const email = auth.username.trim().toLowerCase();
-  const password = auth.password;
-
-  if (!allowedEmails.has(email) || password !== requiredPassword) {
-    return unauthorizedResponse();
-  }
-
-  return NextResponse.next();
+  return allowedEmails.has(email) && auth.password === requiredPassword;
 }
 
+function basicAuthUnauthorized() {
+  return new NextResponse("Unauthorized", {
+    status: 401,
+    headers: { "WWW-Authenticate": 'Basic realm="Paperwork Labs Admin"' },
+  });
+}
+
+const isPublicRoute = createRouteMatcher([
+  "/",
+  "/docs(.*)",
+  "/login(.*)",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/api/health",
+  "/api/health/(.*)",
+]);
+
+const isSecretsApi = createRouteMatcher(["/api/secrets(.*)"]);
+
+const isStudioGated = createRouteMatcher(["/admin(.*)", "/api/admin(.*)"]);
+
+export default clerkMiddleware(async (auth, request) => {
+  if (isPublicRoute(request) || isSecretsApi(request)) {
+    return;
+  }
+
+  if (isStudioGated(request) && process.env.NODE_ENV === "development") {
+    return;
+  }
+
+  if (isStudioGated(request) && process.env.NODE_ENV === "production") {
+    const { userId, redirectToSignIn } = await auth();
+
+    if (userId) {
+      return;
+    }
+
+    if (basicAuthAllows(request)) {
+      return;
+    }
+
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return basicAuthUnauthorized();
+    }
+
+    return redirectToSignIn({ returnBackUrl: request.url });
+  }
+});
+
 export const config = {
-  matcher: ["/admin/:path*", "/api/admin/:path*"],
-  // Note: /api/secrets/* routes handle their own auth via secrets-auth.ts
-  // (supports both Basic Auth and Bearer token for machine access)
+  matcher: [
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/(api|trpc)(.*)",
+  ],
 };
