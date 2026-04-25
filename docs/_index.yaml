@@ -269,6 +269,13 @@ docs:
     tags: [runbook, template, ops]
     owners: [agent-ops]
     category: reference
+  - slug: vercel-auto-promote
+    path: docs/infra/VERCEL_AUTO_PROMOTE.md
+    title: Vercel auto-promote on merge
+    summary: "Vercel's GitHub App webhook missed two consecutive merges to `main` in 24 hours (PR #142 → commit `f0255542`, PR #143 → commit `83477e70`). That left **production stuck on stale builds while…"
+    tags: []
+    owners: [infra]
+    category: reference
   # ── Plans ─────────────────────────────────────────
   - slug: axiomfolio-gaps
     path: docs/axiomfolio/plans/GAPS_2026Q2.md

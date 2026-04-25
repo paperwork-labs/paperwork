@@ -6,7 +6,13 @@ import tempfile
 import pytest
 
 from app.services.memory import search_episodes, store_episode
-from app.services.seed import _chunk_by_headers, ingest_docs
+from app.services.seed import (
+    SPRINT_LESSONS_SOURCE,
+    _chunk_by_headers,
+    _extract_lessons,
+    ingest_docs,
+    ingest_sprint_lessons,
+)
 
 
 class TestChunking:
@@ -101,3 +107,116 @@ async def test_search_returns_empty_for_no_matches(db_session):
         skip_embedding=True,
     )
     assert episodes == []
+
+
+class TestSprintLessonsExtraction:
+    """The lesson-extraction regex needs to be permissive enough to handle
+    every shape we use in docs/sprints/, but strict enough not to grab
+    bullets from Tracks tables or Follow-ups."""
+
+    def test_basic_what_we_learned(self):
+        md = """# Sprint X
+
+## Outcome
+
+- something shipped
+
+## What we learned
+
+- Lesson one is about caching.
+- Lesson two is about retries.
+
+## Follow-ups
+
+- this should not be picked up
+"""
+        assert _extract_lessons(md) == [
+            "Lesson one is about caching.",
+            "Lesson two is about retries.",
+        ]
+
+    def test_lessons_alias_heading(self):
+        md = """## Lessons learned
+
+* Bullet with a star marker still counts.
+"""
+        assert _extract_lessons(md) == ["Bullet with a star marker still counts."]
+
+    def test_no_lessons_section_returns_empty(self):
+        md = "## Outcome\n\n- only outcomes here\n"
+        assert _extract_lessons(md) == []
+
+    def test_stops_at_next_h2(self):
+        md = """## What we learned
+
+- only this lesson
+
+## Tracks
+
+- not a lesson
+- also not a lesson
+"""
+        assert _extract_lessons(md) == ["only this lesson"]
+
+
+@pytest.mark.asyncio
+async def test_ingest_sprint_lessons_is_idempotent(db_session):
+    """Re-running the ingester must not duplicate already-stored lessons."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sprints_dir = os.path.join(tmpdir, "docs", "sprints")
+        os.makedirs(sprints_dir)
+        with open(os.path.join(sprints_dir, "EXAMPLE_SPRINT.md"), "w") as f:
+            f.write("""---
+status: shipped
+---
+
+# Example sprint
+
+## What we learned
+
+- Cheap-model parallel delegation cleared the docs inventory in minutes.
+- A repo-native tracker beats Jira when docs are where work is happening.
+""")
+
+        first = await ingest_sprint_lessons(
+            db_session, tmpdir, organization_id="test-org", skip_embedding=True
+        )
+        await db_session.flush()
+        assert first["created"] == 2
+        assert first["sprints_scanned"] == 1
+
+        # Second run sees the same sha1-keyed source_refs and inserts nothing.
+        second = await ingest_sprint_lessons(
+            db_session, tmpdir, organization_id="test-org", skip_embedding=True
+        )
+        assert second["created"] == 0
+        assert second["skipped"] == 2
+
+
+@pytest.mark.asyncio
+async def test_ingested_lessons_are_retrievable(db_session):
+    """End-to-end: lesson bullets must be findable via the same search
+    pipeline that runs over seed:docs episodes."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        sprints_dir = os.path.join(tmpdir, "docs", "sprints")
+        os.makedirs(sprints_dir)
+        with open(os.path.join(sprints_dir, "DOCS_2026Q2.md"), "w") as f:
+            f.write("""## What we learned
+
+- Server components reading env-injected data MUST mark force-dynamic.
+""")
+
+        await ingest_sprint_lessons(
+            db_session, tmpdir, organization_id="test-org", skip_embedding=True
+        )
+        await db_session.flush()
+
+        results = await search_episodes(
+            db_session,
+            organization_id="test-org",
+            query="force-dynamic env",
+            limit=5,
+            skip_embedding=True,
+        )
+        assert len(results) >= 1
+        assert all(ep.source == SPRINT_LESSONS_SOURCE for ep in results)
