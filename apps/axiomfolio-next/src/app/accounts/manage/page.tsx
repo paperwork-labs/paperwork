@@ -39,6 +39,7 @@ import { cn } from "@/lib/utils";
 import { isPlatformAdminRole } from "@/utils/userRole";
 
 import { BrokerLogo } from "@/components/connect/BrokerLogo";
+import { RequireAuthClient } from "@/components/auth/RequireAuthClient";
 
 interface ManagedAccount {
   id: number;
@@ -247,7 +248,7 @@ function AccountRow({
   );
 }
 
-export default function AccountsManagementPage() {
+function AccountsManagementContent() {
   const router = useRouter();
   const { user: currentUser } = useAuth();
   const showSyncHistory = isPlatformAdminRole(currentUser?.role);
@@ -389,5 +390,13 @@ export default function AccountsManagementPage() {
         </DialogContent>
       </Dialog>
     </Page>
+  );
+}
+
+export default function AccountsManagementPage() {
+  return (
+    <RequireAuthClient>
+      <AccountsManagementContent />
+    </RequireAuthClient>
   );
 }

@@ -32,6 +32,7 @@ import { connectHubApi, type ConnectionBrokerOption } from "@/services/api";
 
 import BrokerCard from "@/components/connect/BrokerCard";
 import NotifyMeDialog from "@/components/connect/NotifyMeDialog";
+import { RequireAuthClient } from "@/components/auth/RequireAuthClient";
 
 type CategoryFilter = "all" | "stocks" | "crypto" | "retirement";
 type MethodFilter = "all" | "oauth" | "import" | "coming";
@@ -86,7 +87,7 @@ function GridSkeleton() {
   );
 }
 
-export default function ConnectAccountsPage() {
+function ConnectAccountsContent() {
   const router = useRouter();
   const [categoryFilter, setCategoryFilter] = React.useState<CategoryFilter>("all");
   const [methodFilter, setMethodFilter] = React.useState<MethodFilter>("all");
@@ -221,5 +222,13 @@ export default function ConnectAccountsPage() {
         />
       ) : null}
     </Page>
+  );
+}
+
+export default function ConnectAccountsPage() {
+  return (
+    <RequireAuthClient>
+      <ConnectAccountsContent />
+    </RequireAuthClient>
   );
 }

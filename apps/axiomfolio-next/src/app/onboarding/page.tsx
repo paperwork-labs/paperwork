@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
+import { RequireAuthClient } from "@/components/auth/RequireAuthClient";
 
 type Step = "welcome" | "verify" | "broker" | "sync" | "complete";
 
@@ -18,7 +19,7 @@ const STEPS: { id: Step; title: string; description: string }[] = [
   { id: "complete", title: "Complete", description: "Ready to go!" },
 ];
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = React.useState<Step>("welcome");
@@ -175,5 +176,13 @@ export default function OnboardingPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <RequireAuthClient>
+      <OnboardingContent />
+    </RequireAuthClient>
   );
 }
