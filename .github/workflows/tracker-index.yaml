@@ -1,0 +1,38 @@
+name: Tracker index drift
+
+on:
+  pull_request:
+    paths:
+      - "docs/TASKS.md"
+      - "docs/sprints/**"
+      - "docs/*/plans/**"
+      - "scripts/generate_tracker_index.py"
+      - "apps/studio/src/data/tracker-index.json"
+  push:
+    branches: [main]
+    paths:
+      - "docs/TASKS.md"
+      - "docs/sprints/**"
+      - "docs/*/plans/**"
+      - "scripts/generate_tracker_index.py"
+      - "apps/studio/src/data/tracker-index.json"
+
+concurrency:
+  group: tracker-index-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Tracker index ↔ markdown sources
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: "3.12"
+      - name: Regenerate and compare tracker index
+        run: python3 scripts/generate_tracker_index.py --check --no-pr-fetch
