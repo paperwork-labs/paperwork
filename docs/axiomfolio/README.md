@@ -16,7 +16,7 @@ This folder contains onboarding, architecture, domain pillars (connections, port
 | Doc | Purpose | Read when |
 |-----|---------|-----------|
 | [KNOWLEDGE.md](KNOWLEDGE.md) | Decision log with rationale (**40+** entries, D1 onward) | Before making architectural changes |
-| [TASKS.md](TASKS.md) | Sprint plan with acceptance criteria | Before starting work |
+| [../archive/AXIOMFOLIO_TASKS.md](../archive/AXIOMFOLIO_TASKS.md) | Archived AxiomFolio `TASKS.md` (2026-04-24); open items merged into [plans/MASTER_PLAN_2026.md](plans/MASTER_PLAN_2026.md) | Historical phase tables / traceability |
 | [PRD.md](PRD.md) | Product requirements, vision, three pillars | Understanding the "why" |
 | [ONBOARDING.md](ONBOARDING.md) | Quick start, golden rules, Docker-first | New to repo |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System overview, pillars, modules, pipelines | Understanding the system |
@@ -34,7 +34,8 @@ This folder contains onboarding, architecture, domain pillars (connections, port
 | [TRADING_PRINCIPLES.md](TRADING_PRINCIPLES.md) | Non-negotiable trading principles | Strategy, risk, and discipline context |
 | [TRADING.md](TRADING.md) | Trading domain notes | Execution and workflow context |
 | [STRATEGIES.md](STRATEGIES.md) | Strategy pillar documentation | Rules, signals, backtests |
-| [ROADMAP.md](ROADMAP.md) | Section-based execution roadmap | Planning / status |
+| [plans/MASTER_PLAN_2026.md](plans/MASTER_PLAN_2026.md) | Per-product master plan; legacy section roadmap merged 2026-04-24 | Planning / status |
+| [../archive/AXIOMFOLIO_ROADMAP.md](../archive/AXIOMFOLIO_ROADMAP.md) | Archived `ROADMAP.md` (verbatim) | Historical traceability |
 | [PR_AUTOMATION.md](PR_AUTOMATION.md) | Dependabot, agent PR flow, merge rules | Opening/merging PRs |
 | [PAPERWORK_HANDOFF.md](PAPERWORK_HANDOFF.md) | Handoff / paperwork checklist | Administrative handoffs |
 
@@ -75,7 +76,7 @@ flowchart LR
   Arch --> RefDocs
 ```
 
-Typical path: start with **ONBOARDING**, then **ARCHITECTURE** for the big picture; use **CONNECTIONS**, **PORTFOLIO**, or **MARKET_DATA** for domain work; **PRODUCTION** and **ENCRYPTION_KEY_ROTATION** for operations; **MODELS**, **TESTS**, **FRONTEND_UI**, **DESIGN_SYSTEM**, **ROUTES**, **TRADING_PRINCIPLES**, **TRADING**, **STRATEGIES**, **ROADMAP**, **PR_AUTOMATION**, **PAPERWORK_HANDOFF**, and **[brain/axiomfolio_tools.yaml](brain/axiomfolio_tools.yaml)** as needed.
+Typical path: start with **ONBOARDING**, then **ARCHITECTURE** for the big picture; use **CONNECTIONS**, **PORTFOLIO**, or **MARKET_DATA** for domain work; **PRODUCTION** and **ENCRYPTION_KEY_ROTATION** for operations; **MODELS**, **TESTS**, **FRONTEND_UI**, **DESIGN_SYSTEM**, **ROUTES**, **TRADING_PRINCIPLES**, **TRADING**, **STRATEGIES**, **MASTER_PLAN_2026**, **PR_AUTOMATION**, **PAPERWORK_HANDOFF**, and **[brain/axiomfolio_tools.yaml](brain/axiomfolio_tools.yaml)** as needed.
 
 ---
 

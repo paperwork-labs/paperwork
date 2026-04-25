@@ -85,6 +85,13 @@ def _render_doc(cfg: dict) -> str:
     )
 
     lines: list[str] = [
+        "---",
+        "owner: agent-ops",
+        "last_reviewed: 2026-04-24",
+        "doc_kind: generated",
+        "domain: brain",
+        "status: generated",
+        "---",
         "<!-- GENERATED — do not edit by hand.",
         "     Source: docs/axiomfolio/brain/axiomfolio_tools.yaml",
         "     Regen:  python scripts/generate_axiomfolio_integration_doc.py",

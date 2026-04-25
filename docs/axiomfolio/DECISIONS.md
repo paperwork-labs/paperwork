@@ -1,3 +1,10 @@
+---
+owner: engineering
+last_reviewed: 2026-04-24
+doc_kind: reference
+domain: brain
+status: active
+---
 # Knowledge — Decision Log
 
 Architectural decisions with rationale. Grouped by domain; within each decision table, rows are sorted by decision ID. Decision IDs are globally unique through **D143** (V1 Greenfield implementation rows **D95–D102** were renumbered from a duplicate D81–D88 block that collided with Strategic Direction **D81–D88**). Decision IDs are append-only — never reused. Resolved issues use R-prefixed IDs.
@@ -169,7 +176,7 @@ Master-plan decisions **D81–D90** merged from `feat/v1-master-plan` (PR #316, 
 
 ### V1 Greenfield (Subscription Platform)
 
-Implementation decisions that shipped in PRs #326–#334 were previously logged under **D81–D88**, which duplicated the Strategic Direction **D81–D88** IDs (master-plan narrative vs. code-level decisions). They are renumbered **D95–D102** below. Older sprint notes or chat logs may still cite “D81–D88” for this block; they map to **D95–D102** here (`docs/TASKS.md` uses D95–D102).
+Implementation decisions that shipped in PRs #326–#334 were previously logged under **D81–D88**, which duplicated the Strategic Direction **D81–D88** IDs (master-plan narrative vs. code-level decisions). They are renumbered **D95–D102** below. Older sprint notes or chat logs may still cite “D81–D88” for this block; they map to **D95–D102** here (archived sprint doc `docs/archive/AXIOMFOLIO_TASKS.md` used D95–D102).
 
 | ID | Date | Decision |
 |----|------|----------|
@@ -277,7 +284,7 @@ Companion changes: added DELETE `/settings/ai-keys` so a user who downgrades fro
 
 **Reversible?** Partially. The naming convention is policy and can be revised; docstring tags are cheap to add or remove. Directory moves remain separate, reversible diffs.
 
-**Amendment [2026-04-23]:** D127's "three-layer" model is now superseded by the **four-layer** model defined in the Medallion Wave 0 scope (see `docs/plans/MEDALLION_AUDIT_2026Q2.md` and `docs/handoffs/2026-04-22-medallion-wave-0-stage-setting.md`). The fourth layer is `execution/`, which reads gold signals and emits real-world broker orders — it does not fit bronze/silver/gold because its blast radius is user money, not data. An `ops/` escape hatch is declared explicitly for cross-cutting infrastructure (billing, notifications, oauth, observability, etc.) that does not participate in the data-flow hierarchy. Phase 0.A (2026-04-23) applied 268 docstring tags; Phase 0.B added a CI import-layer gate (`scripts/medallion/check_imports.py`, `make medallion-check`) with a waiver mechanism for 21 pre-existing cross-layer violations; Phase 0.C will execute the physical file relocation per `medallion_move_map.yaml` (145 moves across 4 passes).
+**Amendment [2026-04-23]:** D127's "three-layer" model is now superseded by the **four-layer** model defined in the Medallion Wave 0 scope (see `docs/plans/MEDALLION_AUDIT_2026Q2.md` and the archived `docs/archive/2026-04-22-medallion-wave-0-stage-setting.md`, with decisions also reflected in `docs/plans/PLATFORM_REVIEW_2026Q2.md`). The fourth layer is `execution/`, which reads gold signals and emits real-world broker orders — it does not fit bronze/silver/gold because its blast radius is user money, not data. An `ops/` escape hatch is declared explicitly for cross-cutting infrastructure (billing, notifications, oauth, observability, etc.) that does not participate in the data-flow hierarchy. Phase 0.A (2026-04-23) applied 268 docstring tags; Phase 0.B added a CI import-layer gate (`scripts/medallion/check_imports.py`, `make medallion-check`) with a waiver mechanism for 21 pre-existing cross-layer violations; Phase 0.C will execute the physical file relocation per `medallion_move_map.yaml` (145 moves across 4 passes).
 
 ### D44–D45, D69, D71–D72 — Paperwork Integration Sprint (2026-03-31)
 
@@ -362,6 +369,42 @@ All task references must match `@shared_task(name="...")` exactly. Found 4 criti
 - [ ] Daily coverage: > 98%
 - [ ] RS Mansfield: non-null for all symbols with > 252 bars
 - [ ] No UNKNOWN stages for symbols with > 175 bars of data
+
+---
+
+## Migrated audit findings (2026-04 audit)
+
+_Imported 2026-04-24 from `docs/archive/AUDIT_FINDINGS_2026-04.md` (formerly the AxiomFolio audit-findings doc)._
+
+### API route module count (audit consistency)
+
+- Living notes from API / market-data audits. **Use one consistent figure for route-module scope:** there are **40** Python modules under `app/api/routes/` (including packages such as `market/` and `portfolio/`). Do not mix that count with older informal totals (e.g. “85+” or “93”) that referred to endpoints or lines—those are not comparable.
+
+### Market universe API
+
+- `GET /api/v1/market-data/indices/constituents` takes query parameter **`index`** (e.g. `SP500`, `NASDAQ100`). The database column on `IndexConstituent` is named `index_name`; the **HTTP API** uses `index`, not `index_name`.
+
+### Rate limiter (sync Celery paths)
+
+- `TokenBucketLimiter.acquire_sync` is thread-safe for concurrent workers using `threading.Lock` (`self._sync_lock`), separate from the async `asyncio.Lock` used by `acquire()`.
+
+```python
+def acquire_sync(self) -> None:
+    """Blocking variant for sync code paths (Celery tasks).
+
+    Thread-safe via threading.Lock for concurrent Celery workers.
+    """
+    while True:
+        with self._sync_lock:
+            self._refill()
+            if self._tokens >= 1.0:
+                self._tokens -= 1.0
+                return
+            wait_time = (1.0 - self._tokens) / self.rate
+        time.sleep(min(wait_time, 2.0))
+```
+
+- Source: `app/services/market/rate_limiter.py`.
 
 ---
 

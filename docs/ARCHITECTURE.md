@@ -1,29 +1,55 @@
 ---
 owner: engineering
-last_reviewed: 2026-03-16
+last_reviewed: 2026-04-24
 doc_kind: architecture
 domain: company
 status: active
 ---
 # Paperwork Labs — Architecture Reference
 
-**Last updated**: 2026-03-16
+**Last updated**: 2026-04-24
 
-Visual-first guide to how Paperwork Labs products are built. Diagrams render natively on GitHub.
+Visual guide to how products are built. Diagrams render on GitHub. For **live deploy vs. blueprint drift** (AxiomFolio repo pointer, `launchfree-api` presence, etc.), see [docs/infra/RENDER_INVENTORY.md](docs/infra/RENDER_INVENTORY.md).
 
----
+## TL;DR
 
-## System Overview
+- **Shape**: One monorepo: [`apps/`](../apps) (Vercel), [`apis/`](../apis) (Render), shared [`packages/`](../packages). [Studio](../apps/studio) → [Brain](../apis/brain) (LLM, personas, tools); [filefree](../apis/filefree), [launchfree](../apis/launchfree), and [axiomfolio](../apis/axiomfolio) are the product backends. Postgres, Redis, and vendor keys per [INFRA.md](INFRA.md).
+- **Constraint**: **Multi-tenant and product boundaries are explicit** — no cross-tenant or cross-product data access without the app-layer scopes in [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) and each product’s auth model; never bypass session/API-key checks.
+- **In flight** (Q2 2026): [Docs streamline & frontmatter](DOCS_STREAMLINE_2026Q2.md) across `docs/`; AxiomFolio **Render services still point at the legacy `paperwork-labs/axiomfolio` repo** — repoint to the monorepo and sync [apis/axiomfolio/render.yaml](https://github.com/paperwork-labs/paperwork/blob/main/apis/axiomfolio/render.yaml) per [docs/infra/RENDER_INVENTORY.md](docs/infra/RENDER_INVENTORY.md#f-1--four-axiomfolio--services-still-point-to-the-old-standalone-repo-).
+
+## Production system map (Vercel, Render, data)
+
+**Request path (scannable):** [Studio `apps/studio`](../apps/studio) (UI) → [Brain `apis/brain`](../apis/brain) (orchestration, [personas](../apis/brain/app/personas)) → product APIs; Studio also **health-probes** FileFree/LaunchFree endpoints from [command-center.ts](../apps/studio/src/lib/command-center.ts). Product UIs call their own APIs directly. **Do not** assume a separate `apis/studio` service — it does not exist in this repo.
+
+```
+  ┌──────────────┐     ┌─────────────────┐     Personas: apis/brain/app/personas/
+  │ Studio (UI)  │───▶│  Brain API      │     (routing + .mdc specs)
+  │ Vercel :3004 │     │  Render/8003*   │            │
+  └──────┬───────┘     └────────┬────────┘            ▼
+         │                    │            ┌────────────────┐
+         │ health / admin       ├───────────▶│ AxiomFolio API│──▶ Neon + Redis
+         ├─▶ filefree/launchfree│            │ apis/axiomfolio│    (dedicated
+         ▼   APIs (Render)     │            └────────────────┘     Render DB)
+  ┌────────────┐  ┌───────────┴──────────┐
+  │FileFree API│  │LaunchFree API        │
+  │ :8001      │  │ :8002                 │
+  └─────┬──────┘  └──────────┬──────────┘
+        │                    │
+        └────────┬───────────┘
+                 ▼
+        Neon, Upstash, GCS, Vision, OpenAI, Gemini, Stripe, …
+        (* host port from [infra/compose.dev.yaml](../infra/compose.dev.yaml) — see Local dev)
+```
 
 ```mermaid
 graph TB
-    subgraph consumers [Consumer Products — Vercel]
+    subgraph consumers [Consumer products — Vercel]
         FF["FileFree<br/>filefree.ai<br/>:3001"]
         LF["LaunchFree<br/>launchfree.ai<br/>:3002"]
         TR["Trinkets<br/>tools.filefree.ai<br/>:3003"]
     end
 
-    subgraph b2b [B2B Platform — Vercel]
+    subgraph b2b [B2B — Vercel]
         DI["Distill<br/>distill.tax<br/>:3005"]
     end
 
@@ -31,112 +57,102 @@ graph TB
         ST["Studio<br/>paperworklabs.com<br/>:3004"]
     end
 
-    subgraph apis [APIs — Render]
-        FFAPI["FileFree API<br/>api.filefree.ai<br/>:8001"]
-        LFAPI["LaunchFree API<br/>api.launchfree.ai<br/>:8002"]
-        STAPI["Studio API<br/>api.paperworklabs.com<br/>:8003"]
+    subgraph brainlayer [Command center — Render]
+        BRAIN["Brain API<br/>brain.paperworklabs.com"]
     end
 
-    subgraph datastores [Data Stores]
-        Neon["Neon PostgreSQL<br/>Per-product DBs + Venture DB"]
-        Upstash["Upstash Redis<br/>Sessions + CSRF"]
+    subgraph apis [Product APIs — Render]
+        FFAPI["FileFree API<br/>api.filefree.ai"]
+        LFAPI["LaunchFree API"]
+        XFAPI["AxiomFolio API<br/>apis/axiomfolio"]
     end
 
-    subgraph gcp [Google Cloud Platform]
-        Vision["Cloud Vision API<br/>OCR"]
-        GCS["Cloud Storage<br/>Temp uploads, 24hr TTL"]
+    subgraph datastores [Data stores]
+        Neon["Neon PostgreSQL<br/>Per-product + Brain"]
+        Upstash["Upstash Redis<br/>Sessions + CSRF + Brain cache"]
     end
 
-    subgraph ai [AI Providers]
-        GPT["OpenAI GPT-4o / 4o-mini<br/>Field mapping, advisory"]
-        Gemini["Gemini 2.5 Flash<br/>State data extraction"]
+    subgraph gcp [Google Cloud]
+        Vision["Cloud Vision<br/>OCR"]
+        GCS["Cloud Storage<br/>Temp uploads, 24h TTL"]
+    end
+
+    subgraph aimodels [Model providers]
+        GPT["OpenAI<br/>4o / 4o-mini"]
+        Gemini["Google Gemini"]
     end
 
     subgraph payments [Payments]
-        Stripe["Stripe<br/>Consumer billing + Issuing"]
+        Stripe["Stripe<br/>Billing + Issuing"]
     end
 
-    subgraph ops [Ops — Hetzner CX33]
-        N8N["n8n<br/>Workflow automation"]
-        Postiz["Postiz<br/>Social scheduler"]
+    subgraph ops [Ops — Hetzner]
+        N8N["n8n<br/>Workflows"]
+        Postiz["Postiz<br/>Social"]
     end
 
     FF --> FFAPI
     LF --> LFAPI
-    DI --> FFAPI
-    ST --> STAPI
-    STAPI --> FFAPI
-    STAPI --> LFAPI
+    ST --> BRAIN
+    ST --> FFAPI
+    ST --> LFAPI
+    BRAIN --> XFAPI
     FFAPI --> Neon
     LFAPI --> Neon
+    BRAIN --> Neon
+    XFAPI --> Neon
     FFAPI --> Upstash
     LFAPI --> Upstash
+    BRAIN --> Upstash
     FFAPI --> Vision
     FFAPI --> GPT
     LFAPI --> Gemini
     LFAPI --> Stripe
     FFAPI --> GCS
-    N8N --> STAPI
+    N8N --> BRAIN
 ```
 
-### Production Infrastructure
+[apps/distill](../apps/distill) is a **stub B2B UI** (no API calls in tree yet); the historical pattern “Distill B2B shares FileFree’s backend” is a product intent, not a verified wire in the current `apps/distill` code.
 
-| Service | Provider | Cost | Domain |
-|---------|----------|------|--------|
-| Frontend (5 apps) | Vercel | Hobby → $20/mo Pro | filefree.ai, launchfree.ai, distill.tax, paperworklabs.com, tools.filefree.ai |
-| Backend (FileFree + Distill) | Render | $7/mo Starter | api.filefree.ai |
-| Backend (LaunchFree) | Render | $7/mo Starter | api.launchfree.ai |
-| Backend (Studio) | Render | $7/mo Starter | api.paperworklabs.com |
-| Portal Automation Worker | Render | $7/mo | — (Playwright headless) |
-| Database | Neon | Free tier (0.5 GB) | — |
-| Sessions | Upstash | Free tier (500K cmd/mo) | — |
-| File Storage | GCP Cloud Storage | Pay-per-use | — |
-| OCR | GCP Cloud Vision | 1K free/mo, $0.0015/page | — |
-| AI | OpenAI + Gemini | Pay-per-use | — |
-| Payments | Stripe | Standard + Issuing | — |
-| Ops VPS | Hetzner CX33 | $6/mo | n8n.paperworklabs.com |
+### Where production runs
+
+| Layer | Code / docs | Where it runs |
+|-------|---------------|---------------|
+| **Frontends** | [apps/filefree](../apps/filefree), [apps/launchfree](../apps/launchfree), [apps/trinkets](../apps/trinkets), [apps/studio](../apps/studio), [apps/distill](../apps/distill), [apps/axiomfolio](../apps/axiomfolio) | Vercel (per app) |
+| **FileFree API** | [apis/filefree](../apis/filefree) | Render → api.filefree.ai (consumer; B2B direction shares this API) |
+| **LaunchFree API** | [apis/launchfree](../apis/launchfree) | Render (see note below) |
+| **Brain API** (Studio command center, LLM, personas) | [apis/brain](../apis/brain) | Render → `https://brain.paperworklabs.com` ([`render.yaml`](../render.yaml)) |
+| **AxiomFolio** | [apis/axiomfolio](../apis/axiomfolio) | Render ([`apis/axiomfolio/render.yaml`](../apis/axiomfolio/render.yaml)) |
+| **Data & cache** | [INFRA.md](INFRA.md) | Neon, Upstash, per-Blueprint Redis/Postgres on Render |
+| **Vendors** | wired per service | GCS, Cloud Vision, Stripe, OpenAI, Gemini, Anthropic, … |
+| **Ops automation** | [infra/hetzner](../infra/hetzner) | Hetzner: n8n, Postiz, … |
+
+<!-- STALE 2026-04-24: LaunchFree — [RENDER_INVENTORY F-2](docs/infra/RENDER_INVENTORY.md#f-2--launchfree-api-is-defined-in-renderyaml-but-not-deployed): `launchfree-api` in root `render.yaml` may be absent in live Render. Studio’s default health URL is `https://launchfree-api.onrender.com` in [command-center.ts](../apps/studio/src/lib/command-center.ts). -->
+
+<!-- STALE 2026-04-24: AxiomFolio on Render — [RENDER_INVENTORY F-1](docs/infra/RENDER_INVENTORY.md#f-1--four-axiomfolio--services-still-point-to-the-old-standalone-repo-): live `axiomfolio-*` services may still use repo `paperwork-labs/axiomfolio` until repointed; monorepo `apis/axiomfolio/` is the current source tree. -->
 
 ---
 
-## Monorepo Structure
+## Monorepo layout (repo root)
+
+The Git root is the monorepo (there is no `venture/` directory — that name appears only in older docs). High-level:
 
 ```
-venture/
-  apps/
-    filefree/               # filefree.ai — Next.js, consumer tax filing
-    launchfree/             # launchfree.ai — Next.js, LLC formation
-    distill/                # distill.tax — Next.js, B2B compliance SaaS
-    studio/                 # paperworklabs.com — Next.js, command center
-    trinkets/               # tools.filefree.ai — Next.js SSG, utility tools
-  packages/
-    ui/                     # shadcn components + 4 brand themes
-    auth/                   # shared auth hooks, middleware, session
-    analytics/              # PostHog + attribution + PII scrubbing
-    data/                   # 50-state configs (formation + tax + compliance)
-      formation/{state}.json
-      tax/{year}.json
-      compliance/{state}.json
-    tax-engine/             # tax calculation, form generators, MeF XML
-    document-processing/    # OCR pipeline, field extraction, bulk upload
-    filing-engine/          # State Filing Engine (portal automation, APIs, mail)
-    intelligence/           # financial profiles, recommendations, campaigns
-    email/                  # shared email templates (React Email)
-  apis/
-    filefree/               # FastAPI — consumer tax + Distill B2B routes
-    launchfree/             # FastAPI — formation service
-    studio/                 # FastAPI — command center aggregator
-  infra/
-    compose.dev.yaml        # Docker Compose (local dev)
-    hetzner/                # n8n + Postiz ops stack
-    render.yaml             # Render Blueprints IaC
-  docs/                     # All documentation
+  apps/           # Next.js (and product UIs) — e.g. filefree, launchfree, studio, trinkets, distill, axiomfolio
+  apis/           # FastAPI: filefree, launchfree, brain, axiomfolio  (no apis/studio)
+  packages/       # shared libraries (ui, data, tax-engine, …)
+  infra/          # [compose.dev.yaml](../infra/compose.dev.yaml) — single dev stack; see [INFRA.md](INFRA.md)
+  docs/           # this tree
+  render.yaml     # root Render Blueprint (brain-api, filefree-api, launchfree-api, …)
 ```
+
+Layout matches [INFRA.md](INFRA.md) (single `docker compose -f infra/compose.dev.yaml` dev stack, per-app DBs on one Postgres). Product listing: [pnpm-workspace.yaml](../pnpm-workspace.yaml).
 
 ---
 
-## Shared Infrastructure Layer
+## Shared packages: one engine, many surfaces
 
-The core architectural insight: consumer products and B2B APIs consume the same shared packages. Building LaunchFree's Filing Engine simultaneously creates Distill's Formation API. Building FileFree's tax engine simultaneously creates Distill's Tax API.
+Consumer and B2B surfaces pull from the same [`packages/`](../packages) libraries (tax engine, filing engine, `document-processing`, shared `data`, UI, auth), so one implementation funds multiple product routes.
 
 ```mermaid
 flowchart TB
@@ -181,9 +197,9 @@ flowchart TB
 
 ---
 
-## Federated Identity
+## Per-product identity (optional venture link)
 
-Each product owns its own user table in its own database. The venture layer adds SSO and cross-product intelligence on top but is fully removable without breaking any product.
+Each product owns its own user table in its own database. A venture layer can add SSO and cross-product intelligence; it must remain **optional** so products stay separable.
 
 ```mermaid
 erDiagram
@@ -237,9 +253,11 @@ If FileFree is acquired: remove the `venture_identity_id` column. FileFree still
 
 ---
 
-## Authentication
+## Auth patterns (session cookies vs B2B API key)
 
-### Consumer Auth (FileFree, LaunchFree)
+### Consumer (FileFree, LaunchFree) — cookie session + CSRF
+
+Implemented in [apis/filefree](../apis/filefree) / [apis/launchfree](../apis/launchfree) (see routers under `app/routers/`).
 
 ```mermaid
 sequenceDiagram
@@ -269,7 +287,11 @@ sequenceDiagram
     FastAPI->>Browser: Clear cookie, 200 OK
 ```
 
-### B2B Auth (Distill)
+### B2B (Distill) — API key, firm-scoped
+
+<!-- STALE 2026-04-24: The sequence below is the **intended** Distill B2B pattern. Grep did not find `/api/v1/pro/` in [apis/filefree](../apis/filefree) — re-verify before copying paths into runbooks. -->
+
+Target: tenant-isolated, API-key access to the same document/tax **capabilities** as FileFree (as productized B2B routes on the FileFree or follow-on API surface).
 
 ```mermaid
 sequenceDiagram
@@ -287,7 +309,7 @@ sequenceDiagram
 
 ---
 
-## OCR Pipeline (FileFree + Distill)
+## Document OCR and extraction (FileFree + Distill)
 
 ```mermaid
 flowchart TD
@@ -316,7 +338,7 @@ flowchart TD
 
 ---
 
-## State Filing Engine (LaunchFree + Distill Formation API)
+## State Filing Engine (LaunchFree + Distill formation API)
 
 ```mermaid
 flowchart TD
@@ -352,7 +374,7 @@ flowchart TD
 
 ---
 
-## Data Models
+## Data models (by product)
 
 ### FileFree (Tax)
 
@@ -479,9 +501,9 @@ erDiagram
 
 ---
 
-## Agent Operations Architecture
+## Ops agents (Cursor, n8n)
 
-AI agents are the operations team. They maintain the 50-state data layer, monitor infrastructure health, and handle ongoing codebase maintenance.
+**Cursor** for repo work; **n8n** on Hetzner for schedules and webhooks. The **LLM + agent loop** for the command center is in [apis/brain](https://github.com/paperwork-labs/paperwork/tree/main/apis/brain) ([`render.yaml`](../render.yaml) `brain-api`); n8n is a channel adapter, not the primary “brain” (see [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) D1–D2).
 
 ```mermaid
 flowchart LR
@@ -531,21 +553,26 @@ flowchart LR
 | Dependency updates | Monthly | Cursor agent | PR with updated packages |
 | Compliance deadline alerts | Daily | n8n | Slack + email to affected users |
 
+<!-- STALE 2026-04-24: Agent cadence (models per row) — re-verify “n8n + Gemini” for state/fee detection against the workflows checked into [infra/hetzner](../infra/hetzner) and n8n. -->
+
 ---
 
-## Local Development
+## Local development ([`infra/compose.dev.yaml`](../infra/compose.dev.yaml))
+
+Host port map and service names match [INFRA.md](INFRA.md) (`postgres` **5433**, `redis` **6380** on the host — not 5432/6379).
 
 ```mermaid
 graph LR
-    subgraph docker [Docker Compose — venture]
-        PG["PostgreSQL 15<br/>:5432"]
-        RD["Redis 7<br/>:6379"]
-        FFAPI["FileFree API<br/>:8001"]
-        LFAPI["LaunchFree API<br/>:8002"]
-        STAPI["Studio API<br/>:8003"]
+    subgraph docker [Docker Compose]
+        PG["Postgres 17<br/>host :5433"]
+        RD["Redis 7<br/>host :6380"]
+        FFAPI["api-filefree<br/>:8001"]
+        LFAPI["api-launchfree<br/>:8002"]
+        BRAPI["api-brain<br/>:8003"]
+        XFAPI["api-axiomfolio<br/>:8004"]
     end
 
-    subgraph apps [pnpm dev — separate terminals]
+    subgraph apps [Frontends — pnpm, separate terminals]
         FFWEB["apps/filefree :3001"]
         LFWEB["apps/launchfree :3002"]
         TRWEB["apps/trinkets :3003"]
@@ -556,16 +583,17 @@ graph LR
     FFWEB --> FFAPI
     LFWEB --> LFAPI
     DIWEB --> FFAPI
-    STWEB --> STAPI
+    STWEB --> BRAPI
     FFAPI --> PG & RD
     LFAPI --> PG & RD
-    STAPI --> PG & RD
+    BRAPI --> PG & RD
+    XFAPI --> PG & RD
 ```
 
-### Port Map
+### Port map (see [INFRA.md](INFRA.md) for full table)
 
-| Service | Port |
-|---------|------|
+| Service | Host port |
+|---------|-----------|
 | apps/filefree | 3001 |
 | apps/launchfree | 3002 |
 | apps/trinkets | 3003 |
@@ -573,9 +601,10 @@ graph LR
 | apps/distill | 3005 |
 | apis/filefree | 8001 |
 | apis/launchfree | 8002 |
-| apis/studio | 8003 |
-| PostgreSQL | 5432 |
-| Redis | 6379 |
+| apis/brain | 8003 |
+| apis/axiomfolio | 8004 |
+| postgres | 5433 |
+| redis | 6380 |
 
 ### Quick Reference
 
@@ -591,7 +620,7 @@ make migrate      # Run Alembic migrations (all APIs)
 
 ---
 
-## Production Reliability
+## Degradation behavior and PII
 
 ### Circuit Breakers
 
@@ -607,3 +636,15 @@ make migrate      # Run Alembic migrations (all APIs)
 ### PII Encryption
 
 All personally identifiable fields (`full_name`, `ssn`, `ein`, `address`, `date_of_birth`) are encrypted at rest using AES-256 (Fernet) with a key separate from database encryption. PII is never stored in plaintext. PII is never logged.
+
+---
+
+## Related docs
+
+- [INFRA.md](INFRA.md) — single dev compose, ports, and per-app databases.
+- [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) — Brain API, memory, personas, and agent loop.
+- [philosophy/INFRA_PHILOSOPHY.md](philosophy/INFRA_PHILOSOPHY.md) — why infra is split the way it is.
+- [philosophy/BRAIN_PHILOSOPHY.md](philosophy/BRAIN_PHILOSOPHY.md) — product philosophy for the Brain.
+- [axiomfolio/ARCHITECTURE.md](axiomfolio/ARCHITECTURE.md) — AxiomFolio (portfolio / trading data plane).
+  
+There is no `MEDALLION_ARCHITECTURE.md` at the repo root; medallion details live under [docs/axiomfolio/](axiomfolio/) and related data docs.

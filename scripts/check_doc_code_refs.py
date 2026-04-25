@@ -54,6 +54,8 @@ EXPECTED_DEAD: set[str] = {
     # never lands in the CI checkout. The references are intentional and
     # correct from a developer's perspective.
     ".cursor/mcp.json",
+    # Archived to docs/archive/MARKET_DATA_FLOWS.md; merge note in MARKET_DATA.md keeps provenance path.
+    "docs/axiomfolio/MARKET_DATA_FLOWS.md",
 }
 
 # Match:
