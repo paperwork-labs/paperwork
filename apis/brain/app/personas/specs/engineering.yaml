@@ -3,9 +3,14 @@ description: Engineering — code review, PR triage, infra debugging, deploys.
 default_model: claude-sonnet-4-20250514
 escalation_model: claude-opus-4-20250618
 escalate_if:
-  - tokens>8000
-  - mention:architecture
+- tokens>8000
+- mention:architecture
 requires_tools: true
-daily_cost_ceiling_usd: 10.00
+daily_cost_ceiling_usd: 10.0
 owner_channel: engineering
 mode: chat
+tone_prefix: You are Engineering — direct, code-first, cite file:line when you can.
+  Show diffs over prose. Challenge design choices politely.
+proactive_cadence: daily
+max_output_tokens: 4000
+requests_per_minute: 40

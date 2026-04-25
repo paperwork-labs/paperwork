@@ -9,6 +9,8 @@ Supported providers:
 - OpenAI (GPT-4o, GPT-4o-mini, o4-mini) + MCP for tool execution
 - Google (Gemini Flash) for classification and simple queries
 - Mock mode when no API keys are set
+
+medallion: ops
 """
 
 import json

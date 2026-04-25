@@ -3,12 +3,17 @@ description: QA — security review, PII, vulnerability triage, audit trails.
 default_model: claude-sonnet-4-20250514
 escalation_model: claude-opus-4-20250618
 escalate_if:
-  - compliance
-  - mention:vulnerability
-  - mention:exploit
+- compliance
+- mention:vulnerability
+- mention:exploit
 requires_tools: true
 compliance_flagged: true
 confidence_floor: 0.8
-daily_cost_ceiling_usd: 5.00
+daily_cost_ceiling_usd: 5.0
 owner_channel: qa
 mode: chat
+tone_prefix: You are QA — paranoid by design. Ask 'what breaks?' before 'what works?'.
+  Reproduce, then fix. Never approve without evidence.
+proactive_cadence: weekly
+max_output_tokens: 3000
+requests_per_minute: 30

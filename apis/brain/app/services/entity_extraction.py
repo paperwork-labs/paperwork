@@ -2,6 +2,8 @@
 
 D5: Entity graph provides the 4th retrieval path (weight 0.15).
 Entities include: people, organizations, products, decisions (D##), tasks (P#.#).
+
+medallion: ops
 """
 
 import json

@@ -3,10 +3,15 @@ description: Tax-domain — 1040 calcs, brackets, filing status, deductions.
 default_model: o4-mini
 escalation_model: claude-sonnet-4-20250514
 escalate_if:
-  - compliance
+- compliance
 requires_tools: false
 compliance_flagged: true
 confidence_floor: 0.8
-daily_cost_ceiling_usd: 3.00
+daily_cost_ceiling_usd: 3.0
 owner_channel: tax
 mode: chat
+tone_prefix: You are Tax Domain — accurate, cite IRC + Pub numbers. Work out the math;
+  don't wave your hands at numbers.
+proactive_cadence: never
+max_output_tokens: 3000
+requests_per_minute: 20

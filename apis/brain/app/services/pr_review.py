@@ -15,10 +15,12 @@ Design notes:
   changes in PR #489 because…") and so ``sweep_open_prs`` can skip PRs it
   has already reviewed at the current head SHA.
 
-Architecture note: Brain drives this itself — via chat, MCP, or the admin
-sweep endpoint. There is deliberately no external cron or GitHub Actions
-webhook pinging this module; Brain's agent loop + memory + GitHub tools are
-sufficient, and the webhook was redundant state.
+Architecture note: Brain drives this itself — via chat, MCP, its own
+APScheduler sweep, or a GitHub webhook. There is deliberately no external
+cron / GitHub Actions job pinging this module anymore (the three workflows
+that did are deleted in Track B, Week 1).
+
+medallion: ops
 """
 
 from __future__ import annotations
@@ -34,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.episode import Episode
 from app.services import memory
+from app.services import slack_outbound
 from app.services.pii import scrub_pii
 from app.tools import github as gh_tools
 
@@ -282,15 +285,65 @@ async def review_pr(
     except Exception as e:
         logger.warning("Failed to persist PR review episode: %s", e)
 
+    posted = not post_result.startswith(("review_github_pr error", "review_github_pr HTTP"))
+    slack_ts: str | None = None
+    if posted:
+        try:
+            slack_res = await _notify_slack_for_review(
+                pr_number=pr_number,
+                verdict=verdict,
+                summary=str(parsed.get("summary") or ""),
+                model=model,
+                head_sha=head_sha,
+            )
+            slack_ts = slack_res.get("ts")
+        except Exception as e:
+            logger.warning("pr_review slack notify failed for #%s: %s", pr_number, e)
+
     return {
-        "posted": not post_result.startswith(("review_github_pr error", "review_github_pr HTTP")),
+        "posted": posted,
         "verdict": verdict,
         "summary": parsed.get("summary", ""),
         "review_result": post_result,
         "model": model,
         "number": pr_number,
         "head_sha": head_sha,
+        "slack_ts": slack_ts,
     }
+
+
+async def _notify_slack_for_review(
+    *,
+    pr_number: int,
+    verdict: str,
+    summary: str,
+    model: str,
+    head_sha: str,
+) -> dict[str, Any]:
+    """Post a compact review card to the engineering channel.
+
+    Degrades cleanly when ``SLACK_ENGINEERING_CHANNEL_ID`` or
+    ``SLACK_BOT_TOKEN`` is unset.
+    """
+    channel = (settings.SLACK_ENGINEERING_CHANNEL_ID or "").strip()
+    if not channel:
+        return {"ok": False, "error": "SLACK_ENGINEERING_CHANNEL_ID not configured"}
+
+    owner, repo = _repo_parts_from_settings()
+    pr_url = f"https://github.com/{owner}/{repo}/pull/{pr_number}"
+    verdict_emoji = {
+        "APPROVE": ":white_check_mark:",
+        "COMMENT": ":speech_balloon:",
+        "REQUEST_CHANGES": ":warning:",
+    }.get(verdict, ":speech_balloon:")
+
+    summary_line = (summary.strip().splitlines() or [""])[0][:300]
+    text = (
+        f"{verdict_emoji} Brain review on <{pr_url}|#{pr_number}>: *{verdict}*\n"
+        f"{summary_line}\n"
+        f"_model: `{model}` · head: `{head_sha[:7] if head_sha else '?'}`_"
+    )
+    return await slack_outbound.post_message(channel=channel, text=text, unfurl_links=False)
 
 
 # ---- sweep: Brain's autonomous "review everything new" loop ------------------

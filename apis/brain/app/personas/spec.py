@@ -70,6 +70,22 @@ class PersonaSpec(BaseModel):
             "platform middleware. None means no cap (inherits global)."
         ),
     )
+    max_output_tokens: int | None = Field(
+        default=None,
+        description=(
+            "Track I: hard cap on output tokens for this persona. Prevents "
+            "runaway completions (e.g. a chatty persona streaming 8k tokens "
+            "of hedging). None = provider default (~4096 for text paths)."
+        ),
+    )
+    requests_per_minute: int | None = Field(
+        default=None,
+        description=(
+            "Track I: optional per-org rate limit for this persona. Enforced "
+            "on /brain/process when persona_pin matches. None = falls back to "
+            "global SlowAPI default."
+        ),
+    )
     confidence_floor: float | None = Field(
         default=None,
         description=(
@@ -89,6 +105,25 @@ class PersonaSpec(BaseModel):
         description=(
             "Default Slack channel where this persona posts. Used by scheduled "
             "workflows migrated out of n8n."
+        ),
+    )
+    tone_prefix: str | None = Field(
+        default=None,
+        description=(
+            "Track C: short string prepended to the system prompt so each persona "
+            "has a distinct voice even though the underlying LLM is the same. "
+            "Example: 'Speak like a senior CPA — concise, conservative, always "
+            "flags tax-law caveats.' Falls back to an empty prefix."
+        ),
+    )
+    proactive_cadence: Literal["never", "daily", "weekly", "monthly"] = Field(
+        default="never",
+        description=(
+            "Track C: how often this persona posts proactively in its "
+            "owner_channel. 'never' = reactive only; 'daily' = posts a standup "
+            "every morning UTC; 'weekly' = posts a digest every Monday; "
+            "'monthly' = posts on the 1st. Scheduler reads this to build the "
+            "cron plan without us hand-coding per-persona jobs."
         ),
     )
     input_schema: dict[str, Any] | None = Field(

@@ -7,6 +7,8 @@ happens in production, rather than silently drifting.
 
 Caching: encoders are module-level so we pay the initialization cost
 once per process.
+
+medallion: ops
 """
 from __future__ import annotations
 

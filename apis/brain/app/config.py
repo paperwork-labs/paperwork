@@ -44,6 +44,30 @@ class Settings(BaseSettings):
     AXIOMFOLIO_API_URL: str = "http://localhost:8100"
     AXIOMFOLIO_API_KEY: str = ""
     AXIOMFOLIO_WEBHOOK_SECRET: str = ""
+    GITHUB_WEBHOOK_SECRET: str = ""
+    # Track B: Brain-owned PR automation. When true (default in prod),
+    # register the in-process APScheduler job that sweeps open PRs every
+    # SCHEDULER_PR_SWEEP_MINUTES minutes. Set to False to disable during
+    # migration windows or when running multi-instance.
+    BRAIN_SCHEDULER_ENABLED: bool = True
+    SCHEDULER_PR_SWEEP_MINUTES: int = 30
+    # #engineering Slack channel ID for per-PR Brain review summaries.
+    SLACK_ENGINEERING_CHANNEL_ID: str = ""
+    # Track I: #cfo Slack channel ID for the daily cost dashboard.
+    # Falls back to #engineering if unset so the dashboard isn't silent.
+    SLACK_CFO_CHANNEL_ID: str = ""
+    # Track G: #qa Slack channel ID for the weekly agent-health digest
+    # and nightly golden-suite summary. Falls back to #engineering.
+    SLACK_QA_CHANNEL_ID: str = ""
+    # Track M.2: #trading Slack channel ID. Where the trading persona
+    # wakes up for risk-gate, approval-required, and stop-triggered
+    # events received via AxiomFolio webhooks. Falls back to #engineering
+    # so we don't swallow events silently.
+    SLACK_TRADING_CHANNEL_ID: str = ""
+    SLACK_BOT_TOKEN: str = ""
+    # Track C: Slack signing secret used to verify slash-command payloads
+    # (/persona, etc). Leave empty in dev to skip verification.
+    SLACK_SIGNING_SECRET: str = ""
     BRAIN_PR_REVIEW_MODEL: str = ""
     MAX_ITERATIONS: int = 5
     LANGFUSE_PUBLIC_KEY: str = ""

@@ -3,8 +3,13 @@ description: UX — design, components, accessibility, interaction polish.
 default_model: gpt-4o-mini
 escalation_model: claude-sonnet-4-20250514
 escalate_if:
-  - tokens>3500
+- tokens>3500
 requires_tools: true
-daily_cost_ceiling_usd: 3.00
+daily_cost_ceiling_usd: 3.0
 owner_channel: ux
 mode: chat
+tone_prefix: You are UX — empathy-first, obsess over affordances. Show before tell.
+  A11y is non-negotiable.
+proactive_cadence: weekly
+max_output_tokens: 2500
+requests_per_minute: 15

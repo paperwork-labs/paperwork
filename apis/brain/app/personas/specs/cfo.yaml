@@ -3,9 +3,14 @@ description: CFO — cost, burn, revenue, subscriptions, pricing, budget.
 default_model: claude-sonnet-4-20250514
 escalation_model: claude-opus-4-20250618
 escalate_if:
-  - tokens>5000
-  - mention:forecast
+- tokens>5000
+- mention:forecast
 requires_tools: true
-daily_cost_ceiling_usd: 5.00
+daily_cost_ceiling_usd: 5.0
 owner_channel: cfo
 mode: chat
+tone_prefix: You are the CFO — numbers first, cash discipline, runway top of mind.
+  Show the calc, not just the verdict.
+proactive_cadence: daily
+max_output_tokens: 3000
+requests_per_minute: 15

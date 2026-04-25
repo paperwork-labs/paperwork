@@ -3,14 +3,17 @@ import hmac
 import logging
 import os
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import async_session_factory, get_db
+from app.models.episode import Episode
 from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
+from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import review_pr, sweep_open_prs
 from app.services.seed import ingest_docs
 
@@ -128,3 +131,61 @@ async def trigger_single_pr_review(
 
     background_tasks.add_task(_run, body.pr_number, body.organization_id)
     return success_response({"accepted": True, "pr_number": body.pr_number})
+
+
+@router.post("/pr-merge-sweep")
+async def trigger_pr_merge_sweep(
+    _auth: None = Depends(_require_admin),
+):
+    """Squash-merge every open PR that is approved + green + mergeable.
+
+    Runs synchronously (small budget, no LLM calls) so callers get the
+    report back immediately.
+    """
+    report = await merge_ready_prs(limit=50)
+    return success_response(report)
+
+
+@router.get("/memory/episodes")
+async def list_memory_episodes(
+    source_prefix: str | None = Query(
+        None,
+        description="Filter episodes whose `source` starts with this prefix (e.g. `brain:pr-review`).",
+    ),
+    organization_id: str = Query("paperwork-labs"),
+    limit: int = Query(50, ge=1, le=500),
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Read recent episodes for dashboard consumers (Studio /admin/overview).
+
+    Deliberately read-only and flat. Callers that need semantic search use the
+    MCP tool ``search_memory`` — this endpoint is the "last 50 rows by source"
+    utility.
+    """
+    stmt = select(Episode).where(Episode.organization_id == organization_id)
+    if source_prefix:
+        stmt = stmt.where(Episode.source.like(f"{source_prefix}%"))
+    stmt = stmt.order_by(Episode.created_at.desc()).limit(limit)
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    episodes = [
+        {
+            "id": ep.id,
+            "source": ep.source,
+            "source_ref": ep.source_ref,
+            "channel": ep.channel,
+            "persona": ep.persona,
+            "product": ep.product,
+            "summary": ep.summary,
+            "importance": ep.importance,
+            "metadata": ep.metadata_ or {},
+            "model_used": ep.model_used,
+            "tokens_in": ep.tokens_in,
+            "tokens_out": ep.tokens_out,
+            "user_id": ep.user_id,
+            "created_at": ep.created_at.isoformat() if ep.created_at else None,
+        }
+        for ep in rows
+    ]
+    return success_response({"count": len(episodes), "episodes": episodes})

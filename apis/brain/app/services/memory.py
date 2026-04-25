@@ -8,6 +8,8 @@ D5: Hybrid retrieval with RRF fusion:
 
 D11: PII scrubbing on all stored text
 D15: Memory fatigue — recently-recalled episodes penalized 0.5x via Redis (24h TTL)
+
+medallion: ops
 """
 
 import logging
@@ -200,6 +202,41 @@ async def search_episodes(
     )
     episode_map = {e.id: e for e in episodes.scalars().all()}
     return [episode_map[eid] for eid in top_ids if eid in episode_map]
+
+
+async def get_thread_persona(
+    db: AsyncSession,
+    *,
+    organization_id: str,
+    thread_key: str,
+) -> str | None:
+    """Track C: return the persona that last replied in this Slack thread.
+
+    ``thread_key`` should be ``"slack:<channel_id>:<thread_ts>"`` — the Slack
+    adapter builds it before calling Brain so the same key is used for every
+    message in a thread. If we find a prior Brain episode keyed by this
+    thread, we return the persona slug so the caller can pin future replies
+    to it. This is what makes a persona feel like a real employee in a
+    thread: once CPA picks up the conversation, CPA stays on it.
+
+    Returns None when the thread is brand-new or memory is cold — caller
+    falls back to keyword routing in that case.
+    """
+    stmt = (
+        select(Episode.persona)
+        .where(
+            Episode.organization_id == organization_id,
+            Episode.source_ref == thread_key,
+            Episode.persona.is_not(None),
+            Episode.persona != "router",
+            Episode.persona != "system",
+        )
+        .order_by(Episode.created_at.desc())
+        .limit(1)
+    )
+    result = await db.execute(stmt)
+    row = result.first()
+    return row[0] if row else None
 
 
 async def get_fatigue_ids(redis_client, organization_id: str) -> set[int]:

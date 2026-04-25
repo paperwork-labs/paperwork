@@ -1,4 +1,5 @@
-from app.services.personas import route_persona
+from app.personas.routing import route_persona
+from app.services.personas import route_persona as route_persona_shim
 
 
 class TestPersonaRouting:
@@ -21,8 +22,22 @@ class TestPersonaRouting:
         assert route_persona("something", channel_id="C0ALLEKR9FZ") == "engineering"
         assert route_persona("something", channel_id="C0AM2310P8A") == "strategy"
 
-    def test_parent_persona_override(self):
-        assert route_persona("deploy stuff", parent_persona="legal") == "legal"
+    def test_persona_pin_override(self):
+        """Track F: persona_pin keyword short-circuits the heuristic."""
+        assert route_persona("deploy stuff", persona_pin="legal") == "legal"
+
+    def test_parent_persona_backcompat_shim(self):
+        """Deprecated ``parent_persona=`` arg still routes via the shim."""
+        import warnings
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            assert route_persona_shim("deploy stuff", parent_persona="legal") == "legal"
+
+    def test_new_persona_keywords(self):
+        """Brand and infra-ops are now routable."""
+        assert route_persona("rework our brand voice") == "brand"
+        assert route_persona("post-mortem for the outage") == "infra-ops"
 
     def test_tax_keywords(self):
         assert route_persona("what are the IRS filing deadlines?") == "tax-domain"

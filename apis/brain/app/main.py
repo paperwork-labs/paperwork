@@ -17,6 +17,7 @@ from app.mcp_server import create_mcp_app
 from app.rate_limit import limiter
 from app.redis import close_redis, get_redis, init_redis
 from app.routers import admin, brain, health, webhooks
+from app.schedulers import shutdown_scheduler, start_scheduler
 from app.services.observability import init_langfuse
 from app.tools import memory_tools
 from app.utils.correlation import CorrelationIdMiddleware
@@ -80,7 +81,11 @@ async def _app_lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     _app.mount("/mcp", mcp_application)
     logger.info("FastMCP server mounted at /mcp (23 tools, auth-protected)")
 
+    start_scheduler()
+
     yield
+
+    await shutdown_scheduler()
 
     from app.services.embeddings import close_client as close_embeddings_client
     from app.services.entity_extraction import close_client as close_extraction_client

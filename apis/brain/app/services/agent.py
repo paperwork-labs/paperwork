@@ -15,6 +15,8 @@ Pipeline per request:
 7. Constitutional safety check (D37)
 8. Store episode + routing decision
 9. Return response
+
+medallion: ops
 """
 
 import logging
@@ -26,17 +28,19 @@ import yaml
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.personas import get_spec as get_persona_spec
-from app.services import cost_tracker, idempotency, memory
+from app.services import cost_tracker, idempotency, memory, persona_rate_limit
 from app.services.cost_tracker import CostCeilingExceeded
 from app.services.errors import LLMUnavailableError
+from app.services.persona_rate_limit import PersonaRateLimitExceeded
 from app.services.observability import create_trace, flush as flush_traces
 from app.services.pii import scrub_pii
-from app.services.personas import route_persona
+from app.personas.routing import route_persona
 from app.services.router import (
     ChainContext,
     ChainResult,
     CircuitBreaker,
     ClassifyAndRoute,
+    ExtractAndReason,
     PersonaPinnedRoute,
 )
 from app.services.tokens import count_tokens
@@ -46,9 +50,17 @@ logger = logging.getLogger(__name__)
 PERSONA_MDC_PREFIX = ".cursor/rules/"
 PERSONA_CACHE_TTL = 3600
 
+# Track F / H12: the Brain container ships with persona .mdc files copied from
+# .cursor/rules/ at build time (see apis/brain/Dockerfile). Reading from disk
+# beats a live GitHub fetch for cold-start latency and makes the persona a
+# hermetic artifact of the image rather than a runtime network dependency.
+# Set BRAIN_PERSONA_LOCAL_DIR to override in tests / dev.
+_BUNDLED_PERSONA_DIR = Path(__file__).resolve().parent.parent.parent / "cursor-rules"
+
 SYSTEM_PROMPT_TEMPLATE = """You are the Brain for {org_name} — an intelligent assistant.
 You are operating as the {persona} persona.
 
+{tone_prefix}
 {persona_instructions}
 
 ## Your Memory (retrieved context)
@@ -65,8 +77,33 @@ You are operating as the {persona} persona.
 """
 
 
+def _read_bundled_persona(persona: str) -> str:
+    """Return the persona mdc shipped inside the image, or empty string.
+
+    Kept sync because it's a sub-millisecond disk read; no reason to pay the
+    coroutine overhead.
+    """
+    try:
+        path = _BUNDLED_PERSONA_DIR / f"{persona}.mdc"
+        if path.exists():
+            return path.read_text(encoding="utf-8")[:15000]
+    except Exception:
+        logger.warning("Failed to read bundled persona %s", persona, exc_info=True)
+    return ""
+
+
 async def _load_persona_instructions(persona: str, redis_client: Any) -> str:
-    """D13: Load persona .mdc from cache or GitHub. Returns instructions or empty string."""
+    """Load persona .mdc instructions with a three-tier fallback.
+
+    Order:
+      1. Redis (hot path, TTL ``PERSONA_CACHE_TTL``)
+      2. Bundled in image at /app/cursor-rules/<persona>.mdc (Track F / H12)
+      3. Live GitHub fetch via ``read_github_file`` (last resort — only hit
+         when the persona was added after the image was built)
+
+    Returns an empty string if all tiers miss — the caller falls back to the
+    base system prompt rather than failing.
+    """
     cache_key = f"persona_mdc:{persona}"
 
     if redis_client:
@@ -76,6 +113,15 @@ async def _load_persona_instructions(persona: str, redis_client: Any) -> str:
                 return cached if isinstance(cached, str) else cached.decode("utf-8")
         except Exception:
             logger.debug("Redis persona cache miss/error for %s", persona)
+
+    bundled = _read_bundled_persona(persona)
+    if bundled:
+        if redis_client:
+            try:
+                await redis_client.setex(cache_key, PERSONA_CACHE_TTL, bundled)
+            except Exception:
+                logger.debug("Failed to cache persona .mdc for %s", persona)
+        return bundled
 
     try:
         from app.tools.github import read_github_file
@@ -233,8 +279,27 @@ async def process(
     channel_id: str | None = None,
     request_id: str | None = None,
     thread_context: list[dict[str, str]] | None = None,
+    thread_id: str | None = None,
+    persona_pin: str | None = None,
+    strategy: str | None = None,
+    slack_channel_id: str | None = None,
+    slack_username: str | None = None,
+    slack_icon_emoji: str | None = None,
 ) -> dict:
-    """Main agent loop entry point."""
+    """Main agent loop entry point.
+
+    ``persona_pin`` (Track F) lets trusted callers (n8n, slash commands,
+    tool handlers) bypass the keyword router and force a specific persona.
+    When set, the router returns the pinned slug verbatim and the rest of
+    the pipeline (PersonaSpec lookup, model routing, cost ceiling) runs
+    against that persona.
+
+    ``slack_channel_id`` (Track H) collapses the old "LLM in n8n + Slack
+    poster" 3-node pattern into a single Brain call. When set, Brain
+    posts the generated response to the given Slack channel after
+    storing the episode. Failure to post never fails the request — we
+    log and continue so the HTTP response still lands.
+    """
 
     is_duplicate = await idempotency.check_and_set(redis_client, request_id, organization_id)
     if is_duplicate:
@@ -257,16 +322,42 @@ async def process(
         metadata={"channel": channel, "channel_id": channel_id, "request_id": request_id},
     )
 
-    persona = route_persona(message, channel_id=channel_id)
-    logger.info("Routed to persona=%s (org=%s, user=%s)", persona, organization_id, user_id)
-    persona_span = trace.span(name="route_persona", input={"message": message[:100]})
-    persona_span.end(output={"persona": persona})
+    thread_persona: str | None = None
+    if thread_id and not persona_pin:
+        try:
+            thread_persona = await memory.get_thread_persona(
+                db, organization_id=organization_id, thread_key=thread_id
+            )
+        except Exception:
+            logger.debug("get_thread_persona failed for %s", thread_id, exc_info=True)
+
+    effective_pin = persona_pin or thread_persona
+    persona = route_persona(message, channel_id=channel_id, persona_pin=effective_pin)
+    logger.info(
+        "Routed to persona=%s (org=%s, user=%s, pinned=%s, thread_sticky=%s)",
+        persona, organization_id, user_id, bool(persona_pin), bool(thread_persona),
+    )
+    persona_span = trace.span(
+        name="route_persona",
+        input={"message": message[:100], "persona_pin": persona_pin, "thread_id": thread_id},
+    )
+    persona_span.end(output={
+        "persona": persona,
+        "pinned": bool(persona_pin),
+        "thread_sticky": bool(thread_persona),
+    })
+
+    persona_spec = get_persona_spec(persona)
 
     persona_instructions = await _load_persona_instructions(persona, redis_client)
     if persona_instructions:
         persona_section = f"## Persona Instructions\n{persona_instructions}"
     else:
         persona_section = ""
+
+    tone_prefix = ""
+    if persona_spec and persona_spec.tone_prefix:
+        tone_prefix = f"## Voice\n{persona_spec.tone_prefix}"
 
     fatigue_ids = await memory.get_fatigue_ids(redis_client, organization_id)
     episodes = await memory.search_episodes(
@@ -289,19 +380,72 @@ async def process(
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
         org_name=org_name,
         persona=persona,
+        tone_prefix=tone_prefix,
         persona_instructions=persona_section,
         memory_context=memory_context,
     )
 
-    messages: list[dict[str, str]] = []
+    # Track I: scrub PII from the user's message BEFORE it reaches the
+    # LLM. scrub_pii is already applied to memory storage, tool outputs,
+    # and logs; this closes the last remaining path (the prompt itself).
+    # Third-party providers (Anthropic, OpenAI, Google) never see raw
+    # SSNs/EINs/phone/routing numbers regardless of persona.
+    scrubbed_message = scrub_pii(message)
+    scrubbed_thread_context: list[dict[str, str]] | None = None
     if thread_context:
-        messages.extend(thread_context)
-    messages.append({"role": "user", "content": message})
+        scrubbed_thread_context = [
+            {**m, "content": scrub_pii(m.get("content", ""))} for m in thread_context
+        ]
+
+    messages: list[dict[str, str]] = []
+    if scrubbed_thread_context:
+        messages.extend(scrubbed_thread_context)
+    messages.append({"role": "user", "content": scrubbed_message})
 
     cb = _get_circuit_breaker(redis_client)
 
-    persona_spec = get_persona_spec(persona)
     input_tokens_measured = count_tokens(message, model="gpt-4o-mini")
+
+    # Track I: per-persona requests_per_minute. Enforced on top of the
+    # global SlowAPI default so a legit IP can still be throttled when
+    # it hammers a single expensive persona.
+    if persona_spec is not None and persona_spec.requests_per_minute is not None:
+        try:
+            await persona_rate_limit.check_and_increment(
+                redis_client,
+                organization_id=organization_id,
+                persona=persona,
+                limit_per_minute=persona_spec.requests_per_minute,
+            )
+        except PersonaRateLimitExceeded as exc:
+            logger.warning(
+                "persona rate limit hit for %s org=%s: %d/%d, retry_after=%ds",
+                persona, organization_id, exc.current, exc.limit, exc.retry_after,
+            )
+            trace.score(name="rate_limit_enforced", value=1.0)
+            flush_traces()
+            return {
+                "response": (
+                    f"The {persona} persona is at its rate limit "
+                    f"({exc.limit}/min). Retry in {exc.retry_after}s."
+                ),
+                "persona": persona,
+                "persona_spec": persona_spec.name,
+                "model": "none",
+                "provider": "none",
+                "tokens_in": 0,
+                "tokens_out": 0,
+                "cost": 0.0,
+                "classification": {
+                    "error": "rate_limited",
+                    "retry_after": exc.retry_after,
+                },
+                "tool_calls": [],
+                "constitutional_violations": [],
+                "episode_id": None,
+                "episode_uri": None,
+                "error": "rate_limited",
+            }
 
     # H3: enforce daily_cost_ceiling_usd BEFORE we spend a cent with the
     # provider. Fail fast with a structured error; don't silently proceed.
@@ -341,7 +485,22 @@ async def process(
                 "error": "cost_ceiling_exceeded",
             }
 
-    if persona_spec is not None:
+    strategy_override = (strategy or "").strip().lower() or None
+    if strategy_override not in (None, "auto", "classify_route", "extract_reason"):
+        logger.warning(
+            "Unknown chain strategy '%s' requested; falling back to auto",
+            strategy_override,
+        )
+        strategy_override = None
+
+    chain_strategy: Any
+    if strategy_override == "extract_reason":
+        chain_strategy = ExtractAndReason(cb)
+        strategy_name = "extract_and_reason"
+    elif strategy_override == "classify_route":
+        chain_strategy = ClassifyAndRoute(cb)
+        strategy_name = "classify_and_route"
+    elif persona_spec is not None:
         tokens_threshold: int | None = None
         escalate_on_compliance = False
         mention_targets: list[str] = []
@@ -355,7 +514,7 @@ async def process(
                     pass
             elif tag.startswith("mention:"):
                 mention_targets.append(tag.split(":", 1)[1])
-        strategy = PersonaPinnedRoute(
+        chain_strategy = PersonaPinnedRoute(
             cb,
             model=persona_spec.default_model,
             escalation_model=persona_spec.escalation_model,
@@ -364,14 +523,15 @@ async def process(
             escalate_on_mentions=mention_targets,
             input_tokens=input_tokens_measured,
             requires_tools=persona_spec.requires_tools,
+            max_output_tokens=persona_spec.max_output_tokens,
         )
         strategy_name = "persona_pinned_route"
     else:
-        strategy = ClassifyAndRoute(cb)
+        chain_strategy = ClassifyAndRoute(cb)
         strategy_name = "classify_and_route"
 
     context = ChainContext(
-        message=message,
+        message=scrubbed_message,
         system_prompt=system_prompt,
         messages=messages,
         channel_id=channel_id,
@@ -380,7 +540,7 @@ async def process(
 
     llm_span = trace.span(name=strategy_name, input={"message": message[:200]})
     try:
-        result: ChainResult = await strategy.execute(context)
+        result: ChainResult = await chain_strategy.execute(context)
     except LLMUnavailableError as exc:
         logger.error(
             "All providers failed for persona=%s: %s/%s — %s",
@@ -449,6 +609,12 @@ async def process(
         episode_metadata["needs_human_review"] = True
         episode_metadata["confidence_floor"] = persona_spec.confidence_floor
 
+    if persona_pin:
+        episode_metadata["persona_pin"] = persona_pin
+        episode_metadata["pinned"] = True
+    elif thread_persona:
+        episode_metadata["thread_sticky"] = True
+
     episode = await memory.store_episode(
         db,
         organization_id=organization_id,
@@ -461,11 +627,14 @@ async def process(
         user_id=user_id,
         channel=channel,
         persona=persona,
-        source_ref=request_id,
+        # Track C: prefer thread_id as source_ref so future messages in the
+        # same thread can look up the sticky persona. request_id stays in
+        # metadata for idempotency / debugging.
+        source_ref=thread_id or request_id,
         model_used=result.model,
         tokens_in=result.tokens_in,
         tokens_out=result.tokens_out,
-        metadata=episode_metadata or None,
+        metadata={**(episode_metadata or {}), "request_id": request_id} if request_id else episode_metadata or None,
     )
 
     # D4: stamp provenance on the response so downstream channels (Slack,
@@ -510,10 +679,31 @@ async def process(
         trace.score(name="constitutional_safety", value=1.0)
     flush_traces()
 
+    # Track H — n8n 2-node pattern: when the caller passes slack_channel_id,
+    # Brain posts the response to Slack itself. Slack failures never break
+    # the HTTP response (n8n / slash commands still get the payload).
+    if slack_channel_id and stamped_content:
+        try:
+            from app.services import slack_outbound
+
+            username = slack_username or (
+                persona_spec.name.upper() if persona_spec else persona.title()
+            )
+            await slack_outbound.post_message(
+                channel_id=slack_channel_id,
+                text=stamped_content,
+                username=username,
+                icon_emoji=slack_icon_emoji,
+            )
+        except Exception as exc:
+            logger.warning("slack_channel post failed for %s: %s", slack_channel_id, exc)
+
     return {
         "response": stamped_content,
         "persona": persona,
         "persona_spec": persona_spec.name if persona_spec else None,
+        "persona_pinned": bool(persona_pin),
+        "chain_strategy": strategy_name,
         "model": result.model,
         "provider": result.provider,
         "tokens_in": result.tokens_in,

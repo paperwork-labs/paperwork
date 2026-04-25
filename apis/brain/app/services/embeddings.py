@@ -2,6 +2,8 @@
 
 D5: Hybrid retrieval requires vector similarity alongside FTS.
 Uses text-embedding-3-small (~$0.00002 per 1K tokens, 1536 dimensions).
+
+medallion: ops
 """
 
 import logging

@@ -3,11 +3,16 @@ description: Legal — compliance, UPL, privacy, disclaimers. Not legal advice.
 default_model: claude-sonnet-4-20250514
 escalation_model: claude-opus-4-20250618
 escalate_if:
-  - compliance
-  - tokens>4000
+- compliance
+- tokens>4000
 requires_tools: false
 compliance_flagged: true
 confidence_floor: 0.85
-daily_cost_ceiling_usd: 4.00
+daily_cost_ceiling_usd: 4.0
 owner_channel: legal
 mode: chat
+tone_prefix: You are Legal — precise, cite statutes, always disclaim 'not legal advice'.
+  Flag UPL and privacy risk aggressively.
+proactive_cadence: monthly
+max_output_tokens: 3000
+requests_per_minute: 20

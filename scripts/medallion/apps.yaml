@@ -1,0 +1,119 @@
+# Per-app medallion configuration.
+#
+# Consumed by scripts/medallion/tag_files.py and scripts/medallion/check_imports.py
+# so we have one source of truth across all four backends.
+#
+# Layers (from low to high):
+#   bronze    — raw external I/O, broker adapters, ingestion
+#   silver    — enrichment, analytics, reconciliation
+#   gold      — strategy outputs, picks, backtests, narratives
+#   execution — fourth layer; reads gold, writes orders / effects
+#   ops       — cross-cutting plumbing (escape hatch — may import anywhere)
+#
+# Import rules (enforced by check_imports.py):
+#   bronze    → ops
+#   silver    → bronze, ops
+#   gold      → silver, bronze, ops
+#   execution → gold, silver, bronze, ops
+#   ops       → anywhere
+
+apps:
+  axiomfolio:
+    app_dir: apis/axiomfolio
+    services_root: app/services
+    import_prefix: app.services.
+    dir_layers:
+      # Bronze
+      bronze: bronze
+      aggregator: bronze
+      # Silver
+      silver: silver
+      market: silver
+      tax: silver
+      corporate_actions: silver
+      data_quality: silver
+      intelligence: silver
+      symbols: silver
+      # Gold
+      gold: gold
+      strategy: gold
+      picks: gold
+      backtest: gold
+      ml: gold
+      narrative: gold
+      signals: gold
+      risk: gold
+      # Execution
+      execution: execution
+      # Ops
+      agent: ops
+      billing: ops
+      brain: ops
+      clients: ops
+      connections: ops
+      core: ops
+      deploys: ops
+      engine: ops
+      gdpr: ops
+      multitenant: ops
+      notifications: ops
+      oauth: ops
+      observability: ops
+      ops: ops
+      pipeline: ops
+      security: ops
+      share: ops
+    portfolio_split:
+      parent: portfolio
+      default_layer: silver
+      bronze_patterns:
+        - "portfolio/ibkr/"
+        - "portfolio/schwab_sync_service.py"
+        - "portfolio/schwab/"
+        - "portfolio/tastytrade_sync_service.py"
+        - "portfolio/tastytrade/"
+        - "portfolio/broker_sync_service.py"
+
+  brain:
+    app_dir: apis/brain
+    services_root: app/services
+    import_prefix: app.services.
+    # Brain is a thin FastAPI agent — everything is ops today. We still
+    # emit the tag so future bronze/silver/gold splits (episodic memory vs
+    # persona routing vs chain strategies) have a visible home.
+    dir_layers:
+      agent: ops
+      pr_review: ops
+      pr_merge_sweep: ops
+      dependabot_classifier: ops
+      slack_outbound: ops
+      memory: ops
+      router: ops
+      personas: ops
+      models: ops
+      cost: ops
+      security: ops
+      integrations: ops
+
+  filefree:
+    app_dir: apis/filefree
+    services_root: app/services
+    import_prefix: app.services.
+    # Filefree has the clearest medallion shape — extraction (bronze) →
+    # normalization (silver) → rule engine + narratives (gold) → filings
+    # (execution). We seed the map as ops today so Track H can migrate
+    # services into bronze/silver/gold dirs without touching tooling.
+    dir_layers: {}
+
+  launchfree:
+    app_dir: apis/launchfree
+    services_root: app
+    import_prefix: app.
+    # Launchfree has no services/ dir yet. Top-level files tag as ops;
+    # subdirectories (routers, routes, models, schemas) also tag as ops
+    # until the domain split emerges.
+    dir_layers:
+      routers: ops
+      routes: ops
+      models: ops
+      schemas: ops

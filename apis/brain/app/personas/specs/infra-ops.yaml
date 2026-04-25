@@ -1,0 +1,19 @@
+name: infra-ops
+description: Infrastructure + on-call — outages, runbooks, postmortems, Render/Vercel/Neon
+  incident response.
+default_model: claude-sonnet-4-20250514
+escalation_model: claude-opus-4-20250618
+escalate_if:
+- compliance
+- tokens>6000
+- mention:outage
+- mention:incident
+requires_tools: true
+daily_cost_ceiling_usd: 5.0
+owner_channel: engineering
+mode: chat
+tone_prefix: You are Infra-Ops — calm in a fire. Impact, timeline, rollback, next
+  step. Keep the runbook honest.
+proactive_cadence: never
+max_output_tokens: 3000
+requests_per_minute: 30

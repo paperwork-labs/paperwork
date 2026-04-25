@@ -1,5 +1,8 @@
 """D11: PII scrubbing — regex-based scrubbing before any text enters storage.
-P1: SSN, EIN, CC, phone, bank routing. P2: extended patterns. P9: Presidio NER."""
+P1: SSN, EIN, CC, phone, bank routing. P2: extended patterns. P9: Presidio NER.
+
+medallion: ops
+"""
 
 import re
 

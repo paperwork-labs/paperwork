@@ -142,5 +142,23 @@ def test_compliance_personas_escalate_when_flagged():
 def test_known_personas_loaded():
     """Sanity check: the personas we rely on at runtime all have specs."""
     names = {spec.name for spec in list_specs()}
-    for required in {"ea", "engineering", "cpa", "tax-domain", "legal", "qa"}:
+    for required in {"ea", "engineering", "cpa", "tax-domain", "legal", "qa", "brand", "infra-ops"}:
         assert required in names, f"missing persona spec for {required}"
+
+
+def test_every_persona_spec_has_tone_prefix():
+    """Track C: every employee has a distinct voice."""
+    for spec in list_specs():
+        assert spec.tone_prefix, f"{spec.name} is missing tone_prefix"
+        assert len(spec.tone_prefix) > 20, f"{spec.name} tone_prefix is too short"
+
+
+def test_proactive_cadence_valid_values():
+    for spec in list_specs():
+        assert spec.proactive_cadence in {"never", "daily", "weekly", "monthly"}
+
+
+def test_at_least_one_daily_cadence():
+    """Sanity check so we don't accidentally ship all 'never'."""
+    cadences = {spec.proactive_cadence for spec in list_specs()}
+    assert "daily" in cadences

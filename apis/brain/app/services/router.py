@@ -4,6 +4,8 @@ Every query goes through Gemini Flash classification (no rule-based heuristics).
 Circuit breaker (D38) tracks per-provider failure rates in Redis.
 ChainStrategy protocol for future patterns (P3-P5).
 Routing decisions stored as episodes for self-improvement.
+
+medallion: ops
 """
 
 import logging
@@ -199,6 +201,7 @@ class PersonaPinnedRoute:
         escalate_on_mentions: list[str],
         input_tokens: int,
         requires_tools: bool,
+        max_output_tokens: int | None = None,
     ):
         self.cb = circuit_breaker
         self.model = model
@@ -208,6 +211,7 @@ class PersonaPinnedRoute:
         self.escalate_on_mentions = [m.lower() for m in escalate_on_mentions]
         self.input_tokens = input_tokens
         self.requires_tools = requires_tools
+        self.max_output_tokens = max_output_tokens
 
     async def execute(self, context: ChainContext) -> ChainResult:
         model = self.model
@@ -243,18 +247,27 @@ class PersonaPinnedRoute:
                 provider, model,
             )
 
+        # Track I: persona-specified max_output_tokens caps the response size
+        # so a chatty persona can't stream 8k tokens of hedging. Passes
+        # through to each provider's max_tokens / max_output_tokens param.
+        llm_kwargs: dict[str, Any] = {}
+        if self.max_output_tokens is not None:
+            llm_kwargs["max_tokens"] = self.max_output_tokens
+
         try:
             if self.requires_tools and provider == "anthropic":
                 result = await llm.complete_with_mcp(
                     system_prompt=context.system_prompt,
                     messages=context.messages,
                     model=model,
+                    **llm_kwargs,
                 )
             elif self.requires_tools and provider == "openai":
                 result = await llm.complete_openai_with_mcp(
                     system_prompt=context.system_prompt,
                     messages=context.messages,
                     model=model,
+                    **llm_kwargs,
                 )
             else:
                 result = await llm.complete_text(
@@ -262,6 +275,7 @@ class PersonaPinnedRoute:
                     messages=context.messages,
                     model=model,
                     provider=provider,
+                    **llm_kwargs,
                 )
             await self.cb.record_success(provider)
         except Exception as exc:
@@ -397,10 +411,128 @@ class SearchAndSynthesize:
 
 
 class ExtractAndReason:
-    """D20 Pattern 2 — Flash extracts, Sonnet reasons. (P3)"""
+    """D20 Pattern 2 — Flash extracts, Sonnet reasons. (P3 — Buffer Week 4)
+
+    Two-hop: (1) Gemini Flash reads the raw message and emits a compact
+    structured digest (facts, entities, ambiguities, ask). (2) Claude
+    Sonnet receives that digest plus the original message and produces the
+    user-facing response. For heavy domain calls (CPA tax memo, QA incident
+    triage) this routinely halves Sonnet token cost because the big model
+    doesn't have to re-parse context every turn — and it lets the cheap
+    model catch "this message is actually three questions, ask back" cases
+    before Sonnet commits to a single answer.
+
+    Failures fall back to ClassifyAndRoute so a Flash outage never dead-ends
+    a persona call.
+    """
+
+    EXTRACTION_MODEL = "gemini-2.0-flash-exp"
+    EXTRACTION_PROVIDER = "google"
+    REASONING_MODEL = "claude-sonnet-4-20250514"
+    REASONING_PROVIDER = "anthropic"
+
+    EXTRACTION_SYSTEM = (
+        "You are a fast context extractor. Given the user's message and a "
+        "short system brief, emit a JSON object with these keys: "
+        "'facts' (list[str] — concrete, load-bearing facts from the "
+        "message), 'entities' (list[str] — names, tickers, dollar amounts, "
+        "dates), 'ambiguities' (list[str] — what would change the answer "
+        "if clarified), 'ask' (str — the specific thing the user wants). "
+        "Keep every list <= 5 items. Respond with JSON only, no prose."
+    )
+
+    def __init__(self, circuit_breaker: CircuitBreaker):
+        self.cb = circuit_breaker
 
     async def execute(self, context: ChainContext) -> ChainResult:
-        raise NotImplementedError("ExtractAndReason is Phase 3")
+        import json
+
+        extraction_text = ""
+        try:
+            if not await self.cb.is_open(self.EXTRACTION_PROVIDER):
+                ext_result = await llm.complete_text(
+                    system_prompt=self.EXTRACTION_SYSTEM,
+                    messages=[{"role": "user", "content": context.message}],
+                    model=self.EXTRACTION_MODEL,
+                    provider=self.EXTRACTION_PROVIDER,
+                    max_tokens=400,
+                    temperature=0.0,
+                )
+                extraction_text = ext_result.get("content", "").strip()
+                await self.cb.record_success(self.EXTRACTION_PROVIDER)
+        except Exception:
+            logger.warning(
+                "ExtractAndReason: extraction step failed, continuing "
+                "without digest",
+                exc_info=True,
+            )
+            await self.cb.record_failure(self.EXTRACTION_PROVIDER)
+
+        augmented_system = context.system_prompt
+        if extraction_text:
+            digest_block = extraction_text
+            try:
+                parsed = json.loads(extraction_text)
+                digest_block = json.dumps(parsed, indent=2)
+            except (ValueError, TypeError):
+                pass
+            augmented_system = (
+                f"{context.system_prompt}\n\n"
+                "--- Pre-extracted context (Flash digest, treat as hints "
+                "not facts) ---\n"
+                f"{digest_block}\n"
+                "--- End digest ---"
+            )
+
+        provider = self.REASONING_PROVIDER
+        model = self.REASONING_MODEL
+        if await self.cb.is_open(provider):
+            fallback = FALLBACK_MAP.get(provider, {})
+            provider = fallback.get("provider", "openai")
+            model = fallback.get("model_map", {}).get(model, "gpt-4o")
+            logger.warning(
+                "ExtractAndReason: Sonnet circuit open, fallback to %s/%s",
+                provider, model,
+            )
+
+        try:
+            reason_result = await llm.complete_text(
+                system_prompt=augmented_system,
+                messages=context.messages,
+                model=model,
+                provider=provider,
+                max_tokens=2048,
+            )
+            await self.cb.record_success(provider)
+        except Exception as exc:
+            await self.cb.record_failure(provider)
+            raise LLMUnavailableError(
+                provider=provider, model=model, reason=str(exc),
+            ) from exc
+
+        total_tokens_in = reason_result.get("tokens_in", 0)
+        total_tokens_out = reason_result.get("tokens_out", 0)
+        cost = calculate_cost(
+            reason_result.get("model", model),
+            total_tokens_in,
+            total_tokens_out,
+        )
+
+        return ChainResult(
+            content=reason_result.get("content", ""),
+            model=reason_result.get("model", model),
+            provider=reason_result.get("provider", provider),
+            tokens_in=total_tokens_in,
+            tokens_out=total_tokens_out,
+            tool_calls=reason_result.get("tool_calls", []),
+            classification={
+                "strategy": "extract_and_reason",
+                "extraction_model": self.EXTRACTION_MODEL,
+                "extraction_succeeded": bool(extraction_text),
+                "reasoning_model": reason_result.get("model", model),
+            },
+            cost=cost,
+        )
 
 
 class AdversarialReview:
