@@ -1,3 +1,10 @@
+---
+owner: strategy
+last_reviewed: 2026-04-24
+doc_kind: spec
+domain: company
+status: active
+---
 # Paperwork Labs — Venture Master Plan (Summary)
 
 **Derived from**: VENTURE_MASTER_PLAN.md (full version: 3509 lines)

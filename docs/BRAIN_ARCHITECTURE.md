@@ -1,13 +1,43 @@
+---
+last_reviewed: 2026-04-24
+doc_kind: architecture
+domain: brain
+status: active
+---
+
 # The Brain: Definitive Architecture v10
 
-The brain of Paperwork Labs — and eventually, everyone. A channel-agnostic AI life intelligence that serves two co-founders today and scales to millions of users as the meta-product of the entire venture. Not a chatbot. Not a financial advisor. A wise partner that knows your entire life — finances, routines, relationships, preferences, experiences — remembers everything, connects dots, acts on your behalf, and gets smarter from corrections.
+- **(a) Brain’s job (one sentence).** The Brain is the **agent runtime** for Paperwork: it **routes personas**, runs the **LLM + tool loop** in `apis/brain/app/services/agent.py`, and persists **memory** and **episodes** in Neon/Postgres with **per-response provenance** (`brain://episode/…`).
+
+- **(b) Hard guarantees (today).** **Memory** and retrieval are org-scoped; user text is **PII-scrubbed** before the LLM and storage using `apis/brain/app/services/pii.py` (`scrub_pii`). **Persona routing** uses `apis/brain/app/personas/routing.py` and typed **`PersonaSpec`** contracts in `apis/brain/app/personas/specs/*.yaml` loaded through `apis/brain/app/personas/`. **Daily spend caps** are enforced **before** any provider call via `apis/brain/app/services/cost_tracker.py`. If **every LLM provider fails**, callers get a structured `llm_unavailable` result (`LLMUnavailableError`), not mock text. **Constitutional** checks in `apis/brain/app/services/agent.py` apply principles from `apis/brain/constitution.yaml` before a response is returned.
+
+- **(c) What’s in motion.** Phase **D** (moving channel logic off n8n onto Brain’s HTTP surface), the **`PersonaSpec` registry** (16 personas today — see [`docs/BRAIN_PERSONAS.md`](BRAIN_PERSONAS.md)), and **doc/governance** work tracked in `docs/DOCS_STREAMLINE_2026Q2.md`.
+
+**For the why** — refusals, trust model, and non-goals — see [`docs/philosophy/BRAIN_PHILOSOPHY.md`](philosophy/BRAIN_PHILOSOPHY.md). **For the who** (registry table, routing steps), see [`docs/BRAIN_PERSONAS.md`](BRAIN_PERSONAS.md).
+
+The brain of Paperwork Labs — and eventually, everyone. A channel-agnostic AI life intelligence that serves two co-founders today and scales to millions of users as the meta-product of the entire venture. A wise partner that knows your entire life — finances, routines, relationships, preferences, experiences — remembers everything, connects dots, acts on your behalf, and gets smarter from corrections. Boundaries for licensed advice and refusals live in [`docs/philosophy/BRAIN_PHILOSOPHY.md`](philosophy/BRAIN_PHILOSOPHY.md) _(“Not a chatbot. Not a financial advisor.” and refusal framing moved to **Brain Philosophy** on 2026-04-24)._
 
 **Internal**: Serves Paperwork Labs (Sankalp + Olga) from Phase 1.
 **Product**: B2C personal brain, B2B team brain, Enterprise hierarchical brain with knowledge lifecycle — same backend, different org configs and UI layers.
 **Meta-product** (F90): Brain IS the long-term platform. FileFree ("file your taxes"), LaunchFree ("form your LLC"), axiomfolio ("manage your portfolio") are skills/capabilities within it. The AI life intelligence that FileFree was always meant to become IS the Brain. Financial services are the trust-building entry point. The product is a partner that knows your entire life — finances, routines, relationships, preferences, experiences — and gets smarter every day. Products are the hands, Brain is the mind.
 **Strategic anchors** (v10): Memory Moat (D49) — accumulated life context IS the product. Brain Fill Meter (D51) — psychology makes the moat visible and viral. Tiered Email Processing (D52) — metadata-only free tier at $0.03/mo makes the economics work at any scale. Life Intelligence System (D58) — the Brain is equally strong across all life domains, weighted by the user's own data. Contextual Intelligence Monetization (D59) — Credit Karma playbook with 5-10x the signal. Proactive Insight Delivery (D60) — five-channel system so the Brain TELLS you things.
 
-Stress-tested from 10 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis, McKinsey strategic architecture review. 11 rounds, 228 findings, all integrated. 60 design decisions. 14 hierarchical personas in 4 tiers. 7-agent automated content engine for psychology-driven GTM. No supplemental docs needed for Brain architecture. This is the single source of truth for Brain design.
+Stress-tested from 10 review lenses: Anthropic safety (Amodei), OpenAI scaling (Altman), Perplexity retrieval (Srinivas), DeepMind intelligence (Hassabis), CTO production review, Top 5 AI Leads (Karpathy/Fan/Chase/Weng/Askell), Jony Ive/Steve Jobs B2C UX, Andrew Chen Growth/Social, brain.ai competitive analysis, McKinsey strategic architecture review. 11 rounds, 228 findings, all integrated. 60 design decisions. 16 **registered** personas in the `PersonaSpec` layer (4-tier orchestration model in §12). 7-agent automated content engine for psychology-driven GTM. This is the long-form **product + systems** spec for Brain design; companion `docs/BRAIN_PERSONAS.md` and `docs/philosophy/BRAIN_PHILOSOPHY.md` cover the **registry** and **policy** (replaces the old “no supplemental docs” claim; 2026-04-24).
+
+### Core implementation index
+
+| Concern | Where it lives (repo paths) |
+|--------|-----------------------------|
+| HTTP app / entry | `apis/brain/app/main.py` |
+| Agent loop, constitution, `process()` | `apis/brain/app/services/agent.py` |
+| Persona keywords / `route_persona` | `apis/brain/app/personas/routing.py` (legacy shim: `apis/brain/app/services/personas.py`) |
+| Model routing & chains (incl. `ClassifyAndRoute`, `PersonaPinnedRoute`, `ExtractAndReason`) | `apis/brain/app/services/router.py` |
+| Daily cost cap (Redis) | `apis/brain/app/services/cost_tracker.py` |
+| Constitution principles (YAML) | `apis/brain/constitution.yaml` |
+| Persona contracts (YAML) | `apis/brain/app/personas/specs/*.yaml` |
+| Spec schema (Pydantic) | `apis/brain/app/personas/spec.py` |
+| PII regex scrub (D11) | `apis/brain/app/services/pii.py` (log filter: `apis/brain/app/utils/pii_scrubber.py`) |
+| CI / coverage for specs | `apis/brain/scripts/check_persona_coverage.py` |
 
 ---
 
@@ -155,7 +185,7 @@ The wow is "Brain knows my LIFE and I didn't tell it anything." Not "Brain knows
 
 Per-org customizable personality injected as cached prefix. Identity, voice (tone, formality, brevity, humor, emoji), values with behaviors, communication rules, forbidden zones, knowledge priorities. Customized during onboarding. Per-user adaptation within org personality. Voice selection for TTS (D29).
 
-**Persona Platform (Phase D, 2026Q2)** — formalizes persona contracts as typed YAML specs (`apis/brain/app/personas/specs/<name>.yaml`) paired 1:1 with `.cursor/rules/<name>.mdc` written instructions. Each spec declares `default_model`, `escalation_model`, `escalate_if` rules (compliance, tokens>N, mention:<slug>), `requires_tools`, `daily_cost_ceiling_usd`, `compliance_flagged`, `confidence_floor`, `owner_channel`, and `mode`. Enforcement at runtime:
+**Persona Platform (Phase D, 2026Q2)** — formalizes persona contracts as typed YAML specs (`apis/brain/app/personas/specs/<name>.yaml`) paired 1:1 with `.cursor/rules/<name>.mdc` written instructions. Operator routing steps and the live table are in [`docs/BRAIN_PERSONAS.md`](BRAIN_PERSONAS.md); the bullets below are the **architecture** rationale. Each spec declares `default_model`, `escalation_model`, `escalate_if` rules (compliance, tokens>N, mention:<slug>), `requires_tools`, `daily_cost_ceiling_usd`, `compliance_flagged`, `confidence_floor`, `owner_channel`, and `mode`. Enforcement at runtime:
 
 - `PersonaPinnedRoute` skips the Gemini-Flash classifier when a spec exists and routes straight to the spec's model (saves a classifier call per request, makes the routing deterministic).
 - `daily_cost_ceiling_usd` is enforced via a Redis-backed `CostTracker` that increments atomically and fails fast with a structured `cost_ceiling_exceeded` error before hitting the provider.
@@ -230,7 +260,7 @@ The Brain's self-monitoring advisory board — 5 personas that watch over the Br
 
 Weekly Brain Health Report (F65): each persona contributes a section. Intelligence Index (F66): each owns components. Nightly consolidation (P4): each runs analysis. Invocable by founders via @-mention.
 
-### D31. Hierarchical Persona Architecture (4 tiers, 14 personas)
+### D31. Hierarchical Persona Architecture (4 tiers, 16 registered personas in `PersonaSpec`)
 
 See Section 12 for full specification.
 
@@ -1413,6 +1443,8 @@ Brain surfaces Paperwork Labs products as capabilities. Revenue compounds: brain
 
 ## 12. Hierarchical Persona Architecture (D31)
 
+<!-- STALE 2026-04-24: The tier-0/1/2 `.mdc` tree below is a strategic design story; the **operational** source of truth for which personas exist, models, and ceilings is the `PersonaSpec` registry in `apis/brain/app/personas/specs/*.yaml` and the generated table in `docs/BRAIN_PERSONAS.md`. Reconcile names/tiers in a future edit. -->
+
 ### Tier 0: The Substrate
 
 **Founder's Mind** (`founder-mind.mdc`) — always active, shapes every response. Knows: Sankalp (engineer, builds solo, prefers direct answers, reads on phone), Olga (partnerships, time-constrained, needs actionable outputs in 5-10 min), venture state, interaction context. Every persona inherits from this.
@@ -2162,7 +2194,7 @@ Branch: `feat/brain-phase-1-core`
 
 - Create `apis/brain/` — full service structure
 - Alembic migration: full schema from Section 2 (all tables, populated in P2+)
-- Create 14 hierarchical persona .mdc files (D31) + register in persona router
+- Create 16 `PersonaSpec` YAMLs + `.mdc` files (D31) + `route_persona` coverage per `docs/BRAIN_PERSONAS.md`
 - Agent loop with max 5 iterations, idempotency, ask_user tool (D2/D10/F92)
 - Safety: auth, PII scrub, injection defense, emergency brake, output monitoring, constitutional assertions (D9/D11/F24/F102/F112)
 - Tool executor with retry policy (F91), structured output (F106), timeouts (D17)
@@ -2492,7 +2524,7 @@ Subscriptions are the engagement wrapper (~25% of revenue). The real business is
 | Cost management | COMPLETE (D3, D7, D20, F59/F68) |
 | Reliability | COMPLETE (D10, D14, D18, F3, F4, F26, F91) |
 | Observability | COMPLETE (F13, F14, F65, F66, F93, F108, F110) |
-| Persona architecture | COMPLETE (D30, D31 — 14 personas, 4 tiers, collaboration protocol) |
+| Persona architecture | COMPLETE (D30, D31 — 16 `PersonaSpec` personas, 4 tiers, collaboration protocol) |
 | Knowledge lifecycle | COMPLETE (D21, F51) |
 | Connections | COMPLETE (D26, F54, F69) |
 | Pricing + GTM | COMPLETE (D27, D32, D33, F70, F90) |

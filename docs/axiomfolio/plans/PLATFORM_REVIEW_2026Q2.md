@@ -1,6 +1,6 @@
 ---
 owner: engineering
-last_reviewed: 2026-04-22
+last_reviewed: 2026-04-24
 doc_kind: plan
 domain: company
 status: active
@@ -1091,4 +1091,89 @@ Per decision log [`docs/KNOWLEDGE.md#d144`](../KNOWLEDGE.md) and [`docs/KNOWLEDG
 
 ---
 
-*Last reviewed: 2026-04-22. Next review at end of Wave 3.7 ship (6 weeks out).*
+_Extracted from docs/archive/2026-04-22-medallion-wave-0-stage-setting.md._
+
+## Wave 0 stage-setting decisions (handoff 2026-04-22)
+
+### Context — why this handoff existed (Q2 platform review, PR #476, D144, D145)
+
+The Q2 2026 platform review (PR #476) introduced a Chapter 1.8 ("Medallion architecture + data-warehouse discipline") and a Wave 16 in the 16-wave execution roadmap. The founder pushed back on a meta question:
+
+> "we say medallion and other things, are we following? we have a dag in system status — all good there too — we aligned? meta question!"
+
+The previous session ran a code audit and found the docs are ahead of the code. The honest version of "are we aligned?" is: directionally yes, mechanically no. The archived handoff captured the audit, the proposed compressed remediation, and the open decisions so the next chat can either execute or push back without re-doing the audit.
+
+**Founder ask**: "kinda weak dont you think, architecturally as well as when marketing! we say medallion and other things, are we following?" The honest answer was no.
+
+### TL;DR (platform + roadmap)
+
+- **PR #476** (`docs/platform-mckinsey-review-2026q2`) is open with three planning docs + D144 + D145. **Do not merge yet.** It's the strategic spine for everything below; Wave 0 is the first execution wave that follows.
+- **Proposed**: insert a **Wave 0 — Medallion stage-setting** before W1 (safety envelope) instead of running medallion as parallel W16 over 6 weeks. Compresses to **6–9 days focused work + 2-week passive shadow-import bake**.
+- **Decision gates not yet answered (block execution)**:
+  1. Go/no-go on Wave 0 before W1.
+  4. 3-day freeze window for Phase 0.C — when?
+
+### §2 — What's already shipped on PR #476 (do not redo)
+
+Three commits on branch `docs/platform-mckinsey-review-2026q2`:
+
+| SHA | What |
+|---|---|
+| `ccd78f0d` | Platform McKinsey review + broker coverage tracker + sync completeness W8 spec (3 new docs, ~1530 lines) |
+| `6bf749c4` | D144 platform review commitments + cross-link `MASTER_PLAN_2026.md` |
+| `ea99062e` | D145 medallion + data-warehouse iron laws + Wave 16 detail in PLATFORM_REVIEW Ch 1.8 + Ch 11 + Ch 13 |
+
+PR is `OPEN`, +1690 / -1, docs-only, CI green expected.
+
+The current Wave 16 in PLATFORM_REVIEW Ch 11 describes a **6-week parallel** medallion migration. **The Wave 0 proposal in the handoff supersedes that timeline if accepted by the founder.** If accepted, PLATFORM_REVIEW Ch 11 needs an amendment to renumber Wave 16 → Wave 0 and adjust the wave count from 16 back to 15 (or keep Wave 16 and call Wave 0 "pre-W1 prerequisite"). Editorial choice for next chat.
+
+### §3.6 — Pillars vs medallion are orthogonal framings
+
+The PRD + ARCHITECTURE.md prose describes "Three Pillars deliberately decoupled":
+
+- **Portfolio** (read-only sync) — actually mixes bronze (sync) + silver (analytics).
+- **Intelligence** (indicators) — mostly silver.
+- **Strategy** (rules + execution) — gold + execution-as-fourth-layer.
+
+We've been writing as if Pillars and Medallion are the same thing. They aren't. Phase 0.A prose sweep makes the mapping explicit instead of implied.
+
+### §6.1 — Parallel agent conflict (BLOCKING)
+
+The founder mentioned a parallel agent during the PR #476 session ("there is an agent in parallel but not writing these docs but access to same code"). Wave 0.C is ~55 file renames across `app/services/`. Any open branch touching `app/services/market/*` or `app/services/portfolio/*` during Wave 0.C will have painful rebases.
+
+**Mitigation**: explicit 3-day freeze window. Founder coordinates with the parallel agent: no new PRs against `app/services/` for the duration of 0.C. Worst case, we rebase-help open branches by running the migration script against them.
+
+**This is decision gate #4** — founder must specify the freeze window before 0.C begins.
+
+### §7 — Decision gates blocking execution (all four)
+
+Founder must answer all four before Phase 0.A begins:
+
+| # | Question | Recommendation | Why it matters |
+|---|---|---|---|
+| 1 | Wave 0 before W1 (this proposal) or parallel W16 (current PR #476 plan)? | **Wave 0 before W1** | W1 lands against stable layout; plugin SDK designed against real `silver/` + `gold/`; marketing story backed by code day 1 |
+| 2 | Single atomic migration PR or split silver-first / bronze+gold-second? | **Split** | Half blast radius per PR for one extra calendar day |
+| 3 | Acknowledge `execution/` as a fourth medallion layer? | **Yes** | Cleaner danger-zone story than forcing into gold |
+| 4 | 3-day freeze window for Phase 0.C — when? | **TBD by founder** | Parallel agent conflict on `app/services/` is the only true blocker |
+
+If founder answers "yes / split / yes / [date X]" the next chat starts with Phase 0.A as the next commit on PR #476.
+
+If founder answers "no" to gate #1, the handoff becomes a record of the path not taken; PR #476 ships as-is with parallel W16 over 6 weeks.
+
+### §8 — What changes elsewhere if Wave 0 is approved
+
+Files to amend on PR #476 (or in a follow-up commit) once gate #1 = yes:
+
+1. `docs/axiomfolio/plans/PLATFORM_REVIEW_2026Q2.md`:
+   - Ch 11 — rename "Wave 16" to "Wave 0 (pre-W1 prerequisite)"; reduce timeline 6 weeks → 6–9 days + 2-week bake.
+   - Ch 13 — restate commitment #5 as "16 waves total (Wave 0 + W1–W15); W3.8 conditional; Wave 0 mandatory pre-W1."
+   - Ch 1.8 — add "four-layer model" subsection if gate #3 = yes.
+2. `docs/KNOWLEDGE.md`:
+   - D127 — amend with current-state numbers + reference to Wave 0.
+   - D145 — amend timeline + add four-layer-model reference.
+   - New D146 if gate #3 = yes — formalizes execution as fourth layer.
+3. `docs/axiomfolio/plans/MASTER_PLAN_2026.md` — cross-link Wave 0 + new D146.
+4. `docs/ARCHITECTURE.md` — Three Pillars table maps to four layers; Medallion Architecture section reflects current-state honesty + Wave 0 timeline.
+5. `AGENTS.md` — Three Pillars table maps pillars ↔ layers.
+
+*Last reviewed: 2026-04-24. Next review at end of Wave 3.7 ship (6 weeks out).*

@@ -1,3 +1,10 @@
+---
+owner: infra-ops
+last_reviewed: 2026-04-24
+doc_kind: plan
+domain: infra
+status: active
+---
 # Render Migration — AxiomFolio → Paperwork Labs team
 
 **Status:** READY TO EXECUTE (Phase 0 complete)

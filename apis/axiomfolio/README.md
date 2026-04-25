@@ -53,7 +53,8 @@ Docs
   - Market Data: `docs/MARKET_DATA.md`
   - Rebrand runbook: `docs/REBRAND.md`
   - Tests: `docs/TESTS.md`, `docs/TEST_PLAN.md`
-  - Roadmap/Status: `docs/ROADMAP.md`, `docs/STATUS.md`
+  - Roadmap: `docs/axiomfolio/plans/MASTER_PLAN_2026.md`; archived section roadmap: `docs/archive/AXIOMFOLIO_ROADMAP.md`
+  - Status (if used): `docs/STATUS.md`
   - Brokers: `docs/BROKERS.md`
   - TODOs: `docs/TODO.md`
 

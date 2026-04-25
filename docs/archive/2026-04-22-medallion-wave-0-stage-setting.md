@@ -319,7 +319,7 @@ If this handoff is being read by a fresh session:
 ```
 Continue work on branch `docs/platform-mckinsey-review-2026q2` (PR #476).
 
-Read first: docs/handoffs/2026-04-22-medallion-wave-0-stage-setting.md (this file).
+Read first: docs/archive/2026-04-22-medallion-wave-0-stage-setting.md (this file).
 Then: docs/plans/PLATFORM_REVIEW_2026Q2.md Ch 1.8 + Ch 11 Wave 16.
 Then: docs/KNOWLEDGE.md D127 + D145.
 

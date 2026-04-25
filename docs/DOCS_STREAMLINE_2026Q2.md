@@ -93,7 +93,7 @@ Move to `docs/archive/` (17 files, all stale or superseded):
 - `docs/axiomfolio/handoffs/2026-04-21-plan-reality-check.md`
 - `docs/axiomfolio/handoffs/STAGE_QUALITY_DIAGNOSIS_2026Q2.md`
 
-**Note on `2026-04-22-medallion-wave-0-stage-setting.md`:** Flagged as `split` — contains canonical Wave-0 decisions that should fold into `MEDALLION_AUDIT_2026Q2.md` and `PLATFORM_REVIEW_2026Q2.md`. Deferred to Phase 2 so the merge gets human review.
+**Note on `2026-04-22-medallion-wave-0-stage-setting.md`:** Decisions are folded into `MEDALLION_AUDIT_2026Q2.md` and `PLATFORM_REVIEW_2026Q2.md` (Wave 0 handoff section, 2026-04-24); the source lives in `docs/archive/2026-04-22-medallion-wave-0-stage-setting.md`.
 
 **Design system (1)**
 - `docs/axiomfolio/design-system/pages/intelligence.md` — page renamed to `MarketIntelligence` in code; spec orphaned
@@ -146,14 +146,14 @@ Plus: `CODEOWNERS` lock on `docs/philosophy/**` requiring human review (founder 
 
 ## Phase 2 (follow-up PR — out of scope here)
 
-**Merges (need content extraction):**
-- `docs/VMP-SUMMARY.md` → fold into `docs/VENTURE_MASTER_PLAN.md` (or auto-regenerate via script)
-- `docs/axiomfolio/AUDIT_FINDINGS.md` → fold into `docs/axiomfolio/DECISIONS.md` (post-rename)
-- `docs/axiomfolio/MARKET_DATA_FLOWS.md` → fold into `docs/axiomfolio/MARKET_DATA.md`
-- `docs/axiomfolio/ROADMAP.md` → fold into `docs/axiomfolio/plans/MASTER_PLAN_2026.md`
-- `docs/axiomfolio/ROTATION_BACKLOG.md` → fold into `docs/axiomfolio/PRODUCTION.md`
-- `docs/axiomfolio/TASKS.md` → fold into `docs/axiomfolio/plans/MASTER_PLAN_2026.md`
-- `docs/axiomfolio/handoffs/2026-04-22-medallion-wave-0-stage-setting.md` → extract decisions into `MEDALLION_AUDIT_2026Q2.md` + `PLATFORM_REVIEW_2026Q2.md`, then retire
+**Merges — status:**
+- ⏳ Pending: `docs/VMP-SUMMARY.md` → fold into `docs/VENTURE_MASTER_PLAN.md` (or auto-regenerate via script)
+- ✅ Shipped 2026-04-24: AxiomFolio audit findings folded into [`docs/axiomfolio/DECISIONS.md`](axiomfolio/DECISIONS.md); verbatim archive at `docs/archive/AUDIT_FINDINGS_2026-04.md`.
+- ✅ Shipped 2026-04-24: AxiomFolio market-data flows folded into [`docs/axiomfolio/MARKET_DATA.md`](axiomfolio/MARKET_DATA.md); verbatim archive at `docs/archive/MARKET_DATA_FLOWS.md`.
+- ✅ Shipped 2026-04-24: AxiomFolio section roadmap merged into [`docs/axiomfolio/plans/MASTER_PLAN_2026.md`](axiomfolio/plans/MASTER_PLAN_2026.md); verbatim archive at `docs/archive/AXIOMFOLIO_ROADMAP.md`.
+- ✅ Shipped 2026-04-24: AxiomFolio rotation backlog folded into [`docs/axiomfolio/PRODUCTION.md`](axiomfolio/PRODUCTION.md); verbatim archive at `docs/archive/ROTATION_BACKLOG.md`.
+- ✅ Shipped 2026-04-24: AxiomFolio sprint `TASKS` open items merged into [`docs/axiomfolio/plans/MASTER_PLAN_2026.md`](axiomfolio/plans/MASTER_PLAN_2026.md); verbatim archive at `docs/archive/AXIOMFOLIO_TASKS.md`.
+- ✅ Shipped 2026-04-24: medallion wave-0 stage-setting handoff decisions extracted into `MEDALLION_AUDIT_2026Q2.md` + `PLATFORM_REVIEW_2026Q2.md`; verbatim archive at `docs/archive/2026-04-22-medallion-wave-0-stage-setting.md`.
 
 **Splits (need editor judgment):**
 - `docs/BRAIN_ARCHITECTURE.md` — sharded by D-ID grouping for navigation

@@ -1,6 +1,6 @@
 ---
 owner: engineering
-last_reviewed: 2026-04-09
+last_reviewed: 2026-04-24
 doc_kind: plan
 domain: trading
 status: active
@@ -422,7 +422,7 @@ Every architectural decision goes into `docs/KNOWLEDGE.md` as `D##: [date] [deci
 
 - PRD updated end of each milestone (v1: Jun 21, WC: Aug 31)
 - ARCHITECTURE.md updated when modules added
-- TASKS.md = current sprint mirror; archive prior sprints
+- AxiomFolio sprint tracking: this file; historical phase tables in [`AXIOMFOLIO_TASKS.md`](../archive/AXIOMFOLIO_TASKS.md) (archived 2026-04-24).
 - New runbook section per major feature (picks pipeline, billing, etc.)
 
 ---
@@ -464,3 +464,215 @@ This plan supersedes:
 - `feat/v1-phase-0-pricing-nav` — Agent C
 
 **Next up after Week 1 merges**: Phase 1 picks pipeline (email parser + validator queue) and Phase 2 Snowball parity start in parallel.
+
+## Roadmap timeline (merged from ROADMAP.md, 2026-04-24)
+
+The archived section-based `ROADMAP.md` (now `docs/archive/AXIOMFOLIO_ROADMAP.md`) ordered delivery as Section 1, then 1.5, 1.75, 2, 2.5, 2.6, 2.75, 2.8 (mostly **[DONE]**) and forward Sections 3 and 3.5.
+
+**Calendar milestones in this file** (v1 **2026-06-21**, World-Class **2026-08-31**) in *Strategic Frame* remain the canonical product dates. The material below is the **legacy engineering sequence** plus **forward backlog** not otherwise spelled out in phase tables.
+
+### Completed sequence (traceability)
+
+Order of shipped sections in the old roadmap: **1** (Foundation) -> **1.5** (Brokerage Infra + Per-User Credentials, PR 191) -> **1.75** (Market Data DB-First + Portfolio Intelligence) -> **2** (Options, Categories, IB Gateway) -> **2.5** (Backend-Served Indicator Series) -> **2.6** (Portfolio Finish Line) -> **2.75** (BRAIN + PORTFOLIO Integration) -> **2.8** (Streamline Three Pillars). Detail lives under [Done / superseded](#done--superseded).
+
+### Reconciled duplicates (one pointer each)
+
+- **Execution / live orders** — `ROADMAP` Section 3 (buy path, multi-broker orders, strategy execution pipeline, kill switch, watchlist, mobile polish) overlaps *in theme* with [Phase 3 — Execution (Weeks 4-6)](#phase-3--execution-weeks-4-6) and [Phase 4 — Native AgentBrain + Mobile + Tier UX (Weeks 5-9)](#phase-4--native-agentbrain--mobile--tier-ux-weeks-5-9) above. **Keep both**: master-plan phases for milestone alignment and AC; this subsection for the legacy app’s concrete checklist (e.g. `OrderModal` buy/sell, TastyTrade/Schwab order APIs, `Watchlist` model) until work is mapped into phases.
+- **Charts / technical analysis** — Section 3.5 (upgrade `lightweight-charts` to v5, backend-driven sub-panes) complements Phase 2 Snowball-viz work (equity curve, overlays) and World-Class backtesting phases; it is the **in-app chart stack** upgrade track, not a duplicate of the product milestone table.
+- **Circuit breakers / per-user risk** — ROADMAP Section 3 lists a strategy pipeline and breakers; master plan [Phase 3](#phase-3--execution-weeks-4-6) lists `PortfolioHeatGuard`, per-user circuit breaker, and bracket orders. **Deduplicated** by treating master-plan Phase 3 as the authoritative requirement set and Section 3 bullets below as additional implementation notes from the old doc.
+
+### Forward / not yet calendar-mapped (from `ROADMAP.md`)
+
+**Section 3 — Live Execution + Polish (PR 3)**
+
+*Prerequisites*: IB Gateway connected and stable; order pipeline tested in paper mode (done in Section 2.8).
+
+- Buy order support: extend `SellOrderModal` -> `OrderModal` with buy/sell toggle; integrate into Intelligence Panel and Workspace.
+- Broker expansion: TastyTrade SDK `place_order`, Schwab OAuth order endpoints.
+- Strategy engine execution pipeline: Signal -> Order -> RiskGate -> Execution.
+- Circuit breakers and kill switch (max daily loss, max position size, max orders/minute).
+- `StrategyDetail` page, `StrategyBacktest` page (reads from `MarketSnapshotHistory` for historical indicator values).
+- Paper-to-live toggle with confirmation gate.
+- Order reconciliation: link filled `Order`s to `Trade`s created by broker sync.
+- Watchlist management: `Watchlist` model, "Watch" toggle button, auto-add to tracked universe.
+- Mobile polish: responsive layouts, touch-friendly drag-and-drop fallback.
+
+**Section 3.5 — Charts and TA Enhancement**
+
+- Upgrade `lightweight-charts` from v4.2.1 (CDN) to v5 (npm). Gain native `createPane()` for sub-charts.
+- RSI/MACD/Bollinger sub-panes using backend indicator series.
+- Stage background coloring (subtle tint by Weinstein stage).
+- Earnings markers, comparison overlay (SPY/sector ETF), multi-timeframe toggle.
+- Screenshot button via `chart.takeScreenshot()`.
+- **Do not build** (per source): drawing tools, volume profile, custom indicators, Elliott Wave, Fibonacci (use TradingView for these).
+
+**Open from Section 1.75 (table)**
+
+| Status | Item |
+|--------|------|
+| PLANNED | Frontend indicator migration (Track 1: scalar from DB, Track 2: geometric overlays stay on frontend) |
+
+**Testing requirements (from `ROADMAP.md`)**
+
+- **Financial calculations**: Unit tests for every indicator in `compute_full_indicator_series()`. Parity tests comparing Python output vs TypeScript `utils/indicators/` output for same OHLCV input.
+- **Strategy detection**: Unit tests for every pattern in `utils/optionStrategies.ts` with known position sets.
+- **Integration**: DB-first read path (L1 miss -> L2 hit), indicator gap detection and backfill trigger, race condition handling (indicators requested before OHLCV fetched).
+- **Backend**: Pytest for all new endpoints, Alembic migration up/down.
+- **Frontend**: Vitest for utility functions and hooks.
+
+**Operational (ongoing)**
+
+- CI runs tests, lints, `alembic upgrade head`.
+- CHANGELOG from conventional commits.
+- Run commands and migration workflow: see `ONBOARDING.md`.
+
+## Done / superseded
+
+The following was marked **[DONE]** (or **DONE** in status tables) in `docs/archive/AXIOMFOLIO_ROADMAP.md` (archived from `ROADMAP.md` on 2026-04-24). It is retained for audit traceability; current planning follows this master plan and the companion docs in the frontmatter.
+
+### Section 1 — Foundation (PR 1) [DONE]
+
+**Backend** — Remove dead portfolio endpoints; fix N+1 in statements, live, options; async sync-all; auto-sync on account add; re-enable strategies route.
+
+**Frontend** — Shared portfolio utils (`buildAccountsFromBroker`, `toStartEnd`, `timeAgo`, etc.); type safety (API response types, typed hooks, `AccountContext`); `useDebounce`; account filter consistency (`AccountContext`); mutation toasts; skeletons (`TableSkeleton`, `StatCardSkeleton` in Holdings, Options, Transactions); `SortableTable` Chakra + filter debounce; accessibility (`PnlText` aria-label, `StageBar` role=img + aria-label, table overflowX); Pagination on Transactions.
+
+**Docs** — ARCHITECTURE, ROADMAP, PORTFOLIO, FRONTEND_UI, MODELS updated with mermaid and current patterns.
+
+### Section 1.5 — Brokerage Infra + Per-User Credentials (PR 191) [DONE]
+
+**Backend** — TastyTrade migrated to OAuth (SDK v12+); per-user encrypted credentials via `AccountCredentials` + `CredentialVault` (Fernet); Redis-backed `ConnectJobStore` for multi-worker connect flows; sync history recording (`AccountSync` model); API-level sync rejection tracking; Celery task time limits.
+
+**Frontend** — Connect wizard for TT (OAuth) and IBKR (FlexQuery); credential edit modal; sync history table with error tooltips; `useConnectJobPoll` hook with exponential backoff; modal centering fix (Chakra v3 `DialogPositioner`).
+
+**Infra** — Dev/prod parity: Celery restart policies, healthchecks, `depends_on` conditions; removed New Relic wrapper from dev backend; fixed celery beat volume-as-directory crash.
+
+### Section 1.75 — Market Data DB-First + Portfolio Intelligence [DONE]
+
+**Backend**
+
+- Refactor `get_historical_data()` to check `PriceData` table before calling external APIs. Current flow: Redis -> FMP/yfinance. Target flow: Redis (L1) -> `PriceData` table (L2) -> External API (L3, backfills DB on fetch).
+- Write-through: every chart load that hits an external API persists bars to `PriceData` via `persist_price_bars()`.
+- Portfolio analytics uses `MarketSnapshot.beta` for weighted portfolio beta (replaces hardcoded 1.0) and `MarketSnapshot.sector` as fallback for sector attribution.
+- Unified indicator engine: single `compute_full_indicator_series()` replacing four scattered compute paths. Adds ADX, Bollinger, StochRSI, 52w H/L, volume avg, TD Sequential per-bar to both `MarketSnapshot` and `MarketSnapshotHistory`.
+- Indicator series endpoint: `GET /market-data/prices/{symbol}/indicators` reads from `MarketSnapshotHistory` (SQL read, not on-the-fly computation). Gap detection triggers `backfill_snapshot_history_for_symbol()` for missing history.
+
+**Frontend** — Workspace shows `MarketSnapshot` fundamentals (Stage, RSI, ATR%, P/E, Div Yield, Beta, RS Mansfield, Earnings date) in a context strip. Support/Resistance horizontal price levels from clustered pivot highs/lows. Persistent colored circle markers on chart event days (buy/sell/dividend) without hover. Settings > Brokerages renamed to Settings > Connections. TradingView external link removed; in-app charting; default studies/interval synced to server preferences.
+
+**Benefits (source wording)** — Offline chart rendering, no wasted API credits, instant loads for known symbols, richer portfolio intelligence from existing BRAIN data. "Fetch once, ready forever" for both OHLCV and indicator history.
+
+| Status | Item |
+|--------|------|
+| DONE | Write-through to `PriceData` on API fetch |
+| DONE | `MarketSnapshot` LEFT JOIN for portfolio enrichment |
+| DONE | Workspace context strip with fundamentals |
+| DONE | DB-first read path (L1 Redis -> L2 `PriceData` -> L3 API) |
+| DONE | Unified indicator engine rewrite |
+| DONE | `SettingsBrokerages` -> `SettingsConnections` rename |
+| DONE | Indicator series endpoint from `MarketSnapshotHistory` |
+| DONE | 5-year snapshot history backfill (36,806 rows) |
+
+### Section 2 — Options, Categories, IB Gateway [DONE]
+
+**WS-1: IB Gateway Connection [P0]** — Validate credentials and Docker config. `make ib-verify` for end-to-end check. Exponential backoff in `connect_with_retry` (1s, 2s, 4s, 8s, 16s). No Celery auto-reconnect. Manual reconnect -> `POST /portfolio/options/gateway-connect`. `GatewayStatusBadge` in portfolio nav shell. IB Gateway card in Settings > Connections.
+
+**WS-2: Options Page Overhaul** — P0: `SortableTable` P/L table, decompose 1263-line `PortfolioOptions.tsx` into seven components. P1: strategy detection to full pattern set (Covered Call, CSP, Calendar, Diagonal, Butterfly), credit/debit, max P/L, breakeven, strategy card UX. P2 (deferred): payoff diagrams, theta calendar, Greeks dashboard, etc.
+
+**WS-3: Categories Redesign** — P0: ticker chips on category cards, table view + category dropdown, `Category.user_id` fix, auto-categorize presets, preview modal. P1: `@dnd-kit`, allocation ring, rebalance preview.
+
+### Section 2.5 — Backend-Served Indicator Series [DONE]
+
+Architecture: `MarketSnapshotHistory` is the indicator series. Endpoint is SQL read.
+
+```
+Indicator Data Flow:
+┌──────────┐     ┌──────────────────────────────┐     ┌──────────────────────┐
+│ PriceData│ --> │ compute_full_indicator_series │ --> │ MarketSnapshotHistory│
+│ (OHLCV)  │     │ (one unified function)        │     │ (immutable ledger)   │
+└──────────┘     └──────────────────────────────┘     └──────────────────────┘
+                                                              │
+                                                    ┌────────┴─────────┐
+                                                    │                  │
+                                              .iloc[-1]          SQL read
+                                                    │                  │
+                                           ┌────────▼───┐    ┌────────▼────────┐
+                                           │ MarketSnap- │    │ GET /indicators │
+                                           │ shot(latest)│    │ (series endpoint)│
+                                           └────────────┘    └─────────────────┘
+```
+
+**Track 1** (from `MarketSnapshotHistory`): EMA/SMA, RSI, MACD, Bollinger, ATR, stage coloring, TD Sequential, volume bars — scalar-per-date from DB.
+
+**Track 2** (stays on frontend): Gap zones, trendline geometry, S/R level lists from raw OHLCV.
+
+### Section 2.6 — Portfolio Finish Line [DONE]
+
+**Sync layer (Phase 0.5)** — Split `ibkr_sync_service.py` into `ibkr/` package; fixed silent `except` in TastyTrade sync; `UniqueViolation` on transfers; `recover_stale_syncs` every 5 min; `flexquery-diagnostic` endpoint; Schwab OAuth client scaffold and sync.
+
+**Live data** — `GET /portfolio/live/summary`, `/live/positions`, `/portfolio/dashboard/margin-health`, `/portfolio/dashboard/pnl-summary`; frontend credential error surfacing.
+
+**Frontend** — `PortfolioTransactions` category filter, `PortfolioOverview` API shape, `PortfolioOptions` gateway offline handling.
+
+**Cron alignment** — IBKR Daily Sync: 01:00 UTC. Daily Coverage Pipeline: 03:00 UTC. Stale Sync Recovery: every 5 min.
+
+### Section 2.75 — BRAIN + PORTFOLIO Integration [DONE]
+
+"My Holdings" filter in Market Tracked; "Portfolio" badge on Market Dashboard setup table; intelligence context strip in Workspace; actionable insights (stage deterioration, concentration, sector drift, RS degradation, earnings proximity); portfolio vs SPY benchmark on Dashboard.
+
+### Section 2.8 — Streamline Three Pillars [DONE]
+
+**Market data** — Production ETF data gap: Finnhub third fallback + Discord health alerts; universe filter All / ETFs Only / My Holdings; multi-provider fundamentals cascade (`set_if_missing()`); per-provider rate limiters; `eps_ttm` and `revenue_ttm` on `MarketSnapshot` + `MarketSnapshotHistory`.
+
+**Portfolio** — Overview hero insight cards, SPY benchmark on equity curve, Holdings KPIs, symbol intelligence panel, portfolio badge on `SymbolLink`, workspace context strip enhancements.
+
+**Strategy (trade execution foundation)** — `Order` model, IBKRClient what-if/place/cancel/status (paper), `OrderService` with risk guardrails ($100K max), API routes, 3-step `SellOrderModal`, sell action across Holdings/Tax Center/Intelligence/Workspace, chart order markers, `/portfolio/orders` page, sidebar link.
+
+---
+
+*Archive path*: `docs/archive/AXIOMFOLIO_ROADMAP.md` (full verbatim history).
+
+## Active tasks (merged from TASKS.md, 2026-04-24)
+
+*Lifted from [`docs/archive/AXIOMFOLIO_TASKS.md`](../archive/AXIOMFOLIO_TASKS.md) (archived 2026-04-24). Omitted: every historical phase row marked `DONE` / `MOVED`; Next Sprint rows marked `DONE` or `DROPPED`.*
+
+### [IN PROGRESS] V1 Greenfield — Subscription Platform
+
+Sprint context in source: **2026-04-09 to 2026-04-16** (v1 Week 1 banner); target **credible v1 by 2026-06-21** (8 weeks) per *TASKS.md*.
+
+#### Already in this plan (skipped as duplicates)
+
+- _Already covered: `fix/v1-phase-0-stabilization` — Phase 0 — Stabilization + Sprint Marker._
+- _Already covered: `feat/v1-stripe-test-scaffolding` + PR #330 — Phase 0.5 Stripe scaffolding._
+- _Already covered: `feat/v1-candidate-generator` — Phase 0.5 CandidateGenerator service._
+- _Already covered: PR #326 (Entitlement + TierGate + FeatureCatalog) — Phase 0.5._
+- _Already covered: PR #329 (AgentBrain v0 / PortfolioChat) — Phase 4 (Native AgentBrain + Mobile + Tier UX)._
+- _Already covered: PR #331 (Polymorphic LLM email parser) — Phase 1 (Picks Pipeline)._
+- _Already covered: PR #333 (AnomalyExplainer) + #334 (Sync OpenAI adapter) — Phase 4 (anomaly / LLM gateway)._
+- _Already covered: Phases 15–18 (PLANNED in source: Live Trading, Portfolio Optimization, Risk Analytics, Mobile) — World-Class + Year 2 sections + “What This Plan Replaces” (post-stabilization future phases)._
+
+*Skipped duplicate workstreams noted above: **8**.*
+
+#### Open PR — retained (not subsumed by the list above)
+
+| PR | Title | Status | Depends on | Notes |
+|----|-------|--------|------------|-------|
+| #332 | FileFree.ai tax-export scaffold | CI green | main | New `/api/v1/portfolio/tax/filefree/export?year=YYYY&format=json\|csv` + `/schema-version`. |
+
+**Recommended merge order (TASKS.md, 2026-04-09)**: (1) #326 (2) #329 (3) #330 (4) #331, #332 in parallel (5) #333 (6) #334 after #333. *#326–#331 and #333–#334 are represented in phase sections of this file; use this order only for Git/PR sequencing; **#332** is the independent FileFree track in the table above.*
+
+**Decisions (TASKS.md)**: D95–D102 in `docs/KNOWLEDGE.md` (V1 Greenfield) — entitlements, Stripe sink decoupling, polymorphic parser, dual AgentBrains, FileFree schema versioning, tax-advantaged default-skip, AnomalyExplainer always-degrades, sync-OpenAI rationale.
+
+#### [BLOCKED] Known external (from TASKS.md)
+
+| ID | Issue | Owner |
+|----|-------|-------|
+| D56 | Copilot reviewer auto-add returns 422 on every PR (`copilot-pull-request-reviewer` not a collaborator). The workflow runs but no review is ever posted. | Repo admin (sankalp404) — invite Copilot as a collaborator on `sankalp404/axiomfolio` or move to a plan that ships `@copilot` reviewer. |
+
+### [PLANNED] Next sprint backlog (source table)
+
+No in-flight rows: N.1 Alpaca broker adapter is **DROPPED** (D128) — not lifted. N.2 Apple Sign-In, N.3 onboarding, N.4 Bloomberg terminal dashboard — **DONE** in source — not lifted.
+
+### [PLANNED / icebox] Future Phases (post-stabilization, TASKS.md)
+
+Superseded as a set by this document’s World-Class and Year-2 content; see _Already in this plan_ and “What This Plan Replaces”.
+
+---

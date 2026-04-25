@@ -64,7 +64,7 @@ Housekeeping
 Docs
 ----
 - API routes overview: `app/api/README.md`
-- See ../../docs/ARCHITECTURE.md, ../../docs/ROADMAP.md, ../../docs/STATUS.md
+- See ../../docs/ARCHITECTURE.md, ../../docs/axiomfolio/plans/MASTER_PLAN_2026.md, ../../docs/STATUS.md
 - Models reference: ../../docs/MODELS.md
 - Test plan: ../../docs/TEST_PLAN.md and ../../docs/TESTS.md
 
