@@ -1,23 +1,7 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/inter";
 @import "@paperwork-labs/ui/themes.css";
-
-@custom-variant dark (&:is(.dark *));
-
-@theme {
-  --radius: 0.5rem;
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
-}
-
-:root {
-  --background: 240 10% 3.9%;
-  --foreground: 0 0% 98%;
-}
-
-@layer base {
-  body {
-    @apply bg-background text-foreground antialiased;
-  }
-}
+@import "./axiomfolio.css";

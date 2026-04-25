@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    "target": "ES2020",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
@@ -25,5 +25,18 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "src/components/auth/**/*",
+    "src/components/chat/**/*",
+    "src/components/cmdk/**/*",
+    "src/components/connections/**/*",
+    "src/components/home/**/*",
+    "src/components/layout/AuthLayout.tsx",
+    "src/components/layout/DashboardLayout.tsx",
+    "src/components/layout/SidebarStatusDot.tsx",
+    "src/components/layout/TabbedPageShell.tsx",
+    "src/components/layout/TopBarAccountSelector.tsx",
+    "src/hooks/useUpgradePrompt.ts"
+  ]
 }

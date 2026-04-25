@@ -1,0 +1,276 @@
+{
+  "indicators": {
+    "sma": {
+      "term": "SMA (Simple Moving Average)",
+      "short": "Average price over N periods",
+      "definition": "Arithmetic mean of price over N periods. Key SMAs: 21, 50, 100, 150 (primary stage anchor), 200.",
+      "formula": "SMA(n) = (P₁ + P₂ + … + Pₙ) / n"
+    },
+    "ema": {
+      "term": "EMA (Exponential Moving Average)",
+      "short": "Weighted average favoring recent prices",
+      "definition": "Weighted average giving more weight to recent prices. Key EMAs: 10 (short-term trend), 21, 200.",
+      "formula": "EMA = Price × k + EMA(prev) × (1 - k), where k = 2/(n+1)"
+    },
+    "rsi": {
+      "term": "RSI (Relative Strength Index)",
+      "short": "Momentum oscillator (0-100)",
+      "definition": "Momentum oscillator (0–100) using Wilder smoothing. Above 70 = overbought, below 30 = oversold.",
+      "formula": "RS = Wilder Avg Gain / Wilder Avg Loss; RSI = 100 - 100/(1+RS)"
+    },
+    "atr": {
+      "term": "ATR (Average True Range)",
+      "short": "Volatility measure",
+      "definition": "Volatility measure — average range of price movement. ATR%14 normalizes across price levels.",
+      "formula": "TR = max(H-L, |H-PrevC|, |L-PrevC|); ATR uses Wilder's smoothing: seed with SMA of first 14 TRs, then ATR = (prev_ATR x 13 + TR) / 14"
+    },
+    "atrp": {
+      "term": "ATRP (ATR Percentage)",
+      "short": "ATR as % of price",
+      "definition": "ATR as a % of current price. A $10 stock with ATR $0.50 and a $500 stock with ATR $25 both have ATRP 5%.",
+      "formula": "ATRP = (ATR / Price) × 100"
+    },
+    "macd": {
+      "term": "MACD",
+      "short": "Trend-following momentum",
+      "definition": "Trend-following momentum indicator from two EMAs. Signal crossovers indicate momentum shifts.",
+      "formula": "MACD = EMA(12) - EMA(26); Signal = EMA(9) of MACD"
+    },
+    "adx": {
+      "term": "ADX / DI",
+      "short": "Trend strength indicator",
+      "definition": "Trend strength (ADX > 25 = strong trend). +DI vs -DI shows direction.",
+      "formula": "DX = |+DI - -DI|/(+DI + -DI) × 100; ADX uses Wilder's smoothing: seed with SMA of first 14 DX values, then ADX = (prev_ADX x 13 + DX) / 14"
+    },
+    "bollinger": {
+      "term": "Bollinger Bands",
+      "short": "Volatility bands around SMA20",
+      "definition": "Upper and lower bands at 2 population standard deviations from SMA(20). Squeeze (bands inside Keltner) indicates low volatility.",
+      "formula": "Upper = SMA20 + 2*std(Close,20,ddof=0); Lower = SMA20 - 2*std"
+    },
+    "keltner": {
+      "term": "Keltner Channels",
+      "short": "EMA20 +/- 1.5x ATR10",
+      "definition": "Volatility envelope using EMA and ATR. Used with Bollinger Bands to detect TTM Squeeze.",
+      "formula": "Upper = EMA20 + 1.5*ATR10; Lower = EMA20 - 1.5*ATR10"
+    },
+    "ttm_squeeze": {
+      "term": "TTM Squeeze",
+      "short": "Low volatility breakout signal",
+      "definition": "When Bollinger Bands contract inside Keltner Channels, volatility is compressed. Momentum direction on release signals the breakout direction.",
+      "formula": "Squeeze On = BB_lower > KC_lower AND BB_upper < KC_upper"
+    },
+    "stoch_rsi": {
+      "term": "Stochastic RSI",
+      "short": "RSI oscillator (0-1)",
+      "definition": "Applies stochastic formula to RSI values. More sensitive than raw RSI for identifying overbought/oversold conditions.",
+      "formula": "StochRSI = (RSI - min(RSI,14)) / (max(RSI,14) - min(RSI,14))"
+    },
+    "ma_bucket": {
+      "term": "MA Bucket",
+      "short": "Moving average alignment",
+      "definition": "Classification of moving average alignment: LEADING (EMA10 > SMA21 > SMA50 > SMA150), LAGGING (reverse), or NEUTRAL (mixed).",
+      "formula": null
+    },
+    "perf_windows": {
+      "term": "Performance Windows",
+      "short": "Returns over multiple horizons",
+      "definition": "Percentage returns calculated over 1d, 3d, 5d, 20d, 60d, 120d, and 252d windows, plus MTD, QTD, and YTD.",
+      "formula": "Perf = (Close / Close_N_bars_ago - 1) x 100"
+    },
+    "td_sequential": {
+      "term": "TD Sequential",
+      "short": "DeMark exhaustion counter",
+      "definition": "DeMark exhaustion counter. 9-count setup suggests potential reversal. Counter resets to 0 after reaching a 9-count setup.",
+      "formula": "Buy: 9 consecutive closes below close 4 bars ago"
+    }
+  },
+  "stage_analysis": {
+    "sma150": {
+      "term": "SMA150",
+      "short": "Primary stage anchor",
+      "definition": "150-day Simple Moving Average. The primary anchor for Stage Analysis classification. Price position relative to SMA150 determines base stage.",
+      "formula": "SMA(150)"
+    },
+    "ext_pct": {
+      "term": "Extension % (Ext%)",
+      "short": "Distance from SMA150",
+      "definition": "How far price has moved from SMA150 — the primary distance metric in Stage Analysis.",
+      "formula": "Ext% = (Close - SMA150) / SMA150 × 100"
+    },
+    "atre": {
+      "term": "ATRE (ATR Extensions)",
+      "short": "Distance from MAs in ATRs",
+      "definition": "Price distance from key MAs measured in ATRs. ATRE_150 > 6.0 triggers the 2C override.",
+      "formula": "ATRE_150 = (Close - SMA150) / ATR14"
+    },
+    "ema10_dist_n": {
+      "term": "EMA10 Distance (Normalized)",
+      "short": "Chase risk measure",
+      "definition": "How far price is from EMA10, normalized by ATR. Measures chase risk — values > 3.0 are extended.",
+      "formula": "EMA10_Dist_N = ((Close - EMA10)/EMA10 × 100) / ATRP14"
+    },
+    "sma150_slope": {
+      "term": "SMA150 Slope",
+      "short": "Trend direction of anchor",
+      "definition": "Rate of change of the primary anchor over 20 days. Thresholds: > +0.35% = rising, < -0.35% = falling.",
+      "formula": "(SMA150_today - SMA150_20d_ago) / SMA150_20d_ago × 100"
+    },
+    "vol_ratio": {
+      "term": "Volume Ratio",
+      "short": "Volume vs 20-day average",
+      "definition": "Current volume relative to 20-day average. Values > 1.5 confirm breakouts.",
+      "formula": "Vol Ratio = Volume / Volume_Avg_20d"
+    },
+    "mansfield_rs": {
+      "term": "Mansfield RS",
+      "short": "Relative strength vs market",
+      "definition": "Stock's performance vs SPY over trailing year. Positive = outperforming the market.",
+      "formula": "RS = Close/SPY_Close; Mansfield = (RS/SMA252(RS) - 1) × 100"
+    }
+  },
+  "tiers": {
+    "breakout_elite": {
+      "term": "Breakout Elite",
+      "short": "Highest conviction Stage 2 breakouts",
+      "definition": "Stocks in Stage 2A/2B with RS>0, tight EMA10 distance (≤2.0 normalized), top ATRE percentile (≥70), and high 52-week range (≥60%). The best long candidates.",
+      "actionLabel": "BUY",
+      "stages": ["2A", "2B"]
+    },
+    "breakout_standard": {
+      "term": "Breakout Standard",
+      "short": "Solid breakout candidates",
+      "definition": "Stocks in Stage 2A/2B/2C with RS>-5, moderate EMA10 distance (≤3.0), and 52-week range ≥40%. Good quality setups with slightly relaxed criteria.",
+      "actionLabel": "BUY/WATCH",
+      "stages": ["2A", "2B", "2C"]
+    },
+    "early_base": {
+      "term": "Early Base",
+      "short": "Building pattern, not confirmed",
+      "definition": "Stocks in Stage 1B/2A/2B with wider EMA10 tolerance (≤4.0). Pattern is forming but breakout not yet confirmed.",
+      "actionLabel": "WATCH",
+      "stages": ["1B", "2A", "2B"]
+    },
+    "speculative": {
+      "term": "Speculative",
+      "short": "Very early stage, higher risk",
+      "definition": "Stocks in Stage 1A/1B. Very early in the base-building process. Higher risk, requires patience.",
+      "actionLabel": "WATCH",
+      "stages": ["1A", "1B"]
+    },
+    "breakdown_elite": {
+      "term": "Breakdown Elite",
+      "short": "Highest conviction shorts",
+      "definition": "Stocks in Stage 4A/4B with RS<0, low 52-week range (≤30%). The best short candidates during bearish regimes.",
+      "actionLabel": "SHORT",
+      "stages": ["4A", "4B"]
+    },
+    "breakdown_standard": {
+      "term": "Breakdown Standard",
+      "short": "Distribution/decline candidates",
+      "definition": "Stocks in Stage 3B/4A/4B/4C with RS<5. In distribution or decline phase, potential short candidates.",
+      "actionLabel": "SHORT",
+      "stages": ["3B", "4A", "4B", "4C"]
+    }
+  },
+  "regime": {
+    "market_regime": {
+      "term": "Market Regime",
+      "short": "Market-wide risk state (R1-R5)",
+      "definition": "Market-wide risk state (R1–R5) from 6 macro inputs. Gates all downstream decisions including position sizing, scan tier access, and exit triggers.",
+      "formula": "Composite = avg(6 scores); R1 ≤1.75, R2 ≤2.50, R3 ≤3.50, R4 ≤4.50, R5 >4.50"
+    },
+    "r1": {
+      "term": "R1 (Bull)",
+      "short": "Strong bull market",
+      "definition": "Full risk-on environment. All long tiers accessible, full position sizing, no shorts.",
+      "composite_range": "1.0-1.75"
+    },
+    "r2": {
+      "term": "R2 (Extended)",
+      "short": "Extended bull, caution rising",
+      "definition": "Bull market with elevated valuations. Tiers 1-3 accessible, slightly reduced sizing.",
+      "composite_range": "1.75-2.50"
+    },
+    "r3": {
+      "term": "R3 (Chop)",
+      "short": "Choppy, mixed signals",
+      "definition": "Transitional market. Tiers 1-2 only, reduced sizing, short tier 1 accessible.",
+      "composite_range": "2.50-3.50"
+    },
+    "r4": {
+      "term": "R4 (Bear Rally)",
+      "short": "Bear market bounce",
+      "definition": "Counter-trend rally in bear market. Only Tier 1 longs, short tiers 1-2 accessible.",
+      "composite_range": "3.50-4.50"
+    },
+    "r5": {
+      "term": "R5 (Bear)",
+      "short": "Full bear market",
+      "definition": "Risk-off environment. No new longs, all short tiers accessible, aggressive exits.",
+      "composite_range": "4.50-5.0"
+    }
+  },
+  "stages": {
+    "1a": {
+      "term": "Stage 1A",
+      "short": "Early accumulation",
+      "definition": "Price near flat SMA150, slope neutral or slightly negative. Very early base forming.",
+      "color": "#64748B"
+    },
+    "1b": {
+      "term": "Stage 1B",
+      "short": "Late accumulation",
+      "definition": "Price near SMA150 with improving slope. Base tightening, preparing for breakout.",
+      "color": "#94A3B8"
+    },
+    "2a": {
+      "term": "Stage 2A",
+      "short": "Breakout/early advance",
+      "definition": "Price above rising SMA150, recent breakout. Prime buying zone.",
+      "color": "#22C55E"
+    },
+    "2b": {
+      "term": "Stage 2B",
+      "short": "Healthy advance",
+      "definition": "Price well above rising SMA150, confirmed uptrend. Pullbacks are buying opportunities.",
+      "color": "#16A34A"
+    },
+    "2c": {
+      "term": "Stage 2C",
+      "short": "Extended advance",
+      "definition": "Price far extended from SMA150 (ATRE > 6). High risk of pullback, reduce position sizing.",
+      "color": "#15803D"
+    },
+    "3a": {
+      "term": "Stage 3A",
+      "short": "Early distribution",
+      "definition": "Price still above SMA150 but slope flattening. Warning sign, tighten stops.",
+      "color": "#F59E0B"
+    },
+    "3b": {
+      "term": "Stage 3B",
+      "short": "Distribution",
+      "definition": "Price above SMA150, remaining after 2A-2C and 3A classification. Catch-all for above-anchor stocks not in confirmed advance.",
+      "color": "#D97706"
+    },
+    "4a": {
+      "term": "Stage 4A",
+      "short": "Decline",
+      "definition": "Price below falling SMA150. Downtrend confirmed, short candidates.",
+      "color": "#EF4444"
+    },
+    "4b": {
+      "term": "Stage 4B",
+      "short": "Accelerating decline",
+      "definition": "Price well below falling SMA150. Strong downtrend, ideal shorts.",
+      "color": "#DC2626"
+    },
+    "4c": {
+      "term": "Stage 4C",
+      "short": "Capitulation",
+      "definition": "Price extremely extended below SMA150 (< -15%). Potential bounce, cover shorts.",
+      "color": "#B91C1C"
+    }
+  }
+}

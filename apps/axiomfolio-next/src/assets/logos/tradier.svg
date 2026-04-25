@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Tradier">
+  <!-- Geometric T mark: Tradier blue, works on light/dark card surfaces. -->
+  <rect width="64" height="64" rx="12" fill="#0068ff"/>
+  <path fill="#ffffff" d="M12 12h40v9H36v32h-9V21H12V12z"/>
+</svg>
