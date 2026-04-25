@@ -92,6 +92,23 @@ class Settings(BaseSettings):
     # Agent autonomy level: "full" (auto-execute all), "safe" (auto-execute safe only), "ask" (always ask)
     AGENT_AUTONOMY_LEVEL: str = "safe"
 
+    # Track M.1 — delegate the LLM step of TradingAgent to Paperwork Brain.
+    # When True AND no BYOK key is configured for the caller, TradingAgent
+    # sends each chat turn to POST /brain/process?persona_pin=trading
+    # instead of calling OpenAI directly. Benefits: single cost ledger,
+    # rate limits, persona tone, episode memory, model picked by Brain's
+    # router (Sonnet, not gpt-4o-mini). BYOK users keep direct-OpenAI.
+    #
+    # Safe default: False, so production doesn't flip until we're confident
+    # the delegation shim is stable. Flip via .env on a staging tier first.
+    AXIOMFOLIO_USE_PAPERWORK_BRAIN: bool = False
+    # Base URL for Paperwork Brain (no trailing slash). Only used when
+    # AXIOMFOLIO_USE_PAPERWORK_BRAIN=True. Defaults to the prod Render URL.
+    PAPERWORK_BRAIN_URL: str = "https://brain-api.onrender.com"
+    # Timeout (seconds) for a delegation call. Kept tight because this is
+    # a synchronous user-facing path; on timeout we fall back to direct LLM.
+    PAPERWORK_BRAIN_TIMEOUT_SECONDS: float = 30.0
+
     # TastyTrade Configuration (OAuth — v12+ SDK)
     # Dev fallback only; production credentials stored per-user in account_credentials table
     TASTYTRADE_CLIENT_SECRET: Optional[str] = None

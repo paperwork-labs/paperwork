@@ -1,6 +1,22 @@
 # AxiomFolio → Next.js 16 App Router — Migration Plan
 
-Status: draft · Owner: engineering · Target: 2026Q3 · Scope: `apps/axiomfolio/`
+Status: **Phase E scaffolded (Week 3)** · Owner: engineering · Target: 2026Q3 · Scope: `apps/axiomfolio/` → `apps/axiomfolio-next/`
+
+## Status snapshot (refresh 2026-04-24)
+
+| Milestone | State | Where |
+|---|---|---|
+| `apps/axiomfolio-next/` scaffold | Done | `apps/axiomfolio-next/` |
+| SystemStatus route ported | Shell (Track E) | [apps/axiomfolio-next/src/app/system-status/page.tsx](../../../apps/axiomfolio-next/src/app/system-status/page.tsx) |
+| Portfolio route ported | Shell (Track E) | [apps/axiomfolio-next/src/app/portfolio/page.tsx](../../../apps/axiomfolio-next/src/app/portfolio/page.tsx) |
+| Scanner route ported | Shell (Track E) | [apps/axiomfolio-next/src/app/scanner/page.tsx](../../../apps/axiomfolio-next/src/app/scanner/page.tsx) |
+| `@paperwork-labs/ui` wired | Done | `apps/axiomfolio-next/package.json` |
+| PWA package shared (`@paperwork-labs/pwa`) | Done | `packages/pwa/` (Track M.7) |
+| Feature flag proxy | Done | Middleware via `NEXT_PUBLIC_USE_NEXT` |
+| Remaining 47+ routes | Not started — Q3 work |
+| Vite app decommission | Blocked on full parity — Q3 |
+
+Subsequent updates to this doc should keep the table above current; the rest of the document describes the migration plan as originally scoped and is intentionally historical from here down.
 
 ## Why
 

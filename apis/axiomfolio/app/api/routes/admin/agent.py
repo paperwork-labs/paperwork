@@ -426,6 +426,10 @@ class ChatResponse(BaseModel):
     actions: List[dict]
 
 
+class DeepAnalyzeRequest(ChatRequest):
+    """Same shape as chat — the strategy difference is server-side."""
+
+
 @router.post("/chat", response_model=ChatResponse)
 @limiter.limit("10/minute")
 async def agent_chat(
@@ -501,6 +505,74 @@ async def agent_chat(
     except Exception as e:
         logger.warning("Failed to create session action: %s", e)
         db.rollback()
+
+    return ChatResponse(
+        session_id=result["session_id"],
+        response=result.get("response", ""),
+        tool_calls=result.get("tool_calls", []),
+        actions=result.get("actions", []),
+    )
+
+
+@router.post("/deep-analyze", response_model=ChatResponse)
+@limiter.limit("6/minute")
+async def agent_deep_analyze(
+    request: Request,
+    chat_body: DeepAnalyzeRequest,
+    db: Session = Depends(get_db),
+    _admin: User = Depends(get_admin_user),
+):
+    """Buffer Week 4 — first post-hardening AxiomFolio feature.
+
+    Runs the user's message through the Paperwork Brain ``trading``
+    persona with ``strategy=extract_reason``: Flash extracts structured
+    facts, Sonnet reasons over the digest. Intended for heavy asks —
+    trade thesis review, regime-change explanation, drawdown post-
+    mortem — where the two-hop pattern cuts Sonnet token spend in half
+    without degrading answer quality.
+
+    Falls through to the standard chat path (direct OpenAI) if Brain
+    delegation isn't enabled or BYOK is active, so behaviour is never
+    silently degraded.
+    """
+    from app.services.agent.brain import TradingAgent
+    from app.config import settings
+
+    if not settings.OPENAI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="LLM agent not configured (OPENAI_API_KEY missing)",
+        )
+
+    brain = TradingAgent(db=db, user_id=_admin.id)
+
+    if chat_body.session_id:
+        load_outcome = brain._load_conversation(chat_body.session_id)
+        if load_outcome == "unavailable":
+            raise HTTPException(
+                status_code=503,
+                detail="Conversation store unavailable; try again later",
+            )
+        if load_outcome == "missing":
+            raise HTTPException(
+                status_code=404,
+                detail="Conversation session not found or has expired",
+            )
+
+    try:
+        result = await brain.deep_analyze(chat_body.message)
+    except Exception as e:
+        logger.exception("Agent deep_analyze failed: %s", e)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Agent processing error: {type(e).__name__}",
+        )
+
+    if "error" in result:
+        logger.warning("Agent deep_analyze returned error: %s", result["error"])
+        raise HTTPException(
+            status_code=502, detail="Agent is temporarily unavailable"
+        )
 
     return ChatResponse(
         session_id=result["session_id"],

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "pnpm install --frozen-lockfile=false",
+  "buildCommand": "pnpm --filter @paperwork-labs/axiomfolio-next... run build",
+  "outputDirectory": ".next",
+  "regions": ["iad1"]
+}
