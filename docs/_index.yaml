@@ -283,6 +283,13 @@ docs:
     tags: [finance, procurement]
     owners: [cfo]
     category: reference
+  - slug: runbook-template
+    path: docs/RUNBOOK_TEMPLATE.md
+    title: Runbook Template
+    summary: Canonical structure every runbook must follow. Enforced by scripts/check_runbook_template.py.
+    tags: [runbook, template, ops]
+    owners: [agent-ops]
+    category: reference
 
   # ── Plans (per-product master plans + cross-cutting roadmaps) ────────
   - slug: tasks
@@ -327,6 +334,13 @@ docs:
     title: Infra & Automation Hardening (2026 Q2)
     summary: 4-week sprint — persona platform, n8n streamline, Studio command-center.
     tags: [sprint, infra, automation]
+    owners: [engineering, agent-ops]
+    category: sprints
+  - slug: sprint-docs-streamline-and-trackers-2026q2
+    path: docs/sprints/DOCS_STREAMLINE_AND_TRACKERS_2026Q2.md
+    title: Docs Streamline + Trackers Spine (2026 Q2)
+    summary: Mini-sprint — Phase 1 docs cleanup, repo-native tracker spine, CFO digest, slash commands.
+    tags: [sprint, docs, trackers]
     owners: [engineering, agent-ops]
     category: sprints
 
