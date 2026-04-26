@@ -48,7 +48,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | Data Deep Validator (P2.9) | `0 3 1 * *` (see LA caveat) | shadow |
 | Annual Data Update Trigger (P2.10) | `0 9 1 10 *` (see LA caveat) | shadow |
 | Infra Health Check | every **30** minutes (not cron) | shadow |
-| Credential Expiry Check | `0 8 * * *` | shadow |
+| Credential Expiry Check | `0 8 * * *` | shadow — or first-party `brain_credential_expiry` when `BRAIN_OWNS_CREDENTIAL_EXPIRY=true` (T1.4) |
 
 **What the n8n flows do (reference):** daily/weekly/sprint kickoff → HTTP Brain `process`; sprint close and data validators → GitHub / HTTP and Slack; strategy → OpenAI + Slack; infra flows → n8n API and Slack; credential expiry → vault + conditional Slack. Shadow handlers do not duplicate this logic; they only log to `#engineering-cron-shadow`.
 
@@ -62,6 +62,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | `SCHEDULER_N8N_MIRROR_<ID>` | _(unset)_ | **Per-mirror opt-in (or opt-out).** When set, that job uses this boolean instead of the global. `<ID>` is the mirror **job_id** in uppercase with underscores, e.g. `SCHEDULER_N8N_MIRROR_N8N_SHADOW_BRAIN_DAILY=true`. If unset, the job follows `SCHEDULER_N8N_MIRROR_ENABLED`. |
 | `BRAIN_OWNS_DAILY_BRIEFING` | `false` | **First real n8n→Brain cutover (T1.2).** When `true`, registers the `brain_daily_briefing` job (07:00 UTC, `CronTrigger` parity with n8n's `0 7 * * *`) and **suppresses** the `n8n_shadow_brain_daily` shadow so only one schedule drives the daily briefing. Requires `BRAIN_SCHEDULER_ENABLED=true`. |
 | `BRAIN_OWNS_INFRA_HEARTBEAT` | `false` | **T1.3 cutover.** When `true`, registers the first-party in-process job `brain_infra_heartbeat` (08:00 UTC) and **suppresses** the `n8n_shadow_infra_heartbeat` mirror (same Slack shape as the n8n Infra Heartbeat workflow). When `false`, n8n + optional shadow remain the source of the heartbeat until you cut over. |
+| `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `false` | **T1.4 cutover.** When `true`, registers `brain_credential_expiry` (08:00 UTC), posts the same **Credential Expiry Report** to `#alerts` as the n8n workflow, and **suppresses** `n8n_shadow_credential_expiry`. Requires `SECRETS_API_KEY`, `STUDIO_URL`, and `SLACK_BOT_TOKEN` like the n8n path. |
 | `BRAIN_SCHEDULER_ENABLED` | `true` | Master switch for starting APScheduler (including job store and mirrors). |
 | `DATABASE_URL` | (dev default) | Must be reachably Postgres. Async URL uses `+asyncpg`; the job store uses a sync `postgresql://` form (no `+asyncpg`). |
 
@@ -69,7 +70,9 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 
 | APScheduler `job_id` | Env flag (enable Brain-owned path) | Schedule (UTC) | n8n shadow id suppressed when flag is on |
 | --- | --- | --- | --- |
+| `brain_daily_briefing` | `BRAIN_OWNS_DAILY_BRIEFING` | `0 7 * * *` | `n8n_shadow_brain_daily` |
 | `brain_infra_heartbeat` | `BRAIN_OWNS_INFRA_HEARTBEAT` | `0 8 * * *` | `n8n_shadow_infra_heartbeat` |
+| `brain_credential_expiry` | `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `0 8 * * *` | `n8n_shadow_credential_expiry` |
 
 ### Read-only mirror status
 
@@ -146,8 +149,8 @@ ORDER BY id;
 
 - Decision log: [Company Knowledge](../KNOWLEDGE.md) (2026-04-25 — Brain owns schedules; SQLAlchemy job store).
 - Sprint: [Streamline + SSO + Real DAGs](../sprints/STREAMLINE_SSO_DAGS_2026Q2.md) (T1 orchestration / shadow period).
-- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`.
+- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/credential_expiry.py`.
 
 ---
 
-**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`.
+**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
