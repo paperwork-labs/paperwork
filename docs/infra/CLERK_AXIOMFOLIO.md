@@ -1,6 +1,6 @@
 # Clerk SSO — AxiomFolio (axiomfolio-next)
 
-Runbook for the AxiomFolio Next.js app (`apps/axiomfolio-next`) identity stack: Clerk SDK foundation (T6c) alongside the existing **`qm_token`** session in `localStorage`. Themed Clerk UI is a separate follow-up (Studio #152 pattern).
+Runbook for the AxiomFolio Next.js app (`apps/axiomfolio-next`) identity stack: Clerk SDK foundation (T6c) alongside the existing **`qm_token`** session in `localStorage`. Per-app Clerk theming (T3.4) uses the Appearance API; see [Theming](#theming) below.
 
 ## Environment variables (standard names)
 
@@ -12,6 +12,13 @@ Runbook for the AxiomFolio Next.js app (`apps/axiomfolio-next`) identity stack: 
 **Custom prefix** is not used — do not add an `AXIOMFOLIO_` or other prefix to these names in Vercel or `.env`.
 
 Optional Clerk URLs (redirects) follow [Clerk environment variable docs](https://clerk.com/docs/guides/development/clerk-environment-variables) if dashboard defaults are insufficient.
+
+## Theming
+
+- **Appearance object** — `apps/axiomfolio-next/src/lib/axiomfolio-clerk-appearance.ts` exports `axiomfolioClerkAppearance`. It uses `baseTheme: dark` from `@clerk/themes` and maps Clerk `variables` to the app’s CSS tokens from `src/app/axiomfolio.css` (oklch `--primary`, `--background`, `--foreground`, `--input`, etc.). The `elements` block applies Tailwind classes for the card, primary button, social buttons, and `UserButton` so sign-in, sign-up, and account controls match the dark blue canvas + gold primary accent.
+- **Provider** — `RootLayout` passes `appearance={axiomfolioClerkAppearance}` to `<ClerkProvider>` so `UserButton` and any other top-level Clerk UI inherits the theme.
+- **Auth routes** — `/sign-in` and `/sign-up` wrap `<SignIn />` / `<SignUp />` in `ClerkAuthPageShell` (gradient + AxiomFolio logo and tagline, aligned with `AuthLayout` for legacy auth).
+- **Tweaking** — Adjust colors by editing the CSS variables in `axiomfolio.css` (`.dark` and `@theme`); for Clerk-only polish, edit the `elements` map in the appearance file. Keep `@clerk/themes` in lockstep with other Paperwork apps (`^2.4.x` range in `package.json`).
 
 ## How Clerk and `qm_token` coexist
 
