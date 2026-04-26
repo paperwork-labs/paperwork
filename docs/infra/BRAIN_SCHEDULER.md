@@ -85,6 +85,10 @@ curl -sS -H "X-Brain-Secret: $BRAIN_API_SECRET" \
 
 Response `data` includes `global_enabled` and `per_job` (each entry: `key`, `enabled`, `last_run`, `last_status`, `success_count_24h`, `error_count_24h`).
 
+### Studio Admin (Paperwork Studio)
+
+Operators can use the **n8n cron mirror** page in [Paperwork Studio](https://github.com/paperwork-labs/paperwork/tree/main/apps/studio) — **`/admin/n8n-mirror`** (Clerk or Basic Auth on `/admin` as for other command-center pages). The page calls the same endpoint via a server route using `BRAIN_API_URL` and `BRAIN_API_SECRET` (`X-Brain-Secret`), and shows a table of every mirror job id with shadow on/off, last run status, and 24h success/error counts. A summary strip highlights how many job rows have the n8n shadow registered versus heuristic “Brain path” (cutover) for the daily and infra **T1.2** / **T1.3** job ids. The UI auto-refreshes about every 30 seconds.
+
 ### Cutover order (T1.1)
 
 Prefer **one mirror at a time** with per-job env vars, watch a few green shadow runs, then widen — instead of a single big-bang global toggle for every workflow. **Lower risk first:** start with internal / operational mirrors (e.g. `n8n_shadow_infra_heartbeat`, `n8n_shadow_infra_health`) before flows that post toward **user-facing** or high-visibility product channels. The Brain in-process `pr_sweep` job is separate from n8n; cut that over on its own cadence. Document which `n8n_shadow_*` job id is live in each phase.

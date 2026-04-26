@@ -264,6 +264,38 @@ export async function getBrainPersonas(): Promise<BrainPersonaSpec[]> {
   return data?.data?.personas ?? [];
 }
 
+export type N8nMirrorPerJob = {
+  key: string;
+  enabled: boolean;
+  last_run: string | null;
+  last_status: string | null;
+  success_count_24h: number;
+  error_count_24h: number;
+};
+
+export type N8nMirrorSchedulerStatus = {
+  global_enabled: boolean;
+  per_job: N8nMirrorPerJob[];
+};
+
+/**
+ * `GET /api/v1/admin/scheduler/n8n-mirror/status` — shadow registration + 24h run stats.
+ * Returns null if Brain is not configured or the request fails.
+ */
+export async function getN8nMirrorSchedulerStatus(): Promise<N8nMirrorSchedulerStatus | null> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) return null;
+  const data = await fetchJson<{
+    success?: boolean;
+    data?: N8nMirrorSchedulerStatus;
+  }>(`${apiRoot}/admin/scheduler/n8n-mirror/status`, {
+    headers: { "X-Brain-Secret": secret },
+  });
+  if (!data?.data) return null;
+  return data.data;
+}
+
 export async function getN8nWorkflows() {
   const apiRoot = getN8nApiRoot();
   const headers = getN8nHeaders();

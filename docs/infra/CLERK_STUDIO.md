@@ -8,6 +8,8 @@ Runbook for the Studio app (`apps/studio`) identity stack: Clerk (primary SSO) w
 | -------- | ------------ | ------ |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Client + server bootstrap | [Vercel Marketplace — Clerk](https://vercel.com/integrations) auto-provision on the linked Studio project; copy to local from **Studio Secrets Vault** for dev |
 | `CLERK_SECRET_KEY` | Server (session verification, middleware) | Same as above |
+| `BRAIN_API_URL` | Server (`/api/admin/*` routes that call Brain, e.g. n8n mirror status) | Same value as Render `brain-api` public URL; include `/api/v1` or base host — `command-center` normalizes |
+| `BRAIN_API_SECRET` | Server (sent as `X-Brain-Secret` to Brain `/admin/*`) | Must match Brain’s `BRAIN_API_SECRET` |
 
 **Custom prefix** is not used (empty) — do not add a `STUDIO_` or other prefix to these variable names in Vercel or `.env`.
 
