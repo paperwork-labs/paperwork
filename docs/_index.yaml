@@ -414,8 +414,8 @@ docs:
   - slug: sprint-automation-2026q3
     path: docs/sprints/SPRINT_AUTOMATION_2026Q3.md
     title: Sprint Automation (2026 Q3)
-    summary: "**Sprint window**: 2026-04-26 → 2026-06-30 (Q3 umbrella for automation loops) **Status**: in_progress — first slice is Brain-owned **sprint auto-logger** (merged PRs → `docs/sprints/*.md` via…"
-    tags: [company, sprint]
+    summary: "Close the Studio sprint-progress loop: Brain-owned sprint auto-logger appends shipped PR lines to docs/sprints/*.md; acceptance criteria for idempotent bot PRs and prod cutover."
+    tags: [company, sprint, automation]
     owners: [engineering]
     category: sprints
   - slug: streamline-sso-dags-2026q2
@@ -423,13 +423,6 @@ docs:
     title: Streamline + SSO + Real DAGs (2026 Q2)
     summary: "**Sprint window**: 2026-04-25 → 2026-05-09 (~2 weeks) **Status**: in_progress — Track 1 cleanup PR opens the spine; Tracks 2–5 roll forward through early May. **Predecessor**:…"
     tags: [company, sprint]
-    owners: [engineering]
-    category: sprints
-  - slug: sprint-automation-2026q3
-    path: docs/sprints/SPRINT_AUTOMATION_2026Q3.md
-    title: Sprint Automation (2026 Q3)
-    summary: "Close the Studio sprint-progress loop: Brain-owned sprint auto-logger appends shipped PR lines to docs/sprints/*.md; acceptance criteria for idempotent bot PRs and prod cutover."
-    tags: [company, sprint, automation]
     owners: [engineering]
     category: sprints
   # ── Generated ─────────────────────────────────────────

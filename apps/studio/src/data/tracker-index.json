@@ -80,11 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-<<<<<<< HEAD
-  "content_hash": "3da35d8bf0b3",
-=======
-  "content_hash": "7d712e0742d5",
->>>>>>> f3db4c542 (docs(sprints): log sprint auto-logger PR #204 in Streamline + Q3 sprint)
+  "content_hash": "1184eef57905",
   "products": [
     {
       "label": "AxiomFolio",

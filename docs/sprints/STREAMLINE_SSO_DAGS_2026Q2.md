@@ -34,10 +34,7 @@ related_prs:
   - 200
   - 199
   - 201
-<<<<<<< HEAD
-=======
   - 204
->>>>>>> f3db4c542 (docs(sprints): log sprint auto-logger PR #204 in Streamline + Q3 sprint)
 ---
 
 # Streamline + SSO + Real DAGs (2026 Q2)
