@@ -31,7 +31,7 @@ jobs:
       sharedPackages: ${{ steps.filter.outputs.sharedPackages }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
         id: filter
         with:
@@ -73,7 +73,7 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
@@ -89,7 +89,7 @@ jobs:
       run:
         working-directory: apis/filefree
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
@@ -134,7 +134,7 @@ jobs:
       REDIS_URL: redis://localhost:6379
       SECRET_KEY: ci-test-secret-key-not-for-production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
@@ -148,7 +148,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.sharedPackages == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -174,7 +174,7 @@ jobs:
       run:
         working-directory: apis/launchfree
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
@@ -189,7 +189,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.brainApi == 'true' || needs.changes.outputs.infra == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -208,7 +208,7 @@ jobs:
       run:
         working-directory: apis/brain
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -223,7 +223,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.launchfreeWeb == 'true' || needs.changes.outputs.studioWeb == 'true' || needs.changes.outputs.trinketsWeb == 'true' || needs.changes.outputs.distillWeb == 'true' || needs.changes.outputs.axiomfolioNextWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -243,7 +243,7 @@ jobs:
     needs: [changes, web-lint]
     if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -275,7 +275,7 @@ jobs:
             when: axiomfolioNextWeb
     if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.launchfreeWeb == 'true' || needs.changes.outputs.studioWeb == 'true' || needs.changes.outputs.trinketsWeb == 'true' || needs.changes.outputs.distillWeb == 'true' || needs.changes.outputs.axiomfolioNextWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
