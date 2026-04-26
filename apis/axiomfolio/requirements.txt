@@ -92,4 +92,4 @@ opentelemetry-instrumentation-fastapi==0.62b0
 opentelemetry-instrumentation-sqlalchemy==0.62b0
 opentelemetry-instrumentation-celery==0.62b0
 opentelemetry-instrumentation-httpx==0.62b0
-opentelemetry-instrumentation-redis==0.62b0
+opentelemetry-instrumentation-redis==0.62b1
