@@ -26,7 +26,12 @@ export const launchFreeClerkAppearance = {
     formFieldInput:
       "border-slate-700/90 bg-slate-950/50 transition focus:border-slate-500",
     socialButtonsBlockButton: "border-slate-700/80 hover:bg-slate-800/60",
-    footer: "text-slate-500",
+    footer: "hidden",
+    footerAction: "hidden",
+    footerActionText: "hidden",
+    footerActionLink: "hidden",
+    badge: "hidden",
+    internal: "hidden",
     headerTitle: "text-slate-100",
     headerSubtitle: "text-slate-400",
     formFieldLabel: "text-slate-200",

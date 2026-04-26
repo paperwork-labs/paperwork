@@ -31,7 +31,11 @@ export default function RootLayout({
         data-theme="trinkets"
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
       >
-        <ClerkProvider appearance={trinketsClerkAppearance}>
+        <ClerkProvider
+          appearance={trinketsClerkAppearance}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+        >
           {children}
           <Analytics />
         </ClerkProvider>

@@ -11,6 +11,21 @@ Runbook for the FileFree app (`apps/filefree`) identity layer: **Clerk** (primar
 
 **No custom prefix** — use these exact names on the FileFree project, not a `FILEFREE_` prefix.
 
+## Embedded `<SignIn />` on first-party routes (required)
+
+FileFree uses embedded auth on `/sign-in` and `/sign-up`, not Clerk’s hosted Account Portal—no `accounts.*` DNS dependency; Clerk portal “Powered by” footer is avoided on Hobby.
+
+| Variable | Value |
+| -------- | ----- |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` | `/dashboard` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` | `/dashboard` |
+
+Match `<ClerkProvider signInUrl` / `signUpUrl` in `apps/filefree/src/app/layout.tsx`. Do not set `NEXT_PUBLIC_CLERK_DOMAIN` or change Clerk keys for this.
+
+**Branding:** `filefree-clerk-appearance.ts` hides Clerk footer chrome; auth pages show **Paperwork Labs** / **Single Sign-On** above the form.
+
 **Basic Auth** (admin escape hatch) uses the same variable names as Studio when present:
 
 - `ADMIN_EMAILS` — comma-separated allowlist

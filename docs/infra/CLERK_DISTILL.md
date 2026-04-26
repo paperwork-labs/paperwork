@@ -13,7 +13,20 @@ Runbook for the Distill app (`apps/distill`) identity stack: **Clerk** (SSO) for
 
 **Dashboard feature gate** (unchanged, page-level): `DISTILL_DASHBOARD_ENABLED` may still redirect signed-in users from `/dashboard` to `/` when not in development. That is separate from Clerk — see `apps/distill/src/app/dashboard/page.tsx`.
 
-Optional Clerk URLs (redirects) follow [Clerk environment variable docs](https://clerk.com/docs/guides/development/clerk-environment-variables) if dashboard defaults are insufficient.
+## Embedded `<SignIn />` on first-party routes (required)
+
+Distill uses embedded auth on `/sign-in` and `/sign-up`, not the hosted Account Portal—no `accounts.*` DNS; avoids non-removable Clerk portal branding on Hobby.
+
+| Variable | Value |
+| -------- | ----- |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` | `/dashboard` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` | `/dashboard` |
+
+Aligns with `<ClerkProvider signInUrl` / `signUpUrl` in `apps/distill/src/app/layout.tsx`. Do not set `NEXT_PUBLIC_CLERK_DOMAIN` or change Clerk keys for this.
+
+**Branding:** `clerk-appearance.ts` hides Clerk footer chrome; auth pages show **Paperwork Labs** / **Single Sign-On** above the form.
 
 ## How Clerk is applied
 

@@ -11,7 +11,20 @@ Runbook for the AxiomFolio Next.js app (`apps/axiomfolio-next`) identity stack: 
 
 **Custom prefix** is not used — do not add an `AXIOMFOLIO_` or other prefix to these names in Vercel or `.env`.
 
-Optional Clerk URLs (redirects) follow [Clerk environment variable docs](https://clerk.com/docs/guides/development/clerk-environment-variables) if dashboard defaults are insufficient.
+## Embedded `<SignIn />` on first-party routes (required)
+
+axiomfolio-next uses embedded auth on `/sign-in` and `/sign-up`, not the hosted Account Portal—no `accounts.*` DNS; avoids non-removable Clerk portal branding on Hobby.
+
+| Variable | Value |
+| -------- | ----- |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` | `/` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` | `/` |
+
+Aligns with `<ClerkProvider signInUrl` / `signUpUrl` in `apps/axiomfolio-next/src/app/layout.tsx`. Do not set `NEXT_PUBLIC_CLERK_DOMAIN` or change Clerk keys for this.
+
+**Branding:** `axiomfolio-clerk-appearance.ts` hides Clerk footer chrome; auth pages show **Paperwork Labs** / **Single Sign-On** above the form.
 
 ## Theming
 
@@ -23,7 +36,7 @@ Optional Clerk URLs (redirects) follow [Clerk environment variable docs](https:/
 ## How Clerk and `qm_token` coexist
 
 - **Legacy auth** — `qm_token` in `localStorage`, `AuthContext`, `/auth/callback`, `/login`, `/register`, and **`RequireAuthClient`** on protected pages remain the **source of truth** for who can use the app today.
-- **Clerk** — `/sign-in` and `/sign-up` (catch-all routes) render Clerk’s hosted components. Keys must be present for those routes to work in dev/prod.
+- **Clerk** — `/sign-in` and `/sign-up` (catch-all routes) render **embedded** `<SignIn />` / `<SignUp />` on this origin (not the Account Portal). Keys must be present for those routes to work in dev/prod.
 - **Proxy** (`apps/axiomfolio-next/src/proxy.ts`) — Next.js 16 uses `proxy.ts` instead of `middleware.ts`. Clerk is composed there and is **non-blocking**: it does not call `auth().protect()` and does not redirect unauthenticated users. It only wires Clerk’s request context for gradual adoption. Server-side protection for Clerk-only flows is future work.
 
 Public paths are explicitly listed in `proxy.ts` (home, legacy auth, Clerk auth, pricing, health). This list may be tightened when server-side gates are introduced.

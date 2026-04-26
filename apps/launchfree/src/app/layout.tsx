@@ -32,7 +32,11 @@ export default function RootLayout({
         data-theme="launchfree"
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
       >
-        <ClerkProvider appearance={launchFreeClerkAppearance}>
+        <ClerkProvider
+          appearance={launchFreeClerkAppearance}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+        >
           <Providers>{children}</Providers>
           <Analytics />
         </ClerkProvider>

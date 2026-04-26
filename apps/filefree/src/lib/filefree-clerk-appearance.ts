@@ -25,7 +25,12 @@ export const fileFreeClerkAppearance = {
     formFieldInput:
       "border-violet-900/70 bg-violet-950/40 transition focus:border-violet-500/80",
     socialButtonsBlockButton: "border-violet-900/60 hover:bg-violet-950/50",
-    footer: "text-muted-foreground",
+    footer: "hidden",
+    footerAction: "hidden",
+    footerActionText: "hidden",
+    footerActionLink: "hidden",
+    badge: "hidden",
+    internal: "hidden",
     headerTitle: "text-foreground",
     headerSubtitle: "text-muted-foreground",
     formFieldLabel: "text-foreground/90",

@@ -11,7 +11,20 @@ Runbook for the Trinkets app (`apps/trinkets`) identity layer: **Clerk** for int
 
 **No custom prefix** — use these exact names on the Trinkets project, not a `TRINKETS_` prefix.
 
-Optional Clerk URLs (redirects) follow [Clerk environment variable docs](https://clerk.com/docs/guides/development/clerk-environment-variables) if dashboard defaults are insufficient.
+## Embedded `<SignIn />` on first-party routes (required)
+
+Trinkets uses embedded auth on `/sign-in` and `/sign-up`, not the hosted Account Portal—no `accounts.*` DNS; avoids non-removable Clerk portal branding on Hobby.
+
+| Variable | Value |
+| -------- | ----- |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` | `/` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` | `/` |
+
+Aligns with `<ClerkProvider signInUrl` / `signUpUrl` in `apps/trinkets/src/app/layout.tsx`. Do not set `NEXT_PUBLIC_CLERK_DOMAIN` or change Clerk keys for this.
+
+**Branding:** `trinkets-clerk-appearance.ts` hides Clerk footer chrome; auth pages show **Paperwork Labs** / **Single Sign-On** above the form.
 
 ## How Clerk fits Trinkets
 
