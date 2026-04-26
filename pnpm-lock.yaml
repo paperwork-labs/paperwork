@@ -69,8 +69,8 @@ importers:
         specifier: ^1.1.8
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@tanstack/react-query':
-        specifier: ^5.100.1
-        version: 5.100.1(react@19.2.5)
+        specifier: ^5.100.5
+        version: 5.100.5(react@19.2.5)
       axios:
         specifier: ^1.15.2
         version: 1.15.2
@@ -90,8 +90,8 @@ importers:
         specifier: ^12.38.0
         version: 12.38.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       lightweight-charts:
-        specifier: ^5.1.0
-        version: 5.1.0
+        specifier: ^5.2.0
+        version: 5.2.0
       lodash:
         specifier: ^4.18.1
         version: 4.18.1
@@ -111,8 +111,8 @@ importers:
         specifier: ^19.2.5
         version: 19.2.5(react@19.2.5)
       react-hook-form:
-        specifier: ^7.73.1
-        version: 7.73.1(react@19.2.5)
+        specifier: ^7.74.0
+        version: 7.74.0(react@19.2.5)
       react-hot-toast:
         specifier: ^2.6.0
         version: 2.6.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -292,8 +292,8 @@ importers:
         specifier: ^1.1.8
         version: 1.2.8(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@tanstack/react-query':
-        specifier: ^5.100.1
-        version: 5.100.1(react@19.2.5)
+        specifier: ^5.100.5
+        version: 5.100.5(react@19.2.5)
       axios:
         specifier: ^1.15.2
         version: 1.15.2
@@ -313,8 +313,8 @@ importers:
         specifier: ^12.38.0
         version: 12.38.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       lightweight-charts:
-        specifier: ^5.1.0
-        version: 5.1.0
+        specifier: ^5.2.0
+        version: 5.2.0
       lodash:
         specifier: ^4.18.1
         version: 4.18.1
@@ -337,8 +337,8 @@ importers:
         specifier: ^19.2.5
         version: 19.2.5(react@19.2.5)
       react-hook-form:
-        specifier: ^7.73.1
-        version: 7.73.1(react@19.2.5)
+        specifier: ^7.74.0
+        version: 7.74.0(react@19.2.5)
       react-hot-toast:
         specifier: ^2.6.0
         version: 2.6.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -478,7 +478,7 @@ importers:
         version: 2.4.57(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@hookform/resolvers':
         specifier: ^5.2.2
-        version: 5.2.2(react-hook-form@7.73.1(react@19.2.5))
+        version: 5.2.2(react-hook-form@7.74.0(react@19.2.5))
       '@paperwork-labs/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
@@ -495,8 +495,8 @@ importers:
         specifier: ^10.50.0
         version: 10.50.0(@opentelemetry/core@2.7.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.0(@opentelemetry/api@1.9.1))(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)(webpack@5.105.4(esbuild@0.28.0))
       '@tanstack/react-query':
-        specifier: ^5.100.1
-        version: 5.100.1(react@19.2.5)
+        specifier: ^5.100.5
+        version: 5.100.5(react@19.2.5)
       '@vercel/analytics':
         specifier: ^2.0.1
         version: 2.0.1(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
@@ -528,8 +528,8 @@ importers:
         specifier: ^2.8.9
         version: 2.8.9(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-router-dom@7.14.2(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-router@7.14.2(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
       posthog-js:
-        specifier: ^1.371.3
-        version: 1.371.3
+        specifier: ^1.372.1
+        version: 1.372.1
       react:
         specifier: ^19.2.5
         version: 19.2.5
@@ -540,8 +540,8 @@ importers:
         specifier: ^15.0.0
         version: 15.0.0(react@19.2.5)
       react-hook-form:
-        specifier: ^7.73.1
-        version: 7.73.1(react@19.2.5)
+        specifier: ^7.74.0
+        version: 7.74.0(react@19.2.5)
       recharts:
         specifier: ^3.8.1
         version: 3.8.1(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react-is@17.0.2)(react@19.2.5)(redux@5.0.1)
@@ -631,8 +631,8 @@ importers:
         specifier: ^4.5.1
         version: 4.5.1(react@19.2.5)
       '@tanstack/react-query':
-        specifier: ^5.100.1
-        version: 5.100.1(react@19.2.5)
+        specifier: ^5.100.5
+        version: 5.100.5(react@19.2.5)
       '@vercel/analytics':
         specifier: ^2.0.1
         version: 2.0.1(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
@@ -728,8 +728,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/ui
       '@tanstack/react-query':
-        specifier: ^5.100.1
-        version: 5.100.1(react@19.2.5)
+        specifier: ^5.100.5
+        version: 5.100.5(react@19.2.5)
       '@vercel/analytics':
         specifier: ^2.0.1
         version: 2.0.1(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
@@ -865,8 +865,8 @@ importers:
         specifier: ^16.0.0
         version: 16.1.7(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.4))(react@19.2.4)
       posthog-js:
-        specifier: ^1.371.3
-        version: 1.371.3
+        specifier: ^1.372.1
+        version: 1.372.1
       react:
         specifier: ^19.0.0
         version: 19.2.4
@@ -981,7 +981,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.2.2
-        version: 5.2.2(react-hook-form@7.73.1(react@19.2.5))
+        version: 5.2.2(react-hook-form@7.74.0(react@19.2.5))
       '@radix-ui/react-accordion':
         specifier: ^1.2.12
         version: 1.2.12(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -1043,8 +1043,8 @@ importers:
         specifier: ^19.2.0
         version: 19.2.5(react@19.2.5)
       react-hook-form:
-        specifier: ^7.73.1
-        version: 7.73.1(react@19.2.5)
+        specifier: ^7.74.0
+        version: 7.74.0(react@19.2.5)
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
@@ -2589,11 +2589,11 @@ packages:
   '@oxc-project/types@0.127.0':
     resolution: {integrity: sha512-aIYXQBo4lCbO4z0R3FHeucQHpF46l2LbMdxRvqvuRuW2OxdnSkcng5B8+K12spgLDj93rtN3+J2Vac/TIO+ciQ==}
 
-  '@posthog/core@1.27.2':
-    resolution: {integrity: sha512-y4YzMnUPbuVmL9s31JnJ2lTXxqy1QBTttxzjtfAuogQCN7nGpeDJoVAFz48CMFfLVFexLC2zt7LnkVWfq2hrxw==}
+  '@posthog/core@1.27.5':
+    resolution: {integrity: sha512-sYCcUDuYKumYTjwGqGCPT8aUy086v9PKw5wD+UXCRSfCsxWy5R/ic6W13kGTn4O5B2cD1V19wJv19oIH5kHUiQ==}
 
-  '@posthog/types@1.371.3':
-    resolution: {integrity: sha512-oRmCJUMTM43tgbiH8fgGTu5ksjN5d6Lc6ckEYGUpbEMUVB+Of/yIOjb7Okaaqw0erSvtQumFM0teEP+nUI3JtQ==}
+  '@posthog/types@1.372.1':
+    resolution: {integrity: sha512-yl2x2HgtdhFk8bvf6HuRSDzXnKmKGrzNxUahKvA/0mcwheweINvmWy5MsN55NevrcCrNXA6m8GPHS9o/y1mn4A==}
 
   '@prisma/instrumentation@7.6.0':
     resolution: {integrity: sha512-ZPW2gRiwpPzEfgeZgaekhqXrbW+Y2RJKHVqUmlhZhKzRNCcvR6DykzylDrynpArKKRQtLxoZy36fK7U0p3pdgQ==}
@@ -3801,14 +3801,14 @@ packages:
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
 
-  '@tanstack/query-core@5.100.1':
-    resolution: {integrity: sha512-awvQhOO/2TrSCHE5LKKsXcvvj6WSBncwEcMFCB/ez0Qs0b17iyyivoGArNV3HFfXryZwCpnb/olsaBBKrIbtSw==}
+  '@tanstack/query-core@5.100.5':
+    resolution: {integrity: sha512-t20KrhKkf0HXzqQkPbJ5erhFesup68BAbwFgYmTrS7bxMF7O5MdmL8jUkik4thsG7Hg00fblz30h6yF1d5TxGg==}
 
   '@tanstack/query-core@5.90.16':
     resolution: {integrity: sha512-MvtWckSVufs/ja463/K4PyJeqT+HMlJWtw6PrCpywznd2NSgO3m4KwO9RqbFqGg6iDE8vVMFWMeQI4Io3eEYww==}
 
-  '@tanstack/react-query@5.100.1':
-    resolution: {integrity: sha512-UgWRLhQKprC37SsO6y1zRabOqDmM2gsdTNPbqTT35yl7kOOhwXU4nyfOiGHXPwoEFJV1IpSk85hjIFjNFWVpzw==}
+  '@tanstack/react-query@5.100.5':
+    resolution: {integrity: sha512-aNwj1mi2v2bQ9IxkyR1grLOUkv3BYWoykHy9KDyLNbjC3tsahbOHJibK+Wjtr1wRhG59/AvJhiJG5OlthaCgJA==}
     peerDependencies:
       react: ^18 || ^19
 
@@ -6094,8 +6094,8 @@ packages:
     resolution: {integrity: sha512-NXYBzinNrblfraPGyrbPoD19C1h9lfI/1mzgWYvXUTe414Gz/X1FD2XBZSZM7rRTrMA8JL3OtAaGifrIKhQ5yQ==}
     engines: {node: '>= 12.0.0'}
 
-  lightweight-charts@5.1.0:
-    resolution: {integrity: sha512-jEAYR4ODYeyNZcWUigsoLTl52rbPmgXnvd5FLIv/ZoA/2sSDw63YKnef8n4yhzum7W926yHeFwlm7ididKb7YQ==}
+  lightweight-charts@5.2.0:
+    resolution: {integrity: sha512-ey3Vas8UhV06ni+LT9TA1nEe4y8So4Mi6CL/oarNHFMyTktz/xy8e8+oh04Q//eO3t6etvFXgayz2fClyFQb5w==}
 
   linebreak@1.1.0:
     resolution: {integrity: sha512-MHp03UImeVhB7XZtjd0E4n6+3xr5Dq/9xI/5FptGk5FrbDR3zagPa2DS6U8ks/3HjbKWG9Q1M2ufOzxV2qLYSQ==}
@@ -6698,8 +6698,8 @@ packages:
     resolution: {integrity: sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ==}
     engines: {node: '>=0.10.0'}
 
-  posthog-js@1.371.3:
-    resolution: {integrity: sha512-/LiSEOqgAPSX6oQx0DOsKxTyDI2hPcgRy+RS+4DGNZ4vk/cbQh6821Vr3qSnJUFdd48bq5uvvlMMZk6+s82Zzw==}
+  posthog-js@1.372.1:
+    resolution: {integrity: sha512-gP316wDc36YbieIEW48wfB6wq2ugBNQc+XwNkewN9QRPzhitX+9dG6lUjqHEhMx3A2Y41HjbZf5Vl0Ll0ju8UA==}
 
   preact@10.29.1:
     resolution: {integrity: sha512-gQCLc/vWroE8lIpleXtdJhTFDogTdZG9AjMUpVkDf2iTCNwYNWA+u16dL41TqUDJO4gm2IgrcMv3uTpjd4Pwmg==}
@@ -6781,8 +6781,8 @@ packages:
     peerDependencies:
       react: '>= 16.8 || 18.0.0'
 
-  react-hook-form@7.73.1:
-    resolution: {integrity: sha512-VAfVYOPcx3piiEVQy95vyFmBwbVUsP/AUIN+mpFG8h11yshDd444nn0VyfaGWSRnhOLVgiDu7HIuBtAIzxn9dA==}
+  react-hook-form@7.74.0:
+    resolution: {integrity: sha512-yR6wHr99p9wFv686jhRWVSFhUvDvNbdUf2dKlbno8/VKOCuoNobDGC6S+M2dua9A9Yo8vpcrp8assIYbsZCQ9g==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
@@ -8679,10 +8679,10 @@ snapshots:
 
   '@fontsource-variable/space-grotesk@5.2.10': {}
 
-  '@hookform/resolvers@5.2.2(react-hook-form@7.73.1(react@19.2.5))':
+  '@hookform/resolvers@5.2.2(react-hook-form@7.74.0(react@19.2.5))':
     dependencies:
       '@standard-schema/utils': 0.3.0
-      react-hook-form: 7.73.1(react@19.2.5)
+      react-hook-form: 7.74.0(react@19.2.5)
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -9368,11 +9368,11 @@ snapshots:
 
   '@oxc-project/types@0.127.0': {}
 
-  '@posthog/core@1.27.2':
+  '@posthog/core@1.27.5':
     dependencies:
-      '@posthog/types': 1.371.3
+      '@posthog/types': 1.372.1
 
-  '@posthog/types@1.371.3': {}
+  '@posthog/types@1.372.1': {}
 
   '@prisma/instrumentation@7.6.0(@opentelemetry/api@1.9.1)':
     dependencies:
@@ -10522,13 +10522,13 @@ snapshots:
       tailwindcss: 4.2.4
       vite: 8.0.10(@types/node@25.6.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.2)(tsx@4.21.0)
 
-  '@tanstack/query-core@5.100.1': {}
+  '@tanstack/query-core@5.100.5': {}
 
   '@tanstack/query-core@5.90.16': {}
 
-  '@tanstack/react-query@5.100.1(react@19.2.5)':
+  '@tanstack/react-query@5.100.5(react@19.2.5)':
     dependencies:
-      '@tanstack/query-core': 5.100.1
+      '@tanstack/query-core': 5.100.5
       react: 19.2.5
 
   '@testing-library/dom@10.4.1':
@@ -13242,7 +13242,7 @@ snapshots:
       lightningcss-win32-arm64-msvc: 1.32.0
       lightningcss-win32-x64-msvc: 1.32.0
 
-  lightweight-charts@5.1.0:
+  lightweight-charts@5.2.0:
     dependencies:
       fancy-canvas: 2.1.0
 
@@ -14118,15 +14118,15 @@ snapshots:
     dependencies:
       xtend: 4.0.2
 
-  posthog-js@1.371.3:
+  posthog-js@1.372.1:
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@opentelemetry/api-logs': 0.208.0
       '@opentelemetry/exporter-logs-otlp-http': 0.208.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/resources': 2.7.0(@opentelemetry/api@1.9.1)
       '@opentelemetry/sdk-logs': 0.208.0(@opentelemetry/api@1.9.1)
-      '@posthog/core': 1.27.2
-      '@posthog/types': 1.371.3
+      '@posthog/core': 1.27.5
+      '@posthog/types': 1.372.1
       core-js: 3.49.0
       dompurify: 3.4.1
       fflate: 0.4.8
@@ -14222,7 +14222,7 @@ snapshots:
       prop-types: 15.8.1
       react: 19.2.5
 
-  react-hook-form@7.73.1(react@19.2.5):
+  react-hook-form@7.74.0(react@19.2.5):
     dependencies:
       react: 19.2.5
 
