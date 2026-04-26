@@ -64,12 +64,12 @@ PAPERWORK LABS (Holding Company - paperworklabs.com)
 | Product / surface | Icon | Lockup (light) | Lockup (dark) |
 | --- | --- | --- | --- |
 | Paperwork Labs (parent) | `apps/studio/public/brand/paperwork-labs-icon.svg` | `apps/studio/public/brand/paperwork-labs-lockup.svg` | `apps/studio/public/brand/paperwork-labs-lockup-dark.svg` |
-| Studio | `apps/studio/public/brand/studio-icon.svg` | (delegated follow-up) | (delegated follow-up) |
-| FileFree | `apps/filefree/public/brand/filefree-icon.svg` | (delegated follow-up) | (delegated follow-up) |
-| LaunchFree | `apps/launchfree/public/brand/launchfree-icon.svg` | (delegated follow-up) | (delegated follow-up) |
+| Studio | `apps/studio/public/brand/studio-icon.svg` | `apps/studio/public/brand/studio-lockup.svg` | `apps/studio/public/brand/studio-lockup-dark.svg` |
+| FileFree | `apps/filefree/public/brand/filefree-icon.svg` | `apps/filefree/public/brand/filefree-lockup.svg` | `apps/filefree/public/brand/filefree-lockup-dark.svg` |
+| LaunchFree | `apps/launchfree/public/brand/launchfree-icon.svg` | `apps/launchfree/public/brand/launchfree-lockup.svg` | `apps/launchfree/public/brand/launchfree-lockup-dark.svg` |
 | AxiomFolio | `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` | `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | (uses light on dark) |
-| Distill | `apps/distill/public/brand/distill-icon.svg` | (delegated follow-up) | (delegated follow-up) |
-| Trinkets | `apps/trinkets/public/brand/trinkets-icon.svg` | (delegated follow-up) | (delegated follow-up) |
+| Distill | `apps/distill/public/brand/distill-icon.svg` | `apps/distill/public/brand/distill-lockup.svg` | `apps/distill/public/brand/distill-lockup-dark.svg` |
+| Trinkets | `apps/trinkets/public/brand/trinkets-icon.svg` | `apps/trinkets/public/brand/trinkets-lockup.svg` | `apps/trinkets/public/brand/trinkets-lockup-dark.svg` |
 | Brain (candidates) | `docs/brand/brain/brain-icon-fill-meter.svg` AND `docs/brand/brain/brain-icon-orbital-dag.svg` | (chosen after pick) | (chosen after pick) |
 
 See `docs/brand/README.md` for full registry, visual grammar, and adding-a-new-mark workflow.

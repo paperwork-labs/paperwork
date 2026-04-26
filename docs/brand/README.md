@@ -49,38 +49,48 @@ The paperclip is the parent mark: a single azure stroke forming a paperclip silh
 | File | Use | Surface |
 | --- | --- | --- |
 | `apps/studio/public/brand/studio-icon.svg` | Studio nav, internal admin tooling | Any |
+| `apps/studio/public/brand/studio-lockup.svg` | Marketing, investor decks, light surfaces | Light |
+| `apps/studio/public/brand/studio-lockup-dark.svg` | App chrome, dark marketing pages | Dark |
 
 Window-pane grid metaphor: the four panes represent the four operational surfaces (Operations, Personas, Workflows, Sprints). The amber pane is the active one.
 
 ### FileFree
 
-| File | Use |
-| --- | --- |
-| `apps/filefree/public/brand/filefree-icon.svg` | App icon + favicon |
+| File | Use | Surface |
+| --- | --- | --- |
+| `apps/filefree/public/brand/filefree-icon.svg` | App icon + favicon | Any |
+| `apps/filefree/public/brand/filefree-lockup.svg` | Marketing, decks, light surfaces | Light |
+| `apps/filefree/public/brand/filefree-lockup-dark.svg` | App chrome, dark marketing pages | Dark |
 
 Folded document with an amber checkmark — "your return is filed."
 
 ### LaunchFree
 
-| File | Use |
-| --- | --- |
-| `apps/launchfree/public/brand/launchfree-icon.svg` | App icon + favicon |
+| File | Use | Surface |
+| --- | --- | --- |
+| `apps/launchfree/public/brand/launchfree-icon.svg` | App icon + favicon | Any |
+| `apps/launchfree/public/brand/launchfree-lockup.svg` | Marketing, decks, light surfaces | Light |
+| `apps/launchfree/public/brand/launchfree-lockup-dark.svg` | App chrome, dark marketing pages | Dark |
 
 Stacked launch chevrons with an amber ignition dot at the tip.
 
 ### Distill
 
-| File | Use |
-| --- | --- |
-| `apps/distill/public/brand/distill-icon.svg` | App icon + favicon |
+| File | Use | Surface |
+| --- | --- | --- |
+| `apps/distill/public/brand/distill-icon.svg` | App icon + favicon | Any |
+| `apps/distill/public/brand/distill-lockup.svg` | Marketing, decks, light surfaces | Light |
+| `apps/distill/public/brand/distill-lockup-dark.svg` | App chrome, dark marketing pages | Dark |
 
 Funnel with the refined-droplet (amber) emerging at the stem — the literal distillation metaphor.
 
 ### Trinkets
 
-| File | Use |
-| --- | --- |
-| `apps/trinkets/public/brand/trinkets-icon.svg` | App icon + favicon |
+| File | Use | Surface |
+| --- | --- | --- |
+| `apps/trinkets/public/brand/trinkets-icon.svg` | App icon + favicon | Any |
+| `apps/trinkets/public/brand/trinkets-lockup.svg` | Marketing, decks, light surfaces | Light |
+| `apps/trinkets/public/brand/trinkets-lockup-dark.svg` | App chrome, dark marketing pages | Dark |
 
 Constellation of five azure utility nodes around a central amber node. Reads as "small things that work together."
 
@@ -105,9 +115,9 @@ Brain is the consumer life-intelligence meta-product (per `docs/BRAIN_ARCHITECTU
 
 Once Sankalp picks a glyph and the external name is confirmed, the chosen file moves to the product app's `public/brand/` directory and the unchosen file is deleted from this repo.
 
-## Future variants (delegated, lands in this same PR)
+## Lockup composition
 
-Per-product lockup variants (icon + wordmark, light and dark surfaces) for FileFree, LaunchFree, Distill, Trinkets, and Studio are generated as a follow-up commit on this branch. The canonical icons above are the source — variants compose the icon at `(11, 11)` with a wordmark to the right at `x=160`.
+Per-product lockups (icon + wordmark) embed the canonical icon at `(11, 11)` in a `720x150` frame with the Inter 600 wordmark to the right at `x=160` (see `paperwork-labs-lockup.svg`). Use the light-surface lockup on light backgrounds and the dark-surface lockup (lighter azure `#60A5FA` and amber `#FBBF24`, light text `#FAFAFA`) on dark backgrounds.
 
 ## Adding a new mark
 
