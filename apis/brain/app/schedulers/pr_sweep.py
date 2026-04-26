@@ -190,6 +190,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install credential_expiry job")
 
     try:
+        from app.schedulers import infra_health
+
+        infra_health.install(sched)
+    except Exception:
+        logger.exception("Failed to install infra_health job")
+
+    try:
         n8n_mirror.install(sched)
     except Exception:
         logger.exception("Failed to install n8n_mirror shadow jobs")

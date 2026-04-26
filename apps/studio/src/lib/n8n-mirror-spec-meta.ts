@@ -14,6 +14,7 @@ export const N8N_MIRROR_CUTOVER_JOB_IDS = new Set([
   "n8n_shadow_brain_daily",
   "n8n_shadow_infra_heartbeat",
   "n8n_shadow_weekly_strategy",
+  "n8n_shadow_infra_health",
 ]);
 
 export const N8N_MIRROR_SPEC_META: Record<string, N8nMirrorSpecMeta> = {
