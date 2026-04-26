@@ -148,6 +148,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install infra_heartbeat job")
 
     try:
+        from app.schedulers import credential_expiry
+
+        credential_expiry.install(sched)
+    except Exception:
+        logger.exception("Failed to install credential_expiry job")
+
+    try:
         n8n_mirror.install(sched)
     except Exception:
         logger.exception("Failed to install n8n_mirror shadow jobs")
