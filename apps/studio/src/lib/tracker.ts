@@ -22,6 +22,7 @@ export type Sprint = {
   path: string;
   title: string;
   status: string;
+  raw_status?: string;
   owner?: string;
   domain?: string;
   start?: string;
@@ -45,6 +46,7 @@ export type Plan = {
   path: string;
   title: string;
   status: string;
+  raw_status?: string;
   owner?: string;
   doc_kind?: string;
   last_reviewed?: string;

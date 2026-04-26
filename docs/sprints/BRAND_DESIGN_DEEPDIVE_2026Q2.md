@@ -4,7 +4,7 @@ owner: brand
 last_reviewed: 2026-04-26
 doc_kind: sprint
 domain: company
-status: decided
+status: active
 sprint:
   start: 2026-04-25
   end: 2026-05-16

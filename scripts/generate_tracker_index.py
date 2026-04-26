@@ -265,6 +265,44 @@ SECTION_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$", re.MULTILINE)
 BULLET_RE = re.compile(r"^\s*[-*]\s+(?P<text>.+?)\s*$", re.MULTILINE)
 PR_MENTION_RE = re.compile(r"#(\d{2,5})\b|/pull/(\d{2,5})\b")
 
+# Canonical sprint status vocabulary lives in docs/sprints/README.md:
+#   active | shipped | paused | abandoned
+# Authors frequently write aliases (in_progress, research, wip, draft, …);
+# normalize them here so the UI never falls back to "paused" by accident.
+CANONICAL_STATUSES = {"active", "shipped", "paused", "abandoned"}
+STATUS_ALIASES = {
+    "in_progress": "active",
+    "in-progress": "active",
+    "inprogress": "active",
+    "wip": "active",
+    "research": "active",
+    "draft": "active",
+    "open": "active",
+    "ongoing": "active",
+    "merged": "shipped",
+    "done": "shipped",
+    "complete": "shipped",
+    "completed": "shipped",
+    "decided": "active",
+    "approved": "active",
+    "blocked": "paused",
+    "on_hold": "paused",
+    "on-hold": "paused",
+    "deferred": "paused",
+    "cancelled": "abandoned",
+    "canceled": "abandoned",
+    "dropped": "abandoned",
+}
+
+
+def normalize_status(raw: Any) -> str:
+    if not isinstance(raw, str):
+        return "active"
+    key = raw.strip().lower()
+    if key in CANONICAL_STATUSES:
+        return key
+    return STATUS_ALIASES.get(key, "active")
+
 
 def extract_section(body: str, *titles: str, max_lines: int = 200) -> str | None:
     """Return the body of the first '## <title>' section, or None.
@@ -384,7 +422,8 @@ def parse_sprint(p: Path) -> dict[str, Any]:
         "slug": slugify(p.stem),
         "path": str(p.relative_to(REPO_ROOT)),
         "title": title,
-        "status": fm.get("status", "active"),
+        "status": normalize_status(fm.get("status", "active")),
+        "raw_status": fm.get("status", "active"),
         "owner": fm.get("owner"),
         "domain": fm.get("domain"),
         "start": sprint.get("start"),
@@ -413,7 +452,8 @@ def parse_plan(p: Path, product_slug: str) -> dict[str, Any]:
         "slug": slugify(p.stem),
         "path": str(p.relative_to(REPO_ROOT)),
         "title": title,
-        "status": fm.get("status", "active"),
+        "status": normalize_status(fm.get("status", "active")),
+        "raw_status": fm.get("status", "active"),
         "owner": fm.get("owner"),
         "doc_kind": fm.get("doc_kind", "plan"),
         "last_reviewed": fm.get("last_reviewed"),
