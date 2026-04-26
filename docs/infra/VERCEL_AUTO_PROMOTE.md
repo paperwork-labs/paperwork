@@ -1,6 +1,6 @@
 ---
 title: Vercel auto-promote on merge
-last_reviewed: 2026-04-25
+last_reviewed: 2026-04-26
 owner: infra
 status: active
 ---
@@ -63,34 +63,48 @@ The workflow has a graceful no-op if `VERCEL_API_TOKEN` isn't set:
 it logs a warning and exits 0, so failing to set the secret won't
 block PR merges.
 
+## Monorepo path filters (Studio, Distill, LaunchFree)
+
+**Studio**, **Distill**, and **LaunchFree** are configured in Vercel with
+monorepo path filters (or `ignoreCommand`) so they do not build on every
+`main` push. **FileFree** does not use the same filter, so it tends to
+track `main` automatically.
+
+Cross-cutting edits that never touch an app’s root (for example only
+`docs/**`, or an API under `apis/**`) may **not** start a preview or
+production build for those filtered projects. The lockfile, workspace
+root `package.json`, and `packages/**` are treated as shared: the
+auto-promote workflow only runs a promote job for an app when the merged
+PR touches `apps/<app>/**`, `packages/**`, `pnpm-lock.yaml`, or root
+`package.json`.
+
+Do **not** change Vercel project path settings here without founder
+review; if production looks stale, use the manual valve below or bump
+`apps/<app>/.deploy-trigger` and merge.
+
 ## Adding more projects
 
-When AxiomFolio or LaunchFree get a Next.js Vercel project, add a row
-to the matrix in the workflow:
-
-```yaml
-matrix:
-  include:
-    - project: studio
-      project_id: prj_FZvJJnDdQqawjBpJAwC0SuwyMzFT
-    - project: axiomfolio          # NEW
-      project_id: prj_xxxxxxxxxxxxxxxxxxxx
-```
-
-You can find the project ID in `apps/<project>/.vercel/project.json`
-after running `vercel link`.
+Add a row to the matrix in `.github/workflows/vercel-promote-on-merge.yaml`
+and document the project ID (from Vercel → Project Settings → General,
+or `apps/<project>/.vercel/project.json` after `vercel link`).
 
 ## Manual fallback
 
-If you need to re-promote a PR that already merged:
+**Promote a specific merged PR** (alias flip, no new build):
 
 ```
 GitHub → Actions → Vercel auto-promote on merge → Run workflow
-  pr_number: 142
+  pr_number: <number>
 ```
 
-This works even after the original `pull_request: closed` event has
-been fully consumed.
+Runs all four app matrix jobs; each job skips unless the PR touched that
+app’s paths (or shared paths above). Use this when the merge event ran
+but Vercel never had a READY preview to promote.
+
+**Check production vs `main`:** Compare the latest **Production**
+deployment’s commit SHA in the Vercel dashboard (Deployments → filter
+Production) with `git log -1 --oneline origin/main`, or use the Vercel
+MCP / API (`list_deployments` with `target=production`).
 
 ## Why not just switch to native webhooks?
 

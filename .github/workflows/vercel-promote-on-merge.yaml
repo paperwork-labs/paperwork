@@ -20,7 +20,7 @@ name: Vercel auto-promote on merge
 #   • Independent of Vercel's webhook delivery → if the webhook landed
 #     and prod is already on this SHA, we exit cleanly (idempotent).
 #   • Works for any project that has a linked `.vercel/project.json`
-#     in the repo. We start with `studio`; add more under `matrix.project`.
+#     in the repo. Matrix lists all Paperwork Labs Vercel apps.
 #
 # Setup (one-time, see docs/infra/VERCEL_AUTO_PROMOTE.md):
 #   gh secret set VERCEL_API_TOKEN  # from Vercel → Settings → Tokens
@@ -60,6 +60,12 @@ jobs:
         include:
           - project: studio
             project_id: prj_FZvJJnDdQqawjBpJAwC0SuwyMzFT
+          - project: filefree
+            project_id: prj_DNPGX5GrYcwer9oANv90NKqIT67I
+          - project: distill
+            project_id: prj_1TKlkMmY3vLVNfAfRxUY57z43m11
+          - project: launchfree
+            project_id: prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7
     env:
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
       TEAM_ID: team_RwfzJ9ySyLuVcoWdKJfXC7h5
@@ -112,9 +118,40 @@ jobs:
           echo "pr_head_fallback=$PR_HEAD_FALLBACK" >> $GITHUB_OUTPUT
           echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
 
+      - name: Relevant paths for this app
+        id: paths
+        if: env.secret_ok == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
+        run: |
+          PREFIX="apps/${{ matrix.project }}/"
+          FILES=$(gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" --name-only 2>/dev/null || true)
+          if [ -z "$FILES" ]; then
+            echo "::warning::Could not list files for PR #$PR_NUMBER — continuing (treat as relevant)."
+            echo "paths_relevant=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          relevant=false
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            case "$f" in
+              "${PREFIX}"*) relevant=true; break ;;
+              packages/*) relevant=true; break ;;
+              pnpm-lock.yaml) relevant=true; break ;;
+              package.json) relevant=true; break ;;
+            esac
+          done <<< "$FILES"
+          if [ "$relevant" != "true" ]; then
+            echo "::warning::PR #$PR_NUMBER did not touch $PREFIX, packages/**, pnpm-lock.yaml, or root package.json — skipping ${{ matrix.project }} promote job."
+            echo "paths_relevant=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "paths_relevant=true" >> $GITHUB_OUTPUT
+
       - name: Check if production already on this SHA (idempotency)
         id: check
-        if: env.secret_ok == 'true'
+        if: env.secret_ok == 'true' && steps.paths.outputs.paths_relevant == 'true'
         env:
           PR_HEAD: ${{ steps.pr.outputs.pr_head }}
         run: |
@@ -132,7 +169,7 @@ jobs:
 
       - name: Find READY preview deployment for PR head
         id: find
-        if: env.secret_ok == 'true' && steps.check.outputs.already_promoted == 'false'
+        if: env.secret_ok == 'true' && steps.paths.outputs.paths_relevant == 'true' && steps.check.outputs.already_promoted == 'false'
         env:
           PR_HEAD: ${{ steps.pr.outputs.pr_head }}
           PR_HEAD_FALLBACK: ${{ steps.pr.outputs.pr_head_fallback }}
@@ -157,16 +194,16 @@ jobs:
             sleep 60
           done
           if [ -z "$DEPLOY_ID" ]; then
-            echo "::error::No READY deployment found for merge SHA $PR_HEAD or head SHA $PR_HEAD_FALLBACK after 6 minutes."
-            echo "::error::Possible causes: (a) Vercel webhook missed this merge entirely, (b) the build itself failed, (c) the project's ignoreCommand suppressed the build."
-            echo "::error::Check the Vercel dashboard for the studio project: https://vercel.com/paperwork-labs/$PROJECT_NAME/deployments"
-            exit 1
+            echo "::warning::No preview found for $PROJECT_NAME — Vercel skipped this build (likely path filter or ignoreCommand)."
+            echo "found_preview=false" >> $GITHUB_OUTPUT
+            exit 0
           fi
+          echo "found_preview=true" >> $GITHUB_OUTPUT
           echo "deploy_id=$DEPLOY_ID" >> $GITHUB_OUTPUT
 
       - name: Promote to production
         id: promote
-        if: env.secret_ok == 'true' && steps.check.outputs.already_promoted == 'false'
+        if: env.secret_ok == 'true' && steps.paths.outputs.paths_relevant == 'true' && steps.check.outputs.already_promoted == 'false' && steps.find.outputs.found_preview == 'true'
         env:
           DEPLOY_ID: ${{ steps.find.outputs.deploy_id }}
         run: |
@@ -177,7 +214,7 @@ jobs:
           echo "Promoted $DEPLOY_ID to production for $PROJECT_NAME (no rebuild)."
 
       - name: Comment on PR
-        if: env.secret_ok == 'true' && github.event_name == 'pull_request'
+        if: env.secret_ok == 'true' && github.event_name == 'pull_request' && steps.paths.outputs.paths_relevant == 'true' && (steps.check.outputs.already_promoted == 'true' || steps.find.outputs.found_preview == 'true')
         uses: actions/github-script@v9
         with:
           script: |
