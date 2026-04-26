@@ -64,7 +64,7 @@ const CLUSTERS: readonly SettingsCluster[] = [
     id: "trading",
     label: "Trading",
     items: [
-      { to: "/settings/trading/account-risk", label: "Account risk", icon: ShieldAlert },
+      { to: "/settings/account-risk", label: "Account risk", icon: ShieldAlert },
     ],
   },
   {
@@ -86,7 +86,7 @@ const CLUSTERS: readonly SettingsCluster[] = [
     adminOnly: true,
     items: [
       { to: "/settings/admin/system", label: "System Status", icon: Activity },
-      { to: "/settings/admin/users", label: "Users", icon: User },
+      { to: "/settings/users", label: "Users", icon: User },
       { to: "/settings/admin/agent", label: "Agent", icon: Cpu },
       { to: "/settings/admin/picks", label: "Picks validator", icon: ClipboardList },
     ],
