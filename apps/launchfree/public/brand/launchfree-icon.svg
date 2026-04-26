@@ -1,0 +1,6 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LaunchFree - sky droplet balloon with cyan basket dot">
+  <g transform="translate(64 64) scale(2.3) translate(-64 -34.5)">
+    <path d="M64,14 C69,28 75,37 75,44 C75,50 70,55 64,55 C58,55 53,50 53,44 C53,37 59,28 64,14 Z" fill="#0284C7"/>
+  </g>
+  <circle cx="64" cy="89" r="6" fill="#06B6D4"/>
+</svg>

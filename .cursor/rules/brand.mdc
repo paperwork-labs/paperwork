@@ -8,23 +8,34 @@ alwaysApply: true
 ## Brand Architecture
 
 ```
-PAPERWORK LABS (Holding Company — paperworklabs.com)
+PAPERWORK LABS (Holding Company - paperworklabs.com)
   "We build tools that eliminate paperwork."
   │
-  ├── CONSUMER BRANDS (free, own domains, own palettes)
+  ├── CONSUMER BRANDS (free, own domains, own full palette per product)
   │   ├── FileFree ........... filefree.ai (free tax filing)
   │   ├── LaunchFree ......... launchfree.ai (free LLC formation)
-  │   └── Trinkets ........... tools.filefree.ai (utility tools)
+  │   ├── AxiomFolio ......... axiomfolio.com (portfolio + signals; absorbed 2026 Q2)
+  │   └── Trinkets ........... tools.filefree.ai (utility tools, FileFree funnel)
   │
-  └── B2B BRAND (paid, one platform)
-      └── Distill ............ distill.tax (compliance automation APIs + CPA SaaS)
-          ├── Distill for CPAs (SaaS, $49-199/mo)
-          ├── Distill Tax API (per-return)
-          ├── Distill Formation API (per-filing)
-          └── Distill Compliance API (per-action)
+  ├── CONSUMER META-PRODUCT (B2C; primary standalone product)
+  │   └── Brain .............. (external name + domain TBD pending availability)
+  │       Life-intelligence engine; subsumes other products as "skills"
+  │       See docs/BRAIN_ARCHITECTURE.md (D49, F90, G01)
+  │
+  ├── B2B BRAND (paid, one platform)
+  │   └── Distill ............ distill.tax (compliance automation APIs + CPA SaaS)
+  │       ├── Distill for CPAs (SaaS, $49-199/mo)
+  │       ├── Distill Tax API (per-return)
+  │       ├── Distill Formation API (per-filing)
+  │       └── Distill Compliance API (per-action)
+  │
+  └── PUBLISHING (incidental; LLC umbrella only, no visible branding)
+      Children's books in Hindi and other languages, AI-illustrated
+      Imprint attribution: copyright page only ("Published by Paperwork Labs LLC")
+      Books carry their own series brand on covers + spines
 ```
 
-**Why this architecture**: Consumer brands are free and distinct — each owns a clear paperwork category. Distill unifies all B2B under one brand (Stripe model, not Intuit model). Paperwork Labs ties it all together as the infrastructure company.
+**Why this architecture**: Consumer brands are free and distinct — each owns a clear paperwork category and **its own full palette** (primary, wordmark, accent). Brain is the meta-product whose "skills" are the consumer brands. Distill unifies all B2B under one brand (Stripe model, not Intuit model). Paperwork Labs is both the infrastructure company and the LLC umbrella for incidental ventures (publishing).
 
 ## Brand Names
 
@@ -37,36 +48,120 @@ PAPERWORK LABS (Holding Company — paperworklabs.com)
 
 - **FileFree** (one word, camelCase capital F's). Domain: filefree.ai. Never: File Free, Filefree, FILE FREE, File-Free, FileFree Tax
 - **LaunchFree** (one word, L and F capitalized). Domain: launchfree.ai. Never: Launch Free, Launchfree, LAUNCHFREE
+- **AxiomFolio** (one word, capital A and F). Domain: axiomfolio.com. Never: Axiom Folio, Axiomfolio, AXIOMFOLIO
 - **Distill** (one word, capital D). Domain: distill.tax. Never: DISTILL, distill (in brand context)
 - **Trinkets** (one word, capital T). Domain: tools.filefree.ai
+- **Brain** (internal codename only; external name TBD pending domain availability research). Never use "Brain" in user-facing copy until external name is confirmed. Never: BrainFill, brainfill.ai (rejected), Paperwork (paperwork.ai unavailable).
 
 ### Legal Footer (all products)
 
-"Paperwork Labs LLC | California | FileFree, LaunchFree, Distill, and Trinkets are products of Paperwork Labs LLC"
+"Paperwork Labs LLC | California | FileFree, LaunchFree, AxiomFolio, Distill, and Trinkets are products of Paperwork Labs LLC"
 
 ## Logo Assets
 
-**Status**: Logo assets pending for all products.
+**Status**: Canon as of 2026 Q2 finalization. AxiomFolio + consumer droplet-family marks are locked SVGs. **Paperwork Labs (parent) mark** and **Brain** have no repo SVG yet — generate per [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md) (see Parent + Brain sections). *Interim* parent chrome uses hand-authored paperclips in `apps/studio/public/brand/` until the AI paperclip ship lands.
 
-**FileFree**: Generate wordmark via Ideogram v3 (prompt: stylized "FileFree" wordmark, gradient violet-to-purple, dark background, modern sans-serif with distinctive lowercase "f" ligature). Generate monogram via Figma/Canva. Place in `apps/filefree/public/brand/`.
+| Product / surface | Icon (locked path) | Lockup (light) | Lockup (dark) | Source |
+| --- | --- | --- | --- | --- |
+| Paperwork Labs (parent) | *TBD — AI paperclip* (see PROMPTS) | `apps/studio/public/brand/paperwork-labs-lockup.svg` (interim) | `apps/studio/public/brand/paperwork-labs-lockup-dark.svg` (interim) | AI prompt → SVG (interim: hand) |
+| Studio | `apps/studio/public/brand/studio-icon.svg` | `apps/studio/public/brand/studio-lockup.svg` | `apps/studio/public/brand/studio-lockup-dark.svg` | hand-authored |
+| AxiomFolio | `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` (alias: `axiomfolio.svg`) | `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | `axiomfolio-lockup-dark.svg` / surface variants in repo | hand-authored (Sankalp) — **canonical** |
+| FileFree | `apps/filefree/public/brand/filefree-icon.svg` | TBD (wordmark in follow-up) | TBD | locked SVG (3 droplets → center dot) |
+| LaunchFree | `apps/launchfree/public/brand/launchfree-icon.svg` | TBD | TBD | locked SVG (droplet + cyan dot) |
+| Distill | `apps/distill/public/brand/distill-icon.svg` | TBD | TBD | locked SVG (yin–yang droplets + center dot) |
+| Trinkets | `apps/trinkets/public/brand/trinkets-icon.svg` | TBD | TBD | locked SVG (asymmetric droplet pair + dot) |
+| Brain | *TBD — AI brain glyph* (see PROMPTS) | TBD | TBD | AI prompt → SVG retrace |
 
-**LaunchFree**: Generate wordmark (teal-to-cyan gradient, dark background, modern sans-serif). Place in `apps/launchfree/public/brand/`.
+See [`docs/brand/README.md`](../../docs/brand/README.md) for the live registry and adding-a-new-mark workflow. See [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md) for the AI image-generation prompts (locked palette per product).
 
-**Distill**: Generate wordmark (deep blue-to-slate gradient, dark background, professional geometric sans-serif). Place in `apps/distill/public/brand/`.
+### Visual grammar (mandatory for any new mark)
 
-**Paperwork Labs**: Generate wordmark (neutral zinc/slate, clean professional). Place in `apps/studio/public/brand/`.
+1. **viewBox**: `0 0 128 128` for icons, `0 0 720 150` for lockups.
+2. **Padding**: `~16px` of breathing room from viewBox edges to mark.
+3. **Stroke width**: `9–11` for stroke-based glyphs; round caps + joins.
+4. **One accent moment per glyph.** Always one. Never two. The accent is the "earned moment" — not decoration. Per-product accent hue (see palette table); not all marks use amber.
+5. **No gradients, drop shadows, or filters** in the SVG file. Marketing surfaces add ambient effects in CSS.
+6. **Wordmark font**: Inter 600, `letter-spacing: -0.5`, `font-size: 62`. System stack fallback.
+7. **Wordmark color is surface-aware** — slate-night `#0F172A` on light surfaces, near-white `#F8FAFC` on dark. (Confirmed against AxiomFolio's deployed UI, which renders the wordmark in near-white on its slate-night login surface.) Distill and Trinkets use brand-tinted ink on light surface; see palette table.
+
+### Family principle
+
+**Organic similarity > forced unification.** Each product varies the AxiomFolio *droplet + dot* vocabulary (droplet count, composition, and color); all marks remain in that family without sharing one identical silhouette.
+
+### Family thread (organic, not enforced)
+
+Family read across Paperwork Labs products comes from:
+
+- **Typography** — Inter at the same weight/spacing across all wordmarks.
+- **Geometric grammar** — viewBox conventions, stroke-or-fill (not both), one accent per glyph, no gradients/shadows/filters.
+- **Surface defaults** — slate-night `#0F172A` is the canonical dark anchor; near-white `#F8FAFC` is the canonical light anchor.
+- **Legal-footer endorsement** — "by Paperwork Labs" attribution on every product page.
+
+What is NOT enforced:
+
+- Forced identical wordmark / hue cloning on every product — rejected. Each product's wordmark wears its own ink color.
+- "Every mark needs an amber accent" — rejected. Amber is AxiomFolio's earned spark and the parent's by chain-of-life inheritance. Other products use accents that fit their personality.
+
+The 2026-04-25 first cut put every mark on Azure + Amber and they came out indistinguishable. The 2026-04-25 second cut tried to enforce a one-template lockup on every product and homogenized them again. Sankalp's call: "forced is the key word, organic similarities are beautiful." Per-product full palette is the locked direction. See [`docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md`](../../docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md) §1.2 for the full rationale.
+
+### Per-product mark palette (canonical SVG marks + surfaces)
+
+Each product owns a **full palette** — primary, accent, neutral surfaces, surface-aware ink, and (where needed) a **primary-on-dark** stroke for lockups. Hue assignments are evidence-grounded (parallel research dives, 2026-04-25; founder locks 2026-04-26). See `BRAND_DESIGN_DEEPDIVE_2026Q2.md` for decision matrix, pivots, and citations.
+
+| Product | Primary | Accent | Neutral light | Neutral dark | Ink (on light) | Ink (on dark) | Primary on dark* |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **Paperwork Labs** (parent mark: slate + amber) | Slate ink `#0F172A` | Amber `#F59E0B` (single accent) | `#F8FAFC` | `#0F172A` | `#0F172A` | `#F8FAFC` | Clip reads in `#0F172A` with one amber span |
+| **Studio** (admin — chain-of-life w/ AxiomFolio) | Azure `#3274F0` | Amber `#F59E0B` | `#F8FAFC` | `#0F172A` | `#0F172A` | `#F8FAFC` | Azure → `#60A5FA` |
+| **AxiomFolio** (LOCKED) | Azure `#3274F0` | Amber `#F59E0B` | `#F8FAFC` | `#0F172A` | `#0F172A` | `#F8FAFC` | Azure → `#60A5FA` |
+| **FileFree** | Indigo `#4F46E5` | Lime `#84CC16` | `#F8FAFC` | `#020817` (app bg) / `#0F172A` | `#0F172A` | `#F8FAFC` | Indigo → `#818CF8` |
+| **LaunchFree** | Sky `#0284C7` | Cyan `#06B6D4` | `#F8FAFC` | `#0A0F1A` (app bg) / `#0F172A` | `#0C4A6E` | `#F8FAFC` | Sky → `#38BDF8` |
+| **Distill** | Teal `#0F766E` | Burnt orange `#C2410C` | `#F8FAFC` / off-white | `#0F172A` | `#115E59` | `#F8FAFC` | Teal → `#14B8A6` |
+| **Trinkets** | Indigo `#6366F1` | Sky cyan `#38BDF8` | `#F8FAFC` | `#0C0A09` (app bg) / `#0F172A` | `#1E1B4B` | `#F8FAFC` | Indigo → `#A5B4FC` |
+| **Brain** | Emerald `#10B981` | Mint `#6EE7B7` | `#F8FAFC` | `#0F172A` | `#0F172A` | `#F8FAFC` | Emerald → `#34D399` |
+
+`*Primary on dark` = lighter brand stroke for dark-surface lockups and favicon-on-dark, not a second brand.
+
+**Research lock (one line per product)**
+
+- **AxiomFolio** — Golden State Warriors–style blue + gold; Sankalp’s hand mark; 4-petal + amber center is the family anchor. *(Precedent: pro-sports crest + fintech app norms.)*
+- **FileFree** — TurboTax / H&R / Intuit category map is green + blue; indigo + lime counter-positions while staying "money-positive" (refund + growth) without copying incumbents.
+- **LaunchFree** — LegalZoom (orange), ZenBusiness (green), Stripe Atlas (indigo) map; sky + cyan reads *launch* + *momentum* without those lanes. *(Precedent: literal sky metaphor in formation products.)*
+- **Distill** — LibreTexts and standard still diagrams: vapor / condensate / essence; teal + orange encodes *refine to essence* and avoids Drake/ProSeries legacy blues. *(Precedent: textbook distillation curve + condenser imagery.)*
+- **Trinkets** — Funnel to FileFree at `tools.filefree.ai`: sibling indigo; differentiation is surface + illustration density, not a new hue family. *(Precedent: sub-brand continuity in product families.)*
+- **Brain** — brain.ai, Mem, Reflect, Notion AI own violet; emerald + mint = growth + custody, not "generic purple AI." *(Precedent: category color clustering in memory apps.)*
+- **Paperwork Labs (parent)** — Gem clip / attachment metaphor (Notion, Slack, email affordances) with slate + single amber segment; parent mark stays neutral-ink + earned amber. *(Precedent: SaaS mark systems such as Stripe and Linear — single-stroke + one accent.)*
+
+- **Studio** — Inherits **Azure + Amber** with AxiomFolio: internal admin = company chrome, not a separate consumer story.
+
+**Wordmark (canonical hex when lockups exist):** use the *Ink* columns above; on dark surfaces, wordmark = `#F8FAFC` (see AxiomFolio deployed login).
+
+**Locked SVG assets (icon-only):** `apps/filefree/public/brand/filefree-icon.svg`, `apps/launchfree/public/brand/launchfree-icon.svg`, `apps/distill/public/brand/distill-icon.svg`, `apps/trinkets/public/brand/trinkets-icon.svg`, `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` (+ `axiomfolio.svg` legacy). **Renders:** `*/public/brand/renders/*-icon-{16,32,64,128,256,512,1024}.png` beside each SVG.
+
+**Why these hues, in one line each (shorthand):** same counter-positioning logic as 2026-04-25 five dives; founder confirmed droplet-family SVG locks 2026-04-26.
+
+Dark-surface variants of each primary (used in `-dark.svg` lockups when needed), unchanged for Azure / Indigo / Sky / Teal / Indigo(Trinkets): **Azure** → `#60A5FA`, **Indigo (FileFree)** → `#818CF8`, **Sky** → `#38BDF8`, **Teal** → `#14B8A6`, **Indigo (Trinkets)** → `#A5B4FC`, **Emerald (Brain)** → `#34D399`. **Accents** on dark: Amber → `#FBBF24`, Lime → `#A3E635`, Cyan → `#22D3EE`, Burnt orange → `#F97316`, Sky cyan → `#7DD3FC`, Mint → `#A7F3D0` (companion to mint `#6EE7B7` on mark).
 
 ### Logo Rules (all brands)
 
-- Minimum clear space: half the height of the logo on all sides
-- Never rotate, skew, add shadows, or place on busy backgrounds
-- On dark backgrounds: use the wordmark as-is (white + gradient)
-- On light backgrounds: use solid primary color for the full wordmark
-- Never use gradients on light backgrounds — they lose contrast
+- Minimum clear space: half the height of the logo on all sides.
+- Never rotate, skew, add shadows, or place on busy backgrounds.
+- On dark backgrounds: use the dark-variant lockup (lighter primary stroke + near-white wordmark).
+- On light backgrounds: use the light-variant lockup (full primary stroke + slate-night or product-ink wordmark).
+- Never use gradients in the canonical SVG file. Marketing surfaces add ambient effects in CSS.
+- Never recolor the accent. Each product's accent is locked per the table above.
+- Never put the paperclip mark on a product page — it's parent-brand only. Each product uses its own glyph.
 
-## Color Palettes
+## Color Palettes (current product UI — pre-migration)
 
-### FileFree (Violet-Indigo — Tax / Trust / Calm)
+The tables below reflect the **current** in-product UI CTA colors. Per the 2026 Q2 brand canon, each product's UI will migrate to its **canonical mark hue** (see "Per-product mark palette" above) in a follow-up sprint. Until then:
+
+- Use the mark hue ONLY for canonical SVG assets (icons, lockups, social cards, favicons).
+- Use the product-UI palette below for CTAs, links, gradients inside the product app.
+- New components inside an app should default to the product-UI palette (it's what the rest of the app uses today).
+
+When the migration sprint lands, these palettes get rewritten to match the mark hues; UI churn is contained to one PR per product, not spread across this rule file.
+
+### FileFree (Violet-Indigo — current UI; primary mark hue is now Indigo `#4F46E5` + Lime `#84CC16` accent)
 
 | Name | Hex | Tailwind | Usage |
 |------|-----|----------|-------|
@@ -81,7 +176,9 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 /* Tailwind: bg-gradient-to-r from-violet-500 to-purple-600 */
 ```
 
-### LaunchFree (Teal-Cyan — Business / Energy / Action)
+FileFree's live UI was already indigo-led when the brand canon work landed; the canon ratifies the indigo direction (vs. the temporary teal mis-assignment in PR #172's first cut). Migration consolidates the violet/purple gradient down to indigo + lime accent.
+
+### LaunchFree (Teal-Cyan — current UI; primary mark hue is now Sky `#0284C7` + Cyan `#06B6D4` accent)
 
 | Name | Hex | Tailwind | Usage |
 |------|-----|----------|-------|
@@ -90,7 +187,9 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 | Gradient end | `#06B6D4` | `cyan-500` | Gradient end |
 | Background | `#0A0F1A` | custom deep navy | App background |
 
-### Distill (Deep Blue-Slate — B2B / Professional / Precision)
+LaunchFree migrates from teal-cyan to sky-cyan: same family, but sky reads "launch" more literally and is distinguishable from Distill's teal (same family, different role).
+
+### Distill (Deep Blue-Slate — current UI; primary mark hue is now Teal `#0F766E` + Burnt orange `#C2410C` accent)
 
 | Name | Hex | Tailwind | Usage |
 |------|-----|----------|-------|
@@ -99,14 +198,18 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 | Gradient end | `#1E40AF` | `blue-800` | Gradient end |
 | Background | `#0F172A` | `slate-900` | App background |
 
-### Paperwork Labs / Studio (Zinc-Neutral — Internal / Data / Ops)
+Distill is the only product migrating to a fundamentally different hue family (blue → teal). Justification: the only B2B in the portfolio, must counter-position against legacy Drake/ProSeries blues, and must be distant from AxiomFolio azure to avoid in-portfolio collisions.
+
+### Paperwork Labs / Studio (Zinc-Neutral — current; migrating to Azure `#3274F0` + Amber `#F59E0B`)
 
 | Name | Hex | Tailwind | Usage |
 |------|-----|----------|-------|
 | Zinc | `#71717A` | `zinc-500` | Primary |
 | Background | `#09090B` | `zinc-950` | App background |
 
-### Trinkets (Amber-Orange — Utility / Approachable / Helpful)
+Studio's UI migrates to azure + amber to match the parent + AxiomFolio chain-of-life inheritance.
+
+### Trinkets (Amber-Orange — current; migrating to Indigo `#6366F1` + Sky cyan `#38BDF8` accent)
 
 | Name | Hex | Tailwind | Usage |
 |------|-----|----------|-------|
@@ -115,17 +218,34 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 | Gradient end | `#EA580C` | `orange-600` | Gradient end |
 | Background | `#0C0A09` | `stone-950` | App background |
 
+Trinkets migrates to indigo to match its parent (FileFree); the funnel handoff from `tools.filefree.ai` to `filefree.ai` should feel like one journey, not two.
+
+### AxiomFolio (Azure-Gold — Wealth / Trust / Earned Moments) — LOCKED
+
+| Name | Hex | Tailwind / Token | Usage |
+|------|-----|----------|-------|
+| Azure (brand blue) | `#3274F0` | `--auth-gradient-blue` (1D4EB8 in oklch) | Primary marks, chart equity |
+| Amber (brand gold) | `#F59E0B` | `--auth-gradient-amber` | Center dot, earned moments |
+| Background | `#0F172A` | slate-900 in dark | App background |
+
+AxiomFolio's full token system (oklch + semantic + color-blind palette + elevation scale) lives in `apps/axiomfolio/src/index.css`. This is the de-facto company baseline; per the 2026 Q2 brand canon decision, it gets promoted to `packages/ui/src/themes.css` in the engineering migration sprint. Hue assignments per other products do **not** clone AxiomFolio — only the **token shape** (oklch + semantic) is promoted.
+
+### Brain (Emerald — Memory / Vault / Compounding life)
+
+Brain's canonical mark uses Emerald `#10B981` + Mint `#6EE7B7` accent. Brain UI surface, once built, uses Emerald primary on Slate-night dark surface. Why emerald, not violet: counter-positions against the violet AI cliche (brain.ai, Mem.ai, Reflect, Notion AI); reads "compounding life / vault permanence" which directly serves D49 Memory Moat. Single AI-generated brain glyph (see [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md)); no droplet mark. External product name + domain TBD pending availability research.
+
 ### Shared Semantic Colors (all products)
 
 | Role | Color | Usage |
 |------|-------|-------|
-| Foreground | `#E2E8F0` | Body text |
+| Foreground (dark surface) | `#F8FAFC` | Body text, near-white |
+| Foreground (light surface) | `#0F172A` | Body text, slate-night |
 | Muted | `hsl(215, 16%, 57%)` | Secondary text, labels |
 | Success | Green | Positive outcomes, high confidence |
 | Warning | Amber | Caution, medium confidence |
 | Destructive | Red | Errors, low confidence |
 
-Implementation: CSS `[data-theme]` selectors in `packages/ui/themes.css`. Each app sets its theme via `<body data-theme="filefree">`.
+Implementation: CSS `[data-theme]` selectors in `packages/ui/src/themes.css`. Each app sets its theme via `<body data-theme="filefree">`. **That file is scaffolding** — its hex values are pre-canon and will be rewritten in the engineering migration sprint to match the per-product palette table above. Do not treat the existing values as ground truth.
 
 ## Typography
 
@@ -172,13 +292,25 @@ Encouraging, action-oriented. The friend who actually started a business and can
 
 Closers: "Officially official." / "Your LLC. Filed." / "Go build something."
 
-### Distill (B2B voice — professional product)
+### Distill (B2B voice - professional product)
 
-Precise, competent, developer-centric. Think Stripe docs — clear, thorough, no fluff.
+Precise, competent, developer-centric. Think Stripe docs - clear, thorough, no fluff.
 
 **Tagline**: "Compliance automation for modern platforms."
 **Use**: API, integrate, automate, compliance, formation, filing, returns
-**Avoid**: free (B2B is paid), simple (it's not — compliance is complex and we respect that)
+**Avoid**: free (B2B is paid), simple (it's not - compliance is complex and we respect that)
+
+### AxiomFolio (consumer voice - portfolio / signals product)
+
+Quiet competence. The portfolio tool that takes itself seriously without taking itself too seriously.
+
+**Tagline**: TBD pending product brief.
+**Use**: portfolio, signals, regime, allocation, rebalance, performance
+**Avoid**: alpha (overused in retail), beat-the-market (compliance risk), guarantee (compliance risk)
+
+### Brain (meta-product voice - TBD)
+
+External voice locked once external name lands. Internal docs use "Brain" as codename only. Direction: calm, confident, accumulating. Brain remembers what you want to forget; surfaces what you want to remember. Reads as a vault, not a chatbot.
 
 ### Shared Tone Principles (all brands)
 
@@ -225,15 +357,31 @@ Distill does not have social handles. It is marketed via developer docs, blog po
 - Domain: distill.tax / api.distill.tax
 - Email: hello@distill.tax / api@distill.tax
 
+## Publishing (Incidental — Books venture)
+
+Sankalp publishes children's books in Hindi and other languages on Amazon under the Paperwork Labs LLC umbrella. Books carry their own series brand on covers and marketing; **Paperwork Labs LLC attribution appears only on the copyright page** ("Published by Paperwork Labs LLC, California").
+
+**Hard rules** (treat as compliance, not preference):
+
+- Never use the paperclip mark, the "Paperwork Labs" wordmark, or the parent palette on book covers, interiors, or marketing.
+- Never link the publishing venture from paperworklabs.com or any product app.
+- AI-generated illustrations are the standard; no human-illustrator commissions.
+- Each book series may have its own visual identity, name, and social handles (TBD per series).
+- Imprint name on copyright page is exactly: "Published by Paperwork Labs LLC, California."
+
+This rule exists so a stray AI search later doesn't sweep books into the company brand canon. Books are a Paperwork Labs LLC *line of business*, not a Paperwork Labs *product*.
+
 ## Content Review Gate (Mandatory)
 
 Every piece of user-facing content (email, social post, in-app message, landing page copy) must pass this checklist before publishing:
 
-- Brand names spelled correctly (FileFree, LaunchFree -- proper nouns, correct casing)
-- "Free" claims are 100% accurate with no hidden conditions
-- Tax content uses education framing, not advice ("many do X" not "you should X")
-- Legal content uses services framing, not advice
-- Circular 230 / UPL disclaimer present where applicable
-- FTC affiliate disclosure present if recommending partner products
-- CAN-SPAM compliant (unsubscribe, physical address, honest subject line)
-- No reference to filefree.com anywhere
+- Brand names spelled correctly (FileFree, LaunchFree, AxiomFolio -- proper nouns, correct casing).
+- "Free" claims are 100% accurate with no hidden conditions.
+- Tax content uses education framing, not advice ("many do X" not "you should X").
+- Legal content uses services framing, not advice.
+- Circular 230 / UPL disclaimer present where applicable.
+- FTC affiliate disclosure present if recommending partner products.
+- CAN-SPAM compliant (unsubscribe, physical address, honest subject line).
+- No reference to filefree.com anywhere.
+- Brain is not mentioned in user-facing copy until external name + domain are locked.
+- Books venture is never cross-linked from product apps or paperworklabs.com.

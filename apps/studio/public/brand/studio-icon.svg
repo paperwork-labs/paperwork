@@ -1,0 +1,11 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Studio">
+  <!-- Window-pane grid (admin dashboard metaphor): one large + three small -->
+  <!-- Large pane (top-left, 2x2) -->
+  <rect x="20" y="20" width="50" height="50" rx="6" stroke="#3274F0" stroke-width="9" fill="none"/>
+  <!-- Top-right pane -->
+  <rect x="78" y="20" width="30" height="30" rx="5" stroke="#3274F0" stroke-width="9" fill="none"/>
+  <!-- Bottom-left pane -->
+  <rect x="20" y="78" width="30" height="30" rx="5" stroke="#3274F0" stroke-width="9" fill="none"/>
+  <!-- Bottom-right pane (highlighted in amber as the "active" pane) -->
+  <rect x="58" y="78" width="50" height="30" rx="5" stroke="#F59E0B" stroke-width="9" fill="none"/>
+</svg>

@@ -234,6 +234,13 @@ docs:
     tags: [finance, procurement]
     owners: [cfo]
     category: reference
+  - slug: prompts
+    path: docs/brand/PROMPTS.md
+    title: Brand prompts
+    summary: "Per-product AI image-generation prompts for the six consumer marks that we deferred from PR #172. Run any of these in Nano Banana, Midjourney v6+, DALL-E 3, or Imagen, then drop the chosen image…"
+    tags: []
+    owners: [Paperwork Labs]
+    category: reference
   - slug: clerk-axiomfolio
     path: docs/infra/CLERK_AXIOMFOLIO.md
     title: Clerk SSO — AxiomFolio (axiomfolio-next)
@@ -275,6 +282,13 @@ docs:
     summary: "What runs where — Render, Vercel, Hetzner, Neon."
     tags: [infra]
     owners: [infra-ops]
+    category: reference
+  - slug: readme
+    path: docs/brand/README.md
+    title: Paperwork Labs brand asset registry
+    summary: "Single source of truth for canonical SVG marks across Paperwork Labs and its products. If a logo or product glyph isn't listed here, it isn't canonical yet."
+    tags: [company, reference]
+    owners: [brand]
     category: reference
   - slug: prd
     path: docs/PRD.md

@@ -1,0 +1,5 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Paperwork Labs">
+  <path d="M 80 18 L 80 24 A 16 16 0 0 1 96 40 L 96 88 A 24 24 0 0 1 72 112 L 56 112 A 24 24 0 0 1 32 88 L 32 40 A 16 16 0 0 1 48 24 L 64 24 A 8 8 0 0 1 72 32 L 72 88 A 8 8 0 0 1 64 96 L 48 96"
+        stroke="#3274F0" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="48" cy="96" r="5" fill="#F59E0B"/>
+</svg>
