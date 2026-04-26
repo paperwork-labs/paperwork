@@ -38,7 +38,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 
 | n8n workflow name | Schedule (5-field or interval) | Status in Brain |
 | --- | --- | --- |
-| Brain Daily Trigger | `0 7 * * *` | shadow |
+| Brain Daily Trigger | `0 7 * * *` | **Cutover (T1.2):** real job `brain_daily_briefing` when `BRAIN_OWNS_DAILY_BRIEFING=true`; otherwise optional n8n shadow `n8n_shadow_brain_daily` |
 | Brain Weekly Trigger | `0 18 * * 0` | shadow |
 | Sprint Kickoff | `0 7 * * 1` | shadow |
 | Sprint Close | `0 21 * * 5` | shadow |
@@ -60,6 +60,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | --- | --- | --- |
 | `SCHEDULER_N8N_MIRROR_ENABLED` | `false` | When `true`, register **all** n8n shadow mirror jobs (subject to per-job overrides below). Requires the rest of the scheduler: `BRAIN_SCHEDULER_ENABLED=true`. |
 | `SCHEDULER_N8N_MIRROR_<ID>` | _(unset)_ | **Per-mirror opt-in (or opt-out).** When set, that job uses this boolean instead of the global. `<ID>` is the mirror **job_id** in uppercase with underscores, e.g. `SCHEDULER_N8N_MIRROR_N8N_SHADOW_BRAIN_DAILY=true`. If unset, the job follows `SCHEDULER_N8N_MIRROR_ENABLED`. |
+| `BRAIN_OWNS_DAILY_BRIEFING` | `false` | **First real n8n→Brain cutover (T1.2).** When `true`, registers the `brain_daily_briefing` job (07:00 UTC, `CronTrigger` parity with n8n’s `0 7 * * *`) and **suppresses** the `n8n_shadow_brain_daily` shadow so only one schedule drives the daily briefing. Requires `BRAIN_SCHEDULER_ENABLED=true`. |
 | `BRAIN_SCHEDULER_ENABLED` | `true` | Master switch for starting APScheduler (including job store and mirrors). |
 | `DATABASE_URL` | (dev default) | Must be reachably Postgres. Async URL uses `+asyncpg`; the job store uses a sync `postgresql://` form (no `+asyncpg`). |
 
@@ -81,7 +82,17 @@ Response `data` includes `global_enabled` and `per_job` (each entry: `key`, `ena
 
 Prefer **one mirror at a time** with per-job env vars, watch a few green shadow runs, then widen — instead of a single big-bang global toggle for every workflow. **Lower risk first:** start with internal / operational mirrors (e.g. `n8n_shadow_infra_heartbeat`, `n8n_shadow_infra_health`) before flows that post toward **user-facing** or high-visibility product channels. The Brain in-process `pr_sweep` job is separate from n8n; cut that over on its own cadence. Document which `n8n_shadow_*` job id is live in each phase.
 
-## Cutover playbook (shadow → active)
+## Cutover playbook (single-cron, env-flag ownership)
+
+This is the supported path to move one exported n8n schedule to Brain without double-firing Slack or the Brain pipeline.
+
+1. **Pick the owner flag** — Each strangled cron gets an explicit `BRAIN_OWNS_*` environment variable. **`BRAIN_OWNS_DAILY_BRIEFING=true` is the first** production flip: it enables `apis/brain/app/schedulers/brain_daily_briefing.py` and automatically **skips** registering `n8n_shadow_brain_daily` so the n8n mirror and the real job never run together.
+2. **Deploy + verify** — With `BRAIN_SCHEDULER_ENABLED=true`, confirm `apscheduler_jobs` contains the new job id (e.g. `brain_daily_briefing`), `agent_scheduler_runs` shows `success` rows for that `job_id`, and the product channel (`#daily-briefing` for the daily workflow) looks correct. Watch logs for `brain_daily_briefing` on the 07:00 UTC tick.
+3. **Monitor** — `GET /api/v1/admin/scheduler/n8n-mirror/status` still reports n8n **shadow** jobs (per-job `enabled`, last run, 24h success/error counts). The daily row’s `enabled` becomes `false` for `n8n_shadow_brain_daily` while Brain owns the cron; use `SELECT job_id, status, finished_at, error_text FROM agent_scheduler_runs WHERE job_id IN ('n8n_shadow_brain_daily', 'brain_daily_briefing') ORDER BY finished_at DESC LIMIT 20;` to compare during migration windows.
+4. **Disable n8n on Hetzner** — After **24h of clean runs**, disable or pause the **Brain Daily Trigger** workflow on the Hetzner n8n instance (workflow inventory: [`infra/hetzner/workflows/README.md`](../../infra/hetzner/workflows/README.md)) so n8n no longer POSTs the same work. Until then, leaving n8n enabled duplicates the user-visible briefing — avoid that in production.
+5. **Rollback** — Set `BRAIN_OWNS_DAILY_BRIEFING=false` (or remove it), redeploy, re-enable the n8n schedule on Hetzner, and (if you use mirrors) turn `SCHEDULER_N8N_MIRROR_N8N_SHADOW_BRAIN_DAILY` back on for shadow coverage until the next attempt.
+
+## Cutover playbook (shadow → active, historical)
 
 1. **Verify shadow** — In staging or a canary, enable a **single** mirror with `SCHEDULER_N8N_MIRROR_<ID>=true` (or set the global to `true` for all). Confirm messages in `#engineering-cron-shadow`, `SELECT * FROM apscheduler_jobs;` shows the expected job row(s), the status endpoint shows `enabled` and rising `success_count_24h`, and `SELECT * FROM agent_scheduler_runs ORDER BY finished_at DESC LIMIT 20;` looks sane. Fix timezone alignment for LA workflows if needed before prod cutover.
 2. **Switch handler** — In a follow-up (e.g. T2.4), replace each shadow handler in `n8n_mirror.py` (or a successor module) with the real work (or delegate to a service), still keeping side-effects off until you disable n8n.
@@ -124,8 +135,8 @@ ORDER BY id;
 
 - Decision log: [Company Knowledge](../KNOWLEDGE.md) (2026-04-25 — Brain owns schedules; SQLAlchemy job store).
 - Sprint: [Streamline + SSO + Real DAGs](../sprints/STREAMLINE_SSO_DAGS_2026Q2.md) (T1 orchestration / shadow period).
-- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`.
+- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`.
 
 ---
 
-**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`.
+**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`.
