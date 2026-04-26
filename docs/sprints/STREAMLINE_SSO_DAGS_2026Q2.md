@@ -32,6 +32,7 @@ related_prs:
   - 197
   - 198
   - 200
+  - 199
 ---
 
 # Streamline + SSO + Real DAGs (2026 Q2)
@@ -62,6 +63,7 @@ Acceptance theme for the window: operators can name the single system that fires
 - _Tracking — updates as each track ships_
 - shipped 2026-04-25: **T1.1** — Per-job `SCHEDULER_N8N_MIRROR_<ID>` flags (uppercased n8n mirror job id) with global fallback, `agent_scheduler_runs` history for each shadow execution, and `GET /api/v1/admin/scheduler/n8n-mirror/status` for last run + 24h success/error counts. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). Migration: `apis/brain/alembic/versions/002_agent_scheduler_runs.py`. PRs #148, #153.
 - shipped 2026-04-25: **T1.2** — First real Brain APScheduler job for the **Brain Daily Trigger** n8n flow: `BRAIN_OWNS_DAILY_BRIEFING` enables `brain_daily_briefing` (07:00 UTC) calling `agent.process` + `#daily-briefing`, and suppresses `n8n_shadow_brain_daily` so the mirror cannot double with production. Code: `apis/brain/app/schedulers/brain_daily_briefing.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #160; builds on PR #153 (per-job mirror flags + `agent_scheduler_runs`).
+- shipped 2026-04-26: **T1.5 — Brain Weekly Trigger** — `BRAIN_OWNS_BRAIN_WEEKLY` enables `brain_weekly_briefing` (Sundays 18:00 UTC, `0 18 * * 0`), same `agent.process` + Slack shape as `infra/hetzner/workflows/brain-weekly-trigger.json` (`#all-paperwork-labs`), and suppresses `n8n_shadow_brain_weekly`. Code: `apis/brain/app/schedulers/brain_weekly_briefing.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md).
 - shipped 2026-04-26: **T1.4** — `BRAIN_OWNS_CREDENTIAL_EXPIRY` + `brain_credential_expiry` cut the **Credential Expiry Check** n8n cron to Brain (same vault + `#alerts` Slack as `credential-expiry-check.json`); `n8n_shadow_credential_expiry` suppressed. Pattern: same as T1.2 / T1.3 (#160, #166). Code: `apis/brain/app/schedulers/credential_expiry.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #170.
 - shipped 2026-04-26: **T1.6** — `BRAIN_OWNS_WEEKLY_STRATEGY` + `brain_weekly_strategy` cut the **Weekly Strategy Check-in** n8n cron to Brain: `agent.process` with the `strategy` persona (per Streamline T2), Slack `#all-paperwork-labs` (same as `weekly-strategy-checkin.json`); `n8n_shadow_weekly_strategy` suppressed. Code: `apis/brain/app/schedulers/weekly_strategy.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #200.
 - shipped 2026-04-25: **T1.5** — Studio admin page **`/admin/n8n-mirror`** surfaces the Brain n8n mirror status endpoint: per-job shadow on/off, last run + 24h success/error counts, cutover heuristics for T1.2/T1.3 job ids, ~30s auto-refresh. Code: `apps/studio/src/app/admin/n8n-mirror/`, `apps/studio/src/components/admin/N8nMirrorStatusClient.tsx`, `apps/studio/src/app/api/admin/n8n-mirror/status/route.ts`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md#studio-admin-paperwork-studio) (Studio Admin section). PR #168.
@@ -91,10 +93,10 @@ Acceptance theme for the window: operators can name the single system that fires
 Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-bullets use the same markers.
 
 - **T1 — Orchestration consolidation** `[~]`
-  - `[~]` Brain APScheduler owns all cron-style schedules; n8n is webhook / event-only for new work. (T1.1 shadow in #148/#153; T1.2 `brain_daily_briefing` #160; T1.3 `brain_infra_heartbeat` #166; **T1.4** — credential expiry: `BRAIN_OWNS_CREDENTIAL_EXPIRY` + `brain_credential_expiry` mirroring T1.2/T1.3; **T1.6** — weekly strategy: `BRAIN_OWNS_WEEKLY_STRATEGY` + `brain_weekly_strategy`.)
+  - `[~]` Brain APScheduler owns all cron-style schedules; n8n is webhook / event-only for new work. (T1.1 shadow in #148/#153; T1.2 `brain_daily_briefing` #160; T1.3 `brain_infra_heartbeat` #166; **T1.4** `brain_credential_expiry`; **T1.5** Brain Weekly — `BRAIN_OWNS_BRAIN_WEEKLY` + `brain_weekly_briefing`; **T1.6** `BRAIN_OWNS_WEEKLY_STRATEGY` + `brain_weekly_strategy`.)
   - `[x]` Persist APScheduler jobs with SQLAlchemyJobStore on Postgres so restarts do not drop work. (PR #148)
   - `[x]` Document the split: where schedules live, how to change them, and how Slack alerts dedupe. ([docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md))
-  - `[~]` Migrate the existing n8n cron set with a checklist + rollback path (shadow period acceptable). (Per-job `BRAIN_OWNS_*` pattern: T1.2 daily briefing, T1.3 `BRAIN_OWNS_INFRA_HEARTBEAT` + `n8n_shadow_infra_heartbeat` suppression, **T1.4** `BRAIN_OWNS_CREDENTIAL_EXPIRY` + `n8n_shadow_credential_expiry` suppression, **T1.6** `BRAIN_OWNS_WEEKLY_STRATEGY` + `n8n_shadow_weekly_strategy` suppression.)
+  - `[~]` Migrate the existing n8n cron set with a checklist + rollback path (shadow period acceptable). (Per-job `BRAIN_OWNS_*` pattern: T1.2 daily briefing, T1.5 `BRAIN_OWNS_BRAIN_WEEKLY` + `n8n_shadow_brain_weekly` suppression, T1.3 `BRAIN_OWNS_INFRA_HEARTBEAT` + `n8n_shadow_infra_heartbeat` suppression, T1.4 `BRAIN_OWNS_CREDENTIAL_EXPIRY` + `n8n_shadow_credential_expiry` suppression, T1.6 `BRAIN_OWNS_WEEKLY_STRATEGY` + `n8n_shadow_weekly_strategy` suppression.)
 
 - **T2 — Single persona vocabulary** `[x]`
   - `[x]` PersonaSpec slugs under `apis/brain/app/personas/` are the only canonical persona IDs. (PR #150)

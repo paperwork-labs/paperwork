@@ -162,6 +162,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install brain_daily_briefing job")
 
     try:
+        from app.schedulers import brain_weekly_briefing
+
+        brain_weekly_briefing.install(sched)
+    except Exception:
+        logger.exception("Failed to install brain_weekly_briefing job")
+
+    try:
         from app.schedulers import weekly_strategy
 
         weekly_strategy.install(sched)
