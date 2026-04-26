@@ -269,6 +269,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: clerk-trinkets
+    path: docs/infra/CLERK_TRINKETS.md
+    title: Clerk SSO — Trinkets (Next.js)
+    summary: "Runbook for the Trinkets app (`apps/trinkets`) identity layer: **Clerk** for interactive SSO (`/sign-in`, `/sign-up`) and global `ClerkProvider` appearance. The app is a **public** utility surface…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: financials
     path: docs/FINANCIALS.md
     title: Financials
