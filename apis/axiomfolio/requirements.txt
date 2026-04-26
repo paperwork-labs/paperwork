@@ -44,7 +44,7 @@ redis==7.4.0
 
 # Linters & Dev
 black==26.3.1
-ruff==0.15.11
+ruff==0.15.12
 
 # Observability — OpenTelemetry stack pinned below handles APM/tracing.
 # New Relic was previously bundled but never activated (no newrelic-admin
