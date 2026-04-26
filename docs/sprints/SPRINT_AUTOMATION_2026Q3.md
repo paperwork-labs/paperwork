@@ -11,7 +11,8 @@ sprint:
   duration_weeks: 10
 opened: 2026-04-26
 target_close: 2026-06-30
-related_prs: []
+related_prs:
+  - 204
 ---
 
 # Sprint Automation (2026 Q3)
@@ -34,7 +35,7 @@ Design note: **single source of truth stays in git** (markdown + `related_prs`),
 ## Outcome
 
 - _Tracking — Brain `sprint_auto_logger` + operator runbook_
-- shipped 2026-04-26: **SPRINT_AUTO_LOGGER** — Brain APScheduler job (`*/15 * * * *` UTC) batches merged PRs with explicit sprint markers into one bot PR that updates `## Outcome` and `related_prs`; gated by `BRAIN_OWNS_SPRINT_AUTO_LOGGER`. Code: `apis/brain/app/schedulers/sprint_auto_logger.py`, CLI: `python -m app.cli.sprint_auto_logger_cli`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md).
+- shipped 2026-04-26: **SPRINT_AUTO_LOGGER** — Brain APScheduler job (`*/15 * * * *` UTC) batches merged PRs with explicit sprint markers into one bot PR that updates `## Outcome` and `related_prs`; gated by `BRAIN_OWNS_SPRINT_AUTO_LOGGER`. Code: `apis/brain/app/schedulers/sprint_auto_logger.py`, CLI: `python -m app.cli.sprint_auto_logger_cli`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #204.
 
 ## What we learned
 

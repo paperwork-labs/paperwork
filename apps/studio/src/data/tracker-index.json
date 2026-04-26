@@ -80,7 +80,11 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
+<<<<<<< HEAD
   "content_hash": "3da35d8bf0b3",
+=======
+  "content_hash": "7d712e0742d5",
+>>>>>>> f3db4c542 (docs(sprints): log sprint auto-logger PR #204 in Streamline + Q3 sprint)
   "products": [
     {
       "label": "AxiomFolio",
@@ -291,6 +295,34 @@
     },
     {
       "domain": "company",
+      "duration_weeks": 10,
+      "end": "2026-06-30",
+      "followups": [],
+      "goal": "Close the **\u201cStudio shows sprint progress automatically\u201d** loop: Brain appends shipped lines to sprint markdown under `## Outcome`, Studio\u2019s living tracker reads the same files, and the founder sees sprint cards move without hand-copying PR titles.",
+      "lessons": [
+        "_(empty \u2014 fill in as the sprint runs)_"
+      ],
+      "outcome_bullets": [
+        "_Tracking \u2014 Brain `sprint_auto_logger` + operator runbook_"
+      ],
+      "owner": "engineering",
+      "path": "docs/sprints/SPRINT_AUTOMATION_2026Q3.md",
+      "personas": [],
+      "plans": [],
+      "pr": null,
+      "pr_url": null,
+      "raw_status": "in_progress",
+      "related_prs": [
+        204
+      ],
+      "ships": [],
+      "slug": "sprint-automation-2026q3",
+      "start": "2026-04-26",
+      "status": "active",
+      "title": "Sprint Automation (2026 Q3)"
+    },
+    {
+      "domain": "company",
       "duration_weeks": "~3",
       "end": "2026-05-16",
       "followups": [],
@@ -366,7 +398,8 @@
         149,
         154,
         157,
-        169
+        169,
+        204
       ],
       "ships": [],
       "slug": "streamline-sso-dags-2026q2",
