@@ -73,10 +73,10 @@ Acceptance theme for the window: operators can name the single system that fires
 Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-bullets use the same markers.
 
 - **T1 — Orchestration consolidation** `[~]`
-  - `[~]` Brain APScheduler owns all cron-style schedules; n8n is webhook / event-only for new work. (T1.1 shadow infra in #148/#153; first real cutover — `brain_daily_briefing` — in flight as B5-T1.2.)
+  - `[~]` Brain APScheduler owns all cron-style schedules; n8n is webhook / event-only for new work. (T1.1 shadow infra in #148/#153; first real cutover — `brain_daily_briefing` — in flight as B5-T1.2; **T1.3** — `brain_infra_heartbeat` + `BRAIN_OWNS_INFRA_HEARTBEAT` cut over Infra Heartbeat from n8n in this batch.)
   - `[x]` Persist APScheduler jobs with SQLAlchemyJobStore on Postgres so restarts do not drop work. (PR #148)
   - `[x]` Document the split: where schedules live, how to change them, and how Slack alerts dedupe. ([docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md))
-  - `[~]` Migrate the existing n8n cron set with a checklist + rollback path (shadow period acceptable). (Per-job `BRAIN_OWNS_*` flag pattern shipping with B5-T1.2.)
+  - `[~]` Migrate the existing n8n cron set with a checklist + rollback path (shadow period acceptable). (Per-job `BRAIN_OWNS_*` flag pattern: T1.2 daily briefing, **T1.3** `BRAIN_OWNS_INFRA_HEARTBEAT` for Infra Heartbeat + shadow suppression of `n8n_shadow_infra_heartbeat`.)
 
 - **T2 — Single persona vocabulary** `[x]`
   - `[x]` PersonaSpec slugs under `apis/brain/app/personas/` are the only canonical persona IDs. (PR #150)

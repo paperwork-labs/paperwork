@@ -5,8 +5,12 @@ When ``SCHEDULER_N8N_MIRROR_ENABLED`` (global) and/or
 matching schedules on the shared Brain :class:`AsyncIOScheduler` with no-op
 handlers that post to ``#engineering-cron-shadow`` only. If a per-spec env var
 is unset, the global default applies. Real n8n crons stay enabled until cutover
-(T2.4). See ``docs/infra/BRAIN_SCHEDULER.md``.
+(T2.4). When :envvar:`BRAIN_OWNS_INFRA_HEARTBEAT` is true, the
+``n8n_shadow_infra_heartbeat`` spec is not registered (T1.3) — the Brain-owned
+``brain_infra_heartbeat`` job owns that schedule instead. See
+``docs/infra/BRAIN_SCHEDULER.md``.
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,9 +27,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
-from app.database import async_session_factory
 from app.models.scheduler_run import SchedulerRun
+from app.schedulers._history import run_with_scheduler_record
 from app.services import slack_outbound
+
+_run_with_scheduler_record = run_with_scheduler_record
 
 logger = logging.getLogger(__name__)
 
@@ -150,8 +156,27 @@ def is_n8n_mirror_enabled_for_job(job_id: str) -> bool:
     return settings.SCHEDULER_N8N_MIRROR_ENABLED
 
 
-class N8nMirrorRunSkipped(Exception):
-    """Inner body may raise this to persist ``skipped`` (not ``error``)."""
+def _brain_owns_infra_heartbeat() -> bool:
+    return os.getenv("BRAIN_OWNS_INFRA_HEARTBEAT", "").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
+def should_register_n8n_shadow_for_job(job_id: str) -> bool:
+    """True when this shadow job should be registered (mirrors :func:`install`).
+
+    The ``n8n_shadow_infra_heartbeat`` mirror is suppressed when
+    :envvar:`BRAIN_OWNS_INFRA_HEARTBEAT` is true so the first-party Brain cron
+    is the only infra heartbeat schedule (T1.3).
+    """
+    if not is_n8n_mirror_enabled_for_job(job_id):
+        return False
+    if job_id == "n8n_shadow_infra_heartbeat" and _brain_owns_infra_heartbeat():
+        return False
+    return True
 
 
 async def _post_shadow(n8n_workflow_name: str, job_id: str) -> None:
@@ -163,41 +188,6 @@ async def _post_shadow(n8n_workflow_name: str, job_id: str) -> None:
         username="Brain Cron Shadow",
         icon_emoji=":ghost:",
     )
-
-
-async def _run_with_scheduler_record(
-    job_id: str,
-    runner: Callable[[], Awaitable[None]],
-    *,
-    metadata: dict[str, Any] | None = None,
-) -> None:
-    started = datetime.now(timezone.utc)
-    status: Literal["success", "error", "skipped"] = "success"
-    error_text: str | None = None
-    try:
-        await runner()
-    except N8nMirrorRunSkipped:
-        status = "skipped"
-    except Exception as e:
-        status = "error"
-        error_text = str(e)[:20000]
-        logger.exception("n8n shadow job %s failed", job_id)
-    finally:
-        finished = datetime.now(timezone.utc)
-        row = SchedulerRun(
-            job_id=job_id,
-            started_at=started,
-            finished_at=finished,
-            status=status,
-            error_text=error_text,
-            metadata_json=metadata,
-        )
-        try:
-            async with async_session_factory() as db:
-                db.add(row)
-                await db.commit()
-        except Exception:
-            logger.exception("Failed to persist scheduler_run for job_id=%s", job_id)
 
 
 async def _run_shadow_for_spec(spec: MirrorSpec) -> None:
@@ -223,7 +213,7 @@ def _bind_spec(spec: MirrorSpec) -> Callable[[], Awaitable[None]]:
 
 def install(scheduler: AsyncIOScheduler) -> None:
     """Register n8n shadow jobs when the global and/or per-job opt-in is set."""
-    enabled = [s for s in N8N_MIRROR_SPECS if is_n8n_mirror_enabled_for_job(s.job_id)]
+    enabled = [s for s in N8N_MIRROR_SPECS if should_register_n8n_shadow_for_job(s.job_id)]
     if not enabled:
         logger.info(
             "No n8n shadow mirror jobs enabled; set %s (global) or per-job %s<N8N_SHADOW_…>",
@@ -298,7 +288,7 @@ async def n8n_mirror_status_payload(db: AsyncSession) -> dict[str, Any]:
         per_job.append(
             {
                 "key": spec.job_id,
-                "enabled": is_n8n_mirror_enabled_for_job(spec.job_id),
+                "enabled": should_register_n8n_shadow_for_job(spec.job_id),
                 "last_run": last_run,
                 "last_status": last_status,
                 "success_count_24h": success_count,

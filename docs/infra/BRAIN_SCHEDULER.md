@@ -43,7 +43,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | Sprint Kickoff | `0 7 * * 1` | shadow |
 | Sprint Close | `0 21 * * 5` | shadow |
 | Weekly Strategy Check-in | `0 9 * * 1` | shadow |
-| Infra Heartbeat | `0 8 * * *` | shadow |
+| Infra Heartbeat | `0 8 * * *` | shadow — or first-party `brain_infra_heartbeat` when `BRAIN_OWNS_INFRA_HEARTBEAT=true` (T1.3) |
 | Data Source Monitor (P2.8) | `0 6 * * 1` (see LA caveat above) | shadow |
 | Data Deep Validator (P2.9) | `0 3 1 * *` (see LA caveat) | shadow |
 | Annual Data Update Trigger (P2.10) | `0 9 1 10 *` (see LA caveat) | shadow |
@@ -60,8 +60,15 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | --- | --- | --- |
 | `SCHEDULER_N8N_MIRROR_ENABLED` | `false` | When `true`, register **all** n8n shadow mirror jobs (subject to per-job overrides below). Requires the rest of the scheduler: `BRAIN_SCHEDULER_ENABLED=true`. |
 | `SCHEDULER_N8N_MIRROR_<ID>` | _(unset)_ | **Per-mirror opt-in (or opt-out).** When set, that job uses this boolean instead of the global. `<ID>` is the mirror **job_id** in uppercase with underscores, e.g. `SCHEDULER_N8N_MIRROR_N8N_SHADOW_BRAIN_DAILY=true`. If unset, the job follows `SCHEDULER_N8N_MIRROR_ENABLED`. |
+| `BRAIN_OWNS_INFRA_HEARTBEAT` | `false` | When `true`, register the first-party in-process job `brain_infra_heartbeat` (08:00 UTC) and **suppress** the `n8n_shadow_infra_heartbeat` mirror (T1.3; same Slack shape as the n8n Infra Heartbeat workflow). When `false`, n8n + optional shadow remain the source of the heartbeat until you cut over. |
 | `BRAIN_SCHEDULER_ENABLED` | `true` | Master switch for starting APScheduler (including job store and mirrors). |
 | `DATABASE_URL` | (dev default) | Must be reachably Postgres. Async URL uses `+asyncpg`; the job store uses a sync `postgresql://` form (no `+asyncpg`). |
+
+#### T1 — Brain-owned crons (n8n cutover)
+
+| APScheduler `job_id` | Env flag (enable Brain-owned path) | Schedule (UTC) | n8n shadow id suppressed when flag is on |
+| --- | --- | --- | --- |
+| `brain_infra_heartbeat` | `BRAIN_OWNS_INFRA_HEARTBEAT` | `0 8 * * *` | `n8n_shadow_infra_heartbeat` |
 
 ### Read-only mirror status
 
@@ -128,4 +135,4 @@ ORDER BY id;
 
 ---
 
-**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`.
+**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`.
