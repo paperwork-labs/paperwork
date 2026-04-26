@@ -348,6 +348,13 @@ docs:
     owners: [engineering, strategy]
     category: plans
   # ── Sprints ─────────────────────────────────────────
+  - slug: brand-design-deepdive-2026q2
+    path: docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md
+    title: Brand & design system deep-dive (2026 Q2)
+    summary: "**Purpose**: Give Sankalp and the team a McKinsey-style evidence stack for whether Paperwork Labs should unify on the AxiomFolio-inspired blue + gold system, what it costs in product and…"
+    tags: [company, sprint]
+    owners: [brand]
+    category: sprints
   - slug: sprint-docs-streamline-and-trackers-2026q2
     path: docs/sprints/DOCS_STREAMLINE_AND_TRACKERS_2026Q2.md
     title: Docs Streamline + Trackers Spine (2026 Q2)

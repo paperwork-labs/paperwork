@@ -19,6 +19,7 @@ from app.schedulers.n8n_mirror import (
     install,
     is_n8n_mirror_enabled_for_job,
     n8n_mirror_env_var_name,
+    should_register_n8n_shadow_for_job,
 )
 
 
@@ -58,6 +59,23 @@ def test_per_job_off_overrides_global_true(
     name = n8n_mirror_env_var_name("n8n_shadow_brain_daily")
     monkeypatch.setenv(name, "false")
     assert is_n8n_mirror_enabled_for_job("n8n_shadow_brain_daily") is False
+
+
+def test_brain_owns_daily_briefing_suppresses_n8n_daily_shadow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("BRAIN_OWNS_DAILY_BRIEFING", raising=False)
+    for s in N8N_MIRROR_SPECS:
+        monkeypatch.delenv(n8n_mirror_env_var_name(s.job_id), raising=False)
+    monkeypatch.setattr(settings, "SCHEDULER_N8N_MIRROR_ENABLED", True)
+    assert should_register_n8n_shadow_for_job("n8n_shadow_brain_daily") is True
+    monkeypatch.setenv("BRAIN_OWNS_DAILY_BRIEFING", "true")
+    assert should_register_n8n_shadow_for_job("n8n_shadow_brain_daily") is False
+    sched = AsyncIOScheduler(timezone="UTC")
+    install(sched)
+    ids = {j.id for j in sched.get_jobs()}
+    assert "n8n_shadow_brain_daily" not in ids
+    assert "n8n_shadow_brain_weekly" in ids
 
 
 def test_one_job_enables_with_global_off(

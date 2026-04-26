@@ -5,10 +5,13 @@ When ``SCHEDULER_N8N_MIRROR_ENABLED`` (global) and/or
 matching schedules on the shared Brain :class:`AsyncIOScheduler` with no-op
 handlers that post to ``#engineering-cron-shadow`` only. If a per-spec env var
 is unset, the global default applies. Real n8n crons stay enabled until cutover
-(T2.4). When :envvar:`BRAIN_OWNS_INFRA_HEARTBEAT` is true, the
-``n8n_shadow_infra_heartbeat`` spec is not registered (T1.3) — the Brain-owned
-``brain_infra_heartbeat`` job owns that schedule instead. See
-``docs/infra/BRAIN_SCHEDULER.md``.
+(T2.4). Per-spec ``BRAIN_OWNS_<JOB>`` flags suppress the matching shadow row so
+the first-party Brain cron is the only schedule:
+
+- :envvar:`BRAIN_OWNS_DAILY_BRIEFING` → ``n8n_shadow_brain_daily`` (T1.2)
+- :envvar:`BRAIN_OWNS_INFRA_HEARTBEAT` → ``n8n_shadow_infra_heartbeat`` (T1.3)
+
+See
 """
 
 from __future__ import annotations
@@ -31,9 +34,9 @@ from app.models.scheduler_run import SchedulerRun
 from app.schedulers._history import run_with_scheduler_record
 from app.services import slack_outbound
 
-_run_with_scheduler_record = run_with_scheduler_record
-
 logger = logging.getLogger(__name__)
+
+_run_with_scheduler_record = run_with_scheduler_record
 
 SHADOW_SLACK_CHANNEL = "#engineering-cron-shadow"
 N8N_MIRROR_ENV_PREFIX = "SCHEDULER_N8N_MIRROR_"
@@ -156,6 +159,26 @@ def is_n8n_mirror_enabled_for_job(job_id: str) -> bool:
     return settings.SCHEDULER_N8N_MIRROR_ENABLED
 
 
+async def _post_shadow(n8n_workflow_name: str, job_id: str) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    text = f"[shadow] {n8n_workflow_name} ({job_id}) fired at {now}"
+    await slack_outbound.post_message(
+        channel=SHADOW_SLACK_CHANNEL,
+        text=text,
+        username="Brain Cron Shadow",
+        icon_emoji=":ghost:",
+    )
+
+
+def _brain_owns_daily_briefing() -> bool:
+    return os.getenv("BRAIN_OWNS_DAILY_BRIEFING", "").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
 def _brain_owns_infra_heartbeat() -> bool:
     return os.getenv("BRAIN_OWNS_INFRA_HEARTBEAT", "").lower() in (
         "1",
@@ -168,26 +191,18 @@ def _brain_owns_infra_heartbeat() -> bool:
 def should_register_n8n_shadow_for_job(job_id: str) -> bool:
     """True when this shadow job should be registered (mirrors :func:`install`).
 
-    The ``n8n_shadow_infra_heartbeat`` mirror is suppressed when
-    :envvar:`BRAIN_OWNS_INFRA_HEARTBEAT` is true so the first-party Brain cron
-    is the only infra heartbeat schedule (T1.3).
+    Per-spec ``BRAIN_OWNS_<JOB>`` cutover flags suppress the matching shadow row:
+
+    - ``n8n_shadow_brain_daily`` → :envvar:`BRAIN_OWNS_DAILY_BRIEFING` (T1.2)
+    - ``n8n_shadow_infra_heartbeat`` → :envvar:`BRAIN_OWNS_INFRA_HEARTBEAT` (T1.3)
     """
     if not is_n8n_mirror_enabled_for_job(job_id):
+        return False
+    if job_id == "n8n_shadow_brain_daily" and _brain_owns_daily_briefing():
         return False
     if job_id == "n8n_shadow_infra_heartbeat" and _brain_owns_infra_heartbeat():
         return False
     return True
-
-
-async def _post_shadow(n8n_workflow_name: str, job_id: str) -> None:
-    now = datetime.now(timezone.utc).isoformat()
-    text = f"[shadow] {n8n_workflow_name} ({job_id}) fired at {now}"
-    await slack_outbound.post_message(
-        channel=SHADOW_SLACK_CHANNEL,
-        text=text,
-        username="Brain Cron Shadow",
-        icon_emoji=":ghost:",
-    )
 
 
 async def _run_shadow_for_spec(spec: MirrorSpec) -> None:

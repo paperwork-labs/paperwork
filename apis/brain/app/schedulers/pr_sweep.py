@@ -134,6 +134,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install sprint_lessons job")
 
     try:
+        from app.schedulers import brain_daily_briefing
+
+        brain_daily_briefing.install(sched)
+    except Exception:
+        logger.exception("Failed to install brain_daily_briefing job")
+
+    try:
         from app.schedulers import infra_heartbeat
 
         infra_heartbeat.install(sched)
