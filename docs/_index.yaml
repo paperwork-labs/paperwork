@@ -234,6 +234,13 @@ docs:
     tags: [finance, procurement]
     owners: [cfo]
     category: reference
+  - slug: clerk-axiomfolio
+    path: docs/infra/CLERK_AXIOMFOLIO.md
+    title: Clerk SSO — AxiomFolio (axiomfolio-next)
+    summary: "Runbook for the AxiomFolio Next.js app (`apps/axiomfolio-next`) identity stack: Clerk SDK foundation (T6c) alongside the existing **`qm_token`** session in `localStorage`. Themed Clerk UI is a…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: clerk-filefree
     path: docs/infra/CLERK_FILEFREE.md
     title: Clerk SSO — FileFree (Next.js)
