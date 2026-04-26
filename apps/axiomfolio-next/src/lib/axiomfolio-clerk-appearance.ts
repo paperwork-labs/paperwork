@@ -28,7 +28,12 @@ export const axiomfolioClerkAppearance = {
     formFieldInput:
       "border-border/90 bg-background/40 transition focus:border-primary/50",
     socialButtonsBlockButton: "border-border/80 hover:bg-muted/50",
-    footer: "text-muted-foreground",
+    footer: "hidden",
+    footerAction: "hidden",
+    footerActionText: "hidden",
+    footerActionLink: "hidden",
+    badge: "hidden",
+    internal: "hidden",
     headerTitle: "text-foreground",
     headerSubtitle: "text-muted-foreground",
     formFieldLabel: "text-foreground/90",

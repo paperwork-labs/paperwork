@@ -13,7 +13,22 @@ Runbook for the Studio app (`apps/studio`) identity stack: Clerk (primary SSO) w
 
 **Custom prefix** is not used (empty) — do not add a `STUDIO_` or other prefix to these variable names in Vercel or `.env`.
 
-Optional Clerk URLs (e.g. sign-in/after-sign-in redirects) can be set per [Clerk environment variable docs](https://clerk.com/docs/guides/development/clerk-environment-variables) if the dashboard defaults are insufficient.
+## Embedded `<SignIn />` on first-party routes (required)
+
+Paperwork Studio does **not** rely on Clerk’s hosted Account Portal (`accounts.*`). Auth uses embedded `<SignIn />` / `<SignUp />` on `/sign-in` and `/sign-up`. That removes the need to maintain `accounts.paperworklabs.com` DNS for login and avoids Clerk’s non-removable “Powered by Clerk” footer on the portal (non–Clerk Pro).
+
+| Variable | Value | Purpose |
+| -------- | ----- | ------- |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` | Aligns with `<ClerkProvider signInUrl="/sign-in">` in `apps/studio/src/app/layout.tsx` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` | Same for sign-up |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` | `/admin` | Fallback after sign-in when no `redirect_url` is present |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` | `/admin` | Same for sign-up |
+
+Set these on the **Studio** Vercel project. Do **not** add `NEXT_PUBLIC_CLERK_DOMAIN` or alter Marketplace-provisioned publishable/secret keys for this.
+
+### Branding
+
+`studio-clerk-appearance.ts` suppresses Clerk’s residual footer wordmark (“Secured by Clerk”) via `appearance.elements` (`footer`, `footerAction*`, `badge`, `internal` → Tailwind `hidden`). Sign-in and sign-up pages add a **Paperwork Labs** / **Single Sign-On** wordmark above the form.
 
 **Basic Auth** (unchanged) still uses:
 

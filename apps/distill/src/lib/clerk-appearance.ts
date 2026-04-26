@@ -25,7 +25,12 @@ export const distillClerkAppearance = {
     formFieldInput: "border-teal-800/80 bg-slate-950/50 transition focus:border-[#0F766E]",
     socialButtonsBlockButton:
       "border-teal-800/60 hover:bg-teal-950/50 hover:border-[#C2410C]/40",
-    footer: "text-slate-500",
+    footer: "hidden",
+    footerAction: "hidden",
+    footerActionText: "hidden",
+    footerActionLink: "hidden",
+    badge: "hidden",
+    internal: "hidden",
     headerTitle: "text-slate-100",
     headerSubtitle: "text-slate-400",
     formFieldLabel: "text-slate-200",

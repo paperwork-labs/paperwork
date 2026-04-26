@@ -11,7 +11,20 @@ Runbook for the LaunchFree app (`apps/launchfree`) identity stack: Clerk (primar
 
 **Custom prefix** is not used — do not add an `LAUNCHFREE_` or other prefix to these names in Vercel or `.env`.
 
-Optional Clerk URLs (redirects) follow [Clerk environment variable docs](https://clerk.com/docs/guides/development/clerk-environment-variables) if dashboard defaults are insufficient.
+## Embedded `<SignIn />` on first-party routes (required)
+
+LaunchFree uses embedded auth on `/sign-in` and `/sign-up`, not the hosted Account Portal—no `accounts.*` DNS; avoids non-removable Clerk portal branding on Hobby.
+
+| Variable | Value |
+| -------- | ----- |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` | `/dashboard` |
+| `NEXT_PUBLIC_CLERK_SIGN_UP_FALLBACK_REDIRECT_URL` | `/dashboard` |
+
+Aligns with `<ClerkProvider signInUrl` / `signUpUrl` in `apps/launchfree/src/app/layout.tsx`. Do not set `NEXT_PUBLIC_CLERK_DOMAIN` or change Clerk keys for this.
+
+**Branding:** `launchfree-clerk-appearance.ts` hides Clerk footer chrome; auth pages show **Paperwork Labs** / **Single Sign-On** above the form.
 
 **Basic Auth** (admin surfaces only, production) uses:
 

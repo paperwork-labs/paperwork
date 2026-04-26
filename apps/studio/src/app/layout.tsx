@@ -58,7 +58,11 @@ export default function RootLayout({
         data-theme="studio"
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
       >
-        <ClerkProvider appearance={studioClerkAppearance}>
+        <ClerkProvider
+          appearance={studioClerkAppearance}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+        >
           {children}
           <StudioInstallPrompt />
           <Analytics />

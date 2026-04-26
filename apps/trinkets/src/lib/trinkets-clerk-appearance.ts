@@ -28,7 +28,12 @@ export const trinketsClerkAppearance = {
       "border-stone-700/90 bg-stone-950/50 transition focus:border-sky-400/80 focus:ring-sky-400/20",
     socialButtonsBlockButton:
       "border-indigo-500/40 hover:bg-indigo-950/50 hover:border-sky-400/30",
-    footer: "text-stone-500",
+    footer: "hidden",
+    footerAction: "hidden",
+    footerActionText: "hidden",
+    footerActionLink: "hidden",
+    badge: "hidden",
+    internal: "hidden",
     headerTitle: "text-stone-100",
     headerSubtitle: "text-stone-400",
     formFieldLabel: "text-stone-200",

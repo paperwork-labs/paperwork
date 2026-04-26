@@ -25,7 +25,12 @@ export const studioClerkAppearance = {
     formFieldInput:
       "border-zinc-700/90 bg-zinc-950/40 transition focus:border-zinc-500",
     socialButtonsBlockButton: "border-zinc-700/80 hover:bg-zinc-800/60",
-    footer: "text-zinc-500",
+    footer: "hidden",
+    footerAction: "hidden",
+    footerActionText: "hidden",
+    footerActionLink: "hidden",
+    badge: "hidden",
+    internal: "hidden",
     headerTitle: "text-zinc-100",
     headerSubtitle: "text-zinc-400",
     formFieldLabel: "text-zinc-200",

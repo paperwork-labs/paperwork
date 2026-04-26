@@ -80,7 +80,11 @@ export default function RootLayout({
         data-theme="filefree"
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
-        <ClerkProvider appearance={fileFreeClerkAppearance}>
+        <ClerkProvider
+          appearance={fileFreeClerkAppearance}
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+        >
           <Providers>
             <Nav />
             {/* Pages provide their own <main>; wrapper is a div to avoid nested mains. */}
