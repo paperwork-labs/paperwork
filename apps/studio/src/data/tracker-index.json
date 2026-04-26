@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "a188b77a57f1",
+  "content_hash": "5db51b8f0cf5",
   "products": [
     {
       "label": "AxiomFolio",
@@ -282,6 +282,7 @@
         "_Tracking \u2014 updates as each track ships_",
         "shipped 2026-04-25: **T2.3** \u2014 Persona vocabulary unified across Brain `PersonaSpec/`, Studio `WORKFLOW_META`, `system-graph.json` `owner_persona`, and n8n `persona_pin`. CI gate `scripts/check_persona_vocabulary.py` blocks future drift. PR #150.",
         "shipped 2026-04-25: **T3.1b** \u2014 Studio Clerk pages adopt the dark-themed `studioClerkAppearance` (HSL CSS-var bridge to Clerk variables + custom `elements` Tailwind). PR #152.",
+        "shipped 2026-04-25: **T3.4** \u2014 AxiomFolio `axiomfolio-next` Clerk UI themed via `axiomfolioClerkAppearance` + `ClerkAuthPageShell`; `@clerk/themes` aligned with other apps. Runbook: [docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming).",
         "shipped 2026-04-25: **T4** \u2014 Replaced Studio's placeholder DAG views with `@xyflow/react` graphs that survive real persona / workflow shapes (zoom, pan, labelled edges). PR #147."
       ],
       "owner": "engineering",
@@ -294,7 +295,6 @@
         148,
         153,
         160,
-        166,
         150,
         151,
         152,
