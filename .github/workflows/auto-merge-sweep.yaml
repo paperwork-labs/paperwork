@@ -1,0 +1,163 @@
+name: Auto-merge dependabot sweep
+
+# Scheduled sweep that auto-merges dependabot PRs which are CI-green and
+# have no blocking conflicts/labels. Companion to auto-merge.yaml — that
+# workflow handles human-authored approved PRs but punts dependabot PRs
+# here because review/check_suite events fire with a read-only token for
+# dependabot-authored branches.
+#
+# Policy:
+#   - dependabot/dependabot-preview only
+#   - all completed checks must be success/skipped/neutral
+#   - any pending or failing check → skip (leave for human triage)
+#   - blocking labels (blocked, do-not-merge, wip) → skip
+#   - merge conflicts (pr.mergeable === false) → skip
+#   - mergeability still computing (null) → skip and retry next tick
+#
+# We trust CI: a passing check matrix means the bump did not break
+# typecheck/test/lint/build at our coverage level. Major bumps that
+# do break things will fail CI and stay parked for human review.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Single PR number to attempt (omit for full sweep)"
+        required: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: auto-merge-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const SELF_CHECK_NAMES = new Set(['auto-merge', 'sweep', 'Auto-merge dependabot sweep']);
+
+            const isBotPR = (pr) =>
+              pr?.user?.login === 'dependabot[bot]' ||
+              pr?.user?.login === 'dependabot-preview[bot]';
+
+            async function loadPR(num) {
+              const { data: pr } = await github.rest.pulls.get({
+                owner, repo, pull_number: num,
+              });
+              return pr;
+            }
+
+            async function checksReady(sha) {
+              const { data } = await github.rest.checks.listForRef({
+                owner, repo, ref: sha, per_page: 100,
+              });
+              const notReady = data.check_runs.filter(
+                (c) =>
+                  !SELF_CHECK_NAMES.has(c.name) &&
+                  !(c.status === 'completed' &&
+                    ['success', 'skipped', 'neutral'].includes(c.conclusion))
+              );
+              return { ok: notReady.length === 0, notReady };
+            }
+
+            async function attemptMerge(pr) {
+              const num = pr.number;
+
+              if (pr.draft) return { action: 'skip', reason: 'draft' };
+
+              const labels = (pr.labels || []).map((l) => l.name);
+              const blocking = labels.filter((l) =>
+                ['blocked', 'do-not-merge', 'wip', 'hold'].includes(l)
+              );
+              if (blocking.length > 0) {
+                return { action: 'skip', reason: `blocking label: ${blocking.join(',')}` };
+              }
+
+              if (pr.mergeable === false) {
+                return { action: 'skip', reason: 'conflicts' };
+              }
+              if (pr.mergeable === null) {
+                return { action: 'skip', reason: 'mergeability computing' };
+              }
+
+              const { ok, notReady } = await checksReady(pr.head.sha);
+              if (!ok) {
+                const summary = notReady
+                  .slice(0, 3)
+                  .map((c) => `${c.name}=${c.status}/${c.conclusion ?? 'pending'}`)
+                  .join(', ');
+                return { action: 'skip', reason: `CI not green: ${summary}` };
+              }
+
+              try {
+                await github.rest.pulls.merge({
+                  owner,
+                  repo,
+                  pull_number: num,
+                  merge_method: 'squash',
+                });
+                return { action: 'merged' };
+              } catch (e) {
+                return { action: 'error', reason: e.message };
+              }
+            }
+
+            const summaries = [];
+            const dispatchPRNum = parseInt(
+              core.getInput('pr_number') ||
+                context.payload.inputs?.pr_number ||
+                '0',
+              10
+            );
+
+            if (dispatchPRNum) {
+              const pr = await loadPR(dispatchPRNum);
+              if (!isBotPR(pr)) {
+                summaries.push(`#${dispatchPRNum}: skip — not a dependabot PR`);
+              } else {
+                const r = await attemptMerge(pr);
+                summaries.push(
+                  `#${dispatchPRNum}: ${r.action}${r.reason ? ' — ' + r.reason : ''}`
+                );
+              }
+            } else {
+              const { data: openPRs } = await github.rest.pulls.list({
+                owner,
+                repo,
+                state: 'open',
+                per_page: 100,
+              });
+              const dependabotPRs = openPRs.filter(isBotPR);
+              core.info(`Found ${dependabotPRs.length} open dependabot PRs`);
+
+              for (const stub of dependabotPRs) {
+                try {
+                  const pr = await loadPR(stub.number);
+                  const r = await attemptMerge(pr);
+                  summaries.push(
+                    `#${stub.number}: ${r.action}${r.reason ? ' — ' + r.reason : ''}`
+                  );
+                } catch (e) {
+                  summaries.push(`#${stub.number}: fatal — ${e.message}`);
+                }
+              }
+            }
+
+            const summaryBody = summaries.join('\n') || 'no action taken';
+            core.info(summaryBody);
+            await core.summary
+              .addHeading('Dependabot sweep summary')
+              .addCodeBlock(summaryBody, 'text')
+              .write();
