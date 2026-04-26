@@ -1,9 +1,12 @@
 import { SignUp } from "@clerk/nextjs";
 
+import { ClerkAuthPageShell } from "@/components/clerk/ClerkAuthPageShell";
+import { axiomfolioClerkAppearance } from "@/lib/axiomfolio-clerk-appearance";
+
 export default function SignUpPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center p-6">
-      <SignUp />
-    </div>
+    <ClerkAuthPageShell>
+      <SignUp appearance={axiomfolioClerkAppearance} />
+    </ClerkAuthPageShell>
   );
 }
