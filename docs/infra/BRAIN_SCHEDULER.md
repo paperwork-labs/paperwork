@@ -39,7 +39,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | n8n workflow name | Schedule (5-field or interval) | Status in Brain |
 | --- | --- | --- |
 | Brain Daily Trigger | `0 7 * * *` | **Cutover (T1.2):** real job `brain_daily_briefing` when `BRAIN_OWNS_DAILY_BRIEFING=true`; otherwise optional n8n shadow `n8n_shadow_brain_daily` |
-| Brain Weekly Trigger | `0 18 * * 0` | shadow |
+| Brain Weekly Trigger | `0 18 * * 0` | **Cutover (T1.5 — Brain Weekly):** real job `brain_weekly_briefing` when `BRAIN_OWNS_BRAIN_WEEKLY=true`; otherwise optional n8n shadow `n8n_shadow_brain_weekly` |
 | Sprint Kickoff | `0 7 * * 1` | shadow |
 | Sprint Close | `0 21 * * 5` | shadow |
 | Weekly Strategy Check-in | `0 9 * * 1` | **Cutover (T1.6):** real job `brain_weekly_strategy` when `BRAIN_OWNS_WEEKLY_STRATEGY=true`; otherwise optional n8n shadow `n8n_shadow_weekly_strategy` |
@@ -61,6 +61,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | `SCHEDULER_N8N_MIRROR_ENABLED` | `false` | When `true`, register **all** n8n shadow mirror jobs (subject to per-job overrides below). Requires the rest of the scheduler: `BRAIN_SCHEDULER_ENABLED=true`. |
 | `SCHEDULER_N8N_MIRROR_<ID>` | _(unset)_ | **Per-mirror opt-in (or opt-out).** When set, that job uses this boolean instead of the global. `<ID>` is the mirror **job_id** in uppercase with underscores, e.g. `SCHEDULER_N8N_MIRROR_N8N_SHADOW_BRAIN_DAILY=true`. If unset, the job follows `SCHEDULER_N8N_MIRROR_ENABLED`. |
 | `BRAIN_OWNS_DAILY_BRIEFING` | `false` | **First real n8n→Brain cutover (T1.2).** When `true`, registers the `brain_daily_briefing` job (07:00 UTC, `CronTrigger` parity with n8n's `0 7 * * *`) and **suppresses** the `n8n_shadow_brain_daily` shadow so only one schedule drives the daily briefing. Requires `BRAIN_SCHEDULER_ENABLED=true`. |
+| `BRAIN_OWNS_BRAIN_WEEKLY` | `false` | **T1.5 — Brain Weekly cutover.** When `true`, registers `brain_weekly_briefing` (Sundays 18:00 UTC, `0 18 * * 0`), calls `agent.process` with the same message/channel as `brain-weekly-trigger.json` (`#all-paperwork-labs`), and **suppresses** `n8n_shadow_brain_weekly`. Requires `BRAIN_SCHEDULER_ENABLED=true`. |
 | `BRAIN_OWNS_INFRA_HEARTBEAT` | `false` | **T1.3 cutover.** When `true`, registers the first-party in-process job `brain_infra_heartbeat` (08:00 UTC) and **suppresses** the `n8n_shadow_infra_heartbeat` mirror (same Slack shape as the n8n Infra Heartbeat workflow). When `false`, n8n + optional shadow remain the source of the heartbeat until you cut over. |
 | `BRAIN_OWNS_WEEKLY_STRATEGY` | `false` | **T1.6 cutover.** When `true`, registers `brain_weekly_strategy` (Mondays 09:00 UTC) calling `agent.process` with the `strategy` persona and posts to `#all-paperwork-labs` (same channel as `weekly-strategy-checkin.json`), and **suppresses** `n8n_shadow_weekly_strategy`. |
 | `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `false` | **T1.4 cutover.** When `true`, registers `brain_credential_expiry` (08:00 UTC), posts the same **Credential Expiry Report** to `#alerts` as the n8n workflow, and **suppresses** `n8n_shadow_credential_expiry`. Requires `SECRETS_API_KEY`, `STUDIO_URL`, and `SLACK_BOT_TOKEN` like the n8n path. |
@@ -72,6 +73,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | APScheduler `job_id` | Env flag (enable Brain-owned path) | Schedule (UTC) | n8n shadow id suppressed when flag is on |
 | --- | --- | --- | --- |
 | `brain_daily_briefing` | `BRAIN_OWNS_DAILY_BRIEFING` | `0 7 * * *` | `n8n_shadow_brain_daily` |
+| `brain_weekly_briefing` | `BRAIN_OWNS_BRAIN_WEEKLY` | `0 18 * * 0` | `n8n_shadow_brain_weekly` |
 | `brain_weekly_strategy` | `BRAIN_OWNS_WEEKLY_STRATEGY` | `0 9 * * 1` | `n8n_shadow_weekly_strategy` |
 | `brain_infra_heartbeat` | `BRAIN_OWNS_INFRA_HEARTBEAT` | `0 8 * * *` | `n8n_shadow_infra_heartbeat` |
 | `brain_credential_expiry` | `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `0 8 * * *` | `n8n_shadow_credential_expiry` |
@@ -151,8 +153,8 @@ ORDER BY id;
 
 - Decision log: [Company Knowledge](../KNOWLEDGE.md) (2026-04-25 — Brain owns schedules; SQLAlchemy job store).
 - Sprint: [Streamline + SSO + Real DAGs](../sprints/STREAMLINE_SSO_DAGS_2026Q2.md) (T1 orchestration / shadow period).
-- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/credential_expiry.py`.
+- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/brain_weekly_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/credential_expiry.py`.
 
 ---
 
-**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
+**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_brain_weekly.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
