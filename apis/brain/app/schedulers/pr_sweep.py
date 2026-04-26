@@ -176,6 +176,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install weekly_strategy job")
 
     try:
+        from app.schedulers import sprint_auto_logger
+
+        sprint_auto_logger.install(sched)
+    except Exception:
+        logger.exception("Failed to install sprint_auto_logger job")
+
+    try:
         from app.schedulers import infra_heartbeat
 
         infra_heartbeat.install(sched)

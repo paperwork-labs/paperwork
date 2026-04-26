@@ -411,6 +411,13 @@ docs:
     tags: [sprint, infra, automation]
     owners: [engineering, agent-ops]
     category: sprints
+  - slug: sprint-automation-2026q3
+    path: docs/sprints/SPRINT_AUTOMATION_2026Q3.md
+    title: Sprint Automation (2026 Q3)
+    summary: "Close the Studio sprint-progress loop: Brain-owned sprint auto-logger appends shipped PR lines to docs/sprints/*.md; acceptance criteria for idempotent bot PRs and prod cutover."
+    tags: [company, sprint, automation]
+    owners: [engineering]
+    category: sprints
   - slug: streamline-sso-dags-2026q2
     path: docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md
     title: Streamline + SSO + Real DAGs (2026 Q2)

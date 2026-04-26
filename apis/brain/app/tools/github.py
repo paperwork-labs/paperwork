@@ -3,6 +3,7 @@
 import base64
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import quote
 
@@ -424,3 +425,264 @@ async def merge_github_pr(number: int, merge_method: str = "squash") -> str:
     except (httpx.RequestError, ValueError) as e:
         logger.warning("merge_github_pr failed: #%s %s", number, e)
         return _scrub(f"merge_github_pr error: {e}")
+
+
+async def get_github_pull_dict(number: int) -> dict[str, Any] | None:
+    """Fetch one PR as JSON (internal automation). Returns None on 404."""
+    owner, repo = _repo_parts()
+    try:
+        async with _gh_client() as client:
+            r = await client.get(f"/repos/{owner}/{repo}/pulls/{number}")
+            if r.status_code == 404:
+                return None
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPStatusError as e:
+        logger.warning("get_github_pull_dict failed: #%s %s", number, e)
+        return None
+    except (httpx.RequestError, ValueError) as e:
+        logger.warning("get_github_pull_dict failed: #%s %s", number, e)
+        return None
+
+
+async def search_merged_pr_numbers_since(since_utc: datetime, *, per_page: int = 100) -> list[int]:
+    """List merged PR numbers merged on or after ``since_utc``'s date (UTC).
+
+    Results are filtered client-side with ``merged_at > since_utc`` when present
+    on the pull payload (search index can lag).
+    """
+    owner, repo = _repo_parts()
+    if since_utc.tzinfo is None:
+        since_utc = since_utc.replace(tzinfo=timezone.utc)
+    day = since_utc.strftime("%Y-%m-%d")
+    q = f"repo:{owner}/{repo} is:pr is:merged merged:>={day}"
+    nums: list[int] = []
+    page = 1
+    try:
+        async with _gh_client() as client:
+            while page <= 10:
+                r = await client.get(
+                    "/search/issues",
+                    params={"q": q, "per_page": per_page, "page": page},
+                )
+                if r.status_code == 422:
+                    logger.warning("search_merged_pr_numbers_since: %s", _error_message("search", r))
+                    break
+                r.raise_for_status()
+                payload: dict[str, Any] = r.json()
+                items = payload.get("items") or []
+                if not items:
+                    break
+                for it in items:
+                    num = it.get("number")
+                    if isinstance(num, int):
+                        nums.append(num)
+                if len(items) < per_page:
+                    break
+                page += 1
+    except httpx.HTTPStatusError as e:
+        logger.warning("search_merged_pr_numbers_since failed: %s", e)
+        return []
+    except (httpx.RequestError, ValueError) as e:
+        logger.warning("search_merged_pr_numbers_since failed: %s", e)
+        return []
+
+    seen: set[int] = set()
+    ordered: list[int] = []
+    for n in nums:
+        if n not in seen:
+            seen.add(n)
+            ordered.append(n)
+
+    filtered: list[int] = []
+    for n in ordered:
+        pr = await get_github_pull_dict(n)
+        if not pr:
+            continue
+        merged_at = pr.get("merged_at")
+        if not merged_at:
+            continue
+        try:
+            mdt = datetime.fromisoformat(str(merged_at).replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if mdt > since_utc:
+            filtered.append(n)
+    return filtered
+
+
+def _git_ref_url_suffix(ref: str) -> str:
+    """Build URL path segment for ``git/ref/…`` (encode ``/`` in branch names)."""
+    r = ref.strip().removeprefix("refs/")
+    if not r.startswith("heads/"):
+        r = f"heads/{r}"
+    _, _, tail = r.partition("heads/")
+    return "heads/" + quote(tail, safe="")
+
+
+async def get_git_ref_sha(ref: str) -> str | None:
+    """Resolve ``ref`` like ``main``, ``heads/main``, or ``refs/heads/main`` to SHA."""
+    owner, repo = _repo_parts()
+    suffix = _git_ref_url_suffix(ref)
+    try:
+        async with _gh_client() as client:
+            r = await client.get(f"/repos/{owner}/{repo}/git/ref/{suffix}")
+            if r.status_code == 404:
+                return None
+            r.raise_for_status()
+            data: dict[str, Any] = r.json()
+    except httpx.HTTPStatusError as e:
+        logger.warning("get_git_ref_sha failed: %s", e)
+        return None
+    except (httpx.RequestError, ValueError) as e:
+        logger.warning("get_git_ref_sha failed: %s", e)
+        return None
+
+    obj = data.get("object") or {}
+    sha = obj.get("sha")
+    if isinstance(sha, str) and len(sha) == 40:
+        return sha
+    return None
+
+
+async def create_git_ref(ref: str, sha: str) -> bool:
+    """Create a branch ref (``refs/heads/...``). Returns False on failure."""
+    owner, repo = _repo_parts()
+    ref_full = ref if ref.startswith("refs/") else f"refs/heads/{ref}"
+    try:
+        async with _gh_client() as client:
+            r = await client.post(
+                f"/repos/{owner}/{repo}/git/refs",
+                json={"ref": ref_full, "sha": sha},
+            )
+            if r.status_code in (422, 409):
+                logger.warning("create_git_ref: %s", _error_message("create_git_ref", r))
+                return False
+            r.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        logger.warning("create_git_ref failed: %s", e)
+        return False
+    except (httpx.RequestError, ValueError) as e:
+        logger.warning("create_git_ref failed: %s", e)
+        return False
+    return True
+
+
+async def commit_files_to_branch(branch: str, message: str, files: dict[str, str]) -> str | None:
+    """Create a single commit on ``branch`` updating ``files`` (path → full content).
+
+    Returns new commit SHA or None on failure.
+    """
+    owner, repo = _repo_parts()
+    branch_clean = branch.strip().removeprefix("refs/heads/")
+    if not files:
+        return None
+    try:
+        async with _gh_client() as client:
+            head_sha = await get_git_ref_sha(f"heads/{branch_clean}")
+            if not head_sha:
+                return None
+            cr = await client.get(f"/repos/{owner}/{repo}/git/commits/{head_sha}")
+            cr.raise_for_status()
+            commit_obj: dict[str, Any] = cr.json()
+            base_tree = commit_obj.get("tree", {}).get("sha")
+            if not isinstance(base_tree, str):
+                return None
+
+            tree_entries: list[dict[str, Any]] = []
+            for path, content in files.items():
+                tree_entries.append({
+                    "path": path.strip().lstrip("/"),
+                    "mode": "100644",
+                    "type": "blob",
+                    "content": content,
+                })
+
+            tr = await client.post(
+                f"/repos/{owner}/{repo}/git/trees",
+                json={"base_tree": base_tree, "tree": tree_entries},
+            )
+            tr.raise_for_status()
+            new_tree = tr.json().get("sha")
+            if not isinstance(new_tree, str):
+                return None
+
+            cm = await client.post(
+                f"/repos/{owner}/{repo}/git/commits",
+                json={
+                    "message": message.strip(),
+                    "tree": new_tree,
+                    "parents": [head_sha],
+                },
+            )
+            cm.raise_for_status()
+            new_commit = cm.json().get("sha")
+            if not isinstance(new_commit, str):
+                return None
+
+            ref_suffix = _git_ref_url_suffix(branch_clean)
+            ur = await client.patch(
+                f"/repos/{owner}/{repo}/git/refs/{ref_suffix}",
+                json={"sha": new_commit},
+            )
+            ur.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        logger.warning("commit_files_to_branch failed: %s", e)
+        return None
+    except (httpx.RequestError, ValueError) as e:
+        logger.warning("commit_files_to_branch failed: %s", e)
+        return None
+    return new_commit
+
+
+async def create_github_pull(
+    head: str,
+    base: str,
+    title: str,
+    body: str,
+) -> dict[str, Any] | None:
+    """Open a PR; returns JSON dict with ``number`` and ``html_url`` or None."""
+    owner, repo = _repo_parts()
+    try:
+        async with _gh_client() as client:
+            r = await client.post(
+                f"/repos/{owner}/{repo}/pulls",
+                json={
+                    "title": title.strip()[:256],
+                    "head": head.strip(),
+                    "base": base.strip(),
+                    "body": (body or "").strip()[:65_000],
+                },
+            )
+            if r.status_code == 422:
+                logger.warning("create_github_pull: %s", _error_message("create_github_pull", r))
+                return None
+            r.raise_for_status()
+            return r.json()
+    except httpx.HTTPStatusError as e:
+        logger.warning("create_github_pull failed: %s", e)
+        return None
+    except (httpx.RequestError, ValueError) as e:
+        logger.warning("create_github_pull failed: %s", e)
+        return None
+
+
+async def add_github_issue_labels(issue_number: int, labels: list[str]) -> None:
+    """Attach labels to a PR/issue."""
+    if not labels:
+        return
+    owner, repo = _repo_parts()
+    clean = [str(lab).strip() for lab in labels if str(lab).strip()]
+    if not clean:
+        return
+    try:
+        async with _gh_client() as client:
+            r = await client.post(
+                f"/repos/{owner}/{repo}/issues/{issue_number}/labels",
+                json={"labels": clean},
+            )
+            r.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        logger.warning("add_github_issue_labels failed: #%s %s", issue_number, e)
+    except (httpx.RequestError, ValueError) as e:
+        logger.warning("add_github_issue_labels failed: #%s %s", issue_number, e)
