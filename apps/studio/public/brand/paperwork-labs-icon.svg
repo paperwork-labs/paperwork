@@ -1,0 +1,11 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Paperwork Labs">
+  <!-- Outer paperclip wire: closed rounded rectangle -->
+  <rect x="20" y="22" width="88" height="84" rx="18"
+        stroke="#3274F0" stroke-width="11" fill="none"/>
+  <!-- Inner paperclip wire: 3-sided shape opening leftward, terminates at bottom-left -->
+  <path d="M40 40 L84 40 A8 8 0 0 1 92 48 L92 80 A8 8 0 0 1 84 88 L40 88"
+        stroke="#3274F0" stroke-width="11" fill="none"
+        stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Amber accent dot at the inner wire terminus -->
+  <circle cx="40" cy="88" r="5.5" fill="#F59E0B"/>
+</svg>

@@ -8,23 +8,34 @@ alwaysApply: true
 ## Brand Architecture
 
 ```
-PAPERWORK LABS (Holding Company — paperworklabs.com)
+PAPERWORK LABS (Holding Company - paperworklabs.com)
   "We build tools that eliminate paperwork."
   │
-  ├── CONSUMER BRANDS (free, own domains, own palettes)
+  ├── CONSUMER BRANDS (free, own domains, own CTA hue, trinity-palette mark)
   │   ├── FileFree ........... filefree.ai (free tax filing)
   │   ├── LaunchFree ......... launchfree.ai (free LLC formation)
+  │   ├── AxiomFolio ......... axiomfolio.com (portfolio + signals; absorbed 2026 Q2)
   │   └── Trinkets ........... tools.filefree.ai (utility tools)
   │
-  └── B2B BRAND (paid, one platform)
-      └── Distill ............ distill.tax (compliance automation APIs + CPA SaaS)
-          ├── Distill for CPAs (SaaS, $49-199/mo)
-          ├── Distill Tax API (per-return)
-          ├── Distill Formation API (per-filing)
-          └── Distill Compliance API (per-action)
+  ├── CONSUMER META-PRODUCT (B2C; primary standalone product)
+  │   └── Brain .............. (external name + domain TBD pending availability)
+  │       Life-intelligence engine; subsumes other products as "skills"
+  │       See docs/BRAIN_ARCHITECTURE.md (D49, F90, G01)
+  │
+  ├── B2B BRAND (paid, one platform)
+  │   └── Distill ............ distill.tax (compliance automation APIs + CPA SaaS)
+  │       ├── Distill for CPAs (SaaS, $49-199/mo)
+  │       ├── Distill Tax API (per-return)
+  │       ├── Distill Formation API (per-filing)
+  │       └── Distill Compliance API (per-action)
+  │
+  └── PUBLISHING (incidental; LLC umbrella only, no visible branding)
+      Children's books in Hindi and other languages, AI-illustrated
+      Imprint attribution: copyright page only ("Published by Paperwork Labs LLC")
+      Books carry their own series brand on covers + spines
 ```
 
-**Why this architecture**: Consumer brands are free and distinct — each owns a clear paperwork category. Distill unifies all B2B under one brand (Stripe model, not Intuit model). Paperwork Labs ties it all together as the infrastructure company.
+**Why this architecture**: Consumer brands are free and distinct - each owns a clear paperwork category. Brain is the meta-product whose "skills" are the consumer brands. Distill unifies all B2B under one brand (Stripe model, not Intuit model). Paperwork Labs is both the infrastructure company and the LLC umbrella for incidental ventures (publishing).
 
 ## Brand Names
 
@@ -37,32 +48,60 @@ PAPERWORK LABS (Holding Company — paperworklabs.com)
 
 - **FileFree** (one word, camelCase capital F's). Domain: filefree.ai. Never: File Free, Filefree, FILE FREE, File-Free, FileFree Tax
 - **LaunchFree** (one word, L and F capitalized). Domain: launchfree.ai. Never: Launch Free, Launchfree, LAUNCHFREE
+- **AxiomFolio** (one word, capital A and F). Domain: axiomfolio.com. Never: Axiom Folio, Axiomfolio, AXIOMFOLIO
 - **Distill** (one word, capital D). Domain: distill.tax. Never: DISTILL, distill (in brand context)
 - **Trinkets** (one word, capital T). Domain: tools.filefree.ai
+- **Brain** (internal codename only; external name TBD pending domain availability research). Never use "Brain" in user-facing copy until external name is confirmed. Never: BrainFill, brainfill.ai (rejected), Paperwork (paperwork.ai unavailable).
 
 ### Legal Footer (all products)
 
-"Paperwork Labs LLC | California | FileFree, LaunchFree, Distill, and Trinkets are products of Paperwork Labs LLC"
+"Paperwork Labs LLC | California | FileFree, LaunchFree, AxiomFolio, Distill, and Trinkets are products of Paperwork Labs LLC"
 
 ## Logo Assets
 
-**Status**: Logo assets pending for all products.
+**Status**: Canon as of 2026 Q2. All marks hand-authored; do not regenerate via AI tools (stroke inconsistency breaks the visual grammar).
 
-**FileFree**: Generate wordmark via Ideogram v3 (prompt: stylized "FileFree" wordmark, gradient violet-to-purple, dark background, modern sans-serif with distinctive lowercase "f" ligature). Generate monogram via Figma/Canva. Place in `apps/filefree/public/brand/`.
+| Product / surface | Icon | Lockup (light) | Lockup (dark) |
+| --- | --- | --- | --- |
+| Paperwork Labs (parent) | `apps/studio/public/brand/paperwork-labs-icon.svg` | `apps/studio/public/brand/paperwork-labs-lockup.svg` | `apps/studio/public/brand/paperwork-labs-lockup-dark.svg` |
+| Studio | `apps/studio/public/brand/studio-icon.svg` | (delegated follow-up) | (delegated follow-up) |
+| FileFree | `apps/filefree/public/brand/filefree-icon.svg` | (delegated follow-up) | (delegated follow-up) |
+| LaunchFree | `apps/launchfree/public/brand/launchfree-icon.svg` | (delegated follow-up) | (delegated follow-up) |
+| AxiomFolio | `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` | `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | (uses light on dark) |
+| Distill | `apps/distill/public/brand/distill-icon.svg` | (delegated follow-up) | (delegated follow-up) |
+| Trinkets | `apps/trinkets/public/brand/trinkets-icon.svg` | (delegated follow-up) | (delegated follow-up) |
+| Brain (candidates) | `docs/brand/brain/brain-icon-fill-meter.svg` AND `docs/brand/brain/brain-icon-orbital-dag.svg` | (chosen after pick) | (chosen after pick) |
 
-**LaunchFree**: Generate wordmark (teal-to-cyan gradient, dark background, modern sans-serif). Place in `apps/launchfree/public/brand/`.
+See `docs/brand/README.md` for full registry, visual grammar, and adding-a-new-mark workflow.
 
-**Distill**: Generate wordmark (deep blue-to-slate gradient, dark background, professional geometric sans-serif). Place in `apps/distill/public/brand/`.
+### Visual grammar (mandatory for any new mark)
 
-**Paperwork Labs**: Generate wordmark (neutral zinc/slate, clean professional). Place in `apps/studio/public/brand/`.
+1. **viewBox**: `0 0 128 128` for icons, `0 0 720 150` for lockups.
+2. **Padding**: `~16px` of breathing room from viewBox edges to mark.
+3. **Stroke width**: `9-11` for stroke-based glyphs; round caps + joins.
+4. **One amber accent dot per glyph.** Always one. Never two. The dot is reserved for canonical marks and earned moments (success states), never for CTAs.
+5. **No gradients, drop shadows, or filters** in the SVG file.
+6. **Wordmark font**: Inter 600, `letter-spacing: -0.5`, `font-size: 62`. System stack fallback.
+
+### Trinity palette (canonical marks)
+
+| Token | Light surface | Dark surface | Role |
+| --- | --- | --- | --- |
+| Azure | `#3274F0` | `#60A5FA` | Primary structural mark |
+| Amber | `#F59E0B` | `#FBBF24` | Earned accent (single dot) |
+| Slate-night | `#0F172A` | `#FAFAFA` | Wordmark + body type |
+
+Hex values come from the AxiomFolio mark (the user's hand-designed Warriors-inspired palette). Promoting AxiomFolio's anchors to the company family means we level up to the highest-quality surface, not down to the lowest common denominator.
 
 ### Logo Rules (all brands)
 
-- Minimum clear space: half the height of the logo on all sides
-- Never rotate, skew, add shadows, or place on busy backgrounds
-- On dark backgrounds: use the wordmark as-is (white + gradient)
-- On light backgrounds: use solid primary color for the full wordmark
-- Never use gradients on light backgrounds — they lose contrast
+- Minimum clear space: half the height of the logo on all sides.
+- Never rotate, skew, add shadows, or place on busy backgrounds.
+- On dark backgrounds: use the dark-variant lockup (light strokes + light wordmark).
+- On light backgrounds: use the light-variant lockup (azure strokes + slate-night wordmark).
+- Never use gradients in the canonical SVG file. Marketing surfaces add ambient effects in CSS.
+- Never recolor the amber dot. It is `#F59E0B` (light) / `#FBBF24` (dark). It is not a CTA color.
+- Never put the paperclip mark on a product page — it's parent-brand only. Each product uses its own glyph.
 
 ## Color Palettes
 
@@ -106,7 +145,7 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 | Zinc | `#71717A` | `zinc-500` | Primary |
 | Background | `#09090B` | `zinc-950` | App background |
 
-### Trinkets (Amber-Orange — Utility / Approachable / Helpful)
+### Trinkets (Amber-Orange - Utility / Approachable / Helpful)
 
 | Name | Hex | Tailwind | Usage |
 |------|-----|----------|-------|
@@ -114,6 +153,20 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 | Gradient start | `#F59E0B` | `amber-500` | Gradient start |
 | Gradient end | `#EA580C` | `orange-600` | Gradient end |
 | Background | `#0C0A09` | `stone-950` | App background |
+
+### AxiomFolio (Azure-Gold - Wealth / Trust / Earned Moments)
+
+| Name | Hex | Tailwind / Token | Usage |
+|------|-----|----------|-------|
+| Azure (brand blue) | `#3274F0` | `--auth-gradient-blue` (1D4EB8 in oklch) | Primary marks, chart equity |
+| Amber (brand gold) | `#F59E0B` | `--auth-gradient-amber` | Center dot, earned moments |
+| Background | `#0F172A` | slate-900 in dark | App background |
+
+AxiomFolio's full token system (oklch + semantic + color-blind palette + elevation scale) lives in `apps/axiomfolio/src/index.css`. This is the de-facto company baseline; per the 2026 Q2 brand canon decision, it gets promoted to `packages/ui/src/themes.css` in the engineering migration sprint.
+
+### Brain (Trinity-only - Meta-product, no separate palette)
+
+Brain uses the trinity palette (azure + amber + slate-night) without a per-product CTA hue, because Brain *is* the meta-brand. Its UI surface is the parent-brand chrome — when Brain ships, it inherits Studio's zinc-neutral chrome with azure structural marks and amber earned-moment accents.
 
 ### Shared Semantic Colors (all products)
 
@@ -172,13 +225,25 @@ Encouraging, action-oriented. The friend who actually started a business and can
 
 Closers: "Officially official." / "Your LLC. Filed." / "Go build something."
 
-### Distill (B2B voice — professional product)
+### Distill (B2B voice - professional product)
 
-Precise, competent, developer-centric. Think Stripe docs — clear, thorough, no fluff.
+Precise, competent, developer-centric. Think Stripe docs - clear, thorough, no fluff.
 
 **Tagline**: "Compliance automation for modern platforms."
 **Use**: API, integrate, automate, compliance, formation, filing, returns
-**Avoid**: free (B2B is paid), simple (it's not — compliance is complex and we respect that)
+**Avoid**: free (B2B is paid), simple (it's not - compliance is complex and we respect that)
+
+### AxiomFolio (consumer voice - portfolio / signals product)
+
+Quiet competence. The portfolio tool that takes itself seriously without taking itself too seriously.
+
+**Tagline**: TBD pending product brief.
+**Use**: portfolio, signals, regime, allocation, rebalance, performance
+**Avoid**: alpha (overused in retail), beat-the-market (compliance risk), guarantee (compliance risk)
+
+### Brain (meta-product voice - TBD)
+
+External voice locked once external name lands. Internal docs use "Brain" as codename only.
 
 ### Shared Tone Principles (all brands)
 
@@ -225,15 +290,31 @@ Distill does not have social handles. It is marketed via developer docs, blog po
 - Domain: distill.tax / api.distill.tax
 - Email: hello@distill.tax / api@distill.tax
 
+## Publishing (Incidental — Books venture)
+
+Sankalp publishes children's books in Hindi and other languages on Amazon under the Paperwork Labs LLC umbrella. Books carry their own series brand on covers and marketing; **Paperwork Labs LLC attribution appears only on the copyright page** ("Published by Paperwork Labs LLC, California").
+
+**Hard rules** (treat as compliance, not preference):
+
+- Never use the paperclip mark, the "Paperwork Labs" wordmark, or trinity palette on book covers, interiors, or marketing.
+- Never link the publishing venture from paperworklabs.com or any product app.
+- AI-generated illustrations are the standard; no human-illustrator commissions.
+- Each book series may have its own visual identity, name, and social handles (TBD per series).
+- Imprint name on copyright page is exactly: "Published by Paperwork Labs LLC, California."
+
+This rule exists so a stray AI search later doesn't sweep books into the company brand canon. Books are a Paperwork Labs LLC *line of business*, not a Paperwork Labs *product*.
+
 ## Content Review Gate (Mandatory)
 
 Every piece of user-facing content (email, social post, in-app message, landing page copy) must pass this checklist before publishing:
 
-- Brand names spelled correctly (FileFree, LaunchFree -- proper nouns, correct casing)
-- "Free" claims are 100% accurate with no hidden conditions
-- Tax content uses education framing, not advice ("many do X" not "you should X")
-- Legal content uses services framing, not advice
-- Circular 230 / UPL disclaimer present where applicable
-- FTC affiliate disclosure present if recommending partner products
-- CAN-SPAM compliant (unsubscribe, physical address, honest subject line)
-- No reference to filefree.com anywhere
+- Brand names spelled correctly (FileFree, LaunchFree, AxiomFolio -- proper nouns, correct casing).
+- "Free" claims are 100% accurate with no hidden conditions.
+- Tax content uses education framing, not advice ("many do X" not "you should X").
+- Legal content uses services framing, not advice.
+- Circular 230 / UPL disclaimer present where applicable.
+- FTC affiliate disclosure present if recommending partner products.
+- CAN-SPAM compliant (unsubscribe, physical address, honest subject line).
+- No reference to filefree.com anywhere.
+- Brain is not mentioned in user-facing copy until external name + domain are locked.
+- Books venture is never cross-linked from product apps or paperworklabs.com.

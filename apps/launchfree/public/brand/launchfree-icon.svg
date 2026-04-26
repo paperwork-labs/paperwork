@@ -1,0 +1,21 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="LaunchFree">
+  <!-- Stacked launch chevrons (motion upward), tightest on top -->
+  <path
+    d="M28 96 L64 60 L100 96"
+    stroke="#3274F0"
+    stroke-width="11"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+  <path
+    d="M40 70 L64 46 L88 70"
+    stroke="#3274F0"
+    stroke-width="11"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    fill="none"
+  />
+  <!-- Tip dot in amber: the "ignition" -->
+  <circle cx="64" cy="28" r="6" fill="#F59E0B"/>
+</svg>

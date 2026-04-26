@@ -1,0 +1,19 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Brain (orbital-DAG candidate)">
+  <!-- Brain as orbital DAG (per BRAIN_PHILOSOPHY.md):
+       three concentric arcs around a central node, plus a satellite node.
+       Visual story: knowledge orbits the user. -->
+  <path
+    d="M 64 18 A 46 46 0 1 1 100 100"
+    stroke="#3274F0" stroke-width="9" stroke-linecap="round" fill="none"
+  />
+  <path
+    d="M 96 64 A 32 32 0 1 1 64 32"
+    stroke="#3274F0" stroke-width="9" stroke-linecap="round" fill="none" opacity="0.7"
+  />
+  <path
+    d="M 46 64 A 18 18 0 1 1 78 70"
+    stroke="#3274F0" stroke-width="9" stroke-linecap="round" fill="none" opacity="0.55"
+  />
+  <circle cx="64" cy="64" r="7" fill="#F59E0B"/>
+  <circle cx="100" cy="100" r="6" fill="#3274F0"/>
+</svg>

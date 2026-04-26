@@ -1,0 +1,12 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Distill">
+  <!-- Funnel: trapezoid narrowing to a stem, the metaphor for distillation -->
+  <path
+    d="M22 28 L106 28 L74 70 L74 100 L54 100 L54 70 Z"
+    stroke="#3274F0"
+    stroke-width="10"
+    stroke-linejoin="round"
+    fill="none"
+  />
+  <!-- Refined droplet emerging from the stem in amber -->
+  <circle cx="64" cy="112" r="6" fill="#F59E0B"/>
+</svg>
