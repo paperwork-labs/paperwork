@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "e4efa8698ee1",
+  "content_hash": "37e8bcf5b7f9",
   "products": [
     {
       "label": "AxiomFolio",
@@ -284,8 +284,9 @@
         "_Tracking \u2014 updates as each track ships_",
         "shipped 2026-04-25: **T2.3** \u2014 Persona vocabulary unified across Brain `PersonaSpec/`, Studio `WORKFLOW_META`, `system-graph.json` `owner_persona`, and n8n `persona_pin`. CI gate `scripts/check_persona_vocabulary.py` blocks future drift. PR #150.",
         "shipped 2026-04-25: **T3.1b** \u2014 Studio Clerk pages adopt the dark-themed `studioClerkAppearance` (HSL CSS-var bridge to Clerk variables + custom `elements` Tailwind). PR #152.",
-        "shipped 2026-04-25: **T3.4** \u2014 AxiomFolio `axiomfolio-next` Clerk UI themed via `axiomfolioClerkAppearance` + `ClerkAuthPageShell`; `@clerk/themes` aligned with other apps. Runbook: [docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming).",
-        "shipped 2026-04-25: **T4** \u2014 Replaced Studio's placeholder DAG views with `@xyflow/react` graphs that survive real persona / workflow shapes (zoom, pan, labelled edges). PR #147."
+        "shipped 2026-04-25: **T3.4** \u2014 AxiomFolio `axiomfolio-next` Clerk UI themed via `axiomfolioClerkAppearance` + `ClerkAuthPageShell`; `@clerk/themes` aligned with other apps. Runbook: [docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming). PR #167.",
+        "shipped 2026-04-25: **T4** \u2014 Replaced Studio's placeholder DAG views with `@xyflow/react` graphs that survive real persona / workflow shapes (zoom, pan, labelled edges). PR #147.",
+        "shipped 2026-04-26: **T5 (settings ports)** \u2014 Remaining settings routes: account risk, data privacy, notifications, and users (`apps/axiomfolio-next/src/app/settings/*`, client components under `src/components/settings/`). PR #169."
       ],
       "owner": "engineering",
       "path": "docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md",
@@ -298,16 +299,20 @@
         153,
         160,
         166,
+        170,
+        168,
         150,
         151,
         152,
         155,
         156,
+        167,
         147,
         146,
         149,
         154,
-        157
+        157,
+        169
       ],
       "ships": [],
       "slug": "streamline-sso-dags-2026q2",
