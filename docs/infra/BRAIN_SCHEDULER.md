@@ -66,6 +66,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | `BRAIN_OWNS_WEEKLY_STRATEGY` | `false` | **T1.6 cutover.** When `true`, registers `brain_weekly_strategy` (Mondays 09:00 UTC) calling `agent.process` with the `strategy` persona and posts to `#all-paperwork-labs` (same channel as `weekly-strategy-checkin.json`), and **suppresses** `n8n_shadow_weekly_strategy`. |
 | `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `false` | **T1.4 cutover.** When `true`, registers `brain_credential_expiry` (08:00 UTC), posts the same **Credential Expiry Report** to `#alerts` as the n8n workflow, and **suppresses** `n8n_shadow_credential_expiry`. Requires `SECRETS_API_KEY`, `STUDIO_URL`, and `SLACK_BOT_TOKEN` like the n8n path. |
 | `BRAIN_OWNS_INFRA_HEALTH` | `false` | **T1 (interval) cutover — first `IntervalTrigger` first-party job.** When `true`, registers `brain_infra_health` every **30 minutes** (n8n `infra-health-check.json` parity: n8n API workflow counts, deduped Slack to engineering). **Suppresses** `n8n_shadow_infra_health`. Optional: `INFRA_HEALTH_REMINDER_HOURS` (default `4`) re-alerts the same bad fingerprint after that many hours (n8n export only used fingerprint; Brain adds a sustained-failure nudge). |
+| `BRAIN_OWNS_SPRINT_AUTO_LOGGER` | `false` | **Sprint automation (Q3).** When `true`, registers `sprint_auto_logger` (every **15** minutes UTC). Ingests merged PRs with explicit sprint markers (`Sprint:` line in the PR body and/or `sprint:*` labels), then opens **one** batched PR per tick to append `- shipped YYYY-MM-DD: … PR #N` bullets under `## Outcome` and bump `related_prs` in `docs/sprints/*.md`. Code: `apis/brain/app/schedulers/sprint_auto_logger.py`. Rollback: set to `false` and ignore or close any open `auto/sprint-log-*` branches. |
 | `BRAIN_SCHEDULER_ENABLED` | `true` | Master switch for starting APScheduler (including job store and mirrors). |
 | `DATABASE_URL` | (dev default) | Must be reachably Postgres. Async URL uses `+asyncpg`; the job store uses a sync `postgresql://` form (no `+asyncpg`). |
 
@@ -81,6 +82,12 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | `brain_infra_health` | `BRAIN_OWNS_INFRA_HEALTH` | every **30** minutes (``IntervalTrigger``) | `n8n_shadow_infra_health` |
 
 **Infra Health Check (`brain_infra_health`) — dedup and reminders:** The exported n8n flow (`infra-health-check.json`) posts to Slack only when the **fingerprint** of the n8n liveness + workflow count changes, or on transition from unhealthy → healthy. The Brain port matches that (Redis keys under `brain:infra_health:*` when Redis is available; otherwise in-process state for the lifetime of the process). If the system stays **unhealthy** with an unchanged fingerprint, Brain re-alerts after **`INFRA_HEALTH_REMINDER_HOURS`** (default **4**), so sustained incidents are not silent forever.
+
+**Sprint / docs (not n8n):**
+
+| APScheduler `job_id` | Env flag | Schedule (UTC) | Notes |
+| --- | --- | --- | --- |
+| `sprint_auto_logger` | `BRAIN_OWNS_SPRINT_AUTO_LOGGER` | `*/15 * * * *` | Bot-PR path: single markdown source of truth; `agent_scheduler_runs.job_id` = `sprint_auto_logger`. Manual backfill: `cd apis/brain && python -m app.cli.sprint_auto_logger_cli --since YYYY-MM-DD`. |
 
 ### Read-only mirror status
 
