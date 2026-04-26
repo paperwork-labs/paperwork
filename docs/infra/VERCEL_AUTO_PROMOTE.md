@@ -125,6 +125,12 @@ Zero on the Vercel side (promote is alias-only, no builds consumed).
 Roughly 10 seconds of GitHub Actions per merge — well inside the GH Pro
 free tier even at 50 merges/day.
 
+**Hobby build burst:** A single `main` push that starts **multiple**
+production builds (one per linked project) can hit Vercel’s per-team
+**deployment rate limit** on Hobby. GitHub shows
+`Deployment rate limited — retry in 24 hours` on the commit; production
+stays on the previous deployment until a build succeeds.
+
 ## See also
 
 - `.github/workflows/vercel-promote-on-merge.yaml` — the workflow.
