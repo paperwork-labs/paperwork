@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "9c0a753f8dce",
+  "content_hash": "3ba5bb434886",
   "products": [
     {
       "label": "AxiomFolio",
@@ -260,13 +260,14 @@
       "pr": null,
       "pr_url": null,
       "related_prs": [
-        172
+        172,
+        162
       ],
       "ships": [],
       "slug": "brand-design-deepdive-2026q2",
       "start": "2026-04-25",
       "status": "decided",
-      "title": "Brand canon (2026 Q2)"
+      "title": "Brand canon (2026 Q2) \u2014 final state"
     },
     {
       "domain": "company",
