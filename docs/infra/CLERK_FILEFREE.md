@@ -32,6 +32,38 @@ Runbook for the FileFree app (`apps/filefree`) identity layer: **Clerk** (primar
 2. `pnpm --filter @paperwork-labs/filefree dev` (port **3001** by default).
 3. Open `http://localhost:3001/sign-in` and complete the Clerk dev flow.
 
+## Theming
+
+Clerk UI is aligned with FileFree’s violet / dark theme via the **Appearance** API ([Clerk docs: `appearance` prop](https://clerk.com/docs/customization/overview#appearance-prop)). Precedent: Studio in PR #152 (`studio-clerk-appearance` + `ClerkAuthPageShell`).
+
+### Where configuration lives
+
+| Piece | Path |
+| ----- | ---- |
+| Global `appearance` (all Clerk surfaces: SignIn, SignUp, `UserButton`, modals) | `apps/filefree/src/lib/filefree-clerk-appearance.ts`, passed to `<ClerkProvider>` in `apps/filefree/src/app/layout.tsx` |
+| Auth route layout (gradient shell, centers the form; height fits below fixed `Nav` + `pt-14`) | `apps/filefree/src/components/clerk/ClerkAuthPageShell.tsx`, used by `apps/filefree/src/app/sign-in/[[...sign-in]]/page.tsx` and `apps/filefree/src/app/sign-up/[[...sign-up]]/page.tsx` |
+
+`baseTheme` is `@clerk/themes`’s `dark` theme; CSS variables and `elements` extend it. Colors resolve at runtime from `[data-theme="filefree"]` in `packages/ui/src/themes.css` (imported by `apps/filefree/src/app/globals.css`).
+
+### FileFree palette → Clerk variables
+
+| Clerk `appearance.variables` | Theme source (HSL custom property) |
+| ---------------------------- | ----------------------------------- |
+| `colorPrimary` | `--primary` |
+| `colorBackground` | `--background` |
+| `colorInputBackground` | `--input` |
+| `colorInputText` / `colorText` | `--foreground` |
+| `colorTextSecondary` | `--muted-foreground` |
+| `colorDanger` | `--destructive` |
+| `borderRadius` | `0.5rem` (from `globals.css` `@theme` `--radius`) |
+| `fontFamily` | `var(--font-inter)` from `next/font` in `layout.tsx` |
+
+`appearance.elements` adds Tailwind classes (violet-tinted card and inputs) — see `filefree-clerk-appearance.ts`.
+
+### Per-route overrides (future)
+
+Import `fileFreeClerkAppearance` and pass a spread override to `<SignIn />` / `<SignUp />` on a specific route if needed. Keep the **provider** in `layout.tsx` as the default for modals and `UserButton` unless you intentionally override at the component.
+
 ## Related
 
 - Studio runbook: `docs/infra/CLERK_STUDIO.md`

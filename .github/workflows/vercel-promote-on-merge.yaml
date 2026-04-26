@@ -25,6 +25,13 @@ name: Vercel auto-promote on merge
 # Setup (one-time, see docs/infra/VERCEL_AUTO_PROMOTE.md):
 #   gh secret set VERCEL_API_TOKEN  # from Vercel → Settings → Tokens
 #
+# SHA gotcha (lesson from PR #156, 2026-04-25):
+#   For squash-merged PRs, Vercel builds the *merge commit* SHA on `main`,
+#   not the PR's branch HEAD SHA. Always resolve `pull_request.merge_commit_sha`
+#   first; fall back to `head.sha` only when the merge SHA is unavailable
+#   (e.g. workflow_dispatch on an open PR). The "Find READY preview" step
+#   tries both for safety.
+#
 # Tracked in: docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md
 
 on:
@@ -69,25 +76,40 @@ jobs:
           fi
           echo "secret_ok=true" >> $GITHUB_ENV
 
-      - name: Resolve PR head SHA
+      - name: Resolve PR merge commit SHA
         id: pr
         if: env.secret_ok == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_PR_NUMBER: ${{ inputs.pr_number }}
         run: |
+          # IMPORTANT: For a squash-merged PR, Vercel builds the *merge commit*
+          # SHA that landed on `main` — NOT the PR branch's last head SHA.
+          # We resolve `merge_commit_sha` first; fall back to `head.sha` only
+          # for non-merge invocations (e.g. workflow_dispatch on an open PR).
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             PR_NUMBER="$INPUT_PR_NUMBER"
-            PR_HEAD=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.head.sha')
-            PR_TITLE=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER" --jq '.title')
+            PR_JSON=$(gh api "/repos/${{ github.repository }}/pulls/$PR_NUMBER")
+            PR_MERGE=$(echo "$PR_JSON" | jq -r '.merge_commit_sha // ""')
+            PR_HEAD_FALLBACK=$(echo "$PR_JSON" | jq -r '.head.sha')
+            PR_TITLE=$(echo "$PR_JSON" | jq -r '.title')
           else
             PR_NUMBER="${{ github.event.pull_request.number }}"
-            PR_HEAD="${{ github.event.pull_request.head.sha }}"
+            PR_MERGE="${{ github.event.pull_request.merge_commit_sha }}"
+            PR_HEAD_FALLBACK="${{ github.event.pull_request.head.sha }}"
             PR_TITLE='${{ github.event.pull_request.title }}'
           fi
-          echo "Resolved PR #$PR_NUMBER head SHA: $PR_HEAD"
+          if [ -n "$PR_MERGE" ] && [ "$PR_MERGE" != "null" ]; then
+            PR_HEAD="$PR_MERGE"
+            echo "Using merge_commit_sha: $PR_HEAD"
+          else
+            PR_HEAD="$PR_HEAD_FALLBACK"
+            echo "::warning::No merge_commit_sha available, falling back to head.sha: $PR_HEAD"
+          fi
+          echo "Resolved PR #$PR_NUMBER target SHA: $PR_HEAD"
           echo "pr_number=$PR_NUMBER" >> $GITHUB_OUTPUT
           echo "pr_head=$PR_HEAD" >> $GITHUB_OUTPUT
+          echo "pr_head_fallback=$PR_HEAD_FALLBACK" >> $GITHUB_OUTPUT
           echo "pr_title=$PR_TITLE" >> $GITHUB_OUTPUT
 
       - name: Check if production already on this SHA (idempotency)
@@ -113,16 +135,20 @@ jobs:
         if: env.secret_ok == 'true' && steps.check.outputs.already_promoted == 'false'
         env:
           PR_HEAD: ${{ steps.pr.outputs.pr_head }}
+          PR_HEAD_FALLBACK: ${{ steps.pr.outputs.pr_head_fallback }}
         run: |
+          # Try the merge commit SHA first. If Vercel doesn't have it (e.g.
+          # rebased PR where Vercel built the branch HEAD instead of the
+          # squash-merge commit), retry with the PR head.sha as a fallback.
           # Vercel's webhook can take ~30-90s to mark a deployment READY,
           # so we retry up to 6 times over 6 minutes.
           DEPLOY_ID=""
           for attempt in 1 2 3 4 5 6; do
-            echo "Attempt $attempt: searching for READY deployment with githubCommitSha=$PR_HEAD"
+            echo "Attempt $attempt: searching for READY deployment with githubCommitSha=$PR_HEAD (merge) or $PR_HEAD_FALLBACK (head)"
             DEPLOY_ID=$(curl -sf -H "Authorization: Bearer $VERCEL_API_TOKEN" \
               "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&state=READY&limit=50" \
-              | jq -r --arg SHA "$PR_HEAD" \
-                '[.deployments[] | select(.meta.githubCommitSha == $SHA)] | first | .uid // ""')
+              | jq -r --arg MERGE "$PR_HEAD" --arg HEAD "$PR_HEAD_FALLBACK" \
+                '[.deployments[] | select(.meta.githubCommitSha == $MERGE or .meta.githubCommitSha == $HEAD)] | first | .uid // ""')
             if [ -n "$DEPLOY_ID" ]; then
               echo "Found deployment: $DEPLOY_ID"
               break
@@ -131,8 +157,9 @@ jobs:
             sleep 60
           done
           if [ -z "$DEPLOY_ID" ]; then
-            echo "::error::No READY deployment found for SHA $PR_HEAD after 6 minutes."
-            echo "::error::This usually means the preview build itself failed. Check Vercel dashboard."
+            echo "::error::No READY deployment found for merge SHA $PR_HEAD or head SHA $PR_HEAD_FALLBACK after 6 minutes."
+            echo "::error::Possible causes: (a) Vercel webhook missed this merge entirely, (b) the build itself failed, (c) the project's ignoreCommand suppressed the build."
+            echo "::error::Check the Vercel dashboard for the studio project: https://vercel.com/paperwork-labs/$PROJECT_NAME/deployments"
             exit 1
           fi
           echo "deploy_id=$DEPLOY_ID" >> $GITHUB_OUTPUT
