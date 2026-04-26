@@ -219,13 +219,17 @@ def _brain_owns_weekly_strategy() -> bool:
     )
 
 
-<<<<<<< HEAD
 def _brain_owns_brain_weekly() -> bool:
     return os.getenv("BRAIN_OWNS_BRAIN_WEEKLY", "").lower() in (
-=======
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
 def _brain_owns_infra_health() -> bool:
     return os.getenv("BRAIN_OWNS_INFRA_HEALTH", "").lower() in (
->>>>>>> 307cd359a (feat(brain): cutover Infra Health Check to first-party IntervalTrigger)
         "1",
         "true",
         "yes",

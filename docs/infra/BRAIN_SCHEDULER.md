@@ -157,16 +157,8 @@ ORDER BY id;
 
 - Decision log: [Company Knowledge](../KNOWLEDGE.md) (2026-04-25 — Brain owns schedules; SQLAlchemy job store).
 - Sprint: [Streamline + SSO + Real DAGs](../sprints/STREAMLINE_SSO_DAGS_2026Q2.md) (T1 orchestration / shadow period).
-<<<<<<< HEAD
-- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/brain_weekly_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/credential_expiry.py`.
+- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/brain_weekly_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/infra_health.py`, `apis/brain/app/schedulers/credential_expiry.py`.
 
 ---
 
-**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_brain_weekly.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
-=======
-- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/infra_health.py`, `apis/brain/app/schedulers/credential_expiry.py`.
-
----
-
-**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_infra_health.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
->>>>>>> 307cd359a (feat(brain): cutover Infra Health Check to first-party IntervalTrigger)
+**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_brain_weekly.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_infra_health.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
