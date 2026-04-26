@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     # ``## What we learned`` in docs/sprints/*.md become memory episodes.
     # 6h is plenty — sprint markdown changes ship via PR, not continuously.
     SCHEDULER_SPRINT_LESSONS_HOURS: int = 6
+    # Merged-PR memory episodes (``source=merged_pr``), GitHub API.
+    SCHEDULER_MERGED_PRS_HOURS: int = 6
     # T2.2: when true, register shadow APScheduler jobs mirroring n8n crons
     # (#engineering-cron-shadow only) — default off until cutover ready.
     SCHEDULER_N8N_MIRROR_ENABLED: bool = False

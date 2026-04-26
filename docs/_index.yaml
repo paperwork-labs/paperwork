@@ -369,6 +369,13 @@ docs:
     owners: [engineering, strategy]
     category: plans
   # ── Sprints ─────────────────────────────────────────
+  - slug: brain-continuous-learning-2026q3
+    path: docs/sprints/BRAIN_CONTINUOUS_LEARNING_2026Q3.md
+    title: Brain continuous learning (ambient signals)
+    summary: "Ship three low-noise, idempotent loops so Paperwork Brain gains memory episodes every week from **merged PRs**, **decision records**, and **postmortems** — not only from sprint `## What we…"
+    tags: [company, sprint]
+    owners: [brain]
+    category: sprints
   - slug: brand-design-deepdive-2026q2
     path: docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md
     title: Brand & design system deep-dive (2026 Q2)
