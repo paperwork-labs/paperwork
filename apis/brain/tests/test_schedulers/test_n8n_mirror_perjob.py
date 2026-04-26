@@ -61,6 +61,18 @@ def test_per_job_off_overrides_global_true(
     assert is_n8n_mirror_enabled_for_job("n8n_shadow_brain_daily") is False
 
 
+def test_brain_owns_infra_health_suppresses_shadow(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("BRAIN_OWNS_INFRA_HEALTH", raising=False)
+    for s in N8N_MIRROR_SPECS:
+        monkeypatch.delenv(n8n_mirror_env_var_name(s.job_id), raising=False)
+    monkeypatch.setattr(settings, "SCHEDULER_N8N_MIRROR_ENABLED", True)
+    assert should_register_n8n_shadow_for_job("n8n_shadow_infra_health") is True
+    monkeypatch.setenv("BRAIN_OWNS_INFRA_HEALTH", "true")
+    assert should_register_n8n_shadow_for_job("n8n_shadow_infra_health") is False
+
+
 def test_brain_owns_daily_briefing_suppresses_n8n_daily_shadow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -47,7 +47,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | Data Source Monitor (P2.8) | `0 6 * * 1` (see LA caveat above) | shadow |
 | Data Deep Validator (P2.9) | `0 3 1 * *` (see LA caveat) | shadow |
 | Annual Data Update Trigger (P2.10) | `0 9 1 10 *` (see LA caveat) | shadow |
-| Infra Health Check | every **30** minutes (not cron) | shadow |
+| Infra Health Check | every **30** minutes (``IntervalTrigger``) | **Cutover (T1, interval):** first-party `brain_infra_health` when `BRAIN_OWNS_INFRA_HEALTH=true`; otherwise optional n8n shadow `n8n_shadow_infra_health` |
 | Credential Expiry Check | `0 8 * * *` | shadow — or first-party `brain_credential_expiry` when `BRAIN_OWNS_CREDENTIAL_EXPIRY=true` (T1.4) |
 
 **What the n8n flows do (reference):** daily/weekly/sprint kickoff → HTTP Brain `process`; sprint close and data validators → GitHub / HTTP and Slack; **Weekly Strategy Check-in** (legacy) → OpenAI in n8n + Slack `#all-paperwork-labs` — replaced in-process by `brain_weekly_strategy` (Brain `process` with `strategy` persona) when `BRAIN_OWNS_WEEKLY_STRATEGY=true`; infra flows → n8n API and Slack; credential expiry → vault + conditional Slack. Shadow handlers do not duplicate this logic; they only log to `#engineering-cron-shadow`.
@@ -65,6 +65,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | `BRAIN_OWNS_INFRA_HEARTBEAT` | `false` | **T1.3 cutover.** When `true`, registers the first-party in-process job `brain_infra_heartbeat` (08:00 UTC) and **suppresses** the `n8n_shadow_infra_heartbeat` mirror (same Slack shape as the n8n Infra Heartbeat workflow). When `false`, n8n + optional shadow remain the source of the heartbeat until you cut over. |
 | `BRAIN_OWNS_WEEKLY_STRATEGY` | `false` | **T1.6 cutover.** When `true`, registers `brain_weekly_strategy` (Mondays 09:00 UTC) calling `agent.process` with the `strategy` persona and posts to `#all-paperwork-labs` (same channel as `weekly-strategy-checkin.json`), and **suppresses** `n8n_shadow_weekly_strategy`. |
 | `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `false` | **T1.4 cutover.** When `true`, registers `brain_credential_expiry` (08:00 UTC), posts the same **Credential Expiry Report** to `#alerts` as the n8n workflow, and **suppresses** `n8n_shadow_credential_expiry`. Requires `SECRETS_API_KEY`, `STUDIO_URL`, and `SLACK_BOT_TOKEN` like the n8n path. |
+| `BRAIN_OWNS_INFRA_HEALTH` | `false` | **T1 (interval) cutover — first `IntervalTrigger` first-party job.** When `true`, registers `brain_infra_health` every **30 minutes** (n8n `infra-health-check.json` parity: n8n API workflow counts, deduped Slack to engineering). **Suppresses** `n8n_shadow_infra_health`. Optional: `INFRA_HEALTH_REMINDER_HOURS` (default `4`) re-alerts the same bad fingerprint after that many hours (n8n export only used fingerprint; Brain adds a sustained-failure nudge). |
 | `BRAIN_SCHEDULER_ENABLED` | `true` | Master switch for starting APScheduler (including job store and mirrors). |
 | `DATABASE_URL` | (dev default) | Must be reachably Postgres. Async URL uses `+asyncpg`; the job store uses a sync `postgresql://` form (no `+asyncpg`). |
 
@@ -77,6 +78,9 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | `brain_weekly_strategy` | `BRAIN_OWNS_WEEKLY_STRATEGY` | `0 9 * * 1` | `n8n_shadow_weekly_strategy` |
 | `brain_infra_heartbeat` | `BRAIN_OWNS_INFRA_HEARTBEAT` | `0 8 * * *` | `n8n_shadow_infra_heartbeat` |
 | `brain_credential_expiry` | `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `0 8 * * *` | `n8n_shadow_credential_expiry` |
+| `brain_infra_health` | `BRAIN_OWNS_INFRA_HEALTH` | every **30** minutes (``IntervalTrigger``) | `n8n_shadow_infra_health` |
+
+**Infra Health Check (`brain_infra_health`) — dedup and reminders:** The exported n8n flow (`infra-health-check.json`) posts to Slack only when the **fingerprint** of the n8n liveness + workflow count changes, or on transition from unhealthy → healthy. The Brain port matches that (Redis keys under `brain:infra_health:*` when Redis is available; otherwise in-process state for the lifetime of the process). If the system stays **unhealthy** with an unchanged fingerprint, Brain re-alerts after **`INFRA_HEALTH_REMINDER_HOURS`** (default **4**), so sustained incidents are not silent forever.
 
 ### Read-only mirror status
 
@@ -153,8 +157,16 @@ ORDER BY id;
 
 - Decision log: [Company Knowledge](../KNOWLEDGE.md) (2026-04-25 — Brain owns schedules; SQLAlchemy job store).
 - Sprint: [Streamline + SSO + Real DAGs](../sprints/STREAMLINE_SSO_DAGS_2026Q2.md) (T1 orchestration / shadow period).
+<<<<<<< HEAD
 - Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/brain_weekly_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/credential_expiry.py`.
 
 ---
 
 **Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_brain_weekly.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
+=======
+- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/infra_health.py`, `apis/brain/app/schedulers/credential_expiry.py`.
+
+---
+
+**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_infra_health.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
+>>>>>>> 307cd359a (feat(brain): cutover Infra Health Check to first-party IntervalTrigger)
