@@ -164,3 +164,6 @@ apis/axiomfolio/other_assets/
 
 # ─── OS / reports ────────────────────────────────────────────────────
 gitleaks-report.json
+
+# Brain local ingest idempotency pins (runtime; recreated by ingesters)
+apis/brain/data/ingested_*.json

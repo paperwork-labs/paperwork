@@ -134,6 +134,27 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install sprint_lessons job")
 
     try:
+        from app.schedulers import merged_prs_ingest
+
+        merged_prs_ingest.install(sched)
+    except Exception:
+        logger.exception("Failed to install merged_prs_ingest job")
+
+    try:
+        from app.schedulers import ingest_decisions_cadence
+
+        ingest_decisions_cadence.install(sched)
+    except Exception:
+        logger.exception("Failed to install ingest_decisions_cadence job")
+
+    try:
+        from app.schedulers import ingest_postmortems_cadence
+
+        ingest_postmortems_cadence.install(sched)
+    except Exception:
+        logger.exception("Failed to install ingest_postmortems_cadence job")
+
+    try:
         from app.schedulers import brain_daily_briefing
 
         brain_daily_briefing.install(sched)

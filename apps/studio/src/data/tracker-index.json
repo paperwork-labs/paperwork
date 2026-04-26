@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "ec2ee46ae0d9",
+  "content_hash": "e5ccda8f5838",
   "products": [
     {
       "label": "AxiomFolio",
@@ -258,6 +258,37 @@
     }
   ],
   "sprints": [
+    {
+      "domain": "company",
+      "duration_weeks": 10,
+      "end": "2026-07-01",
+      "followups": [
+        "Optional: GitHub org webhook \u2192 immediate merged-PR episode for hot PRs (out of scope for this sprint)."
+      ],
+      "goal": "Ship three low-noise, idempotent loops so Paperwork Brain gains memory episodes every week from **merged PRs**, **decision records**, and **postmortems** \u2014 not only from sprint `## What we learned` bullets and quarterly docs.",
+      "lessons": [
+        "(Append only during the sprint.)"
+      ],
+      "outcome_bullets": [],
+      "owner": "brain",
+      "path": "docs/sprints/BRAIN_CONTINUOUS_LEARNING_2026Q3.md",
+      "personas": [
+        "engineering",
+        "agent-ops"
+      ],
+      "plans": [],
+      "pr": null,
+      "pr_url": null,
+      "raw_status": "active",
+      "related_prs": [],
+      "ships": [
+        "brain"
+      ],
+      "slug": "brain-continuous-learning-2026q3",
+      "start": "2026-04-26",
+      "status": "active",
+      "title": "Brain continuous learning (ambient signals)"
+    },
     {
       "domain": "company",
       "duration_weeks": "~3",

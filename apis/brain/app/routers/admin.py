@@ -16,6 +16,11 @@ from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import review_pr, sweep_open_prs
+from app.services.continuous_learning import (
+    ingest_decisions,
+    ingest_merged_prs,
+    ingest_postmortems,
+)
 from app.services.seed import ingest_docs, ingest_sprint_lessons
 
 logger = logging.getLogger(__name__)
@@ -62,6 +67,62 @@ async def trigger_sprint_lessons_ingestion(
     scheduler (``app/schedulers/sprint_lessons.py``).
     """
     report = await ingest_sprint_lessons(db, _repo_root())
+    return success_response(report)
+
+
+class IngestOptionalBody(BaseModel):
+    dry_run: bool = False
+    limit: int | None = None
+
+
+@router.post("/ingest-merged-prs")
+async def trigger_merged_prs_ingestion(
+    body: IngestOptionalBody | None = None,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Continuous learning: recently merged PRs (``source=merged_pr``)."""
+    opts = body or IngestOptionalBody()
+    report = await ingest_merged_prs(
+        db,
+        _repo_root(),
+        dry_run=opts.dry_run,
+        limit=opts.limit,
+    )
+    return success_response(report)
+
+
+@router.post("/ingest-decisions")
+async def trigger_decisions_ingestion(
+    body: IngestOptionalBody | None = None,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Continuous learning: ADR-style decision docs (``source=decision``)."""
+    opts = body or IngestOptionalBody()
+    report = await ingest_decisions(
+        db,
+        _repo_root(),
+        dry_run=opts.dry_run,
+        limit=opts.limit,
+    )
+    return success_response(report)
+
+
+@router.post("/ingest-postmortems")
+async def trigger_postmortems_ingestion(
+    body: IngestOptionalBody | None = None,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Continuous learning: sprint postmortems + runbook incidents (``source=postmortem``)."""
+    opts = body or IngestOptionalBody()
+    report = await ingest_postmortems(
+        db,
+        _repo_root(),
+        dry_run=opts.dry_run,
+        limit=opts.limit,
+    )
     return success_response(report)
 
 
