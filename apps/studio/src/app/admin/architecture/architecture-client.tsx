@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Edge, Node } from "@xyflow/react";
 import {
   ExternalLink,
@@ -24,6 +24,8 @@ import {
   LAYER_LABELS,
   LAYER_DESCRIPTIONS,
 } from "@/lib/system-graph";
+import type { LiveDataMeta, NodeLiveView } from "@/lib/get-architecture-payload";
+import { LiveDataBadge } from "@/components/admin/LiveDataBadge";
 import type { CardNodeData, DagTone } from "@/components/dag/InteractiveDag";
 
 const InteractiveDag = dynamic(
@@ -61,6 +63,15 @@ type Props = {
   graph: SystemGraph;
   initialHealth: NodeHealth[];
   checkedAt: string;
+  nodeLive: NodeLiveView[];
+  live_data: LiveDataMeta;
+};
+
+type ArchApiResponse = {
+  health: NodeHealth[];
+  checkedAt: string;
+  nodeLive: NodeLiveView[];
+  live_data: LiveDataMeta;
 };
 
 const KIND_BADGE: Record<SystemNode["kind"], string> = {
@@ -101,9 +112,13 @@ export default function ArchitectureClient({
   graph,
   initialHealth,
   checkedAt: initialCheckedAt,
+  nodeLive: initialNodeLive,
+  live_data: initialLiveData,
 }: Props) {
   const [health, setHealth] = useState(initialHealth);
   const [checkedAt, setCheckedAt] = useState(initialCheckedAt);
+  const [nodeLive, setNodeLive] = useState(initialNodeLive);
+  const [liveData, setLiveData] = useState(initialLiveData);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState<string | null>(null);
@@ -127,6 +142,11 @@ export default function ArchitectureClient({
     [health],
   );
 
+  const nodeLiveById = useMemo(
+    () => new Map(nodeLive.map((n) => [n.id, n])),
+    [nodeLive],
+  );
+
   const nodeIdSet = useMemo(
     () => new Set(graph.nodes.map((n) => n.id)),
     [graph.nodes],
@@ -135,6 +155,7 @@ export default function ArchitectureClient({
   const dagNodes = useMemo((): Node<CardNodeData, "card">[] => {
     return graph.nodes.map((n) => {
       const h = healthById.get(n.id);
+      const live = nodeLiveById.get(n.id);
       return {
         id: n.id,
         type: "card",
@@ -145,10 +166,12 @@ export default function ArchitectureClient({
           tone: architectureLayerToTone(n.layer),
           pill: n.llm_backed ? "LLM" : undefined,
           status: h?.configured ? h.status : undefined,
+          liveFrame: live?.liveFrame,
+          liveSubtext: live?.liveSubtext,
         },
       };
     });
-  }, [graph.nodes, healthById]);
+  }, [graph.nodes, healthById, nodeLiveById]);
 
   const dagEdges = useMemo((): Edge[] => {
     const out: Edge[] = [];
@@ -193,24 +216,32 @@ export default function ArchitectureClient({
     ? healthById.get(selected.id) ?? null
     : null;
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
       const res = await fetch("/api/admin/architecture", { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as {
-        health: NodeHealth[];
-        checkedAt: string;
-      };
+      const data = (await res.json()) as ArchApiResponse;
       setHealth(data.health);
       setCheckedAt(data.checkedAt);
+      setNodeLive(data.nodeLive);
+      setLiveData(data.live_data);
       setRefreshError(null);
     } catch (err) {
       setRefreshError(err instanceof Error ? err.message : "Refresh failed");
     } finally {
       setRefreshing(false);
     }
-  }
+  }, []);
+
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+  useEffect(() => {
+    const id = setInterval(() => {
+      void refreshRef.current();
+    }, 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   async function askBrain(node: SystemNode) {
     setAskingId(node.id);
@@ -344,6 +375,15 @@ export default function ArchitectureClient({
 
   return (
     <div className="space-y-8">
+      {!liveData.available && (
+        <div
+          className="rounded-lg border border-amber-800/50 bg-amber-950/25 px-4 py-3 text-sm text-amber-100/90"
+          role="status"
+        >
+          Live data unavailable, showing last known structure. Schedule ownership and deploy
+          timestamps may be missing; the graph shape comes from the bundled system catalog.
+        </div>
+      )}
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-zinc-500">
@@ -359,7 +399,8 @@ export default function ArchitectureClient({
             source, and an “ask Brain” drawer.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <LiveDataBadge fetchedAtIso={liveData.fetched_at} />
           <div className="rounded-lg border border-zinc-800/80 bg-zinc-900/60 px-3 py-2 text-xs">
             <div className="text-zinc-500">Nodes</div>
             <div className="font-mono text-zinc-200">

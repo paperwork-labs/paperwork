@@ -42,9 +42,20 @@ export type CardNodeData = {
   subtitle?: string;
   pill?: string;
   status?: "green" | "amber" | "red" | "gray";
+  /** Optional live DAG ring from Brain / Vercel signals (does not change layout). */
+  liveFrame?: "emerald" | "amber" | "zinc" | "rose";
+  /** Second line under subtitle for deploy + schedule hints. */
+  liveSubtext?: string;
   /** Layout for handle positions (matches graph direction). */
   handleLayout?: "horizontal" | "vertical";
   compact?: boolean;
+};
+
+const LIVE_FRAME_RING: Record<NonNullable<CardNodeData["liveFrame"]>, string> = {
+  emerald: "ring-emerald-500/45 border-emerald-500/35 bg-emerald-500/[0.07]",
+  amber: "ring-amber-500/45 border-amber-500/35 bg-amber-500/[0.07]",
+  zinc: "ring-zinc-500/40 border-zinc-600/45 bg-zinc-800/35",
+  rose: "ring-rose-500/45 border-rose-500/35 bg-rose-500/[0.07]",
 };
 
 const TONE_RING: Record<DagTone, string> = {
@@ -73,7 +84,8 @@ function NodeCard({ data, selected }: NodeProps<Node<CardNodeData, "card">>) {
   const targetPos = vertical ? Position.Top : Position.Left;
   const sourcePos = vertical ? Position.Bottom : Position.Right;
   const tone = data.tone in TONE_RING ? data.tone : "default";
-  const ring = TONE_RING[tone];
+  const baseRing = TONE_RING[tone];
+  const ring = data.liveFrame ? LIVE_FRAME_RING[data.liveFrame] : baseRing;
   const compact = data.compact ?? false;
 
   return (
@@ -109,6 +121,13 @@ function NodeCard({ data, selected }: NodeProps<Node<CardNodeData, "card">>) {
               className={`mt-0.5 truncate font-mono text-zinc-500 ${compact ? "text-[9px]" : "text-[10px]"}`}
             >
               {data.subtitle}
+            </p>
+          )}
+          {data.liveSubtext && (
+            <p
+              className={`mt-0.5 line-clamp-2 text-zinc-500 ${compact ? "text-[8px] leading-tight" : "text-[9px] leading-snug"}`}
+            >
+              {data.liveSubtext}
             </p>
           )}
         </div>
