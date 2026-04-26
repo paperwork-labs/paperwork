@@ -245,7 +245,7 @@ Brain's canonical mark uses Emerald `#10B981` + Mint `#6EE7B7` accent. Brain UI 
 | Warning | Amber | Caution, medium confidence |
 | Destructive | Red | Errors, low confidence |
 
-Implementation: CSS `[data-theme]` selectors in `packages/ui/themes.css`. Each app sets its theme via `<body data-theme="filefree">`. **`packages/ui/src/themes.css` is currently scaffolding** — its hex values are pre-canon and will be rewritten in the engineering migration sprint to match the per-product palette table above. Do not treat the existing values as ground truth.
+Implementation: CSS `[data-theme]` selectors in `packages/ui/src/themes.css`. Each app sets its theme via `<body data-theme="filefree">`. **That file is scaffolding** — its hex values are pre-canon and will be rewritten in the engineering migration sprint to match the per-product palette table above. Do not treat the existing values as ground truth.
 
 ## Typography
 
