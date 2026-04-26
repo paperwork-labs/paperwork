@@ -39,6 +39,38 @@ Optional Clerk URLs (redirects) follow [Clerk environment variable docs](https:/
 2. Run: `cd apps/launchfree && pnpm dev` (port **3002** by default).
 3. Open `http://localhost:3002/sign-in` and complete the Clerk dev flow. Confirm `/dashboard` is reachable with Clerk or with the legacy cookie flow as before.
 
+## Theming
+
+Clerk UI is aligned with LaunchFree’s dark slate + teal palette via the **Appearance** API ([Clerk docs: `appearance` prop](https://clerk.com/docs/customization/overview#appearance-prop)). Precedent: Studio in PR #152 (`studio-clerk-appearance` + `ClerkAuthPageShell`).
+
+### Where configuration lives
+
+| Piece | Path |
+| ----- | ---- |
+| Global `appearance` (all Clerk surfaces: SignIn, SignUp, `UserButton`, modals) | `apps/launchfree/src/lib/launchfree-clerk-appearance.ts`, passed to `<ClerkProvider>` in `apps/launchfree/src/app/layout.tsx` |
+| Auth route layout (full-viewport gradient shell, centers the form) | `apps/launchfree/src/components/clerk/ClerkAuthPageShell.tsx`, used by `apps/launchfree/src/app/sign-in/[[...sign-in]]/page.tsx` and `apps/launchfree/src/app/sign-up/[[...sign-up]]/page.tsx` |
+
+`baseTheme` is `@clerk/themes`’s `dark` theme; CSS variables and `elements` extend it. Colors resolve at runtime from `[data-theme="launchfree"]` in `packages/ui/src/themes.css` (reinforced in `apps/launchfree/src/app/globals.css`).
+
+### LaunchFree palette → Clerk variables
+
+| Clerk `appearance.variables` | Theme source (HSL custom property) |
+| ---------------------------- | ----------------------------------- |
+| `colorPrimary` | `--primary` |
+| `colorBackground` | `--background` |
+| `colorInputBackground` | `--input` |
+| `colorInputText` / `colorText` | `--foreground` |
+| `colorTextSecondary` | `--muted-foreground` |
+| `colorDanger` | `--destructive` |
+| `borderRadius` | `0.5rem` (matches shared UI radius) |
+| `fontFamily` | `var(--font-inter)` from `next/font` in `layout.tsx` |
+
+`appearance.elements` adds Tailwind classes (slate borders, card chrome) where variables are not enough — see `launchfree-clerk-appearance.ts`.
+
+### Per-route overrides (future)
+
+Import `launchFreeClerkAppearance` and pass `appearance={{ ...launchFreeClerkAppearance, ... }}` to a page-level `<SignIn />` / `<SignUp />` if a route needs a one-off. Keep the **provider** default in `layout.tsx` so `UserButton` and modals stay consistent unless intentionally overridden.
+
 ## Related
 
 - Studio runbook: `docs/infra/CLERK_STUDIO.md`

@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "4f49ff8f3f7e",
+  "content_hash": "c14443460772",
   "products": [
     {
       "label": "AxiomFolio",
@@ -254,6 +254,7 @@
       "lessons": [
         "Per-job `SCHEDULER_N8N_MIRROR_*` must use the same uppercased job id as `N8N_MIRROR_SPECS` (e.g. `N8N_SHADOW_BRAIN_DAILY`, not a short name like `pr_sweep` \u2014 the in-process `pr_sweep` scheduler is separate from n8n mirror ids).",
         "A single `clerkMiddleware` handler can grant production admin access if either `auth().userId` (Clerk) is present or the legacy Basic `Authorization` header matches `ADMIN_EMAILS` / `ADMIN_ACCESS_PASSWORD`, while local dev can keep admin routes open by short-circuiting on `NODE_ENV === \"development\"`.",
+        "A dedicated **`BRAIN_OWNS_*` env flag** can gate the first-party APScheduler job while `should_register_n8n_shadow_for_job` drops the matching `n8n_shadow_*` row \u2014 no duplicate schedules without editing n8n JSON.",
         "Subagents working on the same monorepo branch will collide on `pnpm-lock.yaml` if they install dependencies in parallel from a shared worktree. Solution: use `best-of-n-runner` to give each subagent its own isolated git worktree; each branch's lockfile diff stays tightly scoped to that PR's package."
       ],
       "outcome_bullets": [
@@ -271,6 +272,7 @@
       "related_prs": [
         148,
         153,
+        160,
         150,
         151,
         152,

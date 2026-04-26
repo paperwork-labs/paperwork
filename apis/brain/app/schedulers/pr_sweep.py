@@ -15,6 +15,7 @@ Safety:
   current 1-replica deploy).
 - Jobs never raise — exceptions are logged, the next tick retries.
 """
+
 from __future__ import annotations
 
 import logging
@@ -99,33 +100,45 @@ def start_scheduler() -> AsyncIOScheduler | None:
     # a single lifecycle.
     try:
         from app.schedulers import proactive_cadence
+
         proactive_cadence.install(sched)
     except Exception:
         logger.exception("Failed to install proactive_cadence job")
 
     try:
         from app.schedulers import cost_dashboard
+
         cost_dashboard.install(sched)
     except Exception:
         logger.exception("Failed to install cfo_cost_dashboard job")
 
     try:
         from app.schedulers import qa_weekly_report
+
         qa_weekly_report.install(sched)
     except Exception:
         logger.exception("Failed to install qa_weekly_report job")
 
     try:
         from app.schedulers import cfo_friday_digest
+
         cfo_friday_digest.install(sched)
     except Exception:
         logger.exception("Failed to install cfo_friday_digest job")
 
     try:
         from app.schedulers import sprint_lessons
+
         sprint_lessons.install(sched)
     except Exception:
         logger.exception("Failed to install sprint_lessons job")
+
+    try:
+        from app.schedulers import brain_daily_briefing
+
+        brain_daily_briefing.install(sched)
+    except Exception:
+        logger.exception("Failed to install brain_daily_briefing job")
 
     try:
         n8n_mirror.install(sched)
