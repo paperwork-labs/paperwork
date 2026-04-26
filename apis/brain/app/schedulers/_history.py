@@ -24,15 +24,18 @@ async def run_with_scheduler_record(
     runner: Callable[[], Awaitable[None]],
     *,
     metadata: dict[str, Any] | None = None,
+    reraise: bool = False,
 ) -> None:
     started = datetime.now(timezone.utc)
     status: Literal["success", "error", "skipped"] = "success"
     error_text: str | None = None
+    to_raise: BaseException | None = None
     try:
         await runner()
     except N8nMirrorRunSkipped:
         status = "skipped"
     except Exception as e:
+        to_raise = e
         status = "error"
         error_text = str(e)[:20000]
         logger.exception("scheduler job %s failed", job_id)
@@ -52,3 +55,5 @@ async def run_with_scheduler_record(
                 await db.commit()
         except Exception:
             logger.exception("Failed to persist scheduler_run for job_id=%s", job_id)
+    if reraise and to_raise is not None:
+        raise to_raise
