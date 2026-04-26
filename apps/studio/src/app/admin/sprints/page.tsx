@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   Clock3,
   ChevronDown,
+  ArchiveRestore,
 } from "lucide-react";
 
 import { loadTrackerIndex, type Sprint } from "@/lib/tracker";
@@ -66,7 +67,7 @@ const SCROLLED_PREFIX_RE = /^(?:✅|✓|✔|⏳|⏰|⏱|🟢|🟡)\s*/u;
 const STATUS_TOKEN_RE = /^(?:shipped|pending|active|paused|abandoned)\b\s*[:—-]?\s*/i;
 
 type TrackerItem = {
-  status: "shipped" | "pending";
+  status: "shipped" | "pending" | "deferred";
   text: string;
   date?: string;
   pr?: number;
@@ -102,15 +103,29 @@ function classifyItem(raw: string, defaultStatus: TrackerItem["status"]): Tracke
 }
 
 function buildTracker(sprint: Sprint): TrackerItem[] {
+  const sprintShipped = sprint.status === "shipped";
   const shipped = (sprint.outcome_bullets ?? []).map((line) => classifyItem(line, "shipped"));
-  const pending = (sprint.followups ?? []).map((line) => classifyItem(line, "pending"));
+  // When the sprint itself has shipped, the "Follow-ups" section describes
+  // work that did NOT make this sprint and was deferred to a successor —
+  // they are not "pending" against this sprint anymore. Re-class them so
+  // the UI stops alarming a closed sprint with amber pending pills.
+  const pendingDefault: TrackerItem["status"] = sprintShipped ? "deferred" : "pending";
+  const pending = (sprint.followups ?? []).map((line) => {
+    const item = classifyItem(line, pendingDefault);
+    if (sprintShipped && item.status === "pending") {
+      return { ...item, status: "deferred" as const };
+    }
+    return item;
+  });
 
   const items = [...shipped, ...pending];
   // Stable chronological-ish order: shipped first (newest-first by date if
-  // present, otherwise authoring order), pending after (in authoring order
-  // since these are the next things on deck).
+  // present, otherwise authoring order), pending/deferred after (in
+  // authoring order since these are next-on-deck or moved-to-followups).
+  const rank = (s: TrackerItem["status"]) =>
+    s === "shipped" ? 0 : s === "pending" ? 1 : 2;
   return items.sort((a, b) => {
-    if (a.status !== b.status) return a.status === "shipped" ? -1 : 1;
+    if (a.status !== b.status) return rank(a.status) - rank(b.status);
     if (a.status === "shipped") {
       const ad = a.date ?? "";
       const bd = b.date ?? "";
@@ -337,10 +352,13 @@ function SprintBriefBlocks({ sprint }: { sprint: Sprint }) {
           href={`https://github.com/paperwork-labs/paperwork/blob/main/${sprint.path}`}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1 text-sm text-sky-300 hover:text-sky-200"
+          title={sprint.path}
+          className="group flex min-w-0 items-center gap-1 text-sky-300 hover:text-sky-200"
         >
-          <code className="text-xs">{sprint.path}</code>
-          <ExternalLink className="h-3 w-3" />
+          <code className="block min-w-0 flex-1 truncate rounded bg-zinc-900/60 px-1.5 py-0.5 text-xs text-sky-300/90 group-hover:text-sky-200">
+            {sprint.path}
+          </code>
+          <ExternalLink className="h-3 w-3 shrink-0" />
         </a>
       </div>
     </div>
@@ -383,6 +401,7 @@ function LivingTracker({ sprint }: { sprint: Sprint }) {
 
   const shipped = items.filter((i) => i.status === "shipped");
   const pending = items.filter((i) => i.status === "pending");
+  const deferred = items.filter((i) => i.status === "deferred");
 
   return (
     <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-950/40 p-4">
@@ -392,8 +411,18 @@ function LivingTracker({ sprint }: { sprint: Sprint }) {
         </p>
         <p className="text-[10px] uppercase tracking-wide text-zinc-500">
           <span className="text-emerald-300">{shipped.length} shipped</span>
-          <span className="mx-1.5 text-zinc-600">·</span>
-          <span className="text-amber-300">{pending.length} pending</span>
+          {pending.length > 0 ? (
+            <>
+              <span className="mx-1.5 text-zinc-600">·</span>
+              <span className="text-amber-300">{pending.length} pending</span>
+            </>
+          ) : null}
+          {deferred.length > 0 ? (
+            <>
+              <span className="mx-1.5 text-zinc-600">·</span>
+              <span className="text-zinc-400">{deferred.length} deferred</span>
+            </>
+          ) : null}
         </p>
       </div>
       <ol className="space-y-2 text-sm leading-relaxed text-zinc-200">
@@ -401,32 +430,58 @@ function LivingTracker({ sprint }: { sprint: Sprint }) {
           <TrackerRow key={`${item.status}-${i}`} item={item} />
         ))}
       </ol>
-      <p className="mt-3 text-[10px] text-zinc-600">
-        Promote a follow-up:{" "}
-        <code className="rounded bg-zinc-900/60 px-1.5 py-0.5 text-zinc-400">
-          scripts/sprint_promote_followup.py {sprint.path} &lt;match&gt; --pr &lt;n&gt;
-        </code>
-      </p>
+      {sprint.status === "shipped" && deferred.length > 0 ? (
+        <p className="mt-3 text-[10px] text-zinc-600">
+          {deferred.length} item{deferred.length === 1 ? "" : "s"} did not land in this sprint and were
+          deferred to a successor — not actionable here.
+        </p>
+      ) : (
+        <p className="mt-3 text-[10px] text-zinc-600">
+          Promote a follow-up:{" "}
+          <code className="rounded bg-zinc-900/60 px-1.5 py-0.5 text-zinc-400">
+            scripts/sprint_promote_followup.py {sprint.path} &lt;match&gt; --pr &lt;n&gt;
+          </code>
+        </p>
+      )}
     </div>
   );
 }
 
+const TRACKER_ROW_TONE: Record<
+  TrackerItem["status"],
+  { icon: typeof CheckCircle2; iconColor: string; pillClass: string; textColor: string }
+> = {
+  shipped: {
+    icon: CheckCircle2,
+    iconColor: "text-emerald-400",
+    pillClass: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
+    textColor: "text-zinc-200",
+  },
+  pending: {
+    icon: Clock3,
+    iconColor: "text-amber-300",
+    pillClass: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+    textColor: "text-zinc-200",
+  },
+  deferred: {
+    icon: ArchiveRestore,
+    iconColor: "text-zinc-500",
+    pillClass: "bg-zinc-700/40 text-zinc-400 border-zinc-700",
+    textColor: "text-zinc-400",
+  },
+};
+
 function TrackerRow({ item }: { item: TrackerItem }) {
-  const isShipped = item.status === "shipped";
-  const Icon = isShipped ? CheckCircle2 : Clock3;
-  const iconColor = isShipped ? "text-emerald-400" : "text-amber-300";
-  const pillClass = isShipped
-    ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
-    : "bg-amber-500/10 text-amber-300 border-amber-500/30";
+  const { icon: Icon, iconColor, pillClass, textColor } = TRACKER_ROW_TONE[item.status];
 
   return (
     <li className="flex items-start gap-2.5">
       <Icon className={`mt-0.5 h-4 w-4 shrink-0 ${iconColor}`} />
       <div className="min-w-0 flex-1">
-        <p className="text-zinc-200">{item.text}</p>
+        <p className={textColor}>{item.text}</p>
         <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-wide">
           <span className={`rounded-full border px-1.5 py-0.5 ${pillClass}`}>
-            {item.status}
+            {item.status === "deferred" ? "deferred to follow-up" : item.status}
           </span>
           {item.date ? <span className="text-zinc-500">{item.date}</span> : null}
           {item.pr ? (
@@ -481,6 +536,7 @@ function ExpandableSprintCard({ sprint }: { sprint: Sprint }) {
   const tracker = buildTracker(sprint);
   const shippedCount = tracker.filter((i) => i.status === "shipped").length;
   const pendingCount = tracker.filter((i) => i.status === "pending").length;
+  const deferredCount = tracker.filter((i) => i.status === "deferred").length;
   const lessonsCount = (sprint.lessons ?? []).length;
   const borderTone = t.className.split(" ").filter((c) => c.startsWith("border-")).join(" ");
 
@@ -506,8 +562,18 @@ function ExpandableSprintCard({ sprint }: { sprint: Sprint }) {
                 <span className="ml-2 text-zinc-600">
                   ·{" "}
                   <span className="text-emerald-300">{shippedCount} shipped</span>
-                  <span className="mx-1 text-zinc-600">/</span>
-                  <span className="text-amber-300">{pendingCount} pending</span>
+                  {pendingCount > 0 ? (
+                    <>
+                      <span className="mx-1 text-zinc-600">/</span>
+                      <span className="text-amber-300">{pendingCount} pending</span>
+                    </>
+                  ) : null}
+                  {deferredCount > 0 ? (
+                    <>
+                      <span className="mx-1 text-zinc-600">/</span>
+                      <span className="text-zinc-400">{deferredCount} deferred</span>
+                    </>
+                  ) : null}
                 </span>
               ) : null}
               {lessonsCount > 0 ? (
@@ -549,27 +615,6 @@ function ExpandableSprintCard({ sprint }: { sprint: Sprint }) {
           <SprintBriefBlocks sprint={sprint} />
           <LivingTracker sprint={sprint} />
           <LessonsBlock sprint={sprint} />
-          <div className="mt-4 flex items-center justify-end gap-3 text-xs text-zinc-500">
-            {(sprint.related_prs ?? []).slice(0, 3).map((num) => (
-              <a
-                key={num}
-                href={prUrl(num)}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 transition hover:text-zinc-200"
-              >
-                #{num}
-              </a>
-            ))}
-            <a
-              href={`https://github.com/paperwork-labs/paperwork/blob/main/${sprint.path}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 transition hover:text-zinc-200"
-            >
-              Source <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
         </div>
       </details>
     </li>

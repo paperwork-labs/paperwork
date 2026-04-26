@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "3ba5bb434886",
+  "content_hash": "92abe148a188",
   "products": [
     {
       "label": "AxiomFolio",
@@ -91,6 +91,7 @@
           "owner": "trading",
           "path": "docs/axiomfolio/plans/BROKER_COVERAGE_TRACKER.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "broker-coverage-tracker",
           "status": "active",
           "title": "Broker Coverage Tracker \u2014 Evergreen"
@@ -101,6 +102,7 @@
           "owner": "trading",
           "path": "docs/axiomfolio/plans/G5_IV_RANK_SURFACE.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "g5-iv-rank-surface",
           "status": "active",
           "title": "G5 \u2014 Implied Volatility / IV-Rank Surface (Free-Providers First)"
@@ -111,6 +113,7 @@
           "owner": "trading",
           "path": "docs/axiomfolio/plans/GAPS_2026Q2.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "gaps-2026q2",
           "status": "active",
           "title": "Production Gaps \u2014 2026 Q2"
@@ -121,6 +124,7 @@
           "owner": "engineering",
           "path": "docs/axiomfolio/plans/MASTER_PLAN_2026.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "master-plan-2026",
           "status": "active",
           "title": "AxiomFolio Master Plan 2026"
@@ -131,6 +135,7 @@
           "owner": "engineering",
           "path": "docs/axiomfolio/plans/MEDALLION_AUDIT_2026Q2.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "medallion-audit-2026q2",
           "status": "active",
           "title": "Medallion Audit \u2014 2026 Q2"
@@ -141,6 +146,7 @@
           "owner": "engineering",
           "path": "docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "nextjs-migration-2026q3",
           "status": "active",
           "title": "AxiomFolio \u2192 Next.js 16 App Router \u2014 Migration Plan"
@@ -151,6 +157,7 @@
           "owner": "engineering",
           "path": "docs/axiomfolio/plans/PLAID_FIDELITY_401K.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "plaid-fidelity-401k",
           "status": "active",
           "title": "Plaid Investments \u2014 Single-Phase Pro-Tier Feature"
@@ -161,6 +168,7 @@
           "owner": "engineering",
           "path": "docs/axiomfolio/plans/PLATFORM_REVIEW_2026Q2.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "platform-review-2026q2",
           "status": "active",
           "title": "AxiomFolio Platform McKinsey Review \u2014 2026 Q2"
@@ -171,6 +179,7 @@
           "owner": "trading",
           "path": "docs/axiomfolio/plans/PORTFOLIO_SYNC_COMPLETENESS_2026Q2.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "portfolio-sync-completeness-2026q2",
           "status": "active",
           "title": "Portfolio Sync Completeness \u2014 2026 Q2 (Wave 8 spec)"
@@ -181,6 +190,7 @@
           "owner": "engineering",
           "path": "docs/axiomfolio/plans/SETTINGS_NAV_STUDY_2026Q2.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "settings-nav-study-2026q2",
           "status": "active",
           "title": "Settings IA Study \u2014 2026 Q2"
@@ -191,6 +201,7 @@
           "owner": "engineering",
           "path": "docs/axiomfolio/plans/UX_AUDIT_2026Q2.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "ux-audit-2026q2",
           "status": "active",
           "title": "UX Audit \u2014 2026 Q2 (PR C0 input spec)"
@@ -201,6 +212,7 @@
           "owner": "trading",
           "path": "docs/axiomfolio/plans/WAVE_F_TRADING_PARITY.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "wave-f-trading-parity",
           "status": "active",
           "title": "Wave F \u2014 Trading Parity Across All Six Brokers"
@@ -211,6 +223,7 @@
           "owner": "engineering",
           "path": "docs/axiomfolio/plans/strategy-market-nav-restructure.md",
           "product": "axiomfolio",
+          "raw_status": "active",
           "slug": "strategy-market-nav-restructure",
           "status": "active",
           "title": "Strategy \u2192 Market Navigation Restructure Plan"
@@ -259,6 +272,7 @@
       "plans": [],
       "pr": null,
       "pr_url": null,
+      "raw_status": "active",
       "related_prs": [
         172,
         162
@@ -266,7 +280,7 @@
       "ships": [],
       "slug": "brand-design-deepdive-2026q2",
       "start": "2026-04-25",
-      "status": "decided",
+      "status": "active",
       "title": "Brand canon (2026 Q2) \u2014 final state"
     },
     {
@@ -295,6 +309,7 @@
       "plans": [],
       "pr": null,
       "pr_url": null,
+      "raw_status": "active",
       "related_prs": [
         148,
         153,
@@ -318,7 +333,7 @@
       "ships": [],
       "slug": "streamline-sso-dags-2026q2",
       "start": "2026-04-25",
-      "status": "in_progress",
+      "status": "active",
       "title": "Streamline + SSO + Real DAGs (2026 Q2)"
     },
     {
@@ -366,6 +381,7 @@
       ],
       "pr": 142,
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/142",
+      "raw_status": "active",
       "related_prs": [
         142,
         143,
@@ -426,6 +442,7 @@
       ],
       "pr": 141,
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/141",
+      "raw_status": "shipped",
       "related_prs": [
         141
       ],
