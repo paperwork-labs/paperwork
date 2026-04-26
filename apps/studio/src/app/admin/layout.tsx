@@ -15,6 +15,7 @@ import {
   Workflow,
   Target,
   Boxes,
+  Timer,
 } from "lucide-react";
 
 type NavItem = {
@@ -46,6 +47,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/admin/architecture", label: "Architecture", icon: Workflow },
       { href: "/admin/workflows", label: "Workflows", icon: Bot },
+      { href: "/admin/n8n-mirror", label: "n8n cron mirror", icon: Timer },
       { href: "/admin/docs", label: "Docs", icon: BookOpen },
       { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
       { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
