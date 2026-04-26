@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
-import { systemGraph, probeAll } from "@/lib/system-graph";
+import { getArchitecturePayload } from "@/lib/get-architecture-payload";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const health = await probeAll(systemGraph);
+  const payload = await getArchitecturePayload();
   return NextResponse.json(
     {
-      health,
-      checkedAt: new Date().toISOString(),
+      health: payload.health,
+      checkedAt: payload.checkedAt,
+      nodeLive: payload.nodeLive,
+      live_data: payload.live_data,
     },
-    { headers: { "Cache-Control": "no-store" } },
+    {
+      headers: {
+        "Cache-Control": "private, s-maxage=30, stale-while-revalidate=60",
+      },
+    },
   );
 }
