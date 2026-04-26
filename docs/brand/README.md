@@ -1,158 +1,124 @@
 ---
 title: Paperwork Labs Brand Asset Registry
 owner: brand
-last_reviewed: 2026-04-25
+last_reviewed: 2026-04-26
 doc_kind: reference
 domain: company
 ---
 
 # Paperwork Labs brand asset registry
 
-Single source of truth for canonical SVG marks across Paperwork Labs and its products. If a logo or product glyph isn't listed here, it isn't canonical yet.
+Single source of truth for canonical SVG marks across Paperwork Labs and its products. If a logo or product glyph is not listed here, treat it as non-canonical or interim.
 
-See [`docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md`](../sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md) for the brand canon decisions and rationale.
+See [`docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md`](../sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md) for the full history: research dives, decision matrix, founder locks (2026-04-26), and pivots away from "one template for every product."
 
-## Trinity (chrome — used in every mark)
+## Family principle
 
-| Token | Light surface | Dark surface | Role |
-| --- | --- | --- | --- |
-| Slate-night | `#0F172A` | `#FAFAFA` | Wordmark + body type, surface |
-| Inter 600 wordmark | — | — | Family thread across all lockups |
-| 5-rule visual grammar | — | — | Identical across all marks |
+**Organic similarity > forced unification.** Products share a **droplet + dot** visual vocabulary (count, layout, and color vary); they do not share one silhouette or one parent hue. What *does* align across the portfolio: Inter wordmarks, shared viewBox/grammar rules, surface-aware ink, and the legal "by Paperwork Labs" line.
 
-Family read comes from shared chrome + shared wordmark + shared geometry. **Not** from cloning hue.
+**Not** the family thread: a single parent colorway cloned onto every app, or identical wordmark ink on every lockup.
 
-## Per-product mark palette
+## Per-product full palette (canonical)
 
-Each consumer product owns its primary hue. This is what differentiates the marks at favicon scale.
+Each row is the lock for marks, social templates, and (after the theme-migration sprint) product UI. **Primary** and **accent** are fixed for the glyph; **ink** shifts with light vs dark surface.
 
-| Product | Primary | Accent |
-| --- | --- | --- |
-| Paperwork Labs (parent) | Azure `#3274F0` | Amber `#F59E0B` |
-| Studio (admin chrome) | Azure `#3274F0` | Amber `#F59E0B` |
-| AxiomFolio | Azure `#3274F0` | Amber `#F59E0B` |
-| FileFree | Teal `#0EA5A6` | Amber `#F59E0B` |
-| LaunchFree | Coral `#F97357` | Slate `#0F172A` |
-| Distill | Copper `#B8643A` | Slate `#0F172A` |
-| Trinkets | Magenta `#C026D3` | Amber `#F59E0B` |
-| Brain | Violet `#7C3AED` | Amber `#F59E0B` |
+| Product | Primary | Accent | Neutral light | Neutral dark | Ink (on light) | Ink (on dark) | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Paperwork Labs (parent) | Slate ink `#0F172A` | Amber `#F59E0B` | `#F8FAFC` | `#0F172A` | `#0F172A` | `#F8FAFC` | Parent *mark* is AI paperclip (slate + one amber span). Not Azure. |
+| Studio | Azure `#3274F0` | Amber `#F59E0B` | `#F8FAFC` | `#0F172A` | `#0F172A` | `#F8FAFC` | Admin chrome; chain-of-life with AxiomFolio. |
+| AxiomFolio | Azure `#3274F0` | Amber `#F59E0B` | `#F8FAFC` | `#0F172A` | `#0F172A` | `#F8FAFC` | Hand-designed 4-petal + center dot — family anchor. |
+| FileFree | Indigo `#4F46E5` | Lime `#84CC16` | `#F8FAFC` | `#020817` / `#0F172A` | `#0F172A` | `#F8FAFC` | Locked SVG: three droplets converging on a dot. |
+| LaunchFree | Sky `#0284C7` | Cyan `#06B6D4` | `#F8FAFC` | `#0A0F1A` / `#0F172A` | `#0C4A6E` | `#F8FAFC` | Locked SVG: one droplet + cyan dot below. |
+| Distill | Teal `#0F766E` | Burnt orange `#C2410C` | off-white / `#F8FAFC` | `#0F172A` | `#115E59` | `#F8FAFC` | B2B default surface tends light. Locked SVG: opposing droplets + center dot. |
+| Trinkets | Indigo `#6366F1` | Sky cyan `#38BDF8` | `#F8FAFC` | `#0C0A09` / `#0F172A` | `#1E1B4B` | `#F8FAFC` | Sibling to FileFree; locked SVG: asymmetric droplet pair + dot. |
+| Brain | Emerald `#10B981` | Mint `#6EE7B7` | `#F8FAFC` | `#0F172A` | `#0F172A` | `#F8FAFC` | **No droplet mark** — AI brain glyph; see [`PROMPTS.md`](PROMPTS.md). |
 
-## Visual grammar
+**Primary on dark** (lighter strokes for lockups on dark fields): Axiom/Studio/PWL Azure → `#60A5FA` where applicable; FileFree indigo → `#818CF8`; LaunchFree sky → `#38BDF8`; Distill teal → `#14B8A6`; Trinkets indigo → `#A5B4FC`; Brain emerald → `#34D399`. **Accents** on dark: amber `#FBBF24`, lime `#A3E635`, cyan `#22D3EE`, burnt orange `#F97316`, sky cyan `#7DD3FC`, mint → `#A7F3D0` alongside mint `#6EE7B7` on the mark.
 
-All canonical marks share these constraints (intentional, do not deviate without a brand review):
+## Visual grammar (canonical marks)
 
 1. **viewBox**: `0 0 128 128` for icons, `0 0 720 150` for lockups.
-2. **Padding**: `~16px` of breathing room from viewBox edges to mark.
-3. **Stroke width**: `9–11` for stroke-based glyphs (matches optical weight of AxiomFolio's filled petals).
-4. **Caps + joins**: `round` everywhere a stroke terminates or bends.
-5. **One accent dot per glyph.** Always one. Never two. The accent is the "earned moment" — never decorative.
-6. **No drop shadows, gradients, or filters** in the canonical SVGs. Marketing surfaces may add ambient effects in CSS; the SVG file itself stays flat.
-7. **Wordmark font**: Inter 600 with `letter-spacing: -0.5` at `font-size: 62`. Falls back through the system stack.
+2. **Padding**: `~16px` breathing room from the viewBox edge.
+3. **Stroke width**: `9–11` for stroke-based marks; round caps and joins; filled droplets may use fill (AxiomFolio star, FileFree family).
+4. **One accent per glyph** — one earned moment, not two.
+5. **No drop shadows, gradients, or filters** in repo SVGs; CSS may add sheen in marketing.
+6. **Wordmark** (where present): Inter 600, `letter-spacing: -0.5`, `font-size: 62`.
+7. **Droplet family thread**: derived from the AxiomFolio four-petal + dot vocabulary; each consumer mark varies count and composition.
 
-## Asset registry
+## Asset registry (paths)
 
-### Paperwork Labs (parent brand)
+### Paperwork Labs (parent)
 
-| File | Use | Surface |
+| File | Use | Note |
 | --- | --- | --- |
-| `apps/studio/public/brand/paperwork-labs-icon.svg` | Favicon, social avatar, app launcher icons | Any |
-| `apps/studio/public/brand/paperwork-labs-lockup.svg` | Marketing site, investor decks, signed PDFs | Light |
-| `apps/studio/public/brand/paperwork-labs-lockup-dark.svg` | Studio app, dark marketing pages | Dark |
-
-The paperclip is the parent mark: continuous azure wire forming a vertical paperclip silhouette with one amber accent dot at the inner-wire terminus.
+| *Future:* AI paperclip from [`PROMPTS.md`](PROMPTS.md) | Favicon, avatar | Replaces interim assets when ready. |
+| `apps/studio/public/brand/paperwork-labs-icon.svg` | Favicon, launcher | **Interim** hand mark. |
+| `apps/studio/public/brand/paperwork-labs-lockup.svg` | Light surfaces | **Interim** lockup. |
+| `apps/studio/public/brand/paperwork-labs-lockup-dark.svg` | Dark surfaces | **Interim** lockup. |
 
 ### Studio
 
-| File | Use | Surface |
-| --- | --- | --- |
-| `apps/studio/public/brand/studio-icon.svg` | Studio nav, internal admin tooling | Any |
-| `apps/studio/public/brand/studio-lockup.svg` | Studio header lockup | Light |
-| `apps/studio/public/brand/studio-lockup-dark.svg` | Studio header lockup, dark mode | Dark |
+| File | Use |
+| --- | --- |
+| `apps/studio/public/brand/studio-icon.svg` | Admin nav, tooling |
+| `apps/studio/public/brand/studio-lockup.svg` | Light header |
+| `apps/studio/public/brand/studio-lockup-dark.svg` | Dark header |
 
-Window-pane grid metaphor: four panes represent the four operational surfaces (Operations, Personas, Workflows, Sprints). The amber pane is the active one. Studio is internal admin chrome — not user-facing — so it shares the parent palette.
-
-### AxiomFolio (existing canon, untouched here)
+### AxiomFolio (locked — do not restyle)
 
 | File | Use |
 | --- | --- |
-| `apps/axiomfolio/src/assets/logos/axiomfolio.svg` | App icon |
-| `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` | Star-form icon (4 petals + amber center) |
-| `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | Wordmark + icon |
-
-AxiomFolio's mark is hand-authored and stays as-is. Its 4-petal-plus-amber-center geometry is the visual anchor that informed the trinity chrome.
+| `apps/axiomfolio/src/assets/logos/axiomfolio.svg` | Legacy app icon (prefer star) |
+| `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` | **Canonical** 128×128 star / favicon source |
+| `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | Wordmark + mark |
 
 ### FileFree
 
-| File | Status |
+| File | Use |
 | --- | --- |
-| `apps/filefree/public/brand/filefree-icon.svg` | **TBD** — generate via [`docs/brand/PROMPTS.md`](PROMPTS.md), then per-product follow-up PR |
-| Lockups (light + dark) | TBD — produced after icon lands |
-
-Locked palette: Teal `#0EA5A6` + Amber `#F59E0B`. Metaphor: folded document + checkmark. See PROMPTS.md for the AI prompt.
+| `apps/filefree/public/brand/filefree-icon.svg` | **Locked** mark — 3 droplets + center dot |
+| `apps/filefree/public/brand/renders/filefree-icon-{16…1024}.png` | Raster previews / OG templates |
 
 ### LaunchFree
 
-| File | Status |
+| File | Use |
 | --- | --- |
-| `apps/launchfree/public/brand/launchfree-icon.svg` | **TBD** — generate via [`docs/brand/PROMPTS.md`](PROMPTS.md), then per-product follow-up PR |
-| Lockups (light + dark) | TBD — produced after icon lands |
-
-Locked palette: Coral `#F97357` + Slate accent. Metaphor: upward chevrons / rocket motion. See PROMPTS.md.
+| `apps/launchfree/public/brand/launchfree-icon.svg` | **Locked** mark — droplet + cyan dot |
+| `apps/launchfree/public/brand/renders/launchfree-icon-{16…1024}.png` | Rasters |
 
 ### Distill
 
-| File | Status |
+| File | Use |
 | --- | --- |
-| `apps/distill/public/brand/distill-icon.svg` | **TBD** — generate via [`docs/brand/PROMPTS.md`](PROMPTS.md), then per-product follow-up PR |
-| Lockups (light + dark) | TBD — produced after icon lands |
-
-Locked palette: Copper `#B8643A` + Slate accent. Metaphor: funnel + droplet. See PROMPTS.md.
+| `apps/distill/public/brand/distill-icon.svg` | **Locked** mark — yin/yang droplets + center dot |
+| `apps/distill/public/brand/renders/distill-icon-{16…1024}.png` | Rasters |
 
 ### Trinkets
 
-| File | Status |
+| File | Use |
 | --- | --- |
-| `apps/trinkets/public/brand/trinkets-icon.svg` | **TBD** — generate via [`docs/brand/PROMPTS.md`](PROMPTS.md), then per-product follow-up PR |
-| Lockups (light + dark) | TBD — produced after icon lands |
+| `apps/trinkets/public/brand/trinkets-icon.svg` | **Locked** mark — asymmetric droplets + cyan dot |
+| `apps/trinkets/public/brand/renders/trinkets-icon-{16…1024}.png` | Rasters |
 
-Locked palette: Magenta `#C026D3` + Amber accent. Metaphor: constellation / toolkit cluster. See PROMPTS.md.
+### Brain
 
-### Brain (consumer meta-product, two glyph candidates)
+No shipped SVG in-repo yet. **Locked palette** Emerald `#10B981` + Mint `#6EE7B7`. Generation prompts: [`PROMPTS.md`](PROMPTS.md) (Brain + meta-product section).
 
-Brain is the consumer life-intelligence meta-product (per `docs/BRAIN_ARCHITECTURE.md` D49 / F90 / G01). Its external product name and domain are **TBD pending availability research** — `paperwork.ai` is unavailable. Internal codename remains "Brain."
+## Workflows
 
-| Candidate | Concept | Status |
-| --- | --- | --- |
-| Fill meter | Three context bars filling progressively inside a rounded container — the brain fill meter metaphor (D51 / F90) | **TBD** — generate via [`docs/brand/PROMPTS.md`](PROMPTS.md) |
-| Orbital arcs | Three concentric arcs with a central self-node and one satellite — orbital knowledge-graph metaphor (BRAIN_PHILOSOPHY.md) | **TBD** — generate via [`docs/brand/PROMPTS.md`](PROMPTS.md) |
+### Adding a lockup after an icon exists
 
-Locked palette: Violet `#7C3AED` + Amber `#F59E0B`. Run both prompts; Sankalp picks one; chosen file moves to the product app's `public/brand/` directory in the per-product PR.
+1. Use the **Ink** and **primary** columns from the table above.
+2. `720×150` viewBox, Inter 600, no extra accent beyond the product rule.
+3. `xmllint --noout` on every SVG; place next to the icon in `public/brand/`.
 
-## Adding a new consumer mark (workflow)
+### Don’ts
 
-1. Open [`docs/brand/PROMPTS.md`](PROMPTS.md) and find the locked prompt for the product.
-2. Run the prompt in Nano Banana, Midjourney v6+, DALL-E 3, or Imagen. First round + 1 retry usually works.
-3. Pick the cleanest output (1024×1024, transparent PNG).
-4. Drop the image back to the agent.
-5. Agent retraces the SVG manually, validates with `xmllint`, generates light/dark lockups, drops into `apps/<product>/public/brand/`, regenerates this registry, and opens a per-product follow-up PR.
-6. One product per PR.
+- Do not put the **parent paperclip** on a consumer product page.
+- Do not recolor a locked mark for "fun" A/B tests — ship a brand review if change is required.
+- Do not add a second accent color in the same glyph.
 
-## Adding a new utility mark (parent chrome / admin)
+## Related
 
-For utility marks (not consumer-facing), hand-author by SVG:
-
-1. Author the SVG by hand. Use 128×128 viewBox, the locked product palette, and one accent dot per the visual grammar.
-2. Validate XML: `xmllint --noout your-icon.svg`
-3. Render preview: `qlmanage -t -s 256 -o /tmp your-icon.svg && open /tmp/your-icon.svg.png`
-4. Add to the registry table above.
-5. Update [`.cursor/rules/brand.mdc`](../../.cursor/rules/brand.mdc) Logo Assets section with the new path.
-6. Open a PR titled `docs(brand): add <mark>` and request brand review.
-
-## Don'ts
-
-- Do **not** put consumer marks on a different palette than locked above. The palette IS the differentiator; collapsing it kills the family read of "different products inside one company."
-- Do **not** add a second accent color per glyph (no double amber, no extra slate).
-- Do **not** rotate, skew, recolor, or filter canonical marks in product UI. Use them as-is or use a designated variant.
-- Do **not** put the accent dot on a CTA. It is reserved for canonical marks and earned moments (success states, completion confirmations).
-- Do **not** put the paperclip mark on a product page — it's parent-only. Each product uses its own glyph.
-- Do **not** hand-author consumer marks geometrically. The first cut of PR #172 tried this; the marks read as identical clones. Use [`docs/brand/PROMPTS.md`](PROMPTS.md).
+- [`.cursor/rules/brand.mdc`](../../.cursor/rules/brand.mdc) — always-on rule.
+- [`PROMPTS.md`](PROMPTS.md) — LLM / image prompts with palettes baked in.

@@ -1,4 +1,9 @@
 /*
+ * SCAFFOLDING — pending dedicated theme-migration sprint.
+ * Per-product themes will be moved to apps/{product}/styles/theme.css
+ * with semantic CSS variables. Do not extend this file; add new theme
+ * tokens to the per-app file instead.
+ *
  * Paperwork Labs — Shared Product Themes
  *
  * Each product palette is scoped via [data-theme="<product>"] on <body>.

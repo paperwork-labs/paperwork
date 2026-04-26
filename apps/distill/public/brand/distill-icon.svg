@@ -1,0 +1,9 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Distill - 2 droplets opposing with center dot">
+  <g transform="translate(64 35) scale(0.9) translate(-64 -34.5)">
+    <path d="M64,14 C69,28 75,37 75,44 C75,50 70,55 64,55 C58,55 53,50 53,44 C53,37 59,28 64,14 Z" fill="#0F766E"/>
+  </g>
+  <circle cx="64" cy="64" r="6" fill="#C2410C"/>
+  <g transform="translate(64 93) scale(0.9) rotate(180) translate(-64 -34.5)">
+    <path d="M64,14 C69,28 75,37 75,44 C75,50 70,55 64,55 C58,55 53,50 53,44 C53,37 59,28 64,14 Z" fill="#0F766E"/>
+  </g>
+</svg>
