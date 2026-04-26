@@ -144,6 +144,7 @@ export default function AdminLayout({
         </aside>
         <main className="min-w-0 flex-1">
           <div className="mb-6 flex items-center justify-end border-b border-zinc-800/60 pb-4">
+            {/* UserButton does not throw when the SSO Frontend API host is unreachable; it stays in a loading or signed-out state rather than crashing the tree. */}
             <UserButton />
           </div>
           {children}

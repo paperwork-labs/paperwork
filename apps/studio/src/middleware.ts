@@ -10,6 +10,7 @@ import type { NextRequest } from "next/server";
  * 2) `auth().userId` (Clerk session) → allow.
  * 3) Valid Basic Auth against ADMIN_EMAILS + ADMIN_ACCESS_PASSWORD → allow.
  * 4) Otherwise: browser navigations → redirect to sign-in; `/api/*` → 401 + WWW-Authenticate.
+ *    If CLERK_DOMAIN_DEGRADED=1: skip sign-in redirect; return 401 + Basic challenge only (emergency Basic-only access).
  *
  * Development: same public rules; `/admin` + `/api/admin` stay ungated (preserves pre-Clerk local DX).
  * Secrets API routes use `secrets-auth.ts` only — we do not apply this Basic/Clerk wall there.
@@ -93,6 +94,11 @@ export default clerkMiddleware(async (auth, request) => {
 
     if (basicAuthAllows(request)) {
       return;
+    }
+
+    // Set CLERK_DOMAIN_DEGRADED=1 on Vercel when Clerk's Account Portal custom domain DNS is broken / not yet configured. Falls back to Basic Auth only.
+    if (process.env.CLERK_DOMAIN_DEGRADED === "1") {
+      return basicAuthUnauthorized();
     }
 
     if (request.nextUrl.pathname.startsWith("/api/")) {

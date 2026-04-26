@@ -10,6 +10,7 @@ Runbook for the Studio app (`apps/studio`) identity stack: Clerk (primary SSO) w
 | `CLERK_SECRET_KEY` | Server (session verification, middleware) | Same as above |
 | `BRAIN_API_URL` | Server (`/api/admin/*` routes that call Brain, e.g. n8n mirror status) | Same value as Render `brain-api` public URL; include `/api/v1` or base host — `command-center` normalizes |
 | `BRAIN_API_SECRET` | Server (sent as `X-Brain-Secret` to Brain `/admin/*`) | Must match Brain’s `BRAIN_API_SECRET` |
+| `CLERK_DOMAIN_DEGRADED` | `apps/studio` middleware only | Set to `1` in production to skip Account Portal redirect and require **Basic Auth only** when custom-domain DNS for Clerk is broken or not yet live. See `docs/infra/CLERK_PRODUCTION_DOMAIN.md`. Remove when DNS is verified. |
 
 **Custom prefix** is not used (empty) — do not add a `STUDIO_` or other prefix to these variable names in Vercel or `.env`.
 
@@ -86,5 +87,6 @@ Some products may need a different sign-in shell or extra `appearance` props on 
 
 ## Related
 
+- Production DNS (custom Clerk domains): `docs/infra/CLERK_PRODUCTION_DOMAIN.md`
 - Sprint: `docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md` (T3)
 - Decision log: `docs/KNOWLEDGE.md` (Clerk via Vercel Marketplace)
