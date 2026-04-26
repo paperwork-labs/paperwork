@@ -43,7 +43,7 @@ jobs:
     name: BRAIN_PERSONAS.md ↔ registry
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -54,7 +54,7 @@ jobs:
     name: AXIOMFOLIO_INTEGRATION.generated.md ↔ yaml
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -65,7 +65,7 @@ jobs:
     name: Doc ↔ code refs (file:line)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -75,7 +75,7 @@ jobs:
     name: n8n graph snapshot ↔ workflow files
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
