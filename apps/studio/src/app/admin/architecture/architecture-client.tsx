@@ -8,13 +8,13 @@ import {
   RefreshCw,
   MessagesSquare,
   X,
-  Github,
   Activity,
   Sparkles,
   Workflow,
   Network,
   LayoutGrid,
 } from "lucide-react";
+import { GithubMarkIcon } from "@/components/github-mark-icon";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   type SystemGraph,
@@ -638,7 +638,7 @@ export default function ArchitectureClient({
                           rel="noreferrer"
                           className="flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-1.5 text-xs text-zinc-300 transition hover:border-zinc-700 hover:bg-zinc-800/60"
                         >
-                          <Github className="h-3 w-3 opacity-50" />
+                          <GithubMarkIcon className="h-3 w-3 opacity-50" />
                           <span className="font-mono text-zinc-200">
                             {g.name}
                           </span>
@@ -682,7 +682,7 @@ export default function ArchitectureClient({
                       rel="noreferrer"
                       className="flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900/40 px-3 py-2 text-sm text-zinc-200 transition hover:border-zinc-700 hover:bg-zinc-800/60"
                     >
-                      <Github className="h-3.5 w-3.5" /> Source on GitHub
+                      <GithubMarkIcon className="h-3.5 w-3.5" /> Source on GitHub
                       <ExternalLink className="ml-auto h-3 w-3 opacity-60" />
                     </a>
                     {selected.admin_url && (
