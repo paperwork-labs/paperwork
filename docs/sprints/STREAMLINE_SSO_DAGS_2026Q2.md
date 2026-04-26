@@ -30,6 +30,7 @@ related_prs:
   - 169
   - 170
   - 197
+  - 198
   - 200
 ---
 
@@ -69,6 +70,7 @@ Acceptance theme for the window: operators can name the single system that fires
 - shipped 2026-04-25: **T3.1b** — Studio Clerk pages adopt the dark-themed `studioClerkAppearance` (HSL CSS-var bridge to Clerk variables + custom `elements` Tailwind). PR #152.
 - shipped 2026-04-25: **T3.2** — Clerk SDK foundation extended to LaunchFree (PR #155) and FileFree (PR #156): `<ClerkProvider>`, sign-in/up catch-alls, and `clerkMiddleware` composed with each app's existing legacy session / Basic Auth escape hatches. Runbooks: [docs/infra/CLERK_LAUNCHFREE.md](../infra/CLERK_LAUNCHFREE.md), [docs/infra/CLERK_FILEFREE.md](../infra/CLERK_FILEFREE.md).
 - shipped 2026-04-26: **T3.2 (Trinkets)** — `<ClerkProvider>`, sign-in/up catch-all routes, `clerkMiddleware` (public utility app; no legacy session or Basic Auth to compose). Trinkets Clerk appearance: indigo `#6366F1` + sky cyan `#38BDF8`. Runbook: [docs/infra/CLERK_TRINKETS.md](../infra/CLERK_TRINKETS.md). PR #197.
+- shipped 2026-04-26: **T3.2 (Distill)** — `@clerk/nextjs` + `<ClerkProvider>`, sign-in/sign-up catch-alls, `clerkMiddleware` on `/dashboard` only (no legacy gate), and `distillClerkAppearance` (teal `#0F766E` + burnt orange `#C2410C`). Runbook: [docs/infra/CLERK_DISTILL.md](../infra/CLERK_DISTILL.md). PR #198.
 - shipped 2026-04-25: **T3.4** — AxiomFolio `axiomfolio-next` Clerk UI themed via `axiomfolioClerkAppearance` + `ClerkAuthPageShell`; `@clerk/themes` aligned with other apps. Runbook: [docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming). PR #167.
 - shipped 2026-04-25: **T4** — Replaced Studio's placeholder DAG views with `@xyflow/react` graphs that survive real persona / workflow shapes (zoom, pan, labelled edges). PR #147.
 - shipped 2026-04-26: **T4 (live data)** — Studio `/admin/architecture` loads live schedule ownership from Brain `GET /api/v1/admin/scheduler/n8n-mirror/status`, tints graph nodes (Brain-first vs n8n shadow vs error), last production Vercel deploy per app, and health-probe recency; SSR falls back to bundled `system-graph.json` with a banner when Brain is unreachable; 30s cache + client refresh. Code: `apps/studio/src/lib/get-architecture-payload.ts`, `apps/studio/src/app/api/admin/architecture/route.ts`, `apps/studio/src/components/admin/LiveDataBadge.tsx`.
@@ -102,7 +104,7 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
 - **T3 — Clerk SSO (cross-product)** `[~]`
   - `[x]` Adopt Clerk via Vercel Marketplace; auto-provisioned env vars across linked Vercel projects. (T3.1: Studio foundation — PR #151)
   - `[x]` Studio Clerk pages themed via Appearance API. (T3.1b — PR #152)
-  - `[x]` LaunchFree + FileFree + **Trinkets** wired with `<ClerkProvider>` + sign-in/up + `clerkMiddleware` (LaunchFree/FileFree: legacy + Basic composition — PRs #155, #156; Trinkets: public shell — [CLERK_TRINKETS.md](../infra/CLERK_TRINKETS.md), PR #197).
+  - `[x]` LaunchFree + FileFree + **Trinkets** + **Distill** wired: `<ClerkProvider>` + sign-in/up; LaunchFree/FileFree `clerkMiddleware` with legacy gates (PRs #155, #156); Trinkets public shell (PR #197, [CLERK_TRINKETS.md](../infra/CLERK_TRINKETS.md)); Distill `/dashboard` Clerk-only (PR #198, [CLERK_DISTILL.md](../infra/CLERK_DISTILL.md)).
   - `[~]` Roll out per-product theming (Appearance API) while preserving a single identity graph. (T3.3 — Studio done; LaunchFree + FileFree in flight as B5-T3.3.)
   - `[x]` **T3.4** — AxiomFolio (`axiomfolio-next`) per-app Clerk theming: `axiomfolioClerkAppearance` (Appearance API + `@clerk/themes` dark), `ClerkAuthPageShell` on `/sign-in` and `/sign-up`, `ClerkProvider` `appearance` for `UserButton` and global Clerk UI. ([docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming))
   - `[ ]` Plan verifier paths for AxiomFolio APIs post–Next.js migration; retire parallel JWT/session schemes safely.

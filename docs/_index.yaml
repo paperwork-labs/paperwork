@@ -248,6 +248,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: clerk-distill
+    path: docs/infra/CLERK_DISTILL.md
+    title: Clerk SSO — Distill (Next.js)
+    summary: "Runbook for the Distill app (`apps/distill`) identity stack: **Clerk** (SSO) for interactive sign-in. There is **no** legacy session cookie or Basic Auth layer in this app — `clerkMiddleware` only…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: clerk-filefree
     path: docs/infra/CLERK_FILEFREE.md
     title: Clerk SSO — FileFree (Next.js)

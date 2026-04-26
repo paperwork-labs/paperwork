@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
+import { distillClerkAppearance } from "@/lib/clerk-appearance";
 import "./globals.css";
 
 const inter = Inter({
@@ -29,8 +31,10 @@ export default function RootLayout({
         data-theme="distill"
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
       >
-        {children}
-        <Analytics />
+        <ClerkProvider appearance={distillClerkAppearance}>
+          {children}
+          <Analytics />
+        </ClerkProvider>
       </body>
     </html>
   );
