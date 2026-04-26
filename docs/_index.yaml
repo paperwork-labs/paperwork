@@ -276,6 +276,13 @@ docs:
     tags: [infra]
     owners: [infra-ops]
     category: reference
+  - slug: readme
+    path: docs/brand/README.md
+    title: Paperwork Labs brand asset registry
+    summary: "Single source of truth for canonical SVG marks across Paperwork Labs and its products. If a logo or product glyph isn't listed here, it isn't canonical yet."
+    tags: [company, reference]
+    owners: [brand]
+    category: reference
   - slug: prd
     path: docs/PRD.md
     title: Paperwork PRD
