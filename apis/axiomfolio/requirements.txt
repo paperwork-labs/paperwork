@@ -44,7 +44,7 @@ redis==7.4.0
 
 # Linters & Dev
 black==26.3.1
-ruff==0.15.11
+ruff==0.15.12
 
 # Observability — OpenTelemetry stack pinned below handles APM/tracing.
 # New Relic was previously bundled but never activated (no newrelic-admin
@@ -66,7 +66,7 @@ responses==0.26.0
 passlib[bcrypt]==1.7.4
 PyJWT==2.12.1
 email-validator==2.3.0
-cryptography==46.0.7
+cryptography==47.0.0
 httpx==0.28.1
 croniter==6.2.2
 resend>=2.29.0
@@ -85,11 +85,11 @@ optuna==4.8.0
 # OpenTelemetry — distributed tracing + metrics.
 # `*-api` and `*-sdk` track the same MAJOR.MINOR; instrumentation packages
 # follow a separate 0.x line tied to that release. Keep them lock-stepped.
-opentelemetry-api==1.41.0
-opentelemetry-sdk==1.41.0
-opentelemetry-exporter-otlp-proto-http==1.41.0
-opentelemetry-instrumentation-fastapi==0.62b0
-opentelemetry-instrumentation-sqlalchemy==0.62b0
-opentelemetry-instrumentation-celery==0.62b0
-opentelemetry-instrumentation-httpx==0.62b0
-opentelemetry-instrumentation-redis==0.62b0
+opentelemetry-api==1.41.1
+opentelemetry-sdk==1.41.1
+opentelemetry-exporter-otlp-proto-http==1.41.1
+opentelemetry-instrumentation-fastapi==0.62b1
+opentelemetry-instrumentation-sqlalchemy==0.62b1
+opentelemetry-instrumentation-celery==0.62b1
+opentelemetry-instrumentation-httpx==0.62b1
+opentelemetry-instrumentation-redis==0.62b1

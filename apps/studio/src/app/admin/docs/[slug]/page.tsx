@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { AlertTriangle, ArrowLeft, Github, Lock } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Lock } from "lucide-react";
+
+import { GithubMarkIcon } from "@/components/github-mark-icon";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -42,7 +44,7 @@ export default async function DocPage({ params }: { params: Params }) {
           rel="noreferrer"
           className="flex items-center gap-1 hover:text-zinc-200"
         >
-          <Github className="h-3.5 w-3.5" />
+          <GithubMarkIcon className="h-3.5 w-3.5" />
           View on GitHub
         </a>
       </nav>
