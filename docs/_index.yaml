@@ -234,6 +234,13 @@ docs:
     tags: [finance, procurement]
     owners: [cfo]
     category: reference
+  - slug: prompts
+    path: docs/brand/PROMPTS.md
+    title: Brand prompts
+    summary: "Per-product AI image-generation prompts for the six consumer marks that we deferred from PR #172. Run any of these in Nano Banana, Midjourney v6+, DALL-E 3, or Imagen, then drop the chosen image…"
+    tags: []
+    owners: [Paperwork Labs]
+    category: reference
   - slug: clerk-axiomfolio
     path: docs/infra/CLERK_AXIOMFOLIO.md
     title: Clerk SSO — AxiomFolio (axiomfolio-next)

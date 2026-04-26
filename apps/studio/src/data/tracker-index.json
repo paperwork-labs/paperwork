@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "37e8bcf5b7f9",
+  "content_hash": "9c0a753f8dce",
   "products": [
     {
       "label": "AxiomFolio",
@@ -260,7 +260,7 @@
       "pr": null,
       "pr_url": null,
       "related_prs": [
-        162
+        172
       ],
       "ships": [],
       "slug": "brand-design-deepdive-2026q2",

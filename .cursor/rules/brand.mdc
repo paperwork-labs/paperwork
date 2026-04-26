@@ -59,20 +59,20 @@ PAPERWORK LABS (Holding Company - paperworklabs.com)
 
 ## Logo Assets
 
-**Status**: Canon as of 2026 Q2. All marks hand-authored; do not regenerate via AI tools (stroke inconsistency breaks the visual grammar).
+**Status**: Canon as of 2026 Q2. Parent + admin marks hand-authored; consumer marks AI-generated per [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md), then retraced as SVG.
 
-| Product / surface | Icon | Lockup (light) | Lockup (dark) |
-| --- | --- | --- | --- |
-| Paperwork Labs (parent) | `apps/studio/public/brand/paperwork-labs-icon.svg` | `apps/studio/public/brand/paperwork-labs-lockup.svg` | `apps/studio/public/brand/paperwork-labs-lockup-dark.svg` |
-| Studio | `apps/studio/public/brand/studio-icon.svg` | `apps/studio/public/brand/studio-lockup.svg` | `apps/studio/public/brand/studio-lockup-dark.svg` |
-| FileFree | `apps/filefree/public/brand/filefree-icon.svg` | `apps/filefree/public/brand/filefree-lockup.svg` | `apps/filefree/public/brand/filefree-lockup-dark.svg` |
-| LaunchFree | `apps/launchfree/public/brand/launchfree-icon.svg` | `apps/launchfree/public/brand/launchfree-lockup.svg` | `apps/launchfree/public/brand/launchfree-lockup-dark.svg` |
-| AxiomFolio | `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` | `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | (uses light on dark) |
-| Distill | `apps/distill/public/brand/distill-icon.svg` | `apps/distill/public/brand/distill-lockup.svg` | `apps/distill/public/brand/distill-lockup-dark.svg` |
-| Trinkets | `apps/trinkets/public/brand/trinkets-icon.svg` | `apps/trinkets/public/brand/trinkets-lockup.svg` | `apps/trinkets/public/brand/trinkets-lockup-dark.svg` |
-| Brain (candidates) | `docs/brand/brain/brain-icon-fill-meter.svg` AND `docs/brand/brain/brain-icon-orbital-dag.svg` | (chosen after pick) | (chosen after pick) |
+| Product / surface | Icon | Lockup (light) | Lockup (dark) | Source |
+| --- | --- | --- | --- | --- |
+| Paperwork Labs (parent) | `apps/studio/public/brand/paperwork-labs-icon.svg` | `apps/studio/public/brand/paperwork-labs-lockup.svg` | `apps/studio/public/brand/paperwork-labs-lockup-dark.svg` | hand-authored |
+| Studio | `apps/studio/public/brand/studio-icon.svg` | `apps/studio/public/brand/studio-lockup.svg` | `apps/studio/public/brand/studio-lockup-dark.svg` | hand-authored |
+| AxiomFolio | `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` | `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | (uses light on dark) | hand-authored (Sankalp) |
+| FileFree | TBD — see [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md) | TBD (per-product PR) | TBD (per-product PR) | AI-generated → SVG retrace |
+| LaunchFree | TBD — see [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md) | TBD (per-product PR) | TBD (per-product PR) | AI-generated → SVG retrace |
+| Distill | TBD — see [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md) | TBD (per-product PR) | TBD (per-product PR) | AI-generated → SVG retrace |
+| Trinkets | TBD — see [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md) | TBD (per-product PR) | TBD (per-product PR) | AI-generated → SVG retrace |
+| Brain | TBD — see [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md) (run BOTH candidates) | TBD (chosen-direction PR) | TBD (chosen-direction PR) | AI-generated → SVG retrace |
 
-See `docs/brand/README.md` for full registry, visual grammar, and adding-a-new-mark workflow.
+See [`docs/brand/README.md`](../../docs/brand/README.md) for the live registry and adding-a-new-mark workflow. See [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md) for the AI image-generation prompts (locked palette per product).
 
 ### Visual grammar (mandatory for any new mark)
 
@@ -83,15 +83,34 @@ See `docs/brand/README.md` for full registry, visual grammar, and adding-a-new-m
 5. **No gradients, drop shadows, or filters** in the SVG file.
 6. **Wordmark font**: Inter 600, `letter-spacing: -0.5`, `font-size: 62`. System stack fallback.
 
-### Trinity palette (canonical marks)
+### Trinity (chrome — used in every mark)
 
 | Token | Light surface | Dark surface | Role |
 | --- | --- | --- | --- |
-| Azure | `#3274F0` | `#60A5FA` | Primary structural mark |
-| Amber | `#F59E0B` | `#FBBF24` | Earned accent (single dot) |
-| Slate-night | `#0F172A` | `#FAFAFA` | Wordmark + body type |
+| Slate-night | `#0F172A` | `#FAFAFA` | Wordmark + body type, surface |
+| Inter 600 wordmark | — | — | Family thread across all lockups |
+| Visual grammar (5 rules) | — | — | Identical across all marks |
 
-Hex values come from the AxiomFolio mark (the user's hand-designed Warriors-inspired palette). Promoting AxiomFolio's anchors to the company family means we level up to the highest-quality surface, not down to the lowest common denominator.
+The trinity is the **chrome** — what stays consistent across every product mark so the family reads as one company. Hex values come from the AxiomFolio mark (the user's hand-designed Warriors-inspired palette).
+
+### Per-product mark palette (canonical SVG marks)
+
+Each consumer product owns its primary hue. This is what differentiates the marks at favicon scale.
+
+| Product | Primary | Accent | Role |
+| --- | --- | --- | --- |
+| Paperwork Labs (parent) | Azure `#3274F0` | Amber `#F59E0B` | Family anchor |
+| Studio (admin chrome) | Azure `#3274F0` | Amber `#F59E0B` | Internal admin; reuses parent palette |
+| AxiomFolio | Azure `#3274F0` | Amber `#F59E0B` | Earned existing identity (finance product) |
+| FileFree | Teal `#0EA5A6` | Amber `#F59E0B` | Clean filing; water-clear |
+| LaunchFree | Coral `#F97357` | Slate `#0F172A` | Energy; warmth; rocket-launch |
+| Distill | Copper `#B8643A` | Slate `#0F172A` | Refinement; concentration |
+| Trinkets | Magenta `#C026D3` | Amber `#F59E0B` | Playful; multiple tools |
+| Brain | Violet `#7C3AED` | Amber `#F59E0B` | Intelligence; meta-product |
+
+Dark-surface variants of each primary (used in `-dark.svg` lockups): Azure → `#60A5FA`, Amber → `#FBBF24`. Other primaries lighten ~15% for dark-surface contrast (TBD per mark when AI-generated outputs land).
+
+The first cut of this brand work (2026-04-25) put every mark on Azure + Amber and they came out indistinguishable. Per-product hue is the locked direction. See [`docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md`](../../docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md) §1.2 for the full rationale.
 
 ### Logo Rules (all brands)
 
@@ -103,9 +122,17 @@ Hex values come from the AxiomFolio mark (the user's hand-designed Warriors-insp
 - Never recolor the amber dot. It is `#F59E0B` (light) / `#FBBF24` (dark). It is not a CTA color.
 - Never put the paperclip mark on a product page — it's parent-brand only. Each product uses its own glyph.
 
-## Color Palettes
+## Color Palettes (current product UI — pre-migration)
 
-### FileFree (Violet-Indigo — Tax / Trust / Calm)
+The tables below reflect the **current** in-product UI CTA colors. Per the 2026 Q2 brand canon, each product's UI will migrate to its **canonical mark hue** (see "Per-product mark palette" above) in a follow-up sprint. Until then:
+
+- Use the mark hue ONLY for canonical SVG assets (icons, lockups, social cards, favicons).
+- Use the product-UI palette below for CTAs, links, gradients inside the product app.
+- New components inside an app should default to the product-UI palette (it's what the rest of the app uses today).
+
+When the migration sprint lands, these palettes get rewritten to match the mark hues; UI churn is contained to one PR per product, not spread across this rule file.
+
+### FileFree (Violet-Indigo — Tax / Trust / Calm) — UI palette pre-migration to Teal mark hue
 
 | Name | Hex | Tailwind | Usage |
 |------|-----|----------|-------|
@@ -120,7 +147,7 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 /* Tailwind: bg-gradient-to-r from-violet-500 to-purple-600 */
 ```
 
-### LaunchFree (Teal-Cyan — Business / Energy / Action)
+### LaunchFree (Teal-Cyan — Business / Energy / Action) — UI palette pre-migration to Coral mark hue
 
 | Name | Hex | Tailwind | Usage |
 |------|-----|----------|-------|
@@ -129,7 +156,7 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 | Gradient end | `#06B6D4` | `cyan-500` | Gradient end |
 | Background | `#0A0F1A` | custom deep navy | App background |
 
-### Distill (Deep Blue-Slate — B2B / Professional / Precision)
+### Distill (Deep Blue-Slate — B2B / Professional / Precision) — UI palette pre-migration to Copper mark hue
 
 | Name | Hex | Tailwind | Usage |
 |------|-----|----------|-------|
@@ -145,7 +172,7 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 | Zinc | `#71717A` | `zinc-500` | Primary |
 | Background | `#09090B` | `zinc-950` | App background |
 
-### Trinkets (Amber-Orange - Utility / Approachable / Helpful)
+### Trinkets (Amber-Orange - Utility / Approachable / Helpful) — UI palette pre-migration to Magenta mark hue
 
 | Name | Hex | Tailwind | Usage |
 |------|-----|----------|-------|
@@ -164,9 +191,9 @@ background: linear-gradient(to right, #8B5CF6, #9333EA);
 
 AxiomFolio's full token system (oklch + semantic + color-blind palette + elevation scale) lives in `apps/axiomfolio/src/index.css`. This is the de-facto company baseline; per the 2026 Q2 brand canon decision, it gets promoted to `packages/ui/src/themes.css` in the engineering migration sprint.
 
-### Brain (Trinity-only - Meta-product, no separate palette)
+### Brain (Violet — Intelligence / Meta-product)
 
-Brain uses the trinity palette (azure + amber + slate-night) without a per-product CTA hue, because Brain *is* the meta-brand. Its UI surface is the parent-brand chrome — when Brain ships, it inherits Studio's zinc-neutral chrome with azure structural marks and amber earned-moment accents.
+Brain's canonical mark uses Violet `#7C3AED` + Amber `#F59E0B` accent. Two glyph candidates (fill meter / orbital arcs) ship via [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md). Brain UI surface, once built, uses Violet primary against Slate-night surface. External product name + domain TBD pending availability research.
 
 ### Shared Semantic Colors (all products)
 
