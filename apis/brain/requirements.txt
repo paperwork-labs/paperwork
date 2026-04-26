@@ -34,7 +34,7 @@ langfuse>=2.0.0
 httpx>=0.28.0
 slowapi>=0.1.9
 cryptography>=44.0.0
-pyyaml>=6.0.0
+pyyaml>=6.0.3
 tiktoken>=0.11.0
 
 # In-process scheduler for PR sweeps (Track B, Week 1). No external daemon.
