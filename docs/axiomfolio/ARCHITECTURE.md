@@ -504,8 +504,11 @@ flowchart TB
         CF_DNS --> CF_TLS
     end
 
+    subgraph vercel ["Vercel"]
+        AFWeb["apps/axiomfolio Next.js"]
+    end
+
     subgraph render ["Render (PaaS)"]
-        FE["axiomfolio-frontend Static Site"]
         API["axiomfolio-api FastAPI / Uvicorn"]
         Worker["axiomfolio-worker Celery Worker"]
         DB[(axiomfolio-db PostgreSQL)]
@@ -527,22 +530,24 @@ flowchart TB
     end
 
     User --> CF_DNS
-    CF_TLS -- "axiomfolio.com" --> FE
+    CF_TLS -- "axiomfolio.com" --> AFWeb
     CF_TLS -- "api.axiomfolio.com" --> API
     API -- "OAuth callback" --> SchwabAuth
     Worker -- "FlexQuery sync" --> FlexQuery
     API -- "Live overlay" --> Gateway
 ```
 
-### Render Service Map
+### Service map (Render + Vercel)
 
 | Service | Type | Hostname | Custom Domain |
 |---------|------|----------|---------------|
+| AxiomFolio frontend | Next.js (Vercel) | `axiomfolio.paperworklabs.com` (project URL may differ) | `axiomfolio.com` |
 | `axiomfolio-api` | Web (Docker) | `axiomfolio-api.onrender.com` | `api.axiomfolio.com` |
 | `axiomfolio-worker` | Worker (Docker) | _(internal)_ | — |
-| `axiomfolio-frontend` | Static Site | `axiomfolio-frontend.onrender.com` | `axiomfolio.com` |
 | `axiomfolio-db` | PostgreSQL | _(internal)_ | — |
 | `axiomfolio-redis` | Key-Value Store | _(internal)_ | — |
+
+**AxiomFolio** frontend is served from Vercel (`apps/axiomfolio`); see [`docs/axiomfolio/plans/PORT_INVENTORY_2026Q2.md`](plans/PORT_INVENTORY_2026Q2.md) for migration. The legacy Render static site `axiomfolio-frontend` is not in the root blueprint (Track F4, 2026-04-27); delete it in the Render dashboard if it still exists.
 
 ### Cloudflare Configuration
 
@@ -555,7 +560,7 @@ flowchart TB
 
 | Aspect | Development | Production |
 |--------|-------------|------------|
-| Frontend | `localhost:5173` (Vite dev server) | `axiomfolio.com` (Render static) |
+| Frontend | `pnpm dev` → Next.js (`apps/axiomfolio`) | `axiomfolio.com` (Vercel — [`apps/axiomfolio`](../../apps/axiomfolio)) |
 | Backend | `localhost:8000` (Docker Compose) | `api.axiomfolio.com` (Render web) |
 | Database | Local Docker PostgreSQL | Render managed PostgreSQL |
 | Redis | Local Docker Redis | Render managed Redis |
