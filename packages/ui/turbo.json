@@ -1,11 +1,16 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "extends": ["//"],
+  "extends": [
+    "//"
+  ],
   "tasks": {
     "build": {
       "outputs": []
     },
     "type-check": {
+      "outputs": []
+    },
+    "lint": {
       "outputs": []
     }
   }

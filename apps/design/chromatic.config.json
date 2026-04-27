@@ -1,10 +1,4 @@
 {
-  "$schema": "https://www.chromatic.com/config-file.schema.json",
-  "//": "TODO(founder): replace projectId placeholder once you create the Chromatic project. Until then the workflow no-ops because CHROMATIC_PROJECT_TOKEN is unset. See docs/infra/CHROMATIC_VRT.md.",
-  "projectId": "Project:<filled-in-after-founder-creates-project>",
-  "buildScriptName": "build-storybook",
-  "storybookBuildDir": "storybook-static",
-  "onlyChanged": true,
-  "exitZeroOnChanges": true,
-  "autoAcceptChanges": "main"
+  "projectId": "REPLACE_ME_IN_CHROMATIC_DASHBOARD",
+  "storybookBuildDir": "storybook-static"
 }

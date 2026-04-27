@@ -66,6 +66,17 @@ jobs:
               - 'Makefile'
               - '.github/workflows/**'
 
+  ui-package-purity:
+    name: UI package purity (@paperwork-labs/ui)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - name: Framework-agnostic guardrails (static audit)
+        run: node scripts/check-ui-package-purity.mjs
+
   secrets-scan:
     name: Secrets Scan
     runs-on: ubuntu-latest

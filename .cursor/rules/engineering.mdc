@@ -108,3 +108,7 @@ Before merging any PR:
 ## Handoff Protocol
 
 After implementation, invoke QA persona for review (see qa.mdc). For PII-touching features, also invoke Legal persona (see legal.mdc).
+
+## `@paperwork-labs/ui` (packages/ui) — framework-agnostic lock
+
+Shared UI **must not** import `next/*`, `next-auth`, `vite`, `@vercel/*`, Node built-ins (`node:*`, `fs`, `path`, `child_process`), or router packages (`react-router*`, `@remix-run/*`). Do not read `process.env` or use unguarded `window` in `packages/ui/src`; inject via props/context from apps. See [.cursor/rules/packages-ui.mdc](./packages-ui.mdc) and [packages/ui/README.md](../../packages/ui/README.md). CI: `node scripts/check-ui-package-purity.mjs`.

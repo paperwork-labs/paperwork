@@ -22,6 +22,8 @@ name: Vercel auto-promote on merge
 #   • Works for any project that has a linked `.vercel/project.json`
 #     in the repo. Matrix lists all Paperwork Labs Vercel apps.
 #
+# Canonical app list + project IDs: `scripts/vercel-projects.json` (keep matrix in sync).
+#
 # Setup (one-time, see docs/infra/VERCEL_AUTO_PROMOTE.md):
 #   gh secret set VERCEL_API_TOKEN  # from Vercel → Settings → Tokens
 #
@@ -41,9 +43,14 @@ on:
   workflow_dispatch:
     inputs:
       pr_number:
-        description: "PR number to promote (manual fallback)"
+        description: "PR number whose merge commit should be promoted (required for manual runs)"
         required: true
         type: string
+      app:
+        description: "Optional: only run the matrix leg for this Vercel project slug (e.g. studio). Leave empty to run all apps."
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -51,9 +58,10 @@ permissions:
 
 jobs:
   promote:
+    name: promote [${{ matrix.project }}]
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -67,8 +75,14 @@ jobs:
           - project: launchfree
             project_id: prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7
           - project: axiomfolio-next
-            project_id: TBD_CREATE_BEFORE_MERGE
+            project_id: prj_z3JVQGLLfsJO2QZJnK5BvMjfFoK3
+          - project: axiomfolio
+            project_id: prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE
           - project: trinkets
+            project_id: prj_MFUxaJCbQuSdJZWWVgaEtRllKjzB
+          - project: design
+            project_id: TBD_CREATE_BEFORE_MERGE
+          - project: design
             project_id: TBD_CREATE_BEFORE_MERGE
           - project: accounts
             project_id: TBD_CREATE_BEFORE_MERGE
@@ -77,10 +91,26 @@ jobs:
     env:
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
       TEAM_ID: team_RwfzJ9ySyLuVcoWdKJfXC7h5
-      PROJECT_ID: ${{ matrix.project_id }}
       PROJECT_NAME: ${{ matrix.project }}
     steps:
+      - name: Select matrix leg (workflow_dispatch app filter)
+        id: app_filter
+        run: |
+          if [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "active=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          WANT='${{ github.event.inputs.app }}'
+          if [ -z "$WANT" ] || [ "$WANT" = "${{ matrix.project }}" ]; then
+            echo "active=true" >> $GITHUB_OUTPUT
+            echo "This leg: ${{ matrix.project }} (workflow_dispatch app=${WANT:-all})"
+          else
+            echo "active=false" >> $GITHUB_OUTPUT
+            echo "Skipping matrix leg ${{ matrix.project }} — workflow_dispatch requested app=$WANT only."
+          fi
+
       - name: Verify Vercel API token configured
+        if: steps.app_filter.outputs.active == 'true'
         run: |
           if [ -z "$VERCEL_API_TOKEN" ]; then
             echo "::warning::VERCEL_API_TOKEN secret is not set — skipping promote."
@@ -90,19 +120,53 @@ jobs:
           fi
           echo "secret_ok=true" >> $GITHUB_ENV
 
-      - name: Skip if project_id placeholder
-        if: env.secret_ok == 'true' && matrix.project_id == 'TBD_CREATE_BEFORE_MERGE'
+      - name: Resolve Vercel project id
+        id: vercel_project
+        if: steps.app_filter.outputs.active == 'true' && env.secret_ok == 'true'
+        env:
+          MATRIX_DEFAULT_ID: ${{ matrix.project_id }}
         run: |
-          echo "::warning::Vercel project for ${{ matrix.project }} not yet created. Skipping promote."
-          echo "Create the project in Vercel Dashboard, then update .github/workflows/vercel-promote-on-merge.yaml with the real project_id."
+          set -euo pipefail
+          case '${{ matrix.project }}' in
+            studio) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_STUDIO }}" ;;
+            filefree) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_FILEFREE }}" ;;
+            distill) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_DISTILL }}" ;;
+            launchfree) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_LAUNCHFREE }}" ;;
+            axiomfolio-next) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_AXIOMFOLIO_NEXT }}" ;;
+            axiomfolio) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_AXIOMFOLIO }}" ;;
+            trinkets) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_TRINKETS }}" ;;
+            design) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_DESIGN }}" ;;
+            accounts) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_ACCOUNTS }}" ;;
+            *) VAR_OVERRIDE="" ;;
+          esac
+          if [ -n "${VAR_OVERRIDE:-}" ]; then
+            FINAL="$VAR_OVERRIDE"
+            echo "Using GitHub repository variable override for ${{ matrix.project }} (VERCEL_PROJECT_ID_…)."
+          else
+            FINAL="$MATRIX_DEFAULT_ID"
+          fi
+          echo "project_id=$FINAL" >> "$GITHUB_OUTPUT"
+          if [ -z "$FINAL" ] || [ "$FINAL" = "TBD_CREATE_BEFORE_MERGE" ]; then
+            echo "has_real_project=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_real_project=true" >> "$GITHUB_OUTPUT"
+            echo "PROJECT_ID=$FINAL" >> "$GITHUB_ENV"
+          fi
+
+      - name: Skip if no real Vercel project id
+        if: steps.app_filter.outputs.active == 'true' && env.secret_ok == 'true' && steps.vercel_project.outputs.has_real_project == 'false'
+        run: |
+          echo "::notice::Skipped — ${{ matrix.project }} has no project id (matrix placeholder or empty, and no VERCEL_PROJECT_ID_* repository variable)."
+          echo "Create/link the project in Vercel, then set projectId in scripts/vercel-projects.json + matrix, or set the repository variable from docs/infra/VERCEL_AUTO_PROMOTE.md."
+          echo "See docs/infra/FOUNDER_ACTIONS.md."
           exit 0
 
       - name: Resolve PR merge commit SHA
         id: pr
-        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE'
+        if: steps.app_filter.outputs.active == 'true' && env.secret_ok == 'true' && steps.vercel_project.outputs.has_real_project == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number }}
         run: |
           # IMPORTANT: For a squash-merged PR, Vercel builds the *merge commit*
           # SHA that landed on `main` — NOT the PR branch's last head SHA.
@@ -135,15 +199,16 @@ jobs:
 
       - name: Relevant paths for this app
         id: paths
-        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE'
+        if: steps.app_filter.outputs.active == 'true' && env.secret_ok == 'true' && steps.vercel_project.outputs.has_real_project == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
         run: |
+          set -euo pipefail
           PREFIX="apps/${{ matrix.project }}/"
-          FILES=$(gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" --name-only 2>/dev/null || true)
+          FILES=$(gh pr diff "$PR_NUMBER" --repo "${{ github.repository }}" --name-only)
           if [ -z "$FILES" ]; then
-            echo "::warning::Could not list files for PR #$PR_NUMBER — continuing (treat as relevant)."
+            echo "::warning::No files listed for PR #$PR_NUMBER (empty diff) — continuing (treat as relevant)."
             echo "paths_relevant=true" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -166,16 +231,33 @@ jobs:
 
       - name: Check if production already on this SHA (idempotency)
         id: check
-        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE' && steps.paths.outputs.paths_relevant == 'true'
+        if: steps.app_filter.outputs.active == 'true' && env.secret_ok == 'true' && steps.vercel_project.outputs.has_real_project == 'true' && steps.paths.outputs.paths_relevant == 'true'
         env:
           PR_HEAD: ${{ steps.pr.outputs.pr_head }}
         run: |
-          PROD_SHA=$(curl -sf -H "Authorization: Bearer $VERCEL_API_TOKEN" \
-            "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&target=production&limit=1&state=READY" \
-            | jq -r '.deployments[0].meta.githubCommitSha // ""')
+          set -euo pipefail
+          lc() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+          same_sha() {
+            local a b
+            a=$(lc "$1")
+            b=$(lc "$2")
+            [ -n "$a" ] && [ -n "$b" ] || return 1
+            [ "$a" = "$b" ] && return 0
+            [ "${a:0:7}" = "${b:0:7}" ] && return 0
+            return 1
+          }
+          HTTP_CODE=$(curl -sS -o /tmp/prod-dep.json -w "%{http_code}" -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&target=production&limit=1&state=READY")
+          if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Failed to read production deployment for $PROJECT_NAME (HTTP $HTTP_CODE)."
+            head -c 4000 /tmp/prod-dep.json || true
+            echo
+            exit 1
+          fi
+          PROD_SHA=$(jq -r '.deployments[0].meta.githubCommitSha // ""' /tmp/prod-dep.json)
           echo "Current prod SHA for $PROJECT_NAME: $PROD_SHA"
           echo "Target SHA: $PR_HEAD"
-          if [ "$PROD_SHA" = "$PR_HEAD" ]; then
+          if same_sha "$PROD_SHA" "$PR_HEAD"; then
             echo "Production already on target SHA — webhook fired correctly. Nothing to do."
             echo "already_promoted=true" >> $GITHUB_OUTPUT
           else
@@ -184,41 +266,92 @@ jobs:
 
       - name: Find READY preview deployment for PR head
         id: find
-        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE' && steps.paths.outputs.paths_relevant == 'true' && steps.check.outputs.already_promoted == 'false'
+        if: steps.app_filter.outputs.active == 'true' && env.secret_ok == 'true' && steps.vercel_project.outputs.has_real_project == 'true' && steps.paths.outputs.paths_relevant == 'true' && steps.check.outputs.already_promoted == 'false'
         env:
           PR_HEAD: ${{ steps.pr.outputs.pr_head }}
           PR_HEAD_FALLBACK: ${{ steps.pr.outputs.pr_head_fallback }}
         run: |
-          # Try the merge commit SHA first. If Vercel doesn't have it (e.g.
-          # rebased PR where Vercel built the branch HEAD instead of the
-          # squash-merge commit), retry with the PR head.sha as a fallback.
-          # Vercel's webhook can take ~30-90s to mark a deployment READY,
-          # so we retry up to 6 times over 6 minutes.
+          set -euo pipefail
+          # Prefer meta-githubCommitSha API filter, then scan recent READY deployments with
+          # fuzzy SHA match (full 40-char or matching 7-char prefix). Vercel may lag several
+          # minutes before a main push produces a READY deployment; fail the job if none
+          # exists so merges do not look green while production is stuck.
+          curl_deployments() {
+            local url="$1" out="$2"
+            local code
+            code=$(curl -sS -o "$out" -w "%{http_code}" -H "Authorization: Bearer ${VERCEL_API_TOKEN}" "$url")
+            CURL_LAST_HTTP="$code"
+            if [ "$code" = "429" ]; then
+              echo "::warning::Vercel deployments API rate limited (HTTP 429) for $PROJECT_NAME — backing off 30s (counts as one retry)."
+              return 2
+            fi
+            if [ -z "$code" ] || [ "$code" -lt 200 ] || [ "$code" -ge 400 ]; then
+              echo "::error::Vercel deployments API failed (HTTP ${code}) for URL query (project=$PROJECT_NAME). Body (truncated):"
+              head -c 4000 "$out" || true
+              echo
+              exit 1
+            fi
+          }
+          pick_from_meta_filter() {
+            local sha="$1"
+            if [ -z "$sha" ]; then echo ""; return 0; fi
+            local url="https://api.vercel.com/v6/deployments?projectId=${PROJECT_ID}&teamId=${TEAM_ID}&state=READY&limit=10&meta-githubCommitSha=${sha}"
+            if ! curl_deployments "$url" /tmp/vmeta.json; then
+              return 2
+            fi
+            jq -r '[.deployments[]? | select(.readyState == "READY")] | sort_by(.createdAt) | reverse | first | .uid // empty' /tmp/vmeta.json
+          }
+          pick_from_full_list() {
+            if ! curl_deployments "https://api.vercel.com/v6/deployments?projectId=${PROJECT_ID}&teamId=${TEAM_ID}&state=READY&limit=100" /tmp/vlist.json; then
+              return 2
+            fi
+            jq -r --arg MERGE "$PR_HEAD" --arg HEAD "$PR_HEAD_FALLBACK" '
+              def norm(s): (s // "") | ascii_downcase;
+              def cand(d): norm(d.meta.githubCommitSha // d.meta.commitSha // (d.gitSource.sha? // ""));
+              def sameref(m; r):
+                (m != "" and r != "" and (m == r or m[0:7] == r[0:7]));
+              [.deployments[]? | select(.readyState == "READY")
+                | select(sameref(cand(.); ($MERGE|norm)) or sameref(cand(.); ($HEAD|norm)))]
+              | sort_by(.createdAt) | reverse | first | .uid // empty
+            ' /tmp/vlist.json
+          }
           DEPLOY_ID=""
-          for attempt in 1 2 3 4 5 6; do
-            echo "Attempt $attempt: searching for READY deployment with githubCommitSha=$PR_HEAD (merge) or $PR_HEAD_FALLBACK (head)"
-            DEPLOY_ID=$(curl -sf -H "Authorization: Bearer $VERCEL_API_TOKEN" \
-              "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&state=READY&limit=50" \
-              | jq -r --arg MERGE "$PR_HEAD" --arg HEAD "$PR_HEAD_FALLBACK" \
-                '[.deployments[] | select(.meta.githubCommitSha == $MERGE or .meta.githubCommitSha == $HEAD)] | first | .uid // ""')
+          for attempt in $(seq 1 5); do
+            echo "Attempt $attempt / 5: READY deployment for merge=$PR_HEAD head=$PR_HEAD_FALLBACK ($PROJECT_NAME)"
+            for SHA_TRY in "$PR_HEAD" "$PR_HEAD_FALLBACK"; do
+              CAND=""
+              rc=0
+              CAND="$(pick_from_meta_filter "$SHA_TRY")" || rc=$?
+              if [ "$rc" -eq 2 ]; then
+                DEPLOY_ID=""
+                break
+              fi
+              if [ -n "$CAND" ]; then DEPLOY_ID="$CAND"; break; fi
+            done
+            if [ -z "$DEPLOY_ID" ]; then
+              rc=0
+              DEPLOY_ID="$(pick_from_full_list)" || rc=$?
+              if [ "$rc" -eq 2 ]; then
+                DEPLOY_ID=""
+              fi
+            fi
             if [ -n "$DEPLOY_ID" ]; then
               echo "Found deployment: $DEPLOY_ID"
               break
             fi
-            echo "No match yet; sleeping 60s."
-            sleep 60
+            echo "No READY deployment with this SHA yet; sleeping 30s."
+            sleep 30
           done
           if [ -z "$DEPLOY_ID" ]; then
-            echo "::warning::No preview found for $PROJECT_NAME — Vercel skipped this build (likely path filter or ignoreCommand)."
-            echo "found_preview=false" >> $GITHUB_OUTPUT
-            exit 0
+            echo "::error::No READY Vercel deployment for **${PROJECT_NAME}** matching merge_commit_sha=${PR_HEAD} or head_sha=${PR_HEAD_FALLBACK} after 5 attempts (~2.5 min). Promote only aliases an existing deployment — it cannot create one. Typical causes: Vercel never built this app for that commit (monorepo ignoreCommand / dashboard skip), deployment still BUILDING, or Hobby rate limits. Check Deployments in the Vercel dashboard; merge a no-op change to apps/${PROJECT_NAME}/.deploy-trigger or run \`vercel deploy --prod\` from apps/${PROJECT_NAME} if needed."
+            exit 1
           fi
           echo "found_preview=true" >> $GITHUB_OUTPUT
           echo "deploy_id=$DEPLOY_ID" >> $GITHUB_OUTPUT
 
       - name: Promote to production
         id: promote
-        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE' && steps.paths.outputs.paths_relevant == 'true' && steps.check.outputs.already_promoted == 'false' && steps.find.outputs.found_preview == 'true'
+        if: steps.app_filter.outputs.active == 'true' && env.secret_ok == 'true' && steps.vercel_project.outputs.has_real_project == 'true' && steps.paths.outputs.paths_relevant == 'true' && steps.check.outputs.already_promoted == 'false' && steps.find.outputs.found_preview == 'true'
         env:
           DEPLOY_ID: ${{ steps.find.outputs.deploy_id }}
         run: |
@@ -231,14 +364,14 @@ jobs:
           cat /tmp/vercel-promote-response.json
           echo
           if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
-            echo "::error::Vercel promote API failed (HTTP $HTTP_CODE). Response body is printed above."
+            echo "::error::Vercel promote API failed (HTTP $HTTP_CODE) for **${{ matrix.project }}**. Response body is printed above."
             exit 1
           fi
           echo "url=https://vercel.com/paperwork-labs/$PROJECT_NAME/$DEPLOY_ID" >> $GITHUB_OUTPUT
           echo "Promoted $DEPLOY_ID to production for $PROJECT_NAME (no rebuild)."
 
       - name: Comment on PR
-        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE' && github.event_name == 'pull_request' && steps.paths.outputs.paths_relevant == 'true' && (steps.check.outputs.already_promoted == 'true' || steps.find.outputs.found_preview == 'true')
+        if: steps.app_filter.outputs.active == 'true' && env.secret_ok == 'true' && steps.vercel_project.outputs.has_real_project == 'true' && github.event_name == 'pull_request' && steps.paths.outputs.paths_relevant == 'true' && (steps.check.outputs.already_promoted == 'true' || steps.find.outputs.found_preview == 'true')
         uses: actions/github-script@v9
         with:
           script: |
@@ -260,3 +393,8 @@ jobs:
               issue_number: prNumber,
               body,
             });
+
+      - name: Report failed promote (per app)
+        if: failure() && steps.app_filter.outputs.active == 'true'
+        run: |
+          echo "::error::Vercel auto-promote failed for app **${{ matrix.project }}** (project_id=${{ steps.vercel_project.outputs.project_id }}). Check the job log above: GitHub (gh pr / path filter), Vercel production fetch, find READY deployment, or promote API."

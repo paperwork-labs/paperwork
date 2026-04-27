@@ -13,9 +13,9 @@
     "start": "next start",
     "lint": "next build",
     "type-check": "tsc --noEmit",
-    "test:e2e": "playwright test",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.2.7",
