@@ -20,7 +20,6 @@ from app.models.transaction import Transaction, TransactionType, Dividend
 from app.models.trade import Trade
 from app.models.account_balance import AccountBalance
 from app.services.clients.schwab_client import SchwabClient
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.account_credentials_service moves during Phase 0.C
 from app.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
