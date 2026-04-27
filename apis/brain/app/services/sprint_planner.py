@@ -5,6 +5,8 @@ collision detection, budgeting, and bucket selection here so #240 can add
 LLM-backed planning without duplicating this module.
 
 v1 is fully heuristic — no LLM calls.
+
+medallion: ops
 """
 
 from __future__ import annotations
