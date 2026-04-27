@@ -1,6 +1,6 @@
 import type { InfrastructureView, InfraStatus } from "@/lib/infra-types";
 
-/** Nine platform rows: eight Render (incl. Postgres + Redis) + one Vercel (E2E / CI). */
+/** Platform rows aligned with root `render.yaml` + `VERCEL_MONOREPO_PROJECT_NAMES` (E2E / CI). */
 export function getE2EInfrastructureFixture(): InfrastructureView {
   const r = (
     name: string,
@@ -25,18 +25,18 @@ export function getE2EInfrastructureFixture(): InfrastructureView {
       anchorId: `render-mock-${name.replace(/[^a-z0-9-]/gi, "-")}`,
     };
   };
-  const v = (name: string): InfraStatus => ({
+  const v = (name: string, ok: boolean): InfraStatus => ({
     service: name,
     category: "hosting",
     configured: true,
-    healthy: true,
-    detail: "Vercel production · ready · a1b2c3d",
+    healthy: ok,
+    detail: ok ? "Vercel production · ready · a1b2c3d" : "Vercel production · error",
     latencyMs: null,
     dashboardUrl: `https://vercel.com/paperwork-labs/${name}`,
     probeKind: "vercel",
     platformType: "vercel-project",
-    stateLabel: "live",
-    deployState: "ready",
+    stateLabel: ok ? "live" : "failed",
+    deployState: ok ? "ready" : "error",
     commitSha: "a1b2c3d",
     lastDeployedAt: new Date().toISOString(),
     anchorId: `vercel-mock-${name}`,
@@ -47,16 +47,21 @@ export function getE2EInfrastructureFixture(): InfrastructureView {
     r("axiomfolio-api", "web", "failed"),
     r("axiomfolio-worker", "worker", "live"),
     r("axiomfolio-worker-heavy", "worker", "live"),
-    r("axiomfolio-frontend", "static", "live"),
     r("axiomfolio-db", "postgres", "live"),
     r("axiomfolio-redis", "redis", "live"),
-    v("studio"),
+    v("studio", true),
+    v("filefree", true),
+    v("launchfree", true),
+    v("distill", true),
+    v("trinkets", true),
+    v("axiomfolio", true),
+    v("axiomfolio-next", false),
   ];
   return {
     services: platformRows,
     platformSummary: {
-      render: { live: 7, building: 0, failed: 1, suspended: 0, total: 8 },
-      vercel: { live: 1, building: 0, failed: 0, suspended: 0, total: 1 },
+      render: { live: 6, building: 0, failed: 1, suspended: 0, total: 7 },
+      vercel: { live: 6, building: 0, failed: 1, suspended: 0, total: 7 },
     },
     platformPartial: [],
   };

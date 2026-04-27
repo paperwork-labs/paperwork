@@ -13,6 +13,33 @@ const RENDER = "https://api.render.com/v1";
 const VERCEL = "https://api.vercel.com";
 const RENDER_DASH = "https://dashboard.render.com";
 
+/** Active Render web/worker services from root `render.yaml` (single blueprint). */
+export const RENDER_BLUEPRINT_WEB_WORKER_NAMES = [
+  "brain-api",
+  "filefree-api",
+  "axiomfolio-api",
+  "axiomfolio-worker",
+  "axiomfolio-worker-heavy",
+] as const;
+
+/** Postgres + Redis resources named in `render.yaml`. */
+export const RENDER_BLUEPRINT_POSTGRES_NAMES = ["axiomfolio-db"] as const;
+export const RENDER_BLUEPRINT_REDIS_NAMES = ["axiomfolio-redis"] as const;
+
+/**
+ * Vercel projects to probe (monorepo apps). Names match Vercel project slugs;
+ * `axiomfolio-next` included if the team still uses a distinct project.
+ */
+export const VERCEL_MONOREPO_PROJECT_NAMES = [
+  "studio",
+  "filefree",
+  "launchfree",
+  "distill",
+  "trinkets",
+  "axiomfolio",
+  "axiomfolio-next",
+] as const;
+
 type RenderService = {
   id: string;
   name: string;
@@ -86,6 +113,7 @@ function mapBucket(st: string, suspended: string, kind: "deploy" | "data"): Plat
   if (
     s === "build_failed" ||
     s === "update_failed" ||
+    s === "pre_deploy_failed" ||
     s === "canceled" ||
     s === "rolled_back" ||
     s === "failed" ||
@@ -145,6 +173,28 @@ async function fetchRenderServices(token: string, partial: string[]): Promise<Re
     cursor = next;
   }
   return out;
+}
+
+export async function fetchRenderServiceDetail(
+  serviceId: string,
+  token: string,
+  partial: string[],
+): Promise<RenderService | null> {
+  try {
+    const res = await fetch(`${RENDER}/services/${serviceId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      partial.push(`render:service:${serviceId}:${res.status}`);
+      return null;
+    }
+    const body = (await res.json()) as { service?: RenderService };
+    return body.service ?? null;
+  } catch {
+    partial.push(`render:service:${serviceId}:err`);
+    return null;
+  }
 }
 
 export async function fetchLatestRenderDeploy(
@@ -273,6 +323,108 @@ function vercelState(dep: VercelDeployment | undefined): PlatformState {
   return "failed";
 }
 
+const WEB_BLUEPRINT_SET = new Set<string>(RENDER_BLUEPRINT_WEB_WORKER_NAMES);
+const PG_BLUEPRINT_SET = new Set<string>(RENDER_BLUEPRINT_POSTGRES_NAMES);
+const KV_BLUEPRINT_SET = new Set<string>(RENDER_BLUEPRINT_REDIS_NAMES);
+
+function missingRenderBlueprintRow(
+  name: string,
+  platformType: string,
+): InfraStatus {
+  return {
+    service: name,
+    category: "hosting",
+    configured: false,
+    healthy: false,
+    detail: `Render · ${platformType} · not returned by API for this account (check name / RENDER_API_KEY workspace)`,
+    latencyMs: null,
+    dashboardUrl: RENDER_DASH,
+    probeKind: "render",
+    platformType,
+    stateLabel: "failed",
+    deployState: "missing",
+    commitSha: null,
+    lastDeployedAt: null,
+    anchorId: `render-expected-${name.replace(/[^a-z0-9-]/gi, "-")}`,
+  };
+}
+
+function buildRenderWebRow(
+  svc: RenderService,
+  deploy: RenderDeploy | null,
+): InfraStatus {
+  const suspended = (svc.suspended || "not_suspended") as string;
+  const st = deploy?.status || (suspended === "suspended" ? "suspended" : "unknown");
+  const b = mapBucket(st, suspended, "deploy");
+  const healthy = platformHealthyFromBucket(b);
+  const short = deploy?.commit?.id?.slice(0, 7) ?? "—";
+  const when = deploy?.finishedAt ?? deploy?.createdAt;
+  const stLower = (st || "?").toLowerCase();
+  const detail =
+    `Render · ${resourceLabel(svc.type)} · GET /v1/services + last deploy · ${stLower}${short !== "—" ? ` · ${short}` : ""}${when ? ` · ${when}` : ""}`.replace(
+      /\s+/g,
+      " ",
+    );
+  return {
+    service: svc.name,
+    category: "hosting",
+    configured: true,
+    healthy,
+    detail: detail.trim(),
+    latencyMs: null,
+    dashboardUrl: renderDashboardForService(svc),
+    probeKind: "render",
+    platformType: resourceLabel(svc.type),
+    stateLabel: b,
+    deployState: stLower,
+    commitSha: deploy?.commit?.id ?? null,
+    lastDeployedAt: when ?? null,
+    anchorId: `render-${svc.id.replace(/[^a-z0-9-]/gi, "-")}`,
+  };
+}
+
+function buildPostgresRow(pg: NamedDataResource): InfraStatus {
+  const susp = pg.suspended === "suspended" ? "suspended" : "not_suspended";
+  const b = mapBucket((pg.status || "unknown").toLowerCase(), susp, "data");
+  return {
+    service: pg.name,
+    category: "hosting",
+    configured: true,
+    healthy: platformHealthyFromBucket(b),
+    detail: `Render postgres · ${(pg.status || "?").toLowerCase()}${pg.updatedAt ? ` · updated ${pg.updatedAt}` : ""}`,
+    latencyMs: null,
+    dashboardUrl: `${RENDER_DASH}/database/${pg.id}`,
+    probeKind: "render",
+    platformType: "postgres",
+    stateLabel: b,
+    deployState: (pg.status || "").toLowerCase(),
+    commitSha: null,
+    lastDeployedAt: null,
+    anchorId: `pg-${pg.id.replace(/[^a-z0-9-]/gi, "-")}`,
+  };
+}
+
+function buildKeyValueRow(kv: NamedDataResource): InfraStatus {
+  const susp = kv.suspended === "suspended" ? "suspended" : "not_suspended";
+  const b = mapBucket((kv.status || "unknown").toLowerCase(), susp, "data");
+  return {
+    service: kv.name,
+    category: "hosting",
+    configured: true,
+    healthy: platformHealthyFromBucket(b),
+    detail: `Render key value · ${(kv.status || "?").toLowerCase()}${kv.updatedAt ? ` · updated ${kv.updatedAt}` : ""}`,
+    latencyMs: null,
+    dashboardUrl: `${RENDER_DASH}/redis/${kv.id}`,
+    probeKind: "render",
+    platformType: "redis",
+    stateLabel: b,
+    deployState: (kv.status || "").toLowerCase(),
+    commitSha: null,
+    lastDeployedAt: null,
+    anchorId: `kv-${kv.id.replace(/[^a-z0-9-]/gi, "-")}`,
+  };
+}
+
 export async function collectRenderAndVercelProbes(
   renderToken: string | undefined,
   vercelToken: string | undefined,
@@ -284,9 +436,9 @@ export async function collectRenderAndVercelProbes(
   platformSummary: PlatformHealthSummary;
 }> {
   const partial: string[] = [];
-  const rows: InfraStatus[] = [];
   const s = emptySummary();
-  const seen = new Set<string>();
+  const renderRowsOrdered: InfraStatus[] = [];
+  const vercelRowsOrdered: InfraStatus[] = [];
 
   if (renderToken) {
     const [services, pgList, kvList] = await Promise.all([
@@ -295,91 +447,89 @@ export async function collectRenderAndVercelProbes(
       fetchRenderKeyValue(renderToken, partial),
     ]);
 
-    for (const svc of services) {
-      if (seen.has(svc.id)) continue;
-      seen.add(svc.id);
-      const deploy = await fetchLatestRenderDeploy(svc.id, renderToken, partial);
-      const st = deploy?.status || (svc.suspended === "suspended" ? "suspended" : "unknown");
-      const b = mapBucket(st, svc.suspended, "deploy");
-      bump(s.render, b);
-      const healthy = platformHealthyFromBucket(b);
-      const short = deploy?.commit?.id?.slice(0, 7) ?? "—";
-      const when = deploy?.finishedAt ?? deploy?.createdAt;
-      const detail = `Render · ${resourceLabel(svc.type)} · ${(st || "?").toLowerCase()}${short !== "—" ? ` · ${short}` : ""}${when ? ` · ${when}` : ""}`.replace(/\s+/g, " ");
-      rows.push({
-        service: svc.name,
-        category: "hosting",
-        configured: true,
-        healthy,
-        detail: detail.trim(),
-        latencyMs: null,
-        dashboardUrl: renderDashboardForService(svc),
-        probeKind: "render",
-        platformType: resourceLabel(svc.type),
-        stateLabel: b,
-        deployState: (st || "").toLowerCase(),
-        commitSha: deploy?.commit?.id ?? null,
-        lastDeployedAt: when ?? null,
-        anchorId: `render-${svc.id.replace(/[^a-z0-9-]/gi, "-")}`,
-      });
-    }
+    const svcByName = new Map(services.map((x) => [x.name, x]));
+    const pgByName = new Map(pgList.map((x) => [x.name, x]));
+    const kvByName = new Map(kvList.map((x) => [x.name, x]));
+
+    const serviceRowById = new Map<string, InfraStatus>();
+    await Promise.all(
+      services.map(async (svc) => {
+        const [detail, deploy] = await Promise.all([
+          fetchRenderServiceDetail(svc.id, renderToken, partial),
+          fetchLatestRenderDeploy(svc.id, renderToken, partial),
+        ]);
+        const merged: RenderService = detail ? { ...svc, ...detail, id: svc.id, name: svc.name } : svc;
+        serviceRowById.set(svc.id, buildRenderWebRow(merged, deploy));
+      }),
+    );
+
+    const pgRowById = new Map<string, InfraStatus>();
     for (const pg of pgList) {
-      if (seen.has(pg.id)) continue;
-      seen.add(pg.id);
-      const b = mapBucket(
-        (pg.status || "unknown").toLowerCase(),
-        pg.suspended === "suspended" ? "suspended" : "not_suspended",
-        "data",
-      );
-      bump(s.render, b);
-      rows.push({
-        service: pg.name,
-        category: "hosting",
-        configured: true,
-        healthy: platformHealthyFromBucket(b),
-        detail: `Render postgres · ${(pg.status || "?").toLowerCase()}${pg.updatedAt ? ` · updated ${pg.updatedAt}` : ""}`,
-        latencyMs: null,
-        dashboardUrl: `${RENDER_DASH}/database/${pg.id}`,
-        probeKind: "render",
-        platformType: "postgres",
-        stateLabel: b,
-        deployState: (pg.status || "").toLowerCase(),
-        commitSha: null,
-        lastDeployedAt: null,
-        anchorId: `pg-${pg.id.replace(/[^a-z0-9-]/gi, "-")}`,
-      });
+      pgRowById.set(pg.id, buildPostgresRow(pg));
     }
+    const kvRowById = new Map<string, InfraStatus>();
     for (const kv of kvList) {
-      if (seen.has(kv.id)) continue;
-      seen.add(kv.id);
-      const b = mapBucket(
-        (kv.status || "unknown").toLowerCase(),
-        kv.suspended === "suspended" ? "suspended" : "not_suspended",
-        "data",
-      );
-      bump(s.render, b);
-      rows.push({
-        service: kv.name,
-        category: "hosting",
-        configured: true,
-        healthy: platformHealthyFromBucket(b),
-        detail: `Render key value · ${(kv.status || "?").toLowerCase()}${kv.updatedAt ? ` · updated ${kv.updatedAt}` : ""}`,
-        latencyMs: null,
-        dashboardUrl: `${RENDER_DASH}/redis/${kv.id}`,
-        probeKind: "render",
-        platformType: "redis",
-        stateLabel: b,
-        deployState: (kv.status || "").toLowerCase(),
-        commitSha: null,
-        lastDeployedAt: null,
-        anchorId: `kv-${kv.id.replace(/[^a-z0-9-]/gi, "-")}`,
-      });
+      kvRowById.set(kv.id, buildKeyValueRow(kv));
+    }
+
+    for (const name of RENDER_BLUEPRINT_WEB_WORKER_NAMES) {
+      const svc = svcByName.get(name);
+      if (!svc) {
+        renderRowsOrdered.push(missingRenderBlueprintRow(name, "web"));
+        continue;
+      }
+      const row = serviceRowById.get(svc.id);
+      if (row) renderRowsOrdered.push(row);
+    }
+
+    for (const name of RENDER_BLUEPRINT_POSTGRES_NAMES) {
+      const pg = pgByName.get(name);
+      if (!pg) {
+        renderRowsOrdered.push(missingRenderBlueprintRow(name, "postgres"));
+        continue;
+      }
+      const row = pgRowById.get(pg.id);
+      if (row) renderRowsOrdered.push(row);
+    }
+
+    for (const name of RENDER_BLUEPRINT_REDIS_NAMES) {
+      const kv = kvByName.get(name);
+      if (!kv) {
+        renderRowsOrdered.push(missingRenderBlueprintRow(name, "redis"));
+        continue;
+      }
+      const row = kvRowById.get(kv.id);
+      if (row) renderRowsOrdered.push(row);
+    }
+
+    const extraServices = services
+      .filter((x) => !WEB_BLUEPRINT_SET.has(x.name))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    for (const svc of extraServices) {
+      const row = serviceRowById.get(svc.id);
+      if (row) renderRowsOrdered.push(row);
+    }
+
+    for (const pg of pgList.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (PG_BLUEPRINT_SET.has(pg.name)) continue;
+      const row = pgRowById.get(pg.id);
+      if (row) renderRowsOrdered.push(row);
+    }
+    for (const kv of kvList.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (KV_BLUEPRINT_SET.has(kv.name)) continue;
+      const row = kvRowById.get(kv.id);
+      if (row) renderRowsOrdered.push(row);
+    }
+
+    for (const r of renderRowsOrdered) {
+      if (r.probeKind === "render" && r.stateLabel) bump(s.render, r.stateLabel);
     }
   } else {
     partial.push("render:token-missing");
   }
 
   if (vercelToken) {
+    const projectByName = new Map<string, VercelProject>();
     let until: number | undefined;
     for (let page = 0; page < 30; page++) {
       const u = new URL(`${VERCEL}/v9/projects`);
@@ -397,71 +547,101 @@ export async function collectRenderAndVercelProbes(
       const pageJson = (await res.json()) as VercelProjectsPage;
       const projects = pageJson.projects ?? [];
       for (const proj of projects) {
-        if (!proj.id || !proj.name) continue;
-        const dUrl = new URL(`${VERCEL}/v6/deployments`);
-        dUrl.searchParams.set("projectId", proj.id);
-        dUrl.searchParams.set("limit", "1");
-        dUrl.searchParams.set("target", "production");
-        if (teamId) dUrl.searchParams.set("teamId", teamId);
-        const dRes = await fetch(dUrl, {
-          headers: { Authorization: `Bearer ${vercelToken}` },
-          cache: "no-store",
-        });
-        let dep: VercelDeployment | undefined;
-        if (dRes.ok) {
-          const dJson = (await dRes.json()) as { deployments: VercelDeployment[] };
-          dep = dJson.deployments?.[0];
-        } else {
-          partial.push(`vercel:deployments:${proj.name}:${dRes.status}`);
-        }
-        const b = vercelState(dep);
-        bump(s.vercel, b);
-        const healthy = platformHealthyFromBucket(b);
-        const sha = dep?.meta?.githubCommitSha || dep?.gitSource?.sha;
-        const created =
-          dep?.ready && dep.ready > 0
-            ? dep.ready
-            : dep?.createdAt
-              ? dep.createdAt
-              : dep?.created
-                ? dep.created * 1000
-                : null;
-        const stLabel = (dep?.readyState || dep?.state || "?").toLowerCase();
-        const detail = `Vercel production · ${stLabel}${sha ? ` · ${sha.slice(0, 7)}` : ""}${created ? ` · ${new Date(created).toISOString()}` : ""}`.replace(/\s+/g, " ");
-        rows.push({
-          service: proj.name,
-          category: "hosting",
-          configured: true,
-          healthy,
-          detail: detail.trim(),
-          latencyMs: null,
-          dashboardUrl: `https://vercel.com/${vercelTeamSlug}/${encodeURIComponent(proj.name)}`,
-          probeKind: "vercel",
-          platformType: "vercel-project",
-          stateLabel: b,
-          deployState: stLabel,
-          commitSha: sha ?? null,
-          lastDeployedAt: created ? new Date(created).toISOString() : null,
-          anchorId: `vercel-${proj.id.replace(/[^a-z0-9-]/gi, "-")}`,
-        });
+        if (proj.name) projectByName.set(proj.name.toLowerCase(), proj);
       }
+      const haveAll = VERCEL_MONOREPO_PROJECT_NAMES.every((n) =>
+        projectByName.has(n.toLowerCase()),
+      );
+      if (haveAll) break;
       if (pageJson.pagination?.next == null) break;
       const nxt = pageJson.pagination.next;
       if (typeof nxt === "number" && nxt > 0) until = nxt;
       else break;
       if (projects.length < 1) break;
     }
+
+    for (const name of VERCEL_MONOREPO_PROJECT_NAMES) {
+      const proj = projectByName.get(name.toLowerCase());
+      if (!proj?.id) {
+        vercelRowsOrdered.push({
+          service: name,
+          category: "hosting",
+          configured: false,
+          healthy: false,
+          detail: "Vercel · project slug not found under this team (rename or add to VERCEL_MONOREPO_PROJECT_NAMES)",
+          latencyMs: null,
+          dashboardUrl: `https://vercel.com/${vercelTeamSlug}`,
+          probeKind: "vercel",
+          platformType: "vercel-project",
+          stateLabel: "failed",
+          deployState: "missing",
+          commitSha: null,
+          lastDeployedAt: null,
+          anchorId: `vercel-expected-${name.replace(/[^a-z0-9-]/gi, "-")}`,
+        });
+        continue;
+      }
+
+      const dUrl = new URL(`${VERCEL}/v6/deployments`);
+      dUrl.searchParams.set("projectId", proj.id);
+      dUrl.searchParams.set("limit", "1");
+      dUrl.searchParams.set("target", "production");
+      if (teamId) dUrl.searchParams.set("teamId", teamId);
+      const dRes = await fetch(dUrl, {
+        headers: { Authorization: `Bearer ${vercelToken}` },
+        cache: "no-store",
+      });
+      let dep: VercelDeployment | undefined;
+      if (dRes.ok) {
+        const dJson = (await dRes.json()) as { deployments: VercelDeployment[] };
+        dep = dJson.deployments?.[0];
+      } else {
+        partial.push(`vercel:deployments:${name}:${dRes.status}`);
+      }
+      const b = vercelState(dep);
+      const healthy = platformHealthyFromBucket(b);
+      const sha = dep?.meta?.githubCommitSha || dep?.gitSource?.sha;
+      const created =
+        dep?.ready && dep.ready > 0
+          ? dep.ready
+          : dep?.createdAt
+            ? dep.createdAt
+            : dep?.created
+              ? dep.created * 1000
+              : null;
+      const stLabel = (dep?.readyState || dep?.state || "?").toLowerCase();
+      const detail =
+        `Vercel production · /v6/deployments · ${stLabel}${sha ? ` · ${sha.slice(0, 7)}` : ""}${created ? ` · ${new Date(created).toISOString()}` : ""}`.replace(
+          /\s+/g,
+          " ",
+        );
+      vercelRowsOrdered.push({
+        service: proj.name,
+        category: "hosting",
+        configured: true,
+        healthy,
+        detail: detail.trim(),
+        latencyMs: null,
+        dashboardUrl: `https://vercel.com/${vercelTeamSlug}/${encodeURIComponent(proj.name)}`,
+        probeKind: "vercel",
+        platformType: "vercel-project",
+        stateLabel: b,
+        deployState: stLabel,
+        commitSha: sha ?? null,
+        lastDeployedAt: created ? new Date(created).toISOString() : null,
+        anchorId: `vercel-${proj.id.replace(/[^a-z0-9-]/gi, "-")}`,
+      });
+    }
+
+    for (const r of vercelRowsOrdered) {
+      if (r.probeKind === "vercel" && r.stateLabel) bump(s.vercel, r.stateLabel);
+    }
   } else {
     partial.push("vercel:token-missing");
   }
 
-  rows.sort((a, b) => {
-    const k = (x: InfraStatus) => `${x.probeKind ?? "z"}|${(x.service || "").toLowerCase()}`;
-    return k(a).localeCompare(k(b));
-  });
-
   return {
-    rows,
+    rows: [...renderRowsOrdered, ...vercelRowsOrdered],
     partial,
     platformSummary: { render: s.render, vercel: s.vercel },
   };

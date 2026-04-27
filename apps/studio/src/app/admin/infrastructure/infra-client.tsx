@@ -86,11 +86,36 @@ function StatusDot({ healthy, configured }: { healthy: boolean; configured: bool
 }
 
 function platformStateBadgeClass(st?: string): string {
-  if (st === "live") return "border-emerald-800/50 bg-emerald-950/40 text-emerald-200";
+  if (st === "live" || st === "ready") return "border-emerald-800/50 bg-emerald-950/40 text-emerald-200";
   if (st === "building") return "border-amber-800/50 bg-amber-950/40 text-amber-200";
   if (st === "failed" || st === "suspended")
     return "border-rose-800/50 bg-rose-950/40 text-rose-200";
   return "border-zinc-700 bg-zinc-900/80 text-zinc-300";
+}
+
+/** Badge label: provider deploy state (e.g. `build_failed`) when present; else bucket. */
+function platformProbeBadgeLabel(svc: InfraService): string {
+  const raw = (svc.deployState ?? "").trim();
+  if (raw && raw !== "?") return raw.replace(/_/g, " ");
+  return svc.stateLabel ?? "?";
+}
+
+function platformProbeBadgeTone(svc: InfraService): string {
+  const d = (svc.deployState ?? "").toLowerCase();
+  if (d === "live" || d === "ready") return "live";
+  if (
+    d.includes("progress") ||
+    d === "building" ||
+    d === "queued" ||
+    d === "initializing" ||
+    d === "deploying" ||
+    d === "analyzing"
+  )
+    return "building";
+  if (d === "missing") return "failed";
+  if (svc.stateLabel === "suspended") return "suspended";
+  if (svc.stateLabel === "failed") return "failed";
+  return svc.stateLabel ?? "";
 }
 
 function deriveSummary(services: InfraService[], fallback?: PlatformHealthSummary): PlatformHealthSummary {
@@ -126,7 +151,7 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 };
 
-const AUTO_REFRESH_MS = 60_000;
+const AUTO_REFRESH_MS = 30_000;
 
 export default function InfraClient({
   initialServices,
@@ -342,7 +367,7 @@ export default function InfraClient({
               onChange={(e) => setAutoRefresh(e.target.checked)}
               className="h-3 w-3 rounded border-zinc-600 bg-zinc-800 accent-emerald-500"
             />
-            Auto-refresh 60s
+            Auto-refresh 30s
           </label>
           {refreshError && (
             <span className="ml-3 rounded-full border border-rose-800/40 bg-rose-950/20 px-2 py-0.5 text-xs text-rose-300">
@@ -386,11 +411,11 @@ export default function InfraClient({
                   </div>
                   <span
                     className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium uppercase ${platformStateBadgeClass(
-                      svc.stateLabel,
+                      platformProbeBadgeTone(svc),
                     )}`}
                     data-testid="infra-probe-state"
                   >
-                    {svc.stateLabel ?? "?"}
+                    {platformProbeBadgeLabel(svc)}
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-zinc-400">{svc.detail}</p>
