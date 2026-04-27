@@ -8,10 +8,10 @@ from app.schedulers.introspect import classification_for_job_id, list_apschedule
 
 
 def test_classification_for_job_id() -> None:
-    assert classification_for_job_id("n8n_shadow_brain_daily") == "n8n-shadow"
     assert classification_for_job_id("brain_daily_briefing") == "cutover"
     assert classification_for_job_id("brain_sprint_close") == "cutover"
     assert classification_for_job_id("brain_data_source_monitor") == "cutover"
+    assert classification_for_job_id("brain_data_deep_validator") == "cutover"
     assert classification_for_job_id("sprint_auto_logger") == "operational"
     assert classification_for_job_id("pr_sweep") == "net-new"
 

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import contextlib
 import logging
-import os
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -34,15 +33,6 @@ _ORG_ID = "paperwork-labs"
 _ORG_NAME = "Paperwork Labs"
 # Mirrors n8n request body: ``Generate daily briefing for #daily-briefing``.
 _DAILY_MESSAGE = "Generate daily briefing for #daily-briefing"
-
-
-def _owns_daily_briefing() -> bool:
-    return os.getenv("BRAIN_OWNS_DAILY_BRIEFING", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 def _format_slack_body(raw: str) -> str:
@@ -91,10 +81,7 @@ async def run_daily_briefing() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register the daily-briefing cron when :envvar:`BRAIN_OWNS_DAILY_BRIEFING` is true."""
-    if not _owns_daily_briefing():
-        logger.info("BRAIN_OWNS_DAILY_BRIEFING is not true — skipping brain_daily_briefing job")
-        return
+    """Register the daily-briefing cron (ex-Brain Daily Trigger / n8n)."""
     scheduler.add_job(
         run_daily_briefing,
         trigger=CronTrigger.from_crontab("0 7 * * *", timezone=UTC),

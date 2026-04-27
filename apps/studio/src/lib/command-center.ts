@@ -320,6 +320,9 @@ export type N8nMirrorPerJob = {
 };
 
 export type N8nMirrorSchedulerStatus = {
+  /** True when Brain no longer registers n8n shadow APScheduler jobs (Track K complete). */
+  retired?: boolean;
+  message?: string;
   global_enabled: boolean;
   per_job: N8nMirrorPerJob[];
 };

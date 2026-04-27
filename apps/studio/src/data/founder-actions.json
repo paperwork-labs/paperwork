@@ -111,7 +111,7 @@
             "4. **Optional (operational):** `BRAIN_OWNS_SPRINT_AUTO_LOGGER=true` only after GitHub bot-PR path is accepted."
           ],
           "verification": "`GET /api/v1/admin/scheduler/n8n-mirror/status` (with `X-Brain-Secret`); job rows in `apscheduler_jobs` as expected.",
-          "source": "PR #245, `docs/infra/BRAIN_SCHEDULER.md`, `apis/brain/app/schedulers/n8n_mirror.py`",
+          "source": "PR #245, `docs/infra/BRAIN_SCHEDULER.md`",
           "eta": "~60+ min (spread across days; not one sitting)"
         }
       ]

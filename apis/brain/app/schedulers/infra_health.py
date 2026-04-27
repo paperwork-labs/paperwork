@@ -35,15 +35,6 @@ _REDIS_PREFIX = "brain:infra_health:"
 _DEFAULT_REMINDER_HOURS = 4
 
 
-def _owns_infra_health() -> bool:
-    return os.getenv("BRAIN_OWNS_INFRA_HEALTH", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-
-
 def _reminder_hours() -> float:
     raw = (os.getenv("INFRA_HEALTH_REMINDER_HOURS") or "").strip()
     if not raw:
@@ -235,10 +226,7 @@ async def run_infra_health() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register 30m Infra Health when :envvar:`BRAIN_OWNS_INFRA_HEALTH` is true."""
-    if not _owns_infra_health():
-        logger.info("BRAIN_OWNS_INFRA_HEALTH is not true — skipping brain_infra_health job")
-        return
+    """Register 30m Infra Health (ex-Infra Health Check / n8n)."""
     scheduler.add_job(
         run_infra_health,
         trigger=IntervalTrigger(minutes=30),

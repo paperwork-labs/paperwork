@@ -5,10 +5,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from app.schedulers.n8n_mirror import N8N_MIRROR_SPECS
 from app.schedulers.pr_sweep import get_scheduler
 
-# First-party n8n cutover crons (gated with BRAIN_OWNS_*).
+# First-party jobs that replaced retired n8n crons (always on when scheduler runs).
 _CUTOVER_JOB_IDS: frozenset[str] = frozenset(
     {
         "brain_daily_briefing",
@@ -20,6 +19,8 @@ _CUTOVER_JOB_IDS: frozenset[str] = frozenset(
         "brain_credential_expiry",
         "brain_infra_health",
         "brain_data_source_monitor",
+        "brain_data_deep_validator",
+        "brain_data_annual_update",
     }
 )
 
@@ -28,12 +29,8 @@ _OPERATIONAL_JOB_IDS: frozenset[str] = frozenset(
     {"sprint_auto_logger", "brain_agent_sprint_planner"}
 )
 
-_N8N_SHADOW_IDS: frozenset[str] = frozenset(s.job_id for s in N8N_MIRROR_SPECS)
-
 
 def classification_for_job_id(job_id: str) -> str:
-    if job_id in _N8N_SHADOW_IDS:
-        return "n8n-shadow"
     if job_id in _CUTOVER_JOB_IDS:
         return "cutover"
     if job_id in _OPERATIONAL_JOB_IDS:

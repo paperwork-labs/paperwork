@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import contextlib
 import logging
-import os
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -44,15 +43,6 @@ _ANNOUNCEMENT_TEXT = (
     ":rocket: New 5-day sprint kickoff just landed in <#C0AM3APFP99|sprints>. "
     "Reply in-thread with a persona name for a focused take."
 )
-
-
-def _owns_sprint_kickoff() -> bool:
-    return os.getenv("BRAIN_OWNS_SPRINT_KICKOFF", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 async def _run_sprint_kickoff_body() -> None:
@@ -97,10 +87,7 @@ async def run_sprint_kickoff() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register the sprint kickoff cron when :envvar:`BRAIN_OWNS_SPRINT_KICKOFF` is true."""
-    if not _owns_sprint_kickoff():
-        logger.info("BRAIN_OWNS_SPRINT_KICKOFF is not true — skipping brain_sprint_kickoff job")
-        return
+    """Register the sprint kickoff cron (ex-Sprint Kickoff / n8n)."""
     scheduler.add_job(
         run_sprint_kickoff,
         trigger=CronTrigger.from_crontab("0 7 * * 1", timezone=UTC),

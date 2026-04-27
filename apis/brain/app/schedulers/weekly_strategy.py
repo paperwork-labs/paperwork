@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import contextlib
 import logging
-import os
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -45,15 +44,6 @@ _WEEKLY_MESSAGE = (
     "decisions needed. Format for Slack with clear sections.\n\n"
     "_Thread router: reply with a persona name for a focused take._"
 )
-
-
-def _owns_weekly_strategy() -> bool:
-    return os.getenv("BRAIN_OWNS_WEEKLY_STRATEGY", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 def _format_slack_body(raw: str) -> str:
@@ -105,10 +95,7 @@ async def run_weekly_strategy() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register the weekly strategy cron when :envvar:`BRAIN_OWNS_WEEKLY_STRATEGY` is true."""
-    if not _owns_weekly_strategy():
-        logger.info("BRAIN_OWNS_WEEKLY_STRATEGY is not true — skipping brain_weekly_strategy job")
-        return
+    """Register the weekly strategy cron (ex-Weekly Strategy Check-in / n8n)."""
     scheduler.add_job(
         run_weekly_strategy,
         trigger=CronTrigger.from_crontab("0 9 * * 1", timezone=UTC),

@@ -9,7 +9,6 @@ n8n REST API and posts a summary to the engineering Slack channel — see
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
@@ -31,15 +30,6 @@ JOB_ID = "brain_infra_heartbeat"
 # Same channel as ``infra-heartbeat.json`` (Format Heartbeat node).
 _INFRA_HEARTBEAT_SLACK_CHANNEL_ID = "C0ALVM4PAE7"
 _HTTP_TIMEOUT = 10.0
-
-
-def _owns_infra_heartbeat() -> bool:
-    return os.getenv("BRAIN_OWNS_INFRA_HEARTBEAT", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 def _pacific_display_now() -> str:
@@ -162,10 +152,7 @@ async def run_infra_heartbeat() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register the infra heartbeat when :envvar:`BRAIN_OWNS_INFRA_HEARTBEAT` is true."""
-    if not _owns_infra_heartbeat():
-        logger.info("BRAIN_OWNS_INFRA_HEARTBEAT is not true — skipping brain_infra_heartbeat job")
-        return
+    """Register the infra heartbeat (ex-Infra Heartbeat / n8n)."""
     scheduler.add_job(
         run_infra_heartbeat,
         trigger=CronTrigger.from_crontab("0 8 * * *", timezone="UTC"),

@@ -131,6 +131,7 @@ export default function N8nMirrorStatusClient({
 
   const perJob = status?.per_job ?? [];
   const globalEnabled = status?.global_enabled ?? false;
+  const mirrorRetired = Boolean(status?.retired);
   const total = perJob.length;
   const shadowOn = perJob.filter((j) => j.enabled).length;
   const cutoverHints = N8N_MIRROR_CUTOVER_JOB_IDS;
@@ -150,11 +151,18 @@ export default function N8nMirrorStatusClient({
           n8n cron mirror
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Brain APScheduler shadow rows and run history for the n8n→Brain cutover. Auto-refresh
-          every {POLL_MS / 1000}s. Source: <span className="text-zinc-500">GET</span>{" "}
+          Legacy view: n8n shadow APScheduler jobs were retired after Track K (Brain owns crons
+          permanently). Auto-refresh every {POLL_MS / 1000}s. Source:{" "}
+          <span className="text-zinc-500">GET</span>{" "}
           <code className="text-zinc-500">/api/v1/admin/scheduler/n8n-mirror/status</code>
         </p>
       </div>
+
+      {mirrorRetired && status?.message ? (
+        <div className="rounded-lg border border-emerald-800/40 bg-emerald-950/25 px-4 py-3 text-sm text-emerald-100">
+          {status.message}
+        </div>
+      ) : null}
 
       {error ? (
         <div className="rounded-lg border border-amber-800/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">

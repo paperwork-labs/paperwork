@@ -9,7 +9,6 @@ posts the October checklist to ``#engineering`` — see
 from __future__ import annotations
 
 import logging
-import os
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
@@ -29,15 +28,6 @@ JOB_ID = "brain_data_annual_update"
 # Same as ``data-annual-update.json`` (``Format Checklist Message`` → post node).
 _ENGINEERING_SLACK_CHANNEL_ID = "C0ALLEKR9FZ"
 _TAX_FOUNDATION_URL = "https://taxfoundation.org/data/all/state/state-income-tax-rates"
-
-
-def _owns_data_annual_update() -> bool:
-    return os.getenv("BRAIN_OWNS_DATA_ANNUAL_UPDATE", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 def _build_message(now: datetime) -> str:
@@ -99,12 +89,7 @@ async def run_data_annual_update() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register the job when :envvar:`BRAIN_OWNS_DATA_ANNUAL_UPDATE` is true."""
-    if not _owns_data_annual_update():
-        logger.info(
-            "BRAIN_OWNS_DATA_ANNUAL_UPDATE is not true — skipping brain_data_annual_update job"
-        )
-        return
+    """Register annual data update reminder (ex-P2.10 / n8n)."""
     scheduler.add_job(
         run_data_annual_update,
         trigger=CronTrigger.from_crontab(

@@ -27,7 +27,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
 from app.database import async_session_factory
-from app.schedulers import apscheduler_db, n8n_mirror
+from app.schedulers import apscheduler_db
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import sweep_open_prs
 
@@ -267,25 +267,6 @@ def start_scheduler() -> AsyncIOScheduler | None:
         infra_health.install(sched)
     except Exception:
         logger.exception("Failed to install infra_health job")
-
-    try:
-        from app.schedulers import data_source_monitor
-
-        data_source_monitor.install(sched)
-    except Exception:
-        logger.exception("Failed to install data_source_monitor job")
-
-    try:
-        from app.schedulers import data_deep_validator
-
-        data_deep_validator.install(sched)
-    except Exception:
-        logger.exception("Failed to install data_deep_validator job")
-
-    try:
-        n8n_mirror.install(sched)
-    except Exception:
-        logger.exception("Failed to install n8n_mirror shadow jobs")
 
     try:
         from app.schedulers import agent_sprint_scheduler

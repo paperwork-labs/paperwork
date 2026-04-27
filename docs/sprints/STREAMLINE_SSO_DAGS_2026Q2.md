@@ -63,9 +63,10 @@ Acceptance theme for the window: operators can name the single system that fires
 ## Outcome
 
 - _Tracking — updates as each track ships_
-- 2026-04-26: Track K — `brain_data_source_monitor` cutover (LA tz, `BRAIN_OWNS_DATA_SOURCE_MONITOR=true`)
-- 2026-04-26: Track K — `brain_data_deep_validator` cutover (LA tz, `BRAIN_OWNS_DATA_DEEP_VALIDATOR=true`)
-- 2026-04-26: Track K — `brain_data_annual_update` cutover (LA tz, `BRAIN_OWNS_DATA_ANNUAL_UPDATE=true`)
+- 2026-04-27: **Track K — flag retirement** — Transitional `BRAIN_OWNS_*` env gates for ex-n8n crons and the `n8n_mirror` shadow module were removed; Brain owns those schedules permanently when `BRAIN_SCHEDULER_ENABLED=true` (`chore/brain-delete-legacy-owns-flags`). Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md).
+- 2026-04-26: Track K — `brain_data_source_monitor` cutover (LA tz; flag since retired)
+- 2026-04-26: Track K — `brain_data_deep_validator` cutover (LA tz; flag since retired)
+- 2026-04-26: Track K — `brain_data_annual_update` cutover (LA tz; flag since retired)
 - shipped 2026-04-25: **T1.1** — Per-job `SCHEDULER_N8N_MIRROR_<ID>` flags (uppercased n8n mirror job id) with global fallback, `agent_scheduler_runs` history for each shadow execution, and `GET /api/v1/admin/scheduler/n8n-mirror/status` for last run + 24h success/error counts. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). Migration: `apis/brain/alembic/versions/002_agent_scheduler_runs.py`. PRs #148, #153.
 - shipped 2026-04-25: **T1.2** — First real Brain APScheduler job for the **Brain Daily Trigger** n8n flow: `BRAIN_OWNS_DAILY_BRIEFING` enables `brain_daily_briefing` (07:00 UTC) calling `agent.process` + `#daily-briefing`, and suppresses `n8n_shadow_brain_daily` so the mirror cannot double with production. Code: `apis/brain/app/schedulers/brain_daily_briefing.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #160; builds on PR #153 (per-job mirror flags + `agent_scheduler_runs`).
 - shipped 2026-04-26: **T1.5 — Brain Weekly Trigger** — `BRAIN_OWNS_BRAIN_WEEKLY` enables `brain_weekly_briefing` (Sundays 18:00 UTC, `0 18 * * 0`), same `agent.process` + Slack shape as `infra/hetzner/workflows/retired/brain-weekly-trigger.json` (`#all-paperwork-labs`), and suppresses `n8n_shadow_brain_weekly`. Code: `apis/brain/app/schedulers/brain_weekly_briefing.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #199.
@@ -90,7 +91,7 @@ Acceptance theme for the window: operators can name the single system that fires
 
 - Per-job `SCHEDULER_N8N_MIRROR_*` must use the same uppercased job id as `N8N_MIRROR_SPECS` (e.g. `N8N_SHADOW_BRAIN_DAILY`, not a short name like `pr_sweep` — the in-process `pr_sweep` scheduler is separate from n8n mirror ids).
 - A single `clerkMiddleware` handler can grant production admin access if either `auth().userId` (Clerk) is present or the legacy Basic `Authorization` header matches `ADMIN_EMAILS` / `ADMIN_ACCESS_PASSWORD`, while local dev can keep admin routes open by short-circuiting on `NODE_ENV === "development"`.
-- A dedicated **`BRAIN_OWNS_*` env flag** can gate the first-party APScheduler job while `should_register_n8n_shadow_for_job` drops the matching `n8n_shadow_*` row — no duplicate schedules without editing n8n JSON.
+- During cutover, **`BRAIN_OWNS_*` env flags** gated first-party jobs and shadow suppression; those flags are **retired** now that Track K is complete — see [BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md).
 - For squash-merged PRs, Vercel builds the *merge commit* SHA on `main` — NOT the PR branch's last `head.sha`. Promotion automation must resolve `pull_request.merge_commit_sha` first; the previous version of `vercel-promote-on-merge.yaml` searched only `head.sha` and silently failed for PR #156. Workflow now tries both. (See workflow header docstring for the gotcha note.)
 - Subagents working on the same monorepo branch will collide on `pnpm-lock.yaml` if they install dependencies in parallel from a shared worktree. Solution: use `best-of-n-runner` to give each subagent its own isolated git worktree; each branch's lockfile diff stays tightly scoped to that PR's package.
 
@@ -99,11 +100,11 @@ Acceptance theme for the window: operators can name the single system that fires
 
 Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-bullets use the same markers.
 
-- **T1 — Orchestration consolidation** `[~]`
-  - `[~]` Brain APScheduler owns all cron-style schedules; n8n is webhook / event-only for new work. (T1.1 shadow in #148/#153; T1.2 `brain_daily_briefing` #160; T1.3 `brain_infra_heartbeat` #166; **T1.4** `brain_credential_expiry` #170; **T1.5** Brain Weekly — `BRAIN_OWNS_BRAIN_WEEKLY` + `brain_weekly_briefing` #199; **T1.6** `BRAIN_OWNS_WEEKLY_STRATEGY` + `brain_weekly_strategy` #200; **T1** `brain_infra_health` — **30m `IntervalTrigger`** for Infra Health Check, separate from daily cron `brain_infra_heartbeat`.)
+- **T1 — Orchestration consolidation** `[x]`
+  - `[x]` Brain APScheduler owns all migrated cron-style schedules; n8n is webhook / event-only for new work. (T1.1 shadow in #148/#153; T1.2 `brain_daily_briefing` #160; T1.3 `brain_infra_heartbeat` #166; **T1.4** `brain_credential_expiry` #170; **T1.5** `brain_weekly_briefing` #199; **T1.6** `brain_weekly_strategy` #200; **T1** `brain_infra_health` — **30m `IntervalTrigger`**, separate from daily `brain_infra_heartbeat`; cutover flags retired 2026-04-27.)
   - `[x]` Persist APScheduler jobs with SQLAlchemyJobStore on Postgres so restarts do not drop work. (PR #148)
   - `[x]` Document the split: where schedules live, how to change them, and how Slack alerts dedupe. ([docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md))
-  - `[~]` Migrate the existing n8n cron set with a checklist + rollback path (shadow period acceptable). (Per-job `BRAIN_OWNS_*` pattern: T1.2 daily briefing, T1.3 `BRAIN_OWNS_INFRA_HEARTBEAT` + `n8n_shadow_infra_heartbeat` suppression, T1.4 `BRAIN_OWNS_CREDENTIAL_EXPIRY` + `n8n_shadow_credential_expiry` suppression, T1.5 `BRAIN_OWNS_BRAIN_WEEKLY` + `n8n_shadow_brain_weekly` suppression, **T1.6** `BRAIN_OWNS_WEEKLY_STRATEGY` + `n8n_shadow_weekly_strategy` suppression, **T1** `BRAIN_OWNS_INFRA_HEALTH` + `n8n_shadow_infra_health` for the 30m interval health check.)
+  - `[x]` Migrate the existing n8n cron set (shadow period used during Track K; first-party jobs + mirror module retired in `chore/brain-delete-legacy-owns-flags`).
 
 - **T2 — Single persona vocabulary** `[x]`
   - `[x]` PersonaSpec slugs under `apis/brain/app/personas/` are the only canonical persona IDs. (PR #150)

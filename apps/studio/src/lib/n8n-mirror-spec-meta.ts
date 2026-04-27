@@ -1,7 +1,7 @@
 /**
- * Display metadata for n8n→Brain mirror job ids. Source of truth in Brain:
- * `apis/brain/app/schedulers/n8n_mirror.py` (`N8N_MIRROR_SPECS`). Keep in sync
- * when the registry changes.
+ * Historical display metadata for legacy n8n shadow job ids. Brain retired the
+ * mirror module (`chore/brain-delete-legacy-owns-flags`); the admin API returns
+ * `retired: true` with an empty `per_job` list.
  */
 export type N8nMirrorSpecMeta = {
   n8n_workflow_name: string;
@@ -9,7 +9,7 @@ export type N8nMirrorSpecMeta = {
   trigger_type: "cron" | "interval";
 };
 
-/** Job ids with a `BRAIN_OWNS_*` cutover path (shadow row suppressed when Brain owns the cron). */
+/** Legacy: job ids that once had a `BRAIN_OWNS_*` cutover path (mirror removed). */
 export const N8N_MIRROR_CUTOVER_JOB_IDS = new Set([
   "n8n_shadow_brain_daily",
   "n8n_shadow_infra_heartbeat",

@@ -13,8 +13,6 @@ from apscheduler.triggers.interval import IntervalTrigger
 from app.config import settings
 from app.schedulers import _history, infra_health, infra_heartbeat
 from app.schedulers.infra_health import install, run_infra_health
-from app.schedulers.n8n_mirror import N8N_MIRROR_SPECS, install as install_n8n_mirror
-from app.schedulers.n8n_mirror import n8n_mirror_env_var_name
 
 
 def _reset_mem_state() -> None:
@@ -23,15 +21,7 @@ def _reset_mem_state() -> None:
     infra_health._mem_last_slack_at = None
 
 
-def test_flag_off_no_job_registered(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("BRAIN_OWNS_INFRA_HEALTH", raising=False)
-    sched = AsyncIOScheduler(timezone="UTC")
-    install(sched)
-    assert len(sched.get_jobs()) == 0
-
-
-def test_flag_on_registers_interval_30m(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("BRAIN_OWNS_INFRA_HEALTH", "true")
+def test_registers_interval_30m() -> None:
     sched = AsyncIOScheduler(timezone="UTC")
     install(sched)
     jobs = sched.get_jobs()
@@ -40,20 +30,6 @@ def test_flag_on_registers_interval_30m(monkeypatch: pytest.MonkeyPatch) -> None
     t = jobs[0].trigger
     assert isinstance(t, IntervalTrigger)
     assert t.interval == timedelta(minutes=30)
-
-
-def test_flag_on_suppresses_infra_health_shadow(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("BRAIN_OWNS_INFRA_HEALTH", "true")
-    for s in N8N_MIRROR_SPECS:
-        monkeypatch.delenv(n8n_mirror_env_var_name(s.job_id), raising=False)
-    monkeypatch.setattr(settings, "SCHEDULER_N8N_MIRROR_ENABLED", True)
-    sched = AsyncIOScheduler(timezone="UTC")
-    install_n8n_mirror(sched)
-    ids = {j.id for j in sched.get_jobs()}
-    assert "n8n_shadow_infra_health" not in ids
-    assert "n8n_shadow_brain_daily" in ids
 
 
 @pytest.mark.asyncio
