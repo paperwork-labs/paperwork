@@ -97,7 +97,7 @@ def test_dividend_summary_naive_pay_date_returns_200(client, db_session, primary
     if db_session is None:
         pytest.skip("database not configured")
 
-    pay_naive = datetime.utcnow() - timedelta(days=30)
+    pay_naive = (datetime.now(timezone.utc) - timedelta(days=30)).replace(tzinfo=None)
     assert pay_naive.tzinfo is None
     ex_naive = pay_naive - timedelta(days=7)
 
@@ -160,7 +160,7 @@ def test_dividend_summary_two_ex_dates_upcoming_path(client, db_session, primary
     if db_session is None:
         pytest.skip("database not configured")
 
-    base = datetime.utcnow() - timedelta(days=140)
+    base = (datetime.now(timezone.utc) - timedelta(days=140)).replace(tzinfo=None)
     db_session.add(
         Dividend(
             account_id=primary_account.id,

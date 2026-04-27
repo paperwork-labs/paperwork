@@ -9,7 +9,7 @@ medallion: bronze
 from __future__ import annotations
 
 import logging
-from datetime import datetime as dt
+from datetime import datetime as dt, timezone as tz_utc
 from decimal import Decimal
 import re
 from typing import Any, Dict, Tuple
@@ -583,7 +583,7 @@ class TastyTradeSyncService:
         try:
             txn_dt = dt.fromisoformat(dt_str)
         except Exception:
-            txn_dt = dt.utcnow()
+            txn_dt = dt.now(tz_utc.utc)
 
         action = (tx.get("action") or "").upper()
         if action == "BUY":
@@ -618,7 +618,7 @@ class TastyTradeSyncService:
         ex_date = (
             dt.fromisoformat(d.get("date") + "T" + d.get("time"))
             if d.get("date") and d.get("time")
-            else dt.utcnow()
+            else dt.now(tz_utc.utc)
         )
         total = abs(float(d.get("amount", 0) or 0))
         shares = abs(float(d.get("quantity", 0) or 0))

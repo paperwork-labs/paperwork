@@ -1,22 +1,58 @@
 {
-  "name": "@paperwork-labs/auth",
-  "version": "0.1.0",
+  "name": "@paperwork-labs/auth-clerk",
+  "version": "0.2.0",
+  "description": "Canonical Clerk wrapper for the Paperwork Labs monorepo: SignInShell wordmark pattern, Appearance factory, idle-timeout dialog, JWT verification helpers (Node + Python).",
   "private": true,
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
-  "peerDependencies": {
-    "react": "^19.0.0"
+  "exports": {
+    ".": "./src/index.ts",
+    "./products": "./src/products.ts",
+    "./hooks/use-idle-timeout": "./src/hooks/use-idle-timeout.ts",
+    "./hooks/use-clerk-user": "./src/hooks/use-clerk-user.ts",
+    "./hooks/use-admin": "./src/hooks/use-admin.ts",
+    "./components/session-timeout-dialog": "./src/components/session-timeout-dialog.tsx",
+    "./components/sign-in-shell": "./src/components/sign-in-shell.tsx",
+    "./components/sign-up-shell": "./src/components/sign-up-shell.tsx",
+    "./components/require-auth": "./src/components/require-auth.tsx",
+    "./components/require-admin": "./src/components/require-admin.tsx",
+    "./appearance": "./src/appearance/index.ts",
+    "./appearance/presets": "./src/appearance/presets.ts",
+    "./server/verify-clerk-jwt": "./src/server/verify-clerk-jwt.ts"
   },
   "scripts": {
     "build": "tsc --noEmit",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
-  "devDependencies": {
-    "@types/react": "^19.2.0",
-    "typescript": "^5.6.0"
+  "peerDependencies": {
+    "@clerk/nextjs": "^7.0.0",
+    "@clerk/themes": "^2.0.0",
+    "next": "^15.0.0 || ^16.0.0",
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@clerk/nextjs": { "optional": true },
+    "@clerk/themes": { "optional": true },
+    "next": { "optional": true }
   },
   "dependencies": {
-    "@paperwork-labs/ui": "workspace:*"
+    "@paperwork-labs/ui": "workspace:*",
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "@clerk/nextjs": "^7.2.7",
+    "@clerk/themes": "^2.4.57",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "happy-dom": "^20.9.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.5"
   }
 }

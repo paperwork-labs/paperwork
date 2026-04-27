@@ -132,7 +132,7 @@ async def _post_for_persona(persona: str, cadence: str, channel_id: str) -> None
             message=_cadence_prompt(persona, cadence),
             channel="slack-scheduler",
             channel_id=channel_id,
-            request_id=f"cadence:{persona}:{datetime.utcnow().date().isoformat()}",
+            request_id=f"cadence:{persona}:{datetime.now(timezone.utc).date().isoformat()}",
             persona_pin=persona,
         )
         await db.commit()

@@ -1,0 +1,37 @@
+<svg width="1280" height="256" viewBox="0 0 1280 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Paperwork Labs">
+  <title>Paperwork Labs</title>
+  <desc>P5 clipped wordmark composition: "Paperwork Labs" set in Inter Tight 600 (slate #0F172A) with the Gem-style paperclip mark rotated -15 degrees gripping the top-left corner of the capital P. Inner U-bend hooks over the cap-line; the visible front-facing portion of the clip is drawn unmasked over the wordmark. One continuous amber (#F59E0B) span across the inner U-bend curve and adjacent inner straight wire below it (parent-only continuous-extended amber rule). Spec: docs/brand/PROMPTS.md P5 + Composition rules.</desc>
+
+  <!-- TODO: layer clip-back behind wordmark via clipPath whose path is the wordmark glyph outline (occlusion: outer-return straight wraps "behind" the type). v1 ships front-only per PROMPTS.md fallback - the visible composition still reads correctly because the clip-front sits in front of the cap-line. -->
+
+  <!-- Wordmark (mid layer): Inter Tight 600 semibold, letter-spacing -0.02em (-3.3 user units at this size), baseline near vertical center, ~78% canvas width. -->
+  <text
+    x="141"
+    y="188"
+    font-family="'Inter Tight', Inter, system-ui, -apple-system, sans-serif"
+    font-weight="600"
+    font-size="165"
+    letter-spacing="-3.3"
+    fill="#0F172A"
+  >Paperwork Labs</text>
+
+  <!-- Clip-front (top layer): same paperclip wire as paperclip-mark-diagonal.svg in neutral 0deg orientation, transformed to grip the top-left of the P. transform reads right-to-left: translate clip's grip-point (~68,28) to origin, scale 1.75x so long axis is approximately 1.4x cap-height, rotate -15deg (top tilted left), translate to cap-line top-left of P at canvas (141, 68). -->
+  <g transform="translate(141 68) rotate(-15) scale(1.75) translate(-68 -28)">
+    <path
+      d="M 80 18 L 80 24 A 16 16 0 0 1 96 40 L 96 88 A 24 24 0 0 1 72 112 L 56 112 A 24 24 0 0 1 32 88 L 32 40 A 16 16 0 0 1 48 24 L 64 24 M 72 88 A 8 8 0 0 1 64 96 L 48 96"
+      stroke="#0F172A"
+      stroke-width="11"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+    <path
+      d="M 64 24 A 8 8 0 0 1 72 32 L 72 88"
+      stroke="#F59E0B"
+      stroke-width="11"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+  </g>
+</svg>

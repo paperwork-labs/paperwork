@@ -4,7 +4,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "@/components/providers";
 import { Nav } from "@/components/nav";
-import { fileFreeClerkAppearance } from "@/lib/filefree-clerk-appearance";
+import { fileFreeAppearance } from "@paperwork-labs/auth-clerk/appearance";
 import "./globals.css";
 
 const inter = Inter({
@@ -81,7 +81,7 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
       >
         <ClerkProvider
-          appearance={fileFreeClerkAppearance}
+          appearance={fileFreeAppearance}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
         >
