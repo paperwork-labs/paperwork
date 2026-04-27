@@ -170,6 +170,13 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
+  - slug: agent-sprint-planning
+    path: docs/infra/AGENT_SPRINT_PLANNING.md
+    title: Cheap-agent sprint planning (Brain)
+    summary: "Brain generates **discrete, copy-pasteable task specs** from open work and packs them into **~1-day sprints** (multiple sprints per calendar day are expected when the scheduler ticks several…"
+    tags: [infra, runbook]
+    owners: [agent-ops]
+    category: runbooks
   - slug: chromatic-vrt
     path: docs/infra/CHROMATIC_VRT.md
     title: Chromatic visual regression
@@ -394,6 +401,13 @@ docs:
     summary: Canonical structure every runbook must follow. Enforced by scripts/check_runbook_template.py.
     tags: [runbook, template, ops]
     owners: [agent-ops]
+    category: reference
+  - slug: secrets-ops
+    path: docs/infra/SECRETS_OPS.md
+    title: Studio vault — read / write helpers
+    summary: The Studio app exposes a Postgres-backed encrypted secrets store. These shell helpers call the Studio HTTP API so you do not need to hand-craft `curl` and JSON.
+    tags: []
+    owners: [strategy]
     category: reference
   - slug: vercel-auto-promote
     path: docs/infra/VERCEL_AUTO_PROMOTE.md
