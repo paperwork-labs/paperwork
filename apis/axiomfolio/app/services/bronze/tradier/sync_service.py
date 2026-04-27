@@ -69,7 +69,7 @@ from app.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.closing_lot_matcher moves during Phase 0.C
+# medallion: allow silver for post-ingest tax-lot closing reconciliation
 from app.services.silver.portfolio.closing_lot_matcher import reconcile_closing_lots
 
 logger = logging.getLogger(__name__)

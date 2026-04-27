@@ -25,12 +25,12 @@ from app.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.closing_lot_matcher moves during Phase 0.C
+# medallion: allow silver for post-ingest tax-lot closing reconciliation
 from app.services.silver.portfolio.closing_lot_matcher import (
     MatchResult,
     reconcile_closing_lots,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.day_pnl_service moves during Phase 0.C
+# medallion: allow silver for day PnL refresh after transaction ingest
 from app.services.silver.portfolio.day_pnl_service import (
     recompute_day_pnl_for_rows,
     recompute_position_day_pnl,
@@ -49,7 +49,7 @@ _RECONCILE_ANOMALY_TTL_S = 60 * 60 * 24 * 7
 
 def _record_reconcile_closing_lots_anomaly() -> None:
     try:
-        # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.market.market_data_service moves during Phase 0.C
+        # medallion: allow silver for market-data/Redis lookaside in sync I/O path
         from app.services.silver.market.market_data_service import infra
 
         r = getattr(infra, "redis_client", None)
@@ -309,7 +309,7 @@ class SchwabSyncService:
 
     async def _refresh_prices(self, account: BrokerAccount, session: Session) -> Dict:
         """Fetch current prices concurrently and update position market data."""
-        # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.market.market_data_service moves during Phase 0.C
+        # medallion: allow silver for market-data/Redis lookaside in sync I/O path
         from app.services.silver.market.market_data_service import quote
 
         positions = (

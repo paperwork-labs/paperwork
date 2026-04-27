@@ -32,9 +32,9 @@ from app.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.closing_lot_matcher moves during Phase 0.C
+# medallion: allow silver for post-ingest tax-lot closing reconciliation
 from app.services.silver.portfolio.closing_lot_matcher import reconcile_closing_lots
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.day_pnl_service moves during Phase 0.C
+# medallion: allow silver for day PnL refresh after transaction ingest
 from app.services.silver.portfolio.day_pnl_service import recompute_day_pnl_for_rows
 from app.models.position import PositionType
 from app.models.transaction import TransactionType
@@ -156,7 +156,7 @@ class TastyTradeSyncService:
         db.commit()
 
         try:
-            # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.activity_aggregator moves during Phase 0.C
+            # medallion: allow silver for post-sync activity view refresh
             from app.services.silver.portfolio.activity_aggregator import activity_aggregator
             activity_aggregator.refresh_materialized_views(db)
         except Exception as e:
