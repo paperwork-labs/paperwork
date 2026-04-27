@@ -11,6 +11,7 @@ from app.models.skill import Skill, UserSkill
 from app.models.summary import Summary
 from app.models.user_profile import UserProfile
 from app.models.vault import UserVault
+from app.models.secrets_intelligence import BrainSecretsEpisode, BrainSecretsRegistry
 
 __all__ = [
     "AdminAuditLog",
@@ -31,4 +32,6 @@ __all__ = [
     "UserProfile",
     "UserSkill",
     "UserVault",
+    "BrainSecretsRegistry",
+    "BrainSecretsEpisode",
 ]
