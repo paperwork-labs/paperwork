@@ -62,6 +62,10 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | `SCHEDULER_N8N_MIRROR_<ID>` | _(unset)_ | **Per-mirror opt-in (or opt-out).** When set, that job uses this boolean instead of the global. `<ID>` is the mirror **job_id** in uppercase with underscores, e.g. `SCHEDULER_N8N_MIRROR_N8N_SHADOW_BRAIN_DAILY=true`. If unset, the job follows `SCHEDULER_N8N_MIRROR_ENABLED`. |
 | `BRAIN_SCHEDULER_ENABLED` | `true` | Master switch for starting APScheduler (including job store and mirrors). |
 | `BRAIN_LEARNING_DASHBOARD_ENABLED` | `true` | J2/J3: When `true`, `GET /api/v1/admin/brain/*` (episodes, decisions, learning-summary) are enabled for Studio `/admin/brain-learning`. Set `false` to hard-disable those read-only routes without changing scheduler code. |
+| `BRAIN_OWNS_AGENT_SPRINT_SCHEDULER` | `false` | When `true`, registers `brain_agent_sprint_planner` (cheap-agent sprint buckets, LA cron). See [AGENT_SPRINT_PLANNING.md](./AGENT_SPRINT_PLANNING.md). |
+| `BRAIN_AGENT_SPRINT_MAX_TASKS` | `8` | Max tasks per generated sprint. |
+| `BRAIN_AGENT_SPRINT_DAY_CAP_MINUTES` | `480` | Estimated minutes ceiling per sprint. |
+| `BRAIN_AGENT_SPRINT_WRITE_TRACKER` | `false` | When `true`, appends sprint digest to `tracker-index.json` (`cheap_agent_sprints`) if `REPO_ROOT` is writable. |
 | `DATABASE_URL` | (dev default) | Must be reachably Postgres. Async URL uses `+asyncpg`; the job store uses a sync `postgresql://` form (no `+asyncpg`). |
 
 Per-job ``BRAIN_OWNS_*`` flags are read with ``os.getenv`` in each scheduler (and in ``n8n_mirror.py`` for shadow suppression); they are documented below by class, not duplicated as a flat env table.
@@ -92,6 +96,7 @@ Data monitors and annual update remain **shadow-only** in ``n8n_mirror.py`` unti
 | Scheduler / `job_id` | Schedule (UTC) | Render env flag | Why gated |
 | --- | --- | --- | --- |
 | `sprint_auto_logger` | `*/15 * * * *` | `BRAIN_OWNS_SPRINT_AUTO_LOGGER` | Opens **batched bot PRs** that edit `docs/sprints/*.md`; no n8n shadow. Flip after validating GitHub token scopes and a canary tick. Manual backfill: `cd apis/brain && python -m app.cli.sprint_auto_logger_cli --since YYYY-MM-DD`. |
+| `brain_agent_sprint_planner` | `0 */4 * * *` (tz `America/Los_Angeles`) | `BRAIN_OWNS_AGENT_SPRINT_SCHEDULER` | Heuristic cheap-agent tasks → 1-day buckets; persists under `apis/brain/data/`. HTTP: `/internal/agent-sprints/today`, `/internal/agent-sprints/regenerate`. See [AGENT_SPRINT_PLANNING.md](./AGENT_SPRINT_PLANNING.md). |
 
 ### Net-new (no `BRAIN_OWNS_*` / on when `BRAIN_SCHEDULER_ENABLED`)
 
