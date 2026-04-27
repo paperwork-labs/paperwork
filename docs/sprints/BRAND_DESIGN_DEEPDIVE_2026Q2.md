@@ -84,7 +84,7 @@ What is **not** the family thread:
 
 **Rasters:** for each of the four promoted apps, `public/brand/renders/*-icon-{16,32,64,128,256,512,1024}.png` (sips from SVG).
 
-**Interim (replace when AI parent ships):** `apps/studio/public/brand/paperwork-labs-*.svg`, Studio grid marks.
+**Interim (replace when AI parent ships):** `apps/studio/public/brand/paperwork-labs/**/*.svg` (parent + paperclip variants), Studio grid marks.
 
 **Brain + parent:** see [`docs/brand/PROMPTS.md`](../brand/PROMPTS.md) — `Emerald #10B981` / `Mint #6EE7B7` and slate+amber for parent prompts.
 

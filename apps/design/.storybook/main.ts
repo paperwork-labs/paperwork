@@ -7,6 +7,7 @@ import tailwindcss from "@tailwindcss/vite";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(here, "../../..");
 const axiomfolioSrc = path.join(repoRoot, "apps/axiomfolio/src");
+const designNodeModules = path.resolve(here, "../node_modules");
 
 const config: StorybookConfig = {
   stories: [
@@ -43,6 +44,9 @@ const config: StorybookConfig = {
     const aliasMap: Record<string, string> = {
       "@": axiomfolioSrc,
       "@axiomfolio": axiomfolioSrc,
+      // AxiomFolio stories/components import `react-router-dom`; Vite must resolve
+      // it from the design app install when bundling under `apps/axiomfolio/src`.
+      "react-router-dom": path.join(designNodeModules, "react-router-dom"),
     };
 
     if (Array.isArray(aliasInput)) {

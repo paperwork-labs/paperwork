@@ -146,6 +146,9 @@ importers:
       react-plaid-link:
         specifier: ^4.1.1
         version: 4.1.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      react-router-dom:
+        specifier: ^7.14.1
+        version: 7.14.2(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react-select:
         specifier: ^5.10.2
         version: 5.10.2(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)

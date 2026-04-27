@@ -74,7 +74,7 @@ const HOVER_WIGGLE = {
  *
  * The clip-back portion (the part of the wire that should appear to wrap
  * "behind" the wordmark) is intentionally NOT drawn in v1 — see the TODO in
- * apps/studio/public/brand/paperclip-clipped-wordmark.svg. Acceptable per
+ * apps/studio/public/brand/paperwork-labs/paperclip/clipped-wordmark.svg. Acceptable per
  * PROMPTS.md fallback; the visible composition still reads correctly because
  * the clip-front sits in front of the cap-line.
  */
