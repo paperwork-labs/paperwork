@@ -44,7 +44,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | Sprint Close | `0 21 * * 5` | **Cutover (Track K):** real job `brain_sprint_close` when `BRAIN_OWNS_SPRINT_CLOSE=true`; otherwise optional n8n shadow `n8n_shadow_sprint_close` |
 | Weekly Strategy Check-in | `0 9 * * 1` | **Cutover (T1.6):** real job `brain_weekly_strategy` when `BRAIN_OWNS_WEEKLY_STRATEGY=true`; otherwise optional n8n shadow `n8n_shadow_weekly_strategy` |
 | Infra Heartbeat | `0 8 * * *` | shadow — or first-party `brain_infra_heartbeat` when `BRAIN_OWNS_INFRA_HEARTBEAT=true` (T1.3) |
-| Data Source Monitor (P2.8) | `0 6 * * 1` (see LA caveat above) | **Cutover (Track K):** real job `brain_data_source_monitor` when `BRAIN_OWNS_DATA_SOURCE_MONITOR=true`; otherwise optional n8n shadow `n8n_shadow_data_source_monitor` |
+| Data Source Monitor (P2.8) | `0 6 * * 1` — **first-party Brain:** Mon **06:00 PT (DST-aware)** (`America/Los_Angeles`); n8n shadows in this runbook still use UTC for the same 5-field expression (see caveat above) | **Cutover (Track K):** real job `brain_data_source_monitor` when `BRAIN_OWNS_DATA_SOURCE_MONITOR=true`; otherwise optional n8n shadow `n8n_shadow_data_source_monitor` |
 | Data Deep Validator (P2.9) | `0 3 1 * *` (see LA caveat) | shadow |
 | Annual Data Update Trigger (P2.10) | `0 9 1 10 *` (see LA caveat) | shadow |
 | Infra Health Check | every **30** minutes (``IntervalTrigger``) | **Cutover (T1, interval):** first-party `brain_infra_health` when `BRAIN_OWNS_INFRA_HEALTH=true`; otherwise optional n8n shadow `n8n_shadow_infra_health` |
@@ -79,7 +79,7 @@ First-party Brain jobs that replace exported n8n crons. Each has a row in ``N8N_
 | `brain_infra_heartbeat` | `0 8 * * *` | `BRAIN_OWNS_INFRA_HEARTBEAT` | `n8n_shadow_infra_heartbeat` |
 | `brain_credential_expiry` | `0 8 * * *` | `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `n8n_shadow_credential_expiry` |
 | `brain_infra_health` | every **30** min (`IntervalTrigger`) | `BRAIN_OWNS_INFRA_HEALTH` | `n8n_shadow_infra_health` |
-| `brain_data_source_monitor` | `0 6 * * 1` | `BRAIN_OWNS_DATA_SOURCE_MONITOR` | `n8n_shadow_data_source_monitor` |
+| `brain_data_source_monitor` | `0 6 * * 1` (tz `America/Los_Angeles`; Mon 06:00 PT, DST-aware) | `BRAIN_OWNS_DATA_SOURCE_MONITOR` | `n8n_shadow_data_source_monitor` |
 
 **Infra Health Check (`brain_infra_health`) — dedup and reminders:** The exported n8n flow (`retired/infra-health-check.json`) posts to Slack only when the **fingerprint** of the n8n liveness + workflow count changes, or on transition from unhealthy → healthy. The Brain port matches that (Redis keys under `brain:infra_health:*` when Redis is available; otherwise in-process state for the lifetime of the process). If the system stays **unhealthy** with an unchanged fingerprint, Brain re-alerts after **`INFRA_HEALTH_REMINDER_HOURS`** (default **4**), so sustained incidents are not silent forever.
 

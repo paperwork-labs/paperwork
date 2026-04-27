@@ -35,8 +35,9 @@ def test_flag_off_no_job_registered(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_flag_on_registers_one_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    from datetime import timezone
+    from zoneinfo import ZoneInfo
 
+    la = ZoneInfo("America/Los_Angeles")
     monkeypatch.setenv("BRAIN_OWNS_DATA_SOURCE_MONITOR", "true")
     sched = AsyncIOScheduler(timezone="UTC")
     install(sched)
@@ -45,7 +46,8 @@ def test_flag_on_registers_one_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
     assert jobs[0].id == "brain_data_source_monitor"
     t = jobs[0].trigger
     assert isinstance(t, CronTrigger)
-    ref = CronTrigger.from_crontab("0 6 * * 1", timezone=timezone.utc)
+    assert str(t.timezone) == "America/Los_Angeles"
+    ref = CronTrigger.from_crontab("0 6 * * 1", timezone=la)
     assert t.fields == ref.fields
 
 

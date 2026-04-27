@@ -15,8 +15,8 @@ import json
 import logging
 import os
 import re
-from datetime import timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -263,11 +263,17 @@ def install(scheduler: AsyncIOScheduler) -> None:
         return
     scheduler.add_job(
         run_data_source_monitor,
-        trigger=CronTrigger.from_crontab("0 6 * * 1", timezone=timezone.utc),
+        trigger=CronTrigger.from_crontab(
+            "0 6 * * 1",
+            timezone=ZoneInfo("America/Los_Angeles"),
+        ),
         id=JOB_ID,
         name="Data Source Monitor (Brain, ex–Data Source Monitor (P2.8) / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,
     )
-    logger.info("APScheduler job %r registered (Mon 06:00 UTC, matches n8n expression)", JOB_ID)
+    logger.info(
+        "APScheduler job %r registered (Mon 06:00 America/Los_Angeles, n8n parity)",
+        JOB_ID,
+    )
