@@ -318,6 +318,13 @@ docs:
     tags: [infra]
     owners: [infra-ops]
     category: reference
+  - slug: animation
+    path: docs/brand/ANIMATION.md
+    title: Paperwork Labs brand animations
+    summary: "This file specs the **runtime motion** for the parent paperclip mark across three surface tiers: **animated** (frontend nav / hero / splash), **static** (everywhere brand chrome), **straight**…"
+    tags: []
+    owners: [Paperwork Labs]
+    category: reference
   - slug: readme
     path: docs/brand/README.md
     title: Paperwork Labs brand asset registry
