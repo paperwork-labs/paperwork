@@ -11,7 +11,7 @@ import os
 import tracemalloc
 import logging
 import logging.config
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 import uuid
 
 from slowapi import _rate_limit_exceeded_handler
@@ -269,7 +269,7 @@ def _auto_warm_if_stale():
             from app.tasks.celery_app import celery_app
             if latest_ts is None:
                 from datetime import date, timedelta
-                history_start = (date.today() - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)).isoformat()
+                history_start = (datetime.now(UTC).date() - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)).isoformat()
                 result = celery_app.send_task(
                     "app.tasks.market.backfill.full_historical",
                     kwargs={"since_date": history_start},
@@ -528,7 +528,7 @@ async def health_check():
     return {
         "status": "healthy",
         "version": "2.0.0",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "api": "AxiomFolio V1",
     }
 
@@ -567,7 +567,7 @@ async def health_check_full():
     return {
         "status": "healthy" if db_ok else "degraded",
         "version": "2.0.0",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "api": "AxiomFolio V1",
         "db": {
             "connected": db_ok,

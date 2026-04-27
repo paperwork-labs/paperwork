@@ -11,16 +11,18 @@ from __future__ import annotations
 import logging
 import math
 import os
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 import httpx
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
 from app.schedulers._history import N8nMirrorRunSkipped, run_with_scheduler_record
 from app.services import slack_outbound
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +46,7 @@ def _format_expiry_slack_text(secrets: list[dict[str, Any]]) -> tuple[bool, str]
 
     Matches the n8n ``Check Expiry Dates`` code node (same buckets and markdown).
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     expiring: list[dict[str, Any]] = []
     for s in secrets:
         raw = s.get("expires_at")
@@ -55,8 +57,8 @@ def _format_expiry_slack_text(secrets: list[dict[str, Any]]) -> tuple[bool, str]
         except (TypeError, ValueError):
             continue
         if exp.tzinfo is None:
-            exp = exp.replace(tzinfo=timezone.utc)
-        days_left = int(math.ceil((exp - now).total_seconds() / (24 * 60 * 60)))
+            exp = exp.replace(tzinfo=UTC)
+        days_left = math.ceil((exp - now).total_seconds() / (24 * 60 * 60))
         expires_date = exp.date().isoformat()
         name = s.get("name") or "?"
         service = s.get("service")
@@ -169,13 +171,15 @@ async def run_credential_expiry_check() -> None:
 def install(scheduler: AsyncIOScheduler) -> None:
     """Register the job when :envvar:`BRAIN_OWNS_CREDENTIAL_EXPIRY` is true."""
     if not _owns_credential_expiry():
-        logger.info("BRAIN_OWNS_CREDENTIAL_EXPIRY is not true — skipping brain_credential_expiry job")
+        logger.info(
+            "BRAIN_OWNS_CREDENTIAL_EXPIRY is not true — skipping brain_credential_expiry job"
+        )
         return
     scheduler.add_job(
         run_credential_expiry_check,
-        trigger=CronTrigger.from_crontab("0 8 * * *", timezone=timezone.utc),
+        trigger=CronTrigger.from_crontab("0 8 * * *", timezone=UTC),
         id=JOB_ID,
-        name="Credential Expiry (Brain, ex–Credential Expiry Check / n8n)",
+        name="Credential Expiry (Brain, ex-Credential Expiry Check / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,

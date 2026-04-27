@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "e78ad134d03a",
+  "content_hash": "5addd45fd279",
   "products": [
     {
       "label": "AxiomFolio",
@@ -368,7 +368,9 @@
       "duration_weeks": 2,
       "effective_status": "in_progress",
       "end": "2026-05-09",
-      "followups": [],
+      "followups": [
+        "~~**Track H4 \u2014 `apps/accounts/`** on `accounts.paperworklabs.com` (custom Paperwork ID headline host per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md))~~ \u2014 **superseded** by Clerk\u2019s auto-hosted Account Portal on the primary domain; see [`docs/KNOWLEDGE.md`](../KNOWLEDGE.md) \u00a7D91."
+      ],
       "goal": "Ship an aggressive end-to-end streamline: one orchestration brain for scheduled work, one persona vocabulary everywhere, Clerk-backed SSO so a LaunchFree user can use FileFree without re-registering, workflow DAGs that are actually legible (and not embarrassing in demos), and AxiomFolio absorbed into the Next.js / Vercel stack when the migration shell is far enough along.",
       "last_reviewed": "2026-04-26",
       "lessons": [
@@ -473,6 +475,7 @@
         "docs/sprints/README.md"
       ],
       "pr": 142,
+      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/142",
       "raw_status": "active",
       "related_prs": [
@@ -538,6 +541,7 @@
         "docs/PERSONA_PLATFORM.md"
       ],
       "pr": 141,
+      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/141",
       "raw_status": "shipped",
       "related_prs": [

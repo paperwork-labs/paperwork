@@ -4,7 +4,7 @@ Tests for TastyTrade Client (OAuth / SDK v12+)
 
 import pytest
 from unittest.mock import AsyncMock, Mock, patch
-from datetime import datetime
+from datetime import UTC, datetime
 
 try:
     from app.services.clients.tastytrade_client import (
@@ -186,8 +186,8 @@ class TestTastyTradeClient:
         mock_position.realized_day_gain_effect = "Credit"
         mock_position.realized_day_gain_date = "2024-01-15"
         mock_position.realized_today = 50.0
-        mock_position.created_at = datetime.now()
-        mock_position.updated_at = datetime.now()
+        mock_position.created_at = datetime.now(UTC)
+        mock_position.updated_at = datetime.now(UTC)
         mock_position.mark = 150.5
         mock_position.mark_value = 15050.0
         mock_position.restricted_quantity = 0.0
@@ -240,8 +240,8 @@ class TestTastyTradeClient:
         mock_option_position.realized_day_gain_effect = "Credit"
         mock_option_position.realized_day_gain_date = "2024-01-15"
         mock_option_position.realized_today = 125.0
-        mock_option_position.created_at = datetime.now()
-        mock_option_position.updated_at = datetime.now()
+        mock_option_position.created_at = datetime.now(UTC)
+        mock_option_position.updated_at = datetime.now(UTC)
         mock_option_position.mark = 2.75
         mock_option_position.mark_value = 1375.0
         mock_option_position.restricted_quantity = 0.0

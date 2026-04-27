@@ -5,7 +5,7 @@ Market Regime Routes
 Endpoints for market regime state and history.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, Query
@@ -67,7 +67,7 @@ async def get_regime_history(
     # written at midnight via persist_regime(). Use a date-based window and the
     # same midnight representation so we compare like-for-like and keep exactly
     # N calendar days (utcnow()-timedelta can omit the oldest calendar day).
-    cutoff_date = date.today() - timedelta(days=days)
+    cutoff_date = datetime.now(UTC).date() - timedelta(days=days)
     cutoff = datetime.combine(cutoff_date, datetime.min.time())
     stmt = (
         select(MarketRegime)

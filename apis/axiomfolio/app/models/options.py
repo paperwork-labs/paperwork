@@ -136,7 +136,7 @@ class Option(Base):
         if self.expiry_date:
             from datetime import date
 
-            return (self.expiry_date - date.today()).days
+            return (self.expiry_date - datetime.now(UTC).date()).days
         return 0
 
     @property

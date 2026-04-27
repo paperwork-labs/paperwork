@@ -8,6 +8,6 @@ called from ``app.main``'s lifespan context. Do not start schedulers from
 routers or services; that would break clean shutdown.
 """
 
-from .pr_sweep import start_scheduler, shutdown_scheduler, get_scheduler
+from .pr_sweep import get_scheduler, shutdown_scheduler, start_scheduler
 
-__all__ = ["start_scheduler", "shutdown_scheduler", "get_scheduler"]
+__all__ = ["get_scheduler", "shutdown_scheduler", "start_scheduler"]

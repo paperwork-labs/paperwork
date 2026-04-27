@@ -16,18 +16,22 @@ This pairs with the on-demand ``POST /admin/seed-lessons`` endpoint
 (triggered by ``scripts/ingest_sprint_lessons.py`` from a GitHub Actions
 job after sprint markdown changes merge).
 """
+
 from __future__ import annotations
 
 import logging
 import os
-from datetime import timezone
+from datetime import UTC
+from typing import TYPE_CHECKING
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
 from app.database import async_session_factory
 from app.services.seed import ingest_sprint_lessons
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +75,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
     )
     scheduler.add_job(
         _run_sprint_lessons_ingest,
-        trigger=IntervalTrigger(hours=hours, timezone=timezone.utc),
+        trigger=IntervalTrigger(hours=hours, timezone=UTC),
         id="sprint_lessons_ingest",
         name="Brain ingests sprint 'What we learned' bullets",
         max_instances=1,

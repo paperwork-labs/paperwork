@@ -171,6 +171,43 @@ Edit `.github/auto-merge-allowlist.yaml` in a normal PR. Prefer adding **bot** l
 - **Markers:** Workflow summaries include `<!-- auto-merge-sweep:checked:… -->`, `<!-- auto-merge-agent-prs:… -->`, `<!-- pr-triage:… -->` (UTC) for traceability.  
 - **Indexes:** If `post-main-regen-indexes` cannot push (branch protection), fix token/permissions or run generators locally and PR.
 
+
+
+## PR pipeline self-draining (dedicated workflows + Studio)
+
+This repo can merge and refresh **agent/bot** pull requests without a human clicking merge, while keeping required CI gates intact and escalating real failures to the founder.
+
+### Self-draining workflows
+
+| Workflow | Purpose |
+| -------- | ------- |
+| `pr-pipeline-auto-merge.yaml` | Squash-merges eligible agent PRs to `main` when CI is green (with Vercel rate-limit soft pass). |
+| `pr-pipeline-auto-rebase-on-main.yaml` | When `main` advances, rebases open PRs that are **bot-pushed** and carry `agent-authored`. |
+| `post-main-regen-indexes.yaml` | On `main` pushes that touch index inputs, regenerates `tracker-index.json`, `docs/_index.yaml`, and lockfile if needed, then commits. |
+| `pr-pipeline-escalate.yaml` | Comments with `@founder` when a PR is stuck (dirty, real CI fail, or `needs-founder-review`). |
+
+**Companion workflows** (pre-existing): `auto-merge.yaml` (approved human PRs), `auto-merge-sweep.yaml` (Dependabot + Copilot-style **🟢 GREEN** comment path via `allowlisted-merge`), `vercel-promote-on-merge.yaml`.
+
+### Labels and branch rules (self-draining)
+
+- **`agent-authored`** — marks PRs the pipeline may treat as agent work (merge uses this or a known bot author).
+- **`do-not-merge`**, **`needs-founder-review`** — block auto-merge; `needs-founder-review` also triggers escalation pings.
+- **`pr-pipeline-escalated`** — applied when the escalate workflow has notified the founder (Studio dashboard surface).
+
+**Branch prefixes** used for auto-merge: `feat/`, `fix/`, `chore/`, `brand/`, `docs/` (no merges to non-`main` targets).
+
+**Auto-rebase** only runs for PRs the bot can update without rewriting a human’s branch: the PR **author** must be a known integration bot (see `AGENT_PR_BOT_LOGINS` in the workflow). Human-authored PRs with `agent-authored` are skipped for push — merge still works via GitHub when eligible.
+
+### Required repository configuration (self-draining)
+
+- **Optional:** repository variable `FOUNDER_GITHUB_LOGIN` (defaults to `sankalp404` in workflows if unset).
+- Default `secrets.GITHUB_TOKEN` is used with `contents: write` and `pull-requests: write` where workflows require it.
+- Vercel “rate limit” / resource failures are **not** treated as merge blockers for agent PRs in the dedicated pipeline; other failures still block.
+
+### Studio
+
+Route: **`/admin/pr-pipeline`** — open PR health, recent auto-merge / auto-rebase runs (last 24h from Actions API), and escalated PRs. Requires `GITHUB_TOKEN` in the Studio environment for live data.
+
 ## Related
 
 - [Brain scheduler / cutover env](BRAIN_SCHEDULER.md)

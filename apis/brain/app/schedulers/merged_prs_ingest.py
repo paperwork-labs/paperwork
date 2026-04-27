@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import timezone
+from datetime import UTC
+from typing import TYPE_CHECKING
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
 from app.database import async_session_factory
 from app.services.continuous_learning import ingest_merged_prs
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
     )
     scheduler.add_job(
         _run_merged_prs_ingest,
-        trigger=IntervalTrigger(hours=hours, timezone=timezone.utc),
+        trigger=IntervalTrigger(hours=hours, timezone=UTC),
         id="merged_prs_ingest",
         name="Brain ingests recently merged PRs as memory",
         max_instances=1,

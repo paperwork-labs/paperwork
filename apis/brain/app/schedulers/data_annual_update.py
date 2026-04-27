@@ -10,15 +10,18 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
 from app.schedulers._history import N8nMirrorRunSkipped, run_with_scheduler_record
 from app.services import slack_outbound
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +41,15 @@ def _owns_data_annual_update() -> bool:
 
 
 def _build_message(now: datetime) -> str:
-    """Slack text matching the n8n ``Format Checklist Message`` + ``Build Update Checklist`` nodes."""
+    """Slack text matching the n8n ``Format Checklist Message``
+    + ``Build Update Checklist`` nodes.
+    """
     next_tax_year = now.year + 1
     checklist = [
-        f"1. IRS Revenue Procedure for TY{next_tax_year} — check if released at <https://www.irs.gov/irb|IRS Internal Revenue Bulletin>",
-        f"2. Download new Tax Foundation XLSX to packages/data/scripts/fixtures/, then run `EXTRACT_TAX_YEAR={next_tax_year} pnpm parse:tax` in `packages/data`",
+        f"1. IRS Revenue Procedure for TY{next_tax_year} - check if released at "
+        f"<https://www.irs.gov/irb|IRS Internal Revenue Bulletin>",
+        f"2. Download new Tax Foundation XLSX to packages/data/scripts/fixtures/, "
+        f"then run `EXTRACT_TAX_YEAR={next_tax_year} pnpm parse:tax` in `packages/data`",
         "3. Run formation update: `pnpm parse:formation` (fees change annually)",
         "4. Run full review: `pnpm review` — fix all failures",
         "5. Run test suite: `pnpm test` — all 1700+ tests must pass",
@@ -69,7 +76,7 @@ def _build_message(now: datetime) -> str:
 async def _run_data_annual_update_body() -> None:
     if not (settings.SLACK_BOT_TOKEN or "").strip():
         raise N8nMirrorRunSkipped()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     text = _build_message(now)
     result = await slack_outbound.post_message(
         channel_id=_ENGINEERING_SLACK_CHANNEL_ID,
@@ -105,7 +112,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
             timezone=ZoneInfo("America/Los_Angeles"),
         ),
         id=JOB_ID,
-        name="Annual Data Update (Brain, ex–Annual Data Update Trigger P2.10 / n8n)",
+        name="Annual Data Update (Brain, ex- Annual Data Update Trigger P2.10 / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,

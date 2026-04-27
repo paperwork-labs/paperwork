@@ -19,7 +19,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import UTC, datetime
 import enum
 
 from . import Base
@@ -137,7 +137,7 @@ class Notification(Base):
     @property
     def is_expired(self) -> bool:
         """Check if notification has expired."""
-        return self.expires_at is not None and datetime.now() > self.expires_at
+        return self.expires_at is not None and datetime.now(UTC) > self.expires_at
 
 
 class NotificationTemplate(Base):

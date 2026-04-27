@@ -21,7 +21,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import event
 from sqlalchemy.sql import text
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import UTC, datetime
 import enum
 from decimal import Decimal
 
@@ -223,7 +223,7 @@ class Position(Base):
                     self.day_pnl / (self.market_value - self.day_pnl)
                 ) * 100
 
-        self.price_updated_at = datetime.now()
+        self.price_updated_at = datetime.now(UTC)
 
     def calculate_position_size_pct(self, total_portfolio_value: float):
         """Calculate position size as percentage of total portfolio."""

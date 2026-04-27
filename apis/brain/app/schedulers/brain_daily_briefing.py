@@ -8,11 +8,12 @@ Replaces the **Brain Daily Trigger** n8n workflow (``0 7 * * *``) that POSTs
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.database import async_session_factory
@@ -20,6 +21,9 @@ from app.redis import get_redis
 from app.schedulers._history import run_with_scheduler_record
 from app.services import agent as brain_agent
 from app.services import slack_outbound
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -51,12 +55,10 @@ def _format_slack_body(raw: str) -> str:
 
 
 async def _run_briefing_body() -> None:
-    request_id = f"daily-briefing:brain:{datetime.now(timezone.utc).isoformat()}"
+    request_id = f"daily-briefing:brain:{datetime.now(UTC).isoformat()}"
     redis_client = None
-    try:
+    with contextlib.suppress(RuntimeError):
         redis_client = get_redis()
-    except RuntimeError:
-        pass
     async with async_session_factory() as db:
         result = await brain_agent.process(
             db,
@@ -95,9 +97,9 @@ def install(scheduler: AsyncIOScheduler) -> None:
         return
     scheduler.add_job(
         run_daily_briefing,
-        trigger=CronTrigger.from_crontab("0 7 * * *", timezone=timezone.utc),
+        trigger=CronTrigger.from_crontab("0 7 * * *", timezone=UTC),
         id=_JOB_ID,
-        name="Daily briefing (Brain, ex–Brain Daily Trigger / n8n)",
+        name="Daily briefing (Brain, ex-Brain Daily Trigger / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,

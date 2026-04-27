@@ -8,7 +8,7 @@ Tests that validate the IBKR sync service properly populates all database models
 
 import pytest
 from decimal import Decimal
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import patch
 from sqlalchemy import inspect
 
@@ -64,7 +64,7 @@ class TestIBKRSyncService:
                 "symbol": "AAPL",
                 "quantity": 100,
                 "cost_basis": 15000.00,
-                "acquisition_date": datetime(2023, 1, 15),
+                "acquisition_date": datetime(2023, 1, 15, tzinfo=UTC),
                 "current_price": 175.50,
                 "current_value": 17550.00,
                 "unrealized_pnl": 2550.00,
@@ -76,7 +76,7 @@ class TestIBKRSyncService:
                 "symbol": "NVDA",
                 "quantity": 50,
                 "cost_basis": 12000.00,
-                "acquisition_date": datetime(2023, 3, 10),
+                "acquisition_date": datetime(2023, 3, 10, tzinfo=UTC),
                 "current_price": 280.00,
                 "current_value": 14000.00,
                 "unrealized_pnl": 2000.00,
@@ -98,7 +98,7 @@ class TestIBKRSyncService:
                 "total_value": 15000.00,
                 "commission": 1.00,
                 "execution_id": "T123456",
-                "execution_time": datetime(2023, 1, 15),
+                "execution_time": datetime(2023, 1, 15, tzinfo=UTC),
                 "currency": "USD",
                 "exchange": "NASDAQ",
                 "contract_type": "STK",
@@ -111,7 +111,7 @@ class TestIBKRSyncService:
                 "total_value": 12000.00,
                 "commission": 1.00,
                 "execution_id": "T123457",
-                "execution_time": datetime(2023, 3, 10),
+                "execution_time": datetime(2023, 3, 10, tzinfo=UTC),
                 "currency": "USD",
                 "exchange": "NASDAQ",
                 "contract_type": "STK",

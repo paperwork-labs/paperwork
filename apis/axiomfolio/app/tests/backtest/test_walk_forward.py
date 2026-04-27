@@ -23,7 +23,7 @@ from __future__ import annotations
 
 import math
 import random
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta
 from decimal import Decimal
 from typing import Any, Dict, List, Sequence
 
@@ -409,8 +409,8 @@ def test_study_row_is_strictly_user_scoped(db_session, two_users) -> None:
         n_splits=3,
         n_trials=10,
         regime_filter=None,
-        dataset_start=datetime(2024, 1, 1),
-        dataset_end=datetime(2024, 12, 31),
+        dataset_start=datetime(2024, 1, 1, tzinfo=UTC),
+        dataset_end=datetime(2024, 12, 31, tzinfo=UTC),
         status=WalkForwardStatus.PENDING,
     )
     db_session.add(study)

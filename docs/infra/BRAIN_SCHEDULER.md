@@ -112,6 +112,11 @@ P2.8, P2.9, and P2.10 first-party jobs are listed in the **Cutover gates** table
 | `merged_prs_ingest` | interval (default 6h) | Merged PRs → memory |
 | `ingest_decisions_daily` | daily 03:00 | ADR docs → memory |
 | `ingest_postmortems_daily` | daily 03:30 | Postmortems / incidents → memory |
+| `secrets_drift_audit` | daily **03:00** `America/Los_Angeles` | Vault vs Vercel/Render fingerprint audit → episodes + optional agent tasks; ``BRAIN_OWNS_SECRETS_DRIFT_AUDIT`` (default on) |
+| `secrets_rotation_monitor` | daily **09:00** `America/Los_Angeles` | Rotations due within 7d → episodes + optional agent tasks; ``BRAIN_OWNS_SECRETS_ROTATION_MONITOR`` |
+| `secrets_health_probe` | hourly (UTC) | For ``criticality=critical`` rows, sample health URLs; ``BRAIN_OWNS_SECRETS_HEALTH_PROBE`` |
+
+See [BRAIN_SECRETS_INTELLIGENCE.md](./BRAIN_SECRETS_INTELLIGENCE.md) for schema, webhooks, and runbook.
 
 **Job list (process):** `GET /internal/schedulers` returns the current APScheduler registry (``id``, ``next_run``, ``trigger``, ``classification``: `net-new` / `cutover` / `operational` / `n8n-shadow`). Unauthenticated — use for deploy verification or behind an edge allowlist.
 

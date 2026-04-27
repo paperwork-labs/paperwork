@@ -13,16 +13,18 @@ import logging
 import os
 import random
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
 
 import httpx
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
 from app.schedulers._history import N8nMirrorRunSkipped, run_with_scheduler_record
 from app.services import slack_outbound
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -93,9 +95,7 @@ def _check_dor_match(dor_text: str, top_rate: str) -> bool:
         return True
     if f"{top_rate}%" in dor_text:
         return True
-    if f"{alt_rate_str}%" in dor_text:
-        return True
-    return False
+    return f"{alt_rate_str}%" in dor_text
 
 
 def _github_headers_json() -> dict[str, str]:
@@ -121,7 +121,7 @@ def _github_headers_raw() -> dict[str, str]:
 
 
 async def _list_source_files(client: httpx.AsyncClient) -> list[dict[str, Any]]:
-    url = f"https://api.github.com/repos/{settings.GITHUB_REPO or _GITHUB_REPO}/contents/packages/data/src/sources"
+    url = f"https://api.github.com/repos/{settings.GITHUB_REPO or _GITHUB_REPO}/contents/packages/data/src/sources"  # noqa: E501
     r = await client.get(url, headers=_github_headers_json())
     r.raise_for_status()
     data = r.json()
@@ -157,7 +157,7 @@ async def _run_data_deep_validator_body() -> None:
                 r = await client.get(str(down), headers=_github_headers_json())
                 r.raise_for_status()
                 source = r.json()
-            except Exception as e:  # noqa: BLE001 — mirror n8n: skip bad files
+            except Exception as e:
                 logger.info("data_deep_validator: skip source %s: %s", f.get("name"), e)
                 continue
             if not isinstance(source, dict):
@@ -204,7 +204,7 @@ async def _run_data_deep_validator_body() -> None:
                     tr.raise_for_status()
                     stored_data = json.loads(tr.text)
                     break
-                except Exception:  # noqa: BLE001
+                except Exception:
                     continue
 
             if not stored_data:
@@ -224,17 +224,21 @@ async def _run_data_deep_validator_body() -> None:
                     )
                     dr.raise_for_status()
                     dor_content = _strip_html(dr.text)
-                except Exception as e:  # noqa: BLE001
+                except Exception as e:
                     result["issues"].append(f"DOR page fetch failed: {str(e)[:100]}")
 
             it = stored_data.get("income_tax")
-            if dor_content and isinstance(it, dict):
-                top = _top_rate_pct(it)
-                if top is not None and str(it.get("type")) != "none":
-                    if not _check_dor_match(dor_content, top) and len(dor_content) > 500:
-                        result["issues"].append(
-                            f"Top rate {top}% not found on DOR page (may be layout change)"
-                        )
+            if (
+                dor_content
+                and isinstance(it, dict)
+                and (top := _top_rate_pct(it)) is not None
+                and str(it.get("type")) != "none"
+                and not _check_dor_match(dor_content, top)
+                and len(dor_content) > 500
+            ):
+                result["issues"].append(
+                    f"Top rate {top}% not found on DOR page (may be layout change)"
+                )
 
             results.append(result)
 
@@ -299,7 +303,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
             timezone=ZoneInfo("America/Los_Angeles"),
         ),
         id=JOB_ID,
-        name="Data Deep Validator (Brain, ex–Data Deep Validator P2.9 / n8n)",
+        name="Data Deep Validator (Brain, ex-Data Deep Validator P2.9 / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,

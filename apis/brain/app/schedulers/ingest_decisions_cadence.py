@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import timezone
+from datetime import UTC
+from typing import TYPE_CHECKING
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.database import async_session_factory
 from app.services.continuous_learning import ingest_decisions
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +47,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
         trigger=CronTrigger(
             hour=3,
             minute=0,
-            timezone=timezone.utc,
+            timezone=UTC,
         ),
         id=_JOB_ID,
         name="Ingest decision docs (ADR) into memory",

@@ -7,7 +7,7 @@ triggers an order. All data is scoped to ``current_user.id``.
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
@@ -192,7 +192,7 @@ async def advise_exit(
         fallback_date = (
             position.created_at.date()
             if isinstance(position.created_at, datetime)
-            else date.today()
+            else datetime.now(UTC).date()
         )
         lots = [
             ExitLot(

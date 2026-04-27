@@ -18,7 +18,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func, text
 from sqlalchemy import event
 import enum
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.models import Base
 
@@ -134,7 +134,7 @@ class TaxLot(Base):
     def holding_period_days(self) -> int:
         """Calculate holding period in days."""
         if self.acquisition_date:
-            return (datetime.now().date() - self.acquisition_date).days
+            return (datetime.now(UTC).date() - self.acquisition_date).days
         return 0
 
     @property

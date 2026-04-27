@@ -1,7 +1,7 @@
 """Regression tests for Copilot review on PR 435 (Schwab options / sync hardening)."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock
 
@@ -72,7 +72,7 @@ async def test_ibkr_sync_balance_updates_broker_account_on_repeat_same_day(
     db_session.commit()
     db_session.refresh(ba)
 
-    same_date = datetime(2024, 6, 1, 12, 0, 0)
+    same_date = datetime(2024, 6, 1, 12, 0, 0, tzinfo=UTC)
     fc = MagicMock()
     row = {
         "balance_date": same_date,

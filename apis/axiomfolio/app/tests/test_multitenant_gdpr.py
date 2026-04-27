@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import io
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 import pytest
 
@@ -40,8 +40,8 @@ from app.tasks.multitenant.gdpr import GDPR_DELETE_CASCADE_TABLES as TASK_GDPR_D
 
 def _make_user(db, *, suffix: str) -> User:
     u = User(
-        username=f"gdpr_{suffix}_{int(datetime.now().timestamp() * 1000)}",
-        email=f"gdpr_{suffix}_{int(datetime.now().timestamp() * 1000)}@example.com",
+        username=f"gdpr_{suffix}_{int(datetime.now(UTC).timestamp() * 1000)}",
+        email=f"gdpr_{suffix}_{int(datetime.now(UTC).timestamp() * 1000)}@example.com",
         password_hash="x",
         is_active=True,
         is_verified=True,

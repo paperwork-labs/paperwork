@@ -15,16 +15,18 @@ import json
 import logging
 import os
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
 
 import httpx
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
 from app.schedulers._history import N8nMirrorRunSkipped, run_with_scheduler_record
 from app.services import slack_outbound
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +108,7 @@ def _format_slack_message(results: list[dict[str, Any]]) -> str:
         for c in changed:
             parts.append(f"\u2022 *{c['name']}*: <{c['url']}|View page>")
         parts.append(
-            "\n:point_right: Run `pnpm parse:tax` and `pnpm review` in `packages/data` to update. Also run `pnpm parse:formation` if formation sources changed."
+            "\n:point_right: Run `pnpm parse:tax` and `pnpm review` in `packages/data` to update. Also run `pnpm parse:formation` if formation sources changed."  # noqa: E501
         )
     if errors:
         parts.append("\n:warning: *Source Fetch Errors*")
@@ -268,7 +270,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
             timezone=ZoneInfo("America/Los_Angeles"),
         ),
         id=JOB_ID,
-        name="Data Source Monitor (Brain, ex–Data Source Monitor (P2.8) / n8n)",
+        name="Data Source Monitor (Brain, ex-Data Source Monitor (P2.8) / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,

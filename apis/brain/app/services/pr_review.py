@@ -27,18 +27,19 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 from sqlalchemy import and_, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.episode import Episode
-from app.services import memory
-from app.services import slack_outbound
+from app.services import memory, slack_outbound
 from app.services.pii import scrub_pii
 from app.tools import github as gh_tools
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -136,8 +137,7 @@ async def _fetch_historical_context(
     if not recent:
         return ""
     filtered = [
-        ep for ep in recent
-        if (getattr(ep, "source", "") or "").startswith("brain:pr-review")
+        ep for ep in recent if (getattr(ep, "source", "") or "").startswith("brain:pr-review")
     ][:max_episodes]
     if not filtered:
         return ""
@@ -262,14 +262,17 @@ async def review_pr(
             organization_id=org_id,
             source=f"brain:pr-review:{verdict.lower()}",
             summary=f"PR #{pr_number}: {verdict} — {str(parsed.get('summary') or '')[:200]}",
-            full_context=json.dumps({
-                "pr_number": pr_number,
-                "head_sha": head_sha,
-                "verdict": verdict,
-                "model": model,
-                "files": files[:40],
-                "review": parsed,
-            }, default=str),
+            full_context=json.dumps(
+                {
+                    "pr_number": pr_number,
+                    "head_sha": head_sha,
+                    "verdict": verdict,
+                    "model": model,
+                    "files": files[:40],
+                    "review": parsed,
+                },
+                default=str,
+            ),
             channel="github",
             persona="reviewer",
             product="brain",
@@ -352,19 +355,23 @@ async def _notify_slack_for_review(
 # Labels that tell Brain to stay out. Dependabot bumps have their own Haiku
 # triage pipeline (see docs/DEPENDABOT.md), so we skip the whole "dependencies"
 # family by default.
-_SKIP_LABELS = frozenset({
-    "skip-brain-review",
-    "deps:major",
-    "dependencies",
-    "do-not-merge",
-})
+_SKIP_LABELS = frozenset(
+    {
+        "skip-brain-review",
+        "deps:major",
+        "dependencies",
+        "do-not-merge",
+    }
+)
 
-_SKIP_AUTHORS = frozenset({
-    "dependabot[bot]",
-    "dependabot-preview[bot]",
-    "renovate[bot]",
-    "github-actions[bot]",
-})
+_SKIP_AUTHORS = frozenset(
+    {
+        "dependabot[bot]",
+        "dependabot-preview[bot]",
+        "renovate[bot]",
+        "github-actions[bot]",
+    }
+)
 
 
 async def sweep_open_prs(
@@ -418,12 +425,14 @@ async def sweep_open_prs(
             skipped.append({"number": number, "reason": "draft"})
             continue
 
-        head_sha = str(((pr.get("head") or {}).get("sha") or "")).strip()
+        head_sha = str((pr.get("head") or {}).get("sha") or "").strip()
         if not head_sha:
             skipped.append({"number": number, "reason": "no head SHA"})
             continue
 
-        if not force and await _has_review_at_sha(db, org_id=org_id, pr_number=number, head_sha=head_sha):
+        if not force and await _has_review_at_sha(
+            db, org_id=org_id, pr_number=number, head_sha=head_sha
+        ):
             skipped.append({"number": number, "reason": f"already reviewed at {head_sha[:7]}"})
             continue
 
@@ -520,15 +529,12 @@ async def _has_review_at_sha(
     """True if an episode exists for this PR+SHA with source 'brain:pr-review:*'."""
     if not head_sha:
         return False
-    stmt = (
-        select(func.count(Episode.id))
-        .where(
-            and_(
-                Episode.organization_id == org_id,
-                Episode.source_ref == str(pr_number),
-                Episode.source.like("brain:pr-review:%"),
-                Episode.metadata_["head_sha"].astext == head_sha,
-            )
+    stmt = select(func.count(Episode.id)).where(
+        and_(
+            Episode.organization_id == org_id,
+            Episode.source_ref == str(pr_number),
+            Episode.source.like("brain:pr-review:%"),
+            Episode.metadata_["head_sha"].astext == head_sha,
         )
     )
     try:
@@ -549,7 +555,7 @@ def _extract_files(meta_text: str) -> list[str]:
     idx = meta_text.find(marker)
     if idx < 0:
         return []
-    raw = meta_text[idx + len(marker):]
+    raw = meta_text[idx + len(marker) :]
     files = [ln.strip() for ln in raw.splitlines() if ln.strip() and ln.strip() != "(none listed)"]
     return files
 
