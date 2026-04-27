@@ -53,7 +53,7 @@ jobs:
   promote:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -94,9 +94,11 @@ jobs:
 
       - name: Skip if project_id placeholder
         if: env.secret_ok == 'true' && matrix.project_id == 'TBD_CREATE_BEFORE_MERGE'
+        continue-on-error: true
         run: |
-          echo "::warning::Vercel project for ${{ matrix.project }} not yet created. Skipping promote."
-          echo "Create the project in Vercel Dashboard, then update .github/workflows/vercel-promote-on-merge.yaml with the real project_id."
+          echo "::notice::Skipped — ${{ matrix.project }} has no Vercel project_id yet (placeholder TBD_CREATE_BEFORE_MERGE)."
+          echo "Create the project in Vercel, then replace the placeholder in .github/workflows/vercel-promote-on-merge.yaml."
+          echo "See docs/infra/FOUNDER_ACTIONS.md."
           exit 0
 
       - name: Resolve PR merge commit SHA
@@ -172,12 +174,29 @@ jobs:
         env:
           PR_HEAD: ${{ steps.pr.outputs.pr_head }}
         run: |
-          PROD_SHA=$(curl -sf -H "Authorization: Bearer $VERCEL_API_TOKEN" \
-            "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&target=production&limit=1&state=READY" \
-            | jq -r '.deployments[0].meta.githubCommitSha // ""')
+          set -euo pipefail
+          lc() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+          same_sha() {
+            local a b
+            a=$(lc "$1")
+            b=$(lc "$2")
+            [ -n "$a" ] && [ -n "$b" ] || return 1
+            [ "$a" = "$b" ] && return 0
+            [ "${a:0:7}" = "${b:0:7}" ] && return 0
+            return 1
+          }
+          HTTP_CODE=$(curl -sS -o /tmp/prod-dep.json -w "%{http_code}" -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&target=production&limit=1&state=READY")
+          if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Failed to read production deployment for $PROJECT_NAME (HTTP $HTTP_CODE)."
+            head -c 4000 /tmp/prod-dep.json || true
+            echo
+            exit 1
+          fi
+          PROD_SHA=$(jq -r '.deployments[0].meta.githubCommitSha // ""' /tmp/prod-dep.json)
           echo "Current prod SHA for $PROJECT_NAME: $PROD_SHA"
           echo "Target SHA: $PR_HEAD"
-          if [ "$PROD_SHA" = "$PR_HEAD" ]; then
+          if same_sha "$PROD_SHA" "$PR_HEAD"; then
             echo "Production already on target SHA — webhook fired correctly. Nothing to do."
             echo "already_promoted=true" >> $GITHUB_OUTPUT
           else
@@ -191,29 +210,61 @@ jobs:
           PR_HEAD: ${{ steps.pr.outputs.pr_head }}
           PR_HEAD_FALLBACK: ${{ steps.pr.outputs.pr_head_fallback }}
         run: |
-          # Try the merge commit SHA first. If Vercel doesn't have it (e.g.
-          # rebased PR where Vercel built the branch HEAD instead of the
-          # squash-merge commit), retry with the PR head.sha as a fallback.
-          # Vercel's webhook can take ~30-90s to mark a deployment READY,
-          # so we retry up to 6 times over 6 minutes.
+          set -euo pipefail
+          # Prefer meta-githubCommitSha API filter, then scan recent READY deployments with
+          # fuzzy SHA match (full 40-char or matching 7-char prefix). Vercel may lag several
+          # minutes before a main push produces a READY deployment; fail the job if none
+          # exists so merges do not look green while production is stuck.
+          curl_deployments() {
+            local url="$1" out="$2"
+            local code
+            code=$(curl -sS -o "$out" -w "%{http_code}" -H "Authorization: Bearer ${VERCEL_API_TOKEN}" "$url")
+            if [ -z "$code" ] || [ "$code" -lt 200 ] || [ "$code" -ge 400 ]; then
+              echo "::error::Vercel deployments API failed (HTTP ${code}) for URL query (project=$PROJECT_NAME). Body (truncated):"
+              head -c 4000 "$out" || true
+              echo
+              exit 1
+            fi
+          }
+          pick_from_meta_filter() {
+            local sha="$1"
+            if [ -z "$sha" ]; then echo ""; return 0; fi
+            local url="https://api.vercel.com/v6/deployments?projectId=${PROJECT_ID}&teamId=${TEAM_ID}&state=READY&limit=10&meta-githubCommitSha=${sha}"
+            curl_deployments "$url" /tmp/vmeta.json
+            jq -r '[.deployments[]? | select(.readyState == "READY")] | sort_by(.createdAt) | reverse | first | .uid // empty' /tmp/vmeta.json
+          }
+          pick_from_full_list() {
+            curl_deployments "https://api.vercel.com/v6/deployments?projectId=${PROJECT_ID}&teamId=${TEAM_ID}&state=READY&limit=100" /tmp/vlist.json
+            jq -r --arg MERGE "$PR_HEAD" --arg HEAD "$PR_HEAD_FALLBACK" '
+              def norm(s): (s // "") | ascii_downcase;
+              def cand(d): norm(d.meta.githubCommitSha // d.meta.commitSha // (d.gitSource.sha? // ""));
+              def sameref(m; r):
+                (m != "" and r != "" and (m == r or m[0:7] == r[0:7]));
+              [.deployments[]? | select(.readyState == "READY")
+                | select(sameref(cand(.); ($MERGE|norm)) or sameref(cand(.); ($HEAD|norm)))]
+              | sort_by(.createdAt) | reverse | first | .uid // empty
+            ' /tmp/vlist.json
+          }
           DEPLOY_ID=""
-          for attempt in 1 2 3 4 5 6; do
-            echo "Attempt $attempt: searching for READY deployment with githubCommitSha=$PR_HEAD (merge) or $PR_HEAD_FALLBACK (head)"
-            DEPLOY_ID=$(curl -sf -H "Authorization: Bearer $VERCEL_API_TOKEN" \
-              "https://api.vercel.com/v6/deployments?projectId=$PROJECT_ID&teamId=$TEAM_ID&state=READY&limit=50" \
-              | jq -r --arg MERGE "$PR_HEAD" --arg HEAD "$PR_HEAD_FALLBACK" \
-                '[.deployments[] | select(.meta.githubCommitSha == $MERGE or .meta.githubCommitSha == $HEAD)] | first | .uid // ""')
+          for attempt in $(seq 1 15); do
+            echo "Attempt $attempt / 15: READY deployment for merge=$PR_HEAD head=$PR_HEAD_FALLBACK ($PROJECT_NAME)"
+            for SHA_TRY in "$PR_HEAD" "$PR_HEAD_FALLBACK"; do
+              CAND="$(pick_from_meta_filter "$SHA_TRY")"
+              if [ -n "$CAND" ]; then DEPLOY_ID="$CAND"; break; fi
+            done
+            if [ -z "$DEPLOY_ID" ]; then
+              DEPLOY_ID="$(pick_from_full_list)"
+            fi
             if [ -n "$DEPLOY_ID" ]; then
               echo "Found deployment: $DEPLOY_ID"
               break
             fi
-            echo "No match yet; sleeping 60s."
-            sleep 60
+            echo "No READY deployment with this SHA yet; sleeping 30s."
+            sleep 30
           done
           if [ -z "$DEPLOY_ID" ]; then
-            echo "::warning::No preview found for $PROJECT_NAME — Vercel skipped this build (likely path filter or ignoreCommand)."
-            echo "found_preview=false" >> $GITHUB_OUTPUT
-            exit 0
+            echo "::error::No READY Vercel deployment for **${PROJECT_NAME}** matching merge_commit_sha=${PR_HEAD} or head_sha=${PR_HEAD_FALLBACK} after 15 attempts (~7.5 min). Promote only aliases an existing deployment — it cannot create one. Typical causes: Vercel never built this app for that commit (monorepo ignoreCommand / dashboard skip), deployment still BUILDING, or Hobby rate limits. Check Deployments in the Vercel dashboard; merge a no-op change to apps/${PROJECT_NAME}/.deploy-trigger or run \`vercel deploy --prod\` from apps/${PROJECT_NAME} if needed."
+            exit 1
           fi
           echo "found_preview=true" >> $GITHUB_OUTPUT
           echo "deploy_id=$DEPLOY_ID" >> $GITHUB_OUTPUT
