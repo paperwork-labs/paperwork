@@ -31,7 +31,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
@@ -633,7 +633,7 @@ def last_trading_day(today: Optional[date] = None) -> date:
     ingest task is idempotent, so an empty holiday run is harmless.
     """
     if today is None:
-        today = datetime.utcnow().date()
+        today = datetime.now(timezone.utc).date()
     d = today
     while d.weekday() >= 5:  # 5=Sat, 6=Sun
         d = d - timedelta(days=1)

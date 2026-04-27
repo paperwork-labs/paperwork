@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import { trinketsClerkAppearance } from "@/lib/trinkets-clerk-appearance";
+import { trinketsAppearance } from "@paperwork-labs/auth-clerk/appearance";
 import "./globals.css";
 
 const inter = Inter({
@@ -32,7 +32,7 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
       >
         <ClerkProvider
-          appearance={trinketsClerkAppearance}
+          appearance={trinketsAppearance}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
         >

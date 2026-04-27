@@ -22,7 +22,7 @@
     "@ai-sdk/react": "^3.0.170",
     "@hookform/resolvers": "^5.2.2",
     "@paperwork-labs/analytics": "workspace:*",
-    "@paperwork-labs/auth": "workspace:*",
+    "@paperwork-labs/auth-clerk": "workspace:*",
     "@paperwork-labs/ui": "workspace:*",
     "@react-pdf/renderer": "^4.5.1",
     "@sentry/nextjs": "^10.50.0",

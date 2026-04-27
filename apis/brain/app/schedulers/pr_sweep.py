@@ -19,6 +19,7 @@ Safety:
 from __future__ import annotations
 
 import logging
+from datetime import timezone
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -52,6 +53,26 @@ async def _run_pr_sweep() -> None:
         )
     except Exception:
         logger.exception("pr_sweep review raised — will retry next interval")
+
+    if getattr(settings, "BRAIN_OWNS_PR_TRIAGE", False):
+        try:
+            from app.services import pr_sweep_triage
+
+            triage_report: dict[str, Any] = await pr_sweep_triage.run_pr_triage_sweep(
+                org_id="paperwork-labs",
+                limit=30,
+            )
+            if triage_report.get("ok"):
+                logger.info(
+                    "pr_sweep triage: stale=%d ready=%d rebase=%d",
+                    len(triage_report.get("stale", [])),
+                    len(triage_report.get("ready", [])),
+                    len(triage_report.get("rebase", [])),
+                )
+            else:
+                logger.warning("pr_sweep triage: %s", triage_report.get("error", triage_report.get("skipped")))
+        except Exception:
+            logger.exception("pr_sweep triage raised — will retry next interval")
 
     try:
         merge_report: dict[str, Any] = await merge_ready_prs(limit=50)
@@ -88,7 +109,7 @@ def start_scheduler() -> AsyncIOScheduler | None:
     sched = AsyncIOScheduler(jobstores=jobstores, timezone="UTC")
     sched.add_job(
         _run_pr_sweep,
-        trigger=IntervalTrigger(minutes=minutes),
+        trigger=IntervalTrigger(minutes=minutes, timezone=timezone.utc),
         id="pr_sweep",
         name="Brain PR sweep",
         max_instances=1,
@@ -183,6 +204,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install sprint_kickoff job")
 
     try:
+        from app.schedulers import sprint_close
+
+        sprint_close.install(sched)
+    except Exception:
+        logger.exception("Failed to install sprint_close job")
+
+    try:
         from app.schedulers import sprint_auto_logger
 
         sprint_auto_logger.install(sched)
@@ -202,6 +230,20 @@ def start_scheduler() -> AsyncIOScheduler | None:
         credential_expiry.install(sched)
     except Exception:
         logger.exception("Failed to install credential_expiry job")
+
+    try:
+        from app.schedulers import data_source_monitor
+
+        data_source_monitor.install(sched)
+    except Exception:
+        logger.exception("Failed to install data_source_monitor job")
+
+    try:
+        from app.schedulers import data_deep_validator
+
+        data_deep_validator.install(sched)
+    except Exception:
+        logger.exception("Failed to install data_deep_validator job")
 
     try:
         from app.schedulers import infra_health

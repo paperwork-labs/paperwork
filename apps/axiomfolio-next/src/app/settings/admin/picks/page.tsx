@@ -1,6 +1,15 @@
+import dynamic from "next/dynamic";
+
 import { RequireAuthClient } from "@/components/auth/RequireAuthClient";
 import { RequireAdmin } from "@/components/auth/RequireAdmin";
-import PicksValidatorClient from "@/components/admin/PicksValidatorClient";
+import { AdminLoadingSkeleton } from "@/components/ui/AdminLoadingSkeleton";
+
+const PicksValidatorClient = dynamic(
+  () => import("@/components/admin/PicksValidatorClient"),
+  {
+    loading: () => <AdminLoadingSkeleton />,
+  },
+);
 
 export default function AdminPicksPage() {
   return (

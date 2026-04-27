@@ -205,6 +205,13 @@ docs:
     tags: [runbook, drive, mcp]
     owners: [agent-ops, ea]
     category: runbooks
+  - slug: pr-pipeline-automation
+    path: docs/infra/PR_PIPELINE_AUTOMATION.md
+    title: PR pipeline automation
+    summary: "flowchart LR A[Agent or human opens PR] --> B[CI checks] B --> C{Green + mergeable?} C -->|Approved path| D[auto-merge.yaml merges on approval] C -->|Dependabot| E[auto-merge-sweep / sweep job] C…"
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
   - slug: render-inventory
     path: docs/infra/RENDER_INVENTORY.md
     title: Render Inventory
@@ -230,6 +237,13 @@ docs:
     path: docs/infra/STUDIO_ENV.md
     title: Studio Vercel environment variables — setup runbook
     summary: "[Studio](https://paperworklabs.com) `admin` routes probe n8n, Vercel, Render, Hetzner, GitHub, Slack, and the Paperwork Brain. Several optional integrations degrade gracefully when a secret is…"
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
+  - slug: timezone-standards
+    path: docs/infra/TIMEZONE_STANDARDS.md
+    title: Timezone standards (Paperwork Labs)
+    summary: "All datetimes stored in the database, transmitted in API responses, logged for audit, scheduled at the **system** level, and compared in server-side business logic are **UTC and timezone-aware**.…"
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
@@ -303,6 +317,13 @@ docs:
     summary: "What runs where — Render, Vercel, Hetzner, Neon."
     tags: [infra]
     owners: [infra-ops]
+    category: reference
+  - slug: animation
+    path: docs/brand/ANIMATION.md
+    title: Paperwork Labs brand animations
+    summary: "This file specs the **runtime motion** for the parent paperclip mark across three surface tiers: **animated** (frontend nav / hero / splash), **static** (everywhere brand chrome), **straight**…"
+    tags: []
+    owners: [Paperwork Labs]
     category: reference
   - slug: readme
     path: docs/brand/README.md

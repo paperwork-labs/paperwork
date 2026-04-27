@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     SECRETS_API_KEY: str = ""
     BRAIN_API_SECRET: str = ""
     BRAIN_MCP_TOKEN: str = ""
+    # J2/J3: Studio `/admin/brain-learning` + Brain `GET /api/v1/admin/brain/*` observability.
+    # When false, those routes return 403 (scheduler unchanged).
+    BRAIN_LEARNING_DASHBOARD_ENABLED: bool = True
     STUDIO_URL: str = "https://paperworklabs.com"
     BRAIN_URL: str = "https://brain.paperworklabs.com"
     AXIOMFOLIO_API_URL: str = "http://localhost:8100"
@@ -51,6 +54,22 @@ class Settings(BaseSettings):
     # migration windows or when running multi-instance.
     BRAIN_SCHEDULER_ENABLED: bool = True
     SCHEDULER_PR_SWEEP_MINUTES: int = 30
+    # --- Scheduler env split (Render / ``brain-api``, not all mirrored here) ---
+    #
+    # * **Cutover gates** — ``BRAIN_OWNS_*`` for jobs that replace an n8n cron
+    #   (daily/weekly briefings, weekly strategy, sprint kickoff, infra heartbeat,
+    #   credential expiry, infra health). Default ``false`` until the founder
+    #   flips them after shadow/n8n verify. Wired via ``os.getenv`` in each
+    #   scheduler + ``n8n_mirror.py`` (suppresses the matching ``n8n_shadow_*``
+    #   row when true).
+    #
+    # * **Operational gate** — ``BRAIN_OWNS_SPRINT_AUTO_LOGGER`` only: bot PRs
+    #   into sprint markdown; no n8n counterpart. Stays default-off until ops
+    #   validates GitHub automation.
+    #
+    # * **Net-new / always on** — PR sweep, proactive cadence, ingest cadences,
+    #   merged-PR memory, CFO/QA Slack jobs, etc. register whenever
+    #   ``BRAIN_SCHEDULER_ENABLED`` is true (no ``BRAIN_OWNS_*``).
     # Track: sprint-lessons ingest cadence (hours). Bullets under
     # ``## What we learned`` in docs/sprints/*.md become memory episodes.
     # 6h is plenty — sprint markdown changes ship via PR, not continuously.
@@ -78,6 +97,10 @@ class Settings(BaseSettings):
     # (/persona, etc). Leave empty in dev to skip verification.
     SLACK_SIGNING_SECRET: str = ""
     BRAIN_PR_REVIEW_MODEL: str = ""
+    # When true, Brain's PR sweep runs optional triage classifiers
+    # (stale nudge, thin ready review, rebase assist). Default off; founders
+    # enable when the workflow/ Actions split is ready.
+    BRAIN_OWNS_PR_TRIAGE: bool = False
     MAX_ITERATIONS: int = 5
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_SECRET_KEY: str = ""

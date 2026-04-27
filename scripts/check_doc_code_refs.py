@@ -59,6 +59,16 @@ EXPECTED_DEAD: set[str] = {
     # Archived to docs/archive/VMP-SUMMARY-2026-03-18.md; merge notes in
     # VENTURE_MASTER_PLAN.md + DOCS_STREAMLINE_2026Q2.md keep provenance path.
     "docs/VMP-SUMMARY.md",
+    # PR #234 consolidated 6 per-app Clerk Appearance files into named presets
+    # in packages/auth/src/appearance/presets.ts. CLERK_*.md docs still mention
+    # the old paths in narrative copy; pending a docs rewrite that redirects to
+    # the shared package + preset names.
+    "apps/distill/src/lib/clerk-appearance.ts",
+    "apps/axiomfolio-next/src/lib/axiomfolio-clerk-appearance.ts",
+    "apps/launchfree/src/lib/launchfree-clerk-appearance.ts",
+    "apps/filefree/src/lib/filefree-clerk-appearance.ts",
+    "apps/trinkets/src/lib/trinkets-clerk-appearance.ts",
+    "apps/studio/src/lib/studio-clerk-appearance.ts",
 }
 
 # Match:

@@ -5,7 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 import { StudioInstallPrompt } from "@/components/pwa/StudioInstallPrompt";
-import { studioClerkAppearance } from "@/lib/studio-clerk-appearance";
+import { studioAppearance } from "@paperwork-labs/auth-clerk/appearance";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -59,7 +59,7 @@ export default function RootLayout({
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans`}
       >
         <ClerkProvider
-          appearance={studioClerkAppearance}
+          appearance={studioAppearance}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
         >

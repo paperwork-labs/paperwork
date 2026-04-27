@@ -1,14 +1,12 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 
 import { cn } from "@/lib/utils";
-import AppLogo from "@/components/ui/AppLogo";
-
-const TAGLINE = "Strategy-native portfolio intelligence";
 
 /**
- * Full-viewport auth shell: AxiomFolio blue gradient, brand mark, and tagline
- * above the Clerk sign-in / sign-up card (matches `AuthLayout` treatment).
+ * Auth backdrop for AxiomFolio — locked blue/amber radial gradient. The
+ * brand wordmark + tagline previously lived here; they're now provided by
+ * `<SignInShell>` from `@paperwork-labs/auth-clerk` so the entire monorepo
+ * shares one wordmark pattern.
  */
 export function ClerkAuthPageShell({ children }: { children: ReactNode }) {
   return (
@@ -31,20 +29,6 @@ export function ClerkAuthPageShell({ children }: { children: ReactNode }) {
         aria-hidden
       />
       <div className="relative w-full max-w-[420px] md:max-w-[440px]">
-        <Link
-          href="/"
-          aria-label="AxiomFolio home"
-          className={cn(
-            "mb-6 flex items-center justify-center gap-3.5 rounded-sm",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-[rgb(var(--auth-gradient-bg))]",
-          )}
-        >
-          <AppLogo size={64} />
-          <div className="flex min-w-0 flex-col text-left">
-            <span className="text-xl font-semibold tracking-tight text-white">AxiomFolio</span>
-            <span className="text-sm font-normal text-slate-300/90">{TAGLINE}</span>
-          </div>
-        </Link>
         {children}
       </div>
     </div>

@@ -16,6 +16,7 @@ import {
   Target,
   Boxes,
   Timer,
+  Sparkles,
 } from "lucide-react";
 
 type NavItem = {
@@ -51,6 +52,7 @@ const navGroups: NavGroup[] = [
       { href: "/admin/docs", label: "Docs", icon: BookOpen },
       { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
       { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
+      { href: "/admin/brain-learning", label: "Brain learning", icon: Sparkles },
       { href: "/admin/secrets", label: "Secrets", icon: KeyRound },
     ],
   },
