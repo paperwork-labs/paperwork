@@ -4,17 +4,19 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from typing import Any
-
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import TYPE_CHECKING, Any
 
 from app.models.user import AuthProvider, User
 from app.repositories.user import UserRepository
-from app.schemas.auth import RegisterRequest
 from app.utils.encryption import decrypt, encrypt
 from app.utils.exceptions import ConflictError, UnauthorizedError
 from app.utils.security import generate_session_token, hash_password, verify_password
+
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.schemas.auth import RegisterRequest
 
 SESSION_PREFIX = "session:"
 CSRF_PREFIX = "csrf:"
