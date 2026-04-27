@@ -268,6 +268,13 @@ docs:
     tags: [runbook, render, infra]
     owners: [infra-ops]
     category: runbooks
+  - slug: render-repoint-tonight
+    path: docs/infra/RENDER_REPOINT_TONIGHT.md
+    title: Repoint AxiomFolio Render services to the monorepo (I1) — reference
+    summary: "**Time budget:** ~10 minutes in the dashboard, plus 5–10 minutes for builds (already spent during the 2026-04-27 cutover)."
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
   - slug: secrets
     path: docs/SECRETS.md
     title: Secrets Inventory
@@ -286,6 +293,20 @@ docs:
     path: docs/infra/TIMEZONE_STANDARDS.md
     title: Timezone standards (Paperwork Labs)
     summary: "All datetimes stored in the database, transmitted in API responses, logged for audit, scheduled at the **system** level, and compared in server-side business logic are **UTC and timezone-aware**.…"
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
+  - slug: clerk-accounts-dns-tonight
+    path: docs/infra/CLERK_ACCOUNTS_DNS_TONIGHT.md
+    title: "Tonight: `accounts.paperworklabs.com` — Clerk primary + DNS (H1)"
+    summary: "**Time budget:** ~10 minutes for DNS + Dashboard clicks (propagation may add minutes)."
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
+  - slug: brain-ambient-learning-j1-tonight
+    path: docs/infra/BRAIN_AMBIENT_LEARNING_J1_TONIGHT.md
+    title: "Tonight: Brain ambient learning env vars on `brain-api` (J1)"
+    summary: "**Time budget:** ~5 minutes dashboard + ~3 minutes deploy."
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
