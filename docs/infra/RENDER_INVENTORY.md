@@ -76,13 +76,9 @@ a 10-line revert PR plus one Sync Blueprint click. F-2 reopens if the
 LaunchFree frontend is wired to a live API and the service still isn't
 provisioned.
 
-### F-3 — Env var naming drift: `VERCEL_API_TOKEN` vs `VERCEL_TOKEN`
+### F-3 — Env var naming: `VERCEL_API_TOKEN` (consolidated)
 
-- Root `render.yaml` brain-api block uses `VERCEL_TOKEN`.
-- Studio reads `VERCEL_API_TOKEN` (`apps/studio/src/lib/command-center.ts`).
-- These need to match or the Studio infra probe can't authenticate. Pick one; rename everywhere.
-
-**Proposed canonical**: `VERCEL_API_TOKEN` (Studio already uses this; it's what the Vercel CLI and most examples use).
+**Canonical name**: `VERCEL_API_TOKEN` everywhere — root `render.yaml` brain-api block, Studio (`apps/studio/src/lib/command-center.ts` and related), GitHub Actions (`vercel-promote-on-merge.yaml`), and Brain settings (`apis/brain/app/config.py` field `VERCEL_API_TOKEN`). Brain still accepts a legacy `VERCEL_TOKEN` env key via pydantic `AliasChoices` until the operator removes it from the Render dashboard after cutover.
 
 ### F-4 — Blueprint contents disagree with live services
 
@@ -172,7 +168,7 @@ Runbook: [RENDER_REPOINT.md → Path A](RENDER_REPOINT.md#path-a-brain-api-docke
 - [x] Inventory (this doc) exists.
 - [ ] F-1: AxiomFolio services repointed to monorepo via consolidated Blueprint Sync; old `paperwork-labs/axiomfolio` repo archived after 24h green.
 - [x] F-2: `launchfree-api` decision — commented out in `render.yaml` (2026-04-25, PR #144); reopens if frontend wires to live API and service still isn't provisioned.
-- [ ] F-3: env var naming reconciled to `VERCEL_API_TOKEN`.
+- [x] F-3: env var naming reconciled to `VERCEL_API_TOKEN` (code + blueprint; remove duplicate `VERCEL_TOKEN` in Render when safe).
 - [x] F-4: single `render.yaml` is the source of truth; `apis/axiomfolio/render.yaml` reduced to a stub pointer.
 - [ ] F-5: `GITHUB_WEBHOOK_SECRET` added to `brain-api` env (declared in blueprint with `sync: false`; operator must paste actual value).
 - [x] F-6: `brain-api` Docker Build Context Directory cleared; latest `main` SHA `f0255542` is live (deploy `dep-d7m63jeffeas73bmkeeg`).
