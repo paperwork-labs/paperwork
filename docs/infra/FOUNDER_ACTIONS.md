@@ -64,7 +64,7 @@ Single-source list of one-time blockers that require founder credentials. Once a
   3. Ensure GitHub sends `pull_request` (and other required events per `docs/DEPENDABOT.md`) to `https://brain.paperworklabs.com/api/v1/webhooks/github` (path prefix may differ — confirm in `apis/brain/app/routers/webhooks.py`).
   4. Redeliver a test event from GitHub and confirm Brain logs 2xx.
 - **Verification:** GitHub “Recent Deliveries” green; `POST` does not 401/403; Brain automation processes a test Dependabot or PR event.
-- **Source:** [RENDER_INVENTORY F-5](docs/infra/RENDER_INVENTORY.md), [DEPENDABOT.md](docs/DEPENDABOT.md)
+- **Source:** [DEPENDABOT.md](docs/DEPENDABOT.md) (webhook flow), [RENDER_INVENTORY F-5](docs/infra/RENDER_INVENTORY.md)
 - **ETA:** ~15 min
 
 ### 3. Remove duplicate `VERCEL_TOKEN` on Render after `VERCEL_API_TOKEN` cutover

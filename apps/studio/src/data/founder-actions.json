@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-27T06:19:23.442Z",
+  "generated": "2026-04-27T06:19:30.550Z",
   "sourceFile": "docs/infra/FOUNDER_ACTIONS.md",
   "tiers": [
     {
@@ -60,7 +60,7 @@
         },
         {
           "title": "`GITHUB_WEBHOOK_SECRET` on `brain-api` (Render) + GitHub repo webhook",
-          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/RENDER_INVENTORY.md",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/DEPENDABOT.md",
           "why": "Brain’s `POST` webhook handler HMAC-verifies with `GITHUB_WEBHOOK_SECRET`. An unset or mismatched value breaks Dependabot/PR automation from GitHub. The repo must deliver webhooks to Brain’s URL with the same secret.",
           "where": "[Render `brain-api` environment](https://dashboard.render.com), [GitHub repo → Settings → Webhooks](https://github.com/paperwork-labs/paperwork/settings/hooks) (or org-level; follow internal convention).",
           "steps": [
@@ -70,7 +70,7 @@
             "4. Redeliver a test event from GitHub and confirm Brain logs 2xx."
           ],
           "verification": "GitHub “Recent Deliveries” green; `POST` does not 401/403; Brain automation processes a test Dependabot or PR event.",
-          "source": "[RENDER_INVENTORY F-5](docs/infra/RENDER_INVENTORY.md), [DEPENDABOT.md](docs/DEPENDABOT.md)",
+          "source": "[DEPENDABOT.md](docs/DEPENDABOT.md) (webhook flow), [RENDER_INVENTORY F-5](docs/infra/RENDER_INVENTORY.md)",
           "eta": "~15 min"
         },
         {
