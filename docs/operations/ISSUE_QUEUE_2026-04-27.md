@@ -1,3 +1,11 @@
+---
+owner: agent-ops
+last_reviewed: 2026-04-27
+doc_kind: checklist
+domain: strategy
+status: active
+---
+
 # Open issue queue — `paperwork-labs/paperwork`
 
 **Triage date:** 2026-04-27  
@@ -23,7 +31,7 @@ Sorted by:
 
 ### Notes
 
-- **`docs/infra/FOUNDER_ACTIONS.md`:** not present in repo at triage; founder-dependent steps inferred from issue (GitHub App, `GITHUB_WEBHOOK_SECRET`, Cursor Background Agents, Slack n8n).
+- **Founder-action checklist:** infra consolidation was not on `main` at triage time (see open PRs under `feat/founder-actions-*`); founder-dependent steps inferred from issue (GitHub App, `GITHUB_WEBHOOK_SECRET`, Cursor Background Agents, Slack n8n).
 - **Epic #79** is also labeled `epic`, `agent-automation`, and `infrastructure` and is assigned; sub-phases are suitable for small PRs per checklist.
 
 ---
