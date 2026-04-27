@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-26
+last_reviewed: 2026-04-27
 doc_kind: runbook
 domain: infra
 status: draft
@@ -21,7 +21,7 @@ Today each app tends to behave like its own Clerk surface; cookies do not span u
 ```mermaid
 flowchart TB
   subgraph primary["Primary (auth home)"]
-    ACC["accounts.paperworklabs.com\nFrontend API + /sign-in /sign-up\napps/accounts — Track H4"]
+    ACC["accounts.paperworklabs.com\nFrontend API + Clerk-hosted Account Portal\nDNS: see CLERK_DNS_SPACESHIP.md"]
   end
   subgraph satellites["Satellites (same Clerk instance, satellite domains)"]
     FF["filefree.ai"]
@@ -39,7 +39,7 @@ flowchart TB
   ACC <-->|"Session sync + redirects"| STU
 ```
 
-- **Primary:** `accounts.paperworklabs.com` — Clerk Frontend API on this host (custom domain in Dashboard), and embedded `<SignIn />` / `<SignUp />` on `/sign-in` and `/sign-up` via **`apps/accounts/`** (Track H4). All sign-in and sign-up **completion** flows for satellites happen here.
+- **Primary:** `accounts.paperworklabs.com` — Clerk Frontend API on this host (custom domain in Dashboard). **Clerk auto-hosts the Account Portal** at this hostname once DNS is verified ([`CLERK_DNS_SPACESHIP.md`](CLERK_DNS_SPACESHIP.md)); a separate **`apps/accounts/`** Next.js deployment is **not** required for that hosted portal. **Track H4** for the `paperworklabs.com` zone is **DNS-only** (plus Dashboard verification), not “build apps/accounts/”. Satellite handoff and embedded flows in each app remain as below.
 - **Satellites:** each customer-facing app host above is added under **Domains → Satellites** for the **same** Clerk production instance. Apps use the **same** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` as the primary.
 
 **Important nuance (cookies):**
@@ -51,11 +51,15 @@ Paid production use of satellite domains requires a [paid Clerk plan](https://cl
 
 ## DNS records (founder action)
 
-Clerk shows **exact** record names and targets per domain in the Dashboard. Do not copy placeholder hostnames from this doc — use the live **Domains** page after each domain is added.
+**`paperworklabs.com` on Spaceship (production Clerk cutover):** use the paste-ready five-CNAME runbook **[`CLERK_DNS_SPACESHIP.md`](CLERK_DNS_SPACESHIP.md)** (`clerk`, `accounts`, `clkmail`, DKIM). That runbook is the source of truth for host formatting in Spaceship.
+
+For **other** zones and **satellite** domains, Clerk shows **exact** record names and targets in the Dashboard. Do not copy placeholder hostnames from this doc — use the live **Domains** page after each domain is added.
 
 ### A. Primary — `accounts.paperworklabs.com` (zone: `paperworklabs.com`)
 
-In the Clerk Dashboard: **Domains** → add **`accounts.paperworklabs.com`** as the production Frontend API / application domain (primary). Clerk will display required records, commonly including:
+**Spaceship:** follow **[`CLERK_DNS_SPACESHIP.md`](CLERK_DNS_SPACESHIP.md)** for the full set of five CNAMEs (Frontend API on `clerk.*`, Account portal, mail, DKIM) and verification.
+
+**Other DNS providers (e.g. Cloudflare):** In the Clerk Dashboard: **Domains** → add **`paperworklabs.com`** / **`accounts.paperworklabs.com`** per the live wizard. Clerk will display required records, commonly including:
 
 | Type | Name (example) | Value | Notes |
 |------|----------------|-------|--------|
@@ -97,7 +101,12 @@ For **each** satellite domain (e.g. `filefree.ai`, `launchfree.ai`, `distill.tax
 
 ## Per-app code changes (Track H2 — engineering)
 
-**Primary only — `apps/accounts/` (Track H4):**
+**Primary / Account Portal host — Track H4 (DNS slice):**
+
+- For **`paperworklabs.com`**, prefer **[`CLERK_DNS_SPACESHIP.md`](CLERK_DNS_SPACESHIP.md)** + Clerk Dashboard verification; the **hosted** Account Portal does not need a custom `apps/accounts/` deployment.
+- If you later add a **custom** primary app at `accounts.paperworklabs.com` (embedded flows only), `ClerkProvider` on that app is **not** a satellite. The snippets below apply to that pattern; skip until such an app exists.
+
+**Primary-only app pattern (optional custom `apps/accounts/`):**
 
 - `ClerkProvider` is **not** a satellite.
 - `signInUrl` / `signUpUrl`: `/sign-in`, `/sign-up`.
@@ -155,7 +164,7 @@ For **each** satellite domain (e.g. `filefree.ai`, `launchfree.ai`, `distill.tax
 
 ## Test plan
 
-1. Deploy primary `apps/accounts` to `accounts.paperworklabs.com` with a visible test user.
+1. Confirm DNS + Dashboard: `accounts.paperworklabs.com` resolves and Clerk shows **Verified** ([`CLERK_DNS_SPACESHIP.md`](CLERK_DNS_SPACESHIP.md)). If you maintain a custom primary app, deploy it with a visible test user.
 2. **Cold visit:** Open `https://filefree.ai` (satellite) in a fresh profile — optionally confirm no sync until sign-in if `satelliteAutoSync` is false.
 3. Start sign-in from the satellite — should redirect to `accounts.paperworklabs.com`, then back with session active on `filefree.ai`.
 4. Navigate to `https://launchfree.ai` — with appropriate sync (e.g. `satelliteAutoSync: true` or explicit sign-in using `buildSignInUrl`), confirm session without full second login where Clerk allows.
@@ -182,14 +191,14 @@ After satellites land, audit each app for **legacy** cookies / `localStorage` ke
 - [Deploy your Clerk app to production](https://clerk.com/docs/guides/development/deployment/production) (DNS, subdomains, `authorizedParties`)
 - [Clerk multi-domain demo (Turborepo)](https://github.com/clerk/clerk-multidomain-demo)
 - Track C: `@paperwork-labs/auth` shared package (workspace)
-- Track H4: `apps/accounts/` micro-app (primary sign-in host)
+- Track H4: `paperworklabs.com` Clerk DNS + hosted Account Portal — [`CLERK_DNS_SPACESHIP.md`](CLERK_DNS_SPACESHIP.md) (optional later: custom `apps/accounts/` only if product needs embedded-only control on that host)
 - Per-app runbooks: this directory, `CLERK_*.md`
 
 ## Status
 
 - [ ] DNS records added (founder)
 - [ ] Clerk Dashboard primary + satellites configured (founder)
-- [ ] `apps/accounts/` scaffolded (Track H4)
+- [ ] Clerk DNS verified for `paperworklabs.com` (Track H4 — [`CLERK_DNS_SPACESHIP.md`](CLERK_DNS_SPACESHIP.md))
 - [ ] Per-app code converted to satellite mode (Track H2)
 - [ ] Cross-app test green
 - [ ] Cookie cleanup landed (Track F)
