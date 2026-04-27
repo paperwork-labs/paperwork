@@ -5,35 +5,34 @@ AI agent workflows run on the Hetzner VPS at `n8n.paperworklabs.com`.
 **Architecture: n8n is a dumb shuttle.** Workflows forward events to the **Brain API** (`POST /api/v1/brain/process` on `brain.paperworklabs.com`) and post responses to Slack (or other channels). Prompting, personas, doc fetch, and PR diff review live in Brain—not in n8n.
 
 - **Slack**: Event Subscriptions → Brain Slack Adapter webhook → thread fetch → Brain → `chat.postMessage`
-- **Scheduled ops**: Cron → Brain with a fixed instruction → Slack
-- **PR summaries**: GitHub webhook → extract PR metadata → Brain → `#engineering`
+- **Scheduled ops**: Most crons now run in **Brain APScheduler**; see [retired/RETIRED.md](retired/RETIRED.md) for n8n exports kept for history.
+- **PR summaries (legacy n8n path)**: Retired — Brain runs in-process `pr_sweep` + PR review; see [retired/brain-pr-summary.json](retired/brain-pr-summary.json).
 - **Decision logging**: Separate deterministic workflow (GitHub commit to `KNOWLEDGE.md`) via `decision-logger.json`
 - **Observability**: 5-layer stack below still applies
 
-## Workflows (nine core)
+## Retired workflows (Brain now owns the schedule)
+
+The following were moved to **`retired/`** — they are **not** in the `*.json` deploy glob. Table + Brain job ids: [retired/RETIRED.md](retired/RETIRED.md).
+
+## Workflows (active deploy glob — `*.json` in this directory)
 
 | # | Workflow | File | Trigger | Intelligence | Output |
 |---|----------|------|---------|--------------|--------|
 | 1 | **Brain Slack Adapter** | `brain-slack-adapter.json` | Webhook `brain-slack` (Slack events) | Brain API | Thread reply in Slack |
-| 2 | **Brain Daily Trigger** | `brain-daily-trigger.json` | Cron `0 7 * * *` (7am **America/Los_Angeles**) | Brain API | `#daily-briefing` (`C0ALLJWR1HV`) |
-| 3 | **Brain Weekly Trigger** | `brain-weekly-trigger.json` | Cron `0 18 * * 0` (Sun 6pm **America/Los_Angeles**) | Brain API | `#all-paperwork-labs` (`C0AMEQV199P`) |
-| 4 | **Brain PR Summary** | `brain-pr-summary.json` | Webhook `github-pr-brain` (GitHub PR events) | Brain API | `#engineering` (`C0ALLEKR9FZ`) |
-| 5 | **Decision Logger** | `decision-logger.json` | Webhook `slack-decisions` (`log this` / `decided:` in #decisions) | None (deterministic) | KNOWLEDGE.md + thread confirm |
-| 6 | **Infra Health Check** | `infra-health-check.json` | Cron every 30 min | None | `#alerts` (on failure only) |
-| 7 | **Weekly Strategy Check-in** | `weekly-strategy-checkin.json` | Cron Monday 9am (server TZ) | OpenAI in n8n | `#all-paperwork-labs` |
-| 8 | **Sprint Kickoff** | `sprint-kickoff.json` | Cron Mon 7am PT | OpenAI in n8n | `#sprints` + `#all-paperwork-labs` |
-| 9 | **Sprint Close** | `sprint-close.json` | Cron Fri 9pm PT | OpenAI in n8n | `#sprints` + KNOWLEDGE.md |
+| 2 | **Decision Logger** | `decision-logger.json` | Webhook `slack-decisions` (`log this` / `decided:` in #decisions) | None (deterministic) | KNOWLEDGE.md + thread confirm |
+| 3 | **Sprint Kickoff** | `sprint-kickoff.json` | Cron Mon 7am PT | Brain API (`persona_pin=strategy`) | `#sprints` + `#all-paperwork-labs` |
+| 4 | **Sprint Close** | `sprint-close.json` | Cron Fri 9pm PT | OpenAI in n8n / GitHub | `#sprints` + KNOWLEDGE.md |
 
-Cron rows 2–3 assume `GENERIC_TIMEZONE=America/Los_Angeles` in n8n (same as legacy EA workflows). During PDT, 7am PT equals 14:00 UTC.
+Cron times that mirror PT in legacy docs assume `GENERIC_TIMEZONE=America/Los_Angeles` in n8n when applicable. During PDT, 7am PT equals 14:00 UTC.
 
 ### Deprecated / legacy (do not use for new installs)
 
 | File | Replacement | Notes |
 |------|-------------|--------|
 | `agent-thread-handler.json` | `brain-slack-adapter.json` + Brain | Removed from core architecture; do not point new Slack subscriptions at `slack-events`. |
-| `ea-daily.json` | `brain-daily-trigger.json` | OpenAI-heavy briefing in n8n; superseded by Brain. |
-| `ea-weekly.json` | `brain-weekly-trigger.json` | Same. |
-| `pr-summary.json` | `brain-pr-summary.json` | Point GitHub webhook to `github-pr-brain` instead of `github-pr`. |
+| `ea-daily.json` | Brain APScheduler `brain_daily_briefing` | OpenAI-heavy briefing in n8n; export in `retired/brain-daily-trigger.json`. |
+| `ea-weekly.json` | Brain APScheduler `brain_weekly_briefing` | Same; export in `retired/brain-weekly-trigger.json`. |
+| `pr-summary.json` / `brain-pr-summary.json` | Brain in-process PR sweep + review | Export in `retired/brain-pr-summary.json`. |
 
 Other JSON files in this folder (social, growth, QA, partnerships, CPA, data validators, infra helpers, etc.) remain available for optional or on-demand use but are **not** part of the nine-core shuttle + Brain model.
 
@@ -46,8 +45,7 @@ Other JSON files in this folder (social, growth, QA, partnerships, CPA, data val
 | QA Security Scan | `qa-security-scan.json` | POST `/qa-scan` | **Track H: Brain persona_pin=qa (2-node)** |
 | Partnership Outreach | `partnership-outreach-drafter.json` | POST `/partnership-outreach` | OpenAI in n8n |
 | CPA Tax Review | `cpa-tax-review.json` | POST `/cpa-review` | **Track H: Brain persona_pin=cpa (2-node)** |
-| Sprint Kickoff | `sprint-kickoff.json` | Cron Mon 7am PT | **Track H: Brain persona_pin=strategy** |
-| Infra helpers | `infra-heartbeat.json`, `infra-status-slash.json`, etc. | Various | Supporting ops |
+| Infra helpers | `infra-status-slash.json`, `error-notification.json`, etc. | Various | Supporting ops (heartbeat + health crons: Brain — see `retired/`) |
 | Data / validation | `data-source-monitor.json`, `data-deep-validator.json`, `data-annual-update.json` | Various | State data ops |
 
 ### Track H — 2-node Brain pattern (wave 1)
@@ -78,9 +76,9 @@ Infrastructure monitoring uses 5 layers. Each catches what the layer above might
 |---|---|---|---|---|
 | 0: Native Integrations | GitHub for Slack, Vercel for Slack, Google Drive for Slack | Third-party (GitHub, Vercel, Google) | Real-time | #engineering |
 | 1: Deploy Verification | Post-deploy active count + liveness check | deploy-n8n.yaml / deploy script | On deploy | #alerts (failure) / incoming webhook |
-| 2: n8n Self-Health | Workflow count, liveness, dedup alerts | infra-health-check.json (n8n cron) | Every 30 min | #alerts via Slack Bot Token |
+| 2: n8n Self-Health | Workflow count, liveness, dedup alerts | Brain `brain_infra_health` (replaces `retired/infra-health-check.json`) | Every 30 min | #alerts via Slack Bot Token |
 | 3: External Canary | Ping n8n, check webhook deliveries | infra-health.yaml (GitHub Action) | Every 6 hours | #alerts via incoming webhook |
-| 4: Daily Briefing | Infra health surfaced by Brain-driven briefing | brain-daily-trigger.json (n8n cron → Brain) | 7am PT daily | #daily-briefing |
+| 4: Daily Briefing | Infra health surfaced by Brain-driven briefing | Brain `brain_daily_briefing` (replaces `retired/brain-daily-trigger.json`) | 7am PT daily | #daily-briefing |
 
 **Layer 0 setup** (one-time, in Slack):
 - GitHub for Slack: `/github subscribe paperwork-labs/paperwork` in `#engineering`
@@ -124,7 +122,7 @@ The script runs: import → `publish:workflow` → restart n8n → verify all wo
 
 **Note**: `n8n update:workflow` is deprecated in n8n 2.11+. Use `n8n publish:workflow --id=<id>` instead.
 
-### Inactive workflows (Infra Health Check: “14/16 active”)
+### Inactive workflows (Infra Health Check: “N/M active”)
 
 The **Infra Health Check** workflow compares n8n’s REST API `active` flag on every workflow. If any workflow is inactive, it posts to `#alerts` with the names.
 
@@ -190,7 +188,7 @@ Slack Event Subscriptions should use the **Brain Slack Adapter** webhook (path `
 
 ## GitHub webhooks (PR summaries)
 
-Point your repo’s **Pull requests** webhook at the **Brain PR Summary** workflow URL (Webhook path `github-pr-brain`), e.g. `https://n8n.paperworklabs.com/webhook/github-pr-brain`. Subscribe to `opened`, `ready_for_review`, and optionally `reopened`. Deprecate the legacy `github-pr` URL used by `pr-summary.json` once Brain PR Summary is verified.
+**Retired n8n path:** `retired/brain-pr-summary.json` (webhook `github-pr-brain`). PR review and sweep run in **Brain** (`pr_sweep` on `brain-api`); do not point new GitHub webhooks at n8n for this. Remove or disable the old n8n workflow in the Hetzner UI if it is still active.
 
 ## Slack reaction merge (deprecated)
 
@@ -204,9 +202,8 @@ Emoji-driven merge / Copilot re-review flows previously ran in **`agent-thread-h
 
 | Workflow | Typical model | Env var (if used) | Notes |
 |---|---|---|---|
-| brain-slack-adapter, brain-daily-trigger, brain-weekly-trigger, brain-pr-summary | N/A | N/A | Brain API |
-| weekly-strategy-checkin | gpt-4o | STRATEGY_MODEL | OpenAI in n8n |
-| sprint-kickoff | gpt-4o | SPRINT_KICKOFF_MODEL | OpenAI in n8n |
+| brain-slack-adapter | N/A | N/A | Brain API |
+| sprint-kickoff | N/A (Brain) | — | **Track H:** `persona_pin=strategy` in n8n → Brain |
 | sprint-close | gpt-4o | SPRINT_CLOSE_MODEL | OpenAI in n8n |
 | social-content-generator | gpt-4o | SOCIAL_CONTENT_MODEL | Optional |
 | growth-content-writer | gpt-4o | GROWTH_CONTENT_MODEL | Optional |
@@ -214,7 +211,7 @@ Emoji-driven merge / Copilot re-review flows previously ran in **`agent-thread-h
 | cpa-tax-review | gpt-4o | CPA_REVIEW_MODEL | Optional |
 | qa-security-scan | gpt-4o | QA_SCAN_MODEL | Optional |
 | decision-logger | N/A | N/A | Deterministic |
-| infra-health-check | N/A | N/A | Deterministic |
+| _(retired)_ infra-health-check | N/A | N/A | Was deterministic; see `retired/` |
 
 ### Required n8n environment variables
 
@@ -222,7 +219,7 @@ Emoji-driven merge / Copilot re-review flows previously ran in **`agent-thread-h
 |---|---|---|
 | `BRAIN_API_SECRET` | Authenticates n8n → Brain (`X-Brain-Secret`) | Brain shuttle workflows |
 | `BRAIN_API_URL` | Brain base URL (optional; defaults in JSON) | Brain shuttle workflows |
-| `SLACK_BOT_TOKEN` | Slack `chat.postMessage` / API | Brain workflows, infra-health-check |
+| `SLACK_BOT_TOKEN` | Slack `chat.postMessage` / API | Brain shuttle workflows, Brain `brain_infra_health` |
 | `BRAIN_WEBHOOK_SECRET` | Verifies inbound Slack → n8n (adapter) | brain-slack-adapter (optional) |
 | `GITHUB_TOKEN` | GitHub API (legacy n8n workflows, merges, doc fetch) | sprint/legacy workflows, scripts |
 | `SLACK_ALERTS_WEBHOOK_URL` | Incoming webhook for #alerts | deploy scripts, compose |
@@ -238,7 +235,7 @@ Edit the workflow in the n8n UI, select the OpenAI node, and change the model dr
 ## Security Notes
 
 - Slack signature verification and timestamp replay protection are required for production hardening (Brain Slack Adapter uses optional shared secret `BRAIN_WEBHOOK_SECRET` on inbound requests).
-- GitHub webhook signature verification (`X-Hub-Signature-256`) should be enforced for `brain-pr-summary.json` (and was recommended for legacy `pr-summary.json`).
+- If you still run legacy GitHub → n8n webhooks, enforce signature verification (`X-Hub-Signature-256`); the PR-summary path in `retired/` should not be used for new installs.
 - Current workflows run in a trusted internal environment; add these checks before wider exposure.
 
 ## Sprint Operations

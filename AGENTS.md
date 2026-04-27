@@ -55,9 +55,8 @@ All personas are always available (alwaysApply: true for core personas). Product
 
 ## Agent Workflows (n8n)
 
-11 automated workflows run on n8n (self-hosted). See [infra/hetzner/workflows/](infra/hetzner/workflows/) for details.
+Core n8n exports live under [infra/hetzner/workflows/](infra/hetzner/workflows/); many former crons are retired to `retired/` in favor of Brain APScheduler. See [retired/RETIRED.md](infra/hetzner/workflows/retired/RETIRED.md).
 
-Key workflows:
-- **Thread Handler**: Responds to Slack thread replies with persona-routed AI responses
-- **Daily Briefing**: Posts to #daily-briefing at 7am PT
+Key automation:
+- **Slack / Brain**: Brain Slack Adapter and optional on-demand webhooks; scheduled briefings and infra checks run on **Brain** when `BRAIN_OWNS_*` cutover flags are enabled
 - **Decision Logger**: Captures decisions from #decisions and commits to KNOWLEDGE.md

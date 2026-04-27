@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "1184eef57905",
+  "content_hash": "55f4b00bb6d4",
   "products": [
     {
       "label": "AxiomFolio",
@@ -447,6 +447,7 @@
         "docs/sprints/README.md"
       ],
       "pr": 142,
+      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/142",
       "raw_status": "active",
       "related_prs": [
@@ -508,6 +509,7 @@
         "docs/PERSONA_PLATFORM.md"
       ],
       "pr": 141,
+      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/141",
       "raw_status": "shipped",
       "related_prs": [

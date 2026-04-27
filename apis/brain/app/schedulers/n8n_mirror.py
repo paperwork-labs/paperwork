@@ -58,7 +58,7 @@ class MirrorSpec:
     summary: str
 
 
-# Inventory from ``infra/hetzner/workflows/*.json`` (``archive/`` excluded). See runbook.
+# Inventory from ``infra/hetzner/workflows/*.json`` (``archive/`` and ``retired/`` excluded). See runbook.
 N8N_MIRROR_SPECS: tuple[MirrorSpec, ...] = (
     MirrorSpec(
         "n8n_shadow_brain_daily",

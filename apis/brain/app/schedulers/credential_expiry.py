@@ -2,7 +2,7 @@
 
 Replaces the **Credential Expiry Check** n8n workflow (``0 8 * * *``) that
 fetches the Studio vault secret list, buckets expiries, and conditionally
-posts to Slack — see ``infra/hetzner/workflows/credential-expiry-check.json`` and
+posts to Slack — see ``infra/hetzner/workflows/retired/credential-expiry-check.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`` (T1.4).
 """
 
