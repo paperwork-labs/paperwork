@@ -37,11 +37,13 @@ import { useAccountContext } from '@/context/AccountContext';
 import { useAuthOptional } from '@/context/AuthContext';
 import { isPlatformAdminRole } from '@/utils/userRole';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import type { TooltipValueType } from 'recharts';
 import { formatMoney, formatDateShort } from '@/utils/format';
 import { buildAccountsFromBroker } from '@/utils/portfolio';
 import { detectStrategies } from '@/utils/optionStrategies';
 import type { OptionPos, StrategyGroup } from '@/utils/optionStrategies';
 import type { AccountData, FilterableItem } from '@/hooks/useAccountFilter';
+import type { Position } from '@/types/portfolio';
 import api from '@/services/api';
 
 /** Shape returned by `/portfolio/options/chain/sources` — broker-agnostic. */
@@ -54,6 +56,9 @@ type ChainSource = {
 };
 
 const EXPIRING_SOON_DAYS = 7;
+
+/** Equity row from `/portfolio/stocks` — backend may expose `quantity` or `shares`. */
+type StockPositionRow = Pick<Position, 'symbol' | 'shares'> & { quantity?: number };
 
 type TabId = 'positions' | 'chain' | 'pnl' | 'analytics' | 'history';
 type PosView = 'card' | 'table';
@@ -89,7 +94,7 @@ function moneynessBadgeClass(m: string): string {
 /* Main Component                                                      */
 /* ------------------------------------------------------------------ */
 
-const PortfolioOptions: React.FC = () => {
+const PortfolioOptionsClient: React.FC = () => {
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('positions');
   const [posView, setPosView] = useState<PosView>('card');
@@ -118,15 +123,15 @@ const PortfolioOptions: React.FC = () => {
     queryFn: async () => {
       const params = selected !== 'all' ? `?account_id=${selected}` : '';
       const res = await api.get(`/portfolio/stocks${params}`);
-      return res.data?.data?.positions ?? [];
+      return (res.data?.data?.positions ?? []) as StockPositionRow[];
     },
     staleTime: 60000,
   });
   const stockPositions = useMemo(
     () =>
-      (stocksQuery.data ?? []).map((s: any) => ({
+      (stocksQuery.data ?? []).map((s) => ({
         symbol: s.symbol,
-        quantity: Number(s.quantity ?? 0),
+        quantity: Number(s.quantity ?? s.shares ?? 0),
       })),
     [stocksQuery.data],
   );
@@ -805,7 +810,7 @@ const PositionsTableView: React.FC<{ positions: OptionPos[]; currency: string; g
       if (col.key === 'value' && !col.render) {
         return {
           ...col,
-          render: (v: any) => (
+          render: (v: unknown) => (
             <span className="font-mono text-xs">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</span>
           ),
         };
@@ -813,7 +818,7 @@ const PositionsTableView: React.FC<{ positions: OptionPos[]; currency: string; g
       if (col.key === 'pnl' && col.render) {
         return {
           ...col,
-          render: (v: any) => <PnlText value={Number(v)} format="currency" fontSize="xs" currency={currency} />,
+          render: (v: unknown) => <PnlText value={Number(v)} format="currency" fontSize="xs" currency={currency} />,
         };
       }
       return col;
@@ -1651,7 +1656,7 @@ const PnlTab: React.FC<{
       if (col.key === 'totalValue') {
         return {
           ...col,
-          render: (v: any) => (
+          render: (v: unknown) => (
             <span className="font-mono text-xs">{formatMoney(Number(v), currency, { maximumFractionDigits: 0 })}</span>
           ),
         };
@@ -1659,7 +1664,7 @@ const PnlTab: React.FC<{
       if (['callsPnl', 'putsPnl', 'totalPnl', 'realizedPnl'].includes(col.key)) {
         return {
           ...col,
-          render: (v: any) => {
+          render: (v: unknown) => {
             const val = Number(v);
             if (col.key === 'realizedPnl' && !val) return <span className="text-xs text-muted-foreground">—</span>;
             return <PnlText value={val} format="currency" fontSize="xs" currency={currency} />;
@@ -1766,10 +1771,13 @@ const GreeksDashboard: React.FC<{ positions: OptionPos[]; currency: string }> = 
                   label={{ value: 'Symbol', angle: -90, position: 'insideLeft', fontSize: 10, className: 'fill-muted-foreground' }}
                 />
                 <RechartsTooltip
-                  formatter={(value: any, name: any) => [
-                    name === 'theta' ? formatMoney(Number(value), currency) : (Number(value) ?? 0).toFixed(3),
-                    String(name ?? '').charAt(0).toUpperCase() + String(name ?? '').slice(1),
-                  ] as React.ReactNode}
+                  formatter={(value: TooltipValueType | undefined, name: string | number | undefined) => {
+                    const label =
+                      String(name ?? '').charAt(0).toUpperCase() + String(name ?? '').slice(1);
+                    const num = Array.isArray(value) ? Number(value[0]) : Number(value);
+                    const display = name === 'theta' ? formatMoney(num, currency) : (Number.isFinite(num) ? num : 0).toFixed(3);
+                    return [display, label] as const;
+                  }}
                 />
                 <Bar dataKey="delta" fill={GREEKS_STROKE.delta} barSize={8} radius={[0, 4, 4, 0]} />
               </BarChart>
@@ -1816,7 +1824,10 @@ const ThetaCalendar: React.FC<{ positions: OptionPos[]; currency: string; timezo
                 label={{ value: 'Cumulative theta ($)', angle: -90, position: 'insideLeft', fontSize: 10, className: 'fill-muted-foreground' }}
               />
               <RechartsTooltip
-                formatter={(value: any) => [formatMoney(Number(value), currency), 'Cumulative Theta'] as React.ReactNode}
+                formatter={(value: TooltipValueType | undefined) => [
+                  formatMoney(Array.isArray(value) ? Number(value[0]) : Number(value), currency),
+                  'Cumulative Theta',
+                ] as const}
               />
               <Line
                 type="monotone"
@@ -1879,7 +1890,10 @@ const IVSkewChart: React.FC<{ positions: OptionPos[] }> = ({ positions }) => {
                 label={{ value: 'Implied vol.', angle: -90, position: 'insideLeft', fontSize: 10, className: 'fill-muted-foreground' }}
               />
               <RechartsTooltip
-                formatter={(value: any) => [`${(Number(value) ?? 0).toFixed(1)}%`, 'IV'] as React.ReactNode}
+                formatter={(value: TooltipValueType | undefined) => {
+                  const num = Array.isArray(value) ? Number(value[0]) : Number(value);
+                  return [`${(Number.isFinite(num) ? num : 0).toFixed(1)}%`, 'IV'] as const;
+                }}
                 labelFormatter={(label) => `Strike: ${label}`}
               />
               <Line
@@ -1943,7 +1957,10 @@ const PayoffDiagram: React.FC<{ positions: OptionPos[]; currency: string }> = ({
               <XAxis dataKey="price" tick={{ fontSize: 10 }} label={{ value: 'Underlying Price', position: 'bottom', fontSize: 11 }} />
               <YAxis tick={{ fontSize: 10 }} label={{ value: 'P/L ($)', angle: -90, position: 'insideLeft', fontSize: 11 }} />
               <RechartsTooltip
-                formatter={(value: any) => [formatMoney(Number(value), currency), 'P/L at Expiration'] as React.ReactNode}
+                formatter={(value: TooltipValueType | undefined) => [
+                  formatMoney(Array.isArray(value) ? Number(value[0]) : Number(value), currency),
+                  'P/L at Expiration',
+                ] as const}
                 labelFormatter={(label) => `Price: $${label}`}
               />
               <Line
@@ -2159,4 +2176,4 @@ const OptionsHistoryTab: React.FC<{ accountId?: string }> = ({ accountId }) => {
   );
 };
 
-export default PortfolioOptions;
+export default PortfolioOptionsClient;
