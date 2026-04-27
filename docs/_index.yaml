@@ -205,6 +205,13 @@ docs:
     tags: [runbook, drive, mcp]
     owners: [agent-ops, ea]
     category: runbooks
+  - slug: issue-queue-2026-04-27
+    path: docs/operations/ISSUE_QUEUE_2026-04-27.md
+    title: Open issue queue — `paperwork-labs/paperwork`
+    summary: "**Triage date:** 2026-04-27 **Scope:** Open issues at sweep time, ordered for contributor/agent pickup. Labels: `ready` = well-specified; `blocked-on-founder` = needs credentials or product call…"
+    tags: [strategy, checklist]
+    owners: [agent-ops]
+    category: runbooks
   - slug: pr-pipeline-automation
     path: docs/infra/PR_PIPELINE_AUTOMATION.md
     title: PR pipeline automation
