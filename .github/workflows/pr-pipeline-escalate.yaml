@@ -1,0 +1,39 @@
+name: PR pipeline — escalate stuck PRs
+
+# Comments with @founder on PRs that are merge-dirty, failing real CI for hours,
+# or carry needs-founder-review. Throttled: skips if we posted a pr-pipeline
+# escalation in the last 24h. Adds label `pr-pipeline-escalated` (create in GitHub
+# if missing).
+
+on:
+  schedule:
+    - cron: "15 */1 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: read
+  checks: read
+
+concurrency:
+  group: pr-pipeline-escalate
+  cancel-in-progress: false
+
+jobs:
+  run:
+    if: github.repository == 'paperwork-labs/paperwork'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@4
+        with:
+          node-version: "20"
+
+      - name: Escalate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          FOUNDER_GITHUB_LOGIN: ${{ vars.FOUNDER_GITHUB_LOGIN }}
+        run: node scripts/pr-pipeline/escalate-stuck-prs.mjs

@@ -1,0 +1,71 @@
+name: PR pipeline — auto-rebase on main
+
+# When `main` moves, rebase open PRs that are (a) labeled agent-authored and
+# (b) created by a bot login we are allowed to force-push. Skips fork PRs
+# and draft PRs. Cooldown: skip if the PR head commit is <5 minutes old.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: pr-pipeline-autorebase-main
+  cancel-in-progress: false
+
+jobs:
+  rebase:
+    if: github.repository == 'paperwork-labs/paperwork'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List agent PRs
+        id: list
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PR_NUMS=$(gh pr list --base main --state open --label agent-authored --json number --jq '[.[].number] | join(" ")' 2>/dev/null || true)
+          echo "pr_numbers=${PR_NUMS}" >> "$GITHUB_OUTPUT"
+          echo "Found agent-authored PRs: ${PR_NUMS:-<none>}"
+
+      - uses: pnpm/action-setup@4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-python@6
+        with:
+          python-version: "3.12"
+
+      - name: Install regen dependencies
+        run: |
+          python3 -m pip install --quiet "pyyaml>=6.0"
+          pnpm --version
+
+      - name: Rebase each
+        if: steps.list.outputs.pr_numbers != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AGENT_PR_BOT_LOGINS: "paperwork-labs[bot],paperwork-labs-bot,github-actions[bot],cursor[bot]"
+        run: |
+          set -euo pipefail
+          gh auth setup-git
+          for N in ${{ steps.list.outputs.pr_numbers }}; do
+            echo "---- PR #$N ----"
+            git checkout -f main
+            git pull origin main
+            bash scripts/pr-pipeline/agent-rebase-one.sh "$N" || echo "PR #$N rebase step exited non-zero (continuing)"
+          done
