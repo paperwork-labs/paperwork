@@ -1,12 +1,12 @@
 import { RequireAuthClient } from "@/components/auth/RequireAuthClient";
 import { RequireAdmin } from "@/components/auth/RequireAdmin";
-import SystemStatusClient from "@/components/system/SystemStatusClient";
+import PicksValidatorClient from "@/components/admin/PicksValidatorClient";
 
-export default function SystemStatusPage() {
+export default function AdminPicksPage() {
   return (
     <RequireAuthClient>
       <RequireAdmin>
-        <SystemStatusClient />
+        <PicksValidatorClient />
       </RequireAdmin>
     </RequireAuthClient>
   );

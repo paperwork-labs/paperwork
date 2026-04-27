@@ -1,12 +1,12 @@
 import { RequireAuthClient } from "@/components/auth/RequireAuthClient";
 import { RequireAdmin } from "@/components/auth/RequireAdmin";
-import SystemStatusClient from "@/components/system/SystemStatusClient";
+import AdminAgentClient from "@/components/admin/AdminAgentClient";
 
-export default function SystemStatusPage() {
+export default function AdminAgentPage() {
   return (
     <RequireAuthClient>
       <RequireAdmin>
-        <SystemStatusClient />
+        <AdminAgentClient />
       </RequireAdmin>
     </RequireAuthClient>
   );
