@@ -64,7 +64,7 @@
       {
         "deadline": "ASAP",
         "milestone": "Hetzner credential rotation",
-        "notes": "Postgres password, Redis password, n8n admin password, n8n encryption key, Postiz JWT secret \u2014 all exposed in git history. SSH to Hetzner to rotate.",
+        "notes": "Postgres password, Redis password, n8n admin password, n8n encryption key, Postiz JWT secret — all exposed in git history. SSH to Hetzner to rotate.",
         "status": "NOT STARTED"
       },
       {
@@ -76,11 +76,11 @@
     ],
     "owner": "agent-ops",
     "path": "docs/TASKS.md",
-    "title": "Paperwork Labs \u2014 Venture Build Tasks",
+    "title": "Paperwork Labs — Venture Build Tasks",
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "88aff995b8ea",
+  "content_hash": "5f7013228852",
   "products": [
     {
       "label": "AxiomFolio",
@@ -94,7 +94,7 @@
           "raw_status": "active",
           "slug": "broker-coverage-tracker",
           "status": "active",
-          "title": "Broker Coverage Tracker \u2014 Evergreen"
+          "title": "Broker Coverage Tracker — Evergreen"
         },
         {
           "doc_kind": "plan",
@@ -105,7 +105,7 @@
           "raw_status": "active",
           "slug": "g5-iv-rank-surface",
           "status": "active",
-          "title": "G5 \u2014 Implied Volatility / IV-Rank Surface (Free-Providers First)"
+          "title": "G5 — Implied Volatility / IV-Rank Surface (Free-Providers First)"
         },
         {
           "doc_kind": "plan",
@@ -116,7 +116,7 @@
           "raw_status": "active",
           "slug": "gaps-2026q2",
           "status": "active",
-          "title": "Production Gaps \u2014 2026 Q2"
+          "title": "Production Gaps — 2026 Q2"
         },
         {
           "doc_kind": "plan",
@@ -138,7 +138,7 @@
           "raw_status": "active",
           "slug": "medallion-audit-2026q2",
           "status": "active",
-          "title": "Medallion Audit \u2014 2026 Q2"
+          "title": "Medallion Audit — 2026 Q2"
         },
         {
           "doc_kind": "plan",
@@ -149,7 +149,7 @@
           "raw_status": "active",
           "slug": "nextjs-migration-2026q3",
           "status": "active",
-          "title": "AxiomFolio \u2192 Next.js 16 App Router \u2014 Migration Plan"
+          "title": "AxiomFolio → Next.js 16 App Router — Migration Plan"
         },
         {
           "doc_kind": "plan",
@@ -160,7 +160,7 @@
           "raw_status": "active",
           "slug": "plaid-fidelity-401k",
           "status": "active",
-          "title": "Plaid Investments \u2014 Single-Phase Pro-Tier Feature"
+          "title": "Plaid Investments — Single-Phase Pro-Tier Feature"
         },
         {
           "doc_kind": "plan",
@@ -171,7 +171,7 @@
           "raw_status": "active",
           "slug": "platform-review-2026q2",
           "status": "active",
-          "title": "AxiomFolio Platform McKinsey Review \u2014 2026 Q2"
+          "title": "AxiomFolio Platform McKinsey Review — 2026 Q2"
         },
         {
           "doc_kind": "plan",
@@ -182,7 +182,7 @@
           "raw_status": "active",
           "slug": "portfolio-sync-completeness-2026q2",
           "status": "active",
-          "title": "Portfolio Sync Completeness \u2014 2026 Q2 (Wave 8 spec)"
+          "title": "Portfolio Sync Completeness — 2026 Q2 (Wave 8 spec)"
         },
         {
           "doc_kind": "plan",
@@ -204,7 +204,7 @@
           "raw_status": "active",
           "slug": "settings-nav-study-2026q2",
           "status": "active",
-          "title": "Settings IA Study \u2014 2026 Q2"
+          "title": "Settings IA Study — 2026 Q2"
         },
         {
           "doc_kind": "plan",
@@ -215,7 +215,7 @@
           "raw_status": "active",
           "slug": "ux-audit-2026q2",
           "status": "active",
-          "title": "UX Audit \u2014 2026 Q2 (PR C0 input spec)"
+          "title": "UX Audit — 2026 Q2 (PR C0 input spec)"
         },
         {
           "doc_kind": "plan",
@@ -226,7 +226,7 @@
           "raw_status": "active",
           "slug": "wave-f-trading-parity",
           "status": "active",
-          "title": "Wave F \u2014 Trading Parity Across All Six Brokers"
+          "title": "Wave F — Trading Parity Across All Six Brokers"
         },
         {
           "doc_kind": "plan",
@@ -237,7 +237,7 @@
           "raw_status": "active",
           "slug": "strategy-market-nav-restructure",
           "status": "active",
-          "title": "Strategy \u2192 Market Navigation Restructure Plan"
+          "title": "Strategy → Market Navigation Restructure Plan"
         }
       ],
       "plans_dir": "docs/axiomfolio/plans",
@@ -274,9 +274,9 @@
       "duration_weeks": 10,
       "end": "2026-07-01",
       "followups": [
-        "Optional: GitHub org webhook \u2192 immediate merged-PR episode for hot PRs (out of scope for this sprint)."
+        "Optional: GitHub org webhook → immediate merged-PR episode for hot PRs (out of scope for this sprint)."
       ],
-      "goal": "Ship three low-noise, idempotent loops so Paperwork Brain gains memory episodes every week from **merged PRs**, **decision records**, and **postmortems** \u2014 not only from sprint `## What we learned` bullets and quarterly docs.",
+      "goal": "Ship three low-noise, idempotent loops so Paperwork Brain gains memory episodes every week from **merged PRs**, **decision records**, and **postmortems** — not only from sprint `## What we learned` bullets and quarterly docs.",
       "lessons": [
         "(Append only during the sprint.)"
       ],
@@ -305,12 +305,12 @@
       "duration_weeks": 10,
       "end": "2026-06-30",
       "followups": [],
-      "goal": "Close the **\u201cStudio shows sprint progress automatically\u201d** loop: Brain appends shipped lines to sprint markdown under `## Outcome`, Studio\u2019s living tracker reads the same files, and the founder sees sprint cards move without hand-copying PR titles.",
+      "goal": "Close the **“Studio shows sprint progress automatically”** loop: Brain appends shipped lines to sprint markdown under `## Outcome`, Studio’s living tracker reads the same files, and the founder sees sprint cards move without hand-copying PR titles.",
       "lessons": [
-        "_(empty \u2014 fill in as the sprint runs)_"
+        "_(empty — fill in as the sprint runs)_"
       ],
       "outcome_bullets": [
-        "_Tracking \u2014 Brain `sprint_auto_logger` + operator runbook_"
+        "_Tracking — Brain `sprint_auto_logger` + operator runbook_"
       ],
       "owner": "engineering",
       "path": "docs/sprints/SPRINT_AUTOMATION_2026Q3.md",
@@ -351,7 +351,7 @@
       "slug": "brand-design-deepdive-2026q2",
       "start": "2026-04-25",
       "status": "active",
-      "title": "Brand canon (2026 Q2) \u2014 final state"
+      "title": "Brand canon (2026 Q2) — final state"
     },
     {
       "domain": "company",
@@ -360,20 +360,22 @@
       "followups": [],
       "goal": "Ship an aggressive end-to-end streamline: one orchestration brain for scheduled work, one persona vocabulary everywhere, Clerk-backed SSO so a LaunchFree user can use FileFree without re-registering, workflow DAGs that are actually legible (and not embarrassing in demos), and AxiomFolio absorbed into the Next.js / Vercel stack when the migration shell is far enough along.",
       "lessons": [
-        "Per-job `SCHEDULER_N8N_MIRROR_*` must use the same uppercased job id as `N8N_MIRROR_SPECS` (e.g. `N8N_SHADOW_BRAIN_DAILY`, not a short name like `pr_sweep` \u2014 the in-process `pr_sweep` scheduler is separate from n8n mirror ids).",
+        "Per-job `SCHEDULER_N8N_MIRROR_*` must use the same uppercased job id as `N8N_MIRROR_SPECS` (e.g. `N8N_SHADOW_BRAIN_DAILY`, not a short name like `pr_sweep` — the in-process `pr_sweep` scheduler is separate from n8n mirror ids).",
         "A single `clerkMiddleware` handler can grant production admin access if either `auth().userId` (Clerk) is present or the legacy Basic `Authorization` header matches `ADMIN_EMAILS` / `ADMIN_ACCESS_PASSWORD`, while local dev can keep admin routes open by short-circuiting on `NODE_ENV === \"development\"`.",
-        "A dedicated **`BRAIN_OWNS_*` env flag** can gate the first-party APScheduler job while `should_register_n8n_shadow_for_job` drops the matching `n8n_shadow_*` row \u2014 no duplicate schedules without editing n8n JSON.",
+        "A dedicated **`BRAIN_OWNS_*` env flag** can gate the first-party APScheduler job while `should_register_n8n_shadow_for_job` drops the matching `n8n_shadow_*` row — no duplicate schedules without editing n8n JSON.",
         "Subagents working on the same monorepo branch will collide on `pnpm-lock.yaml` if they install dependencies in parallel from a shared worktree. Solution: use `best-of-n-runner` to give each subagent its own isolated git worktree; each branch's lockfile diff stays tightly scoped to that PR's package."
       ],
       "outcome_bullets": [
-        "_Tracking \u2014 updates as each track ships_",
-        "2026-04-26: Track K \u2014 `brain_data_source_monitor` cutover (LA tz, `BRAIN_OWNS_DATA_SOURCE_MONITOR=true`)",
-        "2026-04-26: Track K \u2014 `brain_data_deep_validator` cutover (LA tz, `BRAIN_OWNS_DATA_DEEP_VALIDATOR=true`)",
-        "2026-04-26: Track K \u2014 `brain_data_annual_update` cutover (LA tz, `BRAIN_OWNS_DATA_ANNUAL_UPDATE=true`)",
-        "shipped 2026-04-25: **T2.3** \u2014 Persona vocabulary unified across Brain `PersonaSpec/`, Studio `WORKFLOW_META`, `system-graph.json` `owner_persona`, and n8n `persona_pin`. CI gate `scripts/check_persona_vocabulary.py` blocks future drift. PR #150.",
-        "shipped 2026-04-25: **T3.1b** \u2014 Studio Clerk pages adopt the dark-themed `studioClerkAppearance` (HSL CSS-var bridge to Clerk variables + custom `elements` Tailwind). PR #152.",
-        "shipped 2026-04-26: **T3.2 (Trinkets)** \u2014 `<ClerkProvider>`, sign-in/up catch-all routes, `clerkMiddleware` (public utility app; no legacy session or Basic Auth to compose). Trinkets Clerk appearance: indigo `#6366F1` + sky cyan `#38BDF8`. Runbook: [docs/infra/CLERK_TRINKETS.md](../infra/CLERK_TRINKETS.md). PR #197.",
-        "shipped 2026-04-26: **T3.2 (Distill)** \u2014 `@clerk/nextjs` + `<ClerkProvider>`, sign-in/sign-up catch-alls, `clerkMiddleware` on `/dashboard` only (no legacy gate), and `distillClerkAppearance` (teal `#0F766E` + burnt orange `#C2410C`). Runbook: [docs/infra/CLERK_DISTILL.md](../infra/CLERK_DISTILL.md). PR #198."
+        "_Tracking — updates as each track ships_",
+        "2026-04-26: Track K — `brain_data_source_monitor` cutover (LA tz, `BRAIN_OWNS_DATA_SOURCE_MONITOR=true`)",
+        "2026-04-26: Track K — `brain_data_deep_validator` cutover (LA tz, `BRAIN_OWNS_DATA_DEEP_VALIDATOR=true`)",
+        "2026-04-26: Track K — `brain_data_annual_update` cutover (LA tz, `BRAIN_OWNS_DATA_ANNUAL_UPDATE=true`)",
+        "shipped 2026-04-25: **T2.3** — Persona vocabulary unified across Brain `PersonaSpec/`, Studio `WORKFLOW_META`, `system-graph.json` `owner_persona`, and n8n `persona_pin`. CI gate `scripts/check_persona_vocabulary.py` blocks future drift. PR #150.",
+        "shipped 2026-04-25: **T3.1b** — Studio Clerk pages adopt the dark-themed `studioClerkAppearance` (HSL CSS-var bridge to Clerk variables + custom `elements` Tailwind). PR #152.",
+        "shipped 2026-04-26: **T3.2 (Trinkets)** — `<ClerkProvider>`, sign-in/up catch-all routes, `clerkMiddleware` (public utility app; no legacy session or Basic Auth to compose). Trinkets Clerk appearance: indigo `#6366F1` + sky cyan `#38BDF8`. Runbook: [docs/infra/CLERK_TRINKETS.md](../infra/CLERK_TRINKETS.md). PR #197.",
+        "shipped 2026-04-26: **T3.2 (Distill)** — `@clerk/nextjs` + `<ClerkProvider>`, sign-in/sign-up catch-alls, `clerkMiddleware` on `/dashboard` only (no legacy gate), and `distillClerkAppearance` (teal `#0F766E` + burnt orange `#C2410C`). Runbook: [docs/infra/CLERK_DISTILL.md](../infra/CLERK_DISTILL.md). PR #198.",
+        "shipped 2026-04-25: **T4** — Replaced Studio's placeholder DAG views with `@xyflow/react` graphs that survive real persona / workflow shapes (zoom, pan, labelled edges). PR #147.",
+        "shipped 2026-04-26: **T5 (settings ports)** — Remaining settings routes: account risk, data privacy, notifications, and users (`apps/axiomfolio/src/app/settings/*`, client components under `src/components/settings/`). PR #169."
       ],
       "owner": "engineering",
       "path": "docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md",
@@ -419,26 +421,26 @@
       "duration_weeks": 1,
       "end": "2026-04-26",
       "followups": [
-        "shipped 2026-04-25: **F-1 (operator, single click)** completed \u2014 all AxiomFolio + brain-api + filefree-api services now associated with the consolidated root `render.yaml` Blueprint via Render Dashboard's \"New Blueprint \u2192 Associate existing services\" flow. (PR #143)",
-        "shipped 2026-04-25: **F-2 launchfree-api decision** \u2014 commented out (not deleted) in `render.yaml` with re-enable workflow documented inline. Frontend renders mocks, $7/mo for empty backend defers. (PR #144)",
+        "shipped 2026-04-25: **F-1 (operator, single click)** completed — all AxiomFolio + brain-api + filefree-api services now associated with the consolidated root `render.yaml` Blueprint via Render Dashboard's \"New Blueprint → Associate existing services\" flow. (PR #143)",
+        "shipped 2026-04-25: **F-2 launchfree-api decision** — commented out (not deleted) in `render.yaml` with re-enable workflow documented inline. Frontend renders mocks, $7/mo for empty backend defers. (PR #144)",
         "F-3 env var naming (done): canonical `VERCEL_API_TOKEN` in `render.yaml`, Studio, Brain, and GitHub Actions; legacy `VERCEL_TOKEN` key accepted by Brain only until removed from Render.",
         "F-5 `brain-api` `GITHUB_WEBHOOK_SECRET`: declare with `sync: false` in `render.yaml`, then operator pastes the value once. Until then GitHub webhooks land but skip signature verification.",
-        "Studio `/admin/infrastructure` six-service health: extend probes so AxiomFolio API + 2 workers + frontend + Redis + DB all show green alongside FileFree and Brain. `RENDER_API_KEY` already wired \u2014 pull `live`/`build_failed` per service so F-6-style silent breakage is impossible.",
-        "AxiomFolio Next.js migration: 4/102 routes ported (`/`, `/system-status`, `/portfolio`, `/scanner` shells); plan target Q3, decommissions Render static hosting in favor of Vercel \u2014 see [docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md](../axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).",
-        "Severity vocabulary review: existing 7 runbooks use yellow/red; if we want S0\u2013S3 vocabulary across the company, that's a one-shot rename (defer until cross-product alignment).",
+        "Studio `/admin/infrastructure` six-service health: extend probes so AxiomFolio API + 2 workers + frontend + Redis + DB all show green alongside FileFree and Brain. `RENDER_API_KEY` already wired — pull `live`/`build_failed` per service so F-6-style silent breakage is impossible.",
+        "AxiomFolio Next.js migration: 4/102 routes ported (`/`, `/system-status`, `/portfolio`, `/scanner` shells); plan target Q3, decommissions Render static hosting in favor of Vercel — see [docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md](../axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).",
+        "Severity vocabulary review: existing 7 runbooks use yellow/red; if we want S0–S3 vocabulary across the company, that's a one-shot rename (defer until cross-product alignment).",
         "Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`."
       ],
       "goal": "Land Phase 1 of the docs streamline, give the company a repo-native long-term tracker (no Jira / Notion), and wire Brain into both so a CFO digest and Slack slash commands work off the same JSON the UI reads.",
       "lessons": [
         "Server components that read env-injected data (`DATABASE_URL`, runtime probes) MUST mark `dynamic = \"force-dynamic\"`; otherwise Next.js prerenders them at build time and the user sees stale \"not configured\" forever. Caught only because the user noticed the Secrets page had silently regressed.",
-        "A repo-native tracker beats Jira when the docs are already where work is happening \u2014 the cost was one Python script + one JSON output. CFO digest, Slack slash commands, and Studio pages all read the same file.",
+        "A repo-native tracker beats Jira when the docs are already where work is happening — the cost was one Python script + one JSON output. CFO digest, Slack slash commands, and Studio pages all read the same file.",
         "Cheap-model parallel delegation (8 explore subagents) cleared the docs inventory in minutes; Sonnet then consolidated. Pattern reusable for every audit-style task."
       ],
       "outcome_bullets": [
-        "shipped 2026-04-25: VMP-SUMMARY \u2192 VENTURE_MASTER_PLAN TL;DR merge (final \u00a76 pair). Compact summary now lives at the top of the canonical plan; verbatim copy archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. (PR #143)",
-        "17 stale docs retired to `docs/archive/`, 70 retained docs got standardized YAML frontmatter, 1 collision rename (`docs/axiomfolio/KNOWLEDGE.md` \u2192 `DECISIONS.md`).",
+        "shipped 2026-04-25: VMP-SUMMARY → VENTURE_MASTER_PLAN TL;DR merge (final §6 pair). Compact summary now lives at the top of the canonical plan; verbatim copy archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. (PR #143)",
+        "17 stale docs retired to `docs/archive/`, 70 retained docs got standardized YAML frontmatter, 1 collision rename (`docs/axiomfolio/KNOWLEDGE.md` → `DECISIONS.md`).",
         "`docs/philosophy/` folder bootstrapped with 7 immutable philosophy docs (Brain, Infra, Data, AI Model, Automation, Tax, Formation) + `README.md` index, all CODEOWNERS-locked to `@paperwork-labs/founders`.",
-        "Three-tier tracker spine: company (`docs/TASKS.md`), per-product (`docs/<product>/plans/*`), cross-cutting sprints (`docs/sprints/*`). Generator: `scripts/generate_tracker_index.py` \u2192 `apps/studio/src/data/tracker-index.json` (deterministic, content-hash, CI-gated).",
+        "Three-tier tracker spine: company (`docs/TASKS.md`), per-product (`docs/<product>/plans/*`), cross-cutting sprints (`docs/sprints/*`). Generator: `scripts/generate_tracker_index.py` → `apps/studio/src/data/tracker-index.json` (deterministic, content-hash, CI-gated).",
         "Studio: `/admin/tasks`, `/admin/products`, `/admin/products/<slug>/plan`, rebuilt `/admin/sprints`, plus `TrackersRail` on `/admin` overview. Nav reorganized into Overview / Trackers / System.",
         "Brain: `apis/brain/app/schedulers/cfo_friday_digest.py` (Fridays 18:00 UTC, `persona_pin=cfo`, `#cfo` channel) + `/sprint`, `/tasks`, `/plan` Slack slash commands reading the same `tracker-index.json`.",
         "Make helpers: `make tracker-index`, `make tracker-check`, `make sprint-shipped PR=NNN`, `make plan-status`, `make docs-freshness`.",
@@ -475,21 +477,21 @@
       "slug": "docs-streamline-and-trackers-2026q2",
       "start": "2026-04-24",
       "status": "active",
-      "title": "Docs Streamline + Trackers Spine \u2014 2026 Q2"
+      "title": "Docs Streamline + Trackers Spine — 2026 Q2"
     },
     {
       "domain": "company",
       "duration_weeks": 4,
       "end": "2026-04-23",
       "followups": [
-        "`/admin/tasks` (renders `docs/TASKS.md` as company tracker) \u2014 moving to follow-up sprint",
-        "`/admin/products/<slug>/plan` per-product master plan views \u2014 moving to follow-up sprint",
-        "`scripts/generate_tracker_index.py` to unify TASKS + sprints + plans + per-product PRDs into one JSON index \u2014 moving to follow-up sprint",
+        "`/admin/tasks` (renders `docs/TASKS.md` as company tracker) — moving to follow-up sprint",
+        "`/admin/products/<slug>/plan` per-product master plan views — moving to follow-up sprint",
+        "`scripts/generate_tracker_index.py` to unify TASKS + sprints + plans + per-product PRDs into one JSON index — moving to follow-up sprint",
         "Friday CFO digest via Brain `persona_pin=cfo`",
         "`/sprint`, `/tasks`, `/plan <slug>` Slack slash commands",
         "Shipped (2026-04-26):: Vercel auto-promote matrix expanded to include `axiomfolio-next`, `trinkets`, and `accounts` (placeholder `TBD_CREATE_BEFORE_MERGE` until Vercel projects are linked; skip-guard in workflow). See `.github/workflows/vercel-promote-on-merge.yaml` and `docs/infra/VERCEL_AUTO_PROMOTE.md`."
       ],
-      "goal": "Land the infrastructure and automation foundation Paperwork Labs needs before feature work resumes \u2014 persona platform, model selection, doc-vs-code truth checks, AxiomFolio brain delegation, and a Studio command center that stays honest about reality.",
+      "goal": "Land the infrastructure and automation foundation Paperwork Labs needs before feature work resumes — persona platform, model selection, doc-vs-code truth checks, AxiomFolio brain delegation, and a Studio command center that stays honest about reality.",
       "lessons": [
         "Auto-generated docs need a `last_modified` per generator, not per filesystem mtime.: mtime drifts on rebase and CI. Generators now write a `content_hash` field that's stable across runs.",
         "CI gates are only as good as their idempotence.: The n8n snapshot was failing every CI run because of an ISO timestamp; switched to content-hash and it's been silent since.",
@@ -497,7 +499,7 @@
         "BYOK + delegation is a real architecture, not a hack.: AxiomFolio users can still bring their own keys; if they don't, AxiomFolio routes to Paperwork Brain. We track cost in one place either way."
       ],
       "outcome_bullets": [
-        "Brain is now the single LLM gateway. n8n workflows shrink to webhook \u2192 Brain (`persona_pin=<slug>`) \u2192 Slack post. No model selection in n8n.",
+        "Brain is now the single LLM gateway. n8n workflows shrink to webhook → Brain (`persona_pin=<slug>`) → Slack post. No model selection in n8n.",
         "Persona platform: typed `PersonaSpec` per persona, per-persona cost ceilings, rate limiting, golden suites in CI (4 lanes), nightly summary.",
         "Doc-vs-code truth check: `scripts/check_doc_code_refs.py` flags dead `file:line` references in docs. Baseline mode lets us iterate without churn.",
         "AxiomFolio's `TradingAgent` (renamed from `AgentBrain`) delegates LLM calls to Paperwork Brain via `persona_pin=trading`. BYOK preserved. New `/admin/agent/deep-analyze` endpoint demonstrates the `extract_reason` chain strategy (Flash extracts, Sonnet reasons).",
@@ -534,7 +536,7 @@
       "slug": "infra-automation-hardening-2026q2",
       "start": "2026-04-01",
       "status": "shipped",
-      "title": "Infra & Automation Hardening \u2014 2026 Q2"
+      "title": "Infra & Automation Hardening — 2026 Q2"
     }
   ]
 }

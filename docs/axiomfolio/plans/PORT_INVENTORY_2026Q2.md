@@ -15,25 +15,22 @@ schedule into Q2 under the Q2 Tech Debt Convergence sprint, Track G).
 
 ## Why this doc exists
 
-Track G of the Q2 Tech Debt Convergence sprint folds the Vite app into the
-Next.js app and renames the directory:
+Track G of the Q2 Tech Debt Convergence sprint folded the Vite app into the
+Next.js app and renamed the directory (**completed 2026-04-27**, Track G4):
 
-1. Port every remaining Vite route from `apps/axiomfolio/` to
-   `apps/axiomfolio-next/` (THIS DOC).
-2. After a 7-day parity bake, `git mv apps/axiomfolio-next apps/axiomfolio`,
-   delete the Vite tree, and drop the Render `axiomfolio-frontend` service
-   (Track G4, **deferred** — gated on parity bake, not in scope here).
+1. Port every remaining Vite route — done; canonical app is `apps/axiomfolio/`
+   (this doc’s historical counts referred to the interim `apps/axiomfolio-next/` tree).
+2. `git mv` + Vite tree deletion + Render `axiomfolio-frontend` removal from
+   root `render.yaml` — done.
 
 This document inventories what is already ported, what is left, and how
 the remaining routes were grouped into parallel sub-subagent batches.
 
 ## Methodology
 
-- Vite routes were enumerated from
-  [`apps/axiomfolio/src/App.tsx`](../../../apps/axiomfolio/src/App.tsx)
-  (the only React Router root in the app).
-- Next routes were enumerated from
-  `apps/axiomfolio-next/src/app/**/page.tsx` via `Glob`.
+- Vite routes were enumerated from `apps/axiomfolio/src/App.tsx` (removed
+  2026-04-27; use git history for the React Router root).
+- Next routes were enumerated from `apps/axiomfolio/src/app/**/page.tsx` via `Glob`.
 - A "real port" is a `page.tsx` that renders an actual ported client
   component (e.g. `<MarketDashboardClient />`). A "stub" is a page that
   contains only placeholder copy ("Next port lands in the next PR…")

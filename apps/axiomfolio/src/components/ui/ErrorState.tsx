@@ -47,7 +47,7 @@ export function ErrorState({
   icon: Icon = AlertTriangle,
   className,
 }: ErrorStateProps) {
-  const isDev = import.meta.env?.DEV === true;
+  const isDev = process.env.NODE_ENV === "development";
   const showDetails = isDev && error != null;
   const formatted = showDetails ? formatError(error) : "";
 

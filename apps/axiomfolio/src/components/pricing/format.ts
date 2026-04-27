@@ -32,7 +32,7 @@ export function parseDecimalStringToCents(value: string): bigint | null {
 
   let cents: bigint;
   try {
-    cents = BigInt(whole) * 100n + BigInt(frac);
+    cents = BigInt(whole) * BigInt(100) + BigInt(frac);
   } catch {
     return null;
   }
@@ -48,16 +48,16 @@ export function formatPrice(value: string, currency: string): string {
   const cents = parseDecimalStringToCents(value);
   if (cents === null) return '';
 
-  const negative = cents < 0n;
+  const negative = cents < BigInt(0);
   const abs = negative ? -cents : cents;
-  const wholeDollars = abs / 100n;
-  const frac = abs % 100n;
-  const showCents = frac !== 0n;
+  const wholeDollars = abs / BigInt(100);
+  const frac = abs % BigInt(100);
+  const showCents = frac !== BigInt(0);
 
   const currencyParts = new Intl.NumberFormat(EN_LOCALE, {
     style: 'currency',
     currency,
-  }).formatToParts(0n);
+  }).formatToParts(BigInt(0));
   const currencySymbol =
     currencyParts.find((p) => p.type === 'currency')?.value ?? '';
 
@@ -86,14 +86,14 @@ export function computeAnnualDiscount(
   const monthlyCents = parseDecimalStringToCents(monthly);
   const annualCents = parseDecimalStringToCents(annual);
   if (monthlyCents === null || annualCents === null) return null;
-  if (monthlyCents <= 0n) return null;
+  if (monthlyCents <= BigInt(0)) return null;
 
-  const fullPrice = monthlyCents * 12n;
+  const fullPrice = monthlyCents * BigInt(12);
   if (annualCents >= fullPrice) return null;
 
   const diff = fullPrice - annualCents;
   // Round half up: (diff * 100 / fullPrice) with integer arithmetic
   const pct =
-    (diff * 100n * 2n + fullPrice) / (2n * fullPrice);
+    (diff * BigInt(100) * BigInt(2) + fullPrice) / (BigInt(2) * fullPrice);
   return Number(pct);
 }

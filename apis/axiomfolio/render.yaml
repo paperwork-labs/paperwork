@@ -15,8 +15,9 @@
 #   3. Branch: main
 #   4. Blueprint Path: render.yaml      ← the root file (the default)
 #   5. Choose "Associate existing services" so axiomfolio-api,
-#      axiomfolio-worker, axiomfolio-worker-heavy, axiomfolio-frontend,
-#      axiomfolio-redis, and axiomfolio-db all attach to this Blueprint
+#      axiomfolio-worker, axiomfolio-worker-heavy, axiomfolio-redis, and
+#      axiomfolio-db attach to this Blueprint (axiomfolio-frontend retired
+#      2026-04-27 — UI on Vercel)
 #      instead of being orphaned by the old paperwork-labs/axiomfolio
 #      repo pointer.
 #

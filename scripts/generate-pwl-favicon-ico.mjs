@@ -26,7 +26,7 @@ const apps = [
   "launchfree",
   "distill",
   "trinkets",
-  "axiomfolio-next",
+  "axiomfolio",
 ];
 
 for (const app of apps) {

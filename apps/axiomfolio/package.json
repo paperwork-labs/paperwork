@@ -1,10 +1,20 @@
 {
   "name": "@paperwork-labs/axiomfolio",
-  "version": "1.0.0",
-  "description": "AxiomFolio Portfolio Management Platform Frontend",
+  "version": "0.1.0",
   "private": true,
-  "type": "module",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "scripts": {
+    "dev": "next dev --turbopack --port 3005",
+    "build": "next build",
+    "start": "next start --port 3005",
+    "lint": "next build",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
+    "@clerk/nextjs": "^7.2.7",
+    "@clerk/themes": "^2.4.57",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
@@ -12,6 +22,7 @@
     "@fontsource-variable/geist-mono": "^5.2.7",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/space-grotesk": "^5.2.10",
+    "@paperwork-labs/ui": "workspace:*",
     "@radix-ui/react-checkbox": "^1.1.4",
     "@radix-ui/react-collapsible": "^1.1.3",
     "@radix-ui/react-dialog": "^1.1.6",
@@ -33,6 +44,7 @@
     "lightweight-charts": "^5.2.0",
     "lodash": "^4.18.1",
     "lucide-react": "^1.11.0",
+    "next": "^16.2.4",
     "numeral": "^2.0.6",
     "react": "^19.2.5",
     "react-datepicker": "^9.1.0",
@@ -41,7 +53,6 @@
     "react-hot-toast": "^2.6.0",
     "react-markdown": "^10.1.0",
     "react-plaid-link": "^4.1.1",
-    "react-router-dom": "^7.14.1",
     "react-select": "^5.10.2",
     "react-table": "^7.8.0",
     "recharts": "^3.8.1",
@@ -52,52 +63,18 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.2.2",
-    "@testing-library/dom": "^10.0.0",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@testing-library/user-event": "^14.6.1",
+    "@tailwindcss/postcss": "^4.2.4",
     "@types/lodash": "^4.17.24",
+    "@types/node": "^25.6.0",
     "@types/numeral": "^2.0.5",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "@types/react-table": "^7.7.20",
-    "@typescript-eslint/eslint-plugin": "^8.59.0",
-    "@typescript-eslint/parser": "^8.59.0",
-    "@vitejs/plugin-react": "^6.0.1",
-    "esbuild": "^0.28.0",
+    "autoprefixer": "^10.5.0",
     "eslint": "^10.2.1",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.2",
-    "happy-dom": "^20.9.0",
-    "jsdom": "^29.1.0",
-    "sharp": "^0.34.5",
+    "eslint-config-next": "^16.2.4",
+    "postcss": "^8.5.10",
     "tailwindcss": "^4.2.4",
-    "typescript": "^6.0.3",
-    "vite": "^8.0.9",
-    "vitest": "^4.1.5"
-  },
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview",
-    "test": "vitest run",
-    "test:ui": "vitest",
-    "type-check": "tsc --noEmit",
-    "assert:no-hardcoded-usd": "node scripts/assert-no-hardcoded-usd.mjs",
-    "pwa:icons": "node scripts/generate-pwa-icons.mjs"
-  },
-  "browserslist": {
-    "production": [
-      ">0.2%",
-      "not dead",
-      "not op_mini all"
-    ],
-    "development": [
-      "last 1 chrome version",
-      "last 1 firefox version",
-      "last 1 safari version"
-    ]
+    "typescript": "^5.6.0"
   }
 }

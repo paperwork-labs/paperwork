@@ -15,7 +15,8 @@
  * empty ("Connect a broker" CTA), data.
  */
 import * as React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Area, AreaChart, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts';
 import { ArrowRight, Link2, PieChart } from 'lucide-react';
@@ -273,7 +274,7 @@ function HomeHeroInner({
   onRetryBrokers,
 }: HomeHeroProps) {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const displayName =
     (typeof user?.full_name === 'string' && user.full_name.trim()) ||
     (typeof user?.username === 'string' && user.username.trim()) ||
@@ -358,8 +359,8 @@ function HomeHeroInner({
           icon={Link2}
           title="Connect a broker to see your book"
           description="Your NAV, day P&L, and 30-day shape will appear here once an account is linked."
-          action={{ label: 'Connect a broker', onClick: () => navigate('/connect') }}
-          secondaryAction={{ label: 'See pricing', onClick: () => navigate('/pricing') }}
+          action={{ label: 'Connect a broker', onClick: () => router.push('/connect') }}
+          secondaryAction={{ label: 'See pricing', onClick: () => router.push('/pricing') }}
         />
       </HeroShell>
     );
@@ -458,7 +459,7 @@ function HomeHeroInner({
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Last 30 days</span>
             <Link
-              to="/portfolio?tab=performance"
+              href="/portfolio?tab=performance"
               className="inline-flex items-center gap-1 hover:text-foreground"
             >
               Performance
@@ -490,7 +491,7 @@ function HomeHeroInner({
             : 'Regime —'}
         </div>
         <Button asChild variant="ghost" size="sm">
-          <Link to="/market" aria-label="Open market dashboard">
+          <Link href="/market/dashboard" aria-label="Open market dashboard">
             <PieChart className="size-3.5" aria-hidden />
             Markets
             <ArrowRight className="size-3" aria-hidden />

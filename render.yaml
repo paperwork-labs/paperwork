@@ -3,7 +3,7 @@
 #
 # Single source of truth: one Blueprint per repo. All apps that deploy to
 # Render live in this file. Vercel apps (apps/studio, apps/distill,
-# apps/filefree, apps/launchfree, apps/axiomfolio-next) are managed by
+# apps/filefree, apps/launchfree, apps/axiomfolio) are managed by
 # Vercel's git integration and are not represented here.
 #
 # History:
@@ -308,34 +308,15 @@ services:
     dockerCommand: celery -A app.tasks.celery_app worker -Q heavy --loglevel=info --max-memory-per-child=1500000 --concurrency=1
 
   # ---------------------------------------------------------------------
-  # AxiomFolio frontend — Vite SPA hosted as a Render static site.
-  # Builds from apps/axiomfolio (pnpm workspace member). The Next.js
-  # rewrite (apps/axiomfolio-next) will go to Vercel; this static target
-  # stays here until the Next.js cutover lands (see
-  # docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).
+  # DELETED 2026-04-27 — Track G4 (Q2 Tech Debt Convergence): Vite tree
+  # removed; AxiomFolio customer UI is the Next.js app on Vercel
+  # (`apps/axiomfolio`, project may still be named `axiomfolio-next` in
+  # the Vercel dashboard until renamed). Rollback: restore service block
+  # from git history + redeploy legacy Vite from a pre-cutover commit.
   #
-  # Track I1: SKIP_INSTALL_DEPS — Render's default auto-install in rootDir
-  # breaks monorepos (wrong cwd / lockfile). NODE_VERSION + global pnpm
-  # avoid static-image images without corepack on PATH.
+  # Former block (axiomfolio-frontend static site, rootDir apps/axiomfolio,
+  # VITE_API_BASE_URL → api.axiomfolio.com) lived here.
   # ---------------------------------------------------------------------
-  - type: web
-    name: axiomfolio-frontend
-    runtime: static
-    rootDir: apps/axiomfolio
-    autoDeploy: true
-    buildCommand: "cd ../.. && npm install -g pnpm@10.32.1 && pnpm install --frozen-lockfile --filter=@paperwork-labs/axiomfolio... && pnpm --filter=@paperwork-labs/axiomfolio build"
-    staticPublishPath: dist
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: SKIP_INSTALL_DEPS
-        value: "true"
-      - key: NODE_VERSION
-        value: "20.18.0"
-      - key: VITE_API_BASE_URL
-        value: https://api.axiomfolio.com/api/v1
 
   - type: keyvalue
     name: axiomfolio-redis

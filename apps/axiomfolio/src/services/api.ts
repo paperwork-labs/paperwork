@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 import axios, {
   AxiosResponse,
   AxiosError,
@@ -23,7 +22,7 @@ declare module 'axios' {
 }
 
 // Prefer env-configured base URL; fallback to relative path with dev proxy support
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1';
 
 // Enhanced request queue for connection optimization
 class RequestQueue {
