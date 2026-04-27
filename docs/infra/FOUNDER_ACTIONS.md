@@ -78,14 +78,14 @@ Tracked in: `chore/axiomfolio-vercel-cutover` ([#306](https://github.com/paperwo
 - **Source:** [DEPENDABOT.md](docs/DEPENDABOT.md) (webhook flow), [RENDER_INVENTORY F-5](docs/infra/RENDER_INVENTORY.md)
 - **ETA:** ~15 min
 
-### 3. Remove duplicate `VERCEL_TOKEN` on Render after `VERCEL_API_TOKEN` cutover
-- **Why this matters:** Brain reads `VERCEL_API_TOKEN` (with legacy `VERCEL_TOKEN` alias). Leaving both forever invites confusion and rotation mistakes.
+### 3. Render `brain-api`: use `VERCEL_API_TOKEN` only (drop legacy `VERCEL_TOKEN` row if present)
+- **Why this matters:** Brain and automation read only `VERCEL_API_TOKEN`. A second env row under the old name invites confusion and rotation mistakes.
 - **Where:** Render `brain-api` → Environment; see F-3 in `docs/infra/RENDER_INVENTORY.md`.
 - **Steps:**
   1. Confirm only `VERCEL_API_TOKEN` is required in code and workflows (`VERCEL_AUTO_PROMOTE.md`).
-  2. **`[VERIFY]`** live service has no dependency on the legacy key name; then delete `VERCEL_TOKEN` from Render if still present.
+  2. **`[VERIFY]`** If the dashboard still has `VERCEL_TOKEN`, rename that row to `VERCEL_API_TOKEN` (same value) or remove the duplicate after confirming nothing else references the old name.
 - **Verification:** Brain infra tools / Studio infra probes still work; no env errors in logs.
-- **Source:** PR #213, F-3 in `docs/infra/RENDER_INVENTORY.md`
+- **Source:** Track I2, F-3 in `docs/infra/RENDER_INVENTORY.md`
 - **ETA:** ~5 min (after verify)
 
 ### 4. n8n shadow workflows — disable originals after Brain cutover
@@ -148,4 +148,7 @@ Tracked in: `chore/axiomfolio-vercel-cutover` ([#306](https://github.com/paperwo
 - 2026-04-25: F-6 — `brain-api` Docker build context directory cleared; monorepo images build and deploy. Source: [RENDER_INVENTORY F-6](docs/infra/RENDER_INVENTORY.md), PR #142 area / `RENDER_REPOINT` Path A.
 - 2026-04-25: F-2 — `launchfree-api` decision documented (commented in `render.yaml`). Source: `docs/infra/RENDER_INVENTORY.md` F-2.
 - 2026-04-25: F-4 — Single `render.yaml` at repo root. Source: `docs/infra/RENDER_INVENTORY.md` F-4.
-- 2026-04-26: Code and docs use canonical `VERCEL_API_TOKEN` with legacy env alias in Brain for cutover. Source: PR #213, F-3 partial (pending removal of duplicate Render key — see Pending §Operational).
+- 2026-04-27: Track I2 — Brain reads only `VERCEL_API_TOKEN` (pydantic `VERCEL_TOKEN` alias removed). Founder: align Render env key name with blueprint (`VERCEL_API_TOKEN`). Source: F-3 in `docs/infra/RENDER_INVENTORY.md`.
+- 2026-04-26: Code and docs use canonical `VERCEL_API_TOKEN` with legacy env alias in Brain for cutover. Source: PR #213, F-3 partial (superseded by 2026-04-27 Track I2).
+
+*Renamed from `VERCEL_TOKEN` to canonical `VERCEL_API_TOKEN` per Track I2 (2026-04-27).*

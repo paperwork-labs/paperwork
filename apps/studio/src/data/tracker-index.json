@@ -437,7 +437,7 @@
       "followups": [
         "shipped 2026-04-25: **F-1 (operator, single click)** completed \u2014 all AxiomFolio + brain-api + filefree-api services now associated with the consolidated root `render.yaml` Blueprint via Render Dashboard's \"New Blueprint \u2192 Associate existing services\" flow. (PR #143)",
         "shipped 2026-04-25: **F-2 launchfree-api decision** \u2014 commented out (not deleted) in `render.yaml` with re-enable workflow documented inline. Frontend renders mocks, $7/mo for empty backend defers. (PR #144)",
-        "F-3 env var naming (done): canonical `VERCEL_API_TOKEN` in `render.yaml`, Studio, Brain, and GitHub Actions; legacy `VERCEL_TOKEN` key accepted by Brain only until removed from Render.",
+        "F-3 env var naming (done): canonical `VERCEL_API_TOKEN` in `render.yaml`, Studio, Brain, and GitHub Actions (Track I2 removed Brain `VERCEL_TOKEN` alias; founder aligns Render env key name if needed).",
         "F-5 `brain-api` `GITHUB_WEBHOOK_SECRET`: declare with `sync: false` in `render.yaml`, then operator pastes the value once. Until then GitHub webhooks land but skip signature verification.",
         "Studio `/admin/infrastructure` six-service health: extend probes so AxiomFolio API + 2 workers + frontend + Redis + DB all show green alongside FileFree and Brain. `RENDER_API_KEY` already wired \u2014 pull `live`/`build_failed` per service so F-6-style silent breakage is impossible.",
         "AxiomFolio Next.js migration: 4/102 routes ported (`/`, `/system-status`, `/portfolio`, `/scanner` shells); plan target Q3, decommissions Render static hosting in favor of Vercel \u2014 see [docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md](../axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).",

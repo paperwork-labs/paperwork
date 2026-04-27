@@ -56,7 +56,7 @@ status: active
 | [system-graph](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/system-graph.yaml) | GitHub Actions | on push/PR | GitHub | ✅ Live | `system-graph.json` drift | — | [Architecture](/admin/architecture) |
 | [sprint-lessons-ingest](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/sprint-lessons-ingest.yaml) | GitHub Actions | push `docs/sprints` | GitHub | ✅ Live | Triggers immediate Brain lesson ingest | — | — |
 | [deploy-n8n](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/deploy-n8n.yaml) | GitHub Actions | on push to workflow JSON / manual | GitHub / Hetzner | ✅ Live | Deploy workflow JSON to n8n host | — | [Workflows](/admin/workflows) |
-| [vercel-promote-on-merge](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/vercel-promote-on-merge.yaml) | GitHub Actions | on PR closed to `main` + manual | GitHub + Vercel | ✅ Live | Promote READY preview to production | `VERCEL_API_TOKEN` / `VERCEL_TOKEN` | — |
+| [vercel-promote-on-merge](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/vercel-promote-on-merge.yaml) | GitHub Actions | on PR closed to `main` + manual | GitHub + Vercel | ✅ Live | Promote READY preview to production | `VERCEL_API_TOKEN` | — |
 | [ci](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/ci.yaml) + [persona-vocab](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/persona-vocab.yaml) + [medallion-lint](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/medallion-lint.yaml) + [brain-personas-doc](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/brain-personas-doc.yaml) + [axiomfolio-ci](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/axiomfolio-ci.yml) | GitHub Actions | on push/PR paths | GitHub | ✅ Live | CI matrix / quality gates | — | — |
 
 **Tally:** Prefer the Status column over this line — it drifts. Ex-n8n Brain crons are ✅ **live** when `BRAIN_SCHEDULER_ENABLED`. Optional 🟡 rows still use `BRAIN_OWNS_SPRINT_AUTO_LOGGER`, `BRAIN_OWNS_SPRINT_PLANNER`, `BRAIN_OWNS_AGENT_SPRINT_SCHEDULER`, or `BRAIN_OWNS_PR_TRIAGE`. The n8n shadow mirror family is ⚫ **retired** (module removed).
@@ -68,3 +68,5 @@ status: active
 - [BRAIN_SCHEDULER.md](BRAIN_SCHEDULER.md) — env vars, SQLAlchemy job store, retired mirror
 - [STREAMLINE_SSO_DAGS_2026Q2.md](../sprints/STREAMLINE_SSO_DAGS_2026Q2.md) — sprint T1 / Track K
 - [RENDER_INVENTORY](RENDER_INVENTORY.md) — where `brain-api` runs
+
+*Renamed from `VERCEL_TOKEN` to canonical `VERCEL_API_TOKEN` per Track I2 (2026-04-27).*

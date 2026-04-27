@@ -74,16 +74,16 @@
           "eta": "~15 min"
         },
         {
-          "title": "Remove duplicate `VERCEL_TOKEN` on Render after `VERCEL_API_TOKEN` cutover",
+          "title": "Render `brain-api`: use `VERCEL_API_TOKEN` only (drop legacy `VERCEL_TOKEN` row if present)",
           "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/RENDER_INVENTORY.md",
-          "why": "Brain reads `VERCEL_API_TOKEN` (with legacy `VERCEL_TOKEN` alias). Leaving both forever invites confusion and rotation mistakes.",
+          "why": "Brain and automation read only `VERCEL_API_TOKEN`. A second env row under the old name invites confusion and rotation mistakes.",
           "where": "Render `brain-api` → Environment; see F-3 in `docs/infra/RENDER_INVENTORY.md`.",
           "steps": [
             "1. Confirm only `VERCEL_API_TOKEN` is required in code and workflows (`VERCEL_AUTO_PROMOTE.md`).",
-            "2. **`[VERIFY]`** live service has no dependency on the legacy key name; then delete `VERCEL_TOKEN` from Render if still present."
+            "2. **`[VERIFY]`** If the dashboard still has `VERCEL_TOKEN`, rename that row to `VERCEL_API_TOKEN` (same value) or remove the duplicate after confirming nothing else references the old name."
           ],
           "verification": "Brain infra tools / Studio infra probes still work; no env errors in logs.",
-          "source": "PR #213, F-3 in `docs/infra/RENDER_INVENTORY.md`",
+          "source": "Track I2, F-3 in `docs/infra/RENDER_INVENTORY.md`",
           "eta": "~5 min (after verify)"
         },
         {

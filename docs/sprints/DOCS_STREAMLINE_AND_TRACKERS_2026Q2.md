@@ -103,10 +103,12 @@ Land Phase 1 of the docs streamline, give the company a repo-native long-term tr
 - shipped 2026-04-25: **F-1 (operator, single click)** completed — all AxiomFolio + brain-api + filefree-api services now associated with the consolidated root `render.yaml` Blueprint via Render Dashboard's "New Blueprint → Associate existing services" flow. (PR #143)
 - shipped 2026-04-25: **Vercel — Studio prod redeploy of `f0255542`** — preview build for #143 manually promoted via `vercel promote` (alias-only, no build credit consumed). Stale `/admin/secrets` prerender resolved. The root cause (Vercel webhook miss) is now addressed by the redundant trigger in PR #144's `vercel-promote-on-merge.yaml`. (PR #143 + #144)
 - shipped 2026-04-25: **F-2 launchfree-api decision** — commented out (not deleted) in `render.yaml` with re-enable workflow documented inline. Frontend renders mocks, $7/mo for empty backend defers. (PR #144)
-- **F-3 env var naming (done)**: canonical `VERCEL_API_TOKEN` in `render.yaml`, Studio, Brain, and GitHub Actions; legacy `VERCEL_TOKEN` key accepted by Brain only until removed from Render.
+- **F-3 env var naming (done)**: canonical `VERCEL_API_TOKEN` in `render.yaml`, Studio, Brain, and GitHub Actions (Track I2 removed Brain `VERCEL_TOKEN` alias; founder aligns Render env key name if needed).
 - **F-5 `brain-api` `GITHUB_WEBHOOK_SECRET`**: declare with `sync: false` in `render.yaml`, then operator pastes the value once. Until then GitHub webhooks land but skip signature verification.
 - **Studio `/admin/infrastructure` six-service health**: extend probes so AxiomFolio API + 2 workers + frontend + Redis + DB all show green alongside FileFree and Brain. `RENDER_API_KEY` already wired — pull `live`/`build_failed` per service so F-6-style silent breakage is impossible.
 - AxiomFolio Next.js migration: 4/102 routes ported (`/`, `/system-status`, `/portfolio`, `/scanner` shells); plan target Q3, decommissions Render static hosting in favor of Vercel — see [docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md](../axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).
 - Severity vocabulary review: existing 7 runbooks use yellow/red; if we want S0–S3 vocabulary across the company, that's a one-shot rename (defer until cross-product alignment).
 - Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`.
 - `make sprint-shipped PR=143` once #143 merges to flip this sprint's status to `shipped` and bake the date.
+
+*Renamed from `VERCEL_TOKEN` to canonical `VERCEL_API_TOKEN` per Track I2 (2026-04-27).*
