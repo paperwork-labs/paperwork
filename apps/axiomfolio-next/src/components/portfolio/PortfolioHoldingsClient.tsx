@@ -629,7 +629,7 @@ const PortfolioHoldingsClient: React.FC = () => {
   const openChart = (symbol: string) => setChartSymbol(symbol);
 
   const handleRowClick = (row: EnrichedPosition) => {
-    router.push(`/portfolio/workspace?symbol=${encodeURIComponent(row.symbol)}`);
+    router.push(`/market/workspace?symbol=${encodeURIComponent(row.symbol)}`);
   };
 
   return (
