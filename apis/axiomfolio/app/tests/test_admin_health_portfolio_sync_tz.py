@@ -24,7 +24,7 @@ def _make_account_mock(*, last_successful_sync, account_number: str) -> MagicMoc
 
 def test_portfolio_sync_naive_last_successful_sync_does_not_error():
     """Naive ``last_successful_sync`` vs aware cutoff must not raise or return error dim."""
-    naive_recent = datetime.utcnow() - timedelta(hours=1)
+    naive_recent = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(tzinfo=None)
     assert naive_recent.tzinfo is None
 
     account = _make_account_mock(

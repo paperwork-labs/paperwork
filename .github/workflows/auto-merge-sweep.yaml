@@ -448,3 +448,151 @@ jobs:
               .addRaw(`<!-- auto-merge-sweep:checked:${ts} -->\n`)
               .addCodeBlock(summaryBody, 'text')
               .write();
+
+  # Allowlisted author PRs: merge with squash + delete when Copilot-style GREEN, CI, size, and sync.
+  # Set repository variable `AUTO_MERGE_FOUNDER_LOGINS` (comma list) to include founder usernames
+  # alongside default agent bots. Branch protection and required reviews still apply on GitHub.
+  allowlisted-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Optional: comma-separated GitHub usernames (founders) allowed for this path.
+      MERGE_OK_LOGINS: ${{ vars.AUTO_MERGE_FOUNDER_LOGINS }}
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const today = new Date().toISOString().slice(0, 10);
+            const STATUS_START = '<!-- auto-merge-sweep-allowlist-status:';
+            const STATUS_END = ' -->';
+            const prAuthorBots = new Set([
+              'cursor-agent[bot]', 'claude[bot]', 'github-copilot[bot]',
+              'copilot-pull-request-reviewer[bot]', 'chatgpt-codex-connector[bot]',
+            ]);
+            (process.env.MERGE_OK_LOGINS || '')
+              .split(/[\s,]+/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .forEach((u) => prAuthorBots.add(u));
+            const greenReviewBots = new Set([
+              'github-copilot[bot]', 'copilot-pull-request-reviewer[bot]', 'cursor-agent[bot]', 'claude[bot]',
+            ]);
+
+            const SELF = new Set(['auto-merge', 'sweep', 'Auto-merge dependabot sweep', 'dependabot roll-up', 'rebase PR onto main', 'rebase-pr']);
+
+            const isDep = (p) => p.user && ['dependabot[bot]', 'dependabot-preview[bot]'].includes(p.user.login);
+
+            async function checksReady(sha) {
+              const { data } = await github.rest.checks.listForRef({ owner, repo, ref: sha, per_page: 100 });
+              const notReady = data.check_runs.filter(
+                (c) => !SELF.has(c.name) && !(c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion || ''))
+              );
+              return { ok: notReady.length === 0, notReady };
+            }
+
+            function hasStatusToday(comments) {
+              const marker = STATUS_START + today + STATUS_END;
+              for (const c of comments || []) {
+                if ((c.body || '').includes(marker)) return true;
+              }
+              return false;
+            }
+
+            async function hasGreen(prNumber) {
+              const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number: prNumber, per_page: 100 });
+              for (const c of comments) {
+                const u = c.user && c.user.login;
+                if (!u || !greenReviewBots.has(u)) continue;
+                if ((c.body || '').includes('🟢 GREEN')) return true;
+              }
+              return false;
+            }
+
+            async function isUpToDateWithMain(pr) {
+              const b = (pr.base && pr.base.ref) || 'main';
+              const { data: cmp } = await github.rest.repos.compareCommitsWithBasehead({
+                owner, repo, basehead: `${b}...${(pr.head && pr.head.label) || ''}`,
+              });
+              if (!cmp) return true;
+              return (Number(cmp.behind_by) || 0) === 0;
+            }
+
+            const summaries = [];
+            const { data: list } = await github.rest.pulls.list({ owner, repo, state: 'open', per_page: 100 });
+            for (const stub of list) {
+              if (isDep(stub)) continue;
+              const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: stub.number });
+              const author = pr.user && pr.user.login;
+              if (!author || !prAuthorBots.has(author)) continue;
+              if (pr.draft) continue;
+
+              const { data: issueComments } = await github.rest.issues.listComments({ owner, repo, issue_number: pr.number, per_page: 100 });
+              if (pr.mergeable === null) {
+                continue;
+              }
+
+              const missing = [];
+              if ((pr.additions || 0) > 500) {
+                missing.push(`Diff too large: ${pr.additions} additions (max 500).`);
+              }
+              if (pr.mergeable === false) {
+                missing.push('Merge conflicts: resolve before auto-merge can run.');
+              }
+              if (!(await isUpToDateWithMain(pr))) {
+                missing.push('Branch is not up to date with the base (merge or rebase from `main`).');
+              }
+              if (!(await hasGreen(pr.number))) {
+                missing.push('No allowlisted **🟢 GREEN** comment from a Copilot-style / agent reviewer.');
+              }
+              const { ok, notReady } = await checksReady(pr.head.sha);
+              if (!ok) {
+                const sn = (notReady || []).slice(0, 4).map((c) => `${c.name}=${c.status}/${c.conclusion || 'pending'}`).join(', ');
+                missing.push(`CI not all green: ${sn || 'pending checks'}.`);
+              }
+
+              if (missing.length) {
+                if (!hasStatusToday(issueComments)) {
+                  const body = [
+                    '### Auto-merge (allowlist sweep — status)',
+                    '',
+                    'Did **not** merge; criteria not met:',
+                    ...missing.map((m) => `- ${m}`),
+                    '',
+                    `${STATUS_START}${today}${STATUS_END}`,
+                  ].join('\n');
+                  await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+                }
+                continue;
+              }
+
+              try {
+                await github.rest.pulls.merge({ owner, repo, pull_number: pr.number, merge_method: 'squash' });
+                const isFork = (pr.head && pr.head.repo && pr.head.repo.full_name) !== `${owner}/${repo}`;
+                if (!isFork && pr.head && pr.head.ref) {
+                  try {
+                    await github.rest.git.deleteRef({ owner, repo, ref: 'heads/' + pr.head.ref });
+                  } catch (e) { core.info('delete branch: ' + (e && e.message)); }
+                }
+                summaries.push(`#${pr.number}: merged (allowlist)`);
+              } catch (e) {
+                if (!hasStatusToday(issueComments)) {
+                  await github.rest.issues.createComment({
+                    owner, repo, issue_number: pr.number,
+                    body: [
+                      '### Auto-merge (allowlist sweep — status)',
+                      '',
+                      'Merge API rejected (branch protection, missing approval, or server rule):',
+                      '```', String(e && e.message || e), '```',
+                      '',
+                      `${STATUS_START}${today}${STATUS_END}`,
+                    ].join('\n'),
+                  });
+                }
+                summaries.push(`#${pr.number}: merge error — ${(e && e.message) || e}`);
+              }
+            }
+            const summaryBody = summaries.join('\n') || 'no allowlisted PR action';
+            await core.summary.addHeading('Allowlist merge summary').addCodeBlock(summaryBody, 'text').write();
+            core.info(summaryBody);

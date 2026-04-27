@@ -22,4 +22,13 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 88
-skip_glob = ["migrations/*", "alembic/versions/*"] 
+skip_glob = ["migrations/*", "alembic/versions/*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+# Narrow gate: deprecated utcnow only. Full DTZ is a follow-up (~182 findings).
+# Use: ruff check app/ scripts/ --exclude alembic
+select = ["DTZ003"]

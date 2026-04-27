@@ -59,11 +59,11 @@ PAPERWORK LABS (Holding Company - paperworklabs.com)
 
 ## Logo Assets
 
-**Status**: Canon as of 2026 Q2 finalization. AxiomFolio + consumer droplet-family marks are locked SVGs. **Paperwork Labs (parent) mark** and **Brain** have no repo SVG yet — generate per [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md) (see Parent + Brain sections). *Interim* parent chrome uses hand-authored paperclips in `apps/studio/public/brand/` until the AI paperclip ship lands.
+**Status**: Canon as of 2026 Q2 finalization. AxiomFolio + consumer droplet-family marks are locked SVGs. **Paperwork Labs (parent) mark direction is LOCKED** as of 2026-04-26 — five-prompt system (P1 diagonal expressive default, P2 vertical canonical icon, P3 horizontal lockup, P4 stacked lockup, **P5 clipped wordmark — the clip *clipping* "Paperwork Labs"**) per [`docs/brand/PROMPTS.md`](../../docs/brand/PROMPTS.md). v1 reference renders shipped at `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-{1024,icon-1024}.png` and `apps/studio/public/brand/renders/paperclip-lockup-{horizontal,stacked}-v1.png`. Final SVG retrace + animated component (`packages/ui/src/components/brand/ClippedWordmark.tsx`) is open follow-up; see [`docs/brand/ANIMATION.md`](../../docs/brand/ANIMATION.md) for runtime motion specs. **Brain** has no repo SVG yet — generate per `PROMPTS.md` (Brain section).
 
 | Product / surface | Icon (locked path) | Lockup (light) | Lockup (dark) | Source |
 | --- | --- | --- | --- | --- |
-| Paperwork Labs (parent) | *TBD — AI paperclip* (see PROMPTS) | `apps/studio/public/brand/paperwork-labs-lockup.svg` (interim) | `apps/studio/public/brand/paperwork-labs-lockup-dark.svg` (interim) | AI prompt → SVG (interim: hand) |
+| Paperwork Labs (parent) | `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png` (diagonal, P1) + `paperclip-LOCKED-canonical-icon-1024.png` (vertical, P2 — favicon canon) | `apps/studio/public/brand/renders/paperclip-lockup-horizontal-v1.png` (P3) — SVG retrace pending | `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png` (vertical favicon stays canonical on dark via amber tint swap) — full lockup SVG retrace pending | AI prompt (Nano Banana Pro / Imagen 4) → SVG retrace |
 | Studio | `apps/studio/public/brand/studio-icon.svg` | `apps/studio/public/brand/studio-lockup.svg` | `apps/studio/public/brand/studio-lockup-dark.svg` | hand-authored |
 | AxiomFolio | `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` (alias: `axiomfolio.svg`) | `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | `axiomfolio-lockup-dark.svg` / surface variants in repo | hand-authored (Sankalp) — **canonical** |
 | FileFree | `apps/filefree/public/brand/filefree-icon.svg` | TBD (wordmark in follow-up) | TBD | locked SVG (3 droplets → center dot) |
@@ -80,6 +80,7 @@ See [`docs/brand/README.md`](../../docs/brand/README.md) for the live registry a
 2. **Padding**: `~16px` of breathing room from viewBox edges to mark.
 3. **Stroke width**: `9–11` for stroke-based glyphs; round caps + joins.
 4. **One accent moment per glyph.** Always one. Never two. The accent is the "earned moment" — not decoration. Per-product accent hue (see palette table); not all marks use amber.
+   - **Parent paperclip exception (2026-04-26 LOCK):** the single amber moment may **traverse a curve and an adjacent straight as one continuous geometric span** (e.g., inner U-bend curling into the inner straight wire below it). Visually it can read as "two zones" because the wire bends through it; geometrically it must remain one unbroken span (~⅙–¼ of total perimeter), never two discrete spans separated by slate. This continuous-extended treatment is **parent-only** — sub-product marks keep the tighter single-zone rule.
 5. **No gradients, drop shadows, or filters** in the SVG file. Marketing surfaces add ambient effects in CSS.
 6. **Wordmark font**: Inter 600, `letter-spacing: -0.5`, `font-size: 62`. System stack fallback.
 7. **Wordmark color is surface-aware** — slate-night `#0F172A` on light surfaces, near-white `#F8FAFC` on dark. (Confirmed against AxiomFolio's deployed UI, which renders the wordmark in near-white on its slate-night login surface.) Distill and Trinkets use brand-tinted ink on light surface; see palette table.
@@ -103,6 +104,14 @@ What is NOT enforced:
 - "Every mark needs an amber accent" — rejected. Amber is AxiomFolio's earned spark and the parent's by chain-of-life inheritance. Other products use accents that fit their personality.
 
 The 2026-04-25 first cut put every mark on Azure + Amber and they came out indistinguishable. The 2026-04-25 second cut tried to enforce a one-template lockup on every product and homogenized them again. Sankalp's call: "forced is the key word, organic similarities are beautiful." Per-product full palette is the locked direction. See [`docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md`](../../docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md) §1.2 for the full rationale.
+
+### Sign-in / SSO wordmark (Clerk — Q2 2026 lock)
+
+Clerk is the live identity layer; copy and hierarchy follow **app-name primary** + **Paperwork ID as the identity model** (not as every page’s H1). Reference: Q2 Tech Debt Convergence plan (SSO + wordmark) and `@paperwork-labs/auth-clerk` `SignInShell` (`appName`, `appWordmark`, `appTagline`, `signInVerb`).
+
+- **Product domains** (FileFree, LaunchFree, Distill, Trinkets, AxiomFolio, Studio admin): the **app name** leads visually—e.g. "Sign in to FileFree" with the product wordmark large; then Clerk’s embedded sign-in; then **"by Paperwork Labs"** attribution; then a small **"Your Paperwork ID also works on…"** line naming sibling products. Do **not** use **"Paperwork ID"** as the only headline on these pages (users arrived for the product, not the umbrella ID first).
+- **`accounts.paperworklabs.com` only** (dedicated `apps/accounts/` host): **"Paperwork ID"** may be the **primary** headline, with company lockup and one-account-for-everything explainer. This is the **sole** surface where the unified-account name is allowed to own the H1.
+- **Deprecated (do not ship)**: universal headlines such as "Paperwork Labs · Single Sign-On" or reusing "Paperwork ID" as the default sign-in H1 on every app—these are superseded by the context-aware pattern above.
 
 ### Per-product mark palette (canonical SVG marks + surfaces)
 

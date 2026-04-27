@@ -1,15 +1,29 @@
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
 @import "@paperwork-labs/ui/themes.css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Track M — Trinkets light-surface tokens (brand.mdc / PROMPTS.md) */
+  --brand-primary: 99 102 241;
+  --brand-accent: 56 189 248;
+  --brand-ink: 30 27 75;
+  --brand-surface: 248 250 252;
+
   --background: 20 14% 4%;
   --foreground: 45 100% 97%;
 }
 
+.dark {
+  --brand-primary: 165 180 252;
+  --brand-accent: 125 211 252;
+  --brand-ink: 248 250 252;
+  --brand-surface: 12 10 9;
+}
+
 @layer base {
   body {
-    @apply bg-stone-950 text-amber-50 antialiased;
+    @apply bg-brand-surface text-brand-ink antialiased;
   }
 }

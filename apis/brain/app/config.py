@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     SECRETS_API_KEY: str = ""
     BRAIN_API_SECRET: str = ""
     BRAIN_MCP_TOKEN: str = ""
+    # J2/J3: Studio `/admin/brain-learning` + Brain `GET /api/v1/admin/brain/*` observability.
+    # When false, those routes return 403 (scheduler unchanged).
+    BRAIN_LEARNING_DASHBOARD_ENABLED: bool = True
     STUDIO_URL: str = "https://paperworklabs.com"
     BRAIN_URL: str = "https://brain.paperworklabs.com"
     AXIOMFOLIO_API_URL: str = "http://localhost:8100"
@@ -94,6 +97,10 @@ class Settings(BaseSettings):
     # (/persona, etc). Leave empty in dev to skip verification.
     SLACK_SIGNING_SECRET: str = ""
     BRAIN_PR_REVIEW_MODEL: str = ""
+    # When true, Brain's PR sweep runs optional triage classifiers
+    # (stale nudge, thin ready review, rebase assist). Default off; founders
+    # enable when the workflow/ Actions split is ready.
+    BRAIN_OWNS_PR_TRIAGE: bool = False
     MAX_ITERATIONS: int = 5
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_SECRET_KEY: str = ""

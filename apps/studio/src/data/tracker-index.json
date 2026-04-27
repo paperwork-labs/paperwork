@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "5ec401254e91",
+  "content_hash": "2254aa8fc083",
   "products": [
     {
       "label": "AxiomFolio",
@@ -367,13 +367,13 @@
       ],
       "outcome_bullets": [
         "_Tracking \u2014 updates as each track ships_",
+        "2026-04-26: Track K \u2014 `brain_data_source_monitor` cutover (LA tz, `BRAIN_OWNS_DATA_SOURCE_MONITOR=true`)",
+        "2026-04-26: Track K \u2014 `brain_data_deep_validator` cutover (LA tz, `BRAIN_OWNS_DATA_DEEP_VALIDATOR=true`)",
         "shipped 2026-04-25: **T2.3** \u2014 Persona vocabulary unified across Brain `PersonaSpec/`, Studio `WORKFLOW_META`, `system-graph.json` `owner_persona`, and n8n `persona_pin`. CI gate `scripts/check_persona_vocabulary.py` blocks future drift. PR #150.",
         "shipped 2026-04-25: **T3.1b** \u2014 Studio Clerk pages adopt the dark-themed `studioClerkAppearance` (HSL CSS-var bridge to Clerk variables + custom `elements` Tailwind). PR #152.",
         "shipped 2026-04-26: **T3.2 (Trinkets)** \u2014 `<ClerkProvider>`, sign-in/up catch-all routes, `clerkMiddleware` (public utility app; no legacy session or Basic Auth to compose). Trinkets Clerk appearance: indigo `#6366F1` + sky cyan `#38BDF8`. Runbook: [docs/infra/CLERK_TRINKETS.md](../infra/CLERK_TRINKETS.md). PR #197.",
         "shipped 2026-04-26: **T3.2 (Distill)** \u2014 `@clerk/nextjs` + `<ClerkProvider>`, sign-in/sign-up catch-alls, `clerkMiddleware` on `/dashboard` only (no legacy gate), and `distillClerkAppearance` (teal `#0F766E` + burnt orange `#C2410C`). Runbook: [docs/infra/CLERK_DISTILL.md](../infra/CLERK_DISTILL.md). PR #198.",
-        "shipped 2026-04-25: **T3.4** \u2014 AxiomFolio `axiomfolio-next` Clerk UI themed via `axiomfolioClerkAppearance` + `ClerkAuthPageShell`; `@clerk/themes` aligned with other apps. Runbook: [docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming). PR #167.",
-        "shipped 2026-04-25: **T4** \u2014 Replaced Studio's placeholder DAG views with `@xyflow/react` graphs that survive real persona / workflow shapes (zoom, pan, labelled edges). PR #147.",
-        "shipped 2026-04-26: **T5 (settings ports)** \u2014 Remaining settings routes: account risk, data privacy, notifications, and users (`apps/axiomfolio-next/src/app/settings/*`, client components under `src/components/settings/`). PR #169."
+        "shipped 2026-04-25: **T3.4** \u2014 AxiomFolio `axiomfolio-next` Clerk UI themed via `axiomfolioClerkAppearance` + `ClerkAuthPageShell`; `@clerk/themes` aligned with other apps. Runbook: [docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming). PR #167."
       ],
       "owner": "engineering",
       "path": "docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md",
