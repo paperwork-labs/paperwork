@@ -83,7 +83,7 @@ export const FormationRequestSchema = z.object({
   effectiveDate: z.string().datetime().optional(),
   fiscalYearEnd: z.string().optional(),
   isManagerManaged: z.boolean().default(false),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type FormationRequest = z.infer<typeof FormationRequestSchema>;
@@ -109,7 +109,7 @@ export const FilingResultSchema = z.object({
   documents: z.array(z.string()).default([]),
   errorCode: z.string().optional(),
   errorMessage: z.string().optional(),
-  errorDetails: z.record(z.unknown()).optional(),
+  errorDetails: z.record(z.string(), z.unknown()).optional(),
   retryCount: z.number().default(0),
   lastAttemptAt: z.string().datetime().optional(),
 });
@@ -134,7 +134,7 @@ export const PortalStepSchema = z.object({
         "file",
       ]),
       value: z.string().optional(),
-      valueMapping: z.record(z.string()).optional(),
+      valueMapping: z.record(z.string(), z.string()).optional(),
     })
   ),
   submitButton: z.string().optional(),
