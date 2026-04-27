@@ -89,7 +89,7 @@ function moneynessBadgeClass(m: string): string {
 /* Main Component                                                      */
 /* ------------------------------------------------------------------ */
 
-const PortfolioOptions: React.FC = () => {
+const PortfolioOptionsClient: React.FC = () => {
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('positions');
   const [posView, setPosView] = useState<PosView>('card');
@@ -2159,4 +2159,4 @@ const OptionsHistoryTab: React.FC<{ accountId?: string }> = ({ accountId }) => {
   );
 };
 
-export default PortfolioOptions;
+export default PortfolioOptionsClient;
