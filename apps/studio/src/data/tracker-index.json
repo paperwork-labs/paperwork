@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "a76215bdf3d1",
+  "content_hash": "5ec401254e91",
   "products": [
     {
       "label": "AxiomFolio",
@@ -486,7 +486,8 @@
         "`/admin/products/<slug>/plan` per-product master plan views \u2014 moving to follow-up sprint",
         "`scripts/generate_tracker_index.py` to unify TASKS + sprints + plans + per-product PRDs into one JSON index \u2014 moving to follow-up sprint",
         "Friday CFO digest via Brain `persona_pin=cfo`",
-        "`/sprint`, `/tasks`, `/plan <slug>` Slack slash commands"
+        "`/sprint`, `/tasks`, `/plan <slug>` Slack slash commands",
+        "Shipped (2026-04-26):: Vercel auto-promote matrix expanded to include `axiomfolio-next`, `trinkets`, and `accounts` (placeholder `TBD_CREATE_BEFORE_MERGE` until Vercel projects are linked; skip-guard in workflow). See `.github/workflows/vercel-promote-on-merge.yaml` and `docs/infra/VERCEL_AUTO_PROMOTE.md`."
       ],
       "goal": "Land the infrastructure and automation foundation Paperwork Labs needs before feature work resumes \u2014 persona platform, model selection, doc-vs-code truth checks, AxiomFolio brain delegation, and a Studio command center that stays honest about reality.",
       "lessons": [
