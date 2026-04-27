@@ -2,7 +2,7 @@
  * MonteCarlo page
  * ===============
  *
- * /backtest/monte-carlo — Pro+ tier-gated. Lets the user paste a list
+ * /lab/monte-carlo — Pro+ tier-gated. Lets the user paste a list
  * of historical trade returns (or in a future iteration, load them
  * from a saved backtest study) and renders the resulting equity-curve
  * fan chart plus a summary of drawdown / Sharpe / probability stats.

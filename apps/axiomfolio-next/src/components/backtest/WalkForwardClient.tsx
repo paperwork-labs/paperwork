@@ -17,7 +17,7 @@ import {
 import useEntitlement from '@/hooks/useEntitlement';
 
 /**
- * /backtest/walk-forward — landing for the walk-forward optimizer.
+ * /lab/walk-forward — landing for the walk-forward optimizer.
  *
  * Layout:
  *   [Form pane]   [Results pane]
