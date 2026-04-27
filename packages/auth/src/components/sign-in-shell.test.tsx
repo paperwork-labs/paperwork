@@ -96,7 +96,7 @@ describe("<SignInShell>", () => {
         appName="AxiomFolio"
         appSlug="axiomfolio"
         appWordmark={<span>AxiomFolio</span>}
-        appTagline="Strategy-native portfolio intelligence"
+        appTagline="Portfolio + signals."
       >
         <div>[clerk]</div>
       </SignInShell>,
@@ -130,7 +130,7 @@ describe("<SignInShell>", () => {
       <SignInShell
         appName="Distill"
         appWordmark={<span>Distill</span>}
-        appTagline="Beverage industry intelligence"
+        appTagline="Compliance automation for platforms."
         signInVerb="Welcome back to Distill"
       >
         <div>[clerk]</div>
@@ -147,7 +147,7 @@ describe("<SignInShell>", () => {
       <SignInShell
         appName="Trinkets"
         appWordmark={<span>Trinkets</span>}
-        appTagline="Personalized gift discovery"
+        appTagline="Free utility tools by FileFree."
       >
         <div data-testid="clerk-mount">{"<SignIn />"}</div>
       </SignInShell>,

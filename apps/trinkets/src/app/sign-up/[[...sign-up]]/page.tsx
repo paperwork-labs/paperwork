@@ -12,7 +12,7 @@ export default function SignUpPage() {
         appName="Trinkets"
         appSlug="trinkets"
         appWordmark={<TrinketsWordmark />}
-        appTagline="Personalized gift discovery"
+        appTagline="Free utility tools by FileFree."
         appearance={trinketsAppearance}
       >
         <SignUp />

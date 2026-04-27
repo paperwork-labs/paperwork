@@ -6,7 +6,7 @@ import { Providers } from "../providers";
 
 export const metadata: Metadata = {
   title: "AxiomFolio",
-  description: "Strategy-native portfolio intelligence — Next.js 16 (AxiomFolio).",
+  description: "Portfolio + signals — Next.js 16 (AxiomFolio).",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
