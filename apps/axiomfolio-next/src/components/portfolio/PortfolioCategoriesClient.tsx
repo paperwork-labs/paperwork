@@ -738,7 +738,7 @@ const FIXED_TABS = [
   { key: 'custom', label: 'Custom' },
 ] as const;
 
-const PortfolioCategories: React.FC = () => {
+const PortfolioCategoriesClient: React.FC = () => {
   const { currency } = useUserPreferences();
   const queryClient = useQueryClient();
 
@@ -1365,4 +1365,4 @@ const PortfolioCategories: React.FC = () => {
   );
 };
 
-export default PortfolioCategories;
+export default PortfolioCategoriesClient;
