@@ -7,7 +7,7 @@
  * "0" placeholders masquerading as real values (see `no-silent-fallback`).
  */
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { formatMoney } from '@/utils/format';
 
 interface FooterCardLinkProps {
-  to: string;
+  href: string;
   label: string;
   state: 'loading' | 'error' | 'empty' | 'data';
   value: string;
@@ -31,7 +31,7 @@ interface FooterCardLinkProps {
   className?: string;
 }
 
-function FooterCardLink({ to, label, state, value, sub, color, className }: FooterCardLinkProps) {
+function FooterCardLink({ href, label, state, value, sub, color, className }: FooterCardLinkProps) {
   if (state === 'loading') {
     return (
       <Card variant="flat" size="none" className={cn('flex-1 min-w-[140px]', className)}>
@@ -45,7 +45,7 @@ function FooterCardLink({ to, label, state, value, sub, color, className }: Foot
   }
   return (
     <Link
-      to={to}
+      href={href}
       aria-label={`${label}: ${value}${sub ? ` (${sub})` : ''}`}
       className={cn(
         'flex-1 min-w-[140px] rounded-lg transition-transform duration-200 hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
@@ -124,7 +124,7 @@ function QuietFooterInner() {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       <FooterCardLink
-        to="/portfolio/income"
+        href="/portfolio/income"
         label="YTD Income"
         state={
           pnlState === 'data' && dividends == null
@@ -144,7 +144,7 @@ function QuietFooterInner() {
         color="status.success"
       />
       <FooterCardLink
-        to="/portfolio/tax"
+        href="/portfolio/tax"
         label="YTD Realized"
         state={
           pnlState === 'data' && realized == null
@@ -166,7 +166,7 @@ function QuietFooterInner() {
         color={realized != null && realized < 0 ? 'status.danger' : 'status.success'}
       />
       <FooterCardLink
-        to="/portfolio?tab=risk"
+        href="/portfolio?tab=risk"
         label="Portfolio Heat"
         state={
           riskState === 'data' && heatPct == null
@@ -186,7 +186,7 @@ function QuietFooterInner() {
         color={heatPct != null && heatPct >= 6 ? 'status.warning' : undefined}
       />
       <FooterCardLink
-        to="/portfolio?tab=allocation"
+        href="/portfolio?tab=allocation"
         label="Concentration Top-5"
         state={
           insightsState === 'data' && concentrationTop5 == null
