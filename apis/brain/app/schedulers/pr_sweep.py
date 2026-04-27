@@ -257,6 +257,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
     except Exception:
         logger.exception("Failed to install n8n_mirror shadow jobs")
 
+    try:
+        from app.schedulers import agent_sprint_scheduler
+
+        agent_sprint_scheduler.install(sched)
+    except Exception:
+        logger.exception("Failed to install agent_sprint_scheduler job")
+
     sched.start()
     _scheduler = sched
     logger.info("APScheduler started: pr_sweep every %d min + proactive_cadence hourly", minutes)
