@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     # (/persona, etc). Leave empty in dev to skip verification.
     SLACK_SIGNING_SECRET: str = ""
     BRAIN_PR_REVIEW_MODEL: str = ""
+    # When true, Brain's PR sweep runs optional triage classifiers
+    # (stale nudge, thin ready review, rebase assist). Default off; founders
+    # enable when the workflow/ Actions split is ready.
+    BRAIN_OWNS_PR_TRIAGE: bool = False
     MAX_ITERATIONS: int = 5
     LANGFUSE_PUBLIC_KEY: str = ""
     LANGFUSE_SECRET_KEY: str = ""
