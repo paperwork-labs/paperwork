@@ -48,11 +48,11 @@ The decision tree is the **policy** layer; the repo uses explicit **API slugs** 
 
 `mock` in tests and local no-key modes may stand in for live providers; never treat `mock` as production routing.
 
-**n8n workflows in `infra/hetzner/workflows/` (active tree) with no LLM node:** `decision-logger`, `data-annual-update`, `data-source-monitor`, `data-deep-validator`, `credential-expiry-check`, `error-notification`, `infra-status-slash`, `infra-health-check`, `infra-heartbeat` — determinism, HTTP, and Slack only; no registry row required unless an AI node is added.
+**n8n workflows in `infra/hetzner/workflows/` (active `*.json` glob, excluding `archive/` and `retired/`) with no LLM node:** `decision-logger`, `data-annual-update`, `data-source-monitor`, `data-deep-validator`, `error-notification`, `infra-status-slash` — determinism, HTTP, and Slack only; no registry row required unless an AI node is added. (Credential expiry, infra heartbeat, and infra health exports live under `retired/`; Brain runs those jobs in-process.)
 
 ## Deployed assignments
 
-**Last verified:** 2026-04-25 (against `apis/brain/app/personas/specs/*.yaml` and `infra/hetzner/workflows/*.json`, excluding `archive/` and `_reference/`). Cost band is a **rough** all-in guess per call (classifier + main completion + small overhead); true spend varies with tokens and escalations.
+**Last verified:** 2026-04-26 (against `apis/brain/app/personas/specs/*.yaml` and `infra/hetzner/workflows/*.json`, excluding `archive/`, `retired/`, and `_reference/`). Cost band is a **rough** all-in guess per call (classifier + main completion + small overhead); true spend varies with tokens and escalations.
 
 ### Brain PersonaSpec (default → escalation on `escalate_if` match)
 
@@ -79,15 +79,13 @@ The decision tree is the **policy** layer; the repo uses explicit **API slugs** 
 
 | Persona or label | Workflow trigger | Model (today) | Est. $ / run |
 | --- | --- | --- | --- |
-| (classifier) | **Brain Daily Trigger** — cron, `POST …/brain/process` | **Brain-routed** (no `persona_pin`; `ClassifyAndRoute`) | $0.02–0.30 |
-| (classifier) | **Brain Weekly Trigger** — cron, same API | **Brain-routed** (no pin) | $0.02–0.30 |
-| (classifier) | **Brain PR Summary** — GitHub webhook, same API | **Brain-routed** (no pin) | $0.05–0.40 |
+| (classifier) | **Brain daily / weekly / PR** — `brain_daily_briefing`, `brain_weekly_briefing`, `pr_sweep` (replaces exports in `retired/`) | **Brain-routed** | $0.02–0.40 |
 | (thread persona) | **Brain Slack Adapter** — Slack events → same API, thread context | **Brain-routed** (no pin; sticky / classify) | $0.02–0.50 |
 | strategy | **Sprint kickoff** — schedule, `persona_pin: strategy` | **Brain-routed via `strategy` PersonaSpec** | $0.05–0.50 |
+| strategy | **Weekly strategy** — `brain_weekly_strategy` (replaces `retired/weekly-strategy-checkin.json`) | **Brain-routed** (`strategy` persona) | $0.10–0.50 |
 | cpa | **CPA tax review** — webhook, `persona_pin: cpa` | **Brain-routed via `cpa` PersonaSpec** | $0.05–0.60 |
 | qa | **QA security scan** — webhook, `persona_pin: qa` | **Brain-routed via `qa` PersonaSpec** | $0.05–0.60 |
 | — | **Sprint close** — Fri cron, `langchain.openAi` | **Direct OpenAI `gpt-4o` (Track 2.1 migration pending)** | $0.10–0.50 |
-| — | **Weekly strategy check-in** — Mon cron, `langchain.openAi` | **Direct OpenAI `gpt-4o` (Track 2.1 migration pending)** | $0.10–0.50 |
 | — | **Social content generator** — webhook, `langchain.openAi` | **Direct OpenAI `gpt-4o` (Track 2.1 migration pending)** | $0.10–0.50 |
 | — | **Growth content writer** — webhook, `langchain.openAi` | **Direct OpenAI `gpt-4o` (Track 2.1 migration pending)** | $0.10–0.50 |
 | — | **Partnership outreach drafter** — webhook, `langchain.openAi` | **Direct OpenAI `gpt-4o` (Track 2.1 migration pending)** | $0.10–0.50 |
@@ -96,7 +94,7 @@ Other exported workflows in the same folder (e.g. decision logger, data monitors
 
 *Known gap:* the decision tree **labels** (GPT-5.4, Gemini 2.5 Pro, Claude “4.6” marketing names) are not all mirrored as one-to-one `model_registry.json` slugs today. When a task requires a slug that is not in PersonaSpec + registry, the AI Ops lead must add it in code and registry first.
 
-**Upcoming (planned, not current product):** See [`docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`](sprints/STREAMLINE_SSO_DAGS_2026Q2.md) — Track 1 migrates the remaining n8n direct-OpenAI nodes onto Brain personas (so model selection routes through `agent-ops` policy instead of being pinned in workflow JSON).
+**Upcoming (planned, not current product):** See [`docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`](sprints/STREAMLINE_SSO_DAGS_2026Q2.md) — remaining n8n direct-OpenAI nodes (e.g. sprint close, growth) should migrate onto Brain personas when touched.
 
 ## Provider dashboards
 

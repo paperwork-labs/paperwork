@@ -2,7 +2,7 @@
 
 Replaces the **Weekly Strategy Check-in** n8n workflow (``0 9 * * 1``) that
 called OpenAI in n8n and posted to ``#all-paperwork-labs`` — see
-``infra/hetzner/workflows/weekly-strategy-checkin.json`` and
+``infra/hetzner/workflows/retired/weekly-strategy-checkin.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md``.
 
 Cutover path uses :func:`app.services.agent.process` with ``persona_pin="strategy"``

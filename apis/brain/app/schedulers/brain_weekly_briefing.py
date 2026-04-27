@@ -2,7 +2,7 @@
 
 Replaces the **Brain Weekly Trigger** n8n workflow (``0 18 * * 0``) that POSTs
 ``/api/v1/brain/process`` and forwards the reply to Slack — see
-``infra/hetzner/workflows/brain-weekly-trigger.json`` and
+``infra/hetzner/workflows/retired/brain-weekly-trigger.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md``.
 """
 

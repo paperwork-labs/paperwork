@@ -2,7 +2,7 @@
 
 Replaces the **Infra Health Check** n8n workflow (30-minute interval) that queries
 the n8n REST API and posts deduped alerts to Slack — see
-``infra/hetzner/workflows/infra-health-check.json`` and
+``infra/hetzner/workflows/retired/infra-health-check.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md``.
 
 This is the **first** first-party job using :class:`IntervalTrigger` (not

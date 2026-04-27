@@ -2,7 +2,7 @@
 
 Replaces the **Infra Heartbeat** n8n workflow (``0 8 * * *``) that queries the
 n8n REST API and posts a summary to the engineering Slack channel — see
-``infra/hetzner/workflows/infra-heartbeat.json`` and
+``infra/hetzner/workflows/retired/infra-heartbeat.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`` (T1.3).
 """
 

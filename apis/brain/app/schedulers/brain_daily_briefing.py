@@ -2,7 +2,7 @@
 
 Replaces the **Brain Daily Trigger** n8n workflow (``0 7 * * *``) that POSTs
 ``/api/v1/brain/process`` and forwards the reply to ``#daily-briefing`` — see
-``infra/hetzner/workflows/brain-daily-trigger.json`` and
+``infra/hetzner/workflows/retired/brain-daily-trigger.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`` (T1.2).
 """
 

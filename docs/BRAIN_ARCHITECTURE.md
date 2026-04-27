@@ -2218,7 +2218,7 @@ Branch: `feat/brain-phase-1-core`
 - Weekly Brain Health Report SQL with 5 AI Lead persona sections (F65/D30)
 - Golden test set: 10 queries in tests/golden_queries.json (F93)
 - @-mention persona forcing (F37)
-- Brain API health monitoring in infra-health-check.json
+- Brain API health monitoring in `brain_infra_health` (legacy export: `infra/hetzner/workflows/retired/infra-health-check.json`)
 - Three-layer eval columns in audit_log schema (D34/F114)
 - Defense-in-depth: 4-layer guardrail architecture (D36)
 - `constitution.yaml` file with initial principles + logging (D37)

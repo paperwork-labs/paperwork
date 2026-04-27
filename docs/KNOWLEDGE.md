@@ -350,7 +350,7 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 **Credential Expiry Tracking** (implemented 2026-03-29):
 - Vault model supports `expires_at` and `last_rotated_at` fields
 - `populate-vault.sh` parses `# Expires: YYYY-MM-DD` comments from `.env.secrets`
-- n8n workflow `credential-expiry-check.json` runs daily at 8am PT, queries vault, alerts to `#alerts`
+- Brain job `brain_credential_expiry` (gated by `BRAIN_OWNS_CREDENTIAL_EXPIRY`, export in `infra/hetzner/workflows/retired/credential-expiry-check.json`) runs daily at 8am PT, queries vault, alerts to `#alerts`
 - Tiered urgency: 30-day notice → 14-day warning → 7-day urgent → 1-day critical
 
 **Credential Expiry Dates**:
