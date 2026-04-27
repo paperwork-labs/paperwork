@@ -53,6 +53,26 @@ async def _run_pr_sweep() -> None:
     except Exception:
         logger.exception("pr_sweep review raised — will retry next interval")
 
+    if getattr(settings, "BRAIN_OWNS_PR_TRIAGE", False):
+        try:
+            from app.services import pr_sweep_triage
+
+            triage_report: dict[str, Any] = await pr_sweep_triage.run_pr_triage_sweep(
+                org_id="paperwork-labs",
+                limit=30,
+            )
+            if triage_report.get("ok"):
+                logger.info(
+                    "pr_sweep triage: stale=%d ready=%d rebase=%d",
+                    len(triage_report.get("stale", [])),
+                    len(triage_report.get("ready", [])),
+                    len(triage_report.get("rebase", [])),
+                )
+            else:
+                logger.warning("pr_sweep triage: %s", triage_report.get("error", triage_report.get("skipped")))
+        except Exception:
+            logger.exception("pr_sweep triage raised — will retry next interval")
+
     try:
         merge_report: dict[str, Any] = await merge_ready_prs(limit=50)
         logger.info(
