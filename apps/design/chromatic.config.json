@@ -1,0 +1,5 @@
+{
+  "$comment": "projectId: paste from Chromatic → Manage → Configure. CI uses CHROMATIC_PROJECT_TOKEN; the token implies the project when omitted locally.",
+  "projectId": "REPLACE_ME_IN_CHROMATIC_DASHBOARD",
+  "storybookBuildDir": "storybook-static"
+}

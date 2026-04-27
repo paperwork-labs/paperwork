@@ -43,6 +43,8 @@
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
+    "@storybook/react": "^8.6.18",
+    "@storybook/test": "^8.6.18",
     "@types/react": "^19.2.0",
     "typescript": "^5.6.0"
   }

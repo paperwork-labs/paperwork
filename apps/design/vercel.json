@@ -1,0 +1,5 @@
+{
+  "buildCommand": "pnpm --filter @paperwork-labs/design build-storybook",
+  "outputDirectory": "apps/design/storybook-static",
+  "installCommand": "pnpm install --filter @paperwork-labs/design..."
+}

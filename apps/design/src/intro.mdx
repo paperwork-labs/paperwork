@@ -1,0 +1,20 @@
+import { Meta } from "@storybook/blocks";
+
+<Meta title="Intro/Design canvas" />
+
+# Paperwork Labs — design canvas
+
+This Storybook is the **shared visual source of truth** for brand and UI work:
+
+- **Brand** — paperclip system (P1 / P2 / P5) and wordmark, documented alongside `docs/brand/`.
+- **UI** — shadcn-style primitives from `@paperwork-labs/ui` with Studio-aligned tokens.
+
+**Development:** from the repo root, run
+
+```bash
+pnpm --filter @paperwork-labs/design storybook
+```
+
+**Production:** the static build is intended for Vercel at `design.paperworklabs.com`. See `docs/infra/DESIGN_CANVAS_DEPLOY.md` for linking the project, DNS, and Chromatic.
+
+Visual regression tests run in **Chromatic** on `main` and pull requests when `CHROMATIC_PROJECT_TOKEN` is configured in GitHub Actions secrets.

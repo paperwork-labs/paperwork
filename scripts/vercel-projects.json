@@ -1,0 +1,11 @@
+{
+  "description": "Paperwork Labs Vercel apps: path under apps/ and production domain for automation and runbooks.",
+  "projects": {
+    "design": {
+      "package": "@paperwork-labs/design",
+      "path": "apps/design",
+      "productionDomain": "design.paperworklabs.com",
+      "notes": "Storybook static site; build via pnpm --filter @paperwork-labs/design build-storybook"
+    }
+  }
+}

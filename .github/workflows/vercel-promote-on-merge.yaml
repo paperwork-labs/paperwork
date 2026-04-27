@@ -70,6 +70,8 @@ jobs:
             project_id: TBD_CREATE_BEFORE_MERGE
           - project: trinkets
             project_id: TBD_CREATE_BEFORE_MERGE
+          - project: design
+            project_id: TBD_CREATE_BEFORE_MERGE
           - project: accounts
             project_id: TBD_CREATE_BEFORE_MERGE
     env:

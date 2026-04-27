@@ -52,7 +52,6 @@
     "vaul": "^1.1.2"
   },
   "devDependencies": {
-    "@ladle/react": "^5.0.3",
     "@tailwindcss/vite": "^4.2.2",
     "@testing-library/dom": "^10.0.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -87,8 +86,6 @@
     "test:ui": "vitest",
     "type-check": "tsc --noEmit",
     "assert:no-hardcoded-usd": "node scripts/assert-no-hardcoded-usd.mjs",
-    "ladle": "ladle serve --port 61000",
-    "ladle:build": "ladle build",
     "pwa:icons": "node scripts/generate-pwa-icons.mjs"
   },
   "browserslist": {

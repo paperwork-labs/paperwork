@@ -1,0 +1,51 @@
+# Visual regression for the design canvas (Storybook → Chromatic).
+# Requires: GitHub secret CHROMATIC_PROJECT_TOKEN (Chromatic → Manage → Configure).
+name: Chromatic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/design/**"
+      - "packages/ui/**"
+      - ".github/workflows/chromatic.yaml"
+  pull_request:
+    paths:
+      - "apps/design/**"
+      - "packages/ui/**"
+      - ".github/workflows/chromatic.yaml"
+
+concurrency:
+  group: chromatic-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Publish to Chromatic
+        uses: chromaui/action@v11
+        with:
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          workingDir: apps/design
+          storybookBaseDir: apps/design
+          buildScriptName: build-storybook
