@@ -136,18 +136,22 @@ export function BrainLearningClient({
                   <LineChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                     <XAxis
                       dataKey="label"
-                      tick={{ fill: "#71717a", fontSize: 10 }}
+                      tick={{ fill: "rgb(var(--brand-text-muted) / 1)", fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
                     />
                     <Tooltip
-                      contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", fontSize: 12 }}
+                      contentStyle={{
+                        background: "rgb(var(--brand-surface-elevated) / 1)",
+                        border: "1px solid rgb(var(--brand-border) / 1)",
+                        fontSize: 12,
+                      }}
                     />
                     <Line
                       type="monotone"
                       dataKey="episode_count"
                       name="Episodes"
-                      stroke="#a1a1aa"
+                      stroke="rgb(var(--brand-text-subtle) / 1)"
                       strokeWidth={2}
                       dot={false}
                     />
@@ -155,14 +159,14 @@ export function BrainLearningClient({
                       type="monotone"
                       dataKey="decision_count"
                       name="Decisions"
-                      stroke="#4ade80"
+                      stroke="rgb(var(--brand-metric-up) / 1)"
                       strokeWidth={2}
                       dot={false}
                     />
                     <YAxis
                       width={32}
                       domain={[0, maxSpark]}
-                      tick={{ fill: "#52525b", fontSize: 10 }}
+                      tick={{ fill: "rgb(var(--brand-text-faint) / 1)", fontSize: 10 }}
                       axisLine={false}
                       tickLine={false}
                     />

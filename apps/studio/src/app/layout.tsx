@@ -44,6 +44,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
+  /* PWA: canonical slate-night (brand.mdc); `themeColor` has no `var(--brand-surface)` */
   themeColor: "#0F172A",
 };
 

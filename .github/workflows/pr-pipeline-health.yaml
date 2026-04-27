@@ -1,0 +1,35 @@
+# Nightly (UTC) + manual snapshot of open PRs, “behind main”, check health, and
+# a narrow “automation gap” count (sweep-shaped bot/allowlist PRs that are green
+# + mergeable + up to date but still open — e.g. branch protection or budget).
+name: PR pipeline health report
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: pr-pipeline-health
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate metrics
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          export GITHUB_WORKSPACE="${GITHUB_WORKSPACE:-$PWD}"
+          export MAIN_REF
+          MAIN_REF="$(gh api "repos/${GITHUB_REPOSITORY}" -q .default_branch)"
+          node .github/scripts/pr_pipeline_health.mjs

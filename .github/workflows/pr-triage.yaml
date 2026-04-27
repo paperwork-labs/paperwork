@@ -1,0 +1,208 @@
+name: PR triage labels
+
+# Nightly classification of open PRs: merge health + staleness. Idempotent.
+# Labels are created if missing. See docs/infra/PR_PIPELINE_AUTOMATION.md.
+
+on:
+  schedule:
+    - cron: "30 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: read
+
+concurrency:
+  group: pr-triage
+  cancel-in-progress: false
+
+jobs:
+  classify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const PRIMARY = ['green-mergeable', 'yellow-needs-fix', 'red-blocked'];
+            const STALE = ['stale-7d', 'stale-14d'];
+
+            const SELF_CHECK_NAMES = new Set([
+              'auto-merge',
+              'sweep',
+              'Auto-merge dependabot sweep',
+              'agent-pr-merge',
+              'Auto-merge GREEN agent PRs',
+              'merge-green-agent-prs',
+              'PR triage',
+              'pr-triage',
+            ]);
+
+            const LABEL_SPECS = [
+              { name: 'green-mergeable', color: '0E8A16', description: 'CI green, mergeable, no conflicts (triage bot)' },
+              { name: 'yellow-needs-fix', color: 'FBCA04', description: 'Failing checks; likely recoverable without conflict resolution' },
+              { name: 'red-blocked', color: 'B60205', description: 'Not mergeable (e.g. conflicts) — needs intervention' },
+              { name: 'stale-7d', color: 'C5DEF5', description: 'No PR update in ≥7 days' },
+              { name: 'stale-14d', color: '0052CC', description: 'No PR update in ≥14 days' },
+            ];
+
+            async function ensureLabels() {
+              for (const l of LABEL_SPECS) {
+                try {
+                  await github.rest.issues.createLabel({
+                    owner,
+                    repo,
+                    name: l.name,
+                    color: l.color,
+                    description: l.description,
+                  });
+                } catch (e) {
+                  if (e.status !== 422) throw e;
+                }
+              }
+            }
+
+            async function isIgnorableVercelFailure(checkRun) {
+              const name = (checkRun.name || '').toLowerCase();
+              if (!name.includes('vercel')) return false;
+              let blob = '';
+              try {
+                const { data: full } = await github.rest.checks.get({
+                  owner, repo, check_run_id: checkRun.id,
+                });
+                blob = `${full.output?.title || ''} ${full.output?.summary || ''} ${full.output?.text || ''}`.toLowerCase();
+              } catch (e) {
+                blob = '';
+              }
+              return /(rate limit|build limit exceeded|deployment skipped|too many requests|skipped deployment|builds are paused)/.test(blob);
+            }
+
+            async function checkFailureSummary(sha) {
+              const { data } = await github.rest.checks.listForRef({
+                owner, repo, ref: sha, per_page: 100,
+              });
+              const pending = [];
+              const hardFailures = [];
+              for (const c of data.check_runs) {
+                if (SELF_CHECK_NAMES.has(c.name)) continue;
+                if (c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion || '')) {
+                  continue;
+                }
+                if (c.status === 'completed' && c.conclusion === 'failure') {
+                  if (await isIgnorableVercelFailure(c)) continue;
+                  hardFailures.push(c);
+                  continue;
+                }
+                pending.push(c);
+              }
+              return { hardFailures, pending };
+            }
+
+            async function removeLabelSafe(issueNumber, name) {
+              try {
+                await github.rest.issues.removeLabel({
+                  owner, repo, issue_number: issueNumber, name,
+                });
+              } catch (e) {
+                if (e.status !== 404) core.info(`remove ${name}: ${e.message}`);
+              }
+            }
+
+            async function addLabelSafe(issueNumber, name) {
+              const { data: cur } = await github.rest.issues.get({
+                owner, repo, issue_number: issueNumber,
+              });
+              const have = new Set((cur.labels || []).map((l) => l.name));
+              if (have.has(name)) return;
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: issueNumber, labels: [name],
+              });
+            }
+
+            function staleLabels(days) {
+              if (days >= 14) return { add: 'stale-14d', remove: ['stale-7d'] };
+              if (days >= 7) return { add: 'stale-7d', remove: ['stale-14d'] };
+              return { add: null, remove: STALE };
+            }
+
+            await ensureLabels();
+
+            const summaries = [];
+            const { data: openPRs } = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+              sort: 'updated',
+              direction: 'asc',
+            });
+
+            for (const stub of openPRs) {
+              const num = stub.number;
+              try {
+                const { data: pr } = await github.rest.pulls.get({
+                  owner, repo, pull_number: num,
+                });
+
+                const updated = new Date(pr.updated_at).getTime();
+                const daysIdle = (Date.now() - updated) / (86400 * 1000);
+                const stale = staleLabels(daysIdle);
+
+                if (stale.add) {
+                  await addLabelSafe(num, stale.add);
+                }
+                for (const r of stale.remove || []) {
+                  await removeLabelSafe(num, r);
+                }
+
+                if (pr.draft) {
+                  for (const p of PRIMARY) await removeLabelSafe(num, p);
+                  summaries.push(`#${num}: draft — cleared primary triage; stale=${stale.add || 'none'}`);
+                  continue;
+                }
+
+                let desiredPrimary = null;
+                if (pr.mergeable === false) {
+                  desiredPrimary = 'red-blocked';
+                } else if (pr.mergeable === null) {
+                  desiredPrimary = null;
+                } else {
+                  const { hardFailures, pending } = await checkFailureSummary(pr.head.sha);
+                  if (hardFailures.length) {
+                    desiredPrimary = 'yellow-needs-fix';
+                  } else if (pending.length) {
+                    desiredPrimary = null;
+                  } else {
+                    desiredPrimary = 'green-mergeable';
+                  }
+                }
+
+                for (const p of PRIMARY) {
+                  if (p !== desiredPrimary) await removeLabelSafe(num, p);
+                }
+                if (desiredPrimary) await addLabelSafe(num, desiredPrimary);
+
+                summaries.push(
+                  `#${num}: ${desiredPrimary || 'pending-checks'} stale=${stale.add || 'none'}`
+                );
+              } catch (e) {
+                summaries.push(`#${num}: fatal — ${e.message}`);
+              }
+            }
+
+            const d = new Date();
+            const ts =
+              `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}-` +
+              `${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}`;
+            const body = summaries.join('\n') || 'no open PRs';
+            core.info(body);
+            await core.summary
+              .addHeading('PR triage')
+              .addRaw(`<!-- pr-triage:${ts} -->\n`)
+              .addCodeBlock(body, 'text')
+              .write();

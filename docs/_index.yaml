@@ -170,11 +170,32 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
+  - slug: agent-sprint-planning
+    path: docs/infra/AGENT_SPRINT_PLANNING.md
+    title: Cheap-agent sprint planning (Brain)
+    summary: "Brain generates **discrete, copy-pasteable task specs** from open work and packs them into **~1-day sprints** (multiple sprints per calendar day are expected when the scheduler ticks several…"
+    tags: [infra, runbook]
+    owners: [agent-ops]
+    category: runbooks
+  - slug: chromatic-vrt
+    path: docs/infra/CHROMATIC_VRT.md
+    title: Chromatic visual regression
+    summary: "Chromatic + Storybook VRT for apps/design — setup, triage, capacity, and CI workflow."
+    tags: [design, chromatic, ci, storybook]
+    owners: [infra-ops, ux-lead]
+    category: runbooks
   - slug: clerk-satellite-topology
     path: docs/infra/CLERK_SATELLITE_TOPOLOGY.md
     title: Clerk multi-domain satellite topology
     summary: "Runbook for Clerk multi-domain satellite topology — primary host accounts.paperworklabs.com, brand apps as satellites, Dashboard + DNS + per-app env and code."
     tags: [clerk, sso, infra, dns, satellite]
+    owners: [infra-ops]
+    category: runbooks
+  - slug: clerk-dns-spaceship
+    path: docs/infra/CLERK_DNS_SPACESHIP.md
+    title: Clerk production DNS on Spaceship (`paperworklabs.com`)
+    summary: "Spaceship DNS: five CNAME records to verify Clerk production for paperworklabs.com (Frontend API, Account Portal, mail, DKIM). Paste-ready table; no Cloudflare/Vercel/Route 53."
+    tags: [clerk, dns, spaceship, infra, founder]
     owners: [infra-ops]
     category: runbooks
   - slug: credentials
@@ -190,6 +211,13 @@ docs:
     summary: "Classification, auto-merge sweep, manual overrides."
     tags: [runbook, dependabot, pr]
     owners: [engineering, infra-ops]
+    category: runbooks
+  - slug: design-canvas-deploy
+    path: docs/infra/DESIGN_CANVAS_DEPLOY.md
+    title: Design Canvas (Storybook) deploy
+    summary: Vercel + DNS runbook for hosting Storybook at design.paperworklabs.com.
+    tags: [vercel, dns, storybook, design]
+    owners: [infra-ops]
     category: runbooks
   - slug: efin-filing
     path: docs/EFIN_FILING_INSTRUCTIONS.md
@@ -240,6 +268,13 @@ docs:
     tags: [runbook, render, infra]
     owners: [infra-ops]
     category: runbooks
+  - slug: render-repoint-tonight
+    path: docs/infra/RENDER_REPOINT_TONIGHT.md
+    title: Repoint AxiomFolio Render services to the monorepo (I1) — reference
+    summary: "**Time budget:** ~10 minutes in the dashboard, plus 5–10 minutes for builds (already spent during the 2026-04-27 cutover)."
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
   - slug: secrets
     path: docs/SECRETS.md
     title: Secrets Inventory
@@ -261,6 +296,20 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
+  - slug: clerk-accounts-dns-tonight
+    path: docs/infra/CLERK_ACCOUNTS_DNS_TONIGHT.md
+    title: "Tonight: `accounts.paperworklabs.com` — Clerk primary + DNS (H1)"
+    summary: "**Time budget:** ~10 minutes for DNS + Dashboard clicks (propagation may add minutes)."
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
+  - slug: brain-ambient-learning-j1-tonight
+    path: docs/infra/BRAIN_AMBIENT_LEARNING_J1_TONIGHT.md
+    title: "Tonight: Brain ambient learning env vars on `brain-api` (J1)"
+    summary: "**Time budget:** ~5 minutes dashboard + ~3 minutes deploy."
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
   # ── Reference ─────────────────────────────────────────
   - slug: billing-vendor-checklist
     path: docs/BILLING_VENDOR_CHECKLIST.md
@@ -275,6 +324,13 @@ docs:
     summary: "Per-product AI image-generation prompts for the six consumer marks that we deferred from PR #172. Run any of these in Nano Banana, Midjourney v6+, DALL-E 3, or Imagen, then drop the chosen image…"
     tags: []
     owners: [Paperwork Labs]
+    category: reference
+  - slug: clerk-key-propagation-2026-04-27t080144z
+    path: docs/infra/CLERK_KEY_PROPAGATION_2026-04-27T080144Z.md
+    title: Clerk key propagation audit — 2026-04-27T080144Z
+    summary: "**Agent:** P (composer-2-fast) **Outcome:** **Aborted at pre-flight** — no secrets were written to Studio, Vercel, or Render. No keys appear in this document (only masked previews would have been…"
+    tags: []
+    owners: [strategy]
     category: reference
   - slug: clerk-axiomfolio
     path: docs/infra/CLERK_AXIOMFOLIO.md
@@ -381,12 +437,26 @@ docs:
     tags: [runbook, template, ops]
     owners: [agent-ops]
     category: reference
+  - slug: secrets-ops
+    path: docs/infra/SECRETS_OPS.md
+    title: Studio vault — read / write helpers
+    summary: The Studio app exposes a Postgres-backed encrypted secrets store. These shell helpers call the Studio HTTP API so you do not need to hand-craft `curl` and JSON.
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: vercel-auto-promote
     path: docs/infra/VERCEL_AUTO_PROMOTE.md
     title: Vercel auto-promote on merge
     summary: "Vercel's GitHub App webhook missed two consecutive merges to `main` in 24 hours (PR #142 → commit `f0255542`, PR #143 → commit `83477e70`). That left **production stuck on stale builds while…"
     tags: []
     owners: [infra]
+    category: reference
+  - slug: vercel-linking
+    path: docs/infra/VERCEL_LINKING.md
+    title: Vercel linking (monorepo)
+    summary: "Every app deployed on Vercel needs a local **link** so the CLI knows which team and project to use. That state lives in `apps/<name>/.vercel/project.json`, which is **gitignored** (it contains IDs…"
+    tags: []
+    owners: [strategy]
     category: reference
   # ── Plans ─────────────────────────────────────────
   - slug: axiomfolio-gaps

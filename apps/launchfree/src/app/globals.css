@@ -16,6 +16,9 @@
   --brand-accent: 6 182 212;
   --brand-ink: 12 74 110;
   --brand-surface: 248 250 252;
+  --brand-surface-elevated: 255 255 255;
+  --brand-text-muted: 100 116 139;
+  --brand-border: 226 232 240;
 
   --background: 224 47% 7%;
   --foreground: 210 40% 98%;
@@ -27,6 +30,9 @@
   --brand-accent: 34 211 238;
   --brand-ink: 248 250 252;
   --brand-surface: 10 15 26;
+  --brand-surface-elevated: 15 23 26;
+  --brand-text-muted: 148 163 184;
+  --brand-border: 51 65 85;
 }
 
 @layer base {

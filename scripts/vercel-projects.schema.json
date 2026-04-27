@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://paperworklabs.local/schemas/vercel-projects.schema.json",
+  "title": "Vercel monorepo project mapping",
+  "type": "object",
+  "required": ["team", "apps"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "team": {
+      "type": "string",
+      "description": "Vercel team slug or ID passed to `vercel link --scope`"
+    },
+    "apps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["dir", "project"],
+        "additionalProperties": false,
+        "properties": {
+          "dir": {
+            "type": "string",
+            "description": "Directory name under apps/"
+          },
+          "project": {
+            "type": "string",
+            "description": "Vercel project name"
+          },
+          "deploys": {
+            "type": "boolean",
+            "description": "If false, the app is not linked via this workflow (e.g. not on Vercel)"
+          }
+        }
+      }
+    }
+  }
+}

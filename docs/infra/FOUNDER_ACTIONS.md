@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-26
+last_reviewed: 2026-04-27
 doc_kind: runbook
 domain: infra
 status: active
@@ -33,7 +33,7 @@ Single-source list of one-time blockers that require founder credentials. Once a
 - **Why this matters:** The design Storybook canvas does not have a first-class production host until the Vercel project exists, the GitHub promote workflow has a real project id, and DNS points at Vercel.
 - **Where:** [Vercel — Paperwork Labs team](https://vercel.com/paperwork-labs), Cloudflare DNS for `paperworklabs.com` zone, `.github/workflows/vercel-promote-on-merge.yaml`.
 - **Steps:**
-  1. Vercel → New Project → import `paperwork-labs/paperwork`, root `apps/design`, production branch `main` (see `apps/design/vercel.json` if present).
+  1. Vercel → New Project → import `paperwork-labs/paperwork`, root `apps/design`, production branch `main` (add `vercel.json` in the app root after the project is created, if not generated automatically).
   2. Copy Project ID (`prj_…`) and replace the `TBD_CREATE_BEFORE_MERGE` placeholder for the `design` row in `vercel-promote-on-merge.yaml` and the tracked table in `docs/infra/VERCEL_AUTO_PROMOTE.md`.
   3. Vercel project → Domains → add `design.paperworklabs.com`.
   4. In Cloudflare, add the CNAME Vercel shows; **disable proxy** (DNS only) for clean TLS issuance.
@@ -52,7 +52,7 @@ Single-source list of one-time blockers that require founder credentials. Once a
   3. Set `projectId` in `apps/design/chromatic.config.json` to match Chromatic.
   4. Push a change under `apps/design/**` or `packages/**/src/**` (or run Chromatic locally) to baseline.
 - **Verification:** Chromatic check passes on a PR; dashboard shows a build/baseline.
-- **Source:** PR #255 (add docs/infra/CHROMATIC_VRT.md in-repo when the Chromatic runbook ships)
+- **Source:** PR #255 (in-repo Chromatic VRT runbook under `docs/infra/` when that runbook ships; path not fixed yet)
 - **ETA:** ~20 min
 
 ### 2. `GITHUB_WEBHOOK_SECRET` on `brain-api` (Render) + GitHub repo webhook
@@ -109,13 +109,13 @@ Single-source list of one-time blockers that require founder credentials. Once a
 - **Source:** PR #234, [CLERK_STUDIO.md](docs/infra/CLERK_STUDIO.md) (sibling `docs/infra/CLERK_*.md` runbooks)
 - **ETA:** ~30 min (research) + any Clerk plan upgrade (business decision)
 
-### 2. DNS + Dashboard for Clerk satellite topology (`accounts.paperworklabs.com`) — `[VERIFY]`
-- **Why this matters:** If/when the org enables **satellite domains** with `accounts.paperworklabs.com` as the Clerk primary host, DNS and Dashboard work must match `CLERK_SATELLITE_TOPOLOGY.md`. Embedded-only auth (per PR #210) **reduced** reliance on `accounts.*` for basic login, but the satellite program still needs this when you pursue Track H4.
-- **Where:** Cloudflare (or DNS host) for `paperworklabs.com` and each brand zone; [Clerk Dashboard](https://dashboard.clerk.com) → Domains.
-- **Steps:** **`[VERIFY]`** whether the product is committed to the satellite + primary-host model. If yes, follow `docs/infra/CLERK_SATELLITE_TOPOLOGY.md` exactly (Clerk shows live record values — do not copy stale placeholders from docs).
-- **Verification:** `dig` checks in runbook; Clerk shows **Verified**; end-to-end sign-in across a pilot satellite.
-- **Source:** [CLERK_SATELLITE_TOPOLOGY.md](docs/infra/CLERK_SATELLITE_TOPOLOGY.md), PR #219, PR #210
-- **ETA:** 1–2 h (if executed)
+### 2. DNS + Dashboard for Clerk production (`paperworklabs.com` / `accounts.paperworklabs.com`) — `[VERIFY]`
+- **Why this matters:** Clerk production for **`paperworklabs.com`** needs the **five CNAMEs** (Frontend API, Account portal, mail, DKIM) verified in the Dashboard before hosted auth flows are fully trusted. Satellite domains (other brands) still follow `CLERK_SATELLITE_TOPOLOGY.md` when you enable them. Embedded-only auth in individual apps (PR #210) **reduced** reliance on `accounts.*` for basic login in some surfaces; **Track H4** for the root zone is **DNS + verification** — see **[`CLERK_DNS_SPACESHIP.md`](docs/infra/CLERK_DNS_SPACESHIP.md)** (Clerk auto-hosts the Account Portal at `accounts.paperworklabs.com`; no custom `apps/accounts/` deploy required for that portal).
+- **Where:** **Spaceship** DNS for `paperworklabs.com` (not Cloudflare/Vercel DNS for this zone); [Clerk Dashboard](https://dashboard.clerk.com) → **Configure** → **Developers** → **Domains**.
+- **Steps:** Open **[`CLERK_DNS_SPACESHIP.md`](docs/infra/CLERK_DNS_SPACESHIP.md)** — paste the five CNAMEs, wait ~5 min, then **Verify configuration** in Clerk. For satellite rollouts across **other** apex domains, follow [`CLERK_SATELLITE_TOPOLOGY.md`](docs/infra/CLERK_SATELLITE_TOPOLOGY.md) (Clerk shows live record values per domain — do not copy stale placeholders).
+- **Verification:** `dig` one-liner in `CLERK_DNS_SPACESHIP.md`; all five **Verified** in Dashboard; optional end-to-end sign-in across a pilot satellite when satellites are enabled.
+- **Source:** [`CLERK_DNS_SPACESHIP.md`](docs/infra/CLERK_DNS_SPACESHIP.md), [`CLERK_SATELLITE_TOPOLOGY.md`](docs/infra/CLERK_SATELLITE_TOPOLOGY.md), PR #219, PR #210
+- **ETA:** ~15 min (DNS paste) + propagation; satellite program add 1–2 h when executed
 
 ## Future / strategy — AxiomFolio Vite on Render vs Vercel (Next) — `[VERIFY]`
 
