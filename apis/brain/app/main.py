@@ -13,12 +13,12 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.api.agent_sprints import router as agent_sprints_router
 from app.config import settings
 from app.database import async_session_factory, engine
 from app.mcp_server import create_mcp_app
 from app.rate_limit import limiter
 from app.redis import close_redis, get_redis, init_redis
-from app.api.agent_sprints import router as agent_sprints_router
 from app.api.secrets import router as internal_secrets_router
 from app.routers import admin, admin_learning, brain, health, webhooks
 from app.schedulers import shutdown_scheduler, start_scheduler

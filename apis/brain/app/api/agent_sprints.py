@@ -4,22 +4,24 @@ from __future__ import annotations
 
 import hmac
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from starlette.responses import JSONResponse
 
 from app.config import settings
+from app.schedulers.agent_sprint_scheduler import run_agent_sprint_tick
 from app.schemas.base import success_response
 from app.services.agent_sprint_store import load_sprints_since, today_metrics
-from app.schedulers.agent_sprint_scheduler import run_agent_sprint_tick
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/internal/agent-sprints", tags=["internal"])
 
 
-def _require_founder_secret(x_brain_secret: str | None = Header(None, alias="X-Brain-Secret")) -> None:
+def _require_founder_secret(
+    x_brain_secret: str | None = Header(None, alias="X-Brain-Secret"),
+) -> None:
     expected = settings.BRAIN_API_SECRET
     if not expected:
         raise HTTPException(status_code=503, detail="BRAIN_API_SECRET not configured")
@@ -30,13 +32,13 @@ def _require_founder_secret(x_brain_secret: str | None = Header(None, alias="X-B
 @router.get("/today")
 async def agent_sprints_today(_auth: None = Depends(_require_founder_secret)) -> JSONResponse:
     """Last 24h of generated sprints plus day metrics (Studio command center)."""
-    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    since = datetime.now(UTC) - timedelta(hours=24)
     sprints = load_sprints_since(since)
     metrics = today_metrics()
     payload = {
         "sprints": [s.model_dump() for s in sprints],
         "metrics": metrics.model_dump(),
-        "generated_through": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "generated_through": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
     }
     return success_response(payload)
 
