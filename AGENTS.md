@@ -169,3 +169,9 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 | [workflows.mdc](.cursor/rules/workflows.mdc) | Company playbooks |
 
 **Product-specific:** [apis/axiomfolio/AGENTS.md](apis/axiomfolio/AGENTS.md)
+
+**Studio admin — secrets:** `/admin/secrets` lists the encrypted vault; when `BRAIN_API_URL` and `BRAIN_INTERNAL_TOKEN` are set, the page overlays **Brain** registry metadata (criticality, drift summary) and a small **Brain notes** popover (recent episodes) — see `docs/infra/BRAIN_SECRETS_INTELLIGENCE.md`.
+
+**Key automation:**
+- **Slack / Brain**: Brain Slack Adapter and optional on-demand webhooks; scheduled briefings and infra checks run on **Brain** when `BRAIN_OWNS_*` cutover flags are enabled
+- **Decision Logger**: Captures decisions from #decisions and commits to KNOWLEDGE.md

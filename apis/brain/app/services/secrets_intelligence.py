@@ -1,4 +1,7 @@
-"""Brain operational intelligence over secrets — registry, episodes, drift, rotation."""
+"""Brain operational intelligence over secrets — registry, episodes, drift, rotation.
+
+medallion: ops
+"""
 
 from __future__ import annotations
 
@@ -334,7 +337,7 @@ class SecretsIntelligence:
             r = await client.get(list_url, headers=headers)
             if r.status_code != 200:
                 detail = f"vault list HTTP {r.status_code}"
-                logger.warning("audit_drift failed: %s", detail)
+                logger.warning("audit_drift %s: %s", secret_name, detail)
                 return DriftReport(
                     secret_name=secret_name,
                     vault_fingerprint=None,

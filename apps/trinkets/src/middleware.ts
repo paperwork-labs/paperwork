@@ -1,4 +1,7 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import {
+  clerkMiddleware,
+  createRouteMatcher,
+} from "@paperwork-labs/auth-clerk/server/clerk";
 
 /**
  * Trinkets: Clerk session for SSO-ready surfaces. No legacy cookie or admin/Basic
