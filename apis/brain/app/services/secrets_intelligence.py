@@ -1,4 +1,7 @@
-"""Brain operational intelligence over secrets — registry, episodes, drift, rotation."""
+"""Brain operational intelligence over secrets — registry, episodes, drift, rotation.
+
+medallion: ops
+"""
 
 from __future__ import annotations
 

@@ -1,4 +1,7 @@
-"""Bridge to Agent M task generator. Optional import — safe when not shipped."""
+"""Bridge to Agent M task generator. Optional import — safe when not shipped.
+
+medallion: ops
+"""
 
 from __future__ import annotations
 
