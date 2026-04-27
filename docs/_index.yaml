@@ -163,6 +163,13 @@ docs:
     owners: [engineering, infra-ops]
     category: architecture
   # ── Runbooks ─────────────────────────────────────────
+  - slug: automation-state
+    path: docs/infra/AUTOMATION_STATE.md
+    title: Automation state (single source of truth)
+    summary: "2. **Reporting (notification-only):** `BRAIN_OWNS_DAILY_BRIEFING`, `BRAIN_OWNS_BRAIN_WEEKLY`, `BRAIN_OWNS_WEEKLY_STRATEGY` 3. **Decision-making:** `BRAIN_OWNS_SPRINT_KICKOFF`,…"
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
   - slug: brain-scheduler
     path: docs/infra/BRAIN_SCHEDULER.md
     title: Brain APScheduler — SQLAlchemy job store and n8n shadow mirrors

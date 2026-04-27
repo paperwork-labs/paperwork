@@ -130,6 +130,9 @@ class Settings(BaseSettings):
     N8N_API_KEY: str = ""
     UPSTASH_REDIS_REST_URL: str = ""
     UPSTASH_REDIS_REST_TOKEN: str = ""
+    # Sprint planning (Mondays PT) — :func:`app.schedulers.sprint_planner.install` also
+    # reads :envvar:`BRAIN_OWNS_SPRINT_PLANNER` from the process environment first.
+    BRAIN_OWNS_SPRINT_PLANNER: bool = False
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
