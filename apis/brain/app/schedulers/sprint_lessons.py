@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -70,7 +71,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
     )
     scheduler.add_job(
         _run_sprint_lessons_ingest,
-        trigger=IntervalTrigger(hours=hours),
+        trigger=IntervalTrigger(hours=hours, timezone=timezone.utc),
         id="sprint_lessons_ingest",
         name="Brain ingests sprint 'What we learned' bullets",
         max_instances=1,

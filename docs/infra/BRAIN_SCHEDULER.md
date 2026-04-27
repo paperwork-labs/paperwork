@@ -14,7 +14,7 @@ status: active
 
 **Default-off mirror:** `SCHEDULER_N8N_MIRROR_ENABLED` defaults to `false` — there is no behavioral change in production until you set it. Shadow jobs, when enabled, only post to **`#engineering-cron-shadow`** (operator canary), not to user- or product-facing channels.
 
-**Timezone caveat (TODO T2.4):** n8n exports for some data workflows set **`settings.timezone: America/Los_Angeles`**, while Brain registers mirror crons in **UTC** using the same 5-field expression. Until cutover, wall-clock times may not match n8n for those workflows. Treat shadow runs as “expression parity,” not guaranteed LA-time parity, unless you add explicit timezone in APScheduler to match the workflow.
+**Timezone caveat (TODO T2.4):** n8n exports for some data workflows set **`settings.timezone: America/Los_Angeles`**, while Brain registers mirror crons in **UTC** using the same 5-field expression. Until cutover, wall-clock times may not match n8n for those workflows. Treat shadow runs as “expression parity,” not guaranteed LA-time parity, unless you add explicit timezone in APScheduler to match the workflow. Canonical policy and exception table: [TIMEZONE_STANDARDS.md](./TIMEZONE_STANDARDS.md).
 
 ## When this fires
 

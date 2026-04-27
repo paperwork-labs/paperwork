@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -171,7 +171,7 @@ def test_user_state_reflects_existing_broker_account(
     if db_session is None:
         pytest.skip("database not configured")
 
-    last_sync = datetime.utcnow() - timedelta(minutes=5)
+    last_sync = datetime.now(timezone.utc) - timedelta(minutes=5)
     _add_schwab_account(db_session, auth_user, last_synced_at=last_sync)
 
     res = client.get("/api/v1/portfolio/connection-options")

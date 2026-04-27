@@ -40,7 +40,7 @@ import logging
 import os
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Any, Dict, Iterable, List, Optional
 
@@ -152,7 +152,7 @@ class CorporateActionApplier:
 
     def apply_pending(self, *, today: Optional[date] = None) -> ApplyReport:
         """Apply every PENDING action whose ex_date <= ``today``."""
-        cutoff = today or datetime.utcnow().date()
+        cutoff = today or datetime.now(timezone.utc).date()
         report = ApplyReport()
 
         actions = (
@@ -493,7 +493,7 @@ class CorporateActionApplier:
         action: CorporateAction,
         outcome: _PerActionResult,
     ) -> None:
-        action.applied_at = datetime.utcnow()
+        action.applied_at = datetime.now(timezone.utc)
         if outcome.users_processed == 0:
             action.status = CorporateActionStatus.SKIPPED.value
             action.error_message = "no holders at ex_date"
