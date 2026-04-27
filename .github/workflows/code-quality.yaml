@@ -1,0 +1,23 @@
+name: Code quality
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: code-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  structural:
+    name: Structural repo checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Verify stories live under apps/design/ only
+        run: node scripts/verify-no-stories-in-packages.mjs

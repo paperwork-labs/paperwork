@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { ClipMark } from "./ClipMark";
+import { ClipMark } from "@paperwork-labs/ui/brand";
 
 const meta = {
   title: "Brand/ClipMark (P1)",

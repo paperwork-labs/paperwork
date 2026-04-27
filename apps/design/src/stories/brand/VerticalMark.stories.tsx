@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { VerticalMark } from "./VerticalMark";
+import { VerticalMark } from "@paperwork-labs/ui/brand";
 
 const meta = {
   title: "Brand/VerticalMark (P2)",

@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { Input } from "./input";
-import { Label } from "./label";
+import { Input, Label } from "@paperwork-labs/ui";
 
 const meta = {
   title: "UI/Input",
