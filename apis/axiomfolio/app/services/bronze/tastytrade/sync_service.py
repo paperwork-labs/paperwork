@@ -27,7 +27,6 @@ from app.models import (
     TaxLot,
 )
 from app.models.tax_lot import TaxLotSource
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.account_credentials_service moves during Phase 0.C
 from app.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,

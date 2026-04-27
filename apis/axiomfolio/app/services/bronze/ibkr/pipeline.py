@@ -27,9 +27,7 @@ from app.models.position import Position
 from app.models.transfer import Transfer
 from app.models.transaction import Transaction as TxModel
 from app.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.account_type_resolver moves during Phase 0.C
 from app.services.portfolio.account_type_resolver import resolve_account_type
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.portfolio.account_credentials_service moves during Phase 0.C
 from app.services.portfolio.account_credentials_service import (
     CredentialsNotFoundError,
     account_credentials_service,

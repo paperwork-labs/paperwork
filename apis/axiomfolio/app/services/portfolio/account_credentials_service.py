@@ -1,6 +1,6 @@
 """AccountCredentialsService: load and decrypt stored broker credentials.
 
-medallion: silver
+medallion: ops
 """
 
 from __future__ import annotations
