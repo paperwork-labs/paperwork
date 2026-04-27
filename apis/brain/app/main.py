@@ -108,11 +108,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     FastMCP requires its lifespan to run for the StreamableHTTP session manager
     to initialize. We nest our app lifespan inside the MCP lifespan per FastMCP docs.
     """
-    async with _app_lifespan(_app):
-        async with mcp_application.lifespan(_app):
-            logger.info("FastMCP lifespan started — session manager initialized")
-            yield
-            logger.info("FastMCP lifespan ending")
+    async with _app_lifespan(_app), mcp_application.lifespan(_app):
+        logger.info("FastMCP lifespan started — session manager initialized")
+        yield
+        logger.info("FastMCP lifespan ending")
 
 
 app = FastAPI(
@@ -145,7 +144,13 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Correlation-ID", "X-Brain-Secret"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-CSRF-Token",
+        "X-Correlation-ID",
+        "X-Brain-Secret",
+    ],
 )
 
 app.add_exception_handler(AppException, app_exception_handler)  # type: ignore[arg-type]

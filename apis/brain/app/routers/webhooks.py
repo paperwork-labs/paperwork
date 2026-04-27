@@ -10,16 +10,15 @@ It replaces three GitHub Actions workflows:
 
 from __future__ import annotations
 
+import contextlib
+import hashlib
 import hmac
 import json
 import logging
-from typing import Any, Literal
-
-import hashlib
+from typing import TYPE_CHECKING, Any, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import async_session_factory, get_db
@@ -34,6 +33,9 @@ from app.services.tracker_slash import (
 )
 from app.tools import github as gh_tools
 
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -41,18 +43,20 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 # Event names (dot form). Aliases with underscores are normalized in _normalize_event.
 # AxiomFolio sends: trade_executed, position_closed, stop_triggered, risk_gate_activated,
 # scan_alert, approval_required — all normalized to dot form.
-KNOWN_EVENTS = frozenset({
-    "trade.executed",
-    "trade.rejected",
-    "position.closed",
-    "stop.triggered",
-    "approval.required",  # AxiomFolio sends approval_required when Tier 3 trade needs approval
-    "approval.needed",    # Alias kept for backwards compatibility
-    "risk.alert",
-    "risk.gate.activated",  # AxiomFolio sends risk_gate_activated
-    "scan.alert",           # AxiomFolio sends scan_alert
-    "portfolio.update",
-})
+KNOWN_EVENTS = frozenset(
+    {
+        "trade.executed",
+        "trade.rejected",
+        "position.closed",
+        "stop.triggered",
+        "approval.required",  # AxiomFolio sends approval_required when Tier 3 trade needs approval
+        "approval.needed",  # Alias kept for backwards compatibility
+        "risk.alert",
+        "risk.gate.activated",  # AxiomFolio sends risk_gate_activated
+        "scan.alert",  # AxiomFolio sends scan_alert
+        "portfolio.update",
+    }
+)
 
 DEFAULT_WEBHOOK_ORG_ID = "paperwork-labs"
 
@@ -83,9 +87,7 @@ async def _verify_axiomfolio_webhook(request: Request) -> None:
         )
 
     body = await request.body()
-    expected_sig = hmac.new(
-        expected_secret.encode(), body, hashlib.sha256
-    ).hexdigest()
+    expected_sig = hmac.new(expected_secret.encode(), body, hashlib.sha256).hexdigest()
     received_sig = signature_header[7:]  # strip "sha256=" prefix
 
     if not hmac.compare_digest(expected_sig, received_sig):
@@ -198,9 +200,7 @@ class AxiomFolioWebhookPayload(BaseModel):
     )
 
 
-def _parse_data_for_event(
-    event_norm: str, data: dict[str, Any]
-) -> BaseModel:
+def _parse_data_for_event(event_norm: str, data: dict[str, Any]) -> BaseModel:
     parsers: dict[str, type[BaseModel]] = {
         "trade.executed": TradeExecutedData,
         "trade.rejected": TradeRejectedData,
@@ -251,19 +251,24 @@ def _episode_summary_and_context(
         sym = parsed.symbol or "unknown symbol"
         reason = parsed.reason or "no reason given"
         summary = f"AxiomFolio: trade rejected — {sym}: {reason}{ts_suffix}"
-    elif event_norm in ("approval.needed", "approval.required") and isinstance(parsed, ApprovalNeededData):
+    elif event_norm in ("approval.needed", "approval.required") and isinstance(
+        parsed, ApprovalNeededData
+    ):
         if parsed.summary:
             core = parsed.summary
         else:
-            core = " ".join(
-                p
-                for p in [
-                    (parsed.side or "").upper() if parsed.side else None,
-                    str(parsed.quantity) if parsed.quantity is not None else None,
-                    parsed.symbol,
-                ]
-                if p
-            ) or "pending approval"
+            core = (
+                " ".join(
+                    p
+                    for p in [
+                        (parsed.side or "").upper() if parsed.side else None,
+                        str(parsed.quantity) if parsed.quantity is not None else None,
+                        parsed.symbol,
+                    ]
+                    if p
+                )
+                or "pending approval"
+            )
         summary = f"AxiomFolio: approval needed — {core}{ts_suffix}"
     elif event_norm in ("risk.alert", "risk.gate.activated") and isinstance(parsed, RiskAlertData):
         sev = f"[{parsed.severity}] " if parsed.severity else ""
@@ -275,7 +280,9 @@ def _episode_summary_and_context(
         summary = f"AxiomFolio: {scan_name} found {count} candidates{ts_suffix}"
     elif event_norm == "stop.triggered" and isinstance(parsed, StopTriggeredData):
         exit_str = str(parsed.exit_price) if parsed.exit_price is not None else "?"
-        summary = f"AxiomFolio: stop triggered — {parsed.symbol or 'unknown'} @ {exit_str}{ts_suffix}"
+        summary = (
+            f"AxiomFolio: stop triggered — {parsed.symbol or 'unknown'} @ {exit_str}{ts_suffix}"
+        )
     elif event_norm == "position.closed" and isinstance(parsed, PositionClosedData):
         pnl_str = f" P&L: {parsed.pnl}" if parsed.pnl is not None else ""
         summary = f"AxiomFolio: position closed — {parsed.symbol or 'unknown'}{pnl_str}{ts_suffix}"
@@ -301,7 +308,13 @@ def _episode_summary_and_context(
         "data": data,
     }
     full_context = json.dumps(envelope, default=str)
-    high_importance_events = ("risk.alert", "risk.gate.activated", "approval.needed", "approval.required", "stop.triggered")
+    high_importance_events = (
+        "risk.alert",
+        "risk.gate.activated",
+        "approval.needed",
+        "approval.required",
+        "stop.triggered",
+    )
     importance = 0.65 if event_norm in high_importance_events else 0.5
     return summary, full_context, importance
 
@@ -392,13 +405,15 @@ async def axiomfolio_webhook(
 # Events that should wake the `trading` persona and post to #trading.
 # Deliberately a subset: ``trade.executed`` and ``position.closed`` are
 # noise; the user wants narration on decisions, not on confirmations.
-_TRADING_WAKEUP_EVENTS = frozenset({
-    "risk.gate.activated",
-    "risk.alert",
-    "approval.required",
-    "approval.needed",
-    "stop.triggered",
-})
+_TRADING_WAKEUP_EVENTS = frozenset(
+    {
+        "risk.gate.activated",
+        "risk.alert",
+        "approval.required",
+        "approval.needed",
+        "stop.triggered",
+    }
+)
 
 
 async def _wake_trading_persona(
@@ -424,8 +439,8 @@ async def _wake_trading_persona(
     No Slack channel ID configured → noop. No Brain path at all → we
     still stored the episode above, so nothing is lost.
     """
-    from app.services import agent  # lazy import: avoids router-time cycle
     from app.redis import get_redis
+    from app.services import agent  # lazy import: avoids router-time cycle
 
     channel_id = settings.SLACK_TRADING_CHANNEL_ID or settings.SLACK_ENGINEERING_CHANNEL_ID
     if not channel_id:
@@ -497,9 +512,7 @@ async def _verify_github_webhook(request: Request) -> bytes:
         )
 
     body = await request.body()
-    expected_sig = hmac.new(
-        expected_secret.encode(), body, hashlib.sha256
-    ).hexdigest()
+    expected_sig = hmac.new(expected_secret.encode(), body, hashlib.sha256).hexdigest()
     received_sig = sig_header[7:]
 
     if not hmac.compare_digest(expected_sig, received_sig):
@@ -522,6 +535,7 @@ async def _apply_labels(pr_number: int, labels: list[str]) -> None:
     if not labels:
         return
     import httpx
+
     from app.tools.github import _gh_headers, _repo_parts
 
     owner, repo = _repo_parts()
@@ -536,7 +550,9 @@ async def _apply_labels(pr_number: int, labels: list[str]) -> None:
                 json={"labels": labels},
             )
             if r.status_code >= 300:
-                logger.warning("apply_labels failed for #%s: %s %s", pr_number, r.status_code, r.text[:200])
+                logger.warning(
+                    "apply_labels failed for #%s: %s %s", pr_number, r.status_code, r.text[:200]
+                )
     except Exception as e:
         logger.warning("apply_labels error for #%s: %s", pr_number, e)
 
@@ -749,9 +765,22 @@ async def _verify_slack_signature(request: Request, raw_body: bytes) -> None:
 
 
 _KNOWN_PERSONAS = {
-    "agent-ops", "brand", "cfo", "cpa", "ea", "engineering", "growth",
-    "infra-ops", "legal", "partnerships", "qa", "social", "strategy",
-    "tax-domain", "trading", "ux",
+    "agent-ops",
+    "brand",
+    "cfo",
+    "cpa",
+    "ea",
+    "engineering",
+    "growth",
+    "infra-ops",
+    "legal",
+    "partnerships",
+    "qa",
+    "social",
+    "strategy",
+    "tax-domain",
+    "trading",
+    "ux",
 }
 
 
@@ -771,15 +800,13 @@ async def _run_persona_command(
     """
     import httpx
 
-    from app.services import agent as brain_agent
     from app.database import async_session_factory
     from app.redis import get_redis
+    from app.services import agent as brain_agent
 
     redis_client = None
-    try:
+    with contextlib.suppress(RuntimeError):
         redis_client = get_redis()
-    except RuntimeError:
-        pass
 
     try:
         async with async_session_factory() as db:
@@ -863,8 +890,7 @@ async def slack_slash_command(
         return {
             "response_type": "ephemeral",
             "text": (
-                "Usage: `/persona <slug> <message>`. Slugs: "
-                + ", ".join(sorted(_KNOWN_PERSONAS))
+                "Usage: `/persona <slug> <message>`. Slugs: " + ", ".join(sorted(_KNOWN_PERSONAS))
             ),
         }
 
@@ -874,16 +900,13 @@ async def slack_slash_command(
     if persona not in _KNOWN_PERSONAS:
         return {
             "response_type": "ephemeral",
-            "text": (
-                f"Unknown persona `{persona}`. Valid: "
-                + ", ".join(sorted(_KNOWN_PERSONAS))
-            ),
+            "text": (f"Unknown persona `{persona}`. Valid: " + ", ".join(sorted(_KNOWN_PERSONAS))),
         }
 
     if not rest:
         return {
             "response_type": "ephemeral",
-            "text": f"Give me something to ask {persona}. Example: `/persona {persona} what's our runway?`",
+            "text": f"Give me something to ask {persona}. Example: `/persona {persona} what's our runway?`",  # noqa: E501
         }
 
     background_tasks.add_task(

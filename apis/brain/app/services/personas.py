@@ -5,6 +5,7 @@ callers don't break on import while we migrate Track F / H11.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import warnings
@@ -14,6 +15,8 @@ from app.personas.routing import (
     CHANNEL_PERSONA_MAP,
     PHRASE_KEYWORDS,
     SINGLE_WORD_KEYWORDS,
+)
+from app.personas.routing import (
     route_persona as _route_persona,
 )
 

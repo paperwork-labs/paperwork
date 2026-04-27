@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "88aff995b8ea",
+  "content_hash": "73fcadae7cd9",
   "products": [
     {
       "label": "AxiomFolio",
@@ -357,7 +357,9 @@
       "domain": "company",
       "duration_weeks": 2,
       "end": "2026-05-09",
-      "followups": [],
+      "followups": [
+        "~~**Track H4 \u2014 `apps/accounts/`** on `accounts.paperworklabs.com` (custom Paperwork ID headline host per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md))~~ \u2014 **superseded** by Clerk\u2019s auto-hosted Account Portal on the primary domain; see [`docs/KNOWLEDGE.md`](../KNOWLEDGE.md) \u00a7D91."
+      ],
       "goal": "Ship an aggressive end-to-end streamline: one orchestration brain for scheduled work, one persona vocabulary everywhere, Clerk-backed SSO so a LaunchFree user can use FileFree without re-registering, workflow DAGs that are actually legible (and not embarrassing in demos), and AxiomFolio absorbed into the Next.js / Vercel stack when the migration shell is far enough along.",
       "lessons": [
         "Per-job `SCHEDULER_N8N_MIRROR_*` must use the same uppercased job id as `N8N_MIRROR_SPECS` (e.g. `N8N_SHADOW_BRAIN_DAILY`, not a short name like `pr_sweep` \u2014 the in-process `pr_sweep` scheduler is separate from n8n mirror ids).",

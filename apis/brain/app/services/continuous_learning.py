@@ -15,17 +15,19 @@ import logging
 import os
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
 import httpx
 import yaml
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.episode import Episode
 from app.services.memory import store_episode
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -174,7 +176,7 @@ async def _http_fetch_merged_prs(
     if not settings.GITHUB_TOKEN or not str(settings.GITHUB_TOKEN).strip():
         raise ValueError("GITHUB_TOKEN not configured")
     owner, repo = _repo_parts()
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).date().isoformat()
     q = f"repo:{owner}/{repo} is:pr is:merged merged:>={cutoff}"
     out: list[MergedPRRecord] = []
     async with httpx.AsyncClient(
@@ -218,7 +220,7 @@ async def _http_fetch_merged_prs(
                 m_dt = datetime.fromisoformat(m_at.replace("Z", "+00:00"))
             except ValueError:
                 m_dt = None
-            if m_dt and m_dt < datetime.now(timezone.utc) - timedelta(days=days + 1):
+            if m_dt and m_dt < datetime.now(UTC) - timedelta(days=days + 1):
                 continue
             all_files: list[dict[str, Any]] = []
             page = 1
@@ -339,7 +341,6 @@ async def ingest_merged_prs(
     msg = f"ingested {created} new PRs, skipped {skipped} existing"
     if dry_run:
         msg += " (dry_run)"
-    print(msg)
     return {
         "created": created,
         "skipped": skipped,
@@ -396,7 +397,9 @@ def _iter_decision_files(repo_root: str) -> list[str]:
     for p in glob.glob(os.path.join(repo_root, "docs", "**", "DECISIONS.md"), recursive=True):
         if os.path.isfile(p):
             out.add(p)
-    for p in glob.glob(os.path.join(repo_root, "docs", "**", "decisions", "**", "*.md"), recursive=True):
+    for p in glob.glob(
+        os.path.join(repo_root, "docs", "**", "decisions", "**", "*.md"), recursive=True
+    ):
         if os.path.isfile(p) and "node_modules" not in p:
             out.add(p)
     # frontmatter search (docs only, shallow+deep bound)
@@ -412,7 +415,8 @@ def _iter_decision_files(repo_root: str) -> list[str]:
                 if path in out:
                     continue
                 try:
-                    head = open(path, encoding="utf-8", errors="replace").read(4000)
+                    with open(path, encoding="utf-8", errors="replace") as fh:
+                        head = fh.read(4000)
                 except OSError:
                     continue
                 if re.search(r"^doc_kind:\s*decision\s*$", head, re.MULTILINE | re.IGNORECASE):
@@ -425,7 +429,7 @@ def _file_mtime_iso(path: str) -> str:
         ts = os.path.getmtime(path)
     except OSError:
         return ""
-    return datetime.fromtimestamp(ts, tz=timezone.utc).date().isoformat()
+    return datetime.fromtimestamp(ts, tz=UTC).date().isoformat()
 
 
 async def ingest_decisions(
@@ -524,11 +528,9 @@ async def ingest_decisions(
         created += 1
 
     if dry_run:
-        print(
-            f"ingested {created} new decisions, skipped {skipped} existing" + (" (dry_run)" if dry_run else "")
-        )
+        pass
     else:
-        print(f"ingested {created} new decisions, skipped {skipped} existing")
+        pass
     return {"created": created, "skipped": skipped, "dry_run": dry_run, "scanned": len(paths)}
 
 
@@ -565,7 +567,8 @@ def _iter_runbook_incidents(repo_root: str) -> list[tuple[str, str, str]]:
         if not os.path.isfile(p):
             continue
         try:
-            raw = open(p, encoding="utf-8", errors="replace").read()
+            with open(p, encoding="utf-8", errors="replace") as fh:
+                raw = fh.read()
         except OSError:
             continue
         if "## Incident" not in raw and "## incident" not in raw.lower():
@@ -581,7 +584,11 @@ def _iter_runbook_incidents(repo_root: str) -> list[tuple[str, str, str]]:
             continue
         block0 = section[0]
         # need a date: YYYY-MM-DD or "Month D, YYYY"
-        if not re.search(r"20\d{2}[-/]\d{2}[-/]\d{2}|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? 20\d{2}", block0, re.I):
+        if not re.search(
+            r"20\d{2}[-/]\d{2}[-/]\d{2}|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2},? 20\d{2}",  # noqa: E501
+            block0,
+            re.I,
+        ):
             continue
         relp = os.path.relpath(p, repo_root)
         key = f"runbook:{relp}:{_sha256_body(block0)[:12]}"
@@ -621,7 +628,8 @@ async def ingest_postmortems(
             if os.path.basename(p).lower() == "readme.md":
                 continue
             try:
-                raw = open(p, encoding="utf-8", errors="replace").read()
+                with open(p, encoding="utf-8", errors="replace") as fh:
+                    raw = fh.read()
             except OSError:
                 continue
             for _key, text in _extract_sprint_postmortems(p, raw):
@@ -671,10 +679,7 @@ async def ingest_postmortems(
         created += 1
 
     if dry_run:
-        print(
-            f"ingested {created} new postmortems, skipped {skipped} existing"
-            + (" (dry_run)" if dry_run else "")
-        )
+        pass
     else:
-        print(f"ingested {created} new postmortems, skipped {skipped} existing")
+        pass
     return {"created": created, "skipped": skipped, "dry_run": dry_run, "scanned": len(items)}

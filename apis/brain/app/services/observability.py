@@ -4,6 +4,7 @@ medallion: ops
 """
 
 import logging
+from typing import Any
 
 from app.config import settings
 
@@ -56,38 +57,38 @@ def create_trace(
 class _NoOpTrace:
     """No-op trace when Langfuse is disabled."""
 
-    def span(self, **kwargs):
+    def span(self, **_kwargs: Any):
         return _NoOpSpan()
 
-    def generation(self, **kwargs):
+    def generation(self, **_kwargs: Any):
         return _NoOpSpan()
 
-    def score(self, **kwargs):
+    def score(self, **_kwargs: Any):
         pass
 
-    def update(self, **kwargs):
+    def update(self, **_kwargs: Any):
         pass
 
-    def end(self, **kwargs):
+    def end(self, **_kwargs: Any):
         pass
 
 
 class _NoOpSpan:
     """No-op span when Langfuse is disabled."""
 
-    def end(self, **kwargs):
+    def end(self, **_kwargs: Any):
         pass
 
-    def update(self, **kwargs):
+    def update(self, **_kwargs: Any):
         pass
 
-    def generation(self, **kwargs):
+    def generation(self, **_kwargs: Any):
         return self
 
-    def span(self, **kwargs):
+    def span(self, **_kwargs: Any):
         return self
 
-    def score(self, **kwargs):
+    def score(self, **_kwargs: Any):
         pass
 
 

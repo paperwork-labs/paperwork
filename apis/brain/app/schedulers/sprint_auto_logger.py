@@ -17,12 +17,10 @@ import os
 import re
 import time
 from collections import defaultdict
-from collections.abc import Iterable
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
 import yaml
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 
@@ -30,6 +28,11 @@ from app.database import async_session_factory
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers._history import run_with_scheduler_record
 from app.tools import github as gh
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +171,7 @@ def insert_outcome_bullet(full_doc: str, ship_date: str, title_clean: str, pr_nu
             insert_at = 1
             while insert_at < len(rest) and rest[insert_at].strip() == "":
                 insert_at += 1
-        new_rest = rest[:insert_at] + [bullet] + rest[insert_at:]
+        new_rest = [*rest[:insert_at], bullet, *rest[insert_at:]]
         new_block = header_line + "".join(new_rest)
     return full_doc[:o_start] + new_block + full_doc[o_end:]
 
@@ -235,9 +238,9 @@ async def _last_success_cutoff() -> datetime:
         row = r.scalar_one_or_none()
     if row:
         if row.tzinfo is None:
-            return row.replace(tzinfo=timezone.utc)
+            return row.replace(tzinfo=UTC)
         return row
-    return datetime.now(timezone.utc) - timedelta(hours=1)
+    return datetime.now(UTC) - timedelta(hours=1)
 
 
 async def _run_body(*, since_override: datetime | None = None) -> None:
@@ -249,7 +252,7 @@ async def _run_body(*, since_override: datetime | None = None) -> None:
 
     since = since_override or await _last_success_cutoff()
     if since.tzinfo is None:
-        since = since.replace(tzinfo=timezone.utc)
+        since = since.replace(tzinfo=UTC)
 
     pr_nums = await gh.search_merged_pr_numbers_since(since)
     if not pr_nums:
@@ -276,7 +279,7 @@ async def _run_body(*, since_override: datetime | None = None) -> None:
         title_clean = strip_conventional_prefix(str(pr.get("title") or ""))
         if not title_clean:
             title_clean = str(pr.get("title") or "").strip() or f"PR #{num}"
-        ship_date = merged_at.astimezone(timezone.utc).date().isoformat()
+        ship_date = merged_at.astimezone(UTC).date().isoformat()
         for p in paths:
             by_path[p].append((num, title_clean, ship_date))
 
@@ -366,7 +369,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
         return
     scheduler.add_job(
         run_sprint_auto_logger,
-        trigger=CronTrigger.from_crontab("*/15 * * * *", timezone=timezone.utc),
+        trigger=CronTrigger.from_crontab("*/15 * * * *", timezone=UTC),
         id=_JOB_ID,
         name="Sprint auto-logger (merged PRs → docs/sprints Outcome)",
         max_instances=1,
