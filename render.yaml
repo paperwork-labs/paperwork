@@ -310,11 +310,11 @@ services:
   # ---------------------------------------------------------------------
   # DISABLED 2026-04-27 — Track G4: AxiomFolio customer UI is Next.js on
   # Vercel at `apps/axiomfolio`. The legacy Vite SPA is frozen (not deleted)
-  # at `apps/_archive/axiomfolio-vite-LEGACY/` — see that README.
+  # at `apps/_archive/axiomfolio-vite/` — see that README.
   #
   # The `axiomfolio-frontend` Render static service is not provisioned in
   # this blueprint. Emergency legacy static rebuild (if ever needed): check
-  # out the repo, `cd apps/_archive/axiomfolio-vite-LEGACY`, install, and
+  # out the repo, `cd apps/_archive/axiomfolio-vite`, install, and
   # `pnpm build` (that tree is excluded from root pnpm workspaces).
   #
   # Former production block (commented — do not uncomment without founder
@@ -322,8 +322,8 @@ services:
   # - type: web
   #   name: axiomfolio-frontend
   #   runtime: static
-  #   rootDir: apps/_archive/axiomfolio-vite-LEGACY
-  #   buildCommand: "cd ../.. && npm install -g pnpm@10.32.1 && cd apps/_archive/axiomfolio-vite-LEGACY && pnpm install && pnpm run build"
+  #   rootDir: apps/_archive/axiomfolio-vite
+  #   buildCommand: "cd ../.. && npm install -g pnpm@10.32.1 && cd apps/_archive/axiomfolio-vite && pnpm install && pnpm run build"
   #   staticPublishPath: dist
   #   routes:
   #     - type: rewrite
