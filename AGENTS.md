@@ -1,62 +1,169 @@
-# Paperwork Labs — Agent Instructions
+# Paperwork Labs — Agent instructions
 
-Paperwork Labs builds tools that eliminate paperwork. This repo is a pnpm + Turborepo monorepo containing 5 products (FileFree, LaunchFree, Distill, Trinkets, AxiomFolio) plus Brain (the shared AI orchestration layer).
+Canonical playbook for humans and AI agents working this repo. **Detail lives in linked files** — do not duplicate long policy here.
 
-## Repo layout
+## Repo layout (short)
 
-- `apps/` — user-facing frontends (Next.js, Vite)
-- `apis/` — self-contained product backends (each with its own Dockerfile, alembic, pyproject.toml)
-  - `apis/brain/` — Brain orchestration layer (FastAPI)
-  - `apis/filefree/`, `apis/launchfree/` — product APIs
-  - `apis/axiomfolio/` — quantitative portfolio intelligence (FastAPI + Celery + Postgres 18). Absorbed 2026-04-23. See [apis/axiomfolio/AGENTS.md](apis/axiomfolio/AGENTS.md).
-- `packages/` — shared libs (auth, analytics, vault, UI primitives)
-- `docs/` — cross-product philosophy docs (infra, data, orchestration)
+- `apps/*` — product frontends (Next.js is standard; legacy Vite apps are being retired)
+- `apis/*` — FastAPI backends (`apis/brain` = shared orchestration)
+- `packages/*` — shared libraries (`ui`, `auth-clerk`, analytics, data, …)
+- `docs/*` — cross-cutting runbooks (infra, brand, secrets)
+- Full stack notes: [.cursorrules](.cursorrules), [.cursor/rules/engineering.mdc](.cursor/rules/engineering.mdc)
 
-## Quick Start
+---
 
-- **Tech stack**: Next.js 14+ + Tailwind CSS v4 + shadcn/ui (frontend), FastAPI + SQLAlchemy + PostgreSQL (backend)
-- **Full conventions**: See [.cursorrules](.cursorrules) for complete coding standards, architecture, and security rules
-- **Brand guide**: See [.cursor/rules/brand.mdc](.cursor/rules/brand.mdc) for product names, colors, voice
-- **Git workflow**: Branch-based development, never push to main. See [.cursor/rules/git-workflow.mdc](.cursor/rules/git-workflow.mdc)
+## 1. Agent dispatch model
 
-## AI Personas
+### Model / cost tier (hardware)
 
-16 specialized personas guide agent behavior across different domains. Each is defined in `.cursor/rules/`:
+- **Default:** fast / cheap models (e.g. `composer-2-fast`, delegated `Task` with `model: "fast"`) for mechanical work — refactors, tests, docs, wide search, shell/explore subagents. Target **~90%** of volume here.
+- **Escalate to Opus / principal tier only for:** brand palette ratification and parent-mark decisions, **RED**-class incidents or compliance escalations, architecture trade-offs with long-lived blast radius, security-sensitive auth/crypto/PII paths, tax/compliance logic accuracy — see [.cursor/rules/delegation.mdc](.cursor/rules/delegation.mdc) and [.cursor/rules/agent-ops.mdc](.cursor/rules/agent-ops.mdc).
+- **Parallelism:** use **`git worktree`** when multiple agents touch the same repo so branches do not stomp each other.
+- **Cadence:** prefer **~1-day sprints**, **2–3 per day**, decomposed from founder asks into small PR-sized units.
+- **Execution:** run agent jobs **in the background** when the founder is not blocked waiting on the result.
 
-| Persona | File | Role |
-|---|---|---|
-| Executive Assistant | `ea.mdc` | Daily operating partner — briefings, sprint tracking, decision logging, Slack agent interactions |
-| Staff Engineer | `engineering.mdc` | Tech stack authority, architecture, code conventions, infrastructure |
-| UX/UI Lead | `ux.mdc` | Design system, accessibility, mobile-first, animations |
-| Head of Growth | `growth.mdc` | Marketing, content, SEO, viral mechanics |
-| Social Media Manager | `social.mdc` | Platform playbooks, paid ads, analytics, creator outreach |
-| Chief of Staff | `strategy.mdc` | Business strategy, planning, operating cadence |
-| General Counsel | `legal.mdc` | Compliance, EFIN, privacy, tax law, FTC disclosures |
-| CFO | `cfo.mdc` | Unit economics, infrastructure spend, vendor evaluation |
-| QA Lead | `qa.mdc` | Testing, validation, security audits, PII leak detection |
-| Tax Domain Expert | `tax-domain.mdc` | IRS rules, MeF schemas, tax law, bracket calculations |
-| CPA / Tax Advisor | `cpa.mdc` | Tax planning strategy, advisory quality, accuracy review |
-| Partnership Dev | `partnerships.mdc` | Outreach drafts, pipeline tracking, deal summaries |
-| AI Operations Lead | `agent-ops.mdc` | Model routing, cost tracking, persona audits |
-| Brand Guide | `brand.mdc` | Product names, color palettes, typography, voice |
-| Workflows | `workflows.mdc` | Company playbooks for shipping features, making decisions |
-| Git Workflow | `git-workflow.mdc` | Branch naming, PR workflow, commit conventions |
+---
 
-## Invoking a Persona
+## 2. PR & merge discipline
 
-To activate a specific persona, reference the relevant domain in your prompt:
-- Tax questions → Tax Domain Expert
-- Cost/spend → CFO
-- Legal/compliance → General Counsel
-- Code/architecture → Staff Engineer
-- "What should I work on?" → Executive Assistant
+**Automation map:** [docs/infra/PR_PIPELINE_AUTOMATION.md](docs/infra/PR_PIPELINE_AUTOMATION.md)
 
-All personas are always available (alwaysApply: true for core personas). Product-specific personas activate via file globs.
+### Triage labels (`pr-triage.yaml`)
 
-## Agent Workflows (n8n)
+| Label | Meaning | Agent action |
+| --- | --- | --- |
+| **GREEN** (`green-mergeable`) | Checks complete, mergeable, no hard failures (subject to Vercel soft-fail rules) | Let auto-merge paths run; do not slap `do-not-merge` without cause |
+| **YELLOW** (`yellow-needs-fix`) | Mergeable but a check failed | **Fix in-branch** until green — **no bandaids** and no “merge now + follow-up issue” |
+| **RED** (`red-blocked`) | Not mergeable (e.g. conflicts) | **Request changes** — rebase/fix, then re-review |
 
-Core n8n exports live under [infra/hetzner/workflows/](infra/hetzner/workflows/); many former crons are retired to `retired/` in favor of Brain APScheduler. See [retired/RETIRED.md](infra/hetzner/workflows/retired/RETIRED.md).
+### Auto-merge (when eligible)
 
-Key automation:
-- **Slack / Brain**: Brain Slack Adapter and optional on-demand webhooks; scheduled briefings and infra checks run on **Brain** when `BRAIN_OWNS_*` cutover flags are enabled
-- **Decision Logger**: Captures decisions from #decisions and commits to KNOWLEDGE.md
+- **Dependabot / allowlisted sweeps:** [.github/workflows/auto-merge-sweep.yaml](.github/workflows/auto-merge-sweep.yaml)
+- **Agent-output PRs (heuristics + gates):** [.github/workflows/auto-merge-agent-prs.yaml](.github/workflows/auto-merge-agent-prs.yaml)
+- **Human-approved path:** [.github/workflows/auto-merge.yaml](.github/workflows/auto-merge.yaml)
+- **Blockers:** labels such as `do-not-merge`, `wip`, `needs-review`, `needs-founder-review`, draft PRs, `CHANGES_REQUESTED`, 🔴 markers — see runbook
+
+### Rebase vs `main`
+
+- When **`main` moves**, bring feature branches up to date (rebase or merge per team norm).
+- **Repo note:** always-on “auto-rebase every open PR” automation is **deferred** (see PR pipeline doc); use [.github/workflows/rebase-pr.yaml](.github/workflows/rebase-pr.yaml) for **on-demand** rebases until a global workflow lands.
+
+### Git hygiene
+
+- Branch-based development, never push to `main` — [.cursor/rules/git-workflow.mdc](.cursor/rules/git-workflow.mdc)
+
+---
+
+## 3. Architecture rules
+
+### Frontends
+
+- **Next.js** is the standard for `apps/*`; **Vite** stacks are **legacy** and scheduled for decommission as apps migrate.
+- **Design system canvas:** Storybook **8** for shared UI, production host **`design.paperworklabs.com`** — setup/status: [docs/infra/FOUNDER_ACTIONS.md](docs/infra/FOUNDER_ACTIONS.md), motion/component notes: [docs/brand/ANIMATION.md](docs/brand/ANIMATION.md)
+
+### `packages/ui` (framework-agnostic)
+
+- **No** `next/*` imports, **no** `"use server"`, **no** async React Server Component-style exports from package entrypoints — consumers may be Next, plain React, or tooling.
+- Shared **primitives + themes** (Tailwind tokens / CSS) only; app-specific wiring stays in each `app/`.
+- Utilities that touch dates should follow UTC-in / user-TZ-at-render patterns consistent with [docs/infra/TIMEZONE_STANDARDS.md](docs/infra/TIMEZONE_STANDARDS.md).
+
+### Auth
+
+- **`packages/auth`** (`@paperwork-labs/auth-clerk`) owns **Clerk** integration: `SignInShell`, `SignUpShell`, **`createClerkAppearance`**, presets — see [packages/auth/README.md](packages/auth/README.md).
+
+### Time
+
+- **UTC** in DB, APIs, logs, and server comparisons; **user timezone only at UI render** — [docs/infra/TIMEZONE_STANDARDS.md](docs/infra/TIMEZONE_STANDARDS.md)
+
+---
+
+## 4. Brain orchestration
+
+- **Crons:** **APScheduler** in Brain with SQLAlchemy job store — canonical doc: [docs/infra/BRAIN_SCHEDULER.md](docs/infra/BRAIN_SCHEDULER.md). **n8n** is being **cut over / retired** (Track K / `BRAIN_OWNS_*` flags); do not add new long-lived n8n automation without explicit approval.
+- **Memory:** episodic **`agent_episodes`** + hybrid retrieval — see `apis/brain/app/services/memory.py`, `apis/brain/app/models/episode.py`.
+- **Personas:** Brain loads [.cursor/rules/*.mdc](.cursor/rules) from the image bundle — see `apis/brain/app/services/agent.py`.
+- **Secrets awareness:** Brain calls Studio **`/api/secrets`** via `apis/brain/app/tools/vault.py`; scheduled **credential expiry** when `BRAIN_OWNS_CREDENTIAL_EXPIRY` — `apis/brain/app/schedulers/credential_expiry.py`.
+- **Founder asks → work:** break into **~1-day** tasks tracked in repo docs/trackers (e.g. `docs/TASKS.md`, sprint docs) — keep Brain + docs in sync when behavior changes.
+
+---
+
+## 5. Brand canon
+
+- **Rule files:** [.cursor/rules/brand.mdc](.cursor/rules/brand.mdc)
+- **Prompts / marks:** [docs/brand/PROMPTS.md](docs/brand/PROMPTS.md) — **P1–P5** system for parent Paperwork Labs mark
+- **Motion:** [docs/brand/ANIMATION.md](docs/brand/ANIMATION.md)
+- **Registry:** [docs/brand/README.md](docs/brand/README.md)
+- **Product palettes:** per-product Tailwind / CSS tokens — **one continuous amber span** rule for the **parent** paperclip (not sub-product marks); see brand.mdc
+
+---
+
+## 6. Secrets handling
+
+- **Never** paste production secrets into chat, tickets, or PRs — [.cursor/rules/secrets-ops.mdc](.cursor/rules/secrets-ops.mdc)
+- **Studio Vault** is the **source of truth** (`paperworklabs.com/admin/secrets`, `POST /api/secrets`, `make secrets`, `./scripts/vault-get.sh`) — [docs/SECRETS.md](docs/SECRETS.md)
+- **Brain:** runtime vault access and per-user `brain_user_vault` — same runbook, **Brain vault integration** section
+- **Env drift:** `make env-check`, matrix in secrets-ops.mdc
+
+---
+
+## 7. Quick start (local)
+
+- **Conventions:** [.cursorrules](.cursorrules)
+- **Decisions log:** [docs/KNOWLEDGE.md](docs/KNOWLEDGE.md) (after material decisions)
+
+---
+
+## Per-skill / rule quick links (`.cursor/rules/*.mdc`)
+
+| Rule file | Topic |
+| --- | --- |
+| [agent-ops.mdc](.cursor/rules/agent-ops.mdc) | Model routing, cost registry |
+| [alpha-researcher.mdc](.cursor/rules/alpha-researcher.mdc) | Alpha research persona |
+| [brain-mcp-sync.mdc](.cursor/rules/brain-mcp-sync.mdc) | Brain MCP sync |
+| [brain-skill-engineer.mdc](.cursor/rules/brain-skill-engineer.mdc) | Brain skills |
+| [brand.mdc](.cursor/rules/brand.mdc) | Brand identity |
+| [capital-allocator.mdc](.cursor/rules/capital-allocator.mdc) | Capital allocation |
+| [code-quality-guardian.mdc](.cursor/rules/code-quality-guardian.mdc) | Code quality bar |
+| [cpa.mdc](.cursor/rules/cpa.mdc) | CPA / advisory |
+| [cfo.mdc](.cursor/rules/cfo.mdc) | Unit economics, spend |
+| [delegation.mdc](.cursor/rules/delegation.mdc) | When to delegate vs escalate |
+| [dep-freshness.mdc](.cursor/rules/dep-freshness.mdc) | Dependency freshness |
+| [ea.mdc](.cursor/rules/ea.mdc) | Executive assistant |
+| [education-sync.mdc](.cursor/rules/education-sync.mdc) | Education sync |
+| [engineering.mdc](.cursor/rules/engineering.mdc) | Staff engineer / stack |
+| [git-workflow.mdc](.cursor/rules/git-workflow.mdc) | Branches, PRs |
+| [growth.mdc](.cursor/rules/growth.mdc) | Growth |
+| [infra-ops.mdc](.cursor/rules/infra-ops.mdc) | Infra ops |
+| [legal.mdc](.cursor/rules/legal.mdc) | Legal / compliance |
+| [market-data-guardian.mdc](.cursor/rules/market-data-guardian.mdc) | Market data quality |
+| [market-data-platform.mdc](.cursor/rules/market-data-platform.mdc) | Market data platform |
+| [microstructure.mdc](.cursor/rules/microstructure.mdc) | Microstructure |
+| [no-hallucinated-ui-labels.mdc](.cursor/rules/no-hallucinated-ui-labels.mdc) | UI copy discipline |
+| [no-silent-fallback.mdc](.cursor/rules/no-silent-fallback.mdc) | No silent fallbacks |
+| [ops-engineer.mdc](.cursor/rules/ops-engineer.mdc) | Operations engineering |
+| [partnerships.mdc](.cursor/rules/partnerships.mdc) | Partnerships |
+| [plan-mode-first.mdc](.cursor/rules/plan-mode-first.mdc) | Planning mode |
+| [point-in-time-data.mdc](.cursor/rules/point-in-time-data.mdc) | Point-in-time data |
+| [portfolio-manager.mdc](.cursor/rules/portfolio-manager.mdc) | Portfolio management |
+| [prod-database.mdc](.cursor/rules/prod-database.mdc) | Production database |
+| [production-verification.mdc](.cursor/rules/production-verification.mdc) | Production verification |
+| [protected-regions.mdc](.cursor/rules/protected-regions.mdc) | Protected code regions |
+| [qa.mdc](.cursor/rules/qa.mdc) | QA / validation |
+| [quant-analyst.mdc](.cursor/rules/quant-analyst.mdc) | Quant analysis |
+| [revenue-engineer.mdc](.cursor/rules/revenue-engineer.mdc) | Revenue engineering |
+| [risk-manager.mdc](.cursor/rules/risk-manager.mdc) | Risk |
+| [secrets-ops.mdc](.cursor/rules/secrets-ops.mdc) | Secrets / vault |
+| [social.mdc](.cursor/rules/social.mdc) | Social |
+| [strategy.mdc](.cursor/rules/strategy.mdc) | Strategy / chief of staff |
+| [swing-trader.mdc](.cursor/rules/swing-trader.mdc) | Swing trading |
+| [systematic-trader.mdc](.cursor/rules/systematic-trader.mdc) | Systematic trading |
+| [tax-domain.mdc](.cursor/rules/tax-domain.mdc) | Tax domain |
+| [token-efficiency.mdc](.cursor/rules/token-efficiency.mdc) | Token efficiency |
+| [token-management.mdc](.cursor/rules/token-management.mdc) | Token management |
+| [trading.mdc](.cursor/rules/trading.mdc) | Trading |
+| [ux.mdc](.cursor/rules/ux.mdc) | UX / UI |
+| [ux-lead.mdc](.cursor/rules/ux-lead.mdc) | UX lead |
+| [validator-curator.mdc](.cursor/rules/validator-curator.mdc) | Validators |
+| [workflows.mdc](.cursor/rules/workflows.mdc) | Company playbooks |
+
+**Product-specific:** [apis/axiomfolio/AGENTS.md](apis/axiomfolio/AGENTS.md)

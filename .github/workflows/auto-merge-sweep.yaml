@@ -4,6 +4,10 @@ name: Auto-merge dependabot sweep
 #   - dependabot PRs (CI-green, mergeable)
 #   - allowlisted bot/human PRs (agent-pr-merge) — see .github/auto-merge-allowlist.yaml
 #
+# Agent-output PRs (label / branch / author heuristics) use auto-merge queue:
+#   .github/workflows/auto-merge-agent-prs.yaml (every 30m + PR events).
+# PR health labels: .github/workflows/pr-triage.yaml (nightly).
+#
 # Vercel checks that failed only due to free-tier rate limits are treated as
 # soft failures (PR can still merge if all other checks are green).
 #
