@@ -21,7 +21,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from datetime import datetime
+from datetime import UTC, datetime
 import enum
 
 from . import Base
@@ -252,10 +252,10 @@ class BrokerAccount(Base):
     def update_sync_status(self, status: SyncStatus, error_message: str = None):
         """Update sync status with timestamps."""
         self.sync_status = status
-        self.last_sync_attempt = datetime.now()
+        self.last_sync_attempt = datetime.now(UTC)
 
         if status == SyncStatus.SUCCESS:
-            self.last_successful_sync = datetime.now()
+            self.last_successful_sync = datetime.now(UTC)
             self.sync_error_message = None
         elif error_message:
             self.sync_error_message = error_message

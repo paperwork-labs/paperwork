@@ -14,7 +14,7 @@ extend-exclude = '''
 '''
 
 [tool.isort]
-# Clean import sorting
+# Clean, consistent imports
 profile = "black"
 multi_line_output = 3
 include_trailing_comma = true
@@ -29,6 +29,6 @@ target-version = "py311"
 line-length = 88
 
 [tool.ruff.lint]
-# Narrow gate: deprecated utcnow only. Full DTZ is a follow-up (~182 findings).
-# Use: ruff check app/ scripts/ --exclude alembic
-select = ["DTZ003"]
+# Full `DTZ` (not only `DTZ003`). See docs/infra/TIMEZONE_STANDARDS.md.
+# Use: ruff check app/ --exclude alembic
+select = ["DTZ"]

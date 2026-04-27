@@ -1,6 +1,7 @@
 """medallion: ops"""
 
 import logging
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -28,8 +29,8 @@ def _formation_to_dict(formation: Formation) -> dict:
 @router.post("")
 async def create_formation(
     body: FormationCreate,
-    db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(require_session),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user_id: Annotated[str, Depends(require_session)],
 ):
     """Create a new LLC formation request."""
     formation = Formation(
@@ -53,8 +54,8 @@ async def create_formation(
 
 @router.get("")
 async def list_formations(
-    db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(require_session),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user_id: Annotated[str, Depends(require_session)],
 ):
     """List all formations for the current user."""
     result = await db.execute(
@@ -70,8 +71,8 @@ async def list_formations(
 @router.get("/{formation_id}")
 async def get_formation(
     formation_id: int,
-    db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(require_session),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user_id: Annotated[str, Depends(require_session)],
 ):
     """Get a specific formation by ID."""
     result = await db.execute(
@@ -95,8 +96,8 @@ async def get_formation(
 async def update_formation(
     formation_id: int,
     body: FormationUpdate,
-    db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(require_session),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user_id: Annotated[str, Depends(require_session)],
 ):
     """Update a formation. Only allowed while status is draft or failed."""
     result = await db.execute(
@@ -157,8 +158,8 @@ async def update_formation(
 @router.delete("/{formation_id}")
 async def cancel_formation(
     formation_id: int,
-    db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(require_session),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user_id: Annotated[str, Depends(require_session)],
 ):
     """Cancel a formation. Sets status to 'failed' with cancellation reason."""
     result = await db.execute(

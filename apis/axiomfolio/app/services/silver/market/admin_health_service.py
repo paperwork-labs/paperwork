@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from sqlalchemy import distinct, func
@@ -726,8 +726,7 @@ class AdminHealthService:
                 else:
                     earliest_date = earliest
                 earliest_date_str = earliest_date.isoformat()
-                from datetime import date as _date
-                delta = _date.today() - earliest_date
+                delta = datetime.now(UTC).date() - earliest_date
                 history_depth_years = round(delta.days / 365.25, 1)
 
             ohlcv_min = db.query(func.min(PriceData.date)).filter(PriceData.interval == "1d").scalar()

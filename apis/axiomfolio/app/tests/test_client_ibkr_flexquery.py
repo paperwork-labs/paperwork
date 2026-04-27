@@ -14,7 +14,7 @@ Tests all functionality of the IBKRFlexQueryClient including:
 import pytest
 import asyncio
 from unittest.mock import patch, AsyncMock
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
 
@@ -193,8 +193,8 @@ class TestIBKRFlexQueryClient:
     def test_parse_flexquery_date(self, client):
         """Test FlexQuery date parsing."""
         # Test various date formats
-        assert client._parse_flexquery_date("20240115") == datetime(2024, 1, 15)
-        assert client._parse_flexquery_date("2024-01-15") == datetime(2024, 1, 15)
+        assert client._parse_flexquery_date("20240115") == datetime(2024, 1, 15, tzinfo=UTC)
+        assert client._parse_flexquery_date("2024-01-15") == datetime(2024, 1, 15, tzinfo=UTC)
         assert client._parse_flexquery_date("") is None
         assert client._parse_flexquery_date(None) is None
         assert client._parse_flexquery_date("invalid") is None

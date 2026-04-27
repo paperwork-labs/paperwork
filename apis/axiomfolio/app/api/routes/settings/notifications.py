@@ -3,7 +3,7 @@ AxiomFolio V1 - Notifications routes
 Brain webhook delivery and in-app alerts.
 """
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict
 import logging
 
@@ -29,7 +29,7 @@ async def get_notification_status(
     return {
         "user_id": user.id,
         "brain_webhook_configured": notification_service.is_brain_configured(),
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
     }
 
 
@@ -51,7 +51,7 @@ async def send_test_notification(
 
         return {
             "message": "Test notification sent",
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     except Exception as e:

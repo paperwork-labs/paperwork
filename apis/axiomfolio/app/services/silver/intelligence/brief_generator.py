@@ -9,7 +9,7 @@ medallion: silver
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func, and_
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def generate_daily_digest(db: Session, as_of: date | None = None) -> dict[str, Any]:
     """Produce the daily intelligence digest after the nightly pipeline."""
-    today = as_of or date.today()
+    today = as_of or datetime.now(UTC).date()
     yesterday = today - timedelta(days=1)
 
     regime = (
@@ -82,7 +82,7 @@ def generate_daily_digest(db: Session, as_of: date | None = None) -> dict[str, A
 
 def generate_weekly_brief(db: Session, as_of: date | None = None) -> dict[str, Any]:
     """Produce the weekly strategy brief (generated Sunday/Monday pre-market)."""
-    today = as_of or date.today()
+    today = as_of or datetime.now(UTC).date()
     week_ago = today - timedelta(days=7)
 
     regimes = (
@@ -130,7 +130,7 @@ def generate_weekly_brief(db: Session, as_of: date | None = None) -> dict[str, A
 
 def generate_monthly_review(db: Session, as_of: date | None = None) -> dict[str, Any]:
     """Produce the monthly/quarterly review."""
-    today = as_of or date.today()
+    today = as_of or datetime.now(UTC).date()
     month_ago = today - timedelta(days=30)
 
     regimes = (

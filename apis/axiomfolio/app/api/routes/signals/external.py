@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, Query
@@ -57,7 +57,7 @@ class ExternalSignalsBatchResponse(BaseModel):
 def _load_external_items_for_symbol(
     db: Session, sym: str, days: int, *, per_symbol_max: int = 10
 ) -> list[ExternalSignalItem]:
-    cutoff = date.today() - timedelta(days=days)
+    cutoff = datetime.now(UTC).date() - timedelta(days=days)
     rows = db.scalars(
         select(ExternalSignal)
         .where(
@@ -94,7 +94,7 @@ def list_external_signals_batch(
     parts = parts[:50]
     if not parts:
         return ExternalSignalsBatchResponse(by_symbol={})
-    cutoff = date.today() - timedelta(days=days)
+    cutoff = datetime.now(UTC).date() - timedelta(days=days)
     all_rows: list[ExternalSignal] = list(
         db.scalars(
             select(ExternalSignal)

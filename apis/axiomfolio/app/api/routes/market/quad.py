@@ -5,7 +5,7 @@ Market Quad Routes
 Endpoints for Hedgeye GIP Quad Model state and history.
 """
 
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Dict, Any
 
 from fastapi import APIRouter, Depends, Query
@@ -52,7 +52,7 @@ async def get_quad_history(
     _viewer: User = Depends(get_market_data_viewer),
 ) -> Dict[str, Any]:
     """Get quad history for the last N days."""
-    cutoff_date = date.today() - timedelta(days=days)
+    cutoff_date = datetime.now(UTC).date() - timedelta(days=days)
     cutoff = datetime.combine(cutoff_date, datetime.min.time())
     stmt = (
         select(MarketQuad)

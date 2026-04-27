@@ -16,6 +16,7 @@ select = [
     "T20",  # flake8-print
     "SIM",  # flake8-simplify
     "RUF",  # ruff-specific rules
+    "DTZ",  # datetime timezone (UTC discipline)
 ]
 ignore = [
     "S101",  # assert used in tests

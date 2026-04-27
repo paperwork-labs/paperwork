@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any, List, Optional, Sequence
 
@@ -81,7 +81,7 @@ def fetch_yfinance_options_chain(
     if not opt_dates:
         return []
 
-    today = date.today()
+    today = datetime.now(UTC).date()
     out: List[dict[str, Any]] = []
 
     want = None
@@ -90,7 +90,7 @@ def fetch_yfinance_options_chain(
 
     for exp_s in opt_dates:
         try:
-            exp_d = datetime.strptime(str(exp_s), "%Y-%m-%d").date()
+            exp_d = date.fromisoformat(str(exp_s))
         except Exception:
             continue
 

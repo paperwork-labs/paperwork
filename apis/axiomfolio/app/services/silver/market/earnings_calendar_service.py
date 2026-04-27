@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Dict, List, Optional
 
@@ -96,9 +96,9 @@ class EarningsCalendarService:
         Returns counters: {source, fetched, upserted, errors}.
         """
         if from_date is None:
-            from_date = date.today() - timedelta(days=7)
+            from_date = datetime.now(UTC).date() - timedelta(days=7)
         if to_date is None:
-            to_date = date.today() + timedelta(days=90)
+            to_date = datetime.now(UTC).date() + timedelta(days=90)
 
         events: List[EarningsEvent] = []
         source = "none"
@@ -187,7 +187,7 @@ class EarningsCalendarService:
             if not symbol or not raw_date:
                 continue
             try:
-                report_dt = datetime.strptime(raw_date, "%Y-%m-%d").date()
+                report_dt = date.fromisoformat(raw_date)
             except (ValueError, TypeError):
                 continue
 
@@ -304,7 +304,7 @@ def _parse_date(val: object) -> Optional[date]:
     if isinstance(val, str):
         for fmt in ("%Y-%m-%d", "%b %d, %Y", "%m/%d/%Y"):
             try:
-                return datetime.strptime(val, fmt).date()
+                return datetime.strptime(val, fmt).replace(tzinfo=UTC).date()
             except ValueError:
                 continue
     return None
