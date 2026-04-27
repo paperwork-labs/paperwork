@@ -1,6 +1,6 @@
 ---
 owner: ea
-last_reviewed: 2026-04-25
+last_reviewed: 2026-04-26
 doc_kind: reference
 domain: personas
 status: active
@@ -9,8 +9,8 @@ status: active
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
-**Last Updated**: 2026-04-25
-**Version**: 10.7 (D89 — Brain APScheduler SQLAlchemy job store)
+**Last Updated**: 2026-04-26
+**Version**: 10.8 (D90 — Medallion 0.D strict import gate)
 
 ---
 
@@ -397,6 +397,14 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 **Alternatives**: Could have fixed incrementally, but these are all interconnected (Brain is non-functional without the ensemble).
 
 **Reversibility**: Fully reversible (code changes only, no data migration).
+
+### D90 — Medallion Phase 0.D: architecture enforced in CI (2026-04-26)
+
+**Decision**: Medallion import layering is **strict by default** (`python scripts/medallion/check_imports.py --app-dir … --strict`). Cross-layer imports that remain intentional use `# medallion: allow …` with a one-line rationale at the import site. Inherited Wave 0.C placeholder waivers are drained: account config/credentials helpers are tagged `ops` where they are cross-tenant infrastructure; Stage Analysis `compute_position_size` lives in `app/services/gold/position_sizing.py` so gold does not depend on `execution/` for that math; `app/services/__init__.py` carries no D88-era re-export shims.
+
+**Rationale**: Without a hard gate, medallion drifts as soon as new broker or strategy code ships; strict mode plus explicit allow lines make exceptions reviewable in PRs.
+
+**Reversibility**: Re-enable `--warn-only` locally for spelunking; do not use in CI.
 
 ---
 

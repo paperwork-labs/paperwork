@@ -13,8 +13,8 @@ Rules (bronze < silver < gold < execution; ops is escape hatch):
     ops/       may import from: anywhere (escape hatch)
 
 Usage:
-    python scripts/medallion/check_imports.py --app-dir apis/axiomfolio
-    python scripts/medallion/check_imports.py --app-dir apis/brain --stats
+    python scripts/medallion/check_imports.py --app-dir apis/axiomfolio --strict
+    python scripts/medallion/check_imports.py --app-dir apis/brain --stats --strict
 """
 from __future__ import annotations
 
@@ -194,9 +194,20 @@ def main() -> int:
         help="App directory relative to repo root, e.g. apis/axiomfolio",
     )
     ap.add_argument("--stats", action="store_true")
-    ap.add_argument("--warn-only", action="store_true")
+    ap.add_argument(
+        "--warn-only",
+        action="store_true",
+        help="Exit 0 even when import violations are found (local dev only; do not use in CI).",
+    )
+    ap.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit non-zero when violations are found. This is the default; pass explicitly in CI for clarity.",
+    )
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
+    if args.strict and args.warn_only:
+        ap.error("Cannot combine --strict and --warn-only")
     try:
         name = resolve_app_name(args.app_dir)
         cfg = load_config(name)
