@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { ClippedWordmark } from "./ClippedWordmark";
+import { ClippedWordmark } from "@paperwork-labs/ui/brand";
 
 // The component itself is currently a placeholder stub — see the TODO in
 // ClippedWordmark.tsx. Once `brand/p5-clipped-wordmark-svg` lands the stub is

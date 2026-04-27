@@ -82,12 +82,6 @@ jobs:
             project_id: prj_MFUxaJCbQuSdJZWWVgaEtRllKjzB
           - project: design
             project_id: TBD_CREATE_BEFORE_MERGE
-          - project: design
-            project_id: TBD_CREATE_BEFORE_MERGE
-          - project: accounts
-            project_id: TBD_CREATE_BEFORE_MERGE
-          - project: design
-            project_id: TBD_CREATE_BEFORE_MERGE
     env:
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
       TEAM_ID: team_RwfzJ9ySyLuVcoWdKJfXC7h5

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { Wordmark } from "./Wordmark";
+import { Wordmark } from "@paperwork-labs/ui/brand";
 
 const meta = {
   title: "Brand/Wordmark",
