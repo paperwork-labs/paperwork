@@ -40,14 +40,36 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
 
+            async function isIgnorableVercelFailure(checkRun) {
+              const name = (checkRun.name || '').toLowerCase();
+              if (!name.includes('vercel')) return false;
+              let blob = '';
+              try {
+                const { data: full } = await github.rest.checks.get({
+                  owner, repo, check_run_id: checkRun.id,
+                });
+                blob = `${full.output?.title || ''} ${full.output?.summary || ''} ${full.output?.text || ''}`.toLowerCase();
+              } catch (e) {
+                blob = '';
+              }
+              return /(rate limit|build limit exceeded|deployment skipped|too many requests|skipped deployment|builds are paused)/.test(blob);
+            }
+
             async function allChecksPass(sha) {
               const { data: checks } = await github.rest.checks.listForRef({
                 owner, repo, ref: sha, per_page: 100,
               });
-              const notReady = checks.check_runs.filter(
-                (c) => c.name !== 'auto-merge' &&
-                  !(c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion))
-              );
+              const notReady = [];
+              for (const c of checks.check_runs) {
+                if (c.name === 'auto-merge') continue;
+                if (c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion || '')) {
+                  continue;
+                }
+                if (c.status === 'completed' && c.conclusion === 'failure') {
+                  if (await isIgnorableVercelFailure(c)) continue;
+                }
+                notReady.push(c);
+              }
               return { ok: notReady.length === 0, notReady };
             }
 

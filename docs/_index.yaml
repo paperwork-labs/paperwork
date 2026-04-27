@@ -205,6 +205,13 @@ docs:
     tags: [runbook, drive, mcp]
     owners: [agent-ops, ea]
     category: runbooks
+  - slug: pr-pipeline-automation
+    path: docs/infra/PR_PIPELINE_AUTOMATION.md
+    title: PR pipeline automation
+    summary: "flowchart LR A[Agent or human opens PR] --> B[CI checks] B --> C{Green + mergeable?} C -->|Approved path| D[auto-merge.yaml merges on approval] C -->|Dependabot| E[auto-merge-sweep / sweep job] C…"
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
   - slug: render-inventory
     path: docs/infra/RENDER_INVENTORY.md
     title: Render Inventory
