@@ -211,6 +211,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install credential_expiry job")
 
     try:
+        from app.schedulers import data_source_monitor
+
+        data_source_monitor.install(sched)
+    except Exception:
+        logger.exception("Failed to install data_source_monitor job")
+
+    try:
         from app.schedulers import infra_health
 
         infra_health.install(sched)
