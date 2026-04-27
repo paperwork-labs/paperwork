@@ -14,6 +14,7 @@ the first-party Brain cron is the only schedule:
 - :envvar:`BRAIN_OWNS_INFRA_HEARTBEAT` → ``n8n_shadow_infra_heartbeat`` (T1.3)
 - :envvar:`BRAIN_OWNS_CREDENTIAL_EXPIRY` → ``n8n_shadow_credential_expiry`` (T1.4)
 - :envvar:`BRAIN_OWNS_INFRA_HEALTH` → ``n8n_shadow_infra_health`` (30m ``IntervalTrigger``)
+- :envvar:`BRAIN_OWNS_SPRINT_KICKOFF` → ``n8n_shadow_sprint_kickoff`` (Track K)
 
 See ``docs/infra/BRAIN_SCHEDULER.md``.
 """
@@ -219,8 +220,8 @@ def _brain_owns_weekly_strategy() -> bool:
     )
 
 
-def _brain_owns_brain_weekly() -> bool:
-    return os.getenv("BRAIN_OWNS_BRAIN_WEEKLY", "").lower() in (
+def _brain_owns_sprint_kickoff() -> bool:
+    return os.getenv("BRAIN_OWNS_SPRINT_KICKOFF", "").lower() in (
         "1",
         "true",
         "yes",
@@ -248,6 +249,7 @@ def should_register_n8n_shadow_for_job(job_id: str) -> bool:
     - ``n8n_shadow_infra_heartbeat`` → :envvar:`BRAIN_OWNS_INFRA_HEARTBEAT` (T1.3)
     - ``n8n_shadow_credential_expiry`` → :envvar:`BRAIN_OWNS_CREDENTIAL_EXPIRY` (T1.4)
     - ``n8n_shadow_infra_health`` → :envvar:`BRAIN_OWNS_INFRA_HEALTH` (30m interval)
+    - ``n8n_shadow_sprint_kickoff`` → :envvar:`BRAIN_OWNS_SPRINT_KICKOFF` (Track K)
     """
     if not is_n8n_mirror_enabled_for_job(job_id):
         return False
@@ -262,6 +264,8 @@ def should_register_n8n_shadow_for_job(job_id: str) -> bool:
     if job_id == "n8n_shadow_credential_expiry" and _brain_owns_credential_expiry():
         return False
     if job_id == "n8n_shadow_infra_health" and _brain_owns_infra_health():
+        return False
+    if job_id == "n8n_shadow_sprint_kickoff" and _brain_owns_sprint_kickoff():
         return False
     return True
 
