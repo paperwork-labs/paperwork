@@ -149,6 +149,7 @@ jobs:
                   repo,
                   pull_number: num,
                   merge_method: 'squash',
+                  delete_branch: true,
                 });
                 return { action: 'merged' };
               } catch (e) {
@@ -399,6 +400,7 @@ jobs:
                   repo,
                   pull_number: num,
                   merge_method: 'squash',
+                  delete_branch: true,
                 });
                 return { action: 'merged', mergedDelta: 1 };
               } catch (e) {
