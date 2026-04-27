@@ -1,6 +1,6 @@
 name: Chromatic visual regression
 
-# Visual regression for the apps/design Storybook canvas.
+# Visual regression for the apps/design Storybook 10 canvas.
 # Builds Storybook on each PR that touches design tokens or stories,
 # publishes to Chromatic, and posts a GitHub check with any visual diffs.
 #
@@ -14,9 +14,9 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'apps/design/**'
-      - 'packages/**/src/**'
-      - '.github/workflows/chromatic.yaml'
+      - "apps/design/**"
+      - "packages/**/src/**"
+      - ".github/workflows/chromatic.yaml"
 
 concurrency:
   group: chromatic-${{ github.ref }}
@@ -37,17 +37,17 @@ jobs:
       # 4 GiB headroom for the Storybook build on 30+ stories with theme variants.
       NODE_OPTIONS: --max-old-space-size=4096
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Chromatic needs full git history to compute baselines via TurboSnap.
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: "20"
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -56,11 +56,11 @@ jobs:
         run: pnpm --filter @paperwork-labs/design build-storybook
 
       - name: Publish to Chromatic
-        uses: chromaui/action@latest
+        uses: chromaui/action@v11
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           workingDir: apps/design
           storybookBuildDir: storybook-static
           onlyChanged: true
           exitZeroOnChanges: true
-          autoAcceptChanges: 'main'
+          autoAcceptChanges: "main"

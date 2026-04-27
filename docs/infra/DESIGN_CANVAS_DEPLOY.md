@@ -5,7 +5,7 @@ owner: infra-ops
 status: draft
 domain: infra
 doc_kind: runbook
-summary: "Founder + engineering runbook for shipping apps/design (Storybook 8) to design.paperworklabs.com via the existing Vercel auto-promote workflow."
+summary: "Founder + engineering runbook for shipping apps/design (Storybook 10) to design.paperworklabs.com via the existing Vercel auto-promote workflow."
 tags: [vercel, dns, storybook, design, brand]
 ---
 
@@ -27,7 +27,7 @@ covers the **design-canvas-specific** founder steps.
    `project_id: TBD_CREATE_BEFORE_MERGE`. The job **skips cleanly**
    while the placeholder is in place — no failed runs, no production
    impact.
-2. `apps/design/vercel.json` — Storybook 8 build config (corepack +
+2. `apps/design/vercel.json` — Storybook 10 build config (corepack +
    pnpm filter install, `pnpm --filter @paperwork-labs/design
    build-storybook`, `outputDirectory: storybook-static`).
 3. `apps/design/README.md` — local dev + story-glob reference.
@@ -120,7 +120,7 @@ that will act on a `apps/design`-only PR.)
 
 ## What gets deployed
 
-- Storybook 8 static build of every story under
+- Storybook 10 static build of every story under
   - `apps/design/src/stories/**/*.stories.tsx`
   - `packages/**/src/**/*.stories.tsx`
 - Re-deploy triggers on every merge to `main` that touches
@@ -135,7 +135,7 @@ that will act on a `apps/design`-only PR.)
 | Workflow logs `Vercel project for design not yet created. Skipping promote.` | `project_id: TBD_CREATE_BEFORE_MERGE` placeholder still in the matrix. | Founder step 2 above — replace with real `prj_…` and merge. |
 | Workflow logs `VERCEL_API_TOKEN secret is not set — skipping promote.` | Repo-wide `VERCEL_API_TOKEN` missing. | `gh secret set VERCEL_API_TOKEN` (one secret covers all matrix rows; see `VERCEL_AUTO_PROMOTE.md` §1-time setup). |
 | `No preview found for design — Vercel skipped this build` | Vercel did not start a build for the merge commit (path filter, ignoreCommand, Hobby rate limit, or Vercel project not yet created). | Check Vercel dashboard for the SHA. If missing, push a `apps/design/.deploy-trigger` bump and re-merge. |
-| Storybook build fails on Storybook 8 + React 19 compat | Known compatibility window (mid-2026). | Pin React to 18 in the `@paperwork-labs/design` workspace (`react@18.x`, `react-dom@18.x`) until upstream Storybook ships full React 19 support. Note this in PR. |
+| Storybook build fails after dependency bump | Transitive breakage or Vite/Storybook mismatch. | Pin versions in `apps/design/package.json`; confirm `pnpm --filter @paperwork-labs/design build-storybook` locally; see Chromatic + CI logs. |
 | DNS still pending after 1h | Cloudflare proxy still on, or TLD slow to propagate. | Confirm orange cloud is **off**; wait up to 24h on rare TLDs (this one is `.com`, should be < 30 min). |
 | Vercel Hobby `Deployment rate limited — retry in 24 hours` on commit | Multiple matrix projects all building from the same merge commit. | Wait. The promote workflow is idempotent and will pick up the build when it lands. See `VERCEL_AUTO_PROMOTE.md` § Cost. |
 
@@ -156,6 +156,6 @@ contributors**, not a customer surface. It is therefore:
 
 - `.github/workflows/vercel-promote-on-merge.yaml` — the workflow.
 - `docs/infra/VERCEL_AUTO_PROMOTE.md` — shared auto-promote runbook.
-- `apps/design/vercel.json` — Storybook 8 build config.
+- `apps/design/vercel.json` — Storybook 10 build config.
 - `apps/design/README.md` — local dev + story-glob reference.
 - `docs/brand/PROMPTS.md` — brand prompt canon (rendered in stories).
