@@ -11,8 +11,7 @@ name: Auto-merge dependabot sweep
 # Vercel checks that failed only due to free-tier rate limits are treated as
 # soft failures (PR can still merge if all other checks are green).
 #
-# Auto-rebase on main push is deferred while PR #241 (rebase helper) is open;
-# see docs/infra/PR_PIPELINE_AUTOMATION.md.
+# Auto-rebase on main is `auto-rebase-on-main.yaml` (see docs/infra/PR_PIPELINE_AUTOMATION.md).
 
 on:
   schedule:

@@ -24,7 +24,7 @@ _CUTOVER_JOB_IDS: frozenset[str] = frozenset(
 )
 
 # Operational (non–n8n-replacement) gated automation.
-_OPERATIONAL_JOB_IDS: frozenset[str] = frozenset({"sprint_auto_logger"})
+_OPERATIONAL_JOB_IDS: frozenset[str] = frozenset({"sprint_auto_logger", "brain_agent_sprint_planner"})
 
 _N8N_SHADOW_IDS: frozenset[str] = frozenset(s.job_id for s in N8N_MIRROR_SPECS)
 

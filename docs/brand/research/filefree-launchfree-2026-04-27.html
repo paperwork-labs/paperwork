@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FileFree + LaunchFree — Direction round 2 (research)</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --surface: #121820;
+      --border: #1e293b;
+      --text: #e8edf4;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ff-p: #4f46e5;
+      --ff-a: #84cc16;
+      --lf-p: #0284c7;
+      --lf-a: #06b6d4;
+      --warn: #fbbf24;
+      --radius: 12px;
+      --font: ui-sans-serif, system-ui, -apple-system, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --mono: ui-monospace, "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: var(--font); background: var(--bg); color: var(--text);
+      line-height: 1.55; font-size: 15px;
+    }
+    a { color: var(--accent); }
+    a:hover { text-decoration: underline; }
+    header.page { padding: 1.5rem 1.25rem 1rem; max-width: 1100px; margin: 0 auto; }
+    header.page h1 { font-size: 1.35rem; font-weight: 700; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    header.page .lede { color: var(--muted); max-width: 70ch; margin: 0; font-size: 0.95rem; }
+    .tag { display: inline-block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--warn); border: 1px solid #78350f; background: #1c1917; padding: 0.2rem 0.5rem; border-radius: 6px; margin-top: 0.75rem; }
+    .ratify {
+      max-width: 1100px; margin: 0 auto 1.5rem; padding: 0 1.25rem;
+    }
+    .ratify-inner {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1.1rem 1rem 1.25rem;
+    }
+    .ratify h2 { font-size: 1rem; margin: 0 0 0.75rem; }
+    .ratify fieldset { border: 0; margin: 0 0 1rem; padding: 0; }
+    .ratify label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.35rem; }
+    .ratify textarea {
+      width: 100%; min-height: 4.5rem; padding: 0.6rem 0.75rem; border-radius: 8px;
+      border: 1px solid var(--border); background: #0a0d12; color: var(--text);
+      font-family: var(--font); font-size: 0.9rem; resize: vertical;
+    }
+    .ratify p.note { font-size: 0.8rem; color: var(--muted); margin: 0.5rem 0 0; }
+    section.bundle { max-width: 1100px; margin: 0 auto; padding: 0 1.25rem 2rem; }
+    section.bundle h2.product {
+      font-size: 1.15rem; margin: 0 0 0.5rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);
+    }
+    section.bundle.ff h2.product { color: #a5b4fc; }
+    section.bundle.lf h2.product { color: #7dd3fc; }
+    .grid { display: grid; gap: 1rem; }
+    @media (min-width: 640px) { .grid { grid-template-columns: 1fr; } }
+    @media (min-width: 900px) { .grid { grid-template-columns: 1fr 1fr; } }
+    article.card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 1rem 1rem 1.1rem; display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .card-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.75rem; }
+    .card-top h3 { margin: 0; font-size: 1.05rem; flex: 1 1 auto; }
+    .cat {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); border: 1px solid var(--border); padding: 0.15rem 0.45rem; border-radius: 6px;
+    }
+    .fav { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; color: var(--muted); cursor: pointer; user-select: none; }
+    .fav input { width: 1rem; height: 1rem; accent-color: var(--warn); }
+    .metaphor { margin: 0; color: #cbd5e1; font-size: 0.92rem; }
+    .refs-label { font-size: 0.75rem; font-weight: 600; color: var(--muted); margin: 0.25rem 0 0.2rem; }
+    .ref-card {
+      font-size: 0.8rem; padding: 0.4rem 0.55rem; border-radius: 6px; background: #0a0d12; border: 1px solid var(--border);
+      margin-bottom: 0.35rem; line-height: 1.4;
+    }
+    .ref-card a { word-break: break-all; }
+    .swatches { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin: 0.2rem 0; }
+    .swatches span { font-size: 0.7rem; color: var(--muted); margin-right: 0.25rem; }
+    .sw { width: 2rem; height: 2rem; border-radius: 6px; border: 1px solid #334155; }
+    .pros, .cons { font-size: 0.86rem; }
+    .pros h4, .cons h4 { font-size: 0.8rem; margin: 0 0 0.25rem; }
+    .pros h4 { color: #86efac; }
+    .cons h4 { color: #fca5a5; }
+    .pros ul, .cons ul { margin: 0; padding-left: 1.1rem; }
+    .pros li, .cons li { margin-bottom: 0.2rem; }
+    .prompt h4 { font-size: 0.8rem; margin: 0.15rem 0 0.25rem; color: var(--muted); }
+    .prompt pre {
+      margin: 0; font-family: var(--mono); font-size: 0.72rem; line-height: 1.45; white-space: pre-wrap;
+      background: #0a0d12; border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 0.65rem;
+    }
+    footer.doc { max-width: 1100px; margin: 0 auto; padding: 0 1.25rem 2.5rem; color: var(--muted); font-size: 0.8rem; }
+    .context { background: #0f1729; border-left: 3px solid var(--accent); padding: 0.6rem 0.75rem; border-radius: 0 8px 8px 0; font-size: 0.86rem; margin: 0.5rem 0 0; color: #cbd5e1; }
+  </style>
+</head>
+<body>
+  <header class="page">
+    <h1>FileFree + LaunchFree — logo direction round 2</h1>
+    <p class="lede">Research dossier for fresh exploration. No final direction is selected. References are <strong>links only</strong> (no hotlinked images) so this page works offline and avoids broken embeds. Palette hexes are locked from <code>docs/brand/PROMPTS.md</code> (no separate PALETTES.md file).</p>
+    <p class="tag">Context: round 1 used droplet-family geometry (still reflected in <code>brand.mdc</code> and shipped SVGs). Founder asked to move <strong>away</strong> from droplet / water / fluid cues for a “could be completely different” pass.</p>
+  </header>
+
+  <div class="ratify">
+    <div class="ratify-inner">
+      <h2>Founder ratification (decision support)</h2>
+      <p class="lede" style="margin-bottom:0.75rem">No network submission — use shortlist checkboxes on cards, then capture decisions here.</p>
+      <form action="#" onsubmit="return false">
+        <fieldset>
+          <label for="q-ff">Which 2–3 FileFree directions should we develop further?</label>
+          <textarea id="q-ff" name="q-ff" placeholder="e.g. Tabbed Archive, Document Window, FF Monogram…" data-decision="filefree-picks"></textarea>
+        </fieldset>
+        <fieldset>
+          <label for="q-lf">Which 2–3 LaunchFree directions should we develop further?</label>
+          <textarea id="q-lf" name="q-lf" placeholder="e.g. Up-Delta, Raised Bar Gate, Glide Fold…" data-decision="launchfree-picks"></textarea>
+        </fieldset>
+        <fieldset>
+          <label for="q-parent">Should we keep the parent paperclip canon affinity for both sub-brands, or should either product diverge in “family feel”?</label>
+          <textarea id="q-parent" name="q-parent" placeholder="e.g. keep Inter + one-accent grammar; allow FileFree more geometric, LaunchFree more kinetic…" data-decision="parent-affinity"></textarea>
+        </fieldset>
+        <p class="note">Parent P1–P5 prompts in PROMPTS.md stay locked. This exploration does not change the paperclip system.</p>
+      </form>
+    </div>
+  </div>
+
+  <div class="context">
+    <strong>Rejection signal (contrast):</strong> The prior round’s droplet + center-dot pattern reads as a shared “water bead” family; the founder called that exploration unsuitable. This round prioritizes <strong>archival, receipt abstraction, typographic, gate/threshold, and velocity-without-rocket</strong> languages instead — while staying inside locked product hexes.
+  </div>
+
+  <section class="bundle ff" aria-labelledby="ff-title">
+    <h2 class="product" id="ff-title">FileFree — 10 candidate directions (Indigo + Lime)</h2>
+    <p class="lede" style="margin:0 0 1rem; max-width:70ch; color:var(--muted)">Product: bookkeeping / receipt-to-tax; audience: solopreneurs. Avoid droplet, water, fluid. Primary <code>#4F46E5</code> · accent <code>#84CC16</code>.</p>
+    <div class="grid">
+
+      <article class="card" id="ff-1" data-product="filefree" data-direction="Tabbed Archive" data-category="object" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="ff-1" /> Shortlist</label>
+          <h3>Tabbed Archive</h3>
+          <span class="cat">Object</span>
+        </div>
+        <p class="metaphor">A row of <strong>folder or binder tabs</strong> reduced to a single clean mark — one tab lifts or aligns forward (lime) so “your pile becomes navigable.”</p>
+        <p class="refs-label">Reference set (open URLs — 4–8 sources)</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Tab_(interface)">Browser/file UI “tabs” context — <a href="https://en.wikipedia.org/wiki/Tab_(interface)" rel="noopener noreferrer">Wikipedia: Tab (interface)</a></div>
+        <div class="ref-card" data-ref-url="https://commons.wikimedia.org/wiki/File:Notion-logo.svg">Structured-doc positioning — <a href="https://commons.wikimedia.org/wiki/File:Notion-logo.svg" rel="noopener noreferrer">Wikimedia Commons: Notion logo (SVG file page)</a></div>
+        <div class="ref-card" data-ref-url="https://www.cooperhewitt.org/">Museum of design objects / organization culture — <a href="https://www.cooperhewitt.org/" rel="noopener noreferrer">Cooper Hewitt Smithsonian Design Museum (homepage)</a></div>
+        <div class="ref-card" data-ref-url="https://unsplash.com/s/photos/filing-cabinet-minimal">Visual mood for “filing / order” (search) — <a href="https://unsplash.com/s/photos/filing-cabinet-minimal" rel="noopener noreferrer">Unsplash: filing cabinet results</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#4F46E5" title="Indigo"></i><i class="sw" style="background:#84CC16" title="Lime accent on one tab only"></i><i class="sw" style="background:#0F172A" title="Slate ink"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Instant “files / sections” read for a tax + receipt product.</li><li>Scales to favicon as stacked rectangles; animation: tab nudge or slide.</li><li>Clearly not droplet territory.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Risk of looking like a generic browser/IDE icon without strong proportion rules.</li><li>Can collide with “tabs” in UI chrome if mark is too literal.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024 transparent. Flat vector. Three slim folder tabs in a row; left tab slightly forward. Indigo #4F46E5 strokes; one continuous lime #84CC16 segment on the leading tab edge only. Rounded caps. ~60% frame. No text, no gradients, no 3D, no water/droplet shapes. Style: Notion, Linear, Lucide. Single accent zone (sub-product rule).
+        </pre></div>
+      </article>
+
+      <article class="card" id="ff-2" data-product="filefree" data-direction="Receipt Step-Fold" data-category="object" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="ff-2" /> Shortlist</label>
+          <h3>Receipt Step-Fold</h3>
+          <span class="cat">Object</span>
+        </div>
+        <p class="metaphor">A <strong>stepped or zigzag receipt silhouette</strong> (thermal-paper memory) with one clean lime corner or perforation as the “done” moment.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Point_of_sale">Receipt / POS context — <a href="https://en.wikipedia.org/wiki/Point_of_sale" rel="noopener noreferrer">Wikipedia: Point of sale</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Square,_Inc.">Payment hardware brand surface where receipt is part of the story — <a href="https://en.wikipedia.org/wiki/Square,_Inc." rel="noopener noreferrer">Wikipedia: Square, Inc.</a></div>
+        <div class="ref-card" data-ref-url="https://openmoji.org/">Emoji / icon system with paper metaphors (composition discipline) — <a href="https://openmoji.org/" rel="noopener noreferrer">OpenMoji (homepage)</a></div>
+        <div class="ref-card" data-ref-url="https://unsplash.com/s/photos/receipt-paper">Photographic mood only — <a href="https://unsplash.com/s/photos/receipt-paper" rel="noopener noreferrer">Unsplash: receipt paper search</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#4F46E5"></i><i class="sw" style="background:#84CC16"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Direct product truth (receipt → tax) without Illustration-land clutter.</li><li>Perforation = natural single-accent anchor.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Can read as “e‑commerce / POS” not “tax” if the tooth profile is too busy.</li><li>At 16px, zigzags may mud unless simplified aggressively.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024 transparent. Flat vector. One narrow vertical receipt with 3–4 stepped serrations at bottom. Indigo #4F46E5 outline. Single lime #84CC16 chevron on the top-right corner (perforation “torn” moment). No droplets, no water. Rounded stroke 9–11@128. Style: Stripe app icons. No text.
+        </pre></div>
+      </article>
+
+      <article class="card" id="ff-3" data-product="filefree" data-direction="Ledger Bars" data-category="geometric" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="ff-3" /> Shortlist</label>
+          <h3>Ledger Bars</h3>
+          <span class="cat">Geometric abstract</span>
+        </div>
+        <p class="metaphor">Vertical <strong>ruling lines</strong> (ledger / redaction rhythm) with <strong>one line highlighted</strong> in lime — chaos linearizing into one truth row.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Bookkeeping">Category context — <a href="https://en.wikipedia.org/wiki/Bookkeeping" rel="noopener noreferrer">Wikipedia: Bookkeeping</a></div>
+        <div class="ref-card" data-ref-url="https://www.underconsideration.com/brandnew/">Logo systems &amp; rebrand case studies (pattern discipline) — <a href="https://www.underconsideration.com/brandnew/" rel="noopener noreferrer">Brand New (index)</a></div>
+        <div class="ref-card" data-ref-url="https://commons.wikimedia.org/wiki/File:Stripe_Logo,_revised_2016.svg">Stripe: confident minimal geometry in wordmark + symbol era — <a href="https://commons.wikimedia.org/wiki/File:Stripe_Logo,_revised_2016.svg" rel="noopener noreferrer">Commons: Stripe logo (file page)</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Spreadsheet">Grid mental model — <a href="https://en.wikipedia.org/wiki/Spreadsheet" rel="noopener noreferrer">Wikipedia: Spreadsheet</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#4F46E5"></i><i class="sw" style="background:#84CC16"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Speaks to “line items / totals” without literal IRS imagery.</li><li>Animates as lines snapping into register.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Abstract bars echo audio EQ / signal meters if spacing is wrong.</li><li>Low differentiation vs generic “data” marks.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024 transparent. Five vertical parallel strokes, equal spacing; second-from-right stroke uses lime #84CC16, all other strokes indigo #4F46E5. Rounded ends. No gradients, no 3D. One accent only. Favicon test: 3 bars max if simplified variant needed. No droplets. Style: Linear, Figma, Lucide.
+        </pre></div>
+      </article>
+
+      <article class="card" id="ff-4" data-product="filefree" data-direction="Document Window" data-category="negative-space" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="ff-4" /> Shortlist</label>
+          <h3>Document Window</h3>
+          <span class="cat">Negative space</span>
+        </div>
+        <p class="metaphor">A <strong>rounded-rectangle frame</strong> (page window) with a <strong>void checkmark or dot</strong> that only exists as <strong>cutout</strong> — paperwork becoming clarity by absence.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://fonts.google.com/icons">Material / icon grid discipline — <a href="https://fonts.google.com/icons" rel="noopener noreferrer">Google Fonts Icons (index)</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Negative_space">Design vocabulary — <a href="https://en.wikipedia.org/wiki/Negative_space" rel="noopener noreferrer">Wikipedia: Negative space</a></div>
+        <div class="ref-card" data-ref-url="https://commons.wikimedia.org/wiki/File:Notion-logo.svg">Window + glyph composition reference — <a href="https://commons.wikimedia.org/wiki/File:Notion-logo.svg" rel="noopener noreferrer">Commons: Notion mark</a></div>
+        <div class="ref-card" data-ref-url="https://vercel.com/design">Geometric product-mark restraint — <a href="https://vercel.com/design" rel="noopener noreferrer">Vercel: Design (brand page)</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#4F46E5"></i><i class="sw" style="background:#F8FAFC" title="void read"></i><i class="sw" style="background:#84CC16"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Strong 16px read if void is a simple wedge or check.</li><li>“Done / filed” can be the negative shape.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Cutouts can be misprinted on noisy backgrounds; needs strict margin rules.</li><li>Similar to “task done” app icons if check is on-the-nose.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024 transparent. Rounded-rect indigo #4F46E5 frame (stroke, not fill). Interior negative space forms a checkmark silhouette; the check’s “upstroke” is a short lime #84CC16 segment (single accent). No fill inside frame except the accent stroke. No droplets, no gradients, no 3D. Style: Lucide, Phosphor.
+        </pre></div>
+      </article>
+
+      <article class="card" id="ff-5" data-product="filefree" data-direction="FF Monogram" data-category="typographic" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="ff-5" /> Shortlist</label>
+          <h3>FF Monogram</h3>
+          <span class="cat">Typographic</span>
+        </div>
+        <p class="metaphor">A <strong>ligature of two F’s</strong> (File + Free) as a <strong>single interlocking stroke</strong> — one lime joint as the only accent.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/FedEx">Famous letterform negative space case — <a href="https://en.wikipedia.org/wiki/FedEx" rel="noopener noreferrer">Wikipedia: FedEx (arrow between E and x, cultural context)</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Facebook">Wordmark + letter discipline at scale — <a href="https://en.wikipedia.org/wiki/Facebook" rel="noopener noreferrer">Wikipedia: Facebook</a> (type evolution context)</div>
+        <div class="ref-card" data-ref-url="https://commons.wikimedia.org/wiki/File:Slack_icon_2019.svg">Hashtag / knot geometry in chat brand — <a href="https://commons.wikimedia.org/wiki/File:Slack_icon_2019.svg" rel="noopener noreferrer">Commons: Slack 2019 icon (file page)</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Inter_(typeface)">Inter family (align with product wordmark policy) — <a href="https://en.wikipedia.org/wiki/Inter_(typeface)" rel="noopener noreferrer">Wikipedia: Inter (typeface)</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#4F46E5"></i><i class="sw" style="background:#84CC16"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Word-as-mark path for an app that lives in nav rows next to other apps.</li><li>Trademark distinctiveness if shape is ownable.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Requires legal clearance vs other FF marks.</li><li>May fight “we’re not a bank” if too serif/serious.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024 transparent. Monogram: two interlocking uppercase F’s as one-stroke indigo #4F46E5 loop; joint where crossbars meet is lime #84CC16 (one segment). Inter-like geometry, not serif. No word “FileFree” — abstract letters only. No gradients, no 3D. Style: fintech app monograms.
+        </pre></div>
+      </article>
+
+      <article class="card" id="ff-6" data-product="filefree" data-direction="Sleeve Corner" data-category="action" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="ff-6" /> Shortlist</label>
+          <h3>Sleeve Corner</h3>
+          <span class="cat">Action</span>
+        </div>
+        <p class="metaphor">A <strong>L-shaped sleeve or clip corner</strong> (paper held) sliding into place — the lime accent is the <strong>leading corner</strong> completing the hold.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Paperclip">Cultural object (contrast: parent mark uses paperclip; this is a <strong>different</strong> corner-hold language) — <a href="https://en.wikipedia.org/wiki/Paperclip" rel="noopener noreferrer">Wikipedia: Paperclip</a> — <em>avoid copying parent P1–P5; use only as category reference</em></div>
+        <div class="ref-card" data-ref-url="https://unsplash.com/s/photos/paper-stack-corner">Mood: stacked paper corners — <a href="https://unsplash.com/s/photos/paper-stack-corner" rel="noopener noreferrer">Unsplash search</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Moleskine">Notebook corner / object brand — <a href="https://en.wikipedia.org/wiki/Moleskine" rel="noopener noreferrer">Wikipedia: Moleskine</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Muji">Minimal object retail brand — <a href="https://en.wikipedia.org/wiki/Muji" rel="noopener noreferrer">Wikipedia: Muji</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#4F46E5"></i><i class="sw" style="background:#84CC16"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>“Captured receipts” without droplets.</li><li>Parallax animation: corner slides 2–3px.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Too close to <strong>parent paperclip</strong> story — needs explicit geometric difference (corner bracket vs wire loop) and founder review for family collision.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024 transparent. L-shaped bracket in bottom-left hugging a blank rectangle; bracket is indigo #4F46E5; the short return at the corner is lime #84CC16. Not a paperclip wire — thick stroke bracket + sheet. No parent gem clip shape. No droplets, no 3D. Single accent. Style: macOS tool icons, Lucide.
+        </pre></div>
+      </article>
+
+      <article class="card" id="ff-7" data-product="filefree" data-direction="Index Card" data-category="object" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="ff-7" /> Shortlist</label>
+          <h3>Index Card</h3>
+          <span class="cat">Object</span>
+        </div>
+        <p class="metaphor">A <strong>3×5 card</strong> with <strong>two or three hairline rules</strong> and a <strong>single lime rule or dot</strong> as the one “categorized” row.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Index_card">Cultural object — <a href="https://en.wikipedia.org/wiki/Index_card" rel="noopener noreferrer">Wikipedia: Index card</a></div>
+        <div class="ref-card" data-ref-url="https://unsplash.com/s/photos/index-card">Mood stills — <a href="https://unsplash.com/s/photos/index-card" rel="noopener noreferrer">Unsplash: index card search</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Notion_(productivity_software)">Doc surface brand — <a href="https://en.wikipedia.org/wiki/Notion_(productivity_software)" rel="noopener noreferrer">Wikipedia: Notion</a></div>
+        <div class="ref-card" data-ref-url="https://www.cooperhewitt.org/">Exhibit context for everyday objects as design — <a href="https://www.cooperhewitt.org/" rel="noopener noreferrer">Cooper Hewitt</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#4F46E5"></i><i class="sw" style="background:#84CC16"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>“Human-scale” record keeping — matches solopreneur tone.</li><li>Obvious how to do seasonal variants (rule count).</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Detail loss on small icon unless rules become implied by aspect ratio only.</li><li>Could feel retro / analog vs “AI” expectations — may be a feature, not a bug.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Rounded-rectangle indigo #4F46E5 outline (portrait). Three horizontal hairlines; middle line segment lime #84CC16 (one accent, short). No fill texture. No droplets, no 3D. Centered, ~65% height. Style: iOS document glyph. No text.
+        </pre></div>
+      </article>
+
+      <article class="card" id="ff-8" data-product="filefree" data-direction="Gridcell Spark" data-category="system" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="ff-8" /> Shortlist</label>
+          <h3>Gridcell Spark</h3>
+          <span class="cat">System / pattern</span>
+        </div>
+        <p class="metaphor">A <strong>3×3</strong> grid of cells where <strong>eight</strong> are indigo and <strong>one</strong> cell carries the lime “answer” — system-of-record as pattern.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Grid_(graphic_design)">Grid discipline — <a href="https://en.wikipedia.org/wiki/Grid_(graphic_design)" rel="noopener noreferrer">Wikipedia: Grid (graphic design)</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Spreadsheet">Spreadsheet mental model — <a href="https://en.wikipedia.org/wiki/Spreadsheet" rel="noopener noreferrer">Wikipedia: Spreadsheet</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Logo">Logo as reproducible mark — <a href="https://en.wikipedia.org/wiki/Logo" rel="noopener noreferrer">Wikipedia: Logo</a></div>
+        <div class="ref-card" data-ref-url="https://www.underconsideration.com/brandnew/">Rebrand case studies (pattern + scale) — <a href="https://www.underconsideration.com/brandnew/" rel="noopener noreferrer">Brand New</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#4F46E5"></i><i class="sw" style="background:#84CC16"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>System marks support <strong>variant icons per sub-feature</strong> (swap cell).</li><li>Distinct from amorphous organic blobs.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>9-cell icons often read as “app drawer” on Android or QR fragments.</li><li>At 16px, grid may dissolve to noise.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. 3×3 rounded-square cells, tight 2px gaps; only center cell filled lime #84CC16; all others indigo #4F46E5 outline cells (no fill) OR inverse per contrast test. Single lime cell only. No gradients, no 3D. No droplets. Style: Figma, Superhuman, grid-native SaaS. No text.
+        </pre></div>
+      </article>
+
+      <article class="card" id="ff-9" data-product="filefree" data-direction="Enclosed Stamp" data-category="geometric" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="ff-9" /> Shortlist</label>
+          <h3>Enclosed Stamp</h3>
+          <span class="cat">Geometric abstract</span>
+        </div>
+        <p class="metaphor">A <strong>hex or circle stamp ring</strong> (compliance *without* looking governmental) with <strong>one lime tick</strong> on the ring — “filed, legit, calm.”</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Postage_stamp">Ring / badge grammar — <a href="https://en.wikipedia.org/wiki/Postage_stamp" rel="noopener noreferrer">Wikipedia: Postage stamp</a> (analogy, not literal stamp art)</div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Seal_(emblem)">Seal as cultural object (stay abstract) — <a href="https://en.wikipedia.org/wiki/Seal_(emblem)" rel="noopener noreferrer">Wikipedia: Seal (emblem)</a></div>
+        <div class="ref-card" data-ref-url="https://commons.wikimedia.org/wiki/File:Dropbox_logo_(2020).svg">Circle-with-mark discipline — <a href="https://commons.wikimedia.org/wiki/File:Dropbox_logo_(2020).svg" rel="noopener noreferrer">Commons: Dropbox 2020 mark (contrast: our mark is <strong>not</strong> a box drop)</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Internal_Revenue_Service">Tax domain context (avoid copy; use for *category awareness* only) — <a href="https://en.wikipedia.org/wiki/Internal_Revenue_Service" rel="noopener noreferrer">Wikipedia: IRS</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#4F46E5"></i><i class="sw" style="background:#84CC16"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>“Official” read without eagles and flags.</li><li>Single tick segment animates (rotate 12°) without breaking palette.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Too close to university seals / notary if inner detail creeps in.</li><li>Rings + ticks echo “verified / Twitter” if proportions wrong.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Thin indigo #4F46E5 ring (stroke). One short exterior tick (6 o’clock) in lime #84CC16, same stroke width, tangential — single accent. Interior empty. No eagles, no stars, no text. No droplets, no 3D. Style: EU quality marks at minimal. No wordmark in glyph.
+        </pre></div>
+      </article>
+
+      <article class="card" id="ff-10" data-product="filefree" data-direction="Path to Clear" data-category="action" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="ff-10" /> Shortlist</label>
+          <h3>Path to Clear</h3>
+          <span class="cat">Action / abstract</span>
+        </div>
+        <p class="metaphor">A <strong>jagged or wandering polyline</strong> that <strong>snaps to a clean horizontal</strong> — literal “line noise → straight answer,” lime on the last segment only.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Line_(geometry)">Geometric language — <a href="https://en.wikipedia.org/wiki/Line_(geometry)" rel="noopener noreferrer">Wikipedia: Line (geometry)</a></div>
+        <div class="ref-card" data-ref-url="https://linear.app/">Kinetic, confident product mark surface — <a href="https://linear.app/" rel="noopener noreferrer">Linear (product site; logo in header)</a></div>
+        <div class="ref-card" data-ref-url="https://stripe.com/newsroom">Fintech / infra confidence — <a href="https://stripe.com/newsroom" rel="noopener noreferrer">Stripe Newsroom</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Noise_(video)">“Noise to signal” mental hook — <a href="https://en.wikipedia.org/wiki/Noise_(video)" rel="noopener noreferrer">Wikipedia: Noise (context)</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#4F46E5"></i><i class="sw" style="background:#84CC16"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Maps directly to the promise of turning messy books into a clean return.</li><li>Obvious storyboard for 1s animation: polyline eases to straight.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Could resemble stock “heartbeat / crypto chart” if jagged is too spiky.</li><li>Similar to other “route planning” app icons (needs unique angle breaks).</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. One continuous polyline: first two thirds jagged / wandering indigo #4F46E5; last third straight horizontal, final segment before endpoint lime #84CC16 (one accent span). Rounded joints. No chart axes, no droplets, no 3D. Centered, ~50% width. Style: fintech, motion-ready.
+        </pre></div>
+      </article>
+
+    </div>
+  </section>
+
+  <section class="bundle lf" aria-labelledby="lf-title">
+    <h2 class="product" id="lf-title">LaunchFree — 10 candidate directions (Sky + Cyan)</h2>
+    <p class="lede" style="margin:0 0 1rem; max-width:70ch; color:var(--muted)">Product: rapid business launch; audience: builders. Avoid rockets, generic “startup up-arrow,” and droplet/fluid. Primary <code>#0284C7</code> · accent <code>#06B6D4</code>.</p>
+    <div class="grid">
+
+      <article class="card" id="lf-1" data-product="launchfree" data-direction="Up-Delta" data-category="geometric" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="lf-1" /> Shortlist</label>
+          <h3>Up-Delta</h3>
+          <span class="cat">Geometric</span>
+        </div>
+        <p class="metaphor">A <strong>filled or stroked up-triangle (delta)</strong> with a <strong>short baseline</strong> — “lift” and direction <strong>without</strong> a rocket cone silhouette.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Delta">Greek capital delta shape — <a href="https://en.wikipedia.org/wiki/Delta" rel="noopener noreferrer">Wikipedia: Delta</a> (mathematical / symbolic)</div>
+        <div class="ref-card" data-ref-url="https://vercel.com/design">Upward-forward geometry without mascot — <a href="https://vercel.com/design" rel="noopener noreferrer">Vercel design page</a></div>
+        <div class="ref-card" data-ref-url="https://commons.wikimedia.org/wiki/File:Notion-logo.svg">Compositional simplicity benchmark — <a href="https://commons.wikimedia.org/wiki/File:Notion-logo.svg" rel="noopener noreferrer">Commons: Notion mark</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Play_(symbol)">Media “play / forward” family (avoid 1:1; use for contrast) — <a href="https://en.wikipedia.org/wiki/Play_(symbol)" rel="noopener noreferrer">Wikipedia: Play symbol</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#0284C7"></i><i class="sw" style="background:#06B6D4"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Clear tiny-size silhouette (triangle is favicon-dense).</li><li>“Delta / change” is builder-native language.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Triangles are crowded (play buttons, Vercel-adjacent up marks).</li><li>Must avoid reading as a rocket by keeping proportions stubby, not finned.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Equilateral triangle pointing up, rounded corners; two sides sky #0284C7, base short segment (center third) cyan #06B6D4 as single continuous accent. No outline rocket, no flame, no droplet. No 3D, no gradient. Centered, ~60% width. Style: Vercel, Simple Icons.
+        </pre></div>
+      </article>
+
+      <article class="card" id="lf-2" data-product="launchfree" data-direction="Raised Bar Gate" data-category="object" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="lf-2" /> Shortlist</label>
+          <h3>Raised Bar Gate</h3>
+          <span class="cat">Object</span>
+        </div>
+        <p class="metaphor">Two <strong>vertical posts</strong> and a <strong>horizontal bar</strong> lifted to open — <strong>LLC gate</strong> / <strong>“you’re in”</strong> without a shield or crest.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Starting_gate">Gate opens → motion language — <a href="https://en.wikipedia.org/wiki/Starting_gate" rel="noopener noreferrer">Wikipedia: Starting gate (metaphor, not equestrian art)</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Boom_barrier">Boom / barrier as object (stay abstract) — <a href="https://en.wikipedia.org/wiki/Boom_barrier" rel="noopener noreferrer">Wikipedia: Boom barrier</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Limited_liability_company">LLC context — <a href="https://en.wikipedia.org/wiki/Limited_liability_company" rel="noopener noreferrer">Wikipedia: LLC</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/LegalZoom">Incorporation category context — <a href="https://en.wikipedia.org/wiki/LegalZoom" rel="noopener noreferrer">Wikipedia: LegalZoom</a> (for competitive landscape, not to copy mark)</div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#0284C7"></i><i class="sw" style="background:#06B6D4"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>“Crossing the threshold to official” is on-message.</li><li>Animation: bar raises 4–6px, holds.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Could read as parking / toll without careful proportions.</li><li>Icon detail may die at 16px — likely needs a bold reduced variant (single arch).</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Two vertical posts and one horizontal top bar, open bottom (U-shape). Strokes sky #0284C7; the lifted segment is the short center of the top bar in cyan #06B6D4. No castle, no keyhole, no droplet. Rounded ends. No 3D, no shadow. Style: public signage pictogram, Lucide. No text.
+        </pre></div>
+      </article>
+
+      <article class="card" id="lf-3" data-product="launchfree" data-direction="Glide Fold" data-category="object" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="lf-3" /> Shortlist</label>
+          <h3>Glide Fold</h3>
+          <span class="cat">Object</span>
+        </div>
+        <p class="metaphor">A <strong>low-poly paper plane</strong> (folded from one sheet) with <strong>one cyan leading edge</strong> — “launch is light, not heavy metal.”</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Paper_plane">Cultural object — <a href="https://en.wikipedia.org/wiki/Paper_plane" rel="noopener noreferrer">Wikipedia: Paper plane</a></div>
+        <div class="ref-card" data-ref-url="https://openmoji.org/">Flat emoji geometry discipline — <a href="https://openmoji.org/" rel="noopener noreferrer">OpenMoji</a></div>
+        <div class="ref-card" data-ref-url="https://unsplash.com/s/photos/paper-airplane">Photo mood (not to trace) — <a href="https://unsplash.com/s/photos/paper-airplane" rel="noopener noreferrer">Unsplash: paper airplane</a></div>
+        <div class="ref-card" data-ref-url="https://fonts.google.com/icons">Icon grid for fold angles — <a href="https://fonts.google.com/icons" rel="noopener noreferrer">Google Icons</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#0284C7"></i><i class="sw" style="background:#06B6D4"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Allowed metaphor per brief; friendly vs enterprise formation brands.</li><li>Natural motion story (subtle Y translation).</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Email “send” icons have owned paper planes — needs unique facet counts / angles.</li><li>Can feel toy-like for serious LLC paperwork.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Isometric-flattened paper plane: three visible facets; two facets sky #0284C7, one narrow leading edge facet cyan #06B6D4. No engine, no trail lines, no droplet. Rounded paper corners. No 3D shading. Favicon: simplify to two triangles. Style: iOS / Material minimal. No text.
+        </pre></div>
+      </article>
+
+      <article class="card" id="lf-4" data-product="launchfree" data-direction="Sill Arc" data-category="negative-space" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="lf-4" /> Shortlist</label>
+          <h3>Sill Arc</h3>
+          <span class="cat">Negative space</span>
+        </div>
+        <p class="metaphor">A <strong>horizontal “floor line” (sill)</strong> and a <strong>semicircle or arc</strong> rising from it as <strong>void</strong> or <strong>contrast</strong> — you’ve crossed a threshold; <strong>the arc edge</strong> gets cyan as single accent.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Threshold">Threshold as concept — <a href="https://en.wikipedia.org/wiki/Threshold" rel="noopener noreferrer">Wikipedia: Threshold (disambiguation page, concept)</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Window_sill">Object context (keep abstract) — <a href="https://en.wikipedia.org/wiki/Window_sill" rel="noopener noreferrer">Wikipedia: Window sill</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Abstract_art">Form reduction precedent — <a href="https://en.wikipedia.org/wiki/Abstract_art" rel="noopener noreferrer">Wikipedia: Abstract art</a></div>
+        <div class="ref-card" data-ref-url="https://www.cooperhewitt.org/">Design museum — form literacy — <a href="https://www.cooperhewitt.org/" rel="noopener noreferrer">Cooper Hewitt</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#0284C7"></i><i class="sw" style="background:#06B6D4"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Unique among formation brands that default to checkmarks and shields.</li><li>Good candidate for a single “sun lip” that isn’t a literal sun (no rays).</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Could read as sunset / half-circle logo if the arc dominates.</li><li>Negative space version needs tight margin rules in product UI.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Bottom horizontal line (sill) sky #0284C7; above it, an open semicircle formed by a gap in a larger rounded rect OR a simple arc — outer arc edge stroke cyan #06B6D4 for one short span only, remainder sky. No sun rays, no rocket, no droplet. No gradient. Style: Bauhaus redux, Norsk minimal. No text.
+        </pre></div>
+      </article>
+
+      <article class="card" id="lf-5" data-product="launchfree" data-direction="Propeller Top" data-category="geometric" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="lf-5" /> Shortlist</label>
+          <h3>Propeller Top</h3>
+          <span class="cat">Geometric</span>
+        </div>
+        <p class="metaphor">Three <strong>90°-spaced blades</strong> in <strong>top-down view</strong> — mechanical <strong>go</strong>, not a plane instrument panel.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Air_screw">Propeller geometry — <a href="https://en.wikipedia.org/wiki/Air_screw" rel="noopener noreferrer">Wikipedia: Air screw</a> (vocabulary, stay abstract in mark)</div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Triskelion">Three-fold symmetry (avoid Celtic literal; use for radial spacing only) — <a href="https://en.wikipedia.org/wiki/Triskelion" rel="noopener noreferrer">Wikipedia: Triskelion</a></div>
+        <div class="ref-card" data-ref-url="https://commons.wikimedia.org/wiki/File:Slack_icon_2019.svg">Knot / radial mark discipline — <a href="https://commons.wikimedia.org/wiki/File:Slack_icon_2019.svg" rel="noopener noreferrer">Commons: Slack icon</a></div>
+        <div class="ref-card" data-ref-url="https://linear.app/">Product velocity aesthetic — <a href="https://linear.app/" rel="noopener noreferrer">Linear.app</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#0284C7"></i><i class="sw" style="background:#06B6D4"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Matches brief’s “propeller geometry” without aviation cliché in side view.</li><li>Rotational animation (slow spin) is brand-safe for loading states.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Three-bladed radials are common; may need asymmetric blade width for ownability.</li><li>Could echo fans / cooling in hardware brands.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Top-down 3-blade prop: three equal rounded rectangles at 120°; two blades sky #0284C7, one blade cyan #06B6D4. Hub circle tiny and sky. No aircraft silhouette, no droplet, no 3D. No gradient. Centered, ~60% width. Style: isometric line icons, Lucide. No text.
+        </pre></div>
+      </article>
+
+      <article class="card" id="lf-6" data-product="launchfree" data-direction="Angle Cut Wordmark" data-category="typographic" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="lf-6" /> Shortlist</label>
+          <h3>Angle Cut Wordmark</h3>
+          <span class="cat">Typographic</span>
+        </div>
+        <p class="metaphor"><strong>L</strong> and <strong>F</strong> as <strong>chiseled sans</strong> with a <strong>diagonal cut</strong> on one stem — a <strong>single cyan facet</strong> (accent) where the “launch impulse” lives.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Inter_(typeface)">Inter (coherence with product wordmark) — <a href="https://en.wikipedia.org/wiki/Inter_(typeface)" rel="noopener noreferrer">Wikipedia: Inter</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Bevel">Chamfer / bevel vocabulary — <a href="https://en.wikipedia.org/wiki/Bevel" rel="noopener noreferrer">Wikipedia: Bevel</a></div>
+        <div class="ref-card" data-ref-url="https://fonts.google.com/icons">Custom outlined letter experiments — <a href="https://fonts.google.com/icons" rel="noopener noreferrer">Google Icons</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Logo">Logo and wordmark as IP — <a href="https://en.wikipedia.org/wiki/Logo" rel="noopener noreferrer">Wikipedia: Logo</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#0284C7"></i><i class="sw" style="background:#06B6D4"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Fast to deploy across landing pages; pairs with a simple app icon in grid.</li><li>Angular “cut” suggests motion without a rocket pictogram.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Trademark of LF initial marks in fintech/insurance.</li><li>Chamfer can disappear on small light-DPI phone screens.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Letters “L” and “F” (no full word) as continuous outline — sky #0284C7. Diagonal bevel on the F crossbar in cyan #06B6D4. Inter-like proportions. No rocket, no droplet, no 3D shading. If illegible, reduce to single “L” with bevel. **Glyph-only, no “LaunchFree” string.** (Final wordmark in Inter by hand; this is for icon monogram only.)
+        </pre></div>
+      </article>
+
+      <article class="card" id="lf-7" data-product="launchfree" data-direction="Unwind to Line" data-category="action" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="lf-7" /> Shortlist</label>
+        <h3>Unwind to Line</h3>
+        <span class="cat">Action</span>
+        </div>
+        <p class="metaphor">A <strong>spiral or coil</strong> that <strong>straightens</strong> into a <strong>forward line</strong> — admin overhead unspooled into motion; <strong>cyan only on the final straight segment</strong>.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Spiral">Spiral form language — <a href="https://en.wikipedia.org/wiki/Spiral" rel="noopener noreferrer">Wikipedia: Spiral</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Archimedean_spiral">Math curve reference — <a href="https://en.wikipedia.org/wiki/Archimedean_spiral" rel="noopener noreferrer">Wikipedia: Archimedean spiral</a> (analogy, not to render equation)</div>
+        <div class="ref-card" data-ref-url="https://www.underconsideration.com/brandnew/">Motion in identity systems — <a href="https://www.underconsideration.com/brandnew/" rel="noopener noreferrer">Brand New</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Startup_company">Cultural “escape velocity” — <a href="https://en.wikipedia.org/wiki/Startup_company" rel="noopener noreferrer">Wikipedia: Startup company</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#0284C7"></i><i class="sw" style="background:#06B6D4"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>“Free of overhead” is concrete for formation.</li><li>Storyboards well as 1s morph.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Spirals = loading spinners; must differentiate from in-app spinners (maybe color-only idling state).</li><li>Could feel decorative rather than fast.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. One stroke: 1.5 turns of rounded spiral, sky #0284C7, finishing as straight rightward line; final 18% of path cyan #06B6D4. Constant stroke, round caps. No droplet, no 3D, no gradient. Centered, ~50% width. Style: Moleskine / Japanese ink linework, line-only. No text.
+        </pre></div>
+      </article>
+
+      <article class="card" id="lf-8" data-product="launchfree" data-direction="Runway Ticks" data-category="system" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="lf-8" /> Shortlist</label>
+          <h3>Runway Ticks</h3>
+          <span class="cat">System / pattern</span>
+        </div>
+        <p class="metaphor"><strong>Runway centerline</strong> language — a <strong>tapering row of small ticks</strong>; <strong>one tick</strong> in cyan to suggest <strong>“cleared for takeoff”</strong> in a <strong>toy/abstract</strong> way (not literal aviation livery).</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Runway">Runway (context only — do not add wings or planes) — <a href="https://en.wikipedia.org/wiki/Runway" rel="noopener noreferrer">Wikipedia: Runway</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Perspective_(graphical)">Tapering rows — <a href="https://en.wikipedia.org/wiki/Perspective_(graphical)" rel="noopener noreferrer">Wikipedia: Perspective (graphical)</a></div>
+        <div class="ref-card" data-ref-url="https://stripe.com/newsroom">Infra / forward motion in brand comms — <a href="https://stripe.com/newsroom" rel="noopener noreferrer">Stripe Newsroom</a></div>
+        <div class="ref-card" data-ref-url="https://unsplash.com/s/photos/runway-abstract">Mood: abstract “lane” (search) — <a href="https://unsplash.com/s/photos/runway-abstract" rel="noopener noreferrer">Unsplash search</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#0284C7"></i><i class="sw" style="background:#06B6D4"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>System: swap which tick is cyan for feature sub-icons.</li><li>“Ready to ship” is builder-native without rockets.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>“Runway” + formation could be confused for travel or logistics brands.</li><li>Ticks at 16px may merge — need max 3 ticks in favicon version.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Five short vertical ticks along a center line, receding in length toward top; all sky #0284C7 except the third tick cyan #06B6D4. No plane, no wing, no droplet, no 3D, no stars. 2D flat, rounded caps. Style: aeronautical chart abstraction, not illustration. No text.
+        </pre></div>
+      </article>
+
+      <article class="card" id="lf-9" data-product="launchfree" data-direction="Split Door" data-category="object" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="lf-9" /> Shortlist</label>
+        <h3>Split Door</h3>
+        <span class="cat">Object</span>
+        </div>
+        <p class="metaphor"><strong>Two trapezoid door panels</strong> <strong>ajar</strong> in perspective-flattened view — a <strong>“you passed through”</strong> mark; <strong>cyan on the leading inner edge</strong> only.</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Door">Object vocabulary — <a href="https://en.wikipedia.org/wiki/Door" rel="noopener noreferrer">Wikipedia: Door</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Revolving_door">Threshold systems — <a href="https://en.wikipedia.org/wiki/Revolving_door" rel="noopener noreferrer">Wikipedia: Revolving door</a> (metaphor, not to depict)</div>
+        <div class="ref-card" data-ref-url="https://unsplash.com/s/photos/open-door-minimal">Mood: open door photography — <a href="https://unsplash.com/s/photos/open-door-minimal" rel="noopener noreferrer">Unsplash: open door minimal</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Art_Nouveau">Historical door / portal motifs (stay geometric; avoid copy) — <a href="https://en.wikipedia.org/wiki/Art_Nouveau" rel="noopener noreferrer">Wikipedia: Art Nouveau</a> (form literacy)</div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#0284C7"></i><i class="sw" style="background:#06B6D4"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>“Threshold” from brief, clearly not a rocket or droplet.</li><li>Obvious 2D → 1D animation (doors widen slightly).</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Religious / hospitality brands use doors — needs unique angles.</li><li>Complex trapezoids may tangle on dark pattern backgrounds.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Two trapezoid door leaves slightly open, symmetric; outer outlines sky #0284C7; single cyan #06B6D4 bevel on **inner** meeting edge only. No doorknob, no arch keystone, no droplet, no 3D shading. Rounded miter. Style: wayfinding pictogram, Lucide. No text.
+        </pre></div>
+      </article>
+
+      <article class="card" id="lf-10" data-product="launchfree" data-direction="Shear Chevrons" data-category="action" data-favorite="false">
+        <div class="card-top">
+          <label class="fav"><input type="checkbox" name="fav" data-fav="lf-10" /> Shortlist</label>
+        <h3>Shear Chevrons</h3>
+        <span class="cat">Action</span>
+        </div>
+        <p class="metaphor"><strong>Two or three nested chevrons</strong> pointing up-right — “escape velocity” as <strong>lateral</strong> momentum (avoids a vertical rocket read).</p>
+        <p class="refs-label">Reference set</p>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Chevron_(insignia)">Chevron pattern — <a href="https://en.wikipedia.org/wiki/Chevron_(insignia)" rel="noopener noreferrer">Wikipedia: Chevron (insignia)</a></div>
+        <div class="ref-card" data-ref-url="https://en.wikipedia.org/wiki/Military_insignia">Rank chevron history (use abstractly) — <a href="https://en.wikipedia.org/wiki/Military_insignia" rel="noopener noreferrer">Wikipedia: Military insignia</a></div>
+        <div class="ref-card" data-ref-url="https://fonts.google.com/icons">Chevrons in icon sets — <a href="https://fonts.google.com/icons" rel="noopener noreferrer">Google Icons</a></div>
+        <div class="ref-card" data-ref-url="https://vercel.com/design">Up-forward geometry in tech marks — <a href="https://vercel.com/design" rel="noopener noreferrer">Vercel design</a></div>
+        <div class="swatches"><span>Palette</span><i class="sw" style="background:#0284C7"></i><i class="sw" style="background:#06B6D4"></i></div>
+        <div class="pros"><h4>Why it could work</h4><ul><li>Fast to draw; motion: sequential opacity or slide.</li><li>Diagonal energy reads “ship” and “momentum” without a rocket pictogram.</li></ul></div>
+        <div class="cons"><h4>Why it might fail</h4><ul><li>Shell / gas-station and military shoulder marks crowd this shape language.</li><li>At small sizes, nested chevrons can look like compression artifacts — limit to 2 chevrons in favicon.</li></ul></div>
+        <div class="prompt"><h4>Nano Banana Pro prompt sketch</h4><pre>1024×1024. Two nested > chevrons, up-right, rounded caps; outer sky #0284C7, inner stroke cyan #06B6D4. Constant stroke, gap between lines ≥ stroke width. No rocket, no droplet, no 3D, no motion lines. ~55% width. Style: Figma, Lucide, Simple Icons. No text.
+        </pre></div>
+      </article>
+
+    </div>
+  </section>
+
+  <footer class="doc">
+    <p><strong>Offline / no-CDN</strong> — this file is self-contained. <strong>No AI-generated images</strong> are embedded or required to use this page.</p>
+    <p><strong>Palette source:</strong> <code>docs/brand/PROMPTS.md</code> locked table (FileFree indigo <code>#4F46E5</code> + lime <code>#84CC16</code>; LaunchFree sky <code>#0284C7</code> + cyan <code>#06B6D4</code>). No <code>PALETTES.md</code> in repo at dossier time.</p>
+    <p><strong>Direction counts:</strong> FileFree 10; LaunchFree 10.</p>
+    <p><strong>Next step:</strong> founder ratification → Nano Banana Pro generation per <code>docs/brand/PROMPTS.md</code> (exploratory section dated 2026-04-27) → retrace to SVG, then PR to replace shipped droplet icons (only after sign-off; parent paperclip P1–P5 unchanged).</p>
+  </footer>
+</body>
+</html>

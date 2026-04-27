@@ -54,6 +54,13 @@ class Settings(BaseSettings):
     # migration windows or when running multi-instance.
     BRAIN_SCHEDULER_ENABLED: bool = True
     SCHEDULER_PR_SWEEP_MINUTES: int = 30
+    # Cheap-agent 1-day sprint planner (``brain_agent_sprint_planner`` job).
+    BRAIN_OWNS_AGENT_SPRINT_SCHEDULER: bool = False
+    BRAIN_AGENT_SPRINT_MAX_TASKS: int = 8
+    BRAIN_AGENT_SPRINT_DAY_CAP_MINUTES: int = 480
+    # When true, append a digest entry to ``apps/studio/src/data/tracker-index.json``
+    # on each sprint (requires writable ``REPO_ROOT`` checkout).
+    BRAIN_AGENT_SPRINT_WRITE_TRACKER: bool = False
     # --- Scheduler env split (Render / ``brain-api``, not all mirrored here) ---
     #
     # * **Cutover gates** — ``BRAIN_OWNS_*`` for jobs that replace an n8n cron

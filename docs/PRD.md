@@ -816,21 +816,21 @@ PRODUCT DATABASES (independent, can be separated):
 
   filefree DB:
     users: id, email, name, password_hash, ...filefree-specific fields...
-           venture_identity_id (OPTIONAL, nullable FK)
+           Clerk userId (the only cross-product link; per-product user tables remain separable-by-design) — e.g. optional `clerk_user_id` column
 
   launchfree DB:
     users: id, email, name, password_hash, ...launchfree-specific fields...
-           venture_identity_id (OPTIONAL, nullable FK)
+           Clerk userId (the only cross-product link; per-product user tables remain separable-by-design) — e.g. optional `clerk_user_id` column
 
 VENTURE DATABASE (studio, never sold):
 
   venture_identities: id, email, name, created_at
-  identity_products: venture_identity_id, product, product_user_id, first_used
-  user_events: id, venture_identity_id, event_type, product, metadata, timestamp
-  user_segments: venture_identity_id, segment, computed_at
+  identity_products: internal venture id (joins to Clerk userId for SSO), product, product_user_id, first_used
+  user_events: id, venture id tied to Clerk userId, event_type, product, metadata, timestamp
+  user_segments: venture id tied to Clerk userId, segment, computed_at
 ```
 
-If FileFree is acquired: remove the `venture_identity_id` column. FileFree still works independently.
+If FileFree is acquired: remove the optional Clerk / venture link columns (`clerk_user_id` and any related venture FK). FileFree still works independently.
 
 ### Authentication architecture
 
@@ -839,12 +839,12 @@ If FileFree is acquired: remove the `venture_identity_id` column. FileFree still
 - **Primary Clerk host:** `accounts.paperworklabs.com` — Frontend API + embedded sign-in/sign-up (`apps/accounts/`, Track H4). See [`docs/infra/CLERK_SATELLITE_TOPOLOGY.md`](../docs/infra/CLERK_SATELLITE_TOPOLOGY.md).
 - **Satellites:** `filefree.ai`, `launchfree.ai`, `distill.tax`, `tools.filefree.ai` (Trinkets), the public AxiomFolio Next.js hostname, and Studio on `paperworklabs.com` share one **production** Clerk instance; each satellite domain is registered in the Clerk Dashboard and configured in app code (`isSatellite`, `NEXT_PUBLIC_CLERK_DOMAIN`, primary `signInUrl` / `signUpUrl` pointing at `accounts.paperworklabs.com`).
 - **Cross-brand behavior:** Apex brand domains sync sessions with the primary via Clerk’s satellite handoff (not a single shared cookie across unrelated domains). `paperworklabs.com` subdomains follow Clerk’s normal cross-subdomain session rules once DNS and allowlists are set.
-- **Venture layer:** Per-product databases and `venture_identity_id` (above) remain the data model for cross-product intelligence; Clerk supplies the shared interactive login layer on top.
+- **Venture layer:** Per-product databases and Studio venture tables (above) remain the data model for cross-product intelligence; **Clerk userId (the only cross-product link; per-product user tables remain separable-by-design)** is the identity anchor—Clerk supplies the shared interactive login layer on top.
 
 **User Auth (FileFree, LaunchFree, Distill, Trinkets, AxiomFolio Next):**
 
 - Providers: Google OAuth + Apple Sign-In (cover 95%+ of users). Optional email/password fallback. Configured on the **converged** Clerk production instance.
-- Implementation: `@clerk/nextjs` per app today; shared patterns may consolidate in `packages/auth` (Track C). Legacy FileFree / AxiomFolio session paths coexist during migration — see per-app [`docs/infra/CLERK_*.md`](../docs/infra/CLERK_FILEFREE.md) runbooks.
+- Implementation: `@clerk/nextjs` per app; shared patterns consolidate in `@paperwork-labs/auth-clerk` (replaces a generic `packages/auth` / Auth.js v5 plan). Legacy FileFree / AxiomFolio session paths coexist during migration — see per-app [`docs/infra/CLERK_*.md`](../docs/infra/CLERK_FILEFREE.md) runbooks.
 
 **Admin Auth (paperworklabs.com + admin panels):**
 

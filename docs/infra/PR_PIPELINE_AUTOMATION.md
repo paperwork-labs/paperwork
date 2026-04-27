@@ -98,7 +98,9 @@ flowchart LR
 | `auto-merge-sweep.yaml` | Scheduled (every 15 minutes): **Dependabot** sweep; **agent-pr-merge** for allowlisted authors; **allowlisted-merge** for Copilot-style **🟢 GREEN** comment path. |
 | `auto-merge-agent-prs.yaml` | Every **30** minutes and on **pull_request** (opened/sync/labels/ready): eligible **agent-output** PRs get **auto-merge** (squash, delete branch) when gates pass; respects **branch protection** (merge completes when GitHub allows). |
 | `pr-triage.yaml` | Nightly: applies **green-mergeable** / **yellow-needs-fix** / **red-blocked** plus **stale-7d** / **stale-14d** (idempotent). |
-| `post-main-regen-indexes.yaml` | On every push to `main`, regenerates `apps/studio/src/data/tracker-index.json` and `docs/_index.yaml` when needed; commit message includes `[skip ci]` to avoid loops. |
+| `post-main-regen-indexes.yaml` | On every push to `main`, regenerates `apps/studio/src/data/tracker-index.json` and `docs/_index.yaml` when needed; commit message includes `[skip ci]` to avoid CI thrash (other workflows can still run `workflow_run`). |
+| `auto-rebase-on-main.yaml` | On push to `main` and when **Post-main regenerate indexes** completes successfully, rebases same-repo open PRs that are behind `main` (skips drafts, forks, opt-out label `no-auto-rebase`). Regen commits use `[skip ci]`; the `workflow_run` trigger catches rebase after indexes land. |
+| `pr-pipeline-health.yaml` | Nightly (UTC) + manual: metrics in the workflow summary — open PR count, behind `main`, failing/pending checks (with Vercel soft rules), and a narrow “automation gap” count for sweep-eligible bot/allowlist PRs that are green + mergeable + up to date but still open. |
 | `vercel-promote-on-merge.yaml` | (Existing) Deploy after merge. |
 
 ### Eligibility for `auto-merge-agent-prs.yaml`
@@ -127,9 +129,13 @@ GitHub checks whose names look like **Vercel** and whose failure output indicate
 
 When that happens, the sweep may post a single informational comment on the PR (deduplicated) so reviewers know production deploy can follow via promote-after-merge.
 
-### Auto-rebase on `main` (deferred)
+### Auto-rebase on `main`
 
-A workflow that rebases every open PR whenever `main` advances was **not** added here because [PR #241](https://github.com/paperwork-labs/paperwork/pull/241) already introduces a rebase helper and overlapping automation would race. Revisit after that PR merges or is withdrawn. Related: `rebase-pr.yaml` for manual/on-demand rebases.
+`auto-rebase-on-main.yaml` rebases **in-repo** branches (not forks) that are behind `main`, with a second trigger when **Post-main regenerate indexes** completes so PRs can follow `[skip ci]` index commits (push workflows do not run for those commits). Opt out with label **`no-auto-rebase`**. **Manual** rebases: `rebase-pr.yaml` and `.github/scripts/rebase_pr_branch.sh`.
+
+### Drift checks (`tracker-index.yaml`, `docs-index.yaml`)
+
+PR and `main` path-filtered checks keep `tracker-index.json` / `docs/_index.yaml` aligned with sources. They complement `post-main-regen-indexes` (which writes both files on `main` after merges).
 
 ## Founder runbook
 
@@ -172,3 +178,5 @@ Edit `.github/auto-merge-allowlist.yaml` in a normal PR. Prefer adding **bot** l
 - `.github/workflows/auto-merge-agent-prs.yaml`
 - `.github/workflows/pr-triage.yaml`
 - `.github/workflows/post-main-regen-indexes.yaml`
+- `.github/workflows/auto-rebase-on-main.yaml`
+- `.github/workflows/pr-pipeline-health.yaml`

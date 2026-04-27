@@ -76,6 +76,7 @@ Matrix key `project` (Vercel project slug) and `project_id` in `.github/workflow
 | `axiomfolio-next` | `TBD_CREATE_BEFORE_MERGE` (link `apps/axiomfolio-next` in Vercel, then replace) |
 | `trinkets` | `TBD_CREATE_BEFORE_MERGE` (link `apps/trinkets` in Vercel, then replace) |
 | `accounts` | `TBD_CREATE_BEFORE_MERGE` (create + link `apps/accounts` after Track H4; then replace) |
+| `design` | `TBD_CREATE_BEFORE_MERGE` (create + link `apps/design` Storybook → `design.paperworklabs.com`; see `DESIGN_CANVAS_DEPLOY.md`) |
 
 While an entry is still `TBD_CREATE_BEFORE_MERGE`, that matrix job **skips** the promote path (no API call) so merges stay green until the project exists in the team and the workflow is updated with a real `prj_…` id.
 
@@ -95,8 +96,9 @@ PR touches `apps/<app>/**`, `packages/**`, `pnpm-lock.yaml`, or root
 `package.json`.
 
 Do **not** change Vercel project path settings here without founder
-review; if production looks stale, use the manual valve below or bump
-`apps/<app>/.deploy-trigger` and merge.
+review; if production looks stale, use the **Manual fallback** section
+below, or merge a change under `apps/<app>/` so the next auto-promote run
+has a READY preview to pick up.
 
 ## Adding more projects
 

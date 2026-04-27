@@ -246,6 +246,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install data_deep_validator job")
 
     try:
+        from app.schedulers import data_annual_update
+
+        data_annual_update.install(sched)
+    except Exception:
+        logger.exception("Failed to install data_annual_update job")
+
+    try:
         from app.schedulers import infra_health
 
         infra_health.install(sched)
@@ -256,6 +263,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         n8n_mirror.install(sched)
     except Exception:
         logger.exception("Failed to install n8n_mirror shadow jobs")
+
+    try:
+        from app.schedulers import agent_sprint_scheduler
+
+        agent_sprint_scheduler.install(sched)
+    except Exception:
+        logger.exception("Failed to install agent_sprint_scheduler job")
 
     sched.start()
     _scheduler = sched
