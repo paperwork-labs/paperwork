@@ -15,7 +15,7 @@
     fill="#0F172A"
   >Paperwork Labs</text>
 
-  <!-- Clip-front (top layer): same paperclip wire as paperclip-mark-diagonal.svg in neutral 0deg orientation, transformed to grip the top-left of the P. transform reads right-to-left: translate clip's grip-point (~68,28) to origin, scale 1.75x so long axis is approximately 1.4x cap-height, rotate -15deg (top tilted left), translate to cap-line top-left of P at canvas (141, 68). -->
+  <!-- Clip-front (top layer): same paperclip wire as paperclip-mark-diagonal.svg in neutral 0deg orientation, transformed to grip the top-left of the P. -->
   <g transform="translate(141 68) rotate(-15) scale(1.75) translate(-68 -28)">
     <path
       d="M 80 18 L 80 24 A 16 16 0 0 1 96 40 L 96 88 A 24 24 0 0 1 72 112 L 56 112 A 24 24 0 0 1 32 88 L 32 40 A 16 16 0 0 1 48 24 L 64 24 M 72 88 A 8 8 0 0 1 64 96 L 48 96"

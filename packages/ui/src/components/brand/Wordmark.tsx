@@ -1,14 +1,7 @@
 import * as React from "react";
 
 export interface WordmarkProps {
-  /**
-   * Optional class applied to the root svg. Sizing is up to the caller; the
-   * SVG ships with viewBox covering the wordmark bounding box and no
-   * width/height so consumers can scale via Tailwind (`h-12 w-auto`) or
-   * inline style.
-   */
   className?: string;
-  /** Inline style applied to the root svg (e.g., width/height). */
   style?: React.CSSProperties;
 }
 
@@ -17,17 +10,9 @@ const WORDMARK_FONT_FAMILY =
 
 /**
  * "Paperwork Labs" wordmark in Inter Tight 600 (semibold), `letter-spacing:
- * -0.02em`. Color is inherited via `currentColor` so callers can flip
- * light-on-dark / dark-on-light from the parent.
- *
- * The SVG viewBox is sized for the bare wordmark (no clip, no padding); the
- * P5 composition lives in `ClippedWordmark` which positions a `ClipMark`
- * over the top-left of the "P". Canvas is 1000 x 200 user units so cap-height
- * lands near 120 (matches docs/brand/PROMPTS.md § Composition rules at the
- * P5 5:1 viewBox).
+ * -0.02em`. Color is inherited via `currentColor`.
  *
  * Spec: docs/brand/PROMPTS.md § Composition rules + .cursor/rules/brand.mdc
- * § Visual grammar #6/#7.
  */
 export function Wordmark({ className, style }: WordmarkProps): React.ReactElement {
   return (

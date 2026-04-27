@@ -21,12 +21,6 @@ export interface ClipMarkProps {
  * parent's `color`; amber reads from `var(--pwl-clip-accent)` with a
  * hard-coded fallback to amber-500 (#F59E0B).
  *
- * Rotation is intentionally NOT baked in — `ClippedWordmark` wraps this in a
- * Framer Motion span that animates rotation from -32deg to -15deg per
- * docs/brand/ANIMATION.md. Standalone diagonal use cases should consume the
- * raster-equivalent SVG at `apps/studio/public/brand/paperclip-mark-diagonal.svg`
- * (which has the -32deg rotation baked in) instead of rotating this component.
- *
  * Spec: docs/brand/PROMPTS.md § P1 + § Composition rules.
  */
 export function ClipMark({ className, style }: ClipMarkProps): React.ReactElement {

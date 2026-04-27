@@ -2,6 +2,7 @@
 
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
+import { SessionClippedWordmark } from "@/components/brand/SessionClippedWordmark";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
@@ -87,6 +88,15 @@ export function AdminLayoutClient({ children, founderPending }: Props) {
       <div className="mx-auto flex w-full max-w-7xl gap-8 px-6 py-8">
         <aside className="w-60 shrink-0">
           <div className="sticky top-8 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-4">
+            <Link
+              href="/"
+              className="mb-4 block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+            >
+              <SessionClippedWordmark
+                surface="dark"
+                className="origin-top-left scale-[0.82]"
+              />
+            </Link>
             <p className="mb-5 bg-gradient-to-r from-zinc-300 to-zinc-500 bg-clip-text text-xs font-semibold uppercase tracking-widest text-transparent">
               Command Center
             </p>

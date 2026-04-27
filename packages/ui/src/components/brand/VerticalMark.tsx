@@ -1,29 +1,15 @@
 import * as React from "react";
 
 export interface VerticalMarkProps {
-  /**
-   * Optional class applied to the root svg. Sizing is up to the caller; the
-   * SVG ships with viewBox="0 0 128 128" and no width/height so consumers
-   * can size with Tailwind (`w-8 h-8`), inline style, or a parent wrapper.
-   */
   className?: string;
-  /** Inline style applied to the root svg (e.g., width/height). */
   style?: React.CSSProperties;
 }
 
 /**
  * P2 paperclip mark in strictly VERTICAL orientation (axis tilt 0°).
  *
- * Canonical favicon and app-icon glyph. Long axis runs top-to-bottom; inner
- * U-bend opens upward; outer return curls downward. The continuous amber
- * span sits on the right-hand outer-return straight continuing into the
- * adjacent base curve (one geometric moment, ~1/6 to 1/4 of perimeter,
- * never broken into two discrete spans).
- *
- * Slate strokes use `currentColor`; amber reads from
- * `var(--pwl-clip-accent)` with a fallback to amber-500 (#F59E0B). Use the
- * raster-equivalent SVG at `apps/studio/public/brand/paperclip-mark-vertical.svg`
- * for non-React surfaces (favicon, OG cards).
+ * Canonical favicon and app-icon glyph. Slate strokes use `currentColor`;
+ * amber reads from `var(--pwl-clip-accent)` with a fallback to amber-500 (#F59E0B).
  *
  * Spec: docs/brand/PROMPTS.md § P2 + § Composition rules.
  */

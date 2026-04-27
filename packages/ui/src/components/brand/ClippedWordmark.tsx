@@ -7,17 +7,7 @@ import { ClipMark } from "./ClipMark";
 import { Wordmark } from "./Wordmark";
 
 export interface ClippedWordmarkProps {
-  /**
-   * Plays the clip-on entrance animation once, then settles into the static
-   * end state. When false (default), renders the static end state directly.
-   * Reduced-motion users always get the static end state regardless of this
-   * flag — see docs/brand/ANIMATION.md § Reduced-motion handling.
-   */
   animated?: boolean;
-  /**
-   * Surface hint. Light surface → slate ink + amber-500 accent; dark surface
-   * → near-white ink + amber-300 accent. Defaults to `"light"`.
-   */
   surface?: "light" | "dark";
   className?: string;
 }
@@ -51,33 +41,6 @@ const HOVER_WIGGLE = {
   transition: { duration: 0.32, ease: "easeInOut" as const },
 };
 
-/**
- * P5 clipped wordmark composition (the metaphor finally lands): the parent
- * paperclip mark gripping the top-left corner of "Paperwork Labs". Use only
- * on parent surfaces where the brand can shine — paperworklabs.com header,
- * Studio admin sidebar entrance, founder-mode hero, app load splash, OG
- * cards, footer attribution, business cards, press-kit interior, email
- * signature.
- *
- * NEVER use as a favicon — clip detail dies under 24 px. Use VerticalMark
- * (P2) instead.
- *
- * Spec:
- *   - Geometry / palette: docs/brand/PROMPTS.md § P5 + § Composition rules
- *   - Motion + reduced-motion: docs/brand/ANIMATION.md § "Tier 1 — Animated"
- *   - Brand grammar: .cursor/rules/brand.mdc § Visual grammar #4
- *
- * The component renders Wordmark (mid layer) and ClipMark (top layer) in a
- * relative container; surface palette is exposed via the `--pwl-clip-accent`
- * CSS custom property so ClipMark's inner amber span flips amber-500 →
- * amber-300 on dark surfaces without re-rendering the SVG.
- *
- * The clip-back portion (the part of the wire that should appear to wrap
- * "behind" the wordmark) is intentionally NOT drawn in v1 — see the TODO in
- * apps/studio/public/brand/paperclip-clipped-wordmark.svg. Acceptable per
- * PROMPTS.md fallback; the visible composition still reads correctly because
- * the clip-front sits in front of the cap-line.
- */
 export function ClippedWordmark({
   animated = false,
   surface = "light",
@@ -94,9 +57,6 @@ export function ClippedWordmark({
     color: palette.ink,
     paddingLeft: CLIP_WIDTH * 0.4,
     paddingTop: 8,
-    // CSS custom property consumed by ClipMark for its amber span. Cast to
-    // any because React's CSSProperties type does not allow `--*` keys
-    // without a type assertion.
     ["--pwl-clip-accent" as never]: palette.accent,
   };
 
