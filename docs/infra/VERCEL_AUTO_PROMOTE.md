@@ -75,7 +75,7 @@ Matrix key `project` (Vercel project slug) and `project_id` in `.github/workflow
 | `launchfree` | `prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7` |
 | `axiomfolio-next` | `TBD_CREATE_BEFORE_MERGE` (link `apps/axiomfolio-next` in Vercel, then replace) |
 | `trinkets` | `TBD_CREATE_BEFORE_MERGE` (link `apps/trinkets` in Vercel, then replace) |
-| `accounts` | `TBD_CREATE_BEFORE_MERGE` (create + link `apps/accounts` after Track H4; then replace) |
+| `accounts` | **Superseded** — no Vercel project for a monorepo `apps/accounts` app ([`docs/KNOWLEDGE.md`](../KNOWLEDGE.md) §D91: Clerk-hosted Account Portal at `accounts.paperworklabs.com`). The `project: accounts` row in `vercel-promote-on-merge.yaml` remains a no-op skip until removed in a follow-up workflow edit. |
 | `design` | `TBD_CREATE_BEFORE_MERGE` (create + link `apps/design` Storybook → `design.paperworklabs.com`; see `DESIGN_CANVAS_DEPLOY.md`) |
 
 While an entry is still `TBD_CREATE_BEFORE_MERGE`, that matrix job **skips** the promote path (no API call) so merges stay green until the project exists in the team and the workflow is updated with a real `prj_…` id.
