@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "f28b4dd75875",
+  "content_hash": "ef362539908d",
   "products": [
     {
       "label": "AxiomFolio",
@@ -93,7 +93,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "broker-coverage-tracker",
-          "status": "active",
+          "status": "in_progress",
           "title": "Broker Coverage Tracker \u2014 Evergreen"
         },
         {
@@ -104,7 +104,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "g5-iv-rank-surface",
-          "status": "active",
+          "status": "in_progress",
           "title": "G5 \u2014 Implied Volatility / IV-Rank Surface (Free-Providers First)"
         },
         {
@@ -115,7 +115,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "gaps-2026q2",
-          "status": "active",
+          "status": "in_progress",
           "title": "Production Gaps \u2014 2026 Q2"
         },
         {
@@ -126,7 +126,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "master-plan-2026",
-          "status": "active",
+          "status": "in_progress",
           "title": "AxiomFolio Master Plan 2026"
         },
         {
@@ -137,7 +137,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "medallion-audit-2026q2",
-          "status": "active",
+          "status": "in_progress",
           "title": "Medallion Audit \u2014 2026 Q2"
         },
         {
@@ -159,7 +159,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "plaid-fidelity-401k",
-          "status": "active",
+          "status": "in_progress",
           "title": "Plaid Investments \u2014 Single-Phase Pro-Tier Feature"
         },
         {
@@ -170,7 +170,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "platform-review-2026q2",
-          "status": "active",
+          "status": "in_progress",
           "title": "AxiomFolio Platform McKinsey Review \u2014 2026 Q2"
         },
         {
@@ -181,7 +181,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "portfolio-sync-completeness-2026q2",
-          "status": "active",
+          "status": "in_progress",
           "title": "Portfolio Sync Completeness \u2014 2026 Q2 (Wave 8 spec)"
         },
         {
@@ -192,7 +192,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "port-inventory-2026q2",
-          "status": "active",
+          "status": "in_progress",
           "title": "AxiomFolio port inventory (2026 Q2)"
         },
         {
@@ -203,7 +203,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "settings-nav-study-2026q2",
-          "status": "active",
+          "status": "in_progress",
           "title": "Settings IA Study \u2014 2026 Q2"
         },
         {
@@ -214,7 +214,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "ux-audit-2026q2",
-          "status": "active",
+          "status": "in_progress",
           "title": "UX Audit \u2014 2026 Q2 (PR C0 input spec)"
         },
         {
@@ -225,7 +225,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "wave-f-trading-parity",
-          "status": "active",
+          "status": "in_progress",
           "title": "Wave F \u2014 Trading Parity Across All Six Brokers"
         },
         {
@@ -236,7 +236,7 @@
           "product": "axiomfolio",
           "raw_status": "active",
           "slug": "strategy-market-nav-restructure",
-          "status": "active",
+          "status": "in_progress",
           "title": "Strategy \u2192 Market Navigation Restructure Plan"
         }
       ],
@@ -270,13 +270,16 @@
   ],
   "sprints": [
     {
+      "blocker": null,
       "domain": "company",
       "duration_weeks": 10,
+      "effective_status": "in_progress",
       "end": "2026-07-01",
       "followups": [
         "Optional: GitHub org webhook \u2192 immediate merged-PR episode for hot PRs (out of scope for this sprint)."
       ],
       "goal": "Ship three low-noise, idempotent loops so Paperwork Brain gains memory episodes every week from **merged PRs**, **decision records**, and **postmortems** \u2014 not only from sprint `## What we learned` bullets and quarterly docs.",
+      "last_reviewed": "2026-04-26",
       "lessons": [
         "(Append only during the sprint.)"
       ],
@@ -297,15 +300,18 @@
       ],
       "slug": "brain-continuous-learning-2026q3",
       "start": "2026-04-26",
-      "status": "active",
+      "status": "in_progress",
       "title": "Brain continuous learning (ambient signals)"
     },
     {
+      "blocker": null,
       "domain": "company",
       "duration_weeks": 10,
+      "effective_status": "in_progress",
       "end": "2026-06-30",
       "followups": [],
       "goal": "Close the **\u201cStudio shows sprint progress automatically\u201d** loop: Brain appends shipped lines to sprint markdown under `## Outcome`, Studio\u2019s living tracker reads the same files, and the founder sees sprint cards move without hand-copying PR titles.",
+      "last_reviewed": "2026-04-26",
       "lessons": [
         "_(empty \u2014 fill in as the sprint runs)_"
       ],
@@ -325,15 +331,18 @@
       "ships": [],
       "slug": "sprint-automation-2026q3",
       "start": "2026-04-26",
-      "status": "active",
+      "status": "in_progress",
       "title": "Sprint Automation (2026 Q3)"
     },
     {
+      "blocker": null,
       "domain": "company",
       "duration_weeks": "~3",
+      "effective_status": "in_progress",
       "end": "2026-05-16",
       "followups": [],
       "goal": null,
+      "last_reviewed": "2026-04-26",
       "lessons": [],
       "outcome_bullets": [],
       "owner": "brand",
@@ -350,15 +359,20 @@
       "ships": [],
       "slug": "brand-design-deepdive-2026q2",
       "start": "2026-04-25",
-      "status": "active",
+      "status": "in_progress",
       "title": "Brand canon (2026 Q2) \u2014 final state"
     },
     {
+      "blocker": null,
       "domain": "company",
       "duration_weeks": 2,
+      "effective_status": "in_progress",
       "end": "2026-05-09",
-      "followups": [],
+      "followups": [
+        "~~**Track H4 \u2014 `apps/accounts/`** on `accounts.paperworklabs.com` (custom Paperwork ID headline host per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md))~~ \u2014 **superseded** by Clerk\u2019s auto-hosted Account Portal on the primary domain; see [`docs/KNOWLEDGE.md`](../KNOWLEDGE.md) \u00a7D91."
+      ],
       "goal": "Ship an aggressive end-to-end streamline: one orchestration brain for scheduled work, one persona vocabulary everywhere, Clerk-backed SSO so a LaunchFree user can use FileFree without re-registering, workflow DAGs that are actually legible (and not embarrassing in demos), and AxiomFolio absorbed into the Next.js / Vercel stack when the migration shell is far enough along.",
+      "last_reviewed": "2026-04-26",
       "lessons": [
         "Per-job `SCHEDULER_N8N_MIRROR_*` must use the same uppercased job id as `N8N_MIRROR_SPECS` (e.g. `N8N_SHADOW_BRAIN_DAILY`, not a short name like `pr_sweep` \u2014 the in-process `pr_sweep` scheduler is separate from n8n mirror ids).",
         "A single `clerkMiddleware` handler can grant production admin access if either `auth().userId` (Clerk) is present or the legacy Basic `Authorization` header matches `ADMIN_EMAILS` / `ADMIN_ACCESS_PASSWORD`, while local dev can keep admin routes open by short-circuiting on `NODE_ENV === \"development\"`.",
@@ -411,12 +425,14 @@
       "ships": [],
       "slug": "streamline-sso-dags-2026q2",
       "start": "2026-04-25",
-      "status": "active",
+      "status": "in_progress",
       "title": "Streamline + SSO + Real DAGs (2026 Q2)"
     },
     {
+      "blocker": null,
       "domain": "company",
       "duration_weeks": 1,
+      "effective_status": "in_progress",
       "end": "2026-04-26",
       "followups": [
         "shipped 2026-04-25: **F-1 (operator, single click)** completed \u2014 all AxiomFolio + brain-api + filefree-api services now associated with the consolidated root `render.yaml` Blueprint via Render Dashboard's \"New Blueprint \u2192 Associate existing services\" flow. (PR #143)",
@@ -429,6 +445,7 @@
         "Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`."
       ],
       "goal": "Land Phase 1 of the docs streamline, give the company a repo-native long-term tracker (no Jira / Notion), and wire Brain into both so a CFO digest and Slack slash commands work off the same JSON the UI reads.",
+      "last_reviewed": "2026-04-25",
       "lessons": [
         "Server components that read env-injected data (`DATABASE_URL`, runtime probes) MUST mark `dynamic = \"force-dynamic\"`; otherwise Next.js prerenders them at build time and the user sees stale \"not configured\" forever. Caught only because the user noticed the Secrets page had silently regressed.",
         "A repo-native tracker beats Jira when the docs are already where work is happening \u2014 the cost was one Python script + one JSON output. CFO digest, Slack slash commands, and Studio pages all read the same file.",
@@ -475,12 +492,14 @@
       ],
       "slug": "docs-streamline-and-trackers-2026q2",
       "start": "2026-04-24",
-      "status": "active",
+      "status": "in_progress",
       "title": "Docs Streamline + Trackers Spine \u2014 2026 Q2"
     },
     {
+      "blocker": null,
       "domain": "company",
       "duration_weeks": 4,
+      "effective_status": "shipped",
       "end": "2026-04-23",
       "followups": [
         "`/admin/tasks` (renders `docs/TASKS.md` as company tracker) \u2014 moving to follow-up sprint",
@@ -491,6 +510,7 @@
         "Shipped (2026-04-26):: Vercel auto-promote matrix expanded to include `axiomfolio-next`, `trinkets`, and `accounts` (placeholder `TBD_CREATE_BEFORE_MERGE` until Vercel projects are linked; skip-guard in workflow). See `.github/workflows/vercel-promote-on-merge.yaml` and `docs/infra/VERCEL_AUTO_PROMOTE.md`."
       ],
       "goal": "Land the infrastructure and automation foundation Paperwork Labs needs before feature work resumes \u2014 persona platform, model selection, doc-vs-code truth checks, AxiomFolio brain delegation, and a Studio command center that stays honest about reality.",
+      "last_reviewed": "2026-04-23",
       "lessons": [
         "Auto-generated docs need a `last_modified` per generator, not per filesystem mtime.: mtime drifts on rebase and CI. Generators now write a `content_hash` field that's stable across runs.",
         "CI gates are only as good as their idempotence.: The n8n snapshot was failing every CI run because of an ISO timestamp; switched to content-hash and it's been silent since.",

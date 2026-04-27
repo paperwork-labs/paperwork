@@ -4,7 +4,7 @@ Snapshot history recording and backfill tasks.
 
 import logging
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import List, Optional
 
 import numpy as np
@@ -662,9 +662,9 @@ def snapshot_for_symbol(
     """
     session = SessionLocal()
     try:
-        start_dt = datetime.strptime(start_date, "%Y-%m-%d")
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=UTC)
         if end_date:
-            end_cmp = pd.Timestamp(datetime.strptime(end_date, "%Y-%m-%d")).normalize()
+            end_cmp = pd.Timestamp(datetime.strptime(end_date, "%Y-%m-%d").replace(tzinfo=UTC)).normalize()
         else:
             end_cmp = (
                 pd.Timestamp(datetime.now(timezone.utc))

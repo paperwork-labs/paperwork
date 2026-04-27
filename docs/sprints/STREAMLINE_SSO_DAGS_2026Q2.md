@@ -123,7 +123,6 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
     - AxiomFolio (`axiomfolio-next`): finish consumer auth on Clerk; APIs move from `qm_token` to Clerk JWT verification behind a short shadow window; backfill `clerk_user_id` by email where needed.
     - LaunchFree + Distill + Trinkets: adopt shared `SignInShell` + locked app-name-primary wordmark tokens from the package; drop duplicate per-app `clerk-appearance` copies when consolidated.
     - Studio: keep Clerk + `ADMIN_EMAILS` allowlist; retire Basic once operators publish a cutover date.
-    - `apps/accounts/`: host Paperwork ID headline only on `accounts.paperworklabs.com` per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md) (if present) / Track H4 plan.
     - Python sidecars (FileFree, AxiomFolio, Brain as needed): use shared `paperwork_auth` / JWT verifier helpers aligned with the package’s Clerk JWKS contract.
 
 - **T4 — Real DAGs + workflow UX** `[~]`
@@ -139,6 +138,9 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
 
 ## Follow-ups
 
+### Deferred (superseded by D91)
+
+- ~~**Track H4 — `apps/accounts/`** on `accounts.paperworklabs.com` (custom Paperwork ID headline host per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md))~~ — **superseded** by Clerk’s auto-hosted Account Portal on the primary domain; see [`docs/KNOWLEDGE.md`](../KNOWLEDGE.md) §D91.
 
 ## Related
 

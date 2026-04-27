@@ -1,0 +1,12 @@
+---
+description: UTC in DB/API; user TZ only in UI; Ruff DTZ
+globs: **/*.{py,ts,tsx}
+---
+
+# Timezone discipline (non-negotiable)
+
+- **Database / ORM:** store and read instants as UTC (`timestamptz`); never rely on implicit local TZ for persisted times.
+- **Python:** use aware datetimes (`datetime.now(UTC)`, `datetime.fromtimestamp(ts, UTC)`); never `datetime.utcnow()`; serialize API times as ISO-8601 with `Z` when appropriate.
+- **UI:** keep ISO strings as UTC until display; format with `Intl.DateTimeFormat` / `date-fns-tz` / `formatInUserTZ` from `@paperwork/ui`.
+- **Logging / batch jobs:** UTC for log timestamps and scheduled job boundaries unless a product explicitly documents otherwise.
+- **Linting:** `ruff check --select DTZ` must pass for Python services; fix or narrowly `noqa` with a reason, never silence globally.

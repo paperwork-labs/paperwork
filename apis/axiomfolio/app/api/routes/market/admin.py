@@ -13,7 +13,7 @@ Administrative endpoints for market data operations:
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
@@ -65,7 +65,7 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 def _default_history_start() -> str:
     """Derive the default since_date from HISTORY_TARGET_YEARS."""
     from datetime import date, timedelta
-    return (date.today() - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)).isoformat()
+    return (datetime.now(UTC).date() - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)).isoformat()
 
 
 # ── Pydantic models for auto-fix ──

@@ -177,6 +177,13 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
+  - slug: brain-secrets-intelligence
+    path: docs/infra/BRAIN_SECRETS_INTELLIGENCE.md
+    title: Brain secrets operational intelligence
+    summary: "Registry (metadata), episodes, and schedulers for drift audit, rotation windows, and health — Studio overlay and agent intake."
+    tags: [infra, runbook, secrets]
+    owners: [infra-ops]
+    category: runbooks
   - slug: agent-sprint-planning
     path: docs/infra/AGENT_SPRINT_PLANNING.md
     title: Cheap-agent sprint planning (Brain)

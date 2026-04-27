@@ -192,9 +192,7 @@ async def ingest_sprint_lessons(
         return {"created": 0, "skipped": 0, "sprints_scanned": 0}
 
     md_files = sorted(glob.glob(os.path.join(sprints_dir, "*.md")))
-    md_files = [
-        p for p in md_files if os.path.basename(p).lower() != "readme.md"
-    ]
+    md_files = [p for p in md_files if os.path.basename(p).lower() != "readme.md"]
 
     # Pull existing source_refs in one query so we can skip duplicates without
     # racing the unique index.

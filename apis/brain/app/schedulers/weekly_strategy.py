@@ -12,11 +12,12 @@ not a standalone OpenAI node in n8n.
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.database import async_session_factory
@@ -24,6 +25,9 @@ from app.redis import get_redis
 from app.schedulers._history import run_with_scheduler_record
 from app.services import agent as brain_agent
 from app.services import slack_outbound
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +66,10 @@ def _format_slack_body(raw: str) -> str:
 
 
 async def _run_weekly_strategy_body() -> None:
-    request_id = f"weekly-strategy:brain:{datetime.now(timezone.utc).isoformat()}"
+    request_id = f"weekly-strategy:brain:{datetime.now(UTC).isoformat()}"
     redis_client = None
-    try:
+    with contextlib.suppress(RuntimeError):
         redis_client = get_redis()
-    except RuntimeError:
-        pass
     async with async_session_factory() as db:
         result = await brain_agent.process(
             db,
@@ -83,7 +85,7 @@ async def _run_weekly_strategy_body() -> None:
         )
         await db.commit()
     out = _format_slack_body(str(result.get("response", "") or ""))
-    date = datetime.now(timezone.utc).date().isoformat()
+    date = datetime.now(UTC).date().isoformat()
     text = f"*Weekly Strategy Check-in — {date}*\n\n{out}"
     await slack_outbound.post_message(
         channel_id=_WEEKLY_STRATEGY_CHANNEL_ID,
@@ -109,11 +111,13 @@ def install(scheduler: AsyncIOScheduler) -> None:
         return
     scheduler.add_job(
         run_weekly_strategy,
-        trigger=CronTrigger.from_crontab("0 9 * * 1", timezone=timezone.utc),
+        trigger=CronTrigger.from_crontab("0 9 * * 1", timezone=UTC),
         id=_JOB_ID,
-        name="Weekly Strategy Check-in (Brain, ex–Weekly Strategy Check-in / n8n)",
+        name="Weekly Strategy Check-in (Brain, ex-Weekly Strategy Check-in / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,
     )
-    logger.info("APScheduler job %r registered (09:00 UTC Mondays, matches n8n expression)", _JOB_ID)
+    logger.info(
+        "APScheduler job %r registered (09:00 UTC Mondays, matches n8n expression)", _JOB_ID
+    )

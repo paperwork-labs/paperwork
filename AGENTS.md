@@ -104,6 +104,7 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 - **Studio Vault** is the **source of truth** (`paperworklabs.com/admin/secrets`, `POST /api/secrets`, `make secrets`, `./scripts/vault-get.sh`) — [docs/SECRETS.md](docs/SECRETS.md)
 - **Brain:** runtime vault access and per-user `brain_user_vault` — same runbook, **Brain vault integration** section
 - **Env drift:** `make env-check`, matrix in secrets-ops.mdc
+- **Studio admin — secrets:** When `BRAIN_API_URL` and `BRAIN_INTERNAL_TOKEN` are set, `/admin/secrets` overlays **Brain** registry metadata (criticality, drift summary) and a small **Brain notes** popover (recent episodes) — [docs/infra/BRAIN_SECRETS_INTELLIGENCE.md](docs/infra/BRAIN_SECRETS_INTELLIGENCE.md)
 
 ---
 
@@ -168,3 +169,9 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 | [workflows.mdc](.cursor/rules/workflows.mdc) | Company playbooks |
 
 **Product-specific:** [apis/axiomfolio/AGENTS.md](apis/axiomfolio/AGENTS.md)
+
+**Studio admin — secrets:** `/admin/secrets` lists the encrypted vault; when `BRAIN_API_URL` and `BRAIN_INTERNAL_TOKEN` are set, the page overlays **Brain** registry metadata (criticality, drift summary) and a small **Brain notes** popover (recent episodes) — see `docs/infra/BRAIN_SECRETS_INTELLIGENCE.md`.
+
+**Key automation:**
+- **Slack / Brain**: Brain Slack Adapter and optional on-demand webhooks; scheduled briefings and infra checks run on **Brain** when `BRAIN_OWNS_*` cutover flags are enabled
+- **Decision Logger**: Captures decisions from #decisions and commits to KNOWLEDGE.md

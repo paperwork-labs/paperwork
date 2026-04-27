@@ -316,8 +316,8 @@ jobs:
             ' /tmp/vlist.json
           }
           DEPLOY_ID=""
-          for attempt in $(seq 1 5); do
-            echo "Attempt $attempt / 5: READY deployment for merge=$PR_HEAD head=$PR_HEAD_FALLBACK ($PROJECT_NAME)"
+          for attempt in $(seq 1 15); do
+            echo "Attempt $attempt / 15: READY deployment for merge=$PR_HEAD head=$PR_HEAD_FALLBACK ($PROJECT_NAME)"
             for SHA_TRY in "$PR_HEAD" "$PR_HEAD_FALLBACK"; do
               CAND=""
               rc=0
@@ -343,7 +343,7 @@ jobs:
             sleep 30
           done
           if [ -z "$DEPLOY_ID" ]; then
-            echo "::error::No READY Vercel deployment for **${PROJECT_NAME}** matching merge_commit_sha=${PR_HEAD} or head_sha=${PR_HEAD_FALLBACK} after 5 attempts (~2.5 min). Promote only aliases an existing deployment — it cannot create one. Typical causes: Vercel never built this app for that commit (monorepo ignoreCommand / dashboard skip), deployment still BUILDING, or Hobby rate limits. Check Deployments in the Vercel dashboard; merge a no-op change to apps/${PROJECT_NAME}/.deploy-trigger or run \`vercel deploy --prod\` from apps/${PROJECT_NAME} if needed."
+            echo "::error::No READY Vercel deployment for **${PROJECT_NAME}** matching merge_commit_sha=${PR_HEAD} or head_sha=${PR_HEAD_FALLBACK} after 15 attempts (~7.5 min). Promote only aliases an existing deployment — it cannot create one. Typical causes: Vercel never built this app for that commit (monorepo ignoreCommand / dashboard skip), deployment still BUILDING, or Hobby rate limits. Check Deployments in the Vercel dashboard; merge a no-op change to apps/${PROJECT_NAME}/.deploy-trigger or run \`vercel deploy --prod\` from apps/${PROJECT_NAME} if needed."
             exit 1
           fi
           echo "found_preview=true" >> $GITHUB_OUTPUT

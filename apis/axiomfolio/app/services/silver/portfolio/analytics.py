@@ -20,7 +20,7 @@ medallion: silver
 import logging
 import math
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from sqlalchemy.orm import Session
@@ -90,7 +90,7 @@ def _naive_midnight_date_key(ts: date | datetime) -> datetime:
     ``PortfolioSnapshot.snapshot_date`` is often a wall-clock write time, while
     ``MarketSnapshotHistory.as_of_date`` is midnight-aligned. Regression beta
     keys both sides the same way so aligned days are not empty."""
-    return datetime(ts.year, ts.month, ts.day)
+    return datetime(ts.year, ts.month, ts.day, tzinfo=UTC)
 
 
 @dataclass
@@ -277,7 +277,7 @@ class PortfolioAnalyticsService:
 
             return {
                 "account_id": account_id,
-                "as_of_date": datetime.now().isoformat(),
+                "as_of_date": datetime.now(UTC).isoformat(),
                 "portfolio_metrics": metrics.__dict__,
                 "tax_opportunities": [opp.__dict__ for opp in tax_opportunities],
                 "asset_allocation": allocation,
@@ -825,7 +825,7 @@ class PortfolioAnalyticsService:
         if daily:
             start = daily[0][0]
             if hasattr(start, "year"):
-                start_dt = datetime(start.year, start.month, start.day)
+                start_dt = datetime(start.year, start.month, start.day, tzinfo=UTC)
             else:
                 start_dt = datetime.now(timezone.utc) - timedelta(days=lookback_days)
             benchmark_symbol, benchmark_closes = self._resolve_benchmark(db, start_dt)

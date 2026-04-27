@@ -19,6 +19,7 @@
     "./components/require-admin": "./src/components/require-admin.tsx",
     "./appearance": "./src/appearance/index.ts",
     "./appearance/presets": "./src/appearance/presets.ts",
+    "./server/clerk": "./src/server/clerk-nextjs.ts",
     "./server/verify-clerk-jwt": "./src/server/verify-clerk-jwt.ts"
   },
   "scripts": {

@@ -37,7 +37,7 @@ def _get_client(name: str, timeout: float = 60.0) -> httpx.AsyncClient:
 
 async def close_clients() -> None:
     """Close all httpx clients. Call during app shutdown."""
-    for name, client in _http_clients.items():
+    for _name, client in _http_clients.items():
         if not client.is_closed:
             await client.aclose()
     _http_clients.clear()
@@ -214,7 +214,8 @@ async def complete_openai_with_mcp(
         tier_notice = (
             "\n\nIMPORTANT: The following tools require explicit user approval "
             f"and must NOT be called: {', '.join(sorted(restricted))}. "
-            "If the user asks for these actions, describe what you would do and ask for confirmation."
+            "If the user asks for these actions, describe what you would do and "
+            "ask for confirmation."
         )
 
     oai_input = [{"role": "system", "content": system_prompt + tier_notice}]
@@ -258,16 +259,16 @@ def _strip_tool_instructions(system_prompt: str) -> str:
 
     When MCP fails, we don't want the model to promise tool usage it can't deliver.
     """
-    lines_to_remove = [
-        "use tools (read_github_file, search_github_code) to find answers",
-        "For project status, task progress, or \"what to work on\" questions, use read_github_file to read docs/TASKS.md",
-        "When using tools, prefer search_memory first for context before calling external tools",
+    chunks = [
+        """- If you don't have enough context, use tools (read_github_file,
+  search_github_code) to find answers.""",
+        """- For project status, task progress, or "what to work on" questions, use
+  read_github_file to read docs/TASKS.md.""",
+        "- When using tools, prefer search_memory first for context before calling external tools",
     ]
     result = system_prompt
-    for line in lines_to_remove:
-        result = result.replace(f"- {line}.", "")
-        result = result.replace(f"- {line}", "")
-        result = result.replace(line, "")
+    for chunk in chunks:
+        result = result.replace(chunk, "")
 
     fallback_notice = (
         "\n\n[Note: Operating in text-only mode. Answer from the context provided above. "
@@ -367,10 +368,7 @@ async def _complete_gemini(
         res.raise_for_status()
         data = res.json()
         text = (
-            data.get("candidates", [{}])[0]
-            .get("content", {})
-            .get("parts", [{}])[0]
-            .get("text", "")
+            data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
         )
         usage = data.get("usageMetadata", {})
         return {
@@ -499,7 +497,7 @@ The assistant has tools for: GitHub (code, PRs, issues), infrastructure monitori
 (Render, Vercel, Neon, n8n, Upstash), trading (portfolio, market scans, trade execution),
 memory (past conversations), and secrets vault.
 
-Channel context: {channel_id or 'unknown'}
+Channel context: {channel_id or "unknown"}
 Message: {message}
 
 Respond with ONLY valid JSON:
@@ -510,13 +508,18 @@ Respond with ONLY valid JSON:
   "confidence": 0.0-1.0}}
 
 Rules:
-- Prefer tools_needed=false for simple greetings ("hi", "thanks"), pure explanations, or domain-specific computation (tax math)
-- Project status, task progress, "what to work on", planning questions -> claude-sonnet-4-20250514, tools_needed=true (needs GitHub access to read TASKS.md)
+- Prefer tools_needed=false for simple greetings ("hi", "thanks"), pure
+  explanations, or domain-specific computation (tax math)
+- Project status, task progress, "what to work on", planning questions ->
+  claude-sonnet-4-20250514, tools_needed=true (needs GitHub access to read
+  TASKS.md)
 - Infrastructure status checks -> claude-sonnet-4-20250514, tools_needed=true
 - Code/PR/GitHub operations -> claude-sonnet-4-20250514, tools_needed=true
 - Trading/portfolio queries -> claude-sonnet-4-20250514, tools_needed=true
 - Tax calculations, financial math -> o4-mini, tools_needed=false
-- Questions about decisions, knowledge, company state -> claude-sonnet-4-20250514, tools_needed=true (needs GitHub to read KNOWLEDGE.md)
+- Questions about decisions, knowledge, company state ->
+  claude-sonnet-4-20250514, tools_needed=true (needs GitHub to read
+  KNOWLEDGE.md)
 - Complex multi-domain reasoning -> claude-opus-4-20250618, tools_needed=true
 - When in doubt, set tools_needed=true (better to have tools available than not)"""
 
@@ -550,12 +553,7 @@ Rules:
         if not candidates:
             logger.warning("Gemini classifier returned empty candidates list")
             raise ValueError("Gemini returned no candidates")
-        text = (
-            candidates[0]
-            .get("content", {})
-            .get("parts", [{}])[0]
-            .get("text", "{}")
-        )
+        text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "{}")
         result = json.loads(text)
         required_keys = {"model", "provider", "tools_needed", "domain", "confidence"}
         if not required_keys.issubset(result.keys()):
@@ -592,18 +590,22 @@ def _parse_anthropic_response(data: dict, model: str) -> dict:
         if block_type == "text":
             content_text += block.get("text", "")
         elif block_type == "mcp_tool_use":
-            tool_calls.append({
-                "type": "mcp_tool_use",
-                "name": block.get("name"),
-                "server": block.get("server_name"),
-                "input": block.get("input"),
-            })
+            tool_calls.append(
+                {
+                    "type": "mcp_tool_use",
+                    "name": block.get("name"),
+                    "server": block.get("server_name"),
+                    "input": block.get("input"),
+                }
+            )
         elif block_type == "mcp_tool_result":
-            tool_calls.append({
-                "type": "mcp_tool_result",
-                "tool_use_id": block.get("tool_use_id"),
-                "is_error": block.get("is_error", False),
-            })
+            tool_calls.append(
+                {
+                    "type": "mcp_tool_result",
+                    "tool_use_id": block.get("tool_use_id"),
+                    "is_error": block.get("is_error", False),
+                }
+            )
 
     usage = data.get("usage", {})
     return {
@@ -627,11 +629,13 @@ def _parse_openai_response(data: dict, model: str) -> dict:
                 if part.get("type") == "output_text":
                     content_text += part.get("text", "")
         elif item.get("type") == "mcp_call":
-            tool_calls.append({
-                "type": "mcp_call",
-                "name": item.get("name"),
-                "server": item.get("server_label"),
-            })
+            tool_calls.append(
+                {
+                    "type": "mcp_call",
+                    "name": item.get("name"),
+                    "server": item.get("server_label"),
+                }
+            )
 
     usage = data.get("usage", {})
     return {

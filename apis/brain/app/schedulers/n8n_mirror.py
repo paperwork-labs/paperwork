@@ -27,21 +27,24 @@ from __future__ import annotations
 
 import logging
 import os
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
-from typing import Any, Literal
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any, Literal
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers._history import run_with_scheduler_record
 from app.services import slack_outbound
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +66,7 @@ class MirrorSpec:
     summary: str
 
 
-# Inventory from ``infra/hetzner/workflows/*.json`` (``archive/`` and ``retired/`` excluded). See runbook.
+# Inventory from ``infra/hetzner/workflows/*.json`` (``archive/`` and ``retired/`` excluded). See runbook.  # noqa: E501
 N8N_MIRROR_SPECS: tuple[MirrorSpec, ...] = (
     MirrorSpec(
         "n8n_shadow_brain_daily",
@@ -169,7 +172,7 @@ def is_n8n_mirror_enabled_for_job(job_id: str) -> bool:
 
 
 async def _post_shadow(n8n_workflow_name: str, job_id: str) -> None:
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     text = f"[shadow] {n8n_workflow_name} ({job_id}) fired at {now}"
     await slack_outbound.post_message(
         channel=SHADOW_SLACK_CHANNEL,
@@ -317,9 +320,7 @@ def should_register_n8n_shadow_for_job(job_id: str) -> bool:
         return False
     if job_id == "n8n_shadow_data_deep_validator" and _brain_owns_data_deep_validator():
         return False
-    if job_id == "n8n_shadow_annual_data" and _brain_owns_data_annual_update():
-        return False
-    return True
+    return not (job_id == "n8n_shadow_annual_data" and _brain_owns_data_annual_update())
 
 
 async def _run_shadow_for_spec(spec: MirrorSpec) -> None:
@@ -384,7 +385,7 @@ def _register_specs(scheduler: AsyncIOScheduler, specs: list[MirrorSpec]) -> Non
 
 async def n8n_mirror_status_payload(db: AsyncSession) -> dict[str, Any]:
     """Data for ``GET /admin/scheduler/n8n-mirror/status``."""
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    cutoff = datetime.now(UTC) - timedelta(hours=24)
     per_job: list[dict[str, Any]] = []
     for spec in N8N_MIRROR_SPECS:
         last = (

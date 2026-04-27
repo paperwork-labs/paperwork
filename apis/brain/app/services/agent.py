@@ -19,6 +19,7 @@ Pipeline per request:
 medallion: ops
 """
 
+import contextlib
 import logging
 import re
 from pathlib import Path
@@ -28,13 +29,14 @@ import yaml
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.personas import get_spec as get_persona_spec
+from app.personas.routing import route_persona
 from app.services import cost_tracker, idempotency, memory, persona_rate_limit
 from app.services.cost_tracker import CostCeilingExceeded
 from app.services.errors import LLMUnavailableError
+from app.services.observability import create_trace
+from app.services.observability import flush as flush_traces
 from app.services.persona_rate_limit import PersonaRateLimitExceeded
-from app.services.observability import create_trace, flush as flush_traces
 from app.services.pii import scrub_pii
-from app.personas.routing import route_persona
 from app.services.router import (
     ChainContext,
     ChainResult,
@@ -69,10 +71,12 @@ You are operating as the {persona} persona.
 ## Rules
 - Be concise and actionable. Lead with the answer.
 - Use your memory to provide personalized, context-aware responses.
-- If you don't have enough context, use tools (read_github_file, search_github_code) to find answers.
+- If you don't have enough context, use tools (read_github_file,
+  search_github_code) to find answers.
 - Never expose raw PII (SSNs, passwords, API keys) in your responses.
 - If asked about something in your memory, cite it naturally.
-- For project status, task progress, or "what to work on" questions, use read_github_file to read docs/TASKS.md.
+- For project status, task progress, or "what to work on" questions, use
+  read_github_file to read docs/TASKS.md.
 - When using tools, prefer search_memory first for context before calling external tools.
 """
 
@@ -125,6 +129,7 @@ async def _load_persona_instructions(persona: str, redis_client: Any) -> str:
 
     try:
         from app.tools.github import read_github_file
+
         mdc_path = f"{PERSONA_MDC_PREFIX}{persona}.mdc"
         content = await read_github_file(mdc_path, max_chars=15000)
         if content and "Not found:" not in content and "error:" not in content.lower():
@@ -138,6 +143,7 @@ async def _load_persona_instructions(persona: str, redis_client: Any) -> str:
         logger.warning("Failed to load persona .mdc for %s", persona, exc_info=True)
 
     return ""
+
 
 _constitution: list[dict] | None = None
 _circuit_breaker: CircuitBreaker | None = None
@@ -175,11 +181,13 @@ def _check_constitution(response_text: str) -> list[dict]:
         pid = principle.get("id", "")
         checker = checks.get(pid)
         if checker and checker(response_text):
-            violations.append({
-                "principle_id": pid,
-                "name": principle.get("name", ""),
-                "severity": principle.get("severity", "medium"),
-            })
+            violations.append(
+                {
+                    "principle_id": pid,
+                    "name": principle.get("name", ""),
+                    "severity": principle.get("severity", "medium"),
+                }
+            )
 
     return violations
 
@@ -202,9 +210,7 @@ def _check_pii_leak(text: str) -> bool:
     for m in _EIN_PATTERN.findall(text):
         if not m.startswith("XX") and not m.startswith("**"):
             return True
-    if _API_KEY_PATTERNS.search(text):
-        return True
-    return False
+    return bool(_API_KEY_PATTERNS.search(text))
 
 
 def _check_fabrication_markers(text: str) -> bool:
@@ -335,17 +341,23 @@ async def process(
     persona = route_persona(message, channel_id=channel_id, persona_pin=effective_pin)
     logger.info(
         "Routed to persona=%s (org=%s, user=%s, pinned=%s, thread_sticky=%s)",
-        persona, organization_id, user_id, bool(persona_pin), bool(thread_persona),
+        persona,
+        organization_id,
+        user_id,
+        bool(persona_pin),
+        bool(thread_persona),
     )
     persona_span = trace.span(
         name="route_persona",
         input={"message": message[:100], "persona_pin": persona_pin, "thread_id": thread_id},
     )
-    persona_span.end(output={
-        "persona": persona,
-        "pinned": bool(persona_pin),
-        "thread_sticky": bool(thread_persona),
-    })
+    persona_span.end(
+        output={
+            "persona": persona,
+            "pinned": bool(persona_pin),
+            "thread_sticky": bool(thread_persona),
+        }
+    )
 
     persona_spec = get_persona_spec(persona)
 
@@ -375,7 +387,10 @@ async def process(
             f"[{e.source} | {e.created_at.strftime('%Y-%m-%d')}] {e.summary}" for e in episodes
         )
     else:
-        memory_context = "(No relevant memories found yet. Use read_github_file to check docs/TASKS.md or docs/KNOWLEDGE.md for project context.)"
+        memory_context = (
+            "(No relevant memories found yet. Use read_github_file to check "
+            "docs/TASKS.md or docs/KNOWLEDGE.md for project context.)"
+        )
 
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
         org_name=org_name,
@@ -420,7 +435,11 @@ async def process(
         except PersonaRateLimitExceeded as exc:
             logger.warning(
                 "persona rate limit hit for %s org=%s: %d/%d, retry_after=%ds",
-                persona, organization_id, exc.current, exc.limit, exc.retry_after,
+                persona,
+                organization_id,
+                exc.current,
+                exc.limit,
+                exc.retry_after,
             )
             trace.score(name="rate_limit_enforced", value=1.0)
             flush_traces()
@@ -460,7 +479,10 @@ async def process(
         except CostCeilingExceeded as exc:
             logger.warning(
                 "cost ceiling hit for %s org=%s: $%.4f of $%.4f",
-                persona, organization_id, exc.spent_usd, exc.ceiling_usd,
+                persona,
+                organization_id,
+                exc.spent_usd,
+                exc.ceiling_usd,
             )
             trace.score(name="cost_ceiling_enforced", value=1.0)
             flush_traces()
@@ -508,10 +530,8 @@ async def process(
             if tag == "compliance" and persona_spec.compliance_flagged:
                 escalate_on_compliance = True
             elif tag.startswith("tokens>"):
-                try:
+                with contextlib.suppress(ValueError):
                     tokens_threshold = int(tag.split(">", 1)[1])
-                except ValueError:
-                    pass
             elif tag.startswith("mention:"):
                 mention_targets.append(tag.split(":", 1)[1])
         chain_strategy = PersonaPinnedRoute(
@@ -544,7 +564,10 @@ async def process(
     except LLMUnavailableError as exc:
         logger.error(
             "All providers failed for persona=%s: %s/%s — %s",
-            persona, exc.provider, exc.model, exc.reason,
+            persona,
+            exc.provider,
+            exc.model,
+            exc.reason,
         )
         llm_span.end(output={"error": "llm_unavailable", "provider": exc.provider})
         trace.score(name="llm_available", value=0.0)
@@ -569,14 +592,16 @@ async def process(
             "episode_uri": None,
             "error": "llm_unavailable",
         }
-    llm_span.end(output={
-        "model": result.model,
-        "provider": result.provider,
-        "tokens_in": result.tokens_in,
-        "tokens_out": result.tokens_out,
-        "cost": result.cost,
-        "tools_used": len(result.tool_calls),
-    })
+    llm_span.end(
+        output={
+            "model": result.model,
+            "provider": result.provider,
+            "tokens_in": result.tokens_in,
+            "tokens_out": result.tokens_out,
+            "cost": result.cost,
+            "tools_used": len(result.tool_calls),
+        }
+    )
 
     violations = _check_constitution(result.content)
     if violations:
@@ -634,7 +659,9 @@ async def process(
         model_used=result.model,
         tokens_in=result.tokens_in,
         tokens_out=result.tokens_out,
-        metadata={**(episode_metadata or {}), "request_id": request_id} if request_id else episode_metadata or None,
+        metadata={**(episode_metadata or {}), "request_id": request_id}
+        if request_id
+        else episode_metadata or None,
     )
 
     # D4: stamp provenance on the response so downstream channels (Slack,

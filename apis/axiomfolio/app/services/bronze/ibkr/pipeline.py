@@ -10,7 +10,7 @@ medallion: bronze
 
 import logging
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Dict, List
 
@@ -432,7 +432,7 @@ class IBKRSyncService:
             "total_market_value": f"${total_value:,.2f}",
             "unrealized_pnl": f"${total_pnl:,.2f}",
             "return_pct": f"{return_pct:.2f}%",
-            "sync_timestamp": datetime.now().isoformat(),
+            "sync_timestamp": datetime.now(UTC).isoformat(),
         }
 
 

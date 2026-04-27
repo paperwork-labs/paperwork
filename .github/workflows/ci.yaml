@@ -227,6 +227,8 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
       - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy app --config-file ./pyproject.toml
       - run: python -m pytest --tb=short -q
 
   web-lint:

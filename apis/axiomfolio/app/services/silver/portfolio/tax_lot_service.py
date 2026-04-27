@@ -10,7 +10,7 @@ Handles tax lot calculations, cost basis, and tax optimization strategies.
 
 import logging
 from typing import Dict, List, Optional
-from datetime import datetime
+from datetime import UTC, datetime
 
 from app.models.tax_lot import TaxLot, TaxLotMethod, TaxLotSource
 from app.models.broker_account import BrokerAccount
@@ -41,12 +41,12 @@ class TaxLotService:
             logger.warning("Acquisition date ISO parse failed for %r: %s", value, e)
         try:
             # YYYYMMDD (FlexQuery tradeDate)
-            return datetime.strptime(value, "%Y%m%d")
+            return datetime.strptime(value, "%Y%m%d").replace(tzinfo=UTC)
         except Exception as e:
             logger.warning("Acquisition date YYYYMMDD parse failed for %r: %s", value, e)
         try:
             # YYYY-MM-DD
-            return datetime.strptime(value, "%Y-%m-%d")
+            return datetime.strptime(value, "%Y-%m-%d").replace(tzinfo=UTC)
         except Exception:
             return None
 
@@ -81,7 +81,7 @@ class TaxLotService:
             )
 
             # Calculate time-based attributes
-            days_held = (datetime.now() - acquisition_date).days
+            days_held = (datetime.now(UTC) - acquisition_date).days
             tax_lot.days_held = days_held
             tax_lot.is_long_term = days_held >= 365
 
@@ -528,8 +528,8 @@ class TaxLotService:
         """Generate comprehensive tax report for a year (version)"""
         try:
             # Get all sales for the tax year
-            start_date = datetime(tax_year, 1, 1)
-            end_date = datetime(tax_year, 12, 31, 23, 59, 59)
+            start_date = datetime(tax_year, 1, 1, tzinfo=UTC)
+            end_date = datetime(tax_year, 12, 31, 23, 59, 59, tzinfo=UTC)
 
             # TaxLotSale persistence not available; return empty aggregates
             sales = []
@@ -626,7 +626,7 @@ class TaxLotService:
                         else 0
                     ),
                 },
-                "generated_at": datetime.now().isoformat(),
+                "generated_at": datetime.now(UTC).isoformat(),
             }
 
         except Exception as e:
@@ -669,7 +669,7 @@ async def get_user_tax_summary(user_id: int, tax_year: int = None) -> Dict:
     service = TaxLotService()
     try:
         if not tax_year:
-            tax_year = datetime.now().year
+            tax_year = datetime.now(UTC).year
         return await service.generate_tax_summary(user_id, tax_year)
     finally:
         service.close()

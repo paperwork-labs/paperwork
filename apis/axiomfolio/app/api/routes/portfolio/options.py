@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
-from datetime import datetime, date, timezone
+from datetime import UTC, datetime, date, timezone
 from typing import List, Dict, Any, Optional
 import logging
 
@@ -72,7 +72,7 @@ def _compute_options_portfolio(
         try:
             if not exp:
                 return 0
-            return (exp - date.today()).days
+            return (exp - datetime.now(UTC).date()).days
         except Exception as e:
             logger.warning("days_to_expiry calculation failed: %s", e)
             return 0

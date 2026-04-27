@@ -47,9 +47,7 @@ def _is_critical_date_open(status: str | None) -> bool:
     if not status:
         return True
     s = status.strip().upper()
-    if s == "COMPLETE" or s.startswith("DONE"):
-        return False
-    return True
+    return not (s == "COMPLETE" or s.startswith("DONE"))
 
 
 def _critical_status_emoji(status: str | None) -> str:
@@ -172,7 +170,10 @@ def slack_response_plan(index: dict[str, Any] | None, text: str) -> dict[str, An
             plans = p.get("plans") or []
             n = len(plans) if isinstance(plans, list) else 0
             lines.append(f"• *{label}* (`{slug}`): {n} plan(s)")
-        return {"response_type": "in_channel", "text": "*Products (plan counts)*\n" + "\n".join(lines)}
+        return {
+            "response_type": "in_channel",
+            "text": "*Products (plan counts)*\n" + "\n".join(lines),
+        }
 
     want = sub.lower()
     for p in product_dicts:
