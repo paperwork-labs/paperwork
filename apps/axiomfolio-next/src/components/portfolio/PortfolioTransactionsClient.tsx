@@ -47,7 +47,7 @@ const CATEGORIES = [
 ] as const;
 const SIDES = ['BUY', 'SELL', ''] as const;
 
-const PortfolioTransactions: React.FC = () => {
+const PortfolioTransactionsClient: React.FC = () => {
   const [dateRange, setDateRange] = useState<string>('30d');
   const [category, setCategory] = useState<string>('');
   const [side, setSide] = useState<string>('');
@@ -404,4 +404,4 @@ const PortfolioTransactions: React.FC = () => {
   );
 };
 
-export default PortfolioTransactions;
+export default PortfolioTransactionsClient;

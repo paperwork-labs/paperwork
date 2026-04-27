@@ -103,7 +103,7 @@ const HOLDINGS_FILTER_PRESETS: Array<{ label: string; filters: FilterGroup }> = 
   },
 ];
 
-const PortfolioHoldings: React.FC = () => {
+const PortfolioHoldingsClient: React.FC = () => {
   const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [tradeTarget, setTradeTarget] = useState<TradeTarget>(null);
@@ -720,4 +720,4 @@ const PortfolioHoldings: React.FC = () => {
   );
 };
 
-export default PortfolioHoldings;
+export default PortfolioHoldingsClient;
