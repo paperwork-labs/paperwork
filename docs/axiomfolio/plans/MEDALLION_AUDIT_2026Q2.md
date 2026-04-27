@@ -7,9 +7,9 @@ status: active
 ---
 # Medallion Audit — 2026 Q2
 
-> **Status**: Phase 0.A output. Read before touching `app/services/` during the Wave 0 migration.
+> **Status**: Phase 0.D complete — medallion import gate is strict; remaining cross-layer edges use inline `# medallion: allow` with tracked rationales.
 > **Generated**: 2026-04-23 by `scripts/medallion/tag_files.py`
-> **Next review**: After Phase 0.D closeout (~2026-05-13)
+> **Next review**: After next major `app/services/` layout change
 
 This document classifies every `.py` file under `app/services/` into a medallion layer and records the target move path + risk + blockers. It's the **input contract for Phase 0.C** — the migration script `scripts/medallion_migrate.py` consumes this mapping.
 
@@ -223,7 +223,7 @@ python3 scripts/medallion/generate_move_map.py > medallion_move_map.yaml
 | 0.B — Silver scaffold + CI rule | 2026-04-23 | ✅ DONE | `silver/__init__.py`, `scripts/medallion/check_imports.py`, `make medallion-check`, CI job added. 21 known-debt violations auto-captured as waivers. |
 | 0.C prep — per-file move map + blocker resolution | 2026-04-23 | ✅ DONE | `medallion_move_map.yaml` generated (145 moves / 124 stays); B2/B3/B4 blockers resolved in-doc; `task_path` attack surface = 2 dead refs in `models/strategy.py`. |
 | 0.C — File migrations | 2026-04-23 | ✅ DONE | PR [#116](https://github.com/paperwork-labs/paperwork/pull/116) merged (Medallion Wave 0.C). 145 files moved via `scripts/medallion_migrate.py`; 2085 backend tests passing; stale re-exports in `silver/market/__init__.py`, `silver/portfolio/__init__.py`, `gold/risk/__init__.py`, `gold/__init__.py` removed to break circular imports; 38 test-file string literals rewritten. |
-| 0.D — Shim removal + strict CI | ~2026-05-07 | ⏳ pending | 2 weeks after 0.C landed (0.C merged 2026-04-23). Remove D88-era shims, flip `scripts/medallion/check_imports.py` from warn-mode to strict, drain 21 inherited-debt waivers. See §0.D Checklist below. |
+| 0.D — Shim removal + strict CI | ~2026-05-07 | ✅ DONE | Account helpers retagged `ops` where appropriate; `gold/position_sizing` owns Stage Analysis sizing; bronze→silver edges use permanent `# medallion: allow` lines; `check_imports` invoked with `--strict` in CI; `app/services/__init__.py` verified free of D88 re-export shims. |
 
 ---
 

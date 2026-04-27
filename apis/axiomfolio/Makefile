@@ -222,7 +222,7 @@ restore-db:
 
 # ─── Medallion architecture (Wave 0) ──────────────────────────────────
 medallion-check:
-	@python3 scripts/medallion/check_imports.py --stats
+	@python3 scripts/medallion/check_imports.py --strict --stats
 
 medallion-check-sql:
 	@python3 scripts/medallion/check_sql.py --stats
