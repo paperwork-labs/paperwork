@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Download, Loader2, Receipt, Search } from 'l
 import { useQuery } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
 import { API_BASE_URL, portfolioApi } from '@/services/api';
+import { useAuthenticatedDownload } from '@/hooks/use-authenticated-download';
 import { usePortfolioInsights, useRealizedGains } from '@/hooks/usePortfolio';
 import { OpenOptionsSection } from '@/components/portfolio/OpenOptionsSection';
 import { RealizedOptionsSection } from '@/components/portfolio/RealizedOptionsSection';
@@ -22,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { semanticTextColorClass } from '@/lib/semantic-text-color';
+import toast from 'react-hot-toast';
 
 type TradeTarget = { symbol: string; currentPrice: number; sharesHeld: number; averageCost?: number } | null;
 
@@ -89,9 +91,28 @@ interface YearSummary {
 
 const thSort = 'cursor-pointer select-none hover:text-foreground';
 
+/** Unwrap GET /portfolio/tax-lots/tax-summary after `makeOptimizedRequest` (nested `{ data }` envelopes). */
+function parseTaxSummaryResponse(r: unknown): { tax_lots: TaxLotRow[]; summary: TaxSummary } | null {
+  if (r == null || typeof r !== 'object') return null;
+  const raw = r as Record<string, unknown>;
+  const inner = raw['data'];
+  const unwrapped =
+    inner != null && typeof inner === 'object' && 'data' in inner
+      ? (inner as Record<string, unknown>)['data']
+      : inner;
+  const payload = (unwrapped != null && typeof unwrapped === 'object' ? unwrapped : null) ?? r;
+  if (payload == null || typeof payload !== 'object') return null;
+  const p = payload as Record<string, unknown>;
+  const taxLots = p['tax_lots'];
+  const summary = p['summary'];
+  if (!Array.isArray(taxLots) || summary == null || typeof summary !== 'object') return null;
+  return { tax_lots: taxLots as TaxLotRow[], summary: summary as TaxSummary };
+}
+
 const PortfolioTaxCenterClient: React.FC = () => {
   const { currency, timezone } = useUserPreferences();
   const { colorMode } = useColorMode();
+  const { download: downloadWithAuth } = useAuthenticatedDownload();
   const isDark = colorMode === 'dark';
   const [activeTab, setActiveTab] = useState<TabId>('unrealized');
   const [search, setSearch] = useState('');
@@ -125,19 +146,21 @@ const PortfolioTaxCenterClient: React.FC = () => {
     });
   };
 
-  const handleExport = (year: number) => {
+  const handleExport = async (year: number) => {
     const base = API_BASE_URL.replace(/\/$/, '');
     const url = `${base}/portfolio/tax-report/export?year=${year}`;
-    window.open(url, '_blank');
+    try {
+      await downloadWithAuth(url, `tax-report-${year}.csv`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not download CSV');
+    }
   };
 
   const taxQuery = useQuery({
     queryKey: ['taxSummary'],
     queryFn: async () => {
       const r = await portfolioApi.getTaxSummary();
-      const raw = r as Record<string, unknown> | undefined;
-      const data = (raw?.data as Record<string, unknown> | undefined)?.data ?? raw?.data ?? raw;
-      return data as { tax_lots: TaxLotRow[]; summary: TaxSummary } | null;
+      return parseTaxSummaryResponse(r);
     },
     staleTime: 60000,
   });

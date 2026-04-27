@@ -46,7 +46,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import PageHeader from '@/components/ui/PageHeader';
-import { portfolioApi, handleApiError } from '@/services/api';
+import { portfolioApi, handleApiError, unwrapResponse } from '@/services/api';
 import api from '@/services/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCategories, useCategoryViews, useCategoryPositions, useRebalanceSuggestions } from '@/hooks/usePortfolio';
@@ -199,8 +199,7 @@ const CategoryCard: React.FC<{
     queryKey: ['categoryPositions', cat.id],
     queryFn: async () => {
       const res = await portfolioApi.getCategory(cat.id);
-      const r = res as Record<string, any> | undefined;
-      return (r?.data?.data?.positions ?? r?.data?.positions ?? r?.positions ?? []) as CatPosition[];
+      return unwrapResponse<CatPosition>(res, 'positions');
     },
     staleTime: 60_000,
   });
@@ -489,8 +488,7 @@ const ManagePositionsDialog: React.FC<{
     queryFn: async () => {
       if (!categoryId) return [];
       const res = await portfolioApi.getCategory(categoryId);
-      const r = res as Record<string, any> | undefined;
-      return (r?.data?.data?.positions ?? r?.data?.positions ?? r?.positions ?? []) as CatPosition[];
+      return unwrapResponse<CatPosition>(res, 'positions');
     },
     staleTime: 60_000,
     enabled: open && categoryId > 0,
