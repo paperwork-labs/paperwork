@@ -9,38 +9,44 @@ import type { Appearance } from "./types";
  *
  * Each preset preserves the visual tokens that previously lived in the deleted
  * `apps/<slug>/src/lib/<slug>-clerk-appearance.ts` files (PR #210).
+ * Track M: element classes use `brand.*` Tailwind tokens from each app's
+ * `globals.css` + `tailwind.config.ts`.
  */
 
 export const fileFreeAppearance: Appearance = createClerkAppearance({
   primary: "hsl(var(--primary))",
   cardClassName:
-    "border border-violet-950/80 bg-violet-950/35 shadow-2xl shadow-black/30",
+    "border border-brand-primary/35 bg-brand-surface/40 shadow-2xl shadow-black/30",
   inputClassName:
-    "border-violet-900/70 bg-violet-950/40 transition focus:border-violet-500/80",
-  socialButtonClassName: "border-violet-900/60 hover:bg-violet-950/50",
+    "border-brand-primary/45 bg-brand-surface/50 transition focus:border-brand-accent/80",
+  socialButtonClassName: "border-brand-primary/50 hover:bg-brand-primary/10",
   elementOverrides: {
-    identityPreview: "bg-violet-950/50 border-violet-900/60",
+    headerTitle: "text-foreground",
+    headerSubtitle: "text-muted-foreground",
+    formFieldLabel: "text-foreground/90",
+    identityPreview: "bg-brand-primary/15 border-brand-primary/45",
     userButtonTrigger:
-      "rounded-lg p-0.5 transition hover:bg-violet-950/50 focus:ring-2 focus:ring-primary/30",
-    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-violet-800/80",
+      "rounded-lg p-0.5 transition hover:bg-brand-primary/10 focus:ring-2 focus:ring-brand-accent/30",
+    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-brand-accent/50",
   },
 });
 
 export const launchFreeAppearance: Appearance = createClerkAppearance({
   primary: "hsl(var(--primary))",
   cardClassName:
-    "border border-slate-800/80 bg-slate-950/60 shadow-2xl shadow-black/30",
+    "border border-brand-primary/30 bg-brand-surface/90 shadow-2xl shadow-black/30",
   inputClassName:
-    "border-slate-700/90 bg-slate-950/50 transition focus:border-slate-500",
-  socialButtonClassName: "border-slate-700/80 hover:bg-slate-800/60",
+    "border-brand-primary/40 bg-brand-surface/70 transition focus:border-brand-accent",
+  socialButtonClassName:
+    "border-brand-primary/35 hover:bg-brand-primary/10 hover:border-brand-accent/40",
   elementOverrides: {
     headerTitle: "text-slate-100",
     headerSubtitle: "text-slate-400",
     formFieldLabel: "text-slate-200",
-    identityPreview: "bg-slate-800/50 border-slate-700/60",
+    identityPreview: "bg-brand-primary/10 border-brand-primary/35",
     userButtonTrigger:
-      "rounded-lg p-0.5 transition hover:bg-slate-800/50 focus:ring-2 focus:ring-slate-500/30",
-    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-slate-700/80",
+      "rounded-lg p-0.5 transition hover:bg-brand-primary/10 focus:ring-2 focus:ring-brand-accent/30",
+    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-brand-accent/45",
   },
 });
 
@@ -53,39 +59,40 @@ export const distillAppearance: Appearance = createClerkAppearance({
   mutedForeground: "hsl(215 16% 57%)",
   destructive: "hsl(0 63% 31%)",
   cardClassName:
-    "border border-teal-900/50 bg-slate-950/70 shadow-2xl shadow-black/30",
+    "border border-brand-primary/40 bg-brand-surface/80 shadow-2xl shadow-black/30",
   inputClassName:
-    "border-teal-800/80 bg-slate-950/50 transition focus:border-[#0F766E]",
+    "border-brand-primary/50 bg-brand-surface/60 transition focus:border-brand-primary",
   socialButtonClassName:
-    "border-teal-800/60 hover:bg-teal-950/50 hover:border-[#C2410C]/40",
+    "border-brand-primary/50 hover:bg-brand-primary/10 hover:border-brand-accent/40",
   primaryButtonClassName:
-    "font-medium shadow-sm !bg-[#0F766E] hover:!bg-[#0D9488] active:!opacity-90 border-none",
+    "font-medium shadow-sm !bg-brand-primary hover:!brightness-110 active:!opacity-90 border-none",
   elementOverrides: {
     headerTitle: "text-slate-100",
     headerSubtitle: "text-slate-400",
     formFieldLabel: "text-slate-200",
-    identityPreview: "bg-teal-950/40 border-teal-800/50",
+    identityPreview: "bg-brand-primary/15 border-brand-primary/40",
     userButtonTrigger:
-      "rounded-lg p-0.5 transition hover:bg-teal-950/50 focus:ring-2 focus:ring-[#0F766E]/30",
-    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-teal-800/60",
+      "rounded-lg p-0.5 transition hover:bg-brand-primary/10 focus:ring-2 focus:ring-brand-primary/30",
+    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-brand-primary/50",
   },
 });
 
 export const studioAppearance: Appearance = createClerkAppearance({
   primary: "hsl(var(--primary))",
   cardClassName:
-    "border border-zinc-800/80 bg-zinc-900/50 shadow-2xl shadow-black/30",
+    "border border-brand-primary/25 bg-brand-surface/60 shadow-2xl shadow-black/30",
   inputClassName:
-    "border-zinc-700/90 bg-zinc-950/40 transition focus:border-zinc-500",
-  socialButtonClassName: "border-zinc-700/80 hover:bg-zinc-800/60",
+    "border-brand-primary/35 bg-brand-surface/50 transition focus:border-brand-accent",
+  socialButtonClassName:
+    "border-brand-primary/30 hover:bg-brand-primary/10 hover:border-brand-accent/35",
   elementOverrides: {
     headerTitle: "text-zinc-100",
     headerSubtitle: "text-zinc-400",
     formFieldLabel: "text-zinc-200",
-    identityPreview: "bg-zinc-800/50 border-zinc-700/60",
+    identityPreview: "bg-brand-primary/10 border-brand-primary/30",
     userButtonTrigger:
-      "rounded-lg p-0.5 transition hover:bg-zinc-800/50 focus:ring-2 focus:ring-zinc-500/30",
-    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-zinc-700/80",
+      "rounded-lg p-0.5 transition hover:bg-brand-primary/10 focus:ring-2 focus:ring-brand-accent/35",
+    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-brand-accent/45",
   },
 });
 
@@ -93,19 +100,19 @@ export const trinketsAppearance: Appearance = createClerkAppearance({
   primary: "#6366F1",
   accent: "#38BDF8",
   cardClassName:
-    "border border-indigo-500/20 bg-stone-950/70 shadow-2xl shadow-indigo-950/40",
+    "border border-brand-primary/25 bg-brand-surface/85 shadow-2xl shadow-black/35",
   inputClassName:
-    "border-stone-700/90 bg-stone-950/50 transition focus:border-sky-400/80 focus:ring-sky-400/20",
+    "border-brand-primary/35 bg-brand-surface/70 transition focus:border-brand-accent/80 focus:ring-brand-accent/20",
   socialButtonClassName:
-    "border-indigo-500/40 hover:bg-indigo-950/50 hover:border-sky-400/30",
+    "border-brand-primary/40 hover:bg-brand-primary/10 hover:border-brand-accent/35",
   elementOverrides: {
     headerTitle: "text-stone-100",
     headerSubtitle: "text-stone-400",
     formFieldLabel: "text-stone-200",
-    identityPreview: "bg-stone-900/50 border-indigo-500/30",
+    identityPreview: "bg-brand-primary/12 border-brand-primary/35",
     userButtonTrigger:
-      "rounded-lg p-0.5 transition hover:bg-indigo-950/40 focus:ring-2 focus:ring-sky-400/30",
-    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-sky-400/40",
+      "rounded-lg p-0.5 transition hover:bg-brand-primary/10 focus:ring-2 focus:ring-brand-accent/30",
+    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-brand-accent/45",
   },
 });
 

@@ -118,6 +118,13 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
   - `[x]` **T3.4** — AxiomFolio (`axiomfolio-next`) per-app Clerk theming: `axiomfolioClerkAppearance` (Appearance API + `@clerk/themes` dark), `ClerkAuthPageShell` on `/sign-in` and `/sign-up`, `ClerkProvider` `appearance` for `UserButton` and global Clerk UI. ([docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming))
   - `[ ]` Plan verifier paths for AxiomFolio APIs post–Next.js migration; retire parallel JWT/session schemes safely.
   - `[ ]` Communicate session cutover; keep documented Basic Auth escape hatch for Studio until explicitly removed.
+  - `[~]` **T3 consumer cutover (in flight)** — shared `@paperwork-labs/auth-clerk` package: PR [#234](https://github.com/paperwork-labs/paperwork/pull/234); `accounts.paperworklabs.com` DNS + satellite steps: [docs/infra/CLERK_ACCOUNTS_DNS_TONIGHT.md](../infra/CLERK_ACCOUNTS_DNS_TONIGHT.md) (runbook; land with Track H1).
+    - FileFree: cut consumer `/auth/login` + `/auth/register` over to Clerk `/sign-in` + `/sign-up`; remove legacy session hooks/middleware once parity; FileFree API verifies Clerk JWTs.
+    - AxiomFolio (`axiomfolio-next`): finish consumer auth on Clerk; APIs move from `qm_token` to Clerk JWT verification behind a short shadow window; backfill `clerk_user_id` by email where needed.
+    - LaunchFree + Distill + Trinkets: adopt shared `SignInShell` + locked app-name-primary wordmark tokens from the package; drop duplicate per-app `clerk-appearance` copies when consolidated.
+    - Studio: keep Clerk + `ADMIN_EMAILS` allowlist; retire Basic once operators publish a cutover date.
+    - `apps/accounts/`: host Paperwork ID headline only on `accounts.paperworklabs.com` per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md) (if present) / Track H4 plan.
+    - Python sidecars (FileFree, AxiomFolio, Brain as needed): use shared `paperwork_auth` / JWT verifier helpers aligned with the package’s Clerk JWKS contract.
 
 - **T4 — Real DAGs + workflow UX** `[~]`
   - `[x]` Replace placeholder or unreadable DAG views with layouts that survive real n8n graphs (zoom, labels, swim-lanes as needed). (`@xyflow/react` adopted in PR #147)

@@ -170,6 +170,13 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
+  - slug: chromatic-vrt
+    path: docs/infra/CHROMATIC_VRT.md
+    title: Chromatic visual regression
+    summary: "Chromatic + Storybook VRT for apps/design — setup, triage, capacity, and CI workflow."
+    tags: [design, chromatic, ci, storybook]
+    owners: [infra-ops, ux-lead]
+    category: runbooks
   - slug: clerk-satellite-topology
     path: docs/infra/CLERK_SATELLITE_TOPOLOGY.md
     title: Clerk multi-domain satellite topology
@@ -198,12 +205,26 @@ docs:
     tags: [runbook, tax, irs]
     owners: [tax-domain, legal]
     category: runbooks
+  - slug: founder-actions
+    path: docs/infra/FOUNDER_ACTIONS.md
+    title: Founder-Only Actions
+    summary: "Single-source list of one-time blockers that require founder credentials (Vercel, Render, GitHub, Clerk, DNS, Chromatic). Move completed items to Resolved with date and PR."
+    tags: [infra, founder, operations]
+    owners: [infra-ops]
+    category: runbooks
   - slug: paperwork-labs-drive-setup
     path: docs/PAPERWORK_LABS_DRIVE_SETUP.md
     title: Google Drive Setup
     summary: Shared drive topology + MCP wiring.
     tags: [runbook, drive, mcp]
     owners: [agent-ops, ea]
+    category: runbooks
+  - slug: issue-queue-2026-04-27
+    path: docs/operations/ISSUE_QUEUE_2026-04-27.md
+    title: Open issue queue — `paperwork-labs/paperwork`
+    summary: "**Triage date:** 2026-04-27 **Scope:** Open issues at sweep time, ordered for contributor/agent pickup. Labels: `ready` = well-specified; `blocked-on-founder` = needs credentials or product call…"
+    tags: [strategy, checklist]
+    owners: [agent-ops]
     category: runbooks
   - slug: pr-pipeline-automation
     path: docs/infra/PR_PIPELINE_AUTOMATION.md
@@ -261,6 +282,13 @@ docs:
     summary: "Per-product AI image-generation prompts for the six consumer marks that we deferred from PR #172. Run any of these in Nano Banana, Midjourney v6+, DALL-E 3, or Imagen, then drop the chosen image…"
     tags: []
     owners: [Paperwork Labs]
+    category: reference
+  - slug: clerk-key-propagation-2026-04-27t080144z
+    path: docs/infra/CLERK_KEY_PROPAGATION_2026-04-27T080144Z.md
+    title: Clerk key propagation audit — 2026-04-27T080144Z
+    summary: "**Agent:** P (composer-2-fast) **Outcome:** **Aborted at pre-flight** — no secrets were written to Studio, Vercel, or Render. No keys appear in this document (only masked previews would have been…"
+    tags: []
+    owners: [strategy]
     category: reference
   - slug: clerk-axiomfolio
     path: docs/infra/CLERK_AXIOMFOLIO.md

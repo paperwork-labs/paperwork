@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
 @import "@paperwork-labs/ui/themes.css";
 @plugin "@tailwindcss/typography";
 
@@ -32,14 +33,20 @@
 }
 
 :root {
+  /* Track M — Studio / parent chain-of-life: Azure #3274F0 + Amber #F59E0B (brand.mdc) */
+  --brand-primary: 96 165 250;
+  --brand-accent: 251 191 36;
+  --brand-ink: 248 250 252;
+  --brand-surface: 15 23 42;
+
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;
   --card: 240 10% 5.5%;
   --card-foreground: 0 0% 98%;
   --popover: 240 10% 5.5%;
   --popover-foreground: 0 0% 98%;
-  --primary: 0 0% 98%;
-  --primary-foreground: 240 5.9% 10%;
+  --primary: 221 87% 58%;
+  --primary-foreground: 210 40% 98%;
   --secondary: 240 3.7% 15.9%;
   --secondary-foreground: 0 0% 98%;
   --muted: 240 3.7% 15.9%;
@@ -50,7 +57,7 @@
   --destructive-foreground: 0 0% 98%;
   --border: 240 3.7% 15.9%;
   --input: 240 3.7% 15.9%;
-  --ring: 240 4.9% 83.9%;
+  --ring: 221 87% 58%;
 }
 
 @layer base {

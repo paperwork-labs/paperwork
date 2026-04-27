@@ -1267,39 +1267,39 @@ PRODUCT DATABASES (independent, can be separated):
 
   filefree DB:
     users: id, email, name, password_hash, ...filefree-specific fields...
-           venture_identity_id (OPTIONAL, nullable FK)
+           Clerk userId (the only cross-product link; per-product user tables remain separable-by-design) — e.g. optional `clerk_user_id` column
 
   launchfree DB:
     users: id, email, name, password_hash, ...launchfree-specific fields...
-           venture_identity_id (OPTIONAL, nullable FK)
+           Clerk userId (the only cross-product link; per-product user tables remain separable-by-design) — e.g. optional `clerk_user_id` column
 
 VENTURE DATABASE (studio, never sold):
 
   venture_identities: id, email, name, created_at
-  identity_products: venture_identity_id, product, product_user_id, first_used
-  user_events: id, venture_identity_id, event_type, product, metadata, timestamp
-  user_segments: venture_identity_id, segment, computed_at
+  identity_products: internal venture id (joins to Clerk userId for SSO), product, product_user_id, first_used
+  user_events: id, venture id tied to Clerk userId, event_type, product, metadata, timestamp
+  user_segments: venture id tied to Clerk userId, segment, computed_at
 ```
 
 **How SSO works**: User signs up on FileFree -> FileFree creates its local user -> event fires to studio -> studio creates/updates venture_identity -> if user later signs up on LaunchFree with same email -> LaunchFree creates its local user, sends event -> studio links both product accounts to one venture_identity.
 
-**If FileFree is acquired**: Remove the `venture_identity_id` column. FileFree still works independently. The buyer gets a complete product with its own user system.
+**If FileFree is acquired**: Remove the optional Clerk / venture link columns (`clerk_user_id` and any related venture FK). FileFree still works independently. The buyer gets a complete product with its own user system.
 
 ### Authentication Architecture
 
 **User Auth (FileFree, LaunchFree)**:
 
 - Providers: Google OAuth + Apple Sign-In (cover 95%+ of users). Optional email/password fallback.
-- Implementation: `packages/auth/` using Auth.js v5 (NextAuth), shared across all Next.js apps.
-- SSO across subdomains: Cookie domain set to `.filefree.ai` (covers `filefree.ai` and `tools.filefree.ai`). LaunchFree on `launchfree.ai` cannot share cookies (different domain) -- cross-product linking via venture identity system (email match in Studio DB).
-- Each product keeps its own user table (separable-by-design). The `venture_identity_id` nullable FK links them.
+- Implementation: **Clerk** via `@paperwork-labs/auth-clerk` and `@clerk/nextjs` per app; shared sign-in patterns and JWT verification live in the monorepo package—not Auth.js v5.
+- SSO across subdomains: FileFree/Trinkets can share `.filefree.ai` cookies where Clerk’s deployment allows; LaunchFree and other brands use **Clerk’s satellite** handoff to `accounts.paperworklabs.com`—not a custom cookie across unrelated apex domains. Studio DB may still record identity-product links for intelligence.
+- Each product keeps its own user table (separable-by-design). **Clerk userId (the only cross-product link; per-product user tables remain separable-by-design)** is the stable join; Studio venture tables map products to the same person.
 
 **Admin Auth (paperworklabs.com + admin panels on all products)**:
 
 - Current implementation: Basic Auth for Studio admin routes. Username must be in `ADMIN_EMAILS`, password must match `ADMIN_ACCESS_PASSWORD`.
 - Admin allowlist stored in environment variable: `ADMIN_EMAILS=sankalp@paperworklabs.com,olga@<personal-email>` (founder's Workspace email + Olga Sharma's personal email per D76)
 - Admin routes: `/admin/`* on paperworklabs.com, `/admin/`* on FileFree, `/admin/*` on LaunchFree.
-- Migration target: move admin protection to shared `packages/auth` OAuth middleware once `packages/auth` is extracted.
+- Migration target: move admin protection fully onto Clerk + allowlist (`@paperwork-labs/auth-clerk` / Studio middleware), retiring Basic when operators sign off; see [docs/infra/CLERK_STUDIO.md](docs/infra/CLERK_STUDIO.md).
 
 **Trinkets Auth**: No auth. Public utility tools. Cross-sell CTAs link to FileFree/LaunchFree where users sign up. If we ever want saved preferences, use localStorage or add optional Google sign-in later.
 

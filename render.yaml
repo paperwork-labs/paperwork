@@ -313,19 +313,27 @@ services:
   # rewrite (apps/axiomfolio-next) will go to Vercel; this static target
   # stays here until the Next.js cutover lands (see
   # docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).
+  #
+  # Track I1: SKIP_INSTALL_DEPS — Render's default auto-install in rootDir
+  # breaks monorepos (wrong cwd / lockfile). NODE_VERSION + global pnpm
+  # avoid static-image images without corepack on PATH.
   # ---------------------------------------------------------------------
   - type: web
     name: axiomfolio-frontend
     runtime: static
     rootDir: apps/axiomfolio
     autoDeploy: true
-    buildCommand: "cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && pnpm install --frozen-lockfile --filter=@paperwork-labs/axiomfolio... && pnpm --filter=@paperwork-labs/axiomfolio build"
+    buildCommand: "cd ../.. && npm install -g pnpm@10.32.1 && pnpm install --frozen-lockfile --filter=@paperwork-labs/axiomfolio... && pnpm --filter=@paperwork-labs/axiomfolio build"
     staticPublishPath: dist
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
     envVars:
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+      - key: NODE_VERSION
+        value: "20.18.0"
       - key: VITE_API_BASE_URL
         value: https://api.axiomfolio.com/api/v1
 
