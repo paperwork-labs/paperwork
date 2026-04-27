@@ -95,8 +95,9 @@ PR touches `apps/<app>/**`, `packages/**`, `pnpm-lock.yaml`, or root
 `package.json`.
 
 Do **not** change Vercel project path settings here without founder
-review; if production looks stale, use the manual valve below or bump
-`apps/<app>/.deploy-trigger` and merge.
+review; if production looks stale, use the **Manual fallback** section
+below, or merge a change under `apps/<app>/` so the next auto-promote run
+has a READY preview to pick up.
 
 ## Adding more projects
 
