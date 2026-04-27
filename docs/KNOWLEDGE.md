@@ -410,9 +410,9 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 
 - **Reversibility**: medium (vendor lock-in for session UI; JWT verification is portable)
 - **Decision**: Production SSO uses **Clerk** everywhere; the shared package is `@paperwork-labs/auth-clerk` (Clerk React wrappers, Appearance patterns, and backend JWT verification helpers)—not a future Auth.js v5 `packages/auth` build. **Auth.js v5 is not planned.**
-- **Commercial path**: Clerk Free → Pro when MAU exceeds ~1K; see authoritative comparison in [`docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md`](decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md) when published (TODO if missing: land bakeoff doc at that path).
+- **Commercial path**: Clerk Free → Pro when MAU exceeds ~1K; when a bakeoff write-up is published, add a link under `docs/decisions/` (file not in-repo yet; see D91 tracking).
 - **Topology**: Multi-domain **satellite** setup with primary front-end API at `accounts.paperworklabs.com` and per-app domains as satellites; cross-product session follows Clerk’s model, not a hand-rolled Auth.js stack.
-- **Supersedes**: D56’s `packages/auth/` + Auth.js v5 target is obsolete; admin Basic Auth on Studio may persist until operator cutover; see [`docs/infra/CLERK_STUDIO.md`](infra/CLERK_STUDIO.md).
+- **Supersedes**: D56’s `packages/auth/` + Auth.js v5 target is obsolete; admin Basic Auth on Studio may persist until operator cutover; see [`docs/infra/CLERK_STUDIO.md`](docs/infra/CLERK_STUDIO.md).
 
 ---
 
