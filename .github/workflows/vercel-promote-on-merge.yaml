@@ -207,9 +207,18 @@ jobs:
         env:
           DEPLOY_ID: ${{ steps.find.outputs.deploy_id }}
         run: |
-          RESPONSE=$(curl -sf -X POST -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+          set -euo pipefail
+          HTTP_CODE=$(curl -sS -X POST -H "Authorization: Bearer $VERCEL_API_TOKEN" \
+            -o /tmp/vercel-promote-response.json -w "%{http_code}" \
             "https://api.vercel.com/v10/projects/$PROJECT_ID/promote/$DEPLOY_ID?teamId=$TEAM_ID")
-          echo "Promote API response: $RESPONSE"
+          echo "Vercel promote HTTP status: $HTTP_CODE"
+          echo "Vercel promote response body:"
+          cat /tmp/vercel-promote-response.json
+          echo
+          if [ -z "$HTTP_CODE" ] || [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 400 ]; then
+            echo "::error::Vercel promote API failed (HTTP $HTTP_CODE). Response body is printed above."
+            exit 1
+          fi
           echo "url=https://vercel.com/paperwork-labs/$PROJECT_NAME/$DEPLOY_ID" >> $GITHUB_OUTPUT
           echo "Promoted $DEPLOY_ID to production for $PROJECT_NAME (no rebuild)."
 
