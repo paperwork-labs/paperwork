@@ -52,7 +52,7 @@ Single-source list of one-time blockers that require founder credentials. Once a
   3. Set `projectId` in `apps/design/chromatic.config.json` to match Chromatic.
   4. Push a change under `apps/design/**` or `packages/**/src/**` (or run Chromatic locally) to baseline.
 - **Verification:** Chromatic check passes on a PR; dashboard shows a build/baseline.
-- **Source:** PR #255 (supersedes missing `docs/infra/CHROMATIC_VRT.md` until that file exists on `main`)
+- **Source:** PR #255 (add docs/infra/CHROMATIC_VRT.md in-repo when the Chromatic runbook ships)
 - **ETA:** ~20 min
 
 ### 2. `GITHUB_WEBHOOK_SECRET` on `brain-api` (Render) + GitHub repo webhook
@@ -106,7 +106,7 @@ Single-source list of one-time blockers that require founder credentials. Once a
 - **Where:** [Clerk Dashboard](https://dashboard.clerk.com) for each app instance; per-app Vercel env for appearance-related overrides if any.
 - **Steps:** **`[VERIFY]`** current state across dev/staging after PR #234; align with #234 and `packages/auth` docs before changing plans or CSS workarounds.
 - **Verification:** Sign-in on each public app: branding matches brand guidelines; no unexpected Clerk footer.
-- **Source:** PR #234, per-app `docs/infra/CLERK_*.md`
+- **Source:** PR #234, [CLERK_STUDIO.md](docs/infra/CLERK_STUDIO.md) (sibling `docs/infra/CLERK_*.md` runbooks)
 - **ETA:** ~30 min (research) + any Clerk plan upgrade (business decision)
 
 ### 2. DNS + Dashboard for Clerk satellite topology (`accounts.paperworklabs.com`) — `[VERIFY]`

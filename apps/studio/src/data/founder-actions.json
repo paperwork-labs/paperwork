@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-27T06:19:12.060Z",
+  "generated": "2026-04-27T06:19:23.442Z",
   "sourceFile": "docs/infra/FOUNDER_ACTIONS.md",
   "tiers": [
     {
@@ -45,7 +45,7 @@
       "items": [
         {
           "title": "GitHub `CHROMATIC_PROJECT_TOKEN` + Chromatic project wiring",
-          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/CHROMATIC_VRT.md",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/pull/255",
           "why": "Visual regression CI for `apps/design` / shared packages is a no-op until the token exists and `chromatic.config.json` has a real `projectId`.",
           "where": "[Chromatic](https://www.chromatic.com) (GitHub sign-in) → [GitHub repo → Settings → Secrets → Actions](https://github.com/paperwork-labs/paperwork/settings/secrets/actions)",
           "steps": [
@@ -55,7 +55,7 @@
             "4. Push a change under `apps/design/**` or `packages/**/src/**` (or run Chromatic locally) to baseline."
           ],
           "verification": "Chromatic check passes on a PR; dashboard shows a build/baseline.",
-          "source": "PR #255 (supersedes missing `docs/infra/CHROMATIC_VRT.md` until that file exists on `main`)",
+          "source": "PR #255 (add docs/infra/CHROMATIC_VRT.md in-repo when the Chromatic runbook ships)",
           "eta": "~20 min"
         },
         {
@@ -122,12 +122,12 @@
       "items": [
         {
           "title": "Clerk “Powered by Clerk” / Pro branding on dev — `[VERIFY]`",
-          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/CLERK_*.md",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/CLERK_STUDIO.md",
           "why": "On Hobby, some Clerk surfaces show vendor branding; product Standard is to minimize Clerk chrome for customer-facing UIs. PR #234 shipped shared `@paperwork-labs/auth-clerk` appearance defaults; long-term, Clerk Pro or Dashboard settings may be required for full control.",
           "where": "[Clerk Dashboard](https://dashboard.clerk.com) for each app instance; per-app Vercel env for appearance-related overrides if any.",
           "steps": [],
           "verification": "Sign-in on each public app: branding matches brand guidelines; no unexpected Clerk footer.",
-          "source": "PR #234, per-app `docs/infra/CLERK_*.md`",
+          "source": "PR #234, [CLERK_STUDIO.md](docs/infra/CLERK_STUDIO.md) (sibling `docs/infra/CLERK_*.md` runbooks)",
           "eta": "~30 min (research) + any Clerk plan upgrade (business decision)"
         },
         {
