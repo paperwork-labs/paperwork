@@ -55,7 +55,7 @@
             "4. Push a change under `apps/design/**` or `packages/**/src/**` (or run Chromatic locally) to baseline."
           ],
           "verification": "Chromatic check passes on a PR; dashboard shows a build/baseline.",
-          "source": "PR #255 (add docs/infra/CHROMATIC_VRT.md in-repo when the Chromatic runbook ships)",
+          "source": "PR #255 (in-repo Chromatic VRT runbook when shipped; see design app + Chromatic dashboard)",
           "eta": "~20 min"
         },
         {

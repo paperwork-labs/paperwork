@@ -1,7 +1,7 @@
 ---
 title: Brand prompts — AI image-generation prompts per consumer product
 owner: Paperwork Labs
-last_reviewed: 2026-04-26
+last_reviewed: 2026-04-27
 status: active
 ---
 
@@ -286,3 +286,48 @@ Use **Azure `#3274F0` + Amber `#F59E0B`** in any generative still (hero, LinkedI
 - AxiomFolio: do not regenerate a competing primary mark; use shipped assets.
 - Publishing imprint: no consumer mark; copyright line only.
 - No extra palette columns beyond the locked primaries, accents, and surface-aware inks above (unless a brand review opens a new row).
+
+---
+
+## FileFree + LaunchFree exploration round 2 (2026-04-27)
+
+**Status: EXPLORATORY — not locked.** Parent Paperwork Labs **P1–P5 paperclip** prompts and the continuous-amber **parent-only** rule stay unchanged. The **in-repo FileFree / LaunchFree droplet-family SVGs** remain the shipped icons until a new mark is ratified, retraced, and merged (see `docs/brand/research/filefree-launchfree-2026-04-27.html` for the full 10+10 direction dossier and reference links). This section exists for **Nano Banana Pro** (or Imagen-class) **next-round** generation after founder shortlisting.
+
+**Rejection context (contrast for ratification):** Round 1 was criticized as "garbage" in character; the **droplet + center-dot** family geometry was the primary rejected language. These prompts **forbid** droplet, teardrop, water, and fluid-blob forms. **Sub-product marks** use **exactly one accent zone** (tighter than the parent’s continuous-extended amber rule).
+
+**Locked hexes (verbatim):**
+
+| Product | Primary | Accent |
+| --- | --- | --- |
+| FileFree | Indigo `#4F46E5` | Lime `#84CC16` |
+| LaunchFree | Sky `#0284C7` | Cyan `#06B6D4` |
+
+**Universal constraints (all six prompts):** 1024×1024, transparent, flat vector, **no text / no wordmark in the icon**, no gradients, no drop shadows, no 3D, no photorealism, rounded caps and joins, subject ~60% of frame, `viewBox`-friendly geometry for SVG retrace. Style refs: **Linear, Vercel, Notion, Lucide**. **On-dark stroke preview** (optional raster pass): FileFree indigo → `#818CF8`; LaunchFree sky → `#38BDF8` — not new brand colors.
+
+### FileFree — top 3 prompts (highest potential from round-2 research)
+
+**FF-R2-A — “Document Window” (negative space / clarity)**
+
+> Square app mark, 1:1, 1024×1024, transparent. **FileFree** icon candidate — **not** a droplet or liquid shape. A **single rounded-rectangle window frame** drawn with **indigo #4F46E5** stroke (constant width ~9–11 at 128px viewBox; round caps and joins). The **interior** is empty except that **negative space** forms a **check** or **tick** silhouette. **One short segment** of the check’s arm is **lime #84CC16** — a **single accent zone** only, not a second shape. **DO NOT** fill the whole interior with a gradient, **DO NOT** add paper texture, water, droplets, or IRS metaphors, **DO NOT** add a third color. Favicon: at 16px the void should still suggest “done in a document.” Style: **Lucide, Phosphor**, calm B2C.
+
+**FF-R2-B — “Tabbed Archive” (object / filing)**
+
+> Square app mark, 1:1, 1024×1024, transparent. **FileFree** — three **slim vertical folder tabs** along the top of a **single underlying rectangle** (one sheet body implied by a shared lower outline). Strokes **indigo #4F46E5**; the **foremost** tab (left or right — pick one) has its **outer vertical edge and short top** as one **lime #84CC16** segment, **one accent zone** only. **DO NOT** use droplet or bead shapes, **DO NOT** add tab text or icons, **DO NOT** use gradients. Style: **Notion, Linear, Lucide**. Favicon: collapse to 2–3 blocks if needed but keep the lime on one tab only.
+
+**FF-R2-C — “FF Monogram” (typographic / icon-scale)**
+
+> Square app mark, 1:1, 1024×1024, transparent. A **stylized monogram of two interlocking capital F** letterforms ( **no** “FileFree” word, **no** other letters). Strokes **indigo #4F46E5**; **one** joint or counter where the crossbars meet is highlighted in **lime #84CC16** — a **single continuous accent** along that junction only, not scattered dots. **Inter-like** grotesk geometry, no serifs, no ink traps that break at 16px. **DO NOT** use droplet shapes, water metaphors, or a third color. **DO NOT** add outer badge circles unless the stroke remains open and flat. Style: fintech / modern SaaS, **not** a bank seal.
+
+### LaunchFree — top 3 prompts (highest potential from round-2 research)
+
+**LF-R2-A — “Up-Delta” (geometric / lift without rocket)**
+
+> Square app mark, 1:1, 1024×1024, transparent. **LaunchFree** — an **upward equilateral-triangle (delta)**, **slightly** rounded corners, **not** a rocket silhouette (no fin, no flame, no exhaust). Two sides **sky #0284C7**; the **base center third** of the bottom edge (one short **continuous** span) is **cyan #06B6D4** as the **only accent zone**. **DO NOT** add droplet, teardrop, or water, **DO NOT** add a fourth point or “spaceship” taper, **DO NOT** use gradients or 3D. Style: **Vercel, Simple Icons**. Favicon: triangle must read at 16px.
+
+**LF-R2-B — “Raised Bar Gate” (object / threshold)**
+
+> Square app mark, 1:1, 1024×1024, transparent. **LaunchFree** — a **U-shaped gate** or **two vertical posts** with a **top horizontal** bar, **open bottom** (entrance / clearance metaphor). Strokes **sky #0284C7**; **one** continuous segment of the top bar (center) is **cyan #06B6D4** — the “opened” or **unlocked** highlight, **one accent** only. **DO NOT** draw a rocket, a shield, a key icon, a castle, a droplet, or water, **DO NOT** add 3D or shadows, **DO NOT** add a third color. Style: public **wayfinding / Lucide** pictogram.
+
+**LF-R2-C — “Glide Fold” (paper plane / light launch)**
+
+> Square app mark, 1:1, 1024×1024, transparent. **LaunchFree** — a **very simple paper plane** in **flat** front-three-quarter: **2–3 facets only**. Two facets **sky #0284C7**; **one** narrow **leading** facet or **nose edge** is **cyan #06B6D4** (single accent). **DO NOT** add motion trails, stars, a rocket, a runway photo, a droplet, or gradients, **DO NOT** add 3D shading. The plane must look **folded from one sheet** — not a jet aircraft. If 16px is busy, the prompt output should bias toward a **bolder** silhouette for later SVG simplification. Style: **iOS / Material** minimal, friendly builder energy.

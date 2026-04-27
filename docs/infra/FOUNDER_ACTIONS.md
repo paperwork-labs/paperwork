@@ -52,7 +52,7 @@ Single-source list of one-time blockers that require founder credentials. Once a
   3. Set `projectId` in `apps/design/chromatic.config.json` to match Chromatic.
   4. Push a change under `apps/design/**` or `packages/**/src/**` (or run Chromatic locally) to baseline.
 - **Verification:** Chromatic check passes on a PR; dashboard shows a build/baseline.
-- **Source:** PR #255 (add docs/infra/CHROMATIC_VRT.md in-repo when the Chromatic runbook ships)
+- **Source:** PR #255 (in-repo Chromatic VRT runbook under `docs/infra/` when that runbook ships; path not fixed yet)
 - **ETA:** ~20 min
 
 ### 2. `GITHUB_WEBHOOK_SECRET` on `brain-api` (Render) + GitHub repo webhook
