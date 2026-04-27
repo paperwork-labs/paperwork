@@ -106,7 +106,7 @@ def test_performance_history_naive_snapshots_period_1y_returns_200(client, db_se
     if db_session is None:
         pytest.skip("database not configured")
 
-    snap_naive = datetime.utcnow() - timedelta(days=10)
+    snap_naive = (datetime.now(timezone.utc) - timedelta(days=10)).replace(tzinfo=None)
     assert snap_naive.tzinfo is None
     db_session.add(_snapshot(primary_account.id, snap_naive))
     db_session.commit()
@@ -175,7 +175,7 @@ def test_performance_history_period_all_naive_snapshots_returns_200(
     if db_session is None:
         pytest.skip("database not configured")
 
-    snap_naive = datetime.utcnow() - timedelta(days=400)
+    snap_naive = (datetime.now(timezone.utc) - timedelta(days=400)).replace(tzinfo=None)
     db_session.add(_snapshot(primary_account.id, snap_naive, total_value=9_000.0))
     db_session.commit()
 

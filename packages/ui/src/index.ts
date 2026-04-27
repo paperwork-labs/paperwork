@@ -1,5 +1,7 @@
 export { cn } from "./lib/utils";
 
+export * from "./components/brand";
+
 export * from "./components/accordion";
 export * from "./components/badge";
 export * from "./components/button";

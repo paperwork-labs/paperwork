@@ -31,7 +31,7 @@ medallion: silver
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple
 
@@ -96,7 +96,7 @@ def resolve_prior_close(
     if not symbol:
         return None
 
-    as_of_date = as_of or datetime.utcnow().date()
+    as_of_date = as_of or datetime.now(timezone.utc).date()
     # Bar dates in ``price_data`` are stored as DATETIME at 00:00 UTC;
     # using the date at midnight as a strict upper bound picks the
     # previous trading day without double-counting today's bar.
@@ -168,7 +168,7 @@ def has_ambiguous_corporate_action(
     """
     if not symbol or prior_close_date is None:
         return False
-    as_of_date = as_of or datetime.utcnow().date()
+    as_of_date = as_of or datetime.now(timezone.utc).date()
     if prior_close_date >= as_of_date:
         return False
 
@@ -279,7 +279,7 @@ def recompute_position_day_pnl(
             position.symbol,
             qty,
             prior_close_date,
-            as_of or datetime.utcnow().date(),
+            as_of or datetime.now(timezone.utc).date(),
         )
         position.day_pnl = None
         position.day_pnl_pct = None

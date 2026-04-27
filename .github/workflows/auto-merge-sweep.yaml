@@ -1,26 +1,18 @@
 name: Auto-merge dependabot sweep
 
-# Scheduled sweep that auto-merges dependabot PRs which are CI-green and
-# have no blocking conflicts/labels. Companion to auto-merge.yaml — that
-# workflow handles human-authored approved PRs but punts dependabot PRs
-# here because review/check_suite events fire with a read-only token for
-# dependabot-authored branches.
+# Scheduled sweeps:
+#   - dependabot PRs (CI-green, mergeable)
+#   - allowlisted bot/human PRs (agent-pr-merge) — see .github/auto-merge-allowlist.yaml
 #
-# Policy:
-#   - dependabot/dependabot-preview only
-#   - all completed checks must be success/skipped/neutral
-#   - any pending or failing check → skip (leave for human triage)
-#   - blocking labels (blocked, do-not-merge, wip) → skip
-#   - merge conflicts (pr.mergeable === false) → skip
-#   - mergeability still computing (null) → skip and retry next tick
+# Vercel checks that failed only due to free-tier rate limits are treated as
+# soft failures (PR can still merge if all other checks are green).
 #
-# We trust CI: a passing check matrix means the bump did not break
-# typecheck/test/lint/build at our coverage level. Major bumps that
-# do break things will fail CI and stay parked for human review.
+# Auto-rebase on main push is deferred while PR #241 (rebase helper) is open;
+# see docs/infra/PR_PIPELINE_AUTOMATION.md.
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
     inputs:
       pr_number:
@@ -46,7 +38,12 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const SELF_CHECK_NAMES = new Set(['auto-merge', 'sweep', 'Auto-merge dependabot sweep']);
+            const SELF_CHECK_NAMES = new Set([
+              'auto-merge',
+              'sweep',
+              'Auto-merge dependabot sweep',
+              'agent-pr-merge',
+            ]);
 
             const isBotPR = (pr) =>
               pr?.user?.login === 'dependabot[bot]' ||
@@ -59,17 +56,59 @@ jobs:
               return pr;
             }
 
+            async function isIgnorableVercelFailure(checkRun) {
+              const name = (checkRun.name || '').toLowerCase();
+              if (!name.includes('vercel')) return false;
+              let blob = '';
+              try {
+                const { data: full } = await github.rest.checks.get({
+                  owner, repo, check_run_id: checkRun.id,
+                });
+                blob = `${full.output?.title || ''} ${full.output?.summary || ''} ${full.output?.text || ''}`.toLowerCase();
+              } catch (e) {
+                blob = '';
+              }
+              return /(rate limit|build limit exceeded|deployment skipped|too many requests|skipped deployment|builds are paused)/.test(blob);
+            }
+
             async function checksReady(sha) {
               const { data } = await github.rest.checks.listForRef({
                 owner, repo, ref: sha, per_page: 100,
               });
-              const notReady = data.check_runs.filter(
-                (c) =>
-                  !SELF_CHECK_NAMES.has(c.name) &&
-                  !(c.status === 'completed' &&
-                    ['success', 'skipped', 'neutral'].includes(c.conclusion))
-              );
-              return { ok: notReady.length === 0, notReady };
+              const notReady = [];
+              let vercelSoftIgnored = false;
+              for (const c of data.check_runs) {
+                if (SELF_CHECK_NAMES.has(c.name)) continue;
+                if (c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion || '')) {
+                  continue;
+                }
+                if (c.status === 'completed' && c.conclusion === 'failure') {
+                  if (await isIgnorableVercelFailure(c)) {
+                    vercelSoftIgnored = true;
+                    continue;
+                  }
+                }
+                notReady.push(c);
+              }
+              return { ok: notReady.length === 0, notReady, vercelSoftIgnored };
+            }
+
+            async function postVercelComment(num) {
+              const needle = 'Vercel rate-limit ignored';
+              const { data: existing } = await github.rest.issues.listComments({
+                owner, repo, issue_number: num, per_page: 40,
+              });
+              if (existing.some((c) => (c.user?.login === 'github-actions[bot]' || c.user?.type === 'Bot') && c.body?.includes(needle))) {
+                return;
+              }
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: num,
+                body:
+                  'ℹ️ Vercel rate-limit ignored; auto-promote workflow will deploy after merge.\n\n' +
+                  '<!-- auto-merge-sweep:vercel-soft -->',
+              });
             }
 
             async function attemptMerge(pr) {
@@ -92,7 +131,10 @@ jobs:
                 return { action: 'skip', reason: 'mergeability computing' };
               }
 
-              const { ok, notReady } = await checksReady(pr.head.sha);
+              const { ok, notReady, vercelSoftIgnored } = await checksReady(pr.head.sha);
+              if (vercelSoftIgnored) {
+                await postVercelComment(num);
+              }
               if (!ok) {
                 const summary = notReady
                   .slice(0, 3)
@@ -107,6 +149,7 @@ jobs:
                   repo,
                   pull_number: num,
                   merge_method: 'squash',
+                  delete_branch: true,
                 });
                 return { action: 'merged' };
               } catch (e) {
@@ -155,9 +198,401 @@ jobs:
               }
             }
 
+            const d = new Date();
+            const ts =
+              `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}-` +
+              `${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}`;
             const summaryBody = summaries.join('\n') || 'no action taken';
             core.info(summaryBody);
             await core.summary
               .addHeading('Dependabot sweep summary')
+              .addRaw(`<!-- auto-merge-sweep:checked:${ts} -->\n`)
               .addCodeBlock(summaryBody, 'text')
               .write();
+
+  agent-pr-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const MAX_LINES = 800;
+            const MAX_MERGES_PER_RUN = 5;
+            const MIN_PR_AGE_MS = 5 * 60 * 1000;
+
+            const SELF_CHECK_NAMES = new Set([
+              'auto-merge',
+              'sweep',
+              'Auto-merge dependabot sweep',
+              'agent-pr-merge',
+            ]);
+
+            function parseAllowlist(raw) {
+              const bots = [];
+              const users = [];
+              let section = null;
+              for (const line of raw.split('\n')) {
+                const t = line.trim();
+                if (!t || t.startsWith('#')) continue;
+                if (t === 'bots:') {
+                  section = 'bots';
+                  continue;
+                }
+                if (t === 'users:') {
+                  section = 'users';
+                  continue;
+                }
+                const m = t.match(/^-\s*(.+)$/);
+                if (!m || !section) continue;
+                const v = m[1].trim().replace(/^['"]|['"]$/g, '');
+                if (section === 'bots') bots.push(v);
+                if (section === 'users') users.push(v);
+              }
+              return { bots, users };
+            }
+
+            const allow = parseAllowlist(fs.readFileSync('.github/auto-merge-allowlist.yaml', 'utf8'));
+
+            function isAllowlisted(login) {
+              return allow.bots.includes(login) || allow.users.includes(login);
+            }
+
+            const isDependabot = (login) =>
+              login === 'dependabot[bot]' || login === 'dependabot-preview[bot]';
+
+            async function isIgnorableVercelFailure(checkRun) {
+              const name = (checkRun.name || '').toLowerCase();
+              if (!name.includes('vercel')) return false;
+              let blob = '';
+              try {
+                const { data: full } = await github.rest.checks.get({
+                  owner, repo, check_run_id: checkRun.id,
+                });
+                blob = `${full.output?.title || ''} ${full.output?.summary || ''} ${full.output?.text || ''}`.toLowerCase();
+              } catch (e) {
+                blob = '';
+              }
+              return /(rate limit|build limit exceeded|deployment skipped|too many requests|skipped deployment|builds are paused)/.test(blob);
+            }
+
+            async function checksReady(sha) {
+              const { data } = await github.rest.checks.listForRef({
+                owner, repo, ref: sha, per_page: 100,
+              });
+              const notReady = [];
+              let vercelSoftIgnored = false;
+              for (const c of data.check_runs) {
+                if (SELF_CHECK_NAMES.has(c.name)) continue;
+                if (c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion || '')) {
+                  continue;
+                }
+                if (c.status === 'completed' && c.conclusion === 'failure') {
+                  if (await isIgnorableVercelFailure(c)) {
+                    vercelSoftIgnored = true;
+                    continue;
+                  }
+                }
+                notReady.push(c);
+              }
+              return { ok: notReady.length === 0, notReady, vercelSoftIgnored };
+            }
+
+            async function postVercelComment(num) {
+              const needle = 'Vercel rate-limit ignored';
+              const { data: existing } = await github.rest.issues.listComments({
+                owner, repo, issue_number: num, per_page: 40,
+              });
+              if (existing.some((c) => (c.user?.login === 'github-actions[bot]' || c.user?.type === 'Bot') && c.body?.includes(needle))) {
+                return;
+              }
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: num,
+                body:
+                  'ℹ️ Vercel rate-limit ignored; auto-promote workflow will deploy after merge.\n\n' +
+                  '<!-- auto-merge-sweep:vercel-soft -->',
+              });
+            }
+
+            async function hasChangesRequested(num) {
+              const { data: reviews } = await github.rest.pulls.listReviews({
+                owner, repo, pull_number: num, per_page: 100,
+              });
+              const latest = new Map();
+              for (const r of reviews) {
+                if (!r.user || !r.user.login) continue;
+                latest.set(r.user.login, r.state);
+              }
+              for (const st of latest.values()) {
+                if (st === 'CHANGES_REQUESTED') return true;
+              }
+              return false;
+            }
+
+            async function hasRedMarkerAnywhere(num) {
+              const { data: reviewComments } = await github.rest.pulls.listReviewComments({
+                owner, repo, pull_number: num, per_page: 100,
+              });
+              if (reviewComments.some((c) => (c.body || '').includes('🔴'))) return true;
+              const { data: issueComments } = await github.rest.issues.listComments({
+                owner, repo, issue_number: num, per_page: 100,
+              });
+              return issueComments.some((c) => (c.body || '').includes('🔴'));
+            }
+
+            async function tryAgentMerge(pr, mergedSoFar) {
+              const num = pr.number;
+              if (mergedSoFar >= MAX_MERGES_PER_RUN) {
+                return { action: 'skip', reason: 'merge budget exhausted', mergedDelta: 0 };
+              }
+              if (pr.draft) return { action: 'skip', reason: 'draft', mergedDelta: 0 };
+
+              const age = Date.now() - new Date(pr.created_at).getTime();
+              if (age < MIN_PR_AGE_MS) {
+                return { action: 'skip', reason: 'PR younger than 5m', mergedDelta: 0 };
+              }
+
+              const labels = (pr.labels || []).map((l) => l.name);
+              if (labels.some((l) => ['blocked', 'do-not-merge', 'wip', 'hold'].includes(l))) {
+                return { action: 'skip', reason: 'blocking label', mergedDelta: 0 };
+              }
+
+              if (pr.mergeable === false) return { action: 'skip', reason: 'conflicts', mergedDelta: 0 };
+              if (pr.mergeable === null) return { action: 'skip', reason: 'mergeability computing', mergedDelta: 0 };
+
+              const login = pr.user?.login || '';
+              if (!isAllowlisted(login) || isDependabot(login)) {
+                return { action: 'skip', reason: 'author not allowlisted', mergedDelta: 0 };
+              }
+
+              const adds = pr.additions ?? 0;
+              if (adds > MAX_LINES) {
+                return { action: 'skip', reason: `diff too large (${adds} additions > ${MAX_LINES})`, mergedDelta: 0 };
+              }
+
+              if (await hasChangesRequested(num)) {
+                return { action: 'skip', reason: 'changes requested', mergedDelta: 0 };
+              }
+              if (await hasRedMarkerAnywhere(num)) {
+                return { action: 'skip', reason: '🔴 marker in PR thread', mergedDelta: 0 };
+              }
+
+              const { ok, notReady, vercelSoftIgnored } = await checksReady(pr.head.sha);
+              if (vercelSoftIgnored) await postVercelComment(num);
+              if (!ok) {
+                const summary = notReady
+                  .slice(0, 3)
+                  .map((c) => `${c.name}=${c.status}/${c.conclusion ?? 'pending'}`)
+                  .join(', ');
+                return { action: 'skip', reason: `CI not green: ${summary}`, mergedDelta: 0 };
+              }
+
+              try {
+                await github.rest.pulls.merge({
+                  owner,
+                  repo,
+                  pull_number: num,
+                  merge_method: 'squash',
+                  delete_branch: true,
+                });
+                return { action: 'merged', mergedDelta: 1 };
+              } catch (e) {
+                return { action: 'error', reason: e.message, mergedDelta: 0 };
+              }
+            }
+
+            const summaries = [];
+            let merged = 0;
+
+            const { data: openPRs } = await github.rest.pulls.list({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100,
+              sort: 'updated',
+              direction: 'desc',
+            });
+
+            for (const stub of openPRs) {
+              if (merged >= MAX_MERGES_PER_RUN) {
+                summaries.push('(stopped: reached merge budget)');
+                break;
+              }
+              try {
+                const { data: pr } = await github.rest.pulls.get({
+                  owner, repo, pull_number: stub.number,
+                });
+                const r = await tryAgentMerge(pr, merged);
+                if (r.mergedDelta) merged += r.mergedDelta;
+                summaries.push(`#${stub.number}: ${r.action}${r.reason ? ' — ' + r.reason : ''}`);
+              } catch (e) {
+                summaries.push(`#${stub.number}: fatal — ${e.message}`);
+              }
+            }
+
+            const d = new Date();
+            const ts =
+              `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}-` +
+              `${String(d.getUTCHours()).padStart(2, '0')}${String(d.getUTCMinutes()).padStart(2, '0')}`;
+            const summaryBody = summaries.join('\n') || 'no action taken';
+            core.info(summaryBody);
+            await core.summary
+              .addHeading('Agent PR auto-merge summary')
+              .addRaw(`<!-- auto-merge-sweep:checked:${ts} -->\n`)
+              .addCodeBlock(summaryBody, 'text')
+              .write();
+
+  # Allowlisted author PRs: merge with squash + delete when Copilot-style GREEN, CI, size, and sync.
+  # Set repository variable `AUTO_MERGE_FOUNDER_LOGINS` (comma list) to include founder usernames
+  # alongside default agent bots. Branch protection and required reviews still apply on GitHub.
+  allowlisted-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      # Optional: comma-separated GitHub usernames (founders) allowed for this path.
+      MERGE_OK_LOGINS: ${{ vars.AUTO_MERGE_FOUNDER_LOGINS }}
+    steps:
+      - uses: actions/github-script@v9
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const today = new Date().toISOString().slice(0, 10);
+            const STATUS_START = '<!-- auto-merge-sweep-allowlist-status:';
+            const STATUS_END = ' -->';
+            const prAuthorBots = new Set([
+              'cursor-agent[bot]', 'claude[bot]', 'github-copilot[bot]',
+              'copilot-pull-request-reviewer[bot]', 'chatgpt-codex-connector[bot]',
+            ]);
+            (process.env.MERGE_OK_LOGINS || '')
+              .split(/[\s,]+/)
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .forEach((u) => prAuthorBots.add(u));
+            const greenReviewBots = new Set([
+              'github-copilot[bot]', 'copilot-pull-request-reviewer[bot]', 'cursor-agent[bot]', 'claude[bot]',
+            ]);
+
+            const SELF = new Set(['auto-merge', 'sweep', 'Auto-merge dependabot sweep', 'dependabot roll-up', 'rebase PR onto main', 'rebase-pr']);
+
+            const isDep = (p) => p.user && ['dependabot[bot]', 'dependabot-preview[bot]'].includes(p.user.login);
+
+            async function checksReady(sha) {
+              const { data } = await github.rest.checks.listForRef({ owner, repo, ref: sha, per_page: 100 });
+              const notReady = data.check_runs.filter(
+                (c) => !SELF.has(c.name) && !(c.status === 'completed' && ['success', 'skipped', 'neutral'].includes(c.conclusion || ''))
+              );
+              return { ok: notReady.length === 0, notReady };
+            }
+
+            function hasStatusToday(comments) {
+              const marker = STATUS_START + today + STATUS_END;
+              for (const c of comments || []) {
+                if ((c.body || '').includes(marker)) return true;
+              }
+              return false;
+            }
+
+            async function hasGreen(prNumber) {
+              const { data: comments } = await github.rest.issues.listComments({ owner, repo, issue_number: prNumber, per_page: 100 });
+              for (const c of comments) {
+                const u = c.user && c.user.login;
+                if (!u || !greenReviewBots.has(u)) continue;
+                if ((c.body || '').includes('🟢 GREEN')) return true;
+              }
+              return false;
+            }
+
+            async function isUpToDateWithMain(pr) {
+              const b = (pr.base && pr.base.ref) || 'main';
+              const { data: cmp } = await github.rest.repos.compareCommitsWithBasehead({
+                owner, repo, basehead: `${b}...${(pr.head && pr.head.label) || ''}`,
+              });
+              if (!cmp) return true;
+              return (Number(cmp.behind_by) || 0) === 0;
+            }
+
+            const summaries = [];
+            const { data: list } = await github.rest.pulls.list({ owner, repo, state: 'open', per_page: 100 });
+            for (const stub of list) {
+              if (isDep(stub)) continue;
+              const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: stub.number });
+              const author = pr.user && pr.user.login;
+              if (!author || !prAuthorBots.has(author)) continue;
+              if (pr.draft) continue;
+
+              const { data: issueComments } = await github.rest.issues.listComments({ owner, repo, issue_number: pr.number, per_page: 100 });
+              if (pr.mergeable === null) {
+                continue;
+              }
+
+              const missing = [];
+              if ((pr.additions || 0) > 500) {
+                missing.push(`Diff too large: ${pr.additions} additions (max 500).`);
+              }
+              if (pr.mergeable === false) {
+                missing.push('Merge conflicts: resolve before auto-merge can run.');
+              }
+              if (!(await isUpToDateWithMain(pr))) {
+                missing.push('Branch is not up to date with the base (merge or rebase from `main`).');
+              }
+              if (!(await hasGreen(pr.number))) {
+                missing.push('No allowlisted **🟢 GREEN** comment from a Copilot-style / agent reviewer.');
+              }
+              const { ok, notReady } = await checksReady(pr.head.sha);
+              if (!ok) {
+                const sn = (notReady || []).slice(0, 4).map((c) => `${c.name}=${c.status}/${c.conclusion || 'pending'}`).join(', ');
+                missing.push(`CI not all green: ${sn || 'pending checks'}.`);
+              }
+
+              if (missing.length) {
+                if (!hasStatusToday(issueComments)) {
+                  const body = [
+                    '### Auto-merge (allowlist sweep — status)',
+                    '',
+                    'Did **not** merge; criteria not met:',
+                    ...missing.map((m) => `- ${m}`),
+                    '',
+                    `${STATUS_START}${today}${STATUS_END}`,
+                  ].join('\n');
+                  await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
+                }
+                continue;
+              }
+
+              try {
+                await github.rest.pulls.merge({ owner, repo, pull_number: pr.number, merge_method: 'squash' });
+                const isFork = (pr.head && pr.head.repo && pr.head.repo.full_name) !== `${owner}/${repo}`;
+                if (!isFork && pr.head && pr.head.ref) {
+                  try {
+                    await github.rest.git.deleteRef({ owner, repo, ref: 'heads/' + pr.head.ref });
+                  } catch (e) { core.info('delete branch: ' + (e && e.message)); }
+                }
+                summaries.push(`#${pr.number}: merged (allowlist)`);
+              } catch (e) {
+                if (!hasStatusToday(issueComments)) {
+                  await github.rest.issues.createComment({
+                    owner, repo, issue_number: pr.number,
+                    body: [
+                      '### Auto-merge (allowlist sweep — status)',
+                      '',
+                      'Merge API rejected (branch protection, missing approval, or server rule):',
+                      '```', String(e && e.message || e), '```',
+                      '',
+                      `${STATUS_START}${today}${STATUS_END}`,
+                    ].join('\n'),
+                  });
+                }
+                summaries.push(`#${pr.number}: merge error — ${(e && e.message) || e}`);
+              }
+            }
+            const summaryBody = summaries.join('\n') || 'no allowlisted PR action';
+            await core.summary.addHeading('Allowlist merge summary').addCodeBlock(summaryBody, 'text').write();
+            core.info(summaryBody);

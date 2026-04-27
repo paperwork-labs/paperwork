@@ -1,0 +1,10 @@
+# Logins eligible for scheduled auto-merge (agent-pr-merge job in auto-merge-sweep.yaml).
+# Match GitHub `author.login` exactly. Expand only with founder approval.
+
+bots:
+  - cursor-agent[bot]
+  - claude[bot]
+  - github-actions[bot]
+
+users:
+  - paperwork-labs

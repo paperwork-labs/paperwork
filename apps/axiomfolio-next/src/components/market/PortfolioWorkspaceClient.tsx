@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { semanticTextColorClass } from '@/lib/semantic-text-color';
+import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import PageHeader from '@/components/ui/PageHeader';
@@ -36,7 +37,37 @@ import { formatMoney, formatDateFriendly } from '@/utils/format';
 import { TableSkeleton } from '@/components/shared/Skeleton';
 import { useColorMode } from '@/theme/colorMode';
 import type { EnrichedPosition, ActivityRow, LotRow } from '@/types/portfolio';
+import type { Order, OrderStatus } from '@/types/orders';
+import {
+  type WorkspaceSnapshot,
+  parseWorkspaceSnapshotFromMarketDataResponse,
+} from '@/types/workspaceSnapshot';
 import TradeModal from '@/components/orders/TradeModal';
+
+const ORDER_STATUSES_FOR_POLL: OrderStatus[] = ['submitted', 'pending_submit', 'partially_filled'];
+
+function toastAxiosDetail(e: unknown, fallback: string) {
+  if (axios.isAxiosError(e) && e.response?.data && typeof e.response.data === 'object' && e.response.data !== null) {
+    const raw = (e.response.data as { detail?: unknown }).detail;
+    const msg = Array.isArray(raw) ? raw.map(String).join(', ') : typeof raw === 'string' ? raw : undefined;
+    if (msg) {
+      toast.error(msg);
+      return;
+    }
+  }
+  toast.error(fallback);
+}
+
+async function fetchWorkspaceOrdersList(symbol: string): Promise<Order[]> {
+  const res = await api.get('/portfolio/orders', { params: { symbol, limit: 50 } });
+  const body: unknown = res.data;
+  if (body == null || typeof body !== 'object') return [];
+  if ('data' in body && Array.isArray((body as { data: unknown }).data)) {
+    return (body as { data: Order[] }).data;
+  }
+  if (Array.isArray(body)) return body as Order[];
+  return [];
+}
 
 const SymbolChartWithMarkers = dynamic(
   () => import('@/components/charts/SymbolChartWithMarkers'),
@@ -201,18 +232,17 @@ const PortfolioWorkspaceClient: React.FC = () => {
   const bars = barsQuery.data ?? [];
   const barsError = barsQuery.isError || (barsQuery.isSuccess && bars.length === 0);
 
-  const snapshotQuery = useQuery({
+  const snapshotQuery = useQuery<WorkspaceSnapshot | null>({
     queryKey: ['workspaceSnapshot', selectedSymbol],
-    queryFn: async () => {
+    queryFn: async (): Promise<WorkspaceSnapshot | null> => {
       if (!selectedSymbol) return null;
-      const res = await marketDataApi.getSnapshot(selectedSymbol);
-      const d = (res as any)?.data;
-      return d?.data?.snapshot ?? d?.snapshot ?? d ?? null;
+      const res: unknown = await marketDataApi.getSnapshot(selectedSymbol);
+      return parseWorkspaceSnapshotFromMarketDataResponse(res);
     },
     enabled: !!selectedSymbol,
     staleTime: 600000,
   });
-  const snapshot = snapshotQuery.data as Record<string, any> | null;
+  const snapshot: WorkspaceSnapshot | null = snapshotQuery.data ?? null;
 
   const selectedHolding = holdings.find(h => h.symbol === selectedSymbol);
   const lotsQuery = useQuery({
@@ -227,22 +257,22 @@ const PortfolioWorkspaceClient: React.FC = () => {
   });
   const lots = lotsQuery.data ?? [];
 
-  const ordersQuery = useQuery({
+  const ordersQuery = useQuery<Order[]>({
     queryKey: ['workspaceOrders', selectedSymbol],
-    queryFn: async () => {
+    queryFn: async (): Promise<Order[]> => {
       if (!selectedSymbol) return [];
-      const res = await api.get('/portfolio/orders', { params: { symbol: selectedSymbol, limit: 50 } });
-      return res.data?.data ?? res.data ?? [];
+      return fetchWorkspaceOrdersList(selectedSymbol);
     },
     enabled: !!selectedSymbol,
     staleTime: 15000,
     refetchInterval: (query) => {
-      const data = query.state.data as any[] | undefined;
-      const active = (data ?? []).some((o: any) => ['submitted', 'pending_submit', 'partially_filled'].includes(o.status));
+      const data = query.state.data;
+      const active =
+        (data ?? []).some((o) => ORDER_STATUSES_FOR_POLL.includes(o.status));
       return active ? 5000 : false;
     },
   });
-  const orders: any[] = ordersQuery.data ?? [];
+  const orders: Order[] = ordersQuery.data ?? [];
 
   const filteredHoldings = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -324,8 +354,8 @@ const PortfolioWorkspaceClient: React.FC = () => {
       });
 
     const eventsFromOrders: ChartEvent[] = orders
-      .filter((o: any) => o.created_at || o.filled_at || o.submitted_at)
-      .map((o: any) => {
+      .filter((o) => o.created_at || o.filled_at || o.submitted_at)
+      .map((o) => {
         const status = (o.status || '').toLowerCase();
         let evType: ChartEventType = 'ORDER_PENDING';
         if (status === 'filled') evType = 'ORDER_FILLED';
@@ -351,10 +381,10 @@ const PortfolioWorkspaceClient: React.FC = () => {
   }, [chartEvents, enabledEvents]);
 
   const priceLinesExtra = useMemo(() => {
-    const ACTIVE = new Set(['submitted', 'pending_submit', 'partially_filled']);
+    const activeStatuses = new Set<OrderStatus>(ORDER_STATUSES_FOR_POLL);
     return orders
-      .filter((o: any) => ACTIVE.has(o.status))
-      .flatMap((o: any) => {
+      .filter((o) => activeStatuses.has(o.status))
+      .flatMap((o) => {
         const lines: { price: number; color: string; title: string; lineStyle?: number }[] = [];
         if (o.limit_price) {
           lines.push({ price: Number(o.limit_price), color: '#D97706', title: `LIMIT $${Number(o.limit_price).toFixed(2)}`, lineStyle: 2 });
@@ -452,8 +482,8 @@ const PortfolioWorkspaceClient: React.FC = () => {
       setLotForm(emptyLotForm);
       setEditingLotId(null);
       invalidateLotQueries();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Failed to save lot');
+    } catch (e: unknown) {
+      toastAxiosDetail(e, 'Failed to save lot');
     } finally {
       setLotSaving(false);
     }
@@ -464,8 +494,8 @@ const PortfolioWorkspaceClient: React.FC = () => {
       await portfolioApi.deleteManualTaxLot(id);
       toast.success('Tax lot deleted');
       invalidateLotQueries();
-    } catch (e: any) {
-      toast.error(e?.response?.data?.detail || 'Failed to delete lot');
+    } catch (e: unknown) {
+      toastAxiosDetail(e, 'Failed to delete lot');
     }
   }, [invalidateLotQueries]);
 
@@ -726,11 +756,11 @@ const PortfolioWorkspaceClient: React.FC = () => {
               {(() => {
                 const tdParts: string[] = [];
                 if (snapshot.td_buy_complete) tdParts.push('Buy 9');
-                else if (snapshot.td_buy_setup >= 7) tdParts.push(`B${snapshot.td_buy_setup}`);
+                else if ((snapshot.td_buy_setup ?? 0) >= 7) tdParts.push(`B${snapshot.td_buy_setup ?? 0}`);
                 if (snapshot.td_sell_complete) tdParts.push('Sell 9');
-                else if (snapshot.td_sell_setup >= 7) tdParts.push(`S${snapshot.td_sell_setup}`);
-                if (snapshot.td_buy_countdown >= 12) tdParts.push(`BC${snapshot.td_buy_countdown}`);
-                if (snapshot.td_sell_countdown >= 12) tdParts.push(`SC${snapshot.td_sell_countdown}`);
+                else if ((snapshot.td_sell_setup ?? 0) >= 7) tdParts.push(`S${snapshot.td_sell_setup ?? 0}`);
+                if ((snapshot.td_buy_countdown ?? 0) >= 12) tdParts.push(`BC${snapshot.td_buy_countdown ?? 0}`);
+                if ((snapshot.td_sell_countdown ?? 0) >= 12) tdParts.push(`SC${snapshot.td_sell_countdown ?? 0}`);
                 return tdParts.length > 0 ? (
                   <Badge
                     variant="outline"

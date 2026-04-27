@@ -2,6 +2,12 @@
 
 Opens **one** batched PR per tick (design A: single source of truth in git
 markdown). Gated by :envvar:`BRAIN_OWNS_SPRINT_AUTO_LOGGER`.
+
+# OPERATIONAL GATE — default off because this opens real GitHub PRs that edit
+# ``docs/sprints/*.md`` (repo writes, not n8n shadow compare). There is no n8n
+# mirror for this job. Flip ``BRAIN_OWNS_SPRINT_AUTO_LOGGER=true`` in Render
+# after validating ``GITHUB_TOKEN`` scopes and reviewing one dry-run tick in
+# staging or a canary deploy.
 """
 
 from __future__ import annotations
