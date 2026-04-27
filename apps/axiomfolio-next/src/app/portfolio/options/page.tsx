@@ -1,15 +1,10 @@
-import dynamic from "next/dynamic";
 import { RequireAuthClient } from "@/components/auth/RequireAuthClient";
-
-const PortfolioOptionsClient = dynamic(
-  () => import("@/components/portfolio/PortfolioOptionsClient"),
-  { ssr: false },
-);
+import { PortfolioOptionsLazy } from "@/components/portfolio/PortfolioOptionsLazy";
 
 export default function PortfolioOptionsPage() {
   return (
     <RequireAuthClient>
-      <PortfolioOptionsClient />
+      <PortfolioOptionsLazy />
     </RequireAuthClient>
   );
 }
