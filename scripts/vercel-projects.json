@@ -1,16 +1,11 @@
 {
-  "$schema": "./vercel-projects.schema.json",
-  "team": "paperwork-labs",
-  "apps": [
-    { "dir": "studio", "project": "studio" },
-    { "dir": "paperworklabs", "project": "paperworklabs" },
-    { "dir": "filefree", "project": "filefree" },
-    { "dir": "launchfree", "project": "launchfree" },
-    { "dir": "distill", "project": "distill" },
-    { "dir": "axiomfolio", "project": "axiomfolio" },
-    { "dir": "axiomfolio-next", "project": "axiomfolio-next" },
-    { "dir": "trinkets", "project": "trinkets" },
-    { "dir": "brain", "project": "brain", "deploys": false },
-    { "dir": "design", "project": "design" }
-  ]
+  "description": "Paperwork Labs Vercel apps: path under apps/ and production domain for automation and runbooks.",
+  "projects": {
+    "design": {
+      "package": "@paperwork-labs/design",
+      "path": "apps/design",
+      "productionDomain": "design.paperworklabs.com",
+      "notes": "Storybook static site; build via pnpm --filter @paperwork-labs/design build-storybook"
+    }
+  }
 }

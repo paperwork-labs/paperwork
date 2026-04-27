@@ -5,7 +5,7 @@
 ```bash
 npm install
 npm run dev          # Vite dev server on :3000
-npm run ladle        # Component explorer on :61000
+# Shared UI / brand Storybook: from repo root → pnpm --filter @paperwork-labs/design storybook
 npm run test         # Vitest test runner
 npm run lint         # ESLint
 npm run type-check   # TypeScript check
@@ -23,7 +23,7 @@ npm run type-check   # TypeScript check
 | Forms | React Hook Form |
 | Testing | Vitest 4, Testing Library, happy-dom |
 | Linting | ESLint 9 |
-| Component Dev | Ladle 5 |
+| Component Dev | Storybook (`@paperwork-labs/design`) |
 
 ## Project Structure
 
@@ -88,8 +88,7 @@ pnpm build:axiomfolio        # Production build
 
 # From this directory:
 pnpm dev
-pnpm run ladle               # Component workshop
-pnpm run ladle:build
+pnpm --filter @paperwork-labs/design storybook   # Shared design canvas (from repo root)
 ```
 
 The backend stack (postgres, redis, api-axiomfolio, celery workers)
