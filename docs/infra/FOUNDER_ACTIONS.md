@@ -33,10 +33,10 @@ Single-source list of one-time blockers that require founder credentials. Once a
 - **Why this matters:** The design Storybook canvas does not have a first-class production host until the Vercel project exists, the GitHub promote workflow has a real project id, and DNS points at Vercel.
 - **Where:** [Vercel — Paperwork Labs team](https://vercel.com/paperwork-labs), Cloudflare DNS for `paperworklabs.com` zone, `.github/workflows/vercel-promote-on-merge.yaml`.
 - **Steps:**
-  1. Vercel → New Project → import `paperwork-labs/paperwork`, root `apps/design`, production branch `main` (add `vercel.json` in the app root after the project is created, if not generated automatically).
-  2. Copy Project ID (`prj_…`) and replace the `TBD_CREATE_BEFORE_MERGE` placeholder for the `design` row in `vercel-promote-on-merge.yaml` and the tracked table in `docs/infra/VERCEL_AUTO_PROMOTE.md`.
+  1. Follow **`docs/infra/DESIGN_VERCEL_BOOTSTRAP.md`** (root `apps/design`, copy `prj_*` into promote workflow).
+  2. Replace the `TBD_CREATE_BEFORE_MERGE` placeholder for the `design` row in `vercel-promote-on-merge.yaml` and the tracked table in `docs/infra/VERCEL_AUTO_PROMOTE.md`.
   3. Vercel project → Domains → add `design.paperworklabs.com`.
-  4. In Cloudflare, add the CNAME Vercel shows; **disable proxy** (DNS only) for clean TLS issuance.
+  4. At DNS host, add the CNAME Vercel shows; **disable proxy** (DNS only) until TLS issues.
 - **Verification:** `https://design.paperworklabs.com` serves Storybook static build; merge to `main` updates production (or PR comment on promote workflow shows success).
 - **Source:** PR #256
 - **ETA:** ~25 min

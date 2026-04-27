@@ -76,7 +76,7 @@ export function BrainLearningClient({
       <div className="flex flex-col gap-3 border-b border-zinc-800/80 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-zinc-50">
-            <Sparkles className="h-7 w-7 text-amber-400/90" />
+            <Sparkles className="h-7 w-7 text-zinc-400" />
             Brain learning
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-zinc-500">
@@ -98,19 +98,29 @@ export function BrainLearningClient({
       </div>
 
       {!brainConfigured && (
-        <div className="flex gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div className="flex gap-2 rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-4 py-3 text-sm text-zinc-300">
+          <AlertCircle className="h-4 w-4 shrink-0 text-zinc-500" />
           <p>
             Set <code className="rounded bg-zinc-800 px-1">BRAIN_API_URL</code> and{" "}
-            <code className="rounded bg-zinc-800 px-1">BRAIN_API_SECRET</code> in Vercel (Studio) to
-            load this view.
+            <code className="rounded bg-zinc-800 px-1">BRAIN_API_SECRET</code> in Vercel (Studio
+            production) to match Render <code className="rounded bg-zinc-800 px-1">brain-api</code>.
+            See{" "}
+            <Link
+              href="https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/STUDIO_ENV.md"
+              className="text-sky-400 underline-offset-2 hover:text-sky-300"
+              target="_blank"
+              rel="noreferrer"
+            >
+              STUDIO_ENV.md
+            </Link>
+            .
           </p>
         </div>
       )}
 
       {fetchFailed && brainConfigured && (
-        <div className="flex gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100/90">
-          <AlertCircle className="h-4 w-4 shrink-0" />
+        <div className="flex gap-2 rounded-lg border border-zinc-600/80 bg-zinc-900/70 px-4 py-3 text-sm text-zinc-300">
+          <AlertCircle className="h-4 w-4 shrink-0 text-zinc-500" />
           <p>
             Could not load learning data from Brain. Confirm{" "}
             <code className="rounded bg-zinc-800 px-1">BRAIN_LEARNING_DASHBOARD_ENABLED</code> on

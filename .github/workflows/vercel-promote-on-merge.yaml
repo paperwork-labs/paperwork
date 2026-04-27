@@ -66,14 +66,12 @@ jobs:
             project_id: prj_1TKlkMmY3vLVNfAfRxUY57z43m11
           - project: launchfree
             project_id: prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7
-          - project: axiomfolio-next
-            project_id: TBD_CREATE_BEFORE_MERGE
+          # Monorepo Next app (replace root directory in Vercel → Settings → General → Root Directory = apps/axiomfolio-next or apps/axiomfolio when G4 lands)
+          - project: axiomfolio
+            project_id: prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE
           - project: trinkets
-            project_id: TBD_CREATE_BEFORE_MERGE
-          - project: design
-            project_id: TBD_CREATE_BEFORE_MERGE
-          - project: accounts
-            project_id: TBD_CREATE_BEFORE_MERGE
+            project_id: prj_MFUxaJCbQuSdJZWWVgaEtRllKjzB
+          # Create Vercel project + domain per docs/infra/DESIGN_VERCEL_BOOTSTRAP.md — then paste real prj_* here
           - project: design
             project_id: TBD_CREATE_BEFORE_MERGE
     env:

@@ -4,9 +4,13 @@ import remarkGfm from "remark-gfm";
 import { ExternalLink, FileText } from "lucide-react";
 
 import founderData from "@/data/founder-actions.json";
+import {
+  extractVerificationUrls,
+  probeAllUrls,
+  type ProbeResult,
+} from "@/lib/founder-action-probes";
 
-export const dynamic = "force-static";
-export const revalidate = 300;
+export const revalidate = 120;
 
 const DOC_BLOB =
   "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/FOUNDER_ACTIONS.md";
@@ -26,13 +30,68 @@ function Md({ text }: { text: string }) {
   );
 }
 
-function ActionCard({ item, tierId }: { item: Item; tierId: string }) {
+function LiveCheckPill({
+  primaryUrl,
+  result,
+}: {
+  primaryUrl: string | null;
+  result: ProbeResult | undefined;
+}) {
+  if (!primaryUrl) return null;
+  if (!result) {
+    return (
+      <span className="inline-flex items-center rounded-md border border-zinc-700/60 bg-zinc-800/40 px-2 py-0.5 text-[10px] text-zinc-500">
+        Live check skipped
+      </span>
+    );
+  }
+  if (result.ok) {
+    return (
+      <span
+        className="inline-flex items-center rounded-md border border-emerald-900/50 bg-emerald-950/30 px-2 py-0.5 text-[10px] text-emerald-200/90"
+        title={`${result.status} ${result.url}`}
+      >
+        Live: reachable ({result.status})
+      </span>
+    );
+  }
+  return (
+    <span
+      className="inline-flex items-center rounded-md border border-zinc-700/80 bg-zinc-900/50 px-2 py-0.5 text-[10px] text-zinc-400"
+      title={
+        result.error
+          ? `${result.error} — ${result.url}`
+          : `${result.status || "no response"} — ${result.url}`
+      }
+    >
+      Live: not reachable
+      {result.status ? ` (${result.status})` : ""}
+    </span>
+  );
+}
+
+function ActionCard({
+  item,
+  tierId,
+  probeByUrl,
+}: {
+  item: Item;
+  tierId: string;
+  probeByUrl: Map<string, ProbeResult>;
+}) {
+  const urls = extractVerificationUrls(item.verification ?? "");
+  const primaryUrl = urls[0] ?? null;
+  const result = primaryUrl ? probeByUrl.get(primaryUrl) : undefined;
+
   return (
     <div
       className="rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-4 shadow-sm"
       data-tier={tierId}
     >
-      <h3 className="text-sm font-semibold text-zinc-100">{item.title}</h3>
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <h3 className="text-sm font-semibold text-zinc-100">{item.title}</h3>
+        <LiveCheckPill primaryUrl={primaryUrl} result={result} />
+      </div>
       {item.why ? (
         <div className="mt-2 space-y-0.5">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
@@ -75,7 +134,7 @@ function ActionCard({ item, tierId }: { item: Item; tierId: string }) {
           href={item.runbookUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-200 ring-1 ring-amber-500/30 transition hover:bg-amber-500/25"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-600/60 bg-zinc-800/50 px-3 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-zinc-500 hover:bg-zinc-800"
         >
           Open runbook
           <ExternalLink className="h-3 w-3" />
@@ -85,14 +144,22 @@ function ActionCard({ item, tierId }: { item: Item; tierId: string }) {
   );
 }
 
-export default function FounderActionsPage() {
+export default async function FounderActionsPage() {
   const { tiers, resolved, generated, sourceFile, counts } = founderData;
+
+  const allUrls: string[] = [];
+  for (const tier of tiers) {
+    for (const item of tier.items) {
+      allUrls.push(...extractVerificationUrls(item.verification ?? ""));
+    }
+  }
+  const probeByUrl = await probeAllUrls(allUrls);
 
   return (
     <div className="space-y-6">
       <header className="space-y-2">
         <div className="flex flex-wrap items-center gap-2">
-          <FileText className="h-5 w-5 text-amber-300" />
+          <FileText className="h-5 w-5 text-zinc-400" />
           <h1 className="text-xl font-semibold text-zinc-100">
             Founder actions
           </h1>
@@ -101,7 +168,13 @@ export default function FounderActionsPage() {
           One-time work that needs founder credentials: Vercel, Render,
           GitHub, DNS, and vendor dashboards. Canonical list lives in{" "}
           <code className="text-zinc-300">{sourceFile}</code> and syncs at
-          build time.
+          build time.{" "}
+          <strong className="font-medium text-zinc-300">
+            Live checks
+          </strong>{" "}
+          re-run every ~2 minutes and hit the first HTTPS URL in each item&apos;s
+          verification line — use them to spot stale markdown (doc says pending
+          but endpoint is already up, or the opposite).
         </p>
         <p className="text-xs text-zinc-500">
           Generated {generated}. Pending: {counts.totalPending} (critical:{" "}
@@ -128,7 +201,12 @@ export default function FounderActionsPage() {
           </h2>
           <div className="space-y-4">
             {tier.items.map((item) => (
-              <ActionCard key={item.title} item={item} tierId={tier.id} />
+              <ActionCard
+                key={item.title}
+                item={item}
+                tierId={tier.id}
+                probeByUrl={probeByUrl}
+              />
             ))}
           </div>
         </section>

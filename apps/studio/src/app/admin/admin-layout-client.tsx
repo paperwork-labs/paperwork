@@ -87,7 +87,7 @@ export function AdminLayoutClient({ children, founderPending }: Props) {
       <div className="mx-auto flex w-full max-w-7xl gap-8 px-6 py-8">
         <aside className="w-60 shrink-0">
           <div className="sticky top-8 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-4">
-            <p className="mb-5 bg-gradient-to-r from-zinc-300 to-zinc-500 bg-clip-text text-xs font-semibold uppercase tracking-widest text-transparent">
+            <p className="mb-5 text-xs font-semibold uppercase tracking-widest text-zinc-500">
               Command Center
             </p>
             <nav className="space-y-4">
@@ -129,14 +129,14 @@ export function AdminLayoutClient({ children, founderPending }: Props) {
                         </span>
                         {showBadge ? (
                           <span
-                            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${
+                            className="shrink-0 rounded-md border border-zinc-700/80 bg-zinc-800/50 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-zinc-400"
+                            title={
                               badge.hasCritical
-                                ? "bg-red-500/20 text-red-300"
-                                : "bg-amber-500/20 text-amber-200"
-                            }`}
-                            title="Pending founder-only items"
+                                ? "Includes critical items — see Founder actions"
+                                : "Founder-only checklist items"
+                            }
                           >
-                            {badge.count} pending
+                            {badge.count}
                           </span>
                         ) : null}
                       </Link>
