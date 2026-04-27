@@ -7,9 +7,18 @@ every non-motion story. Visual diffs surface as a GitHub check on the PR; the
 founder/designer approves changes which become the new baseline on merge to
 `main`.
 
-This is the killer feature that justified migrating from Ladle to Storybook 8 —
+This is the killer feature that justified migrating from Ladle to Storybook —
 catching "did I just break the LaunchFree dark hero?" before brand work ships
 across 6 products with theme variants × dark mode × reduced motion.
+
+## Prerequisites
+
+The monorepo must include the `apps/design` package with a working
+`build-storybook` script (filter name `@paperwork-labs/design` in the root
+workspace). **Do not set `CHROMATIC_PROJECT_TOKEN` until that package is on
+`main`**, or the Chromatic job will fail at install/build when the secret
+enables the workflow. While the token is unset, the job is skipped (no red
+checks).
 
 ## Founder one-time setup
 
