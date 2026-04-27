@@ -1,0 +1,34 @@
+name: Sprint status reconciliation (daily)
+
+# Verifies `tracker-index.json` `effective_status` matches
+# `apps/studio` `computeEffectiveSprintStatus` (kept in lockstep with
+# `generate_tracker_index.py`).
+
+on:
+  schedule:
+    - cron: "20 6 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: sprint-status-daily
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      - uses: actions/setup-node@a3ce5138768d2e81ff563c0f318f72749631749f
+        with:
+          node-version: "20"
+      - uses: pnpm/action-setup@21a45dee091631fe79bdc9662f705f1de781ac42
+        with:
+          version: 10
+      - name: Install workspace deps
+        run: pnpm install --frozen-lockfile
+      - name: TS audit vs tracker JSON
+        run: pnpm exec tsx scripts/sprints/normalize-statuses.ts --check
