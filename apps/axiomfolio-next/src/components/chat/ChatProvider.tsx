@@ -1,5 +1,7 @@
+"use client";
+
 import * as React from "react"
-import { useLocation } from "react-router-dom"
+import { usePathname } from "next/navigation"
 import axios from "axios"
 
 import api from "@/services/api"
@@ -85,7 +87,7 @@ export function useChatContext(): ChatContextValue {
 }
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
-  const location = useLocation()
+  const pathname = usePathname()
   const chatMutation = useAgentChat()
   const approveMutation = useApproveAgentAction()
 
@@ -107,7 +109,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   >(null)
   const [isOpen, setIsOpen] = React.useState(false)
 
-  const isOnAgentPage = location.pathname.startsWith("/settings/admin/agent")
+  const isOnAgentPage = pathname.startsWith("/settings/admin/agent")
 
   React.useEffect(() => {
     try {

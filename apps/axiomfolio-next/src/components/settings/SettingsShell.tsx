@@ -85,7 +85,7 @@ const CLUSTERS: readonly SettingsCluster[] = [
     label: "Admin",
     adminOnly: true,
     items: [
-      { to: "/settings/admin/system", label: "System Status", icon: Activity },
+      { to: "/system-status", label: "System Status", icon: Activity },
       { to: "/settings/users", label: "Users", icon: User },
       { to: "/settings/admin/agent", label: "Agent", icon: Cpu },
       { to: "/settings/admin/picks", label: "Picks validator", icon: ClipboardList },

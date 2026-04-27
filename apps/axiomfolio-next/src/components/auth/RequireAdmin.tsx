@@ -1,18 +1,28 @@
-import React from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { isPlatformAdminRole } from '../../utils/userRole';
+"use client";
 
-const RequireAdmin: React.FC<{ children?: React.ReactElement }> = ({ children }) => {
+import * as React from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+import { isPlatformAdminRole } from "@/utils/userRole";
+
+export function RequireAdmin({ children }: { children: React.ReactNode }) {
   const { user, ready } = useAuth();
-  const location = useLocation();
+  const router = useRouter();
+
+  React.useEffect(() => {
+    if (!ready) return;
+    if (!isPlatformAdminRole(user?.role)) {
+      router.replace("/");
+    }
+  }, [ready, user?.role, router]);
+
   if (!ready) {
     return null;
   }
   if (!isPlatformAdminRole(user?.role)) {
-    return <Navigate to="/" state={{ from: location }} replace />;
+    return null;
   }
-  return children ?? <Outlet />;
-};
+  return <>{children}</>;
+}
 
 export default RequireAdmin;
