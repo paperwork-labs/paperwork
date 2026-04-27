@@ -96,7 +96,7 @@ Any code that calls `datetime.now(...)` should be testable with a **fake clock**
 | Package | Ruff | Notes |
 | ------- | ---- | ----- |
 | `apis/brain` | `extend-select = ["DTZ"]` | **Blocking in CI** (`ruff check .` in Brain workflow). |
-| `apis/axiomfolio` | `extend-select = ["DTZ003"]` | Bans **`utcnow`** immediately; expand to full **DTZ** after the broad `datetime.now()` sweep (~182 findings as of 2026-04-26). |
+| `apis/axiomfolio` | `select = ["DTZ003"]` | Bans **`utcnow`** when running `ruff check` (narrow gate); expand to full **DTZ** after the broad `datetime.now()` sweep (~182 findings as of 2026-04-26). Not yet in AxiomFolio CI. |
 
 Optional **pre-commit** (repo-wide): add a hook running `ruff check --select DTZ` on `apis/*`.
 
