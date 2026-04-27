@@ -332,6 +332,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: clerk-key-propagation-2026-04-27t12-22z
+    path: docs/infra/CLERK_KEY_PROPAGATION_2026-04-27T12-22Z.md
+    title: Clerk key propagation — audit report (v2)
+    summary: "**Run:** 2026-04-27 (Agent P-v2) **Temp input:** `/tmp/clerk-keys.env` — **left intact** for founder re-runs and rotation. Shred is deferred until the rotation flow completes."
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: clerk-axiomfolio
     path: docs/infra/CLERK_AXIOMFOLIO.md
     title: Clerk SSO — AxiomFolio (axiomfolio-next)
@@ -436,6 +443,13 @@ docs:
     summary: Canonical structure every runbook must follow. Enforced by scripts/check_runbook_template.py.
     tags: [runbook, template, ops]
     owners: [agent-ops]
+    category: reference
+  - slug: secret-intake
+    path: docs/infra/SECRET_INTAKE.md
+    title: Secret intake (Studio)
+    summary: "Agents and automation sometimes need new or rotated secrets (for example Clerk `sk_live_*` / `sk_test_*`). Pasting those into chat, terminal history, or ad-hoc files is risky. **Secret intake**…"
+    tags: []
+    owners: [strategy]
     category: reference
   - slug: secrets-ops
     path: docs/infra/SECRETS_OPS.md
