@@ -170,6 +170,13 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
+  - slug: clerk-satellite-topology
+    path: docs/infra/CLERK_SATELLITE_TOPOLOGY.md
+    title: Clerk multi-domain satellite topology
+    summary: "Runbook for Clerk multi-domain satellite topology — primary host accounts.paperworklabs.com, brand apps as satellites, Dashboard + DNS + per-app env and code."
+    tags: [clerk, sso, infra, dns, satellite]
+    owners: [infra-ops]
+    category: runbooks
   - slug: credentials
     path: docs/CREDENTIALS.md
     title: Credential Rotation

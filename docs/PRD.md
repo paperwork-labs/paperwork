@@ -834,18 +834,25 @@ If FileFree is acquired: remove the `venture_identity_id` column. FileFree still
 
 ### Authentication architecture
 
-**User Auth (FileFree, LaunchFree):**
+**Portfolio SSO (target — Clerk satellite topology):**
 
-- Providers: Google OAuth + Apple Sign-In (cover 95%+ of users). Optional email/password fallback.
-- Implementation: `packages/auth/src/index.ts:1` (shared exports; Auth.js v5 / NextAuth patterns), shared across Next.js apps.
-- SSO across subdomains: Cookie domain set to `.filefree.ai`. LaunchFree on `launchfree.ai` (different domain) links via venture identity system (email match).
+- **Primary Clerk host:** `accounts.paperworklabs.com` — Frontend API + embedded sign-in/sign-up (`apps/accounts/`, Track H4). See [`docs/infra/CLERK_SATELLITE_TOPOLOGY.md`](../docs/infra/CLERK_SATELLITE_TOPOLOGY.md).
+- **Satellites:** `filefree.ai`, `launchfree.ai`, `distill.tax`, `tools.filefree.ai` (Trinkets), the public AxiomFolio Next.js hostname, and Studio on `paperworklabs.com` share one **production** Clerk instance; each satellite domain is registered in the Clerk Dashboard and configured in app code (`isSatellite`, `NEXT_PUBLIC_CLERK_DOMAIN`, primary `signInUrl` / `signUpUrl` pointing at `accounts.paperworklabs.com`).
+- **Cross-brand behavior:** Apex brand domains sync sessions with the primary via Clerk’s satellite handoff (not a single shared cookie across unrelated domains). `paperworklabs.com` subdomains follow Clerk’s normal cross-subdomain session rules once DNS and allowlists are set.
+- **Venture layer:** Per-product databases and `venture_identity_id` (above) remain the data model for cross-product intelligence; Clerk supplies the shared interactive login layer on top.
+
+**User Auth (FileFree, LaunchFree, Distill, Trinkets, AxiomFolio Next):**
+
+- Providers: Google OAuth + Apple Sign-In (cover 95%+ of users). Optional email/password fallback. Configured on the **converged** Clerk production instance.
+- Implementation: `@clerk/nextjs` per app today; shared patterns may consolidate in `packages/auth` (Track C). Legacy FileFree / AxiomFolio session paths coexist during migration — see per-app [`docs/infra/CLERK_*.md`](../docs/infra/CLERK_FILEFREE.md) runbooks.
 
 **Admin Auth (paperworklabs.com + admin panels):**
 
-- Same Google OAuth flow. Middleware checks if authenticated email is in `ADMIN_EMAILS` env var allowlist.
-- No separate admin login page. Same SSO, authorization check on top.
+- Clerk + allowlist: middleware checks authenticated identity and `ADMIN_EMAILS` (and related operator gates) as documented in [`docs/infra/CLERK_STUDIO.md`](../docs/infra/CLERK_STUDIO.md).
 
-**Trinkets Auth:** None. Public utility tools. Cross-sell CTAs link to FileFree/LaunchFree.
+**Trinkets (`tools.filefree.ai`):**
+
+- Clerk satellite for interactive SSO where needed; the surface remains mostly public utilities. Cross-sell CTAs may deep-link into FileFree/LaunchFree.
 
 ### Brand architecture
 
