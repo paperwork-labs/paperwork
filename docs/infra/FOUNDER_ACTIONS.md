@@ -87,16 +87,16 @@ Single-source list of one-time blockers that require founder credentials. Once a
 - **Source:** PR #216, `docs/infra/BRAIN_SCHEDULER.md`
 - **ETA:** ~20 min
 
-### 5. `BRAIN_OWNS_*` env flips on Render (`brain-api`) for n8n → Brain cron cutover
-- **Why this matters:** Until each flag is `true`, first-party jobs stay off and n8n (or shadow mirrors) remain authoritative for that schedule.
+### 5. Render (`brain-api`) env hygiene after n8n → Brain cron cutover
+- **Why this matters:** Ex-n8n crons run on Brain when `BRAIN_SCHEDULER_ENABLED=true`. Remove stale `BRAIN_OWNS_DAILY_BRIEFING`-style env vars from Render so operators are not misled (they are ignored by code).
 - **Where:** Render `brain-api` environment variables; full matrix in `docs/infra/BRAIN_SCHEDULER.md`.
 - **Steps:**
-  1. One flag at a time, enable e.g. `BRAIN_OWNS_DAILY_BRIEFING=true` after shadow validation.
+  1. Ex-n8n crons are **always on** when `BRAIN_SCHEDULER_ENABLED=true` (cutover flags retired). Optional gates remain for sprint auto-logger / sprint planner / agent sprint scheduler / PR triage — see [BRAIN_SCHEDULER.md](BRAIN_SCHEDULER.md).
   2. Watch `#engineering` / `#engineering-cron-shadow` and Brain logs; confirm no duplicate user-facing posts.
-  3. Repeat for: `BRAIN_OWNS_BRAIN_WEEKLY`, `BRAIN_OWNS_WEEKLY_STRATEGY`, `BRAIN_OWNS_SPRINT_KICKOFF`, `BRAIN_OWNS_INFRA_HEARTBEAT`, `BRAIN_OWNS_CREDENTIAL_EXPIRY`, `BRAIN_OWNS_INFRA_HEALTH`.
+  3. Remove obsolete `BRAIN_OWNS_DAILY_BRIEFING` (and siblings) from Render env if still present — they are ignored.
   4. **Optional (operational):** `BRAIN_OWNS_SPRINT_AUTO_LOGGER=true` only after GitHub bot-PR path is accepted.
-- **Verification:** `GET /api/v1/admin/scheduler/n8n-mirror/status` (with `X-Brain-Secret`); job rows in `apscheduler_jobs` as expected.
-- **Source:** PR #245, `docs/infra/BRAIN_SCHEDULER.md`, `apis/brain/app/schedulers/n8n_mirror.py`
+- **Verification:** `GET /internal/schedulers` or `SELECT id FROM apscheduler_jobs`; optional `GET /api/v1/admin/scheduler/n8n-mirror/status` returns `retired: true`.
+- **Source:** PR #245, `docs/infra/BRAIN_SCHEDULER.md`
 - **ETA:** ~60+ min (spread across days; not one sitting)
 
 ### 6. Vercel auto-promote matrix placeholders + stale production recovery — `[VERIFY]`

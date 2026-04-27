@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import random
 import re
 from typing import TYPE_CHECKING, Any
@@ -37,15 +36,6 @@ _DOR_MAX_CHARS = 20000
 _SLACK_CHANNEL_ID = "C0ALVM4PAE7"
 _HTTP_TIMEOUT = 60.0
 _DOR_UA = "Mozilla/5.0 (compatible; PaperworkLabs/1.0; data-validator)"
-
-
-def _owns_data_deep_validator() -> bool:
-    return os.getenv("BRAIN_OWNS_DATA_DEEP_VALIDATOR", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 def _strip_html(body: str) -> str:
@@ -290,12 +280,7 @@ async def run_data_deep_validator() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register the job when :envvar:`BRAIN_OWNS_DATA_DEEP_VALIDATOR` is true."""
-    if not _owns_data_deep_validator():
-        logger.info(
-            "BRAIN_OWNS_DATA_DEEP_VALIDATOR is not true — skipping brain_data_deep_validator job"
-        )
-        return
+    """Register monthly data deep validator (ex-P2.9 / n8n)."""
     scheduler.add_job(
         run_data_deep_validator,
         trigger=CronTrigger.from_crontab(

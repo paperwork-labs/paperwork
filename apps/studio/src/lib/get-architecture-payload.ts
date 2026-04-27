@@ -86,6 +86,8 @@ export function buildNodeLiveViews(args: {
   health: NodeHealth[];
   deploys: VercelDeployMap;
   liveAvailable: boolean;
+  /** When Brain reports `retired: true` for the n8n mirror status endpoint. */
+  mirrorRetired?: boolean;
 }): NodeLiveView[] {
   const healthById = new Map(args.health.map((h) => [h.id, h]));
 
@@ -117,7 +119,9 @@ export function buildNodeLiveViews(args: {
       parts.push(d ? `Deploy ${d}` : "Deploy unknown");
     }
     if (keys.length > 0) {
-      if (args.liveAvailable && jobs.length > 0) {
+      if (args.mirrorRetired) {
+        parts.push("Schedule Brain-first (n8n mirror retired)");
+      } else if (args.liveAvailable && jobs.length > 0) {
         const brainOwns = jobs.filter((j) => j.enabled === false).length;
         const shadow = jobs.filter((j) => j.enabled === true).length;
         const err = jobs.filter((j) => j.last_status === "error").length;
@@ -292,6 +296,7 @@ export async function getArchitecturePayload(): Promise<ArchitecturePayload> {
     health,
     deploys,
     liveAvailable: live_data.available,
+    mirrorRetired: Boolean(mirrorStatus?.retired),
   });
 
   return { health, checkedAt, nodeLive, live_data };

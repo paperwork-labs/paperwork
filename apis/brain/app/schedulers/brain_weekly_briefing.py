@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import contextlib
 import logging
-import os
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -34,15 +33,6 @@ _ORG_ID = "paperwork-labs"
 _ORG_NAME = "Paperwork Labs"
 # Mirrors n8n request body: ``Generate weekly plan summary for #all-paperwork-labs``.
 _WEEKLY_MESSAGE = "Generate weekly plan summary for #all-paperwork-labs"
-
-
-def _owns_weekly_briefing() -> bool:
-    return os.getenv("BRAIN_OWNS_BRAIN_WEEKLY", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 def _format_slack_body(raw: str) -> str:
@@ -91,10 +81,7 @@ async def run_weekly_briefing() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register the weekly briefing cron when :envvar:`BRAIN_OWNS_BRAIN_WEEKLY` is true."""
-    if not _owns_weekly_briefing():
-        logger.info("BRAIN_OWNS_BRAIN_WEEKLY is not true — skipping brain_weekly_briefing job")
-        return
+    """Register the weekly briefing cron (ex-Brain Weekly Trigger / n8n)."""
     scheduler.add_job(
         run_weekly_briefing,
         trigger=CronTrigger.from_crontab("0 18 * * 0", timezone=UTC),

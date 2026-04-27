@@ -15,7 +15,6 @@ from app.config import settings
 from app.database import async_session_factory, get_db
 from app.models.episode import Episode
 from app.personas import list_specs as list_persona_specs
-from app.schedulers import n8n_mirror
 from app.schemas.base import success_response
 from app.services.continuous_learning import (
     ingest_decisions,
@@ -139,12 +138,24 @@ async def trigger_postmortems_ingestion(
 
 @router.get("/scheduler/n8n-mirror/status")
 async def n8n_mirror_scheduler_status(
-    db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
 ):
-    """Per-job n8n shadow flags + 24h run counts and last run (T1.1)."""
-    data = await n8n_mirror.n8n_mirror_status_payload(db)
-    return success_response(data)
+    """Legacy endpoint: n8n shadow APScheduler jobs were removed (Track K complete).
+
+    First-party crons register when ``BRAIN_SCHEDULER_ENABLED`` is true; see
+    ``docs/infra/BRAIN_SCHEDULER.md``.
+    """
+    return success_response(
+        {
+            "retired": True,
+            "message": (
+                "n8n mirror rows retired in chore/brain-delete-legacy-owns-flags — "
+                "Brain owns these schedules permanently."
+            ),
+            "global_enabled": False,
+            "per_job": [],
+        }
+    )
 
 
 @router.get("/personas")

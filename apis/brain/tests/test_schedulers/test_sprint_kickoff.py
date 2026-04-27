@@ -12,23 +12,12 @@ from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers import _history, sprint_kickoff
-from app.schedulers.n8n_mirror import N8N_MIRROR_SPECS, install as install_n8n_mirror
-from app.schedulers.n8n_mirror import n8n_mirror_env_var_name
 from app.schedulers.sprint_kickoff import install, run_sprint_kickoff
 
 
-def test_flag_off_no_job_registered(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("BRAIN_OWNS_SPRINT_KICKOFF", raising=False)
-    sched = AsyncIOScheduler(timezone="UTC")
-    install(sched)
-    assert len(sched.get_jobs()) == 0
-
-
-def test_flag_on_registers_one_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("BRAIN_OWNS_SPRINT_KICKOFF", "true")
+def test_registers_one_job_id() -> None:
     sched = AsyncIOScheduler(timezone="UTC")
     install(sched)
     jobs = sched.get_jobs()
@@ -38,20 +27,6 @@ def test_flag_on_registers_one_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
     assert isinstance(t, CronTrigger)
     ref = CronTrigger.from_crontab("0 7 * * 1", timezone=timezone.utc)
     assert t.fields == ref.fields
-
-
-def test_flag_on_suppresses_matching_n8n_shadow(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setenv("BRAIN_OWNS_SPRINT_KICKOFF", "true")
-    for s in N8N_MIRROR_SPECS:
-        monkeypatch.delenv(n8n_mirror_env_var_name(s.job_id), raising=False)
-    monkeypatch.setattr(settings, "SCHEDULER_N8N_MIRROR_ENABLED", True)
-    sched = AsyncIOScheduler(timezone="UTC")
-    install_n8n_mirror(sched)
-    ids = {j.id for j in sched.get_jobs()}
-    assert "n8n_shadow_sprint_kickoff" not in ids
-    assert "n8n_shadow_brain_daily" in ids
 
 
 @pytest.mark.asyncio

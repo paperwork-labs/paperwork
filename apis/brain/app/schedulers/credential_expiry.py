@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import logging
 import math
-import os
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -30,15 +29,6 @@ JOB_ID = "brain_credential_expiry"
 # Same channel as ``credential-expiry-check.json`` (``Post to #alerts`` node).
 _CREDENTIAL_EXPIRY_SLACK_CHANNEL_ID = "C0ALVM4PAE7"
 _HTTP_TIMEOUT = 30.0
-
-
-def _owns_credential_expiry() -> bool:
-    return os.getenv("BRAIN_OWNS_CREDENTIAL_EXPIRY", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 def _format_expiry_slack_text(secrets: list[dict[str, Any]]) -> tuple[bool, str]:
@@ -169,12 +159,7 @@ async def run_credential_expiry_check() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register the job when :envvar:`BRAIN_OWNS_CREDENTIAL_EXPIRY` is true."""
-    if not _owns_credential_expiry():
-        logger.info(
-            "BRAIN_OWNS_CREDENTIAL_EXPIRY is not true — skipping brain_credential_expiry job"
-        )
-        return
+    """Register credential expiry check (ex-Credential Expiry Check / n8n)."""
     scheduler.add_job(
         run_credential_expiry_check,
         trigger=CronTrigger.from_crontab("0 8 * * *", timezone=UTC),

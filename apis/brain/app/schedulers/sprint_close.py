@@ -52,15 +52,6 @@ _SPRINT_MESSAGE = (
 )
 
 
-def _owns_sprint_close() -> bool:
-    return os.getenv("BRAIN_OWNS_SPRINT_CLOSE", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
-
-
 def _truncate_for_knowledge(raw: str) -> str:
     text = (raw or "").strip()
     if not text:
@@ -151,10 +142,7 @@ async def run_sprint_close() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register Sprint Close cron when :envvar:`BRAIN_OWNS_SPRINT_CLOSE` is true."""
-    if not _owns_sprint_close():
-        logger.info("BRAIN_OWNS_SPRINT_CLOSE is not true — skipping brain_sprint_close job")
-        return
+    """Register Sprint Close cron (ex-Sprint Close / n8n)."""
     scheduler.add_job(
         run_sprint_close,
         trigger=CronTrigger.from_crontab("0 21 * * 5", timezone=UTC),

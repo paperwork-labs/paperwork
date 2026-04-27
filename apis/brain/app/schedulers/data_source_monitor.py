@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
@@ -66,15 +65,6 @@ _SOURCES: tuple[tuple[str, str, str], ...] = (
         "https://www.discern.com/resources/franchise-tax-information",
     ),
 )
-
-
-def _owns_data_source_monitor() -> bool:
-    return os.getenv("BRAIN_OWNS_DATA_SOURCE_MONITOR", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 def _signed32_hash(text: str) -> str:
@@ -257,12 +247,7 @@ async def run_data_source_monitor() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register weekly source monitor when :envvar:`BRAIN_OWNS_DATA_SOURCE_MONITOR` is true."""
-    if not _owns_data_source_monitor():
-        logger.info(
-            "BRAIN_OWNS_DATA_SOURCE_MONITOR is not true — skipping brain_data_source_monitor job",
-        )
-        return
+    """Register weekly source monitor (ex-Data Source Monitor P2.8 / n8n)."""
     scheduler.add_job(
         run_data_source_monitor,
         trigger=CronTrigger.from_crontab(

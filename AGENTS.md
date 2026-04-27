@@ -102,10 +102,10 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 
 ## 4. Brain orchestration
 
-- **Crons:** **APScheduler** in Brain with SQLAlchemy job store — canonical doc: [docs/infra/BRAIN_SCHEDULER.md](docs/infra/BRAIN_SCHEDULER.md). **n8n** is being **cut over / retired** (Track K / `BRAIN_OWNS_*` flags); do not add new long-lived n8n automation without explicit approval.
+- **Crons:** **APScheduler** in Brain with SQLAlchemy job store — canonical doc: [docs/infra/BRAIN_SCHEDULER.md](docs/infra/BRAIN_SCHEDULER.md). Former n8n scheduler crons now run first-party on Brain (Track K complete; transitional `BRAIN_OWNS_*` cutover flags removed). Do not add new long-lived n8n automation without explicit approval.
 - **Memory:** episodic **`agent_episodes`** + hybrid retrieval — see `apis/brain/app/services/memory.py`, `apis/brain/app/models/episode.py`.
 - **Personas:** Brain loads [.cursor/rules/*.mdc](.cursor/rules) from the image bundle — see `apis/brain/app/services/agent.py`.
-- **Secrets awareness:** Brain calls Studio **`/api/secrets`** via `apis/brain/app/tools/vault.py`; scheduled **credential expiry** when `BRAIN_OWNS_CREDENTIAL_EXPIRY` — `apis/brain/app/schedulers/credential_expiry.py`.
+- **Secrets awareness:** Brain calls Studio **`/api/secrets`** via `apis/brain/app/tools/vault.py`; scheduled **credential expiry** — `apis/brain/app/schedulers/credential_expiry.py`.
 - **Founder asks → work:** break into **~1-day** tasks tracked in repo docs/trackers (e.g. `docs/TASKS.md`, sprint docs) — keep Brain + docs in sync when behavior changes.
 
 ---
@@ -195,5 +195,5 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 **Studio admin — secrets:** `/admin/secrets` lists the encrypted vault; when `BRAIN_API_URL` and `BRAIN_INTERNAL_TOKEN` are set, the page overlays **Brain** registry metadata (criticality, drift summary) and a small **Brain notes** popover (recent episodes) — see `docs/infra/BRAIN_SECRETS_INTELLIGENCE.md`.
 
 **Key automation:**
-- **Slack / Brain**: Brain Slack Adapter and optional on-demand webhooks; scheduled briefings and infra checks run on **Brain** when `BRAIN_OWNS_*` cutover flags are enabled
+- **Slack / Brain**: Brain Slack Adapter and optional on-demand webhooks; scheduled briefings and infra checks run on **Brain** when `BRAIN_SCHEDULER_ENABLED` is true
 - **Decision Logger**: Captures decisions from #decisions and commits to KNOWLEDGE.md

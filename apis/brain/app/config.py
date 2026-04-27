@@ -63,12 +63,10 @@ class Settings(BaseSettings):
     BRAIN_AGENT_SPRINT_WRITE_TRACKER: bool = False
     # --- Scheduler env split (Render / ``brain-api``, not all mirrored here) ---
     #
-    # * **Cutover gates** — ``BRAIN_OWNS_*`` for jobs that replace an n8n cron
-    #   (daily/weekly briefings, weekly strategy, sprint kickoff, infra heartbeat,
-    #   credential expiry, infra health). Default ``false`` until the founder
-    #   flips them after shadow/n8n verify. Wired via ``os.getenv`` in each
-    #   scheduler + ``n8n_mirror.py`` (suppresses the matching ``n8n_shadow_*``
-    #   row when true).
+    # * **Former n8n crons** — daily/weekly briefings, weekly strategy, sprint
+    #   kickoff/close, infra heartbeat/health, credential expiry, and P2.8–P2.10
+    #   data jobs register whenever ``BRAIN_SCHEDULER_ENABLED`` is true (Track K
+    #   cutover flags retired; see ``chore/brain-delete-legacy-owns-flags``).
     #
     # * **Operational gate** — ``BRAIN_OWNS_SPRINT_AUTO_LOGGER`` only: bot PRs
     #   into sprint markdown; no n8n counterpart. Stays default-off until ops
@@ -76,19 +74,15 @@ class Settings(BaseSettings):
     #
     # * **Net-new / always on** — PR sweep, proactive cadence, ingest cadences,
     #   merged-PR memory, CFO/QA Slack jobs, etc. register whenever
-    #   ``BRAIN_SCHEDULER_ENABLED`` is true (no ``BRAIN_OWNS_*``).
+    #   ``BRAIN_SCHEDULER_ENABLED`` is true.
     # Track: sprint-lessons ingest cadence (hours). Bullets under
     # ``## What we learned`` in docs/sprints/*.md become memory episodes.
     # 6h is plenty — sprint markdown changes ship via PR, not continuously.
     SCHEDULER_SPRINT_LESSONS_HOURS: int = 6
     # Merged-PR memory episodes (``source=merged_pr``), GitHub API.
     SCHEDULER_MERGED_PRS_HOURS: int = 6
-    # T2.2: when true, register shadow APScheduler jobs mirroring n8n crons
-    # (#engineering-cron-shadow only) — default off until cutover ready.
+    # Legacy: per-job opt-in for n8n shadow rows (module removed; flag unused).
     SCHEDULER_N8N_MIRROR_ENABLED: bool = False
-    # Track K: Brain-owned P2.8 / P2.9 data crons (see data_source_monitor.py, data_deep_validator.py).
-    BRAIN_OWNS_DATA_SOURCE_MONITOR: bool = False
-    BRAIN_OWNS_DATA_DEEP_VALIDATOR: bool = False
     # #engineering Slack channel ID for per-PR Brain review summaries.
     SLACK_ENGINEERING_CHANNEL_ID: str = ""
     # Track I: #cfo Slack channel ID for the daily cost dashboard.
