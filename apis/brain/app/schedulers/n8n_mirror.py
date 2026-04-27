@@ -17,6 +17,7 @@ the first-party Brain cron is the only schedule:
 - :envvar:`BRAIN_OWNS_SPRINT_KICKOFF` → ``n8n_shadow_sprint_kickoff`` (Track K)
 - :envvar:`BRAIN_OWNS_SPRINT_CLOSE` → ``n8n_shadow_sprint_close`` (Track K)
 - :envvar:`BRAIN_OWNS_DATA_SOURCE_MONITOR` → ``n8n_shadow_data_source_monitor`` (P2.8)
+- :envvar:`BRAIN_OWNS_DATA_DEEP_VALIDATOR` → ``n8n_shadow_data_deep_validator`` (Track K)
 
 See ``docs/infra/BRAIN_SCHEDULER.md``.
 """
@@ -258,6 +259,15 @@ def _brain_owns_sprint_close() -> bool:
     )
 
 
+def _brain_owns_data_deep_validator() -> bool:
+    return os.getenv("BRAIN_OWNS_DATA_DEEP_VALIDATOR", "").lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
 def should_register_n8n_shadow_for_job(job_id: str) -> bool:
     """True when this shadow job should be registered (mirrors :func:`install`).
 
@@ -272,6 +282,7 @@ def should_register_n8n_shadow_for_job(job_id: str) -> bool:
     - ``n8n_shadow_sprint_kickoff`` → :envvar:`BRAIN_OWNS_SPRINT_KICKOFF` (Track K)
     - ``n8n_shadow_sprint_close`` → :envvar:`BRAIN_OWNS_SPRINT_CLOSE` (Track K)
     - ``n8n_shadow_data_source_monitor`` → :envvar:`BRAIN_OWNS_DATA_SOURCE_MONITOR` (P2.8)
+    - ``n8n_shadow_data_deep_validator`` → :envvar:`BRAIN_OWNS_DATA_DEEP_VALIDATOR` (Track K)
     """
     if not is_n8n_mirror_enabled_for_job(job_id):
         return False
@@ -292,6 +303,8 @@ def should_register_n8n_shadow_for_job(job_id: str) -> bool:
     if job_id == "n8n_shadow_sprint_close" and _brain_owns_sprint_close():
         return False
     if job_id == "n8n_shadow_data_source_monitor" and _brain_owns_data_source_monitor():
+        return False
+    if job_id == "n8n_shadow_data_deep_validator" and _brain_owns_data_deep_validator():
         return False
     return True
 
