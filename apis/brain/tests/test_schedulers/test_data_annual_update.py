@@ -21,14 +21,17 @@ from app.schedulers.data_annual_update import _build_message, install, run_data_
 
 
 def test_flag_off_no_job_registered(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("BRAIN_OWNS_ANNUAL_DATA", raising=False)
+    monkeypatch.delenv("BRAIN_OWNS_DATA_ANNUAL_UPDATE", raising=False)
     sched = AsyncIOScheduler(timezone="UTC")
     install(sched)
     assert len(sched.get_jobs()) == 0
 
 
 def test_flag_on_registers_one_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("BRAIN_OWNS_ANNUAL_DATA", "true")
+    from zoneinfo import ZoneInfo
+
+    la = ZoneInfo("America/Los_Angeles")
+    monkeypatch.setenv("BRAIN_OWNS_DATA_ANNUAL_UPDATE", "true")
     sched = AsyncIOScheduler(timezone="UTC")
     install(sched)
     jobs = sched.get_jobs()
@@ -36,14 +39,15 @@ def test_flag_on_registers_one_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
     assert jobs[0].id == "brain_data_annual_update"
     t = jobs[0].trigger
     assert isinstance(t, CronTrigger)
-    ref = CronTrigger.from_crontab("0 9 1 10 *", timezone=timezone.utc)
+    assert str(t.timezone) == "America/Los_Angeles"
+    ref = CronTrigger.from_crontab("0 9 1 10 *", timezone=la)
     assert t.fields == ref.fields
 
 
 def test_flag_on_suppresses_matching_n8n_shadow(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setenv("BRAIN_OWNS_ANNUAL_DATA", "true")
+    monkeypatch.setenv("BRAIN_OWNS_DATA_ANNUAL_UPDATE", "true")
     for s in N8N_MIRROR_SPECS:
         monkeypatch.delenv(n8n_mirror_env_var_name(s.job_id), raising=False)
     monkeypatch.setattr(settings, "SCHEDULER_N8N_MIRROR_ENABLED", True)

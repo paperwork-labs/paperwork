@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -27,8 +28,8 @@ _ENGINEERING_SLACK_CHANNEL_ID = "C0ALLEKR9FZ"
 _TAX_FOUNDATION_URL = "https://taxfoundation.org/data/all/state/state-income-tax-rates"
 
 
-def _owns_annual_data() -> bool:
-    return os.getenv("BRAIN_OWNS_ANNUAL_DATA", "false").lower() in (
+def _owns_data_annual_update() -> bool:
+    return os.getenv("BRAIN_OWNS_DATA_ANNUAL_UPDATE", "false").lower() in (
         "1",
         "true",
         "yes",
@@ -91,17 +92,25 @@ async def run_data_annual_update() -> None:
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    """Register the job when :envvar:`BRAIN_OWNS_ANNUAL_DATA` is true."""
-    if not _owns_annual_data():
-        logger.info("BRAIN_OWNS_ANNUAL_DATA is not true — skipping brain_data_annual_update job")
+    """Register the job when :envvar:`BRAIN_OWNS_DATA_ANNUAL_UPDATE` is true."""
+    if not _owns_data_annual_update():
+        logger.info(
+            "BRAIN_OWNS_DATA_ANNUAL_UPDATE is not true — skipping brain_data_annual_update job"
+        )
         return
     scheduler.add_job(
         run_data_annual_update,
-        trigger=CronTrigger.from_crontab("0 9 1 10 *", timezone=timezone.utc),
+        trigger=CronTrigger.from_crontab(
+            "0 9 1 10 *",
+            timezone=ZoneInfo("America/Los_Angeles"),
+        ),
         id=JOB_ID,
         name="Annual Data Update (Brain, ex–Annual Data Update Trigger P2.10 / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,
     )
-    logger.info("APScheduler job %r registered (09:00 UTC Oct 1, matches n8n expression)", JOB_ID)
+    logger.info(
+        "APScheduler job %r registered (1 Oct 09:00 America/Los_Angeles, n8n parity)",
+        JOB_ID,
+    )
