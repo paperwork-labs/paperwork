@@ -51,6 +51,15 @@ export interface ClerkJwtPayload extends JWTPayload {
 
 const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
+/** Strip trailing `/` without regex (ReDoS-safe on long slash runs). */
+function stripTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47 /* / */) {
+    end -= 1;
+  }
+  return end === value.length ? value : value.slice(0, end);
+}
+
 function getJwks(jwksUrl: string) {
   let jwks = jwksCache.get(jwksUrl);
   if (!jwks) {
@@ -74,7 +83,7 @@ export async function verifyClerkJwt(
     throw new Error("verifyClerkJwt: token is empty");
   }
 
-  const issuer = options.issuer.replace(/\/+$/, "");
+  const issuer = stripTrailingSlashes(options.issuer);
   const jwksUrl = options.jwksUrl ?? `${issuer}/.well-known/jwks.json`;
   const jwks = getJwks(jwksUrl);
 
