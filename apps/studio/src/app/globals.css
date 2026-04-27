@@ -38,6 +38,12 @@
   --brand-accent: 251 191 36;
   --brand-ink: 248 250 252;
   --brand-surface: 15 23 42;
+  --brand-surface-elevated: 24 24 27;
+  --brand-text-muted: 113 113 122;
+  --brand-border: 63 63 70;
+  --brand-text-faint: 82 82 91;
+  --brand-text-subtle: 161 162 170;
+  --brand-metric-up: 74 222 128;
 
   --background: 240 10% 3.9%;
   --foreground: 0 0% 98%;

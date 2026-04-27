@@ -50,6 +50,9 @@
     --brand-accent: 245 158 11;
     --brand-ink: 15 23 42;
     --brand-surface: 248 250 252;
+    --brand-surface-elevated: 255 255 255;
+    --brand-text-muted: 100 116 139;
+    --brand-border: 226 232 240;
 
     --background: oklch(1 0 0);
     --foreground: oklch(0.141 0.005 285.823);
@@ -197,6 +200,9 @@
     --brand-accent: 251 191 36;
     --brand-ink: 248 250 252;
     --brand-surface: 15 23 42;
+    --brand-surface-elevated: 30 41 59;
+    --brand-text-muted: 148 163 184;
+    --brand-border: 51 65 85;
 
     --background: oklch(0.141 0.005 285.823);
     --foreground: oklch(0.985 0 0);

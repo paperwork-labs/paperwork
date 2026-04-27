@@ -84,6 +84,15 @@
     --sidebar-border: oklch(0.92 0.004 286.32);
     --sidebar-ring: oklch(0.705 0.015 286.067);
 
+    /* Track M — AxiomFolio locked (brand.mdc); tailwind `bg-brand-*` / rgb(var(--brand-*)) */
+    --brand-primary: 50 116 240;
+    --brand-accent: 245 158 11;
+    --brand-ink: 15 23 42;
+    --brand-surface: 248 250 252;
+    --brand-surface-elevated: 255 255 255;
+    --brand-text-muted: 100 116 139;
+    --brand-border: 226 232 240;
+
     /* OAuth sign-in buttons: fixed vendor colors (Google/Apple brand guidelines), not theme semantics */
     --oauth-google-red: #ea4335;
     --oauth-google-blue: #4285f4;
@@ -224,6 +233,14 @@
     --sidebar-accent-foreground: oklch(0.985 0 0);
     --sidebar-border: oklch(1 0 0 / 10%);
     --sidebar-ring: oklch(0.552 0.016 285.938);
+
+    --brand-primary: 96 165 250;
+    --brand-accent: 251 191 36;
+    --brand-ink: 248 250 252;
+    --brand-surface: 15 23 42;
+    --brand-surface-elevated: 30 41 59;
+    --brand-text-muted: 148 163 184;
+    --brand-border: 51 65 85;
 
     /* AxiomFolio semantic tokens (dark) */
     --bg-canvas: 2 6 23;
