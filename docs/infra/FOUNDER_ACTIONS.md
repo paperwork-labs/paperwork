@@ -14,6 +14,17 @@ Single-source list of one-time blockers that require founder credentials. Once a
 
 **Rules:** no secrets in this file — point to 1Password, Vercel/Render/GitHub/Clerk dashboards, or the secrets vault. If live state is unknown, the item is marked **`[VERIFY]`** with a concrete check.
 
+## 2026-04-27 — AxiomFolio Vercel cutover (one-time, ~5 min)
+
+The legacy `axiomfolio` Vercel project (framework=vite) is being retired in favour of `axiomfolio-next` (framework=nextjs). The cutover script in `scripts/vercel-cutover-axiomfolio.mjs` updates project metadata; founder must finish two dashboard actions:
+
+1. **Move domains.** In Vercel dashboard → `axiomfolio` (legacy) → Settings → Domains, transfer `axiomfolio-paperwork-labs.vercel.app` and `axiomfolio-git-main-paperwork-labs.vercel.app` to `axiomfolio-next`.
+2. **Delete legacy project.** Vercel dashboard → `axiomfolio` (legacy) → Settings → General → Delete Project.
+
+After (1), the script in this PR is no longer needed (it patched the legacy project as a fallback in case domains take a while to move). After (2), production AxiomFolio deploys exclusively from `axiomfolio-next`.
+
+Tracked in: `chore/axiomfolio-vercel-cutover` ([#306](https://github.com/paperwork-labs/paperwork/pull/306)).
+
 ## Pending — Critical (blocks production)
 
 ### 1. F-1 — AxiomFolio Render services repoint to monorepo

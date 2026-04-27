@@ -10,9 +10,6 @@ const APPS_DIR = join(ROOT, "apps");
 
 // Apps temporarily exempted from the canon (must be empty in steady state):
 const EXEMPT = new Set([
-  // axiomfolio is mid-cutover (see chore/axiomfolio-vercel-cutover, PR #306).
-  // Remove this entry once that PR lands.
-  "axiomfolio",
   // _archive is a tombstone for legacy apps; not deployed.
   "_archive",
 ]);

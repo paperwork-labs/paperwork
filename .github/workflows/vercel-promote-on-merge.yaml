@@ -76,8 +76,6 @@ jobs:
             project_id: prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7
           - project: axiomfolio-next
             project_id: prj_z3JVQGLLfsJO2QZJnK5BvMjfFoK3
-          - project: axiomfolio
-            project_id: prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE
           - project: trinkets
             project_id: prj_MFUxaJCbQuSdJZWWVgaEtRllKjzB
           - project: design
@@ -127,10 +125,8 @@ jobs:
             distill) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_DISTILL }}" ;;
             launchfree) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_LAUNCHFREE }}" ;;
             axiomfolio-next) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_AXIOMFOLIO_NEXT }}" ;;
-            axiomfolio) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_AXIOMFOLIO }}" ;;
             trinkets) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_TRINKETS }}" ;;
             design) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_DESIGN }}" ;;
-            accounts) VAR_OVERRIDE="${{ vars.VERCEL_PROJECT_ID_ACCOUNTS }}" ;;
             *) VAR_OVERRIDE="" ;;
           esac
           if [ -n "${VAR_OVERRIDE:-}" ]; then

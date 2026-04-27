@@ -1,8 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "pnpm install --frozen-lockfile=false",
+  "installCommand": "bash ../../scripts/vercel-install.sh @paperwork-labs/axiomfolio",
   "buildCommand": "pnpm --filter @paperwork-labs/axiomfolio... run build",
   "outputDirectory": ".next",
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "git": { "deploymentEnabled": { "main": true } },
+  "ignoreCommand": "bash -c 'if git log -1 --pretty=%an | grep -qi dependabot; then echo \"Dependabot commit, skipping build\" && exit 0; else exit 1; fi'"
 }
