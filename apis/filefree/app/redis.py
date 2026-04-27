@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, cast
+from typing import Awaitable, cast
 
 from redis.asyncio import Redis
 
@@ -21,7 +21,7 @@ async def init_redis() -> None:
     )
     try:
         # Stubs type ping() as Awaitable[bool] | bool; runtime is always awaitable.
-        await cast("typing.Awaitable[bool]", _redis_pool.ping())
+        await cast(Awaitable[bool], _redis_pool.ping())
         raw = settings.REDIS_URL
         masked_url = raw.split("@")[-1] if "@" in raw else raw
         logger.info("Redis connected (%s)", masked_url)
