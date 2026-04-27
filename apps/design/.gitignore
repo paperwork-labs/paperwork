@@ -1,2 +1,4 @@
-storybook-static
-node_modules
+storybook-static/
+*.log
+.DS_Store
+node_modules/
