@@ -53,6 +53,28 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 
 - Branch-based development, never push to `main` — [.cursor/rules/git-workflow.mdc](.cursor/rules/git-workflow.mdc)
 
+### GitHub CLI (`gh`) — token vs keyring
+
+`gh` **prefers the environment variable `GITHUB_TOKEN`** over the macOS keyring / `gh auth login` session. Cursor and other tools often inject a **narrow PAT** as `GITHUB_TOKEN`. That is fine for read-only API use but breaks **`gh pr create`** / **`gh pr merge`** with `Resource not accessible by personal access token`.
+
+**Recommended (this repo):**
+
+- For **interactive** PR operations, run GitHub CLI through the wrapper (unsets `GITHUB_TOKEN` for that process only — automation scripts under `scripts/pr-pipeline/` keep using `GITHUB_TOKEN` as today):
+
+  ```bash
+  ./scripts/gh-keyring.sh pr merge 123 --squash
+  # or
+  pnpm gh:keyring -- pr list
+  ```
+
+- Or one-off: `env -u GITHUB_TOKEN gh pr merge …`
+
+- Ensure a **full-access** login exists: `gh auth login` (HTTPS + keyring) with **`repo`** scope, or a **fine-grained PAT** with **Contents** and **Pull requests** write, **SSO authorized** for `paperwork-labs` if required. Then `gh auth status` should show **keyring** as the account you use for merges.
+
+- **`gh auth switch`** only affects the keyring account; it does not help until **`GITHUB_TOKEN` is unset** for that invocation (hence the wrapper).
+
+- **Do not** put a read-only PAT in shell profile as `export GITHUB_TOKEN=…` if you use `gh` to merge; use a different name (e.g. `GH_READONLY_TOKEN`) for tools that only read.
+
 ---
 
 ## 3. Architecture rules
