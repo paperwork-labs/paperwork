@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Mapping, Optional
 
 from sqlalchemy.orm import Session
@@ -179,7 +179,11 @@ class EntitlementService:
                 "from_status": old_status.value if isinstance(old_status, EntitlementStatus) else str(old_status),
                 "to_tier": new_tier.value,
                 "note": note,
-                "at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                "at": (
+                    datetime.now(timezone.utc)
+                    .isoformat(timespec="seconds")
+                    .replace("+00:00", "Z")
+                ),
             },
         )
         db.flush()
@@ -232,7 +236,11 @@ class EntitlementService:
                     "stripe_event_id": stripe_event_id,
                     "attempted_tier": tier.value,
                     "attempted_status": status.value,
-                    "at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                    "at": (
+                        datetime.now(timezone.utc)
+                        .isoformat(timespec="seconds")
+                        .replace("+00:00", "Z")
+                    ),
                 },
             )
             db.flush()
@@ -254,7 +262,11 @@ class EntitlementService:
                 "stripe_event_id": stripe_event_id,
                 "tier": tier.value,
                 "status": status.value,
-                "at": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+                "at": (
+                    datetime.now(timezone.utc)
+                    .isoformat(timespec="seconds")
+                    .replace("+00:00", "Z")
+                ),
             },
         )
         db.flush()

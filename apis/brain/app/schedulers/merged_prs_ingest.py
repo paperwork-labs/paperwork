@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -45,7 +46,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
     )
     scheduler.add_job(
         _run_merged_prs_ingest,
-        trigger=IntervalTrigger(hours=hours),
+        trigger=IntervalTrigger(hours=hours, timezone=timezone.utc),
         id="merged_prs_ingest",
         name="Brain ingests recently merged PRs as memory",
         max_instances=1,

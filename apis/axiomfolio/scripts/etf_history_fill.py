@@ -9,7 +9,7 @@ Usage:
 """
 import argparse
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 import pandas as pd
@@ -136,7 +136,7 @@ def compute_and_insert(session, symbol: str, missing_dates: List[datetime], dry_
             "atr_14": float(indicators.get("atr_14", pd.Series()).get(idx)) if idx in indicators.get("atr_14", pd.Series()).index else None,
             "stage": stage_info.get("stage", pd.Series()).get(idx) if idx in stage_info.get("stage", pd.Series()).index else "UNKNOWN",
             "rs_line": float(rs_line.get(idx)) if rs_line is not None and idx in rs_line.index and pd.notna(rs_line.get(idx)) else None,
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
         }
         
         # Clean None values for numeric fields

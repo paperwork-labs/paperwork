@@ -240,6 +240,13 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
+  - slug: timezone-standards
+    path: docs/infra/TIMEZONE_STANDARDS.md
+    title: Timezone standards (Paperwork Labs)
+    summary: "All datetimes stored in the database, transmitted in API responses, logged for audit, scheduled at the **system** level, and compared in server-side business logic are **UTC and timezone-aware**.…"
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
   # ── Reference ─────────────────────────────────────────
   - slug: billing-vendor-checklist
     path: docs/BILLING_VENDOR_CHECKLIST.md

@@ -19,6 +19,7 @@ Safety:
 from __future__ import annotations
 
 import logging
+from datetime import timezone
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -88,7 +89,7 @@ def start_scheduler() -> AsyncIOScheduler | None:
     sched = AsyncIOScheduler(jobstores=jobstores, timezone="UTC")
     sched.add_job(
         _run_pr_sweep,
-        trigger=IntervalTrigger(minutes=minutes),
+        trigger=IntervalTrigger(minutes=minutes, timezone=timezone.utc),
         id="pr_sweep",
         name="Brain PR sweep",
         max_instances=1,
