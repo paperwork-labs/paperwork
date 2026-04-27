@@ -11,8 +11,10 @@ These tests focus on the *contract* other code in Brain depends on:
 
 medallion: ops
 """
+
 from __future__ import annotations
 
+from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
@@ -45,7 +47,7 @@ async def test_post_message_channel_id_alias_works(monkeypatch):
     captured: dict = {}
 
     class _MockResponse:
-        headers = {"content-type": "application/json"}
+        headers: ClassVar[dict[str, str]] = {"content-type": "application/json"}
 
         def json(self) -> dict:
             return {"ok": True, "ts": "1700000000.000001", "channel": "C999"}
@@ -60,7 +62,7 @@ async def test_post_message_channel_id_alias_works(monkeypatch):
         async def __aexit__(self, *_):
             return None
 
-        async def post(self, url: str, headers=None, json=None):
+        async def post(self, url: str, headers=None, json=None):  # noqa: ARG002
             captured["url"] = url
             captured["json"] = json
             return _MockResponse()
@@ -88,7 +90,7 @@ async def test_post_message_text_truncated_at_40k(monkeypatch):
     captured: dict = {}
 
     class _MockResponse:
-        headers = {"content-type": "application/json"}
+        headers: ClassVar[dict[str, str]] = {"content-type": "application/json"}
 
         def json(self) -> dict:
             return {"ok": True, "ts": "1.0"}
@@ -103,7 +105,7 @@ async def test_post_message_text_truncated_at_40k(monkeypatch):
         async def __aexit__(self, *_):
             return None
 
-        async def post(self, url, headers=None, json=None):
+        async def post(self, url, headers=None, json=None):  # noqa: ARG002
             captured["json"] = json
             return _MockResponse()
 

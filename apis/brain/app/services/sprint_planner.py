@@ -97,9 +97,7 @@ def _topo_order(task_ids: list[str], deps: dict[str, set[str]]) -> list[str] | N
     ``deps[t]`` are prerequisite task ids for ``t``.
     """
     ids_set = set(task_ids)
-    indeg: dict[str, int] = {
-        t: sum(1 for d in deps.get(t, ()) if d in ids_set) for t in task_ids
-    }
+    indeg: dict[str, int] = {t: sum(1 for d in deps.get(t, ()) if d in ids_set) for t in task_ids}
     dependents: dict[str, list[str]] = defaultdict(list)
     for t in task_ids:
         for d in deps.get(t, ()):

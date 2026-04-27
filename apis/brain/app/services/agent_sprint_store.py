@@ -118,13 +118,15 @@ def _maybe_merge_tracker_digest(record: AgentSprintRecord) -> None:
         digest = idx.get("cheap_agent_sprints")
         if not isinstance(digest, list):
             digest = []
-        digest.append({
-            "sprint_id": record.sprint_id,
-            "generated_at": record.generated_at,
-            "total_minutes": record.total_minutes,
-            "task_count": len(record.tasks),
-            "titles": [t.title for t in record.tasks[:12]],
-        })
+        digest.append(
+            {
+                "sprint_id": record.sprint_id,
+                "generated_at": record.generated_at,
+                "total_minutes": record.total_minutes,
+                "task_count": len(record.tasks),
+                "titles": [t.title for t in record.tasks[:12]],
+            }
+        )
         idx["cheap_agent_sprints"] = digest[-20:]
         idx["cheap_agent_sprints_updated"] = record.generated_at
         with open(f"{tracker}.tmp", "w", encoding="utf-8") as f:

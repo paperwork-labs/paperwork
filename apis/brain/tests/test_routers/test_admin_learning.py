@@ -1,5 +1,6 @@
 """J2/J3: Brain admin learning dashboard API (read-only)."""
 
+from datetime import UTC
 from unittest.mock import AsyncMock
 
 import pytest
@@ -19,8 +20,8 @@ async def client_mock_db():
         db = AsyncMock()
         db.execute = AsyncMock(
             return_value=AsyncMock(
-                scalars=lambda: AsyncMock(all=lambda: []),
-                all=lambda: [],
+                scalars=lambda: AsyncMock(all=list),
+                all=list,
                 one=lambda: (0, 0),
             )
         )
@@ -44,9 +45,7 @@ async def test_brain_learning_forbidden_without_secret(client_mock_db, monkeypat
 
 
 @pytest.mark.asyncio
-async def test_brain_learning_forbidden_when_dashboard_disabled(
-    client_mock_db, monkeypatch
-):
+async def test_brain_learning_forbidden_when_dashboard_disabled(client_mock_db, monkeypatch):
     monkeypatch.setattr(settings, "BRAIN_API_SECRET", "s")
     monkeypatch.setattr(settings, "BRAIN_LEARNING_DASHBOARD_ENABLED", False)
     res = await client_mock_db.get(
@@ -101,9 +100,7 @@ async def test_brain_learning_summary_shape(client, db_session, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_brain_episodes_excludes_model_router_by_default(
-    client, db_session, monkeypatch
-):
+async def test_brain_episodes_excludes_model_router_by_default(client, db_session, monkeypatch):
     monkeypatch.setattr(settings, "BRAIN_API_SECRET", "test-learning-secret")
     monkeypatch.setattr(settings, "BRAIN_LEARNING_DASHBOARD_ENABLED", True)
 
@@ -117,9 +114,9 @@ async def test_brain_episodes_excludes_model_router_by_default(
     )
     await db_session.commit()
 
-    from datetime import datetime, timedelta, timezone
+    from datetime import datetime, timedelta
 
-    since = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    since = (datetime.now(UTC) - timedelta(days=1)).isoformat()
     res = await client.get(
         f"/api/v1/admin/brain/episodes?since={since}&limit=20",
         headers={"X-Brain-Secret": "test-learning-secret"},

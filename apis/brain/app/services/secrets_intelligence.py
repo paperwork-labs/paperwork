@@ -10,15 +10,18 @@ import json
 import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any, Literal
-from uuid import UUID
+from typing import TYPE_CHECKING, Any, Literal
 
 import httpx
 from sqlalchemy import func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.secrets_intelligence import BrainSecretsEpisode, BrainSecretsRegistry
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -299,7 +302,9 @@ class SecretsIntelligence:
             )
             names = [str(x[0]) for x in sub.all()]
             patterns.append(
-                Pattern(pattern=f"event_type:{event_type}", count=int(cnt), sample_secret_names=names)
+                Pattern(
+                    pattern=f"event_type:{event_type}", count=int(cnt), sample_secret_names=names
+                )
             )
         return patterns
 
@@ -322,7 +327,9 @@ class SecretsIntelligence:
                 secret_name=secret_name,
                 vault_fingerprint=None,
                 targets=[
-                    DriftTargetStatus("vault", "vault", "skipped", "STUDIO_URL or SECRETS_API_KEY not set")
+                    DriftTargetStatus(
+                        "vault", "vault", "skipped", "STUDIO_URL or SECRETS_API_KEY not set"
+                    )
                 ],
                 has_drift=False,
             )
@@ -350,7 +357,9 @@ class SecretsIntelligence:
                 return DriftReport(
                     secret_name=secret_name,
                     vault_fingerprint=None,
-                    targets=[DriftTargetStatus("vault", "vault", "error", "unexpected list response")],
+                    targets=[
+                        DriftTargetStatus("vault", "vault", "error", "unexpected list response")
+                    ],
                     has_drift=True,
                 )
             sid = None
@@ -461,7 +470,10 @@ class SecretsIntelligence:
             t.status == "error" for t in targets
         )
         return DriftReport(
-            secret_name=secret_name, vault_fingerprint=vault_fp, targets=targets, has_drift=has_drift
+            secret_name=secret_name,
+            vault_fingerprint=vault_fp,
+            targets=targets,
+            has_drift=has_drift,
         )
 
     async def _vercel_env_fingerprint(
@@ -575,9 +587,7 @@ class SecretsIntelligence:
                 )
         return sorted(out, key=lambda x: (x.days_until_due is not None, x.days_until_due or 0))
 
-    async def mark_drift(
-        self, secret_name: str, summary: str, detected: bool
-    ) -> None:
+    async def mark_drift(self, secret_name: str, summary: str, detected: bool) -> None:
         now = datetime.now(UTC)
         await self._db.execute(
             update(BrainSecretsRegistry)

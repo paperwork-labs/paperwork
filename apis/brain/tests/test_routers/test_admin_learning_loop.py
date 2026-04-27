@@ -1,4 +1,3 @@
-
 import pytest
 
 from app.config import settings
@@ -33,7 +32,7 @@ async def test_learning_summary_shape(client, db_session, monkeypatch):
     )
     assert res.status_code == 200
     data = res.json()["data"]
-    assert {k for k in data} >= {
+    assert set(data) >= {
         "as_of",
         "window_days",
         "episodes_7d",
@@ -43,4 +42,8 @@ async def test_learning_summary_shape(client, db_session, monkeypatch):
         "top_topics",
         "top_agents",
     }
-    assert data["episodes_7d"] >= 2 and data["lessons_captured_7d"] >= 1 and data["lesson_rate_pct"] > 0
+    assert (
+        data["episodes_7d"] >= 2
+        and data["lessons_captured_7d"] >= 1
+        and data["lesson_rate_pct"] > 0
+    )

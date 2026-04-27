@@ -27,7 +27,7 @@ class FakeRedis:
     async def get(self, key: str) -> str | None:
         return self._store.get(key)
 
-    async def setex(self, key: str, ttl: int, value: str) -> None:
+    async def setex(self, key: str, _ttl: int, value: str) -> None:
         self._store[key] = value
 
     async def delete(self, *keys: str) -> None:
@@ -55,7 +55,7 @@ class FakeRedis:
                 added += 1
         return added
 
-    async def expire(self, key: str, ttl: int) -> bool:
+    async def expire(self, key: str, _ttl: int) -> bool:
         return key in self._store or key in self._sets
 
 

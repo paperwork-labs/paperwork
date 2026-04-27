@@ -5,6 +5,7 @@ day over day, and catches regressions in percentage / warning logic.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 from app.schedulers.cost_dashboard import _format_dashboard

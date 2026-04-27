@@ -25,6 +25,7 @@ Run locally:
 
 Run in CI (see .github/workflows/brain-tests.yaml).
 """
+
 from __future__ import annotations
 
 import sys
@@ -73,16 +74,14 @@ def main() -> int:
     if missing_specs:
         failures.append(
             "Router can return persona(s) with no YAML spec "
-            "(will silently bypass PersonaPinnedRoute): "
-            + ", ".join(sorted(missing_specs))
+            "(will silently bypass PersonaPinnedRoute): " + ", ".join(sorted(missing_specs))
         )
 
     missing_mdcs = specs - mdcs
     if missing_mdcs:
         failures.append(
             "YAML spec(s) have no matching .cursor/rules/<name>.mdc "
-            "(runtime persona-instruction load will 404): "
-            + ", ".join(sorted(missing_mdcs))
+            "(runtime persona-instruction load will 404): " + ", ".join(sorted(missing_mdcs))
         )
 
     orphan_specs = specs - router
@@ -93,23 +92,11 @@ def main() -> int:
         )
 
     if failures:
-        print("Brain persona coverage check FAILED:\n")
-        for f in failures:
-            print(f"  - {f}")
-        print()
-        print(f"  router  ({len(router):2}): {sorted(router)}")
-        print(f"  specs   ({len(specs):2}): {sorted(specs)}")
-        print(f"  mdcs    ({len(mdcs):2}): {sorted(mdcs)}")
+        for _f in failures:
+            pass
         return 1
 
-    rule_mdcs = mdcs - specs
-    print(
-        f"Brain persona coverage OK: "
-        f"{len(router)} router slugs, "
-        f"{len(specs)} specs, "
-        f"{len(mdcs)} mdc files "
-        f"({len(rule_mdcs)} guardrail rules + {len(specs)} personas)"
-    )
+    mdcs - specs
     return 0
 
 

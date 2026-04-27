@@ -17,47 +17,51 @@ from typing import Any
 import pytest
 import yaml
 
-from app.services.router import ChainContext, ClassifyAndRoute, CircuitBreaker
+from app.services.router import ChainContext, CircuitBreaker, ClassifyAndRoute
 
 # IDs must match apis/brain/constitution.yaml (principles[].id)
-CONSTITUTION_PRINCIPLE_IDS: frozenset[str] = frozenset({
-    "FINANCIAL_ACCURACY",
-    "NO_TAX_ADVICE",
-    "NO_LEGAL_ADVICE",
-    "NO_INVESTMENT_ADVICE",
-    "PII_NEVER_EXPOSED",
-    "HONEST_LIMITATIONS",
-    "TIER_RESPECT",
-    "CROSS_DOMAIN_ATTRIBUTION",
-    "SCOPE_BOUNDARIES",
-    "CONSERVATIVE_TRADES",
-})
+CONSTITUTION_PRINCIPLE_IDS: frozenset[str] = frozenset(
+    {
+        "FINANCIAL_ACCURACY",
+        "NO_TAX_ADVICE",
+        "NO_LEGAL_ADVICE",
+        "NO_INVESTMENT_ADVICE",
+        "PII_NEVER_EXPOSED",
+        "HONEST_LIMITATIONS",
+        "TIER_RESPECT",
+        "CROSS_DOMAIN_ATTRIBUTION",
+        "SCOPE_BOUNDARIES",
+        "CONSERVATIVE_TRADES",
+    }
+)
 
 # MCP tool names exposed by app/mcp_server.py — used to validate expected_tools
-REGISTERED_MCP_TOOLS: frozenset[str] = frozenset({
-    "read_github_file",
-    "search_github_code",
-    "list_github_prs",
-    "get_github_pr",
-    "create_github_issue",
-    "commit_github_file",
-    "merge_github_pr",
-    "check_render_status",
-    "check_vercel_status",
-    "check_neon_status",
-    "check_n8n_status",
-    "check_upstash_status",
-    "scan_market",
-    "get_portfolio",
-    "stage_analysis",
-    "get_risk_status",
-    "get_watchlist",
-    "execute_trade",
-    "modify_position",
-    "search_memory",
-    "vault_list",
-    "vault_get",
-})
+REGISTERED_MCP_TOOLS: frozenset[str] = frozenset(
+    {
+        "read_github_file",
+        "search_github_code",
+        "list_github_prs",
+        "get_github_pr",
+        "create_github_issue",
+        "commit_github_file",
+        "merge_github_pr",
+        "check_render_status",
+        "check_vercel_status",
+        "check_neon_status",
+        "check_n8n_status",
+        "check_upstash_status",
+        "scan_market",
+        "get_portfolio",
+        "stage_analysis",
+        "get_risk_status",
+        "get_watchlist",
+        "execute_trade",
+        "modify_position",
+        "search_memory",
+        "vault_list",
+        "vault_get",
+    }
+)
 
 GOLDEN_SCENARIOS: list[dict[str, Any]] = [
     # -- 1. Simple greetings (3) → gpt-4o-mini, no tools ----------------------------
@@ -446,7 +450,7 @@ def classification_payload() -> dict[str, Any]:
 def mock_classify_query(monkeypatch: pytest.MonkeyPatch, classification_payload: dict[str, Any]):
     """Patch ``app.services.llm.classify_query`` to return ``classification_payload`` contents."""
 
-    async def _fake_classify(message: str, channel_id: str | None = None) -> dict[str, Any]:
+    async def _fake_classify(_message: str, _channel_id: str | None = None) -> dict[str, Any]:
         return dict(classification_payload)
 
     monkeypatch.setattr("app.services.llm.classify_query", _fake_classify)
@@ -488,8 +492,8 @@ def mock_llm_completions(monkeypatch: pytest.MonkeyPatch):
 async def test_golden_classification_propagates_through_classify_and_route(
     scenario: dict[str, Any],
     classification_payload: dict[str, Any],
-    mock_classify_query: Any,
-    mock_llm_completions: None,
+    mock_classify_query: Any,  # noqa: ARG001
+    mock_llm_completions: None,  # noqa: ARG001
 ) -> None:
     """Router must preserve mocked classifier output (model, provider, tools, domain)."""
     classification_payload.clear()

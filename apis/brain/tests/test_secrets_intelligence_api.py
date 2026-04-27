@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import uuid
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.config import settings
-from app.main import app as fastapi_app
 from app.database import get_db
+from app.main import app as fastapi_app
 from app.services.secrets_intelligence import SecretsIntelligence
 
 
@@ -61,9 +62,7 @@ async def test_post_internal_secrets_events_records_episode(
 
 
 @pytest.mark.asyncio
-async def test_get_registry_after_seed(
-    db_session, monkeypatch: pytest.MonkeyPatch
-) -> None:
+async def test_get_registry_after_seed(db_session, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "BRAIN_INTERNAL_TOKEN", "tok2")
     name = f"SEED_{uuid.uuid4().hex[:8]}"
     intel = SecretsIntelligence(db_session)

@@ -81,7 +81,10 @@ class TestTitleHeuristics:
         # This is the shape fetch-metadata can't classify — our heuristic must.
         c = classify_pr(
             author_login="dependabot[bot]",
-            title="chore(deps): update google-cloud-storage requirement from >=2.18.0 to >=3.10.1 in /apis/filefree",
+            title=(
+                "chore(deps): update google-cloud-storage requirement from "
+                ">=2.18.0 to >=3.10.1 in /apis/filefree"
+            ),
         )
         assert c.decision == "major"
         assert c.from_version == "2.18.0"

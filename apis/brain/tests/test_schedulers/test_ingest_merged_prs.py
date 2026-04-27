@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.schedulers.merged_prs_ingest import install
 from app.services.continuous_learning import MergedPRRecord, ingest_merged_prs
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_install_registers_job() -> None:
@@ -32,7 +35,7 @@ async def test_ingest_merged_prs_idempotent_and_pin_shape(
     def _fake_data_dir() -> str:
         return str(data_dir)
 
-    async def fake_fetch(days: int = 7, limit: int = 50) -> list[MergedPRRecord]:
+    async def fake_fetch(_days: int = 7, _limit: int = 50) -> list[MergedPRRecord]:
         return [
             MergedPRRecord(
                 number=999001,

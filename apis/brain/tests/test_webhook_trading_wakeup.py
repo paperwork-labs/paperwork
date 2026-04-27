@@ -7,6 +7,7 @@ wakeup path noops cleanly when no Slack channel ID is configured
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -24,13 +25,18 @@ async def test_wakeup_events_are_exactly_the_noisy_ones():
     persona (e.g. ``margin.call``), add it here consciously. The cost of
     a surprise Slack fanout is higher than the cost of updating this set.
     """
-    assert webhooks._TRADING_WAKEUP_EVENTS == frozenset({
-        "risk.gate.activated",
-        "risk.alert",
-        "approval.required",
-        "approval.needed",
-        "stop.triggered",
-    })
+    assert (
+        frozenset(
+            {
+                "risk.gate.activated",
+                "risk.alert",
+                "approval.required",
+                "approval.needed",
+                "stop.triggered",
+            }
+        )
+        == webhooks._TRADING_WAKEUP_EVENTS
+    )
 
 
 @pytest.mark.asyncio
@@ -39,19 +45,21 @@ async def test_wakeup_noop_when_no_channel_configured():
     we log and return without invoking the agent. Guards against webhook
     floods in a dev environment missing Slack config.
     """
-    with patch("app.config.settings.SLACK_TRADING_CHANNEL_ID", ""), \
-         patch("app.config.settings.SLACK_ENGINEERING_CHANNEL_ID", ""):
-        with patch("app.services.agent.process", new=AsyncMock()) as mock_proc:
-            await webhooks._wake_trading_persona(
-                db=None,
-                organization_id="paperwork-labs",
-                event="risk_gate_activated",
-                event_norm="risk.gate.activated",
-                data={"gate": "max_position_size"},
-                timestamp=None,
-                summary="Risk gate blocked AAPL buy",
-            )
-            mock_proc.assert_not_awaited()
+    with (
+        patch("app.config.settings.SLACK_TRADING_CHANNEL_ID", ""),
+        patch("app.config.settings.SLACK_ENGINEERING_CHANNEL_ID", ""),
+        patch("app.services.agent.process", new=AsyncMock()) as mock_proc,
+    ):
+        await webhooks._wake_trading_persona(
+            db=None,
+            organization_id="paperwork-labs",
+            event="risk_gate_activated",
+            event_norm="risk.gate.activated",
+            data={"gate": "max_position_size"},
+            timestamp=None,
+            summary="Risk gate blocked AAPL buy",
+        )
+        mock_proc.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -62,9 +70,11 @@ async def test_wakeup_calls_agent_with_trading_pin_and_slack_post():
     """
     fake_process = AsyncMock(return_value={"response": "ok", "persona": "trading"})
     fake_redis = AsyncMock(return_value=None)
-    with patch("app.config.settings.SLACK_TRADING_CHANNEL_ID", "C_TRADING"), \
-         patch("app.services.agent.process", new=fake_process), \
-         patch("app.redis.get_redis", new=fake_redis):
+    with (
+        patch("app.config.settings.SLACK_TRADING_CHANNEL_ID", "C_TRADING"),
+        patch("app.services.agent.process", new=fake_process),
+        patch("app.redis.get_redis", new=fake_redis),
+    ):
         await webhooks._wake_trading_persona(
             db=None,
             organization_id="paperwork-labs",

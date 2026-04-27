@@ -9,6 +9,7 @@ _APP = Path(__file__).resolve().parents[1] / "app"
 # `datetime.now()` with an empty argument list (no tz=, no UTC).
 _BAD = re.compile(r"\bdatetime\.now\s*\(\s*\)")
 
+
 def test_no_naive_datetime_now_in_app():
     """`datetime.now()` without a timezone is forbidden in `app/` (Ruff DTZ005)."""
     hits: list[str] = []

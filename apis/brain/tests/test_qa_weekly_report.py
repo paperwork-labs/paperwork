@@ -5,6 +5,7 @@ rate limit, or output cap, the digest must shout about it.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 from app.schedulers.qa_weekly_report import _build_digest

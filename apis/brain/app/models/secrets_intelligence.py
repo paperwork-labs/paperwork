@@ -32,7 +32,9 @@ class BrainSecretsRegistry(Base):
     last_verified_synced_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    drift_detected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    drift_detected_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     drift_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     lessons_learned: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, server_default="[]")
     created_at: Mapped[datetime] = mapped_column(

@@ -9,6 +9,7 @@ These are unit-level only; the integration ("does agent.process wire
 strategy='extract_reason' correctly") belongs in the brain.process
 test (see test_brain_process_strategy.py).
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
