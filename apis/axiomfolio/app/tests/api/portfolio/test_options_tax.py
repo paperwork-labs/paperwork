@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -128,7 +128,7 @@ def _opt_long(**kwargs):
         symbol=kwargs.get("symbol", "AAPL  250620C00150000"),
         underlying_symbol=kwargs.get("underlying_symbol", "AAPL"),
         strike_price=150.0,
-        expiry_date=kwargs.get("expiry_date", date.today() + timedelta(days=30)),
+        expiry_date=kwargs.get("expiry_date", datetime.now(UTC).date() + timedelta(days=30)),
         option_type="CALL",
         multiplier=100.0,
         open_quantity=kwargs.get("open_quantity", 2),
@@ -144,7 +144,7 @@ def _opt_short(**kwargs):
         symbol=kwargs.get("symbol", "XYZ   250620P00050000"),
         underlying_symbol=kwargs.get("underlying_symbol", "XYZ"),
         strike_price=50.0,
-        expiry_date=kwargs.get("expiry_date", date.today() + timedelta(days=45)),
+        expiry_date=kwargs.get("expiry_date", datetime.now(UTC).date() + timedelta(days=45)),
         option_type="PUT",
         multiplier=100.0,
         open_quantity=kwargs.get("open_quantity", -1),

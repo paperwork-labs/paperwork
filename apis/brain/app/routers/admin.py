@@ -2,8 +2,8 @@ import asyncio
 import hmac
 import logging
 import os
+from datetime import UTC, datetime, timedelta
 from datetime import date as date_type
-from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
@@ -14,16 +14,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import async_session_factory, get_db
 from app.models.episode import Episode
-from app.schedulers import n8n_mirror
 from app.personas import list_specs as list_persona_specs
+from app.schedulers import n8n_mirror
 from app.schemas.base import success_response
-from app.services.pr_merge_sweep import merge_ready_prs
-from app.services.pr_review import review_pr, sweep_open_prs
 from app.services.continuous_learning import (
     ingest_decisions,
     ingest_merged_prs,
     ingest_postmortems,
 )
+from app.services.pr_merge_sweep import merge_ready_prs
+from app.services.pr_review import review_pr, sweep_open_prs
 from app.services.seed import ingest_docs, ingest_sprint_lessons
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,8 @@ def _require_admin(x_brain_secret: str | None = Header(None, alias="X-Brain-Secr
 def _require_learning_dashboard() -> None:
     if not settings.BRAIN_LEARNING_DASHBOARD_ENABLED:
         raise HTTPException(
-            status_code=403, detail="Brain learning dashboard disabled (BRAIN_LEARNING_DASHBOARD_ENABLED=false)"
+            status_code=403,
+            detail="Brain learning dashboard disabled (BRAIN_LEARNING_DASHBOARD_ENABLED=false)",
         )
 
 
@@ -152,10 +153,12 @@ async def list_personas(
 ):
     """Return the PersonaSpec registry so Studio can render /admin/agents."""
     specs = list_persona_specs()
-    return success_response({
-        "count": len(specs),
-        "personas": [spec.model_dump() for spec in specs],
-    })
+    return success_response(
+        {
+            "count": len(specs),
+            "personas": [spec.model_dump() for spec in specs],
+        }
+    )
 
 
 class PRSweepRequest(BaseModel):
@@ -169,6 +172,7 @@ class PRSweepRequest(BaseModel):
 
 @router.post("/pr-sweep")
 async def trigger_pr_sweep(
+    background_tasks: BackgroundTasks,
     body: PRSweepRequest | None = None,
     _auth: None = Depends(_require_admin),
 ):
@@ -199,7 +203,7 @@ async def trigger_pr_sweep(
             except Exception:
                 logger.exception("pr-sweep failed")
 
-    asyncio.create_task(_run())
+    background_tasks.add_task(_run)
     return success_response({"accepted": True, "org_id": req.organization_id})
 
 
@@ -254,7 +258,9 @@ async def trigger_pr_merge_sweep(
 async def list_memory_episodes(
     source_prefix: str | None = Query(
         None,
-        description="Filter episodes whose `source` starts with this prefix (e.g. `brain:pr-review`).",
+        description=(
+            "Filter episodes whose `source` starts with this prefix (e.g. `brain:pr-review`)."
+        ),
     ),
     organization_id: str = Query("paperwork-labs"),
     limit: int = Query(50, ge=1, le=500),
@@ -301,12 +307,12 @@ def _parse_iso_dt(raw: str) -> datetime:
         s = s[:-1] + "+00:00"
     dt = datetime.fromisoformat(s)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
 def _utc_day_bounds(d: date_type) -> tuple[datetime, datetime]:
-    start = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+    start = datetime(d.year, d.month, d.day, tzinfo=UTC)
     return start, start + timedelta(days=1)
 
 
@@ -334,11 +340,15 @@ async def list_brain_learning_episodes(
     since: str = Query(..., description="ISO 8601 lower bound (UTC recommended)."),
     limit: int = Query(50, ge=1, le=200),
     persona: str | None = Query(None, description="Exact persona filter."),
-    product: str | None = Query(None, description="Exact product filter (use empty to match null — omit for all)."),
+    product: str | None = Query(
+        None, description="Exact product filter (use empty to match null — omit for all)."
+    ),
     organization_id: str = Query("paperwork-labs"),
     exclude_routing: bool = Query(
         True,
-        description="If true (default), omit `source=model_router` rows (see `/admin/brain/decisions`).",
+        description=(
+            "If true (default), omit `source=model_router` rows (see `/admin/brain/decisions`)."
+        ),
     ),
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
@@ -362,10 +372,12 @@ async def list_brain_learning_episodes(
     stmt = stmt.order_by(Episode.created_at.desc()).limit(limit)
     result = await db.execute(stmt)
     rows = result.scalars().all()
-    return success_response({
-        "count": len(rows),
-        "episodes": [_serialize_episode_row(ep) for ep in rows],
-    })
+    return success_response(
+        {
+            "count": len(rows),
+            "episodes": [_serialize_episode_row(ep) for ep in rows],
+        }
+    )
 
 
 @router.get("/brain/decisions")
@@ -394,17 +406,19 @@ async def list_brain_routing_decisions(
     out: list[dict[str, Any]] = []
     for ep in rows:
         meta = ep.metadata_ or {}
-        out.append({
-            "id": ep.id,
-            "persona": ep.persona,
-            "summary": ep.summary,
-            "outcome": meta.get("outcome"),
-            "model_used": ep.model_used,
-            "tokens_in": ep.tokens_in,
-            "tokens_out": ep.tokens_out,
-            "created_at": ep.created_at.isoformat() if ep.created_at else None,
-            "metadata": meta,
-        })
+        out.append(
+            {
+                "id": ep.id,
+                "persona": ep.persona,
+                "summary": ep.summary,
+                "outcome": meta.get("outcome"),
+                "model_used": ep.model_used,
+                "tokens_in": ep.tokens_in,
+                "tokens_out": ep.tokens_out,
+                "created_at": ep.created_at.isoformat() if ep.created_at else None,
+                "metadata": meta,
+            }
+        )
     return success_response({"count": len(out), "decisions": out})
 
 
@@ -415,7 +429,9 @@ async def brain_learning_summary(
         alias="date",
         description="Anchor calendar day in UTC (YYYY-MM-DD). Defaults to today UTC.",
     ),
-    spark_days: int = Query(14, ge=0, le=90, description="If >0, include daily series for the N days ending on `date`."),
+    spark_days: int = Query(
+        14, ge=0, le=90, description="If >0, include daily series for the N days ending on `date`."
+    ),
     organization_id: str = Query("paperwork-labs"),
     top_n: int = Query(5, ge=1, le=20),
     db: AsyncSession = Depends(get_db),
@@ -427,10 +443,12 @@ async def brain_learning_summary(
         try:
             y, m, d = (int(p) for p in on_date.split("-", 2))
             anchor = date_type(y, m, d)
-        except Exception as exc:  # noqa: BLE001
-            raise HTTPException(status_code=422, detail=f"Invalid date: {on_date!r} ({exc})") from exc
+        except Exception as exc:
+            raise HTTPException(
+                status_code=422, detail=f"Invalid date: {on_date!r} ({exc})"
+            ) from exc
     else:
-        anchor = datetime.now(timezone.utc).date()
+        anchor = datetime.now(UTC).date()
 
     day_start, day_end = _utc_day_bounds(anchor)
 
@@ -484,11 +502,15 @@ async def brain_learning_summary(
         for row in tok_res.all()
     ]
 
-    dec_stmt = select(func.count()).select_from(Episode).where(
-        Episode.organization_id == organization_id,
-        Episode.created_at >= day_start,
-        Episode.created_at < day_end,
-        Episode.source == "model_router",
+    dec_stmt = (
+        select(func.count())
+        .select_from(Episode)
+        .where(
+            Episode.organization_id == organization_id,
+            Episode.created_at >= day_start,
+            Episode.created_at < day_end,
+            Episode.source == "model_router",
+        )
     )
     dec_count = int((await db.execute(dec_stmt)).scalar() or 0)
 
@@ -540,24 +562,28 @@ async def brain_learning_summary(
         d_map = {r[0].date() if r[0] else None: int(r[1]) for r in (await db.execute(d_stmt)).all()}
         for i in range(spark_days):
             d0 = series_start_date + timedelta(days=i)
-            spark.append({
-                "date": d0.isoformat(),
-                "episode_count": e_map.get(d0, 0),
-                "decision_count": d_map.get(d0, 0),
-            })
+            spark.append(
+                {
+                    "date": d0.isoformat(),
+                    "episode_count": e_map.get(d0, 0),
+                    "decision_count": d_map.get(d0, 0),
+                }
+            )
 
-    return success_response({
-        "anchor_date": anchor.isoformat(),
-        "day_start_utc": day_start.isoformat(),
-        "day_end_utc": day_end.isoformat(),
-        "counts_by_persona_product": counts_by_persona_product,
-        "top_by_importance": top_by_importance,
-        "model_token_totals": model_token_totals,
-        "totals": {
-            "episodes": len(day_eps),
-            "routing_decisions": dec_count,
-            "tokens_in": t_in,
-            "tokens_out": t_out,
-        },
-        "spark": spark,
-    })
+    return success_response(
+        {
+            "anchor_date": anchor.isoformat(),
+            "day_start_utc": day_start.isoformat(),
+            "day_end_utc": day_end.isoformat(),
+            "counts_by_persona_product": counts_by_persona_product,
+            "top_by_importance": top_by_importance,
+            "model_token_totals": model_token_totals,
+            "totals": {
+                "episodes": len(day_eps),
+                "routing_decisions": dec_count,
+                "tokens_in": t_in,
+                "tokens_out": t_out,
+            },
+            "spark": spark,
+        }
+    )

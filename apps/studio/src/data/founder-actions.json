@@ -133,7 +133,7 @@
         {
           "title": "DNS + Dashboard for Clerk satellite topology (`accounts.paperworklabs.com`) — `[VERIFY]`",
           "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/CLERK_SATELLITE_TOPOLOGY.md",
-          "why": "If/when the org enables **satellite domains** with `accounts.paperworklabs.com` as the Clerk primary host, DNS and Dashboard work must match `CLERK_SATELLITE_TOPOLOGY.md`. Embedded-only auth (per PR #210) **reduced** reliance on `accounts.*` for basic login, but the satellite program still needs this when you pursue Track H4.",
+          "why": "If/when the org enables **satellite domains** with `accounts.paperworklabs.com` as the Clerk primary host, DNS and Dashboard work must match `CLERK_SATELLITE_TOPOLOGY.md`. Embedded-only auth (per PR #210) **reduced** reliance on `accounts.*` for basic login; cross-brand satellite handoff still depends on this DNS/Dashboard work. ~~Former Track H4 (`apps/accounts`)~~ \u2014 **superseded** by Clerk-hosted Account Portal per `docs/KNOWLEDGE.md` \u00a7D91.",
           "where": "Cloudflare (or DNS host) for `paperworklabs.com` and each brand zone; [Clerk Dashboard](https://dashboard.clerk.com) → Domains.",
           "steps": [],
           "verification": "`dig` checks in runbook; Clerk shows **Verified**; end-to-end sign-in across a pilot satellite.",

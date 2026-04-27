@@ -20,7 +20,7 @@ class Vector(UserDefinedType):
     def get_col_spec(self) -> str:
         return f"VECTOR({self.dim})"
 
-    def bind_processor(self, dialect: Any) -> Any:
+    def bind_processor(self, _dialect: Any) -> Any:
         def process(value: list[float] | None) -> str | None:
             if value is None:
                 return None
@@ -28,7 +28,7 @@ class Vector(UserDefinedType):
 
         return process
 
-    def result_processor(self, dialect: Any, coltype: Any) -> Any:
+    def result_processor(self, _dialect: Any, _coltype: Any) -> Any:
         def process(value: Any) -> list[float] | None:
             if value is None:
                 return None

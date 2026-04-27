@@ -7,6 +7,7 @@ The registry is intentionally in-memory-only for now. The full design
 query that Studio can edit via /admin/agents. Until that ships, YAML-
 on-disk is the source of truth.
 """
+
 from __future__ import annotations
 
 import logging

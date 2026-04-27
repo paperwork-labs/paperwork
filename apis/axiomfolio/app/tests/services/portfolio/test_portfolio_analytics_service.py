@@ -14,7 +14,7 @@ volatility default.
 from __future__ import annotations
 
 import math
-from datetime import datetime, time, timedelta, timezone
+from datetime import UTC, datetime, time, timedelta, timezone
 from typing import List
 
 import numpy as np
@@ -148,7 +148,7 @@ def _recent_start(n_days: int) -> datetime:
     """
     today = datetime.now(timezone.utc).replace(tzinfo=None)
     # Pull start back by n_days plus a small safety buffer.
-    return datetime(today.year, today.month, today.day) - timedelta(days=n_days + 1)
+    return datetime(today.year, today.month, today.day, tzinfo=UTC) - timedelta(days=n_days + 1)
 
 
 # ---------------------------------------------------------------------------

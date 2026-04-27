@@ -10,6 +10,7 @@ once per process.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import logging

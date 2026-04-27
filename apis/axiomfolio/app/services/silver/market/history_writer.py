@@ -166,10 +166,10 @@ def record_daily_snapshot_history(
     Returns:
         Dict with stats: symbols_recorded, existing_skipped, errors
     """
-    from datetime import date as date_type
+    from datetime import UTC, datetime
 
     if as_of_date is None:
-        as_of_date = date_type.today()
+        as_of_date = datetime.now(UTC).date()
 
     # Get current regime if needed
     regime = None

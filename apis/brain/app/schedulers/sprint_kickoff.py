@@ -8,11 +8,12 @@ Replaces the **Sprint Kickoff** n8n workflow (``0 7 * * 1``) that POSTs
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.database import async_session_factory
@@ -20,6 +21,9 @@ from app.redis import get_redis
 from app.schedulers._history import run_with_scheduler_record
 from app.services import agent as brain_agent
 from app.services import slack_outbound
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +56,10 @@ def _owns_sprint_kickoff() -> bool:
 
 
 async def _run_sprint_kickoff_body() -> None:
-    request_id = f"sprint-kickoff:brain:{datetime.now(timezone.utc).isoformat()}"
+    request_id = f"sprint-kickoff:brain:{datetime.now(UTC).isoformat()}"
     redis_client = None
-    try:
+    with contextlib.suppress(RuntimeError):
         redis_client = get_redis()
-    except RuntimeError:
-        pass
     async with async_session_factory() as db:
         await brain_agent.process(
             db,
@@ -86,7 +88,7 @@ async def _run_sprint_kickoff_body() -> None:
 
 
 async def run_sprint_kickoff() -> None:
-    """APScheduler entry: strategy persona to ``#sprints`` + ``#all-paperwork-labs`` announcement."""
+    """APScheduler entry: strategy persona to ``#sprints`` + ``#all-paperwork-labs`` announcement."""  # noqa: E501
     await run_with_scheduler_record(
         _JOB_ID,
         _run_sprint_kickoff_body,
@@ -101,11 +103,13 @@ def install(scheduler: AsyncIOScheduler) -> None:
         return
     scheduler.add_job(
         run_sprint_kickoff,
-        trigger=CronTrigger.from_crontab("0 7 * * 1", timezone=timezone.utc),
+        trigger=CronTrigger.from_crontab("0 7 * * 1", timezone=UTC),
         id=_JOB_ID,
-        name="Sprint Kickoff (Brain, ex–Sprint Kickoff / n8n)",
+        name="Sprint Kickoff (Brain, ex-Sprint Kickoff / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,
     )
-    logger.info("APScheduler job %r registered (07:00 UTC Mondays, matches n8n expression)", _JOB_ID)
+    logger.info(
+        "APScheduler job %r registered (07:00 UTC Mondays, matches n8n expression)", _JOB_ID
+    )

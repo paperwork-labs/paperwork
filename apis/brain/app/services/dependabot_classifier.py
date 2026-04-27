@@ -14,22 +14,22 @@ FIXMEs and require a Brain episode to document.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Iterable, Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 Decision = Literal["safe", "major", "unknown", "ignore"]
 
 
 DEPENDABOT_LOGINS = frozenset({"dependabot[bot]", "dependabot-preview[bot]"})
 
-# Titles Dependabot ships look like:
-#   "chore(deps): bump lodash from 4.17.20 to 4.17.21"
-#   "chore(deps-dev): bump typescript from 5.9.3 to 6.0.3"
-#   "chore(deps): update google-cloud-storage requirement from >=2.18.0 to >=3.10.1 in /apis/filefree"
-#   "chore(deps): bump actions/github-script from 7 to 9"
+# Title patterns: semver from/to bumps, requirement pin updates, major jumps (e.g. actions).
 _SEMVER_FROM_TO_RE = re.compile(
     r"from\s+>?=?\s*(?P<from>\d+(?:\.\d+){0,2})\s+to\s+>?=?\s*(?P<to>\d+(?:\.\d+){0,2})",
     re.IGNORECASE,
@@ -47,6 +47,7 @@ class Classification:
 
 def _compare_semver(a: str, b: str) -> Literal["patch", "minor", "major", "unknown"]:
     """Return the semver "distance" between two version strings."""
+
     def split(v: str) -> tuple[int, int, int]:
         parts = v.split(".")
         nums = [int(p) for p in parts if p.isdigit()]
@@ -92,7 +93,7 @@ def classify_pr(
     # for grouped PRs too; we treat the group's outer label the same way the
     # old workflow did.
     norm = (dependabot_update_type or "").strip().lower()
-    if norm.endswith("semver-patch") or norm.endswith("semver-minor"):
+    if norm.endswith(("semver-patch", "semver-minor")):
         return Classification(
             decision="safe",
             reason=f"dependabot metadata: {norm}",

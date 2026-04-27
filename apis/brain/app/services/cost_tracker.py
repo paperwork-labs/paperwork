@@ -22,6 +22,7 @@ waiting on a response. We log loudly so an operator notices.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,8 +41,7 @@ class CostCeilingExceeded(Exception):
         self.spent_usd = spent_usd
         self.ceiling_usd = ceiling_usd
         super().__init__(
-            f"{persona} exceeded daily ceiling: "
-            f"${spent_usd:.2f} of ${ceiling_usd:.2f}"
+            f"{persona} exceeded daily ceiling: ${spent_usd:.2f} of ${ceiling_usd:.2f}"
         )
 
 
@@ -65,7 +65,8 @@ async def check_ceiling(
     if redis_client is None:
         logger.warning(
             "cost_tracker: redis unavailable, failing open for persona=%s org=%s",
-            persona, organization_id,
+            persona,
+            organization_id,
         )
         return 0.0
     try:
@@ -73,7 +74,8 @@ async def check_ceiling(
     except Exception:
         logger.warning(
             "cost_tracker: redis GET failed, failing open for persona=%s org=%s",
-            persona, organization_id,
+            persona,
+            organization_id,
             exc_info=True,
         )
         return 0.0
@@ -105,9 +107,10 @@ async def record_spend(
         return 0.0
     if redis_client is None:
         logger.info(
-            "cost_tracker: redis unavailable, skipping spend record "
-            "persona=%s org=%s amount=$%.4f",
-            persona, organization_id, amount_usd,
+            "cost_tracker: redis unavailable, skipping spend record persona=%s org=%s amount=$%.4f",
+            persona,
+            organization_id,
+            amount_usd,
         )
         return 0.0
     key = _key(organization_id, persona)
@@ -125,7 +128,8 @@ async def record_spend(
     except Exception:
         logger.warning(
             "cost_tracker: redis INCRBYFLOAT failed persona=%s org=%s",
-            persona, organization_id,
+            persona,
+            organization_id,
             exc_info=True,
         )
         return 0.0

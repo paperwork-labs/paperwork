@@ -1,1 +1,1 @@
-"""FastAPI routers and top-level modules mounted at non-``/api/v1`` paths (internal operator HTTP, webhooks)."""
+"""Internal operator HTTP: FastAPI modules at non-``/api/v1`` paths (e.g. sprints, secrets webhooks)."""

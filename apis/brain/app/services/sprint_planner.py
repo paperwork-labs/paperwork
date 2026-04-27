@@ -14,8 +14,10 @@ from __future__ import annotations
 import hashlib
 import logging
 from collections import defaultdict, deque
+from typing import TYPE_CHECKING
 
-from app.schemas.agent_tasks import AgentTaskSpec
+if TYPE_CHECKING:
+    from app.schemas.agent_tasks import AgentTaskSpec
 
 logger = logging.getLogger(__name__)
 
@@ -153,9 +155,7 @@ def select_sprint_bucket(
                 return False
         if len(picked) >= max_tasks:
             return False
-        if used_minutes + t.estimated_minutes > day_cap_minutes:
-            return False
-        return True
+        return not used_minutes + t.estimated_minutes > day_cap_minutes
 
     # Multi-pass: try tasks in topo order; prefer low path overlap with picked set
     remaining = [by_id[i] for i in order]

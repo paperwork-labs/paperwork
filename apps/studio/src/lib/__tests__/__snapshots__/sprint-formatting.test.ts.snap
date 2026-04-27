@@ -1,0 +1,24 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildTracker shipped follow-ups > reclassifies pending work to deferred / keeps dropped 1`] = `
+[
+  "shipped",
+  "deferred",
+  "deferred",
+  "dropped",
+]
+`;
+
+exports[`normalizeSprintSource > normalizes whitespace, tables, and odd code fences 1`] = `
+"Intro line
+
+| col | val |
+
+|---|---|
+
+| a | b |
+
+\`\`\`ts
+const x = 1
+\`\`\`"
+`;

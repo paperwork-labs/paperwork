@@ -78,14 +78,14 @@ async def record_secret_event(
             category="secrets",
             metadata={"secret_name": payload.secret_name, "event_type": payload.event_type},
         )
-        out = await try_queue_agent_task(spec)
-        if isinstance(out, UUID):
-            task_id = out
+        queued = await try_queue_agent_task(spec)
+        if isinstance(queued, UUID):
+            task_id = queued
 
-    out: dict[str, Any] = {"ok": True, "episode_id": str(row.id)}
+    body: dict[str, Any] = {"ok": True, "episode_id": str(row.id)}
     if task_id is not None:
-        out["task_id"] = str(task_id)
-    return out
+        body["task_id"] = str(task_id)
+    return body
 
 
 @router.get("/registry")

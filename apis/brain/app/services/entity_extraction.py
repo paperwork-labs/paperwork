@@ -230,4 +230,3 @@ async def link_entity_to_episode(
     Note: Requires episode_entities junction table (add in migration).
     For now, store in episode metadata.
     """
-    pass

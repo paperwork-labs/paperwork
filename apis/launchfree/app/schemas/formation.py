@@ -1,12 +1,12 @@
 """medallion: ops"""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class FormationStatus(str, Enum):
+class FormationStatus(StrEnum):
     DRAFT = "draft"
     DOCUMENTS_READY = "documents_ready"
     SUBMITTING = "submitting"
@@ -15,7 +15,7 @@ class FormationStatus(str, Enum):
     FAILED = "failed"
 
 
-class FilingTier(str, Enum):
+class FilingTier(StrEnum):
     API = "api"
     PORTAL = "portal"
     MAIL = "mail"

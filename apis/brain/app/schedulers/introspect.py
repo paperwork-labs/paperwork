@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.schedulers.n8n_mirror import N8N_MIRROR_SPECS
@@ -23,8 +23,10 @@ _CUTOVER_JOB_IDS: frozenset[str] = frozenset(
     }
 )
 
-# Operational (non–n8n-replacement) gated automation.
-_OPERATIONAL_JOB_IDS: frozenset[str] = frozenset({"sprint_auto_logger", "brain_agent_sprint_planner"})
+# Operational (non-n8n-replacement) gated automation.
+_OPERATIONAL_JOB_IDS: frozenset[str] = frozenset(
+    {"sprint_auto_logger", "brain_agent_sprint_planner"}
+)
 
 _N8N_SHADOW_IDS: frozenset[str] = frozenset(s.job_id for s in N8N_MIRROR_SPECS)
 
@@ -53,12 +55,9 @@ def list_apscheduler_jobs() -> list[dict[str, Any]]:
         job_id = job.id
         nxt: datetime | None = job.next_run_time
         if nxt is not None and nxt.tzinfo is None:
-            nxt = nxt.replace(tzinfo=timezone.utc)
+            nxt = nxt.replace(tzinfo=UTC)
         next_str: str | None
-        if nxt is not None:
-            next_str = nxt.astimezone(timezone.utc).isoformat()
-        else:
-            next_str = None
+        next_str = nxt.astimezone(UTC).isoformat() if nxt is not None else None
         trig = job.trigger
         try:
             trigger_str = str(trig)

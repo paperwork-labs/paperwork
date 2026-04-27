@@ -19,15 +19,15 @@ Safety:
 from __future__ import annotations
 
 import logging
-from datetime import timezone
+from datetime import UTC
 from typing import Any
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
-from app.schedulers import apscheduler_db, n8n_mirror
 from app.database import async_session_factory
+from app.schedulers import apscheduler_db, n8n_mirror
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import sweep_open_prs
 
@@ -70,7 +70,9 @@ async def _run_pr_sweep() -> None:
                     len(triage_report.get("rebase", [])),
                 )
             else:
-                logger.warning("pr_sweep triage: %s", triage_report.get("error", triage_report.get("skipped")))
+                logger.warning(
+                    "pr_sweep triage: %s", triage_report.get("error", triage_report.get("skipped"))
+                )
         except Exception:
             logger.exception("pr_sweep triage raised — will retry next interval")
 
@@ -109,7 +111,7 @@ def start_scheduler() -> AsyncIOScheduler | None:
     sched = AsyncIOScheduler(jobstores=jobstores, timezone="UTC")
     sched.add_job(
         _run_pr_sweep,
-        trigger=IntervalTrigger(minutes=minutes, timezone=timezone.utc),
+        trigger=IntervalTrigger(minutes=minutes, timezone=UTC),
         id="pr_sweep",
         name="Brain PR sweep",
         max_instances=1,

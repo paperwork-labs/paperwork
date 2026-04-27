@@ -1,10 +1,95 @@
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "tests_lint"]
 
 [tool.ruff]
 target-version = "py311"
-line-length = 120
+line-length = 100
+extend-exclude = ["alembic"]
 
 [tool.ruff.lint]
-extend-select = ["DTZ"]
+select = [
+  "E",
+  "F",
+  "I",
+  "B",
+  "UP",
+  "DTZ",
+  "SIM",
+  "RUF",
+  "ARG",
+  "PIE",
+  "TCH",
+  "PTH",
+  "C4",
+  "ISC",
+  "Q",
+  "A",
+  "T20",
+  "ERA",
+]
+# PTH: large os.path surface in tools/ingestion; migration to pathlib is a follow-up (not behavior).
+ignore = ["PTH"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/models/scheduler_run.py" = ["TC003"]  # SQLAlchemy resolves Mapped[datetime] at class body time
+"app/routers/**" = ["B008", "ARG001"]
+"app/dependencies.py" = ["B008"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
+implicit_reexport = true
+ignore_missing_imports = true
+exclude = ["alembic", "alembic/.*"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "conftest"
+disallow_untyped_defs = false
+
+# JSONB and legacy ORM fields: full generic args are a follow-up to JSON TypedDicts.
+[[tool.mypy.overrides]]
+module = "app.models.*"
+disallow_any_generics = false
+
+# Medallion 0.D: suppress legacy noise until per-module cleanup (do not add new code here).
+[[tool.mypy.overrides]]
+module = [
+  "app.main",
+  "app.mcp_server",
+  "app.models.episode",
+  "app.personas.registry",
+  "app.redis",
+  "app.routers.admin",
+  "app.routers.brain",
+  "app.routers.health",
+  "app.schedulers.cfo_friday_digest",
+  "app.schedulers.cost_dashboard",
+  "app.schedulers.data_deep_validator",
+  "app.schedulers.proactive_cadence",
+  "app.schedulers.qa_weekly_report",
+  "app.schedulers.sprint_auto_logger",
+  "app.services.agent",
+  "app.services.continuous_learning",
+  "app.services.embeddings",
+  "app.services.entity_extraction",
+  "app.services.idempotency",
+  "app.services.llm",
+  "app.services.memory",
+  "app.services.observability",
+  "app.services.router",
+  "app.services.tracker_slash",
+  "app.tools.github",
+  "app.tools.memory_tools",
+  "app.tools.vault",
+]
+ignore_errors = true

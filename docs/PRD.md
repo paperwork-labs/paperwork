@@ -836,7 +836,7 @@ If FileFree is acquired: remove the optional Clerk / venture link columns (`cler
 
 **Portfolio SSO (target — Clerk satellite topology):**
 
-- **Primary Clerk host:** `accounts.paperworklabs.com` — Frontend API + embedded sign-in/sign-up (`apps/accounts/`, Track H4). See [`docs/infra/CLERK_SATELLITE_TOPOLOGY.md`](../docs/infra/CLERK_SATELLITE_TOPOLOGY.md).
+- **Primary Clerk host:** `accounts.paperworklabs.com` — Frontend API + **Clerk-hosted Account Portal** (sign-in / sign-up / account UI); ~~custom `apps/accounts` (Track H4)~~ **superseded** per [`docs/KNOWLEDGE.md`](../docs/KNOWLEDGE.md) §D91. See [`docs/infra/CLERK_SATELLITE_TOPOLOGY.md`](../docs/infra/CLERK_SATELLITE_TOPOLOGY.md).
 - **Satellites:** `filefree.ai`, `launchfree.ai`, `distill.tax`, `tools.filefree.ai` (Trinkets), the public AxiomFolio Next.js hostname, and Studio on `paperworklabs.com` share one **production** Clerk instance; each satellite domain is registered in the Clerk Dashboard and configured in app code (`isSatellite`, `NEXT_PUBLIC_CLERK_DOMAIN`, primary `signInUrl` / `signUpUrl` pointing at `accounts.paperworklabs.com`).
 - **Cross-brand behavior:** Apex brand domains sync sessions with the primary via Clerk’s satellite handoff (not a single shared cookie across unrelated domains). `paperworklabs.com` subdomains follow Clerk’s normal cross-subdomain session rules once DNS and allowlists are set.
 - **Venture layer:** Per-product databases and Studio venture tables (above) remain the data model for cross-product intelligence; **Clerk userId (the only cross-product link; per-product user tables remain separable-by-design)** is the identity anchor—Clerk supplies the shared interactive login layer on top.

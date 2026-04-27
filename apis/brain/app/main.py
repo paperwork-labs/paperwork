@@ -13,12 +13,12 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.api.agent_sprints import router as agent_sprints_router
 from app.config import settings
 from app.database import async_session_factory, engine
 from app.mcp_server import create_mcp_app
 from app.rate_limit import limiter
 from app.redis import close_redis, get_redis, init_redis
-from app.api.agent_sprints import router as agent_sprints_router
 from app.api.secrets import router as internal_secrets_router
 from app.routers import admin, admin_learning, brain, health, webhooks
 from app.schedulers import shutdown_scheduler, start_scheduler
@@ -119,11 +119,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     FastMCP requires its lifespan to run for the StreamableHTTP session manager
     to initialize. We nest our app lifespan inside the MCP lifespan per FastMCP docs.
     """
-    async with _app_lifespan(_app):
-        async with mcp_application.lifespan(_app):
-            logger.info("FastMCP lifespan started — session manager initialized")
-            yield
-            logger.info("FastMCP lifespan ending")
+    async with _app_lifespan(_app), mcp_application.lifespan(_app):
+        logger.info("FastMCP lifespan started — session manager initialized")
+        yield
+        logger.info("FastMCP lifespan ending")
 
 
 app = FastAPI(
@@ -156,7 +155,13 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Correlation-ID", "X-Brain-Secret"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-CSRF-Token",
+        "X-Correlation-ID",
+        "X-Brain-Secret",
+    ],
 )
 
 app.add_exception_handler(AppException, app_exception_handler)  # type: ignore[arg-type]

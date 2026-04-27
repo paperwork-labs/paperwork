@@ -1,7 +1,7 @@
 """Tests for API layer: /snapshots/table, /snapshots/aggregates, /quad, /regime."""
 
 import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from fastapi.testclient import TestClient
 
 from app.api.main import app
@@ -367,7 +367,7 @@ def test_quad_current_returns_state():
     app.dependency_overrides[get_market_data_viewer] = _viewer_override
 
     quad = MarketQuad()
-    quad.as_of_date = datetime(2026, 4, 1)
+    quad.as_of_date = datetime(2026, 4, 1, tzinfo=UTC)
     quad.quarterly_quad = "Q1"
     quad.monthly_quad = "Q2"
     quad.operative_quad = "Q2"
@@ -411,7 +411,7 @@ def test_quad_history_returns_rows():
     app.dependency_overrides[get_market_data_viewer] = _viewer_override
 
     q1 = MarketQuad()
-    q1.as_of_date = datetime(2026, 3, 15)
+    q1.as_of_date = datetime(2026, 3, 15, tzinfo=UTC)
     q1.quarterly_quad = "Q1"
     q1.monthly_quad = "Q1"
     q1.operative_quad = "Q1"
@@ -442,7 +442,7 @@ def test_regime_current_includes_weights():
     from app.services.silver.regime import regime_engine
 
     regime = MarketRegime()
-    regime.as_of_date = datetime(2026, 4, 1)
+    regime.as_of_date = datetime(2026, 4, 1, tzinfo=UTC)
     regime.regime_state = "R1"
     regime.composite_score = 1.5
     regime.vix_spot = 14.0
