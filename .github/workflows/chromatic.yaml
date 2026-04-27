@@ -30,9 +30,7 @@ jobs:
   chromatic:
     name: Chromatic
     runs-on: ubuntu-latest
-    # Skip when the secret is missing (forks, pre-onboarding state).
-    # secrets context is available in job-level `if` for jobs in this workflow.
-    if: ${{ secrets.CHROMATIC_PROJECT_TOKEN != '' }}
+    # Do not use `if: secrets.*` (invalid in workflow schema); Chromatic no-ops when token missing.
     env:
       # 4 GiB headroom for the Storybook build on 30+ stories with theme variants.
       NODE_OPTIONS: --max-old-space-size=4096
