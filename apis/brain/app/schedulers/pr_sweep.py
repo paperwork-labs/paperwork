@@ -183,6 +183,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install sprint_kickoff job")
 
     try:
+        from app.schedulers import sprint_close
+
+        sprint_close.install(sched)
+    except Exception:
+        logger.exception("Failed to install sprint_close job")
+
+    try:
         from app.schedulers import sprint_auto_logger
 
         sprint_auto_logger.install(sched)
