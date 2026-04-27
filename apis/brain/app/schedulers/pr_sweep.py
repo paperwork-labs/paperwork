@@ -260,6 +260,20 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install infra_health job")
 
     try:
+        from app.schedulers import data_source_monitor
+
+        data_source_monitor.install(sched)
+    except Exception:
+        logger.exception("Failed to install data_source_monitor job")
+
+    try:
+        from app.schedulers import data_deep_validator
+
+        data_deep_validator.install(sched)
+    except Exception:
+        logger.exception("Failed to install data_deep_validator job")
+
+    try:
         n8n_mirror.install(sched)
     except Exception:
         logger.exception("Failed to install n8n_mirror shadow jobs")
