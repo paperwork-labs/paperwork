@@ -1,0 +1,158 @@
+{
+  "generated": "2026-04-27T06:19:30.550Z",
+  "sourceFile": "docs/infra/FOUNDER_ACTIONS.md",
+  "tiers": [
+    {
+      "id": "critical",
+      "label": "Pending — Critical",
+      "items": [
+        {
+          "title": "F-1 — AxiomFolio Render services repoint to monorepo",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/RENDER_REPOINT.md",
+          "why": "`axiomfolio-api`, workers, and static frontend still deploy from `paperwork-labs/axiomfolio`; `apis/axiomfolio/` changes on `main` do not ship to production.",
+          "where": "[Render Blueprints + dashboard](https://dashboard.render.com) — Path B in runbook.",
+          "steps": [
+            "1. Confirm `main` is green: `gh run list --branch main --limit 3`.",
+            "2. Follow **Path B** in `docs/infra/RENDER_REPOINT.md` (New Blueprint → `paperwork-labs/paperwork` → associate existing `axiomfolio-*` services).",
+            "3. Wait for deploys; run health checks from the runbook **Verification** section.",
+            "4. Tick F-1 in `docs/infra/RENDER_INVENTORY.md` when all `repo` fields show the monorepo.",
+            "5. After 24h green, archive the old repo per runbook (optional but recommended)."
+          ],
+          "verification": "`curl` health URLs in `RENDER_REPOINT.md`; Studio → **Admin → Infrastructure** shows services healthy; Render UI shows `paperwork-labs/paperwork` for all four services.",
+          "source": "[RENDER_REPOINT Path B](docs/infra/RENDER_REPOINT.md), [RENDER_INVENTORY F-1](docs/infra/RENDER_INVENTORY.md); PRs touching medallion / port batch",
+          "eta": "~30–45 min"
+        },
+        {
+          "title": "`design.paperworklabs.com` — Vercel project + domain + auto-promote matrix",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/pull/256",
+          "why": "The design Storybook canvas does not have a first-class production host until the Vercel project exists, the GitHub promote workflow has a real project id, and DNS points at Vercel.",
+          "where": "[Vercel — Paperwork Labs team](https://vercel.com/paperwork-labs), Cloudflare DNS for `paperworklabs.com` zone, `.github/workflows/vercel-promote-on-merge.yaml`.",
+          "steps": [
+            "1. Vercel → New Project → import `paperwork-labs/paperwork`, root `apps/design`, production branch `main` (see `apps/design/vercel.json` if present).",
+            "2. Copy Project ID (`prj_…`) and replace the `TBD_CREATE_BEFORE_MERGE` placeholder for the `design` row in `vercel-promote-on-merge.yaml` and the tracked table in `docs/infra/VERCEL_AUTO_PROMOTE.md`.",
+            "3. Vercel project → Domains → add `design.paperworklabs.com`.",
+            "4. In Cloudflare, add the CNAME Vercel shows; **disable proxy** (DNS only) for clean TLS issuance."
+          ],
+          "verification": "`https://design.paperworklabs.com` serves Storybook static build; merge to `main` updates production (or PR comment on promote workflow shows success).",
+          "source": "PR #256",
+          "eta": "~25 min"
+        }
+      ]
+    },
+    {
+      "id": "operational",
+      "label": "Pending — Operational",
+      "items": [
+        {
+          "title": "GitHub `CHROMATIC_PROJECT_TOKEN` + Chromatic project wiring",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/pull/255",
+          "why": "Visual regression CI for `apps/design` / shared packages is a no-op until the token exists and `chromatic.config.json` has a real `projectId`.",
+          "where": "[Chromatic](https://www.chromatic.com) (GitHub sign-in) → [GitHub repo → Settings → Secrets → Actions](https://github.com/paperwork-labs/paperwork/settings/secrets/actions)",
+          "steps": [
+            "1. Create Chromatic project for this repo’s Storybook; copy project token and id.",
+            "2. Add repo secret `CHROMATIC_PROJECT_TOKEN`.",
+            "3. Set `projectId` in `apps/design/chromatic.config.json` to match Chromatic.",
+            "4. Push a change under `apps/design/**` or `packages/**/src/**` (or run Chromatic locally) to baseline."
+          ],
+          "verification": "Chromatic check passes on a PR; dashboard shows a build/baseline.",
+          "source": "PR #255 (add docs/infra/CHROMATIC_VRT.md in-repo when the Chromatic runbook ships)",
+          "eta": "~20 min"
+        },
+        {
+          "title": "`GITHUB_WEBHOOK_SECRET` on `brain-api` (Render) + GitHub repo webhook",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/DEPENDABOT.md",
+          "why": "Brain’s `POST` webhook handler HMAC-verifies with `GITHUB_WEBHOOK_SECRET`. An unset or mismatched value breaks Dependabot/PR automation from GitHub. The repo must deliver webhooks to Brain’s URL with the same secret.",
+          "where": "[Render `brain-api` environment](https://dashboard.render.com), [GitHub repo → Settings → Webhooks](https://github.com/paperwork-labs/paperwork/settings/hooks) (or org-level; follow internal convention).",
+          "steps": [
+            "1. **Generate** a strong shared secret; store in 1Password / vault.",
+            "2. Set `GITHUB_WEBHOOK_SECRET` on Render `brain-api` (declared in `render.yaml` with `sync: false` — value must be pasted in dashboard). **`[VERIFY]`** whether production already has a value; compare with GitHub hook configuration.",
+            "3. Ensure GitHub sends `pull_request` (and other required events per `docs/DEPENDABOT.md`) to `https://brain.paperworklabs.com/api/v1/webhooks/github` (path prefix may differ — confirm in `apis/brain/app/routers/webhooks.py`).",
+            "4. Redeliver a test event from GitHub and confirm Brain logs 2xx."
+          ],
+          "verification": "GitHub “Recent Deliveries” green; `POST` does not 401/403; Brain automation processes a test Dependabot or PR event.",
+          "source": "[DEPENDABOT.md](docs/DEPENDABOT.md) (webhook flow), [RENDER_INVENTORY F-5](docs/infra/RENDER_INVENTORY.md)",
+          "eta": "~15 min"
+        },
+        {
+          "title": "Remove duplicate `VERCEL_TOKEN` on Render after `VERCEL_API_TOKEN` cutover",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/RENDER_INVENTORY.md",
+          "why": "Brain reads `VERCEL_API_TOKEN` (with legacy `VERCEL_TOKEN` alias). Leaving both forever invites confusion and rotation mistakes.",
+          "where": "Render `brain-api` → Environment; see F-3 in `docs/infra/RENDER_INVENTORY.md`.",
+          "steps": [
+            "1. Confirm only `VERCEL_API_TOKEN` is required in code and workflows (`VERCEL_AUTO_PROMOTE.md`).",
+            "2. **`[VERIFY]`** live service has no dependency on the legacy key name; then delete `VERCEL_TOKEN` from Render if still present."
+          ],
+          "verification": "Brain infra tools / Studio infra probes still work; no env errors in logs.",
+          "source": "PR #213, F-3 in `docs/infra/RENDER_INVENTORY.md`",
+          "eta": "~5 min (after verify)"
+        },
+        {
+          "title": "n8n shadow workflows — disable originals after Brain cutover",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/BRAIN_SCHEDULER.md",
+          "why": "Retired n8n JSONs were moved to `infra/hetzner/workflows/retired/`; if the live n8n instance still runs them, you get duplicate Slack posts and duplicate triggers versus Brain.",
+          "where": "[n8n editor](https://n8n.paperworklabs.com) — Hetzner-hosted workflows.",
+          "steps": [
+            "1. For each row in `infra/hetzner/workflows/retired/RETIRED.md`, confirm the corresponding workflow is **inactive** in n8n.",
+            "2. For `brain-pr-summary`, consider removing a GitHub → n8n webhook if it only supported that flow (see PR #216 body)."
+          ],
+          "verification": "No duplicate posts in target Slack channels; n8n execution history clean for those flows.",
+          "source": "PR #216, `docs/infra/BRAIN_SCHEDULER.md`",
+          "eta": "~20 min"
+        },
+        {
+          "title": "`BRAIN_OWNS_*` env flips on Render (`brain-api`) for n8n → Brain cron cutover",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/BRAIN_SCHEDULER.md",
+          "why": "Until each flag is `true`, first-party jobs stay off and n8n (or shadow mirrors) remain authoritative for that schedule.",
+          "where": "Render `brain-api` environment variables; full matrix in `docs/infra/BRAIN_SCHEDULER.md`.",
+          "steps": [
+            "1. One flag at a time, enable e.g. `BRAIN_OWNS_DAILY_BRIEFING=true` after shadow validation.",
+            "2. Watch `#engineering` / `#engineering-cron-shadow` and Brain logs; confirm no duplicate user-facing posts.",
+            "3. Repeat for: `BRAIN_OWNS_BRAIN_WEEKLY`, `BRAIN_OWNS_WEEKLY_STRATEGY`, `BRAIN_OWNS_SPRINT_KICKOFF`, `BRAIN_OWNS_INFRA_HEARTBEAT`, `BRAIN_OWNS_CREDENTIAL_EXPIRY`, `BRAIN_OWNS_INFRA_HEALTH`.",
+            "4. **Optional (operational):** `BRAIN_OWNS_SPRINT_AUTO_LOGGER=true` only after GitHub bot-PR path is accepted."
+          ],
+          "verification": "`GET /api/v1/admin/scheduler/n8n-mirror/status` (with `X-Brain-Secret`); job rows in `apscheduler_jobs` as expected.",
+          "source": "PR #245, `docs/infra/BRAIN_SCHEDULER.md`, `apis/brain/app/schedulers/n8n_mirror.py`",
+          "eta": "~60+ min (spread across days; not one sitting)"
+        }
+      ]
+    },
+    {
+      "id": "branding",
+      "label": "Pending — Branding",
+      "items": [
+        {
+          "title": "Clerk “Powered by Clerk” / Pro branding on dev — `[VERIFY]`",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/CLERK_STUDIO.md",
+          "why": "On Hobby, some Clerk surfaces show vendor branding; product Standard is to minimize Clerk chrome for customer-facing UIs. PR #234 shipped shared `@paperwork-labs/auth-clerk` appearance defaults; long-term, Clerk Pro or Dashboard settings may be required for full control.",
+          "where": "[Clerk Dashboard](https://dashboard.clerk.com) for each app instance; per-app Vercel env for appearance-related overrides if any.",
+          "steps": [],
+          "verification": "Sign-in on each public app: branding matches brand guidelines; no unexpected Clerk footer.",
+          "source": "PR #234, [CLERK_STUDIO.md](docs/infra/CLERK_STUDIO.md) (sibling `docs/infra/CLERK_*.md` runbooks)",
+          "eta": "~30 min (research) + any Clerk plan upgrade (business decision)"
+        },
+        {
+          "title": "DNS + Dashboard for Clerk satellite topology (`accounts.paperworklabs.com`) — `[VERIFY]`",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/CLERK_SATELLITE_TOPOLOGY.md",
+          "why": "If/when the org enables **satellite domains** with `accounts.paperworklabs.com` as the Clerk primary host, DNS and Dashboard work must match `CLERK_SATELLITE_TOPOLOGY.md`. Embedded-only auth (per PR #210) **reduced** reliance on `accounts.*` for basic login, but the satellite program still needs this when you pursue Track H4.",
+          "where": "Cloudflare (or DNS host) for `paperworklabs.com` and each brand zone; [Clerk Dashboard](https://dashboard.clerk.com) → Domains.",
+          "steps": [],
+          "verification": "`dig` checks in runbook; Clerk shows **Verified**; end-to-end sign-in across a pilot satellite.",
+          "source": "[CLERK_SATELLITE_TOPOLOGY.md](docs/infra/CLERK_SATELLITE_TOPOLOGY.md), PR #219, PR #210",
+          "eta": "1–2 h (if executed)"
+        }
+      ]
+    }
+  ],
+  "resolved": [
+    "2026-04-25: F-6 — `brain-api` Docker build context directory cleared; monorepo images build and deploy. Source: [RENDER_INVENTORY F-6](docs/infra/RENDER_INVENTORY.md), PR #142 area / `RENDER_REPOINT` Path A.",
+    "2026-04-25: F-2 — `launchfree-api` decision documented (commented in `render.yaml`). Source: `docs/infra/RENDER_INVENTORY.md` F-2.",
+    "2026-04-25: F-4 — Single `render.yaml` at repo root. Source: `docs/infra/RENDER_INVENTORY.md` F-4.",
+    "2026-04-26: Code and docs use canonical `VERCEL_API_TOKEN` with legacy env alias in Brain for cutover. Source: PR #213, F-3 partial (pending removal of duplicate Render key — see Pending §Operational)."
+  ],
+  "counts": {
+    "critical": 2,
+    "operational": 5,
+    "branding": 2,
+    "totalPending": 9
+  }
+}
