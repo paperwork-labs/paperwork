@@ -135,7 +135,7 @@ that will act on a `apps/design`-only PR.)
 | Workflow logs `Vercel project for design not yet created. Skipping promote.` | `project_id: TBD_CREATE_BEFORE_MERGE` placeholder still in the matrix. | Founder step 2 above — replace with real `prj_…` and merge. |
 | Workflow logs `VERCEL_API_TOKEN secret is not set — skipping promote.` | Repo-wide `VERCEL_API_TOKEN` missing. | `gh secret set VERCEL_API_TOKEN` (one secret covers all matrix rows; see `VERCEL_AUTO_PROMOTE.md` §1-time setup). |
 | `No preview found for design — Vercel skipped this build` | Vercel did not start a build for the merge commit (path filter, ignoreCommand, Hobby rate limit, or Vercel project not yet created). | Check Vercel dashboard for the SHA. If missing, push a `apps/design/.deploy-trigger` bump and re-merge. |
-| Storybook build fails on Storybook 8 + React 19 compat | Known compatibility window (mid-2026). | Pin React to 18 in `apps/design/package.json` (`react@18.x`, `react-dom@18.x`) until upstream Storybook ships full React 19 support. Note this in PR. |
+| Storybook build fails on Storybook 8 + React 19 compat | Known compatibility window (mid-2026). | Pin React to 18 in the `@paperwork-labs/design` workspace (`react@18.x`, `react-dom@18.x`) until upstream Storybook ships full React 19 support. Note this in PR. |
 | DNS still pending after 1h | Cloudflare proxy still on, or TLD slow to propagate. | Confirm orange cloud is **off**; wait up to 24h on rare TLDs (this one is `.com`, should be < 30 min). |
 | Vercel Hobby `Deployment rate limited — retry in 24 hours` on commit | Multiple matrix projects all building from the same merge commit. | Wait. The promote workflow is idempotent and will pick up the build when it lands. See `VERCEL_AUTO_PROMOTE.md` § Cost. |
 

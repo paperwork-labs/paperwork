@@ -184,6 +184,13 @@ docs:
     tags: [design, chromatic, ci, storybook]
     owners: [infra-ops, ux-lead]
     category: runbooks
+  - slug: design-canvas-deploy
+    path: docs/infra/DESIGN_CANVAS_DEPLOY.md
+    title: Design Canvas (Storybook) deploy
+    summary: "Vercel + DNS runbook for hosting Storybook at design.paperworklabs.com."
+    tags: [vercel, dns, storybook, design]
+    owners: [infra-ops]
+    category: runbooks
   - slug: clerk-satellite-topology
     path: docs/infra/CLERK_SATELLITE_TOPOLOGY.md
     title: Clerk multi-domain satellite topology
