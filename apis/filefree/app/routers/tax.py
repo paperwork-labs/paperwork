@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -17,9 +19,7 @@ from app.utils.exceptions import ConflictError, NotFoundError, ValidationError
 router = APIRouter(prefix="/tax", tags=["tax"])
 
 
-def _parse_uuid(filing_id: str):
-    from uuid import UUID
-
+def _parse_uuid(filing_id: str) -> UUID:
     try:
         return UUID(filing_id)
     except ValueError as err:
@@ -34,7 +34,7 @@ async def calculate(
     user: User = Depends(get_current_user),
     _csrf: None = Depends(require_csrf),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     fid = _parse_uuid(filing_id)
     repo = FilingRepository(db)
     filing = await repo.get_by_id_with_relations(fid)
@@ -105,7 +105,7 @@ async def get_calculation(
     filing_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     fid = _parse_uuid(filing_id)
     repo = FilingRepository(db)
     filing = await repo.get_by_id_with_relations(fid)

@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Request, UploadFile
+from fastapi.responses import JSONResponse
 
 from app.config import settings
 from app.rate_limit import limiter
@@ -26,7 +27,7 @@ DEMO_RATE_LIMIT = "3/day" if settings.ENVIRONMENT == "production" else "1000/day
 
 @router.post("/demo-upload")
 @limiter.limit(DEMO_RATE_LIMIT)
-async def demo_upload(request: Request, file: UploadFile):
+async def demo_upload(request: Request, file: UploadFile) -> JSONResponse:
     """Anonymous W-2 extraction — no auth, no storage, rate limited.
 
     This is the try-before-signup endpoint. Image is processed in memory

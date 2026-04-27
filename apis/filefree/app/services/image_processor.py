@@ -16,9 +16,9 @@ MIN_DIMENSION = 640
 
 def preprocess_image(image_bytes: bytes) -> bytes:
     """Prepare an image for OCR: rotate per EXIF, normalize contrast, resize."""
-    img = Image.open(io.BytesIO(image_bytes))
-
-    img = ImageOps.exif_transpose(img) or img
+    base = Image.open(io.BytesIO(image_bytes))
+    exif = ImageOps.exif_transpose(base)
+    img: Image.Image = exif if exif is not None else base
 
     if img.mode != "RGB":
         img = img.convert("RGB")
@@ -27,12 +27,13 @@ def preprocess_image(image_bytes: bytes) -> bytes:
     img = enhancer.enhance(1.3)
 
     w, h = img.size
+    resample = Image.Resampling.LANCZOS
     if max(w, h) > MAX_DIMENSION:
         scale = MAX_DIMENSION / max(w, h)
-        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+        img = img.resize((int(w * scale), int(h * scale)), resample)
     elif max(w, h) < MIN_DIMENSION:
         scale = MIN_DIMENSION / max(w, h)
-        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+        img = img.resize((int(w * scale), int(h * scale)), resample)
 
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=92)

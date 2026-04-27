@@ -9,7 +9,7 @@ from app.utils.exceptions import ForbiddenError, UnauthorizedError
 
 
 async def get_current_user(
-    request: Request,
+    _request: Request,
     db: AsyncSession = Depends(get_db),
     session_token: str | None = Cookie(None, alias="session"),
 ) -> User:
@@ -22,7 +22,7 @@ async def get_current_user(
 
 
 async def require_csrf(
-    request: Request,
+    _request: Request,
     x_csrf_token: str | None = Header(None, alias="X-CSRF-Token"),
     session_token: str | None = Cookie(None, alias="session"),
 ) -> None:

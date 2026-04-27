@@ -9,6 +9,7 @@ medallion: ops
 import time
 from dataclasses import dataclass
 from functools import partial
+from typing import Any
 
 import anyio
 import httpx
@@ -19,7 +20,7 @@ from jose import jwt as jose_jwt
 from app.config import settings
 from app.utils.exceptions import AppException, UnauthorizedError
 
-_apple_jwks_cache: dict | None = None
+_apple_jwks_cache: dict[str, Any] | None = None
 _apple_jwks_fetched_at: float = 0
 APPLE_JWKS_TTL = 3600  # 1 hour
 APPLE_JWKS_TIMEOUT = 10.0  # seconds
@@ -74,7 +75,7 @@ async def verify_google_token(id_token: str) -> OAuthUser:
     )
 
 
-async def _get_apple_jwks() -> dict:
+async def _get_apple_jwks() -> dict[str, Any]:
     """Fetch and cache Apple's public JWKS for token verification."""
     global _apple_jwks_cache, _apple_jwks_fetched_at
 
@@ -92,7 +93,7 @@ async def _get_apple_jwks() -> dict:
         raise AppException("Apple Sign In is temporarily unavailable", status_code=503) from err
 
 
-async def verify_apple_token(id_token: str, user_info: dict | None = None) -> OAuthUser:
+async def verify_apple_token(id_token: str, user_info: dict[str, Any] | None = None) -> OAuthUser:
     """Verify an Apple ID token and extract user info.
 
     Apple's flow: the JS SDK returns an id_token (JWT). User info (name, email)

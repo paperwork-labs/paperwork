@@ -40,9 +40,10 @@ def mock_apple_verify():
         yield m
 
 
+@pytest.mark.usefixtures("mock_google_verify")
 class TestGoogleAuth:
     @pytest.mark.asyncio
-    async def test_google_creates_user(self, client: AsyncClient, mock_google_verify):
+    async def test_google_creates_user(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/google", json={"id_token": "fake-google-token"})
         assert resp.status_code == 200
         data = resp.json()
@@ -55,7 +56,7 @@ class TestGoogleAuth:
         assert "session" in resp.cookies
 
     @pytest.mark.asyncio
-    async def test_google_idempotent(self, client: AsyncClient, mock_google_verify):
+    async def test_google_idempotent(self, client: AsyncClient):
         resp1 = await client.post("/api/v1/auth/google", json={"id_token": "fake-google-token"})
         user_id_1 = resp1.json()["data"]["user"]["id"]
 
@@ -83,9 +84,10 @@ class TestGoogleAuth:
             assert resp.json()["success"] is False
 
 
+@pytest.mark.usefixtures("mock_apple_verify")
 class TestAppleAuth:
     @pytest.mark.asyncio
-    async def test_apple_creates_user(self, client: AsyncClient, mock_apple_verify):
+    async def test_apple_creates_user(self, client: AsyncClient):
         resp = await client.post("/api/v1/auth/apple", json={"id_token": "fake-apple-token"})
         assert resp.status_code == 200
         data = resp.json()
@@ -96,7 +98,7 @@ class TestAppleAuth:
         assert "session" in resp.cookies
 
     @pytest.mark.asyncio
-    async def test_apple_with_user_info(self, client: AsyncClient, mock_apple_verify):
+    async def test_apple_with_user_info(self, client: AsyncClient):
         resp = await client.post(
             "/api/v1/auth/apple",
             json={
@@ -107,7 +109,7 @@ class TestAppleAuth:
         assert resp.status_code == 200
 
     @pytest.mark.asyncio
-    async def test_apple_idempotent(self, client: AsyncClient, mock_apple_verify):
+    async def test_apple_idempotent(self, client: AsyncClient):
         resp1 = await client.post("/api/v1/auth/apple", json={"id_token": "fake-apple-token"})
         user_id_1 = resp1.json()["data"]["user"]["id"]
 
@@ -119,7 +121,8 @@ class TestAppleAuth:
 
 class TestAccountLinking:
     @pytest.mark.asyncio
-    async def test_email_user_can_login_with_google(self, client: AsyncClient, mock_google_verify):
+    @pytest.mark.usefixtures("mock_google_verify")
+    async def test_email_user_can_login_with_google(self, client: AsyncClient):
         """User registers with email, then logs in via Google with same email."""
         reg_resp = await client.post(
             "/api/v1/auth/register",
@@ -141,9 +144,8 @@ class TestAccountLinking:
         assert email_user_id == google_user_id
 
     @pytest.mark.asyncio
-    async def test_google_user_can_login_with_apple_same_email(
-        self, client: AsyncClient, mock_google_verify, mock_apple_verify
-    ):
+    @pytest.mark.usefixtures("mock_google_verify", "mock_apple_verify")
+    async def test_google_user_can_login_with_apple_same_email(self, client: AsyncClient):
         """User signs up with Google, then tries Apple with the same email."""
         mock_apple_same_email = AsyncMock(
             return_value=OAuthUser(

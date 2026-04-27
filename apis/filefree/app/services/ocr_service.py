@@ -7,7 +7,7 @@ import json
 import logging
 import re
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
-from typing import Any
+from typing import Any, cast
 
 import anyio
 from fastapi import HTTPException
@@ -95,10 +95,10 @@ def _mock_extraction() -> W2ExtractionResult:
     )
 
 
-_vision_client = None
+_vision_client: Any = None
 
 
-def _get_vision_client():
+def _get_vision_client() -> Any:
     """Return a cached Cloud Vision client (one per process)."""
     global _vision_client
     if _vision_client is None:
@@ -189,7 +189,7 @@ async def _gpt_mini_map_fields(scrubbed_text: str, blocks: list[dict[str, Any]])
     )
 
     content = response.choices[0].message.content or "{}"
-    return json.loads(content)
+    return cast("dict[str, Any]", json.loads(content))
 
 
 async def _gpt_vision_fallback(image_bytes: bytes) -> dict[str, Any]:
@@ -242,7 +242,7 @@ async def _gpt_vision_fallback(image_bytes: bytes) -> dict[str, Any]:
     )
 
     content = response.choices[0].message.content or "{}"
-    return json.loads(content)
+    return cast("dict[str, Any]", json.loads(content))
 
 
 def _build_result(fields: dict[str, Any], ssn: str, tier: str) -> W2ExtractionResult:

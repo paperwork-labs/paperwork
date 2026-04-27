@@ -5,18 +5,19 @@ medallion: ops
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 TAX_DATA_DIR = Path(__file__).resolve().parent.parent.parent / "tax-data"
 
-_cache: dict[int, dict] = {}
+_cache: dict[int, dict[str, Any]] = {}
 
 
-def _load_tax_data(year: int) -> dict:
+def _load_tax_data(year: int) -> dict[str, Any]:
     if year in _cache:
         return _cache[year]
     path = TAX_DATA_DIR / f"{year}.json"
-    with open(path) as f:
-        data = json.load(f)
+    with path.open(encoding="utf-8") as f:
+        data = cast("dict[str, Any]", json.load(f))
     _cache[year] = data
     return data
 
@@ -26,7 +27,7 @@ def get_standard_deduction(filing_status: str, year: int = 2025) -> int:
     deductions = data["standard_deductions"]
     if filing_status not in deductions:
         raise ValueError(f"Unknown filing status: {filing_status}")
-    return deductions[filing_status]
+    return int(deductions[filing_status])
 
 
 def calculate_federal_tax(taxable_income_cents: int, filing_status: str, year: int = 2025) -> int:
@@ -65,7 +66,7 @@ def calculate_return(
     total_state_withheld_cents: int,
     filing_status: str,
     year: int = 2025,
-) -> dict:
+) -> dict[str, Any]:
     """Calculate complete return. All values in cents."""
     agi = total_wages_cents
     standard_deduction = get_standard_deduction(filing_status, year)

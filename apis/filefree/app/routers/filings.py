@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -34,7 +35,7 @@ async def create_filing(
     user: User = Depends(get_current_user),
     _csrf: None = Depends(require_csrf),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     filing, created = await filing_service.create_filing(db, user.id, data.tax_year)
     status = 201 if created else 200
     return success_response(filing_service.filing_to_response(filing), status)
@@ -47,7 +48,7 @@ async def list_filings(
     tax_year: int | None = None,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     filings = await filing_service.get_user_filings(db, user.id, tax_year)
     return success_response([filing_service.filing_to_response(f) for f in filings])
 
@@ -59,7 +60,7 @@ async def get_filing(
     filing_id: str,
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     filing = await filing_service.get_filing(db, _parse_uuid(filing_id), user.id)
     return success_response(filing_service.filing_to_response(filing))
 
@@ -73,7 +74,7 @@ async def update_filing(
     user: User = Depends(get_current_user),
     _csrf: None = Depends(require_csrf),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     fid = _parse_uuid(filing_id)
 
     if data.filing_status_type:
@@ -97,7 +98,7 @@ async def confirm_data(
     user: User = Depends(get_current_user),
     _csrf: None = Depends(require_csrf),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     filing = await filing_service.advance_status(
         db, _parse_uuid(filing_id), user.id, "data_confirmed"
     )

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import logging
 
 from redis.asyncio import Redis
@@ -6,7 +8,7 @@ from app.config import settings
 
 logger = logging.getLogger(__name__)
 
-_redis_pool: Redis | None = None
+_redis_pool: Redis[str] | None = None
 
 
 async def init_redis() -> None:
@@ -24,19 +26,20 @@ async def init_redis() -> None:
     except Exception:
         logger.warning("Redis not available — sessions will fail")
         if _redis_pool is not None:
-            await _redis_pool.aclose()
+            # redis-py stubs omit aclose; runtime supports it for async client.
+            await _redis_pool.aclose()  # type: ignore[attr-defined]
             _redis_pool = None
 
 
 async def close_redis() -> None:
     global _redis_pool
     if _redis_pool:
-        await _redis_pool.aclose()
+        await _redis_pool.aclose()  # type: ignore[attr-defined]
         _redis_pool = None
         logger.info("Redis connection closed")
 
 
-def get_redis() -> Redis:
+def get_redis() -> Redis[str]:
     if _redis_pool is None:
         raise RuntimeError("Redis not initialized — call init_redis() first")
     return _redis_pool

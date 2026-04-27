@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, Cookie, Depends, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -23,7 +25,7 @@ COOKIE_NAME = "session"
 COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 days
 
 
-def _make_response(data: dict, status_code: int = 200) -> JSONResponse:
+def _make_response(data: dict[str, Any], status_code: int = 200) -> JSONResponse:
     return JSONResponse(
         content={"success": True, "data": data},
         status_code=status_code,
@@ -58,7 +60,7 @@ async def register(
     request: Request,
     data: RegisterRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     redis = get_redis()
     user, session_token, csrf_token = await auth_service.register(db, redis, data)
 
@@ -79,7 +81,7 @@ async def login(
     request: Request,
     data: LoginRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     redis = get_redis()
     user, session_token, csrf_token = await auth_service.login(db, redis, data.email, data.password)
 
@@ -99,7 +101,7 @@ async def google_auth(
     request: Request,
     data: GoogleAuthRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     oauth_user = await verify_google_token(data.id_token)
     redis = get_redis()
 
@@ -128,7 +130,7 @@ async def apple_auth(
     request: Request,
     data: AppleAuthRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     oauth_user = await verify_apple_token(data.id_token, data.user)
     redis = get_redis()
 
@@ -155,7 +157,7 @@ async def apple_auth(
 async def logout(
     _csrf: None = Depends(require_csrf),
     session_token: str | None = Cookie(None, alias="session"),
-):
+) -> JSONResponse:
     if session_token:
         redis = get_redis()
         await auth_service.logout(redis, session_token)
@@ -169,10 +171,10 @@ async def logout(
 async def me(
     user: User = Depends(get_current_user),
     session_token: str | None = Cookie(None, alias="session"),
-):
+) -> JSONResponse:
     redis = get_redis()
     csrf_token = await auth_service.get_csrf_token(redis, session_token or "")
-    data: dict = {"user": auth_service.user_to_response(user)}
+    data: dict[str, Any] = {"user": auth_service.user_to_response(user)}
     if csrf_token:
         data["csrf_token"] = csrf_token
     return _make_response(data)
@@ -184,7 +186,7 @@ async def delete_account(
     _csrf: None = Depends(require_csrf),
     session_token: str | None = Cookie(None, alias="session"),
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     redis = get_redis()
     await auth_service.delete_account(db, redis, user, session_token or "")
 
