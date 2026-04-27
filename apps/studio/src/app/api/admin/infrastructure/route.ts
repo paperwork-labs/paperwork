@@ -4,7 +4,8 @@ import { getE2EInfrastructureFixture } from "@/lib/e2e-infra-mock";
 
 export const dynamic = "force-dynamic";
 
-const CACHE_TTL = 60_000;
+/** Keep below client auto-refresh (30s) so each tick can observe fresh deploy state. */
+const CACHE_TTL = 25_000;
 
 export async function GET() {
   if (process.env.STUDIO_E2E_FIXTURE === "1") {
