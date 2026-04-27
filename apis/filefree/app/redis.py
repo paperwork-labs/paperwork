@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Coroutine
 from typing import Any, cast
 
 from redis.asyncio import Redis
