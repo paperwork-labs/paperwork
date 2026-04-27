@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     SECRETS_API_KEY: str = ""
     BRAIN_API_SECRET: str = ""
     BRAIN_MCP_TOKEN: str = ""
+    # J2/J3: Studio `/admin/brain-learning` + Brain `GET /api/v1/admin/brain/*` observability.
+    # When false, those routes return 403 (scheduler unchanged).
+    BRAIN_LEARNING_DASHBOARD_ENABLED: bool = True
     STUDIO_URL: str = "https://paperworklabs.com"
     BRAIN_URL: str = "https://brain.paperworklabs.com"
     AXIOMFOLIO_API_URL: str = "http://localhost:8100"
