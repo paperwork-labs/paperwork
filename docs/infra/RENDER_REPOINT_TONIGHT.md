@@ -1,19 +1,21 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-26
+last_reviewed: 2026-04-27
 doc_kind: runbook
 domain: infra
-status: active
+status: completed
 severity_default: yellow
 related_runbooks:
   - RENDER_REPOINT.md
 ---
 
-# Tonight: Repoint AxiomFolio Render services to the monorepo (I1)
+**STATUS: completed 2026-04-27** — I1 was executed as a **real-time founder action** (Render Blueprint → **Associate existing services** for monorepo `paperwork-labs/paperwork`). This file is retained for **verification**, **rollback**, and **post-cutover** steps (e.g. archive after 24 h green).
 
-**Time budget:** ~10 minutes in the dashboard, plus 5–10 minutes for builds.
+# Repoint AxiomFolio Render services to the monorepo (I1) — reference
 
-**Goal:** Move the **four** backend/data AxiomFolio resources that still sync from `paperwork-labs/axiomfolio` so they track **`paperwork-labs/paperwork`** via the root Blueprint ([Path B in `RENDER_REPOINT.md`](RENDER_REPOINT.md)).
+**Time budget:** ~10 minutes in the dashboard, plus 5–10 minutes for builds (already spent during the 2026-04-27 cutover).
+
+**Goal (achieved):** Move the **four** backend/data AxiomFolio resources that still sync from `paperwork-labs/axiomfolio` so they track **`paperwork-labs/paperwork`** via the root Blueprint ([Path B in `RENDER_REPOINT.md`](RENDER_REPOINT.md)).
 
 ## Services in scope (exactly these four)
 
@@ -29,7 +31,9 @@ related_runbooks:
 - **`axiomfolio-frontend`** — Track G4 will remove this Render static site after `apps/axiomfolio-next` + Vite retirement; do not block on repointing it here.
 - **`axiomfolio-redis`** — Still associates when you apply the monorepo Blueprint; treat it as part of the same wizard if Render lists it (expected).
 
-## One-time Blueprint flow (copy path)
+## Blueprint flow (reference — executed 2026-04-27)
+
+Checklist used during the live **Associate existing services** sync to the monorepo:
 
 1. Open **New Blueprint:** [https://dashboard.render.com/blueprints/new](https://dashboard.render.com/blueprints/new)
 2. **Connect repository:** `paperwork-labs/paperwork`

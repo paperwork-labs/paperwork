@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-26
+last_reviewed: 2026-04-27
 doc_kind: runbook
 domain: infra
 status: active
@@ -15,45 +15,48 @@ related_runbooks:
 
 **Goal:** Add the **primary** Clerk production domain `accounts.paperworklabs.com` and prove DNS so Clerk can issue TLS. Satellites (`filefree.ai`, etc.) come **after** verify — and **application code** must stay on the current Clerk integration until Track H4 ships `apps/accounts/` (see ordering below).
 
-## 1. Get CNAME targets from Clerk (exact values)
+**DNS for `paperworklabs.com`:** hosted on **[Spaceship](https://www.spaceship.com)** — not Cloudflare. Use the Spaceship steps below.
 
-1. Clerk Dashboard → **Settings** (or **Configure**) → **Domains** (or **DNS & domains**).
-2. **Add domain** / **Add custom domain** → enter **`accounts.paperworklabs.com`**.
-3. Clerk shows **DNS records** (names + targets). **Copy only into your DNS provider** — do not paste secrets or verification tokens into the repo.
+## 0. Pick the correct Clerk instance (production only)
 
-Typical shapes (Clerk’s UI is authoritative — yours may differ):
+1. Open **[Clerk Dashboard](https://dashboard.clerk.com)** and sign in.
+2. If you see **multiple applications/instances** (e.g. dev `clerk-paperwork-labs` vs production), select the one that matches **production** — the same instance whose `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` / `CLERK_SECRET_KEY` your live apps use. **Do not** add `accounts.paperworklabs.com` on a dev or staging instance.
+3. If the instance list is confusing: in each candidate instance, open **API Keys** and compare the **publishable key prefix** to a production app’s env (Vercel / Render). Only configure DNS on the **production** instance.
 
-- **`accounts`** (or `@` / `accounts.paperworklabs.com`) → CNAME → `clerk.frontend-api.<instance>.lcl.dev` or a Workers-style target Clerk displays.
-- **`clerk.accounts`** (satellite helper on the primary zone) → only if the Dashboard lists it.
-- **`clk._domainkey.accounts`** (or similar DKIM) → only if Clerk lists it for email.
+## 1. Add the custom domain in Clerk (get the CNAME target)
 
-## 2. Add records at your DNS provider
+On the **production** instance:
 
-**Authoritative NS for `paperworklabs.com`:** run `dig +short NS paperworklabs.com` — use **that** registrar/DNS UI (today this may be Spaceship or another host; it is **not** assumed to be Cloudflare).
+1. **Settings** → **Domains** (or **Configure** → **Domains**).
+2. **Custom domain** → **Add domain** / **Add custom domain** → enter **`accounts.paperworklabs.com`**.
+3. Clerk displays the **DNS records** to create. Copy the **CNAME target** value for the primary Frontend API record (Clerk’s UI is authoritative — hostname may look like `clerk.frontend-api.*.lcl.dev` or similar).
 
-Create the records **exactly** as Clerk’s panel shows (type, name/host, value, TTL **DNS only** / no orange-cloud proxy if Clerk says verification fails behind a proxy).
+**Also add** any extra records Clerk lists for the same domain (e.g. `clerk.accounts`, DKIM `clk._domainkey.accounts`) — only if the Dashboard shows them.
 
-Example pattern (replace placeholders with Dashboard values):
+## 2. Add the CNAME in Spaceship
 
-```text
-CNAME  accounts.paperworklabs.com  →  <Clerk Frontend API target from Dashboard>
-CNAME  clerk.accounts.paperworklabs.com  →  <only if Dashboard requires it>
-CNAME  clk._domainkey.accounts.paperworklabs.com  →  <only if Dashboard requires DKIM>
-```
+1. Log in: **[https://www.spaceship.com/application/login/](https://www.spaceship.com/application/login/)**
+2. **Manage** domain **`paperworklabs.com`** → **Advanced DNS** → **DNS Records**.
+3. **Add Record** (or equivalent):
+   - **Type:** `CNAME`
+   - **Host:** `accounts` (Spaceship expects the subdomain label; this creates `accounts.paperworklabs.com`)
+   - **Value:** paste the **target from Clerk Dashboard** (the full hostname Clerk gave you)
+   - **TTL:** `3600` (Spaceship default; aligns with ~5–10 min effective propagation for verification)
+4. **Save**. Repeat for any **additional** CNAMEs Clerk required (same Advanced DNS flow, Host/Value per Clerk’s table).
 
 ## 3. Verify DNS
 
-Within a few minutes (TTL-dependent):
+After **5–10 minutes** (TTL-dependent):
 
 ```bash
 dig +short CNAME accounts.paperworklabs.com
 ```
 
-You should see Clerk’s target hostname. Then in Clerk → **Verify** on the domain until the Dashboard shows **Verified** / **Active**.
+You should see Clerk’s target hostname. Then in **[dashboard.clerk.com](https://dashboard.clerk.com)** → **Domains** → **Verify** on `accounts.paperworklabs.com` until the Dashboard shows **Verified** / **Active**.
 
 ## 4. Mark product domains as satellites (after primary is verified)
 
-In the **same** Clerk production instance:
+In the **same** Clerk **production** instance:
 
 1. **Domains** → **Satellite domains** (wording may vary).
 2. For each production app host, add as satellite, e.g. `filefree.ai`, `launchfree.ai`, `distill.tax`, `paperworklabs.com` (Studio), `tools.filefree.ai`, and the public AxiomFolio hostname — **exact hostnames users type**.
