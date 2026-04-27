@@ -12,7 +12,7 @@ returned with an explicit ``*_status`` value so the UI can render a
 distinguishable loading/empty/degraded state rather than a silent zero.
 
 Monetary math uses :class:`decimal.Decimal`; the one exception is the call into
-:func:`app.services.execution.risk_gate.compute_position_size`, which takes
+:func:`app.services.gold.position_sizing.compute_position_size`, which takes
 floats by historical contract. Inputs and outputs are explicitly converted at
 the boundary.
 
@@ -35,8 +35,7 @@ from app.models.broker_account import AccountStatus, BrokerAccount
 from app.models.market_data import MarketRegime, MarketSnapshot
 from app.models.picks import Candidate, PickAction
 from app.models.user import User
-# medallion: allow cross-layer import (gold -> execution); resolves when app.services.execution.risk_gate moves during Phase 0.C
-from app.services.execution.risk_gate import (
+from app.services.gold.position_sizing import (
     DEFAULT_STOP_MULTIPLIER,
     compute_position_size,
 )
