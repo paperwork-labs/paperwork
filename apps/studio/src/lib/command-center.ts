@@ -1,3 +1,8 @@
+import type { InfraStatus, InfrastructureView } from "@/lib/infra-types";
+import { collectRenderAndVercelProbes } from "@/lib/infra-probes";
+
+export type { InfraStatus, InfrastructureView, PlatformHealthSummary } from "@/lib/infra-types";
+
 const responseCache = new Map<string, { data: unknown; ts: number }>();
 export function cached<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
   const hit = responseCache.get(key);
@@ -35,20 +40,6 @@ export type PullRequestSummary = {
   updated_at: string;
   draft: boolean;
   user?: { login?: string };
-};
-
-export type InfraStatus = {
-  service: string;
-  category: "core" | "frontend" | "ops" | "data" | "cache" | "hosting";
-  configured: boolean;
-  healthy: boolean;
-  detail: string;
-  latencyMs: number | null;
-  dashboardUrl: string | null;
-  // Optional secondary link for services with a separate console (e.g. n8n
-  // running on Hetzner — primary link points to the n8n UI, console link
-  // points to console.hetzner.cloud for the underlying VPS).
-  consoleUrl?: string | null;
 };
 
 export type WorkflowMeta = {
@@ -679,38 +670,48 @@ async function checkSlackBot(token: string | undefined): Promise<InfraStatus> {
   }
 }
 
-export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
+/**
+ * Full infrastructure view: dynamic per-service rows from Render + Vercel APIs,
+ * plus optional synthetic HTTP/ops checks (n8n, Slack, etc.).
+ * See Q2 Tech Debt Convergence (Track I4) — F-6–style build drift is visible via provider state.
+ */
+export async function getInfrastructureView(): Promise<InfrastructureView> {
   const n8nUrl = normalizeBaseUrl(process.env.N8N_API_URL || process.env.N8N_HOST);
   const socialUrl = normalizeBaseUrl(process.env.POSTIZ_URL) || "https://social.paperworklabs.com";
   const renderToken = process.env.RENDER_API_KEY?.trim();
   const vercelToken = process.env.VERCEL_API_TOKEN?.trim();
+  const teamId = process.env.VERCEL_TEAM_ID?.trim() || process.env.VERCEL_ORG_ID?.trim();
+  const vercelTeamSlug = process.env.VERCEL_TEAM_SLUG?.trim() || "paperwork-labs";
   const neonApiKey = process.env.NEON_API_KEY?.trim();
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL?.trim();
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
   const slackToken = process.env.SLACK_BOT_TOKEN?.trim();
   const hetznerToken = process.env.HETZNER_API_TOKEN?.trim();
 
+  const { rows: platformRows, partial: platformPartial, platformSummary } =
+    await collectRenderAndVercelProbes(renderToken, vercelToken, teamId, vercelTeamSlug);
+
   const checks: Promise<InfraStatus>[] = [
-    // Core services
+    // Synthetic reachability (complements provider truth above).
     checkWithLatency(
-      "Brain API",
+      "Brain API (HTTP /health)",
       "core",
       `${normalizeBaseUrl(process.env.BRAIN_API_URL) || "https://brain-api-zo5t.onrender.com"}/health`,
-      "https://dashboard.render.com/web/srv-d74f3cmuk2gs73a4013g",
+      "https://dashboard.render.com",
       { validateJson: true },
     ),
     checkWithLatency(
-      "FileFree API",
+      "FileFree API (HTTP /health)",
       "core",
       `${normalizeBaseUrl(process.env.FILEFREE_API_URL) || "https://api.filefree.ai"}/health`,
-      "https://dashboard.render.com/web/srv-d70o3jvkijhs73a0ee7g",
+      "https://dashboard.render.com",
       { validateJson: true },
     ),
     checkWithLatency(
-      "AxiomFolio API",
+      "AxiomFolio API (HTTP /health)",
       "core",
       `${normalizeBaseUrl(process.env.AXIOMFOLIO_API_URL) || "https://axiomfolio-api-02ei.onrender.com"}/health`,
-      "https://dashboard.render.com/web/srv-d7lg0o77f7vs73b2k7m0",
+      "https://dashboard.render.com",
       { validateJson: true },
     ),
     checkWithLatency(
@@ -720,44 +721,36 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
       "https://dashboard.render.com",
       { validateJson: true },
     ),
-
-    // Frontends
     checkWithLatency(
-      "Studio (Vercel)",
+      "Studio (public URL)",
       "frontend",
       `${normalizeBaseUrl(process.env.STUDIO_URL) || "https://www.paperworklabs.com"}/`,
-      "https://vercel.com/paperwork-labs/studio",
+      `https://vercel.com/${vercelTeamSlug}/studio`,
     ),
     checkWithLatency(
-      "AxiomFolio frontend (Vite)",
+      "AxiomFolio static (public URL)",
       "frontend",
       `${normalizeBaseUrl(process.env.AXIOMFOLIO_WEB_URL) || "https://axiomfolio.paperworklabs.com"}/`,
-      "https://dashboard.render.com/static/srv-d7lg0dv7f7vs73b2k1u0",
+      "https://dashboard.render.com",
     ),
     checkWithLatency(
       "FileFree frontend",
       "frontend",
       `${normalizeBaseUrl(process.env.FILEFREE_URL) || "https://filefree.ai"}/`,
-      "https://vercel.com/paperwork-labs/filefree",
+      `https://vercel.com/${vercelTeamSlug}/filefree`,
     ),
     checkWithLatency(
       "LaunchFree frontend",
       "frontend",
       `${normalizeBaseUrl(process.env.LAUNCHFREE_URL) || "https://launchfree.ai"}/`,
-      "https://vercel.com/paperwork-labs/launchfree",
+      `https://vercel.com/${vercelTeamSlug}/launchfree`,
     ),
     checkWithLatency(
       "Distill frontend",
       "frontend",
       `${normalizeBaseUrl(process.env.DISTILL_URL) || "https://distill.paperworklabs.com"}/`,
-      "https://vercel.com/paperwork-labs/distill",
+      `https://vercel.com/${vercelTeamSlug}/distill`,
     ),
-
-    // Two distinct cards on purpose: the "n8n" card answers "is the workflow
-    // runtime up" (probes the n8n REST API), the "Hetzner Cloud" card answers
-    // "is the VPS itself healthy" (probes the Hetzner Cloud API + links to
-    // console.hetzner.cloud). Splitting them makes infra-level outages
-    // (runtime OK but billing/snapshot issue) immediately visible.
     checkWithLatency(
       "n8n (Hetzner)",
       "ops",
@@ -766,18 +759,7 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
       { consoleUrl: "https://console.hetzner.cloud" },
     ),
     checkHetznerCloud(hetznerToken),
-    checkWithLatency(
-      "Postiz",
-      "ops",
-      socialUrl,
-      "https://social.paperworklabs.com",
-    ),
-
-    // Provider APIs
-    checkTokenApi("Render", "hosting", "https://api.render.com/v1/services", renderToken, "https://dashboard.render.com"),
-    // Use /v2/user (always accessible to any valid token) instead of /v9/projects
-    // which 403s for team-scoped tokens without a ?teamId= query param.
-    checkTokenApi("Vercel", "hosting", "https://api.vercel.com/v2/user", vercelToken, "https://vercel.com/paperwork-labs"),
+    checkWithLatency("Postiz", "ops", socialUrl, "https://social.paperworklabs.com"),
     checkTokenApi("Neon", "data", "https://console.neon.tech/api/v2/projects", neonApiKey, "https://console.neon.tech"),
   ];
 
@@ -791,7 +773,7 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
         `${upstashUrl}/ping`,
         "https://console.upstash.com",
         { headers: { Authorization: `Bearer ${upstashToken}` } },
-      )
+      ),
     );
   } else {
     checks.push(
@@ -803,9 +785,18 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
         detail: "Not configured",
         latencyMs: null,
         dashboardUrl: "https://console.upstash.com",
-      })
+      }),
     );
   }
 
-  return Promise.all(checks);
+  const other = await Promise.all(checks);
+  return {
+    services: [...platformRows, ...other],
+    platformSummary,
+    platformPartial,
+  };
+}
+
+export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
+  return (await getInfrastructureView()).services;
 }

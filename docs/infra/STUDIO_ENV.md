@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-25
+last_reviewed: 2026-04-26
 doc_kind: runbook
 domain: infra
 status: active
@@ -17,7 +17,10 @@ status: active
 | `BRAIN_API_URL` | Base URL for the Brain API | Production URL from [Render](https://dashboard.render.com) for the `brain-api` service (e.g. `https://brain-api.onrender.com` or the current custom host if configured) | `fetch` from admin routes to Brain; sprints/workflows pages that list or trigger Brain-backed actions |
 | `BRAIN_API_SECRET` | Server-to-server auth to Brain **admin** GET/POST from Studio | [Studio secrets vault](https://paperworklabs.com/api/secrets) — key name **`BRAIN_API_SECRET`**. **Preferred:** `./scripts/vault-get.sh BRAIN_API_SECRET` from the monorepo root (requires `SECRETS_API_KEY` in `.env.local` per [Secrets ops](../../.cursor/rules/secrets-ops.mdc)) | Sent as header **`X-Brain-Secret`** (see `getBrainApiRoot` callers in `apps/studio/src/lib/command-center.ts` and admin API routes) — personas list, memory episodes, ops probes, and similar |
 | `HETZNER_API_TOKEN` | Hetzner Cloud API (read is enough) | [Hetzner Cloud Console](https://console.hetzner.cloud) → project → **Security** → **API tokens** (create a read-scoped token for status) | `getInfrastructureStatus()` — Hetzner card on [`/admin/infrastructure`](https://paperworklabs.com/admin/infrastructure) with live server stats |
-| `VERCEL_API_TOKEN` | Vercel platform API | [Vercel account tokens](https://vercel.com/account/tokens) (scope to this account/team) | Vercel probe on the infrastructure page; also supply the same value to **GitHub Actions** as a repo/organization secret for [auto-promote](VERCEL_AUTO_PROMOTE.md) (`.github/workflows/vercel-promote-on-merge.yaml`) |
+| `VERCEL_API_TOKEN` | Vercel platform API | [Vercel account tokens](https://vercel.com/account/tokens) (scope to this account/team) | Lists every Vercel project + latest **production** deployment on [`/admin/infrastructure`](https://paperworklabs.com/admin/infrastructure); also supply the same value to **GitHub Actions** as a repo/organization secret for [auto-promote](VERCEL_AUTO_PROMOTE.md) (`.github/workflows/vercel-promote-on-merge.yaml`) |
+| `VERCEL_TEAM_ID` / `VERCEL_ORG_ID` | Same UUID as Vercel dashboard team | Vercel → team **Settings** → **Team ID** | Required for `GET /v9/projects` when the token is team-scoped (same as `get-architecture-payload` / `command-center`), or the project list may 403. |
+| `RENDER_API_KEY` | Render REST API | [Render Dashboard](https://dashboard.render.com) → Account → **API Keys** | Enumerates **all** workspace services, Postgres, and Key Value instances + latest deploy status per service (replaces ad-hoc Render “token ping”). |
+| `VERCEL_TEAM_SLUG` | Human-readable team slug for links | Usually `paperwork-labs` | Optional; defaults to `paperwork-labs` for `vercel.com/{slug}/{project}` links on the infra page. |
 
 ## Setup commands (Vercel CLI)
 

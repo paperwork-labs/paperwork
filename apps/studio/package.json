@@ -7,10 +7,12 @@
   },
   "scripts": {
     "dev": "next dev --turbopack --port 3004",
+    "dev:e2e": "STUDIO_E2E_FIXTURE=1 next dev --turbopack --port 3004",
     "build": "next build",
     "start": "next start",
     "lint": "next build",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.2.7",
@@ -34,6 +36,7 @@
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.4",
     "@tailwindcss/typography": "^0.5.19",
     "@types/dagre": "^0.7.54",
