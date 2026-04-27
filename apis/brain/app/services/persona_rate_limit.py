@@ -9,13 +9,14 @@ it at the ``/brain/process`` layer before we touch an LLM.
 
 We key on ``(organization_id, persona)``. This means a shared bot token
 across channels still gets protected per-persona; an org hitting the CPA
-persona 100×/minute can be throttled without impacting its QA calls.
+persona 100x/minute can be throttled without impacting its QA calls.
 
 Redis unavailable ⇒ fail open (log, allow). Same stance as cost_tracker:
 prefer degraded ops to Brain-wide outage on a Redis blip.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,15 +32,19 @@ class PersonaRateLimitExceeded(Exception):
     """Persona hit its per-minute rate limit for this organization."""
 
     def __init__(
-        self, *, persona: str, limit: int, current: int, retry_after: int,
+        self,
+        *,
+        persona: str,
+        limit: int,
+        current: int,
+        retry_after: int,
     ):
         self.persona = persona
         self.limit = limit
         self.current = current
         self.retry_after = retry_after
         super().__init__(
-            f"{persona} exceeded {limit}/min "
-            f"(current={current}); retry in {retry_after}s"
+            f"{persona} exceeded {limit}/min (current={current}); retry in {retry_after}s"
         )
 
 
@@ -63,9 +68,9 @@ async def check_and_increment(
         return 0
     if redis_client is None:
         logger.warning(
-            "persona_rate_limit: redis unavailable, failing open "
-            "persona=%s org=%s",
-            persona, organization_id,
+            "persona_rate_limit: redis unavailable, failing open persona=%s org=%s",
+            persona,
+            organization_id,
         )
         return 0
 
@@ -86,7 +91,8 @@ async def check_and_increment(
     except Exception:
         logger.warning(
             "persona_rate_limit: redis INCR failed persona=%s org=%s",
-            persona, organization_id,
+            persona,
+            organization_id,
             exc_info=True,
         )
         return 0

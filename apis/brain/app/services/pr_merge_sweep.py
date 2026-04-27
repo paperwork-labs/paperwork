@@ -46,7 +46,12 @@ async def merge_ready_prs(*, limit: int = 50) -> dict[str, Any]:
         async with _gh_client() as client:
             r = await client.get(
                 f"/repos/{owner}/{repo}/pulls",
-                params={"state": "open", "per_page": min(max(limit, 1), 100), "sort": "updated", "direction": "desc"},
+                params={
+                    "state": "open",
+                    "per_page": min(max(limit, 1), 100),
+                    "sort": "updated",
+                    "direction": "desc",
+                },
             )
             r.raise_for_status()
             stubs: list[dict[str, Any]] = r.json()
@@ -66,7 +71,9 @@ async def merge_ready_prs(*, limit: int = 50) -> dict[str, Any]:
                 }
                 blocking = labels & BLOCK_LABELS
                 if blocking:
-                    skipped.append({"number": number, "reason": f"blocked by labels: {sorted(blocking)}"})
+                    skipped.append(
+                        {"number": number, "reason": f"blocked by labels: {sorted(blocking)}"}
+                    )
                     continue
                 if MAJOR_LABEL in labels and LOW_RISK_LABEL not in labels:
                     skipped.append({"number": number, "reason": "deps:major without risk:low"})
@@ -84,7 +91,7 @@ async def merge_ready_prs(*, limit: int = 50) -> dict[str, Any]:
                     skipped.append({"number": number, "reason": "not mergeable (conflicts?)"})
                     continue
 
-                head_sha = str(((pr.get("head") or {}).get("sha") or "")).strip()
+                head_sha = str((pr.get("head") or {}).get("sha") or "").strip()
                 if not head_sha:
                     skipped.append({"number": number, "reason": "no head SHA"})
                     continue
@@ -118,7 +125,9 @@ async def merge_ready_prs(*, limit: int = 50) -> dict[str, Any]:
                         params={"per_page": 100},
                     )
                     checks_res.raise_for_status()
-                    check_runs: list[dict[str, Any]] = (checks_res.json() or {}).get("check_runs", [])
+                    check_runs: list[dict[str, Any]] = (checks_res.json() or {}).get(
+                        "check_runs", []
+                    )
                 except httpx.HTTPError as e:
                     errors.append({"number": number, "error": f"check-runs: {e}"})
                     continue
@@ -132,10 +141,12 @@ async def merge_ready_prs(*, limit: int = 50) -> dict[str, Any]:
                     )
                 ]
                 if not_ready:
-                    skipped.append({
-                        "number": number,
-                        "reason": f"checks not green ({len(not_ready)} pending/failed)",
-                    })
+                    skipped.append(
+                        {
+                            "number": number,
+                            "reason": f"checks not green ({len(not_ready)} pending/failed)",
+                        }
+                    )
                     continue
 
                 try:
@@ -146,10 +157,12 @@ async def merge_ready_prs(*, limit: int = 50) -> dict[str, Any]:
                     if merge_res.status_code == 200:
                         merged.append(number)
                     else:
-                        errors.append({
-                            "number": number,
-                            "error": f"merge HTTP {merge_res.status_code}: {merge_res.text[:200]}",
-                        })
+                        errors.append(
+                            {
+                                "number": number,
+                                "error": f"merge HTTP {merge_res.status_code}: {merge_res.text[:200]}",  # noqa: E501
+                            }
+                        )
                 except httpx.HTTPError as e:
                     errors.append({"number": number, "error": f"merge: {e}"})
 

@@ -9,7 +9,7 @@ Public API:
     resolve_model(...)   - Choose default vs escalation model per spec.
     route_persona(...)   - Heuristic keyword + channel + pin router.
 """
-from app.personas.spec import PersonaSpec
+
 from app.personas.registry import (
     get_spec,
     list_specs,
@@ -22,15 +22,16 @@ from app.personas.routing import (
     SINGLE_WORD_KEYWORDS,
     route_persona,
 )
+from app.personas.spec import PersonaSpec
 
 __all__ = [
+    "CHANNEL_BOOST",
+    "CHANNEL_PERSONA_MAP",
+    "PHRASE_KEYWORDS",
+    "SINGLE_WORD_KEYWORDS",
     "PersonaSpec",
     "get_spec",
     "list_specs",
     "resolve_model",
     "route_persona",
-    "CHANNEL_BOOST",
-    "CHANNEL_PERSONA_MAP",
-    "PHRASE_KEYWORDS",
-    "SINGLE_WORD_KEYWORDS",
 ]
