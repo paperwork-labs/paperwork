@@ -11,8 +11,11 @@ status: completed
 
 Founder directive: drop the `-next` stop-gap; canonical monorepo path is
 [`apps/axiomfolio`](../../../apps/axiomfolio) with package name
-**`@paperwork-labs/axiomfolio`**. The Vite SPA tree was removed from git.
-Render static service **`axiomfolio-frontend`** was removed from the root
+**`@paperwork-labs/axiomfolio`**. The Vite SPA tree is **archived** (not
+deleted) at
+[`apps/_archive/axiomfolio-vite-LEGACY`](../../../apps/_archive/axiomfolio-vite-LEGACY)
+— excluded from pnpm workspaces; see its README for retention policy.
+Render static service **`axiomfolio-frontend`** is not in the root
 [`render.yaml`](../../../render.yaml); customer UI is **Next.js on Vercel**
 (same linked project — dashboard rename to `axiomfolio` is optional).
 

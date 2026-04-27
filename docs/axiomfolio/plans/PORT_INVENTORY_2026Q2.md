@@ -20,8 +20,8 @@ Next.js app and renamed the directory (**completed 2026-04-27**, Track G4):
 
 1. Port every remaining Vite route — done; canonical app is `apps/axiomfolio/`
    (this doc’s historical counts referred to the interim `apps/axiomfolio-next/` tree).
-2. `git mv` + Vite tree deletion + Render `axiomfolio-frontend` removal from
-   root `render.yaml` — done.
+2. `git mv` + Vite tree **archived** to `apps/_archive/axiomfolio-vite-LEGACY/`
+   + Render `axiomfolio-frontend` removal from root `render.yaml` — done.
 
 This document inventories what is already ported, what is left, and how
 the remaining routes were grouped into parallel sub-subagent batches.
@@ -298,3 +298,10 @@ by sub-subagents:
 These are gated on a 7-day parity bake after all eight batches above
 land. They are tracked in
 [`NEXTJS_MIGRATION_2026Q3.md`](./NEXTJS_MIGRATION_2026Q3.md) Phase 3.
+
+---
+
+**Cutover complete 2026-04-27** — Vite tree archived at
+`apps/_archive/axiomfolio-vite-LEGACY/` (frozen legacy; active app remains
+`apps/axiomfolio/` Next.js). Founder follow-up: optional Render / Vercel
+dashboard renames only; see archive README for earliest deletion date.

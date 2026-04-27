@@ -1,0 +1,415 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/inter";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Geist Variable', 'Inter Variable', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'Geist Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --color-sidebar-ring: var(--sidebar-ring);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar: var(--sidebar);
+    --color-chart-5: var(--chart-5);
+    --color-chart-4: var(--chart-4);
+    --color-chart-3: var(--chart-3);
+    --color-chart-2: var(--chart-2);
+    --color-chart-1: var(--chart-1);
+    --color-ring: var(--ring);
+    --color-input: var(--input);
+    --color-border: var(--border);
+    --color-destructive: var(--destructive);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-accent: var(--accent);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-muted: var(--muted);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary: var(--secondary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary: var(--primary);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-popover: var(--popover);
+    --color-card-foreground: var(--card-foreground);
+    --color-card: var(--card);
+    --color-foreground: var(--foreground);
+    --color-background: var(--background);
+    --radius-sm: calc(var(--radius) * 0.6);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-lg: var(--radius);
+    --radius-xl: calc(var(--radius) * 1.4);
+    --radius-2xl: calc(var(--radius) * 1.8);
+    --radius-3xl: calc(var(--radius) * 2.2);
+    --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.141 0.005 285.823);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.141 0.005 285.823);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.141 0.005 285.823);
+    --primary: oklch(0.769 0.171 70.08);
+    --primary-foreground: oklch(0.13 0.028 261.69);
+    --secondary: oklch(0.967 0.001 286.375);
+    --secondary-foreground: oklch(0.21 0.006 285.885);
+    --muted: oklch(0.967 0.001 286.375);
+    --muted-foreground: oklch(0.552 0.016 285.938);
+    --accent: oklch(0.967 0.001 286.375);
+    --accent-foreground: oklch(0.21 0.006 285.885);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.92 0.004 286.32);
+    --input: oklch(0.92 0.004 286.32);
+    --ring: oklch(0.705 0.015 286.067);
+    --chart-1: oklch(0.871 0.006 286.286);
+    --chart-2: oklch(0.552 0.016 285.938);
+    --chart-3: oklch(0.442 0.017 285.786);
+    --chart-4: oklch(0.37 0.013 285.805);
+    --chart-5: oklch(0.274 0.006 286.033);
+    --radius: 0.625rem;
+    --sidebar: oklch(0.985 0 0);
+    --sidebar-foreground: oklch(0.141 0.005 285.823);
+    --sidebar-primary: oklch(0.21 0.006 285.885);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.967 0.001 286.375);
+    --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+    --sidebar-border: oklch(0.92 0.004 286.32);
+    --sidebar-ring: oklch(0.705 0.015 286.067);
+
+    /* Track M — AxiomFolio locked (brand.mdc); tailwind `bg-brand-*` / rgb(var(--brand-*)) */
+    --brand-primary: 50 116 240;
+    --brand-accent: 245 158 11;
+    --brand-ink: 15 23 42;
+    --brand-surface: 248 250 252;
+    --brand-surface-elevated: 255 255 255;
+    --brand-text-muted: 100 116 139;
+    --brand-border: 226 232 240;
+
+    /* OAuth sign-in buttons: fixed vendor colors (Google/Apple brand guidelines), not theme semantics */
+    --oauth-google-red: #ea4335;
+    --oauth-google-blue: #4285f4;
+    --oauth-google-yellow: #fbbc05;
+    --oauth-google-green: #34a853;
+    --oauth-apple-bg: #000000;
+    --oauth-apple-bg-hover: #1a1a1a;
+
+    /* AxiomFolio semantic tokens (from theme/system.ts Chakra semanticTokens) */
+    --bg-canvas: 248 250 252;
+    --bg-panel: 255 255 255;
+    --bg-card: var(--card);
+    --bg-muted: 15 23 42 / 0.04;
+    --bg-subtle: 15 23 42 / 0.06;
+    --bg-elevated: 255 255 255;
+    --bg-header: 255 255 255;
+    --bg-sidebar: 255 255 255;
+    --bg-input: 0 0 0 / 0.03;
+    --bg-hover: 15 23 42 / 0.04;
+
+    --fg-default: var(--foreground);
+    --fg-muted: var(--muted-foreground);
+    --fg-subtle: 15 23 42 / 0.42;
+    --fg-accent: 22 163 74;
+    --fg-amber: 217 119 6;
+
+    --border-subtle: var(--border);
+    --border-strong: 15 23 42 / 0.16;
+    --border-hover: 15 23 42 / 0.2;
+
+    --status-success: 22 163 74;
+    --status-warning: 217 119 6;
+    --status-danger: 220 38 38;
+    --status-info: 14 165 233;
+
+    --chart-danger: 220 38 38;
+    --chart-success: 22 163 74;
+    --chart-neutral: 59 130 246;
+    --chart-area1: 22 163 74;
+    --chart-area2: 37 99 235;
+    --chart-grid: 15 23 42 / 0.06;
+    --chart-axis: 15 23 42 / 0.35;
+    --chart-refLine: 15 23 42 / 0.15;
+    --chart-warning: 217 119 6;
+    /* Portfolio equity hero line + area (canvas resolves via --chart-equity) */
+    --chart-equity: 37 99 235;
+
+    --glow-accent: 34 197 94 / 0;
+    --glow-amber: 245 158 11 / 0;
+    --glow-brand: 59 130 246 / 0;
+
+    /* Auth layout gradients */
+    --auth-gradient-blue: 29 78 216;
+    --auth-gradient-amber: 245 158 11;
+    --auth-gradient-bg: 15 23 42;
+    --auth-gradient-glow: 255 255 255;
+
+    /* Stage palettes (StageBadge / StageBar) — RGB triples for rgb(var(--x) / a); aligned with STAGE_HEX light */
+    --palette-stage-gray: 160 174 192;
+    --palette-stage-green: 56 161 105;
+    --palette-stage-yellow: 214 158 46;
+    --palette-stage-orange: 221 107 32;
+    --palette-stage-red: 229 62 62;
+
+    /* Market regime banner tints (RGB triples for rgb(var(--x) / opacity); matches REGIME_HEX) */
+    --regime-tint-r1: 34 197 94;
+    --regime-tint-r2: 134 239 172;
+    --regime-tint-r3: 234 179 8;
+    --regime-tint-r4: 249 115 22;
+    --regime-tint-r5: 220 38 38;
+
+    /* Series palette — HSL-derived from a single base hue (220° emerald-blue),
+       rotated by ~40° per slot for perceptual separation. RGB triples for
+       rgb(var(--x) / a). Used by multi-series charts (sectors, holdings, etc.). */
+    --series-1: 37 99 235;    /* hsl(220 84% 53%) — base brand */
+    --series-2: 22 163 74;    /* hsl(140 76% 36%) — green */
+    --series-3: 217 119 6;    /* hsl(35 92% 44%)  — amber */
+    --series-4: 168 85 247;   /* hsl(265 92% 65%) — violet */
+    --series-5: 14 165 233;   /* hsl(199 89% 48%) — sky */
+    --series-6: 236 72 153;   /* hsl(330 81% 60%) — pink */
+    --series-7: 20 184 166;   /* hsl(173 80% 40%) — teal */
+    --series-8: 234 88 12;    /* hsl(20 91% 48%)  — orange */
+
+    /* Elevation scale — physically-modeled shadows. Light theme. */
+    --shadow-resting:  0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+    --shadow-hover:    0 2px 4px 0 rgb(15 23 42 / 0.05), 0 4px 12px 0 rgb(15 23 42 / 0.08);
+    --shadow-active:   0 4px 8px 0 rgb(15 23 42 / 0.06), 0 12px 24px 0 rgb(15 23 42 / 0.10);
+    --shadow-floating: 0 12px 24px 0 rgb(15 23 42 / 0.10), 0 24px 48px 0 rgb(15 23 42 / 0.14);
+
+    /* Custom selection color — matches brand. */
+    --selection-bg: 37 99 235 / 0.18;
+    --selection-fg: 15 23 42;
+}
+
+/* Color-blind safe palette (Okabe-Ito 2008). Activated by
+   data-palette="cb" on <html> when the user opts in. The 8 colors are
+   distinguishable for all common forms of color-blindness. */
+:root[data-palette="cb"] {
+    --series-1: 0 114 178;    /* blue       */
+    --series-2: 213 94 0;     /* vermillion */
+    --series-3: 0 158 115;    /* bluish-green */
+    --series-4: 240 228 66;   /* yellow     */
+    --series-5: 86 180 233;   /* sky-blue   */
+    --series-6: 230 159 0;    /* orange     */
+    --series-7: 204 121 167;  /* reddish-purple */
+    --series-8: 0 0 0;        /* black      */
+}
+
+.dark {
+    --background: oklch(0.141 0.005 285.823);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.21 0.006 285.885);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.21 0.006 285.885);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.828 0.164 84.43);
+    --primary-foreground: oklch(0.13 0.028 261.69);
+    --secondary: oklch(0.274 0.006 286.033);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.274 0.006 286.033);
+    --muted-foreground: oklch(0.705 0.015 286.067);
+    --accent: oklch(0.274 0.006 286.033);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.552 0.016 285.938);
+    --chart-1: oklch(0.871 0.006 286.286);
+    --chart-2: oklch(0.552 0.016 285.938);
+    --chart-3: oklch(0.442 0.017 285.786);
+    --chart-4: oklch(0.37 0.013 285.805);
+    --chart-5: oklch(0.274 0.006 286.033);
+    --sidebar: oklch(0.21 0.006 285.885);
+    --sidebar-foreground: oklch(0.985 0 0);
+    --sidebar-primary: oklch(0.488 0.243 264.376);
+    --sidebar-primary-foreground: oklch(0.985 0 0);
+    --sidebar-accent: oklch(0.274 0.006 286.033);
+    --sidebar-accent-foreground: oklch(0.985 0 0);
+    --sidebar-border: oklch(1 0 0 / 10%);
+    --sidebar-ring: oklch(0.552 0.016 285.938);
+
+    --brand-primary: 96 165 250;
+    --brand-accent: 251 191 36;
+    --brand-ink: 248 250 252;
+    --brand-surface: 15 23 42;
+    --brand-surface-elevated: 30 41 59;
+    --brand-text-muted: 148 163 184;
+    --brand-border: 51 65 85;
+
+    /* AxiomFolio semantic tokens (dark) */
+    --bg-canvas: 2 6 23;
+    --bg-panel: 15 23 42;
+    --bg-card: var(--card);
+    --bg-muted: 255 255 255 / 0.05;
+    --bg-subtle: 255 255 255 / 0.08;
+    --bg-elevated: 30 41 59;
+    --bg-header: 15 23 42;
+    --bg-sidebar: 15 23 42;
+    --bg-input: 0 0 0 / 0.25;
+    --bg-hover: 255 255 255 / 0.04;
+
+    --fg-default: var(--foreground);
+    --fg-muted: var(--muted-foreground);
+    --fg-subtle: 248 250 252 / 0.5;
+    --fg-accent: 34 197 94;
+    --fg-amber: 245 158 11;
+
+    --border-subtle: var(--border);
+    --border-strong: 255 255 255 / 0.14;
+    --border-hover: 255 255 255 / 0.18;
+
+    --status-success: 52 211 153;
+    --status-warning: 245 158 11;
+    --status-danger: 248 113 113;
+    --status-info: 56 189 248;
+
+    --chart-danger: 248 113 113;
+    --chart-success: 74 222 128;
+    --chart-neutral: 96 165 250;
+    --chart-area1: 52 211 153;
+    --chart-area2: 96 165 250;
+    --chart-grid: 255 255 255 / 0.05;
+    --chart-axis: 255 255 255 / 0.4;
+    --chart-refLine: 255 255 255 / 0.15;
+    --chart-warning: 251 191 36;
+    /* Portfolio equity hero — lifted blue for dark canvas legibility */
+    --chart-equity: 96 165 250;
+
+    --glow-accent: 34 197 94 / 0.12;
+    --glow-amber: 245 158 11 / 0.1;
+    --glow-brand: 59 130 246 / 0.1;
+
+    /* Auth layout gradients (same in dark mode) */
+    --auth-gradient-blue: 29 78 216;
+    --auth-gradient-amber: 245 158 11;
+    --auth-gradient-bg: 15 23 42;
+    --auth-gradient-glow: 255 255 255;
+
+    --palette-stage-gray: 203 213 224;
+    --palette-stage-green: 72 187 120;
+    --palette-stage-yellow: 236 201 75;
+    --palette-stage-orange: 237 137 54;
+    --palette-stage-red: 252 129 129;
+
+    --regime-tint-r1: 52 211 153;
+    --regime-tint-r2: 134 239 172;
+    --regime-tint-r3: 250 204 21;
+    --regime-tint-r4: 251 146 60;
+    --regime-tint-r5: 248 113 113;
+
+    /* Series palette — dark theme variants (lifted ~12% lightness for legibility). */
+    --series-1: 96 165 250;   /* blue-400  */
+    --series-2: 74 222 128;   /* green-400 */
+    --series-3: 251 191 36;   /* amber-400 */
+    --series-4: 192 132 252;  /* violet-400 */
+    --series-5: 56 189 248;   /* sky-400   */
+    --series-6: 244 114 182;  /* pink-400  */
+    --series-7: 45 212 191;   /* teal-400  */
+    --series-8: 251 146 60;   /* orange-400 */
+
+    /* Elevation scale — dark theme uses subtler shadows + a 1px inset highlight
+       (applied at the component level via ChartGlassCard). */
+    --shadow-resting:  0 1px 2px 0 rgb(0 0 0 / 0.18), 0 1px 3px 0 rgb(0 0 0 / 0.24);
+    --shadow-hover:    0 2px 4px 0 rgb(0 0 0 / 0.22), 0 4px 12px 0 rgb(0 0 0 / 0.32);
+    --shadow-active:   0 4px 8px 0 rgb(0 0 0 / 0.28), 0 12px 24px 0 rgb(0 0 0 / 0.40);
+    --shadow-floating: 0 12px 24px 0 rgb(0 0 0 / 0.40), 0 24px 48px 0 rgb(0 0 0 / 0.56);
+
+    /* Custom selection color — matches brand (lighter for dark theme). */
+    --selection-bg: 96 165 250 / 0.28;
+    --selection-fg: 248 250 252;
+}
+
+.dark[data-palette="cb"], .dark :is([data-palette="cb"] *) {
+    /* Color-blind palette in dark mode — same hues, slightly higher luminance */
+    --series-1: 79 156 215;
+    --series-2: 245 130 49;
+    --series-3: 64 188 158;
+    --series-4: 245 233 95;
+    --series-5: 134 197 235;
+    --series-6: 240 174 38;
+    --series-7: 220 144 184;
+    --series-8: 224 224 224;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  html {
+    @apply font-sans;
+    /* Geist looks best with these features enabled. */
+    font-feature-settings: 'cv11', 'ss01', 'ss03';
+    }
+  body {
+    @apply bg-background text-foreground;
+    /* Grayscale antialiasing across both themes. We previously documented
+       "subpixel on light, grayscale on dark" but the implementation was
+       theme-agnostic; we keep the consistent grayscale rendering because it
+       matches Geist's design intent across modern displays and avoids the
+       slight rendering shift between light/dark mode toggles. */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    }
+  /* Brand-tinted text selection. Composed via rgb() so it
+     respects light/dark via the --selection-* tokens above. */
+  ::selection {
+    background-color: rgb(var(--selection-bg));
+    color: rgb(var(--selection-fg));
+    }
+  /* Numbers should always be tabular for vertical alignment in
+     financial tables and chart labels. Apply via .tabular-nums or
+     .font-mono utilities; this helper covers the common cases.
+     We MERGE with the html-level cv11/ss01/ss03 features instead of
+     overriding them so Geist's stylistic alternates remain active. */
+  .num, .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'cv11', 'ss01', 'ss03', 'tnum' on, 'lnum' on;
+    }
+  /* Respect users' motion preferences globally — every animated
+     primitive in the design system should re-check this if needed. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+      }
+    }
+  /* Global focus-visible baseline. Component-level overrides (e.g. the
+     `Button` primitive) still win because they specify higher specificity
+     and the ring color/width matches. This catches naked
+     <button>/<a>/<input>/<select>/<textarea>/[role="button"] and elements
+     with [tabindex]. We use `:where()` so this rule has zero specificity
+     weight and never fights component-level focus styles. `--ring` is an
+     oklch token so opacity is composed via color-mix().
+
+     We deliberately do NOT set `border-radius` here: hardcoding it would
+     visually deform a focused element whose own corner radius differs
+     (e.g. pill buttons, square inputs). The outline naturally hugs the
+     element's existing rounding; component-level overrides set their own
+     ring radius via the design tokens (`--radius-sm` … `--radius-2xl`). */
+  :where(button, [role="button"], a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid color-mix(in oklch, var(--ring) 70%, transparent);
+    outline-offset: 2px;
+  }
+  /* Screen-reader-only live region utility. Mirrors Tailwind's `sr-only`
+     but stays available even when an isolated component doesn't pull
+     Tailwind preflight (Storybook, snapshot tests). */
+  .sr-only-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+}
