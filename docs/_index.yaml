@@ -276,6 +276,13 @@ docs:
     tags: []
     owners: [Paperwork Labs]
     category: reference
+  - slug: clerk-key-propagation-2026-04-27t080144z
+    path: docs/infra/CLERK_KEY_PROPAGATION_2026-04-27T080144Z.md
+    title: Clerk key propagation audit — 2026-04-27T080144Z
+    summary: "**Agent:** P (composer-2-fast) **Outcome:** **Aborted at pre-flight** — no secrets were written to Studio, Vercel, or Render. No keys appear in this document (only masked previews would have been…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: clerk-axiomfolio
     path: docs/infra/CLERK_AXIOMFOLIO.md
     title: Clerk SSO — AxiomFolio (axiomfolio-next)
