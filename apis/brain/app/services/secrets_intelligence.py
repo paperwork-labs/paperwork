@@ -334,7 +334,8 @@ class SecretsIntelligence:
             r = await client.get(list_url, headers=headers)
             if r.status_code != 200:
                 detail = f"vault list HTTP {r.status_code}"
-                logger.warning("audit_drift %s: %s", secret_name, detail)
+                secret_ref = compute_fingerprint(secret_name).to_log_dict()
+                logger.warning("audit_drift %s: %s", secret_ref, detail)
                 return DriftReport(
                     secret_name=secret_name,
                     vault_fingerprint=None,
