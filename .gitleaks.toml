@@ -1,0 +1,11 @@
+title = "Paperwork gitleaks config"
+[extend]
+useDefault = true
+[allowlist]
+description = "Test fixtures with high-entropy but non-secret values"
+paths = [
+  '''apps/studio/__tests__/secrets-intake\.test\.ts''',
+]
+regexes = [
+  '''ABCDEFGHIJKLMNOPQRSTUVWXYZ234567''',
+]

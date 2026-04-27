@@ -18,6 +18,7 @@ import {
   Timer,
   ListChecks,
   Sparkles,
+  Activity,
 } from "lucide-react";
 
 type NavItem = {
@@ -57,9 +58,10 @@ function buildNavGroups(
         { href: "/admin/workflows", label: "Workflows", icon: Bot },
         { href: "/admin/n8n-mirror", label: "n8n cron mirror", icon: Timer },
         { href: "/admin/docs", label: "Docs", icon: BookOpen },
+        { href: "/admin/automation", label: "Automation", icon: Activity },
         { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
         { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
-        { href: "/admin/brain-learning", label: "Brain learning", icon: Sparkles },
+        { href: "/admin/brain/learning", label: "Brain learning", icon: Sparkles },
         { href: "/admin/secrets", label: "Secrets", icon: KeyRound },
         {
           href: "/admin/founder-actions",
