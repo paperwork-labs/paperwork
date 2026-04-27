@@ -1,4 +1,7 @@
-"""Persistence for generated cheap-agent sprints (JSON + optional tracker-index digest)."""
+"""Persistence for generated cheap-agent sprints (JSON + optional tracker-index digest).
+
+medallion: ops
+"""
 
 from __future__ import annotations
 

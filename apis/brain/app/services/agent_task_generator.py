@@ -2,6 +2,8 @@
 
 Sources: open PRs, issues labeled ``ready``, optional founder-actions doc,
 Studio ``tracker-index.json`` open items.
+
+medallion: ops
 """
 
 from __future__ import annotations
