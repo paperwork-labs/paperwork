@@ -1281,7 +1281,7 @@ VENTURE DATABASE (studio, never sold):
   user_segments: venture id tied to Clerk userId, segment, computed_at
 ```
 
-**How SSO works**: User signs up on FileFree -> FileFree creates its local user -> event fires to studio -> studio creates/updates venture_identity -> if user later signs up on LaunchFree with same email -> LaunchFree creates its local user, sends event -> studio links both product accounts to one venture_identity.
+**How SSO works**: User signs up on FileFree -> FileFree creates its local user, storing **Clerk `userId`** (the only cross-product link; per-product user tables remain separable) -> event fires to studio -> studio creates/updates venture-layer identity rows tied to that **Clerk `userId`** -> if the same person later uses LaunchFree, LaunchFree creates its local user, sends event -> studio links both product user rows through the same **Clerk `userId`**. (Studio may use internal `venture_identity` keys for reporting; they map to the same person via **Clerk `userId`**, not as a second public cross-product id.)
 
 **If FileFree is acquired**: Remove the optional Clerk / venture link columns (`clerk_user_id` and any related venture FK). FileFree still works independently. The buyer gets a complete product with its own user system.
 
@@ -1290,7 +1290,7 @@ VENTURE DATABASE (studio, never sold):
 **User Auth (FileFree, LaunchFree)**:
 
 - Providers: Google OAuth + Apple Sign-In (cover 95%+ of users). Optional email/password fallback.
-- Implementation: **Clerk** via `@paperwork-labs/auth-clerk` and `@clerk/nextjs` per app; shared sign-in patterns and JWT verification live in the monorepo package—not Auth.js v5.
+- Implementation: **Clerk** via `@paperwork-labs/auth-clerk` and `@clerk/nextjs` per app; shared sign-in patterns and JWT verification live in the monorepo package. **Auth.js v5** is not used or planned; see [KNOWLEDGE.md](KNOWLEDGE.md) §D92.
 - SSO across subdomains: FileFree/Trinkets can share `.filefree.ai` cookies where Clerk’s deployment allows; LaunchFree and other brands use **Clerk’s satellite** handoff to `accounts.paperworklabs.com`—not a custom cookie across unrelated apex domains. Studio DB may still record identity-product links for intelligence.
 - Each product keeps its own user table (separable-by-design). **Clerk userId (the only cross-product link; per-product user tables remain separable-by-design)** is the stable join; Studio venture tables map products to the same person.
 
@@ -1303,7 +1303,7 @@ VENTURE DATABASE (studio, never sold):
 
 **Trinkets Auth**: No auth. Public utility tools. Cross-sell CTAs link to FileFree/LaunchFree where users sign up. If we ever want saved preferences, use localStorage or add optional Google sign-in later.
 
-`**packages/auth/` target exports**: `AuthProvider`, `useSession`, `useAdmin`, `withAdminAuth` (middleware), `isAdmin` (server-side check).
+`**@paperwork-labs/auth-clerk` (from `packages/auth/`)** — `RequireAuth`, `useUser`, `useAdmin`, `SignInShell`, `createClerkAppearance`, FastAPI `paperwork_auth` / JWT verifiers; not a generic Auth.js v5 `packages/auth` plan.
 
 ### Cursor Workspace Scoping
 

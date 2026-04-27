@@ -120,9 +120,10 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
   - `[ ]` Plan verifier paths for AxiomFolio APIs post–Next.js migration; retire parallel JWT/session schemes safely.
   - `[ ]` Communicate session cutover; keep documented Basic Auth escape hatch for Studio until explicitly removed.
   - `[~]` **T3 consumer cutover (in flight)** — shared `@paperwork-labs/auth-clerk` package: PR [#234](https://github.com/paperwork-labs/paperwork/pull/234); `accounts.paperworklabs.com` DNS + satellite steps: [docs/infra/CLERK_ACCOUNTS_DNS_TONIGHT.md](../infra/CLERK_ACCOUNTS_DNS_TONIGHT.md) (runbook; land with Track H1).
-    - FileFree: cut consumer `/auth/login` + `/auth/register` over to Clerk `/sign-in` + `/sign-up`; remove legacy session hooks/middleware once parity; FileFree API verifies Clerk JWTs.
-    - AxiomFolio (`axiomfolio-next`): finish consumer auth on Clerk; APIs move from `qm_token` to Clerk JWT verification behind a short shadow window; backfill `clerk_user_id` by email where needed.
-    - LaunchFree + Distill + Trinkets: adopt shared `SignInShell` + locked app-name-primary wordmark tokens from the package; drop duplicate per-app `clerk-appearance` copies when consolidated.
+    - **B1 (FileFree)** — migrate consumer `/auth/login` + `/auth/register` to Clerk `/sign-in` + `/sign-up`; remove legacy session hooks, store, and middleware after parity; FileFree API verifies Clerk JWTs. (Track B1, Q2 Convergence.)
+    - **B2 (AxiomFolio)** — finish consumer auth on the Next.js app; APIs move from `qm_token` to Clerk JWT verification (short shadow, then default-on); backfill `clerk_user_id` by email where needed. (Track B2.)
+    - **B3 (LaunchFree, Distill, Trinkets)** — verify app-name-primary wordmark + `SignInShell` / Clerk Appearance on prod; retire duplicate per-app `clerk-appearance` once the package lands; document Brain customer-facing pattern. (Track B3.)
+    - **H4 (`accounts.paperworklabs.com`)** — Clerk primary + satellite topology and DNS: [docs/infra/CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md), [docs/infra/CLERK_DNS_SPACESHIP.md](../infra/CLERK_DNS_SPACESHIP.md); align optional `apps/accounts/` with [`docs/KNOWLEDGE.md`](../docs/KNOWLEDGE.md) §D92 if product requires a custom host. (Track H4.)
     - Studio: keep Clerk + `ADMIN_EMAILS` allowlist; retire Basic once operators publish a cutover date.
     - Python sidecars (FileFree, AxiomFolio, Brain as needed): use shared `paperwork_auth` / JWT verifier helpers aligned with the package’s Clerk JWKS contract.
 
@@ -139,9 +140,9 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
 
 ## Follow-ups
 
-### Deferred (superseded by D91)
+### Deferred (superseded by D92)
 
-- ~~**Track H4 — `apps/accounts/`** on `accounts.paperworklabs.com` (custom Paperwork ID headline host per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md))~~ — **superseded** by Clerk’s auto-hosted Account Portal on the primary domain; see [`docs/KNOWLEDGE.md`](../KNOWLEDGE.md) §D91.
+- ~~**Track H4 — `apps/accounts/`** on `accounts.paperworklabs.com` (custom Paperwork ID headline host per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md))~~ — **superseded** by Clerk’s auto-hosted Account Portal on the primary domain; see [`docs/KNOWLEDGE.md`](../KNOWLEDGE.md) §D92.
 
 ## Related
 

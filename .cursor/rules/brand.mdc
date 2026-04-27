@@ -37,6 +37,77 @@ PAPERWORK LABS (Holding Company - paperworklabs.com)
 
 **Why this architecture**: Consumer brands are free and distinct — each owns a clear paperwork category and **its own full palette** (primary, wordmark, accent). Brain is the meta-product whose "skills" are the consumer brands. Distill unifies all B2B under one brand (Stripe model, not Intuit model). Paperwork Labs is both the infrastructure company and the LLC umbrella for incidental ventures (publishing).
 
+## Clerk wordmark pattern (locked 2026-04-26)
+
+**Pattern:** App name primary, **Paperwork ID** as the identity model (explainer line, not the default H1 on every app), **by Paperwork Labs** attribution. Implementation: `@paperwork-labs/auth-clerk` `SignInShell` (`appName`, `appWordmark`, `appTagline`, `signInVerb`).
+
+**Rule:** Paperwork ID is the identity model, not the per-app sign-in headline. Only `accounts.paperworklabs.com` uses **"Paperwork ID"** as the headline.
+
+**Copy templates (locked):**
+
+`filefree.ai/sign-in` (and `register`):
+
+```
+[FileFree wordmark + droplet icon — large]
+Sign in to FileFree
+<SignIn />
+─────
+Free tax filing, by Paperwork Labs
+Your Paperwork ID also works on LaunchFree, Distill, and AxiomFolio.
+```
+
+`launchfree.ai/sign-in`:
+
+```
+[LaunchFree wordmark + droplet — large]
+Sign in to LaunchFree
+<SignIn />
+─────
+Free LLC formation, by Paperwork Labs
+Your Paperwork ID also works on FileFree, Distill, and AxiomFolio.
+```
+
+`distill.tax/sign-in`:
+
+```
+[Distill wordmark + yin-yang — large]
+Sign in to Distill
+<SignIn />
+─────
+Tax + formation APIs for CPAs, by Paperwork Labs
+Your Paperwork ID also works on FileFree, LaunchFree, and AxiomFolio.
+```
+
+`tools.filefree.ai/sign-in` (Trinkets — funnel sibling; frame as FileFree extension):
+
+```
+[Trinkets wordmark — large]
+Sign in to Trinkets
+<SignIn />
+─────
+Tax + finance tools, by Paperwork Labs
+Your Paperwork ID also works on FileFree, LaunchFree, Distill, and AxiomFolio.
+```
+
+`accounts.paperworklabs.com` (sole surface where Paperwork ID may own the H1):
+
+```
+[Paperwork Labs paperclip + wordmark — large]
+Paperwork ID
+<SignIn />
+─────
+One account for FileFree, LaunchFree, Distill, AxiomFolio,
+Trinkets, and everything Paperwork Labs.
+```
+
+`paperworklabs.com/admin` (Studio — parent brand surface):
+
+```
+[Paperwork Labs wordmark — large]
+Sign in to Studio
+<SignIn />
+```
+
 ## Brand Names
 
 - **Company name**: Paperwork Labs (two words, both capitalized)
@@ -110,7 +181,7 @@ The 2026-04-25 first cut put every mark on Azure + Amber and they came out indis
 Clerk is the live identity layer; copy and hierarchy follow **app-name primary** + **Paperwork ID as the identity model** (not as every page’s H1). Reference: Q2 Tech Debt Convergence plan (SSO + wordmark) and `@paperwork-labs/auth-clerk` `SignInShell` (`appName`, `appWordmark`, `appTagline`, `signInVerb`).
 
 - **Product domains** (FileFree, LaunchFree, Distill, Trinkets, AxiomFolio, Studio admin): the **app name** leads visually—e.g. "Sign in to FileFree" with the product wordmark large; then Clerk’s embedded sign-in; then **"by Paperwork Labs"** attribution; then a small **"Your Paperwork ID also works on…"** line naming sibling products. Do **not** use **"Paperwork ID"** as the only headline on these pages (users arrived for the product, not the umbrella ID first).
-- **`accounts.paperworklabs.com` only** (Clerk-hosted Account Portal on the primary domain; ~~dedicated `apps/accounts/`~~ superseded per [`docs/KNOWLEDGE.md`](../../docs/KNOWLEDGE.md) §D91): **"Paperwork ID"** may be the **primary** headline where Clerk/Dashboard theming allows, with company lockup and one-account-for-everything explainer. This is the **sole** surface where the unified-account name is allowed to own the H1.
+- **`accounts.paperworklabs.com` only** (Clerk-hosted Account Portal on the primary domain; ~~dedicated `apps/accounts/`~~ superseded per [`docs/KNOWLEDGE.md`](../../docs/KNOWLEDGE.md) §D92): **"Paperwork ID"** may be the **primary** headline where Clerk/Dashboard theming allows, with company lockup and one-account-for-everything explainer. This is the **sole** surface where the unified-account name is allowed to own the H1.
 - **Deprecated (do not ship)**: universal headlines such as "Paperwork Labs · Single Sign-On" or reusing "Paperwork ID" as the default sign-in H1 on every app—these are superseded by the context-aware pattern above.
 
 ### Per-product mark palette (canonical SVG marks + surfaces)

@@ -10,7 +10,7 @@ status: active
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 
 **Last Updated**: 2026-04-27
-**Version**: 10.9 (D91 — Clerk + @paperwork-labs/auth-clerk canon; D56 superseded)
+**Version**: 10.10 (D92 — Clerk + @paperwork-labs/auth-clerk canon; D56 + D91 superseded)
 
 ---
 
@@ -20,7 +20,7 @@ Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinket
 
 - **D29 — Brand assets**: Ideogram v3 wordmark + Figma/Canva monogram still needed for all products
 - **D37 — Domain migration**: filefree.tax → filefree.ai redirect not yet configured
-- **D91 — Federated auth**: Clerk + `@paperwork-labs/auth-clerk`; supersedes D56 (see §D91)
+- **D92 — Federated auth**: Clerk + `@paperwork-labs/auth-clerk`; supersedes D56 and D91 (see §D92)
 - **D62 — Reliability patterns**: Idempotency, circuit breakers, dual-path reconciliation, OpenTelemetry, k6 load tests must ship in Phase 7 (P7.18-P7.22) before January 2027
 - **Q3 — Column Tax**: Demo call + pricing + sandbox access needed by September 2026
 
@@ -156,7 +156,7 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 - **Decision**: Move command center to paperworklabs.com. Founder's personal site separate.
 
 ### D56 — Auth Architecture: Admin Allowlist (2026-03-12)
-- ~~D56 superseded by D91: see §D91 below.~~
+- **Status:** Superseded by D92.
 
 ### D57 — Trinkets Domain: tools.filefree.ai (2026-03-12)
 - **Decision**: Subdomain inherits parent authority. Graduation at 10K monthly visits.
@@ -408,11 +408,16 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 
 ### D91 — Clerk is the federated identity provider; packages/auth → @paperwork-labs/auth-clerk (2026-04-27)
 
+- **Status:** Superseded by D92. Retained for history; read §D92 for the locked canon.
 - **Reversibility**: medium (vendor lock-in for session UI; JWT verification is portable)
 - **Decision**: Production SSO uses **Clerk** everywhere; the shared package is `@paperwork-labs/auth-clerk` (Clerk React wrappers, Appearance patterns, and backend JWT verification helpers)—not a future Auth.js v5 `packages/auth` build. **Auth.js v5 is not planned.**
-- **Commercial path**: Clerk Free → Pro when MAU exceeds ~1K; when a bakeoff write-up is published, add a link under `docs/decisions/` (file not in-repo yet; see D91 tracking).
+- **Commercial path**: Clerk Free → Pro when MAU exceeds ~1K; bakeoff write-up: [`docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md`](decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md) (canon: D92).
 - **Topology**: Multi-domain **satellite** setup with primary front-end API at `accounts.paperworklabs.com` and per-app domains as satellites; cross-product session follows Clerk’s model, not a hand-rolled Auth.js stack.
 - **Supersedes**: D56’s `packages/auth/` + Auth.js v5 target is obsolete; admin Basic Auth on Studio may persist until operator cutover; see [`docs/infra/CLERK_STUDIO.md`](docs/infra/CLERK_STUDIO.md).
+
+### D92 — Federated identity: Clerk + @paperwork-labs/auth-clerk (2026-04-27)
+
+Clerk is the federated identity provider for all Paperwork Labs apps. `packages/auth/` is repurposed as `@paperwork-labs/auth-clerk` (per-app Clerk wrappers, RequireAuth/useAdmin, FastAPI `paperwork_auth` sidecar, `createClerkAppearance` factory). Auth.js v5 is NOT planned. Supersedes D56. See also [`docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md`](decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md). Admin Basic Auth on Studio may persist until operator cutover; see [`docs/infra/CLERK_STUDIO.md`](docs/infra/CLERK_STUDIO.md).
 
 ---
 
