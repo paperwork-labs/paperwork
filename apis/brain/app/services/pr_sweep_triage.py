@@ -2,6 +2,8 @@
 
 Gated by ``settings.BRAIN_OWNS_PR_TRIAGE``. When disabled, this module
 returns immediately without calling GitHub.
+
+medallion: ops
 """
 
 from __future__ import annotations
