@@ -23,6 +23,11 @@ export type Sprint = {
   title: string;
   status: string;
   raw_status?: string;
+  /** Reconciled label (paused→shipped when stale + done; set by `generate_tracker_index.py`). */
+  effective_status?: string;
+  last_reviewed?: string;
+  /** Free-text founder or PM note — required for true "paused" when reconciler would otherwise ship. */
+  blocker?: string;
   owner?: string;
   domain?: string;
   start?: string;
