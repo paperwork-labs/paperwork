@@ -1,7 +1,7 @@
 def test_snapshot_last_n_days_writes_rows(db_session, monkeypatch):
     """Smoke test: snapshot_last_n_days writes ledger rows for last N SPY trading days."""
     import time
-    from datetime import datetime
+    from datetime import UTC, datetime
 
     import app.tasks.market.history as history_tasks
     from app.services.silver.market.universe import TRACKED_ALL_UPDATED_AT_KEY

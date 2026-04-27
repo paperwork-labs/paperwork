@@ -1,7 +1,7 @@
 """medallion: ops"""
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from sqlalchemy import DateTime, Integer, String, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB
@@ -19,7 +19,7 @@ class FormationStatus(str, Enum):
     FAILED = "failed"
 
 
-class FilingTier(str, Enum):
+class FilingTier(StrEnum):
     API = "api"
     PORTAL = "portal"
     MAIL = "mail"

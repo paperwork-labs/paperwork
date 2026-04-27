@@ -635,7 +635,7 @@ class ProviderRouter:
             "5y": 1850, "10y": 3700, "max": 36500,
         }
         delta = days_map.get(period, 365)
-        from_date = (_datetime.now(UTC).date() - timedelta(days=delta)).isoformat()
+        from_date = (datetime.now(UTC).date() - timedelta(days=delta)).isoformat()
         fmp_kwargs: Dict[str, Any] = {
             "apikey": settings.FMP_API_KEY,
             "symbol": symbol,

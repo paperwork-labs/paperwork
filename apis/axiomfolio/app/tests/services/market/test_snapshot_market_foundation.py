@@ -202,8 +202,8 @@ def test_earnings_calendar_exception_preserves_next_earnings_and_increments_erro
     price_bars.persist_price_bars(
         db_session, sym, df, interval="1d", data_source="unit_test", is_adjusted=True
     )
-    # Aligned to MarketSnapshot.next_earnings (naive in DB) for equality.
-    existing = datetime(2025, 6, 1, 15, 30, 0, tzinfo=UTC)
+    # ORM round-trip stores next_earnings as naive local timestamps; keep naive here.
+    existing = datetime(2025, 6, 1, 15, 30, 0)
     ts = datetime.now(timezone.utc)
     db_session.add(
         MarketSnapshot(

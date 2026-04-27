@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from app.models.external_signal import ExternalSignal
