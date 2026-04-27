@@ -70,7 +70,6 @@ def _import_plaid_service():
     workers restricted to ``market`` queue).
     """
 
-    # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.bronze.plaid.sync_service moves during Phase 0.C
     from app.services.bronze.plaid.sync_service import PlaidSyncService
     return PlaidSyncService()
 

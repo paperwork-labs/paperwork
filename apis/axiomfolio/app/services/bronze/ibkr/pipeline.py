@@ -32,7 +32,7 @@ from app.services.portfolio.account_credentials_service import (
     CredentialsNotFoundError,
     account_credentials_service,
 )
-# medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.closing_lot_matcher moves during Phase 0.C
+# medallion: allow silver for post-ingest tax-lot closing reconciliation
 from app.services.silver.portfolio.closing_lot_matcher import (
     MatchResult,
     reconcile_closing_lots,
@@ -390,7 +390,7 @@ class IBKRSyncService:
     @staticmethod
     def _refresh_activity_views(db: Session) -> None:
         try:
-            # medallion: allow cross-layer import (bronze -> silver); resolves when app.services.silver.portfolio.activity_aggregator moves during Phase 0.C
+            # medallion: allow silver for post-sync activity view refresh
             from app.services.silver.portfolio.activity_aggregator import activity_aggregator
             activity_aggregator.refresh_materialized_views(db)
         except Exception as exc:
