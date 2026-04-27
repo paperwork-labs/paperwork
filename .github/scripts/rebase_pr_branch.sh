@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Rebase current branch onto origin/main; resolve known generated-file conflicts.
+# Rebase current branch onto origin/${MAIN_REF:-main}; resolve known generated-file conflicts.
 set -euo pipefail
 
-git fetch origin main
+MAIN_REF="${MAIN_REF:-main}"
 
-if git rebase origin/main; then
+git fetch origin "${MAIN_REF}"
+
+if git rebase "origin/${MAIN_REF}"; then
   git push --force-with-lease origin "HEAD"
   exit 0
 fi
