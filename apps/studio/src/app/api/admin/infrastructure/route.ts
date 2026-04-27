@@ -1,11 +1,26 @@
 import { NextResponse } from "next/server";
-import { cached, getInfrastructureStatus } from "@/lib/command-center";
+import { cached, getInfrastructureView } from "@/lib/command-center";
+import { getE2EInfrastructureFixture } from "@/lib/e2e-infra-mock";
 
 export const dynamic = "force-dynamic";
 
 const CACHE_TTL = 60_000;
 
 export async function GET() {
-  const services = await cached("admin:infrastructure", CACHE_TTL, getInfrastructureStatus);
-  return NextResponse.json({ services, checkedAt: new Date().toISOString() });
+  if (process.env.STUDIO_E2E_FIXTURE === "1") {
+    const e2e = getE2EInfrastructureFixture();
+    return NextResponse.json({
+      services: e2e.services,
+      platformSummary: e2e.platformSummary,
+      platformPartial: e2e.platformPartial,
+      checkedAt: new Date().toISOString(),
+    });
+  }
+  const view = await cached("admin:infrastructure", CACHE_TTL, getInfrastructureView);
+  return NextResponse.json({
+    services: view.services,
+    platformSummary: view.platformSummary,
+    platformPartial: view.platformPartial,
+    checkedAt: new Date().toISOString(),
+  });
 }

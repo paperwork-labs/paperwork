@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-25
+last_reviewed: 2026-04-26
 doc_kind: reference
 domain: infra
 status: active
@@ -172,7 +172,7 @@ Runbook: [RENDER_REPOINT.md → Path A](RENDER_REPOINT.md#path-a-brain-api-docke
 - [x] F-4: single `render.yaml` is the source of truth; `apis/axiomfolio/render.yaml` reduced to a stub pointer.
 - [ ] F-5: `GITHUB_WEBHOOK_SECRET` added to `brain-api` env (declared in blueprint with `sync: false`; operator must paste actual value).
 - [x] F-6: `brain-api` Docker Build Context Directory cleared; latest `main` SHA `f0255542` is live (deploy `dep-d7m63jeffeas73bmkeeg`).
-- [ ] Studio `/admin/infrastructure` shows all six services green (currently only probes a subset).
+- [x] Studio `/admin/infrastructure` enumerates every Render service + Postgres + Key Value + every Vercel project from the APIs (live/build_failed/deploy state per row; no hardcoded service IDs). See `apps/studio/src/lib/infra-probes.ts` (Q2 Tech Debt Track I4).
 
 ## Verification commands
 

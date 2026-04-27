@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   RefreshCw,
   ExternalLink,
@@ -13,8 +13,10 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  Layers,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import type { PlatformHealthSummary } from "@/lib/infra-types";
 
 type InfraService = {
   service: string;
@@ -25,6 +27,13 @@ type InfraService = {
   latencyMs: number | null;
   dashboardUrl: string | null;
   consoleUrl?: string | null;
+  probeKind?: "standard" | "render" | "vercel";
+  platformType?: string;
+  stateLabel?: "live" | "building" | "failed" | "suspended";
+  deployState?: string;
+  commitSha?: string | null;
+  lastDeployedAt?: string | null;
+  anchorId?: string;
 };
 
 const categoryMeta: Record<string, { label: string; icon: typeof Server }> = {
@@ -76,6 +85,38 @@ function StatusDot({ healthy, configured }: { healthy: boolean; configured: bool
   return <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-400" />;
 }
 
+function platformStateBadgeClass(st?: string): string {
+  if (st === "live") return "border-emerald-800/50 bg-emerald-950/40 text-emerald-200";
+  if (st === "building") return "border-amber-800/50 bg-amber-950/40 text-amber-200";
+  if (st === "failed" || st === "suspended")
+    return "border-rose-800/50 bg-rose-950/40 text-rose-200";
+  return "border-zinc-700 bg-zinc-900/80 text-zinc-300";
+}
+
+function deriveSummary(services: InfraService[], fallback?: PlatformHealthSummary): PlatformHealthSummary {
+  if (fallback) return fallback;
+  const render = { live: 0, building: 0, failed: 0, suspended: 0, total: 0 };
+  const vercel = { live: 0, building: 0, failed: 0, suspended: 0, total: 0 };
+  for (const s of services) {
+    if (s.probeKind === "render") {
+      render.total++;
+      const st = s.stateLabel ?? "failed";
+      if (st === "live") render.live++;
+      else if (st === "building") render.building++;
+      else if (st === "failed") render.failed++;
+      else render.suspended++;
+    } else if (s.probeKind === "vercel") {
+      vercel.total++;
+      const st = s.stateLabel ?? "failed";
+      if (st === "live") vercel.live++;
+      else if (st === "building") vercel.building++;
+      else if (st === "failed") vercel.failed++;
+      else vercel.suspended++;
+    }
+  }
+  return { render, vercel };
+}
+
 const stagger = {
   hidden: {},
   show: { transition: { staggerChildren: 0.05 } },
@@ -89,24 +130,54 @@ const AUTO_REFRESH_MS = 60_000;
 
 export default function InfraClient({
   initialServices,
+  initialPlatformSummary,
+  initialPlatformPartial = [],
   initialCheckedAt,
 }: {
   initialServices: InfraService[];
+  initialPlatformSummary?: PlatformHealthSummary;
+  initialPlatformPartial?: string[];
   initialCheckedAt: string;
 }) {
   const [services, setServices] = useState(initialServices);
+  const [platformSummary, setPlatformSummary] = useState<PlatformHealthSummary | undefined>(
+    initialPlatformSummary,
+  );
+  const [platformPartial, setPlatformPartial] = useState<string[]>(initialPlatformPartial);
   const [checkedAt, setCheckedAt] = useState(initialCheckedAt);
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+
+  const { platformRows, otherRows } = useMemo(() => {
+    const platformRowsInner = services.filter(
+      (s) => s.probeKind === "render" || s.probeKind === "vercel",
+    );
+    const otherRowsInner = services.filter(
+      (s) => s.probeKind !== "render" && s.probeKind !== "vercel",
+    );
+    return { platformRows: platformRowsInner, otherRows: otherRowsInner };
+  }, [services]);
+
+  const summary = useMemo(
+    () => deriveSummary(services, platformSummary),
+    [services, platformSummary],
+  );
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
       const res = await fetch("/api/admin/infrastructure");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
+      const data = (await res.json()) as {
+        services: InfraService[];
+        platformSummary?: PlatformHealthSummary;
+        platformPartial?: string[];
+        checkedAt: string;
+      };
       setServices(data.services);
+      if (data.platformSummary) setPlatformSummary(data.platformSummary);
+      if (data.platformPartial) setPlatformPartial(data.platformPartial);
       setCheckedAt(data.checkedAt);
       setRefreshError(null);
     } catch (err) {
@@ -122,21 +193,39 @@ export default function InfraClient({
     return () => clearInterval(interval);
   }, [autoRefresh, refresh]);
 
-  const healthyCount = services.filter((s) => s.healthy).length;
-  const configuredCount = services.filter((s) => s.configured).length;
-  const degradedCount = services.filter((s) => s.configured && !s.healthy).length;
+  const healthyCount = otherRows.filter((s) => s.healthy).length;
+  const configuredCount = otherRows.filter((s) => s.configured).length;
+  const degradedCount = otherRows.filter((s) => s.configured && !s.healthy).length;
 
-  const allHealthy = degradedCount === 0 && configuredCount === services.length;
+  const r = summary.render;
+  const v = summary.vercel;
+  const hasRender = r.total > 0;
+  const hasVercel = v.total > 0;
+  const renderLine = hasRender
+    ? `Render: ${r.live}/${r.total} live${
+        r.building > 0 ? `, ${r.building} building` : ""
+      }${r.failed > 0 ? `, ${r.failed} failed` : ""}${r.suspended > 0 ? `, ${r.suspended} suspended` : ""}`
+    : "Render: (no API data — set RENDER_API_KEY)";
+
+  const vercelLine = hasVercel
+    ? `Vercel: ${v.live}/${v.total} live${v.building > 0 ? `, ${v.building} building` : ""}${
+        v.failed > 0 ? `, ${v.failed} failed` : ""
+      }`
+    : "Vercel: (no API data — set VERCEL_API_TOKEN + team)";
+
+  const allHealthy = degradedCount === 0 && otherRows.length > 0 && healthyCount === otherRows.length;
   const hasDegraded = degradedCount > 0;
 
   const grouped = new Map<string, InfraService[]>();
-  for (const s of services) {
+  for (const s of otherRows) {
     const list = grouped.get(s.category) ?? [];
     list.push(s);
     grouped.set(s.category, list);
   }
 
   const categoryOrder = ["core", "frontend", "ops", "hosting", "data", "cache"];
+
+  const quickJump = platformRows.filter((p) => p.stateLabel && p.stateLabel !== "live" && p.anchorId);
 
   return (
     <div className="space-y-6">
@@ -145,11 +234,47 @@ export default function InfraClient({
           Infrastructure Health
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Live checks across the full Paperwork Labs stack.
+          Provider-native deploy state for every Render service + Vercel project, plus reachability
+          and integration checks. Q2 Tech Debt (Track I4).
         </p>
       </div>
 
-      {/* Overall status pill */}
+      <section
+        className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4"
+        data-testid="infra-health-summary"
+        aria-label="Platform health summary"
+      >
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <Layers className="h-3.5 w-3.5" />
+          Deploy platform (source of truth)
+        </div>
+        <p className="text-sm text-zinc-200" data-testid="infra-summary-render">
+          {renderLine}
+        </p>
+        <p className="mt-1 text-sm text-zinc-200" data-testid="infra-summary-vercel">
+          {vercelLine}
+        </p>
+        {quickJump.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-2 text-xs text-zinc-500">
+            <span className="w-full">Quick jump to issues:</span>
+            {quickJump.map((p) => (
+              <a
+                key={p.anchorId}
+                href={`#${p.anchorId}`}
+                className="rounded border border-rose-900/50 bg-rose-950/30 px-2 py-0.5 text-rose-200 hover:bg-rose-900/30"
+              >
+                {p.service}
+              </a>
+            ))}
+          </div>
+        )}
+        {platformPartial.length > 0 && (
+          <p className="mt-2 text-xs text-amber-400/90">
+            Partial API notes: {platformPartial.join(" · ")}
+          </p>
+        )}
+      </section>
+
       <div className="flex items-center gap-3">
         <div
           className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium ${
@@ -160,16 +285,18 @@ export default function InfraClient({
                 : "border border-amber-800/40 bg-amber-950/30 text-amber-300"
           }`}
         >
-          <StatusDot healthy={allHealthy} configured={configuredCount === services.length} />
+          <StatusDot
+            healthy={allHealthy}
+            configured={otherRows.length === 0 || configuredCount === otherRows.length}
+          />
           {allHealthy
-            ? "All Systems Operational"
+            ? "All synthetic checks green"
             : hasDegraded
-              ? `${degradedCount} Service${degradedCount > 1 ? "s" : ""} Degraded`
-              : "Partially Configured"}
+              ? `${degradedCount} check${degradedCount > 1 ? "s" : ""} degraded (below)`
+              : "Supplementary checks"}
         </div>
       </div>
 
-      {/* Stats row */}
       <motion.section
         className="grid gap-4 md:grid-cols-3"
         variants={stagger}
@@ -177,39 +304,36 @@ export default function InfraClient({
         animate="show"
       >
         <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <p className="text-xs uppercase tracking-wide text-zinc-400">Overall</p>
+          <p className="text-xs uppercase tracking-wide text-zinc-400">Platform rows</p>
+          <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-100">
+            {platformRows.length}
+          </p>
+          <p className="text-sm text-zinc-500">Render + Postgres + Key Value + Vercel</p>
+        </motion.div>
+        <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+          <p className="text-xs uppercase tracking-wide text-zinc-400">Supplementary / HTTP</p>
           <p className="mt-2 text-2xl font-semibold tabular-nums">
-            <span className={healthyCount === services.length ? "text-emerald-300" : "text-zinc-100"}>
+            <span className={healthyCount === otherRows.length ? "text-emerald-300" : "text-zinc-100"}>
               {healthyCount}
             </span>
-            <span className="text-zinc-500">/{services.length}</span>
+            <span className="text-zinc-500">/{otherRows.length}</span>
           </p>
-          <p className="text-sm text-zinc-500">services healthy</p>
+          <p className="text-sm text-zinc-500">n8n, Slack, Neon, etc.</p>
         </motion.div>
         <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <p className="text-xs uppercase tracking-wide text-zinc-400">Configured</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
-            {configuredCount}
-            <span className="text-zinc-500">/{services.length}</span>
-          </p>
-          <p className="text-sm text-zinc-500">provider keys present</p>
-        </motion.div>
-        <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <p className="text-xs uppercase tracking-wide text-zinc-400">Degraded</p>
+          <p className="text-xs uppercase tracking-wide text-zinc-400">Degraded (below)</p>
           <p className={`mt-2 text-2xl font-semibold tabular-nums ${degradedCount > 0 ? "text-rose-300" : "text-emerald-300"}`}>
             {degradedCount}
           </p>
-          <p className="text-sm text-zinc-500">configured with failures</p>
+          <p className="text-sm text-zinc-500">HTTP / token checks</p>
         </motion.div>
       </motion.section>
 
-      {/* Refresh controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3">
         <div className="flex items-center gap-3 text-sm text-zinc-400">
           <Radio className="h-3.5 w-3.5" />
           <span>
-            Last checked:{" "}
-            <span className="text-zinc-200">{formatTimePT(checkedAt)} PT</span>
+            Last checked: <span className="text-zinc-200">{formatTimePT(checkedAt)} PT</span>
           </span>
           <label className="flex cursor-pointer items-center gap-1.5 text-xs">
             <input
@@ -236,7 +360,64 @@ export default function InfraClient({
         </button>
       </div>
 
-      {/* Service cards by category */}
+      {platformRows.length > 0 && (
+        <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Platform services</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {platformRows.map((svc) => (
+              <div
+                key={svc.service + (svc.anchorId ?? "") + (svc.probeKind ?? "")}
+                id={svc.anchorId}
+                data-testid="infra-probe-row"
+                className={`scroll-mt-24 rounded-xl border bg-zinc-900/60 p-4 ${
+                  !svc.configured
+                    ? "border-zinc-800"
+                    : svc.healthy
+                      ? "border-emerald-800/20"
+                      : "border-rose-800/30"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-medium text-zinc-100">{svc.service}</p>
+                    <p className="mt-0.5 text-xs text-zinc-500">
+                      {svc.probeKind === "vercel" ? "Vercel" : "Render"} · {svc.platformType ?? "—"}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium uppercase ${platformStateBadgeClass(
+                      svc.stateLabel,
+                    )}`}
+                    data-testid="infra-probe-state"
+                  >
+                    {svc.stateLabel ?? "?"}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-zinc-400">{svc.detail}</p>
+                {svc.commitSha && (
+                  <p className="mt-1 font-mono text-xs text-zinc-500">SHA {svc.commitSha}</p>
+                )}
+                {svc.lastDeployedAt && (
+                  <p className="text-xs text-zinc-500">Deployed {formatTimePT(svc.lastDeployedAt)} PT</p>
+                )}
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  {svc.dashboardUrl && (
+                    <a
+                      href={svc.dashboardUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
+                    >
+                      Open dashboard <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       <motion.div className="space-y-6" variants={stagger} initial="hidden" animate="show">
         {categoryOrder.map((cat) => {
           const catServices = grouped.get(cat);
