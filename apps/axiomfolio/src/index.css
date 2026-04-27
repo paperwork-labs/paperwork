@@ -1,0 +1,3 @@
+/* Re-export app styles for tooling (e.g. Storybook in apps/design) that import this path.
+   Canonical entry for the Next app remains `src/app/globals.css`. */
+@import "./app/globals.css";
