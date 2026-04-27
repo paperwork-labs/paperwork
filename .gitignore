@@ -52,6 +52,7 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 *.tsbuildinfo
+**/tsconfig.tsbuildinfo
 .npm
 .eslintcache
 .yarn-integrity

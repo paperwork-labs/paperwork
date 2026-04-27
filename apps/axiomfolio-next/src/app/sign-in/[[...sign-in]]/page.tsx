@@ -1,22 +1,22 @@
 import { SignIn } from "@clerk/nextjs";
+import { SignInShell } from "@paperwork-labs/auth-clerk/components/sign-in-shell";
+import { axiomfolioAppearance } from "@paperwork-labs/auth-clerk/appearance";
 
 import { ClerkAuthPageShell } from "@/components/clerk/ClerkAuthPageShell";
-import { axiomfolioClerkAppearance } from "@/lib/axiomfolio-clerk-appearance";
+import { AxiomFolioWordmark } from "@/components/clerk/AxiomFolioWordmark";
 
 export default function SignInPage() {
   return (
     <ClerkAuthPageShell>
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-            Paperwork Labs
-          </p>
-          <h1 className="mt-1 text-lg font-medium text-foreground">
-            Single Sign-On
-          </h1>
-        </div>
-        <SignIn appearance={axiomfolioClerkAppearance} />
-      </div>
+      <SignInShell
+        appName="AxiomFolio"
+        appSlug="axiomfolio"
+        appWordmark={<AxiomFolioWordmark />}
+        appTagline="Portfolio + signals"
+        appearance={axiomfolioAppearance}
+      >
+        <SignIn />
+      </SignInShell>
     </ClerkAuthPageShell>
   );
 }
