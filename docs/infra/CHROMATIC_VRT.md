@@ -77,10 +77,10 @@ HoverWiggle.parameters = {
 };
 ```
 
-The global `chromatic.pauseAnimationAtEnd: true` in
-`apps/design/.storybook/preview.tsx` makes any remaining animations land on
-their final frame deterministically, so most reduced-motion + animated-end
-states still get good coverage.
+The global `chromatic.pauseAnimationAtEnd: true` in the design app’s
+`.storybook/preview.tsx` (next to `main.ts` under `apps/design`) makes any
+remaining animations land on their final frame deterministically, so most
+reduced-motion + animated-end states still get good coverage.
 
 ## How to triage Chromatic diffs
 
@@ -154,6 +154,6 @@ If we approach the free-tier ceiling, options are:
 
 ## Related docs
 
-- `apps/design/.storybook/preview.tsx` — global `chromatic` parameters
+- `.storybook/preview.tsx` in the `apps/design` package — global `chromatic` parameters
 - `apps/design/chromatic.config.json` — project + build config
 - `.github/workflows/chromatic.yaml` — CI integration
