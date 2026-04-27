@@ -38,6 +38,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install Python deps for index scripts
+        if: steps.skip.outputs.skip != 'true'
+        run: pip install pyyaml
+
       - name: Regenerate tracker + docs index
         if: steps.skip.outputs.skip != 'true'
         run: |
