@@ -29,6 +29,7 @@
     "clean": "pnpm -r exec rm -rf node_modules .next out dist"
   },
   "devDependencies": {
+    "tsx": "^4.21.0",
     "turbo": "^2.9.6"
   },
   "engines": {

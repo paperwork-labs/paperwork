@@ -265,43 +265,55 @@ SECTION_RE = re.compile(r"^##\s+(?P<title>.+?)\s*$", re.MULTILINE)
 BULLET_RE = re.compile(r"^\s*[-*]\s+(?P<text>.+?)\s*$", re.MULTILINE)
 PR_MENTION_RE = re.compile(r"#(\d{2,5})\b|/pull/(\d{2,5})\b")
 
-# Canonical sprint status vocabulary lives in docs/sprints/README.md:
-#   active | shipped | paused | abandoned
-# Authors frequently write aliases (in_progress, research, wip, draft, …);
-# normalize them here so the UI never falls back to "paused" by accident.
-CANONICAL_STATUSES = {"active", "shipped", "paused", "abandoned"}
+# Canonical sprint status vocabulary (see docs/sprints/README.md):
+#   planned | in_progress | paused | shipped | deferred | dropped
+# Aliases map into this set. "active" is treated as in_progress for back-compat.
+CANONICAL_STATUSES = {
+    "planned",
+    "in_progress",
+    "paused",
+    "shipped",
+    "deferred",
+    "dropped",
+    "active",
+    "abandoned",
+}
 STATUS_ALIASES = {
-    "in_progress": "active",
-    "in-progress": "active",
-    "inprogress": "active",
-    "wip": "active",
-    "research": "active",
-    "draft": "active",
-    "open": "active",
-    "ongoing": "active",
+    "in-progress": "in_progress",
+    "inprogress": "in_progress",
+    "wip": "in_progress",
+    "research": "in_progress",
+    "draft": "in_progress",
+    "open": "in_progress",
+    "ongoing": "in_progress",
+    "active": "in_progress",
     "merged": "shipped",
     "done": "shipped",
     "complete": "shipped",
     "completed": "shipped",
-    "decided": "active",
-    "approved": "active",
+    "decided": "in_progress",
+    "approved": "in_progress",
     "blocked": "paused",
     "on_hold": "paused",
     "on-hold": "paused",
-    "deferred": "paused",
-    "cancelled": "abandoned",
-    "canceled": "abandoned",
-    "dropped": "abandoned",
+    "cancelled": "dropped",
+    "canceled": "dropped",
+    "abandoned": "dropped",
+    "dropped": "dropped",
 }
 
 
 def normalize_status(raw: Any) -> str:
     if not isinstance(raw, str):
-        return "active"
+        return "in_progress"
     key = raw.strip().lower()
     if key in CANONICAL_STATUSES:
+        if key == "active":
+            return "in_progress"
+        if key == "abandoned":
+            return "dropped"
         return key
-    return STATUS_ALIASES.get(key, "active")
+    return STATUS_ALIASES.get(key, "in_progress")
 
 
 def extract_section(body: str, *titles: str, max_lines: int = 200) -> str | None:
@@ -418,12 +430,15 @@ def parse_sprint(p: Path) -> dict[str, Any]:
         seen_pr.add(n)
         related_prs.append(n)
 
+    blocker = sprint.get("blocker") or fm.get("blocker")
     return {
         "slug": slugify(p.stem),
         "path": str(p.relative_to(REPO_ROOT)),
         "title": title,
-        "status": normalize_status(fm.get("status", "active")),
-        "raw_status": fm.get("status", "active"),
+        "status": normalize_status(fm.get("status", "in_progress")),
+        "raw_status": fm.get("status", "in_progress"),
+        "last_reviewed": fm.get("last_reviewed"),
+        "blocker": blocker,
         "owner": fm.get("owner"),
         "domain": fm.get("domain"),
         "start": sprint.get("start"),
@@ -474,6 +489,54 @@ def collect_sprints() -> list[dict[str, Any]]:
             print(f"  ! sprint parse failed: {p.name} ({exc})", file=sys.stderr)
     out.sort(key=lambda s: s.get("end") or s.get("start") or "", reverse=True)
     return out
+
+
+
+
+def compute_effective_sprint_status(sprint: dict[str, Any]) -> str:
+    """Read-time reconciliation: stale 'paused' without a blocker can read as shipped when work is done."""
+    base = str(sprint.get("status", "in_progress")).lower()
+    if base == "active":
+        base = "in_progress"
+    if base != "paused" and base not in {"on_hold", "on-hold"}:
+        return base
+    blocker = sprint.get("blocker")
+    if blocker and str(blocker).strip():
+        return "paused"
+    from datetime import date
+
+    def _parse_d(s: Any) -> date | None:
+        if not s:
+            return None
+        try:
+            return date.fromisoformat(str(s)[:10])
+        except ValueError:
+            return None
+
+    end = _parse_d(sprint.get("end"))
+    reviewed = _parse_d(sprint.get("last_reviewed"))
+    today = date.today()
+    stale_days = 14
+    stale = False
+    if end and (today - end).days > stale_days:
+        stale = True
+    if reviewed and (today - reviewed).days > stale_days:
+        stale = True
+    if not stale:
+        return "paused"
+    outcomes = len(sprint.get("outcome_bullets") or [])
+    followups = len(sprint.get("followups") or [])
+    prs = len(sprint.get("related_prs") or [])
+    denom = max(1, outcomes + followups)
+    ratio = outcomes / denom
+    if ratio >= 0.55 and (followups <= 2 or prs > 0):
+        return "shipped"
+    return "paused"
+
+
+def apply_sprint_reconciliation(sprints: list[dict[str, Any]]) -> None:
+    for s in sprints:
+        s["effective_status"] = compute_effective_sprint_status(s)
 
 
 def collect_products() -> list[dict[str, Any]]:
@@ -539,6 +602,7 @@ def main() -> int:
 
     company = parse_company_tasks()
     sprints = collect_sprints()
+    apply_sprint_reconciliation(sprints)
     products = collect_products()
 
     pr_nums = [s["pr"] for s in sprints if s.get("pr")]
