@@ -6,6 +6,7 @@ outages rather than taking the whole Brain down with it.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import time
@@ -39,7 +40,10 @@ class _FakeRedis:
 async def test_rate_limit_none_is_noop():
     r = _FakeRedis()
     count = await check_and_increment(
-        r, organization_id="org-1", persona="cpa", limit_per_minute=None,
+        r,
+        organization_id="org-1",
+        persona="cpa",
+        limit_per_minute=None,
     )
     assert count == 0
     assert r.store == {}
@@ -50,7 +54,10 @@ async def test_rate_limit_allows_under_cap():
     r = _FakeRedis()
     for _ in range(5):
         await check_and_increment(
-            r, organization_id="org-1", persona="cpa", limit_per_minute=10,
+            r,
+            organization_id="org-1",
+            persona="cpa",
+            limit_per_minute=10,
         )
     assert any(v == 5 for v in r.store.values())
 
@@ -60,11 +67,17 @@ async def test_rate_limit_raises_when_over_cap():
     r = _FakeRedis()
     for _ in range(3):
         await check_and_increment(
-            r, organization_id="org-1", persona="cpa", limit_per_minute=3,
+            r,
+            organization_id="org-1",
+            persona="cpa",
+            limit_per_minute=3,
         )
     with pytest.raises(PersonaRateLimitExceeded) as exc:
         await check_and_increment(
-            r, organization_id="org-1", persona="cpa", limit_per_minute=3,
+            r,
+            organization_id="org-1",
+            persona="cpa",
+            limit_per_minute=3,
         )
     assert exc.value.persona == "cpa"
     assert exc.value.limit == 3
@@ -76,7 +89,10 @@ async def test_rate_limit_raises_when_over_cap():
 async def test_rate_limit_fails_open_without_redis():
     """Prefer degraded ops to taking Brain down."""
     count = await check_and_increment(
-        None, organization_id="org-1", persona="cpa", limit_per_minute=10,
+        None,
+        organization_id="org-1",
+        persona="cpa",
+        limit_per_minute=10,
     )
     assert count == 0
 
@@ -87,7 +103,7 @@ async def test_rate_limit_fails_open_on_redis_error():
         async def incr(self, _key: str) -> int:
             raise RuntimeError("connection refused")
 
-        async def expire(self, _key: str, _ttl: int, nx: bool = False) -> None:
+        async def expire(self, _key: str, _ttl: int, _nx: bool = False) -> None:
             raise RuntimeError("connection refused")
 
     count = await check_and_increment(
@@ -106,6 +122,9 @@ async def test_rate_limit_window_rolls_over():
     old_bucket = (int(time.time()) // 60) - 1
     r.store[f"ratelimit:persona:org-1:cpa:{old_bucket}"] = 999
     count = await check_and_increment(
-        r, organization_id="org-1", persona="cpa", limit_per_minute=5,
+        r,
+        organization_id="org-1",
+        persona="cpa",
+        limit_per_minute=5,
     )
     assert count == 1

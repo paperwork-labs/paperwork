@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
+from typing import TYPE_CHECKING
 
 from app.schedulers.introspect import classification_for_job_id, list_apscheduler_jobs
+
+if TYPE_CHECKING:
+    import pytest
 
 
 def test_classification_for_job_id() -> None:

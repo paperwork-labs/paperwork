@@ -1,8 +1,10 @@
 """Tests for the PersonaSpec registry (Phase D1)."""
+
 from __future__ import annotations
 
 import pytest
 import yaml
+from pydantic import ValidationError
 
 from app.personas import PersonaSpec, get_spec, list_specs, resolve_model
 from app.personas.registry import SPECS_DIR
@@ -59,7 +61,9 @@ def test_escalate_if_rejects_unknown_tags():
 
 def test_resolve_model_no_escalation_stays_on_default():
     spec = PersonaSpec(
-        name="x", description="y", default_model="gpt-4o-mini",
+        name="x",
+        description="y",
+        default_model="gpt-4o-mini",
     )
     model, escalated = resolve_model(spec)
     assert model == "gpt-4o-mini"
@@ -68,7 +72,7 @@ def test_resolve_model_no_escalation_stays_on_default():
 
 def test_resolve_model_rejects_deprecated_tools_required_tag():
     """tools_required was removed; requires_tools is now a first-class field."""
-    with pytest.raises(Exception):
+    with pytest.raises(ValidationError):
         PersonaSpec(
             name="x",
             description="y",
@@ -80,7 +84,9 @@ def test_resolve_model_rejects_deprecated_tools_required_tag():
 
 def test_requires_tools_field_defaults_false():
     spec = PersonaSpec(
-        name="x", description="y", default_model="gpt-4o-mini",
+        name="x",
+        description="y",
+        default_model="gpt-4o-mini",
     )
     assert spec.requires_tools is False
 

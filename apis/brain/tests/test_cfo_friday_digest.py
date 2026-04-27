@@ -2,6 +2,7 @@
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -62,9 +63,7 @@ def sample_tracker() -> dict:
 
 
 def test_friday_brief_from_fixture_data(sample_tracker: dict):
-    brief, meta = build_friday_tracker_brief(
-        sample_tracker, as_of=date(2026, 4, 24)
-    )
+    brief, meta = build_friday_tracker_brief(sample_tracker, as_of=date(2026, 4, 24))
     assert "Active Sprint" in brief
     assert "engineering" in brief
     assert "Just Shipped" in brief

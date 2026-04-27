@@ -5,19 +5,21 @@ from __future__ import annotations
 import hmac
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
 from app.models.secrets_intelligence import BrainSecretsRegistry
-from app.services.agent_task_bridge import AgentTaskSpec, try_queue_agent_task
 from app.services import secrets_intelligence as si
+from app.services.agent_task_bridge import AgentTaskSpec, try_queue_agent_task
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +115,9 @@ async def list_registry_endpoint(
                 "last_verified_synced_at": (
                     r.last_verified_synced_at.isoformat() if r.last_verified_synced_at else None
                 ),
-                "drift_detected_at": r.drift_detected_at.isoformat() if r.drift_detected_at else None,
+                "drift_detected_at": r.drift_detected_at.isoformat()
+                if r.drift_detected_at
+                else None,
                 "drift_summary": r.drift_summary,
                 "lessons_learned": r.lessons_learned,
             }
@@ -159,9 +163,13 @@ async def secrets_health(
         )
     )
     crit = {
-        c: (await db.scalar(
-            select(func.count(BrainSecretsRegistry.id)).where(BrainSecretsRegistry.criticality == c)
-        ))
+        c: (
+            await db.scalar(
+                select(func.count(BrainSecretsRegistry.id)).where(
+                    BrainSecretsRegistry.criticality == c
+                )
+            )
+        )
         or 0
         for c in ("critical", "high", "normal", "low")
     }

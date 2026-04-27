@@ -14,10 +14,10 @@ def _override_db():
     async def mock_db():
         db = AsyncMock()
         db.execute = AsyncMock(
-            return_value=AsyncMock(fetchall=lambda: [], scalars=lambda: AsyncMock(all=lambda: []))
+            return_value=AsyncMock(fetchall=list, scalars=lambda: AsyncMock(all=list))
         )
         db.flush = AsyncMock()
-        db.add = lambda x: None
+        db.add = lambda _: None
         yield db
 
     app.dependency_overrides[get_db] = mock_db

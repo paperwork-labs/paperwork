@@ -7,17 +7,19 @@ from app.models.entity import Entity, EntityEdge
 from app.models.episode import Episode
 from app.models.organization import Organization, Team, TeamMember
 from app.models.scheduler_run import SchedulerRun
+from app.models.secrets_intelligence import BrainSecretsEpisode, BrainSecretsRegistry
 from app.models.skill import Skill, UserSkill
 from app.models.summary import Summary
 from app.models.user_profile import UserProfile
 from app.models.vault import UserVault
-from app.models.secrets_intelligence import BrainSecretsEpisode, BrainSecretsRegistry
 
 __all__ = [
     "AdminAuditLog",
     "ApiKey",
     "AuditLog",
     "Base",
+    "BrainSecretsEpisode",
+    "BrainSecretsRegistry",
     "Connection",
     "Cost",
     "Entity",
@@ -32,6 +34,4 @@ __all__ = [
     "UserProfile",
     "UserSkill",
     "UserVault",
-    "BrainSecretsRegistry",
-    "BrainSecretsEpisode",
 ]

@@ -3,19 +3,24 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers import _history, data_annual_update
 from app.schedulers.data_annual_update import _build_message, install, run_data_annual_update
+from app.schedulers.n8n_mirror import N8N_MIRROR_SPECS, n8n_mirror_env_var_name
+from app.schedulers.n8n_mirror import install as install_n8n_mirror
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def test_registers_one_job_id() -> None:
@@ -35,7 +40,7 @@ def test_registers_one_job_id() -> None:
 
 
 def test_build_message_includes_next_year() -> None:
-    fixed = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
+    fixed = datetime(2026, 10, 1, 9, 0, tzinfo=UTC)
     text = _build_message(fixed)
     assert "TY2027" in text
     assert "Annual Tax Data Update — TY2027" in text
@@ -43,7 +48,7 @@ def test_build_message_includes_next_year() -> None:
 
 
 def test_build_message_includes_all_ten_checklist_steps() -> None:
-    fixed = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
+    fixed = datetime(2026, 10, 1, 9, 0, tzinfo=UTC)
     text = _build_message(fixed)
     assert "1. IRS Revenue Procedure for TY2027" in text
     assert "2. Download new Tax Foundation XLSX" in text

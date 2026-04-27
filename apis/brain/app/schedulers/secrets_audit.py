@@ -5,19 +5,22 @@ from __future__ import annotations
 import json
 import logging
 import os
+from datetime import UTC
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 import httpx
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
-from datetime import timezone
 
 from app.config import settings
 from app.database import async_session_factory
 from app.schedulers._history import run_with_scheduler_record
 from app.services.agent_task_bridge import AgentTaskSpec, try_queue_agent_task
 from app.services.secrets_intelligence import SecretsIntelligence
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +110,10 @@ async def _body_rotation_monitor() -> None:
                 item.name,
                 "rotation_due",
                 "rotation_monitor",
-                f"Rotation due (cadence {item.rotation_cadence_days}d, last={item.last_rotated_at})",
+                (
+                    f"Rotation due (cadence {item.rotation_cadence_days}d, "
+                    f"last={item.last_rotated_at})"
+                ),
                 details={
                     "next_due_at": item.next_due_at.isoformat() if item.next_due_at else None,
                     "days_until_due": item.days_until_due,
@@ -217,7 +223,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
     if _owns_health():
         scheduler.add_job(
             run_health_probe,
-            trigger=IntervalTrigger(hours=1, timezone=timezone.utc),
+            trigger=IntervalTrigger(hours=1, timezone=UTC),
             id=_JOB_HEALTH,
             name="Secrets health probe (critical registry)",
             max_instances=1,

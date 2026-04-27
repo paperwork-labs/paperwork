@@ -56,9 +56,7 @@ def _build_message(now: datetime) -> str:
     ]
     for item in checklist:
         parts.append(f"\u2022 {item}")
-    parts.append(
-        f"\n*Key resource*: <{_TAX_FOUNDATION_URL}|Tax Foundation State Income Tax Rates>"
-    )
+    parts.append(f"\n*Key resource*: <{_TAX_FOUNDATION_URL}|Tax Foundation State Income Tax Rates>")
     parts.append("\n:thread: Reply in this thread with progress updates.")
     return "\n".join(parts)
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import date
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 from zoneinfo import ZoneInfo
 
@@ -12,7 +12,6 @@ import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers import _history, sprint_planner
@@ -23,6 +22,11 @@ from app.schedulers.sprint_planner import (
     load_sprint_records,
     run_sprint_planner,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def test_flag_off_no_job_registered(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -146,7 +150,9 @@ async def test_run_missing_slack_token_skips_post_gracefully(
         yield db_session
 
     monkeypatch.setattr(_history, "async_session_factory", lambda: _fake_context())
-    monkeypatch.setattr(sprint_planner.brain_agent, "process", AsyncMock(return_value={"response": "x"}))
+    monkeypatch.setattr(
+        sprint_planner.brain_agent, "process", AsyncMock(return_value={"response": "x"})
+    )
     monkeypatch.setattr(sprint_planner, "_append_knowledge_snapshot", AsyncMock())
     post = AsyncMock(return_value={"ok": False, "error": "SLACK_BOT_TOKEN not configured"})
     monkeypatch.setattr(sprint_planner.slack_outbound, "post_message", post)

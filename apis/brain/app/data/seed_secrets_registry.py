@@ -3,17 +3,28 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.secrets_intelligence import BrainSecretsRegistry
 from app.services.secrets_intelligence import SecretsIntelligence
 
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
 logger = logging.getLogger(__name__)
 
-_APPS_WIDE = ["studio", "paperworklabs", "filefree", "launchfree", "distill", "brain", "axiomfolio", "trinkets"]
+_APPS_WIDE = [
+    "studio",
+    "paperworklabs",
+    "filefree",
+    "launchfree",
+    "distill",
+    "brain",
+    "axiomfolio",
+    "trinkets",
+]
 _API_SERVICES = ["brain-api", "filefree-api"]
 
 _CLERK_SECRET_KEY_ENTRY: dict[str, Any] = {

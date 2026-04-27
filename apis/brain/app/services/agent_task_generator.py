@@ -331,9 +331,7 @@ async def _collect_ready_issues(
         if not num:
             continue
         labels = [
-            str(x.get("name", "")).lower()
-            for x in (it.get("labels") or [])
-            if isinstance(x, dict)
+            str(x.get("name", "")).lower() for x in (it.get("labels") or []) if isinstance(x, dict)
         ]
         if "bug" not in labels:
             continue

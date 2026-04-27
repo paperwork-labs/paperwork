@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.secrets_intelligence import (
     SecretsIntelligence,
@@ -14,11 +14,14 @@ from app.services.secrets_intelligence import (
     fingerprints_match,
 )
 
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
 
 def test_compute_fingerprint_stable() -> None:
     a = compute_fingerprint("hello-world")
     b = compute_fingerprint("hello-world")
-    assert a.length == len("hello-world".encode("utf-8"))
+    assert a.length == len(b"hello-world")
     assert a.sha256_hex == b.sha256_hex
     assert a.prefix8 == "hello-wo"
 
@@ -90,14 +93,10 @@ async def test_audit_drift_vault_in_sync_with_vercel(
 
     list_resp = MagicMock()
     list_resp.status_code = 200
-    list_resp.json = MagicMock(
-        return_value={"success": True, "data": [{"id": sid, "name": "MYS"}]}
-    )
+    list_resp.json = MagicMock(return_value={"success": True, "data": [{"id": sid, "name": "MYS"}]})
     get_resp = MagicMock()
     get_resp.status_code = 200
-    get_resp.json = MagicMock(
-        return_value={"success": True, "data": {"value": secret_value}}
-    )
+    get_resp.json = MagicMock(return_value={"success": True, "data": {"value": secret_value}})
     vercel_resp = MagicMock()
     vercel_resp.status_code = 200
     vercel_resp.json = MagicMock(
@@ -150,9 +149,7 @@ async def test_audit_drift_detects_mismatch(
     )
     get_resp = MagicMock()
     get_resp.status_code = 200
-    get_resp.json = MagicMock(
-        return_value={"success": True, "data": {"value": "aaaa"}}
-    )
+    get_resp.json = MagicMock(return_value={"success": True, "data": {"value": "aaaa"}})
     vercel_resp = MagicMock()
     vercel_resp.status_code = 200
     vercel_resp.json = MagicMock(

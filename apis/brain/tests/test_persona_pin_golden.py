@@ -17,6 +17,7 @@ debugging in prod.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -27,10 +28,7 @@ import yaml
 
 from app.personas import get_spec, list_specs
 
-
-FIXTURE_PATH = (
-    Path(__file__).resolve().parent / "fixtures" / "persona_pin_scenarios.yaml"
-)
+FIXTURE_PATH = Path(__file__).resolve().parent / "fixtures" / "persona_pin_scenarios.yaml"
 
 
 def _load_scenarios() -> list[dict[str, Any]]:
@@ -106,9 +104,7 @@ def test_scenario_contract_matches_persona_spec(scenario: dict[str, Any]):
 @pytest.mark.parametrize("scenario", SCENARIOS, ids=_scenario_ids())
 def test_scenario_message_is_non_empty(scenario: dict[str, Any]):
     """Defensive check — a scenario with no prompt is a silent no-op."""
-    assert scenario.get("message", "").strip(), (
-        f"{scenario['id']}: scenario message is empty"
-    )
+    assert scenario.get("message", "").strip(), f"{scenario['id']}: scenario message is empty"
 
 
 def test_all_personas_have_output_caps():
@@ -122,6 +118,5 @@ def test_all_personas_have_output_caps():
         if spec.max_output_tokens is None or spec.requests_per_minute is None:
             missing.append(spec.name)
     assert not missing, (
-        f"Personas missing Track I caps (max_output_tokens or "
-        f"requests_per_minute): {missing}"
+        f"Personas missing Track I caps (max_output_tokens or requests_per_minute): {missing}"
     )

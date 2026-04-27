@@ -1,1 +1,4 @@
-"""Internal operator HTTP: FastAPI modules at non-``/api/v1`` paths (e.g. sprints, secrets webhooks)."""
+"""Internal operator HTTP: FastAPI modules at non-``/api/v1`` paths.
+
+Examples: sprints, secrets webhooks.
+"""

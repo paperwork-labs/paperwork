@@ -211,6 +211,11 @@ jobs:
       - name: Check persona router / spec / .mdc invariants
         run: python apis/brain/scripts/check_persona_coverage.py
 
+  # NOTE: This job is gated on `brainApi` / `infra`, so `main` can go long stretches
+  # without running Brain ruff/pytest while brain-adjacent code still rots. Consider a
+  # follow-up: a tiny always-on job that only runs `ruff check apis/brain` (and maybe
+  # `ruff format --check`) on every push/PR, independent of paths-filter — without
+  # widening the full Brain Tests (mypy/pytest) matrix unless desired.
   brain-test:
     name: Brain Tests
     runs-on: ubuntu-latest

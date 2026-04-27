@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import timezone
+from datetime import UTC
 
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -132,8 +132,14 @@ related_prs:
     assert "related_prs:" in new_doc
     # yaml dump order: should include 5, 10, 99 sorted
     assert "5" in new_doc and "10" in new_doc and "99" in new_doc
-    after_lines = [ln for ln in new_doc.splitlines() if ln.strip().startswith("- ") and ln.strip()[2:].strip().isdigit()]
-    nums = sorted(int(ln.split("-", 1)[1].strip()) for ln in after_lines if ln.strip().startswith("- "))
+    after_lines = [
+        ln
+        for ln in new_doc.splitlines()
+        if ln.strip().startswith("- ") and ln.strip()[2:].strip().isdigit()
+    ]
+    nums = sorted(
+        int(ln.split("-", 1)[1].strip()) for ln in after_lines if ln.strip().startswith("- ")
+    )
     assert nums == [5, 10, 99]
 
 
@@ -151,5 +157,5 @@ def test_install_respects_brain_owns_flag(monkeypatch: pytest.MonkeyPatch) -> No
     assert jobs[0].id == "sprint_auto_logger"
     t = jobs[0].trigger
     assert isinstance(t, CronTrigger)
-    ref = CronTrigger.from_crontab("*/15 * * * *", timezone=timezone.utc)
+    ref = CronTrigger.from_crontab("*/15 * * * *", timezone=UTC)
     assert t.fields == ref.fields

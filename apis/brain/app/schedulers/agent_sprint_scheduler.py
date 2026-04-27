@@ -116,8 +116,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
     """Every 4 hours on America/Los_Angeles wall clock (6 ticks/day)."""
     if not getattr(settings, "BRAIN_OWNS_AGENT_SPRINT_SCHEDULER", False):
         logger.info(
-            "BRAIN_OWNS_AGENT_SPRINT_SCHEDULER=false — "
-            "agent sprint scheduler not installed"
+            "BRAIN_OWNS_AGENT_SPRINT_SCHEDULER=false — agent sprint scheduler not installed"
         )
         return
     scheduler.add_job(

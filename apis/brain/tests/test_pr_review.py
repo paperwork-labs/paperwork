@@ -9,10 +9,10 @@ user-content composition, and the skip predicates inside ``sweep_open_prs``.
 from __future__ import annotations
 
 from app.services.pr_review import (
-    BIG_MODEL,
-    DEFAULT_MODEL,
     _SKIP_AUTHORS,
     _SKIP_LABELS,
+    BIG_MODEL,
+    DEFAULT_MODEL,
     _choose_model,
     _compose_user_content,
     _extract_files,
@@ -22,7 +22,10 @@ from app.services.pr_review import (
 
 class TestChooseModel:
     def test_routine_files_pick_haiku(self) -> None:
-        assert _choose_model(["apis/axiomfolio/app/services/silver/portfolio/analytics.py"]) == DEFAULT_MODEL
+        assert (
+            _choose_model(["apis/axiomfolio/app/services/silver/portfolio/analytics.py"])
+            == DEFAULT_MODEL
+        )
 
     def test_execution_path_escalates_to_sonnet(self) -> None:
         files = ["apis/axiomfolio/app/services/execution/risk_gate.py"]
@@ -85,7 +88,9 @@ class TestFormatReviewBody:
         assert "model: `" in body and DEFAULT_MODEL in body
 
     def test_terse_on_minimal_input(self) -> None:
-        body = _format_review_body({"verdict": "APPROVE", "summary": "Typo fix."}, model=DEFAULT_MODEL)
+        body = _format_review_body(
+            {"verdict": "APPROVE", "summary": "Typo fix."}, model=DEFAULT_MODEL
+        )
         assert "Typo fix." in body
         # No empty bullet sections
         assert "**Concerns**" not in body

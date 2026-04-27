@@ -3,28 +3,33 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import String, and_, case, cast, func, literal, or_, select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.episode import Episode
 from app.routers.admin import _require_admin, _require_learning_dashboard
 from app.schemas.base import success_response
 
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
 router = APIRouter(prefix="/admin/brain/learning", tags=["admin-learning"])
 _ORG = "paperwork-labs"
 
+
 def _base(org: str) -> Any:
     return and_(Episode.organization_id == org, Episode.source != "model_router")
+
 
 def _lesson() -> Any:
     return or_(
         Episode.metadata_.contains({"tags": ["lesson_extracted"]}),
         Episode.metadata_.has_key("lesson_extracted"),
     )
+
 
 def _topic() -> Any:
     mt = Episode.metadata_.op("->>")("topic")
@@ -35,8 +40,10 @@ def _topic() -> Any:
         literal("uncategorized"),
     )
 
+
 def _actor() -> Any:
     return func.coalesce(Episode.persona, Episode.user_id, Episode.channel, literal("unknown"))
+
 
 def _tags(meta: dict[str, Any]) -> list[str]:
     raw = meta.get("tags")
@@ -44,9 +51,15 @@ def _tags(meta: dict[str, Any]) -> list[str]:
         return [str(x) for x in raw if x is not None]
     return [raw] if isinstance(raw, str) and raw else []
 
+
 def _row(ep: Episode) -> dict[str, Any]:
     meta = ep.metadata_ or {}
-    topic = meta.get("topic") or ep.product or (ep.source.split(":", 1)[0] if ep.source else "") or "uncategorized"
+    topic = (
+        meta.get("topic")
+        or ep.product
+        or (ep.source.split(":", 1)[0] if ep.source else "")
+        or "uncategorized"
+    )
     return {
         "id": ep.id,
         "created_at": ep.created_at.isoformat() if ep.created_at else None,
@@ -60,6 +73,7 @@ def _row(ep: Episode) -> dict[str, Any]:
         "verified": ep.verified,
     }
 
+
 @router.get("/summary")
 async def learning_summary(
     organization_id: str = Query(_ORG),
@@ -71,9 +85,14 @@ async def learning_summary(
     start = now - timedelta(days=7)
     base = and_(_base(organization_id), Episode.created_at >= start)
 
-    total = int((await db.execute(select(func.count()).select_from(Episode).where(base))).scalar() or 0)
+    total = int(
+        (await db.execute(select(func.count()).select_from(Episode).where(base))).scalar() or 0
+    )
     tagged = int(
-        (await db.execute(select(func.count()).select_from(Episode).where(and_(base, _lesson())))).scalar() or 0
+        (
+            await db.execute(select(func.count()).select_from(Episode).where(and_(base, _lesson())))
+        ).scalar()
+        or 0
     )
     rate = round(100.0 * tagged / total, 2) if total else 0.0
 
@@ -96,7 +115,9 @@ async def learning_summary(
             .limit(10)
         )
     ).all()
-    distinct = int((await db.execute(select(func.count(func.distinct(ae))).where(base))).scalar() or 0)
+    distinct = int(
+        (await db.execute(select(func.count(func.distinct(ae))).where(base))).scalar() or 0
+    )
 
     return success_response(
         {
@@ -110,6 +131,7 @@ async def learning_summary(
             "top_agents": [{"agent": r[0], "count": int(r[1])} for r in ags],
         }
     )
+
 
 @router.get("/episodes")
 async def learning_episodes(
@@ -125,15 +147,26 @@ async def learning_episodes(
     filt: Any = _base(organization_id)
     if topic and topic.strip():
         filt = and_(filt, te == topic.strip())
-    total = int((await db.execute(select(func.count()).select_from(Episode).where(filt))).scalar() or 0)
+    total = int(
+        (await db.execute(select(func.count()).select_from(Episode).where(filt))).scalar() or 0
+    )
     rows = (
-        await db.execute(
-            select(Episode).where(filt).order_by(Episode.created_at.desc()).offset(offset).limit(limit)
+        (
+            await db.execute(
+                select(Episode)
+                .where(filt)
+                .order_by(Episode.created_at.desc())
+                .offset(offset)
+                .limit(limit)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return success_response(
         {"total": total, "limit": limit, "offset": offset, "episodes": [_row(e) for e in rows]}
     )
+
 
 @router.get("/lessons")
 async def learning_lessons(
@@ -153,7 +186,9 @@ async def learning_lessons(
         filt = and_(filt, func.lower(Episode.summary).like(f"%{search.strip().lower()}%"))
     fs = func.min(Episode.created_at).label("first_seen")
     ls = func.max(Episode.created_at).label("last_seen")
-    lc = func.max(case((Episode.verified.is_(True), Episode.created_at), else_=None)).label("last_confirmed")
+    lc = func.max(case((Episode.verified.is_(True), Episode.created_at), else_=None)).label(
+        "last_confirmed"
+    )
     stmt = (
         select(key, func.min(Episode.summary), fs, ls, lc)
         .where(filt)
@@ -175,6 +210,7 @@ async def learning_lessons(
         )
     return success_response({"count": len(out), "lessons": out})
 
+
 @router.get("/timeline")
 async def learning_timeline(
     days: int = Query(30, ge=1, le=90),
@@ -191,7 +227,9 @@ async def learning_timeline(
     b = _base(organization_id)
 
     async def counts(extra: Any | None = None) -> dict[date | None, int]:
-        stmt = select(bucket, func.count()).where(and_(b, Episode.created_at >= rs, Episode.created_at < re))
+        stmt = select(bucket, func.count()).where(
+            and_(b, Episode.created_at >= rs, Episode.created_at < re)
+        )
         if extra is not None:
             stmt = stmt.where(extra)
         stmt = stmt.group_by(bucket)

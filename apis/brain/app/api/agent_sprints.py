@@ -5,14 +5,17 @@ from __future__ import annotations
 import hmac
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from starlette.responses import JSONResponse
 
 from app.config import settings
 from app.schedulers.agent_sprint_scheduler import run_agent_sprint_tick
 from app.schemas.base import success_response
 from app.services.agent_sprint_store import load_sprints_since, today_metrics
+
+if TYPE_CHECKING:
+    from starlette.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
