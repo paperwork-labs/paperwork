@@ -13,8 +13,8 @@ import logging
 import os
 import random
 import re
-from datetime import timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -294,11 +294,17 @@ def install(scheduler: AsyncIOScheduler) -> None:
         return
     scheduler.add_job(
         run_data_deep_validator,
-        trigger=CronTrigger.from_crontab("0 3 1 * *", timezone=timezone.utc),
+        trigger=CronTrigger.from_crontab(
+            "0 3 1 * *",
+            timezone=ZoneInfo("America/Los_Angeles"),
+        ),
         id=JOB_ID,
         name="Data Deep Validator (Brain, ex–Data Deep Validator P2.9 / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,
     )
-    logger.info("APScheduler job %r registered (03:00 UTC 1st of month, matches n8n expression)", JOB_ID)
+    logger.info(
+        "APScheduler job %r registered (1st of month 03:00 America/Los_Angeles, n8n parity)",
+        JOB_ID,
+    )

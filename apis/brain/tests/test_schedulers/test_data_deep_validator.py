@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from contextlib import asynccontextmanager
-from datetime import timezone
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -36,6 +35,9 @@ def test_flag_off_no_job_registered(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_flag_on_registers_one_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    from zoneinfo import ZoneInfo
+
+    la = ZoneInfo("America/Los_Angeles")
     monkeypatch.setenv("BRAIN_OWNS_DATA_DEEP_VALIDATOR", "true")
     sched = AsyncIOScheduler(timezone="UTC")
     install(sched)
@@ -44,7 +46,8 @@ def test_flag_on_registers_one_job_id(monkeypatch: pytest.MonkeyPatch) -> None:
     assert jobs[0].id == "brain_data_deep_validator"
     t = jobs[0].trigger
     assert isinstance(t, CronTrigger)
-    ref = CronTrigger.from_crontab("0 3 1 * *", timezone=timezone.utc)
+    assert str(t.timezone) == "America/Los_Angeles"
+    ref = CronTrigger.from_crontab("0 3 1 * *", timezone=la)
     assert t.fields == ref.fields
 
 
