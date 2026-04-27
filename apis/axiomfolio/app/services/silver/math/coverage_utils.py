@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,7 @@ def _expected_latest_trading_day():
         logger.warning("trading calendar lookup failed, using weekday fallback: %s", e)
     # Fallback: simple weekday logic
     from datetime import date, timedelta
-    d = date.today()
+    d = datetime.now(UTC).date()
     if d.weekday() == 0:
         d -= timedelta(days=3)
     elif d.weekday() == 6:

@@ -785,7 +785,7 @@ def _parse_schwab_expiry_to_date(val: str) -> Optional[date]:
     except (ValueError, TypeError):
         pass
     try:
-        return datetime.strptime(s[:10], "%Y-%m-%d").date()
+        return date.fromisoformat(s[:10])
     except (ValueError, TypeError):
         return None
 

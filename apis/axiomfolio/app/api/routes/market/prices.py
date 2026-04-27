@@ -6,7 +6,7 @@ Endpoints for current prices, historical data, and indicator series.
 """
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -67,7 +67,7 @@ async def get_current_price(
                 "symbol": sym,
                 "current_price": None,
                 "price": None,
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
             }
         p = fresh["price"]
         return {
@@ -77,7 +77,7 @@ async def get_current_price(
             "source": fresh["source"],
             "as_of": fresh["as_of"],
             "age_seconds": fresh["age_seconds"],
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
     except Exception as e:
         logger.exception("get_current_price failed for %s: %s", symbol, e)

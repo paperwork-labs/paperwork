@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -14,7 +14,7 @@ from app.tasks.market import benchmark_history as benchmark_history
 
 def _today_naive() -> datetime:
     now = datetime.now(timezone.utc)
-    return datetime(now.year, now.month, now.day)
+    return datetime(now.year, now.month, now.day, tzinfo=UTC)
 
 
 def _unwrap_task(fn):
@@ -59,7 +59,7 @@ def test_backfill_spy_does_not_fastpath_on_technical_only_spy_row(db_session, mo
     )
     for d in range(0, 30):
         off = today - timedelta(days=d)
-        day = datetime(off.year, off.month, off.day)
+        day = datetime(off.year, off.month, off.day, tzinfo=UTC)
         db_session.add(
             PriceData(
                 symbol="SPY",
@@ -91,7 +91,7 @@ def test_latest_history_finds_benchmark_price_row(db_session):
     if db_session is None:
         pytest.skip("DB session unavailable")
 
-    day = datetime(2023, 6, 1, 0, 0, 0)
+    day = datetime(2023, 6, 1, 0, 0, 0, tzinfo=UTC)
     db_session.add(
         MarketSnapshotHistory(
             symbol="SPY",

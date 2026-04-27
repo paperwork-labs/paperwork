@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Eye,
   EyeOff,
@@ -11,6 +11,7 @@ import {
   Shield,
   KeyRound,
   RefreshCw,
+  Brain,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -31,6 +32,162 @@ type RevealedSecret = {
   loading: boolean;
   error: string | null;
 };
+
+/** Brain registry row (from `/api/brain/secrets/registry`). */
+export type BrainRegistryRow = {
+  name: string;
+  criticality: string;
+  last_rotated_at: string | null;
+  drift_summary: string | null;
+  drift_detected_at: string | null;
+};
+
+type BrainEpisodeLite = {
+  event_type: string;
+  event_at: string;
+  summary: string;
+};
+
+function criticalityClass(c: string): string {
+  switch (c) {
+    case "critical":
+      return "border-rose-500/40 bg-rose-950/40 text-rose-200";
+    case "high":
+      return "border-amber-500/40 bg-amber-950/30 text-amber-200";
+    case "low":
+      return "border-zinc-600 bg-zinc-800/60 text-zinc-400";
+    default:
+      return "border-zinc-600 bg-zinc-800/60 text-zinc-300";
+  }
+}
+
+/** Presentational panel for snapshot tests and the popover body. */
+export function BrainNotesCard({
+  criticality,
+  driftSummary,
+  lastBrainRotation,
+  episodes,
+  loading,
+}: {
+  criticality: string;
+  driftSummary: string | null;
+  lastBrainRotation: string | null;
+  episodes: BrainEpisodeLite[];
+  loading?: boolean;
+}) {
+  return (
+    <div
+      className="w-72 rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-left text-xs text-zinc-300 shadow-xl"
+      data-testid="brain-notes-card"
+    >
+      <div className="mb-2 flex items-center gap-2">
+        <Brain className="h-3.5 w-3.5 text-violet-400" aria-hidden />
+        <span className="font-medium text-zinc-200">Brain</span>
+        <span
+          className={`rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${criticalityClass(criticality)}`}
+        >
+          {criticality}
+        </span>
+      </div>
+      {lastBrainRotation && (
+        <p className="mb-1 text-[11px] text-zinc-500">
+          Last rotation (registry): {formatDatePT(lastBrainRotation)} PT
+        </p>
+      )}
+      {driftSummary && (
+        <p className="mb-2 line-clamp-3 text-amber-200/90" title={driftSummary}>
+          Drift: {driftSummary}
+        </p>
+      )}
+      <p className="mb-1 text-[10px] uppercase tracking-wide text-zinc-500">Recent episodes</p>
+      {loading ? (
+        <p className="text-zinc-500">Loading…</p>
+      ) : episodes.length === 0 ? (
+        <p className="text-zinc-500">No episodes yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {episodes.map((e) => (
+            <li key={`${e.event_at}-${e.event_type}`} className="border-t border-zinc-800/80 pt-2 first:border-0 first:pt-0">
+              <span className="font-mono text-[10px] text-violet-300">{e.event_type}</span>
+              <span className="ml-2 text-zinc-500">{formatDatePT(e.event_at)} PT</span>
+              <p className="mt-0.5 text-zinc-400 line-clamp-2">{e.summary}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function BrainNotesPopover({
+  secretName,
+  brainRow,
+}: {
+  secretName: string;
+  brainRow: BrainRegistryRow;
+}) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [episodes, setEpisodes] = useState<BrainEpisodeLite[]>([]);
+
+  useEffect(() => {
+    if (!open) return;
+    let dead = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(
+          `/api/brain/secrets/episodes/${encodeURIComponent(secretName)}?limit=3`,
+        );
+        const j = (await res.json()) as {
+          ok?: boolean;
+          data?: Array<{ event_type: string; event_at: string; summary: string }>;
+        };
+        if (!dead && j.ok && Array.isArray(j.data)) {
+          setEpisodes(
+            j.data.map((e) => ({
+              event_type: e.event_type,
+              event_at: e.event_at,
+              summary: e.summary,
+            })),
+          );
+        }
+      } catch {
+        if (!dead) setEpisodes([]);
+      } finally {
+        if (!dead) setLoading(false);
+      }
+    })();
+    return () => {
+      dead = true;
+    };
+  }, [open, secretName]);
+
+  return (
+    <div className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="rounded p-1 text-violet-400/90 transition hover:bg-zinc-800 hover:text-violet-300"
+        title="Brain notes"
+        aria-expanded={open}
+      >
+        <Brain className="h-4 w-4" />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1">
+          <BrainNotesCard
+            criticality={brainRow.criticality}
+            driftSummary={brainRow.drift_summary}
+            lastBrainRotation={brainRow.last_rotated_at}
+            episodes={episodes}
+            loading={loading}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
 function formatDatePT(dateStr: string | null): string {
   if (!dateStr) return "—";
@@ -86,6 +243,29 @@ export default function SecretsClient({
   const [search, setSearch] = useState("");
   const [revealed, setRevealed] = useState<Record<string, RevealedSecret>>({});
   const [copied, setCopied] = useState<string | null>(null);
+  const [brainByName, setBrainByName] = useState<Record<string, BrainRegistryRow>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/brain/secrets/registry", { cache: "no-store" });
+        if (!res.ok) return;
+        const j = (await res.json()) as { ok?: boolean; data?: BrainRegistryRow[] };
+        if (!j.ok || !Array.isArray(j.data)) return;
+        const m: Record<string, BrainRegistryRow> = {};
+        for (const row of j.data) {
+          m[row.name] = row;
+        }
+        if (!cancelled) setBrainByName(m);
+      } catch {
+        /* Brain overlay optional */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -338,11 +518,12 @@ export default function SecretsClient({
                 {serviceSecrets.map((s) => {
                   const rev = revealed[s.id];
                   const status = statusDot(s.expires_at);
+                  const brain = brainByName[s.name];
                   return (
                     <div key={s.id} className="px-5 py-3.5">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex flex-wrap items-center gap-2.5">
                             <span
                               className={`inline-block h-2 w-2 shrink-0 rounded-full ${status.color}`}
                               title={status.label}
@@ -350,6 +531,14 @@ export default function SecretsClient({
                             <span className="font-mono text-sm font-medium text-zinc-100">
                               {s.name}
                             </span>
+                            {brain && (
+                              <span
+                                className={`rounded border px-1.5 py-0.5 text-[10px] uppercase tracking-wide ${criticalityClass(brain.criticality)}`}
+                              >
+                                {brain.criticality}
+                              </span>
+                            )}
+                            {brain && <BrainNotesPopover secretName={s.name} brainRow={brain} />}
                             {s.location && (
                               <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-500">
                                 {s.location}

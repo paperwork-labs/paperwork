@@ -20,7 +20,7 @@ medallion: gold
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta
 from decimal import Decimal, ROUND_HALF_UP
 from typing import List, Optional
 
@@ -150,7 +150,7 @@ class TaxAwareExitCalculator:
         a zeroed result with a clear reason.
         """
         sym = (symbol or "").upper().strip()
-        as_of = as_of or date.today()
+        as_of = as_of or datetime.now(UTC).date()
         reasons: List[str] = []
 
         if exit_shares <= Decimal("0"):
@@ -332,7 +332,7 @@ def days_to_long_term(acquired_on: date, as_of: Optional[date] = None) -> int:
     """Calendar days until ``(as_of - acquired_on).days > 365``; 0 if already
     long-term. Aligns with ``TaxLot.is_long_term`` (holding period over 365
     days, IRS Publication 550)."""
-    ref = as_of or date.today()
+    ref = as_of or datetime.now(UTC).date()
     held = (ref - acquired_on).days
     if _is_long_term_held(held):
         return 0

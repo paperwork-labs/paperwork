@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Dict, Any, List, Optional
 import logging
 
@@ -762,7 +762,7 @@ async def get_twr(
     try:
         days = 365
         if period == "ytd":
-            days = (datetime.now(timezone.utc) - datetime(datetime.now(timezone.utc).year, 1, 1)).days
+            days = (datetime.now(timezone.utc) - datetime(datetime.now(timezone.utc).year, 1, 1, tzinfo=UTC)).days
         elif period == "all":
             days = 3650
         result = portfolio_analytics_service.compute_twr(db, user_id=user.id, period_days=days)

@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 import inspect
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -47,9 +47,9 @@ def test_warmup_constant_is_used_in_backfill_task():
 def test_warmup_date_arithmetic():
     """The warmup start date should be WEINSTEIN_WARMUP_CALENDAR_DAYS before
     the backfill start date."""
-    start_dt = datetime(2025, 6, 1)
+    start_dt = datetime(2025, 6, 1, tzinfo=UTC)
     warmup_start = start_dt - timedelta(days=WEINSTEIN_WARMUP_CALENDAR_DAYS)
-    expected = datetime(2025, 6, 1) - timedelta(days=400)
+    expected = datetime(2025, 6, 1, tzinfo=UTC) - timedelta(days=400)
     assert warmup_start == expected
 
 
@@ -102,10 +102,10 @@ def test_unknown_guard_allows_known_stage():
     sym = "AAPL"
 
     payload_rows = [
-        {"as_of_date": datetime(2025, 6, 10), "stage_label": "2A"},
+        {"as_of_date": datetime(2025, 6, 10, tzinfo=UTC), "stage_label": "2A"},
     ]
     stage_run_by_date = {
-        datetime(2025, 6, 10): {
+        datetime(2025, 6, 10, tzinfo=UTC): {
             "current_stage_days": 5,
             "previous_stage_label": "1",
             "previous_stage_days": 12,
@@ -146,10 +146,10 @@ def test_unknown_guard_blocks_bad_stages(stage_label):
     sym = "AAPL"
 
     payload_rows = [
-        {"as_of_date": datetime(2025, 6, 10), "stage_label": stage_label},
+        {"as_of_date": datetime(2025, 6, 10, tzinfo=UTC), "stage_label": stage_label},
     ]
     stage_run_by_date = {
-        datetime(2025, 6, 10): {
+        datetime(2025, 6, 10, tzinfo=UTC): {
             "current_stage_days": 99,
             "previous_stage_label": "3",
             "previous_stage_days": 50,
@@ -184,14 +184,14 @@ def test_unknown_guard_picks_latest_date_row():
     sym = "MSFT"
 
     payload_rows = [
-        {"as_of_date": datetime(2025, 6, 8), "stage_label": "UNKNOWN"},
-        {"as_of_date": datetime(2025, 6, 10), "stage_label": "2A"},
-        {"as_of_date": datetime(2025, 6, 9), "stage_label": "UNKNOWN"},
+        {"as_of_date": datetime(2025, 6, 8, tzinfo=UTC), "stage_label": "UNKNOWN"},
+        {"as_of_date": datetime(2025, 6, 10, tzinfo=UTC), "stage_label": "2A"},
+        {"as_of_date": datetime(2025, 6, 9, tzinfo=UTC), "stage_label": "UNKNOWN"},
     ]
     stage_run_by_date = {
-        datetime(2025, 6, 8): {"current_stage_days": 1, "previous_stage_label": None, "previous_stage_days": None},
-        datetime(2025, 6, 9): {"current_stage_days": 2, "previous_stage_label": None, "previous_stage_days": None},
-        datetime(2025, 6, 10): {"current_stage_days": 3, "previous_stage_label": "1", "previous_stage_days": 7},
+        datetime(2025, 6, 8, tzinfo=UTC): {"current_stage_days": 1, "previous_stage_label": None, "previous_stage_days": None},
+        datetime(2025, 6, 9, tzinfo=UTC): {"current_stage_days": 2, "previous_stage_label": None, "previous_stage_days": None},
+        datetime(2025, 6, 10, tzinfo=UTC): {"current_stage_days": 3, "previous_stage_label": "1", "previous_stage_days": 7},
     }
 
     session = tracker.make_session(sym)

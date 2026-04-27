@@ -10,6 +10,10 @@ This file mirrors and extends .cursorrules. It is the authoritative technical re
 
 **Current vs Target**: The repo is currently flat (`api/` for FastAPI, `web/` for Next.js FileFree frontend, `infra/`, `docs/`). The monorepo structure (apps/, packages/) is the **target architecture**. When working on existing code, use current paths. When scaffolding new products or packages, follow the target structure.
 
+## Timezone discipline
+
+- **Rule of record:** `.cursor/rules/timezone.mdc` and `docs/infra/TIMEZONE_STANDARDS.md` (UTC in DB/API; user timezone in UI; Ruff `DTZ`).
+
 ## Architecture Overview
 
 ### State Filing Engine (LaunchFree + Distill Formation API)

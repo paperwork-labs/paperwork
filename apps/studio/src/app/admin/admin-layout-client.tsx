@@ -19,6 +19,7 @@ import {
   ListChecks,
   Sparkles,
   Activity,
+  GitBranch,
 } from "lucide-react";
 
 type NavItem = {
@@ -55,6 +56,7 @@ function buildNavGroups(
       label: "System",
       items: [
         { href: "/admin/architecture", label: "Architecture", icon: Workflow },
+        { href: "/admin/pr-pipeline", label: "PR pipeline", icon: GitBranch },
         { href: "/admin/workflows", label: "Workflows", icon: Bot },
         { href: "/admin/n8n-mirror", label: "n8n cron mirror", icon: Timer },
         { href: "/admin/docs", label: "Docs", icon: BookOpen },

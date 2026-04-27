@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, Dict, Any, List
 import logging
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 # dependencies
 from app.database import get_db
@@ -55,7 +55,7 @@ class ManualTaxLotCreate(BaseModel):
     @field_validator("acquisition_date")
     @classmethod
     def date_not_future(cls, v: date) -> date:
-        if v > date.today():
+        if v > datetime.now(UTC).date():
             raise ValueError("acquisition_date cannot be in the future")
         return v
 
@@ -175,7 +175,7 @@ async def get_tax_lots(
             "account_filter": account_id,
             "tax_lots": tax_lots,
             "total_lots": len(tax_lots),
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     except Exception as e:
@@ -218,7 +218,7 @@ async def create_manual_tax_lot(
         cost_per_share=body.cost_per_share,
         cost_basis=body.quantity * body.cost_per_share,
         acquisition_date=body.acquisition_date,
-        holding_period=(date.today() - body.acquisition_date).days,
+        holding_period=(datetime.now(UTC).date() - body.acquisition_date).days,
         lot_id=f"manual-{uuid.uuid4().hex[:12]}",
         source=TaxLotSource.MANUAL_ENTRY,
         asset_category="STK",
@@ -268,12 +268,12 @@ async def update_manual_tax_lot(
             raise HTTPException(status_code=400, detail="cost_per_share must be >= 0")
         lot.cost_per_share = body.cost_per_share
     if body.acquisition_date is not None:
-        if body.acquisition_date > date.today():
+        if body.acquisition_date > datetime.now(UTC).date():
             raise HTTPException(status_code=400, detail="acquisition_date cannot be in the future")
         lot.acquisition_date = body.acquisition_date
 
     lot.cost_basis = lot.quantity * (lot.cost_per_share or 0)
-    lot.holding_period = (date.today() - lot.acquisition_date).days if lot.acquisition_date else 0
+    lot.holding_period = (datetime.now(UTC).date() - lot.acquisition_date).days if lot.acquisition_date else 0
 
     db.commit()
     db.refresh(lot)
@@ -558,7 +558,7 @@ async def get_tax_optimization_opportunities(
             "total_tax_loss_harvest_amount": total_tax_loss_harvest,
             "estimated_total_tax_savings": total_tax_loss_harvest * 0.24,
             "opportunities": opportunities,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     except Exception as e:
@@ -648,7 +648,7 @@ async def get_performance_metrics(
             "worst_performers": [
                 {"symbol": s, "return_pct": p} for s, p in worst_performers
             ],
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
         }
 
     except HTTPException:

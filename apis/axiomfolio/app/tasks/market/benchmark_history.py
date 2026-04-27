@@ -17,7 +17,7 @@ actually missing, so scheduling this daily is cheap.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, Dict
 
 from celery import shared_task
@@ -59,7 +59,7 @@ def _latest_history_date(session, symbol: str) -> datetime | None:
 
 def _today_utc_naive() -> datetime:
     now = datetime.now(timezone.utc)
-    return datetime(now.year, now.month, now.day)
+    return datetime(now.year, now.month, now.day, tzinfo=UTC)
 
 
 @shared_task(
@@ -140,7 +140,7 @@ def backfill_spy_history(lookback_days: int = _DEFAULT_LOOKBACK_DAYS) -> Dict[st
             try:
                 as_of = row.date
                 if hasattr(as_of, "date"):
-                    as_of = datetime(as_of.year, as_of.month, as_of.day)
+                    as_of = datetime(as_of.year, as_of.month, as_of.day, tzinfo=UTC)
                 close = float(row.close_price) if row.close_price is not None else None
                 if close is None or close <= 0:
                     skipped += 1

@@ -1,5 +1,6 @@
 import hmac
 import logging
+import os
 import subprocess
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -18,6 +19,7 @@ from app.database import async_session_factory, engine
 from app.mcp_server import create_mcp_app
 from app.rate_limit import limiter
 from app.redis import close_redis, get_redis, init_redis
+from app.api.secrets import router as internal_secrets_router
 from app.routers import admin, admin_learning, brain, health, webhooks
 from app.schedulers import shutdown_scheduler, start_scheduler
 from app.services.observability import init_langfuse
@@ -79,6 +81,15 @@ async def _app_lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         logger.warning("Redis unavailable — memory tools will operate without caching")
     memory_tools.configure(async_session_factory, redis_client)
     logger.info("Memory tools configured (redis=%s)", "connected" if redis_client else "disabled")
+
+    if not os.getenv("PYTEST_CURRENT_TEST"):
+        try:
+            from app.data.seed_secrets_registry import run_seed_if_empty
+
+            async with async_session_factory() as seed_db:
+                await run_seed_if_empty(seed_db)
+        except Exception:
+            logger.exception("brain_secrets_registry seed failed (non-fatal)")
 
     _app.mount("/mcp", mcp_application)
     logger.info("FastMCP server mounted at /mcp (23 tools, auth-protected)")
@@ -172,6 +183,7 @@ app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(admin_learning.router, prefix="/api/v1")
 app.include_router(agent_sprints_router)
+app.include_router(internal_secrets_router)
 
 
 @app.get("/internal/schedulers", tags=["internal"])

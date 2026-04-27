@@ -8,7 +8,7 @@ medallion: silver
 """
 
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from sqlalchemy.orm import Session
@@ -38,7 +38,7 @@ def calculate_portfolio_drawdown(
     """
     from app.models.portfolio import PortfolioSnapshot
 
-    cutoff = date.today() - timedelta(days=lookback_days)
+    cutoff = datetime.now(UTC).date() - timedelta(days=lookback_days)
 
     # Get portfolio value history
     snapshots = (
@@ -71,7 +71,7 @@ def calculate_portfolio_drawdown(
     drawdown_dollars = peak_value - current_value
     drawdown_pct = (drawdown_dollars / peak_value * 100) if peak_value > 0 else 0.0
 
-    days_since_peak = (date.today() - peak_date).days if peak_date else 0
+    days_since_peak = (datetime.now(UTC).date() - peak_date).days if peak_date else 0
 
     return {
         "current_value": current_value,
