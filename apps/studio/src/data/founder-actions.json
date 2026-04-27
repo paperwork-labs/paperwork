@@ -1,5 +1,5 @@
 {
-  "generated": "2026-04-27T06:18:27.298Z",
+  "generated": "2026-04-27T06:19:12.060Z",
   "sourceFile": "docs/infra/FOUNDER_ACTIONS.md",
   "tiers": [
     {
@@ -24,7 +24,7 @@
         },
         {
           "title": "`design.paperworklabs.com` — Vercel project + domain + auto-promote matrix",
-          "runbookUrl": "https://github.com/paperwork-labs/paperwork/blob/main/apps/design/README.md",
+          "runbookUrl": "https://github.com/paperwork-labs/paperwork/pull/256",
           "why": "The design Storybook canvas does not have a first-class production host until the Vercel project exists, the GitHub promote workflow has a real project id, and DNS points at Vercel.",
           "where": "[Vercel — Paperwork Labs team](https://vercel.com/paperwork-labs), Cloudflare DNS for `paperworklabs.com` zone, `.github/workflows/vercel-promote-on-merge.yaml`.",
           "steps": [
@@ -34,7 +34,7 @@
             "4. In Cloudflare, add the CNAME Vercel shows; **disable proxy** (DNS only) for clean TLS issuance."
           ],
           "verification": "`https://design.paperworklabs.com` serves Storybook static build; merge to `main` updates production (or PR comment on promote workflow shows success).",
-          "source": "PR #256, `apps/design/README.md` (if present in tree)",
+          "source": "PR #256",
           "eta": "~25 min"
         }
       ]
@@ -55,7 +55,7 @@
             "4. Push a change under `apps/design/**` or `packages/**/src/**` (or run Chromatic locally) to baseline."
           ],
           "verification": "Chromatic check passes on a PR; dashboard shows a build/baseline.",
-          "source": "PR #255, `docs/infra/CHROMATIC_VRT.md` (when added; else PR body)",
+          "source": "PR #255 (supersedes missing `docs/infra/CHROMATIC_VRT.md` until that file exists on `main`)",
           "eta": "~20 min"
         },
         {

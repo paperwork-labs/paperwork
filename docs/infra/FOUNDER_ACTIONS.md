@@ -38,7 +38,7 @@ Single-source list of one-time blockers that require founder credentials. Once a
   3. Vercel project → Domains → add `design.paperworklabs.com`.
   4. In Cloudflare, add the CNAME Vercel shows; **disable proxy** (DNS only) for clean TLS issuance.
 - **Verification:** `https://design.paperworklabs.com` serves Storybook static build; merge to `main` updates production (or PR comment on promote workflow shows success).
-- **Source:** PR #256, `apps/design/README.md` (if present in tree)
+- **Source:** PR #256
 - **ETA:** ~25 min
 
 ## Pending — Operational (blocks automation)
@@ -52,7 +52,7 @@ Single-source list of one-time blockers that require founder credentials. Once a
   3. Set `projectId` in `apps/design/chromatic.config.json` to match Chromatic.
   4. Push a change under `apps/design/**` or `packages/**/src/**` (or run Chromatic locally) to baseline.
 - **Verification:** Chromatic check passes on a PR; dashboard shows a build/baseline.
-- **Source:** PR #255, `docs/infra/CHROMATIC_VRT.md` (when added; else PR body)
+- **Source:** PR #255 (supersedes missing `docs/infra/CHROMATIC_VRT.md` until that file exists on `main`)
 - **ETA:** ~20 min
 
 ### 2. `GITHUB_WEBHOOK_SECRET` on `brain-api` (Render) + GitHub repo webhook
