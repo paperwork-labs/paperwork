@@ -18,13 +18,14 @@ export const distillClerkAppearance = {
     fontFamily: "var(--font-inter), ui-sans-serif, system-ui, sans-serif",
   },
   elements: {
-    card: "border border-teal-900/50 bg-slate-950/70 shadow-2xl shadow-black/30",
+    card: "border border-brand-primary/40 bg-brand-surface/80 shadow-2xl shadow-black/30",
     rootBox: "w-full",
     formButtonPrimary:
-      "font-medium shadow-sm !bg-[#0F766E] hover:!bg-[#0D9488] active:!opacity-90 border-none",
-    formFieldInput: "border-teal-800/80 bg-slate-950/50 transition focus:border-[#0F766E]",
+      "font-medium shadow-sm !bg-brand-primary hover:!brightness-110 active:!opacity-90 border-none",
+    formFieldInput:
+      "border-brand-primary/50 bg-brand-surface/60 transition focus:border-brand-primary",
     socialButtonsBlockButton:
-      "border-teal-800/60 hover:bg-teal-950/50 hover:border-[#C2410C]/40",
+      "border-brand-primary/50 hover:bg-brand-primary/10 hover:border-brand-accent/40",
     footer: "hidden",
     footerAction: "hidden",
     footerActionText: "hidden",
@@ -34,9 +35,9 @@ export const distillClerkAppearance = {
     headerTitle: "text-slate-100",
     headerSubtitle: "text-slate-400",
     formFieldLabel: "text-slate-200",
-    identityPreview: "bg-teal-950/40 border-teal-800/50",
+    identityPreview: "bg-brand-primary/15 border-brand-primary/40",
     userButtonTrigger:
-      "rounded-lg p-0.5 transition hover:bg-teal-950/50 focus:ring-2 focus:ring-[#0F766E]/30",
-    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-teal-800/60",
+      "rounded-lg p-0.5 transition hover:bg-brand-primary/10 focus:ring-2 focus:ring-brand-primary/30",
+    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-brand-primary/50",
   },
 } as const;

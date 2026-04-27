@@ -20,14 +20,14 @@ export const trinketsClerkAppearance = {
   },
   elements: {
     card:
-      "border border-indigo-500/20 bg-stone-950/70 shadow-2xl shadow-indigo-950/40",
+      "border border-brand-primary/25 bg-brand-surface/85 shadow-2xl shadow-black/35",
     rootBox: "w-full",
     formButtonPrimary:
       "font-medium shadow-sm transition-colors hover:opacity-95 active:opacity-90",
     formFieldInput:
-      "border-stone-700/90 bg-stone-950/50 transition focus:border-sky-400/80 focus:ring-sky-400/20",
+      "border-brand-primary/35 bg-brand-surface/70 transition focus:border-brand-accent/80 focus:ring-brand-accent/20",
     socialButtonsBlockButton:
-      "border-indigo-500/40 hover:bg-indigo-950/50 hover:border-sky-400/30",
+      "border-brand-primary/40 hover:bg-brand-primary/10 hover:border-brand-accent/35",
     footer: "hidden",
     footerAction: "hidden",
     footerActionText: "hidden",
@@ -37,9 +37,9 @@ export const trinketsClerkAppearance = {
     headerTitle: "text-stone-100",
     headerSubtitle: "text-stone-400",
     formFieldLabel: "text-stone-200",
-    identityPreview: "bg-stone-900/50 border-indigo-500/30",
+    identityPreview: "bg-brand-primary/12 border-brand-primary/35",
     userButtonTrigger:
-      "rounded-lg p-0.5 transition hover:bg-indigo-950/40 focus:ring-2 focus:ring-sky-400/30",
-    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-sky-400/40",
+      "rounded-lg p-0.5 transition hover:bg-brand-primary/10 focus:ring-2 focus:ring-brand-accent/30",
+    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-brand-accent/45",
   },
 } as const;

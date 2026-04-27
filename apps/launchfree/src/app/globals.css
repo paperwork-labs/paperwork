@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
 @plugin "@tailwindcss/typography";
 @import "@paperwork-labs/ui/themes.css";
 
@@ -10,12 +11,26 @@
 }
 
 :root {
+  /* Track M — LaunchFree locked palette (brand.mdc / PROMPTS.md); light fallback */
+  --brand-primary: 2 132 199;
+  --brand-accent: 6 182 212;
+  --brand-ink: 12 74 110;
+  --brand-surface: 248 250 252;
+
   --background: 224 47% 7%;
   --foreground: 210 40% 98%;
 }
 
+.dark {
+  /* Sky / cyan on-dark variants + default app surface */
+  --brand-primary: 56 189 248;
+  --brand-accent: 34 211 238;
+  --brand-ink: 248 250 252;
+  --brand-surface: 10 15 26;
+}
+
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-50 antialiased;
+    @apply bg-brand-surface text-brand-ink antialiased;
   }
 }

@@ -19,13 +19,14 @@ export const launchFreeClerkAppearance = {
     fontFamily: "var(--font-inter), ui-sans-serif, system-ui, sans-serif",
   },
   elements: {
-    card: "border border-slate-800/80 bg-slate-950/60 shadow-2xl shadow-black/30",
+    card: "border border-brand-primary/30 bg-brand-surface/90 shadow-2xl shadow-black/30",
     rootBox: "w-full",
     formButtonPrimary:
       "font-medium shadow-sm transition-colors hover:opacity-95 active:opacity-90",
     formFieldInput:
-      "border-slate-700/90 bg-slate-950/50 transition focus:border-slate-500",
-    socialButtonsBlockButton: "border-slate-700/80 hover:bg-slate-800/60",
+      "border-brand-primary/40 bg-brand-surface/70 transition focus:border-brand-accent",
+    socialButtonsBlockButton:
+      "border-brand-primary/35 hover:bg-brand-primary/10 hover:border-brand-accent/40",
     footer: "hidden",
     footerAction: "hidden",
     footerActionText: "hidden",
@@ -35,9 +36,9 @@ export const launchFreeClerkAppearance = {
     headerTitle: "text-slate-100",
     headerSubtitle: "text-slate-400",
     formFieldLabel: "text-slate-200",
-    identityPreview: "bg-slate-800/50 border-slate-700/60",
+    identityPreview: "bg-brand-primary/10 border-brand-primary/35",
     userButtonTrigger:
-      "rounded-lg p-0.5 transition hover:bg-slate-800/50 focus:ring-2 focus:ring-slate-500/30",
-    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-slate-700/80",
+      "rounded-lg p-0.5 transition hover:bg-brand-primary/10 focus:ring-2 focus:ring-brand-accent/30",
+    userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-brand-accent/45",
   },
 } as const;

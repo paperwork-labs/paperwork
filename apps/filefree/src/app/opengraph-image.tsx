@@ -33,14 +33,14 @@ export default async function Image() {
               fontSize: 72,
               fontWeight: 700,
               letterSpacing: "-0.025em",
-              color: "#e2e8f0",
+              color: "#F8FAFC",
               display: "flex",
             }}
           >
             File
             <span
               style={{
-                background: "linear-gradient(to right, #8b5cf6, #9333ea)",
+                background: "linear-gradient(to right, #4F46E5, #84CC16)",
                 backgroundClip: "text",
                 color: "transparent",
               }}
@@ -65,8 +65,8 @@ export default async function Image() {
               marginTop: "16px",
               padding: "12px 32px",
               borderRadius: "8px",
-              background: "linear-gradient(to right, #7c3aed, #9333ea)",
-              color: "#ffffff",
+              background: "linear-gradient(to right, #4F46E5, #84CC16)",
+              color: "#F8FAFC",
               fontSize: 20,
               fontWeight: 600,
               display: "flex",

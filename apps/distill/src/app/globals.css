@@ -1,15 +1,29 @@
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
 @import "@paperwork-labs/ui/themes.css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Track M — Distill light-surface tokens (brand.mdc / PROMPTS.md) */
+  --brand-primary: 15 118 110;
+  --brand-accent: 194 65 12;
+  --brand-ink: 17 94 89;
+  --brand-surface: 248 250 252;
+
   --background: 222 47% 11%;
   --foreground: 210 40% 98%;
 }
 
+.dark {
+  --brand-primary: 20 184 166;
+  --brand-accent: 249 115 22;
+  --brand-ink: 248 250 252;
+  --brand-surface: 15 23 42;
+}
+
 @layer base {
   body {
-    @apply bg-slate-900 text-slate-50 antialiased;
+    @apply bg-brand-surface text-brand-ink antialiased;
   }
 }
