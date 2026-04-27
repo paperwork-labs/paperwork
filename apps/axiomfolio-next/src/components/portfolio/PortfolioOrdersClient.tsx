@@ -36,7 +36,7 @@ function statusBadgeClass(s: string): string {
   return 'border-border bg-muted/50 text-muted-foreground';
 }
 
-const PortfolioOrders: React.FC = () => {
+const PortfolioOrdersClient: React.FC = () => {
   const queryClient = useQueryClient();
   const { timezone } = useUserPreferences();
   const { selected, accounts } = useAccountContext();
@@ -478,4 +478,4 @@ const PortfolioOrders: React.FC = () => {
   );
 };
 
-export default PortfolioOrders;
+export default PortfolioOrdersClient;
