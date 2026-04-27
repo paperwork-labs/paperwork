@@ -16,7 +16,7 @@ const PATCH_BODY = {
   rootDirectory: "apps/axiomfolio",
   buildCommand: "pnpm --filter @paperwork-labs/axiomfolio... run build",
   installCommand:
-    "cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && rm -rf node_modules/.pnpm && pnpm install --frozen-lockfile --filter=@paperwork-labs/axiomfolio...",
+    "bash ../../scripts/vercel-install.sh @paperwork-labs/axiomfolio",
   outputDirectory: ".next",
   nodeVersion: "22.x",
 };
