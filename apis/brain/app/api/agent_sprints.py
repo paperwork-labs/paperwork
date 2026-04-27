@@ -7,6 +7,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from starlette.responses import JSONResponse
 
 from app.config import settings
 from app.schemas.base import success_response
@@ -27,7 +28,7 @@ def _require_founder_secret(x_brain_secret: str | None = Header(None, alias="X-B
 
 
 @router.get("/today")
-async def agent_sprints_today(_auth: None = Depends(_require_founder_secret)):
+async def agent_sprints_today(_auth: None = Depends(_require_founder_secret)) -> JSONResponse:
     """Last 24h of generated sprints plus day metrics (Studio command center)."""
     since = datetime.now(timezone.utc) - timedelta(hours=24)
     sprints = load_sprints_since(since)
@@ -41,7 +42,7 @@ async def agent_sprints_today(_auth: None = Depends(_require_founder_secret)):
 
 
 @router.post("/regenerate")
-async def agent_sprints_regenerate(_auth: None = Depends(_require_founder_secret)):
+async def agent_sprints_regenerate(_auth: None = Depends(_require_founder_secret)) -> JSONResponse:
     """Run the same pipeline as the scheduler tick immediately (manual refresh)."""
     try:
         report = await run_agent_sprint_tick(reason="manual_regenerate")

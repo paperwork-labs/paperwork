@@ -294,6 +294,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
     except Exception:
         logger.exception("Failed to install agent_sprint_scheduler job")
 
+    try:
+        from app.schedulers import secrets_audit
+
+        secrets_audit.install(sched)
+    except Exception:
+        logger.exception("Failed to install secrets_audit jobs")
+
     sched.start()
     _scheduler = sched
     logger.info("APScheduler started: pr_sweep every %d min + proactive_cadence hourly", minutes)
