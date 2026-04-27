@@ -23,9 +23,7 @@ CSRF_PREFIX = "csrf:"
 SESSION_TTL = 7 * 24 * 60 * 60  # 7 days
 
 
-async def register(
-    db: AsyncSession, redis: Redis, data: RegisterRequest
-) -> tuple[User, str, str]:
+async def register(db: AsyncSession, redis: Redis, data: RegisterRequest) -> tuple[User, str, str]:
     """Register a new user. Returns (user, session_token, csrf_token)."""
     repo = UserRepository(db)
 
@@ -53,9 +51,7 @@ async def register(
     return user, session_token, csrf_token
 
 
-async def login(
-    db: AsyncSession, redis: Redis, email: str, password: str
-) -> tuple[User, str, str]:
+async def login(db: AsyncSession, redis: Redis, email: str, password: str) -> tuple[User, str, str]:
     """Authenticate user. Returns (user, session_token, csrf_token)."""
     repo = UserRepository(db)
 
@@ -142,9 +138,7 @@ async def get_current_user(db: AsyncSession, redis: Redis, session_token: str) -
     return user
 
 
-async def delete_account(
-    db: AsyncSession, redis: Redis, user: User, session_token: str
-) -> None:
+async def delete_account(db: AsyncSession, redis: Redis, user: User, session_token: str) -> None:
     """Delete user and all data (CCPA). Clears session."""
     repo = UserRepository(db)
     await repo.delete_cascade(user)
