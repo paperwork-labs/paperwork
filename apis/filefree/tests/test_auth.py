@@ -3,8 +3,6 @@
 import pytest
 from httpx import AsyncClient
 
-from tests.conftest import FakeRedis
-
 pytestmark = pytest.mark.asyncio
 
 REGISTER_URL = "/api/v1/auth/register"
@@ -168,7 +166,8 @@ async def test_me_invalid_session(client: AsyncClient):
 # ── Logout ────────────────────────────────────────────────────────────────
 
 
-async def test_logout_success(client: AsyncClient, fake_redis: FakeRedis):
+@pytest.mark.usefixtures("fake_redis")
+async def test_logout_success(client: AsyncClient):
     result = await _register_user(client)
     resp = await client.post(
         LOGOUT_URL,
@@ -184,7 +183,8 @@ async def test_logout_success(client: AsyncClient, fake_redis: FakeRedis):
 # ── Delete Account ────────────────────────────────────────────────────────
 
 
-async def test_delete_account_success(client: AsyncClient, fake_redis: FakeRedis):
+@pytest.mark.usefixtures("fake_redis")
+async def test_delete_account_success(client: AsyncClient):
     result = await _register_user(client)
     resp = await client.delete(
         DELETE_URL,

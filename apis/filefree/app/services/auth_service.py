@@ -1,17 +1,22 @@
 """medallion: ops"""
 
+from __future__ import annotations
+
 import secrets
 import uuid
-
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import TYPE_CHECKING, Any
 
 from app.models.user import AuthProvider, User
 from app.repositories.user import UserRepository
-from app.schemas.auth import RegisterRequest
 from app.utils.encryption import decrypt, encrypt
 from app.utils.exceptions import ConflictError, UnauthorizedError
 from app.utils.security import generate_session_token, hash_password, verify_password
+
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    from app.schemas.auth import RegisterRequest
 
 SESSION_PREFIX = "session:"
 CSRF_PREFIX = "csrf:"
@@ -143,7 +148,8 @@ async def delete_account(db: AsyncSession, redis: Redis, user: User, session_tok
 
 async def get_csrf_token(redis: Redis, session_token: str) -> str | None:
     """Retrieve the CSRF token for a given session."""
-    return await redis.get(f"{CSRF_PREFIX}{session_token}")
+    token: str | None = await redis.get(f"{CSRF_PREFIX}{session_token}")
+    return token
 
 
 async def validate_csrf(redis: Redis, session_token: str, csrf_token: str) -> bool:
@@ -154,7 +160,7 @@ async def validate_csrf(redis: Redis, session_token: str, csrf_token: str) -> bo
     return secrets.compare_digest(stored, csrf_token)
 
 
-def user_to_response(user: User) -> dict:
+def user_to_response(user: User) -> dict[str, Any]:
     """Convert User model to a serializable dict."""
     full_name = None
     if user.full_name_encrypted:

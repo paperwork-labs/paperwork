@@ -1,0 +1,51 @@
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["alembic"]
+
+[tool.ruff.lint]
+select = [
+  "E",
+  "F",
+  "I",
+  "B",
+  "UP",
+  "DTZ",
+  "SIM",
+  "RUF",
+  "ARG",
+  "PIE",
+  "TCH",
+  "PTH",
+  "C4",
+  "ISC",
+  "Q",
+  "A",
+  "T20",
+  "ERA",
+]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI dependency injection / router wiring
+"app/routers/**" = ["B008", "ARG001"]
+"app/dependencies.py" = ["B008"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
+implicit_reexport = true
+exclude = ["alembic", "alembic/.*"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = "conftest"
+disallow_untyped_defs = false

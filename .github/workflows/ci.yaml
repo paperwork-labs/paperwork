@@ -94,9 +94,10 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - run: pip install ruff mypy
+      - run: pip install -r requirements.txt
       - run: ruff check . --exclude alembic
       - run: ruff format --check . --exclude alembic
+      - run: mypy app --config-file ./pyproject.toml
 
   api-test:
     name: API Tests

@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -10,4 +12,4 @@ class Waitlist(TimestampMixin, Base):
 
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     source: Mapped[str] = mapped_column(String(50), default="landing", nullable=False)
-    attribution: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    attribution: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)

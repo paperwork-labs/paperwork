@@ -1,6 +1,7 @@
 import enum
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import DateTime, Enum, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -9,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 
 
-class IrsStatus(str, enum.Enum):
+class IrsStatus(enum.StrEnum):
     SUBMITTED = "submitted"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
@@ -31,7 +32,7 @@ class Submission(TimestampMixin, Base):
         default=IrsStatus.SUBMITTED,
         nullable=False,
     )
-    rejection_codes: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    rejection_codes: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     submitted_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

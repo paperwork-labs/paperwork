@@ -1,5 +1,6 @@
 import enum
 import uuid
+from typing import Any
 
 from sqlalchemy import Boolean, Enum, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -8,18 +9,18 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 
 
-class AuthProvider(str, enum.Enum):
+class AuthProvider(enum.StrEnum):
     LOCAL = "local"
     GOOGLE = "google"
     APPLE = "apple"
 
 
-class UserRole(str, enum.Enum):
+class UserRole(enum.StrEnum):
     USER = "user"
     ADMIN = "admin"
 
 
-class AdvisorTier(str, enum.Enum):
+class AdvisorTier(enum.StrEnum):
     FREE = "free"
     PREMIUM = "premium"
 
@@ -51,7 +52,7 @@ class User(TimestampMixin, Base):
     )
     auth_provider_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    attribution: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    attribution: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
     filings = relationship("Filing", back_populates="user", cascade="all, delete-orphan")
     referrals = relationship("User", backref="referred_by", remote_side="User.id")

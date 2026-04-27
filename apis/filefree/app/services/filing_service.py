@@ -1,6 +1,7 @@
 """medallion: ops"""
 
 import uuid
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -109,7 +110,7 @@ async def advance_status(
     return filing
 
 
-def filing_to_response(filing: Filing) -> dict:
+def filing_to_response(filing: Filing) -> dict[str, Any]:
     return {
         "id": str(filing.id),
         "user_id": str(filing.user_id),

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+import inspect
 import logging
 
 from redis.asyncio import Redis
@@ -17,7 +20,12 @@ async def init_redis() -> None:
         socket_connect_timeout=5,
     )
     try:
-        await _redis_pool.ping()
+        # Stubs type ping() as Awaitable[bool] | bool; async client always returns a coroutine.
+        ping = _redis_pool.ping()
+        if inspect.isawaitable(ping):
+            await ping
+        else:
+            assert ping
         raw = settings.REDIS_URL
         masked_url = raw.split("@")[-1] if "@" in raw else raw
         logger.info("Redis connected (%s)", masked_url)

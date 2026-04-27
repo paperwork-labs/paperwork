@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -16,7 +17,7 @@ async def join_waitlist(
     request: Request,
     data: WaitlistCreate,
     db: AsyncSession = Depends(get_db),
-):
+) -> JSONResponse:
     service = WaitlistService(db)
     entry = await service.join_waitlist(data)
     return success_response(

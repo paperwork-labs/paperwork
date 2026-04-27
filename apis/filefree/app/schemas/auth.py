@@ -1,4 +1,5 @@
 import re
+from typing import Any
 
 from pydantic import BaseModel, EmailStr, field_validator
 
@@ -43,4 +44,4 @@ class GoogleAuthRequest(BaseModel):
 
 class AppleAuthRequest(BaseModel):
     id_token: str
-    user: dict | None = None
+    user: dict[str, Any] | None = None

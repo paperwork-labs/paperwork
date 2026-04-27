@@ -1,6 +1,7 @@
 import enum
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import DateTime, Enum, ForeignKey, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -9,14 +10,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 
 
-class DocumentType(str, enum.Enum):
+class DocumentType(enum.StrEnum):
     W2 = "w2"
     DRIVERS_LICENSE = "drivers_license"
     MISC_1099 = "1099_misc"
     NEC_1099 = "1099_nec"
 
 
-class ExtractionStatus(str, enum.Enum):
+class ExtractionStatus(enum.StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -47,8 +48,8 @@ class Document(TimestampMixin, Base):
         default=ExtractionStatus.PENDING,
         nullable=False,
     )
-    extraction_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    confidence_scores: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    extraction_data: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    confidence_scores: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     filing = relationship("Filing", back_populates="documents")

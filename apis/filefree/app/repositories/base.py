@@ -14,8 +14,8 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
         self.session = session
 
-    async def get_by_id(self, id: uuid.UUID) -> ModelType | None:
-        return await self.session.get(self.model, id)
+    async def get_by_id(self, record_id: uuid.UUID) -> ModelType | None:
+        return await self.session.get(self.model, record_id)
 
     async def create(self, **kwargs: object) -> ModelType:
         instance = self.model(**kwargs)

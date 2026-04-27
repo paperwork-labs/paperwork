@@ -9,14 +9,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
 
 
-class FilingStatusType(str, enum.Enum):
+class FilingStatusType(enum.StrEnum):
     SINGLE = "single"
     MARRIED_JOINT = "married_joint"
     MARRIED_SEPARATE = "married_separate"
     HEAD_OF_HOUSEHOLD = "head_of_household"
 
 
-class FilingStatus(str, enum.Enum):
+class FilingStatus(enum.StrEnum):
     DRAFT = "draft"
     DOCUMENTS_UPLOADED = "documents_uploaded"
     DATA_CONFIRMED = "data_confirmed"

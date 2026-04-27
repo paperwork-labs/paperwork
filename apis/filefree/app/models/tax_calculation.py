@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import DateTime, ForeignKey, Integer, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -25,7 +26,7 @@ class TaxCalculation(TimestampMixin, Base):
     total_withheld: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     refund_amount: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     owed_amount: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    ai_insights: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    ai_insights: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
     calculated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

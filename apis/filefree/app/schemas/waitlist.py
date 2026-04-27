@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel, EmailStr
 
@@ -6,7 +7,7 @@ from pydantic import BaseModel, EmailStr
 class WaitlistCreate(BaseModel):
     email: EmailStr
     source: str = "landing"
-    attribution: dict | None = None
+    attribution: dict[str, Any] | None = None
 
 
 class WaitlistResponse(BaseModel):
