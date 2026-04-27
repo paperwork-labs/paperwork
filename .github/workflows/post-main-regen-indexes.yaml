@@ -1,14 +1,30 @@
 name: Post-main regenerate indexes
 
-# After each merge to main, refresh generated indexes so open PRs rebase onto
-# a main that already matches CI expectations (reduces tracker/docs-index drift).
+# After merges to `main`, keep generated files aligned when inputs change.
+# Commits back to main with [skip ci] in the message to avoid noisy feedback loops
+# (required checks on PRs still see real validation). Refreshes indexes so open PRs
+# rebase onto a main that matches CI expectations (reduces tracker/docs-index drift).
 
 on:
   push:
     branches: [main]
+    paths:
+      - "docs/**/*.md"
+      - "docs/sprints/**"
+      - "docs/TASKS.md"
+      - "docs/*/plans/**"
+      - "docs/_index.yaml"
+      - "scripts/check_docs_index.py"
+      - "scripts/generate_docs_index.py"
+      - "scripts/generate_tracker_index.py"
+      - "apps/studio/src/data/tracker-index.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
 
 permissions:
   contents: write
+  pull-requests: read
 
 concurrency:
   group: post-main-regen-indexes
@@ -16,49 +32,80 @@ concurrency:
 
 jobs:
   regen:
+    if: github.repository == 'paperwork-labs/paperwork'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: main
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Skip regen commits
         id: skip
         run: |
           msg="${{ github.event.head_commit.message }}"
+          if [ -z "$msg" ]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if echo "$msg" | grep -qF 'chore: regenerate indexes after merge'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif echo "$msg" | grep -qF 'chore(ci): regenerate docs/tracker index after main push'; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
+
+      - uses: pnpm/action-setup@v4
+        if: steps.skip.outputs.skip != 'true'
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        if: steps.skip.outputs.skip != 'true'
+        with:
+          node-version: "20"
 
       - uses: actions/setup-python@v5
         if: steps.skip.outputs.skip != 'true'
         with:
           python-version: "3.12"
 
-      - name: Install Python deps for index scripts
-        if: steps.skip.outputs.skip != 'true'
-        run: pip install pyyaml
-
-      - name: Regenerate tracker + docs index
+      - name: Install Python deps
         if: steps.skip.outputs.skip != 'true'
         run: |
-          python3 scripts/generate_tracker_index.py --no-pr-fetch
-          python3 scripts/generate_docs_index.py --write
+          python3 -m pip install --quiet "pyyaml>=6.0"
 
-      - name: Commit and push if drift
+      - name: Regenerate
         if: steps.skip.outputs.skip != 'true'
+        id: go
+        run: |
+          set -euo pipefail
+          python3 scripts/generate_tracker_index.py
+          python3 scripts/generate_docs_index.py --write
+          # Refresh lock if package graph changed; no-op for doc-only commits.
+          pnpm install --lockfile-only
+          if git diff --quiet; then
+            echo "clean=true" >> "$GITHUB_OUTPUT"
+            echo "No drift after regen"
+          else
+            echo "clean=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and push
+        if: steps.skip.outputs.skip != 'true' && steps.go.outputs.clean == 'false'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/studio/src/data/tracker-index.json docs/_index.yaml
-          if git diff --staged --quiet; then
-            echo "Indexes already fresh."
+          git add -- apps/studio/src/data/tracker-index.json docs/_index.yaml pnpm-lock.yaml
+          if git diff --cached --quiet; then
+            echo "Nothing to commit after add"
             exit 0
           fi
-          git commit -m "chore: regenerate indexes after merge [skip ci]"
-          git push
+          git commit -m "chore(ci): regenerate docs/tracker index after main push [skip ci]"
+          git push origin HEAD:main

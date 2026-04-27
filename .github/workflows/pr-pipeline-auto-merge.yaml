@@ -1,0 +1,42 @@
+name: PR pipeline — agent auto-merge
+
+# Squash-merges eligible agent/bot PRs to `main` when required checks pass,
+# with Vercel "rate limit" / resource check failures treated as a soft pass.
+# Does not merge PRs with do-not-merge / needs-founder-review, drafts, or
+# pending reviews.
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  check_suite:
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  checks: read
+
+concurrency:
+  group: pr-pipeline-auto-merge
+  cancel-in-progress: false
+
+jobs:
+  run:
+    if: github.repository == 'paperwork-labs/paperwork' && (github.event_name != 'check_suite' || github.event.check_suite.conclusion != null)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@4
+        with:
+          node-version: "20"
+
+      - name: Agent auto-merge sweep
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/pr-pipeline/agent-auto-merge.mjs
