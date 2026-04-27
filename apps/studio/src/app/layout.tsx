@@ -36,10 +36,19 @@ export const metadata: Metadata = {
     url: "https://paperworklabs.com",
     siteName: "Paperwork Labs",
     type: "website",
+    images: [
+      {
+        url: "/brand/paperclip-clipped-wordmark.svg",
+        width: 1280,
+        height: 256,
+        alt: "Paperwork Labs",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     site: "@paperworklabs",
+    images: ["/brand/paperclip-clipped-wordmark.svg"],
   },
 };
 

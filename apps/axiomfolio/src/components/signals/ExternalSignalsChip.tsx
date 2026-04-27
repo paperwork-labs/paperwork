@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export const isExternalSignalsViteEnabled = import.meta.env.VITE_ENABLE_EXTERNAL_SIGNALS === 'true';
+export const isExternalSignalsViteEnabled =
+  process.env.NEXT_PUBLIC_ENABLE_EXTERNAL_SIGNALS === 'true';
 const externalSignalsEnabled = isExternalSignalsViteEnabled;
 
 export interface ExternalSignalItem {

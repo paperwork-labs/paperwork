@@ -16,8 +16,30 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://tools.filefree.ai"),
   title: "Trinkets — Financial utility tools",
   description: "Fast free calculators and utility tools from Paperwork Labs.",
+  openGraph: {
+    title: "Trinkets — Financial utility tools",
+    description: "Fast free calculators and utility tools from Paperwork Labs.",
+    url: "https://tools.filefree.ai",
+    siteName: "Trinkets",
+    type: "website",
+    images: [
+      {
+        url: "/brand/trinkets-icon.svg",
+        width: 128,
+        height: 128,
+        alt: "Trinkets",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Trinkets — Financial utility tools",
+    description: "Fast free calculators and utility tools from Paperwork Labs.",
+    images: ["/brand/trinkets-icon.svg"],
+  },
 };
 
 export default function RootLayout({

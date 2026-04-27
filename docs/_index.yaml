@@ -355,8 +355,8 @@ docs:
     category: reference
   - slug: clerk-axiomfolio
     path: docs/infra/CLERK_AXIOMFOLIO.md
-    title: Clerk SSO — AxiomFolio (axiomfolio-next)
-    summary: "Runbook for the AxiomFolio Next.js app (`apps/axiomfolio-next`) identity stack: Clerk SDK foundation (T6c) alongside the existing **`qm_token`** session in `localStorage`. Themed Clerk UI is a…"
+    title: Clerk SSO — AxiomFolio (Next.js)
+    summary: "Runbook for the AxiomFolio Next.js app (`apps/axiomfolio`, `@paperwork-labs/axiomfolio`) identity stack: Clerk SDK foundation (T6c) alongside the existing **`qm_token`** session in `localStorage`. Themed Clerk UI is a…"
     tags: []
     owners: [strategy]
     category: reference
@@ -503,8 +503,8 @@ docs:
     category: plans
   - slug: axiomfolio-nextjs-migration
     path: docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md
-    title: AxiomFolio Next.js Migration 2026 Q3
-    summary: Vite → Next.js migration plan and live status.
+    title: AxiomFolio Next.js migration (completed 2026-04-27)
+    summary: Vite → Next.js migration — shipped early Q2 (Track G4); filename kept for traceability.
     tags: [axiomfolio, migration, next]
     owners: [engineering]
     category: plans

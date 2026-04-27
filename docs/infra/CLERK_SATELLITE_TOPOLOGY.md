@@ -111,7 +111,7 @@ For **each** satellite domain (e.g. `filefree.ai`, `launchfree.ai`, `distill.tax
 - ~~Custom `apps/accounts` Next.js app (Track H4)~~ — **superseded**; Clerk hosts the Account Portal UI on the primary domain. Founder/engineering: configure the production instance’s **Domains**, **paths**, and **allowed redirect / satellite origins** in the Clerk Dashboard so handoffs from satellites return to the correct product URLs. Omitting a satellite origin still breaks return redirects after sign-in.
 - Repo-owned Next.js apps do **not** deploy the primary auth shell; satellite apps below only **point** `signInUrl` / `signUpUrl` at `https://accounts.paperworklabs.com/...`.
 
-**Every Next.js product app** (`apps/filefree`, `apps/launchfree`, `apps/distill`, `apps/trinkets`, `apps/studio`, `apps/axiomfolio-next`) becomes a **satellite**:
+**Every other Next.js app** (`apps/filefree`, `apps/launchfree`, `apps/distill`, `apps/trinkets`, `apps/studio`, `apps/axiomfolio`) becomes a **satellite**:
 
 1. **`ClerkProvider`** — align with [Clerk’s satellite example](https://clerk.com/docs/guides/dashboard/dns-domains/satellite-domains):
 
@@ -134,7 +134,7 @@ For **each** satellite domain (e.g. `filefree.ai`, `launchfree.ai`, `distill.tax
    - `signInUrl` / `signUpUrl`: `https://accounts.paperworklabs.com/sign-in` and `/sign-up`
    - Optionally `satelliteAutoSync: true` if you accept a redirect on every cold load to mirror “already signed in on primary” without clicking Sign in (performance tradeoff; default is `false`).
 
-   **AxiomFolio** (`apps/axiomfolio-next`): Clerk runs in `src/proxy.ts` (Next.js 16), not `middleware.ts` — apply the same `clerkMiddleware` **options** object where the middleware is created.
+   **AxiomFolio** (`apps/axiomfolio`): Clerk runs in `src/proxy.ts` (Next.js 16), not `middleware.ts` — apply the same `clerkMiddleware` **options** object where the middleware is created.
 
 3. **Sign-in / sign-up links:** With `satelliteAutoSync: false` (default), use [`buildSignInUrl()`](https://clerk.com/docs/nextjs/reference/objects/clerk.md#build-sign-in-url) / [`buildSignUpUrl()`](https://clerk.com/docs/nextjs/reference/objects/clerk.md#build-sign-up-url) (or Clerk’s `<SignInButton />` patterns that use them) so the `__clerk_synced` trigger is applied. Hardcoding bare URLs can **break** session sync when returning from the primary.
 
@@ -156,7 +156,7 @@ For **each** satellite domain (e.g. `filefree.ai`, `launchfree.ai`, `distill.tax
 **Current repo touchpoints (pre-migration):**
 
 - Providers: `apps/*/src/app/layout.tsx` — each app wraps `ClerkProvider` with local `signInUrl` / `signUpUrl` only (no `isSatellite` yet).
-- Middleware: `apps/filefree`, `launchfree`, `distill`, `trinkets`, `studio` — `src/middleware.ts`; `apps/axiomfolio-next` — `src/proxy.ts`.
+- Middleware: `apps/filefree`, `launchfree`, `distill`, `trinkets`, `studio` — `src/middleware.ts`; `apps/axiomfolio` — `src/proxy.ts`.
 - Per-app Clerk runbooks: [`CLERK_FILEFREE.md`](CLERK_FILEFREE.md), [`CLERK_LAUNCHFREE.md`](CLERK_LAUNCHFREE.md), [`CLERK_DISTILL.md`](CLERK_DISTILL.md), [`CLERK_TRINKETS.md`](CLERK_TRINKETS.md), [`CLERK_STUDIO.md`](CLERK_STUDIO.md), [`CLERK_AXIOMFOLIO.md`](CLERK_AXIOMFOLIO.md).
 
 **Shared package:** Consumption patterns may consolidate in `@paperwork-labs/auth` (Track C). Until then, duplicate the satellite `ClerkProvider` + middleware options carefully per app.

@@ -12,7 +12,7 @@
  */
 
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { ChevronDown } from 'lucide-react';
 
 import {
@@ -45,7 +45,7 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
         CSV import for every other broker, real-time prices, public
         sharing — all free, forever. The full reasoning lives on{' '}
         <Link
-          to="/why-free"
+          href="/why-free"
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
           our /why-free page
@@ -79,7 +79,7 @@ const FAQ_ENTRIES: ReadonlyArray<FaqEntry> = [
         No. Never. Not aggregated, not anonymized, not "for research".
         Read the{' '}
         <Link
-          to="/why-free"
+          href="/why-free"
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
           /why-free

@@ -6,7 +6,8 @@
  * signals page rather than leaving them in front of a blank card.
  */
 import * as React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowRight, Briefcase, Link2, Rocket } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
@@ -66,7 +67,7 @@ function DesktopRow({ row, currency }: PositionRowProps) {
       <td className="px-3 py-2">
         <div className="flex items-center gap-2">
           <Link
-            to={`/holding/${encodeURIComponent(row.symbol)}`}
+            href={`/holding/${encodeURIComponent(row.symbol)}`}
             className="font-mono font-medium hover:underline"
           >
             {row.symbol}
@@ -123,7 +124,7 @@ function MobileRow({ row, currency }: PositionRowProps) {
   const totalPnlPct = toNumberOrNull(row.unrealized_pnl_pct);
   return (
     <Link
-      to={`/holding/${encodeURIComponent(row.symbol)}`}
+      href={`/holding/${encodeURIComponent(row.symbol)}`}
       className="flex items-center justify-between gap-3 rounded-md px-3 py-2 hover:bg-muted/40"
     >
       <div className="flex min-w-0 items-center gap-2">
@@ -155,7 +156,7 @@ function MobileRow({ row, currency }: PositionRowProps) {
 }
 
 function YourBookInner() {
-  const navigate = useNavigate();
+  const router = useRouter();
   const { user } = useAuth();
   const currency =
     typeof user?.currency_preference === 'string' && user.currency_preference.trim() !== ''
@@ -167,7 +168,7 @@ function YourBookInner() {
 
   const action = (
     <Button asChild variant="ghost" size="sm">
-      <Link to="/portfolio/holdings" aria-label="Open all holdings">
+      <Link href="/portfolio/holdings" aria-label="Open all holdings">
         All holdings
         <ArrowRight className="size-3" aria-hidden />
       </Link>
@@ -204,8 +205,8 @@ function YourBookInner() {
             icon={Link2}
             title="Your book is empty. Let's find your next setup."
             description="Connect a broker or explore today's signals to seed your first position."
-            action={{ label: 'Explore signals', onClick: () => navigate('/signals') }}
-            secondaryAction={{ label: 'Connect a broker', onClick: () => navigate('/connect') }}
+            action={{ label: 'Explore signals', onClick: () => router.push('/signals') }}
+            secondaryAction={{ label: 'Connect a broker', onClick: () => router.push('/connect') }}
           />
         ) : positionsQuery.isError ? (
           <ErrorState
@@ -222,7 +223,7 @@ function YourBookInner() {
               return (
                 <EmptyState
                   title="Your book is empty. Let's find your next setup."
-                  action={{ label: 'Explore signals', onClick: () => navigate('/signals') }}
+                  action={{ label: 'Explore signals', onClick: () => router.push('/signals') }}
                 />
               );
             }

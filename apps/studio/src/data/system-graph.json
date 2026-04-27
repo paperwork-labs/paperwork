@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-04-26T12:00:00+00:00",
-  "commit_sha": "489bd1e51",
+  "generated_at": "2026-04-27T07:18:10+00:00",
+  "commit_sha": "2a2252ab9",
   "layers": [
     "bronze",
     "silver",
@@ -161,7 +161,7 @@
       ],
       "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold",
       "medallion_summary": {
-        "gold": 56
+        "gold": 57
       },
       "subgroups": [
         {
@@ -176,7 +176,7 @@
         },
         {
           "name": "(top)",
-          "file_count": 8,
+          "file_count": 9,
           "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio/app/services/gold"
         },
         {
@@ -243,7 +243,7 @@
       "kind": "api",
       "module_path": "apis/axiomfolio",
       "health_url": "https://api.axiomfolio.com/health",
-      "admin_url": "https://axiomfolio.paperworklabs.com/settings/admin/system",
+      "admin_url": "https://axiomfolio.paperworklabs.com/system-status",
       "description": "FastAPI surface for the trading platform (web + workers).",
       "owner_persona": "trading",
       "depends_on": [
@@ -253,11 +253,11 @@
       ],
       "github_url": "https://github.com/paperwork-labs/paperwork/tree/main/apis/axiomfolio",
       "medallion_summary": {
-        "ops": 75,
+        "ops": 79,
         "bronze": 33,
-        "gold": 56,
+        "gold": 57,
         "execution": 21,
-        "silver": 59
+        "silver": 56
       }
     },
     {
@@ -268,8 +268,8 @@
       "kind": "frontend",
       "module_path": "apps/axiomfolio",
       "health_url": "https://axiomfolio.paperworklabs.com",
-      "admin_url": "https://axiomfolio.paperworklabs.com/settings/admin/system",
-      "description": "Trading UI \u2014 React 19 + Vite 8. Pending migration to Next.js.",
+      "admin_url": "https://axiomfolio.paperworklabs.com/system-status",
+      "description": "Trading UI \u2014 Next.js 16 App Router on Vercel (`@paperwork-labs/axiomfolio`).",
       "owner_persona": "ux",
       "depends_on": [
         "axiomfolio.api"

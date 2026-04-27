@@ -1,104 +1,51 @@
-# Axiomfolio Frontend
+# @paperwork-labs/axiomfolio
 
-## Quick Start
+Next.js 16 shell for AxiomFolio. Track E of the Infra & Automation
+Hardening Sprint. Lives alongside `apps/axiomfolio` (Vite) so we can port
+routes incrementally behind a feature flag instead of flipping the whole
+frontend in one go.
 
-```bash
-npm install
-npm run dev          # Vite dev server on :3000
-# Shared UI / brand Storybook: from repo root → pnpm --filter @paperwork-labs/design storybook
-npm run test         # Vitest test runner
-npm run lint         # ESLint
-npm run type-check   # TypeScript check
-```
+## Status (2026-04-24)
 
-## Tech Stack
+- ✅ Monorepo package scaffolded, builds with Turborepo + Turbopack
+- ✅ Three shells: `/system-status`, `/portfolio`, `/scanner`
+- ✅ Feature-flag middleware (`NEXT_PUBLIC_AXIOMFOLIO_NEXT_ENABLED`)
+- ✅ Shared UI tokens via `@paperwork-labs/ui`
+- ⏳ Full port of Vite pages — follow-up PRs
 
-| Category | Library |
-|----------|---------|
-| UI Framework | React 19, Radix UI, Tailwind CSS, shadcn/ui-style components, Framer Motion |
-| Build | Vite 5, TypeScript 5.9 |
-| Data Fetching | TanStack Query v5 |
-| Routing | React Router v7 |
-| Charts | Recharts v3, lightweight-charts v5 |
-| Forms | React Hook Form |
-| Testing | Vitest 4, Testing Library, happy-dom |
-| Linting | ESLint 9 |
-| Component Dev | Storybook (`@paperwork-labs/design`) |
-
-## Project Structure
-
-```
-src/
-  components/   # UI components (shared/, ui/, orders/, market/, portfolio/, settings/)
-  pages/        # Page-level components (lazy-loaded via React.lazy)
-  services/     # API client (api.ts), service hooks
-  hooks/        # Custom React hooks
-  context/      # React context providers (Auth, Account)
-  theme/        # Color mode and legacy theme helpers (Tailwind + CSS variables are primary)
-  types/        # TypeScript type definitions
-  utils/        # Utility functions
-  test/         # Test setup (Vitest)
-```
-
-Path alias: `@/*` maps to `src/*` (configured in `tsconfig.json` and `vite.config.ts`).
-
-## API Client
-
-`src/services/api.ts` exports a configured Axios instance and domain-specific API objects:
-
-- **`portfolioApi`** — holdings, dashboard, categories, tax lots, performance, balances
-- **`optionsApi`** — options portfolio and summary
-- **`marketDataApi`** — price history, snapshots, volatility dashboard
-- **`activityApi`** — transactions and daily summaries
-- **`accountsApi`** — account CRUD, sync, credentials
-- **`aggregatorApi`** — broker connections (Schwab, TastyTrade, IBKR)
-- **`authApi`** — login, register, invite, profile
-- **`adminUsersApi`** — user management, invites
-- **`tasksApi`** — trigger Discord notifications and alerts
-
-Key features:
-- JWT attached automatically via request interceptor (`localStorage` key `qm_token`)
-- Built-in request queue (max 6 concurrent) to avoid backend connection saturation
-- Auto-retry on network errors; 401 responses trigger `auth:logout` event and token removal
-- `unwrapResponse` / `unwrapResponseSingle` helpers for normalizing nested backend envelopes
-
-## Environment Variables
-
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `VITE_API_BASE_URL` | API base path used by Axios | `/api/v1` |
-| `VITE_PROXY_TARGET` | Vite dev-server proxy target (local dev only) | `http://backend:8000` |
-
-The Vite dev server runs host-side (not in Docker). It proxies `/api` to
-`http://localhost:8004` which is where the `api-axiomfolio` container
-exposes its backend in the unified dev stack.
-
-## Running locally
-
-The frontend is a pnpm workspace member (`@paperwork-labs/axiomfolio`) and
-runs via pnpm directly — no Docker container for the frontend. This
-matches the house pattern (filefree, launchfree, studio, distill, trinkets
-all run their dev servers host-side).
+## Local dev
 
 ```bash
-# From repo root:
-pnpm install
-pnpm dev:axiomfolio          # Vite dev server on :3006
-pnpm build:axiomfolio        # Production build
-
-# From this directory:
-pnpm dev
-pnpm --filter @paperwork-labs/design storybook   # Shared design canvas (from repo root)
+pnpm --filter @paperwork-labs/axiomfolio dev
+# http://localhost:3005
 ```
 
-The backend stack (postgres, redis, api-axiomfolio, celery workers)
-boots via the root compose:
+Until the flag is on, every gated route redirects to the Vite origin.
+Point at a local Vite server with:
 
 ```bash
-# From apis/axiomfolio/:
-make up                      # backend + celery worker + celery beat
-make up-ibkr                 # + IB Gateway (optional profile)
-make down
+export NEXT_PUBLIC_AXIOMFOLIO_VITE_ORIGIN=http://localhost:3000
 ```
 
-See `docs/INFRA.md` for the full architecture.
+Or flip the flag to preview the new shell directly:
+
+```bash
+export NEXT_PUBLIC_AXIOMFOLIO_NEXT_ENABLED=true
+```
+
+## Porting checklist (per route)
+
+1. Lift the Vite page into `src/app/<route>/page.tsx` as a Server Component.
+2. Replace `react-query` client hooks with `fetch` + Server Components
+   where possible; keep `use client` boundaries for interactive bits.
+3. Adopt `@paperwork-labs/ui` primitives instead of Radix-in-axiomfolio.
+4. Confirm the route works both with the flag on (Next) and off (Vite
+   redirect) before shipping.
+5. Add route to the QA golden suite (Track G).
+
+## Contract with Brain
+
+`AgentBrain` continues to live in `apis/axiomfolio`. Track M delegates
+its LLM step to Paperwork Brain via `persona_pin=trading`, so the
+Next.js shell can talk to the same `/api/v1/signals` endpoint without
+any additional wiring.

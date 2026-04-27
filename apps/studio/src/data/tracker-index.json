@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "5addd45fd279",
+  "content_hash": "ef362539908d",
   "products": [
     {
       "label": "AxiomFolio",
@@ -142,13 +142,13 @@
         },
         {
           "doc_kind": "plan",
-          "last_reviewed": "2026-04-24",
+          "last_reviewed": "2026-04-27",
           "owner": "engineering",
           "path": "docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md",
           "product": "axiomfolio",
-          "raw_status": "active",
+          "raw_status": "completed",
           "slug": "nextjs-migration-2026q3",
-          "status": "in_progress",
+          "status": "shipped",
           "title": "AxiomFolio \u2192 Next.js 16 App Router \u2014 Migration Plan"
         },
         {
