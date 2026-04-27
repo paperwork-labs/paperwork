@@ -18,6 +18,7 @@
     "@clerk/nextjs": "^7.2.7",
     "@clerk/themes": "^2.4.57",
     "@neondatabase/serverless": "^1.1.0",
+    "@paperwork-labs/auth-clerk": "workspace:*",
     "@paperwork-labs/pwa": "workspace:*",
     "@paperwork-labs/ui": "workspace:*",
     "@tanstack/react-query": "^5.100.5",

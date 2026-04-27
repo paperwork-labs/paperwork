@@ -1,22 +1,23 @@
 import { SignUp } from "@clerk/nextjs";
+import { SignUpShell } from "@paperwork-labs/auth-clerk/components/sign-up-shell";
+import { studioAppearance } from "@paperwork-labs/auth-clerk/appearance";
 
 import { ClerkAuthPageShell } from "@/components/clerk/ClerkAuthPageShell";
-import { studioClerkAppearance } from "@/lib/studio-clerk-appearance";
+import { StudioWordmark } from "@/components/clerk/StudioWordmark";
 
 export default function SignUpPage() {
   return (
     <ClerkAuthPageShell>
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-            Paperwork Labs
-          </p>
-          <h1 className="mt-1 text-lg font-medium text-zinc-100">
-            Single Sign-On
-          </h1>
-        </div>
-        <SignUp appearance={studioClerkAppearance} />
-      </div>
+      <SignUpShell
+        appName="Studio"
+        appSlug="studio"
+        appWordmark={<StudioWordmark />}
+        appTagline="Paperwork Labs admin tools"
+        appearance={studioAppearance}
+        variant="admin"
+      >
+        <SignUp />
+      </SignUpShell>
     </ClerkAuthPageShell>
   );
 }

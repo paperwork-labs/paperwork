@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
-import { axiomfolioClerkAppearance } from "@/lib/axiomfolio-clerk-appearance";
+import { axiomfolioAppearance } from "@paperwork-labs/auth-clerk/appearance";
 import { Providers } from "../providers";
 
 export const metadata: Metadata = {
@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <ClerkProvider
-          appearance={axiomfolioClerkAppearance}
+          appearance={axiomfolioAppearance}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
         >

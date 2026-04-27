@@ -255,6 +255,9 @@ importers:
       '@fontsource-variable/space-grotesk':
         specifier: ^5.2.10
         version: 5.2.10
+      '@paperwork-labs/auth-clerk':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@paperwork-labs/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -421,6 +424,9 @@ importers:
       '@clerk/themes':
         specifier: ^2.4.57
         version: 2.4.57(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@paperwork-labs/auth-clerk':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@paperwork-labs/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -488,7 +494,7 @@ importers:
       '@paperwork-labs/analytics':
         specifier: workspace:*
         version: link:../../packages/analytics
-      '@paperwork-labs/auth':
+      '@paperwork-labs/auth-clerk':
         specifier: workspace:*
         version: link:../../packages/auth
       '@paperwork-labs/ui':
@@ -627,6 +633,9 @@ importers:
       '@clerk/themes':
         specifier: ^2.4.57
         version: 2.4.57(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@paperwork-labs/auth-clerk':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@paperwork-labs/data':
         specifier: workspace:*
         version: link:../../packages/data
@@ -727,6 +736,9 @@ importers:
       '@neondatabase/serverless':
         specifier: ^1.1.0
         version: 1.1.0
+      '@paperwork-labs/auth-clerk':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@paperwork-labs/pwa':
         specifier: workspace:*
         version: link:../../packages/pwa
@@ -827,6 +839,9 @@ importers:
       '@clerk/themes':
         specifier: ^2.4.57
         version: 2.4.57(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@paperwork-labs/auth-clerk':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@paperwork-labs/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -898,16 +913,46 @@ importers:
       '@paperwork-labs/ui':
         specifier: workspace:*
         version: link:../ui
-      react:
-        specifier: ^19.0.0
-        version: 19.2.4
+      jose:
+        specifier: ^5.9.6
+        version: 5.10.0
+      next:
+        specifier: ^15.0.0 || ^16.0.0
+        version: 16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
     devDependencies:
+      '@clerk/nextjs':
+        specifier: ^7.2.7
+        version: 7.2.7(next@16.2.4(@opentelemetry/api@1.9.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@clerk/themes':
+        specifier: ^2.4.57
+        version: 2.4.57(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@types/node':
+        specifier: ^25.6.0
+        version: 25.6.0
       '@types/react':
         specifier: ^19.2.0
         version: 19.2.14
+      '@vitejs/plugin-react':
+        specifier: ^6.0.1
+        version: 6.0.1(vite@8.0.10(@types/node@25.6.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.2)(tsx@4.21.0))
+      happy-dom:
+        specifier: ^20.9.0
+        version: 20.9.0
+      react:
+        specifier: ^19.2.5
+        version: 19.2.5
+      react-dom:
+        specifier: ^19.2.5
+        version: 19.2.5(react@19.2.5)
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.5
+        version: 4.1.5(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(happy-dom@20.9.0)(jsdom@29.0.2(@noble/hashes@1.8.0))(msw@2.13.5(@types/node@25.6.0)(typescript@5.9.3))(vite@8.0.10(@types/node@25.6.0)(esbuild@0.28.0)(jiti@2.6.1)(terser@5.46.2)(tsx@4.21.0))
 
   packages/data:
     dependencies:
@@ -5943,6 +5988,9 @@ packages:
   jiti@2.6.1:
     resolution: {integrity: sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ==}
     hasBin: true
+
+  jose@5.10.0:
+    resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
 
   js-cookie@3.0.5:
     resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==}
@@ -13104,6 +13152,8 @@ snapshots:
       supports-color: 8.1.1
 
   jiti@2.6.1: {}
+
+  jose@5.10.0: {}
 
   js-cookie@3.0.5: {}
 

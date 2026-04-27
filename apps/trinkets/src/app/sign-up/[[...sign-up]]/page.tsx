@@ -1,22 +1,22 @@
 import { SignUp } from "@clerk/nextjs";
+import { SignUpShell } from "@paperwork-labs/auth-clerk/components/sign-up-shell";
+import { trinketsAppearance } from "@paperwork-labs/auth-clerk/appearance";
 
 import { ClerkAuthPageShell } from "@/components/clerk/ClerkAuthPageShell";
-import { trinketsClerkAppearance } from "@/lib/trinkets-clerk-appearance";
+import { TrinketsWordmark } from "@/components/clerk/TrinketsWordmark";
 
 export default function SignUpPage() {
   return (
     <ClerkAuthPageShell>
-      <div className="w-full max-w-md">
-        <div className="mb-6 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-indigo-300/90">
-            Paperwork Labs
-          </p>
-          <h1 className="mt-1 text-lg font-medium text-stone-100">
-            Single Sign-On
-          </h1>
-        </div>
-        <SignUp appearance={trinketsClerkAppearance} />
-      </div>
+      <SignUpShell
+        appName="Trinkets"
+        appSlug="trinkets"
+        appWordmark={<TrinketsWordmark />}
+        appTagline="Personalized gift discovery"
+        appearance={trinketsAppearance}
+      >
+        <SignUp />
+      </SignUpShell>
     </ClerkAuthPageShell>
   );
 }
