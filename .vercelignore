@@ -1,0 +1,8 @@
+# Vercel ignore — prevent these paths from being uploaded to the Vercel build.
+#
+# `apps/_archive/` is excluded from pnpm workspaces (see pnpm-workspace.yaml)
+# but its `package.json` files still poison Vercel's pnpm peer-dep resolver,
+# producing `eslint-config-next` variants that aren't in pnpm-lock.yaml. The
+# archive is preserved in git per the 90-day retention policy in
+# apps/_archive/axiomfolio-vite/README.md; it just must not ride to Vercel.
+apps/_archive/

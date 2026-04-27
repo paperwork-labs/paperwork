@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && pnpm install --frozen-lockfile --filter=@paperwork-labs/distill...",
+  "installCommand": "cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && rm -rf node_modules/.pnpm && pnpm install --frozen-lockfile --filter=@paperwork-labs/distill...",
   "git": {
     "deploymentEnabled": {
       "main": true
