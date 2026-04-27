@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-26
+last_reviewed: 2026-04-27
 doc_kind: runbook
 domain: infra
 status: active
@@ -109,13 +109,13 @@ Single-source list of one-time blockers that require founder credentials. Once a
 - **Source:** PR #234, [CLERK_STUDIO.md](docs/infra/CLERK_STUDIO.md) (sibling `docs/infra/CLERK_*.md` runbooks)
 - **ETA:** ~30 min (research) + any Clerk plan upgrade (business decision)
 
-### 2. DNS + Dashboard for Clerk satellite topology (`accounts.paperworklabs.com`) — `[VERIFY]`
-- **Why this matters:** If/when the org enables **satellite domains** with `accounts.paperworklabs.com` as the Clerk primary host, DNS and Dashboard work must match `CLERK_SATELLITE_TOPOLOGY.md`. Embedded-only auth (per PR #210) **reduced** reliance on `accounts.*` for basic login, but the satellite program still needs this when you pursue Track H4.
-- **Where:** Cloudflare (or DNS host) for `paperworklabs.com` and each brand zone; [Clerk Dashboard](https://dashboard.clerk.com) → Domains.
-- **Steps:** **`[VERIFY]`** whether the product is committed to the satellite + primary-host model. If yes, follow `docs/infra/CLERK_SATELLITE_TOPOLOGY.md` exactly (Clerk shows live record values — do not copy stale placeholders from docs).
-- **Verification:** `dig` checks in runbook; Clerk shows **Verified**; end-to-end sign-in across a pilot satellite.
-- **Source:** [CLERK_SATELLITE_TOPOLOGY.md](docs/infra/CLERK_SATELLITE_TOPOLOGY.md), PR #219, PR #210
-- **ETA:** 1–2 h (if executed)
+### 2. DNS + Dashboard for Clerk production (`paperworklabs.com` / `accounts.paperworklabs.com`) — `[VERIFY]`
+- **Why this matters:** Clerk production for **`paperworklabs.com`** needs the **five CNAMEs** (Frontend API, Account portal, mail, DKIM) verified in the Dashboard before hosted auth flows are fully trusted. Satellite domains (other brands) still follow `CLERK_SATELLITE_TOPOLOGY.md` when you enable them. Embedded-only auth in individual apps (PR #210) **reduced** reliance on `accounts.*` for basic login in some surfaces; **Track H4** for the root zone is **DNS + verification** — see **[`CLERK_DNS_SPACESHIP.md`](docs/infra/CLERK_DNS_SPACESHIP.md)** (Clerk auto-hosts the Account Portal at `accounts.paperworklabs.com`; no custom `apps/accounts/` deploy required for that portal).
+- **Where:** **Spaceship** DNS for `paperworklabs.com` (not Cloudflare/Vercel DNS for this zone); [Clerk Dashboard](https://dashboard.clerk.com) → **Configure** → **Developers** → **Domains**.
+- **Steps:** Open **[`CLERK_DNS_SPACESHIP.md`](docs/infra/CLERK_DNS_SPACESHIP.md)** — paste the five CNAMEs, wait ~5 min, then **Verify configuration** in Clerk. For satellite rollouts across **other** apex domains, follow [`CLERK_SATELLITE_TOPOLOGY.md`](docs/infra/CLERK_SATELLITE_TOPOLOGY.md) (Clerk shows live record values per domain — do not copy stale placeholders).
+- **Verification:** `dig` one-liner in `CLERK_DNS_SPACESHIP.md`; all five **Verified** in Dashboard; optional end-to-end sign-in across a pilot satellite when satellites are enabled.
+- **Source:** [`CLERK_DNS_SPACESHIP.md`](docs/infra/CLERK_DNS_SPACESHIP.md), [`CLERK_SATELLITE_TOPOLOGY.md`](docs/infra/CLERK_SATELLITE_TOPOLOGY.md), PR #219, PR #210
+- **ETA:** ~15 min (DNS paste) + propagation; satellite program add 1–2 h when executed
 
 ## Future / strategy — AxiomFolio Vite on Render vs Vercel (Next) — `[VERIFY]`
 

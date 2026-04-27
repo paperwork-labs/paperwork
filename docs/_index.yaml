@@ -177,6 +177,13 @@ docs:
     tags: [clerk, sso, infra, dns, satellite]
     owners: [infra-ops]
     category: runbooks
+  - slug: clerk-dns-spaceship
+    path: docs/infra/CLERK_DNS_SPACESHIP.md
+    title: Clerk production DNS on Spaceship (`paperworklabs.com`)
+    summary: "Spaceship DNS: five CNAME records to verify Clerk production for paperworklabs.com (Frontend API, Account Portal, mail, DKIM). Paste-ready table; no Cloudflare/Vercel/Route 53."
+    tags: [clerk, dns, spaceship, infra, founder]
+    owners: [infra-ops]
+    category: runbooks
   - slug: credentials
     path: docs/CREDENTIALS.md
     title: Credential Rotation
