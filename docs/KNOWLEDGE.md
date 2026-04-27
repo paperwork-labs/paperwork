@@ -337,7 +337,7 @@ Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 - Studio admin password → updated on Vercel
 - All 7 n8n credentials updated via API (2x OpenAI, 2x GitHub, 3x Slack) with new keys
 - Vercel Studio env vars updated: ADMIN_ACCESS_PASSWORD, GITHUB_TOKEN
-- Render brain-api VERCEL_TOKEN set
+- Render brain-api `VERCEL_API_TOKEN` set
 
 **Still needs rotation** (exposed values still active):
 - Hetzner postgres/Redis passwords — run `./scripts/rotate-hetzner-creds.sh` on VPS

@@ -160,9 +160,9 @@ async def check_render_status() -> str:
 
 async def check_vercel_status() -> str:
     """Check recent Vercel deployments."""
-    token = (settings.VERCEL_TOKEN or "").strip()
+    token = (settings.VERCEL_API_TOKEN or "").strip()
     if not token:
-        return "Vercel: not configured (set VERCEL_TOKEN or VERCEL_API_TOKEN)."
+        return "Vercel: not configured (set VERCEL_API_TOKEN)."
 
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     try:

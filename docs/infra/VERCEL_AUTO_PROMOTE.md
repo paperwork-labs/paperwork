@@ -136,5 +136,4 @@ stays on the previous deployment until a build succeeds.
 - `.github/workflows/vercel-promote-on-merge.yaml` — the workflow.
 - `docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md` — sprint where
   this followup was tracked.
-- `docs/infra/RENDER_INVENTORY.md` — F-3 (`VERCEL_API_TOKEN` vs
-  `VERCEL_TOKEN` env-var consolidation on Render).
+- `docs/infra/RENDER_INVENTORY.md` — F-3 (Vercel API token env naming on Render; canonical `VERCEL_API_TOKEN`).

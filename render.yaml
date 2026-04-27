@@ -147,9 +147,8 @@ services:
         sync: false
       - key: RENDER_API_KEY
         sync: false
-      # Canonical name: VERCEL_API_TOKEN. Studio reads this name too
-      # (apps/studio/src/lib/command-center.ts). VERCEL_TOKEN is the old
-      # drifted name — delete from Render dashboard after this ships.
+      # Canonical: VERCEL_API_TOKEN (Studio + Brain; see docs/infra/RENDER_INVENTORY.md F-3).
+      # Legacy env key VERCEL_TOKEN is still read by Brain via pydantic alias during cutover — remove in Render when unused.
       - key: VERCEL_API_TOKEN
         sync: false
       - key: GITHUB_WEBHOOK_SECRET
