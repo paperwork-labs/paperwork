@@ -47,6 +47,7 @@ function buildNavGroups(
         { href: "/admin/tasks", label: "Tasks (company)", icon: Target },
         { href: "/admin/products", label: "Products", icon: Boxes },
         { href: "/admin/sprints", label: "Sprints", icon: Rocket },
+        { href: "/admin/agent-sprints", label: "Agent sprints", icon: Bot },
       ],
     },
     {

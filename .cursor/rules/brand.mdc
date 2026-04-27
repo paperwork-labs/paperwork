@@ -105,6 +105,14 @@ What is NOT enforced:
 
 The 2026-04-25 first cut put every mark on Azure + Amber and they came out indistinguishable. The 2026-04-25 second cut tried to enforce a one-template lockup on every product and homogenized them again. Sankalp's call: "forced is the key word, organic similarities are beautiful." Per-product full palette is the locked direction. See [`docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md`](../../docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md) §1.2 for the full rationale.
 
+### Sign-in / SSO wordmark (Clerk — Q2 2026 lock)
+
+Clerk is the live identity layer; copy and hierarchy follow **app-name primary** + **Paperwork ID as the identity model** (not as every page’s H1). Reference: Q2 Tech Debt Convergence plan (SSO + wordmark) and `@paperwork-labs/auth-clerk` `SignInShell` (`appName`, `appWordmark`, `appTagline`, `signInVerb`).
+
+- **Product domains** (FileFree, LaunchFree, Distill, Trinkets, AxiomFolio, Studio admin): the **app name** leads visually—e.g. "Sign in to FileFree" with the product wordmark large; then Clerk’s embedded sign-in; then **"by Paperwork Labs"** attribution; then a small **"Your Paperwork ID also works on…"** line naming sibling products. Do **not** use **"Paperwork ID"** as the only headline on these pages (users arrived for the product, not the umbrella ID first).
+- **`accounts.paperworklabs.com` only** (dedicated `apps/accounts/` host): **"Paperwork ID"** may be the **primary** headline, with company lockup and one-account-for-everything explainer. This is the **sole** surface where the unified-account name is allowed to own the H1.
+- **Deprecated (do not ship)**: universal headlines such as "Paperwork Labs · Single Sign-On" or reusing "Paperwork ID" as the default sign-in H1 on every app—these are superseded by the context-aware pattern above.
+
 ### Per-product mark palette (canonical SVG marks + surfaces)
 
 Each product owns a **full palette** — primary, accent, neutral surfaces, surface-aware ink, and (where needed) a **primary-on-dark** stroke for lockups. Hue assignments are evidence-grounded (parallel research dives, 2026-04-25; founder locks 2026-04-26). See `BRAND_DESIGN_DEEPDIVE_2026Q2.md` for decision matrix, pivots, and citations.
