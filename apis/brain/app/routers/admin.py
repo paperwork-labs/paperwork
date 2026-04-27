@@ -2,10 +2,13 @@ import asyncio
 import hmac
 import logging
 import os
+from datetime import date as date_type
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -34,6 +37,13 @@ def _require_admin(x_brain_secret: str | None = Header(None, alias="X-Brain-Secr
         raise HTTPException(status_code=503, detail="BRAIN_API_SECRET not configured")
     if not x_brain_secret or not hmac.compare_digest(x_brain_secret, expected):
         raise HTTPException(status_code=401, detail="Admin access required")
+
+
+def _require_learning_dashboard() -> None:
+    if not settings.BRAIN_LEARNING_DASHBOARD_ENABLED:
+        raise HTTPException(
+            status_code=403, detail="Brain learning dashboard disabled (BRAIN_LEARNING_DASHBOARD_ENABLED=false)"
+        )
 
 
 def _repo_root() -> str:
@@ -283,3 +293,271 @@ async def list_memory_episodes(
         for ep in rows
     ]
     return success_response({"count": len(episodes), "episodes": episodes})
+
+
+def _parse_iso_dt(raw: str) -> datetime:
+    s = raw.strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    dt = datetime.fromisoformat(s)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _utc_day_bounds(d: date_type) -> tuple[datetime, datetime]:
+    start = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+    return start, start + timedelta(days=1)
+
+
+def _serialize_episode_row(ep: Episode) -> dict[str, Any]:
+    return {
+        "id": ep.id,
+        "source": ep.source,
+        "source_ref": ep.source_ref,
+        "channel": ep.channel,
+        "persona": ep.persona,
+        "product": ep.product,
+        "summary": ep.summary,
+        "importance": ep.importance,
+        "metadata": ep.metadata_ or {},
+        "model_used": ep.model_used,
+        "tokens_in": ep.tokens_in,
+        "tokens_out": ep.tokens_out,
+        "user_id": ep.user_id,
+        "created_at": ep.created_at.isoformat() if ep.created_at else None,
+    }
+
+
+@router.get("/brain/episodes")
+async def list_brain_learning_episodes(
+    since: str = Query(..., description="ISO 8601 lower bound (UTC recommended)."),
+    limit: int = Query(50, ge=1, le=200),
+    persona: str | None = Query(None, description="Exact persona filter."),
+    product: str | None = Query(None, description="Exact product filter (use empty to match null — omit for all)."),
+    organization_id: str = Query("paperwork-labs"),
+    exclude_routing: bool = Query(
+        True,
+        description="If true (default), omit `source=model_router` rows (see `/admin/brain/decisions`).",
+    ),
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+    _learning: None = Depends(_require_learning_dashboard),
+):
+    """J2/J3: time-bounded episode rows for the Studio learning dashboard."""
+    start_dt = _parse_iso_dt(since)
+    stmt = select(Episode).where(
+        Episode.organization_id == organization_id,
+        Episode.created_at >= start_dt,
+    )
+    if exclude_routing:
+        stmt = stmt.where(Episode.source != "model_router")
+    if persona:
+        stmt = stmt.where(Episode.persona == persona)
+    if product is not None:
+        if product == "":
+            stmt = stmt.where(Episode.product.is_(None))
+        else:
+            stmt = stmt.where(Episode.product == product)
+    stmt = stmt.order_by(Episode.created_at.desc()).limit(limit)
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    return success_response({
+        "count": len(rows),
+        "episodes": [_serialize_episode_row(ep) for ep in rows],
+    })
+
+
+@router.get("/brain/decisions")
+async def list_brain_routing_decisions(
+    since: str = Query(..., description="ISO 8601 lower bound."),
+    limit: int = Query(100, ge=1, le=500),
+    organization_id: str = Query("paperwork-labs"),
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+    _learning: None = Depends(_require_learning_dashboard),
+):
+    """J2/J3: model routing / decision-quality rows (`source=model_router`)."""
+    start_dt = _parse_iso_dt(since)
+    stmt = (
+        select(Episode)
+        .where(
+            Episode.organization_id == organization_id,
+            Episode.source == "model_router",
+            Episode.created_at >= start_dt,
+        )
+        .order_by(Episode.created_at.desc())
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    rows = result.scalars().all()
+    out: list[dict[str, Any]] = []
+    for ep in rows:
+        meta = ep.metadata_ or {}
+        out.append({
+            "id": ep.id,
+            "persona": ep.persona,
+            "summary": ep.summary,
+            "outcome": meta.get("outcome"),
+            "model_used": ep.model_used,
+            "tokens_in": ep.tokens_in,
+            "tokens_out": ep.tokens_out,
+            "created_at": ep.created_at.isoformat() if ep.created_at else None,
+            "metadata": meta,
+        })
+    return success_response({"count": len(out), "decisions": out})
+
+
+@router.get("/brain/learning-summary")
+async def brain_learning_summary(
+    on_date: str | None = Query(
+        None,
+        alias="date",
+        description="Anchor calendar day in UTC (YYYY-MM-DD). Defaults to today UTC.",
+    ),
+    spark_days: int = Query(14, ge=0, le=90, description="If >0, include daily series for the N days ending on `date`."),
+    organization_id: str = Query("paperwork-labs"),
+    top_n: int = Query(5, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+    _learning: None = Depends(_require_learning_dashboard),
+):
+    """J2/J3: aggregated counts, token totals, top importance, optional spark data."""
+    if on_date:
+        try:
+            y, m, d = (int(p) for p in on_date.split("-", 2))
+            anchor = date_type(y, m, d)
+        except Exception as exc:  # noqa: BLE001
+            raise HTTPException(status_code=422, detail=f"Invalid date: {on_date!r} ({exc})") from exc
+    else:
+        anchor = datetime.now(timezone.utc).date()
+
+    day_start, day_end = _utc_day_bounds(anchor)
+
+    # Episodes for the day excluding routing noise (align with `/brain/episodes` default)
+    day_ep_stmt = select(Episode).where(
+        Episode.organization_id == organization_id,
+        Episode.created_at >= day_start,
+        Episode.created_at < day_end,
+        Episode.source != "model_router",
+    )
+    day_ep_result = await db.execute(day_ep_stmt)
+    day_eps = day_ep_result.scalars().all()
+
+    counts_map: dict[tuple[str | None, str | None], int] = {}
+    for ep in day_eps:
+        key = (ep.persona, ep.product)
+        counts_map[key] = counts_map.get(key, 0) + 1
+    counts_by_persona_product = [
+        {
+            "persona": p,
+            "product": pr,
+            "episode_count": c,
+        }
+        for (p, pr), c in sorted(counts_map.items(), key=lambda x: -x[1])
+    ]
+
+    top_rows = sorted(day_eps, key=lambda e: (e.importance, e.id or 0), reverse=True)[:top_n]
+    top_by_importance = [_serialize_episode_row(ep) for ep in top_rows]
+
+    # Token totals: all sources for the day (incl. model_router)
+    tok_stmt = (
+        select(
+            Episode.model_used,
+            func.coalesce(func.sum(Episode.tokens_in), 0),
+            func.coalesce(func.sum(Episode.tokens_out), 0),
+        )
+        .where(
+            Episode.organization_id == organization_id,
+            Episode.created_at >= day_start,
+            Episode.created_at < day_end,
+        )
+        .group_by(Episode.model_used)
+    )
+    tok_res = await db.execute(tok_stmt)
+    model_token_totals = [
+        {
+            "model": row[0],
+            "tokens_in": int(row[1] or 0),
+            "tokens_out": int(row[2] or 0),
+        }
+        for row in tok_res.all()
+    ]
+
+    dec_stmt = select(func.count()).select_from(Episode).where(
+        Episode.organization_id == organization_id,
+        Episode.created_at >= day_start,
+        Episode.created_at < day_end,
+        Episode.source == "model_router",
+    )
+    dec_count = int((await db.execute(dec_stmt)).scalar() or 0)
+
+    day_stmt_tok = select(
+        func.coalesce(func.sum(Episode.tokens_in), 0),
+        func.coalesce(func.sum(Episode.tokens_out), 0),
+    ).where(
+        Episode.organization_id == organization_id,
+        Episode.created_at >= day_start,
+        Episode.created_at < day_end,
+    )
+    t_in, t_out = (await db.execute(day_stmt_tok)).one()
+    t_in, t_out = int(t_in or 0), int(t_out or 0)
+
+    spark: list[dict[str, Any]] = []
+    if spark_days > 0:
+        series_start_date = anchor - timedelta(days=spark_days - 1)
+        range_start, _ = _utc_day_bounds(series_start_date)
+        _, range_end = _utc_day_bounds(anchor)
+        # Episode counts by UTC day
+        day_bucket = func.date_trunc("day", Episode.created_at)
+        e_stmt = (
+            select(
+                day_bucket.label("day"),
+                func.count().label("n"),
+            )
+            .where(
+                Episode.organization_id == organization_id,
+                Episode.created_at >= range_start,
+                Episode.created_at < range_end,
+                Episode.source != "model_router",
+            )
+            .group_by(day_bucket)
+        )
+        e_map = {r[0].date() if r[0] else None: int(r[1]) for r in (await db.execute(e_stmt)).all()}
+        d_stmt = (
+            select(
+                day_bucket.label("day"),
+                func.count().label("n"),
+            )
+            .where(
+                Episode.organization_id == organization_id,
+                Episode.created_at >= range_start,
+                Episode.created_at < range_end,
+                Episode.source == "model_router",
+            )
+            .group_by(day_bucket)
+        )
+        d_map = {r[0].date() if r[0] else None: int(r[1]) for r in (await db.execute(d_stmt)).all()}
+        for i in range(spark_days):
+            d0 = series_start_date + timedelta(days=i)
+            spark.append({
+                "date": d0.isoformat(),
+                "episode_count": e_map.get(d0, 0),
+                "decision_count": d_map.get(d0, 0),
+            })
+
+    return success_response({
+        "anchor_date": anchor.isoformat(),
+        "day_start_utc": day_start.isoformat(),
+        "day_end_utc": day_end.isoformat(),
+        "counts_by_persona_product": counts_by_persona_product,
+        "top_by_importance": top_by_importance,
+        "model_token_totals": model_token_totals,
+        "totals": {
+            "episodes": len(day_eps),
+            "routing_decisions": dec_count,
+            "tokens_in": t_in,
+            "tokens_out": t_out,
+        },
+        "spark": spark,
+    })

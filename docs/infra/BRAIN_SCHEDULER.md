@@ -61,6 +61,7 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | `SCHEDULER_N8N_MIRROR_ENABLED` | `false` | When `true`, register **all** n8n shadow mirror jobs (subject to per-job overrides below). Requires the rest of the scheduler: `BRAIN_SCHEDULER_ENABLED=true`. |
 | `SCHEDULER_N8N_MIRROR_<ID>` | _(unset)_ | **Per-mirror opt-in (or opt-out).** When set, that job uses this boolean instead of the global. `<ID>` is the mirror **job_id** in uppercase with underscores, e.g. `SCHEDULER_N8N_MIRROR_N8N_SHADOW_BRAIN_DAILY=true`. If unset, the job follows `SCHEDULER_N8N_MIRROR_ENABLED`. |
 | `BRAIN_SCHEDULER_ENABLED` | `true` | Master switch for starting APScheduler (including job store and mirrors). |
+| `BRAIN_LEARNING_DASHBOARD_ENABLED` | `true` | J2/J3: When `true`, `GET /api/v1/admin/brain/*` (episodes, decisions, learning-summary) are enabled for Studio `/admin/brain-learning`. Set `false` to hard-disable those read-only routes without changing scheduler code. |
 | `DATABASE_URL` | (dev default) | Must be reachably Postgres. Async URL uses `+asyncpg`; the job store uses a sync `postgresql://` form (no `+asyncpg`). |
 
 Per-job ``BRAIN_OWNS_*`` flags are read with ``os.getenv`` in each scheduler (and in ``n8n_mirror.py`` for shadow suppression); they are documented below by class, not duplicated as a flat env table.
