@@ -5,12 +5,14 @@ Used by the n8n shadow mirror module and first-party Brain crons (T1.2+)."""
 from __future__ import annotations
 
 import logging
-from collections.abc import Awaitable, Callable
-from datetime import datetime, timezone
-from typing import Any, Literal
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any, Literal
 
 from app.database import async_session_factory
 from app.models.scheduler_run import SchedulerRun
+
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +28,7 @@ async def run_with_scheduler_record(
     metadata: dict[str, Any] | None = None,
     reraise: bool = False,
 ) -> None:
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
     status: Literal["success", "error", "skipped"] = "success"
     error_text: str | None = None
     to_raise: BaseException | None = None
@@ -40,7 +42,7 @@ async def run_with_scheduler_record(
         error_text = str(e)[:20000]
         logger.exception("scheduler job %s failed", job_id)
     finally:
-        finished = datetime.now(timezone.utc)
+        finished = datetime.now(UTC)
         row = SchedulerRun(
             job_id=job_id,
             started_at=started,

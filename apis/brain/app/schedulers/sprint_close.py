@@ -13,18 +13,22 @@ retro text to ``docs/KNOWLEDGE.md`` via the GitHub Contents API (``GITHUB_TOKEN`
 from __future__ import annotations
 
 import base64
+import contextlib
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import httpx
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.database import async_session_factory
 from app.redis import get_redis
 from app.schedulers._history import run_with_scheduler_record
 from app.services import agent as brain_agent
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -111,13 +115,11 @@ async def _github_append_sprint_close_to_knowledge(
 
 
 async def _run_sprint_close_body() -> None:
-    request_id = f"sprint-close:brain:{datetime.now(timezone.utc).isoformat()}"
+    request_id = f"sprint-close:brain:{datetime.now(UTC).isoformat()}"
     redis_client = None
-    try:
+    with contextlib.suppress(RuntimeError):
         redis_client = get_redis()
-    except RuntimeError:
-        pass
-    date_iso = datetime.now(timezone.utc).date().isoformat()
+    date_iso = datetime.now(UTC).date().isoformat()
     async with async_session_factory() as db:
         result = await brain_agent.process(
             db,
@@ -155,11 +157,13 @@ def install(scheduler: AsyncIOScheduler) -> None:
         return
     scheduler.add_job(
         run_sprint_close,
-        trigger=CronTrigger.from_crontab("0 21 * * 5", timezone=timezone.utc),
+        trigger=CronTrigger.from_crontab("0 21 * * 5", timezone=UTC),
         id=_JOB_ID,
-        name="Sprint Close (Brain, ex–Sprint Close / n8n)",
+        name="Sprint Close (Brain, ex-Sprint Close / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,
     )
-    logger.info("APScheduler job %r registered (21:00 UTC Fridays, matches n8n expression)", _JOB_ID)
+    logger.info(
+        "APScheduler job %r registered (21:00 UTC Fridays, matches n8n expression)", _JOB_ID
+    )

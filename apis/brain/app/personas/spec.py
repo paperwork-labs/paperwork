@@ -15,12 +15,12 @@ A PersonaSpec is intentionally narrow. Deeper policy (PII rules,
 escalation to humans, rate limits) belongs in platform middleware, not
 per-persona config.
 """
+
 from __future__ import annotations
 
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
-
 
 ModelSlug = str
 
@@ -34,8 +34,7 @@ class PersonaSpec(BaseModel):
     )
     default_model: ModelSlug = Field(
         description=(
-            "Model to use for standard requests. Cheap by default; we escalate "
-            "per the rules below."
+            "Model to use for standard requests. Cheap by default; we escalate per the rules below."
         ),
     )
     escalation_model: ModelSlug | None = Field(

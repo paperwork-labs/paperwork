@@ -15,10 +15,11 @@ to catch overnight automation spend.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from apscheduler.triggers.cron import CronTrigger
@@ -50,7 +51,8 @@ async def _read_spend(redis_client: Any, persona: str) -> float:
 
 
 def _format_dashboard(
-    rows: list[tuple[str, float, float | None]], total: float,
+    rows: list[tuple[str, float, float | None]],
+    total: float,
 ) -> str:
     """Render a Slack-friendly mrkdwn table.
 
@@ -58,22 +60,20 @@ def _format_dashboard(
     """
     # Sort by spent desc so the biggest movers land at the top.
     rows = sorted(rows, key=lambda r: r[1], reverse=True)
-    lines = [f"*CFO · daily cost dashboard — {datetime.now(timezone.utc).date().isoformat()}*"]
+    lines = [f"*CFO · daily cost dashboard — {datetime.now(UTC).date().isoformat()}*"]
     lines.append(f"_Total Brain spend today: *${total:.2f}*_")
     lines.append("```")
     lines.append(f"{'persona':<14} {'spent':>8} {'ceiling':>8} {'used':>6}")
     for persona, spent, ceiling in rows:
-        if ceiling and ceiling > 0:
-            used_pct = f"{(spent / ceiling) * 100:5.1f}%"
-        else:
-            used_pct = "   —  "
+        used_pct = f"{spent / ceiling * 100:5.1f}%" if ceiling and ceiling > 0 else "   —  "
         ceiling_str = f"${ceiling:.2f}" if ceiling else "  —  "
         lines.append(f"{persona:<14} ${spent:6.2f} {ceiling_str:>8} {used_pct}")
     lines.append("```")
 
     # Call out any persona over 80% of its ceiling so the CFO can act.
     hot = [
-        persona for persona, spent, ceiling in rows
+        persona
+        for persona, spent, ceiling in rows
         if ceiling and ceiling > 0 and spent / ceiling >= 0.8
     ]
     if hot:
@@ -117,7 +117,9 @@ async def _run_dashboard_tick() -> None:
     )
     logger.info(
         "cost dashboard posted to %s (total=$%.2f, personas=%d)",
-        _CFO_CHANNEL, total, len(rows),
+        _CFO_CHANNEL,
+        total,
+        len(rows),
     )
 
 
@@ -132,6 +134,4 @@ def install(scheduler) -> None:
         coalesce=True,
         replace_existing=True,
     )
-    logger.info(
-        "APScheduler job 'cfo_cost_dashboard' registered (daily 15:30 UTC)"
-    )
+    logger.info("APScheduler job 'cfo_cost_dashboard' registered (daily 15:30 UTC)")

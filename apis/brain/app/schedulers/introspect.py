@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.schedulers.n8n_mirror import N8N_MIRROR_SPECS
@@ -53,12 +53,9 @@ def list_apscheduler_jobs() -> list[dict[str, Any]]:
         job_id = job.id
         nxt: datetime | None = job.next_run_time
         if nxt is not None and nxt.tzinfo is None:
-            nxt = nxt.replace(tzinfo=timezone.utc)
+            nxt = nxt.replace(tzinfo=UTC)
         next_str: str | None
-        if nxt is not None:
-            next_str = nxt.astimezone(timezone.utc).isoformat()
-        else:
-            next_str = None
+        next_str = nxt.astimezone(UTC).isoformat() if nxt is not None else None
         trig = job.trigger
         try:
             trigger_str = str(trig)

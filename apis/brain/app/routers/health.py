@@ -17,11 +17,13 @@ router = APIRouter(tags=["health"])
 
 @router.get("/health")
 async def health_check():
-    return success_response({
-        "status": "ok",
-        "service": "brain",
-        "version": settings.APP_VERSION,
-    })
+    return success_response(
+        {
+            "status": "ok",
+            "service": "brain",
+            "version": settings.APP_VERSION,
+        }
+    )
 
 
 @router.get("/health/deep")

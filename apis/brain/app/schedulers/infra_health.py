@@ -13,16 +13,18 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Any
+from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING, Any
 
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
 from app.schedulers import infra_heartbeat
 from app.schedulers._history import N8nMirrorRunSkipped, run_with_scheduler_record
 from app.services import slack_outbound
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +65,9 @@ def _fingerprint(check: dict[str, Any]) -> str:
 
 def _format_issue_message(check: dict[str, Any]) -> str:
     parts: list[str] = [":rotating_light: *Infra Health Check — ISSUES DETECTED*\n"]
-    parts.append(f"*Workflows*: {int(check.get('activeCount', 0))}/{int(check.get('totalCount', 0))} active")
+    parts.append(
+        f"*Workflows*: {int(check.get('activeCount', 0))}/{int(check.get('totalCount', 0))} active"
+    )
     inactive = check.get("inactiveNames") or []
     if isinstance(inactive, list) and inactive:
         names = ", ".join(str(n) for n in inactive if n)
@@ -76,7 +80,7 @@ def _format_issue_message(check: dict[str, Any]) -> str:
 def _format_recovery_message(check: dict[str, Any]) -> str:
     a = int(check.get("activeCount", 0))
     t = int(check.get("totalCount", 0))
-    return f":white_check_mark: *Infra Health Check — All clear*\n{a}/{t} workflows active. n8n healthy."
+    return f":white_check_mark: *Infra Health Check — All clear*\n{a}/{t} workflows active. n8n healthy."  # noqa: E501
 
 
 async def _get_redis_or_none() -> Any:
@@ -102,10 +106,7 @@ async def _load_dedup_state(redis: Any) -> tuple[str | None, bool | None, dateti
         healthy_raw = await redis.get(f"{_REDIS_PREFIX}last_healthy")
         at_raw = await redis.get(f"{_REDIS_PREFIX}last_slack_at")
         prev_healthy: bool | None
-        if healthy_raw is None:
-            prev_healthy = None
-        else:
-            prev_healthy = str(healthy_raw) == "1"
+        prev_healthy = None if healthy_raw is None else str(healthy_raw) == "1"
         last_slack: datetime | None = None
         if at_raw:
             try:
@@ -146,7 +147,7 @@ async def _set_post_state(redis: Any, fp: str, last_healthy: bool, at: datetime)
         pipe.set(f"{_REDIS_PREFIX}last_healthy", "1" if last_healthy else "0")
         pipe.set(
             f"{_REDIS_PREFIX}last_slack_at",
-            at.astimezone(timezone.utc).isoformat(),
+            at.astimezone(UTC).isoformat(),
         )
         await pipe.execute()
     except Exception:
@@ -173,7 +174,7 @@ async def _run_infra_health_body() -> None:
     redis = await _get_redis_or_none()
     prev_fp, stored_healthy, last_slack_at = await _load_dedup_state(redis)
     prev_healthy = _n8n_prev_healthy(stored_healthy)
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if prev_fp is not None and fp == prev_fp:
         if h:
@@ -220,7 +221,7 @@ async def _run_infra_health_body() -> None:
             raise RuntimeError(f"Slack post failed: {err}")
         await _set_post_state(redis, fp, h, now)
         return
-    # fp changed (or first run) but n8n would not emit Slack (e.g. still healthy) — persist state only.
+    # fp changed (or first run) but n8n would not emit Slack (e.g. still healthy) — persist state only.  # noqa: E501
     await _set_fp_and_healthy(redis, fp, h)
 
 
@@ -242,7 +243,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
         run_infra_health,
         trigger=IntervalTrigger(minutes=30),
         id=JOB_ID,
-        name="Infra Health Check (Brain, ex–Infra Health Check / n8n, IntervalTrigger)",
+        name="Infra Health Check (Brain, ex-Infra Health Check / n8n, IntervalTrigger)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,

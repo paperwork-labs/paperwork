@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -38,7 +38,7 @@ def _parse_github_ts(s: str | None) -> datetime | None:
         s = s.replace("Z", "+00:00")
         d = datetime.fromisoformat(s)
         if d.tzinfo is None:
-            d = d.replace(tzinfo=timezone.utc)
+            d = d.replace(tzinfo=UTC)
         return d
     except (ValueError, TypeError):
         return None
@@ -50,13 +50,23 @@ def find_last_activity_at(
     last_commit: str | None,
     last_issue_comment: str | None,
 ) -> datetime | None:
-    cands = [x for x in (_parse_github_ts(pr_updated), _parse_github_ts(last_commit), _parse_github_ts(last_issue_comment)) if x]
+    cands = [
+        x
+        for x in (
+            _parse_github_ts(pr_updated),
+            _parse_github_ts(last_commit),
+            _parse_github_ts(last_issue_comment),
+        )
+        if x
+    ]
     if not cands:
         return None
     return max(cands)
 
 
-def is_stale_inactive(*, last_activity: datetime | None, now: datetime, stale_days: int = STALE_DAYS) -> bool:
+def is_stale_inactive(
+    *, last_activity: datetime | None, now: datetime, stale_days: int = STALE_DAYS
+) -> bool:
     if last_activity is None:
         return False
     return (now - last_activity).total_seconds() >= stale_days * 86400
@@ -71,7 +81,11 @@ def has_marker(body: str | None, prefix: str) -> bool:
 def extract_marker_timestamps(body: str, prefix: str) -> list[datetime]:
     if not body:
         return []
-    return [d for m in re.finditer(re.escape(prefix) + r"([^>]+)-->", body) if (d := _parse_github_ts(m.group(1).strip()))]
+    return [
+        d
+        for m in re.finditer(re.escape(prefix) + r"([^>]+)-->", body)
+        if (d := _parse_github_ts(m.group(1).strip()))
+    ]
 
 
 def stale_ping_cooldown_ok(*, issue_comment_bodies: list[str], now: datetime) -> bool:
@@ -100,10 +114,7 @@ def should_dispatch_rebase(
 
 def has_thin_review_for_sha(issue_comment_bodies: list[str], head_sha: str) -> bool:
     token = f"{THIN_REVIEW_MARKER_PREFIX}{head_sha}-->"
-    for b in issue_comment_bodies:
-        if token in (b or ""):
-            return True
-    return False
+    return any(token in (b or "") for b in issue_comment_bodies)
 
 
 def should_post_ready_nudge(
@@ -119,25 +130,25 @@ def should_post_ready_nudge(
         return False
     if has_thin_review_for_sha(issue_comment_bodies, head_sha):
         return False
-    if last_activity_on_thread and (now - last_activity_on_thread).total_seconds() < hours * 3600:
-        return False
-    return True
+    return not (
+        last_activity_on_thread and (now - last_activity_on_thread).total_seconds() < hours * 3600
+    )
 
 
 def format_stale_nudge(author: str) -> str:
     handle = f"@{author}" if author and not author.endswith("[bot]") else author or "author"
     return (
         f"### Stale PR nudge (Brain triage)\n\n"
-        f"{handle} This PR has been **quiet for {STALE_DAYS}+ days** — no recent commits or discussion. "
+        f"{handle} This PR has been **quiet for {STALE_DAYS}+ days** — no recent commits or discussion. "  # noqa: E501
         f"Please drop a short status update or close if it is no longer needed.\n\n"
-        f"{STALE_MARKER_PREFIX}{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}-->"
+        f"{STALE_MARKER_PREFIX}{datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}-->"
     )
 
 
 def format_thin_copilot_style_review(head_sha: str) -> str:
     return (
         "### Copilot-style quick pass (Brain triage)\n\n"
-        "**🟢 GREEN** — CI is green. From a **queue-health** perspective this is ready for human review; "
+        "**🟢 GREEN** — CI is green. From a **queue-health** perspective this is ready for human review; "  # noqa: E501
         "this is a lightweight nudge, not a full diff audit.\n\n"
         f"{THIN_REVIEW_MARKER_PREFIX}{head_sha}-->\n"
     )
@@ -146,9 +157,9 @@ def format_thin_copilot_style_review(head_sha: str) -> str:
 def format_dirty_first_seen(mergeable_state: str | None) -> str:
     return (
         "### Merge conflict (Brain triage)\n\n"
-        f"Recorded `mergeable_state={mergeable_state!r}`. A rebase/merge from `main` can be attempted "
+        f"Recorded `mergeable_state={mergeable_state!r}`. A rebase/merge from `main` can be attempted "  # noqa: E501
         f"if this remains unmergeable (cooldown: {int(REBASE_DIRTY_HOURS)}h).\n\n"
-        f"{DIRTY_FIRST_SEEN_PREFIX}{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}-->"
+        f"{DIRTY_FIRST_SEEN_PREFIX}{datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}-->"
     )
 
 
@@ -156,7 +167,7 @@ def format_rebase_queued() -> str:
     return (
         "### Rebase assist (Brain triage)\n\n"
         f"Queueing the `rebase-pr` workflow to rebase this branch onto `main` (best effort).\n\n"
-        f"{REBASE_DISPATCHED_PREFIX}{datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}-->"
+        f"{REBASE_DISPATCHED_PREFIX}{datetime.now(UTC).strftime('%Y-%m-%dT%H:%M:%SZ')}-->"
     )
 
 
@@ -165,22 +176,24 @@ def is_merge_conflict(mergeable: bool | None, mergeable_state: str | None) -> bo
     st = (mergeable_state or "").lower()
     if st == "dirty":
         return True
-    if mergeable is False and st in ("", "unknown"):
-        return True
-    return False
+    return bool(mergeable is False and st in ("", "unknown"))
 
 
 def _triage_globally_off() -> bool:
     return not bool(getattr(settings, "BRAIN_OWNS_PR_TRIAGE", False))
 
 
-async def _get_json(client: httpx.AsyncClient, path: str, params: dict[str, Any] | None = None) -> Any:
+async def _get_json(
+    client: httpx.AsyncClient, path: str, params: dict[str, Any] | None = None
+) -> Any:
     r = await client.get(path, params=params)
     r.raise_for_status()
     return r.json()
 
 
-async def _post_comment(client: httpx.AsyncClient, owner: str, repo: str, pr_number: int, body: str) -> bool:
+async def _post_comment(
+    client: httpx.AsyncClient, owner: str, repo: str, pr_number: int, body: str
+) -> bool:
     r = await client.post(
         f"/repos/{owner}/{repo}/issues/{pr_number}/comments",
         json={"body": body},
@@ -191,7 +204,9 @@ async def _post_comment(client: httpx.AsyncClient, owner: str, repo: str, pr_num
     return True
 
 
-async def _dispatch_rebase_workflow(client: httpx.AsyncClient, owner: str, repo: str, pr_number: int) -> bool:
+async def _dispatch_rebase_workflow(
+    client: httpx.AsyncClient, owner: str, repo: str, pr_number: int
+) -> bool:
     r = await client.post(
         f"/repos/{owner}/{repo}/actions/workflows/rebase-pr.yaml/dispatches",
         json={"ref": "main", "inputs": {"pr_number": str(pr_number)}},
@@ -212,10 +227,7 @@ def _earliest_first_dirty_marker(issue_comment_bodies: list[str]) -> datetime | 
 
 
 def rebase_was_dispatched(issue_comment_bodies: list[str]) -> bool:
-    for b in issue_comment_bodies:
-        if REBASE_DISPATCHED_PREFIX in (b or ""):
-            return True
-    return False
+    return any(REBASE_DISPATCHED_PREFIX in (b or "") for b in issue_comment_bodies)
 
 
 async def run_pr_triage_sweep(
@@ -225,13 +237,19 @@ async def run_pr_triage_sweep(
 ) -> dict[str, Any]:
     _ = org_id
     if _triage_globally_off():
-        return {"ok": True, "skipped": "BRAIN_OWNS_PR_TRIAGE=false", "stale": [], "ready": [], "rebase": []}
+        return {
+            "ok": True,
+            "skipped": "BRAIN_OWNS_PR_TRIAGE=false",
+            "stale": [],
+            "ready": [],
+            "rebase": [],
+        }
 
     if not settings.GITHUB_TOKEN.strip():
         return {"ok": False, "error": "no GITHUB_TOKEN", "stale": [], "ready": [], "rebase": []}
 
     owner, repo = _repo_parts()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     stale_out: list[dict[str, Any]] = []
     ready_out: list[dict[str, Any]] = []
     rebase_out: list[dict[str, Any]] = []
@@ -240,7 +258,12 @@ async def run_pr_triage_sweep(
         async with _gh_client() as client:
             r = await client.get(
                 f"/repos/{owner}/{repo}/pulls",
-                params={"state": "open", "per_page": min(max(limit, 1), 100), "sort": "updated", "direction": "desc"},
+                params={
+                    "state": "open",
+                    "per_page": min(max(limit, 1), 100),
+                    "sort": "updated",
+                    "direction": "desc",
+                },
             )
             r.raise_for_status()
             prs: list[dict[str, Any]] = r.json()
@@ -256,22 +279,28 @@ async def run_pr_triage_sweep(
                 pr_full = await _get_json(client, f"/repos/{owner}/{repo}/pulls/{number}")
                 mergeable = pr_full.get("mergeable")
                 mergeable_state = pr_full.get("mergeable_state")
-                mst = (str(mergeable_state) or None)
-                head_sha = str(((pr_full.get("head") or {}).get("sha") or "")).strip()
+                mst = str(mergeable_state) or None
+                head_sha = str((pr_full.get("head") or {}).get("sha") or "").strip()
                 pr_updated = str(pr_full.get("updated_at") or "")
 
                 commits = await _get_json(
-                    client, f"/repos/{owner}/{repo}/pulls/{number}/commits", params={"per_page": 100}
+                    client,
+                    f"/repos/{owner}/{repo}/pulls/{number}/commits",
+                    params={"per_page": 100},
                 )
                 last_commit: str | None = None
                 if isinstance(commits, list) and commits:
                     last = commits[-1] if isinstance(commits[-1], dict) else {}
                     cobj = (last.get("commit") or {}) if isinstance(last, dict) else {}
                     if isinstance(cobj, dict):
-                        last_commit = (cobj.get("author") or {}).get("date") or (cobj.get("committer") or {}).get("date")
+                        last_commit = (cobj.get("author") or {}).get("date") or (
+                            cobj.get("committer") or {}
+                        ).get("date")
 
                 ic = await _get_json(
-                    client, f"/repos/{owner}/{repo}/issues/{number}/comments", params={"per_page": 100}
+                    client,
+                    f"/repos/{owner}/{repo}/issues/{number}/comments",
+                    params={"per_page": 100},
                 )
                 ic_list = ic if isinstance(ic, list) else []
                 last_ic: str | None = None
@@ -290,9 +319,8 @@ async def run_pr_triage_sweep(
                 last_act = find_last_activity_at(
                     pr_updated=pr_updated, last_commit=last_commit, last_issue_comment=last_ic
                 )
-                if (
-                    is_stale_inactive(last_activity=last_act, now=now)
-                    and stale_ping_cooldown_ok(issue_comment_bodies=bodies, now=now)
+                if is_stale_inactive(last_activity=last_act, now=now) and stale_ping_cooldown_ok(
+                    issue_comment_bodies=bodies, now=now
                 ):
                     body = format_stale_nudge(user)
                     if await _post_comment(client, owner, repo, number, body):

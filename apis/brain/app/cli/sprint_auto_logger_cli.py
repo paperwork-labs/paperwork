@@ -15,7 +15,7 @@ import asyncio
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 _BRAIN_ROOT = Path(__file__).resolve().parents[2]
@@ -42,13 +42,11 @@ def main() -> int:
         else:
             since = datetime.fromisoformat(raw + "T00:00:00+00:00")
     except ValueError:
-        print("error: could not parse --since (use YYYY-MM-DD or ISO-8601)", file=sys.stderr)
         return 2
     if since.tzinfo is None:
-        since = since.replace(tzinfo=timezone.utc)
+        since = since.replace(tzinfo=UTC)
 
     if not os.getenv("GITHUB_TOKEN", "").strip():
-        print("error: GITHUB_TOKEN is required", file=sys.stderr)
         return 2
 
     asyncio.run(run_sprint_auto_logger(since_override=since))

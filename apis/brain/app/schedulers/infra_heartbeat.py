@@ -11,17 +11,19 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
 
 import httpx
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
 from app.schedulers._history import N8nMirrorRunSkipped, run_with_scheduler_record
 from app.services import slack_outbound
 from app.tools.infra import _n8n_api_root
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -168,7 +170,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
         run_infra_heartbeat,
         trigger=CronTrigger.from_crontab("0 8 * * *", timezone="UTC"),
         id=JOB_ID,
-        name="Infra Heartbeat (Brain, ex–Infra Heartbeat / n8n)",
+        name="Infra Heartbeat (Brain, ex-Infra Heartbeat / n8n)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,

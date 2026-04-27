@@ -169,7 +169,7 @@ def _format_regime_summary(data: Any) -> str:
         regime = data.get("regime") or data.get("current_regime") or "Unknown"
         lines = [f"Market Regime: {regime}"]
         for key in ("description", "recommendation", "risk_level"):
-            if key in data and data[key]:
+            if data.get(key):
                 lines.append(f"  • {key.replace('_', ' ').title()}: {data[key]}")
         return "\n".join(lines)
     return scrub_pii(str(data))
@@ -354,7 +354,7 @@ async def preview_trade(
     result += f"Status: {status}\n"
 
     if status == "PENDING_APPROVAL":
-        result += "\n⚠️ This trade requires approval. Use approve_trade(order_id) or reject_trade(order_id)."
+        result += "\n⚠️ This trade requires approval. Use approve_trade(order_id) or reject_trade(order_id)."  # noqa: E501
     else:
         result += "\nUse execute_trade(order_id) to submit this order."
 
@@ -393,7 +393,7 @@ async def approve_trade(order_id: int) -> str:
         return err
 
     data = body.get("data", {})
-    return f"✅ Order {order_id} approved.\n{_scrub_json_blob(data)}\n\nUse execute_trade({order_id}) to submit."
+    return f"✅ Order {order_id} approved.\n{_scrub_json_blob(data)}\n\nUse execute_trade({order_id}) to submit."  # noqa: E501
 
 
 async def reject_trade(order_id: int, reason: str = "") -> str:
@@ -479,9 +479,9 @@ async def get_watchlist() -> str:
 
 
 async def modify_position(
-    position_id: str,
-    stop_loss: float | None = None,
-    take_profit: float | None = None,
+    _position_id: str,
+    _stop_loss: float | None = None,
+    _take_profit: float | None = None,
 ) -> str:
     """Position modification not available in current Brain tools API.
 
