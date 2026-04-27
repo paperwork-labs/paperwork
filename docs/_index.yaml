@@ -375,6 +375,13 @@ docs:
     tags: [axiomfolio, migration, next]
     owners: [engineering]
     category: plans
+  - slug: axiomfolio-port-inventory-2026q2
+    path: docs/axiomfolio/plans/PORT_INVENTORY_2026Q2.md
+    title: AxiomFolio port inventory (2026 Q2)
+    summary: Track G port survey + parallel batch assignments for the Vite → Next port. 26 routes across 8 batches.
+    tags: [axiomfolio, migration, next, plan]
+    owners: [engineering]
+    category: plans
   - slug: tasks
     path: docs/TASKS.md
     title: Company Tasks (TASKS.md)

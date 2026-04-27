@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "237219c431b1",
+  "content_hash": "a76215bdf3d1",
   "products": [
     {
       "label": "AxiomFolio",
@@ -183,6 +183,17 @@
           "slug": "portfolio-sync-completeness-2026q2",
           "status": "active",
           "title": "Portfolio Sync Completeness \u2014 2026 Q2 (Wave 8 spec)"
+        },
+        {
+          "doc_kind": "plan",
+          "last_reviewed": "2026-04-26",
+          "owner": "engineering",
+          "path": "docs/axiomfolio/plans/PORT_INVENTORY_2026Q2.md",
+          "product": "axiomfolio",
+          "raw_status": "active",
+          "slug": "port-inventory-2026q2",
+          "status": "active",
+          "title": "AxiomFolio port inventory (2026 Q2)"
         },
         {
           "doc_kind": "plan",
