@@ -277,6 +277,7 @@ def should_register_n8n_shadow_for_job(job_id: str) -> bool:
     if job_id == "n8n_shadow_infra_health" and _brain_owns_infra_health():
         return False
     if job_id == "n8n_shadow_sprint_kickoff" and _brain_owns_sprint_kickoff():
+        return False
     if job_id == "n8n_shadow_sprint_close" and _brain_owns_sprint_close():
         return False
     return True
