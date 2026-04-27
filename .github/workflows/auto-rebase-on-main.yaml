@@ -1,0 +1,66 @@
+# Rebases in-repo, non-fork, non-draft PRs that are behind the default branch
+# after a merge to `main` *or* after the post-main index regen workflow completes
+# (regen commits use [skip ci] and do not fire `on: push` workflows).
+# Opt-out: label `no-auto-rebase` (or list in env OPT_OUT_LABELS in the run step).
+name: Auto-rebase open PRs on main
+
+on:
+  push:
+    branches: [main]
+  workflow_run:
+    workflows: ["Post-main regenerate indexes"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+  pull-requests: read
+
+# Do not cancel mid-batch: a second run (e.g. after post-main) should queue.
+concurrency:
+  group: auto-rebase-on-main
+  cancel-in-progress: false
+
+jobs:
+  rebase:
+    if: |
+      (github.event_name == 'push') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Git identity
+        run: |
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+
+      - name: Auto-rebase open PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          MAIN_REF="$(gh api "repos/${GITHUB_REPOSITORY}" -q .default_branch || true)"
+          export MAIN_REF="${MAIN_REF:-main}"
+          echo "Using default branch: ${MAIN_REF}"
+          bash .github/scripts/auto_rebase_open_prs.sh
