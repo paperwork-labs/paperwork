@@ -67,3 +67,5 @@ Land the infrastructure and automation foundation Paperwork Labs needs before fe
 - `/sprint`, `/tasks`, `/plan <slug>` Slack slash commands
 
 These ship in the next mini-sprint (`chore/docs-streamline-and-trackers` branch).
+
+- **Shipped (2026-04-26):** Vercel auto-promote matrix expanded to include `axiomfolio-next`, `trinkets`, and `accounts` (placeholder `TBD_CREATE_BEFORE_MERGE` until Vercel projects are linked; skip-guard in workflow). See `.github/workflows/vercel-promote-on-merge.yaml` and `docs/infra/VERCEL_AUTO_PROMOTE.md`.

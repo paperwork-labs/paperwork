@@ -66,6 +66,12 @@ jobs:
             project_id: prj_1TKlkMmY3vLVNfAfRxUY57z43m11
           - project: launchfree
             project_id: prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7
+          - project: axiomfolio-next
+            project_id: TBD_CREATE_BEFORE_MERGE
+          - project: trinkets
+            project_id: TBD_CREATE_BEFORE_MERGE
+          - project: accounts
+            project_id: TBD_CREATE_BEFORE_MERGE
     env:
       VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
       TEAM_ID: team_RwfzJ9ySyLuVcoWdKJfXC7h5
@@ -82,9 +88,16 @@ jobs:
           fi
           echo "secret_ok=true" >> $GITHUB_ENV
 
+      - name: Skip if project_id placeholder
+        if: env.secret_ok == 'true' && matrix.project_id == 'TBD_CREATE_BEFORE_MERGE'
+        run: |
+          echo "::warning::Vercel project for ${{ matrix.project }} not yet created. Skipping promote."
+          echo "Create the project in Vercel Dashboard, then update .github/workflows/vercel-promote-on-merge.yaml with the real project_id."
+          exit 0
+
       - name: Resolve PR merge commit SHA
         id: pr
-        if: env.secret_ok == 'true'
+        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           INPUT_PR_NUMBER: ${{ inputs.pr_number }}
@@ -120,7 +133,7 @@ jobs:
 
       - name: Relevant paths for this app
         id: paths
-        if: env.secret_ok == 'true'
+        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ steps.pr.outputs.pr_number }}
@@ -151,7 +164,7 @@ jobs:
 
       - name: Check if production already on this SHA (idempotency)
         id: check
-        if: env.secret_ok == 'true' && steps.paths.outputs.paths_relevant == 'true'
+        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE' && steps.paths.outputs.paths_relevant == 'true'
         env:
           PR_HEAD: ${{ steps.pr.outputs.pr_head }}
         run: |
@@ -169,7 +182,7 @@ jobs:
 
       - name: Find READY preview deployment for PR head
         id: find
-        if: env.secret_ok == 'true' && steps.paths.outputs.paths_relevant == 'true' && steps.check.outputs.already_promoted == 'false'
+        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE' && steps.paths.outputs.paths_relevant == 'true' && steps.check.outputs.already_promoted == 'false'
         env:
           PR_HEAD: ${{ steps.pr.outputs.pr_head }}
           PR_HEAD_FALLBACK: ${{ steps.pr.outputs.pr_head_fallback }}
@@ -203,7 +216,7 @@ jobs:
 
       - name: Promote to production
         id: promote
-        if: env.secret_ok == 'true' && steps.paths.outputs.paths_relevant == 'true' && steps.check.outputs.already_promoted == 'false' && steps.find.outputs.found_preview == 'true'
+        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE' && steps.paths.outputs.paths_relevant == 'true' && steps.check.outputs.already_promoted == 'false' && steps.find.outputs.found_preview == 'true'
         env:
           DEPLOY_ID: ${{ steps.find.outputs.deploy_id }}
         run: |
@@ -223,7 +236,7 @@ jobs:
           echo "Promoted $DEPLOY_ID to production for $PROJECT_NAME (no rebuild)."
 
       - name: Comment on PR
-        if: env.secret_ok == 'true' && github.event_name == 'pull_request' && steps.paths.outputs.paths_relevant == 'true' && (steps.check.outputs.already_promoted == 'true' || steps.find.outputs.found_preview == 'true')
+        if: env.secret_ok == 'true' && matrix.project_id != 'TBD_CREATE_BEFORE_MERGE' && github.event_name == 'pull_request' && steps.paths.outputs.paths_relevant == 'true' && (steps.check.outputs.already_promoted == 'true' || steps.find.outputs.found_preview == 'true')
         uses: actions/github-script@v9
         with:
           script: |

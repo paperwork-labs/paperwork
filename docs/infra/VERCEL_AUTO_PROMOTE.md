@@ -63,6 +63,22 @@ The workflow has a graceful no-op if `VERCEL_API_TOKEN` isn't set:
 it logs a warning and exits 0, so failing to set the secret won't
 block PR merges.
 
+## Tracked apps
+
+Matrix key `project` (Vercel project slug) and `project_id` in `.github/workflows/vercel-promote-on-merge.yaml`:
+
+| App (`project`) | Vercel `project_id` |
+| --- | --- |
+| `studio` | `prj_FZvJJnDdQqawjBpJAwC0SuwyMzFT` |
+| `filefree` | `prj_DNPGX5GrYcwer9oANv90NKqIT67I` |
+| `distill` | `prj_1TKlkMmY3vLVNfAfRxUY57z43m11` |
+| `launchfree` | `prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7` |
+| `axiomfolio-next` | `TBD_CREATE_BEFORE_MERGE` (link `apps/axiomfolio-next` in Vercel, then replace) |
+| `trinkets` | `TBD_CREATE_BEFORE_MERGE` (link `apps/trinkets` in Vercel, then replace) |
+| `accounts` | `TBD_CREATE_BEFORE_MERGE` (create + link `apps/accounts` after Track H4; then replace) |
+
+While an entry is still `TBD_CREATE_BEFORE_MERGE`, that matrix job **skips** the promote path (no API call) so merges stay green until the project exists in the team and the workflow is updated with a real `prj_…` id.
+
 ## Monorepo path filters (Studio, Distill, LaunchFree)
 
 **Studio**, **Distill**, and **LaunchFree** are configured in Vercel with
@@ -97,7 +113,7 @@ GitHub → Actions → Vercel auto-promote on merge → Run workflow
   pr_number: <number>
 ```
 
-Runs all four app matrix jobs; each job skips unless the PR touched that
+Runs all matrix jobs; each job skips unless the PR touched that
 app’s paths (or shared paths above). Use this when the merge event ran
 but Vercel never had a READY preview to promote.
 
