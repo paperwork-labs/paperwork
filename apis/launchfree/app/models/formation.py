@@ -10,7 +10,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
 
 
-class FormationStatus(str, Enum):
+class FormationStatus(StrEnum):
     DRAFT = "draft"
     DOCUMENTS_READY = "documents_ready"
     SUBMITTING = "submitting"

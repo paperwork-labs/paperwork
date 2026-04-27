@@ -203,7 +203,7 @@ def test_earnings_calendar_exception_preserves_next_earnings_and_increments_erro
         db_session, sym, df, interval="1d", data_source="unit_test", is_adjusted=True
     )
     # ORM round-trip stores next_earnings as naive local timestamps; keep naive here.
-    existing = datetime(2025, 6, 1, 15, 30, 0)
+    existing = datetime(2025, 6, 1, 15, 30, 0)  # noqa: DTZ001
     ts = datetime.now(timezone.utc)
     db_session.add(
         MarketSnapshot(

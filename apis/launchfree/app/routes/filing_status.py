@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -227,8 +227,8 @@ def _formation_to_response(f: Formation) -> FilingStatusResponse:
 @router.get("/{formation_id}/status")
 async def get_filing_status(
     formation_id: str,
-    db: AsyncSession = Depends(get_db),
-    user_id: str = Depends(require_session),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    user_id: Annotated[str, Depends(require_session)],
 ) -> JSONResponse:
     """Return filing status and transition history for the current user's formation."""
     fid = _parse_formation_id(formation_id)
@@ -253,8 +253,8 @@ async def get_filing_status(
 async def update_filing_status(
     formation_id: str,
     body: FilingStatusUpdateBody,
-    db: AsyncSession = Depends(get_db),
-    _: None = Depends(require_filing_internal),
+    db: Annotated[AsyncSession, Depends(get_db)],
+    _: Annotated[None, Depends(require_filing_internal)],
 ) -> JSONResponse:
     """Apply a status transition (filing engine / workers). Requires internal token."""
     if body.status not in FILING_STATUSES:
