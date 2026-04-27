@@ -51,6 +51,22 @@ class Settings(BaseSettings):
     # migration windows or when running multi-instance.
     BRAIN_SCHEDULER_ENABLED: bool = True
     SCHEDULER_PR_SWEEP_MINUTES: int = 30
+    # --- Scheduler env split (Render / ``brain-api``, not all mirrored here) ---
+    #
+    # * **Cutover gates** — ``BRAIN_OWNS_*`` for jobs that replace an n8n cron
+    #   (daily/weekly briefings, weekly strategy, sprint kickoff, infra heartbeat,
+    #   credential expiry, infra health). Default ``false`` until the founder
+    #   flips them after shadow/n8n verify. Wired via ``os.getenv`` in each
+    #   scheduler + ``n8n_mirror.py`` (suppresses the matching ``n8n_shadow_*``
+    #   row when true).
+    #
+    # * **Operational gate** — ``BRAIN_OWNS_SPRINT_AUTO_LOGGER`` only: bot PRs
+    #   into sprint markdown; no n8n counterpart. Stays default-off until ops
+    #   validates GitHub automation.
+    #
+    # * **Net-new / always on** — PR sweep, proactive cadence, ingest cadences,
+    #   merged-PR memory, CFO/QA Slack jobs, etc. register whenever
+    #   ``BRAIN_SCHEDULER_ENABLED`` is true (no ``BRAIN_OWNS_*``).
     # Track: sprint-lessons ingest cadence (hours). Bullets under
     # ``## What we learned`` in docs/sprints/*.md become memory episodes.
     # 6h is plenty — sprint markdown changes ship via PR, not continuously.

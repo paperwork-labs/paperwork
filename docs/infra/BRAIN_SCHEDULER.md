@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-25
+last_reviewed: 2026-04-26
 doc_kind: runbook
 domain: infra
 status: active
@@ -60,36 +60,48 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | --- | --- | --- |
 | `SCHEDULER_N8N_MIRROR_ENABLED` | `false` | When `true`, register **all** n8n shadow mirror jobs (subject to per-job overrides below). Requires the rest of the scheduler: `BRAIN_SCHEDULER_ENABLED=true`. |
 | `SCHEDULER_N8N_MIRROR_<ID>` | _(unset)_ | **Per-mirror opt-in (or opt-out).** When set, that job uses this boolean instead of the global. `<ID>` is the mirror **job_id** in uppercase with underscores, e.g. `SCHEDULER_N8N_MIRROR_N8N_SHADOW_BRAIN_DAILY=true`. If unset, the job follows `SCHEDULER_N8N_MIRROR_ENABLED`. |
-| `BRAIN_OWNS_DAILY_BRIEFING` | `false` | **First real n8n→Brain cutover (T1.2).** When `true`, registers the `brain_daily_briefing` job (07:00 UTC, `CronTrigger` parity with n8n's `0 7 * * *`) and **suppresses** the `n8n_shadow_brain_daily` shadow so only one schedule drives the daily briefing. Requires `BRAIN_SCHEDULER_ENABLED=true`. |
-| `BRAIN_OWNS_BRAIN_WEEKLY` | `false` | **T1.5 — Brain Weekly cutover.** When `true`, registers `brain_weekly_briefing` (Sundays 18:00 UTC, `0 18 * * 0`), calls `agent.process` with the same message/channel as `retired/brain-weekly-trigger.json` (`#all-paperwork-labs`), and **suppresses** `n8n_shadow_brain_weekly`. Requires `BRAIN_SCHEDULER_ENABLED=true`. |
-| `BRAIN_OWNS_INFRA_HEARTBEAT` | `false` | **T1.3 cutover.** When `true`, registers the first-party in-process job `brain_infra_heartbeat` (08:00 UTC) and **suppresses** the `n8n_shadow_infra_heartbeat` mirror (same Slack shape as the n8n Infra Heartbeat workflow). When `false`, n8n + optional shadow remain the source of the heartbeat until you cut over. |
-| `BRAIN_OWNS_WEEKLY_STRATEGY` | `false` | **T1.6 cutover.** When `true`, registers `brain_weekly_strategy` (Mondays 09:00 UTC) calling `agent.process` with the `strategy` persona and posts to `#all-paperwork-labs` (same channel as `retired/weekly-strategy-checkin.json`), and **suppresses** `n8n_shadow_weekly_strategy`. |
-| `BRAIN_OWNS_SPRINT_KICKOFF` | `false` | **Track K cutover.** When `true`, registers `brain_sprint_kickoff` (Mondays 07:00 UTC, `0 7 * * 1`) calling `agent.process` with the `strategy` persona to `#sprints` plus the `#all-paperwork-labs` announcement, and **suppresses** `n8n_shadow_sprint_kickoff`. Requires `BRAIN_SCHEDULER_ENABLED=true`. |
-| `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `false` | **T1.4 cutover.** When `true`, registers `brain_credential_expiry` (08:00 UTC), posts the same **Credential Expiry Report** to `#alerts` as the n8n workflow, and **suppresses** `n8n_shadow_credential_expiry`. Requires `SECRETS_API_KEY`, `STUDIO_URL`, and `SLACK_BOT_TOKEN` like the n8n path. |
-| `BRAIN_OWNS_INFRA_HEALTH` | `false` | **T1 (interval) cutover — first `IntervalTrigger` first-party job.** When `true`, registers `brain_infra_health` every **30 minutes** (n8n `retired/infra-health-check.json` parity: n8n API workflow counts, deduped Slack to engineering). **Suppresses** `n8n_shadow_infra_health`. Optional: `INFRA_HEALTH_REMINDER_HOURS` (default `4`) re-alerts the same bad fingerprint after that many hours (n8n export only used fingerprint; Brain adds a sustained-failure nudge). |
-| `BRAIN_OWNS_SPRINT_AUTO_LOGGER` | `false` | **Sprint automation (Q3).** When `true`, registers `sprint_auto_logger` (every **15** minutes UTC). Ingests merged PRs with explicit sprint markers (`Sprint:` line in the PR body and/or `sprint:*` labels), then opens **one** batched PR per tick to append `- shipped YYYY-MM-DD: … PR #N` bullets under `## Outcome` and bump `related_prs` in `docs/sprints/*.md`. Code: `apis/brain/app/schedulers/sprint_auto_logger.py`. Rollback: set to `false` and ignore or close any open `auto/sprint-log-*` branches. |
 | `BRAIN_SCHEDULER_ENABLED` | `true` | Master switch for starting APScheduler (including job store and mirrors). |
 | `DATABASE_URL` | (dev default) | Must be reachably Postgres. Async URL uses `+asyncpg`; the job store uses a sync `postgresql://` form (no `+asyncpg`). |
 
-#### T1 — Brain-owned crons (n8n cutover)
+Per-job ``BRAIN_OWNS_*`` flags are read with ``os.getenv`` in each scheduler (and in ``n8n_mirror.py`` for shadow suppression); they are documented below by class, not duplicated as a flat env table.
 
-| APScheduler `job_id` | Env flag (enable Brain-owned path) | Schedule (UTC) | n8n shadow id suppressed when flag is on |
+### Cutover gates (flip in Render after n8n / shadow verified)
+
+First-party Brain jobs that replace exported n8n crons. Each has a row in ``N8N_MIRROR_SPECS`` (see ``infra/hetzner/workflows/`` / ``retired/``). Default **off** until cutover.
+
+| Scheduler / `job_id` | Schedule (UTC) | Render env flag | Shadow suppressed when on |
 | --- | --- | --- | --- |
-| `brain_daily_briefing` | `BRAIN_OWNS_DAILY_BRIEFING` | `0 7 * * *` | `n8n_shadow_brain_daily` |
-| `brain_weekly_briefing` | `BRAIN_OWNS_BRAIN_WEEKLY` | `0 18 * * 0` | `n8n_shadow_brain_weekly` |
-| `brain_weekly_strategy` | `BRAIN_OWNS_WEEKLY_STRATEGY` | `0 9 * * 1` | `n8n_shadow_weekly_strategy` |
-| `brain_sprint_kickoff` | `BRAIN_OWNS_SPRINT_KICKOFF` | `0 7 * * 1` | `n8n_shadow_sprint_kickoff` |
-| `brain_infra_heartbeat` | `BRAIN_OWNS_INFRA_HEARTBEAT` | `0 8 * * *` | `n8n_shadow_infra_heartbeat` |
-| `brain_credential_expiry` | `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `0 8 * * *` | `n8n_shadow_credential_expiry` |
-| `brain_infra_health` | `BRAIN_OWNS_INFRA_HEALTH` | every **30** minutes (``IntervalTrigger``) | `n8n_shadow_infra_health` |
+| `brain_daily_briefing` | `0 7 * * *` | `BRAIN_OWNS_DAILY_BRIEFING` | `n8n_shadow_brain_daily` |
+| `brain_weekly_briefing` | `0 18 * * 0` | `BRAIN_OWNS_BRAIN_WEEKLY` | `n8n_shadow_brain_weekly` |
+| `brain_weekly_strategy` | `0 9 * * 1` | `BRAIN_OWNS_WEEKLY_STRATEGY` | `n8n_shadow_weekly_strategy` |
+| `brain_sprint_kickoff` | `0 7 * * 1` | `BRAIN_OWNS_SPRINT_KICKOFF` | `n8n_shadow_sprint_kickoff` |
+| `brain_infra_heartbeat` | `0 8 * * *` | `BRAIN_OWNS_INFRA_HEARTBEAT` | `n8n_shadow_infra_heartbeat` |
+| `brain_credential_expiry` | `0 8 * * *` | `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `n8n_shadow_credential_expiry` |
+| `brain_infra_health` | every **30** min (`IntervalTrigger`) | `BRAIN_OWNS_INFRA_HEALTH` | `n8n_shadow_infra_health` |
 
 **Infra Health Check (`brain_infra_health`) — dedup and reminders:** The exported n8n flow (`retired/infra-health-check.json`) posts to Slack only when the **fingerprint** of the n8n liveness + workflow count changes, or on transition from unhealthy → healthy. The Brain port matches that (Redis keys under `brain:infra_health:*` when Redis is available; otherwise in-process state for the lifetime of the process). If the system stays **unhealthy** with an unchanged fingerprint, Brain re-alerts after **`INFRA_HEALTH_REMINDER_HOURS`** (default **4**), so sustained incidents are not silent forever.
 
-**Sprint / docs (not n8n):**
+Sprint close, data monitors, and annual update remain **shadow-only** in ``n8n_mirror.py`` until their cutover PRs land (separate from this doc section).
 
-| APScheduler `job_id` | Env flag | Schedule (UTC) | Notes |
+### Operational gates (intentionally default off)
+
+| Scheduler / `job_id` | Schedule (UTC) | Render env flag | Why gated |
 | --- | --- | --- | --- |
-| `sprint_auto_logger` | `BRAIN_OWNS_SPRINT_AUTO_LOGGER` | `*/15 * * * *` | Bot-PR path: single markdown source of truth; `agent_scheduler_runs.job_id` = `sprint_auto_logger`. Manual backfill: `cd apis/brain && python -m app.cli.sprint_auto_logger_cli --since YYYY-MM-DD`. |
+| `sprint_auto_logger` | `*/15 * * * *` | `BRAIN_OWNS_SPRINT_AUTO_LOGGER` | Opens **batched bot PRs** that edit `docs/sprints/*.md`; no n8n shadow. Flip after validating GitHub token scopes and a canary tick. Manual backfill: `cd apis/brain && python -m app.cli.sprint_auto_logger_cli --since YYYY-MM-DD`. |
+
+### Net-new (no `BRAIN_OWNS_*` / on when `BRAIN_SCHEDULER_ENABLED`)
+
+| `job_id` | Schedule (UTC) | Notes |
+| --- | --- | --- |
+| `pr_sweep` | interval (``SCHEDULER_PR_SWEEP_MINUTES``, default 30) | Brain PR review + merge sweep |
+| `proactive_cadence` | hourly | Persona Slack briefs (LLM) |
+| `cfo_cost_dashboard` | daily 15:30 | Read Redis → Slack |
+| `qa_weekly_report` | Sun 17:00 | Registry digest → Slack |
+| `cfo_friday_digest` | Fri 18:00 | Tracker + CFO persona → Slack |
+| `sprint_lessons_ingest` | interval (default 6h) | Sprint markdown → memory |
+| `merged_prs_ingest` | interval (default 6h) | Merged PRs → memory |
+| `ingest_decisions_daily` | daily 03:00 | ADR docs → memory |
+| `ingest_postmortems_daily` | daily 03:30 | Postmortems / incidents → memory |
 
 ### Read-only mirror status
 
