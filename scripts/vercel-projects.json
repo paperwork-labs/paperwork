@@ -1,11 +1,58 @@
 {
-  "description": "Paperwork Labs Vercel apps: path under apps/ and production domain for automation and runbooks.",
-  "projects": {
-    "design": {
+  "description": "Canonical list of Vercel team projects used for auto-promote. Keep .github/workflows/vercel-promote-on-merge.yaml matrix in sync. Paperwork Labs Vercel apps: path under apps/ and production domain for automation and runbooks.",
+  "teamId": "team_RwfzJ9ySyLuVcoWdKJfXC7h5",
+  "apps": [
+    {
+      "slug": "studio",
+      "repoRoot": "apps/studio",
+      "projectId": "prj_FZvJJnDdQqawjBpJAwC0SuwyMzFT",
+      "notes": "Studio / paperworklabs.com admin — not a separate \"paperworklabs\" Vercel project"
+    },
+    {
+      "slug": "filefree",
+      "repoRoot": "apps/filefree",
+      "projectId": "prj_DNPGX5GrYcwer9oANv90NKqIT67I"
+    },
+    {
+      "slug": "distill",
+      "repoRoot": "apps/distill",
+      "projectId": "prj_1TKlkMmY3vLVNfAfRxUY57z43m11"
+    },
+    {
+      "slug": "launchfree",
+      "repoRoot": "apps/launchfree",
+      "projectId": "prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7"
+    },
+    {
+      "slug": "axiomfolio-next",
+      "repoRoot": "apps/axiomfolio-next",
+      "projectId": "prj_z3JVQGLLfsJO2QZJnK5BvMjfFoK3",
+      "notes": "Primary Next.js AxiomFolio; confirm in Vercel dashboard if team renames"
+    },
+    {
+      "slug": "axiomfolio",
+      "repoRoot": "apps/axiomfolio",
+      "projectId": "prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE",
+      "notes": "Legacy Vite tree; keep until G4 cutover removes the project or stops deploying"
+    },
+    {
+      "slug": "trinkets",
+      "repoRoot": "apps/trinkets",
+      "projectId": "prj_MFUxaJCbQuSdJZWWVgaEtRllKjzB"
+    },
+    {
+      "slug": "design",
+      "repoRoot": "apps/design",
+      "projectId": "TBD_CREATE_BEFORE_MERGE",
       "package": "@paperwork-labs/design",
-      "path": "apps/design",
       "productionDomain": "design.paperworklabs.com",
-      "notes": "Storybook static site; build via pnpm --filter @paperwork-labs/design build-storybook"
+      "notes": "Storybook static site; build via pnpm --filter @paperwork-labs/design build-storybook. Add prj_… after Vercel project exists (see docs/infra/FOUNDER_ACTIONS.md)."
+    },
+    {
+      "slug": "accounts",
+      "repoRoot": "apps/accounts",
+      "projectId": "TBD_CREATE_BEFORE_MERGE",
+      "notes": "Track H4 Clerk primary host — placeholder until project is created and linked"
     }
-  }
+  ]
 }

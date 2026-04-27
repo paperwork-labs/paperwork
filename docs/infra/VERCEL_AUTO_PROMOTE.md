@@ -1,6 +1,6 @@
 ---
 title: Vercel auto-promote on merge
-last_reviewed: 2026-04-26
+last_reviewed: 2026-04-27
 owner: infra
 status: active
 ---
@@ -20,25 +20,29 @@ which doesn't burn a build slot, just flips the production alias.
 time — this workflow only does work when the webhook misses, and exits
 cleanly when it lands.
 
+## When promotion runs
+
+| Trigger | When |
+| --- | --- |
+| `pull_request` `closed` + merged to `main` | One matrix job per app (see below) after every merge. |
+| `workflow_dispatch` | On demand. Provide **`pr_number`** (required). Optionally set **`app`** to a single Vercel project slug to run only that leg (e.g. re-promote **studio** for a specific merged PR). |
+
+**paperworklabs.com / Studio:** There is no separate Vercel project named `paperworklabs`. Production for the Studio / marketing surface is the **`studio`** project (`apps/studio`).
+
 ## How it works
 
-1. A PR merges to `main`. GitHub fires the workflow.
-2. We resolve the PR's head SHA from the merge event payload.
-3. We query Vercel: "what's currently in production for `studio`?".
-   - If the prod SHA matches → webhook fired correctly, **exit clean**
-     (idempotent; no double-promote).
-   - If it doesn't match → continue.
-4. We poll Vercel up to 6 minutes for a `READY` deployment with
-   `meta.githubCommitSha == <PR head SHA>`. The preview build was
-   already triggered when the PR opened, so this is usually instant.
-5. We `POST /v10/projects/{id}/promote/{deploymentId}` — flips the
-   alias, **no rebuild**, doesn't consume a build credit.
-6. We comment on the closed PR so the audit log shows the path
-   ("webhook fired correctly" vs "auto-promoted as backup").
+1. A PR merges to `main` (or you run the workflow manually with a `pr_number`).
+2. We resolve the merge’s target SHA (prefer `merge_commit_sha` for squashes).
+3. Per app, we check whether the PR changed paths relevant to that app (see [Path filters](#monorepo-path-filters)). If not, that matrix job exits successfully without calling Vercel.
+4. We query Vercel: what commit is in **production** for this project? If it already matches the target SHA, we **exit clean** (idempotent).
+5. We poll for a `READY` deployment whose metadata matches the merge or head SHA, then `POST` promote — **no rebuild**.
+6. On merge events, we comment on the closed PR with per-app results where work ran.
+
+Jobs use **matrix** `fail-fast: false`, so one app failing does not cancel the others. Failures are labeled with the **app** in logs and a final `Report failed promote` step.
+
+**Canonical list:** `scripts/vercel-projects.json` (keep the workflow matrix in sync with this file or update both in one change).
 
 ## One-time setup
-
-Two things needed:
 
 ### 1. Generate a Vercel API token
 
@@ -56,102 +60,84 @@ gh secret set VERCEL_API_TOKEN
 # paste the token at the prompt
 ```
 
-That's it. The team ID and project ID are already hardcoded in the
-workflow (they aren't secret — only the token is).
+The team ID and project IDs are not secret. If `VERCEL_API_TOKEN` is not set, the workflow logs a **warning** and matrix jobs exit **0** (so merges are not blocked by a missing token).
 
-The workflow has a graceful no-op if `VERCEL_API_TOKEN` isn't set:
-it logs a warning and exits 0, so failing to set the secret won't
-block PR merges.
+## Tracked apps (matrix + project_id)
 
-## Tracked apps
+| App (Vercel slug / `project`) | `project_id` | Repo root / notes |
+| --- | --- | --- |
+| `studio` | `prj_FZvJJnDdQqawjBpJAwC0SuwyMzFT` | `apps/studio` — paperworklabs.com / Studio (not a separate `paperworklabs` row) |
+| `filefree` | `prj_DNPGX5GrYcwer9oANv90NKqIT67I` | `apps/filefree` |
+| `distill` | `prj_1TKlkMmY3vLVNfAfRxUY57z43m11` | `apps/distill` |
+| `launchfree` | `prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7` | `apps/launchfree` |
+| `axiomfolio-next` | `prj_z3JVQGLLfsJO2QZJnK5BvMjfFoK3` | `apps/axiomfolio-next` — primary Next.js AxiomFolio |
+| `axiomfolio` | `prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE` | `apps/axiomfolio` — legacy Vite; remove from matrix when G4 retires the deployment |
+| `trinkets` | `prj_MFUxaJCbQuSdJZWWVgaEtRllKjzB` | `apps/trinkets` |
+| `design` | `TBD_CREATE_BEFORE_MERGE` | `apps/design` (Storybook) — **intentional placeholder** until the Vercel project exists; job skips until you set a real `prj_…` in `scripts/vercel-projects.json` + the workflow |
+| `accounts` | `TBD_CREATE_BEFORE_MERGE` | `apps/accounts` (Track H4) — same as above |
 
-Matrix key `project` (Vercel project slug) and `project_id` in `.github/workflows/vercel-promote-on-merge.yaml`:
+**Placeholder rows:** `TBD_CREATE_BEFORE_MERGE` runs a short **Skip** step with a notice (no Vercel API call) so the workflow stays green until the project is created.
 
-| App (`project`) | Vercel `project_id` |
-| --- | --- |
-| `studio` | `prj_FZvJJnDdQqawjBpJAwC0SuwyMzFT` |
-| `filefree` | `prj_DNPGX5GrYcwer9oANv90NKqIT67I` |
-| `distill` | `prj_1TKlkMmY3vLVNfAfRxUY57z43m11` |
-| `launchfree` | `prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7` |
-| `axiomfolio-next` | `TBD_CREATE_BEFORE_MERGE` (link `apps/axiomfolio-next` in Vercel, then replace) |
-| `trinkets` | `TBD_CREATE_BEFORE_MERGE` (link `apps/trinkets` in Vercel, then replace) |
-| `accounts` | `TBD_CREATE_BEFORE_MERGE` (create + link `apps/accounts` after Track H4; then replace) |
-| `design` | `TBD_CREATE_BEFORE_MERGE` (create + link `apps/design` Storybook → `design.paperworklabs.com`; see `DESIGN_CANVAS_DEPLOY.md`) |
+## Monorepo path filters
 
-While an entry is still `TBD_CREATE_BEFORE_MERGE`, that matrix job **skips** the promote path (no API call) so merges stay green until the project exists in the team and the workflow is updated with a real `prj_…` id.
+Apps are only promoted when the merged PR touches `apps/<app>/**`, or shared roots: `packages/**`, `pnpm-lock.yaml`, or root `package.json`. Pure `docs/**` or `apis/**`–only changes will **not** promote a frontend app (by design). Cross-touching lockfile or `packages/**` still counts as relevant for all apps in the matrix.
 
-## Monorepo path filters (Studio, Distill, LaunchFree)
+**Studio**, **Distill**, and **LaunchFree** often use Vercel `ignoreCommand` / monorepo filters so they do not build on every push. If Vercel never produced a `READY` deployment for the merge commit, the workflow **fails that app’s job** (no silent green). Fix by ensuring a build exists for that SHA, then re-run the workflow (optionally with `app` set).
 
-**Studio**, **Distill**, and **LaunchFree** are configured in Vercel with
-monorepo path filters (or `ignoreCommand`) so they do not build on every
-`main` push. **FileFree** does not use the same filter, so it tends to
-track `main` automatically.
+## Adding or renaming an app
 
-Cross-cutting edits that never touch an app’s root (for example only
-`docs/**`, or an API under `apis/**`) may **not** start a preview or
-production build for those filtered projects. The lockfile, workspace
-root `package.json`, and `packages/**` are treated as shared: the
-auto-promote workflow only runs a promote job for an app when the merged
-PR touches `apps/<app>/**`, `packages/**`, `pnpm-lock.yaml`, or root
-`package.json`.
+1. Create/link the Vercel project; note `prj_…` from the dashboard or `apps/<name>/.vercel/project.json` after `vercel link`.
+2. Add or update the entry in `scripts/vercel-projects.json`.
+3. Add or update the corresponding row in `.github/workflows/vercel-promote-on-merge.yaml` under `matrix.include`.
 
 Do **not** change Vercel project path settings here without founder
 review; if production looks stale, use the **Manual fallback** section
 below, or merge a change under `apps/<app>/` so the next auto-promote run
 has a READY preview to pick up.
 
-## Adding more projects
+## Manual fallback (workflow_dispatch)
 
-Add a row to the matrix in `.github/workflows/vercel-promote-on-merge.yaml`
-and document the project ID (from Vercel → Project Settings → General,
-or `apps/<project>/.vercel/project.json` after `vercel link`).
+**Promote for one merged PR** (alias flip, no new build) for **all** apps the path filter includes:
 
-## Manual fallback
-
-**Promote a specific merged PR** (alias flip, no new build):
-
-```
-GitHub → Actions → Vercel auto-promote on merge → Run workflow
-  pr_number: <number>
+```bash
+gh workflow run vercel-promote-on-merge.yaml \
+  -f pr_number=267
 ```
 
-Runs all matrix jobs; each job skips unless the PR touched that
-app’s paths (or shared paths above). Use this when the merge event ran
-but Vercel never had a READY preview to promote.
+**Only one app** (e.g. Studio), after a bad merge or missed webhook:
 
-**Check production vs `main`:** Compare the latest **Production**
-deployment’s commit SHA in the Vercel dashboard (Deployments → filter
-Production) with `git log -1 --oneline origin/main`, or use the Vercel
-MCP / API (`list_deployments` with `target=production`).
+```bash
+gh workflow run vercel-promote-on-merge.yaml \
+  -f pr_number=267 \
+  -f app=studio
+```
+
+`app` must match the matrix `project` slug (e.g. `studio`, `filefree`, `axiomfolio-next`).
+
+**Check production vs `main`:** In the Vercel dashboard, open the project → **Deployments** → **Production** and compare the commit SHA to `git log -1 --oneline origin/main`.
+
+## Debugging a failed promotion
+
+1. Open the **failed matrix job** (job name is `promote [<app>]`). The last failing step is usually **Find READY preview** or **Promote to production**.
+2. **Find READY** errors mean no deployment with the merge/head SHA is `READY` — Vercel may still be building, the app may have been skipped by `ignoreCommand`, or Hobby rate limits. Check the Vercel project’s deployment list for that commit.
+3. **Promote** or **Check production** errors include HTTP status and the response body. Fix token/permissions, project ID, or Vercel incident first.
+4. **Relevant paths** skipped the job: the merged PR did not touch that app’s paths; merge a change that touches the app, shared package, or lockfile, or use `workflow_dispatch` knowing the path check still applies to that PR’s diff.
 
 ## Why not just switch to native webhooks?
 
-Two reasons we keep the GitHub App AND add this redundancy instead of
-switching to native repo-level webhooks:
-
-1. The GitHub App also drives PR comments (preview URLs, build logs,
-   inline commit statuses). Native webhooks lose all of that UX.
-2. Two missed webhooks isn't a "GitHub App is broken" signal — it's a
-   "the network is unreliable" signal. Adding redundancy at the merge
-   layer is cheaper than abandoning the integration.
-
-If we ever see > 5 webhook misses in a week, revisit this.
+1. The GitHub App also drives PR comments and commit statuses. Native webhooks drop that UX.
+2. Two missed webhooks is a reliability signal, not a reason to remove the app — redundancy at merge time is cheap.
 
 ## Cost
 
-Zero on the Vercel side (promote is alias-only, no builds consumed).
-Roughly 10 seconds of GitHub Actions per merge — well inside the GH Pro
-free tier even at 50 merges/day.
+Promote is alias-only (no new build in the success path). GitHub Actions time is roughly a few minutes per merge (parallel matrix legs).
 
-**Hobby build burst:** A single `main` push that starts **multiple**
-production builds (one per linked project) can hit Vercel’s per-team
-**deployment rate limit** on Hobby. GitHub shows
-`Deployment rate limited — retry in 24 hours` on the commit; production
-stays on the previous deployment until a build succeeds.
+**Hobby limits:** A single `main` push can start many Vercel builds; rate limits can delay **builds** (not this promote job), which in turn can cause “no READY deployment” until a build finishes.
 
 ## See also
 
 - `.github/workflows/vercel-promote-on-merge.yaml` — the workflow.
-- `docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md` — sprint where
-  this followup was tracked.
-- `docs/infra/RENDER_INVENTORY.md` — F-3 (Vercel API token env naming on Render; canonical `VERCEL_API_TOKEN`).
+- `scripts/vercel-projects.json` — canonical app list and IDs.
+- `docs/infra/FOUNDER_ACTIONS.md` — `design` / `accounts` placeholders and DNS.
+- `docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md` — sprint tracking.
+- `docs/infra/RENDER_INVENTORY.md` — `VERCEL_API_TOKEN` elsewhere.
