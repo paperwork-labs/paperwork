@@ -474,3 +474,7 @@ Alternatives: (a) Only document "scheduler restarts = benign," (b) Redis job sto
 Rationale: The app already has Postgres; `SQLAlchemyJobStore` is one import and a sync URL (`postgresql://` from `DATABASE_URL` with `+asyncpg` stripped). Shadow mirrors validate cadence before T2.4 n8n disable. `psycopg2-binary` supplies the sync driver for the job store engine.
 Reversibility: Easy. Set job store back to default (dev-only) or clear `apscheduler_jobs` if a bad migration; mirrors are off by default.
 
+---
+
+Date: 2026-04-27
+Decision: Studio `/admin/brain/learning` shows Brain continuous-learning KPIs (7d), 30d charts, topics/agents, paginated episodes, and `lesson_extracted` lessons. Brain: `GET /api/v1/admin/brain/learning/*` (X-Brain-Secret). Studio proxies `/api/admin/brain/learning/*`.
