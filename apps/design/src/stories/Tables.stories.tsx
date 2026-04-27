@@ -22,9 +22,9 @@ type JobRow = {
 };
 
 const sample: JobRow[] = [
-  { id: 1, status: 'ok', task_name: 'admin_coverage_refresh', started_at: new Date().toISOString(), finished_at: new Date().toISOString() },
-  { id: 2, status: 'running', task_name: 'admin_backfill_5m', started_at: new Date(Date.now() - 60_000).toISOString(), finished_at: null },
-  { id: 3, status: 'error', task_name: 'market_universe_tracked_refresh', started_at: new Date(Date.now() - 3600_000).toISOString(), finished_at: new Date(Date.now() - 3500_000).toISOString() },
+  { id: 1, status: 'ok', task_name: 'admin_coverage_refresh', started_at: '2024-01-15T12:00:00.000Z', finished_at: '2024-01-15T12:05:00.000Z' },
+  { id: 2, status: 'running', task_name: 'admin_backfill_5m', started_at: '2024-01-15T11:59:00.000Z', finished_at: null },
+  { id: 3, status: 'error', task_name: 'market_universe_tracked_refresh', started_at: '2024-01-15T11:00:00.000Z', finished_at: '2024-01-15T11:01:40.000Z' },
 ];
 
 function statusBadgeClass(status: string) {

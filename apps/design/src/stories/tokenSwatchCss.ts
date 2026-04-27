@@ -1,5 +1,5 @@
 /**
- * Maps legacy semantic token names (Chakra-era) to CSS backgrounds for Ladle swatches.
+ * Maps legacy semantic token names (Chakra-era) to CSS backgrounds for Storybook design canvas swatches.
  */
 export function swatchBackgroundCss(token: string): string {
   const brand: Record<string, string> = {

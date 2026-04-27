@@ -58,16 +58,18 @@ export default meta;
 type Story = StoryObj<typeof ClippedWordmark>;
 
 export const Animated: Story = {
-  name: "Animated (entrance plays once)",
+  name: "Animated (entrance animation)",
   args: { animated: true },
   parameters: {
     docs: {
       description: {
         story: [
-          "Plays the clip-on entrance once, then settles into the static end state.",
-          "Production behavior is once-per-session via sessionStorage; the Storybook",
-          "canvas re-runs on every reload. Toggle the `animated` arg or refresh the",
-          "page to re-trigger the entrance.",
+          "Plays the clip-on entrance animation, then settles into the static end state.",
+          "In this story, the entrance runs whenever `animated` is enabled and the",
+          "component is re-rendered from a fresh mount. Toggle the `animated` arg or",
+          "refresh the page to re-trigger the entrance. Production surfaces gate this",
+          "to once-per-session via sessionStorage at the consumer (e.g. Studio header);",
+          "see docs/brand/ANIMATION.md § Triggering for the canonical wiring.",
         ].join(" "),
       },
     },

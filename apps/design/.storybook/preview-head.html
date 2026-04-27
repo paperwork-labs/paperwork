@@ -1,11 +1,6 @@
 <!--
   Inter Tight is the canonical wordmark face per docs/brand/PROMPTS.md § P5.
-  The CSS @import in preview.css already loads the @fontsource variable, but
-  we also preload here so the wordmark stories render in the correct face on
-  first paint without a FOUT.
+  The CSS @import in preview.css already loads the local
+  @fontsource-variable/inter-tight font files, so no external font preconnect
+  is needed here.
 -->
-<link
-  rel="preconnect"
-  href="https://fonts.gstatic.com"
-  crossorigin
-/>

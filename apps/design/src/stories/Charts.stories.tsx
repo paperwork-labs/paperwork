@@ -137,8 +137,8 @@ export const TimeSeriesBar_Breadth: Story = {
   const data = Array.from({ length: 30 }, (_, i) => ({
     date: `2026-01-${String(i + 1).padStart(2, '0')}`,
     values: [
-      { value: 40 + Math.sin(i / 3) * 20 + Math.random() * 10, color: successRgb, label: '>50DMA' },
-      { value: 30 + Math.cos(i / 4) * 15 + Math.random() * 8, color: brandBlue, label: '>200DMA' },
+      { value: 40 + Math.sin(i / 3) * 20 + ((i * 7) % 10), color: successRgb, label: '>50DMA' },
+      { value: 30 + Math.cos(i / 4) * 15 + ((i * 5 + 3) % 8), color: brandBlue, label: '>200DMA' },
     ],
   }));
   return (

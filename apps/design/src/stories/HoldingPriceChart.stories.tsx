@@ -1,12 +1,14 @@
 /**
- * Ladle stories for the flagship HoldingPriceChart.
+ * Storybook CSF stories for the flagship HoldingPriceChart.
  *
- * Each story drives the underlying data hook through a vi.mock-style
- * monkey patch on the global `globalThis.__HOLDING_CHART_FIXTURES__`
- * (set by the story before render) — but to keep things deterministic we
- * use a simpler approach here: a `MockedHoldingPriceChart` wrapper that
- * applies a per-story shim around the data hook via React Query primed
- * caches. This avoids depending on MSW for design-tool browsing.
+ * Each story stays deterministic by using a `MockedHoldingPriceChart`
+ * wrapper that provides per-story data through React Query primed
+ * caches. This avoids depending on MSW for design-tool browsing while
+ * keeping the chart scenarios isolated and easy to reason about.
+ *
+ * Fixtures are anchored to a fixed base date (2026-01-15) so chart
+ * positions, trade markers, and dividend dots are stable across runs
+ * and Chromatic VRT snapshots.
  */
 import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -21,8 +23,13 @@ export default meta;
 
 type Story = StoryObj;
 
+// Fixed base timestamp keeps the chart deterministic across runs / VRT.
+// 2026-01-15T00:00:00Z chosen to sit comfortably after AxiomFolio launch
+// while remaining stable across CI, Chromatic, and local dev.
+const FIXED_NOW = Date.UTC(2026, 0, 15);
+
 function makeBars(n: number, base = 100) {
-  const today = Date.now();
+  const today = FIXED_NOW;
   const day = 86_400_000;
   return Array.from({ length: n }).map((_, i) => {
     const date = new Date(today - (n - i) * day).toISOString().slice(0, 10);
@@ -191,7 +198,7 @@ function makeTrades(
   daysBack: number,
   pattern: ReadonlyArray<{ side: "BUY" | "SELL"; qty: number; price: number }>,
 ): TradeSeed[] {
-  const today = Date.now();
+  const today = FIXED_NOW;
   const day = 86_400_000;
   return pattern.map((p, i) => ({
     transaction_date: new Date(
@@ -214,7 +221,7 @@ function makeDividends(
   daysBack: number,
   count = 4,
 ): DividendSeed[] {
-  const today = Date.now();
+  const today = FIXED_NOW;
   const day = 86_400_000;
   return Array.from({ length: count }).map((_, i) => {
     const offset = Math.round((daysBack / (count + 1)) * (i + 1));

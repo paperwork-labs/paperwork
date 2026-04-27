@@ -44,7 +44,7 @@ const StoryShell: React.FC<{ initialPath?: string; collapsed?: boolean }> = ({
                 index
                 element={storyPlaceholder(
                   "DashboardLayout Story",
-                  "This is a visual shell to validate sidebar/header behavior in Ladle."
+                  "This is a visual shell to validate sidebar/header behavior in Storybook."
                 )}
               />
               <Route
