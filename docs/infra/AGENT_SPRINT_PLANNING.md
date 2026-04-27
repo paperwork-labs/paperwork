@@ -16,7 +16,7 @@ Brain generates **discrete, copy-pasteable task specs** from open work and packs
 2. **Generate** — `app.services.agent_task_generator.generate()` returns `AgentTaskSpec` rows (stable `task_id`, title ≤ 80 chars, scope, estimate, agent type, model hint, `depends_on`, `touches_paths`, `source`).
 3. **Collision edges** — `app.services.sprint_planner.add_path_collision_dependencies` adds `depends_on` when `touches_paths` overlap (prefix rules).
 4. **Bucket** — `select_sprint_bucket` picks up to `BRAIN_AGENT_SPRINT_MAX_TASKS` tasks within `BRAIN_AGENT_SPRINT_DAY_CAP_MINUTES`, respecting dependencies and preferring disjoint paths.
-5. **Persist** — `apis/brain/app/data/agent_sprints_store.json` (canonical; created on first write). Optional mirror digest on `cheap_agent_sprints` in `tracker-index.json` when `BRAIN_AGENT_SPRINT_WRITE_TRACKER=true` and the file is writable under `REPO_ROOT`.
+5. **Persist** — `apis/brain/app/data/agent_sprints_store.json` (canonical; matches `app.services.agent_sprint_store._store_path()`; empty seed committed in-repo). Optional mirror digest on `cheap_agent_sprints` in `tracker-index.json` when `BRAIN_AGENT_SPRINT_WRITE_TRACKER=true` and the file is writable under `REPO_ROOT`.
 6. **Learn** — Memory episode `source=agent_sprint:generated` with `skip_embedding=True` (lightweight signal for retrieval).
 7. **Review** — Studio **`/admin/agent-sprints`** lists the last 24h. **Dispatch is manual** in this version (button stub).
 
