@@ -69,6 +69,10 @@ EXPECTED_DEAD: set[str] = {
     "apps/filefree/src/lib/filefree-clerk-appearance.ts",
     "apps/trinkets/src/lib/trinkets-clerk-appearance.ts",
     "apps/studio/src/lib/studio-clerk-appearance.ts",
+    # Pending design app + Chromatic wiring (FOUNDER_ACTIONS.md; paths land with apps/design PRs).
+    "apps/design/vercel.json",
+    "apps/design/chromatic.config.json",
+    "docs/infra/CHROMATIC_VRT.md",
 }
 
 # Match:
