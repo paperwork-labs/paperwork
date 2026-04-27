@@ -45,6 +45,8 @@ ipython_config.py
 node_modules/
 .next/
 out/
+# Vercel CLI link metadata (per-developer team/project IDs — never commit)
+**/.vercel/
 .turbo/
 npm-debug.log*
 yarn-debug.log*

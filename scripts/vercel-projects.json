@@ -1,0 +1,16 @@
+{
+  "$schema": "./vercel-projects.schema.json",
+  "team": "paperwork-labs",
+  "apps": [
+    { "dir": "studio", "project": "studio" },
+    { "dir": "paperworklabs", "project": "paperworklabs" },
+    { "dir": "filefree", "project": "filefree" },
+    { "dir": "launchfree", "project": "launchfree" },
+    { "dir": "distill", "project": "distill" },
+    { "dir": "axiomfolio", "project": "axiomfolio" },
+    { "dir": "axiomfolio-next", "project": "axiomfolio-next" },
+    { "dir": "trinkets", "project": "trinkets" },
+    { "dir": "brain", "project": "brain", "deploys": false },
+    { "dir": "design", "project": "design" }
+  ]
+}
