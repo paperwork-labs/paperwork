@@ -29,7 +29,7 @@ The old account migration is effectively done. What remains is **repo-pointer dr
 | `axiomfolio-api` | web | `srv-d7lg0o77f7vs73b2k7m0` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
 | `axiomfolio-worker` | worker | `srv-d7lg0o77f7vs73b2k7lg` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
 | `axiomfolio-worker-heavy` | worker | `srv-d7lg0o77f7vs73b2k7kg` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
-| ~~`axiomfolio-frontend`~~ | — | `srv-d7lg0dv7f7vs73b2k1u0` | **`paperwork-labs/axiomfolio` ⚠️** | — | *removed from root `render.yaml` 2026-04-27 — UI on Vercel (`apps/axiomfolio`)* | — | **delete stale service in dashboard** |
+| ~~`axiomfolio-frontend`~~ | — | `srv-d7lg0dv7f7vs73b2k1u0` | **`paperwork-labs/axiomfolio` ⚠️** | — | *AxiomFolio frontend served from Vercel (`apps/axiomfolio`); see [PORT_INVENTORY_2026Q2.md](../axiomfolio/plans/PORT_INVENTORY_2026Q2.md) for migration* | — | **delete stale service in dashboard** |
 
 Data stores:
 
@@ -92,6 +92,14 @@ won't show alongside the root file. Resolved on 2026-04-25 by
 **consolidating** the AxiomFolio blocks into the root `render.yaml`
 ([commit](../../render.yaml)) and reducing
 `apis/axiomfolio/render.yaml` to a stub pointer comment.
+
+**Track F4 — `axiomfolio-frontend` decommission (complete 2026-04-27):**
+the legacy Render static site block was **removed entirely** from root
+`render.yaml`. Customer UI is Next.js on Vercel (`apps/axiomfolio`); see
+[PORT_INVENTORY_2026Q2.md](../axiomfolio/plans/PORT_INVENTORY_2026Q2.md).
+The live `axiomfolio-frontend` service (if still present) is stale — delete
+it in the Render dashboard after [Track I1 / Blueprint repoint](RENDER_REPOINT.md)
+when safe.
 
 **Remaining action (Path B in [RENDER_REPOINT.md](RENDER_REPOINT.md)):**
 the operator runs the Blueprint Sync once. After that, blueprint and
@@ -170,7 +178,7 @@ Runbook: [RENDER_REPOINT.md → Path A](RENDER_REPOINT.md#path-a-brain-api-docke
 - [ ] F-1: AxiomFolio services repointed to monorepo via consolidated Blueprint Sync; old `paperwork-labs/axiomfolio` repo archived after 24h green.
 - [x] F-2: `launchfree-api` decision — commented out in `render.yaml` (2026-04-25, PR #144); reopens if frontend wires to live API and service still isn't provisioned.
 - [x] F-3: env var naming reconciled to `VERCEL_API_TOKEN` (code + blueprint; remove duplicate `VERCEL_TOKEN` in Render when safe).
-- [x] F-4: single `render.yaml` is the source of truth; `apis/axiomfolio/render.yaml` reduced to a stub pointer.
+- [x] F-4: single `render.yaml` is the source of truth; `apis/axiomfolio/render.yaml` reduced to a stub pointer; **`axiomfolio-frontend` removed from blueprint 2026-04-27 (Track F4)** — delete stale dashboard service post–I1.
 - [ ] F-5: `GITHUB_WEBHOOK_SECRET` added to `brain-api` env (declared in blueprint with `sync: false`; operator must paste actual value).
 - [x] F-6: `brain-api` Docker Build Context Directory cleared; latest `main` SHA `f0255542` is live (deploy `dep-d7m63jeffeas73bmkeeg`).
 - [x] Studio `/admin/infrastructure` enumerates every Render service + Postgres + Key Value + every Vercel project from the APIs (live/build_failed/deploy state per row; no hardcoded service IDs). See `apps/studio/src/lib/infra-probes.ts` (Q2 Tech Debt Track I4).

@@ -14,7 +14,7 @@ status: active
 
 ## TL;DR
 
-1. **Where things run in production** — **Vercel**: Next.js apps with a root [`vercel.json`](../apps/studio/vercel.json) under [`apps/filefree`](../apps/filefree), [`apps/launchfree`](../apps/launchfree), [`apps/studio`](../apps/studio), [`apps/trinkets`](../apps/trinkets), [`apps/distill`](../apps/distill), and [`apps/axiomfolio`](../apps/axiomfolio) (package `@paperwork-labs/axiomfolio`; the linked Vercel project may still be named `axiomfolio-next` until renamed in the dashboard). **Render**: see [Render service inventory (mirror)](#render-service-inventory-mirror) (authoritative list: [`docs/infra/RENDER_INVENTORY.md`](../docs/infra/RENDER_INVENTORY.md)). **Hetzner**: [`infra/hetzner`](../infra/hetzner) (n8n, Postiz, and related). **AxiomFolio** customer UI: Next.js on Vercel (`apps/axiomfolio`). The legacy Render static site `axiomfolio-frontend` was **removed from the root blueprint 2026-04-27** (Track G4); delete the stale service in the Render dashboard if it still exists. **Clerk (portfolio SSO target):** primary host `accounts.paperworklabs.com` + satellite domains — runbook [`docs/infra/CLERK_SATELLITE_TOPOLOGY.md`](../docs/infra/CLERK_SATELLITE_TOPOLOGY.md).
+1. **Where things run in production** — **Vercel**: Next.js apps with a root [`vercel.json`](../apps/studio/vercel.json) under [`apps/filefree`](../apps/filefree), [`apps/launchfree`](../apps/launchfree), [`apps/studio`](../apps/studio), [`apps/trinkets`](../apps/trinkets), [`apps/distill`](../apps/distill), and [`apps/axiomfolio`](../apps/axiomfolio) (package `@paperwork-labs/axiomfolio`; the linked Vercel project may still be named `axiomfolio-next` until renamed in the dashboard). **AxiomFolio** frontend is served from Vercel (`apps/axiomfolio`); see [`docs/axiomfolio/plans/PORT_INVENTORY_2026Q2.md`](../docs/axiomfolio/plans/PORT_INVENTORY_2026Q2.md) for migration. **Render**: see [Render service inventory (mirror)](#render-service-inventory-mirror) (authoritative list: [`docs/infra/RENDER_INVENTORY.md`](../docs/infra/RENDER_INVENTORY.md)). **Hetzner**: [`infra/hetzner`](../infra/hetzner) (n8n, Postiz, and related). If `axiomfolio-frontend` still appears in the Render dashboard, delete it (stale; not in root blueprint after Track F4, 2026-04-27). **Clerk (portfolio SSO target):** primary host `accounts.paperworklabs.com` + satellite domains — runbook [`docs/infra/CLERK_SATELLITE_TOPOLOGY.md`](../docs/infra/CLERK_SATELLITE_TOPOLOGY.md).
 2. **The number to watch** — ~$108/mo for AxiomFolio on Render Standard plans (2026-04, order-of-magnitude; use dashboard for truth). <!-- STALE 2026-04-24: re-verify after F-1 repoint and plan changes. -->
 3. **What is changing** — F-1: repoint [four `axiomfolio-*` services](../docs/infra/RENDER_INVENTORY.md#f-1--four-axiomfolio--services-still-point-to-the-old-standalone-repo-) to `paperwork-labs/paperwork` per [`docs/infra/RENDER_REPOINT.md`](../docs/infra/RENDER_REPOINT.md). Dev: [`web-axiomfolio` in root compose](../infra/compose.dev.yaml) phase 2 (Vite in Docker). `launchfree-api`: [defined in `render.yaml` but not in live inventory](../docs/infra/RENDER_INVENTORY.md#f-2--launchfree-api-is-defined-in-renderyaml-but-not-deployed).
 
@@ -31,7 +31,7 @@ Same tables as [`docs/infra/RENDER_INVENTORY.md`](../docs/infra/RENDER_INVENTORY
 | [`axiomfolio-api`](../apis/axiomfolio) | web | `srv-d7lg0o77f7vs73b2k7m0` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
 | [`axiomfolio-worker`](../apis/axiomfolio) | worker | `srv-d7lg0o77f7vs73b2k7lg` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
 | [`axiomfolio-worker-heavy`](../apis/axiomfolio) | worker | `srv-d7lg0o77f7vs73b2k7kg` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
-| ~~`axiomfolio-frontend`~~ | ~~static~~ | `srv-d7lg0dv7f7vs73b2k1u0` | **`paperwork-labs/axiomfolio` ⚠️** | — | *retired from blueprint 2026-04-27 — UI on Vercel* | — | delete if still listed |
+| ~~`axiomfolio-frontend`~~ | ~~static~~ | `srv-d7lg0dv7f7vs73b2k1u0` | **`paperwork-labs/axiomfolio` ⚠️** | — | *AxiomFolio frontend served from Vercel (`apps/axiomfolio`); see [`docs/axiomfolio/plans/PORT_INVENTORY_2026Q2.md`](../docs/axiomfolio/plans/PORT_INVENTORY_2026Q2.md) for migration* | — | delete if still listed |
 
 **Data stores**
 
@@ -295,8 +295,7 @@ Performed as part of PR #80 (AxiomFolio monorepo absorption):
 
 Track G4 (Q2 Tech Debt Convergence): the Vite tree was removed; canonical
 app path is [`apps/axiomfolio`](../apps/axiomfolio) (Next.js 16 App Router,
-`@paperwork-labs/axiomfolio`). Render static `axiomfolio-frontend` was dropped
-from the root [`render.yaml`](../render.yaml). Closing summary:
+`@paperwork-labs/axiomfolio`). **AxiomFolio** frontend is served from Vercel (`apps/axiomfolio`); see [`docs/axiomfolio/plans/PORT_INVENTORY_2026Q2.md`](../docs/axiomfolio/plans/PORT_INVENTORY_2026Q2.md) for migration. Track F4 removed the legacy `axiomfolio-frontend` block from the root [`render.yaml`](../render.yaml) (2026-04-27). Closing summary:
 [`docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md`](../docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).
 
 ### Python tooling consolidation → ruff
