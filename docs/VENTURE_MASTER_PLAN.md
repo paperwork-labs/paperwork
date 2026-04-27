@@ -1299,7 +1299,7 @@ VENTURE DATABASE (studio, never sold):
 - Current implementation: Basic Auth for Studio admin routes. Username must be in `ADMIN_EMAILS`, password must match `ADMIN_ACCESS_PASSWORD`.
 - Admin allowlist stored in environment variable: `ADMIN_EMAILS=sankalp@paperworklabs.com,olga@<personal-email>` (founder's Workspace email + Olga Sharma's personal email per D76)
 - Admin routes: `/admin/`* on paperworklabs.com, `/admin/`* on FileFree, `/admin/*` on LaunchFree.
-- Migration target: move admin protection fully onto Clerk + allowlist (`@paperwork-labs/auth-clerk` / Studio middleware), retiring Basic when operators sign off; see [docs/infra/CLERK_STUDIO.md](infra/CLERK_STUDIO.md).
+- Migration target: move admin protection fully onto Clerk + allowlist (`@paperwork-labs/auth-clerk` / Studio middleware), retiring Basic when operators sign off; see [docs/infra/CLERK_STUDIO.md](docs/infra/CLERK_STUDIO.md).
 
 **Trinkets Auth**: No auth. Public utility tools. Cross-sell CTAs link to FileFree/LaunchFree where users sign up. If we ever want saved preferences, use localStorage or add optional Google sign-in later.
 

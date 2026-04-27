@@ -21,7 +21,7 @@
 
 ## Step 1 — Studio vault (not executed)
 
-Planned mapping (service=`clerk`, `expires_at` null), all via `scripts/vault-set.sh` or POST `/api/secrets`:
+Planned mapping (service=`clerk`, `expires_at` null), all via the Studio vault helper scripts (e.g. `scripts/vault-get.sh` / the POST `/api/secrets` path from the runbook) — **not** a literal `vault-set` filename in this repo:
 
 | Vault name | Source key in `/tmp/clerk-keys.env` | Description |
 |------------|--------------------------------------|-------------|
@@ -44,8 +44,8 @@ Planned mapping (service=`clerk`, `expires_at` null), all via `scripts/vault-set
 
 **Expected runbook apps vs repo:**
 
-- `paperworklabs` (marketing/admin): **no** `apps/paperworklabs/vercel.json` in this snapshot — would be skipped or path TBD.
-- `brain`: **no** `apps/brain/vercel.json` — only `axiomfolio-next` present among “extra” apps; brain may be API-only on Render.
+- **paperworklabs** (marketing/admin): no dedicated Vercel app config in this repo snapshot — would be skipped or path TBD.
+- **brain**: no first-class `vercel.json` for a Brain *web* app — only `axiomfolio-next` is present among the extra frontends; the Brain API is API-only on Render.
 - `axiomfolio` / `axiomfolio-next`: use **`apps/axiomfolio-next`**.
 
 No `apps/*/.vercel/project.json` files were present in the workspace (links may exist only on a developer machine).

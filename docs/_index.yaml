@@ -170,6 +170,13 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
+  - slug: chromatic-vrt
+    path: docs/infra/CHROMATIC_VRT.md
+    title: Chromatic visual regression
+    summary: "Chromatic + Storybook VRT for apps/design — setup, triage, capacity, and CI workflow."
+    tags: [design, chromatic, ci, storybook]
+    owners: [infra-ops, ux-lead]
+    category: runbooks
   - slug: clerk-satellite-topology
     path: docs/infra/CLERK_SATELLITE_TOPOLOGY.md
     title: Clerk multi-domain satellite topology
