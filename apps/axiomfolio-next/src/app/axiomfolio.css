@@ -45,6 +45,12 @@
 }
 
 :root {
+    /* Track M — AxiomFolio locked Azure + Amber (brand.mdc / PROMPTS.md); RGB triples for bg-brand-* */
+    --brand-primary: 50 116 240;
+    --brand-accent: 245 158 11;
+    --brand-ink: 15 23 42;
+    --brand-surface: 248 250 252;
+
     --background: oklch(1 0 0);
     --foreground: oklch(0.141 0.005 285.823);
     --card: oklch(1 0 0);
@@ -187,6 +193,11 @@
 }
 
 .dark {
+    --brand-primary: 96 165 250;
+    --brand-accent: 251 191 36;
+    --brand-ink: 248 250 252;
+    --brand-surface: 15 23 42;
+
     --background: oklch(0.141 0.005 285.823);
     --foreground: oklch(0.985 0 0);
     --card: oklch(0.21 0.006 285.885);
