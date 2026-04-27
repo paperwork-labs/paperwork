@@ -29,7 +29,7 @@ For the prompts that produce the assets, see [`docs/brand/PROMPTS.md`](./PROMPTS
 
 ### Framer Motion implementation (recommended)
 
-Reference component (lives in `packages/ui/src/components/brand/ClippedWordmark.tsx`; once two apps consume it, promote from app-local to package):
+Reference component (planned module `packages/ui/src/components/brand/ClippedWordmark` — ship as `ClippedWordmark.tsx`; once two apps consume it, promote from app-local to package):
 
 ```tsx
 "use client";
@@ -133,14 +133,14 @@ Use **P2 vertical mark** alone or **P3 horizontal lockup** — see `PROMPTS.md` 
 
 | Component | Location | Imports |
 | --- | --- | --- |
-| `ClipMark` (the SVG glyph alone, diagonal) | `packages/ui/src/components/brand/ClipMark.tsx` | None |
-| `VerticalMark` (P2 alone, app icon) | `packages/ui/src/components/brand/VerticalMark.tsx` | None |
-| `Wordmark` ("Paperwork Labs" Inter Tight 600) | `packages/ui/src/components/brand/Wordmark.tsx` | None |
-| `ClippedWordmark` (P5 — animated/static) | `packages/ui/src/components/brand/ClippedWordmark.tsx` | `ClipMark`, `Wordmark`, `framer-motion` |
-| `HorizontalLockup` (P3) | `packages/ui/src/components/brand/HorizontalLockup.tsx` | `ClipMark`, `Wordmark` |
-| `StackedLockup` (P4) | `packages/ui/src/components/brand/StackedLockup.tsx` | `VerticalMark`, `Wordmark` |
+| `ClipMark` (the SVG glyph alone, diagonal) | `packages/ui/src/components/brand/ClipMark` | None |
+| `VerticalMark` (P2 alone, app icon) | `packages/ui/src/components/brand/VerticalMark` | None |
+| `Wordmark` ("Paperwork Labs" Inter Tight 600) | `packages/ui/src/components/brand/Wordmark` | None |
+| `ClippedWordmark` (P5 — animated/static) | `packages/ui/src/components/brand/ClippedWordmark` | `ClipMark`, `Wordmark`, `framer-motion` |
+| `HorizontalLockup` (P3) | `packages/ui/src/components/brand/HorizontalLockup` | `ClipMark`, `Wordmark` |
+| `StackedLockup` (P4) | `packages/ui/src/components/brand/StackedLockup` | `VerticalMark`, `Wordmark` |
 
-`packages/ui` already exposes the brand surface; new components live alongside existing brand exports.
+Target home is `packages/ui` under `src/components/brand/`; add each as `*.tsx` when implemented alongside existing brand exports.
 
 ## Anti-patterns (do not ship)
 
