@@ -21,3 +21,5 @@ jobs:
       - uses: actions/checkout@v6
       - name: Verify stories live under apps/design/ only
         run: node scripts/verify-no-stories-in-packages.mjs
+      - name: Verify vercel.json canonical install pattern
+        run: node scripts/verify-vercel-json-canon.mjs

@@ -7,6 +7,24 @@ status: active
 
 # Vercel auto-promote on merge
 
+## Canonical install command
+
+Every `apps/*/vercel.json` in this repo must use the shared install script:
+
+```json
+"installCommand": "bash ../../scripts/vercel-install.sh @paperwork-labs/<app>"
+```
+
+`scripts/vercel-install.sh` reads the pnpm version from the root `package.json` `packageManager` field — there is one source of truth. Do not duplicate the `corepack enable && corepack prepare ...` chain into individual `vercel.json` files.
+
+Drift is enforced in CI by `scripts/verify-vercel-json-canon.mjs` (wired into `.github/workflows/code-quality.yaml`).
+
+The only exemptions live in the `EXEMPT` set inside the verifier:
+- `axiomfolio` — temporary, until the cutover PR lands.
+- `_archive` — not deployed.
+
+Adding a new exemption requires editing the verifier with a comment explaining why and a tracking issue.
+
 ## Why this exists
 
 Vercel's GitHub App webhook missed two consecutive merges to `main` in

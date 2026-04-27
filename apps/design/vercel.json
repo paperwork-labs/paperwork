@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "cd ../.. && corepack enable && corepack prepare pnpm@10.32.1 --activate && rm -rf node_modules/.pnpm && pnpm install --frozen-lockfile --filter=@paperwork-labs/design...",
+  "installCommand": "bash ../../scripts/vercel-install.sh @paperwork-labs/design",
   "buildCommand": "pnpm --filter @paperwork-labs/design build-storybook",
   "outputDirectory": "storybook-static",
   "git": {
