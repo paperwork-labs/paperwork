@@ -402,6 +402,13 @@ docs:
     tags: [runbook, template, ops]
     owners: [agent-ops]
     category: reference
+  - slug: secrets-ops
+    path: docs/infra/SECRETS_OPS.md
+    title: Studio vault — read / write helpers
+    summary: The Studio app exposes a Postgres-backed encrypted secrets store. These shell helpers call the Studio HTTP API so you do not need to hand-craft `curl` and JSON.
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: vercel-auto-promote
     path: docs/infra/VERCEL_AUTO_PROMOTE.md
     title: Vercel auto-promote on merge
