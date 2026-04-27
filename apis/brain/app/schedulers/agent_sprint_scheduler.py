@@ -10,12 +10,11 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
-from typing import Any
-
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
+
+from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
 from app.database import async_session_factory
@@ -24,6 +23,9 @@ from app.services.agent_sprint_store import append_sprint, in_flight_task_ids, n
 from app.services.agent_task_generator import generate
 from app.services.memory import store_episode
 from app.services.sprint_planner import parallelizability_score, select_sprint_bucket
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ async def run_agent_sprint_tick(*, reason: str = "schedule") -> dict[str, Any]:
     total_minutes = sum(t.estimated_minutes for t in bucket)
     score = parallelizability_score(bucket)
     sid = new_sprint_id()
-    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
     record = AgentSprintRecord(
         sprint_id=sid,
         generated_at=now,
@@ -113,7 +115,10 @@ async def _run_agent_sprint_job() -> None:
 def install(scheduler: AsyncIOScheduler) -> None:
     """Every 4 hours on America/Los_Angeles wall clock (6 ticks/day)."""
     if not getattr(settings, "BRAIN_OWNS_AGENT_SPRINT_SCHEDULER", False):
-        logger.info("BRAIN_OWNS_AGENT_SPRINT_SCHEDULER=false — agent sprint scheduler not installed")
+        logger.info(
+            "BRAIN_OWNS_AGENT_SPRINT_SCHEDULER=false — "
+            "agent sprint scheduler not installed"
+        )
         return
     scheduler.add_job(
         _run_agent_sprint_job,

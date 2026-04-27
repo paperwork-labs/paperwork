@@ -2,17 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from datetime import datetime
+from typing import Any
 
 from sqlalchemy import DateTime, Integer, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
-
-if TYPE_CHECKING:
-    from datetime import datetime
-
 
 class SchedulerRun(Base):
     """One execution of a scheduled job (shadow or real)."""

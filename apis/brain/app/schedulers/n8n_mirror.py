@@ -320,9 +320,7 @@ def should_register_n8n_shadow_for_job(job_id: str) -> bool:
         return False
     if job_id == "n8n_shadow_data_deep_validator" and _brain_owns_data_deep_validator():
         return False
-    if job_id == "n8n_shadow_annual_data" and _brain_owns_data_annual_update():
-        return False
-    return True
+    return not (job_id == "n8n_shadow_annual_data" and _brain_owns_data_annual_update())
 
 
 async def _run_shadow_for_spec(spec: MirrorSpec) -> None:
