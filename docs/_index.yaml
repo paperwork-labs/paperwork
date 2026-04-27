@@ -198,6 +198,13 @@ docs:
     tags: [runbook, tax, irs]
     owners: [tax-domain, legal]
     category: runbooks
+  - slug: founder-actions
+    path: docs/infra/FOUNDER_ACTIONS.md
+    title: Founder-Only Actions
+    summary: "Single-source list of one-time blockers that require founder credentials (Vercel, Render, GitHub, Clerk, DNS, Chromatic). Move completed items to Resolved with date and PR."
+    tags: [infra, founder, operations]
+    owners: [infra-ops]
+    category: runbooks
   - slug: paperwork-labs-drive-setup
     path: docs/PAPERWORK_LABS_DRIVE_SETUP.md
     title: Google Drive Setup
