@@ -82,7 +82,10 @@ async def record_secret_event(
         if isinstance(out, UUID):
             task_id = out
 
-    return {"ok": True, "episode_id": str(row.id), "task_id": str(task_id) if task_id else None}
+    out: dict[str, Any] = {"ok": True, "episode_id": str(row.id)}
+    if task_id is not None:
+        out["task_id"] = str(task_id)
+    return out
 
 
 @router.get("/registry")
