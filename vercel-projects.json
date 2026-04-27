@@ -1,0 +1,33 @@
+{
+  "teamId": "team_RwfzJ9ySyLuVcoWdKJfXC7h5",
+  "description": "Mirror of Vercel projects for operators and auto-promote wiring. projectId null = create the Vercel project first, then paste the id into .github/workflows/vercel-promote-on-merge.yaml and set skip_promote to false for that row.",
+  "projects": [
+    {
+      "project": "studio",
+      "projectId": "prj_FZvJJnDdQqawjBpJAwC0SuwyMzFT",
+      "rootDirectory": "apps/studio"
+    },
+    {
+      "project": "filefree",
+      "projectId": "prj_DNPGX5GrYcwer9oANv90NKqIT67I",
+      "rootDirectory": "apps/filefree"
+    },
+    {
+      "project": "distill",
+      "projectId": "prj_1TKlkMmY3vLVNfAfRxUY57z43m11",
+      "rootDirectory": "apps/distill"
+    },
+    {
+      "project": "launchfree",
+      "projectId": "prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7",
+      "rootDirectory": "apps/launchfree"
+    },
+    {
+      "project": "accounts",
+      "projectId": null,
+      "rootDirectory": "apps/accounts",
+      "productionDomain": "accounts.paperworklabs.com",
+      "notes": "Track H4 scaffold — create Vercel project, link apps/accounts, then fill projectId and enable promote matrix row."
+    }
+  ]
+}

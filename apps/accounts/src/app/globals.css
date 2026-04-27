@@ -1,0 +1,33 @@
+@import "tailwindcss";
+@import "@paperwork-labs/ui/themes.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Paperwork Labs parent (accounts host only) — slate ink + single amber accent */
+[data-theme="paperwork-labs"] {
+  --background: 222 47% 9%;
+  --foreground: 213 31% 96%;
+  --card: 222 47% 12%;
+  --card-foreground: 213 31% 96%;
+  --popover: 222 47% 12%;
+  --popover-foreground: 213 31% 96%;
+  --primary: 38 92% 50%;
+  --primary-foreground: 222 47% 9%;
+  --secondary: 217 19% 22%;
+  --secondary-foreground: 213 31% 96%;
+  --muted: 217 19% 22%;
+  --muted-foreground: 215 16% 57%;
+  --accent: 38 92% 50%;
+  --accent-foreground: 222 47% 9%;
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217 19% 24%;
+  --input: 217 19% 24%;
+  --ring: 38 92% 50%;
+}
+
+@layer base {
+  body {
+    @apply antialiased;
+  }
+}

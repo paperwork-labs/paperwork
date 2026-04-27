@@ -63,8 +63,10 @@ Acceptance theme for the window: operators can name the single system that fires
 ## Outcome
 
 - _Tracking — updates as each track ships_
+
 - 2026-04-26: Track K — `brain_data_source_monitor` cutover (LA tz, `BRAIN_OWNS_DATA_SOURCE_MONITOR=true`)
 - 2026-04-26: Track K — `brain_data_deep_validator` cutover (LA tz, `BRAIN_OWNS_DATA_DEEP_VALIDATOR=true`)
+- shipped 2026-04-26: **Track H4** — `apps/accounts` Next.js scaffold as primary Clerk host for `accounts.paperworklabs.com` (Paperwork ID splash + `/sign-in` / `/sign-up`, parent slate + amber Clerk appearance). PR #TBD.
 - shipped 2026-04-25: **T1.1** — Per-job `SCHEDULER_N8N_MIRROR_<ID>` flags (uppercased n8n mirror job id) with global fallback, `agent_scheduler_runs` history for each shadow execution, and `GET /api/v1/admin/scheduler/n8n-mirror/status` for last run + 24h success/error counts. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). Migration: `apis/brain/alembic/versions/002_agent_scheduler_runs.py`. PRs #148, #153.
 - shipped 2026-04-25: **T1.2** — First real Brain APScheduler job for the **Brain Daily Trigger** n8n flow: `BRAIN_OWNS_DAILY_BRIEFING` enables `brain_daily_briefing` (07:00 UTC) calling `agent.process` + `#daily-briefing`, and suppresses `n8n_shadow_brain_daily` so the mirror cannot double with production. Code: `apis/brain/app/schedulers/brain_daily_briefing.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #160; builds on PR #153 (per-job mirror flags + `agent_scheduler_runs`).
 - shipped 2026-04-26: **T1.5 — Brain Weekly Trigger** — `BRAIN_OWNS_BRAIN_WEEKLY` enables `brain_weekly_briefing` (Sundays 18:00 UTC, `0 18 * * 0`), same `agent.process` + Slack shape as `infra/hetzner/workflows/retired/brain-weekly-trigger.json` (`#all-paperwork-labs`), and suppresses `n8n_shadow_brain_weekly`. Code: `apis/brain/app/schedulers/brain_weekly_briefing.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #199.
