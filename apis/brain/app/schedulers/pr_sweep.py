@@ -239,6 +239,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install data_source_monitor job")
 
     try:
+        from app.schedulers import data_deep_validator
+
+        data_deep_validator.install(sched)
+    except Exception:
+        logger.exception("Failed to install data_deep_validator job")
+
+    try:
         from app.schedulers import infra_health
 
         infra_health.install(sched)
