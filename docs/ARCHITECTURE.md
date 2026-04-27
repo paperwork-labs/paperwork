@@ -168,7 +168,7 @@ flowchart TB
         DP["packages/document-processing<br/>OCR, extraction, bulk upload"]
         SD["packages/data<br/>50-state configs"]
         UI["packages/ui<br/>Components + themes"]
-        AUTH["packages/auth<br/>Session + middleware"]
+        AUTH["@paperwork-labs/auth-clerk<br/>shared Clerk wrappers + JWT verifier (RequireAuth, useAdmin, SignInShell, createClerkAppearance, FastAPI paperwork_auth)"]
     end
 
     subgraph b2b [Distill B2B Platform]

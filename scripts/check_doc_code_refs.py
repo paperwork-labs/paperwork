@@ -59,6 +59,26 @@ EXPECTED_DEAD: set[str] = {
     # Archived to docs/archive/VMP-SUMMARY-2026-03-18.md; merge notes in
     # VENTURE_MASTER_PLAN.md + DOCS_STREAMLINE_2026Q2.md keep provenance path.
     "docs/VMP-SUMMARY.md",
+    # PR #234 consolidated 6 per-app Clerk Appearance files into named presets
+    # in packages/auth/src/appearance/presets.ts. CLERK_*.md docs still mention
+    # the old paths in narrative copy; pending a docs rewrite that redirects to
+    # the shared package + preset names.
+    "apps/distill/src/lib/clerk-appearance.ts",
+    "apps/axiomfolio-next/src/lib/axiomfolio-clerk-appearance.ts",
+    "apps/launchfree/src/lib/launchfree-clerk-appearance.ts",
+    "apps/filefree/src/lib/filefree-clerk-appearance.ts",
+    "apps/trinkets/src/lib/trinkets-clerk-appearance.ts",
+    "apps/studio/src/lib/studio-clerk-appearance.ts",
+    # Pending design app + Chromatic wiring (FOUNDER_ACTIONS.md; paths land with apps/design PRs).
+    "apps/design/vercel.json",
+    "apps/design/chromatic.config.json",
+    "docs/infra/CHROMATIC_VRT.md",
+    # Auth / Clerk docs cite planned or not-yet-landed paths (see KNOWLEDGE, VMP, CLERK_KEY_PROPAGATION).
+    "infra/CLERK_STUDIO.md",
+    "docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md",
+    "scripts/vault-set.sh",
+    "apps/paperworklabs/vercel.json",
+    "apps/brain/vercel.json",
 }
 
 # Match:

@@ -3,6 +3,7 @@ import logging
 import subprocess
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,7 @@ from app.database import async_session_factory, engine
 from app.mcp_server import create_mcp_app
 from app.rate_limit import limiter
 from app.redis import close_redis, get_redis, init_redis
+from app.api.agent_sprints import router as agent_sprints_router
 from app.routers import admin, brain, health, webhooks
 from app.schedulers import shutdown_scheduler, start_scheduler
 from app.services.observability import init_langfuse
@@ -163,6 +165,19 @@ app.include_router(health.router)
 app.include_router(brain.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(agent_sprints_router)
+
+
+@app.get("/internal/schedulers", tags=["internal"])
+def internal_list_schedulers() -> list[dict[str, Any]]:
+    """List APScheduler jobs (id, next run, trigger, classification). Unauthenticated; read-only.
+
+    For operator / deploy verification. Lazy-imports scheduler introspection to keep app
+    import order stable.
+    """
+    from app.schedulers.introspect import list_apscheduler_jobs
+
+    return list_apscheduler_jobs()
 
 
 @app.middleware("http")

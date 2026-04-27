@@ -1,0 +1,22 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Paperwork Labs paperclip mark">
+  <title>Paperwork Labs paperclip mark</title>
+  <desc>Gem-style continuous-wire paperclip in slate ink (#0F172A) with one continuous amber (#F59E0B) span across the inner U-bend curve and the adjacent inner straight wire below it (one geometric moment, roughly 1/6 to 1/4 of total perimeter). Long axis tilts top-left at -32 degrees from vertical; constant 11-unit stroke, round caps and joins, no fills. Continuous-extended amber rule is parent-only per .cursor/rules/brand.mdc Visual grammar #4.</desc>
+  <g transform="rotate(-32 64 64)">
+    <path
+      d="M 80 18 L 80 24 A 16 16 0 0 1 96 40 L 96 88 A 24 24 0 0 1 72 112 L 56 112 A 24 24 0 0 1 32 88 L 32 40 A 16 16 0 0 1 48 24 L 64 24 M 72 88 A 8 8 0 0 1 64 96 L 48 96"
+      stroke="#0F172A"
+      stroke-width="11"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+    <path
+      d="M 64 24 A 8 8 0 0 1 72 32 L 72 88"
+      stroke="#F59E0B"
+      stroke-width="11"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      fill="none"
+    />
+  </g>
+</svg>

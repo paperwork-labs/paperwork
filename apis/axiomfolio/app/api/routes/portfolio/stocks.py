@@ -355,7 +355,7 @@ def get_realized_gains(
     row), which keeps the working set bounded even for accounts with long
     histories.
     """
-    from datetime import datetime as _dt
+    from datetime import datetime as _dt, timezone as _tz
     try:
         acct_ids = _user_account_ids(db, user.id)
         if not acct_ids:
@@ -375,7 +375,7 @@ def get_realized_gains(
         if year:
             q = q.filter(extract("year", Trade.execution_time) == year)
         else:
-            current_year = _dt.utcnow().year
+            current_year = _dt.now(_tz.utc).year
             q = q.filter(extract("year", Trade.execution_time) >= current_year - 2)
         if account_id:
             resolved = (

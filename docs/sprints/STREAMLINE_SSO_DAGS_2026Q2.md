@@ -63,6 +63,9 @@ Acceptance theme for the window: operators can name the single system that fires
 ## Outcome
 
 - _Tracking — updates as each track ships_
+- 2026-04-26: Track K — `brain_data_source_monitor` cutover (LA tz, `BRAIN_OWNS_DATA_SOURCE_MONITOR=true`)
+- 2026-04-26: Track K — `brain_data_deep_validator` cutover (LA tz, `BRAIN_OWNS_DATA_DEEP_VALIDATOR=true`)
+- 2026-04-26: Track K — `brain_data_annual_update` cutover (LA tz, `BRAIN_OWNS_DATA_ANNUAL_UPDATE=true`)
 - shipped 2026-04-25: **T1.1** — Per-job `SCHEDULER_N8N_MIRROR_<ID>` flags (uppercased n8n mirror job id) with global fallback, `agent_scheduler_runs` history for each shadow execution, and `GET /api/v1/admin/scheduler/n8n-mirror/status` for last run + 24h success/error counts. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). Migration: `apis/brain/alembic/versions/002_agent_scheduler_runs.py`. PRs #148, #153.
 - shipped 2026-04-25: **T1.2** — First real Brain APScheduler job for the **Brain Daily Trigger** n8n flow: `BRAIN_OWNS_DAILY_BRIEFING` enables `brain_daily_briefing` (07:00 UTC) calling `agent.process` + `#daily-briefing`, and suppresses `n8n_shadow_brain_daily` so the mirror cannot double with production. Code: `apis/brain/app/schedulers/brain_daily_briefing.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #160; builds on PR #153 (per-job mirror flags + `agent_scheduler_runs`).
 - shipped 2026-04-26: **T1.5 — Brain Weekly Trigger** — `BRAIN_OWNS_BRAIN_WEEKLY` enables `brain_weekly_briefing` (Sundays 18:00 UTC, `0 18 * * 0`), same `agent.process` + Slack shape as `infra/hetzner/workflows/retired/brain-weekly-trigger.json` (`#all-paperwork-labs`), and suppresses `n8n_shadow_brain_weekly`. Code: `apis/brain/app/schedulers/brain_weekly_briefing.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #199.
@@ -115,6 +118,13 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
   - `[x]` **T3.4** — AxiomFolio (`axiomfolio-next`) per-app Clerk theming: `axiomfolioClerkAppearance` (Appearance API + `@clerk/themes` dark), `ClerkAuthPageShell` on `/sign-in` and `/sign-up`, `ClerkProvider` `appearance` for `UserButton` and global Clerk UI. ([docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming))
   - `[ ]` Plan verifier paths for AxiomFolio APIs post–Next.js migration; retire parallel JWT/session schemes safely.
   - `[ ]` Communicate session cutover; keep documented Basic Auth escape hatch for Studio until explicitly removed.
+  - `[~]` **T3 consumer cutover (in flight)** — shared `@paperwork-labs/auth-clerk` package: PR [#234](https://github.com/paperwork-labs/paperwork/pull/234); `accounts.paperworklabs.com` DNS + satellite steps: [docs/infra/CLERK_ACCOUNTS_DNS_TONIGHT.md](../infra/CLERK_ACCOUNTS_DNS_TONIGHT.md) (runbook; land with Track H1).
+    - FileFree: cut consumer `/auth/login` + `/auth/register` over to Clerk `/sign-in` + `/sign-up`; remove legacy session hooks/middleware once parity; FileFree API verifies Clerk JWTs.
+    - AxiomFolio (`axiomfolio-next`): finish consumer auth on Clerk; APIs move from `qm_token` to Clerk JWT verification behind a short shadow window; backfill `clerk_user_id` by email where needed.
+    - LaunchFree + Distill + Trinkets: adopt shared `SignInShell` + locked app-name-primary wordmark tokens from the package; drop duplicate per-app `clerk-appearance` copies when consolidated.
+    - Studio: keep Clerk + `ADMIN_EMAILS` allowlist; retire Basic once operators publish a cutover date.
+    - `apps/accounts/`: host Paperwork ID headline only on `accounts.paperworklabs.com` per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md) (if present) / Track H4 plan.
+    - Python sidecars (FileFree, AxiomFolio, Brain as needed): use shared `paperwork_auth` / JWT verifier helpers aligned with the package’s Clerk JWKS contract.
 
 - **T4 — Real DAGs + workflow UX** `[~]`
   - `[x]` Replace placeholder or unreadable DAG views with layouts that survive real n8n graphs (zoom, labels, swim-lanes as needed). (`@xyflow/react` adopted in PR #147)

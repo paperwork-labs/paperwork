@@ -27,7 +27,8 @@ describe('HealthCard', () => {
     renderWithProviders(
       <HealthCard health={baseHealth} onRunSync={onRun} syncPending={false} />,
     );
-    expect(screen.getByText(/2/)).toBeInTheDocument();
+    // Avoid `/2/` / broad matchers: "2" also appears in relative times (e.g. "102d ago").
+    expect(screen.getByText('2', { selector: '.tabular-nums' })).toBeInTheDocument();
     expect(screen.getByText(/of 6 brokers connected/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /charles schwab/i })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /run sync now/i }));

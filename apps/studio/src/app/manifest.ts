@@ -17,8 +17,8 @@ export default function manifest(): MetadataRoute.Manifest {
       "Command center for Paperwork Labs — personas, medallion DAGs, cost dashboards, and runbooks.",
     startUrl: "/admin",
     scope: "/",
-    themeColor: "#0b0f14",
-    backgroundColor: "#0b0f14",
+    themeColor: "#0F172A",
+    backgroundColor: "#0F172A",
     categories: ["productivity", "business"],
     // Icon assets live in /apps/studio/public/icons/ — we reference a
     // minimal 512×512 set to match AxiomFolio's pattern. Add additional

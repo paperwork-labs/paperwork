@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@config "../../tailwind.config.ts";
 @import "@paperwork-labs/ui/themes.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -86,6 +87,15 @@
 }
 
 :root {
+  /* Track M — FileFree locked palette (brand.mdc / PROMPTS.md) */
+  --brand-primary: 79 70 229;
+  --brand-accent: 132 204 22;
+  --brand-ink: 15 23 42;
+  --brand-surface: 248 250 252;
+  --brand-surface-elevated: 255 255 255;
+  --brand-text-muted: 100 116 139;
+  --brand-border: 226 232 240;
+
   --background: 0 0% 100%;
   --foreground: 222.2 84% 4.9%;
   --card: 0 0% 100%;
@@ -121,6 +131,14 @@
 }
 
 .dark {
+  --brand-primary: 129 140 248;
+  --brand-accent: 163 230 53;
+  --brand-ink: 248 250 252;
+  --brand-surface: 2 8 23;
+  --brand-surface-elevated: 15 23 42;
+  --brand-text-muted: 148 163 184;
+  --brand-border: 51 65 85;
+
   --background: 224 71% 4%;
   --foreground: 213 31% 91%;
   --card: 224 71% 6%;

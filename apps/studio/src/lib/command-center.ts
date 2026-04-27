@@ -242,6 +242,61 @@ function getBrainApiRoot() {
   return raw.endsWith("/api/v1") ? raw : `${raw}/api/v1`;
 }
 
+/** Brain origin without ``/api/v1`` suffix — for ``/internal/*`` routes on the Brain service. */
+function getBrainServiceRoot() {
+  const raw = normalizeBaseUrl(process.env.BRAIN_API_URL);
+  if (!raw) return undefined;
+  return raw.replace(/\/api\/v1\/?$/, "");
+}
+
+export type AgentSprintTask = {
+  task_id: string;
+  title: string;
+  scope: string;
+  estimated_minutes: number;
+  agent_type: string;
+  model_hint: string;
+  depends_on: string[];
+  touches_paths: string[];
+  source: Record<string, unknown>;
+};
+
+export type AgentSprintRecord = {
+  sprint_id: string;
+  generated_at: string;
+  timezone: string;
+  tasks: AgentSprintTask[];
+  total_minutes: number;
+  parallelizability_score: number;
+  status: string;
+};
+
+export type AgentSprintsTodayPayload = {
+  sprints: AgentSprintRecord[];
+  metrics: {
+    tasks_generated_today: number;
+    sprints_generated_today: number;
+    average_sprint_size: number;
+  };
+  generated_through: string;
+};
+
+/**
+ * ``GET {BRAIN}/internal/agent-sprints/today`` — cheap-agent sprint buckets (24h window).
+ */
+export async function getAgentSprintsToday(): Promise<AgentSprintsTodayPayload | null> {
+  const base = getBrainServiceRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!base || !secret) return null;
+  const data = await fetchJson<{
+    success?: boolean;
+    data?: AgentSprintsTodayPayload;
+  }>(`${base}/internal/agent-sprints/today`, {
+    headers: { "X-Brain-Secret": secret },
+  });
+  return data?.data ?? null;
+}
+
 export async function getBrainPersonas(): Promise<BrainPersonaSpec[]> {
   const apiRoot = getBrainApiRoot();
   const secret = process.env.BRAIN_API_SECRET?.trim();
@@ -419,6 +474,117 @@ export async function getRecentSlackActivity(limit = 15): Promise<SlackActivityE
       model: ep.model_used ?? "",
       persona_pinned: Boolean(ep.metadata?.pinned || ep.metadata?.persona_pin),
     }));
+}
+
+export type BrainLearningEpisode = {
+  id: number;
+  source: string;
+  source_ref: string | null;
+  channel: string | null;
+  persona: string | null;
+  product: string | null;
+  summary: string;
+  importance: number;
+  metadata: Record<string, unknown>;
+  model_used: string | null;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  user_id: string | null;
+  created_at: string | null;
+};
+
+export type BrainLearningDecision = {
+  id: number;
+  persona: string | null;
+  summary: string;
+  outcome: unknown;
+  model_used: string | null;
+  tokens_in: number | null;
+  tokens_out: number | null;
+  created_at: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type BrainLearningSparkPoint = {
+  date: string;
+  episode_count: number;
+  decision_count: number;
+};
+
+export type BrainLearningSummary = {
+  anchor_date: string;
+  day_start_utc: string;
+  day_end_utc: string;
+  counts_by_persona_product: { persona: string | null; product: string | null; episode_count: number }[];
+  top_by_importance: BrainLearningEpisode[];
+  model_token_totals: { model: string | null; tokens_in: number; tokens_out: number }[];
+  totals: { episodes: number; routing_decisions: number; tokens_in: number; tokens_out: number };
+  spark: BrainLearningSparkPoint[];
+};
+
+/**
+ * J2/J3: `GET /api/v1/admin/brain/learning-summary` — aggregates + 14d spark.
+ * Returns null if Brain is not configured or the request fails.
+ */
+export async function getBrainLearningSummary(
+  onDate: string | undefined,
+  options?: { sparkDays?: number },
+): Promise<BrainLearningSummary | null> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) return null;
+  const u = new URL(`${apiRoot}/admin/brain/learning-summary`);
+  if (onDate) u.searchParams.set("date", onDate);
+  u.searchParams.set("spark_days", String(options?.sparkDays ?? 14));
+  const data = await fetchJson<{ success?: boolean; data?: BrainLearningSummary }>(u.toString(), {
+    headers: { "X-Brain-Secret": secret },
+  });
+  return data?.data ?? null;
+}
+
+/**
+ * J2/J3: time-bounded episodes (excludes `model_router` by default).
+ */
+export async function getBrainLearningEpisodes(params: {
+  since: string;
+  limit?: number;
+  persona?: string;
+  product?: string;
+}): Promise<BrainLearningEpisode[] | null> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) return null;
+  const u = new URL(`${apiRoot}/admin/brain/episodes`);
+  u.searchParams.set("since", params.since);
+  u.searchParams.set("limit", String(params.limit ?? 50));
+  u.searchParams.set("exclude_routing", "true");
+  if (params.persona) u.searchParams.set("persona", params.persona);
+  if (params.product !== undefined) u.searchParams.set("product", params.product);
+  const data = await fetchJson<{
+    success?: boolean;
+    data?: { episodes?: BrainLearningEpisode[] };
+  }>(u.toString(), { headers: { "X-Brain-Secret": secret } });
+  if (!data?.data) return null;
+  return data.data.episodes ?? [];
+}
+
+/** J2/J3: routing decision quality rows (`source=model_router`). */
+export async function getBrainLearningDecisions(params: {
+  since: string;
+  limit?: number;
+}): Promise<BrainLearningDecision[] | null> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) return null;
+  const u = new URL(`${apiRoot}/admin/brain/decisions`);
+  u.searchParams.set("since", params.since);
+  u.searchParams.set("limit", String(params.limit ?? 100));
+  const data = await fetchJson<{
+    success?: boolean;
+    data?: { decisions?: BrainLearningDecision[] };
+  }>(u.toString(), { headers: { "X-Brain-Secret": secret } });
+  if (!data?.data) return null;
+  return data.data.decisions ?? [];
 }
 
 export type CIRun = {

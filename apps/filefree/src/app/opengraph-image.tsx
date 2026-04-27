@@ -1,5 +1,7 @@
 import { ImageResponse } from "next/og";
 
+import { filefreeBrandOg } from "@/lib/brand-locked-og";
+
 export const runtime = "edge";
 export const alt = "FileFree — Free AI Tax Filing";
 export const size = { width: 1200, height: 630 };
@@ -16,7 +18,7 @@ export default async function Image() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "linear-gradient(135deg, #020817 0%, #0f172a 50%, #1e1b4b 100%)",
+          background: `linear-gradient(135deg, ${filefreeBrandOg.bgGradientStart} 0%, ${filefreeBrandOg.bgGradientMid} 50%, ${filefreeBrandOg.bgGradientEnd} 100%)`,
           fontFamily: "system-ui, sans-serif",
         }}
       >
@@ -33,14 +35,14 @@ export default async function Image() {
               fontSize: 72,
               fontWeight: 700,
               letterSpacing: "-0.025em",
-              color: "#e2e8f0",
+              color: filefreeBrandOg.text,
               display: "flex",
             }}
           >
             File
             <span
               style={{
-                background: "linear-gradient(to right, #8b5cf6, #9333ea)",
+                background: `linear-gradient(to right, ${filefreeBrandOg.gradientFrom}, ${filefreeBrandOg.gradientTo})`,
                 backgroundClip: "text",
                 color: "transparent",
               }}
@@ -52,7 +54,7 @@ export default async function Image() {
             style={{
               fontSize: 32,
               fontWeight: 500,
-              color: "#94a3b8",
+              color: filefreeBrandOg.textMuted,
               textAlign: "center",
               maxWidth: "700px",
               display: "flex",
@@ -65,8 +67,8 @@ export default async function Image() {
               marginTop: "16px",
               padding: "12px 32px",
               borderRadius: "8px",
-              background: "linear-gradient(to right, #7c3aed, #9333ea)",
-              color: "#ffffff",
+              background: `linear-gradient(to right, ${filefreeBrandOg.gradientFrom}, ${filefreeBrandOg.gradientTo})`,
+              color: filefreeBrandOg.text,
               fontSize: 20,
               fontWeight: 600,
               display: "flex",

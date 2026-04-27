@@ -14,7 +14,7 @@ status: active
 
 **Default-off mirror:** `SCHEDULER_N8N_MIRROR_ENABLED` defaults to `false` — there is no behavioral change in production until you set it. Shadow jobs, when enabled, only post to **`#engineering-cron-shadow`** (operator canary), not to user- or product-facing channels.
 
-**Timezone caveat (TODO T2.4):** n8n exports for some data workflows set **`settings.timezone: America/Los_Angeles`**, while Brain registers mirror crons in **UTC** using the same 5-field expression. Until cutover, wall-clock times may not match n8n for those workflows. Treat shadow runs as “expression parity,” not guaranteed LA-time parity, unless you add explicit timezone in APScheduler to match the workflow.
+**Timezone caveat (TODO T2.4):** n8n exports for some data workflows set **`settings.timezone: America/Los_Angeles`**, while Brain registers mirror crons in **UTC** using the same 5-field expression. Until cutover, wall-clock times may not match n8n for those workflows. Treat shadow runs as “expression parity,” not guaranteed LA-time parity, unless you add explicit timezone in APScheduler to match the workflow. Canonical policy and exception table: [TIMEZONE_STANDARDS.md](./TIMEZONE_STANDARDS.md).
 
 ## When this fires
 
@@ -41,12 +41,12 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | Brain Daily Trigger | `0 7 * * *` | **Cutover (T1.2):** real job `brain_daily_briefing` when `BRAIN_OWNS_DAILY_BRIEFING=true`; otherwise optional n8n shadow `n8n_shadow_brain_daily` |
 | Brain Weekly Trigger | `0 18 * * 0` | **Cutover (T1.5 — Brain Weekly):** real job `brain_weekly_briefing` when `BRAIN_OWNS_BRAIN_WEEKLY=true`; otherwise optional n8n shadow `n8n_shadow_brain_weekly` |
 | Sprint Kickoff | `0 7 * * 1` | **Cutover (Track K):** real job `brain_sprint_kickoff` when `BRAIN_OWNS_SPRINT_KICKOFF=true`; otherwise optional n8n shadow `n8n_shadow_sprint_kickoff` |
-| Sprint Close | `0 21 * * 5` | shadow |
+| Sprint Close | `0 21 * * 5` | **Cutover (Track K):** real job `brain_sprint_close` when `BRAIN_OWNS_SPRINT_CLOSE=true`; otherwise optional n8n shadow `n8n_shadow_sprint_close` |
 | Weekly Strategy Check-in | `0 9 * * 1` | **Cutover (T1.6):** real job `brain_weekly_strategy` when `BRAIN_OWNS_WEEKLY_STRATEGY=true`; otherwise optional n8n shadow `n8n_shadow_weekly_strategy` |
 | Infra Heartbeat | `0 8 * * *` | shadow — or first-party `brain_infra_heartbeat` when `BRAIN_OWNS_INFRA_HEARTBEAT=true` (T1.3) |
-| Data Source Monitor (P2.8) | `0 6 * * 1` (see LA caveat above) | shadow |
-| Data Deep Validator (P2.9) | `0 3 1 * *` (see LA caveat) | shadow |
-| Annual Data Update Trigger (P2.10) | `0 9 1 10 *` (see LA caveat) | shadow |
+| Data Source Monitor (P2.8) | `0 6 * * 1` — **first-party Brain:** Mon **06:00 PT (DST-aware)** (`America/Los_Angeles`); n8n shadows in this runbook still use UTC for the same 5-field expression (see caveat above) | **Cutover (Track K):** real job `brain_data_source_monitor` when `BRAIN_OWNS_DATA_SOURCE_MONITOR=true`; otherwise optional n8n shadow `n8n_shadow_data_source_monitor` |
+| Data Deep Validator (P2.9) | `0 3 1 * *` — **first-party Brain:** 1st of month **03:00 PT (DST-aware)** (`America/Los_Angeles`); n8n shadows in this runbook still use UTC for the same 5-field expression (see caveat above) | **Cutover (Track K):** real job `brain_data_deep_validator` when `BRAIN_OWNS_DATA_DEEP_VALIDATOR=true`; otherwise optional n8n shadow `n8n_shadow_data_deep_validator` |
+| Annual Data Update Trigger (P2.10) | `0 9 1 10 *` — **first-party Brain:** 1 Oct **09:00 PT (DST-aware)** (`America/Los_Angeles`); n8n shadows in this runbook use UTC for the same expression (see caveat above) | **Cutover (Track K):** real job `brain_data_annual_update` when `BRAIN_OWNS_DATA_ANNUAL_UPDATE=true`; otherwise optional n8n shadow `n8n_shadow_annual_data` |
 | Infra Health Check | every **30** minutes (``IntervalTrigger``) | **Cutover (T1, interval):** first-party `brain_infra_health` when `BRAIN_OWNS_INFRA_HEALTH=true`; otherwise optional n8n shadow `n8n_shadow_infra_health` |
 | Credential Expiry Check | `0 8 * * *` | shadow — or first-party `brain_credential_expiry` when `BRAIN_OWNS_CREDENTIAL_EXPIRY=true` (T1.4) |
 
@@ -61,6 +61,11 @@ Source JSON uses `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | `SCHEDULER_N8N_MIRROR_ENABLED` | `false` | When `true`, register **all** n8n shadow mirror jobs (subject to per-job overrides below). Requires the rest of the scheduler: `BRAIN_SCHEDULER_ENABLED=true`. |
 | `SCHEDULER_N8N_MIRROR_<ID>` | _(unset)_ | **Per-mirror opt-in (or opt-out).** When set, that job uses this boolean instead of the global. `<ID>` is the mirror **job_id** in uppercase with underscores, e.g. `SCHEDULER_N8N_MIRROR_N8N_SHADOW_BRAIN_DAILY=true`. If unset, the job follows `SCHEDULER_N8N_MIRROR_ENABLED`. |
 | `BRAIN_SCHEDULER_ENABLED` | `true` | Master switch for starting APScheduler (including job store and mirrors). |
+| `BRAIN_LEARNING_DASHBOARD_ENABLED` | `true` | J2/J3: When `true`, `GET /api/v1/admin/brain/*` (episodes, decisions, learning-summary) are enabled for Studio `/admin/brain-learning`. Set `false` to hard-disable those read-only routes without changing scheduler code. |
+| `BRAIN_OWNS_AGENT_SPRINT_SCHEDULER` | `false` | When `true`, registers `brain_agent_sprint_planner` (cheap-agent sprint buckets, LA cron). See [AGENT_SPRINT_PLANNING.md](./AGENT_SPRINT_PLANNING.md). |
+| `BRAIN_AGENT_SPRINT_MAX_TASKS` | `8` | Max tasks per generated sprint. |
+| `BRAIN_AGENT_SPRINT_DAY_CAP_MINUTES` | `480` | Estimated minutes ceiling per sprint. |
+| `BRAIN_AGENT_SPRINT_WRITE_TRACKER` | `false` | When `true`, appends sprint digest to `tracker-index.json` (`cheap_agent_sprints`) if `REPO_ROOT` is writable. |
 | `DATABASE_URL` | (dev default) | Must be reachably Postgres. Async URL uses `+asyncpg`; the job store uses a sync `postgresql://` form (no `+asyncpg`). |
 
 Per-job ``BRAIN_OWNS_*`` flags are read with ``os.getenv`` in each scheduler (and in ``n8n_mirror.py`` for shadow suppression); they are documented below by class, not duplicated as a flat env table.
@@ -75,19 +80,24 @@ First-party Brain jobs that replace exported n8n crons. Each has a row in ``N8N_
 | `brain_weekly_briefing` | `0 18 * * 0` | `BRAIN_OWNS_BRAIN_WEEKLY` | `n8n_shadow_brain_weekly` |
 | `brain_weekly_strategy` | `0 9 * * 1` | `BRAIN_OWNS_WEEKLY_STRATEGY` | `n8n_shadow_weekly_strategy` |
 | `brain_sprint_kickoff` | `0 7 * * 1` | `BRAIN_OWNS_SPRINT_KICKOFF` | `n8n_shadow_sprint_kickoff` |
+| `brain_sprint_close` | `0 21 * * 5` | `BRAIN_OWNS_SPRINT_CLOSE` | `n8n_shadow_sprint_close` |
 | `brain_infra_heartbeat` | `0 8 * * *` | `BRAIN_OWNS_INFRA_HEARTBEAT` | `n8n_shadow_infra_heartbeat` |
 | `brain_credential_expiry` | `0 8 * * *` | `BRAIN_OWNS_CREDENTIAL_EXPIRY` | `n8n_shadow_credential_expiry` |
 | `brain_infra_health` | every **30** min (`IntervalTrigger`) | `BRAIN_OWNS_INFRA_HEALTH` | `n8n_shadow_infra_health` |
+| `brain_data_source_monitor` | `0 6 * * 1` (tz `America/Los_Angeles`; Mon 06:00 PT, DST-aware) | `BRAIN_OWNS_DATA_SOURCE_MONITOR` | `n8n_shadow_data_source_monitor` |
+| `brain_data_deep_validator` | `0 3 1 * *` (tz `America/Los_Angeles`; 1st-of-month 03:00 PT, DST-aware) | `BRAIN_OWNS_DATA_DEEP_VALIDATOR` | `n8n_shadow_data_deep_validator` |
+| `brain_data_annual_update` | `0 9 1 10 *` (tz `America/Los_Angeles`; 1 Oct 09:00 PT, DST-aware) | `BRAIN_OWNS_DATA_ANNUAL_UPDATE` | `n8n_shadow_annual_data` |
 
 **Infra Health Check (`brain_infra_health`) — dedup and reminders:** The exported n8n flow (`retired/infra-health-check.json`) posts to Slack only when the **fingerprint** of the n8n liveness + workflow count changes, or on transition from unhealthy → healthy. The Brain port matches that (Redis keys under `brain:infra_health:*` when Redis is available; otherwise in-process state for the lifetime of the process). If the system stays **unhealthy** with an unchanged fingerprint, Brain re-alerts after **`INFRA_HEALTH_REMINDER_HOURS`** (default **4**), so sustained incidents are not silent forever.
 
-Sprint close, data monitors, and annual update remain **shadow-only** in ``n8n_mirror.py`` until their cutover PRs land (separate from this doc section).
+P2.8, P2.9, and P2.10 first-party jobs are listed in the **Cutover gates** table above; optional n8n shadow rows remain in `n8n_mirror.N8N_MIRROR_SPECS` until the corresponding `BRAIN_OWNS_*` flag is set.
 
 ### Operational gates (intentionally default off)
 
 | Scheduler / `job_id` | Schedule (UTC) | Render env flag | Why gated |
 | --- | --- | --- | --- |
 | `sprint_auto_logger` | `*/15 * * * *` | `BRAIN_OWNS_SPRINT_AUTO_LOGGER` | Opens **batched bot PRs** that edit `docs/sprints/*.md`; no n8n shadow. Flip after validating GitHub token scopes and a canary tick. Manual backfill: `cd apis/brain && python -m app.cli.sprint_auto_logger_cli --since YYYY-MM-DD`. |
+| `brain_agent_sprint_planner` | `0 */4 * * *` (tz `America/Los_Angeles`) | `BRAIN_OWNS_AGENT_SPRINT_SCHEDULER` | Heuristic cheap-agent tasks → 1-day buckets; persists under `apis/brain/data/`. HTTP: `/internal/agent-sprints/today`, `/internal/agent-sprints/regenerate`. See [AGENT_SPRINT_PLANNING.md](./AGENT_SPRINT_PLANNING.md). |
 
 ### Net-new (no `BRAIN_OWNS_*` / on when `BRAIN_SCHEDULER_ENABLED`)
 
@@ -102,6 +112,8 @@ Sprint close, data monitors, and annual update remain **shadow-only** in ``n8n_m
 | `merged_prs_ingest` | interval (default 6h) | Merged PRs → memory |
 | `ingest_decisions_daily` | daily 03:00 | ADR docs → memory |
 | `ingest_postmortems_daily` | daily 03:30 | Postmortems / incidents → memory |
+
+**Job list (process):** `GET /internal/schedulers` returns the current APScheduler registry (``id``, ``next_run``, ``trigger``, ``classification``: `net-new` / `cutover` / `operational` / `n8n-shadow`). Unauthenticated — use for deploy verification or behind an edge allowlist.
 
 ### Read-only mirror status
 
@@ -178,8 +190,8 @@ ORDER BY id;
 
 - Decision log: [Company Knowledge](../KNOWLEDGE.md) (2026-04-25 — Brain owns schedules; SQLAlchemy job store).
 - Sprint: [Streamline + SSO + Real DAGs](../sprints/STREAMLINE_SSO_DAGS_2026Q2.md) (T1 orchestration / shadow period).
-- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/brain_weekly_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/sprint_kickoff.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/infra_health.py`, `apis/brain/app/schedulers/credential_expiry.py`.
+- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/brain_weekly_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/sprint_kickoff.py`, `apis/brain/app/schedulers/sprint_close.py`, `apis/brain/app/schedulers/data_source_monitor.py`, `apis/brain/app/schedulers/data_deep_validator.py`, `apis/brain/app/schedulers/data_annual_update.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/infra_health.py`, `apis/brain/app/schedulers/credential_expiry.py`.
 
 ---
 
-**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_brain_weekly.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_sprint_kickoff.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_infra_health.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
+**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_brain_weekly.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_sprint_kickoff.py`, `apis/brain/tests/test_schedulers/test_sprint_close.py`, `apis/brain/tests/test_schedulers/test_data_source_monitor.py`, `apis/brain/tests/test_schedulers/test_data_deep_validator.py`, `apis/brain/tests/test_schedulers/test_data_annual_update.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_infra_health.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
