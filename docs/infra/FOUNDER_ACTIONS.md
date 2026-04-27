@@ -23,7 +23,7 @@ The legacy `axiomfolio` Vercel project (framework=vite) is being retired in favo
 
 After (1), the script in this PR is no longer needed (it patched the legacy project as a fallback in case domains take a while to move). After (2), production AxiomFolio deploys exclusively from `axiomfolio-next`.
 
-Tracked in: `chore/axiomfolio-vercel-cutover` (PR ##).
+Tracked in: `chore/axiomfolio-vercel-cutover` ([#306](https://github.com/paperwork-labs/paperwork/pull/306)).
 
 ## Pending — Critical (blocks production)
 
