@@ -32,6 +32,7 @@ select = [
 ignore = ["PTH"]
 
 [tool.ruff.lint.per-file-ignores]
+"app/models/scheduler_run.py" = ["TC003"]  # SQLAlchemy resolves Mapped[datetime] at class body time
 "app/routers/**" = ["B008", "ARG001"]
 "app/dependencies.py" = ["B008"]
 
