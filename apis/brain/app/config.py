@@ -1,4 +1,4 @@
-from pydantic import AliasChoices, Field, model_validator
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -118,10 +118,7 @@ class Settings(BaseSettings):
 
     # Infra health tools (optional; empty = tool reports not configured)
     RENDER_API_KEY: str = ""
-    VERCEL_API_TOKEN: str = Field(
-        default="",
-        validation_alias=AliasChoices("VERCEL_API_TOKEN", "VERCEL_TOKEN"),
-    )
+    VERCEL_API_TOKEN: str = ""
     NEON_API_KEY: str = ""
     N8N_URL: str = "https://n8n.paperworklabs.com"
     N8N_API_KEY: str = ""

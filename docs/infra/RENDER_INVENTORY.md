@@ -77,9 +77,9 @@ a 10-line revert PR plus one Sync Blueprint click. F-2 reopens if the
 LaunchFree frontend is wired to a live API and the service still isn't
 provisioned.
 
-### F-3 — Env var naming: `VERCEL_API_TOKEN` (consolidated)
+### F-3 — Env var naming: `VERCEL_API_TOKEN` (consolidated) — **done (2026-04-27, Track I2)**
 
-**Canonical name**: `VERCEL_API_TOKEN` everywhere — root `render.yaml` brain-api block, Studio (`apps/studio/src/lib/command-center.ts` and related), GitHub Actions (`vercel-promote-on-merge.yaml`), and Brain settings (`apis/brain/app/config.py` field `VERCEL_API_TOKEN`). Brain still accepts a legacy `VERCEL_TOKEN` env key via pydantic `AliasChoices` until the operator removes it from the Render dashboard after cutover.
+**Canonical name**: `VERCEL_API_TOKEN` everywhere — root `render.yaml` brain-api block, Studio (`apps/studio/src/lib/command-center.ts` and related), GitHub Actions (`vercel-promote-on-merge.yaml`), and Brain settings (`apis/brain/app/config.py` field `VERCEL_API_TOKEN`). Operators should ensure Render `brain-api` declares only this key name; remove a duplicate env row still named `VERCEL_TOKEN` if present (same secret value, renamed).
 
 ### F-4 — Blueprint contents disagree with live services
 
@@ -177,7 +177,7 @@ Runbook: [RENDER_REPOINT.md → Path A](RENDER_REPOINT.md#path-a-brain-api-docke
 - [x] Inventory (this doc) exists.
 - [ ] F-1: AxiomFolio services repointed to monorepo via consolidated Blueprint Sync; old `paperwork-labs/axiomfolio` repo archived after 24h green.
 - [x] F-2: `launchfree-api` decision — commented out in `render.yaml` (2026-04-25, PR #144); reopens if frontend wires to live API and service still isn't provisioned.
-- [x] F-3: env var naming reconciled to `VERCEL_API_TOKEN` (code + blueprint; remove duplicate `VERCEL_TOKEN` in Render when safe).
+- [x] F-3: env var naming reconciled to `VERCEL_API_TOKEN` (code + blueprint; Track I2 removed Brain `VERCEL_TOKEN` alias — founder renames/removes legacy key in Render dashboard if still present).
 - [x] F-4: single `render.yaml` is the source of truth; `apis/axiomfolio/render.yaml` reduced to a stub pointer; **`axiomfolio-frontend` removed from blueprint 2026-04-27 (Track F4)** — delete stale dashboard service post–I1.
 - [ ] F-5: `GITHUB_WEBHOOK_SECRET` added to `brain-api` env (declared in blueprint with `sync: false`; operator must paste actual value).
 - [x] F-6: `brain-api` Docker Build Context Directory cleared; latest `main` SHA `f0255542` is live (deploy `dep-d7m63jeffeas73bmkeeg`).
@@ -200,3 +200,5 @@ for url in \
   echo "=== $url ==="; curl -sS -m 10 "$url"; echo
 done
 ```
+
+*Renamed from `VERCEL_TOKEN` to canonical `VERCEL_API_TOKEN` per Track I2 (2026-04-27).*

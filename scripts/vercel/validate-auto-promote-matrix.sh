@@ -5,7 +5,7 @@
 # Optional: pass a merge commit SHA as the first argument (or set MERGE_SHA)
 # to assert the newest READY preview matches meta.githubCommitSha (full or prefix).
 #
-# Requires: VERCEL_API_TOKEN or VERCEL_TOKEN in the environment.
+# Requires: VERCEL_API_TOKEN in the environment.
 # On HTTP 429, logs a warning and skips remaining API calls (rate-limit safe).
 
 set -euo pipefail
@@ -13,7 +13,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 JSON="$ROOT/scripts/vercel-projects.json"
 TEAM_ID="$(jq -r '.teamId' "$JSON")"
-TOKEN="${VERCEL_API_TOKEN:-${VERCEL_TOKEN:-}}"
+TOKEN="${VERCEL_API_TOKEN:-}"
 
 MERGE_SHA="${1:-${MERGE_SHA:-}}"
 if [ -n "$MERGE_SHA" ]; then
@@ -21,7 +21,7 @@ if [ -n "$MERGE_SHA" ]; then
 fi
 
 if [ -z "$TOKEN" ]; then
-  echo "WARN: VERCEL_API_TOKEN / VERCEL_TOKEN not set — skipping Vercel API validation."
+  echo "WARN: VERCEL_API_TOKEN not set — skipping Vercel API validation."
   exit 0
 fi
 

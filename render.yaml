@@ -148,7 +148,7 @@ services:
       - key: RENDER_API_KEY
         sync: false
       # Canonical: VERCEL_API_TOKEN (Studio + Brain; see docs/infra/RENDER_INVENTORY.md F-3).
-      # Legacy env key VERCEL_TOKEN is still read by Brain via pydantic alias during cutover — remove in Render when unused.
+      # If the Render dashboard still shows the old key name, rename it to VERCEL_API_TOKEN (same secret value).
       - key: VERCEL_API_TOKEN
         sync: false
       - key: GITHUB_WEBHOOK_SECRET

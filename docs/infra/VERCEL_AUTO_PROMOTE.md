@@ -93,7 +93,7 @@ If you need to override a project id **without** editing the workflow (e.g. desi
 
 ## Dry-run validation (local)
 
-From the repo root, with `VERCEL_API_TOKEN` or `VERCEL_TOKEN` set:
+From the repo root, with `VERCEL_API_TOKEN` set:
 
 ```bash
 ./scripts/vercel/validate-auto-promote-matrix.sh
@@ -174,3 +174,5 @@ Promote calls do not consume Vercel build credits. GitHub Actions time is a few 
 - `scripts/vercel/validate-auto-promote-matrix.sh`
 - `docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md`
 - `docs/infra/RENDER_INVENTORY.md` — Brain / Render vs Vercel split
+
+*Renamed from `VERCEL_TOKEN` to canonical `VERCEL_API_TOKEN` per Track I2 (2026-04-27).*

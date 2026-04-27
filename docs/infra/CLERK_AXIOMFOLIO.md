@@ -24,14 +24,14 @@ AxiomFolio uses embedded auth on `/sign-in` and `/sign-up`, not the hosted Accou
 
 Aligns with `<ClerkProvider signInUrl` / `signUpUrl` in `apps/axiomfolio/src/app/layout.tsx`. Do not set `NEXT_PUBLIC_CLERK_DOMAIN` or change Clerk keys for this.
 
-**Branding:** `axiomfolio-clerk-appearance.ts` hides Clerk footer chrome; auth pages show **Paperwork Labs** / **Single Sign-On** above the form.
+**Branding:** the shared AxiomFolio preset in `packages/auth/src/appearance/presets.ts` hides Clerk footer chrome; auth pages show **Paperwork Labs** / **Single Sign-On** above the form.
 
 ## Theming
 
-- **Appearance object** — `apps/axiomfolio/src/lib/axiomfolio-clerk-appearance.ts` exports `axiomfolioClerkAppearance`. It uses `baseTheme: dark` from `@clerk/themes` and maps Clerk `variables` to the app’s CSS tokens from `src/app/axiomfolio.css` (oklch `--primary`, `--background`, `--foreground`, `--input`, etc.). The `elements` block applies Tailwind classes for the card, primary button, social buttons, and `UserButton` so sign-in, sign-up, and account controls match the dark blue canvas + gold primary accent.
-- **Provider** — `RootLayout` passes `appearance={axiomfolioClerkAppearance}` to `<ClerkProvider>` so `UserButton` and any other top-level Clerk UI inherits the theme.
+- **Appearance object** — `packages/auth/src/appearance/presets.ts` exports `axiomfolioAppearance` (see `createClerkAppearance` mapping: CSS variable tokens, card/input/social classes). AxiomFolio pulls it from `@paperwork-labs/auth-clerk/appearance` alongside the app’s tokens in `apps/axiomfolio/src/app/globals.css`.
+- **Provider** — `RootLayout` passes `appearance={axiomfolioAppearance}` to `<ClerkProvider>` in `apps/axiomfolio/src/app/layout.tsx` so `UserButton` and any other top-level Clerk UI inherits the theme.
 - **Auth routes** — `/sign-in` and `/sign-up` wrap `<SignIn />` / `<SignUp />` in `ClerkAuthPageShell` (gradient + AxiomFolio logo and tagline, aligned with `AuthLayout` for legacy auth).
-- **Tweaking** — Adjust colors by editing the CSS variables in `axiomfolio.css` (`.dark` and `@theme`); for Clerk-only polish, edit the `elements` map in the appearance file. Keep `@clerk/themes` in lockstep with other Paperwork apps (`^2.4.x` range in `package.json`).
+- **Tweaking** — Adjust colors by editing the CSS variables in `apps/axiomfolio/src/app/globals.css` (`.dark` and `@theme`); for Clerk-only polish, edit `axiomfolioAppearance` in `packages/auth/src/appearance/presets.ts`. Keep `@clerk/themes` in lockstep with other Paperwork apps (`^2.4.x` range in `package.json`).
 
 ## How Clerk and `qm_token` coexist
 

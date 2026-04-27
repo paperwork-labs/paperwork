@@ -28,8 +28,8 @@ the remaining routes were grouped into parallel sub-subagent batches.
 
 ## Methodology
 
-- Vite routes were enumerated from `apps/axiomfolio/src/App.tsx` (removed
-  2026-04-27; use git history for the React Router root).
+- Vite routes were enumerated from `apps/_archive/axiomfolio-vite/src/App.tsx` (archived
+  2026-04-27 when the Vite tree moved under `_archive/`; use git history for older snapshots).
 - Next routes were enumerated from `apps/axiomfolio/src/app/**/page.tsx` via `Glob`.
 - A "real port" is a `page.tsx` that renders an actual ported client
   component (e.g. `<MarketDashboardClient />`). A "stub" is a page that

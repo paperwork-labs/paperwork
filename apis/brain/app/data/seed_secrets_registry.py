@@ -125,7 +125,7 @@ _SEED_ENTRIES: list[dict[str, Any]] = [
         "rotation_cadence_days": 0,
     },
     {
-        "name": "VERCEL_TOKEN",
+        "name": "VERCEL_API_TOKEN",
         "purpose": "Vercel API — deploys, env sync, project automation",
         "service": "vercel",
         "format_hint": "bearer token",

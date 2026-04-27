@@ -89,7 +89,7 @@ Vault and remote values are compared using **length + 8-char prefix + SHA-256** 
 Required configuration for meaningful drift checks:
 
 - `STUDIO_URL`, `SECRETS_API_KEY` — read Studio vault.
-- `VERCEL_API_TOKEN` (or `VERCEL_TOKEN`), optional `VERCEL_TEAM_ID`, and `BRAIN_SECRETS_VERCEL_APP_PROJECTS` JSON (app slug → Vercel project id/name).
+- `VERCEL_API_TOKEN`, optional `VERCEL_TEAM_ID`, and `BRAIN_SECRETS_VERCEL_APP_PROJECTS` JSON (app slug → Vercel project id/name).
 - `RENDER_API_KEY` and `BRAIN_SECRETS_RENDER_SERVICE_IDS` JSON (service label → Render service id).
 
 ## Integration
@@ -113,3 +113,5 @@ Required configuration for meaningful drift checks:
 - Full `/admin/secrets/intelligence` page.
 - Per-secret health probes with richer SLOs.
 - Tighter Render/Vercel project auto-discovery from org APIs.
+
+*Renamed from `VERCEL_TOKEN` to canonical `VERCEL_API_TOKEN` per Track I2 (2026-04-27).*
