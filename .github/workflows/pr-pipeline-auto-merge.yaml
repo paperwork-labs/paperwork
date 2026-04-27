@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   run:
-    if: github.repository == 'paperwork-labs/paperwork' && (github.event_name != 'check_suite' || github.event.check_suite.conclusion != null)
+    if: github.repository == 'paperwork-labs/paperwork'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
