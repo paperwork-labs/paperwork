@@ -15,7 +15,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 
 from app.database import get_db
@@ -81,7 +81,7 @@ def _record_sync_rejection(
 ) -> None:
     """Record a sync attempt that failed before Celery (API-level rejection/failure).
     Caller must commit; this only adds the record to the session."""
-    now = datetime.now()
+    now = datetime.now(UTC)
     record = AccountSync(
         account_id=account_id,
         sync_type=sync_type,
@@ -158,7 +158,7 @@ async def add_broker_account(
             margin_enabled=False,  # Will be updated during sync
             options_enabled=False,  # Will be updated during sync
             futures_enabled=False,  # Will be updated during sync
-            created_at=datetime.now(),
+            created_at=datetime.now(UTC),
         )
 
         db.add(broker_account)
@@ -315,7 +315,7 @@ async def update_account(
             account.status = AccountStatus.INACTIVE
         elif account.status == AccountStatus.INACTIVE:
             account.status = AccountStatus.ACTIVE
-    account.updated_at = datetime.now()
+    account.updated_at = datetime.now(UTC)
     db.commit()
     return {"message": "Account updated"}
 
@@ -502,7 +502,7 @@ async def sync_broker_account(
 
         # Mark as QUEUED; the Celery task will set RUNNING when it starts
         account.sync_status = SyncStatus.QUEUED
-        account.last_sync_attempt = datetime.now()
+        account.last_sync_attempt = datetime.now(UTC)
         account.sync_error_message = None
         db.commit()
 
@@ -570,7 +570,7 @@ async def delete_broker_account(
         # Soft delete - just disable the account
         account.is_enabled = False
         account.status = AccountStatus.INACTIVE
-        account.updated_at = datetime.now()
+        account.updated_at = datetime.now(UTC)
 
         db.commit()
         return {"message": f"Account {account.account_number} disabled successfully"}

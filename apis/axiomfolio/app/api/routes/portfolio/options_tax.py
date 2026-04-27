@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Literal, Optional
 
@@ -158,7 +158,7 @@ def get_open_options_tax_summary(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Any]:
     """List open option positions with unrealized PnL and holding-term class."""
-    as_of = date.today()
+    as_of = datetime.now(UTC).date()
     acct_ids = _user_account_ids(db, current_user.id)
     if not acct_ids:
         rows = []
@@ -218,7 +218,7 @@ def get_realized_options_tax(
     ),
 ) -> Dict[str, Any]:
     """Closed option lots (realized PnL) for Tax Center, grouped by holding class."""
-    tax_year = year if year is not None else date.today().year
+    tax_year = year if year is not None else datetime.now(UTC).date().year
     acct_ids = _user_account_ids(db, current_user.id)
     if not acct_ids:
         payload = RealizedOptionsTaxResponse(

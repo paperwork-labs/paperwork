@@ -11,7 +11,7 @@ import asyncio
 import logging
 import aiohttp
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Dict, List, Optional
 import os
 import sys
@@ -602,7 +602,7 @@ class IBKRFlexQueryClient:
                         "source": "ibkr_trades_reconstructed",
                         "acquisition_date": lot["acquisition_date"],
                         "trade_id": lot["trade_id"],
-                        "last_updated": datetime.now().isoformat(),
+                        "last_updated": datetime.now(UTC).isoformat(),
                     }
 
                     tax_lots.append(tax_lot)
@@ -685,7 +685,7 @@ class IBKRFlexQueryClient:
                     # Parse expiry date
                     try:
                         expiry_datetime = (
-                            datetime.strptime(expiry_date, "%Y%m%d")
+                            datetime.strptime(expiry_date, "%Y%m%d").replace(tzinfo=UTC)
                             if expiry_date
                             else None
                         )
@@ -941,7 +941,7 @@ class IBKRFlexQueryClient:
                     # Parse dates
                     try:
                         expiry_datetime = (
-                            datetime.strptime(expiry_date, "%Y%m%d")
+                            datetime.strptime(expiry_date, "%Y%m%d").replace(tzinfo=UTC)
                             if expiry_date
                             else None
                         )
@@ -950,7 +950,7 @@ class IBKRFlexQueryClient:
 
                     try:
                         exercise_datetime = (
-                            datetime.strptime(exercise_date, "%Y%m%d")
+                            datetime.strptime(exercise_date, "%Y%m%d").replace(tzinfo=UTC)
                             if exercise_date
                             else None
                         )
@@ -959,7 +959,7 @@ class IBKRFlexQueryClient:
 
                     try:
                         assignment_datetime = (
-                            datetime.strptime(assignment_date, "%Y%m%d")
+                            datetime.strptime(assignment_date, "%Y%m%d").replace(tzinfo=UTC)
                             if assignment_date
                             else None
                         )
@@ -1449,11 +1449,11 @@ class IBKRFlexQueryClient:
         try:
             # FlexQuery dates are typically in format: YYYY-MM-DD, YYYY-MM-DD HH:MM:SS, or YYYYMMDD
             if len(date_str) == 8:  # YYYYMMDD (common in FlexQuery)
-                return datetime.strptime(date_str, "%Y%m%d")
+                return datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=UTC)
             elif len(date_str) == 10:  # YYYY-MM-DD
-                return datetime.strptime(date_str, "%Y-%m-%d")
+                return datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=UTC)
             elif len(date_str) == 19:  # YYYY-MM-DD HH:MM:SS
-                return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+                return datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
             else:
                 logger.warning(f"Unknown date format: {date_str}")
                 return None  # Return None instead of current time for unknown formats
@@ -1645,7 +1645,7 @@ class IBKRFlexQueryClient:
                                 "balance_date": (
                                     self._parse_flexquery_date(to_date)
                                     if to_date
-                                    else datetime.now().date()
+                                    else datetime.now(UTC).date()
                                 ),
                                 "balance_type": "DAILY_SNAPSHOT",
                                 "base_currency": info.get("baseCurrency", "USD"),

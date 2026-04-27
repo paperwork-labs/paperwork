@@ -25,11 +25,11 @@ def test_snapshot_last_n_days_writes_rows(db_session, monkeypatch):
 
     # Create a tiny SPY calendar (5 days)
     spy_dates = [
-        datetime(2026, 1, 1),
-        datetime(2026, 1, 2),
-        datetime(2026, 1, 3),
-        datetime(2026, 1, 4),
-        datetime(2026, 1, 5),
+        datetime(2026, 1, 1, tzinfo=UTC),
+        datetime(2026, 1, 2, tzinfo=UTC),
+        datetime(2026, 1, 3, tzinfo=UTC),
+        datetime(2026, 1, 4, tzinfo=UTC),
+        datetime(2026, 1, 5, tzinfo=UTC),
     ]
     for d in spy_dates:
         db_session.add(

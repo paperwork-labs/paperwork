@@ -31,7 +31,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Iterable, List, Optional, Sequence, Tuple
 
@@ -363,7 +363,7 @@ def _normalize_ibkr_chain(chain: dict) -> List[dict[str, Any]]:
             s = exp_key.strip()
             for fmt in ("%Y%m%d", "%Y-%m-%d"):
                 try:
-                    exp_d = datetime.strptime(s, fmt).date()
+                    exp_d = datetime.strptime(s, fmt).replace(tzinfo=UTC).date()
                     break
                 except ValueError:
                     continue

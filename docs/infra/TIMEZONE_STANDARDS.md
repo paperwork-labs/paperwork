@@ -93,12 +93,18 @@ Any code that calls `datetime.now(...)` should be testable with a **fake clock**
 
 ## Lint enforcement
 
-| Package | Ruff | Notes |
-| ------- | ---- | ----- |
-| `apis/brain` | `extend-select = ["DTZ"]` | **Blocking in CI** (`ruff check .` in Brain workflow). |
-| `apis/axiomfolio` | `select = ["DTZ003"]` | Bans **`utcnow`** when running `ruff check` (narrow gate); expand to full **DTZ** after the broad `datetime.now()` sweep (~182 findings as of 2026-04-26). Not yet in AxiomFolio CI. |
+| Location | Ruff / enforcement | Notes |
+| -------- | ------------------ | ----- |
+| `apis/brain` | `extend-select = ["DTZ"]` | Full Ruff; prefer **Brain** CI / local `ruff check` |
+| `apis/axiomfolio` | `select = ["DTZ"]` | Full `DTZ` (not only `DTZ003`) |
+| `apis/filefree` | `select` includes `DTZ` | Medallion API |
+| `apis/launchfree` | `select` includes `DTZ` | `pyproject.toml` in service root |
+| `packages/auth` (`paperwork_auth`) | `select` includes `DTZ` | Shared library |
+| **Repo root** | `select` includes `DTZ` | `pyproject.toml` for shared conventions |
 
-Optional **pre-commit** (repo-wide): add a hook running `ruff check --select DTZ` on `apis/*`.
+- **CI:** `.github/workflows/timezone-discipline.yaml` runs `ruff check … --select DTZ` for each Python package above.
+- **Cursor / agents:** `.cursor/rules/timezone.mdc` (5-bullet lock). Engineering overview links from `.cursor/rules/engineering.mdc`.
+- **UI helper:** ``@paperwork-labs/ui`` `formatInUserTZ` in `packages/ui/src/lib/datetime.ts` (display-only; data stays UTC until render).
 
 ## Follow-up / founder–product decisions
 
@@ -111,6 +117,9 @@ Detailed tables live in **`/tmp/tz-audit/inventory.md`** (recon output). Track i
 5. **Overlap with cron cutover branches** (e.g. PRs **#227 / #233 / #235**): do not re-edit the same scheduler files without coordinating — this PR avoids `n8n_mirror.py`, `sprint_auto_logger.py`, and `infra_health.py` trigger tweaks.
 
 ## Related docs
+
+- `.github/workflows/timezone-discipline.yaml` — Ruff `DTZ` gate
+- `.cursor/rules/timezone.mdc` — agent rule lock
 
 - [BRAIN_SCHEDULER.md](./BRAIN_SCHEDULER.md) — SQLAlchemy job store, n8n shadow mirrors, **LA caveat**.
 - [RENDER_INVENTORY.md](./RENDER_INVENTORY.md) — deployment surface (pair with ops for `TZ` on Render).

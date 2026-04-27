@@ -18,7 +18,7 @@ in milliseconds even when the broader CI marks DB tests as required.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional
 
@@ -377,7 +377,7 @@ class TestMapperEdgeCases:
             tax_year=2024,
             accounts=[acct],
             trades=[],
-            generated_at=datetime(2025, 1, 1, 0, 0),  # naive
+            generated_at=datetime(2025, 1, 1, 0, 0, tzinfo=UTC),  # naive
         )
         assert pkg.generated_at.tzinfo is not None
 

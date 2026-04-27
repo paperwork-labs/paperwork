@@ -24,3 +24,5 @@ export * from "./components/sonner";
 export * from "./components/switch";
 export * from "./components/textarea";
 export * from "./components/tooltip";
+
+export { formatInUserTZ } from "./lib/datetime";

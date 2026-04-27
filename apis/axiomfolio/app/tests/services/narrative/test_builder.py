@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
@@ -78,14 +78,14 @@ def test_build_portfolio_summary_shape(db_session):
     hist_prev = MarketSnapshotHistory(
         symbol=sym,
         analysis_type="technical_snapshot",
-        as_of_date=datetime(2026, 4, 14, 0, 0, 0),
+        as_of_date=datetime(2026, 4, 14, 0, 0, 0, tzinfo=UTC),
         stage_label="2A",
         perf_1d=0.1,
     )
     hist_today = MarketSnapshotHistory(
         symbol=sym,
         analysis_type="technical_snapshot",
-        as_of_date=datetime(2026, 4, 15, 0, 0, 0),
+        as_of_date=datetime(2026, 4, 15, 0, 0, 0, tzinfo=UTC),
         stage_label="3A",
         vol_ratio=2.5,
         perf_1d=0.2,
@@ -93,7 +93,7 @@ def test_build_portfolio_summary_shape(db_session):
     spy = MarketSnapshotHistory(
         symbol="SPY",
         analysis_type="technical_snapshot",
-        as_of_date=datetime(2026, 4, 15, 0, 0, 0),
+        as_of_date=datetime(2026, 4, 15, 0, 0, 0, tzinfo=UTC),
         stage_label="3B",
         perf_1d=1.25,
     )
@@ -101,7 +101,7 @@ def test_build_portfolio_summary_shape(db_session):
 
     db_session.add(
         MarketRegime(
-            as_of_date=datetime(2026, 4, 15, 0, 0, 0),
+            as_of_date=datetime(2026, 4, 15, 0, 0, 0, tzinfo=UTC),
             regime_state="R2",
             composite_score=2.0,
         )

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -55,7 +55,7 @@ def test_empty_symbol_no_rows(db_session, authed_client) -> None:
 
 def test_returns_rows_newest_first(db_session, authed_client) -> None:
     ts = datetime(2025, 3, 1, 12, 0, 0, tzinfo=timezone.utc)
-    t0 = date.today()
+    t0 = datetime.now(UTC).date()
     d_old = t0 - timedelta(days=20)
     d_new = t0 - timedelta(days=2)
     db_session.add(
@@ -93,7 +93,7 @@ def test_returns_rows_newest_first(db_session, authed_client) -> None:
 
 def test_batch_returns_per_symbol_newest_first(db_session, authed_client) -> None:
     ts = datetime(2025, 3, 1, 12, 0, 0, tzinfo=timezone.utc)
-    t0 = date.today()
+    t0 = datetime.now(UTC).date()
     d_msft = t0 - timedelta(days=1)
     d_aapl_old = t0 - timedelta(days=5)
     d_aapl_new = t0 - timedelta(days=1)

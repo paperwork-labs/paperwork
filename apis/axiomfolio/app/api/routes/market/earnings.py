@@ -4,7 +4,7 @@ Query upcoming and recent earnings events from the earnings_calendar table.
 """
 
 import logging
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -30,8 +30,8 @@ def get_earnings_calendar(
 ) -> Dict[str, Any]:
     """Return earnings calendar events, optionally filtered by date range and symbols."""
     try:
-        fd = date.fromisoformat(from_date) if from_date else date.today() - timedelta(days=7)
-        td = date.fromisoformat(to_date) if to_date else date.today() + timedelta(days=30)
+        fd = date.fromisoformat(from_date) if from_date else datetime.now(UTC).date() - timedelta(days=7)
+        td = date.fromisoformat(to_date) if to_date else datetime.now(UTC).date() + timedelta(days=30)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {exc}")
 

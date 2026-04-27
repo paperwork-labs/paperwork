@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta
 from decimal import Decimal
 
 from app.models.external_signal import ExternalSignal
@@ -113,7 +113,7 @@ def test_external_context_bonus_points_map_aggregates(monkeypatch, db_session) -
     from app.config import settings
 
     monkeypatch.setattr(settings, "ENABLE_EXTERNAL_SIGNALS", True, raising=False)
-    t0 = date.today()
+    t0 = datetime.now(UTC).date()
     d = t0 - timedelta(days=1)
     db_session.add(
         ExternalSignal(
