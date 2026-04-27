@@ -107,6 +107,8 @@ Data monitors and annual update remain **shadow-only** in ``n8n_mirror.py`` unti
 | `ingest_decisions_daily` | daily 03:00 | ADR docs → memory |
 | `ingest_postmortems_daily` | daily 03:30 | Postmortems / incidents → memory |
 
+**Job list (process):** `GET /internal/schedulers` returns the current APScheduler registry (``id``, ``next_run``, ``trigger``, ``classification``: `net-new` / `cutover` / `operational` / `n8n-shadow`). Unauthenticated — use for deploy verification or behind an edge allowlist.
+
 ### Read-only mirror status
 
 - **Path:** `GET /api/v1/admin/scheduler/n8n-mirror/status`
