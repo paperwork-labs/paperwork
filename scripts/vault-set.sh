@@ -295,7 +295,7 @@ run_upsert_for_name() {
 
   if $DRY_RUN; then
     echo "DRY-RUN: would POST to ${STUDIO_URL%/}/api/secrets" >&2
-    jq -c . "$payload"
+    jq -c 'del(.value) | . + {value: "<redacted>"}' "$payload"
     rm -f "$payload"
     return 0
   fi
