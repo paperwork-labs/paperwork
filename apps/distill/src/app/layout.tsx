@@ -16,8 +16,30 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://distill.tax"),
   title: "Distill — Compliance automation for modern platforms",
   description: "Tax API, formation API, and CPA SaaS for compliance workflows.",
+  openGraph: {
+    title: "Distill — Compliance automation for modern platforms",
+    description: "Tax API, formation API, and CPA SaaS for compliance workflows.",
+    url: "https://distill.tax",
+    siteName: "Distill",
+    type: "website",
+    images: [
+      {
+        url: "/brand/distill-icon.svg",
+        width: 128,
+        height: 128,
+        alt: "Distill",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Distill — Compliance automation for modern platforms",
+    description: "Tax API, formation API, and CPA SaaS for compliance workflows.",
+    images: ["/brand/distill-icon.svg"],
+  },
 };
 
 export default function RootLayout({

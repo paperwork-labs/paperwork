@@ -5,6 +5,7 @@
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
+    "./brand": "./src/components/brand/index.ts",
     "./lib/utils": "./src/lib/utils.ts",
     "./themes.css": "./src/themes.css"
   },

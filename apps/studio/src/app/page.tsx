@@ -1,5 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 
+import { MarketingSiteHeader } from "@/components/brand/MarketingSiteHeader";
+
 const products = [
   {
     name: "FileFree",
@@ -48,24 +50,7 @@ const team = [
 export default function HomePage() {
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border/40">
-        <div className="mx-auto max-w-5xl px-6 py-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-zinc-700 flex items-center justify-center">
-              <span className="text-sm font-bold text-white">P</span>
-            </div>
-            <span className="text-lg font-semibold tracking-tight">
-              Paperwork Labs
-            </span>
-          </div>
-          <a
-            href="mailto:hello@paperworklabs.com"
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            hello@paperworklabs.com
-          </a>
-        </div>
-      </header>
+      <MarketingSiteHeader />
 
       <main>
         <section className="mx-auto max-w-5xl px-6 py-24 md:py-32">
