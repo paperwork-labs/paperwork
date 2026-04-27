@@ -333,7 +333,7 @@ jobs:
             sleep 30
           done
           if [ -z "$DEPLOY_ID" ]; then
-            echo "::error::No READY Vercel deployment for **${PROJECT_NAME}** matching merge_commit_sha=${PR_HEAD} or head_sha=${PR_HEAD_FALLBACK} after 15 attempts (~7.5 min). Promote only aliases an existing deployment — it cannot create one. Typical causes: Vercel never built this app for that commit (monorepo ignoreCommand / dashboard skip), deployment still BUILDING, or Hobby rate limits. Check Deployments in the Vercel dashboard; merge a no-op change to apps/${PROJECT_NAME}/.deploy-trigger or run \`vercel deploy --prod\` from apps/${PROJECT_NAME} if needed."
+            echo "::error::No READY Vercel deployment for **${PROJECT_NAME}** matching merge_commit_sha=${PR_HEAD} or head_sha=${PR_HEAD_FALLBACK} after 15 attempts (~7.5 min). Promote only aliases an existing deployment — it cannot create one. Typical causes: Vercel never built this app for that commit (monorepo ignoreCommand / dashboard skip), deployment still BUILDING, or Hobby rate limits. Check Deployments in the Vercel dashboard; if there is no build for this SHA, run \`vercel deploy --prod\` from apps/${PROJECT_NAME} or merge a change under paths that app’s Vercel project includes (see docs/infra/VERCEL_AUTO_PROMOTE.md § Monorepo path filters)."
             exit 1
           fi
           echo "found_preview=true" >> $GITHUB_OUTPUT
