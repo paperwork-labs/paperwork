@@ -121,14 +121,18 @@ class CircuitBreaker:
                         await self._redis.setex(cooldown_key, self.COOLDOWN_SECONDS, "1")
                         logger.warning(
                             "Circuit OPEN for provider=%s (rate=%.0f%%, %d/%d)",
-                            provider, rate, fail_count, total_count,
+                            provider,
+                            rate,
+                            fail_count,
+                            total_count,
                         )
             except Exception:
                 logger.debug("Circuit breaker Redis op failed", exc_info=True)
 
     def _prune_local(self, provider: str, now: float) -> None:
         self._local_events[provider] = [
-            (t, ok) for t, ok in self._local_events.get(provider, [])
+            (t, ok)
+            for t, ok in self._local_events.get(provider, [])
             if now - t < self.WINDOW_SECONDS
         ]
 
@@ -149,18 +153,27 @@ def calculate_cost(model: str, tokens_in: int, tokens_out: int) -> float:
 # -- Fallback Map --------------------------------------------------------------
 
 FALLBACK_MAP = {
-    "anthropic": {"provider": "openai", "model_map": {
-        "claude-sonnet-4-20250514": "gpt-4o",
-        "claude-opus-4-20250618": "gpt-4o",
-    }},
-    "openai": {"provider": "anthropic", "model_map": {
-        "gpt-4o": "claude-sonnet-4-20250514",
-        "gpt-4o-mini": "claude-sonnet-4-20250514",
-        "o4-mini": "claude-sonnet-4-20250514",
-    }},
-    "google": {"provider": "openai", "model_map": {
-        "gemini-2.5-flash": "gpt-4o-mini",
-    }},
+    "anthropic": {
+        "provider": "openai",
+        "model_map": {
+            "claude-sonnet-4-20250514": "gpt-4o",
+            "claude-opus-4-20250618": "gpt-4o",
+        },
+    },
+    "openai": {
+        "provider": "anthropic",
+        "model_map": {
+            "gpt-4o": "claude-sonnet-4-20250514",
+            "gpt-4o-mini": "claude-sonnet-4-20250514",
+            "o4-mini": "claude-sonnet-4-20250514",
+        },
+    },
+    "google": {
+        "provider": "openai",
+        "model_map": {
+            "gemini-2.5-flash": "gpt-4o-mini",
+        },
+    },
 }
 
 
@@ -220,18 +233,24 @@ class PersonaPinnedRoute:
         if self.escalation_model:
             if self.escalate_on_compliance:
                 model, escalated, escalation_reason = (
-                    self.escalation_model, True, "compliance",
+                    self.escalation_model,
+                    True,
+                    "compliance",
                 )
             elif any(m in context.message.lower() for m in self.escalate_on_mentions):
                 model, escalated, escalation_reason = (
-                    self.escalation_model, True, "mention",
+                    self.escalation_model,
+                    True,
+                    "mention",
                 )
             elif (
                 self.escalate_on_tokens_over is not None
                 and self.input_tokens > self.escalate_on_tokens_over
             ):
                 model, escalated, escalation_reason = (
-                    self.escalation_model, True, "tokens",
+                    self.escalation_model,
+                    True,
+                    "tokens",
                 )
 
         provider = _provider_for_model(model)
@@ -244,7 +263,8 @@ class PersonaPinnedRoute:
             provider = new_provider
             logger.warning(
                 "Circuit open for pinned persona route, falling back to %s/%s",
-                provider, model,
+                provider,
+                model,
             )
 
         # Track I: persona-specified max_output_tokens caps the response size
@@ -281,11 +301,15 @@ class PersonaPinnedRoute:
         except Exception as exc:
             logger.error(
                 "PersonaPinnedRoute LLM call failed for %s/%s",
-                provider, model, exc_info=True,
+                provider,
+                model,
+                exc_info=True,
             )
             await self.cb.record_failure(provider)
             raise LLMUnavailableError(
-                provider=provider, model=model, reason=str(exc),
+                provider=provider,
+                model=model,
+                reason=str(exc),
             ) from exc
 
         cost = calculate_cost(
@@ -319,9 +343,7 @@ class ClassifyAndRoute:
         self.cb = circuit_breaker
 
     async def execute(self, context: ChainContext) -> ChainResult:
-        classification = await llm.classify_query(
-            context.message, context.channel_id
-        )
+        classification = await llm.classify_query(context.message, context.channel_id)
         logger.info(
             "Classification: model=%s provider=%s tools=%s domain=%s conf=%.2f",
             classification.get("model"),
@@ -343,7 +365,9 @@ class ClassifyAndRoute:
             provider = new_provider
             logger.warning(
                 "Circuit open for %s, falling back to %s/%s",
-                classification["provider"], provider, model,
+                classification["provider"],
+                provider,
+                model,
             )
 
         try:
@@ -379,7 +403,9 @@ class ClassifyAndRoute:
             logger.error("LLM call failed for %s/%s", provider, model, exc_info=True)
             await self.cb.record_failure(provider)
             raise LLMUnavailableError(
-                provider=provider, model=model, reason=str(exc),
+                provider=provider,
+                model=model,
+                reason=str(exc),
             ) from exc
 
         cost = calculate_cost(
@@ -462,8 +488,7 @@ class ExtractAndReason:
                 await self.cb.record_success(self.EXTRACTION_PROVIDER)
         except Exception:
             logger.warning(
-                "ExtractAndReason: extraction step failed, continuing "
-                "without digest",
+                "ExtractAndReason: extraction step failed, continuing without digest",
                 exc_info=True,
             )
             await self.cb.record_failure(self.EXTRACTION_PROVIDER)
@@ -492,7 +517,8 @@ class ExtractAndReason:
             model = fallback.get("model_map", {}).get(model, "gpt-4o")
             logger.warning(
                 "ExtractAndReason: Sonnet circuit open, fallback to %s/%s",
-                provider, model,
+                provider,
+                model,
             )
 
         try:
@@ -507,7 +533,9 @@ class ExtractAndReason:
         except Exception as exc:
             await self.cb.record_failure(provider)
             raise LLMUnavailableError(
-                provider=provider, model=model, reason=str(exc),
+                provider=provider,
+                model=model,
+                reason=str(exc),
             ) from exc
 
         total_tokens_in = reason_result.get("tokens_in", 0)

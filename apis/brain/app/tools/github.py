@@ -3,7 +3,7 @@
 import base64
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote
 
@@ -64,9 +64,7 @@ def _error_message(prefix: str, response: httpx.Response) -> str:
     return _scrub(f"{prefix} HTTP {response.status_code}: {detail}".strip())
 
 
-async def read_github_file(
-    path: str, ref: str = "main", *, max_chars: int | None = None
-) -> str:
+async def read_github_file(path: str, ref: str = "main", *, max_chars: int | None = None) -> str:
     """Read one file from the configured repo at ref.
 
     Returns UTF-8 text, truncated to max_chars (default _MAX_FILE_READ) if larger.
@@ -340,12 +338,14 @@ async def review_github_pr(
             line = c.get("line")
             if not path or not body_c or not isinstance(line, int) or line <= 0:
                 continue
-            clean.append({
-                "path": path,
-                "line": line,
-                "side": "RIGHT",
-                "body": body_c[:8000],
-            })
+            clean.append(
+                {
+                    "path": path,
+                    "line": line,
+                    "side": "RIGHT",
+                    "body": body_c[:8000],
+                }
+            )
         if clean:
             payload["comments"] = clean
     try:
@@ -453,7 +453,7 @@ async def search_merged_pr_numbers_since(since_utc: datetime, *, per_page: int =
     """
     owner, repo = _repo_parts()
     if since_utc.tzinfo is None:
-        since_utc = since_utc.replace(tzinfo=timezone.utc)
+        since_utc = since_utc.replace(tzinfo=UTC)
     day = since_utc.strftime("%Y-%m-%d")
     q = f"repo:{owner}/{repo} is:pr is:merged merged:>={day}"
     nums: list[int] = []
@@ -466,7 +466,9 @@ async def search_merged_pr_numbers_since(since_utc: datetime, *, per_page: int =
                     params={"q": q, "per_page": per_page, "page": page},
                 )
                 if r.status_code == 422:
-                    logger.warning("search_merged_pr_numbers_since: %s", _error_message("search", r))
+                    logger.warning(
+                        "search_merged_pr_numbers_since: %s", _error_message("search", r)
+                    )
                     break
                 r.raise_for_status()
                 payload: dict[str, Any] = r.json()
@@ -591,12 +593,14 @@ async def commit_files_to_branch(branch: str, message: str, files: dict[str, str
 
             tree_entries: list[dict[str, Any]] = []
             for path, content in files.items():
-                tree_entries.append({
-                    "path": path.strip().lstrip("/"),
-                    "mode": "100644",
-                    "type": "blob",
-                    "content": content,
-                })
+                tree_entries.append(
+                    {
+                        "path": path.strip().lstrip("/"),
+                        "mode": "100644",
+                        "type": "blob",
+                        "content": content,
+                    }
+                )
 
             tr = await client.post(
                 f"/repos/{owner}/{repo}/git/trees",

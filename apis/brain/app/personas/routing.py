@@ -61,9 +61,25 @@ SINGLE_WORD_KEYWORDS: dict[str, list[str]] = {
     "agent-ops": ["model", "routing", "persona", "agent", "workflow", "n8n"],
     "ea": ["briefing", "schedule", "weekly", "daily", "status", "progress", "update"],
     "trading": [
-        "trade", "stock", "portfolio", "position", "stage", "regime",
-        "scan", "breakout", "stop", "entry", "exit", "order", "buy",
-        "sell", "short", "cover", "pnl", "risk", "circuit",
+        "trade",
+        "stock",
+        "portfolio",
+        "position",
+        "stage",
+        "regime",
+        "scan",
+        "breakout",
+        "stop",
+        "entry",
+        "exit",
+        "order",
+        "buy",
+        "sell",
+        "short",
+        "cover",
+        "pnl",
+        "risk",
+        "circuit",
     ],
     # Additions (Track F): previously orphan mdc entries — now routable.
     "brand": ["brand", "branding", "logo", "identity", "voice", "tone"],
@@ -78,25 +94,29 @@ PHRASE_KEYWORDS: dict[str, list[str]] = {
     "social": ["social media"],
     "ea": ["what should i", "work on", "project status", "how are we", "what's next"],
     "trading": [
-        "stop loss", "take profit", "market regime", "stage analysis",
-        "risk gate", "circuit breaker",
+        "stop loss",
+        "take profit",
+        "market regime",
+        "stage analysis",
+        "risk gate",
+        "circuit breaker",
     ],
     "infra-ops": ["post mortem", "postmortem"],
 }
 
 CHANNEL_PERSONA_MAP: dict[str, str] = {
-    "C0ALLEKR9FZ": "engineering",   # #engineering
-    "C0ALLJWR1HV": "ea",            # #daily-briefing
-    "C0AM2310P8A": "strategy",      # #decisions
-    "C0AMWB887KJ": "engineering",   # #filing-engine
-    "C0ALVM4PAE7": "engineering",   # #alerts
-    "C0AM01NHQ3Y": "ea",            # #general
-    "C0AMEQV199P": "ea",            # #all-paperwork-labs
-    "C0AMJTZRVA6": "engineering",   # #deployment
-    "C0AM014DFL6": "ea",            # #weekly-plan
-    "C0ALVG3EW1Z": "social",        # #social-content
-    "C0APN01LDJN": "cpa",           # #tax-insights
-    "C0APFJSDB6X": "trading",       # #trading
+    "C0ALLEKR9FZ": "engineering",  # #engineering
+    "C0ALLJWR1HV": "ea",  # #daily-briefing
+    "C0AM2310P8A": "strategy",  # #decisions
+    "C0AMWB887KJ": "engineering",  # #filing-engine
+    "C0ALVM4PAE7": "engineering",  # #alerts
+    "C0AM01NHQ3Y": "ea",  # #general
+    "C0AMEQV199P": "ea",  # #all-paperwork-labs
+    "C0AMJTZRVA6": "engineering",  # #deployment
+    "C0AM014DFL6": "ea",  # #weekly-plan
+    "C0ALVG3EW1Z": "social",  # #social-content
+    "C0APN01LDJN": "cpa",  # #tax-insights
+    "C0APFJSDB6X": "trading",  # #trading
 }
 
 

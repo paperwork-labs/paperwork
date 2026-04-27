@@ -11,6 +11,13 @@ This is the killer feature that justified migrating from Ladle to Storybook —
 catching "did I just break the LaunchFree dark hero?" before brand work ships
 across 6 products with theme variants × dark mode × reduced motion.
 
+## Why a merged PR can still show a red Chromatic check
+
+GitHub displays the **last commit** on the PR branch. If that commit’s Chromatic
+(or Storybook **build**) run failed or was still pending, the PR row may show a
+red **X** even **after squash-merge** to `main`. Confirm **`main`** is green in
+Actions; treat the PR list icon as historical unless you are about to merge.
+
 ## Prerequisites
 
 The monorepo must include the `apps/design` package with a working

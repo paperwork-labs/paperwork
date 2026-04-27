@@ -8,11 +8,12 @@ Summarization is one Brain pass with the CFO persona so the post matches
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import json
 import logging
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -57,9 +58,7 @@ def _is_critical_date_open(status: str | None) -> bool:
     if not status:
         return True
     s = status.strip().upper()
-    if s == "COMPLETE" or s.startswith("DONE"):
-        return False
-    return True
+    return not (s == "COMPLETE" or s.startswith("DONE"))
 
 
 def _count_active_plans(tracker: dict[str, Any]) -> int:
@@ -95,7 +94,7 @@ def build_friday_tracker_brief(
     Returns ``(brief_markdown, meta)`` where ``meta`` has ``active_sprint_count`` and
     ``plan_count`` (and ``shipped_last_7d_count``) for logging.
     """
-    day = as_of or datetime.now(timezone.utc).date()
+    day = as_of or datetime.now(UTC).date()
     if tracker is None:
         note = (
             "*Tracker index unavailable* — the Brain deploy may not include "
@@ -149,7 +148,7 @@ def build_friday_tracker_brief(
     plan_count = _count_active_plans(tracker)
     lines.append(f"\n*Active product plans (status=active):* {plan_count}")
 
-    # Weekly aggregate is not stored in Redis; optional same-day total is added at post time (logs only).
+    # Weekly aggregate is not stored in Redis; optional same-day total is added at post time (logs only).  # noqa: E501
 
     brief = "\n".join(lines)
     meta = {
@@ -164,7 +163,7 @@ def _cfo_user_message(tracker_brief: str) -> str:
     return (
         "You are producing the **Friday CFO digest** for internal leadership Slack.\n\n"
         "## Instructions (follow for this turn)\n"
-        "Summarize the *tracker facts* below in **5–8 bullet points** using Slack-style "
+        "Summarize the *tracker facts* below in **5-8 bullet points** using Slack-style "
         "markdown. For every blocker, dependency, or material risk, name an **explicit owner** "
         "(person or team). Be concise, finance-forward, and actionable. **No preamble** — start "
         "directly with the bullets.\n\n"
@@ -177,7 +176,7 @@ async def _run_friday_digest() -> None:
     try:
         raw = load_tracker_index()
         tracker_brief, meta = build_friday_tracker_brief(raw)
-        today = datetime.now(timezone.utc).date().isoformat()
+        today = datetime.now(UTC).date().isoformat()
 
         redis_client = None
         try:
@@ -187,10 +186,9 @@ async def _run_friday_digest() -> None:
         except RuntimeError:
             pass
 
-        channel_id = (
-            (settings.SLACK_CFO_CHANNEL_ID or "").strip()
-            or (settings.SLACK_ENGINEERING_CHANNEL_ID or "").strip()
-        )
+        channel_id = (settings.SLACK_CFO_CHANNEL_ID or "").strip() or (
+            settings.SLACK_ENGINEERING_CHANNEL_ID or ""
+        ).strip()
         if not channel_id:
             logger.info("cfo friday: no target Slack channel configured, skipping")
             return

@@ -163,11 +163,25 @@ docs:
     owners: [engineering, infra-ops]
     category: architecture
   # ── Runbooks ─────────────────────────────────────────
+  - slug: automation-state
+    path: docs/infra/AUTOMATION_STATE.md
+    title: Automation state (single source of truth)
+    summary: "2. **Reporting (notification-only):** `BRAIN_OWNS_DAILY_BRIEFING`, `BRAIN_OWNS_BRAIN_WEEKLY`, `BRAIN_OWNS_WEEKLY_STRATEGY` 3. **Decision-making:** `BRAIN_OWNS_SPRINT_KICKOFF`,…"
+    tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
   - slug: brain-scheduler
     path: docs/infra/BRAIN_SCHEDULER.md
     title: Brain APScheduler — SQLAlchemy job store and n8n shadow mirrors
     summary: "[Brain](https://github.com/paperwork-labs/paperwork/tree/main/apis/brain) runs in-process [APScheduler](https://apscheduler.readthedocs.io/) jobs (PR sweep, proactive cadence, optional n8n shadow…"
     tags: [infra, runbook]
+    owners: [infra-ops]
+    category: runbooks
+  - slug: brain-secrets-intelligence
+    path: docs/infra/BRAIN_SECRETS_INTELLIGENCE.md
+    title: Brain secrets operational intelligence
+    summary: "Registry (metadata), episodes, and schedulers for drift audit, rotation windows, and health — Studio overlay and agent intake."
+    tags: [infra, runbook, secrets]
     owners: [infra-ops]
     category: runbooks
   - slug: agent-sprint-planning
@@ -332,10 +346,17 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: clerk-key-propagation-2026-04-27t12-22z
+    path: docs/infra/CLERK_KEY_PROPAGATION_2026-04-27T12-22Z.md
+    title: Clerk key propagation — audit report (v2)
+    summary: "**Run:** 2026-04-27 (Agent P-v2) **Temp input:** `/tmp/clerk-keys.env` — **left intact** for founder re-runs and rotation. Shred is deferred until the rotation flow completes."
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: clerk-axiomfolio
     path: docs/infra/CLERK_AXIOMFOLIO.md
-    title: Clerk SSO — AxiomFolio (axiomfolio-next)
-    summary: "Runbook for the AxiomFolio Next.js app (`apps/axiomfolio-next`) identity stack: Clerk SDK foundation (T6c) alongside the existing **`qm_token`** session in `localStorage`. Themed Clerk UI is a…"
+    title: Clerk SSO — AxiomFolio (Next.js)
+    summary: "Runbook for the AxiomFolio Next.js app (`apps/axiomfolio`, `@paperwork-labs/axiomfolio`) identity stack: Clerk SDK foundation (T6c) alongside the existing **`qm_token`** session in `localStorage`. Themed Clerk UI is a…"
     tags: []
     owners: [strategy]
     category: reference
@@ -437,6 +458,13 @@ docs:
     tags: [runbook, template, ops]
     owners: [agent-ops]
     category: reference
+  - slug: secret-intake
+    path: docs/infra/SECRET_INTAKE.md
+    title: Secret intake (Studio)
+    summary: "Agents and automation sometimes need new or rotated secrets (for example Clerk `sk_live_*` / `sk_test_*`). Pasting those into chat, terminal history, or ad-hoc files is risky. **Secret intake**…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: secrets-ops
     path: docs/infra/SECRETS_OPS.md
     title: Studio vault — read / write helpers
@@ -475,8 +503,8 @@ docs:
     category: plans
   - slug: axiomfolio-nextjs-migration
     path: docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md
-    title: AxiomFolio Next.js Migration 2026 Q3
-    summary: Vite → Next.js migration plan and live status.
+    title: AxiomFolio Next.js migration (completed 2026-04-27)
+    summary: Vite → Next.js migration — shipped early Q2 (Track G4); filename kept for traceability.
     tags: [axiomfolio, migration, next]
     owners: [engineering]
     category: plans

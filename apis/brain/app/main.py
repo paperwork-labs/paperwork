@@ -1,5 +1,6 @@
 import hmac
 import logging
+import os
 import subprocess
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -12,13 +13,14 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
+from app.api.agent_sprints import router as agent_sprints_router
 from app.config import settings
 from app.database import async_session_factory, engine
 from app.mcp_server import create_mcp_app
 from app.rate_limit import limiter
 from app.redis import close_redis, get_redis, init_redis
-from app.api.agent_sprints import router as agent_sprints_router
-from app.routers import admin, brain, health, webhooks
+from app.api.secrets import router as internal_secrets_router
+from app.routers import admin, admin_learning, brain, health, webhooks
 from app.schedulers import shutdown_scheduler, start_scheduler
 from app.services.observability import init_langfuse
 from app.tools import memory_tools
@@ -80,6 +82,15 @@ async def _app_lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     memory_tools.configure(async_session_factory, redis_client)
     logger.info("Memory tools configured (redis=%s)", "connected" if redis_client else "disabled")
 
+    if not os.getenv("PYTEST_CURRENT_TEST"):
+        try:
+            from app.data.seed_secrets_registry import run_seed_if_empty
+
+            async with async_session_factory() as seed_db:
+                await run_seed_if_empty(seed_db)
+        except Exception:
+            logger.exception("brain_secrets_registry seed failed (non-fatal)")
+
     _app.mount("/mcp", mcp_application)
     logger.info("FastMCP server mounted at /mcp (23 tools, auth-protected)")
 
@@ -108,11 +119,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     FastMCP requires its lifespan to run for the StreamableHTTP session manager
     to initialize. We nest our app lifespan inside the MCP lifespan per FastMCP docs.
     """
-    async with _app_lifespan(_app):
-        async with mcp_application.lifespan(_app):
-            logger.info("FastMCP lifespan started — session manager initialized")
-            yield
-            logger.info("FastMCP lifespan ending")
+    async with _app_lifespan(_app), mcp_application.lifespan(_app):
+        logger.info("FastMCP lifespan started — session manager initialized")
+        yield
+        logger.info("FastMCP lifespan ending")
 
 
 app = FastAPI(
@@ -145,7 +155,13 @@ app.add_middleware(
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Correlation-ID", "X-Brain-Secret"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-CSRF-Token",
+        "X-Correlation-ID",
+        "X-Brain-Secret",
+    ],
 )
 
 app.add_exception_handler(AppException, app_exception_handler)  # type: ignore[arg-type]
@@ -165,7 +181,9 @@ app.include_router(health.router)
 app.include_router(brain.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(admin_learning.router, prefix="/api/v1")
 app.include_router(agent_sprints_router)
+app.include_router(internal_secrets_router)
 
 
 @app.get("/internal/schedulers", tags=["internal"])

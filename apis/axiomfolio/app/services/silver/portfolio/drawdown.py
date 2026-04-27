@@ -2,7 +2,7 @@
 
 medallion: silver
 """
-from datetime import date, timedelta
+from datetime import UTC, date, timedelta
 from decimal import Decimal
 from typing import Optional
 
@@ -53,7 +53,7 @@ class DrawdownService:
         as_of: Optional[date] = None,
     ) -> PortfolioHistory:
         """Record a daily portfolio snapshot and compute drawdown metrics."""
-        as_of = as_of or date.today()
+        as_of = as_of or datetime.now(UTC).date()
 
         # Get previous peak
         prev_record = (
@@ -209,7 +209,7 @@ class DrawdownService:
         days: int = 90,
     ) -> list[PortfolioHistory]:
         """Get drawdown history for charting."""
-        cutoff = date.today() - timedelta(days=days)
+        cutoff = datetime.now(UTC).date() - timedelta(days=days)
 
         query = self.db.query(PortfolioHistory).filter(
             PortfolioHistory.user_id == user_id,

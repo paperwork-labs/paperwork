@@ -21,7 +21,7 @@
  * shared link should always render *something* useful.
  */
 import * as React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import type { HoldingChartPeriod } from '@/lib/holdingChart/useHoldingChartData';
 
@@ -163,7 +163,18 @@ export function useHoldingChartUrlState(
     defaultBenchmark = null,
   } = options;
 
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const setSearchParams = React.useCallback(
+    (updater: (prev: URLSearchParams) => URLSearchParams) => {
+      const prev = new URLSearchParams(searchParams.toString());
+      const params = updater(prev);
+      const q = params.toString();
+      router.replace(q ? `${pathname}?${q}` : pathname, { scroll: false });
+    },
+    [router, pathname, searchParams],
+  );
 
   const state = React.useMemo<HoldingChartUrlState>(() => {
     return {
@@ -204,36 +215,33 @@ export function useHoldingChartUrlState(
 
   const writeState = React.useCallback(
     (next: HoldingChartUrlState) => {
-      setSearchParams(
-        (prev) => {
-          const params = new URLSearchParams(prev);
-          // Period is always present so the radiogroup can render. We
-          // omit it when it equals the default to keep clean URLs.
-          if (next.period === defaultPeriod) {
-            params.delete('period');
-          } else {
-            params.set('period', next.period);
-          }
-          const overlaysWire = encodeOverlays(next.overlays);
-          if (!overlaysWire) {
-            params.delete('overlays');
-          } else {
-            params.set('overlays', overlaysWire);
-          }
-          if (next.stageBands) {
-            params.set('stageBands', '1');
-          } else {
-            params.delete('stageBands');
-          }
-          if (next.benchmark && SYMBOL_RE.test(next.benchmark)) {
-            params.set('benchmark', next.benchmark);
-          } else {
-            params.delete('benchmark');
-          }
-          return params;
-        },
-        { replace: true },
-      );
+      setSearchParams((prev) => {
+        const params = new URLSearchParams(prev);
+        // Period is always present so the radiogroup can render. We
+        // omit it when it equals the default to keep clean URLs.
+        if (next.period === defaultPeriod) {
+          params.delete('period');
+        } else {
+          params.set('period', next.period);
+        }
+        const overlaysWire = encodeOverlays(next.overlays);
+        if (!overlaysWire) {
+          params.delete('overlays');
+        } else {
+          params.set('overlays', overlaysWire);
+        }
+        if (next.stageBands) {
+          params.set('stageBands', '1');
+        } else {
+          params.delete('stageBands');
+        }
+        if (next.benchmark && SYMBOL_RE.test(next.benchmark)) {
+          params.set('benchmark', next.benchmark);
+        } else {
+          params.delete('benchmark');
+        }
+        return params;
+      });
     },
     [setSearchParams, defaultPeriod],
   );
@@ -276,7 +284,7 @@ export function useHoldingChartUrlState(
 }
 
 // Exposed for tests. The pure encoders/parsers carry the contract; the
-// hook is a thin shell that wires them to `react-router-dom`.
+// hook is a thin shell that wires them to `next/navigation` search params.
 export const __test = {
   parsePeriod,
   parseOverlays,

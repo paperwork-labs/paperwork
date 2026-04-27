@@ -16,10 +16,12 @@ self-brief prompt. That gives the persona full access to memory, tools, and
 its own tone prefix, so the output sounds like it actually came from that
 employee instead of a canned template.
 """
+
 from __future__ import annotations
 
+import contextlib
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from apscheduler.triggers.cron import CronTrigger
@@ -117,10 +119,8 @@ async def _mark_posted(redis_client: Any, persona: str, today: str) -> None:
 async def _post_for_persona(persona: str, cadence: str, channel_id: str) -> None:
     """Run Brain as ``persona`` and post the result to ``channel_id``."""
     redis_client = None
-    try:
+    with contextlib.suppress(RuntimeError):
         redis_client = get_redis()
-    except RuntimeError:
-        pass
 
     async with async_session_factory() as db:
         result = await brain_agent.process(
@@ -132,7 +132,7 @@ async def _post_for_persona(persona: str, cadence: str, channel_id: str) -> None
             message=_cadence_prompt(persona, cadence),
             channel="slack-scheduler",
             channel_id=channel_id,
-            request_id=f"cadence:{persona}:{datetime.now(timezone.utc).date().isoformat()}",
+            request_id=f"cadence:{persona}:{datetime.now(UTC).date().isoformat()}",
             persona_pin=persona,
         )
         await db.commit()
@@ -151,14 +151,12 @@ async def _post_for_persona(persona: str, cadence: str, channel_id: str) -> None
 
 async def _run_cadence_tick() -> None:
     """Scheduled hourly task. Swallow everything; next hour retries."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     today = now.date().isoformat()
 
     redis_client = None
-    try:
+    with contextlib.suppress(RuntimeError):
         redis_client = get_redis()
-    except RuntimeError:
-        pass
 
     for spec in list_specs():
         cadence = getattr(spec, "proactive_cadence", "never")

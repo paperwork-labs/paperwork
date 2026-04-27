@@ -142,7 +142,7 @@ const MARKETS_ITEMS: readonly NavItem[] = [
 ];
 
 const LAB_ITEMS: readonly NavItem[] = [
-  { label: 'Strategies', icon: Target, path: '/lab/strategies' },
+  { label: 'Strategies', icon: Target, path: '/strategies' },
   { label: 'Backtest', icon: Activity, path: '/lab/monte-carlo' },
   { label: 'Walk-Forward', icon: List, path: '/lab/walk-forward' },
   { label: 'Shadow (paper)', icon: FlaskConical, path: '/shadow-trades' },

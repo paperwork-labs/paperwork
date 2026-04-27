@@ -1,4 +1,7 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import {
+  clerkMiddleware,
+  createRouteMatcher,
+} from "@paperwork-labs/auth-clerk/server/clerk";
 
 /**
  * Distill: Clerk SSO only (no legacy session / Basic Auth). `/dashboard` requires

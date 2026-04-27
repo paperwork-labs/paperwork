@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
 import math
@@ -70,7 +70,7 @@ class PriceBarWriter:
                 if isinstance(ts, pd.Timestamp):
                     pd_date = ts.tz_convert("UTC").to_pydatetime().replace(tzinfo=None) if ts.tzinfo else ts.to_pydatetime()
                 elif hasattr(ts, "timestamp"):
-                    pd_date = datetime.utcfromtimestamp(ts.timestamp())
+                    pd_date = datetime.fromtimestamp(ts.timestamp(), UTC)
                 else:
                     pd_date = ts
             except Exception as e:

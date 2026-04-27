@@ -79,11 +79,11 @@ Acceptance theme for the window: operators can name the single system that fires
 - shipped 2026-04-25: **T3.2** — Clerk SDK foundation extended to LaunchFree (PR #155) and FileFree (PR #156): `<ClerkProvider>`, sign-in/up catch-alls, and `clerkMiddleware` composed with each app's existing legacy session / Basic Auth escape hatches. Runbooks: [docs/infra/CLERK_LAUNCHFREE.md](../infra/CLERK_LAUNCHFREE.md), [docs/infra/CLERK_FILEFREE.md](../infra/CLERK_FILEFREE.md).
 - shipped 2026-04-26: **T3.2 (Trinkets)** — `<ClerkProvider>`, sign-in/up catch-all routes, `clerkMiddleware` (public utility app; no legacy session or Basic Auth to compose). Trinkets Clerk appearance: indigo `#6366F1` + sky cyan `#38BDF8`. Runbook: [docs/infra/CLERK_TRINKETS.md](../infra/CLERK_TRINKETS.md). PR #197.
 - shipped 2026-04-26: **T3.2 (Distill)** — `@clerk/nextjs` + `<ClerkProvider>`, sign-in/sign-up catch-alls, `clerkMiddleware` on `/dashboard` only (no legacy gate), and `distillClerkAppearance` (teal `#0F766E` + burnt orange `#C2410C`). Runbook: [docs/infra/CLERK_DISTILL.md](../infra/CLERK_DISTILL.md). PR #198.
-- shipped 2026-04-25: **T3.4** — AxiomFolio `axiomfolio-next` Clerk UI themed via `axiomfolioClerkAppearance` + `ClerkAuthPageShell`; `@clerk/themes` aligned with other apps. Runbook: [docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming). PR #167.
+- shipped 2026-04-25: **T3.4** — AxiomFolio (Next.js app, then `apps/axiomfolio-next`) Clerk UI themed via `axiomfolioClerkAppearance` + `ClerkAuthPageShell`; `@clerk/themes` aligned with other apps. Runbook: [docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming). PR #167. *2026-04-27: canonical path `apps/axiomfolio` (Track G4).*
 - shipped 2026-04-25: **T4** — Replaced Studio's placeholder DAG views with `@xyflow/react` graphs that survive real persona / workflow shapes (zoom, pan, labelled edges). PR #147.
 - shipped 2026-04-26: **T4 (live data)** — Studio `/admin/architecture` loads live schedule ownership from Brain `GET /api/v1/admin/scheduler/n8n-mirror/status`, tints graph nodes (Brain-first vs n8n shadow vs error), last production Vercel deploy per app, and health-probe recency; SSR falls back to bundled `system-graph.json` with a banner when Brain is unreachable; 30s cache + client refresh. Code: `apps/studio/src/lib/get-architecture-payload.ts`, `apps/studio/src/app/api/admin/architecture/route.ts`, `apps/studio/src/components/admin/LiveDataBadge.tsx`.
 - shipped 2026-04-25: **T5** — AxiomFolio Next.js absorb advanced through 5 batches: public + onboarding (#146), auth flow (#149), settings shell + 5 settings pages (#154), market dashboard / education / intelligence / tracked + backtest lab (#157). Pattern: thin `page.tsx` (`RequireAuthClient` + `<Suspense>`) wrapping client components under `src/components/`, with `dynamic(..., { ssr: false })` for chart libs.
-- shipped 2026-04-26: **T5 (settings ports)** — Remaining settings routes: account risk, data privacy, notifications, and users (`apps/axiomfolio-next/src/app/settings/*`, client components under `src/components/settings/`). PR #169.
+- shipped 2026-04-26: **T5 (settings ports)** — Remaining settings routes: account risk, data privacy, notifications, and users (`apps/axiomfolio/src/app/settings/*`, client components under `src/components/settings/`). PR #169.
 - shipped 2026-04-26: **T1.x — Sprint auto-logger** — Brain APScheduler job (`sprint_auto_logger`, `*/15` UTC) batches merged PRs that declare a sprint (`Sprint:` body line and/or `sprint:*` label) into one bot PR updating `## Outcome` + `related_prs` in `docs/sprints/*.md`; gated by `BRAIN_OWNS_SPRINT_AUTO_LOGGER`. Code: `apis/brain/app/schedulers/sprint_auto_logger.py`. Runbook: [docs/infra/BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md). PR #204.
 
 ## What we learned
@@ -115,7 +115,7 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
   - `[x]` Studio Clerk pages themed via Appearance API. (T3.1b — PR #152)
   - `[x]` LaunchFree + FileFree + **Trinkets** + **Distill** wired: `<ClerkProvider>` + sign-in/up; LaunchFree/FileFree `clerkMiddleware` with legacy gates (PRs #155, #156); Trinkets public shell (PR #197, [CLERK_TRINKETS.md](../infra/CLERK_TRINKETS.md)); Distill `/dashboard` Clerk-only (PR #198, [CLERK_DISTILL.md](../infra/CLERK_DISTILL.md)).
   - `[~]` Roll out per-product theming (Appearance API) while preserving a single identity graph. (T3.3 — Studio done; LaunchFree + FileFree in flight as B5-T3.3.)
-  - `[x]` **T3.4** — AxiomFolio (`axiomfolio-next`) per-app Clerk theming: `axiomfolioClerkAppearance` (Appearance API + `@clerk/themes` dark), `ClerkAuthPageShell` on `/sign-in` and `/sign-up`, `ClerkProvider` `appearance` for `UserButton` and global Clerk UI. ([docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming))
+  - `[x]` **T3.4** — AxiomFolio (`apps/axiomfolio`) per-app Clerk theming: `axiomfolioClerkAppearance` (Appearance API + `@clerk/themes` dark), `ClerkAuthPageShell` on `/sign-in` and `/sign-up`, `ClerkProvider` `appearance` for `UserButton` and global Clerk UI. ([docs/infra/CLERK_AXIOMFOLIO.md](../infra/CLERK_AXIOMFOLIO.md#theming))
   - `[ ]` Plan verifier paths for AxiomFolio APIs post–Next.js migration; retire parallel JWT/session schemes safely.
   - `[ ]` Communicate session cutover; keep documented Basic Auth escape hatch for Studio until explicitly removed.
   - `[~]` **T3 consumer cutover (in flight)** — shared `@paperwork-labs/auth-clerk` package: PR [#234](https://github.com/paperwork-labs/paperwork/pull/234); `accounts.paperworklabs.com` DNS + satellite steps: [docs/infra/CLERK_ACCOUNTS_DNS_TONIGHT.md](../infra/CLERK_ACCOUNTS_DNS_TONIGHT.md) (runbook; land with Track H1).
@@ -123,7 +123,6 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
     - AxiomFolio (`axiomfolio-next`): finish consumer auth on Clerk; APIs move from `qm_token` to Clerk JWT verification behind a short shadow window; backfill `clerk_user_id` by email where needed.
     - LaunchFree + Distill + Trinkets: adopt shared `SignInShell` + locked app-name-primary wordmark tokens from the package; drop duplicate per-app `clerk-appearance` copies when consolidated.
     - Studio: keep Clerk + `ADMIN_EMAILS` allowlist; retire Basic once operators publish a cutover date.
-    - `apps/accounts/`: host Paperwork ID headline only on `accounts.paperworklabs.com` per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md) (if present) / Track H4 plan.
     - Python sidecars (FileFree, AxiomFolio, Brain as needed): use shared `paperwork_auth` / JWT verifier helpers aligned with the package’s Clerk JWKS contract.
 
 - **T4 — Real DAGs + workflow UX** `[~]`
@@ -139,6 +138,9 @@ Status on parent bullets: `[ ]` pending, `[~]` in progress, `[x]` shipped. Sub-b
 
 ## Follow-ups
 
+### Deferred (superseded by D91)
+
+- ~~**Track H4 — `apps/accounts/`** on `accounts.paperworklabs.com` (custom Paperwork ID headline host per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md))~~ — **superseded** by Clerk’s auto-hosted Account Portal on the primary domain; see [`docs/KNOWLEDGE.md`](../KNOWLEDGE.md) §D91.
 
 ## Related
 

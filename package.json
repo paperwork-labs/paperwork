@@ -27,11 +27,13 @@
     "build:axiomfolio": "turbo run build --filter=@paperwork-labs/axiomfolio",
     "format": "pnpm -r --if-present format",
     "clean": "pnpm -r exec rm -rf node_modules .next out dist",
-    "generate:pwl-favicon-ico": "node scripts/generate-pwl-favicon-ico.mjs"
+    "generate:pwl-favicon-ico": "node scripts/generate-pwl-favicon-ico.mjs",
+    "gh:keyring": "bash scripts/gh-keyring.sh"
   },
   "devDependencies": {
     "sharp": "^0.34.5",
     "to-ico": "^1.1.5",
+    "tsx": "^4.21.0",
     "turbo": "^2.9.6"
   },
   "engines": {

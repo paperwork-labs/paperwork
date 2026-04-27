@@ -9,9 +9,8 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
-
 from zoneinfo import ZoneInfo
 
 from app.config import settings
@@ -67,7 +66,7 @@ def _repo_root() -> str:
 def in_flight_task_ids(*, lookback_days: int = 7) -> set[str]:
     """Task ids already placed in a non-terminal sprint."""
     store = _load_store()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+    cutoff = datetime.now(UTC) - timedelta(days=lookback_days)
     out: set[str] = set()
     for sp in store.get("sprints") or []:
         if not isinstance(sp, dict):
@@ -146,7 +145,7 @@ def load_sprints_since(since_utc: datetime) -> list[AgentSprintRecord]:
             gen_at = datetime.fromisoformat(str(sp.get("generated_at", "")).replace("Z", "+00:00"))
         except ValueError:
             continue
-        if gen_at >= since_utc.replace(tzinfo=gen_at.tzinfo or timezone.utc):
+        if gen_at >= since_utc.replace(tzinfo=gen_at.tzinfo or UTC):
             try:
                 out.append(AgentSprintRecord.model_validate(sp))
             except Exception:
@@ -159,7 +158,7 @@ def today_metrics(tz_name: str = _TZ_DEFAULT) -> AgentSprintDayMetrics:
     tz = ZoneInfo(tz_name)
     now = datetime.now(tz)
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    start_utc = start.astimezone(timezone.utc)
+    start_utc = start.astimezone(UTC)
     sprints = load_sprints_since(start_utc)
     if not sprints:
         return AgentSprintDayMetrics(

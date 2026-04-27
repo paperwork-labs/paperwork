@@ -4,7 +4,7 @@ medallion: bronze
 """
 
 import logging
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -39,7 +39,7 @@ def coerce_date(value: Any) -> date | None:
         return None
     for fmt in ("%Y%m%d", "%Y-%m-%d"):
         try:
-            return datetime.strptime(s[:10], fmt).date()
+            return datetime.strptime(s[:10], fmt).replace(tzinfo=UTC).date()
         except ValueError:
             continue
     try:

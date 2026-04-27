@@ -10,6 +10,7 @@ degrades gracefully when the token is missing.
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import logging
@@ -82,7 +83,9 @@ async def post_message(
                 },
                 json=payload,
             )
-            data = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+            data = (
+                r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+            )
     except httpx.HTTPError as e:
         logger.warning("slack_outbound: post failed (%s): %s", channel, e)
         return {"ok": False, "error": f"http error: {e}"}

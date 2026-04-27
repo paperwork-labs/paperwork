@@ -1,29 +1,54 @@
 ---
 owner: engineering
-last_reviewed: 2026-04-24
+last_reviewed: 2026-04-27
 doc_kind: plan
 domain: other
-status: active
+status: completed
 ---
 # AxiomFolio → Next.js 16 App Router — Migration Plan
 
-Status: **Phase E scaffolded (Week 3)** · Owner: engineering · Target: 2026Q3 · Scope: `apps/axiomfolio/` → `apps/axiomfolio-next/`
+## ✅ Completed 2026-04-27 (Track G4 — Q2 Tech Debt Convergence)
 
-## Status snapshot (refresh 2026-04-24)
+Founder directive: drop the `-next` stop-gap; canonical monorepo path is
+[`apps/axiomfolio`](../../../apps/axiomfolio) with package name
+**`@paperwork-labs/axiomfolio`**. The Vite SPA tree is **archived** (not
+deleted) at
+[`apps/_archive/axiomfolio-vite`](../../../apps/_archive/axiomfolio-vite)
+— excluded from pnpm workspaces; see its README for retention policy.
+Render static service **`axiomfolio-frontend`** is not in the root
+[`render.yaml`](../../../render.yaml); customer UI is **Next.js on Vercel**
+(same linked project — dashboard rename to `axiomfolio` is optional).
+
+**Closing summary**
+
+- **Routes:** App Router coverage matches the former Vite `App.tsx` surface,
+  including legacy redirects (e.g. `/market/scanner`, `/settings/admin/system`,
+  `/settings/trading/account-risk`, `/settings/admin/users`) implemented as
+  thin `redirect()` pages where paths diverged.
+- **CI / tooling:** `.github/workflows/ci.yaml` path filter and package filter
+  use `apps/axiomfolio` and `@paperwork-labs/axiomfolio`.
+- **Docs / infra:** `docs/INFRA.md`, `docs/infra/RENDER_INVENTORY.md`, Clerk
+  runbooks, and `render.yaml` header comments updated; Vercel **`vercel.json`**
+  `buildCommand` uses `pnpm --filter @paperwork-labs/axiomfolio...`.
+- **Founder follow-up (optional):** In Vercel → Project Settings, rename
+  project `axiomfolio-next` → `axiomfolio`; set **Root Directory** to
+  `apps/axiomfolio` if it still pointed at `apps/axiomfolio-next`.
+
+## Status snapshot (historical — pre-cutover 2026-04-24)
 
 | Milestone | State | Where |
 |---|---|---|
-| `apps/axiomfolio-next/` scaffold | Done | `apps/axiomfolio-next/` |
-| SystemStatus route ported | Shell (Track E) | [apps/axiomfolio-next/src/app/system-status/page.tsx](../../../apps/axiomfolio-next/src/app/system-status/page.tsx) |
-| Portfolio route ported | Shell (Track E) | [apps/axiomfolio-next/src/app/portfolio/page.tsx](../../../apps/axiomfolio-next/src/app/portfolio/page.tsx) |
-| Scanner route ported | Shell (Track E) | [apps/axiomfolio-next/src/app/scanner/page.tsx](../../../apps/axiomfolio-next/src/app/scanner/page.tsx) |
-| `@paperwork-labs/ui` wired | Done | `apps/axiomfolio-next/package.json` |
+| Next.js app at canonical path | **Done (2026-04-27)** | [`apps/axiomfolio/`](../../../apps/axiomfolio) |
+| SystemStatus route | Done | [`apps/axiomfolio/src/app/system-status/page.tsx`](../../../apps/axiomfolio/src/app/system-status/page.tsx) |
+| Portfolio route | Done | [`apps/axiomfolio/src/app/portfolio/page.tsx`](../../../apps/axiomfolio/src/app/portfolio/page.tsx) |
+| Scanner route | Done | [`apps/axiomfolio/src/app/scanner/page.tsx`](../../../apps/axiomfolio/src/app/scanner/page.tsx) |
+| `@paperwork-labs/ui` wired | Done | [`apps/axiomfolio/package.json`](../../../apps/axiomfolio/package.json) |
 | PWA package shared (`@paperwork-labs/pwa`) | Done | `packages/pwa/` (Track M.7) |
-| Feature flag proxy | Done | Middleware via `NEXT_PUBLIC_USE_NEXT` |
-| Remaining 47+ routes | Not started — Q3 work |
-| Vite app decommission | Blocked on full parity — Q3 |
+| Feature flag proxy | Done | `apps/axiomfolio/src/proxy.ts` (`NEXT_PUBLIC_AXIOMFOLIO_*`) |
+| Full route parity + Vite deletion | **Done (2026-04-27)** | Track G4 |
 
-Subsequent updates to this doc should keep the table above current; the rest of the document describes the migration plan as originally scoped and is intentionally historical from here down.
+The sections below are **historical** (original plan and rationale); they were
+written when the interim directory was `apps/axiomfolio-next/`.
 
 ## Why
 
@@ -53,10 +78,10 @@ The conclusion is not "rewrite everything"; the conclusion is "stop paying
 the per-stack tax." A migration now lets the Phase C DAG, Phase D persona
 operator UI, and the shared component registry all speak the same language.
 
-## Scope
+## Scope (historical)
 
-- `apps/axiomfolio/` — Vite 8 + React 19 + react-router-dom 7 + Tailwind 4
-  + axios + TanStack React Query + 50+ lazy routes + custom PWA.
+- ~~`apps/axiomfolio/`~~ — was Vite 8 + React 19 + react-router-dom 7 + Tailwind 4
+  + axios + TanStack React Query + 50+ lazy routes + custom PWA (**removed 2026-04-27**).
 - `apis/axiomfolio/render.yaml` — frontend service block (swap
   `runtime: static` for a Node/standalone target, or move frontend to
   Vercel and leave Render for API/workers only).

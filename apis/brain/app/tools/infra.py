@@ -325,11 +325,7 @@ async def check_n8n_status() -> str:
                         mode = ex.get("mode") or ""
                         stopped = ex.get("stoppedAt") or ex.get("stopped_at")
                         wf_raw = ex.get("workflowData")
-                        wf_name = (
-                            wf_raw.get("name")
-                            if isinstance(wf_raw, dict)
-                            else None
-                        )
+                        wf_name = wf_raw.get("name") if isinstance(wf_raw, dict) else None
                         wf_name = wf_name or ex.get("workflowId") or ""
                         tail = f", workflow={wf_name}" if wf_name else ""
                         last_line = (
@@ -341,21 +337,14 @@ async def check_n8n_status() -> str:
             else:
                 last_line = f"last execution: HTTP {ex_res.status_code}"
 
-            return (
-                f"n8n: workflows={total}, active={active}\n"
-                f"{last_line}"
-            )
+            return f"n8n: workflows={total}, active={active}\n{last_line}"
     except Exception as e:
         logger.warning("check_n8n_status failed: %s", e)
         return f"n8n check failed: {e}"
 
 
 def _summarize_redis_info(text: str) -> str:
-    lines = [
-        ln.strip()
-        for ln in text.splitlines()
-        if ln.strip() and not ln.startswith("#")
-    ]
+    lines = [ln.strip() for ln in text.splitlines() if ln.strip() and not ln.startswith("#")]
     memory_h = next((ln for ln in lines if ln.startswith("used_memory_human:")), "")
     memory = next(
         (ln for ln in lines if ln.startswith("used_memory:") and "human" not in ln),
@@ -414,7 +403,10 @@ async def list_n8n_workflows() -> str:
             if r.status_code != 200:
                 return f"n8n: HTTP {r.status_code}"
             data = r.json().get("data", [])
-            lines = [f"{'ACTIVE' if w.get('active') else 'INACTIVE':8} | {w.get('id'):>5} | {w.get('name', '?')}" for w in data]
+            lines = [
+                f"{'ACTIVE' if w.get('active') else 'INACTIVE':8} | {w.get('id'):>5} | {w.get('name', '?')}"  # noqa: E501
+                for w in data
+            ]
             return f"n8n workflows ({len(data)}):\n" + "\n".join(lines)
     except Exception as e:
         return f"n8n list failed: {e}"
@@ -436,9 +428,9 @@ async def activate_n8n_workflow(workflow_id: str, active: bool = True) -> str:
                 json={"active": active},
             )
             if r.status_code != 200:
-                return f"n8n: failed to {action} workflow {workflow_id} — HTTP {r.status_code}: {r.text[:200]}"
+                return f"n8n: failed to {action} workflow {workflow_id} — HTTP {r.status_code}: {r.text[:200]}"  # noqa: E501
             name = r.json().get("name", workflow_id)
-            return f"n8n: workflow '{name}' (ID: {workflow_id}) is now {'ACTIVE' if active else 'INACTIVE'}."
+            return f"n8n: workflow '{name}' (ID: {workflow_id}) is now {'ACTIVE' if active else 'INACTIVE'}."  # noqa: E501
     except Exception as e:
         return f"n8n {action} failed: {e}"
 
@@ -465,6 +457,8 @@ async def import_n8n_workflow(workflow_json: str) -> str:
             if r.status_code not in (200, 201):
                 return f"n8n: import failed — HTTP {r.status_code}: {r.text[:200]}"
             result = r.json()
-            return f"n8n: imported workflow '{result.get('name', '?')}' (ID: {result.get('id', '?')})."
+            return (
+                f"n8n: imported workflow '{result.get('name', '?')}' (ID: {result.get('id', '?')})."
+            )
     except Exception as e:
         return f"n8n import failed: {e}"

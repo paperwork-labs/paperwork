@@ -5,7 +5,7 @@
  * We stay quiet when there's nothing to do — no fake urgency.
  */
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { ArrowRight, Bell } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,7 +29,7 @@ const TONE_LABEL: Record<AttentionTone, string> = {
 function AttentionRow({ item }: { item: AttentionItem }) {
   return (
     <Link
-      to={item.href}
+      href={item.href}
       className={cn(
         'group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
         'hover:bg-muted/60 focus-visible:bg-muted/60 focus-visible:outline-none',

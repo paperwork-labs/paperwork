@@ -146,9 +146,9 @@ Context-specific AI rules activate based on which files you're editing:
 | Order manager | `app/services/execution/order_manager.py` | Single execution path |
 | Risk gate | `app/services/execution/risk_gate.py` | Position sizing, limits |
 | Job catalog | `app/tasks/job_catalog.py` | All scheduled tasks with metadata |
-| Market dashboard | `../../apps/axiomfolio/src/pages/MarketDashboard.tsx` | Main market view |
-| Theme | `../../apps/axiomfolio/src/styles/` | Tailwind config, design tokens |
-| Chart constants | `../../apps/axiomfolio/src/constants/chart.ts` | Stage colors, heat scales |
+| Market dashboard | `../../apps/axiomfolio/src/components/market/MarketDashboardClient.tsx` | Main market view (Next.js) |
+| Theme | `../../apps/axiomfolio/src/app/axiomfolio.css` | Tailwind tokens, dark canvas |
+| Stage / chart tokens | `../../apps/axiomfolio/src/lib/stageTailwind.ts` | Stage colors, badge classes |
 
 ## Development Commands
 

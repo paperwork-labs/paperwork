@@ -1,0 +1,48 @@
+name: Timezone discipline (Ruff DTZ)
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: timezone-discipline-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dtz:
+    name: Ruff DTZ — ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: axiomfolio
+            dir: apis/axiomfolio
+            args: app
+          - name: brain
+            dir: apis/brain
+            args: app
+          - name: filefree
+            dir: apis/filefree
+            args: app
+          - name: launchfree
+            dir: apis/launchfree
+            args: app
+          - name: paperwork-auth
+            dir: packages/auth/src/python
+            args: paperwork_auth
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install Ruff
+        run: python -m pip install "ruff>=0.8"
+      - name: Enforce DTZ
+        working-directory: ${{ matrix.dir }}
+        run: ruff check ${{ matrix.args }} --select DTZ

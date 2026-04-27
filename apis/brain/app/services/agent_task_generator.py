@@ -19,7 +19,11 @@ import httpx
 
 from app.config import settings
 from app.schemas.agent_tasks import AgentTaskSpec
-from app.services.sprint_planner import add_path_collision_dependencies, normalize_estimate, stable_task_hash
+from app.services.sprint_planner import (
+    add_path_collision_dependencies,
+    normalize_estimate,
+    stable_task_hash,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +76,9 @@ class _PRSnapshot:
     pending_checks: int
 
 
-async def _compare_behind(client: httpx.AsyncClient, owner: str, repo: str, base: str, head: str) -> int:
+async def _compare_behind(
+    client: httpx.AsyncClient, owner: str, repo: str, base: str, head: str
+) -> int:
     try:
         r = await client.get(f"/repos/{owner}/{repo}/compare/{base}...{head}")
         if r.status_code != 200:
@@ -143,10 +149,17 @@ def _classify_pr(
     return "UNKNOWN"
 
 
-async def _collect_open_prs(client: httpx.AsyncClient, owner: str, repo: str, limit: int = 25) -> list[_PRSnapshot]:
+async def _collect_open_prs(
+    client: httpx.AsyncClient, owner: str, repo: str, limit: int = 25
+) -> list[_PRSnapshot]:
     r = await client.get(
         f"/repos/{owner}/{repo}/pulls",
-        params={"state": "open", "per_page": min(limit, 30), "sort": "updated", "direction": "desc"},
+        params={
+            "state": "open",
+            "per_page": min(limit, 30),
+            "sort": "updated",
+            "direction": "desc",
+        },
     )
     r.raise_for_status()
     raw_prs: list[dict[str, Any]] = r.json()
@@ -205,7 +218,8 @@ def _pr_specs(pr: _PRSnapshot) -> list[AgentTaskSpec]:
         tid = stable_task_hash(f"pr:{pr.number}:rebase")
         scope = (
             f"PR #{pr.number} is behind {pr.base_ref} (behind_by={pr.behind_by}). "
-            f"Rebase or merge {pr.base_ref} into this branch, resolve any conflicts, run local checks, and push. "
+            f"Rebase or merge {pr.base_ref} into this branch, resolve conflicts, "
+            f"run local checks, and push. "
             f"PR: {pr.html_url}"
         )
         specs.append(
@@ -218,7 +232,12 @@ def _pr_specs(pr: _PRSnapshot) -> list[AgentTaskSpec]:
                 model_hint="composer-2-fast",
                 depends_on=[],
                 touches_paths=list(base_paths),
-                source={"kind": "pr", "ref": f"#{pr.number}", "bucket": "DIRTY", "url": pr.html_url},
+                source={
+                    "kind": "pr",
+                    "ref": f"#{pr.number}",
+                    "bucket": "DIRTY",
+                    "url": pr.html_url,
+                },
             )
         )
 
@@ -266,7 +285,8 @@ def _pr_specs(pr: _PRSnapshot) -> list[AgentTaskSpec]:
     if pr.bucket == "UNSTABLE" and not pr.failed_checks:
         tid = stable_task_hash(f"pr:{pr.number}:unstable")
         scope = (
-            f"PR #{pr.number} is unstable/blocked or has pending checks ({pr.pending_checks} pending). "
+            f"PR #{pr.number} is unstable/blocked or has pending checks "
+            f"({pr.pending_checks} pending). "
             f"Review GitHub checks, wait or unblock, follow up until green. PR: {pr.html_url}"
         )
         specs.append(
@@ -279,14 +299,21 @@ def _pr_specs(pr: _PRSnapshot) -> list[AgentTaskSpec]:
                 model_hint="composer-2-fast",
                 depends_on=[],
                 touches_paths=list(base_paths),
-                source={"kind": "pr", "ref": f"#{pr.number}", "bucket": "UNSTABLE", "url": pr.html_url},
+                source={
+                    "kind": "pr",
+                    "ref": f"#{pr.number}",
+                    "bucket": "UNSTABLE",
+                    "url": pr.html_url,
+                },
             )
         )
 
     return specs
 
 
-async def _collect_ready_issues(client: httpx.AsyncClient, owner: str, repo: str, limit: int = 20) -> list[AgentTaskSpec]:
+async def _collect_ready_issues(
+    client: httpx.AsyncClient, owner: str, repo: str, limit: int = 20
+) -> list[AgentTaskSpec]:
     specs: list[AgentTaskSpec] = []
     r = await client.get(
         f"/repos/{owner}/{repo}/issues",
@@ -303,7 +330,11 @@ async def _collect_ready_issues(client: httpx.AsyncClient, owner: str, repo: str
         num = int(it.get("number") or 0)
         if not num:
             continue
-        labels = [str(x.get("name", "")).lower() for x in (it.get("labels") or []) if isinstance(x, dict)]
+        labels = [
+            str(x.get("name", "")).lower()
+            for x in (it.get("labels") or [])
+            if isinstance(x, dict)
+        ]
         if "bug" not in labels:
             continue
         url = str(it.get("html_url") or "")
@@ -403,7 +434,8 @@ def _tracker_open_items(repo_root: str) -> list[AgentTaskSpec]:
             scope = (
                 f"Tracker item (company critical_dates): {milestone}\n\n"
                 f"Notes:\n{notes[:1500]}\n\n"
-                f"Acceptance:\n{acceptance or '(derive clear acceptance from notes and ship a minimal change)'}"
+                f"Acceptance:\n"
+                f"{acceptance or '(derive clear acceptance from notes and ship a minimal change)'}"
             )
             specs.append(
                 AgentTaskSpec(
@@ -441,7 +473,8 @@ def _tracker_open_items(repo_root: str) -> list[AgentTaskSpec]:
             tid = stable_task_hash(f"tracker:plan:{slug}:{ppath}")
             scope = (
                 f"Implement or advance active plan `{ptitle}` ({slug}). "
-                f"Primary doc: `{ppath}`. Read the plan, pick the next shippable slice, implement, and open a PR."
+                f"Primary doc: `{ppath}`. Read the plan, pick the next shippable slice, "
+                f"implement, and open a PR."
             )
             specs.append(
                 AgentTaskSpec(
@@ -472,7 +505,11 @@ async def generate() -> list[AgentTaskSpec]:
     if token:
         owner, repo = _repo_parts()
         try:
-            async with httpx.AsyncClient(base_url=_GH, headers=_gh_headers(), timeout=httpx.Timeout(60.0)) as client:
+            async with httpx.AsyncClient(
+                base_url=_GH,
+                headers=_gh_headers(),
+                timeout=httpx.Timeout(60.0),
+            ) as client:
                 prs = await _collect_open_prs(client, owner, repo)
                 for pr in prs:
                     tasks.extend(_pr_specs(pr))

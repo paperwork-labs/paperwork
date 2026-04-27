@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import * as Dialog from '@radix-ui/react-dialog';
 import { Menu, X } from 'lucide-react';
 
@@ -32,26 +33,29 @@ function MarketingNavLinks({
   onNavigate?: () => void;
   stacked?: boolean;
 }) {
+  const pathname = usePathname();
   return (
     <>
-      {marketingNav.map(({ to, label }) => (
-        <NavLink
-          key={to}
-          to={to}
-          className={(state) => navLinkClass(state, stacked)}
-          onClick={onNavigate}
-          end
-        >
-          {label}
-        </NavLink>
-      ))}
+      {marketingNav.map(({ to, label }) => {
+        const isActive = pathname === to;
+        return (
+          <Link
+            key={to}
+            href={to}
+            className={navLinkClass({ isActive }, stacked)}
+            onClick={onNavigate}
+          >
+            {label}
+          </Link>
+        );
+      })}
       <Button asChild size="sm" variant="default" className={cn(stacked && 'w-full')}>
-        <Link to="/login" onClick={onNavigate}>
+        <Link href="/login" onClick={onNavigate}>
           Sign in
         </Link>
       </Button>
       <Button asChild size="sm" variant="outline" className={cn(stacked && 'w-full')}>
-        <Link to="/register" onClick={onNavigate}>
+        <Link href="/register" onClick={onNavigate}>
           Register
         </Link>
       </Button>
@@ -79,7 +83,7 @@ export function MarketingHeader({ className }: MarketingHeaderProps) {
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <Link
-          to="/"
+          href="/"
           aria-label="AxiomFolio home"
           className={cn(
             'flex min-w-0 items-center gap-2.5 rounded-md',

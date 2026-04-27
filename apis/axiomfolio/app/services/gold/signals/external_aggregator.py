@@ -6,7 +6,7 @@ medallion: gold
 from __future__ import annotations
 
 import logging
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, List, Optional, TypedDict
 
@@ -94,7 +94,7 @@ def external_context_bonus_points(
     sym = (symbol or "").upper().strip()
     if not sym:
         return Decimal("0")
-    cutoff = date.today() - timedelta(days=lookback_days)
+    cutoff = datetime.now(UTC).date() - timedelta(days=lookback_days)
     n = (
         db.execute(
             select(func.count(ExternalSignal.id)).where(
@@ -136,7 +136,7 @@ def external_context_bonus_points_map(
     out: dict[str, Decimal] = {u: Decimal("0") for u in wanted}
     if not wanted:
         return out
-    cutoff = date.today() - timedelta(days=lookback_days)
+    cutoff = datetime.now(UTC).date() - timedelta(days=lookback_days)
     rows = db.execute(
         select(ExternalSignal.symbol, func.count(ExternalSignal.id))
         .where(

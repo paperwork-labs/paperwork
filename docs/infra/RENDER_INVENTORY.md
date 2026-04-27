@@ -29,7 +29,7 @@ The old account migration is effectively done. What remains is **repo-pointer dr
 | `axiomfolio-api` | web | `srv-d7lg0o77f7vs73b2k7m0` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
 | `axiomfolio-worker` | worker | `srv-d7lg0o77f7vs73b2k7lg` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
 | `axiomfolio-worker-heavy` | worker | `srv-d7lg0o77f7vs73b2k7kg` | **`paperwork-labs/axiomfolio` ⚠️** | — | `./Dockerfile.backend` (docker) | standard | running |
-| `axiomfolio-frontend` | static | `srv-d7lg0dv7f7vs73b2k1u0` | **`paperwork-labs/axiomfolio` ⚠️** | — | `cd frontend && npm ci && npm run build` | starter | running |
+| ~~`axiomfolio-frontend`~~ | — | `srv-d7lg0dv7f7vs73b2k1u0` | **`paperwork-labs/axiomfolio` ⚠️** | — | *removed from root `render.yaml` 2026-04-27 — UI on Vercel (`apps/axiomfolio`)* | — | **delete stale service in dashboard** |
 
 Data stores:
 
@@ -40,18 +40,19 @@ Data stores:
 
 ## Critical findings
 
-### F-1 — Four `axiomfolio-*` services still point to the old standalone repo ⚠️
+### F-1 — Three `axiomfolio-*` API/worker services still point to the old standalone repo ⚠️
 
-All four axiomfolio services (`axiomfolio-api`, `axiomfolio-worker`, `axiomfolio-worker-heavy`, `axiomfolio-frontend`) have their `repo` field set to **`https://github.com/paperwork-labs/axiomfolio`**, not the monorepo. This means:
+The three backend services (`axiomfolio-api`, `axiomfolio-worker`, `axiomfolio-worker-heavy`) still have their `repo` field set to **`https://github.com/paperwork-labs/axiomfolio`**, not the monorepo. (**Update 2026-04-27:** `axiomfolio-frontend` was retired from the root blueprint; customer UI is Next.js on Vercel.)
+
+This means:
 
 - Code changes to `apis/axiomfolio/` in the monorepo **do not deploy** to these services.
 - They're deploying off a repo that should be archived.
 - Their Dockerfile path is `./Dockerfile.backend` (the old standalone layout) — the monorepo has `apis/axiomfolio/Dockerfile` instead.
-- The frontend service build command is `cd frontend && npm ci && npm run build` — but the monorepo expects `pnpm --filter=@paperwork-labs/axiomfolio build` with `rootDir: apps/axiomfolio`.
 
-**The root `apis/axiomfolio/render.yaml` blueprint is correct.** It's just not applied. The services were created against the old repo and never repointed.
+**The root [`render.yaml`](../../render.yaml) blueprint is correct.** It's just not applied. The services were created against the old repo and never repointed.
 
-**Fix**: repoint each of the 4 services at `paperwork-labs/paperwork` via the Render dashboard, then re-sync from `apis/axiomfolio/render.yaml` as a Blueprint. See [RENDER_REPOINT.md](RENDER_REPOINT.md).
+**Fix**: repoint each of the **three** remaining services at `paperwork-labs/paperwork` via the Render dashboard, then re-sync from the root blueprint. See [RENDER_REPOINT.md](RENDER_REPOINT.md). If `axiomfolio-frontend` still appears in the dashboard, delete it (stale).
 
 ### F-2 — `launchfree-api` deferred (entry commented out in `render.yaml`) ✅
 

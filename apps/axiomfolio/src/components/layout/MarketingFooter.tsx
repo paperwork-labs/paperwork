@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 
 import { cn } from '@/lib/utils';
 
@@ -25,31 +25,31 @@ export function MarketingFooter({ className }: MarketingFooterProps) {
         <span aria-hidden className="text-muted-foreground/80">
           ·
         </span>
-        <Link to="/why-free" className="underline-offset-4 hover:text-foreground hover:underline">
+        <Link href="/why-free" className="underline-offset-4 hover:text-foreground hover:underline">
           Why free
         </Link>
         <span aria-hidden className="text-muted-foreground/80">
           ·
         </span>
-        <Link to="/pricing" className="underline-offset-4 hover:text-foreground hover:underline">
+        <Link href="/pricing" className="underline-offset-4 hover:text-foreground hover:underline">
           Pricing
         </Link>
         <span aria-hidden className="text-muted-foreground/80">
           ·
         </span>
-        <Link to="/terms" className="underline-offset-4 hover:text-foreground hover:underline">
+        <Link href="/terms" className="underline-offset-4 hover:text-foreground hover:underline">
           Terms
         </Link>
         <span aria-hidden className="text-muted-foreground/80">
           ·
         </span>
-        <Link to="/privacy" className="underline-offset-4 hover:text-foreground hover:underline">
+        <Link href="/privacy" className="underline-offset-4 hover:text-foreground hover:underline">
           Privacy
         </Link>
         <span aria-hidden className="text-muted-foreground/80">
           ·
         </span>
-        <Link to="/status" className="underline-offset-4 hover:text-foreground hover:underline">
+        <Link href="/status" className="underline-offset-4 hover:text-foreground hover:underline">
           Status
         </Link>
         <span aria-hidden className="text-muted-foreground/80">

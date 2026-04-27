@@ -8,7 +8,7 @@ medallion: ops
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Dict, List, Optional, Any
 
 try:
@@ -94,12 +94,12 @@ class TastyTradeClient:
                         raise Exception("No TastyTrade accounts found")
 
                     self.connected = True
-                    self.connection_start_time = datetime.now()
+                    self.connection_start_time = datetime.now(UTC)
                     self.retry_count = 0
                     self.connection_health.update(
                         {
                             "status": "connected",
-                            "last_successful_request": datetime.now(),
+                            "last_successful_request": datetime.now(UTC),
                             "consecutive_failures": 0,
                             "connection_uptime": 0,
                         }
@@ -151,11 +151,11 @@ class TastyTradeClient:
             if not self.accounts:
                 raise Exception("No TastyTrade accounts found")
             self.connected = True
-            self.connection_start_time = datetime.now()
+            self.connection_start_time = datetime.now(UTC)
             self.connection_health.update(
                 {
                     "status": "connected",
-                    "last_successful_request": datetime.now(),
+                    "last_successful_request": datetime.now(UTC),
                     "consecutive_failures": 0,
                     "connection_uptime": 0,
                 }
@@ -176,7 +176,7 @@ class TastyTradeClient:
             account = self.accounts[0]
             await account.get_balances(self.session)
             self.connection_health.update(
-                {"last_successful_request": datetime.now(), "consecutive_failures": 0}
+                {"last_successful_request": datetime.now(UTC), "consecutive_failures": 0}
             )
             logger.info("Verification: TastyTrade connection healthy")
             return True
@@ -541,7 +541,7 @@ class TastyTradeClient:
             if not account:
                 return []
 
-            end_date = datetime.now()
+            end_date = datetime.now(UTC)
             start_date = end_date - timedelta(days=days)
 
             raw_transactions = await account.get_history(
@@ -611,14 +611,14 @@ class TastyTradeClient:
                         (unrealized_pnl / cost_basis * 100) if cost_basis > 0 else 0
                     )
 
-                    acq_date = getattr(position, "created_at", datetime.now())
+                    acq_date = getattr(position, "created_at", datetime.now(UTC))
                     if hasattr(acq_date, "strftime"):
                         acq_str = acq_date.strftime("%Y-%m-%d")
                     else:
-                        acq_str = datetime.now().strftime("%Y-%m-%d")
+                        acq_str = datetime.now(UTC).strftime("%Y-%m-%d")
                     try:
                         days_held = (
-                            datetime.now() - datetime.strptime(acq_str, "%Y-%m-%d")
+                            datetime.now(UTC) - datetime.strptime(acq_str, "%Y-%m-%d").replace(tzinfo=UTC)
                         ).days
                     except Exception as e:
                         logger.warning(
@@ -689,7 +689,7 @@ class TastyTradeClient:
                 "positions_count": len(positions),
                 "maintenance_requirement": float(balances.maintenance_requirement),
                 "margin_equity": float(balances.margin_equity),
-                "last_updated": datetime.now().isoformat(),
+                "last_updated": datetime.now(UTC).isoformat(),
             }
         except Exception as e:
             logger.error("Error getting TastyTrade account info: %s", e)

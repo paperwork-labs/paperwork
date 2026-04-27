@@ -86,6 +86,9 @@ class Settings(BaseSettings):
     # T2.2: when true, register shadow APScheduler jobs mirroring n8n crons
     # (#engineering-cron-shadow only) — default off until cutover ready.
     SCHEDULER_N8N_MIRROR_ENABLED: bool = False
+    # Track K: Brain-owned P2.8 / P2.9 data crons (see data_source_monitor.py, data_deep_validator.py).
+    BRAIN_OWNS_DATA_SOURCE_MONITOR: bool = False
+    BRAIN_OWNS_DATA_DEEP_VALIDATOR: bool = False
     # #engineering Slack channel ID for per-PR Brain review summaries.
     SLACK_ENGINEERING_CHANNEL_ID: str = ""
     # Track I: #cfo Slack channel ID for the daily cost dashboard.
@@ -130,6 +133,23 @@ class Settings(BaseSettings):
     N8N_API_KEY: str = ""
     UPSTASH_REDIS_REST_URL: str = ""
     UPSTASH_REDIS_REST_TOKEN: str = ""
+    # Vercel team id (optional; Vercel REST calls may require it for multi-team accounts).
+    VERCEL_TEAM_ID: str = ""
+    # Internal Bearer for Studio → Brain webhooks and `/internal/secrets/*` (set on both sides).
+    BRAIN_INTERNAL_TOKEN: str = ""
+    # JSON: app slug → Vercel project id or name, e.g. `{"studio":"prj_xxx"}`.
+    BRAIN_SECRETS_VERCEL_APP_PROJECTS: str = ""
+    # JSON: service label → Render service id, e.g. `{"brain-api":"srv-xxx"}`.
+    BRAIN_SECRETS_RENDER_SERVICE_IDS: str = ""
+    # JSON: service label → GET URL for `secrets_health_probe`, e.g. `{"studio":"https://.../api/health"}`.
+    BRAIN_SECRETS_SERVICE_HEALTH_URLS: str = ""
+    # Net-new schedulers: default on (set false to disable without removing code).
+    BRAIN_OWNS_SECRETS_DRIFT_AUDIT: bool = True
+    BRAIN_OWNS_SECRETS_ROTATION_MONITOR: bool = True
+    BRAIN_OWNS_SECRETS_HEALTH_PROBE: bool = True
+    # Sprint planning (Mondays PT) — :func:`app.schedulers.sprint_planner.install` also
+    # reads :envvar:`BRAIN_OWNS_SPRINT_PLANNER` from the process environment first.
+    BRAIN_OWNS_SPRINT_PLANNER: bool = False
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

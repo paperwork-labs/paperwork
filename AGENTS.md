@@ -52,6 +52,29 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 ### Git hygiene
 
 - Branch-based development, never push to `main` — [.cursor/rules/git-workflow.mdc](.cursor/rules/git-workflow.mdc)
+- After remote branches are deleted on GitHub, run **`git fetch origin --prune`** (or **`git remote prune origin`**) so local tracking refs and worktrees do not point at removed branches.
+
+### GitHub CLI (`gh`) — token vs keyring
+
+`gh` **prefers the environment variable `GITHUB_TOKEN`** over the macOS keyring / `gh auth login` session. Cursor and other tools often inject a **narrow PAT** as `GITHUB_TOKEN`. That is fine for read-only API use but breaks **`gh pr create`** / **`gh pr merge`** with `Resource not accessible by personal access token`.
+
+**Recommended (this repo):**
+
+- For **interactive** PR operations, run GitHub CLI through the wrapper (unsets `GITHUB_TOKEN` for that process only — automation scripts under `scripts/pr-pipeline/` keep using `GITHUB_TOKEN` as today):
+
+  ```bash
+  ./scripts/gh-keyring.sh pr merge 123 --squash
+  # or
+  pnpm gh:keyring -- pr list
+  ```
+
+- Or one-off: `env -u GITHUB_TOKEN gh pr merge …`
+
+- Ensure a **full-access** login exists: `gh auth login` (HTTPS + keyring) with **`repo`** scope, or a **fine-grained PAT** with **Contents** and **Pull requests** write, **SSO authorized** for `paperwork-labs` if required. Then `gh auth status` should show **keyring** as the account you use for merges.
+
+- **`gh auth switch`** only affects the keyring account; it does not help until **`GITHUB_TOKEN` is unset** for that invocation (hence the wrapper).
+
+- **Do not** put a read-only PAT in shell profile as `export GITHUB_TOKEN=…` if you use `gh` to merge; use a different name (e.g. `GH_READONLY_TOKEN`) for tools that only read.
 
 ---
 
@@ -104,6 +127,7 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 - **Studio Vault** is the **source of truth** (`paperworklabs.com/admin/secrets`, `POST /api/secrets`, `make secrets`, `./scripts/vault-get.sh`) — [docs/SECRETS.md](docs/SECRETS.md)
 - **Brain:** runtime vault access and per-user `brain_user_vault` — same runbook, **Brain vault integration** section
 - **Env drift:** `make env-check`, matrix in secrets-ops.mdc
+- **Studio admin — secrets:** When `BRAIN_API_URL` and `BRAIN_INTERNAL_TOKEN` are set, `/admin/secrets` overlays **Brain** registry metadata (criticality, drift summary) and a small **Brain notes** popover (recent episodes) — [docs/infra/BRAIN_SECRETS_INTELLIGENCE.md](docs/infra/BRAIN_SECRETS_INTELLIGENCE.md)
 
 ---
 
@@ -168,3 +192,9 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 | [workflows.mdc](.cursor/rules/workflows.mdc) | Company playbooks |
 
 **Product-specific:** [apis/axiomfolio/AGENTS.md](apis/axiomfolio/AGENTS.md)
+
+**Studio admin — secrets:** `/admin/secrets` lists the encrypted vault; when `BRAIN_API_URL` and `BRAIN_INTERNAL_TOKEN` are set, the page overlays **Brain** registry metadata (criticality, drift summary) and a small **Brain notes** popover (recent episodes) — see `docs/infra/BRAIN_SECRETS_INTELLIGENCE.md`.
+
+**Key automation:**
+- **Slack / Brain**: Brain Slack Adapter and optional on-demand webhooks; scheduled briefings and infra checks run on **Brain** when `BRAIN_OWNS_*` cutover flags are enabled
+- **Decision Logger**: Captures decisions from #decisions and commits to KNOWLEDGE.md

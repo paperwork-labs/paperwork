@@ -99,6 +99,17 @@ Single-source list of one-time blockers that require founder credentials. Once a
 - **Source:** PR #245, `docs/infra/BRAIN_SCHEDULER.md`, `apis/brain/app/schedulers/n8n_mirror.py`
 - **ETA:** ~60+ min (spread across days; not one sitting)
 
+### 6. Vercel auto-promote matrix placeholders + stale production recovery — `[VERIFY]`
+- **Why this matters:** `.github/workflows/vercel-promote-on-merge.yaml` includes rows with `project_id: TBD_CREATE_BEFORE_MERGE` (`axiomfolio-next`, `trinkets`, `accounts`). Those jobs intentionally skip until real `prj_…` ids exist. Separately, if **no** READY deployment exists for the merge commit on a real project, **promote cannot fix production** (alias-only); CI must fail loudly — see `docs/infra/VERCEL_AUTO_PROMOTE.md`.
+- **Where:** [Vercel — Paperwork Labs](https://vercel.com/paperwork-labs); workflow matrix; optional `gh secret list` for `VERCEL_API_TOKEN`.
+- **Steps:**
+  1. For each placeholder row: create or locate the Vercel project, copy **Project ID** from Settings → General, replace `TBD_CREATE_BEFORE_MERGE` in the workflow (do not invent ids).
+  2. If production is stale and `vercel deploy` / redeploy returns **402** `api-deployments-free-per-day`, the team hit the **Hobby daily deployment cap** — wait for reset, upgrade, or use the dashboard to **promote** an existing READY deployment that already matches `main` (no new build).
+  3. If CLI reports a doubled root path (e.g. `apps/studio/apps/studio`), fix **Root Directory** under the Vercel project’s General settings (often one `apps/<name>` segment, not nested twice).
+- **Verification:** Merge a PR that touches shared paths; promote workflow comments or promotes; `vercel api`/dashboard shows production `githubCommitSha` matching `git rev-parse origin/main` for studio, launchfree, filefree, distill.
+- **Source:** PR #267, `docs/infra/VERCEL_AUTO_PROMOTE.md`
+- **ETA:** ~15–30 min per project + any plan/cap wait
+
 ## Pending — Branding / Polish (cosmetic)
 
 ### 1. Clerk “Powered by Clerk” / Pro branding on dev — `[VERIFY]`
@@ -110,7 +121,7 @@ Single-source list of one-time blockers that require founder credentials. Once a
 - **ETA:** ~30 min (research) + any Clerk plan upgrade (business decision)
 
 ### 2. DNS + Dashboard for Clerk production (`paperworklabs.com` / `accounts.paperworklabs.com`) — `[VERIFY]`
-- **Why this matters:** Clerk production for **`paperworklabs.com`** needs the **five CNAMEs** (Frontend API, Account portal, mail, DKIM) verified in the Dashboard before hosted auth flows are fully trusted. Satellite domains (other brands) still follow `CLERK_SATELLITE_TOPOLOGY.md` when you enable them. Embedded-only auth in individual apps (PR #210) **reduced** reliance on `accounts.*` for basic login in some surfaces; **Track H4** for the root zone is **DNS + verification** — see **[`CLERK_DNS_SPACESHIP.md`](docs/infra/CLERK_DNS_SPACESHIP.md)** (Clerk auto-hosts the Account Portal at `accounts.paperworklabs.com`; no custom `apps/accounts/` deploy required for that portal).
+- **Why this matters:** Clerk production for **`paperworklabs.com`** needs the **five CNAMEs** (Frontend API, Account portal, mail, DKIM) verified in the Dashboard before hosted auth flows are fully trusted. Satellite domains (other brands) still follow `CLERK_SATELLITE_TOPOLOGY.md` when you enable them. Embedded-only auth in individual apps (PR #210) **reduced** reliance on `accounts.*` for basic login in some surfaces; **Track H4** for the root zone is **DNS + verification** — see **[`CLERK_DNS_SPACESHIP.md`](docs/infra/CLERK_DNS_SPACESHIP.md)** (Clerk auto-hosts the Account Portal at `accounts.paperworklabs.com`; no custom `apps/accounts/` deploy required for that portal). ~~Former Track H4 (`apps/accounts` micro-app)~~ — **superseded** by Clerk-hosted Account Portal per [`docs/KNOWLEDGE.md`](../KNOWLEDGE.md) §D91.
 - **Where:** **Spaceship** DNS for `paperworklabs.com` (not Cloudflare/Vercel DNS for this zone); [Clerk Dashboard](https://dashboard.clerk.com) → **Configure** → **Developers** → **Domains**.
 - **Steps:** Open **[`CLERK_DNS_SPACESHIP.md`](docs/infra/CLERK_DNS_SPACESHIP.md)** — paste the five CNAMEs, wait ~5 min, then **Verify configuration** in Clerk. For satellite rollouts across **other** apex domains, follow [`CLERK_SATELLITE_TOPOLOGY.md`](docs/infra/CLERK_SATELLITE_TOPOLOGY.md) (Clerk shows live record values per domain — do not copy stale placeholders).
 - **Verification:** `dig` one-liner in `CLERK_DNS_SPACESHIP.md`; all five **Verified** in Dashboard; optional end-to-end sign-in across a pilot satellite when satellites are enabled.

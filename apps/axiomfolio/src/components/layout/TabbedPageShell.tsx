@@ -1,10 +1,12 @@
-import * as React from 'react';
-import { useSearchParams } from 'react-router-dom';
+"use client";
 
-import ErrorBoundary from '@/components/ErrorBoundary';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+import ErrorBoundary from "@/components/ErrorBoundary";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 const ActiveTabContext = React.createContext<string | null>(null);
 
@@ -15,7 +17,7 @@ const ActiveTabContext = React.createContext<string | null>(null);
 export function useActiveTab<T extends string>(): T {
   const v = React.useContext(ActiveTabContext);
   if (v == null) {
-    throw new Error('useActiveTab must be used within TabbedPageShell');
+    throw new Error("useActiveTab must be used within TabbedPageShell");
   }
   return v as T;
 }
@@ -55,64 +57,67 @@ function TabPanelSkeleton() {
 export function TabbedPageShell<T extends string>({
   tabs,
   defaultTab,
-  paramKey = 'tab',
+  paramKey = "tab",
   className,
   tabsListClassName,
   endAdornment,
 }: TabbedPageShellProps<T>) {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const allowed = React.useMemo(() => new Set(tabs.map((t) => t.id)), [tabs]);
 
-  const raw = searchParams.get(paramKey) ?? '';
+  const replaceSearchParams = React.useCallback(
+    (updater: (prev: URLSearchParams) => URLSearchParams) => {
+      const prev = new URLSearchParams(searchParams.toString());
+      const next = updater(prev);
+      const qs = next.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
+    },
+    [pathname, router, searchParams],
+  );
+
+  const raw = searchParams.get(paramKey) ?? "";
   const resolved: T = (allowed.has(raw as T) ? raw : defaultTab) as T;
 
   React.useEffect(() => {
     if (allowed.has(raw as T)) return;
-    if (raw !== '') {
-      setSearchParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          next.set(paramKey, defaultTab);
-          return next;
-        },
-        { replace: true },
-      );
+    if (raw !== "") {
+      replaceSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set(paramKey, defaultTab);
+        return next;
+      });
     }
-  }, [allowed, defaultTab, paramKey, raw, setSearchParams]);
+  }, [allowed, defaultTab, paramKey, raw, replaceSearchParams]);
 
   const setTab = React.useCallback(
     (next: string) => {
       if (!allowed.has(next as T)) return;
-      setSearchParams(
-        (prev) => {
-          const p = new URLSearchParams(prev);
-          p.set(paramKey, next);
-          return p;
-        },
-        { replace: true },
-      );
+      replaceSearchParams((prev) => {
+        const p = new URLSearchParams(prev);
+        p.set(paramKey, next);
+        return p;
+      });
     },
-    [allowed, paramKey, setSearchParams],
+    [allowed, paramKey, replaceSearchParams],
   );
 
   React.useEffect(() => {
-    if (raw !== '') return;
-    setSearchParams(
-      (prev) => {
-        const p = new URLSearchParams(prev);
-        const cur = p.get(paramKey);
-        if (cur == null || cur === '') p.set(paramKey, defaultTab);
-        return p;
-      },
-      { replace: true },
-    );
-  }, [defaultTab, paramKey, raw, setSearchParams]);
+    if (raw !== "") return;
+    replaceSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      const cur = p.get(paramKey);
+      if (cur == null || cur === "") p.set(paramKey, defaultTab);
+      return p;
+    });
+  }, [defaultTab, paramKey, raw, replaceSearchParams]);
 
   return (
     <ActiveTabContext.Provider value={resolved}>
-      <Tabs value={resolved} onValueChange={setTab} className={cn('w-full', className)}>
+      <Tabs value={resolved} onValueChange={setTab} className={cn("w-full", className)}>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <TabsList variant="line" className={cn('h-auto w-full flex-wrap justify-start p-1 sm:w-auto', tabsListClassName)}>
+          <TabsList variant="line" className={cn("h-auto w-full flex-wrap justify-start p-1 sm:w-auto", tabsListClassName)}>
             {tabs.map((t) => (
               <TabsTrigger key={t.id} value={t.id} className="gap-1.5">
                 {t.label}

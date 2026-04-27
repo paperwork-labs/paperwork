@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 from celery import shared_task
 
@@ -145,12 +145,12 @@ def sync_account_task(account_id: int, sync_type: str = "comprehensive") -> dict
                 dr_end = result.get("data_range_end")
                 if dr_start:
                     try:
-                        sync_record.data_range_start = datetime.strptime(str(dr_start), "%Y%m%d")
+                        sync_record.data_range_start = datetime.strptime(str(dr_start), "%Y%m%d").replace(tzinfo=UTC)
                     except (ValueError, TypeError):
                         pass
                 if dr_end:
                     try:
-                        sync_record.data_range_end = datetime.strptime(str(dr_end), "%Y%m%d")
+                        sync_record.data_range_end = datetime.strptime(str(dr_end), "%Y%m%d").replace(tzinfo=UTC)
                     except (ValueError, TypeError):
                         pass
             session.commit()

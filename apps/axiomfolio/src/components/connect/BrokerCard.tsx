@@ -13,7 +13,7 @@
  * APIs to retail. That microcopy is part of the trust contract.
  */
 import * as React from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { CheckCircle2, ChevronRight, Info } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -91,7 +91,7 @@ function WhyNotOAuth({ brokerName }: { brokerName: string }) {
           via SnapTrade pass-through — we don&apos;t mark it up.
         </p>
         <Link
-          to="/why-free"
+          href="/why-free"
           className="inline-flex text-foreground underline underline-offset-4"
         >
           Read more

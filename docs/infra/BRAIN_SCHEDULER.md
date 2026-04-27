@@ -112,6 +112,11 @@ P2.8, P2.9, and P2.10 first-party jobs are listed in the **Cutover gates** table
 | `merged_prs_ingest` | interval (default 6h) | Merged PRs → memory |
 | `ingest_decisions_daily` | daily 03:00 | ADR docs → memory |
 | `ingest_postmortems_daily` | daily 03:30 | Postmortems / incidents → memory |
+| `secrets_drift_audit` | daily **03:00** `America/Los_Angeles` | Vault vs Vercel/Render fingerprint audit → episodes + optional agent tasks; ``BRAIN_OWNS_SECRETS_DRIFT_AUDIT`` (default on) |
+| `secrets_rotation_monitor` | daily **09:00** `America/Los_Angeles` | Rotations due within 7d → episodes + optional agent tasks; ``BRAIN_OWNS_SECRETS_ROTATION_MONITOR`` |
+| `secrets_health_probe` | hourly (UTC) | For ``criticality=critical`` rows, sample health URLs; ``BRAIN_OWNS_SECRETS_HEALTH_PROBE`` |
+
+See [BRAIN_SECRETS_INTELLIGENCE.md](./BRAIN_SECRETS_INTELLIGENCE.md) for schema, webhooks, and runbook.
 
 **Job list (process):** `GET /internal/schedulers` returns the current APScheduler registry (``id``, ``next_run``, ``trigger``, ``classification``: `net-new` / `cutover` / `operational` / `n8n-shadow`). Unauthenticated — use for deploy verification or behind an edge allowlist.
 
@@ -190,8 +195,8 @@ ORDER BY id;
 
 - Decision log: [Company Knowledge](../KNOWLEDGE.md) (2026-04-25 — Brain owns schedules; SQLAlchemy job store).
 - Sprint: [Streamline + SSO + Real DAGs](../sprints/STREAMLINE_SSO_DAGS_2026Q2.md) (T1 orchestration / shadow period).
-- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/brain_weekly_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/sprint_kickoff.py`, `apis/brain/app/schedulers/sprint_close.py`, `apis/brain/app/schedulers/data_source_monitor.py`, `apis/brain/app/schedulers/data_deep_validator.py`, `apis/brain/app/schedulers/data_annual_update.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/infra_health.py`, `apis/brain/app/schedulers/credential_expiry.py`.
+- Code: `apis/brain/app/schedulers/pr_sweep.py`, `apis/brain/app/schedulers/apscheduler_db.py`, `apis/brain/app/schedulers/n8n_mirror.py`, `apis/brain/app/schedulers/brain_daily_briefing.py`, `apis/brain/app/schedulers/brain_weekly_briefing.py`, `apis/brain/app/schedulers/weekly_strategy.py`, `apis/brain/app/schedulers/sprint_kickoff.py`, `apis/brain/app/schedulers/sprint_planner.py`, `apis/brain/app/schedulers/sprint_close.py`, `apis/brain/app/schedulers/data_source_monitor.py`, `apis/brain/app/schedulers/data_deep_validator.py`, `apis/brain/app/schedulers/data_annual_update.py`, `apis/brain/app/schedulers/infra_heartbeat.py`, `apis/brain/app/schedulers/infra_health.py`, `apis/brain/app/schedulers/credential_expiry.py`.
 
 ---
 
-**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_brain_weekly.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_sprint_kickoff.py`, `apis/brain/tests/test_schedulers/test_sprint_close.py`, `apis/brain/tests/test_schedulers/test_data_source_monitor.py`, `apis/brain/tests/test_schedulers/test_data_deep_validator.py`, `apis/brain/tests/test_schedulers/test_data_annual_update.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_infra_health.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.
+**Tests:** `apis/brain/tests/test_schedulers/test_n8n_mirror.py`, `apis/brain/tests/test_schedulers/test_n8n_mirror_perjob.py`, `apis/brain/tests/test_schedulers/test_brain_daily_briefing.py`, `apis/brain/tests/test_schedulers/test_brain_weekly.py`, `apis/brain/tests/test_schedulers/test_weekly_strategy.py`, `apis/brain/tests/test_schedulers/test_sprint_kickoff.py`, `apis/brain/tests/test_schedulers/test_sprint_planner.py`, `apis/brain/tests/test_schedulers/test_sprint_close.py`, `apis/brain/tests/test_schedulers/test_data_source_monitor.py`, `apis/brain/tests/test_schedulers/test_data_deep_validator.py`, `apis/brain/tests/test_schedulers/test_data_annual_update.py`, `apis/brain/tests/test_schedulers/test_infra_heartbeat.py`, `apis/brain/tests/test_schedulers/test_infra_health.py`, `apis/brain/tests/test_schedulers/test_credential_expiry.py`.

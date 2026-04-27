@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import logging
 import threading
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
@@ -161,7 +161,7 @@ def _validate_cron(cron: str) -> None:
     if len(parts) != 5:
         raise HTTPException(status_code=400, detail="Cron must be a 5-field expression (m h dom mon dow)")
     try:
-        croniter(cron, datetime.now())
+        croniter(cron, datetime.now(UTC))
     except (ValueError, KeyError) as exc:
         raise HTTPException(status_code=400, detail=f"Invalid cron expression: {exc}") from exc
 

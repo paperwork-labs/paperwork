@@ -7,7 +7,7 @@ isolation of the rollup row.
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime, timezone
 from decimal import Decimal
 
 import pytest
@@ -22,8 +22,8 @@ from app.services.multitenant.cost_attribution import (
 
 def _make_user(db, suffix: str) -> User:
     u = User(
-        username=f"cost_{suffix}_{int(datetime.now().timestamp() * 1000)}",
-        email=f"cost_{suffix}_{int(datetime.now().timestamp() * 1000)}@example.com",
+        username=f"cost_{suffix}_{int(datetime.now(UTC).timestamp() * 1000)}",
+        email=f"cost_{suffix}_{int(datetime.now(UTC).timestamp() * 1000)}@example.com",
         password_hash="x",
         is_active=True,
         is_verified=True,

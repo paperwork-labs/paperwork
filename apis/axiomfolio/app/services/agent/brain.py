@@ -15,7 +15,7 @@ import logging
 import os
 import uuid
 from urllib.parse import urlparse
-from datetime import datetime, timezone
+from datetime import UTC, date, datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
@@ -1745,7 +1745,7 @@ class TradingAgent:
             from datetime import date, timedelta
             from app.models.market_data import MarketRegime
 
-            cutoff = date.today() - timedelta(days=days)
+            cutoff = datetime.now(UTC).date() - timedelta(days=days)
             results = (
                 self.db.query(MarketRegime)
                 .filter(MarketRegime.as_of_date >= cutoff)
@@ -1860,7 +1860,7 @@ class TradingAgent:
             from datetime import date, timedelta
             from app.models.market_data import MarketRegime
 
-            cutoff = date.today() - timedelta(days=days)
+            cutoff = datetime.now(UTC).date() - timedelta(days=days)
             results = (
                 self.db.query(MarketRegime)
                 .filter(MarketRegime.as_of_date >= cutoff)
@@ -1918,12 +1918,12 @@ class TradingAgent:
             if not current:
                 return {"error": "No current regime data"}
 
-            cutoff = date.today() - timedelta(days=lookback_years * 365)
+            cutoff = datetime.now(UTC).date() - timedelta(days=lookback_years * 365)
             historical = (
                 self.db.query(MarketRegime)
                 .filter(
                     MarketRegime.as_of_date >= cutoff,
-                    MarketRegime.as_of_date < date.today() - timedelta(days=30),
+                    MarketRegime.as_of_date < datetime.now(UTC).date() - timedelta(days=30),
                 )
                 .all()
             )
@@ -2018,7 +2018,7 @@ class TradingAgent:
             from sqlalchemy import func
             from app.models.market_data import MarketSnapshotHistory
 
-            cutoff = date.today() - timedelta(days=days)
+            cutoff = datetime.now(UTC).date() - timedelta(days=days)
             perf_field = {
                 5: MarketSnapshotHistory.perf_5d,
                 10: MarketSnapshotHistory.perf_10d,
@@ -2162,7 +2162,7 @@ class TradingAgent:
             from sqlalchemy import func
             from app.models.market_data import MarketSnapshotHistory
 
-            cutoff = date.today() - timedelta(days=days)
+            cutoff = datetime.now(UTC).date() - timedelta(days=days)
             results = (
                 self.db.query(
                     func.count(MarketSnapshotHistory.id).label("total"),
@@ -2271,8 +2271,8 @@ class TradingAgent:
             exit_rules = parse_group(exit_rules_raw)
 
             try:
-                start = datetime.strptime(start_date, "%Y-%m-%d").date()
-                end = datetime.strptime(end_date, "%Y-%m-%d").date()
+                start = date.fromisoformat(start_date)
+                end = date.fromisoformat(end_date)
             except ValueError:
                 return {"error": "Invalid date format. Use YYYY-MM-DD"}
 

@@ -74,9 +74,7 @@ mcp.tool(name="search_github_code", description="Search code in the GitHub repos
 mcp.tool(name="list_github_prs", description="List pull requests on the repository.")(
     list_github_prs
 )
-mcp.tool(name="get_github_pr", description="Get details of a specific pull request.")(
-    get_github_pr
-)
+mcp.tool(name="get_github_pr", description="Get details of a specific pull request.")(get_github_pr)
 mcp.tool(
     name="get_github_pr_diff",
     description="Fetch the unified diff for a PR (capped at 60k chars).",
@@ -89,9 +87,9 @@ mcp.tool(
         "Optional inline comments: list of {path, line, body}."
     ),
 )(review_github_pr)
-mcp.tool(
-    name="create_github_issue", description="Create a new issue on the repository."
-)(create_github_issue)
+mcp.tool(name="create_github_issue", description="Create a new issue on the repository.")(
+    create_github_issue
+)
 mcp.tool(
     name="commit_github_file",
     description="Create or update a file in the repository (Tier 2: write action).",
@@ -120,7 +118,9 @@ async def _brain_review_pr_wrapper(pr_number: int, organization_id: str = "paper
             f"Reviewed PR #{pr_number}: {result.get('verdict')} "
             f"(model={result.get('model')}). {result.get('summary', '')[:400]}"
         )
-    return f"PR #{pr_number} review did not post: {result.get('error') or result.get('review_result')}"
+    return (
+        f"PR #{pr_number} review did not post: {result.get('error') or result.get('review_result')}"
+    )
 
 
 async def _brain_sweep_open_prs_wrapper(
@@ -137,9 +137,7 @@ async def _brain_sweep_open_prs_wrapper(
     from app.services.pr_review import sweep_open_prs
 
     async with async_session_factory() as session:
-        report = await sweep_open_prs(
-            session, org_id=organization_id, limit=limit, force=force
-        )
+        report = await sweep_open_prs(session, org_id=organization_id, limit=limit, force=force)
     reviewed = report.get("reviewed") or []
     skipped = report.get("skipped") or []
     errors = report.get("errors") or []
@@ -183,9 +181,9 @@ mcp.tool(
 mcp.tool(name="check_render_status", description="Check health of all Render services.")(
     check_render_status
 )
-mcp.tool(
-    name="check_vercel_status", description="Check recent Vercel deployment status."
-)(check_vercel_status)
+mcp.tool(name="check_vercel_status", description="Check recent Vercel deployment status.")(
+    check_vercel_status
+)
 mcp.tool(name="check_neon_status", description="Check Neon PostgreSQL database status.")(
     check_neon_status
 )
@@ -213,9 +211,9 @@ mcp.tool(
 mcp.tool(name="scan_market", description="Run market scans for trading candidates (Tier 0).")(
     scan_market
 )
-mcp.tool(
-    name="get_portfolio", description="Get current portfolio positions and P&L (Tier 0)."
-)(get_portfolio)
+mcp.tool(name="get_portfolio", description="Get current portfolio positions and P&L (Tier 0).")(
+    get_portfolio
+)
 mcp.tool(
     name="stage_analysis",
     description="Get technical stage analysis for a stock symbol (Tier 0).",
@@ -223,9 +221,9 @@ mcp.tool(
 mcp.tool(
     name="get_risk_status", description="Get circuit breaker status and risk metrics (Tier 0)."
 )(get_risk_status)
-mcp.tool(
-    name="get_market_regime", description="Get current market regime R1-R5 (Tier 0)."
-)(get_market_regime)
+mcp.tool(name="get_market_regime", description="Get current market regime R1-R5 (Tier 0).")(
+    get_market_regime
+)
 mcp.tool(
     name="preview_trade",
     description="Create a PREVIEW trade order for approval (Tier 2). Returns order_id.",
@@ -292,6 +290,6 @@ mcp.tool(
 )(_vault_set_wrapper)
 
 
-def create_mcp_app() -> "Starlette":
+def create_mcp_app() -> Starlette:
     """Create the ASGI app for mounting in FastAPI."""
     return mcp.http_app(path="/")

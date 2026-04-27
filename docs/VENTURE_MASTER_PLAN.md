@@ -70,7 +70,7 @@ status: active
 - Backend: FastAPI (Python 3.11+) · SQLAlchemy 2 async · PostgreSQL 15+ (Neon) · Redis (Upstash) · Pydantic v2 · Alembic.
 - Infra: Vercel (frontend) · Render Starter ×2 (APIs) · GCP (Cloud Vision, Cloud Storage) · Hetzner CX33 (n8n, Postiz, Redis). Zero AWS.
 - AI routing: Cloud Vision DOCUMENT_TEXT_DETECTION → GPT-4o-mini structured extraction → GPT-4o vision fallback (<85 % confidence). SSN regex-extracted locally, **never** sent to LLMs. State data: Gemini 2.5 Flash / Pro. Tax verification: o4-mini. Brand / social: GPT-4o. Code / compliance: Claude Sonnet. Authoritative routing: [docs/AI_MODEL_REGISTRY.md](AI_MODEL_REGISTRY.md).
-- Monorepo target: `apps/` (filefree, launchfree, distill, studio, trinkets, axiomfolio, axiomfolio-next), `apis/` (filefree, brain, axiomfolio, launchfree-future), `packages/` (ui, auth, analytics, data, tax-engine, document-processing, filing-engine, intelligence, email, pwa).
+- Monorepo target: `apps/` (filefree, launchfree, distill, studio, trinkets, axiomfolio), `apis/` (filefree, brain, axiomfolio, launchfree-future), `packages/` (ui, auth, analytics, data, tax-engine, document-processing, filing-engine, intelligence, email, pwa).
 
 **Agent architecture**:
 

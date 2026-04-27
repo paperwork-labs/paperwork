@@ -9,7 +9,7 @@ medallion: bronze
 from __future__ import annotations
 
 import logging
-from datetime import datetime as dt, timezone as tz_utc
+from datetime import date, datetime as dt, timezone as tz_utc
 from decimal import Decimal
 import re
 from typing import Any, Dict, Tuple
@@ -655,7 +655,7 @@ class TastyTradeSyncService:
         exp_date = None
         if isinstance(exp, str):
             try:
-                exp_date = dt.strptime(exp, "%Y-%m-%d").date()
+                exp_date = date.fromisoformat(exp)
             except Exception:
                 exp_date = None
         elif exp and hasattr(exp, "strftime"):
@@ -675,7 +675,7 @@ class TastyTradeSyncService:
                 yy, mm, dd = int(yymmdd[0:2]), int(yymmdd[2:4]), int(yymmdd[4:6])
                 exp_date = (
                     exp_date
-                    or dt.strptime(f"20{yy:02d}-{mm:02d}-{dd:02d}", "%Y-%m-%d").date()
+                    or date.fromisoformat(f"20{yy:02d}-{mm:02d}-{dd:02d}")
                 )
                 option_type = option_type or ("CALL" if m.group(3) == "C" else "PUT")
                 # strike encoded with 3 decimals in 8 digits

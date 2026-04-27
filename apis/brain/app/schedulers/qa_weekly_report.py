@@ -14,11 +14,12 @@ What lands in #qa:
 
 medallion: ops
 """
+
 from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from apscheduler.triggers.cron import CronTrigger
@@ -29,9 +30,7 @@ from app.services import slack_outbound
 
 logger = logging.getLogger(__name__)
 
-_DRIFT_BASELINE = (
-    Path(__file__).resolve().parents[4] / "docs" / ".doc-drift-baseline.json"
-)
+_DRIFT_BASELINE = Path(__file__).resolve().parents[4] / "docs" / ".doc-drift-baseline.json"
 
 
 def _load_drift_baseline() -> tuple[int, int]:
@@ -63,13 +62,12 @@ def _build_digest() -> str:
     missing_output_cap = [s.name for s in specs if s.max_output_tokens is None]
     compliance = [s.name for s in specs if s.compliance_flagged]
 
-    today = datetime.now(timezone.utc).date().isoformat()
+    today = datetime.now(UTC).date().isoformat()
     lines = [
         f"*QA · weekly agent health — {today}*",
         "",
         f"• *Personas registered:* {total}",
-        f"• *Compliance-flagged:* {len(compliance)} "
-        f"(`{', '.join(sorted(compliance)) or 'none'}`)",
+        f"• *Compliance-flagged:* {len(compliance)} (`{', '.join(sorted(compliance)) or 'none'}`)",
     ]
 
     if missing_ceiling or missing_rate_limit or missing_output_cap:
@@ -77,25 +75,19 @@ def _build_digest() -> str:
         lines.append(":warning: *Guardrail gaps:*")
         if missing_ceiling:
             lines.append(
-                f"• Missing `daily_cost_ceiling_usd`: "
-                f"`{', '.join(sorted(missing_ceiling))}`"
+                f"• Missing `daily_cost_ceiling_usd`: `{', '.join(sorted(missing_ceiling))}`"
             )
         if missing_rate_limit:
             lines.append(
-                f"• Missing `requests_per_minute`: "
-                f"`{', '.join(sorted(missing_rate_limit))}`"
+                f"• Missing `requests_per_minute`: `{', '.join(sorted(missing_rate_limit))}`"
             )
         if missing_output_cap:
             lines.append(
-                f"• Missing `max_output_tokens`: "
-                f"`{', '.join(sorted(missing_output_cap))}`"
+                f"• Missing `max_output_tokens`: `{', '.join(sorted(missing_output_cap))}`"
             )
     else:
         lines.append("")
-        lines.append(
-            ":white_check_mark: All personas have ceilings, rate limits, "
-            "and output caps."
-        )
+        lines.append(":white_check_mark: All personas have ceilings, rate limits, and output caps.")
 
     dead_refs, stale_lines = _load_drift_baseline()
     lines.append("")
@@ -142,6 +134,4 @@ def install(scheduler) -> None:
         coalesce=True,
         replace_existing=True,
     )
-    logger.info(
-        "APScheduler job 'qa_weekly_report' registered (Sunday 17:00 UTC)"
-    )
+    logger.info("APScheduler job 'qa_weekly_report' registered (Sunday 17:00 UTC)")

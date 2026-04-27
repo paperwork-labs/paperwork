@@ -38,7 +38,7 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -110,7 +110,7 @@ def _to_date(value: Any) -> Optional[date]:
             return None
         for fmt in ("%Y-%m-%d", "%Y%m%d"):
             try:
-                return datetime.strptime(candidate, fmt).date()
+                return datetime.strptime(candidate, fmt).replace(tzinfo=UTC).date()
             except ValueError:
                 continue
         try:
