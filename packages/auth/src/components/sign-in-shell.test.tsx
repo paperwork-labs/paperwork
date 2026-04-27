@@ -96,7 +96,7 @@ describe("<SignInShell>", () => {
         appName="AxiomFolio"
         appSlug="axiomfolio"
         appWordmark={<span>AxiomFolio</span>}
-        appTagline="Portfolio + signals."
+        appTagline="Portfolio + signals"
       >
         <div>[clerk]</div>
       </SignInShell>,
@@ -112,7 +112,7 @@ describe("<SignInShell>", () => {
       <SignInShell
         appName="Studio"
         appWordmark={<span>Studio</span>}
-        appTagline="Paperwork Labs admin tools"
+        appTagline="Paperwork Labs admin"
         variant="admin"
       >
         <div>[clerk]</div>
@@ -121,7 +121,7 @@ describe("<SignInShell>", () => {
 
     expect(screen.queryByTestId("sign-in-shell-explainer")).toBeNull();
     expect(screen.getByTestId("sign-in-shell-attribution").textContent).toBe(
-      "Paperwork Labs admin tools, by Paperwork Labs",
+      "Paperwork Labs admin, by Paperwork Labs",
     );
   });
 
@@ -130,7 +130,7 @@ describe("<SignInShell>", () => {
       <SignInShell
         appName="Distill"
         appWordmark={<span>Distill</span>}
-        appTagline="Compliance automation for platforms."
+        appTagline="Compliance APIs for tax & formation"
         signInVerb="Welcome back to Distill"
       >
         <div>[clerk]</div>
@@ -147,7 +147,7 @@ describe("<SignInShell>", () => {
       <SignInShell
         appName="Trinkets"
         appWordmark={<span>Trinkets</span>}
-        appTagline="Free utility tools by FileFree."
+        appTagline="Tools for FileFree"
       >
         <div data-testid="clerk-mount">{"<SignIn />"}</div>
       </SignInShell>,

@@ -36,19 +36,19 @@ export const PAPERWORK_PRODUCTS: readonly PaperworkProduct[] = [
   {
     slug: "distill",
     name: "Distill",
-    tagline: "Compliance automation for platforms.",
+    tagline: "Compliance APIs for tax & formation",
     domain: "distill.tax",
   },
   {
     slug: "axiomfolio",
     name: "AxiomFolio",
-    tagline: "Portfolio + signals.",
+    tagline: "Portfolio + signals",
     domain: "axiomfolio.com",
   },
   {
     slug: "trinkets",
     name: "Trinkets",
-    tagline: "Free utility tools by FileFree.",
+    tagline: "Tools for FileFree",
     domain: "tools.filefree.ai",
   },
 ] as const;

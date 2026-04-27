@@ -12,7 +12,7 @@ export default function SignUpPage() {
         appName="Distill"
         appSlug="distill"
         appWordmark={<DistillWordmark />}
-        appTagline="Compliance automation for platforms."
+        appTagline="Compliance APIs for tax & formation"
         appearance={distillAppearance}
       >
         <SignUp />

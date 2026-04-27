@@ -36,7 +36,7 @@ import type { Appearance } from "../appearance/types";
  *   </SignInShell>
  *
  * @example Studio (admin parent-brand surface):
- *   <SignInShell variant="admin" appName="Studio" appWordmark={<StudioMark />} appTagline="Paperwork Labs admin tools">
+ *   <SignInShell variant="admin" appName="Studio" appWordmark={<StudioMark />} appTagline="Paperwork Labs admin">
  *     <SignIn />
  *   </SignInShell>
  */

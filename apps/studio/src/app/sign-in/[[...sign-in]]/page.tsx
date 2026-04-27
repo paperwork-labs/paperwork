@@ -12,7 +12,7 @@ export default function SignInPage() {
         appName="Studio"
         appSlug="studio"
         appWordmark={<StudioWordmark />}
-        appTagline="Paperwork Labs admin tools"
+        appTagline="Paperwork Labs admin"
         appearance={studioAppearance}
         variant="admin"
       >

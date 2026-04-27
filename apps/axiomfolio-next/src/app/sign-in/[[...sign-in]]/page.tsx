@@ -12,7 +12,7 @@ export default function SignInPage() {
         appName="AxiomFolio"
         appSlug="axiomfolio"
         appWordmark={<AxiomFolioWordmark />}
-        appTagline="Portfolio + signals."
+        appTagline="Portfolio + signals"
         appearance={axiomfolioAppearance}
       >
         <SignIn />
