@@ -1,0 +1,18 @@
+---
+description: "Lock: @paperwork-labs/ui stays framework-agnostic (no Next/Vite/Node coupling)."
+globs: ["packages/ui/**"]
+alwaysApply: false
+---
+
+# packages/ui guardrails
+
+When editing **anything** under `packages/ui/`:
+
+- **Imports:** No `next/*`, `next-auth`, `vite`, `@vercel/*`, `node:*`, `fs`, `path`, `child_process`, `react-router`, `react-router-dom`, `@remix-run/*`.
+- **Env:** No `process.env` in source; the host passes config via props or React context.
+- **Browser globals:** No unguarded `window` property access; guard or use `globalThis` / props.
+- **Server surface:** No `"use server"`; no `export async function` / `export default async function` from this package.
+
+Next-specific behavior belongs in `apps/<name>/` (wrappers). ESLint + `scripts/check-ui-package-purity.mjs` enforce this in CI.
+
+Full rationale: [packages/ui/README.md](../../packages/ui/README.md).
