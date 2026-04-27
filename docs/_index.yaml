@@ -205,6 +205,13 @@ docs:
     tags: [runbook, dependabot, pr]
     owners: [engineering, infra-ops]
     category: runbooks
+  - slug: design-canvas-deploy
+    path: docs/infra/DESIGN_CANVAS_DEPLOY.md
+    title: Design Canvas (Storybook) deploy
+    summary: Vercel + DNS runbook for hosting Storybook at design.paperworklabs.com.
+    tags: [vercel, dns, storybook, design]
+    owners: [infra-ops]
+    category: runbooks
   - slug: efin-filing
     path: docs/EFIN_FILING_INSTRUCTIONS.md
     title: EFIN Filing Instructions
