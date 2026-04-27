@@ -79,6 +79,9 @@ EXPECTED_DEAD: set[str] = {
     "scripts/vault-set.sh",
     "apps/paperworklabs/vercel.json",
     "apps/brain/vercel.json",
+    # Created by `vercel link` under apps/studio; .vercel/ is gitignored (see
+    # apps/studio/.gitignore). Docs correctly cite the path for operators.
+    "apps/studio/.vercel/project.json",
 }
 
 # Match:
