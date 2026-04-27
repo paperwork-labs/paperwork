@@ -1,11 +1,8 @@
 /*
  * Storybook canvas styles.
  *
- * apps/axiomfolio/src/index.css is the single source of truth for the current
- * design system tokens (Tailwind v4 + custom variants + status colors). Until
- * tokens are extracted into a standalone `packages/design-tokens` package, the
- * canvas imports the axiomfolio sheet directly so swatches, type, and surface
- * tokens render identically to the running app.
+ * apps/axiomfolio/src/index.css re-exports `src/app/globals.css` (Track G4).
+ * The design canvas imports it so tokens match the running Next app.
  *
  * Inter Tight is added on top because the Paperwork Labs wordmark spec
  * (docs/brand/PROMPTS.md § P5) calls for it explicitly.

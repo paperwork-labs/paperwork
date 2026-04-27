@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/brand/paperclip-clipped-wordmark.svg",
+        url: "/brand/paperwork-labs/paperclip/clipped-wordmark.svg",
         width: 1280,
         height: 256,
         alt: "Paperwork Labs",
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     site: "@paperworklabs",
-    images: ["/brand/paperclip-clipped-wordmark.svg"],
+    images: ["/brand/paperwork-labs/paperclip/clipped-wordmark.svg"],
   },
 };
 

@@ -52,9 +52,12 @@ Each row is the lock for marks, social templates, and (after the theme-migration
 | File | Use | Note |
 | --- | --- | --- |
 | *Future:* AI paperclip from [`PROMPTS.md`](PROMPTS.md) | Favicon, avatar | Replaces interim assets when ready. |
-| `apps/studio/public/brand/paperwork-labs-icon.svg` | Favicon, launcher | **Interim** hand mark. |
-| `apps/studio/public/brand/paperwork-labs-lockup.svg` | Light surfaces | **Interim** lockup. |
-| `apps/studio/public/brand/paperwork-labs-lockup-dark.svg` | Dark surfaces | **Interim** lockup. |
+| `apps/studio/public/brand/paperwork-labs/icon.svg` | Favicon, launcher | **Interim** hand mark. |
+| `apps/studio/public/brand/paperwork-labs/lockup.svg` | Light surfaces | **Interim** lockup. |
+| `apps/studio/public/brand/paperwork-labs/lockup-dark.svg` | Dark surfaces | **Interim** lockup. |
+| `apps/studio/public/brand/paperwork-labs/paperclip/mark-diagonal.svg` | P1 diagonal mark | Parent paperclip (expressive default). |
+| `apps/studio/public/brand/paperwork-labs/paperclip/mark-vertical.svg` | P2 vertical mark | Canonical parent icon / multi-app favicon source. |
+| `apps/studio/public/brand/paperwork-labs/paperclip/clipped-wordmark.svg` | P5 clipped wordmark | Clip + "Paperwork Labs" wordmark. |
 
 ### Studio
 

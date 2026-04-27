@@ -1,5 +1,5 @@
 /**
- * Rasterizes apps/studio/public/brand/paperclip-mark-vertical.svg to 32×32
+ * Rasterizes apps/studio/public/brand/paperwork-labs/paperclip/mark-vertical.svg to 32×32
  * favicon.ico for each Next.js app. Run from repo root after install:
  *   pnpm add -D sharp to-ico -w && node scripts/generate-pwl-favicon-ico.mjs
  */
@@ -13,7 +13,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 const svgPath = path.join(
   root,
-  "apps/studio/public/brand/paperclip-mark-vertical.svg",
+  "apps/studio/public/brand/paperwork-labs/paperclip/mark-vertical.svg",
 );
 
 const svg = fs.readFileSync(svgPath);
