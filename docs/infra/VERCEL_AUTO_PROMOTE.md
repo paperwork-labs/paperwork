@@ -76,6 +76,7 @@ Matrix key `project` (Vercel project slug) and `project_id` in `.github/workflow
 | `axiomfolio-next` | `TBD_CREATE_BEFORE_MERGE` (link `apps/axiomfolio-next` in Vercel, then replace) |
 | `trinkets` | `TBD_CREATE_BEFORE_MERGE` (link `apps/trinkets` in Vercel, then replace) |
 | `accounts` | `TBD_CREATE_BEFORE_MERGE` (create + link `apps/accounts` after Track H4; then replace) |
+| `design` | `TBD_CREATE_BEFORE_MERGE` (create + link `apps/design` Storybook → `design.paperworklabs.com`; see `DESIGN_CANVAS_DEPLOY.md`) |
 
 While an entry is still `TBD_CREATE_BEFORE_MERGE`, that matrix job **skips** the promote path (no API call) so merges stay green until the project exists in the team and the workflow is updated with a real `prj_…` id.
 
