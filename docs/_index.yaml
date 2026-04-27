@@ -451,6 +451,13 @@ docs:
     tags: []
     owners: [infra]
     category: reference
+  - slug: vercel-linking
+    path: docs/infra/VERCEL_LINKING.md
+    title: Vercel linking (monorepo)
+    summary: "Every app deployed on Vercel needs a local **link** so the CLI knows which team and project to use. That state lives in `apps/<name>/.vercel/project.json`, which is **gitignored** (it contains IDs…"
+    tags: []
+    owners: [strategy]
+    category: reference
   # ── Plans ─────────────────────────────────────────
   - slug: axiomfolio-gaps
     path: docs/axiomfolio/plans/GAPS_2026Q2.md
