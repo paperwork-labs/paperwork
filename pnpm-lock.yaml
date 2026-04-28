@@ -283,9 +283,6 @@ importers:
       '@fontsource-variable/inter-tight':
         specifier: ^5.2.7
         version: 5.2.7
-      '@paperwork-labs/axiomfolio':
-        specifier: workspace:*
-        version: link:../axiomfolio
       '@paperwork-labs/ui':
         specifier: workspace:*
         version: link:../../packages/ui

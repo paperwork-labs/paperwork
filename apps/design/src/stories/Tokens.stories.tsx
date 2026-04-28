@@ -1,5 +1,5 @@
 import React from "react";
-import { useColorMode } from "@axiomfolio/theme/colorMode";
+import { useColorMode } from "../storybook/colorMode";
 import { swatchBackgroundCss } from "./tokenSwatchCss";
 import type { Meta, StoryObj } from "@storybook/react";
 
