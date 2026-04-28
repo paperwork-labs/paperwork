@@ -416,6 +416,13 @@ docs:
     tags: [finance, cfo]
     owners: [cfo]
     category: reference
+  - slug: github-actions-quota-audit-2026q2
+    path: docs/infra/GITHUB_ACTIONS_QUOTA_AUDIT_2026Q2.md
+    title: GitHub Actions quota audit (2026 Q2)
+    summary: Founder switched `paperwork-labs/paperwork` to **public** after exhausting GitHub Actions minutes on **private** repos (public OSS repos currently receive **effectively unlimited** Actions minutes…
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: infra
     path: docs/INFRA.md
     title: Infra Overview
