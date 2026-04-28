@@ -58,7 +58,7 @@
     },
     {
       "id": "WS-04-track-i2-render-env",
-      "title": "Track I2 — canonical VERCEL_API_TOKEN naming across infra",
+      "title": "Track I2 \u2014 canonical VERCEL_API_TOKEN naming across infra",
       "track": "I2",
       "priority": 3,
       "status": "completed",
@@ -76,7 +76,7 @@
     },
     {
       "id": "WS-05-track-f3-deploy-trigger-stubs",
-      "title": "Track F3 — remove .deploy-trigger stub files",
+      "title": "Track F3 \u2014 remove .deploy-trigger stub files",
       "track": "F3",
       "priority": 4,
       "status": "completed",
@@ -94,7 +94,7 @@
     },
     {
       "id": "WS-06-track-f4-render-axiomfolio-frontend",
-      "title": "Track F4 — drop axiomfolio-frontend Render service",
+      "title": "Track F4 \u2014 drop axiomfolio-frontend Render service",
       "track": "F4",
       "priority": 5,
       "status": "completed",
@@ -112,7 +112,7 @@
     },
     {
       "id": "WS-07-track-d-doc-canon-clerk",
-      "title": "Track D — supersede D56 with Clerk D92 + auth-clerk doc canon",
+      "title": "Track D \u2014 supersede D56 with Clerk D92 + auth-clerk doc canon",
       "track": "D",
       "priority": 6,
       "status": "completed",
@@ -130,7 +130,7 @@
     },
     {
       "id": "WS-08-brand-canon-doc",
-      "title": "Brand canon — single source of truth in docs/brand/CANON.md",
+      "title": "Brand canon \u2014 single source of truth in docs/brand/CANON.md",
       "track": "N",
       "priority": 7,
       "status": "completed",
@@ -166,7 +166,7 @@
     },
     {
       "id": "WS-10-brand-sweep-png-cutover",
-      "title": "Brand sweep — copy PNGs, regen favicons, delete 7 garbage SVGs",
+      "title": "Brand sweep \u2014 copy PNGs, regen favicons, delete 7 garbage SVGs",
       "track": "N",
       "priority": 9,
       "status": "completed",
@@ -186,7 +186,7 @@
     },
     {
       "id": "WS-11-brand-doc-prune",
-      "title": "Doc prune — fold PROMPTS/ANIMATION/research into CANON.md",
+      "title": "Doc prune \u2014 fold PROMPTS/ANIMATION/research into CANON.md",
       "track": "N",
       "priority": 10,
       "status": "completed",
@@ -206,7 +206,7 @@
     },
     {
       "id": "WS-12-trackc-auth-clerk-package",
-      "title": "Track C — extract @paperwork-labs/auth-clerk shared package",
+      "title": "Track C \u2014 extract @paperwork-labs/auth-clerk shared package",
       "track": "C",
       "priority": 11,
       "status": "completed",
@@ -224,7 +224,7 @@
     },
     {
       "id": "WS-13-trackb1-filefree-clerk",
-      "title": "Track B1 — migrate FileFree consumer auth to Clerk",
+      "title": "Track B1 \u2014 migrate FileFree consumer auth to Clerk",
       "track": "B1",
       "priority": 12,
       "status": "in_progress",
@@ -235,14 +235,14 @@
       "last_pr": 355,
       "last_activity": "2026-04-28T18:59:14Z",
       "last_dispatched_at": null,
-      "notes": "Stage 1+2 LANDED (PR #355) — middleware accepts Clerk OR legacy session; /file + /dashboard dual-gated; /auth/* redirect to /sign-in. Stage 3 (legacy removal) scheduled for today since founder confirmed no real users.",
+      "notes": "Stage 1+2 LANDED (PR #355) \u2014 middleware accepts Clerk OR legacy session; /file + /dashboard dual-gated; /auth/* redirect to /sign-in. Stage 3 (legacy removal) scheduled for today since founder confirmed no real users.",
       "estimated_pr_count": 2,
       "github_actions_workflow": "agent-sprint-runner",
       "related_plan": "sso_customer_unification_2026q2"
     },
     {
       "id": "WS-14-trackb2-axiomfolio-clerk",
-      "title": "Track B2 — migrate AxiomFolio consumer auth to Clerk",
+      "title": "Track B2 \u2014 migrate AxiomFolio consumer auth to Clerk",
       "track": "B2",
       "priority": 13,
       "status": "in_progress",
@@ -253,14 +253,14 @@
       "last_pr": 354,
       "last_activity": "2026-04-28T18:59:14Z",
       "last_dispatched_at": null,
-      "notes": "Stage 1+2 LANDED (PR #354) — proxy.ts recognizes Clerk session; RequireAuthClient dual-mode; /login → /sign-in; useAuthCompat hook bridges Clerk+legacy. Stage 3 (frontend legacy strip) scheduled today. Track B5 (backend Clerk JWT verification) deferred — couples with WS-02 cutover.",
+      "notes": "Stage 1+2 LANDED (PR #354) \u2014 proxy.ts recognizes Clerk session; RequireAuthClient dual-mode; /login \u2192 /sign-in; useAuthCompat hook bridges Clerk+legacy. Stage 3 (frontend legacy strip) scheduled today. Track B5 (backend Clerk JWT verification) deferred \u2014 couples with WS-02 cutover.",
       "estimated_pr_count": 2,
       "github_actions_workflow": "agent-sprint-runner",
       "related_plan": "sso_customer_unification_2026q2"
     },
     {
       "id": "WS-15-trackh4-accounts-app",
-      "title": "Track H4 — apps/accounts/ Next.js host for accounts.paperworklabs.com",
+      "title": "Track H4 \u2014 apps/accounts/ Next.js host for accounts.paperworklabs.com",
       "track": "H4",
       "priority": 14,
       "status": "cancelled",
@@ -272,13 +272,13 @@
       "last_activity": "2026-04-29T00:00:00Z",
       "last_dispatched_at": null,
       "notes": "CANCELLED 2026-04-28 post-incident: Clerk hosts the Account Portal natively at accounts.clerk.services; production DNS is a CNAME to Clerk, not a separate Vercel Next.js app. The apps/accounts scaffold + Vercel `accounts` project were created under a misunderstanding. Decommission tracked as WS-36; DNS automation + monitoring as WS-37.",
-      "estimated_pr_count": 0,
+      "estimated_pr_count": null,
       "github_actions_workflow": null,
       "related_plan": "sso_customer_unification_2026q2"
     },
     {
       "id": "WS-16-trackh1-clerk-satellite-dns",
-      "title": "Track H1 — satellite DNS (accounts.paperworklabs.com CNAME)",
+      "title": "Track H1 \u2014 satellite DNS (accounts.paperworklabs.com CNAME)",
       "track": "H1",
       "priority": 15,
       "status": "completed",
@@ -296,7 +296,7 @@
     },
     {
       "id": "WS-17-tracki4-studio-probe-coverage",
-      "title": "Track I4 — Studio /admin/infrastructure full Render+Vercel probe coverage",
+      "title": "Track I4 \u2014 Studio /admin/infrastructure full Render+Vercel probe coverage",
       "track": "I4",
       "priority": 16,
       "status": "in_progress",
@@ -314,7 +314,7 @@
     },
     {
       "id": "WS-18-trackj1-brain-prod-enable",
-      "title": "Track J1 — enable Brain ambient learning ingesters in prod",
+      "title": "Track J1 \u2014 enable Brain ambient learning ingesters in prod",
       "track": "J1",
       "priority": 17,
       "status": "pending",
@@ -327,14 +327,14 @@
       "last_pr": null,
       "last_activity": "2026-04-26T00:00:00Z",
       "last_dispatched_at": null,
-      "notes": "J1 flags retired — ensure BRAIN_SCHEDULER_ENABLED + GITHUB_TOKEN + REPO_ROOT on brain-api.",
+      "notes": "J1 flags retired \u2014 ensure BRAIN_SCHEDULER_ENABLED + GITHUB_TOKEN + REPO_ROOT on brain-api.",
       "estimated_pr_count": null,
       "github_actions_workflow": null,
       "related_plan": "sso_customer_unification_2026q2"
     },
     {
       "id": "WS-19-trackk-n8n-cutovers",
-      "title": "Track K — cut over remaining n8n cron workflows to Brain APScheduler",
+      "title": "Track K \u2014 cut over remaining n8n cron workflows to Brain APScheduler",
       "track": "K",
       "priority": 18,
       "status": "in_progress",
@@ -345,14 +345,14 @@
       "last_pr": 350,
       "last_activity": "2026-04-28T18:59:14Z",
       "last_dispatched_at": null,
-      "notes": "Batches 1+2+3 all merged. PR #350 ported the final cron-portable workflows (cpa-tax-review, partnership-outreach-drafter). Three remaining n8n workflows are non-cron (webhook-driven, error triggers, slash commands) and intentionally not migrated — they stay in n8n.",
+      "notes": "Batches 1+2+3 all merged. PR #350 ported the final cron-portable workflows (cpa-tax-review, partnership-outreach-drafter). Three remaining n8n workflows are non-cron (webhook-driven, error triggers, slash commands) and intentionally not migrated \u2014 they stay in n8n.",
       "estimated_pr_count": 6,
       "github_actions_workflow": "agent-sprint-runner",
       "related_plan": "sso_customer_unification_2026q2"
     },
     {
       "id": "WS-20-trackm-theme-migration",
-      "title": "Track M — theme migration (locked palettes wired into all 6 apps)",
+      "title": "Track M \u2014 theme migration (locked palettes wired into all 6 apps)",
       "track": "M",
       "priority": 19,
       "status": "pending",
@@ -372,7 +372,7 @@
     },
     {
       "id": "WS-21-trackn-brand-iteration",
-      "title": "Track N — FileFree + LaunchFree brand iteration loop",
+      "title": "Track N \u2014 FileFree + LaunchFree brand iteration loop",
       "track": "N",
       "priority": 20,
       "status": "pending",
@@ -390,7 +390,7 @@
     },
     {
       "id": "WS-22-tracke-medallion-0d",
-      "title": "Track E — Medallion Phase 0.D (drain inherited-debt waivers)",
+      "title": "Track E \u2014 Medallion Phase 0.D (drain inherited-debt waivers)",
       "track": "E",
       "priority": 21,
       "status": "in_progress",
@@ -401,14 +401,14 @@
       "last_pr": 359,
       "last_activity": "2026-04-28T18:59:14Z",
       "last_dispatched_at": null,
-      "notes": "PR #335 batch 1, #343 batch 2, #359 batch 3 — incremental drains. ~25% of inherited-debt waivers remaining for batch 4.",
+      "notes": "PR #335 batch 1, #343 batch 2, #359 batch 3 \u2014 incremental drains. ~25% of inherited-debt waivers remaining for batch 4.",
       "estimated_pr_count": 2,
       "github_actions_workflow": "agent-sprint-runner",
       "related_plan": "sso_customer_unification_2026q2"
     },
     {
       "id": "WS-23-trackf1-n8n-retire",
-      "title": "Track F1 — move shadowed n8n workflow JSONs to retired/",
+      "title": "Track F1 \u2014 move shadowed n8n workflow JSONs to retired/",
       "track": "F1",
       "priority": 22,
       "status": "completed",
@@ -426,7 +426,7 @@
     },
     {
       "id": "WS-24-tracki3-github-webhook-secret",
-      "title": "Track I3 — GITHUB_WEBHOOK_SECRET on brain-api (Render F-5)",
+      "title": "Track I3 \u2014 GITHUB_WEBHOOK_SECRET on brain-api (Render F-5)",
       "track": "I3",
       "priority": 23,
       "status": "pending",
@@ -437,14 +437,14 @@
       "last_pr": null,
       "last_activity": "2026-04-26T00:00:00Z",
       "last_dispatched_at": null,
-      "notes": "render.yaml declares with sync:false — founder pastes value once in Render dashboard.",
+      "notes": "render.yaml declares with sync:false \u2014 founder pastes value once in Render dashboard.",
       "estimated_pr_count": null,
       "github_actions_workflow": null,
       "related_plan": "sso_customer_unification_2026q2"
     },
     {
       "id": "WS-25-workstreams-board-itself",
-      "title": "Workstreams board (Track Z) — Studio UI + Brain dispatcher",
+      "title": "Workstreams board (Track Z) \u2014 Studio UI + Brain dispatcher",
       "track": "Z",
       "priority": 24,
       "status": "in_progress",
@@ -455,14 +455,14 @@
       "last_pr": 356,
       "last_activity": "2026-04-28T18:59:14Z",
       "last_dispatched_at": null,
-      "notes": "Schema + seed (#312), Studio UI (#315), dispatcher + reorder router (#316), agent-sprint-runner workflow_dispatch (#317). PR #325 added writeback service. PR #349 fixed compute_snapshot_status bug (pending → in_progress promotion). PR #356 made /admin/workstreams real-time fetch from Brain. PR #357 fixed APScheduler misfire (Postgres SSL). PR #360 fixed worker-race in writeback (Redis lock + idempotent branch). 19:15 UTC tick is the autonomy validation.",
+      "notes": "Schema + seed (#312), Studio UI (#315), dispatcher + reorder router (#316), agent-sprint-runner workflow_dispatch (#317). PR #325 added writeback service. PR #349 fixed compute_snapshot_status bug (pending \u2192 in_progress promotion). PR #356 made /admin/workstreams real-time fetch from Brain. PR #357 fixed APScheduler misfire (Postgres SSL). PR #360 fixed worker-race in writeback (Redis lock + idempotent branch). 19:15 UTC tick is the autonomy validation.",
       "estimated_pr_count": 3,
       "github_actions_workflow": ".github/workflows/agent-sprint-runner.yml",
       "related_plan": "unblock_vercel_+_brand_reset_+_workstream_board"
     },
     {
       "id": "WS-26-trackl-secrets-rotation",
-      "title": "Track L — secrets rotation (PAT, Slack token, Hetzner creds)",
+      "title": "Track L \u2014 secrets rotation (PAT, Slack token, Hetzner creds)",
       "track": "L",
       "priority": 25,
       "status": "pending",
@@ -588,7 +588,7 @@
     },
     {
       "id": "WS-33-cloudflare-account-migration",
-      "title": "Cloudflare account migration (all 5 prod zones → work account)",
+      "title": "Cloudflare account migration (all 5 prod zones \u2192 work account)",
       "track": "I",
       "priority": 32,
       "status": "completed",
@@ -635,7 +635,7 @@
       "last_pr": null,
       "last_activity": "2026-04-29T00:00:00Z",
       "last_dispatched_at": null,
-      "notes": "Follow-up after WS-15 cancellation: delete apps/accounts Next.js scaffold, remove Vercel project prj_DidXdCyMrnrigX5us9Sv4noysUil, scrub required_env_vars.yaml accounts entry, and archive dashboard DNS notes that pointed at Vercel. Do NOT remove the Cloudflare Single Redirect for accounts.paperworklabs.com until Clerk custom hostname is healthy — see docs/runbooks/CLERK_DNS_INCIDENT_2026-04-28.md.",
+      "notes": "Follow-up after WS-15 cancellation: delete apps/accounts Next.js scaffold, remove Vercel project prj_DidXdCyMrnrigX5us9Sv4noysUil, scrub required_env_vars.yaml accounts entry, and archive dashboard DNS notes that pointed at Vercel. Do NOT remove the Cloudflare Single Redirect for accounts.paperworklabs.com until Clerk custom hostname is healthy \u2014 see docs/runbooks/CLERK_DNS_INCIDENT_2026-04-28.md.",
       "estimated_pr_count": 1,
       "github_actions_workflow": null,
       "related_plan": null
@@ -644,7 +644,7 @@
       "id": "WS-37-clerk-dns-auto-reconcile-monitor",
       "title": "Clerk DNS auto-reconcile + Brain monitor + pre-deploy enforcement",
       "track": "I",
-      "priority": 35,
+      "priority": 37,
       "status": "in_progress",
       "percent_done": 90,
       "owner": "brain",
