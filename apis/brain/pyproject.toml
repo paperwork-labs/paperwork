@@ -74,7 +74,6 @@ module = [
   "app.mcp_server",
   "app.models.episode",
   "app.personas.registry",
-  "app.redis",
   "app.routers.admin",
   "app.routers.brain",
   "app.routers.health",

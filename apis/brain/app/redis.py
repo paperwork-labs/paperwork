@@ -17,7 +17,8 @@ async def init_redis() -> None:
         socket_connect_timeout=5,
     )
     try:
-        await _redis_pool.ping()
+        # TODO(medallion): redis-asyncio stubs ping() as bool|Awaitable; runtime is async.
+        await _redis_pool.ping()  # type: ignore[misc]
         raw = settings.REDIS_URL
         masked_url = raw.split("@")[-1] if "@" in raw else raw
         logger.info("Redis connected (%s)", masked_url)
