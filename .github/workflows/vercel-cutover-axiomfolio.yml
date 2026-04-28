@@ -56,7 +56,10 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/setup-node@v5
+      - name: Enable corepack (so pnpm packageManager pin doesn't break setup-node)
+        run: corepack enable
+
+      - uses: actions/setup-node@v6
         with:
           node-version: 22.x
 
