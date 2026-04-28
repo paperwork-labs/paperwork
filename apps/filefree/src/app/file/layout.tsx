@@ -5,7 +5,7 @@ import Link from "next/link";
 import { X, Check } from "lucide-react";
 import { motion } from "framer-motion";
 
-import { RequireAuth } from "@/components/require-auth";
+import { RequireAuth } from "@paperwork-labs/auth-clerk";
 import { FILING_STEPS, useFilingStore } from "@/stores/filing-store";
 
 export default function FileLayout({
