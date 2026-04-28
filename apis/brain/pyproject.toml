@@ -34,6 +34,7 @@ ignore = ["PTH"]
 [tool.ruff.lint.per-file-ignores]
 "app/models/scheduler_run.py" = ["TC003"]  # SQLAlchemy resolves Mapped[datetime] at class body time
 "app/models/secrets_intelligence.py" = ["TC003"]  # Mapped[uuid.UUID] / datetime need runtime symbols for ORM
+"app/models/workstream_board.py" = ["TC003"]
 "app/routers/**" = ["B008", "ARG001"]
 "app/dependencies.py" = ["B008"]
 "app/api/secrets.py" = ["B008"]  # FastAPI Depends() in route defaults (same pattern as routers)
