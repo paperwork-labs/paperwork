@@ -150,6 +150,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install cfo_friday_digest job")
 
     try:
+        from app.schedulers import cpa_tax_review
+
+        cpa_tax_review.install(sched)
+    except Exception:
+        logger.exception("Failed to install cpa_tax_review job")
+
+    try:
         from app.schedulers import sprint_lessons
 
         sprint_lessons.install(sched)
