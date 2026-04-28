@@ -15,7 +15,6 @@
   },
   "dependencies": {
     "@fontsource-variable/inter-tight": "^5.2.7",
-    "@paperwork-labs/axiomfolio": "workspace:*",
     "@paperwork-labs/ui": "workspace:*",
     "@tanstack/react-query": "^5.100.5",
     "framer-motion": "^12.38.0",

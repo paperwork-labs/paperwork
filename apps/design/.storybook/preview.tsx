@@ -3,7 +3,7 @@ import * as React from "react";
 import type { Preview } from "@storybook/react";
 import { withThemeByClassName } from "@storybook/addon-themes";
 
-import { ColorModeProvider } from "@axiomfolio/theme/colorMode";
+import { ColorModeProvider } from "../src/storybook/colorMode";
 
 import "./preview.css";
 
