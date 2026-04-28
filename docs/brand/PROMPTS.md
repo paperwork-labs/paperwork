@@ -66,7 +66,7 @@ The diagonal clip is **expressive** — dynamic, instantly recognizable as a pap
 
 **Reference (founder-generated, locked):** `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png` (extracted from the horizontal lockup; canonical glyph for the parent paperclip in diagonal orientation).
 
-**Render target (when retraced to SVG):** `apps/studio/public/brand/paperwork-labs/icon.svg` + `apps/studio/public/brand/renders/paperclip-diagonal-{16,32,64,128,256,512,1024}.png`.
+**Render target (when retraced to SVG):** canonical raster: `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png` (see `docs/brand/CANON.md`); SVG retrace + size ladder follow-up.
 
 ### P2 — Vertical mark (canonical icon: favicon, app icon, spinner)
 
@@ -79,7 +79,7 @@ The diagonal clip is **expressive** — dynamic, instantly recognizable as a pap
 
 **Reference (founder-generated, locked):** `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png`.
 
-**Render target:** `apps/studio/public/brand/paperwork-labs/paperclip/mark-vertical.svg` + `apps/studio/public/brand/renders/paperclip-vertical-{16,32,64,128,256,512,1024}.png`.
+**Render target:** canonical raster: `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png` (see `docs/brand/CANON.md`); secondary tile `paperclip-vertical-1024-v1.png`; SVG retrace + size ladder follow-up.
 
 ### P3 — Horizontal lockup (mark + wordmark side-by-side, preview-only)
 

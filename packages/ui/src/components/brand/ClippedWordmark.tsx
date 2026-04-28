@@ -73,10 +73,10 @@ const HOVER_WIGGLE = {
  * amber-300 on dark surfaces without re-rendering the SVG.
  *
  * The clip-back portion (the part of the wire that should appear to wrap
- * "behind" the wordmark) is intentionally NOT drawn in v1 — see the TODO in
- * apps/studio/public/brand/paperwork-labs/paperclip/clipped-wordmark.svg. Acceptable per
- * PROMPTS.md fallback; the visible composition still reads correctly because
- * the clip-front sits in front of the cap-line.
+ * "behind" the wordmark) is intentionally NOT drawn in v1 — see
+ * docs/brand/CANON.md (P5 clipped-wordmark; no raster replacement until
+ * founder pick). Acceptable per PROMPTS.md fallback; the visible composition
+ * still reads correctly because the clip-front sits in front of the cap-line.
  */
 export function ClippedWordmark({
   animated = false,

@@ -136,7 +136,7 @@ Sign in to Studio
 | --- | --- | --- | --- | --- |
 | Paperwork Labs (parent) | `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png` (diagonal, P1) + `paperclip-LOCKED-canonical-icon-1024.png` (vertical, P2 — favicon canon) | `apps/studio/public/brand/renders/paperclip-lockup-horizontal-v1.png` (P3) — SVG retrace pending | `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png` (vertical favicon stays canonical on dark via amber tint swap) — full lockup SVG retrace pending | AI prompt (Nano Banana Pro / Imagen 4) → SVG retrace |
 | Studio | `apps/studio/public/brand/studio-icon.svg` | `apps/studio/public/brand/studio-lockup.svg` | `apps/studio/public/brand/studio-lockup-dark.svg` | hand-authored |
-| AxiomFolio | `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` (alias: `axiomfolio.svg`) | `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | `axiomfolio-lockup-dark.svg` / surface variants in repo | hand-authored (Sankalp) — **canonical** |
+| AxiomFolio | `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` | `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | `axiomfolio-lockup-dark.svg` / surface variants in repo | hand-authored (Sankalp) — **canonical** |
 | FileFree | `apps/filefree/public/brand/filefree-icon.svg` | TBD (wordmark in follow-up) | TBD | locked SVG (3 droplets → center dot) |
 | LaunchFree | `apps/launchfree/public/brand/launchfree-icon.svg` | TBD | TBD | locked SVG (droplet + cyan dot) |
 | Distill | `apps/distill/public/brand/distill-icon.svg` | TBD | TBD | locked SVG (yin–yang droplets + center dot) |
@@ -215,7 +215,7 @@ Each product owns a **full palette** — primary, accent, neutral surfaces, surf
 
 **Wordmark (canonical hex when lockups exist):** use the *Ink* columns above; on dark surfaces, wordmark = `#F8FAFC` (see AxiomFolio deployed login).
 
-**Locked SVG assets (icon-only):** `apps/filefree/public/brand/filefree-icon.svg`, `apps/launchfree/public/brand/launchfree-icon.svg`, `apps/distill/public/brand/distill-icon.svg`, `apps/trinkets/public/brand/trinkets-icon.svg`, `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` (+ `axiomfolio.svg` legacy). **Renders:** `*/public/brand/renders/*-icon-{16,32,64,128,256,512,1024}.png` beside each SVG.
+**Locked SVG assets (icon-only):** `apps/filefree/public/brand/filefree-icon.svg`, `apps/launchfree/public/brand/launchfree-icon.svg`, `apps/distill/public/brand/distill-icon.svg`, `apps/trinkets/public/brand/trinkets-icon.svg`, `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg`. **Renders:** `*/public/brand/renders/*-icon-{16,32,64,128,256,512,1024}.png` beside each SVG.
 
 **Why these hues, in one line each (shorthand):** same counter-positioning logic as 2026-04-25 five dives; founder confirmed droplet-family SVG locks 2026-04-26.
 

@@ -36,11 +36,12 @@ export const metadata: Metadata = {
     url: "https://paperworklabs.com",
     siteName: "Paperwork Labs",
     type: "website",
+    // TODO(brand): re-wire to P5 PNG once founder picks the winning variant
     images: [
       {
-        url: "/brand/paperwork-labs/paperclip/clipped-wordmark.svg",
-        width: 1280,
-        height: 256,
+        url: "/brand/renders/paperclip-LOCKED-canonical-1024.png",
+        width: 1408,
+        height: 768,
         alt: "Paperwork Labs",
       },
     ],
@@ -48,7 +49,8 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     site: "@paperworklabs",
-    images: ["/brand/paperwork-labs/paperclip/clipped-wordmark.svg"],
+    // TODO(brand): re-wire to P5 PNG once founder picks the winning variant
+    images: ["/brand/renders/paperclip-LOCKED-canonical-1024.png"],
   },
 };
 

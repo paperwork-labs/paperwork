@@ -24,8 +24,8 @@ export interface ClipMarkProps {
  * Rotation is intentionally NOT baked in — `ClippedWordmark` wraps this in a
  * Framer Motion span that animates rotation from -32deg to -15deg per
  * docs/brand/ANIMATION.md. Standalone diagonal use cases should consume the
- * raster-equivalent SVG at `apps/studio/public/brand/paperwork-labs/paperclip/mark-diagonal.svg`
- * (which has the -32deg rotation baked in) instead of rotating this component.
+ * locked raster at `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png`
+ * (via `next/image`) instead of rotating this component.
  *
  * Spec: docs/brand/PROMPTS.md § P1 + § Composition rules.
  */
