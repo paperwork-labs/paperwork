@@ -1,4 +1,7 @@
-"""Filesystem kill switch: when ``data/brain_paused.flag`` is non-empty, Brain schedulers no-op."""
+"""Filesystem kill switch: when ``data/brain_paused.flag`` is non-empty, Brain schedulers no-op.
+
+medallion: ops
+"""
 
 from __future__ import annotations
 
