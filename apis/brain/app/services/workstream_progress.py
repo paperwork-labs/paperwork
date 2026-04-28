@@ -50,9 +50,15 @@ def compute_snapshot_status(
     percent_done: int,
     open_prs: int,
     file_status: str,
+    *,
+    merged_pr_count: int = 0,
 ) -> str:
     if percent_done >= 100 and open_prs == 0:
         return "completed"
+    # Without this branch, snapshots mirror file_status forever while merged PRs exist but
+    # percent_done < 100 — writeback then never promotes pending → in_progress (Track Z).
+    if file_status == "pending" and merged_pr_count > 0:
+        return "in_progress"
     return file_status
 
 
@@ -66,7 +72,7 @@ async def run_workstream_progress() -> WorkstreamProgressResult:
     for ws in data.workstreams:
         merged, open_n = await wh.search_prs_with_brief_tag_in_body(ws.brief_tag)
         pct, denom = compute_percent_done(merged, open_n, ws.estimated_pr_count)
-        computed_status = compute_snapshot_status(pct, open_n, ws.status)
+        computed_status = compute_snapshot_status(pct, open_n, ws.status, merged_pr_count=merged)
 
         async with async_session_factory() as db:
             snap = WorkstreamProgressSnapshot(
