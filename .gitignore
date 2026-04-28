@@ -170,3 +170,8 @@ gitleaks-report.json
 
 # Brain local ingest idempotency pins (runtime; recreated by ingesters)
 apis/brain/data/ingested_*.json
+
+# Obsidian (founder-local vault UI when opening docs/ — see docs/HOW_TO_NAVIGATE.md)
+.obsidian/
+.obsidian.vimrc
+.trash/

@@ -1,0 +1,10 @@
+{
+  "items": [
+    { "type": "file", "path": "INFRA.md" },
+    { "type": "file", "path": "infra/AUTOMATION_STATE.md" },
+    { "type": "file", "path": "infra/WORKSTREAMS_BOARD.md" },
+    { "type": "file", "path": "infra/RENDER_INVENTORY.md" },
+    { "type": "file", "path": "axiomfolio/PRODUCTION.md" },
+    { "type": "file", "path": "infra/FOUNDER_ACTIONS.md" }
+  ]
+}
