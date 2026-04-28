@@ -639,6 +639,50 @@ async def commit_files_to_branch(branch: str, message: str, files: dict[str, str
     return new_commit
 
 
+async def list_repo_pull_requests(
+    *,
+    state: str = "open",
+    per_page: int = 100,
+    max_pages: int = 3,
+) -> list[dict[str, Any]]:
+    """Return raw pull request JSON dicts (pagination capped for automation callers)."""
+    if state not in ("open", "closed", "all"):
+        return []
+    owner, repo = _repo_parts()
+    cap = max(1, min(per_page, 100))
+    pages = max(1, min(max_pages, 10))
+    out: list[dict[str, Any]] = []
+    try:
+        async with _gh_client() as client:
+            for page in range(1, pages + 1):
+                r = await client.get(
+                    f"/repos/{owner}/{repo}/pulls",
+                    params={
+                        "state": state,
+                        "per_page": cap,
+                        "page": page,
+                        "sort": "updated",
+                        "direction": "desc",
+                    },
+                )
+                r.raise_for_status()
+                batch: list[Any] = r.json()
+                if not isinstance(batch, list):
+                    break
+                for item in batch:
+                    if isinstance(item, dict):
+                        out.append(item)
+                if len(batch) < cap:
+                    break
+    except httpx.HTTPStatusError as e:
+        logger.warning("list_repo_pull_requests failed: %s", e)
+        return []
+    except (httpx.RequestError, ValueError) as e:
+        logger.warning("list_repo_pull_requests failed: %s", e)
+        return []
+    return out
+
+
 async def create_github_pull(
     head: str,
     base: str,

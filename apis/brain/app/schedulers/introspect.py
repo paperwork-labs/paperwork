@@ -31,6 +31,7 @@ _OPERATIONAL_JOB_IDS: frozenset[str] = frozenset(
         "brain_agent_sprint_planner",
         "workstream_dispatcher",
         "workstream_progress",
+        "workstream_progress_writeback",
     }
 )
 
