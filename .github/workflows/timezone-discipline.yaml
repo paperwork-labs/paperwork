@@ -34,7 +34,7 @@ jobs:
             dir: apis/launchfree
             args: app
           - name: paperwork-auth
-            dir: packages/auth/src/python
+            dir: packages/auth-clerk/src/python
             args: paperwork_auth
     steps:
       - uses: actions/checkout@v6
