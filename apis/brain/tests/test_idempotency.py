@@ -7,7 +7,7 @@ class FakeRedis:
     def __init__(self):
         self._store: dict[str, str] = {}
 
-    async def set(self, key, value, *, nx=False, ex=None):  # noqa: ARG002
+    async def set(self, key, value, *, nx=False, ex=None):
         if nx and key in self._store:
             return None
         self._store[key] = value

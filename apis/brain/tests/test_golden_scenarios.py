@@ -492,8 +492,8 @@ def mock_llm_completions(monkeypatch: pytest.MonkeyPatch):
 async def test_golden_classification_propagates_through_classify_and_route(
     scenario: dict[str, Any],
     classification_payload: dict[str, Any],
-    mock_classify_query: Any,  # noqa: ARG001
-    mock_llm_completions: None,  # noqa: ARG001
+    mock_classify_query: Any,
+    mock_llm_completions: None,
 ) -> None:
     """Router must preserve mocked classifier output (model, provider, tools, domain)."""
     classification_payload.clear()

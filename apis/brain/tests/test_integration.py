@@ -139,7 +139,7 @@ async def test_organization_isolation(db_session):
 
 @pytest.mark.asyncio
 async def test_idempotency_prevents_duplicate_processing(
-    db_session,  # noqa: ARG001
+    db_session,
     redis_mock,
 ):
     """D10: Duplicate requests should be detected."""

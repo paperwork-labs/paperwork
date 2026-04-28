@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock
 
 import httpx
@@ -12,7 +12,6 @@ import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.scheduler_run import SchedulerRun
@@ -23,6 +22,11 @@ from app.schedulers.data_deep_validator import (
     install,
     run_data_deep_validator,
 )
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+
 def test_registers_one_job_id() -> None:
     from zoneinfo import ZoneInfo
 
@@ -128,7 +132,7 @@ class _FakeAsyncClient:
 
 
 class _R:
-    __slots__ = ("status_code", "_text", "_j")
+    __slots__ = ("_j", "_text", "status_code")
 
     def __init__(self, status_code: int, text: str | None = None, json_data: Any = None) -> None:
         self.status_code = status_code

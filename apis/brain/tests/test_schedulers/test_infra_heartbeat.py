@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers import _history, infra_heartbeat
 from app.schedulers.infra_heartbeat import install, run_infra_heartbeat
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def test_registers_one_job_id() -> None:

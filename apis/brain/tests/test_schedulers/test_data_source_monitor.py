@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import httpx
@@ -10,12 +11,14 @@ import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers import _history, data_source_monitor
-from app.schedulers.data_source_monitor import install, run_data_source_monitor, _signed32_hash
+from app.schedulers.data_source_monitor import _signed32_hash, install, run_data_source_monitor
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.fixture(autouse=True)

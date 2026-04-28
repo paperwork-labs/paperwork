@@ -62,7 +62,7 @@ async def test_post_message_channel_id_alias_works(monkeypatch):
         async def __aexit__(self, *_):
             return None
 
-        async def post(self, url: str, headers=None, json=None):  # noqa: ARG002
+        async def post(self, url: str, headers=None, json=None):
             captured["url"] = url
             captured["json"] = json
             return _MockResponse()
@@ -105,7 +105,7 @@ async def test_post_message_text_truncated_at_40k(monkeypatch):
         async def __aexit__(self, *_):
             return None
 
-        async def post(self, url, headers=None, json=None):  # noqa: ARG002
+        async def post(self, url, headers=None, json=None):
             captured["json"] = json
             return _MockResponse()
 
