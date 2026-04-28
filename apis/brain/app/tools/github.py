@@ -64,6 +64,29 @@ def _error_message(prefix: str, response: httpx.Response) -> str:
     return _scrub(f"{prefix} HTTP {response.status_code}: {detail}".strip())
 
 
+def github_api_error_diag(response: httpx.Response) -> str:
+    """Short, scrubbed summary for logs (status + GitHub ``message`` + ``documentation_url``)."""
+    try:
+        body = response.json()
+        if isinstance(body, dict):
+            parts: list[str] = [f"status={response.status_code}"]
+            msg = body.get("message")
+            if msg is not None:
+                parts.append(f"message={_scrub(str(msg))}")
+            doc = body.get("documentation_url")
+            if doc is not None:
+                parts.append(f"documentation_url={doc}")
+            return "; ".join(parts)
+    except (json.JSONDecodeError, ValueError, TypeError):
+        pass
+    raw = (response.text or "")[:800]
+    return _scrub(f"status={response.status_code} raw={raw}")
+
+
+def _log_github_api_warning(operation: str, response: httpx.Response) -> None:
+    logger.warning("%s: %s", operation, github_api_error_diag(response))
+
+
 async def read_github_file(path: str, ref: str = "main", *, max_chars: int | None = None) -> str:
     """Read one file from the configured repo at ref.
 
@@ -605,6 +628,14 @@ async def get_git_ref_sha(ref: str) -> str | None:
     return None
 
 
+async def get_branch_sha(branch: str) -> str | None:
+    """Return the resolved SHA for ``branch`` (short name, e.g. ``bot/foo``), or None."""
+    b = branch.strip().removeprefix("refs/heads/")
+    if not b:
+        return None
+    return await get_git_ref_sha(b)
+
+
 async def create_git_ref(ref: str, sha: str) -> bool:
     """Create a branch ref (``refs/heads/...``). Returns False on failure."""
     owner, repo = _repo_parts()
@@ -616,11 +647,15 @@ async def create_git_ref(ref: str, sha: str) -> bool:
                 json={"ref": ref_full, "sha": sha},
             )
             if r.status_code in (422, 409):
-                logger.warning("create_git_ref: %s", _error_message("create_git_ref", r))
+                _log_github_api_warning("create_git_ref", r)
                 return False
             r.raise_for_status()
     except httpx.HTTPStatusError as e:
-        logger.warning("create_git_ref failed: %s", e)
+        logger.warning(
+            "create_git_ref failed: %s | %s",
+            e,
+            github_api_error_diag(e.response),
+        )
         return False
     except (httpx.RequestError, ValueError) as e:
         logger.warning("create_git_ref failed: %s", e)
@@ -689,7 +724,11 @@ async def commit_files_to_branch(branch: str, message: str, files: dict[str, str
             )
             ur.raise_for_status()
     except httpx.HTTPStatusError as e:
-        logger.warning("commit_files_to_branch failed: %s", e)
+        logger.warning(
+            "commit_files_to_branch failed: %s | %s",
+            e,
+            github_api_error_diag(e.response),
+        )
         return None
     except (httpx.RequestError, ValueError) as e:
         logger.warning("commit_files_to_branch failed: %s", e)
@@ -761,12 +800,16 @@ async def create_github_pull(
                 },
             )
             if r.status_code == 422:
-                logger.warning("create_github_pull: %s", _error_message("create_github_pull", r))
+                _log_github_api_warning("create_github_pull", r)
                 return None
             r.raise_for_status()
             return cast("dict[str, Any]", r.json())
     except httpx.HTTPStatusError as e:
-        logger.warning("create_github_pull failed: %s", e)
+        logger.warning(
+            "create_github_pull failed: %s | %s",
+            e,
+            github_api_error_diag(e.response),
+        )
         return None
     except (httpx.RequestError, ValueError) as e:
         logger.warning("create_github_pull failed: %s", e)
