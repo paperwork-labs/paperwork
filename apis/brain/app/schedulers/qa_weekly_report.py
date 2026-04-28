@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -30,7 +31,30 @@ from app.services import slack_outbound
 
 logger = logging.getLogger(__name__)
 
-_DRIFT_BASELINE = Path(__file__).resolve().parents[4] / "docs" / ".doc-drift-baseline.json"
+
+def _drift_baseline_path() -> Path:
+    """Locate ``docs/.doc-drift-baseline.json`` from anywhere we might be running.
+
+    In dev (monorepo checkout) ``parents[4]`` is the repo root. In the Brain
+    Docker image the file is bundled at ``/app/docs/.doc-drift-baseline.json``
+    (see ``apis/brain/Dockerfile``), so we prefer ``$REPO_ROOT`` / ``/app`` and
+    fall back to the parents-based lookup. Never raise at import time.
+    """
+    env = os.environ.get("REPO_ROOT")
+    if env:
+        return Path(env) / "docs" / ".doc-drift-baseline.json"
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / "docs" / ".doc-drift-baseline.json"
+        if candidate.exists():
+            return candidate
+    # Final fallback: container layout (`/app/docs/...`). Returned even if it
+    # does not exist; callers are expected to handle missing files via
+    # ``_load_drift_baseline`` which fails open to ``(0, 0)``.
+    return Path("/app") / "docs" / ".doc-drift-baseline.json"
+
+
+_DRIFT_BASELINE = _drift_baseline_path()
 
 
 def _load_drift_baseline() -> tuple[int, int]:
