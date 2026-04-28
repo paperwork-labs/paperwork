@@ -102,7 +102,7 @@ export function Hero() {
             size="lg"
             className="h-12 bg-gradient-to-r from-violet-600 to-purple-600 px-8 text-base font-semibold hover:from-violet-500 hover:to-purple-500"
           >
-            <Link href="/auth/register">
+            <Link href="/sign-up">
               Get Started Free
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>

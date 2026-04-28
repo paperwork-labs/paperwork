@@ -5,6 +5,7 @@ import Link from "next/link";
 import { X, Check } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { RequireAuth } from "@/components/require-auth";
 import { FILING_STEPS, useFilingStore } from "@/stores/filing-store";
 
 export default function FileLayout({
@@ -20,9 +21,12 @@ export default function FileLayout({
   const displayStep = activeIndex >= 0 ? activeIndex : currentStep;
   const progress = ((displayStep + 1) / FILING_STEPS.length) * 100;
 
-  if (pathname === "/file") return <>{children}</>;
+  if (pathname === "/file") {
+    return <RequireAuth>{children}</RequireAuth>;
+  }
 
   return (
+    <RequireAuth>
     <div className="min-h-screen bg-background">
       <div className="sticky top-14 z-40 border-b border-border/40 bg-background/95 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
@@ -84,5 +88,6 @@ export default function FileLayout({
 
       <div className="mx-auto max-w-3xl px-4 py-8">{children}</div>
     </div>
+    </RequireAuth>
   );
 }

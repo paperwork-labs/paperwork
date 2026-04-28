@@ -10,11 +10,15 @@ const AUTH_PAGES = ["/auth/login", "/auth/register"];
 const SESSION_COOKIE = "session";
 
 /**
- * FileFree auth: legacy session cookies + Clerk SSO on admin surfaces (when added),
- * with Basic Auth as a documented operator escape hatch.
+ * FileFree auth: dual-mode consumer access (legacy session cookie OR Clerk) for
+ * `/file` and `/dashboard`; legacy `/auth/*` still recognized for mid-session
+ * users. New sign-in surface is `/sign-in` (Clerk). Admin (production):
+ * Clerk + Basic Auth — unchanged.
  *
- * Legacy session: `/file` and `/dashboard` require the session cookie; `/auth/*`
- * redirect to `/file` when already signed in. Unchanged.
+ * Consumer (WS-13 stage 1–2):
+ * - Protected routes: allow if session cookie OR `auth().userId`.
+ * - Legacy auth pages: if either session is present, redirect to `/file`.
+ * - Unauthenticated protected → `/sign-in?redirect_url=…` (Clerk).
  *
  * Admin (production only, `/admin` and `/api/admin`):
  * 1) `auth().userId` (Clerk) → allow
@@ -93,19 +97,26 @@ const isPublicRoute = createRouteMatcher([
 
 const isFileFreeGated = createRouteMatcher(["/admin(.*)", "/api/admin(.*)"]);
 
-function legacySessionRedirect(request: NextRequest): NextResponse | null {
+function isConsumerAuthPath(pathname: string): boolean {
+  const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isAuthPage = AUTH_PAGES.some((page) => pathname.startsWith(page));
+  return isProtected || isAuthPage;
+}
+
+function consumerAuthGate(request: NextRequest, clerkUserId: string | null): NextResponse | null {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE);
+  const authed = hasSession || Boolean(clerkUserId);
 
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
-  if (isProtected && !hasSession) {
-    const loginUrl = new URL("/auth/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+  if (isProtected && !authed) {
+    const signInUrl = new URL("/sign-in", request.url);
+    signInUrl.searchParams.set("redirect_url", pathname);
+    return NextResponse.redirect(signInUrl);
   }
 
   const isAuthPage = AUTH_PAGES.some((page) => pathname.startsWith(page));
-  if (isAuthPage && hasSession) {
+  if (isAuthPage && authed) {
     return NextResponse.redirect(new URL("/file", request.url));
   }
 
@@ -113,9 +124,23 @@ function legacySessionRedirect(request: NextRequest): NextResponse | null {
 }
 
 export default clerkMiddleware(async (auth, request) => {
-  const legacy = legacySessionRedirect(request);
-  if (legacy) {
-    return legacy;
+  const adminGatedProd = isFileFreeGated(request) && process.env.NODE_ENV === "production";
+  const consumerRelevant = isConsumerAuthPath(request.nextUrl.pathname);
+
+  let userId: string | null = null;
+  let redirectToSignIn: Awaited<ReturnType<typeof auth>>["redirectToSignIn"] | undefined;
+
+  if (consumerRelevant || adminGatedProd) {
+    const a = await auth();
+    userId = a.userId ?? null;
+    redirectToSignIn = a.redirectToSignIn;
+  }
+
+  if (consumerRelevant) {
+    const consumer = consumerAuthGate(request, userId);
+    if (consumer) {
+      return consumer;
+    }
   }
 
   if (isPublicRoute(request)) {
@@ -126,9 +151,7 @@ export default clerkMiddleware(async (auth, request) => {
     return;
   }
 
-  if (isFileFreeGated(request) && process.env.NODE_ENV === "production") {
-    const { userId, redirectToSignIn } = await auth();
-
+  if (adminGatedProd) {
     if (userId) {
       return;
     }
@@ -141,7 +164,7 @@ export default clerkMiddleware(async (auth, request) => {
       return basicAuthUnauthorized();
     }
 
-    return redirectToSignIn({ returnBackUrl: request.url });
+    return redirectToSignIn!({ returnBackUrl: request.url });
   }
 });
 
