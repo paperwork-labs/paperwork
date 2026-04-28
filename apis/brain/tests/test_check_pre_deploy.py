@@ -85,6 +85,7 @@ def _run_script(
             "axiomfolio",
             "--target",
             "production",
+            "--skip-clerk-dns",
             *extra,
         ],
         cwd=str(REPO_ROOT),
@@ -159,6 +160,17 @@ def test_all_green_exits_0(mock_server: int) -> None:
 
 
 def test_require_all_checks_with_skip_exits_5() -> None:
-    proc = _run_script("--skip-quota", "--skip-env-vars", "--require-all-checks")
+    proc = _run_script(
+        "--skip-quota",
+        "--skip-env-vars",
+        "--skip-clerk-dns",
+        "--require-all-checks",
+    )
+    assert proc.returncode == 5
+    assert "PRE_DEPLOY_GUARD_BYPASS_USED" in proc.stderr
+
+
+def test_require_all_checks_skip_clerk_dns_only_exits_5(mock_server: int) -> None:
+    proc = _run_script("--skip-clerk-dns", "--require-all-checks", port=mock_server)
     assert proc.returncode == 5
     assert "PRE_DEPLOY_GUARD_BYPASS_USED" in proc.stderr

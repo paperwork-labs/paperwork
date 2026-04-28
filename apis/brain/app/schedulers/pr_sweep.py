@@ -309,6 +309,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install render_quota_monitor job")
 
     try:
+        from app.schedulers import clerk_dns_reconcile_watch
+
+        clerk_dns_reconcile_watch.install(sched)
+    except Exception:
+        logger.exception("Failed to install clerk_dns_reconcile_watch job")
+
+    try:
         from app.schedulers.quota_monitors import vercel as vercel_quota_monitor
 
         vercel_quota_monitor.install(sched)

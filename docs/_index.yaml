@@ -198,6 +198,13 @@ docs:
     tags: [design, chromatic, ci, storybook]
     owners: [infra-ops, ux-lead]
     category: runbooks
+  - slug: clerk-dns-incident-2026-04-28
+    path: docs/runbooks/CLERK_DNS_INCIDENT_2026-04-28.md
+    title: Clerk + Cloudflare DNS incident (2026-04-28)
+    summary: "Post-mortem for Cloudflare migration impact on Clerk CNAMEs, Studio sign-in outages, temporary single redirect rule, validation, reconcile_clerk_dns.py integration, and removal criteria."
+    tags: [clerk, cloudflare, dns, incident, runbook]
+    owners: [infra-ops]
+    category: runbooks
   - slug: clerk-satellite-topology
     path: docs/infra/CLERK_SATELLITE_TOPOLOGY.md
     title: Clerk multi-domain satellite topology

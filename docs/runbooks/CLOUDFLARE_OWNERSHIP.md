@@ -190,6 +190,15 @@ Settings → Members → Invite. Roles:
 - **Domain Admin**: per-zone DNS edit. Use for engineers who need to ship.
 - **Read-only**: for Brain MCP read tools, contractors, auditors.
 
+## Post-migration DNS verification checklist
+
+After **any** future Cloudflare zone migration or bulk "import DNS" operation on a production apex:
+
+1. Run **`python3 scripts/reconcile_clerk_dns.py --check-only`** with `CLERK_SECRET_KEY` + `CLOUDFLARE_API_TOKEN` (or `CF_TOKEN`) from a trusted machine. Exit **0** means Clerk's required `cname_targets` match Cloudflare. See [Clerk DNS incident (2026-04-28)](CLERK_DNS_INCIDENT_2026-04-28.md) for the failure mode Cloudflare's auto-scan can miss.
+2. Manually diff **SaaS CNAMEs** that flatten or proxy oddly — **`*.clerk.services`**, **`*.onrender.com`**, **`cname.vercel-dns.com`**, third-party mail (`mail.*.clerk.services`, DKIM `dkim*`), and any **non-Clerk** ops rows (e.g. Brain on Render) against a **pre-migration export** or registrar snapshot. Do not assume "import succeeded" means "all rows present".
+3. Re-check **Clerk Dashboard → Domains** for **custom hostname / satellite** status after the zone moves accounts; Cloudflare-for-SaaS registration is **per zone** and may need re-validation.
+4. For Vercel-linked hostnames, confirm the intended **CNAME target** still matches the active architecture (Clerk-hosted Account Portal vs self-hosted).
+
 ## Cloudflare UX patterns we adopt for our own products
 
 The Cloudflare token-issuance flow is a clean model for any future API-key UX we ship in FileFree / LaunchFree / Distill. Patterns worth standardizing on:

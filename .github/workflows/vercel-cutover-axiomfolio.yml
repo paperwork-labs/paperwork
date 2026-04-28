@@ -63,6 +63,8 @@ jobs:
           BRAIN_BASE_URL: https://brain-api.onrender.com
           BRAIN_ADMIN_TOKEN: ${{ secrets.BRAIN_ADMIN_TOKEN }}
           VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: |
           set -euo pipefail
           python3 -m pip install --quiet --upgrade pip
