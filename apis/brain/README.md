@@ -21,3 +21,9 @@ python scripts/check_parents_import_safety.py
 ```
 
 If you deliberately need an exception for a Dockerfile change, migrate path, or new `parents` depth, bump the guarded floor **and** the matching script/constants in the same PR, plus a short rationale in the PR body. For `parents[...]` usage, mirror the `_repo_root()`/`REPO_ROOT`/`/app` fallbacks from `apis/brain/app/services/workstreams_loader.py` and extend the checker only when the mitigation pattern is repeatable.
+
+## Pre-deploy guard
+
+Before triggering a **production Vercel deploy** (workflow, agent, or CLI), run [`scripts/check_pre_deploy.py`](/scripts/check_pre_deploy.py): it enforces remaining hobby deploy budget via Brain [`GET /api/v1/admin/vercel-quota`](/apis/brain/app/routers/admin.py) and verifies required env vars from [`apis/brain/data/required_env_vars.yaml`](/apis/brain/data/required_env_vars.yaml). This is the **runtime** sibling to the merge-time scripts above — CI blocks bad merges; this blocks bad deploys.
+
+Runbook: [`docs/runbooks/PRE_DEPLOY_GUARD.md`](/docs/runbooks/PRE_DEPLOY_GUARD.md).

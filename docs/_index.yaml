@@ -275,6 +275,13 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
+  - slug: pre-deploy-guard
+    path: docs/runbooks/PRE_DEPLOY_GUARD.md
+    title: Pre-deploy guard (Vercel quota + env vars)
+    summary: Run scripts/check_pre_deploy.py before any production Vercel deploy so hobby quota and missing Clerk/API env vars cannot take production offline.
+    tags: [vercel, brain, ci, deploy, quota, secrets]
+    owners: [infra-ops]
+    category: runbooks
   - slug: render-inventory
     path: docs/infra/RENDER_INVENTORY.md
     title: Render Inventory

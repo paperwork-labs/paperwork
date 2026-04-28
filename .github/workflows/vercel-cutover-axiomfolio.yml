@@ -10,6 +10,8 @@ name: Vercel cutover — axiomfolio (legacy → Next.js)
 #     have to come back tomorrow, this gives you a one-click retry button.
 #   - Idempotent: Step A skips PATCH if framework is already nextjs (this is
 #     useful when the PATCH already landed but the deploy was rate-limited).
+#   - Pre-deploy guard (Brain quota + required env vars) runs before the
+#     cutover script — see docs/runbooks/PRE_DEPLOY_GUARD.md.
 #
 # After this runs successfully:
 #   - axiomfolio.com / www.axiomfolio.com (already verified on the legacy
@@ -55,6 +57,17 @@ jobs:
             echo "::error::VERCEL_API_TOKEN secret is not set. See docs/infra/VERCEL_AUTO_PROMOTE.md for setup."
             exit 1
           fi
+
+      - name: Pre-deploy guard (Brain quota + required Vercel env vars)
+        env:
+          BRAIN_BASE_URL: https://brain-api.onrender.com
+          BRAIN_ADMIN_TOKEN: ${{ secrets.BRAIN_ADMIN_TOKEN }}
+          VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --upgrade pip
+          python3 -m pip install --quiet pyyaml
+          python3 scripts/check_pre_deploy.py --project axiomfolio --target production
 
       - name: Enable corepack (so pnpm packageManager pin doesn't break setup-node)
         run: corepack enable

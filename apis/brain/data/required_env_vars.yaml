@@ -1,0 +1,38 @@
+# edit when adding new projects; check_pre_deploy.py reads this manifest from the repo.
+#
+# Keys are Vercel project slugs (see scripts/vercel-projects.json). Each maps to
+# deployment targets (production / preview) and the env var names that must exist
+# on that target before we trigger a production deploy.
+
+accounts:
+  production:
+    - CLERK_SECRET_KEY
+    - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+    - NEXT_PUBLIC_CLERK_FRONTEND_API
+    - NEXT_PUBLIC_CLERK_DOMAIN
+    - NEXT_PUBLIC_CLERK_IS_SATELLITE
+  preview:
+    - CLERK_SECRET_KEY
+    - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+    - NEXT_PUBLIC_CLERK_FRONTEND_API
+
+filefree:
+  production:
+    - CLERK_SECRET_KEY
+    - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+
+distill:
+  production:
+    - CLERK_SECRET_KEY
+    - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+
+studio:
+  production:
+    - CLERK_SECRET_KEY
+    - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+    - ADMIN_EMAILS
+
+axiomfolio:
+  production:
+    - NEXT_PUBLIC_API_URL
+    - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY

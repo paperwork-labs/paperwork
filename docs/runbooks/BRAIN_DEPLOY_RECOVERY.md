@@ -14,6 +14,7 @@ Operational notes for incidents that surfaced in April 2026 and the guardrails t
 - Workflow runbook path: [.github/workflows/brain-pre-merge-guards.yml](../../.github/workflows/brain-pre-merge-guards.yml)
 - Script sources: `scripts/check_alembic_heads.py`, `scripts/check_dockerfile_healthcheck.py`, `scripts/check_parents_import_safety.py`
 - Brain overview: [`apis/brain/README.md`](../../apis/brain/README.md)
+- **Vercel pre-deploy** (quota + required env vars before production deploy): [PRE_DEPLOY_GUARD.md](PRE_DEPLOY_GUARD.md) and [`scripts/check_pre_deploy.py`](../../scripts/check_pre_deploy.py)
 
 ## Local verification (run from repo root)
 
