@@ -1,4 +1,7 @@
-"""Resolve ``User`` rows from verified Clerk session JWT claims (Track B5)."""
+"""Resolve ``User`` rows from verified Clerk session JWT claims (Track B5).
+
+medallion: ops
+"""
 
 from __future__ import annotations
 
