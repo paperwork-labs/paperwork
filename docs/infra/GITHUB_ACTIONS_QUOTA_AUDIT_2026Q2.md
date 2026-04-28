@@ -213,7 +213,7 @@ Historical **private-era** totals are **not** available via the token used here 
 ### Job: `github_actions_quota_monitor`
 
 - **Scheduler:** APScheduler **`CronTrigger` daily 06:00 UTC** (`0 6 * * *`), `max_instances=1`, `coalesce=true`.
-- **Registration:** New module **`apis/brain/app/schedulers/github_actions_quota.py`** exporting `install(scheduler)` — wire into **`start_scheduler()` in `apis/brain/app/schedulers/pr_sweep.py`** (same pattern as `infra_heartbeat.install`, `cost_dashboard.install`, etc.) so it runs whenever **`BRAIN_SCHEDULER_ENABLED`** is true.
+- **Registration:** New module **github_actions_quota.py** under the Brain schedulers package, exporting `install(scheduler)` — wire into the existing `start_scheduler()` installer (same pattern as `infra_heartbeat.install`, `cost_dashboard.install`, etc.) so it runs whenever **`BRAIN_SCHEDULER_ENABLED`** is true.
 - **HTTP client:** Use a **classic PAT** or fine-grained token with scopes: `actions:read`, **`repo` read**, and for optional billing: **`read:org`** / org billing as allowed (`GET /orgs/{org}/billing/actions` or equivalent Billing API surfaces — **implementer must validate** GitHub Billing API GA vs preview). **Secrets:** store as `GITHUB_ACTIONS_MONITOR_TOKEN` (name TBD) in Brain env — **never** log raw token.
 
 **Calls:**
