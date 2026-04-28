@@ -325,19 +325,19 @@ docs:
     owners: [infra-ops]
     category: runbooks
   # ── Reference ─────────────────────────────────────────
+  - slug: auth-provider-bakeoff-2026q2
+    path: docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md
+    title: Auth Provider Bakeoff — 2026 Q2
+    summary: "Decision record: stay on Clerk vs Better Auth, Stack Auth, Auth0, or self-hosted Auth.js. Scoring matrix, migration cost analysis, recommendation per surface (consumer vs Distill enterprise SAML/OIDC)."
+    tags: [auth, decisions, clerk]
+    owners: [strategy]
+    category: reference
   - slug: billing-vendor-checklist
     path: docs/BILLING_VENDOR_CHECKLIST.md
     title: Billing + Vendor Checklist
     summary: Must-have checks before onboarding a paid vendor.
     tags: [finance, procurement]
     owners: [cfo]
-    category: reference
-  - slug: prompts
-    path: docs/brand/PROMPTS.md
-    title: Brand prompts
-    summary: "Per-product AI image-generation prompts for the six consumer marks that we deferred from PR #172. Run any of these in Nano Banana, Midjourney v6+, DALL-E 3, or Imagen, then drop the chosen image…"
-    tags: []
-    owners: [Paperwork Labs]
     category: reference
   - slug: brand-canon
     path: docs/brand/CANON.md
@@ -346,12 +346,12 @@ docs:
     tags: [brand, reference, canon]
     owners: [brand]
     category: reference
-  - slug: auth-provider-bakeoff-2026q2
-    path: docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md
-    title: Auth Provider Bakeoff — 2026 Q2
-    summary: "Decision record: stay on Clerk vs Better Auth, Stack Auth, Auth0, or self-hosted Auth.js. Scoring matrix, migration cost analysis, recommendation per surface (consumer vs Distill enterprise SAML/OIDC)."
-    tags: [auth, decisions, clerk]
-    owners: [strategy]
+  - slug: prompts
+    path: docs/brand/PROMPTS.md
+    title: Brand prompts
+    summary: "Per-product AI image-generation prompts for the six consumer marks that we deferred from PR #172. Run any of these in Nano Banana, Midjourney v6+, DALL-E 3, or Imagen, then drop the chosen image…"
+    tags: []
+    owners: [Paperwork Labs]
     category: reference
   - slug: clerk-key-propagation-2026-04-27t080144z
     path: docs/infra/CLERK_KEY_PROPAGATION_2026-04-27T080144Z.md
