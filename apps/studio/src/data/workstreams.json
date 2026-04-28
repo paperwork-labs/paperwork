@@ -588,7 +588,7 @@
     },
     {
       "id": "WS-33-cloudflare-account-migration",
-      "title": "Cloudflare account migration (personal \u2192 work, both prod zones)",
+      "title": "Cloudflare account migration (all 5 prod zones \u2192 work account)",
       "track": "I",
       "priority": 32,
       "status": "completed",
@@ -597,9 +597,9 @@
       "brief_tag": "track:cloudflare-account-migration",
       "blockers": [],
       "last_pr": 363,
-      "last_activity": "2026-04-28T20:30:00Z",
+      "last_activity": "2026-04-28T20:35:00Z",
       "last_dispatched_at": null,
-      "notes": "DONE 2026-04-28. paperworklabs.com (zone 6efe0c9f87c80a21617ff040fa2e55dd) + axiomfolio.com (zone e06277688d45265fb6e1240ca17e796e) both moved to Billing@paperworklabs.com work account. NS=janet+noel.ns.cloudflare.com on both zones; registrar (Spaceship) updated by founder. Production 200 OK across www/api hosts. New paperwork-brain account-scoped API token (1y, no IP filter) issued + propagated to vault + Render brain-api env + GH Actions secrets. Account ID 7e8976a674c66193992c04d61d5a6747. Runbook: docs/runbooks/CLOUDFLARE_OWNERSHIP.md. Old personal-account zones can be deleted after 24h soak.",
+      "notes": "COMPLETED 2026-04-28 (WS-33). All five production zones on Billing@paperworklabs.com work Cloudflare account (account ID 7e8976a674c66193992c04d61d5a6747): paperworklabs.com (6efe0c9f87c80a21617ff040fa2e55dd), axiomfolio.com (e06277688d45265fb6e1240ca17e796e), filefree.ai (0ec8bf3e6992c73725c2a0b6cf549cfa, zone active ~20:11 UTC), launchfree.ai (38e6ea06b1380246082b83399826ac22, ~20:12 UTC), distill.tax (0497b4c7e9c65e62bd016f940d62e8e8, ~20:24 UTC). NS=janet.ns.cloudflare.com + noel.ns.cloudflare.com on all zones; Spaceship registrar updated; global resolver check (1.1.1.1 + 8.8.8.8); production HTTP 200 on every domain. paperwork-brain account-scoped API token (1y, no IP filter) in vault + Render brain-api + GH Actions. Runbook: docs/runbooks/CLOUDFLARE_OWNERSHIP.md. Former personal-account (migrated-from) zones: delete after 24h soak (~2026-04-29 21:00 UTC).",
       "estimated_pr_count": 1,
       "github_actions_workflow": null,
       "related_plan": null

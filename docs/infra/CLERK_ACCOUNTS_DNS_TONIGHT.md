@@ -1,6 +1,6 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-04-27
+last_reviewed: 2026-04-28
 doc_kind: runbook
 domain: infra
 status: active
@@ -15,7 +15,7 @@ related_runbooks:
 
 **Goal:** Add the **primary** Clerk production domain `accounts.paperworklabs.com` and prove DNS so Clerk can issue TLS. Satellites (`filefree.ai`, etc.) come **after** verify — and **application code** must stay on the current Clerk integration until Track H4 ships `apps/accounts/` (see ordering below).
 
-**DNS for `paperworklabs.com`:** hosted on **[Spaceship](https://www.spaceship.com)** — not Cloudflare. Use the Spaceship steps below.
+**DNS for `paperworklabs.com`:** **Cloudflare** (Paperwork Labs work account — zone ID `6efe0c9f87c80a21617ff040fa2e55dd`; see `docs/runbooks/CLOUDFLARE_OWNERSHIP.md`). **Spaceship** is the registrar (NS delegation to Cloudflare). Use the Cloudflare steps below — do **not** add apex-zone records only in Spaceship unless you intentionally bypass Cloudflare (we do not).
 
 ## 0. Pick the correct Clerk instance (production only)
 
@@ -33,16 +33,16 @@ On the **production** instance:
 
 **Also add** any extra records Clerk lists for the same domain (e.g. `clerk.accounts`, DKIM `clk._domainkey.accounts`) — only if the Dashboard shows them.
 
-## 2. Add the CNAME in Spaceship
+## 2. Add the CNAME in Cloudflare (`paperworklabs.com` zone)
 
-1. Log in: **[https://www.spaceship.com/application/login/](https://www.spaceship.com/application/login/)**
-2. **Manage** domain **`paperworklabs.com`** → **Advanced DNS** → **DNS Records**.
-3. **Add Record** (or equivalent):
+1. Log in to **[Cloudflare](https://dash.cloudflare.com)** on the **Paperwork Labs work** account and open the **`paperworklabs.com`** zone.
+2. **DNS** → **Records** → **Add record**:
    - **Type:** `CNAME`
-   - **Host:** `accounts` (Spaceship expects the subdomain label; this creates `accounts.paperworklabs.com`)
-   - **Value:** paste the **target from Clerk Dashboard** (the full hostname Clerk gave you)
-   - **TTL:** `3600` (Spaceship default; aligns with ~5–10 min effective propagation for verification)
-4. **Save**. Repeat for any **additional** CNAMEs Clerk required (same Advanced DNS flow, Host/Value per Clerk’s table).
+   - **Name:** `accounts` (creates `accounts.paperworklabs.com`)
+   - **Target:** paste the **hostname from Clerk Dashboard** (the CNAME target Clerk shows for the primary Frontend API record)
+   - **Proxy status:** **DNS only** (grey cloud) — same pattern as other Vercel/Clerk apex records so TLS issuance stays predictable
+   - **TTL:** Auto or `300` / `3600` per your norm
+3. **Save**. Repeat for any **additional** records Clerk listed for this hostname (e.g. `clerk.accounts`, DKIM) — same zone, **DNS only** unless Clerk docs explicitly require proxy (rare).
 
 ## 3. Verify DNS
 
@@ -61,7 +61,7 @@ In the **same** Clerk **production** instance:
 1. **Domains** → **Satellite domains** (wording may vary).
 2. For each production app host, add as satellite, e.g. `filefree.ai`, `launchfree.ai`, `distill.tax`, `paperworklabs.com` (Studio), `tools.filefree.ai`, and the public AxiomFolio hostname — **exact hostnames users type**.
 
-Each satellite will get **its own** DNS instructions (often `clerk.<apex>` in **that** zone). Complete those in the respective DNS providers when you cut over app-by-app.
+Each satellite will get **its own** DNS instructions (often `clerk.<apex>` in **that** zone). As of **2026-04-28**, all five brand apex zones live on the **same** work Cloudflare account — complete those records in the matching zone when you cut over app-by-app (`docs/runbooks/CLOUDFLARE_OWNERSHIP.md`).
 
 ## 5. Code / deploy ordering (critical)
 
