@@ -21,6 +21,7 @@ from app.services.continuous_learning import (
     ingest_merged_prs,
     ingest_postmortems,
 )
+from app.services.github_actions_quota_monitor import latest_github_actions_quota_snapshots
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import review_pr, sweep_open_prs
 from app.services.seed import ingest_docs, ingest_sprint_lessons
@@ -135,6 +136,35 @@ async def trigger_postmortems_ingestion(
         limit=opts.limit,
     )
     return success_response(report)
+
+
+@router.get("/quota/github-actions")
+async def get_github_actions_quota_snapshots(
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Latest GitHub Actions billing/cache snapshots (Studio / infra dashboards)."""
+    rows = await latest_github_actions_quota_snapshots(db)
+    batch_at = rows[0].recorded_at.isoformat() if rows else None
+    snapshots = [
+        {
+            "id": r.id,
+            "recorded_at": r.recorded_at.isoformat() if r.recorded_at else None,
+            "repo": r.repo,
+            "is_public": r.is_public,
+            "minutes_used": r.minutes_used,
+            "minutes_limit": r.minutes_limit,
+            "included_minutes": r.included_minutes,
+            "paid_minutes_used": r.paid_minutes_used,
+            "total_paid_minutes_used_breakdown": r.total_paid_minutes_used_breakdown or {},
+            "minutes_used_breakdown": r.minutes_used_breakdown or {},
+            "cache_size_bytes": r.cache_size_bytes,
+            "cache_count": r.cache_count,
+            "extra_json": r.extra_json or {},
+        }
+        for r in rows
+    ]
+    return success_response({"batch_at": batch_at, "count": len(snapshots), "snapshots": snapshots})
 
 
 @router.get("/scheduler/n8n-mirror/status")
