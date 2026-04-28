@@ -33,6 +33,8 @@ import { SortableWorkstreamRow } from "./sortable-workstream-row";
 export type WorkstreamsBoardClientProps = {
   parsedFile: WorkstreamsFile;
   kpis: WorkstreamKpis;
+  /** Shown when live Brain fetch failed or returned invalid data (build snapshot in use). */
+  staleDataBanner?: string | null;
 };
 
 const reorderEnabled =
@@ -41,6 +43,7 @@ const reorderEnabled =
 export function WorkstreamsBoardClient({
   parsedFile,
   kpis,
+  staleDataBanner = null,
 }: WorkstreamsBoardClientProps) {
   const byId = useMemo(
     () => new Map(parsedFile.workstreams.map((w) => [w.id, w])),
@@ -149,6 +152,16 @@ export function WorkstreamsBoardClient({
             reorder persists via Brain PR when enabled.
           </p>
         </header>
+
+        {staleDataBanner ? (
+          <div
+            data-testid="workstreams-stale-banner"
+            aria-live="polite"
+            className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100"
+          >
+            {staleDataBanner}
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
           <div className="min-w-0 flex-1 space-y-6">
