@@ -5,6 +5,7 @@ from app.models.connection import Connection
 from app.models.cost import Cost
 from app.models.entity import Entity, EntityEdge
 from app.models.episode import Episode
+from app.models.github_actions_quota_snapshot import GitHubActionsQuotaSnapshot
 from app.models.organization import Organization, Team, TeamMember
 from app.models.quota_snapshot import VercelQuotaSnapshot
 from app.models.scheduler_run import SchedulerRun
@@ -27,6 +28,7 @@ __all__ = [
     "Entity",
     "EntityEdge",
     "Episode",
+    "GitHubActionsQuotaSnapshot",
     "Organization",
     "SchedulerRun",
     "Skill",
