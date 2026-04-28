@@ -486,6 +486,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: vercel-quota-audit-2026q2
+    path: docs/infra/VERCEL_QUOTA_AUDIT_2026Q2.md
+    title: Vercel quota audit (2026 Q2)
+    summary: "Read-only audit of **Paperwork Labs** (`team_RwfzJ9ySyLuVcoWdKJfXC7h5`) deployment volume, build minutes, and deployment *source* attribution. Companion to the parallel **Render** and **GitHub…"
+    tags: []
+    owners: [infra]
+    category: reference
   - slug: workstreams-board
     path: docs/infra/WORKSTREAMS_BOARD.md
     title: Workstreams board (Track Z)
