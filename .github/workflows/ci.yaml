@@ -43,6 +43,8 @@ jobs:
             brainApi:
               - 'apis/brain/**'
               - '.cursor/rules/**'
+              - 'scripts/cloudflare_*.py'
+              - 'tests/scripts/**'
             filefreeWeb:
               - 'apps/filefree/**'
             launchfreeWeb:
@@ -231,12 +233,20 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -r requirements.txt
+      - name: Ruff (repo Cloudflare CLIs + script tests)
+        run: |
+          ruff check scripts/cloudflare_decommission_zones.py scripts/cloudflare_issue_readonly_tokens.py tests/scripts --config pyproject.toml
+          ruff format --check scripts/cloudflare_decommission_zones.py scripts/cloudflare_issue_readonly_tokens.py tests/scripts --config pyproject.toml
+        working-directory: ${{ github.workspace }}
       - run: python scripts/check_apscheduler_misfire.py
         working-directory: ${{ github.workspace }}
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy app --config-file ./pyproject.toml
       - run: python -m pytest --tb=short -q
+      - name: Cloudflare CLI script tests (repo root)
+        run: python -m pytest tests/scripts -q --tb=short
+        working-directory: ${{ github.workspace }}
 
   web-lint:
     name: Web Type Check

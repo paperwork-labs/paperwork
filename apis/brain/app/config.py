@@ -148,6 +148,14 @@ class Settings(BaseSettings):
     # reads :envvar:`BRAIN_OWNS_SPRINT_PLANNER` from the process environment first.
     BRAIN_OWNS_SPRINT_PLANNER: bool = False
 
+    # Cloudflare — account-wide write + optional per-zone DNS read (see cloudflare_client).
+    CLOUDFLARE_API_TOKEN: str = ""
+    CLOUDFLARE_READONLY_TOKEN_PAPERWORKLABS: str = ""
+    CLOUDFLARE_READONLY_TOKEN_AXIOMFOLIO: str = ""
+    CLOUDFLARE_READONLY_TOKEN_FILEFREE: str = ""
+    CLOUDFLARE_READONLY_TOKEN_LAUNCHFREE: str = ""
+    CLOUDFLARE_READONLY_TOKEN_DISTILL_TAX: str = ""
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
     @model_validator(mode="after")
