@@ -296,6 +296,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
     except Exception:
         logger.exception("Failed to install workstream_progress job")
 
+    try:
+        from app.services import workstream_progress_writeback
+
+        workstream_progress_writeback.install(sched)
+    except Exception:
+        logger.exception("Failed to install workstream_progress_writeback job")
+
     sched.start()
     _scheduler = sched
     logger.info("APScheduler started: pr_sweep every %d min + proactive_cadence hourly", minutes)
