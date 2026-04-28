@@ -23,7 +23,14 @@ export default function AuthCallbackPage() {
     let redirectTo = "/";
     try {
       const saved = localStorage.getItem(LAST_ROUTE_STORAGE_KEY);
-      if (saved && saved !== "/login" && saved !== "/register" && saved !== "/auth/callback") {
+      if (
+        saved &&
+        saved !== "/login" &&
+        saved !== "/register" &&
+        saved !== "/sign-in" &&
+        saved !== "/sign-up" &&
+        saved !== "/auth/callback"
+      ) {
         redirectTo = saved;
       }
     } catch {
