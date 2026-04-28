@@ -7,13 +7,13 @@ dependency for protected routes.
 ## Install (editable, from the monorepo root)
 
 ```bash
-pip install -e packages/auth/src/python
+pip install -e packages/auth-clerk/src/python
 ```
 
 Add to `apis/<service>/requirements.txt`:
 
 ```
--e ./packages/auth/src/python
+-e ./packages/auth-clerk/src/python
 ```
 
 ## Usage

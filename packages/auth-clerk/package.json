@@ -8,6 +8,8 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./clerk-appearance": "./src/clerk-appearance.ts",
+    "./SignInShell": "./src/SignInShell.tsx",
     "./products": "./src/products.ts",
     "./hooks/use-idle-timeout": "./src/hooks/use-idle-timeout.ts",
     "./hooks/use-clerk-user": "./src/hooks/use-clerk-user.ts",

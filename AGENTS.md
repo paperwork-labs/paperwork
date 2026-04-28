@@ -93,7 +93,7 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 
 ### Auth
 
-- **`packages/auth`** (`@paperwork-labs/auth-clerk`) owns **Clerk** integration: `SignInShell`, `SignUpShell`, **`createClerkAppearance`**, presets — see [packages/auth/README.md](packages/auth/README.md).
+- **`packages/auth-clerk`** (`@paperwork-labs/auth-clerk`) owns **Clerk** integration: `SignInShell`, `SignUpShell`, **`createClerkAppearance`**, presets — see [packages/auth-clerk/README.md](packages/auth-clerk/README.md).
 
 ### Time
 

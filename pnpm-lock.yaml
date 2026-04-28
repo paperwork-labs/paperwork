@@ -52,7 +52,7 @@ importers:
         version: 5.2.10
       '@paperwork-labs/auth-clerk':
         specifier: workspace:*
-        version: link:../../packages/auth
+        version: link:../../packages/auth-clerk
       '@paperwork-labs/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -315,7 +315,7 @@ importers:
         version: 2.4.57(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@paperwork-labs/auth-clerk':
         specifier: workspace:*
-        version: link:../../packages/auth
+        version: link:../../packages/auth-clerk
       '@paperwork-labs/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -385,7 +385,7 @@ importers:
         version: link:../../packages/analytics
       '@paperwork-labs/auth-clerk':
         specifier: workspace:*
-        version: link:../../packages/auth
+        version: link:../../packages/auth-clerk
       '@paperwork-labs/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -524,7 +524,7 @@ importers:
         version: 2.4.57(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@paperwork-labs/auth-clerk':
         specifier: workspace:*
-        version: link:../../packages/auth
+        version: link:../../packages/auth-clerk
       '@paperwork-labs/data':
         specifier: workspace:*
         version: link:../../packages/data
@@ -639,7 +639,7 @@ importers:
         version: 1.1.0
       '@paperwork-labs/auth-clerk':
         specifier: workspace:*
-        version: link:../../packages/auth
+        version: link:../../packages/auth-clerk
       '@paperwork-labs/pwa':
         specifier: workspace:*
         version: link:../../packages/pwa
@@ -766,7 +766,7 @@ importers:
         version: 2.4.57(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@paperwork-labs/auth-clerk':
         specifier: workspace:*
-        version: link:../../packages/auth
+        version: link:../../packages/auth-clerk
       '@paperwork-labs/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -833,7 +833,7 @@ importers:
         specifier: ^5.6.0
         version: 5.9.3
 
-  packages/auth:
+  packages/auth-clerk:
     dependencies:
       '@paperwork-labs/ui':
         specifier: workspace:*

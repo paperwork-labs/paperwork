@@ -32,7 +32,7 @@ export default tseslint.config(
             {
               name: "next-auth",
               message:
-                "Do not import `next-auth` from @paperwork-labs/ui; use apps/<name>/ or packages/auth/.",
+                "Do not import `next-auth` from @paperwork-labs/ui; use apps/<name>/ or packages/auth-clerk/.",
             },
             {
               name: "vite",
@@ -99,7 +99,7 @@ export default tseslint.config(
             {
               group: ["next-auth/*"],
               message:
-                "Do not import from `next-auth/*` in @paperwork-labs/ui; colocate in apps/<name>/ or packages/auth/.",
+                "Do not import from `next-auth/*` in @paperwork-labs/ui; colocate in apps/<name>/ or packages/auth-clerk/.",
             },
             {
               group: ["node:*"],

@@ -60,7 +60,7 @@ EXPECTED_DEAD: set[str] = {
     # VENTURE_MASTER_PLAN.md + DOCS_STREAMLINE_2026Q2.md keep provenance path.
     "docs/VMP-SUMMARY.md",
     # PR #234 consolidated 6 per-app Clerk Appearance files into named presets
-    # in packages/auth/src/appearance/presets.ts. CLERK_*.md docs still mention
+    # in packages/auth-clerk/src/appearance/presets.ts. CLERK_*.md docs still mention
     # the old paths in narrative copy; pending a docs rewrite that redirects to
     # the shared package + preset names.
     "apps/distill/src/lib/clerk-appearance.ts",
