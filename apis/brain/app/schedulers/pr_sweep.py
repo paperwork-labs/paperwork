@@ -282,6 +282,20 @@ def start_scheduler() -> AsyncIOScheduler | None:
     except Exception:
         logger.exception("Failed to install secrets_audit jobs")
 
+    try:
+        from app.schedulers import workstream_dispatcher
+
+        workstream_dispatcher.install(sched)
+    except Exception:
+        logger.exception("Failed to install workstream_dispatcher job")
+
+    try:
+        from app.services import workstream_progress
+
+        workstream_progress.install(sched)
+    except Exception:
+        logger.exception("Failed to install workstream_progress job")
+
     sched.start()
     _scheduler = sched
     logger.info("APScheduler started: pr_sweep every %d min + proactive_cadence hourly", minutes)

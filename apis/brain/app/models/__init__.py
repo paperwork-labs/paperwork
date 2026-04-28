@@ -12,6 +12,7 @@ from app.models.skill import Skill, UserSkill
 from app.models.summary import Summary
 from app.models.user_profile import UserProfile
 from app.models.vault import UserVault
+from app.models.workstream_board import WorkstreamDispatchLog, WorkstreamProgressSnapshot
 
 __all__ = [
     "AdminAuditLog",
@@ -34,4 +35,6 @@ __all__ = [
     "UserProfile",
     "UserSkill",
     "UserVault",
+    "WorkstreamDispatchLog",
+    "WorkstreamProgressSnapshot",
 ]

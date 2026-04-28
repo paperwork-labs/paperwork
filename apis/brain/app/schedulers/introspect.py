@@ -26,7 +26,12 @@ _CUTOVER_JOB_IDS: frozenset[str] = frozenset(
 
 # Operational (non-n8n-replacement) gated automation.
 _OPERATIONAL_JOB_IDS: frozenset[str] = frozenset(
-    {"sprint_auto_logger", "brain_agent_sprint_planner"}
+    {
+        "sprint_auto_logger",
+        "brain_agent_sprint_planner",
+        "workstream_dispatcher",
+        "workstream_progress",
+    }
 )
 
 
