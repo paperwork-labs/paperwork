@@ -144,7 +144,7 @@ related_prs:
 
 
 def test_install_registers_job_when_scheduler_enabled_path() -> None:
-    """``install`` always registers the job; ``BRAIN_SCHEDULER_ENABLED`` gates startup in pr_sweep."""
+    """``install`` always registers; ``BRAIN_SCHEDULER_ENABLED`` gates startup in pr_sweep."""
     sched = AsyncIOScheduler(timezone="UTC")
     sal.install(sched)
     jobs = sched.get_jobs()
