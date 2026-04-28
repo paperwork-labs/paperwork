@@ -11,7 +11,7 @@ export interface ClippedWordmarkProps {
    * Plays the clip-on entrance animation once, then settles into the static
    * end state. When false (default), renders the static end state directly.
    * Reduced-motion users always get the static end state regardless of this
-   * flag — see docs/brand/ANIMATION.md § Reduced-motion handling.
+   * flag — see docs/brand/CANON.md § Animation.
    */
   animated?: boolean;
   /**
@@ -63,9 +63,9 @@ const HOVER_WIGGLE = {
  * (P2) instead.
  *
  * Spec:
- *   - Geometry / palette: docs/brand/PROMPTS.md § P5 + § Composition rules
- *   - Motion + reduced-motion: docs/brand/ANIMATION.md § "Tier 1 — Animated"
- *   - Brand grammar: .cursor/rules/brand.mdc § Visual grammar #4
+ *   - Geometry / palette: docs/brand/CANON.md (§ Visual grammar; Locked PNG / P5)
+ *   - Motion + reduced-motion: docs/brand/CANON.md § Animation
+ *   - Brand grammar: docs/brand/CANON.md § Visual grammar (parent amber exception)
  *
  * The component renders Wordmark (mid layer) and ClipMark (top layer) in a
  * relative container; surface palette is exposed via the `--pwl-clip-accent`
@@ -73,10 +73,10 @@ const HOVER_WIGGLE = {
  * amber-300 on dark surfaces without re-rendering the SVG.
  *
  * The clip-back portion (the part of the wire that should appear to wrap
- * "behind" the wordmark) is intentionally NOT drawn in v1 — see
- * docs/brand/CANON.md (P5 clipped-wordmark; no raster replacement until
- * founder pick). Acceptable per PROMPTS.md fallback; the visible composition
- * still reads correctly because the clip-front sits in front of the cap-line.
+ * "behind" the wordmark) is intentionally NOT drawn in v1 — see CANON.md
+ * § Future queue (P5 clipped-wordmark; no raster replacement until founder
+ * picks the winning variant). The visible composition still reads correctly
+ * because the clip-front sits in front of the cap-line.
  */
 export function ClippedWordmark({
   animated = false,

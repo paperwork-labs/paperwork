@@ -346,13 +346,6 @@ docs:
     tags: [company, reference]
     owners: [brand]
     category: reference
-  - slug: prompts
-    path: docs/brand/PROMPTS.md
-    title: Brand prompts
-    summary: "Per-product AI image-generation prompts for the six consumer marks that we deferred from PR #172. Run any of these in Nano Banana, Midjourney v6+, DALL-E 3, or Imagen, then drop the chosen image…"
-    tags: []
-    owners: [Paperwork Labs]
-    category: reference
   - slug: clerk-key-propagation-2026-04-27t080144z
     path: docs/infra/CLERK_KEY_PROPAGATION_2026-04-27T080144Z.md
     title: Clerk key propagation audit — 2026-04-27T080144Z
@@ -422,13 +415,6 @@ docs:
     summary: "What runs where — Render, Vercel, Hetzner, Neon."
     tags: [infra]
     owners: [infra-ops]
-    category: reference
-  - slug: animation
-    path: docs/brand/ANIMATION.md
-    title: Paperwork Labs brand animations
-    summary: "This file specs the **runtime motion** for the parent paperclip mark across three surface tiers: **animated** (frontend nav / hero / splash), **static** (everywhere brand chrome), **straight**…"
-    tags: []
-    owners: [Paperwork Labs]
     category: reference
   - slug: readme
     path: docs/brand/README.md

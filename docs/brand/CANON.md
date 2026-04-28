@@ -150,6 +150,14 @@ When the founder asks for a new variant:
 4. Mark it **EXPLORING** in this file's lock-status table until founder confirms.
 5. Once locked, move it to `apps/<app>/public/brand/<name>.png` (or retrace to SVG) and promote it to the **LOCKED** table here.
 
+## Animation
+
+Parent **P5 clipped wordmark** runtime motion (see § **Locked PNG renders** / **When to use SVG vs PNG** above): entrance **once per session** (e.g. a `sessionStorage` flag—never on every SPA navigation); total choreography ~**700 ms** (wordmark opacity, clip translate / rotate settling near **−15°**); optional subtle **hover wiggle** only for hover-capable pointers. **`prefers-reduced-motion: reduce`**: skip the entrance entirely; render the static end-state. Use **`transform` + `opacity` only** for the animated path; no shadows on the clip during motion.
+
+**Do not:** re-run entrance on route changes; animate the wordmark beyond a simple fade-in; animate or pulse the amber span; bounce past the final clip tilt; use the full P5 clipped composition below **~24 px** (use vertical / lockup tiers instead—see **When to use SVG vs PNG**). Prefer shared implementations under [`packages/ui/src/components/brand/`](../../packages/ui/src/components/brand/).
+
+**Future queue:** final layered SVG for P5 (z-order); Storybook / a11y verification for motion paths.
+
 ## Don'ts
 
 - Do not put the parent paperclip on a consumer product page — it is parent-brand only.

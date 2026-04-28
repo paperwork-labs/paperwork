@@ -23,11 +23,10 @@ const WORDMARK_FONT_FAMILY =
  * The SVG viewBox is sized for the bare wordmark (no clip, no padding); the
  * P5 composition lives in `ClippedWordmark` which positions a `ClipMark`
  * over the top-left of the "P". Canvas is 1000 x 200 user units so cap-height
- * lands near 120 (matches docs/brand/PROMPTS.md § Composition rules at the
+ * lands near 120 (matches docs/brand/CANON.md § Visual grammar at the
  * P5 5:1 viewBox).
  *
- * Spec: docs/brand/PROMPTS.md § Composition rules + .cursor/rules/brand.mdc
- * § Visual grammar #6/#7.
+ * Spec: docs/brand/CANON.md § Visual grammar + .cursor/rules/brand.mdc (voice/copy).
  */
 export function Wordmark({ className, style }: WordmarkProps): React.ReactElement {
   return (

@@ -86,7 +86,7 @@ What is **not** the family thread:
 
 **Interim (replace when AI parent ships):** `apps/studio/public/brand/paperwork-labs/**/*.svg` (parent + paperclip variants), Studio grid marks.
 
-**Brain + parent:** see [`docs/brand/PROMPTS.md`](../brand/PROMPTS.md) — `Emerald #10B981` / `Mint #6EE7B7` and slate+amber for parent prompts.
+**Brain + parent:** see [`docs/brand/CANON.md`](../brand/CANON.md) per-product palette — `Emerald #10B981` / `Mint #6EE7B7` and slate+amber for parent prompts.
 
 ---
 
@@ -116,7 +116,7 @@ Unchanged: imprint on copyright page only; no Paperwork Labs consumer palette on
 ## 8. Related docs
 
 - [`docs/brand/README.md`](../brand/README.md) — asset registry + full palette table.
-- [`docs/brand/PROMPTS.md`](../brand/PROMPTS.md) — LLM / image prompts with hexes embedded.
+- [`docs/brand/CANON.md`](../brand/CANON.md) — canonical palettes, workflows, Locked PNG renders, visual grammar (replaces archived per-product AI prompt dumps).
 - [`.cursor/rules/brand.mdc`](../../.cursor/rules/brand.mdc) — always-on rule.
 - `apps/axiomfolio/src/index.css` — AxiomFolio token depth (oklch) — **shape** to follow in migration sprint, not universal hue.
 - `packages/ui/src/themes.css` — **Scaffolding** until theme migration.

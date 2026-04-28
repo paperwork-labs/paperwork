@@ -82,7 +82,7 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 ### Frontends
 
 - **Next.js** is the standard for `apps/*`; **Vite** stacks are **legacy** and scheduled for decommission as apps migrate.
-- **Design system canvas:** Storybook **8** for shared UI, production host **`design.paperworklabs.com`** — setup/status: [docs/infra/FOUNDER_ACTIONS.md](docs/infra/FOUNDER_ACTIONS.md), motion/component notes: [docs/brand/ANIMATION.md](docs/brand/ANIMATION.md)
+- **Design system canvas:** Storybook **8** for shared UI, production host **`design.paperworklabs.com`** — setup/status: [docs/infra/FOUNDER_ACTIONS.md](docs/infra/FOUNDER_ACTIONS.md), motion/component notes: [docs/brand/CANON.md](docs/brand/CANON.md) § Animation
 
 ### `packages/ui` (framework-agnostic)
 
@@ -113,9 +113,8 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 ## 5. Brand canon
 
 - **Rule files:** [.cursor/rules/brand.mdc](.cursor/rules/brand.mdc)
-- **Prompts / marks:** [docs/brand/PROMPTS.md](docs/brand/PROMPTS.md) — **P1–P5** system for parent Paperwork Labs mark
-- **Motion:** [docs/brand/ANIMATION.md](docs/brand/ANIMATION.md)
-- **Registry:** [docs/brand/README.md](docs/brand/README.md)
+- **Canon:** [docs/brand/CANON.md](docs/brand/CANON.md) — marks, Locked PNG renders (P1–P5), palettes, workflows, § Animation
+- **Hub:** [docs/brand/README.md](docs/brand/README.md)
 - **Product palettes:** per-product Tailwind / CSS tokens — **one continuous amber span** rule for the **parent** paperclip (not sub-product marks); see brand.mdc
 
 ---

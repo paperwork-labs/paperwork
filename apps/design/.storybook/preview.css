@@ -5,7 +5,7 @@
  * The design canvas imports it so tokens match the running Next app.
  *
  * Inter Tight is added on top because the Paperwork Labs wordmark spec
- * (docs/brand/PROMPTS.md § P5) calls for it explicitly.
+ * (docs/brand/CANON.md § Visual grammar) calls for Inter Tight for the Paperwork Labs wordmark.
  */
 @import "@fontsource-variable/inter-tight";
 @import "../../axiomfolio/src/index.css";
