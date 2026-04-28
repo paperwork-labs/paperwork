@@ -31,6 +31,13 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["app"]
 
+[tool.ruff.lint.per-file-ignores]
+# CI-facing CLIs/tests: intentional stdout/stderr output; trusted subprocess to git.
+"scripts/check_alembic_heads.py" = ["T201"]
+"scripts/check_dockerfile_healthcheck.py" = ["T201", "S603"]
+"scripts/check_parents_import_safety.py" = ["T201"]
+"scripts/tests/test_parents_import_safety_examples.py" = ["S603"]
+
 [tool.mypy]
 python_version = "3.11"
 strict = true
