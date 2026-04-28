@@ -29,7 +29,7 @@ status: active
 
 ## Resources to migrate
 
-From `docs/RENDER_INVENTORY.md`:
+From `docs/infra/RENDER_INVENTORY.md`:
 
 | Resource | Old ID | Plan | Notes |
 |---|---|---|---|
@@ -79,7 +79,7 @@ Dumped to `/tmp/axiomfolio-render-migration/*.envvars.json` (mode 600, gitignore
 
 ### Phase 0 — Pre-flight ✓ DONE
 
-- [x] Inventory both teams via API (`docs/RENDER_INVENTORY.md`)
+- [x] Inventory both teams via API (`docs/infra/RENDER_INVENTORY.md`)
 - [x] Verify DB allow-list includes this machine (`98.47.48.112`)
 - [x] Install `pg_dump` v16 matching server version (`brew install postgresql@16`)
 - [x] Snapshot all env vars to `/tmp/axiomfolio-render-migration/` (gitignored, mode 600)

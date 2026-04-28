@@ -140,11 +140,7 @@ webhook calls `review_pr` directly. See
 
 ## Migration note (2026-04-24)
 
-Track B, Week 1 of the Infra & Automation Hardening Sprint deleted:
-- `.github/workflows/dependabot-auto-approve.yaml`
-- `.github/workflows/dependabot-major-triage.yaml`
-- `.github/workflows/auto-merge-sweep.yaml`
-- `.github/scripts/dependabot_triage.py`
+Track B, Week 1 of the Infra & Automation Hardening Sprint deleted the legacy Dependabot automation bundle (auto-approve + major triage + sweep workflows and the `dependabot_triage` helper). Filenames are intentionally omitted here — they were removed from `.github/`; use **git history** if you need the exact YAML names.
 
 Behaviour is byte-for-byte compatible with the old workflows. Unit tests in
 `apis/brain/tests/test_dependabot_classifier.py` lock that down.

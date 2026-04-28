@@ -28,8 +28,8 @@ UI styling lives in Tailwind utilities, shared components under `frontend/src/co
    - Everything else lands via PR.
 
 3) **Infra is canonical under `infra/`.**
-   - Dev stack: `infra/compose.dev.yaml` + `infra/env.dev`
-   - Test stack: `infra/compose.test.yaml` + `infra/env.test`
+   - Dev stack: `infra/compose.dev.yaml` + env defaults (`infra/env.dev.defaults`; copy/symlink locally as needed).
+   - Tests: root `make test` runs pytest inside compose services defined in **`infra/compose.dev.yaml`** (there is no separate test-only compose file).
 
 Prerequisites
 -------------
@@ -64,7 +64,7 @@ From repo root, use the **Makefile** (see [README.md](README.md)#makefile-quick-
 - **Frontend only:** `make test-frontend` (install + lint + type-check + tests; same as `make frontend-check`)
 - **Both:** `make test-all`
 
-Equivalent: `./run.sh test` for backend. Notes: uses `infra/compose.test.yaml` with `postgres_test` and an isolated volume; `infra/env.test` is untracked (if missing, `./run.sh test` copies from `infra/env.test.example`).
+Equivalent: `./run.sh test` for backend where supported. Notes: uses the same **`infra/compose.dev.yaml`** stack as dev; backend tests target isolated DB URLs (`TEST_DATABASE_URL`) rather than a second compose file.
 
 Migrations (dev DB only)
 ------------------------
@@ -77,11 +77,11 @@ From repo root (Makefile):
 
 CI (GitHub Actions)
 -------------------
-- Workflow: `.github/workflows/ci.yml`
+- Workflow: `.github/workflows/ci.yaml`
   - Backend: pytest runs in Docker (same isolation as local)
   - Frontend: lint + typecheck + unit tests
 
 PR automation
 -------------
-See `docs/PR_AUTOMATION.md`.
+See `docs/axiomfolio/PR_AUTOMATION.md`.
 

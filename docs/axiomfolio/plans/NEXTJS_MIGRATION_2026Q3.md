@@ -136,13 +136,13 @@ before touching complex routes.
 
 1. `apps/axiomfolio/package.json`: swap Vite deps for Next.js 16. Keep
    all React Query, Radix, Tailwind, Recharts, etc. deps.
-2. `apps/axiomfolio/next.config.ts`: Turbopack on, rewrites for `/api`
+2. `apps/axiomfolio/next.config.mjs`: Turbopack on, rewrites for `/api`
    pointing at `VITE_API_BASE_URL` → `NEXT_PUBLIC_API_BASE_URL`.
 3. `apps/axiomfolio/src/app/layout.tsx`: root layout + Providers (Query
    client, Auth, ColorMode, PortfolioAccount).
 4. `apps/axiomfolio/src/app/login/page.tsx`: port `pages/Login.tsx` as-is
    with `"use client"`.
-5. `apps/axiomfolio/middleware.ts`: read `qm_token` cookie, redirect
+5. **Next.js middleware** (file not created yet in this snapshot): read `qm_token` cookie, redirect
    unauthenticated users away from anything not under `/{login,register,
    auth,invite,share,pricing,why-free}`.
 6. Backend change: `AuthContext.login`/`register` also set a SameSite=
@@ -336,7 +336,7 @@ drop PWA.
 |---|---|
 | `VITE_API_BASE_URL` | `NEXT_PUBLIC_API_BASE_URL` |
 | `VITE_ENABLE_EXTERNAL_SIGNALS` | `NEXT_PUBLIC_ENABLE_EXTERNAL_SIGNALS` |
-| `VITE_PROXY_TARGET` | replaced by `next.config.ts` `rewrites` |
+| `VITE_PROXY_TARGET` | replaced by `next.config.mjs` `rewrites` |
 | `import.meta.env.DEV` | `process.env.NODE_ENV === "development"` |
 
 ## Appendix C — Decision log

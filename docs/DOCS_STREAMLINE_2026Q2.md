@@ -24,7 +24,7 @@ status: active
 | retire (move to `docs/archive/`) | 17 | `git mv` via `scripts/migrate_docs.sh` |
 | merge_into (content folds into another doc) | 7 | Deferred — needs content extraction (manual review) |
 | split (too large/multi-purpose) | 5 | Deferred — needs editor judgment |
-| collisions / renames | 1 | `docs/axiomfolio/KNOWLEDGE.md` → `DECISIONS.md` |
+| collisions / renames | 1 | `docs/axiomfolio/DECISIONS.md` → `DECISIONS.md` |
 | philosophy stubs to author | 7 | New files in `docs/philosophy/` |
 | **Total markdown files audited** | **102** | |
 
@@ -60,9 +60,9 @@ Every domain should have a paired (Architecture = mutable "how", Philosophy = im
 |---|---|---|
 | `docs/AXIOMFOLIO_INTEGRATION.md` vs `docs/AXIOMFOLIO_INTEGRATION.generated.md` | Retire `.md` | `.generated.md` is CI-guarded YAML-driven contract; hand-written one drifts |
 | `docs/AXIOMFOLIO_HANDOFF.md` vs `docs/axiomfolio/PAPERWORK_HANDOFF.md` | Retire both; the migration is done | Both are point-in-time; integration contract = `.generated.md` |
-| `docs/axiomfolio/RENDER_INVENTORY.md` vs `docs/infra/RENDER_INVENTORY.md` | Retire AxiomFolio copy | Self-deprecates; `docs/infra/` is monorepo SoT |
-| `docs/KNOWLEDGE.md` vs `docs/axiomfolio/KNOWLEDGE.md` | Rename AxiomFolio to `DECISIONS.md` | Same filename, different audiences (org memory vs ADR log) — collision |
-| `docs/VENTURE_MASTER_PLAN.md` vs `docs/VMP-SUMMARY.md` | Folded summary into VMP TL;DR | 2026-04-25: persona platform centralised routing → no need for a separate cheap-model file. Summary now lives at the top of VMP; original archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. |
+| `docs/infra/RENDER_INVENTORY.md` vs `docs/infra/RENDER_INVENTORY.md` | Retire AxiomFolio copy | Self-deprecates; `docs/infra/` is monorepo SoT |
+| `docs/KNOWLEDGE.md` vs `docs/axiomfolio/DECISIONS.md` | Rename AxiomFolio to `DECISIONS.md` | Same filename, different audiences (org memory vs ADR log) — collision |
+| `docs/VENTURE_MASTER_PLAN.md` vs the retired standalone VMP summary doc | Folded summary into VMP TL;DR | 2026-04-25: persona platform centralised routing → no need for a separate cheap-model file. Summary now lives at the top of VMP; original archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. |
 
 ---
 
@@ -76,7 +76,7 @@ Move to `docs/archive/` (17 files, all stale or superseded):
 - `docs/PHASE2-COMPOSER-HANDOFFS.md` — ephemeral Composer prompts; superseded
 
 **AxiomFolio**
-- `docs/axiomfolio/RENDER_INVENTORY.md` — self-deprecates to `docs/infra/RENDER_INVENTORY.md`
+- `docs/infra/RENDER_INVENTORY.md` — self-deprecates to `docs/infra/RENDER_INVENTORY.md`
 - `docs/axiomfolio/PAPERWORK_HANDOFF.md` — pre-monorepo handoff; integration contract = `.generated.md`
 
 **AxiomFolio plans / agent-automation (5)**
@@ -104,7 +104,7 @@ Move to `docs/archive/` (17 files, all stale or superseded):
 
 | From | To | Why |
 |---|---|---|
-| `docs/axiomfolio/KNOWLEDGE.md` | `docs/axiomfolio/DECISIONS.md` | Collides with `docs/KNOWLEDGE.md` (org memory). AxiomFolio version is an append-only ADR log (D-IDs) — `DECISIONS` is the right name. Update internal cross-refs. |
+| `docs/axiomfolio/DECISIONS.md` | `docs/axiomfolio/DECISIONS.md` | Collides with `docs/KNOWLEDGE.md` (org memory). AxiomFolio version is an append-only ADR log (D-IDs) — `DECISIONS` is the right name. Update internal cross-refs. |
 
 ---
 
@@ -147,7 +147,7 @@ Plus: `CODEOWNERS` lock on `docs/philosophy/**` requiring human review (founder 
 ## Phase 2 (follow-up PR — out of scope here)
 
 **Merges — status:**
-- ✅ Shipped 2026-04-25: `docs/VMP-SUMMARY.md` folded into `docs/VENTURE_MASTER_PLAN.md` TL;DR; original archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. _Index, CODEOWNERS, sprint trackers updated._
+- ✅ Shipped 2026-04-25: the standalone VMP summary doc folded into `docs/VENTURE_MASTER_PLAN.md` TL;DR; original archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. _Index, CODEOWNERS, sprint trackers updated._
 - ✅ Shipped 2026-04-24: AxiomFolio audit findings folded into [`docs/axiomfolio/DECISIONS.md`](axiomfolio/DECISIONS.md); verbatim archive at `docs/archive/AUDIT_FINDINGS_2026-04.md`.
 - ✅ Shipped 2026-04-24: AxiomFolio market-data flows folded into [`docs/axiomfolio/MARKET_DATA.md`](axiomfolio/MARKET_DATA.md); verbatim archive at `docs/archive/MARKET_DATA_FLOWS.md`.
 - ✅ Shipped 2026-04-24: AxiomFolio section roadmap merged into [`docs/axiomfolio/plans/MASTER_PLAN_2026.md`](axiomfolio/plans/MASTER_PLAN_2026.md); verbatim archive at `docs/archive/AXIOMFOLIO_ROADMAP.md`.
@@ -181,7 +181,7 @@ Plus: `CODEOWNERS` lock on `docs/philosophy/**` requiring human review (founder 
 | L8 cross-cut (subset of L1+L2+L6) | 60 | — | dedup pass only |
 | **Total** | **102** | **102** | **100%** |
 
-Generated coverage manifest: `docs/generated/docs-streamline-2026q2-coverage.txt`. CI gate `scripts/check_doc_coverage.py` (added in this PR) fails if `docs/**/*.md` count diverges from manifest without an explicit re-run of the streamline.
+Generated coverage manifest: `docs/generated/docs-streamline-2026q2-coverage.txt`. CI gate for the generated manifest (implementation may differ run-to-run) fails if `docs/**/*.md` count diverges from the manifest without an explicit regen of the streamline bundle.
 
 ---
 
@@ -200,7 +200,7 @@ Each entry carries: `path`, `classify`, `merge_target`, `rationale`, `owner`, `d
 1. `scripts/check_docs_index.py` — already passes after Phase 1 mv operations
 2. `scripts/check_doc_freshness.py` (NEW) — fails when a non-philosophy retained doc has `last_reviewed` more than 90 days old without an `owner` ack file in `docs/generated/owner-acks.yaml`
 3. `scripts/generate_docs_index.py` (NEW) — converts hand-maintained `docs/_index.yaml` to auto-generated from frontmatter; CI guard added
-4. `scripts/check_doc_coverage.py` (NEW) — guards 100% coverage manifest
+4. coverage manifest guard (see generated `docs-streamline-2026q2-coverage.txt` + CI in this effort) — exact script name may change; follow the generator in `scripts/`
 
 ---
 

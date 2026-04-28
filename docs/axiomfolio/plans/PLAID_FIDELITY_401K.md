@@ -162,7 +162,7 @@ Add to [`frontend/src/components/connections/brokerCatalog.ts`](../../frontend/s
 
 ## Privacy doc
 
-Add one paragraph to [`docs/privacy.md`](../../docs/privacy.md) listing Plaid as a sub-processor with a link to the Plaid DPA. This is contractually required by Plaid regardless of user count; doing it at ship-time avoids a later audit.
+Add one paragraph to [`docs/axiomfolio/privacy.md`](../../docs/axiomfolio/privacy.md) listing Plaid as a sub-processor with a link to the Plaid DPA. This is contractually required by Plaid regardless of user count; doing it at ship-time avoids a later audit.
 
 ```markdown
 ### Sub-processors
@@ -200,7 +200,7 @@ Default to `sandbox` in dev; founder provides prod creds via Render env vars. **
 - `/admin/health` has a `plaid` dimension reporting `active_connections`, `needs_reauth_count`, `error_count_24h`, `oldest_successful_sync_age_seconds`.
 - `GET /api/v1/plaid/link_token` returns 402 for a Free-tier user.
 - Disconnect flow revokes at Plaid, marks row `revoked`, and future syncs skip it.
-- `docs/privacy.md` lists Plaid.
+- `docs/axiomfolio/privacy.md` lists Plaid.
 - No `any` types added without justification; no `console.log` left in committed frontend code; all tests green.
 
 ## Risks & mitigations

@@ -7,7 +7,7 @@ status: active
 ---
 # Paperwork Labs — Venture Master Plan v1
 
-**Date**: March 12, 2026 (last meaningful refresh) | **Supersedes**: All prior strategy plans including deep_research_tightening (5 plans archived). The previous standalone `docs/VMP-SUMMARY.md` was folded into the **TL;DR** below on 2026-04-25 and archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`.
+**Date**: March 12, 2026 (last meaningful refresh) | **Supersedes**: All prior strategy plans including deep_research_tightening (5 plans archived). The previous standalone summary (archived as `docs/archive/VMP-SUMMARY-2026-03-18.md`) was folded into the **TL;DR** below on 2026-04-25.
 
 ---
 
@@ -1783,7 +1783,7 @@ This is an AI-powered data pipeline that populates, validates, and keeps fresh A
 Each of the 50 states has a registered data source config:
 
 ```typescript
-// packages/data/sources/registry.ts
+// packages/data/src/sources/index.ts
 export const sourceRegistry: Record<StateCode, StateSourceConfig> = {
   WY: {
     sos_url: "https://sos.wyo.gov/",
@@ -1799,7 +1799,7 @@ export const sourceRegistry: Record<StateCode, StateSourceConfig> = {
 ### State Engine
 
 ```typescript
-// packages/data/engine/index.ts
+// packages/data/src/engine/index.ts
 export function getStateFormationRules(stateCode: string): StateFormationRules
 export function getStateTaxRules(stateCode: string): StateTaxRules
 export function calculateStateTax(stateCode: string, income: number, filingStatus: string): TaxResult

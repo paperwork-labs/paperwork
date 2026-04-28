@@ -94,7 +94,7 @@ Auth header: `X-Brain-Secret: <BRAIN_API_SECRET>`.
 ## Escalation
 
 Critical paths auto-escalate to Sonnet. Defined in
-[`services/pr_review.py::_CRITICAL_PATHS`](../apis/brain/app/services/pr_review.py):
+[`apis/brain/app/services/pr_review.py::_CRITICAL_PATHS`](../apis/brain/app/services/pr_review.py):
 
 - `apis/axiomfolio/app/services/execution/` — real money
 - `apis/axiomfolio/app/services/gold/risk/` — risk gates
@@ -136,7 +136,7 @@ No repo-level GitHub secrets are needed anymore — `BRAIN_WEBHOOK_URL` and
 
 ## Future: sprint + quarterly review
 
-Same `services/pr_review.py` pattern — memory + GitHub + Claude — extends to:
+Same [`apis/brain/app/services/pr_review.py`](../apis/brain/app/services/pr_review.py) pattern — memory + GitHub + Claude — extends to:
 
 - **Sprint planning** — weekly tool call: "given last week's merged PRs, open
   issues, and Linear state, what should we ship next?"

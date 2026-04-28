@@ -53,7 +53,7 @@ Clerk UI uses Distill’s **teal** (`#0F766E`) and **burnt orange** (`#C2410C`) 
 
 | Piece | Path |
 | ----- | ---- |
-| Global `appearance` (SignIn, SignUp, `UserButton`, modals) | `apps/distill/src/lib/clerk-appearance.ts` (`distillClerkAppearance`), passed to `<ClerkProvider>` in `apps/distill/src/app/layout.tsx` |
+| Global `appearance` (SignIn, SignUp, `UserButton`, modals) | `packages/auth-clerk/src/appearance/presets.ts` (`distillAppearance`), passed to `<ClerkProvider>` in `apps/distill/src/app/layout.tsx` |
 | Auth route shell (full-viewport gradient, centers the form) | `apps/distill/src/components/clerk/ClerkAuthPageShell.tsx`, used by `apps/distill/src/app/sign-in/[[...sign-in]]/page.tsx` and `apps/distill/src/app/sign-up/[[...sign-up]]/page.tsx` |
 
 `baseTheme` is `@clerk/themes`’s `dark` theme; `variables` and `elements` extend it with the locked teal + orange palette.

@@ -169,7 +169,7 @@ Filter operators: `lt`, `lte`, `gt`, `gte`, `between`. When the user requests `i
 - `source_breakdown: { "ibkr": n, "yahoo": n }`
 - `last_successful_snapshot_at`
 
-Dashboard threshold: `coverage_pct_iv_30d < 95%` after a 30-day warm-up window → emit a warning visible on `/admin/health` that reads **"IV coverage below 95% — consider paid provider (see docs/plans/G5_IV_RANK_SURFACE.md)"**.
+Dashboard threshold: `coverage_pct_iv_30d < 95%` after a 30-day warm-up window → emit a warning visible on `/admin/health` that reads **"IV coverage below 95% — consider paid provider (see docs/axiomfolio/plans/G5_IV_RANK_SURFACE.md)"**.
 
 ## Frontend changes
 
@@ -248,7 +248,7 @@ After 30 calendar days post-merge, founder (or Opus on request) reads `admin/hea
 
 - **≥ 95%** — free providers are sufficient; close the G5 loop; no paid provider needed.
 - **85-95%** — acceptable for watchlist-size universes; paid provider optional; file a low-priority ticket.
-- **< 85%** — escalate to a new plan: `docs/plans/G5_IV_PAID_PROVIDER.md` comparing Polygon Options (~$29/mo) vs ORATS (~$250/mo) vs Tradier snapshot endpoint (free on paid Tradier account we likely already have post-Wave F1).
+- **< 85%** — escalate to a paid-provider evaluation (Polygon Options ~$29/mo vs ORATS ~$250/mo vs Tradier snapshot on an existing paid Tradier account post-Wave F1); record the decision in an ADR or ticket when this threshold trips.
 
 **This plan does not prejudge the paid-provider decision.** The 30-day measurement is how we find out honestly.
 

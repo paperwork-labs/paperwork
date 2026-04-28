@@ -7,7 +7,7 @@ status: active
 ---
 # Architecture Overview
 
-> **2026-04-09 update**: This document reflects the v0 architecture. The current product strategy and v1+World-Class roadmap live in [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md). Sections marked **(v1 update)** below describe components shipping in the v1 milestone (target 2026-06-21). New sections at end: [Picks Pipeline (v1)](#picks-pipeline-v1), [Subscription Tiers (v1)](#subscription-tiers-v1), [Two-Worker Topology (v1)](#two-worker-topology-v1).
+> **2026-04-09 update**: This document reflects the v0 architecture. The current product strategy and v1+World-Class roadmap live in [`docs/axiomfolio/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md). Sections marked **(v1 update)** below describe components shipping in the v1 milestone (target 2026-06-21). New sections at end: [Picks Pipeline (v1)](#picks-pipeline-v1), [Subscription Tiers (v1)](#subscription-tiers-v1), [Two-Worker Topology (v1)](#two-worker-topology-v1).
 
 ## Table of contents
 
@@ -85,7 +85,7 @@ flowchart LR
 
 ## Medallion Architecture
 
-**Decision:** D127 (`docs/KNOWLEDGE.md`). **Wave 0 migration status:** in flight as of 2026-04-23; see `docs/plans/MEDALLION_AUDIT_2026Q2.md`.
+**Decision:** D127 (`docs/KNOWLEDGE.md`). **Wave 0 migration status:** in flight as of 2026-04-23; see `docs/axiomfolio/plans/MEDALLION_AUDIT_2026Q2.md`.
 
 AxiomFolio uses **bronze / silver / gold / execution** as the naming convention for how data and logic are layered in `app/services/`. The first three names match common data-mesh "medallion" language: raw at the base, refined in the middle, consumer-oriented at the top. The fourth, **execution**, is AxiomFolio-specific and sits *outside* the standard medallion stack — it's the layer that turns gold signals into real broker orders.
 
@@ -712,7 +712,7 @@ Every published item carries:
 
 ## Subscription Tiers (v1)
 
-Five tiers, Stripe-backed. See [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md) Phase 0.5 for scaffolding details.
+Five tiers, Stripe-backed. See [`docs/axiomfolio/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md) Phase 0.5 for scaffolding details.
 
 | Tier | Monthly | Picks | Autotrade | Brokers | Native chat | LLM budget |
 |------|---------|-------|-----------|---------|-------------|------------|

@@ -336,7 +336,7 @@ If **daily bars** are missing for symbols or dates, run **"Backfill Daily Covera
 
 ### Two-worker operations (v1)
 
-After Phase 0 stabilization (see [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md)), Celery runs as **two workers** on Render:
+After Phase 0 stabilization (see [`docs/axiomfolio/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md)), Celery runs as **two workers** on Render:
 
 | Service | Queue(s) | Concurrency | Max-mem-per-child | Purpose |
 |---------|----------|-------------|-------------------|---------|

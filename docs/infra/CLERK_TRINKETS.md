@@ -46,7 +46,7 @@ Clerk UI uses the **Appearance** API ([Clerk docs: `appearance` prop](https://cl
 
 | Piece | Path |
 | ----- | ---- |
-| Global `appearance` (SignIn, SignUp, `UserButton`, modals) | `apps/trinkets/src/lib/trinkets-clerk-appearance.ts`, passed to `<ClerkProvider>` in `apps/trinkets/src/app/layout.tsx` |
+| Global `appearance` (SignIn, SignUp, `UserButton`, modals) | `packages/auth-clerk/src/appearance/presets.ts` (`trinketsAppearance`), passed to `<ClerkProvider>` in `apps/trinkets/src/app/layout.tsx` |
 | Auth route shell (full-viewport gradient, centers the form) | `apps/trinkets/src/components/clerk/ClerkAuthPageShell.tsx`, used by `sign-in` / `sign-up` catch-all pages |
 
 `baseTheme` is `@clerk/themes`’s `dark` theme. **`colorPrimary`** is the locked **indigo** `#6366F1`; **sky cyan** `#38BDF8` appears in focus rings, secondary glows, and `ClerkAuthPageShell` gradients (Trinkets brand table: indigo + sky cyan).
