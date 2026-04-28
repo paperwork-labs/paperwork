@@ -1,15 +1,21 @@
 ---
 owner: engineering
-last_reviewed: 2026-04-25
+last_reviewed: 2026-04-27
 doc_kind: sprint
 domain: company
-status: active
+status: shipped
+lessons:
+  - Next.js pages that read runtime secrets or probes must set dynamic = force-dynamic — otherwise prerendered builds show stale “not configured” forever.
+  - A repo-native tracker beats external PM when the canonical plan already lives in git; one JSON feeds Studio, Brain slash commands, and the CFO digest.
+  - Two missed Vercel webhooks in a row warrant merge-layer promotion (alias-only), not abandoning the GitHub App UX for PR comments.
+  - Idempotent Brain ingestion of sprint lessons (SHA1-keyed episodes) keeps operational memory searchable alongside seeded docs.
+  - Cheap-model parallel exploration plus one consolidation pass scales doc audits without drowning humans in tickets.
 sprint:
   start: 2026-04-24
   end: 2026-04-26
   duration_weeks: 1
-  pr: 142
-  prs: [142, 143]
+  pr: 144
+  prs: [142, 143, 144]
   ships: [studio, docs, brain, infra]
   personas: [agent-ops, engineering, cfo, qa, infra-ops]
   plans:
@@ -20,9 +26,9 @@ sprint:
 # Docs Streamline + Trackers Spine — 2026 Q2
 
 **Sprint window**: 2026-04-24 → 2026-04-26 (~3 days, mini-sprint)
-**Status**: active — #142 merged, follow-up #143 in flight (Render consolidation, autogen docs index, sprint living tracker)
+**Status**: shipped — #142, #143, #144 merged (trackers spine, Render consolidation + docs index, Vercel redundancy + sprint UI + Brain lesson ingest).
 **Plan**: [DOCS_STREAMLINE_2026Q2.md](../DOCS_STREAMLINE_2026Q2.md)
-**PRs**: [#142](https://github.com/paperwork-labs/paperwork/pull/142), [#143](https://github.com/paperwork-labs/paperwork/pull/143)
+**PRs**: [#142](https://github.com/paperwork-labs/paperwork/pull/142), [#143](https://github.com/paperwork-labs/paperwork/pull/143), [#144](https://github.com/paperwork-labs/paperwork/pull/144)
 
 ## Goal
 
@@ -109,6 +115,4 @@ Land Phase 1 of the docs streamline, give the company a repo-native long-term tr
 - AxiomFolio Next.js migration: 4/102 routes ported (`/`, `/system-status`, `/portfolio`, `/scanner` shells); plan target Q3, decommissions Render static hosting in favor of Vercel — see [docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md](../axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).
 - Severity vocabulary review: existing 7 runbooks use yellow/red; if we want S0–S3 vocabulary across the company, that's a one-shot rename (defer until cross-product alignment).
 - Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`.
-- `make sprint-shipped PR=143` once #143 merges to flip this sprint's status to `shipped` and bake the date.
-
-*Renamed from `VERCEL_TOKEN` to canonical `VERCEL_API_TOKEN` per Track I2 (2026-04-27).*
+- *Renamed from `VERCEL_TOKEN` to canonical `VERCEL_API_TOKEN` per Track I2 (2026-04-27).*

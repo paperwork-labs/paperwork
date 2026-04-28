@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "7bf89a4a7af9",
+  "content_hash": "1ae9e986ca95",
   "products": [
     {
       "label": "AxiomFolio",
@@ -337,34 +337,6 @@
     {
       "blocker": null,
       "domain": "company",
-      "duration_weeks": "~3",
-      "effective_status": "in_progress",
-      "end": "2026-05-16",
-      "followups": [],
-      "goal": null,
-      "last_reviewed": "2026-04-26",
-      "lessons": [],
-      "outcome_bullets": [],
-      "owner": "brand",
-      "path": "docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md",
-      "personas": [],
-      "plans": [],
-      "pr": null,
-      "pr_url": null,
-      "raw_status": "active",
-      "related_prs": [
-        172,
-        162
-      ],
-      "ships": [],
-      "slug": "brand-design-deepdive-2026q2",
-      "start": "2026-04-25",
-      "status": "in_progress",
-      "title": "Brand canon (2026 Q2) \u2014 final state"
-    },
-    {
-      "blocker": null,
-      "domain": "company",
       "duration_weeks": 2,
       "effective_status": "in_progress",
       "end": "2026-05-09",
@@ -431,8 +403,41 @@
     {
       "blocker": null,
       "domain": "company",
+      "duration_weeks": "~1",
+      "effective_status": "shipped",
+      "end": "2026-04-26",
+      "followups": [],
+      "goal": null,
+      "last_reviewed": "2026-04-27",
+      "lessons": [
+        "Applying one Azure+Amber system to every product mark produced six indistinguishable lockups; per-product research-backed palettes beat a single template.",
+        "Forcing identical lockup geometry across apps homogenized the family; droplet-plus-dot vocabulary preserves organic similarity without rigid sameness.",
+        "Theme tokens under `packages/ui` stayed scaffolding on purpose \u2014 full per-app migration belongs in a dedicated engineering sprint, not in canon docs.",
+        "Brain stays non-droplet and emerald-forward so custody-oriented AI does not blend into a generic \u201cpurple AI\u201d cluster."
+      ],
+      "outcome_bullets": [],
+      "owner": "brand",
+      "path": "docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md",
+      "personas": [],
+      "plans": [],
+      "pr": 172,
+      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/172",
+      "raw_status": "shipped",
+      "related_prs": [
+        162,
+        172
+      ],
+      "ships": [],
+      "slug": "brand-design-deepdive-2026q2",
+      "start": "2026-04-25",
+      "status": "shipped",
+      "title": "Brand canon (2026 Q2) \u2014 final state"
+    },
+    {
+      "blocker": null,
+      "domain": "company",
       "duration_weeks": 1,
-      "effective_status": "in_progress",
+      "effective_status": "shipped",
       "end": "2026-04-26",
       "followups": [
         "shipped 2026-04-25: **F-1 (operator, single click)** completed \u2014 all AxiomFolio + brain-api + filefree-api services now associated with the consolidated root `render.yaml` Blueprint via Render Dashboard's \"New Blueprint \u2192 Associate existing services\" flow. (PR #143)",
@@ -445,7 +450,7 @@
         "Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`."
       ],
       "goal": "Land Phase 1 of the docs streamline, give the company a repo-native long-term tracker (no Jira / Notion), and wire Brain into both so a CFO digest and Slack slash commands work off the same JSON the UI reads.",
-      "last_reviewed": "2026-04-25",
+      "last_reviewed": "2026-04-27",
       "lessons": [
         "Server components that read env-injected data (`DATABASE_URL`, runtime probes) MUST mark `dynamic = \"force-dynamic\"`; otherwise Next.js prerenders them at build time and the user sees stale \"not configured\" forever. Caught only because the user noticed the Secrets page had silently regressed.",
         "A repo-native tracker beats Jira when the docs are already where work is happening \u2014 the cost was one Python script + one JSON output. CFO digest, Slack slash commands, and Studio pages all read the same file.",
@@ -474,9 +479,9 @@
         "docs/DOCS_STREAMLINE_2026Q2.md",
         "docs/sprints/README.md"
       ],
-      "pr": 142,
-      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/142",
-      "raw_status": "active",
+      "pr": 144,
+      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/144",
+      "raw_status": "shipped",
       "related_prs": [
         142,
         143,
@@ -491,7 +496,7 @@
       ],
       "slug": "docs-streamline-and-trackers-2026q2",
       "start": "2026-04-24",
-      "status": "in_progress",
+      "status": "shipped",
       "title": "Docs Streamline + Trackers Spine \u2014 2026 Q2"
     },
     {
