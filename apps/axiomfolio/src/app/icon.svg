@@ -1,35 +1,12 @@
-<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Paperwork Labs paperclip mark, vertical">
-  <title>Paperwork Labs paperclip mark, vertical</title>
-  <path
-    d="M 80 18 L 80 24 A 16 16 0 0 1 96 40"
-    stroke="#0F172A"
-    stroke-width="11"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    fill="none"
-  />
-  <path
-    d="M 96 40 L 96 88 A 24 24 0 0 1 72 112"
-    stroke="#F59E0B"
-    stroke-width="11"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    fill="none"
-  />
-  <path
-    d="M 72 112 L 56 112 A 24 24 0 0 1 32 88 L 32 40 A 16 16 0 0 1 48 24 L 64 24 M 72 88 A 8 8 0 0 1 64 96 L 48 96"
-    stroke="#0F172A"
-    stroke-width="11"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    fill="none"
-  />
-  <path
-    d="M 64 24 A 8 8 0 0 1 72 32 L 72 88"
-    stroke="#0F172A"
-    stroke-width="11"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    fill="none"
-  />
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Top petal -->
+  <path d="M64,14 C69,28 75,37 75,44 C75,50 70,55 64,55 C58,55 53,50 53,44 C53,37 59,28 64,14Z" fill="#3274F0"/>
+  <!-- Right petal -->
+  <path d="M114,64 C100,69 91,75 84,75 C78,75 73,70 73,64 C73,58 78,53 84,53 C91,53 100,59 114,64Z" fill="#3274F0"/>
+  <!-- Bottom petal -->
+  <path d="M64,114 C59,100 53,91 53,84 C53,78 58,73 64,73 C70,73 75,78 75,84 C75,91 69,100 64,114Z" fill="#3274F0"/>
+  <!-- Left petal -->
+  <path d="M14,64 C28,59 37,53 44,53 C50,53 55,58 55,64 C55,70 50,75 44,75 C37,75 28,69 14,64Z" fill="#3274F0"/>
+  <!-- Amber center dot -->
+  <circle cx="64" cy="64" r="6" fill="#F59E0B"/>
 </svg>

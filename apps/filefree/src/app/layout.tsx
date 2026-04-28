@@ -37,9 +37,6 @@ export const metadata: Metadata = {
     "free tax return",
     "tax filing app",
   ],
-  icons: {
-    icon: [{ url: "/favicon.ico", sizes: "32x32" }],
-  },
   openGraph: {
     title: "FileFree — Free AI Tax Filing",
     description:
