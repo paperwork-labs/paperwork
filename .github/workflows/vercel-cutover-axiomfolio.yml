@@ -1,0 +1,89 @@
+name: Vercel cutover — axiomfolio (legacy → Next.js)
+
+# One-click founder action: PATCH the legacy `axiomfolio` Vercel project to
+# Next.js (root: apps/axiomfolio, install: scripts/vercel-install.sh, output: .next)
+# and trigger a fresh production deploy of `main` HEAD against it.
+#
+# Why a workflow instead of just a script:
+#   - The script needs VERCEL_API_TOKEN; it's already a GitHub Actions secret.
+#   - Vercel's hobby tier deploy quota is 100/day; if you hit it locally and
+#     have to come back tomorrow, this gives you a one-click retry button.
+#   - Idempotent: Step A skips PATCH if framework is already nextjs (this is
+#     useful when the PATCH already landed but the deploy was rate-limited).
+#
+# After this runs successfully:
+#   - axiomfolio.com / www.axiomfolio.com (already verified on the legacy
+#     project) start serving the Next.js app from main HEAD.
+#   - You can then delete the orphaned `axiomfolio-next` Vercel project
+#     (no domains, no deploys) — see scripts/vercel-projects.json header.
+#
+# Usage:
+#   gh workflow run vercel-cutover-axiomfolio.yml          # apply
+#   gh workflow run vercel-cutover-axiomfolio.yml -f dry_run=true   # dry-run
+#
+# Or from the GitHub Actions UI: Actions → "Vercel cutover — axiomfolio" → Run workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "If 'true', only print planned API calls without applying."
+        required: false
+        type: choice
+        default: "false"
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+jobs:
+  cutover:
+    name: PATCH framework + deploy main against legacy axiomfolio project
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL_API_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Verify VERCEL_API_TOKEN is configured
+        run: |
+          if [ -z "${VERCEL_API_TOKEN}" ]; then
+            echo "::error::VERCEL_API_TOKEN secret is not set. See docs/infra/VERCEL_AUTO_PROMOTE.md for setup."
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.x
+
+      - name: Run cutover script
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            echo "::notice::Dry-run mode — no Vercel API calls will be applied."
+            node scripts/vercel-cutover-axiomfolio.mjs
+          else
+            node scripts/vercel-cutover-axiomfolio.mjs --apply
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Vercel cutover — axiomfolio"
+            echo ""
+            echo "- Mode: ${{ inputs.dry_run == 'true' && 'dry-run' || 'apply' }}"
+            echo "- Outcome: ${{ job.status }}"
+            echo ""
+            echo "If \`apply\` succeeded:"
+            echo "- Legacy \`axiomfolio\` project now serves Next.js from \`main\` HEAD."
+            echo "- \`axiomfolio.com\` + \`www.axiomfolio.com\` (verified on legacy project) start resolving."
+            echo "- The orphaned \`axiomfolio-next\` project (no domains) can be deleted."
+            echo ""
+            echo "If \`apply\` failed at Step B with HTTP 402:"
+            echo "- You hit the Vercel hobby \`api-deployments-free-per-day\` cap (100/day)."
+            echo "- The framework PATCH still landed (idempotent). Re-run this workflow after the daily quota resets."
+          } >> "$GITHUB_STEP_SUMMARY"

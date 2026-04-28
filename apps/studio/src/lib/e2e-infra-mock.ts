@@ -55,13 +55,12 @@ export function getE2EInfrastructureFixture(): InfrastructureView {
     v("distill", true),
     v("trinkets", true),
     v("axiomfolio", true),
-    v("axiomfolio-next", false),
   ];
   return {
     services: platformRows,
     platformSummary: {
       render: { live: 6, building: 0, failed: 1, suspended: 0, total: 7 },
-      vercel: { live: 6, building: 0, failed: 1, suspended: 0, total: 7 },
+      vercel: { live: 6, building: 0, failed: 1, suspended: 0, total: 6 },
     },
     platformPartial: [],
   };

@@ -26,10 +26,7 @@ export const RENDER_BLUEPRINT_WEB_WORKER_NAMES = [
 export const RENDER_BLUEPRINT_POSTGRES_NAMES = ["axiomfolio-db"] as const;
 export const RENDER_BLUEPRINT_REDIS_NAMES = ["axiomfolio-redis"] as const;
 
-/**
- * Vercel projects to probe (monorepo apps). Names match Vercel project slugs;
- * `axiomfolio-next` included if the team still uses a distinct project.
- */
+/** Vercel projects to probe (monorepo apps). Names match Vercel project slugs. */
 export const VERCEL_MONOREPO_PROJECT_NAMES = [
   "studio",
   "filefree",
@@ -37,7 +34,6 @@ export const VERCEL_MONOREPO_PROJECT_NAMES = [
   "distill",
   "trinkets",
   "axiomfolio",
-  "axiomfolio-next",
 ] as const;
 
 type RenderService = {

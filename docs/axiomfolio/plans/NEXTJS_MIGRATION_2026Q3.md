@@ -30,9 +30,7 @@ Render static service **`axiomfolio-frontend`** is not in the root
 - **Docs / infra:** `docs/INFRA.md`, `docs/infra/RENDER_INVENTORY.md`, Clerk
   runbooks, and `render.yaml` header comments updated; Vercel **`vercel.json`**
   `buildCommand` uses `pnpm --filter @paperwork-labs/axiomfolio...`.
-- **Founder follow-up (optional):** In Vercel → Project Settings, rename
-  project `axiomfolio-next` → `axiomfolio`; set **Root Directory** to
-  `apps/axiomfolio` if it still pointed at `apps/axiomfolio-next`.
+- **Founder follow-up (done 2026-04-28):** The canonical Vercel project `axiomfolio` was PATCHed in-place from framework=vite to nextjs (root `apps/axiomfolio`, output `.next`) by `scripts/vercel-cutover-axiomfolio.mjs`; the temporary `axiomfolio-next` project was deleted via the Vercel API.
 
 ## Status snapshot (historical — pre-cutover 2026-04-24)
 

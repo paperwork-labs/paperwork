@@ -6,7 +6,7 @@ Runbook for the AxiomFolio Next.js app (`apps/axiomfolio`, package `@paperwork-l
 
 | Variable | Where used | Source |
 | -------- | ------------ | ------ |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Client + server bootstrap | Vercel Marketplace — Clerk on the linked AxiomFolio Vercel project (dashboard name may still be `axiomfolio-next`); copy locally from the vault for dev |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Client + server bootstrap | Vercel Marketplace — Clerk on the canonical `axiomfolio` Vercel project; copy locally from the vault for dev |
 | `CLERK_SECRET_KEY` | Server (proxy / session verification) | Same as above |
 
 **Custom prefix** is not used — do not add an `AXIOMFOLIO_` or other prefix to these names in Vercel or `.env`.
