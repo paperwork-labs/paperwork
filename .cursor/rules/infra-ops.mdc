@@ -121,6 +121,33 @@ REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
 - Worker MUST have identical env vars for DB, Redis, encryption key, and all API tokens
 - Worker health: check `docker logs` for "Worker started" messages
 
+## Vercel Quota Discipline (MANDATORY)
+
+Vercel's hobby tier has a **hard daily cap of 100 API-triggered deployments** (`api-deployments-free-per-day`). Builds triggered by Git webhook are free. Promote operations (alias flips) are free. The cap was burned through in a single afternoon on 2026-04-28 by reflexive `POST /v13/deployments` calls; the lesson is codified here.
+
+### "Production is stale" — pick the lowest-cost recovery FIRST
+
+| Symptom | Recovery | Quota cost |
+| --- | --- | --- |
+| Vercel built the merge SHA but didn't promote (webhook miss) | Re-run `vercel-promote-on-merge.yaml` via `workflow_dispatch` with the PR number | **Free** |
+| Vercel never built the merge SHA (path filter, monorepo skip) | Push a path-relevant commit (touches `apps/<X>/`, `packages/`, `pnpm-lock.yaml`, or `package.json`) — webhook will build it | **Free** (build minutes only) |
+| Project `framework` setting is wrong | `scripts/vercel-cutover-*.mjs --apply` (PATCH framework + force one build) | 1× daily-cap |
+| Need to force a fresh production deploy of `main` HEAD with no other change | Push an empty commit (`git commit --allow-empty`) on a branch that lands via the webhook path | **Free** |
+
+### NEVER (without an explicit founder approval)
+
+- `POST /v13/deployments` to "catch up" production — push a path-relevant commit instead.
+- `vercel deploy --prod` from a script as a fallback — same principle.
+- Loop a script that creates fresh deployments to retry transient build failures — webhook redeploys the same SHA on the next push for free.
+
+### Self-healing pipeline alarm
+
+If `.github/workflows/vercel-promote-on-merge.yaml` fails for **every real matrix leg** on a single post-merge run, the workflow opens a tracking issue labelled `infra-alert,auto-promote`. Single-app flakes do not alert. Triage instructions are in the issue body and `docs/infra/VERCEL_AUTO_PROMOTE.md § Self-healing alarm`.
+
+### Cutover scripts are scoped to framework changes
+
+Scripts named `vercel-cutover-*` exist for the specific case of changing a Vercel project's framework / root / install / output settings, then producing one fresh build under the new metadata. They are not "force rebuild" scripts. Do not generalise them into a "force-rebuild any app" tool.
+
 ## CI/CD Pipeline
 
 ### GitHub Actions
