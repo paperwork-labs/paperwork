@@ -178,16 +178,15 @@ services:
 
   # ---------------------------------------------------------------------
   # AxiomFolio API — portfolio / market-data / agent runtime.
-  # rootDir: apis/axiomfolio so Dockerfile COPY paths and relative
-  # buildCommand paths resolve against the subtree root (the Dockerfile
-  # there is self-contained — no monorepo-root references).
+  # rootDir: repo root so the Dockerfile can COPY packages/auth-clerk (Clerk JWT)
+  # and apis/axiomfolio in one image.
   # ---------------------------------------------------------------------
   - type: web
     name: axiomfolio-api
     runtime: docker
-    rootDir: apis/axiomfolio
+    rootDir: .
     plan: standard
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: apis/axiomfolio/Dockerfile
     healthCheckPath: /health
     autoDeploy: true
     # Render Docker services don't reliably inject env vars (fromDatabase/fromService)
@@ -234,9 +233,9 @@ services:
   - type: worker
     name: axiomfolio-worker
     runtime: docker
-    rootDir: apis/axiomfolio
+    rootDir: .
     plan: standard
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: apis/axiomfolio/Dockerfile
     autoDeploy: true
     envVars:
       - key: ENVIRONMENT
@@ -275,9 +274,9 @@ services:
   - type: worker
     name: axiomfolio-worker-heavy
     runtime: docker
-    rootDir: apis/axiomfolio
+    rootDir: .
     plan: standard
-    dockerfilePath: ./Dockerfile
+    dockerfilePath: apis/axiomfolio/Dockerfile
     autoDeploy: true
     envVars:
       - key: ENVIRONMENT
