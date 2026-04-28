@@ -17,7 +17,7 @@ Welcome, agent. This is a quantitative portfolio intelligence platform built for
 | Layer | Stack |
 |-------|-------|
 | Backend | Python 3.11, FastAPI, Celery, PostgreSQL 18 (shared across monorepo dev stack; tests use `axiomfolio_test` DB on same instance), Redis, SQLAlchemy 2.0, Alembic |
-| Frontend | React 19, TypeScript 5, Vite, Radix UI, Tailwind CSS, shadcn/ui-style components, TanStack Query, Recharts, lightweight-charts |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript 5, Radix UI, Tailwind CSS, shadcn/ui-style components, TanStack Query, Recharts, lightweight-charts |
 | Infra | Docker Compose (dev), Render (prod), Cloudflare (DNS/CDN), GitHub Actions (CI) |
 | Brokers | IBKR (FlexQuery + Gateway), TastyTrade (SDK), Schwab (OAuth) |
 

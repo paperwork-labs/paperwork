@@ -11,7 +11,7 @@ tags: [vercel, brain, ci, deploy, quota, secrets]
 
 # Pre-deploy guard (Vercel quota + env vars)
 
-Quota monitors in Brain **observe** usage ([`apis/brain/app/schedulers/quota_monitors/vercel.py`](../../apis/brain/app/schedulers/quota_monitors/vercel.py) persists snapshots; [`GET /api/v1/admin/vercel-quota`](../../apis/brain/app/routers/admin.py) exposes the latest batch). This guard **enforces** a minimum deploy budget and required environment variables **before** you trigger a deploy.
+Quota monitors in Brain **record** live usage (WS-29…31: [`apis/brain/app/schedulers/quota_monitors/vercel.py`](../../apis/brain/app/schedulers/quota_monitors/vercel.py) persists snapshots; [`GET /api/v1/admin/vercel-quota`](../../apis/brain/app/routers/admin.py) exposes the latest batch). This guard **enforces** a minimum deploy budget and required environment variables **before** you trigger a deploy (WS-34 / PR #365 hardens the “don’t deploy into a wall” class of failure).
 
 ## When to run it
 

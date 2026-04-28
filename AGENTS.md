@@ -4,7 +4,7 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 
 ## Repo layout (short)
 
-- `apps/*` — product frontends (Next.js is standard; legacy Vite apps are being retired)
+- `apps/*` — product frontends (Next.js is standard; AxiomFolio is Next.js in `apps/axiomfolio`. Legacy Vite trees are archived or being retired.)
 - `apis/*` — FastAPI backends (`apis/brain` = shared orchestration)
 - `packages/*` — shared libraries (`ui`, `auth-clerk`, analytics, data, …)
 - `docs/*` — cross-cutting runbooks (infra, brand, secrets)
@@ -103,7 +103,7 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 
 ## 4. Brain orchestration
 
-- **Crons:** **APScheduler** in Brain with SQLAlchemy job store — canonical doc: [docs/infra/BRAIN_SCHEDULER.md](docs/infra/BRAIN_SCHEDULER.md). Former n8n scheduler crons now run first-party on Brain (Track K complete; transitional `BRAIN_OWNS_*` cutover flags removed). Do not add new long-lived n8n automation without explicit approval.
+- **Crons:** **APScheduler** in Brain with SQLAlchemy job store — canonical doc: [docs/infra/BRAIN_SCHEDULER.md](docs/infra/BRAIN_SCHEDULER.md). Cron-portable work that used to live in n8n now registers first-party on Brain when `BRAIN_SCHEDULER_ENABLED=true` (transitional `BRAIN_OWNS_*` flags removed). A small set of **non-cron** n8n workflows (webhooks, slash commands, error triggers) remains by design. Do not add new long-lived n8n *scheduled* automation without explicit approval.
 - **Memory:** episodic **`agent_episodes`** + hybrid retrieval — see `apis/brain/app/services/memory.py`, `apis/brain/app/models/episode.py`.
 - **Personas:** Brain loads [.cursor/rules/*.mdc](.cursor/rules) from the image bundle — see `apis/brain/app/services/agent.py`.
 - **Secrets awareness:** Brain calls Studio **`/api/secrets`** via `apis/brain/app/tools/vault.py`; scheduled **credential expiry** — `apis/brain/app/schedulers/credential_expiry.py`.

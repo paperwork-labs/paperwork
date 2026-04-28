@@ -452,6 +452,8 @@ Alternatives: (a) DIY unified-cookie SSO via shared *.paperworklabs.com cookie +
 Rationale: Clerk Marketplace auto-provisions env vars to all linked Vercel projects (saves ~2 days of integration work). Free tier is generous (10K MAUs). Embedded `<SignIn>` + Appearance API allows per-product gradient theming (FileFree violet, LaunchFree teal, Distill blue-slate). Native cross-origin session works. Vercel handles billing.
 Reversibility: Medium. Clerk JWTs are standard JWS, verifiable against any JWKS endpoint, so AxiomFolio API verifier code is portable. UI components (`<SignIn>` etc.) are Clerk-specific; replacing them on a frontend would require rewrite. Migration off Clerk would take 2-3 sprints.
 
+> **Update (2026-04-28, WS-13 / PR #362):** **Clerk-only** consumer routes on FileFree — opaque session cookie and dual-mode middleware removed. AxiomFolio’s public UI is **Next.js** in `apps/axiomfolio` (Track G4 / PR #354); API-side `qm_token` migration remains under Track B2 as applicable.
+
 ---
 
 Date: 2026-04-25
@@ -478,6 +480,8 @@ Context: The earlier same-day decision set Brain as the single cron owner, but t
 Alternatives: (a) Only document "scheduler restarts = benign," (b) Redis job store, (c) external cron hitting HTTP.
 Rationale: The app already has Postgres; `SQLAlchemyJobStore` is one import and a sync URL (`postgresql://` from `DATABASE_URL` with `+asyncpg` stripped). Shadow mirrors validate cadence before T2.4 n8n disable. `psycopg2-binary` supplies the sync driver for the job store engine.
 Reversibility: Easy. Set job store back to default (dev-only) or clear `apscheduler_jobs` if a bad migration; mirrors are off by default.
+
+> **Superseded (2026-04-27):** Mirror module + `SCHEDULER_N8N_MIRROR_ENABLED` retired with Track K / WS-03 (`chore/brain-delete-legacy-owns-flags`); shadow workflow JSONs live under `retired/` per WS-23.
 
 ---
 

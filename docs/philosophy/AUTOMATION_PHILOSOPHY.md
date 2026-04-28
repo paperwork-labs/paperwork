@@ -27,13 +27,13 @@ Major version bumps NEVER auto-merge. Brain triages them and posts a summary to 
 
 ## 2. When automation MUST stop
 
-The following events freeze all auto-merge and disable the n8n cron schedules:
+The following events freeze all auto-merge and disable **scheduled** automation (Brain APScheduler registrations in production; remaining n8n webhooks are paused only when those flows are disabled or incident protocol says so):
 
 | Trigger | What happens |
 |---|---|
 | Production incident open in `#infra` (P0/P1) | All auto-merge paused |
 | Founder posts `:freeze:` in any infra channel | All auto-merge + cron paused |
-| Brain itself reports degraded status (cb open > 5 min) | Brain-side automation paused; raw n8n still runs |
+| Brain itself reports degraded status (cb open > 5 min) | Brain-side automation paused; review remaining n8n webhooks per runbook |
 | AxiomFolio market-hours window (9:30–16:00 ET, M–F) | Trading-related auto-merge paused; rest continues |
 | Vendor-wide outage (Render / GitHub / Anthropic) reported in `#infra` | All auto-merge paused until "all clear" posted |
 
@@ -66,7 +66,7 @@ A merge with no Slack post = an audit-failure event. The post is written by the 
 
 ## 5. Cron rules
 
-n8n cron schedules and GitHub Actions cron run ONLY in production. Dev / preview environments never run cron — they would step on the founder's local DB or Slack.
+Brain APScheduler jobs (and any legacy GitHub Actions cron) run ONLY in production for Paperwork’s hosted stacks. Dev / preview environments never run those schedules — they would step on the founder's local DB or Slack.
 
 Every cron job:
 

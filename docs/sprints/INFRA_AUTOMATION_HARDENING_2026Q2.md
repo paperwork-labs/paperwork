@@ -48,7 +48,7 @@ Land the infrastructure and automation foundation Paperwork Labs needs before fe
 | K | Doc-vs-code refs | Auto-gen `BRAIN_PERSONAS.md`, `check_doc_code_refs.py` baseline + drift check |
 | M | AxiomFolio Brain delegation | `paperwork_brain_client.py`, conditional delegation, BYOK preserved |
 | N | Studio docs hub | `/admin/docs` + `_index.yaml` taxonomy, search |
-| E | AxiomFolio Next.js scaffold | Vite app preserved; Next.js shell ready for Q3 cutover |
+| E | AxiomFolio Next.js app | Next.js in `apps/axiomfolio` (Vite tree archived 2026-04-27); Vercel cutover tracked as WS-02 |
 | Buffer Wk 4 | n8n DAG snapshot + chain strategies | `extract_reason` strategy, deep-analyze endpoint, deterministic snapshot |
 
 ## What we learned

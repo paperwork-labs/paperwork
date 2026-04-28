@@ -63,7 +63,7 @@ Land Phase 1 of the docs streamline, give the company a repo-native long-term tr
 - Brain: `apis/brain/app/schedulers/cfo_friday_digest.py` (Fridays 18:00 UTC, `persona_pin=cfo`, `#cfo` channel) + `/sprint`, `/tasks`, `/plan` Slack slash commands reading the same `tracker-index.json`.
 - Make helpers: `make tracker-index`, `make tracker-check`, `make sprint-shipped PR=NNN`, `make plan-status`, `make docs-freshness`.
 - CI gates: `tracker-index.yaml` (drift), `docs-freshness.yaml` (warn-only on `last_reviewed > 90d`), `runbook-template.yaml` (warn-only on missing required sections).
-- Studio bug fixes shipped same sprint: `/admin/secrets` and `/admin/infrastructure` made `force-dynamic` (were silently statically prerendered, hiding live data); infra page extended to cover all frontends (Studio, AxiomFolio Vite, FileFree, LaunchFree, Distill) and the LaunchFree API. Sprint tracker UI rebuilt with featured-current-sprint card showing goal, outcome bullets, lessons, plans, and PR links.
+- Studio bug fixes shipped same sprint: `/admin/secrets` and `/admin/infrastructure` made `force-dynamic` (were silently statically prerendered, hiding live data); infra page extended to cover all frontends (Studio, AxiomFolio Next.js, FileFree, LaunchFree, Distill) and the LaunchFree API. Sprint tracker UI rebuilt with featured-current-sprint card showing goal, outcome bullets, lessons, plans, and PR links.
 
 **Phase 2 (extended same PR after re-scope):**
 

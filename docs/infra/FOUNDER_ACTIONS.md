@@ -145,9 +145,9 @@ Tracked in: `chore/axiomfolio-vercel-cutover` ([#306](https://github.com/paperwo
 - **Source:** [`CLERK_DNS_SPACESHIP.md`](docs/infra/CLERK_DNS_SPACESHIP.md), [`CLERK_SATELLITE_TOPOLOGY.md`](docs/infra/CLERK_SATELLITE_TOPOLOGY.md), PR #219, PR #210
 - **ETA:** ~15 min (DNS paste) + propagation; satellite program add 1–2 h when executed
 
-## Future / strategy — AxiomFolio Vite on Render vs Vercel (Next) — `[VERIFY]`
+## Future / strategy — AxiomFolio hosting (Next.js on Vercel) — `[VERIFY]`
 
-- **Note:** F-1 addresses **today’s** monorepo deploy gap on Render. A separate initiative (`docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md`) describes moving the public AxiomFolio app toward Vercel/Next and decommissioning the Render static site **later**. Do not conflate with F-1; track founder actions there when the plan is active.
+- **Note:** Consumer AxiomFolio is **Next.js** at [`apps/axiomfolio`](../../apps/axiomfolio) (archived Vite tree: [`apps/_archive/axiomfolio-vite`](../../apps/_archive/axiomfolio-vite)). Track **WS-02** covers production Vercel linkage / deploy hygiene — do not conflate with unrelated Render F-* tickets.
 
 ## Resolved
 
