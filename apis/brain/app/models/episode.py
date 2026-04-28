@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import Boolean, Computed, DateTime, Float, Integer, SmallInteger, Text, func, text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
@@ -17,7 +17,7 @@ class Vector(UserDefinedType):
     def __init__(self, dim: int = 1536):
         self.dim = dim
 
-    def get_col_spec(self) -> str:
+    def get_col_spec(self, **_kw: Any) -> str:
         return f"VECTOR({self.dim})"
 
     def bind_processor(self, _dialect: Any) -> Any:
@@ -35,7 +35,7 @@ class Vector(UserDefinedType):
             if isinstance(value, str):
                 clean = value.strip("[]")
                 return [float(x) for x in clean.split(",")]
-            return value
+            return cast("list[float] | None", value)
 
         return process
 

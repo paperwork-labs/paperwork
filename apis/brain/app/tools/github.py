@@ -4,7 +4,7 @@ import base64
 import json
 import logging
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from urllib.parse import quote
 
 import httpx
@@ -494,7 +494,7 @@ async def get_github_pull_dict(number: int) -> dict[str, Any] | None:
             if r.status_code == 404:
                 return None
             r.raise_for_status()
-            return r.json()
+            return cast("dict[str, Any]", r.json())
     except httpx.HTTPStatusError as e:
         logger.warning("get_github_pull_dict failed: #%s %s", number, e)
         return None
@@ -764,7 +764,7 @@ async def create_github_pull(
                 logger.warning("create_github_pull: %s", _error_message("create_github_pull", r))
                 return None
             r.raise_for_status()
-            return r.json()
+            return cast("dict[str, Any]", r.json())
     except httpx.HTTPStatusError as e:
         logger.warning("create_github_pull failed: %s", e)
         return None
