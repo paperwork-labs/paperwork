@@ -158,4 +158,4 @@ contributors**, not a customer surface. It is therefore:
 - `docs/infra/VERCEL_AUTO_PROMOTE.md` — shared auto-promote runbook.
 - `apps/design/vercel.json` — Storybook 10 build config.
 - `apps/design/README.md` — local dev + story-glob reference.
-- `docs/brand/PROMPTS.md` — brand prompt canon (rendered in stories).
+- `docs/brand/CANON.md` — brand canon cited from Storybook / component comments (replaces archived `PROMPTS.md`).

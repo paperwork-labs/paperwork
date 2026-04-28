@@ -61,5 +61,5 @@ PR.
 
 ## Contributing
 
-- See `docs/brand/PROMPTS.md` and `docs/brand/README.md` for brand canon.
+- See `docs/brand/CANON.md` and `docs/brand/README.md` for brand canon.
 - See `docs/infra/DESIGN_CANVAS_DEPLOY.md` for the deployment runbook (founder one-time Vercel setup, DNS record, GitHub Action behavior).

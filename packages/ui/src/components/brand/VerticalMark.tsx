@@ -25,7 +25,7 @@ export interface VerticalMarkProps {
  * locked raster at `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png`
  * for non-React surfaces (favicon, OG cards).
  *
- * Spec: docs/brand/PROMPTS.md § P2 + § Composition rules.
+ * Spec: docs/brand/CANON.md (Locked PNG / P2 vertical; § Visual grammar).
  */
 export function VerticalMark({ className, style }: VerticalMarkProps): React.ReactElement {
   return (

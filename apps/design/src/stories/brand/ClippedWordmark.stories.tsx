@@ -34,7 +34,7 @@ const meta: Meta<typeof ClippedWordmark> = {
           "visually clipping 'Paperwork Labs' from the top-left, the way a real",
           "paperclip pins a sheet of paper.",
           "",
-          "Spec: docs/brand/PROMPTS.md § P5 and docs/brand/ANIMATION.md for the",
+          "Spec: docs/brand/CANON.md § Visual grammar + § Animation for the",
           "full motion + reduced-motion + dark-surface specification. This is the",
           "most distinctive surface treatment of the parent brand; use only on",
           "paperworklabs.com nav, app load splash, Studio admin sidebar entrance,",
@@ -69,7 +69,7 @@ export const Animated: Story = {
           "component is re-rendered from a fresh mount. Toggle the `animated` arg or",
           "refresh the page to re-trigger the entrance. Production surfaces gate this",
           "to once-per-session via sessionStorage at the consumer (e.g. Studio header);",
-          "see docs/brand/ANIMATION.md § Triggering for the canonical wiring.",
+          "see docs/brand/CANON.md § Animation for the canonical wiring.",
         ].join(" "),
       },
     },
@@ -137,7 +137,7 @@ export const ReducedMotion: Story = {
         → Accessibility → Display) and reload to verify the entrance is
         suppressed and the component renders the static end state on frame 1.
         Reduced-motion handling is mandatory per
-        <code> docs/brand/ANIMATION.md § Reduced-motion handling</code>.
+        <code> docs/brand/CANON.md § Animation</code>.
       </p>
       <ClippedWordmark {...args} />
     </div>

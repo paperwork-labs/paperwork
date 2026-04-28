@@ -23,11 +23,11 @@ export interface ClipMarkProps {
  *
  * Rotation is intentionally NOT baked in — `ClippedWordmark` wraps this in a
  * Framer Motion span that animates rotation from -32deg to -15deg per
- * docs/brand/ANIMATION.md. Standalone diagonal use cases should consume the
+ * docs/brand/CANON.md § Animation. Standalone diagonal use cases should consume the
  * locked raster at `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png`
  * (via `next/image`) instead of rotating this component.
  *
- * Spec: docs/brand/PROMPTS.md § P1 + § Composition rules.
+ * Spec: docs/brand/CANON.md (Locked PNG / diagonal P1; § Visual grammar).
  */
 export function ClipMark({ className, style }: ClipMarkProps): React.ReactElement {
   return (
