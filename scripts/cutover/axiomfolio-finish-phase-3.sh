@@ -91,7 +91,7 @@ get_onrender_host() {
   local key="$1" svc_id="$2"
   curl -sS -H "Authorization: Bearer $key" "$API/services/$svc_id" \
     | jq -r '.serviceDetails.url // .slug // empty' \
-    | sed 's|^https\?://||; s|/$||'
+    | sed -E 's|^https?://||; s|/$||'
 }
 
 remove_custom_domain() {
@@ -141,6 +141,10 @@ add_custom_domain() {
   if [[ "$code" == "402" ]]; then
     render_quota_abort
   fi
+  if [[ "$code" == "409" ]]; then
+    echo "   $domain already exists on this account (idempotent skip)"
+    return 0
+  fi
   if [[ "$code" != "200" && "$code" != "201" && "$code" != "202" ]]; then
     echo "ABORT: POST custom-domain $domain failed (HTTP $code): $body" >&2
     exit 1
@@ -154,17 +158,31 @@ update_cname() {
     echo "[dry-run] Would set Cloudflare CNAME $host → $target (proxied, ttl 300)"
     return 0
   fi
-  local rec rec_id payload code body
-  rec=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
-    "$CF/zones/$CLOUDFLARE_ZONE_ID/dns_records?name=$host&type=CNAME")
-  rec_id=$(echo "$rec" | jq -r '.result[0].id // empty')
+  local rec_all rec_id rec_type payload code body
+  rec_all=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+    "$CF/zones/$CLOUDFLARE_ZONE_ID/dns_records?name=$host")
+  rec_id=$(echo "$rec_all" | jq -r '.result[0].id // empty')
+  rec_type=$(echo "$rec_all" | jq -r '.result[0].type // empty')
   payload=$(jq -nc --arg n "$host" --arg c "$target" \
     '{type:"CNAME", name:$n, content:$c, ttl:300, proxied:true}')
-  if [[ -n "$rec_id" ]]; then
+  if [[ -n "$rec_id" && "$rec_type" == "CNAME" ]]; then
     echo "   updating CF CNAME $host → $target"
     body=$(curl -sS -X PUT -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
       -H "Content-Type: application/json" \
       "$CF/zones/$CLOUDFLARE_ZONE_ID/dns_records/$rec_id" -d "$payload")
+  elif [[ -n "$rec_id" ]]; then
+    echo "   replacing CF $rec_type record at $host with CNAME → $target"
+    local del_code
+    del_code=$(curl -sS -o /dev/null -w '%{http_code}' \
+      -X DELETE -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+      "$CF/zones/$CLOUDFLARE_ZONE_ID/dns_records/$rec_id")
+    if [[ "$del_code" != "200" && "$del_code" != "204" ]]; then
+      echo "ABORT: Cloudflare DELETE on $rec_type $host failed (HTTP $del_code)" >&2
+      exit 1
+    fi
+    body=$(curl -sS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+      -H "Content-Type: application/json" \
+      "$CF/zones/$CLOUDFLARE_ZONE_ID/dns_records" -d "$payload")
   else
     echo "   creating CF CNAME $host → $target"
     body=$(curl -sS -X POST -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
