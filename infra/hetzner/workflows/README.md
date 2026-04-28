@@ -5,52 +5,60 @@ AI agent workflows run on the Hetzner VPS at `n8n.paperworklabs.com`.
 **Architecture: n8n is a dumb shuttle.** Workflows forward events to the **Brain API** (`POST /api/v1/brain/process` on `brain.paperworklabs.com`) and post responses to Slack (or other channels). Prompting, personas, doc fetch, and PR diff review live in Brain—not in n8n.
 
 - **Slack**: Event Subscriptions → Brain Slack Adapter webhook → thread fetch → Brain → `chat.postMessage`
-- **Scheduled ops**: Most crons now run in **Brain APScheduler**; see [retired/RETIRED.md](retired/RETIRED.md) for n8n exports kept for history.
+- **Scheduled ops**: Cron schedules for sprint kickoff/close, data pipelines, infra checks, briefings, and related jobs run in **Brain APScheduler** (`apis/brain/app/schedulers/pr_sweep.py` → `start_scheduler`). Historical n8n JSON mirrors live under [retired/](retired/) — see [retired/RETIRED.md](retired/RETIRED.md).
 - **PR summaries (legacy n8n path)**: Retired — Brain runs in-process `pr_sweep` + PR review; see [retired/brain-pr-summary.json](retired/brain-pr-summary.json).
 - **Decision logging**: Separate deterministic workflow (GitHub commit to `KNOWLEDGE.md`) via `decision-logger.json`
 - **Observability**: 5-layer stack below still applies
 
-## Retired workflows (Brain now owns the schedule)
+## Retired workflows (schedule superseded — not in deploy glob)
 
-The following were moved to **`retired/`** — they are **not** in the `*.json` deploy glob. Table + Brain job ids: [retired/RETIRED.md](retired/RETIRED.md).
+Exports under **`retired/`** are historical only (`scripts/deploy-n8n-workflows.sh` copies only top-level `*.json`). Full mapping (**n8n JSON → Brain job id / module**): [retired/RETIRED.md](retired/RETIRED.md).
 
-## Workflows (active deploy glob — `*.json` in this directory)
+| Retired JSON | Brain replacement (APScheduler job `id`) |
+| --- | --- |
+| `sprint-kickoff.json` | `brain_sprint_kickoff` (`sprint_kickoff.py`) |
+| `sprint-close.json` | `brain_sprint_close` (`sprint_close.py`) |
+| `data-annual-update.json` | `brain_data_annual_update` (`data_annual_update.py`) |
+| `data-deep-validator.json` | `brain_data_deep_validator` (`data_deep_validator.py`) |
+| `data-source-monitor.json` | `brain_data_source_monitor` (`data_source_monitor.py`) |
 
-| # | Workflow | File | Trigger | Intelligence | Output |
-|---|----------|------|---------|--------------|--------|
-| 1 | **Brain Slack Adapter** | `brain-slack-adapter.json` | Webhook `brain-slack` (Slack events) | Brain API | Thread reply in Slack |
-| 2 | **Decision Logger** | `decision-logger.json` | Webhook `slack-decisions` (`log this` / `decided:` in #decisions) | None (deterministic) | KNOWLEDGE.md + thread confirm |
-| 3 | **Sprint Kickoff** | `sprint-kickoff.json` | Cron Mon 7am PT | Brain API (`persona_pin=strategy`) | `#sprints` + `#all-paperwork-labs` |
-| 4 | **Sprint Close** | `sprint-close.json` | Cron Fri 9pm PT | OpenAI in n8n / GitHub | `#sprints` + KNOWLEDGE.md |
+*(Plus briefing, infra, credentials, weekly strategy, and PR-summary mirrors — see RETIRED.md.)*
 
-Cron times that mirror PT in legacy docs assume `GENERIC_TIMEZONE=America/Los_Angeles` in n8n when applicable. During PDT, 7am PT equals 14:00 UTC.
+## Active workflows (authoritative for n8n — `*.json` in this directory root)
+
+Still deployed from this folder and executed by n8n when active (Slack inbound, webhooks, or supporting flows):
+
+| Workflow | File | Trigger |
+| --- | --- | --- |
+| Brain Slack Adapter | `brain-slack-adapter.json` | Webhook `brain-slack` |
+| Decision Logger | `decision-logger.json` | Webhook `slack-decisions` |
+| Social Content Generator | `social-content-generator.json` | POST `/social-content` |
+| Growth Content Writer | `growth-content-writer.json` | POST `/growth-content` |
+| QA Security Scan | `qa-security-scan.json` | POST `/qa-scan` (Track H: Brain `persona_pin=qa`, 2-node) |
+| CPA Tax Review | `cpa-tax-review.json` | POST `/cpa-review` (Track H: Brain `persona_pin=cpa`, 2-node) |
+| Partnership Outreach Drafter | `partnership-outreach-drafter.json` | POST `/partnership-outreach` |
+| Infra Status / errors | `infra-status-slash.json`, `error-notification.json` | Slash / ancillary |
+
+Cron times that mirror PT in legacy docs assume `GENERIC_TIMEZONE=America/Los_Angeles` in n8n when applicable.
+
+### Active — no Brain APScheduler replacement (by design)
+
+These are **webhook- or slash-driven** helpers. There is no one-to-one scheduled Brain job for each file; overlapping **cron** work (weekly QA digest, sprint cadence, data ops, infra) runs under Brain APScheduler as listed in [retired/RETIRED.md](retired/RETIRED.md) and `start_scheduler()` in `apis/brain/app/schedulers/pr_sweep.py` instead of duplicated n8n schedules.
 
 ### Deprecated / legacy (do not use for new installs)
 
 | File | Replacement | Notes |
 |------|-------------|--------|
 | `agent-thread-handler.json` | `brain-slack-adapter.json` + Brain | Removed from core architecture; do not point new Slack subscriptions at `slack-events`. |
-| `ea-daily.json` | Brain APScheduler `brain_daily_briefing` | OpenAI-heavy briefing in n8n; export in `retired/brain-daily-trigger.json`. |
+| `ea-daily.json` | Brain APScheduler `brain_daily_briefing` | Export in `archive/` / `retired/brain-daily-trigger.json`. |
 | `ea-weekly.json` | Brain APScheduler `brain_weekly_briefing` | Same; export in `retired/brain-weekly-trigger.json`. |
 | `pr-summary.json` / `brain-pr-summary.json` | Brain in-process PR sweep + review | Export in `retired/brain-pr-summary.json`. |
 
-Other JSON files in this folder (social, growth, QA, partnerships, CPA, data validators, infra helpers, etc.) remain available for optional or on-demand use but are **not** part of the nine-core shuttle + Brain model.
-
-### Optional / on-demand workflows (still in repo)
-
-| Workflow | File | Trigger | Notes |
-|----------|------|---------|--------|
-| Social Content Generator | `social-content-generator.json` | POST `/social-content` | OpenAI in n8n |
-| Growth Content Writer | `growth-content-writer.json` | POST `/growth-content` | OpenAI in n8n |
-| QA Security Scan | `qa-security-scan.json` | POST `/qa-scan` | **Track H: Brain persona_pin=qa (2-node)** |
-| Partnership Outreach | `partnership-outreach-drafter.json` | POST `/partnership-outreach` | OpenAI in n8n |
-| CPA Tax Review | `cpa-tax-review.json` | POST `/cpa-review` | **Track H: Brain persona_pin=cpa (2-node)** |
-| Infra helpers | `infra-status-slash.json`, `error-notification.json`, etc. | Various | Supporting ops (heartbeat + health crons: Brain — see `retired/`) |
-| Data / validation | `data-source-monitor.json`, `data-deep-validator.json`, `data-annual-update.json` | Various | State data ops |
+Other archived JSON under `archive/` remains for reference but is **not** part of the core shuttle + Brain model.
 
 ### Track H — 2-node Brain pattern (wave 1)
 
-Wave 1 migrated `cpa-tax-review`, `qa-security-scan`, and `sprint-kickoff`
+Wave 1 migrated `cpa-tax-review` and `qa-security-scan`
 from the old "Webhook → GPT-4o → Format → Slack" 4–5 node pattern to a
 thin 2-node shape:
 
@@ -64,9 +72,11 @@ thin 2-node shape:
 The old multi-node JSON is archived under
 `infra/hetzner/workflows/archive/track-h-pre/` for reference. Add
 further workflows to this pattern when they're purely Webhook → LLM →
-Slack; keep multi-node JSON only when there's genuine fan-out (e.g.
-sprint-kickoff still has a thin announcement post to
-`#all-paperwork-labs`).
+Slack.
+
+**Sprint kickoff / close**: scheduled runs are Brain-only (`brain_sprint_kickoff`,
+`brain_sprint_close`). Historical n8n exports live in `retired/sprint-kickoff.json` and
+`retired/sprint-close.json`.
 
 ## Observability Architecture (5 Layers)
 
@@ -203,8 +213,7 @@ Emoji-driven merge / Copilot re-review flows previously ran in **`agent-thread-h
 | Workflow | Typical model | Env var (if used) | Notes |
 |---|---|---|---|
 | brain-slack-adapter | N/A | N/A | Brain API |
-| sprint-kickoff | N/A (Brain) | — | **Track H:** `persona_pin=strategy` in n8n → Brain |
-| sprint-close | gpt-4o | SPRINT_CLOSE_MODEL | OpenAI in n8n |
+| _(retired)_ sprint-kickoff / sprint-close | N/A | — | **Brain cron** — mirrors in `retired/` |
 | social-content-generator | gpt-4o | SOCIAL_CONTENT_MODEL | Optional |
 | growth-content-writer | gpt-4o | GROWTH_CONTENT_MODEL | Optional |
 | partnership-outreach-drafter | gpt-4o | PARTNERSHIP_MODEL | Optional |
@@ -241,5 +250,5 @@ Edit the workflow in the n8n UI, select the OpenAI node, and change the model dr
 ## Sprint Operations
 
 - Sprint execution is agent-first in `#sprints`.
-- Monday kickoff and Friday close are generated and posted by n8n workflows.
+- Monday kickoff and Friday close are generated and posted by **Brain APScheduler** (`brain_sprint_kickoff` / `brain_sprint_close`); n8n mirrors are archived under `retired/`.
 - Updates, blockers, and decisions should be posted as thread replies under the kickoff post.

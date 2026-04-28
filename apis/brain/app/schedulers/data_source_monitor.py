@@ -2,7 +2,7 @@
 
 Replaces the **Data Source Monitor (P2.8)** n8n workflow (``0 6 * * 1``) that
 hashes external tax-data pages and posts to Slack — see
-``infra/hetzner/workflows/data-source-monitor.json`` and
+``infra/hetzner/workflows/retired/data-source-monitor.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md``.
 
 State persists in Redis (``brain:data_source_monitor:hashes``) when available; otherwise an

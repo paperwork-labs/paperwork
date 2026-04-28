@@ -13,10 +13,14 @@ They are kept here for historical reference only and are **not** loaded by n8n f
 | `credential-expiry-check.json` | `apis/brain/app/schedulers/credential_expiry.py` (`brain_credential_expiry`) | _(same)_ | [#170](https://github.com/paperwork-labs/paperwork/pull/170) |
 | `infra-health-check.json` | `apis/brain/app/schedulers/infra_health.py` (`brain_infra_health`) | _(same)_ | [#201](https://github.com/paperwork-labs/paperwork/pull/201) |
 | `brain-pr-summary.json` | `apis/brain/app/schedulers/pr_sweep.py` (`pr_sweep`) + `sweep_open_prs` / PR review (not an n8n **mirror** row) | — (see [#131](https://github.com/paperwork-labs/paperwork/pull/131)) | [#131](https://github.com/paperwork-labs/paperwork/pull/131) |
+| `sprint-kickoff.json` | `apis/brain/app/schedulers/sprint_kickoff.py` (`brain_sprint_kickoff`) | Mon 07:00 UTC cron; Brain posts `#sprints` + `#all-paperwork-labs` | WS-23-trackf1-n8n-retire |
+| `sprint-close.json` | `apis/brain/app/schedulers/sprint_close.py` (`brain_sprint_close`) | Fri 21:00 UTC cron; Brain posts + KNOWLEDGE.md append | WS-23-trackf1-n8n-retire |
+| `data-annual-update.json` | `apis/brain/app/schedulers/data_annual_update.py` (`brain_data_annual_update`) | Annual October checklist → `#engineering` | WS-23-trackf1-n8n-retire |
+| `data-deep-validator.json` | `apis/brain/app/schedulers/data_deep_validator.py` (`brain_data_deep_validator`) | Monthly DOR/sample validation digest → Slack | WS-23-trackf1-n8n-retire |
+| `data-source-monitor.json` | `apis/brain/app/schedulers/data_source_monitor.py` (`brain_data_source_monitor`) | Weekly external source hash monitor → Slack | WS-23-trackf1-n8n-retire |
 
-## Follow-up: not retired in this pass
+## Follow-up
 
-- **`sprint-kickoff.json`** — superseded by `brain_sprint_kickoff` (Brain APScheduler); n8n shadow mirror removed.
 - **Founder / ops:** keep retired workflows disabled in the n8n UI on Hetzner so they do not double-fire with Brain.
 
 ## How to fully delete
