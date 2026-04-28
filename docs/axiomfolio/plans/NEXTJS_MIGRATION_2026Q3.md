@@ -184,8 +184,11 @@ Per-subtree recipe:
 - Replace `useParams`, `useSearchParams`, `Navigate` with App Router
   equivalents.
 - Swap `import.meta.env.VITE_*` → `process.env.NEXT_PUBLIC_*`.
-- Flag feature behind `NEXT_PUBLIC_AF_NEXT`; if false, Vite app serves
-  (during transition).
+- Feature flag `NEXT_PUBLIC_AF_NEXT` applied during the 2026-04 migration; **cutover is complete** — the live app is Next-only (`apps/axiomfolio`).
+
+> **Historical:** The Vite → Next cutover used `NEXT_PUBLIC_AF_NEXT` to choose the serving stack; production is **Next-only** in `apps/axiomfolio` now — the bullet below is archival.
+
+- Flag feature behind `NEXT_PUBLIC_AF_NEXT`; if false, Vite app served (during transition).
 
 Heavy pages (`PortfolioOptions.tsx`, `SettingsConnections.tsx`,
 `MarketDashboard.tsx`) may need `dynamic(..., { ssr: false })` wrappers

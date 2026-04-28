@@ -2390,8 +2390,10 @@ Eight compounding advantages that widen over time:
 
 ### 5B. Pipeline Architecture (DIY n8n, ~$0.10/video)
 
+> **Operational note (2026-04):** Brain APScheduler owns Paperwork’s **cron-shaped** internal automation today (`docs/infra/BRAIN_SCHEDULER.md`). Diagram below is target DIY wiring — triggers may be Brain, Postiz hooks, or webhooks, not necessarily legacy n8n schedules.
+
 ```
-[8:00am] n8n cron fires
+[8:00am] scheduled automation fires (Brain APScheduler / orchestrator)
     |
     v
 [Trend Research] n8n fetches trending finance/tax topics (GNews API + Reddit API)
@@ -2913,6 +2915,8 @@ Agents are organized into three tiers. **All venture-level personas must be avai
 
 ### 6E. New Agents to Build (12+)
 
+> **Roadmap:** Trigger column describes **target product/automation** surfaces — many are not wired yet. Internal ops **cron** cadences for Paperwork itself run on Brain APScheduler (2026-04); “n8n cron” in this table often means “scheduled-style workload,” not “still owned by n8n.”
+
 
 | #   | Agent                         | Type                    | Trigger                                                                               | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | --- | ----------------------------- | ----------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -3009,13 +3013,13 @@ LaunchFree Compliance Bot (monthly) --> user emails
 
 **Governance Protocol**: PROPOSE → ROUTE to affected agents → REVIEW → VERDICT (APPROVE/CONCERN/BLOCK) → RESOLVE. Founder is final arbiter. Used for: architecture, new forms, legal decisions, partner integrations.
 
-**EA Split**: EA Interactive (ea.mdc, Cursor) handles decisions/queries. EA Ops Monitor (n8n cron) handles briefings. They do NOT overlap responsibilities.
+**EA Split**: EA Interactive (ea.mdc, Cursor) handles decisions/queries. EA Ops Monitor (**Brain APScheduler** — legacy docs may say n8n) handles briefings. They do NOT overlap responsibilities.
 
 **Full org chart, agent status table, governance protocol, overlap resolution**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Section "6I Agent Org Chart"
 
 ### 6J. Agent Interaction Model
 
-Three patterns: (1) **Cursor Personas** — activate via file globs or domain questions, real-time collaborators during coding/strategy; (2) **n8n Autonomous** — cron-triggered, work while you sleep (EA briefing 7am, social content 8am, infra/filing health hourly, compliance daily, strategy/intel weekly, state validator monthly); (3) **On-Demand n8n** — Slack slash commands for trinket discovery, support, competitive checks, EA queries. Daily founder time: ~15-20 minutes.
+Three patterns: (1) **Cursor Personas** — activate via file globs or domain questions, real-time collaborators during coding/strategy; (2) **Scheduled Brain jobs** (APScheduler; historically some n8n crons) — EA briefing, social/content cadence, infra/filing health, compliance, strategy/intel; (3) **On-demand / webhook automation** — Slack slash commands and remaining n8n **non-cron** flows for trinket discovery, support, competitive checks, EA queries. Daily founder time: ~15-20 minutes.
 
 **Full interaction model with schedules and commands**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Section "6J Agent Interaction Model"
 

@@ -182,7 +182,7 @@ If satellite handoff breaks production:
 
 ## Cookie cleanup post-cutover
 
-After satellites land, audit each app for **legacy** cookies / `localStorage` keys from pre-Clerk or hybrid auth (e.g. FileFree session patterns, AxiomFolio `qm_token` per [`CLERK_AXIOMFOLIO.md`](CLERK_AXIOMFOLIO.md)). Remove dead client state on the Track F hygiene path so engineers are not misled in DevTools.
+After satellites land, audit each app for **legacy** cookies / `localStorage` keys from pre-Clerk or hybrid auth. Use per-app Clerk runbooks for product-specific keys to scrub (AxiomFolio `qm_token` per [`CLERK_AXIOMFOLIO.md`](CLERK_AXIOMFOLIO.md), and analogous hygiene elsewhere). Remove dead client state on the Track F hygiene path so engineers are not misled in DevTools.
 
 ## References
 

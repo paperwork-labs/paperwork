@@ -63,9 +63,9 @@ Social (drafts) → Legal (reviews if tax claims) → Founder (records video + a
 3. Founder records video, edits in CapCut
 4. Schedule via Postiz (MCP from Cursor or Postiz dashboard)
 
-**Autonomous mode (off-season, via n8n):**
-1. n8n cron (daily 8am) fetches trending topics + calls OpenAI with social.mdc system prompt
-2. n8n queues 3 draft posts in Postiz via REST API
+**Autonomous mode (off-season):**
+1. Brain APScheduler runs the migrated social/drafting cadence where applicable (see `docs/infra/BRAIN_SCHEDULER.md`); any remaining visual n8n automation is **webhook-driven**, not a duplicate cron surface.
+2. Draft posts queue in Postiz via REST API
 3. Founder opens Postiz dashboard, reviews/approves/schedules (~5 min)
 4. For tax claims: flag for Legal review before publishing
 

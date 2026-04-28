@@ -31,7 +31,7 @@ Aligns with `<ClerkProvider signInUrl` / `signUpUrl` in `apps/distill/src/app/la
 ## How Clerk is applied
 
 - **Clerk** handles email/OAuth and session cookies. `/sign-in` and `/sign-up` are public.
-- **`/dashboard`** requires a **Clerk session** in middleware (`userId`); unauthenticated users are redirected to sign-in. The legacy LaunchFree/FileFree “escape hatches” (session cookie, Basic Auth) are **not** used here.
+- **`/dashboard`** requires a **Clerk session** in middleware (`userId`); unauthenticated users are redirected to sign-in. The cookie/Basic Auth escape hatches used on **LaunchFree** and **FileFree** are **not** applied here.
 - **Development** vs **production**: same middleware behavior for Distill; only the `DISTILL_DASHBOARD_ENABLED` check differs inside the page.
 
 **Precedence** (`apps/distill/src/middleware.ts`):

@@ -131,6 +131,8 @@ batches that can absorb them:
 
 ## Path normalization (informational)
 
+> **Context (2026-04-27+):** Production AxiomFolio is Next.js in `apps/axiomfolio`; the Vite tree is **archived** at `apps/_archive/axiomfolio-vite`. The following describes path parity work during the port.
+
 The Next port currently uses some shorter paths than the Vite canonical
 paths (e.g. `/strategies` instead of `/lab/strategies`). The Vite app
 serves the canonical paths and falls back to the legacy ones via

@@ -261,7 +261,7 @@ Governance Protocol (Multi-Agent Consensus): PROPOSE → ROUTE to affected agent
 
 Overlap Resolution: EA owns operational tracking, CFO owns analysis. EA owns tactical planning, Strategy owns direction. Agent-Ops owns model optimization, QA owns security review.
 
-EA Agent Split: EA Interactive (ea.mdc, Cursor) handles decisions/queries. EA Ops Monitor (n8n cron) handles daily/weekly briefings. Interactive EA does NOT generate briefings. Ops monitor does NOT update docs.
+EA Agent Split: EA Interactive (ea.mdc, Cursor) handles decisions/queries. EA Ops Monitor (Brain APScheduler — legacy copy may say n8n) handles daily/weekly briefings. Interactive EA does NOT generate briefings. Ops monitor does NOT update docs.
 
 ---
 

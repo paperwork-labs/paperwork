@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     #
     # * **Net-new / always on** — PR sweep, proactive cadence, CFO/QA Slack
     #   jobs, etc. register whenever ``BRAIN_SCHEDULER_ENABLED`` is true.
+    #
+    # * **n8n (left behind on purpose)** — non-cron workflows only (webhooks,
+    #   slash commands, error triggers). Cron-portable schedules were migrated
+    #   to APScheduler; do not reintroduce parallel n8n crons for those.
+    #
     # Track: sprint-lessons ingest cadence (hours). Bullets under
     # ``## What we learned`` in docs/sprints/*.md become memory episodes.
     # 6h is plenty — sprint markdown changes ship via PR, not continuously.
