@@ -12,7 +12,7 @@
 | Item | Reason |
 |------|--------|
 | `ignore_missing_imports = true` | Optional third-party packages (tiktoken, langfuse, apscheduler, etc.) lack complete stubs in CI. |
-| `[[tool.mypy.overrides]]` + `ignore_errors = true` for **27 legacy modules** | Full strict drain on `llm`, `admin`, schedulers, tools, etc. is tracked for a follow-up; new code should land in typed modules or add explicit annotations. See the `module = [...]` list in `pyproject.toml` under *Medallion 0.D*. |
+| `[[tool.mypy.overrides]]` + `ignore_errors = true` for **18 legacy modules** | Full strict drain on `llm`, `admin`, schedulers, tools, etc. is tracked for a follow-up; new code should land in typed modules or add explicit annotations. See the `module = [...]` list in `pyproject.toml` under *Medallion 0.D*. |
 | `app.models.*` — `disallow_any_generics = false` | JSONB columns use plain `dict` / `list` until TypedDict models exist. |
 
 ## CI
