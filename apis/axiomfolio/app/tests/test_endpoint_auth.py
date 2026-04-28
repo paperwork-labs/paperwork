@@ -75,41 +75,25 @@ class TestCoverageAuth:
 
 
 class TestAuthenticatedAccess:
-    """Requests WITH a valid JWT succeed (or at least don't return 401)."""
+    """Authenticated requests succeed when ``get_current_user`` resolves (Clerk JWT in prod)."""
 
     @pytest.fixture
     def auth_headers(self, client):
-        """Create a user and get a valid JWT. Skip if DB not available."""
+        from unittest.mock import MagicMock
+
+        from app.api.dependencies import get_current_user
+        from app.models.user import User, UserRole
+
+        u = MagicMock(spec=User)
+        u.id = 424242
+        u.is_active = True
+        u.is_approved = True
+        u.role = UserRole.ANALYST
+        app.dependency_overrides[get_current_user] = lambda: u
         try:
-            reg = client.post(
-                "/api/v1/auth/register",
-                json={
-                    "username": "testendpointauth",
-                    "email": "testendpointauth@test.com",
-                    "password": "TestPassword123!",
-                    "full_name": "Test Auth",
-                },
-            )
-            if reg.status_code not in (200, 201, 409):
-                pytest.skip(f"Registration failed: {reg.status_code}")
-
-            login = client.post(
-                "/api/v1/auth/login",
-                json={
-                    "email": "testendpointauth@test.com",
-                    "password": "TestPassword123!",
-                },
-            )
-            if login.status_code != 200:
-                pytest.skip(f"Login failed: {login.status_code}")
-
-            token = login.json().get("access_token")
-            if not token:
-                pytest.skip("No access_token in login response")
-
-            return {"Authorization": f"Bearer {token}"}
-        except Exception as e:
-            pytest.skip(f"Auth setup failed: {e}")
+            yield {"Authorization": "Bearer test-clerk-session"}
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
 
     def test_snapshots_with_token(self, client, auth_headers):
         r = client.get("/api/v1/market-data/snapshots", headers=auth_headers)

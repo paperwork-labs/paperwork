@@ -56,8 +56,11 @@ class User(Base):
     last_name = Column(String(100))
     phone = Column(String(20))
 
+    # Clerk (WS-14) — maps Clerk session JWT ``sub`` to this row.
+    clerk_user_id = Column(String(64), nullable=True, unique=True, index=True)
+
     # OAuth
-    oauth_provider = Column(String(20), nullable=True)   # 'google', 'apple', None for password
+    oauth_provider = Column(String(20), nullable=True)   # 'google', 'apple', 'clerk', None for password
     oauth_id = Column(String(255), nullable=True)        # provider's unique user ID
     avatar_url = Column(Text, nullable=True)
 

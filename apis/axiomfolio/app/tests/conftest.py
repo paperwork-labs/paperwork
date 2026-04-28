@@ -8,6 +8,8 @@ import os
 # OpenTelemetry bootstrap and other test-only guards see test mode during
 # pytest collection, not only after session fixtures run.
 os.environ["AXIOMFOLIO_TESTING"] = "1"
+# Clerk JWT verification requires an issuer; use a closed port so JWKS fetch fails fast.
+os.environ.setdefault("CLERK_JWT_ISSUER", "http://127.0.0.1:1")
 
 import pytest
 import sys

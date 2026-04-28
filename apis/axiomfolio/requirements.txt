@@ -63,6 +63,9 @@ fakeredis==2.35.1
 responses==0.26.0
 
 # Auth deps
+# Clerk session JWT: `paperwork-auth` is installed in Docker (see Dockerfile) from
+# `packages/auth-clerk/src/python`. For local pytest without Docker:
+#   pip install -e ../../packages/auth-clerk/src/python[fastapi]
 passlib[bcrypt]==1.7.4
 PyJWT==2.12.1
 email-validator==2.3.0
