@@ -80,7 +80,7 @@ async def learning_summary(
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
     _learning: None = Depends(_require_learning_dashboard),
-):
+) -> Any:
     now = datetime.now(UTC)
     start = now - timedelta(days=7)
     base = and_(_base(organization_id), Episode.created_at >= start)
@@ -142,7 +142,7 @@ async def learning_episodes(
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
     _learning: None = Depends(_require_learning_dashboard),
-):
+) -> Any:
     te = _topic()
     filt: Any = _base(organization_id)
     if topic and topic.strip():
@@ -176,7 +176,7 @@ async def learning_lessons(
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
     _learning: None = Depends(_require_learning_dashboard),
-):
+) -> Any:
     key = func.coalesce(
         func.nullif(Episode.metadata_.op("->>")("lesson_id"), ""),
         func.md5(cast(Episode.summary, String)),
@@ -218,7 +218,7 @@ async def learning_timeline(
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
     _learning: None = Depends(_require_learning_dashboard),
-):
+) -> Any:
     today = datetime.now(UTC).date()
     start_d = today - timedelta(days=days - 1)
     rs = datetime(start_d.year, start_d.month, start_d.day, tzinfo=UTC)
