@@ -33,7 +33,8 @@ def test_compute_percent_done_denominator_at_least_one() -> None:
 def test_snapshot_status_completed_only_when_no_open() -> None:
     assert wp.compute_snapshot_status(100, 0, "in_progress") == "completed"
     assert wp.compute_snapshot_status(100, 1, "in_progress") == "in_progress"
-    assert wp.compute_snapshot_status(80, 0, "pending") == "pending"
+    assert wp.compute_snapshot_status(80, 0, "pending", merged_pr_count=0) == "pending"
+    assert wp.compute_snapshot_status(80, 0, "pending", merged_pr_count=1) == "in_progress"
 
 
 def _one_ws(**kwargs) -> WorkstreamsFile:  # type: ignore[no-untyped-def]
