@@ -29,7 +29,7 @@ This runbook captures the **founder migration** (completed 2026-04-28) from the 
 historical playbooks — both completed 2026-04-28. Use them as reference if a
 similar migration is needed in the future, or for emergency rollback.
 
-**Old zones on the former personal account** (`Sankalp404@gmail.com`, migrated-from): keep for 24h soak (until ~2026-04-29 21:00 UTC), then delete from that **former** Cloudflare account — they are not production DNS.
+**Old zones on the former personal account** (`Sankalp404@gmail.com`, migrated-from): keep for 24h soak (until ~2026-04-29 21:00 UTC), then delete from that **former** Cloudflare account — they are not production DNS. **Runbook:** `docs/runbooks/CLOUDFLARE_ZONE_DECOMMISSION.md` (script: `scripts/cloudflare_decommission_zones.py`).
 
 ## Why migrate
 
