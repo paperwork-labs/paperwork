@@ -13,7 +13,7 @@ Shared design system primitives for Paperwork apps: Radix-based components, toke
 | **Unguarded `window` / `window[...]`** | SSR and tests may not define `window`; guard with `typeof window !== "undefined"`, use `globalThis`, or pass browser-only values from the host. Optional: a typed `useIsomorphicLayoutEffect` in the app. |
 | **`"use server"` and `export async function` exports** | Server Actions / RSC-style async exports do not belong in shared UI; keep this tree **client / pure React**. |
 
-**Allowed:** `react`, `react-dom`, styling helpers (`clsx`, `tailwind-merge`, `class-variance-authority`), icons (`lucide-react`), motion (`framer-motion`), headless primitives (e.g. Radix), **`next-themes`** (peer; not the same as `next/*`), and other libraries that work across bundlers.
+**Allowed:** `react`, `react-dom`, styling helpers (`clsx`, `tailwind-merge`, `class-variance-authority`), icons (`lucide-react`), headless primitives (e.g. Radix), **`next-themes`** (peer; not the same as `next/*`), and other libraries that work across bundlers.
 
 ## How to add a feature that needs Next.js
 
