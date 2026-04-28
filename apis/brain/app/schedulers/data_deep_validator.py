@@ -2,7 +2,7 @@
 
 Replaces the **Data Deep Validator (P2.9)** n8n workflow (``0 3 1 * *``) that
 samples state source JSON, cross-checks DOR pages vs repo tax data, and posts
-to Slack — see ``infra/hetzner/workflows/data-deep-validator.json`` and
+to Slack — see ``infra/hetzner/workflows/retired/data-deep-validator.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`` (Track K).
 """
 
