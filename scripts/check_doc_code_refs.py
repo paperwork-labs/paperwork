@@ -82,6 +82,10 @@ EXPECTED_DEAD: set[str] = {
     # Created by `vercel link` under apps/studio; .vercel/ is gitignored (see
     # apps/studio/.gitignore). Docs correctly cite the path for operators.
     "apps/studio/.vercel/project.json",
+    # docs/infra/VERCEL_PROJECTS.md cites the trinkets project file the
+    # founder will create when running `vercel link` (the doc itself is
+    # the followup checklist for that). Same gitignore pattern as studio.
+    "apps/trinkets/.vercel/project.json",
 }
 
 # Match:

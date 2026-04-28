@@ -203,6 +203,21 @@ async def n8n_mirror_scheduler_status(
     )
 
 
+@router.get("/workstreams-board")
+async def get_workstreams_board(_auth: None = Depends(_require_admin)):
+    """Return ``workstreams.json`` as Brain sees it on disk (loader cache bypass).
+
+    Proxied by Studio ``GET /api/admin/workstreams`` for a live admin board without
+    waiting for a Studio redeploy. Response shape matches ``WorkstreamsFileSchema``
+    in ``apps/studio/src/lib/workstreams/schema.ts`` (not wrapped in ``success_response``).
+    """
+    from app.schemas.workstream import workstreams_file_to_json_dict
+    from app.services.workstreams_loader import load_workstreams_file
+
+    file = load_workstreams_file(bypass_cache=True)
+    return workstreams_file_to_json_dict(file)
+
+
 @router.get("/vercel-quota")
 async def get_vercel_quota_snapshots(
     db: AsyncSession = Depends(get_db),

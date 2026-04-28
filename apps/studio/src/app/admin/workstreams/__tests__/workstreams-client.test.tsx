@@ -29,6 +29,20 @@ describe("WorkstreamsBoardClient", () => {
     ).toBeTruthy();
   });
 
+  it("renders stale data banner when provided", () => {
+    const kpis = computeKpis(parsedFixture);
+    render(
+      <WorkstreamsBoardClient
+        kpis={kpis}
+        parsedFile={parsedFixture}
+        staleDataBanner="Live Brain unavailable — showing last build's snapshot from 2026-01-01T00:00:00Z."
+      />,
+    );
+    expect(screen.getByTestId("workstreams-stale-banner").textContent).toMatch(
+      /Live Brain unavailable/,
+    );
+  });
+
   it("groups completed below incomplete with a 'Completed · N shipped' divider", () => {
     const kpis = computeKpis(parsedFixture);
     const { container } = render(
