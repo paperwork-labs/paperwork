@@ -55,7 +55,7 @@ Clerk UI is aligned with FileFree’s violet / dark theme via the **Appearance**
 
 | Piece | Path |
 | ----- | ---- |
-| Global `appearance` (all Clerk surfaces: SignIn, SignUp, `UserButton`, modals) | `apps/filefree/src/lib/filefree-clerk-appearance.ts`, passed to `<ClerkProvider>` in `apps/filefree/src/app/layout.tsx` |
+| Global `appearance` (all Clerk surfaces: SignIn, SignUp, `UserButton`, modals) | `packages/auth-clerk/src/appearance/presets.ts` (`fileFreeAppearance`), passed to `<ClerkProvider>` in `apps/filefree/src/app/layout.tsx` |
 | Auth route layout (gradient shell, centers the form; height fits below fixed `Nav` + `pt-14`) | `apps/filefree/src/components/clerk/ClerkAuthPageShell.tsx`, used by `apps/filefree/src/app/sign-in/[[...sign-in]]/page.tsx` and `apps/filefree/src/app/sign-up/[[...sign-up]]/page.tsx` |
 
 `baseTheme` is `@clerk/themes`’s `dark` theme; CSS variables and `elements` extend it. Colors resolve at runtime from `[data-theme="filefree"]` in `packages/ui/src/themes.css` (imported by `apps/filefree/src/app/globals.css`).

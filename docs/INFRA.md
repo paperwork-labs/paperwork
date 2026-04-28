@@ -10,7 +10,7 @@ status: active
 **Status**: Adopted 2026-04-23. Supersedes per-product dev compose files.
 
 - **How (mutable architecture)**: this document. **Why, constraints, and non-goals** (CODEOWNERS-locked): [`docs/philosophy/INFRA_PHILOSOPHY.md`](philosophy/INFRA_PHILOSOPHY.md).
-- **See also** — `docs/ORCHESTRATION_PHILOSOPHY.md` (Celery vs Airflow/Dagster), `docs/DATA_PHILOSOPHY.md` (medallion + five iron laws).
+- **See also** — [`docs/philosophy/DATA_PHILOSOPHY.md`](philosophy/DATA_PHILOSOPHY.md) (medallion + five iron laws).
 
 ## TL;DR
 
@@ -260,7 +260,7 @@ Performed as part of PR #80 (AxiomFolio monorepo absorption):
    `celery-axiomfolio-worker`, `celery-axiomfolio-beat` now live in
    `infra/compose.dev.yaml`.
 3. **Axiomfolio-specific compose files deleted.**
-   `apis/axiomfolio/infra/compose.dev.yaml` and `compose.test.yaml` are
+   `infra/compose.dev.yaml` and `compose.test.yaml` are
    gone — superseded by the root compose.
 4. **Axiomfolio profile overlay added.** `infra/axiomfolio/compose.profiles.yaml`
    holds ib-gateway, cloudflared, flower.
@@ -394,9 +394,7 @@ experience. One stack, boot it, go.
 AxiomFolio's test compose spun up a parallel postgres/redis for pytest
 isolation. In the new architecture, tests run against the same postgres
 using the `*_test` database (already the pattern for filefree/brain).
-The test compose file is retained in git history (reachable via `git log
--- infra/axiomfolio/compose.test.yaml`) for reference, but is not used
-by the new `make test` path. <!-- STALE 2026-04-24: exact historical path for the deleted test compose may differ; search git history for `compose.test` under `apis/axiomfolio` or pre-move `infra/`. -->
+The dedicated test compose file was deleted; history remains in git (`git log --grep=compose.test` / search old `apis/axiomfolio` trees). Root `make test` uses `infra/compose.dev.yaml` per the Makefile — no parallel `compose.test.yaml`.
 
 ---
 

@@ -32,7 +32,7 @@ status: active
 - The test suite will:
   - Run Alembic migrations to head on the test database at session start.
   - Create a per-test transaction and roll it back after each test for isolation.
-- Example: `make test` (or `./run.sh test`); uses `infra/compose.test.yaml` + `infra/env.test`.
+- Example: `make test` (or `./run.sh test`); uses **`infra/compose.dev.yaml`** at repo root per the Makefile.
 
 ## Safe Patterns (Enforced)
 - Single DB path: all tests must use the `db_session` fixture. Direct `SessionLocal`/`engine`/`create_engine` imports in tests are blocked.
@@ -44,9 +44,9 @@ status: active
 
 ## Env Guidance
 - Leave production `.env` untouched.
-- Local dev uses `infra/env.dev` (untracked); tests use `infra/env.test` (untracked).
-- CI should copy `infra/env.test.example` to `infra/env.test` for safe defaults.
-- Do not run backend tests outside the isolated test compose stack unless you intentionally set `TEST_DATABASE_URL` to `postgres_test` and `_test` DB name.
+- Local dev uses tracked defaults (`infra/env.dev.defaults`) plus local overrides.
+- CI exports safe env vars from workflow YAML — do not put secrets in tracked files.
+- Do not run backend tests against the dev database in production mode; use `TEST_DATABASE_URL` for isolated runs.
 
 ## Do/Don't
 - Do: use the `db_session` fixture provided in `backend/tests/conftest.py`.
@@ -61,7 +61,7 @@ status: active
 
 ## How to run
 
-**Prefer the [Makefile](../Makefile) at repo root** (see [docs/README.md](README.md)#makefile-quick-reference). All commands below are from repo root.
+**Prefer the [Makefile](../Makefile) at repo root** (see [docs/axiomfolio/README.md](README.md)#makefile-quick-reference). All commands below are from repo root.
 
 - **Backend only** (isolated DB): `make test` (or `./run.sh test`)
 - **Frontend only** (lint + type-check + test): `make test-frontend` or `make frontend-check`
@@ -69,9 +69,7 @@ status: active
 
 Individual frontend steps: `make frontend-lint`, `make frontend-typecheck`, `make frontend-test`.
 
-Focused runs (still isolated):
-- `make test-up` — bring up test DB/Redis only, then run pytest manually
-- `docker compose --project-name axiomfolio_test --env-file infra/env.test -f infra/compose.test.yaml run --rm backend_test bash -lc "python -m pytest backend/tests/test_client_tastytrade.py -q"`
+Focused runs: `make test-up` (if defined in Makefile) or run pytest inside the compose service that maps to the API you are changing — follow patterns in `apis/*/pytest.ini` / `conftest.py` for that package.
 
 ## Scopes
 - Unit: deterministic logic (parsers, transforms, dedupe)

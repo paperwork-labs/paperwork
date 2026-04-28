@@ -38,16 +38,16 @@ How this repo opens PRs, runs CI, merges **Dependabot** updates, and (for `agent
 
 | Lane | Branch pattern | Who creates the PR | Auto-merge after approval? |
 |------|----------------|-------------------|----------------------------|
-| **Script lane** | `agent/<type>/...` | `scripts/open_pr.sh` or push (see [Agent auto-open PR](#agent-auto-open-pr-on-push)) | Yes — [Agent merge after CI](#agent-prs-squash-merge-after-approval) (requires **approval by `sankalp404`**, not Draft) |
+| **Script lane** | `agent/<type>/...` | `apis/axiomfolio/scripts/open_pr.sh` or push (see [Agent auto-open PR](#agent-auto-open-pr-on-push)) | Yes — [Agent merge after CI](#agent-prs-squash-merge-after-approval) (requires **approval by `sankalp404`**, not Draft) |
 | **Normal lane** | `feat/`, `fix/`, `chore/`, `docs/`, … | You (`gh pr create` or GitHub UI) | **No** — merge manually unless you enable repo auto-merge / merge queue yourself |
 
-**Important:** `scripts/open_pr.sh` only creates **`agent/**`** branches. Work on a conventional branch (e.g. `feat/foo`) is **not** picked up by the agent merge workflow unless you rename/move the branch.
+**Important:** `apis/axiomfolio/scripts/open_pr.sh` only creates **`agent/**`** branches. Work on a conventional branch (e.g. `feat/foo`) is **not** picked up by the agent merge workflow unless you rename/move the branch.
 
 ---
 
 ## CI (when checks run)
 
-Workflow: `.github/workflows/ci.yml`
+Workflow: `.github/workflows/ci.yaml`
 
 | Trigger | What runs |
 |---------|-----------|
@@ -66,12 +66,12 @@ Workflow: `.github/workflows/ci.yml`
 
 ## Scripts
 
-### `scripts/open_pr.sh` — branch, commit, push, Draft PR
+### `apis/axiomfolio/scripts/open_pr.sh` — branch, commit, push, Draft PR
 
 **Usage:**
 
 ```bash
-scripts/open_pr.sh <feat|fix|chore|docs|refactor|test> "Short title in quotes"
+apis/axiomfolio/scripts/open_pr.sh <feat|fix|chore|docs|refactor|test> "Short title in quotes"
 ```
 
 **Behavior:**
@@ -83,76 +83,41 @@ scripts/open_pr.sh <feat|fix|chore|docs|refactor|test> "Short title in quotes"
 
 **Needs:** `gh` authenticated; scopes: `contents:write`, `pull_requests:write`.
 
-### `scripts/close_dependabot_prs.sh` — bulk-close Dependabot PRs
+### `apis/axiomfolio/scripts/close_dependabot_prs.sh` — bulk-close Dependabot PRs
 
-**Usage:** `./scripts/close_dependabot_prs.sh "reason"` — closes **all** open PRs from `dependabot[bot]`. Use when resetting policy or cleaning up after config changes (see `dependabot.yml`).
+**Usage:** `./apis/axiomfolio/scripts/close_dependabot_prs.sh "reason"` — closes **all** open PRs from `dependabot[bot]`. Use when resetting policy or cleaning up after config changes (see `dependabot.yml`).
 
 ---
 
 ## GitHub workflows (inventory)
 
-### Dependabot auto-merge
+**2026-04+ (Brain cutover):** Dependabot classification, review posts, and merge sweeps are owned by **Paperwork Brain** (`apis/brain/`) — webhook + APScheduler — see [`docs/DEPENDABOT.md`](../DEPENDABOT.md). The standalone YAML workflows that duplicated that logic were removed so there is a single control plane.
 
-**File:** `.github/workflows/dependabot-automerge.yml`  
-**Runs on:** `pull_request` — `opened`, `synchronize`, `reopened`, `ready_for_review`  
-**Actor:** `dependabot[bot]` only  
+**Active CI entrypoint:** [`.github/workflows/ci.yaml`](../../.github/workflows/ci.yaml). Other workflows live under [`.github/workflows/`](../../.github/workflows/); filenames evolve — this doc does not mirror every file.
 
-**Behavior:**
+The subsections below describe **how the pre-Brain AxiomFolio loop behaved**; they are historical. Do not expect the old per-purpose workflow files to exist in the tree.
 
-- Uses `dependabot/fetch-metadata` to read the update type.
-- **Only** auto-merges **semver minor** and **semver patch** (not major).
-- Tries **`gh pr merge --auto --squash --delete-branch`** first (merge queue / branch rules).
-- If auto-merge is disabled, **polls** until checks pass and `mergeStateStatus` is mergeable, then squash-merges.
-- If PR is **Draft**, the fallback loop skips.
-- If branch is **BEHIND** `main`, updates the PR branch via GraphQL and waits.
+### Dependabot auto-merge (historical)
 
-### Agent auto-open PR (on push)
+Prior workflow auto-merged safe Dependabot bumps. **Today:** Brain’s `merge_ready_prs` + org policy; see [`docs/DEPENDABOT.md`](../DEPENDABOT.md).
 
-**File:** `.github/workflows/agent-auto-pr.yml`  
-**Runs on:** `push` to **`agent/**`** only  
+### Agent auto-open PR (on push) (historical)
 
-**Behavior:** If no PR exists for that head branch, creates a **Draft** PR to `main` (title derived from branch segments; body from `.github/pull_request_template.md` if present).  
-**Does not** dispatch CI explicitly — CI is driven by **PR** events (see [CI](#ci-when-checks-run)).
+**Today:** use `apis/axiomfolio/scripts/open_pr.sh` for the `agent/**` lane. There is no longer a dedicated `agent-auto-pr` workflow in this snapshot.
 
-### Agent merge after CI (when approved)
+### Agent merge after CI (when approved) (historical)
 
-**File:** `.github/workflows/agent-merge-after-ci.yml`  
-**Runs on:**
+Squash-merge after approval used bespoke YAML. **Today:** GitHub branch protection, optional auto-merge, and manual merge discipline.
 
-- `workflow_run` after **CI** completes successfully, or
-- `pull_request_review` submitted  
+### Update agent PR branch from main (historical)
 
-**Branch filter:** `agent/**` only  
+Use GitHub **Update branch** or `gh pr` flows; dedicated updater workflows were retired.
 
-**Merge conditions:**
+### Request Copilot review (historical)
 
-- PR is **not** Draft (must click **Ready for review**).
-- At least one **APPROVED** review from **`sankalp404`**.
-- For `workflow_run`: the CI run’s **head SHA** matches the PR **head SHA** (avoids merging stale commits).
-- **Required checks** (by name) are **SUCCESS** — workflow polls `statusCheckRollup` for `Backend (pytest in docker)` and `Frontend (lint/typecheck/test)` (ignores its own job to avoid deadlock).
-- If **BEHIND** `main`, updates the branch (and may dispatch CI on the branch ref).
+Copilot reviewer automation was workflow-driven; entitlement and reviewer lists are org/repo settings now.
 
-Then: **`gh pr merge --auto --squash --delete-branch`**, or direct squash if auto-merge is unavailable.
-
-### Update agent PR branch from main (when ready)
-
-**File:** `.github/workflows/agent-update-branch.yml`  
-**Runs on:** `pull_request` — `ready_for_review`, `reopened`, `synchronize`  
-
-**Behavior:** For **`agent/**`** only, if PR is **not** Draft and `mergeStateStatus` is **BEHIND**, updates the branch from `main` via GraphQL.
-
-### Request Copilot review (automation)
-
-**File:** `.github/workflows/request-copilot-review.yml`  
-**Runs on:** `pull_request` into **`main`** — `opened`, `reopened`, `ready_for_review`
-
-**Skips:** PRs from **`dependabot[bot]`**, **Draft** PRs, **fork** PRs (head repo ≠ this repo).
-
-**Behavior:** Runs `gh pr edit … --add-reviewer @copilot` using `GITHUB_TOKEN`. The step uses **`continue-on-error: true`** so missing Copilot entitlement, an older `gh` on the runner, or “already requested” does **not** fail the workflow run.
-
-When you **mark a Draft PR ready for review**, `ready_for_review` fires and Copilot is requested.
-
-**Dependabot config:** `.github/dependabot.yml` — weekly npm (frontend), pip (root), GitHub Actions; groups and limits as documented in that file.
+**Dependabot config:** [`.github/dependabot.yml`](../../.github/dependabot.yml)
 
 ---
 
@@ -171,7 +136,7 @@ This is the intended “automation loop” for day-to-day work. Nothing here rep
 
 ### 2. Open the PR
 
-- **Script lane:** `scripts/open_pr.sh fix "short description"` → **Draft** PR.
+- **Script lane:** `apis/axiomfolio/scripts/open_pr.sh fix "short description"` → **Draft** PR.
 - **Manual:** `gh pr create --base main --head <branch>` (add `--draft` if you want Draft).
 
 ### 3. After the PR exists
@@ -202,7 +167,7 @@ This is the intended “automation loop” for day-to-day work. Nothing here rep
 | **CI failed** | Check logs; fix **on a new branch** or push to the Dependabot branch if your policy allows; often re-run after lockfile or test fixes. |
 | **Major bump** | Review manually, adjust code, merge when ready — or extend ignore rules in `dependabot.yml` if you want to skip. |
 | **PR stuck “behind”** | Workflow tries to update; you can also `gh pr merge` after updating branch or use **Update branch** in GitHub UI. |
-| **Too many open Dependabot PRs** | Lower `open-pull-requests-limit` in `dependabot.yml` or use `scripts/close_dependabot_prs.sh` with a clear reason after changing policy. |
+| **Too many open Dependabot PRs** | Lower `open-pull-requests-limit` in `dependabot.yml` or use `apis/axiomfolio/scripts/close_dependabot_prs.sh` with a clear reason after changing policy. |
 | **Conflicts** | Resolve on the branch; re-run CI. |
 
 **Labels:** Dependabot applies `deps` plus `frontend` / `backend` / `ci` per `dependabot.yml`.
@@ -287,7 +252,7 @@ In GitHub repo Settings → **Branches** → protect `main`:
 
 ## What is *not* automated (today)
 
-- **Creating branches** for arbitrary `feat/**` names — only `scripts/open_pr.sh` creates `agent/**` branches automatically.
+- **Creating branches** for arbitrary `feat/**` names — only `apis/axiomfolio/scripts/open_pr.sh` creates `agent/**` branches automatically.
 - **Copilot on fork PRs** — the Request Copilot workflow only targets same-repo PRs (`head` repo = base repo).
 - **Applying code fixes** from review comments — requires human or AI in the repo with push access; CI only validates.
 

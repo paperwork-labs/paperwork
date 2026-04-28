@@ -47,7 +47,7 @@ This folder contains onboarding, architecture, domain pillars (connections, port
 
 Other folders under `docs/`:
 
-- **`docs/plans/`** — ad-hoc planning notes (e.g. nav restructures).
+- **`docs/axiomfolio/plans/`** — ad-hoc planning notes (e.g. nav restructures).
 - **`docs/pinescript/`** — Pine Script references (e.g. stage analysis script).
 
 ---

@@ -330,7 +330,7 @@ Everything above participates in **user-scoped multi-tenancy** ([D88](../KNOWLED
 
 Run in parallel across the sprint; non-blocking for other waves but **mandatory before W15 Enterprise** so Enterprise schema can be delivered clean.
 
-**Sub-wave 16.1 — Audit & tags (Week 1).** Touch every file in `app/services/` and confirm its module-level docstring tag matches its true layer. Produce a markdown report in `docs/plans/MEDALLION_AUDIT_2026Q2.md` that lists each module with current path + target path + move risk (HIGH = danger zone per `protected-regions.mdc`; MEDIUM = widely-imported silver code; LOW = leaf-level utility).
+**Sub-wave 16.1 — Audit & tags (Week 1).** Touch every file in `app/services/` and confirm its module-level docstring tag matches its true layer. Produce a markdown report in `docs/axiomfolio/plans/MEDALLION_AUDIT_2026Q2.md` that lists each module with current path + target path + move risk (HIGH = danger zone per `protected-regions.mdc`; MEDIUM = widely-imported silver code; LOW = leaf-level utility).
 
 **Sub-wave 16.2 — Lint rule + CI gate (Week 2).** New Ruff rule (custom pylint plugin if needed) that forbids:
 - `bronze/*` importing from `silver/*` or `gold/*` (circular).
@@ -1007,7 +1007,7 @@ W15 Enterprise scaffold (post-launch)
 
 Formalizes [D127](../KNOWLEDGE.md) and [D145](../KNOWLEDGE.md) per Chapter 1.8. Runs in parallel with feature waves; no shared code paths beyond file moves + import rewrites.
 
-- **Sub-wave 16.1 — Audit & tags** (Week 1). Produce `docs/plans/MEDALLION_AUDIT_2026Q2.md` listing every `app/services/*` module with current path, target layer, and move risk (HIGH / MEDIUM / LOW).
+- **Sub-wave 16.1 — Audit & tags** (Week 1). Produce `docs/axiomfolio/plans/MEDALLION_AUDIT_2026Q2.md` listing every `app/services/*` module with current path, target layer, and move risk (HIGH / MEDIUM / LOW).
 - **Sub-wave 16.2 — Lint rule + CI gate** (Week 2). Custom Ruff/pylint rule forbidding cross-layer import violations (`bronze → silver/gold` banned; `silver → gold` banned; non-`gold/` write to gold tables banned).
 - **Sub-wave 16.3 — LOW-risk relocations** (Weeks 2–3). Leaf-level utilities; one PR per move; `ruff --fix` handles imports.
 - **Sub-wave 16.4 — MEDIUM-risk silver relocations** (Weeks 3–5). `market/indicator_engine.py` + `stage_classifier.py` + `regime_engine.py` → `silver/`. One PR per module. CI gate catches misses.

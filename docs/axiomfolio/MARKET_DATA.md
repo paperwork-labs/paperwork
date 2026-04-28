@@ -327,7 +327,7 @@ Legacy per-universe daily backfill endpoints were removed to keep the operator s
 
 ## Data flows
 
-_Merged from docs/axiomfolio/MARKET_DATA_FLOWS.md on 2026-04-24._
+_Merged from `docs/archive/MARKET_DATA_FLOWS.md` on 2026-04-24._
 
 This page is a visual companion to [ARCHITECTURE.md](ARCHITECTURE.md) (system layout, job catalog) and [MARKET_DATA.md](MARKET_DATA.md) (tiers, env, operations). It focuses on **end-to-end data movement**, timing, rough volumes, and how failures are handled.
 

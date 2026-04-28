@@ -10,7 +10,7 @@ status: active
 **Owner**: `infra-ops` persona (Track A).
 **Source of truth**: Render MCP (`list_services`, `list_postgres_instances`, `list_key_value`) against workspace `tea-d6uflspj16oc73ft6gj0` (Paperwork team, `billing@paperworklabs.com`).
 
-This supersedes [docs/axiomfolio/RENDER_INVENTORY.md](../axiomfolio/RENDER_INVENTORY.md), which was authored before the monorepo consolidation and is now stale.
+This supersedes [docs/infra/RENDER_INVENTORY.md](../axiomfolio/RENDER_INVENTORY.md), which was authored before the monorepo consolidation and is now stale.
 
 ## Account consolidation status
 

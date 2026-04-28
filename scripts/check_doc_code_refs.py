@@ -44,47 +44,13 @@ IGNORE_DIRS: set[str] = {
     "docs/archive",
 }
 
-# Whitelisted refs that intentionally mention removed/moved paths.
+# Whitelisted refs that intentionally mention removed/moved paths or paths that
+# exist only on developer machines / gitignored artifacts (never in CI checkout).
 EXPECTED_DEAD: set[str] = {
-    "apis/brain/app/services/personas.py",
-    ".github/workflows/auto-merge-sweep.yaml",
-    ".github/workflows/dependabot-auto-approve.yaml",
-    ".github/workflows/dependabot-major-triage.yaml",
-    # .cursor/ is gitignored so the file exists locally for IDE config but
-    # never lands in the CI checkout. The references are intentional and
-    # correct from a developer's perspective.
+    # Cursor MCP config — gitignored for secrets; referenced so operators know where to look locally.
     ".cursor/mcp.json",
-    # Archived to docs/archive/MARKET_DATA_FLOWS.md; merge note in MARKET_DATA.md keeps provenance path.
-    "docs/axiomfolio/MARKET_DATA_FLOWS.md",
-    # Archived to docs/archive/VMP-SUMMARY-2026-03-18.md; merge notes in
-    # VENTURE_MASTER_PLAN.md + DOCS_STREAMLINE_2026Q2.md keep provenance path.
-    "docs/VMP-SUMMARY.md",
-    # PR #234 consolidated 6 per-app Clerk Appearance files into named presets
-    # in packages/auth-clerk/src/appearance/presets.ts. CLERK_*.md docs still mention
-    # the old paths in narrative copy; pending a docs rewrite that redirects to
-    # the shared package + preset names.
-    "apps/distill/src/lib/clerk-appearance.ts",
-    "apps/axiomfolio-next/src/lib/axiomfolio-clerk-appearance.ts",
-    "apps/launchfree/src/lib/launchfree-clerk-appearance.ts",
-    "apps/filefree/src/lib/filefree-clerk-appearance.ts",
-    "apps/trinkets/src/lib/trinkets-clerk-appearance.ts",
-    "apps/studio/src/lib/studio-clerk-appearance.ts",
-    # Pending design app + Chromatic wiring (FOUNDER_ACTIONS.md; paths land with apps/design PRs).
-    "apps/design/vercel.json",
-    "apps/design/chromatic.config.json",
-    "docs/infra/CHROMATIC_VRT.md",
-    # Auth / Clerk docs cite planned or not-yet-landed paths (see KNOWLEDGE, VMP, CLERK_KEY_PROPAGATION).
-    "infra/CLERK_STUDIO.md",
-    "docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md",
-    "scripts/vault-set.sh",
-    "apps/paperworklabs/vercel.json",
-    "apps/brain/vercel.json",
-    # Created by `vercel link` under apps/studio; .vercel/ is gitignored (see
-    # apps/studio/.gitignore). Docs correctly cite the path for operators.
+    # Produced by `vercel link`; gitignored per app. Docs cite the conventional path.
     "apps/studio/.vercel/project.json",
-    # docs/infra/VERCEL_PROJECTS.md cites the trinkets project file the
-    # founder will create when running `vercel link` (the doc itself is
-    # the followup checklist for that). Same gitignore pattern as studio.
     "apps/trinkets/.vercel/project.json",
 }
 

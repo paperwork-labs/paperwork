@@ -72,7 +72,7 @@ Clerk UI is aligned with Studio’s dark zinc palette via the **Appearance** API
 
 | Piece | Path |
 | ----- | ---- |
-| Global `appearance` (all Clerk surfaces: SignIn, SignUp, `UserButton`, modals) | `apps/studio/src/lib/studio-clerk-appearance.ts`, passed to `<ClerkProvider>` in `apps/studio/src/app/layout.tsx` |
+| Global `appearance` (all Clerk surfaces: SignIn, SignUp, `UserButton`, modals) | `packages/auth-clerk/src/appearance/presets.ts` (`studioAppearance`), passed to `<ClerkProvider>` in `apps/studio/src/app/layout.tsx` |
 | Auth route layout (full-viewport gradient shell, centers the form) | `apps/studio/src/components/clerk/ClerkAuthPageShell.tsx`, used by `apps/studio/src/app/sign-in/[[...sign-in]]/page.tsx` and `apps/studio/src/app/sign-up/[[...sign-up]]/page.tsx` |
 
 `baseTheme` is `@clerk/themes`’s `dark` theme; CSS variables and `elements` extend it for Paperwork Studio.

@@ -110,7 +110,7 @@ First run of `scripts/check_doc_refs.py`:
 | 104 | `docs/axiomfolio/ARCHITECTURE.md` |
 | 88 | `docs/axiomfolio/plans/UX_AUDIT_2026Q2.md` |
 | 82 | `docs/axiomfolio/plans/MEDALLION_AUDIT_2026Q2.md` |
-| 75 | `docs/axiomfolio/KNOWLEDGE.md` |
+| 75 | `docs/axiomfolio/DECISIONS.md` |
 | 74 | `docs/axiomfolio/plans/WAVE_F_TRADING_PARITY.md` |
 | 74 | `docs/axiomfolio/specs/v1-phase-3-execution-spec.md` |
 | 61 | `docs/axiomfolio/PORTFOLIO.md` |

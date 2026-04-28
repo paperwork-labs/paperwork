@@ -7,7 +7,7 @@ status: active
 ---
 # Product Requirements Document
 
-> **STRATEGIC UPDATE — 2026-04-09**: This PRD is **historically frozen** and reflects the v0 single-operator vision. The current product strategy, milestones, and scope live in [`docs/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md).
+> **STRATEGIC UPDATE — 2026-04-09**: This PRD is **historically frozen** and reflects the v0 single-operator vision. The current product strategy, milestones, and scope live in [`docs/axiomfolio/plans/MASTER_PLAN_2026.md`](plans/MASTER_PLAN_2026.md).
 >
 > Key shifts since this doc was written:
 > - **Multi-tenant SaaS** — was non-goal, now core. Five subscription tiers (Free / Pro / Pro+ / Quant Desk / Enterprise).

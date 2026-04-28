@@ -1250,7 +1250,7 @@ All model references use pinned versions via `model_registry.py` (F95). Pre-flig
 ## 4. Scale-Ready Abstractions
 
 ```python
-# apis/brain/app/protocols.py
+# Illustrative Protocol stubs (interfaces distributed across services today)
 class VectorStore(Protocol):
     async def search(self, embedding: list[float], filters: dict, limit: int) -> list[SearchResult]: ...
     async def upsert(self, id: str, embedding: list[float], metadata: dict) -> None: ...
@@ -2669,19 +2669,5 @@ All 228 findings integrated. No finding dismissed.
 
 ## 26. Superseded Documents
 
-This v10 document is the single source of truth for Brain architecture. Delete all prior versions:
+This v10 document is the single source of truth for Brain architecture. Earlier Cursor IDE plan exports lived under **`.cursor/plans/`** locally (gitignored; absent from CI checkouts). Treat those snapshots as superseded by this section — do not resurrect historical plan filenames as canonical paths.
 
-- `.cursor/plans/agent_brain_architecture_0740e1b6.plan.md` (v3)
-- `.cursor/plans/brain_architecture_v4_19324450.plan.md` (v4)
-- `.cursor/plans/brain_v5_stress_test_9e11150d.plan.md` (v5)
-- `.cursor/plans/brain_final_architecture_b053e182.plan.md` (v6 architecture)
-- `.cursor/plans/brain_final_review_ee1173c0.plan.md` (v6 review)
-- `.cursor/plans/brain_definitive_architecture_dedea6a5.plan.md` (v6 merged)
-- `.cursor/plans/brain_definitive_architecture_v7_5e551857.plan.md` (v7)
-- `.cursor/plans/brain_v8_amendments_18bf5224.plan.md` (v8 amendments)
-- `.cursor/plans/brain_a+_push_3cf07375.plan.md` (v9 A+ push amendments)
-- `.cursor/plans/brain_fill_meter_strategy_824bf148.plan.md` (v9 fill meter strategy)
-- `.cursor/plans/consolidate_brain_architecture_69aca229.plan.md` (v9 consolidation plan)
-- `.cursor/plans/shared_brain_+_naming_2f4ffd4c.plan.md` (v9 circle sharing plan)
-- `.cursor/plans/brain_interaction_+_final_review_28401130.plan.md` (v9 interaction model + final review plan)
-- `.cursor/plans/mckinsey_brain_review_ed4c3d1a.plan.md` (v10 McKinsey review + life intelligence reframe)

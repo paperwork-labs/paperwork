@@ -60,7 +60,7 @@ Clerk UI is aligned with LaunchFree’s dark slate + teal palette via the **Appe
 
 | Piece | Path |
 | ----- | ---- |
-| Global `appearance` (all Clerk surfaces: SignIn, SignUp, `UserButton`, modals) | `apps/launchfree/src/lib/launchfree-clerk-appearance.ts`, passed to `<ClerkProvider>` in `apps/launchfree/src/app/layout.tsx` |
+| Global `appearance` (all Clerk surfaces: SignIn, SignUp, `UserButton`, modals) | `packages/auth-clerk/src/appearance/presets.ts` (`launchFreeAppearance`), passed to `<ClerkProvider>` in `apps/launchfree/src/app/layout.tsx` |
 | Auth route layout (full-viewport gradient shell, centers the form) | `apps/launchfree/src/components/clerk/ClerkAuthPageShell.tsx`, used by `apps/launchfree/src/app/sign-in/[[...sign-in]]/page.tsx` and `apps/launchfree/src/app/sign-up/[[...sign-up]]/page.tsx` |
 
 `baseTheme` is `@clerk/themes`’s `dark` theme; CSS variables and `elements` extend it. Colors resolve at runtime from `[data-theme="launchfree"]` in `packages/ui/src/themes.css` (reinforced in `apps/launchfree/src/app/globals.css`).
