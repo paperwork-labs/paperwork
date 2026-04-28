@@ -1,0 +1,27 @@
+{
+  "schema": {
+    "description": "Per-dispatch log for Brain self-improvement loop (cheap-agent-fleet.mdc rule #6). Each cheap-agent dispatch writes one entry; outcome populated post-merge from pr_outcomes.json. WS-64 reads this to answer 'which model handles which workstream-type best?'.",
+    "entry": {
+      "dispatch_id": "uuid",
+      "dispatched_at": "RFC3339Z",
+      "agent_model": "str (e.g. 'composer-1.5')",
+      "subagent_type": "str (e.g. 'shell', 'generalPurpose')",
+      "workstream_id": "str (e.g. 'WS-42-iac-drift-detector')",
+      "workstream_type": "str (e.g. 'drift-detector', 'kill-switch', 'platform-cli')",
+      "blast_radius": "str (one of: 'data-only', 'brain-code', 'app-code', 'infra')",
+      "task_summary": "str (<=500 chars)",
+      "branch": "str | null",
+      "pr_number": "int | null (set after agent opens PR)",
+      "outcome": {
+        "ci_initial_pass": "bool | null",
+        "review_pass": "bool | null (orchestrator diff-review per rule #3)",
+        "review_iterations": "int (rounds of feedback before merge)",
+        "merged_at": "RFC3339Z | null",
+        "reverted": "bool | null",
+        "wall_clock_seconds": "int | null"
+      }
+    }
+  },
+  "version": 1,
+  "dispatches": []
+}

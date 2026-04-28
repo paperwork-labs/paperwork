@@ -1,0 +1,19 @@
+{
+  "schema": {
+    "description": "Honest scope overflow tracking (cheap-agent-fleet.mdc rule #5). Long-tail items that overflow the 48-hour blitz become Brain's first L5 self-prioritized workstreams in Phase H. NEVER silently dropped — every entry must be visible to founder and become a candidate for Phase H decomposition.",
+    "entry": {
+      "id": "str (e.g. 'LT-001')",
+      "title": "str",
+      "deferred_from_workstream": "str (parent WS id, e.g. 'WS-58-pwl-cli')",
+      "deferred_at": "RFC3339Z",
+      "deferred_in_pr": "int | null",
+      "rationale": "str (why deferred)",
+      "blocker": "str | null (what blocks completion)",
+      "estimated_effort": "str (e.g. '1 cheap-agent day', '4 cheap-agent days')",
+      "phase_h_picked_up": "bool (true once Brain's strategic_planner adds it as a workstream)",
+      "phase_h_workstream_id": "str | null"
+    }
+  },
+  "version": 1,
+  "items": []
+}

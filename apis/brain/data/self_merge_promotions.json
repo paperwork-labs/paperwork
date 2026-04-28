@@ -1,0 +1,27 @@
+{
+  "schema": {
+    "description": "Brain self-merge graduation track record (WS-44). Brain promotes from data-files-only allowlist to apis/brain/ code after N=50 clean merges with zero unreverted reverts in the 48-hour blitz. Logs every promotion + every revert. Per cheap-agent-fleet.mdc rule #6.",
+    "entry_promotion": {
+      "type": "promotion",
+      "from_scope": "str (e.g. 'data-files-only')",
+      "to_scope": "str (e.g. 'apis/brain/code')",
+      "promoted_at": "RFC3339Z",
+      "track_record": {
+        "clean_merges": "int (count of green-CI merges since last promotion or epoch)",
+        "unreverted_reverts": "int",
+        "evaluation_window": "str (e.g. '48h-blitz', '7d', '30d')"
+      }
+    },
+    "entry_revert": {
+      "type": "revert",
+      "pr_number": "int",
+      "reverted_at": "RFC3339Z",
+      "reason": "str (e.g. 'post-merge CI fail', 'incident triggered')"
+    }
+  },
+  "version": 1,
+  "current_scope": "data-files-only",
+  "current_clean_merges": 0,
+  "graduation_threshold_n": 50,
+  "history": []
+}
