@@ -16,6 +16,23 @@ Cloudflare account (`Sankalp404@gmail.com`) to a Paperwork Labs work account,
 and the **ongoing operational procedures** (token rotation, zone admission,
 team access) once the work account is canonical.
 
+## Migration status (live)
+
+| Zone | State | Account ID | Zone ID | Notes |
+|---|---|---|---|---|
+| `paperworklabs.com` | ✅ migrated 2026-04-28 | `7e8976a674c66193992c04d61d5a6747` | `6efe0c9f87c80a21617ff040fa2e55dd` | NS=`janet+noel.ns.cloudflare.com`. Spaceship registrar updated. Status=active. |
+| `axiomfolio.com` | ✅ migrated 2026-04-28 | `7e8976a674c66193992c04d61d5a6747` | `e06277688d45265fb6e1240ca17e796e` | NS=`janet+noel.ns.cloudflare.com`. All A/CNAME records auto-imported. Status=active. Production 200 OK across `axiomfolio.com / www / api`. |
+| `filefree.ai` | not yet migrated | — | — | Pending. Bring under work account when next touching DNS. |
+| `launchfree.ai` | not yet migrated | — | — | Pending. |
+| `distill.tax` | not yet migrated | — | — | Pending. |
+
+**Phase 2 (paperworklabs.com)** and **Phase 3 (axiomfolio.com)** below are
+historical playbooks — both completed 2026-04-28. Use them as reference if a
+similar migration is needed in the future, or for emergency rollback.
+
+**Old personal-account zones**: keep for 24h soak (until ~2026-04-29 21:00 UTC),
+then delete from `Sankalp404@gmail.com`'s Cloudflare account.
+
 ## Why migrate
 
 | Reason | Risk if we don't |
