@@ -142,7 +142,10 @@ async def test_pr_opened_when_drift(monkeypatch: pytest.MonkeyPatch) -> None:
         AsyncMock(return_value="b" * 40),
     )
     create_pr = AsyncMock(
-        return_value={"number": 9001, "html_url": "https://github.com/paperwork-labs/paperwork/pull/9001"}
+        return_value={
+            "number": 9001,
+            "html_url": "https://github.com/paperwork-labs/paperwork/pull/9001",
+        }
     )
     monkeypatch.setattr(wb.gh, "create_github_pull", create_pr)
 
@@ -184,7 +187,10 @@ async def test_invariants_enforced_completed_coerces_percent(
     monkeypatch.setattr(wb.gh, "create_git_ref", AsyncMock(return_value=True))
     monkeypatch.setattr(wb.gh, "commit_files_to_branch", AsyncMock(return_value="c" * 40))
     create_pr = AsyncMock(
-        return_value={"number": 9002, "html_url": "https://github.com/paperwork-labs/paperwork/pull/9002"}
+        return_value={
+            "number": 9002,
+            "html_url": "https://github.com/paperwork-labs/paperwork/pull/9002",
+        }
     )
     monkeypatch.setattr(wb.gh, "create_github_pull", create_pr)
 

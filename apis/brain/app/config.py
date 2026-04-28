@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     # --- Scheduler env split (Render / ``brain-api``, not all mirrored here) ---
     #
     # * **Former n8n crons** — daily/weekly briefings, weekly strategy, sprint
-    #   kickoff/close, infra heartbeat/health, credential expiry, and P2.8–P2.10
+    #   kickoff/close, infra heartbeat/health, credential expiry, and P2.8-P2.10
     #   data jobs register whenever ``BRAIN_SCHEDULER_ENABLED`` is true (Track K
     #   cutover flags retired; see ``chore/brain-delete-legacy-owns-flags``).
     #

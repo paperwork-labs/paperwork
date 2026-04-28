@@ -3,18 +3,21 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import timezone
+from datetime import UTC
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers import _history, sprint_kickoff
 from app.schedulers.sprint_kickoff import install, run_sprint_kickoff
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def test_registers_one_job_id() -> None:
@@ -25,7 +28,7 @@ def test_registers_one_job_id() -> None:
     assert jobs[0].id == "brain_sprint_kickoff"
     t = jobs[0].trigger
     assert isinstance(t, CronTrigger)
-    ref = CronTrigger.from_crontab("0 7 * * 1", timezone=timezone.utc)
+    ref = CronTrigger.from_crontab("0 7 * * 1", timezone=UTC)
     assert t.fields == ref.fields
 
 
@@ -55,9 +58,7 @@ async def test_run_success_records_scheduler_row(
     assert r.status == "success"
     assert r.error_text is None
     post.assert_awaited()
-    assert any(
-        c.kwargs.get("channel_id") == "C0AMEQV199P" for c in post.await_args_list
-    )
+    assert any(c.kwargs.get("channel_id") == "C0AMEQV199P" for c in post.await_args_list)
     mock_process.assert_awaited_once()
     _args, kwargs = mock_process.call_args
     assert kwargs.get("persona_pin") == "strategy"

@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers import _history, brain_weekly_briefing
 from app.schedulers.brain_weekly_briefing import install, run_weekly_briefing
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def test_registers_one_job_id() -> None:
@@ -38,14 +41,18 @@ async def test_run_success_records_scheduler_row(
         yield db_session
 
     monkeypatch.setattr(_history, "async_session_factory", lambda: _fake_context())
-    mock_process = AsyncMock(return_value={"response": "weekly body", "persona": "ea", "model": "x"})
+    mock_process = AsyncMock(
+        return_value={"response": "weekly body", "persona": "ea", "model": "x"}
+    )
     monkeypatch.setattr(brain_weekly_briefing.brain_agent, "process", mock_process)
     post = AsyncMock()
     monkeypatch.setattr(brain_weekly_briefing.slack_outbound, "post_message", post)
     await run_weekly_briefing()
     await db_session.commit()
     r = (
-        await db_session.execute(select(SchedulerRun).where(SchedulerRun.job_id == "brain_weekly_briefing"))
+        await db_session.execute(
+            select(SchedulerRun).where(SchedulerRun.job_id == "brain_weekly_briefing")
+        )
     ).scalar_one()
     assert r.status == "success"
     assert r.error_text is None
@@ -71,7 +78,9 @@ async def test_run_error_records_and_does_not_raise(
     await run_weekly_briefing()
     await db_session.commit()
     r = (
-        await db_session.execute(select(SchedulerRun).where(SchedulerRun.job_id == "brain_weekly_briefing"))
+        await db_session.execute(
+            select(SchedulerRun).where(SchedulerRun.job_id == "brain_weekly_briefing")
+        )
     ).scalar_one()
     assert r.status == "error"
     assert r.error_text is not None

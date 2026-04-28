@@ -16,8 +16,6 @@ from app.config import settings
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers import _history, data_annual_update
 from app.schedulers.data_annual_update import _build_message, install, run_data_annual_update
-from app.schedulers.n8n_mirror import N8N_MIRROR_SPECS, n8n_mirror_env_var_name
-from app.schedulers.n8n_mirror import install as install_n8n_mirror
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

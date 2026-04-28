@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import timezone
+from datetime import UTC
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock
 
 import httpx
@@ -11,11 +12,13 @@ import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers import _history, sprint_close
 from app.schedulers.sprint_close import install, run_sprint_close
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def test_registers_one_job_id() -> None:
@@ -26,7 +29,7 @@ def test_registers_one_job_id() -> None:
     assert jobs[0].id == "brain_sprint_close"
     t = jobs[0].trigger
     assert isinstance(t, CronTrigger)
-    ref = CronTrigger.from_crontab("0 21 * * 5", timezone=timezone.utc)
+    ref = CronTrigger.from_crontab("0 21 * * 5", timezone=UTC)
     assert t.fields == ref.fields
 
 
@@ -107,8 +110,13 @@ async def test_github_commit_failure_records_error(
     )
 
     async def _put_fail(*_a, **kwargs):
-        req = httpx.Request("PUT", "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/KNOWLEDGE.md")
-        raise httpx.HTTPStatusError("server error", request=req, response=httpx.Response(500, request=req))
+        req = httpx.Request(
+            "PUT",
+            "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/KNOWLEDGE.md",
+        )
+        raise httpx.HTTPStatusError(
+            "server error", request=req, response=httpx.Response(500, request=req)
+        )
 
     monkeypatch.setattr(sprint_close, "_github_append_sprint_close_to_knowledge", _put_fail)
     await run_sprint_close()

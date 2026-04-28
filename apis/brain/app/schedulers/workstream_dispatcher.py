@@ -48,9 +48,7 @@ def _now_ms(now: datetime | None) -> int:
 async def run_workstream_dispatcher(now: datetime | None = None) -> WorkstreamDispatcherResult:
     """Load workstreams, select dispatchable rows, fire GitHub Actions, log to Postgres."""
     if not settings.BRAIN_SCHEDULER_ENABLED:
-        return WorkstreamDispatcherResult(
-            skipped=True, skip_reason="BRAIN_SCHEDULER_ENABLED=false"
-        )
+        return WorkstreamDispatcherResult(skipped=True, skip_reason="BRAIN_SCHEDULER_ENABLED=false")
 
     data = load_workstreams_file()
     candidates = dispatchable_workstreams(data, n=_TOP_N, now_ms=_now_ms(now))
@@ -72,11 +70,7 @@ async def run_workstream_dispatcher(now: datetime | None = None) -> WorkstreamDi
             continue
 
         wf_raw = (ws.github_actions_workflow or "").strip() or "agent-sprint-runner"
-        wf_name = (
-            wf_raw
-            if wf_raw.endswith((".yml", ".yaml"))
-            else f"{wf_raw}.yml"
-        )
+        wf_name = wf_raw if wf_raw.endswith((".yml", ".yaml")) else f"{wf_raw}.yml"
         inputs = {
             "brief_tag": ws.brief_tag,
             "title": ws.title,
