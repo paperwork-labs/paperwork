@@ -493,6 +493,13 @@ docs:
     tags: []
     owners: [infra]
     category: reference
+  - slug: workstreams-board
+    path: docs/infra/WORKSTREAMS_BOARD.md
+    title: Workstreams board (Track Z)
+    summary: "Single drag-reorderable list of every active workstream. The Brain dispatcher reads the order on a cadence and pushes cheap subagents at the top-N. percent_done is computed ambiently from merged-PR brief_tag matches."
+    tags: [infra, brain, studio, dispatch]
+    owners: [infra, brain]
+    category: reference
   - slug: vercel-linking
     path: docs/infra/VERCEL_LINKING.md
     title: Vercel linking (monorepo)
