@@ -92,7 +92,7 @@ export default function ChartShareClient({ token }: ChartShareClientProps) {
             {message}
           </p>
           <Button className="mt-6" asChild variant="default">
-            <Link href="/register">Create a free account</Link>
+            <Link href="/sign-up">Create a free account</Link>
           </Button>
         </div>
       </div>
@@ -131,10 +131,10 @@ export default function ChartShareClient({ token }: ChartShareClientProps) {
           </div>
           <div className="flex flex-wrap gap-2">
             <Button asChild variant="default" size="sm">
-              <Link href="/register">Sign up free</Link>
+              <Link href="/sign-up">Sign up free</Link>
             </Button>
             <Button asChild variant="outline" size="sm">
-              <Link href="/login">Log in</Link>
+              <Link href="/sign-in">Log in</Link>
             </Button>
           </div>
         </header>

@@ -684,7 +684,7 @@ const DashboardLayout: React.FC = () => {
                       className="cursor-default rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
                       onSelect={() => {
                         logout();
-                        navigate('/login');
+                        navigate('/sign-in');
                       }}
                     >
                       Logout

@@ -74,7 +74,7 @@ export default function WhyFreeClient() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild>
-                <Link href="/register">Start free — no credit card</Link>
+                <Link href="/sign-up">Start free — no credit card</Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href="/pricing">See pricing</Link>

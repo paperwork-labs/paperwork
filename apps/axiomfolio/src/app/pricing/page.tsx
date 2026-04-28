@@ -14,7 +14,8 @@
  * --------------------
  * No new Stripe surface lives in this PR (per the v1 sprint plan
  * constraint "no NEW Stripe routes"). For paid CTAs we route
- * unauthenticated visitors to `/register?upgrade=<tier>` and show a
+ * unauthenticated visitors to `/sign-up?upgrade=<tier>` (via `/register`
+ * redirect) and show a
  * "Checkout coming online" disabled state for already-signed-in users.
  * The actual checkout-session creation route lands in a follow-up PR;
  * once it does, the `handleCtaClick` branch flips to call that
@@ -63,7 +64,7 @@ export default function PricingPage() {
         router.push(tier.cta_route);
         return;
       }
-      router.push(`/register?upgrade=${encodeURIComponent(tier.tier)}`);
+      router.push(`/sign-up?upgrade=${encodeURIComponent(tier.tier)}`);
     },
     [router],
   );
@@ -140,7 +141,7 @@ export default function PricingPage() {
             </p>
             <div className="flex items-center justify-center gap-3">
               <Button asChild>
-                <Link href="/register">Get started</Link>
+                <Link href="/sign-up">Get started</Link>
               </Button>
               <Button asChild variant="outline">
                 <Link href="/why-free">Why free</Link>

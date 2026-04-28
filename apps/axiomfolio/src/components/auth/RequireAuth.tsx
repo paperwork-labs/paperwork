@@ -10,7 +10,7 @@ const RequireAuth: React.FC<{ children: React.ReactElement }> = ({ children }) =
     return null;
   }
   if (!token) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/sign-in" state={{ from: location }} replace />;
   }
   return children;
 };
