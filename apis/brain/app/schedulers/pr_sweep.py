@@ -310,6 +310,27 @@ def start_scheduler() -> AsyncIOScheduler | None:
     except Exception:
         logger.exception("Failed to install workstream_progress_writeback job")
 
+    try:
+        from app.schedulers import qa_security_scan
+
+        qa_security_scan.install(sched)
+    except Exception:
+        logger.exception("Failed to install qa_security_scan job")
+
+    try:
+        from app.schedulers import growth_content_writer
+
+        growth_content_writer.install(sched)
+    except Exception:
+        logger.exception("Failed to install growth_content_writer job")
+
+    try:
+        from app.schedulers import social_content_generator
+
+        social_content_generator.install(sched)
+    except Exception:
+        logger.exception("Failed to install social_content_generator job")
+
     sched.start()
     _scheduler = sched
     logger.info("APScheduler started: pr_sweep every %d min + proactive_cadence hourly", minutes)
