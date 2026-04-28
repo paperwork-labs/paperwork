@@ -1,28 +1,37 @@
 "use client";
 
 import * as React from "react";
+import { useUser } from "@clerk/nextjs";
 import { usePathname, useRouter } from "next/navigation";
+
 import { useAuth } from "@/context/AuthContext";
 
 /**
- * Client-side auth gate matching Vite `RequireAuth` (redirect to `/login` when no `qm_token`).
+ * Dual-mode client gate (WS-14): Clerk session OR legacy `qm_token`.
+ * Mirrors `@paperwork-labs/auth-clerk` RequireAuth redirect shape (`/sign-in?redirect_url=…`).
  */
 export function RequireAuthClient({ children }: { children: React.ReactNode }) {
-  const { token, ready } = useAuth();
+  const { isLoaded: clerkLoaded, isSignedIn } = useUser();
+  const { token, ready: legacyReady } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  React.useEffect(() => {
-    if (!ready || token) return;
-    const search = typeof window !== "undefined" ? window.location.search : "";
-    const returnTo = `${pathname}${search}`;
-    router.replace(`/login?returnTo=${encodeURIComponent(returnTo)}`);
-  }, [ready, token, router, pathname]);
+  const legacyOk = legacyReady && !!token;
+  const clerkOk = clerkLoaded && !!isSignedIn;
+  const isLoaded = clerkLoaded && (isSignedIn || legacyReady);
+  const allowed = clerkOk || legacyOk;
 
-  if (!ready) {
+  React.useEffect(() => {
+    if (!isLoaded || allowed) return;
+    const search = typeof window !== "undefined" ? window.location.search : "";
+    const returnPath = `${pathname}${search}`;
+    router.replace(`/sign-in?redirect_url=${encodeURIComponent(returnPath)}`);
+  }, [isLoaded, allowed, router, pathname]);
+
+  if (!isLoaded) {
     return null;
   }
-  if (!token) {
+  if (!allowed) {
     return null;
   }
   return <>{children}</>;
