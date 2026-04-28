@@ -291,6 +291,7 @@ STATUS_ALIASES = {
     "done": "shipped",
     "complete": "shipped",
     "completed": "shipped",
+    "closed": "shipped",
     "decided": "in_progress",
     "approved": "in_progress",
     "blocked": "paused",

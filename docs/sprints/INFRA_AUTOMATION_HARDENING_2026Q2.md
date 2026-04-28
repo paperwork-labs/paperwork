@@ -16,6 +16,10 @@ sprint:
     - docs/INFRA.md
     - docs/BRAIN_ARCHITECTURE.md
     - docs/PERSONA_PLATFORM.md
+closes_pr_urls:
+  - https://github.com/paperwork-labs/paperwork/pull/141
+closes_workstreams: []
+last_auto_status_check_at: null
 ---
 
 # Infra & Automation Hardening — 2026 Q2

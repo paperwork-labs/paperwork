@@ -28,6 +28,7 @@ _CUTOVER_JOB_IDS: frozenset[str] = frozenset(
 _OPERATIONAL_JOB_IDS: frozenset[str] = frozenset(
     {
         "sprint_auto_logger",
+        "sprint_md_auto_close",
         "brain_agent_sprint_planner",
         "workstream_dispatcher",
         "workstream_progress",

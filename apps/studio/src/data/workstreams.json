@@ -639,6 +639,27 @@
       "estimated_pr_count": 1,
       "github_actions_workflow": null,
       "related_plan": null
+    },
+    {
+      "id": "WS-41-workstream-sprint-accuracy",
+      "title": "Workstream + sprint accuracy (Brain derive, freshness, auto-close)",
+      "track": "Z",
+      "priority": 35,
+      "status": "in_progress",
+      "percent_done": 60,
+      "owner": "brain",
+      "brief_tag": "track:workstream-sprint-accuracy",
+      "blockers": [],
+      "last_pr": null,
+      "last_activity": "2026-04-28T22:00:00Z",
+      "last_dispatched_at": null,
+      "notes": "Single PR: writeback updated_at + board envelope, GitHub-derived percent with override_percent, Studio KPIs/pending + freshness banners, sprint auto-close from closes_pr_urls / closes_workstreams.",
+      "estimated_pr_count": 1,
+      "github_actions_workflow": null,
+      "related_plan": null,
+      "updated_at": null,
+      "override_percent": 60,
+      "derived_percent": null
     }
   ]
 }

@@ -40,7 +40,7 @@ _PR_TITLE = "chore(brain): workstream progress sync (auto)"
 _HEAD_PREFIX = "bot/workstream-progress-"
 _SCHEDULER_LOCK_KEY = "brain:scheduler:workstream_progress_writeback:lock"
 _SCHEDULER_LOCK_TTL_SECONDS = 300
-_BACKFILL_UPDATED_AT_FLOOR = "2020-01-01T00:00:00Z"
+_BACKFILL_UPDATED_AT_FLOOR = "2026-04-28T21:34:00Z"
 
 
 @dataclass

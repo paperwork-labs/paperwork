@@ -35,6 +35,12 @@ export type WorkstreamsBoardClientProps = {
   kpis: WorkstreamKpis;
   /** Shown when live Brain fetch failed or returned invalid data (build snapshot in use). */
   staleDataBanner?: string | null;
+  /** When Brain returned a freshness envelope — relative time since ``generated_at``. */
+  brainFreshnessBanner?: string | null;
+  /** Brain proxy error / timeout — Studio is using bundled ``workstreams.json``. */
+  bundledFallbackBanner?: string | null;
+  /** Brain returned file shape without provenance envelope. */
+  legacyBrainShapeBanner?: string | null;
 };
 
 const reorderEnabled =
@@ -44,6 +50,9 @@ export function WorkstreamsBoardClient({
   parsedFile,
   kpis,
   staleDataBanner = null,
+  brainFreshnessBanner = null,
+  bundledFallbackBanner = null,
+  legacyBrainShapeBanner = null,
 }: WorkstreamsBoardClientProps) {
   const byId = useMemo(
     () => new Map(parsedFile.workstreams.map((w) => [w.id, w])),
@@ -152,6 +161,36 @@ export function WorkstreamsBoardClient({
             reorder persists via Brain PR when enabled.
           </p>
         </header>
+
+        {bundledFallbackBanner ? (
+          <div
+            data-testid="workstreams-bundled-fallback-banner"
+            aria-live="polite"
+            className="rounded-lg border border-amber-400/50 bg-amber-400/10 px-3 py-2 text-sm text-amber-50"
+          >
+            {bundledFallbackBanner}
+          </div>
+        ) : null}
+
+        {brainFreshnessBanner ? (
+          <div
+            data-testid="workstreams-brain-freshness-banner"
+            aria-live="polite"
+            className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-50"
+          >
+            {brainFreshnessBanner}
+          </div>
+        ) : null}
+
+        {legacyBrainShapeBanner ? (
+          <div
+            data-testid="workstreams-legacy-brain-banner"
+            aria-live="polite"
+            className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100"
+          >
+            {legacyBrainShapeBanner}
+          </div>
+        ) : null}
 
         {staleDataBanner ? (
           <div
@@ -266,14 +305,14 @@ function KpiStrip({ kpis }: { kpis: WorkstreamKpis }) {
   }[] = [
     { label: "Total", value: kpis.total },
     { label: "Active", value: kpis.active },
+    { label: "Pending", value: kpis.pending },
     { label: "Blocked", value: kpis.blocked },
     { label: "Completed", value: kpis.completed },
-    { label: "Cancelled", value: kpis.cancelled },
     { label: "Avg % done", value: `${kpis.avg_percent_done}%`, tabular: true },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
       {cards.map((c) => (
         <div
           key={c.label}

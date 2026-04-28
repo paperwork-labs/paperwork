@@ -13,6 +13,17 @@ from app.schemas.workstream import Workstream, WorkstreamsFile
 from app.services import workstream_progress_writeback as wb
 
 
+def _mute_derive_and_backfill(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _ident(x: WorkstreamsFile) -> WorkstreamsFile:
+        return x
+
+    async def _derive(workstreams: list[Workstream]) -> dict[str, int | None]:
+        return {w.id: None for w in workstreams}
+
+    monkeypatch.setattr(wb, "_backfill_null_updated_at_inplace", _ident)
+    monkeypatch.setattr(wb.derive, "compute_derived_percents_for_workstreams", _derive)
+
+
 def _ws(**kwargs: Any) -> Workstream:
     defaults: dict[str, Any] = {
         "id": "WS-01-prog",
@@ -31,6 +42,7 @@ def _ws(**kwargs: Any) -> Workstream:
         "estimated_pr_count": 2,
         "github_actions_workflow": None,
         "related_plan": None,
+        "updated_at": "2026-04-27T12:00:00Z",
     }
     defaults.update(kwargs)
     return Workstream(**defaults)
@@ -87,6 +99,7 @@ async def test_recovers_when_create_git_ref_fails_but_branch_exists(
     monkeypatch.setattr(settings, "GITHUB_REPO", "paperwork-labs/paperwork")
     monkeypatch.setattr(wb, "try_acquire_scheduler_lock", AsyncMock(return_value=True))
     monkeypatch.setattr(wb, "release_scheduler_lock", AsyncMock())
+    _mute_derive_and_backfill(monkeypatch)
 
     w = _ws(percent_done=50, status="in_progress")
     monkeypatch.setattr(wb, "load_workstreams_file", lambda **_: _file(w))
@@ -127,6 +140,7 @@ async def test_recovers_when_create_git_ref_fails_open_pr_appears(
     monkeypatch.setattr(settings, "GITHUB_REPO", "paperwork-labs/paperwork")
     monkeypatch.setattr(wb, "try_acquire_scheduler_lock", AsyncMock(return_value=True))
     monkeypatch.setattr(wb, "release_scheduler_lock", AsyncMock())
+    _mute_derive_and_backfill(monkeypatch)
 
     w = _ws(percent_done=10, status="in_progress")
     monkeypatch.setattr(wb, "load_workstreams_file", lambda **_: _file(w))
@@ -161,6 +175,7 @@ async def test_raises_after_two_attempts_without_adoption(monkeypatch: pytest.Mo
     monkeypatch.setattr(settings, "GITHUB_REPO", "paperwork-labs/paperwork")
     monkeypatch.setattr(wb, "try_acquire_scheduler_lock", AsyncMock(return_value=True))
     monkeypatch.setattr(wb, "release_scheduler_lock", AsyncMock())
+    _mute_derive_and_backfill(monkeypatch)
 
     w = _ws(percent_done=50, status="in_progress")
     monkeypatch.setattr(wb, "load_workstreams_file", lambda **_: _file(w))

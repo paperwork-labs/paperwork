@@ -21,6 +21,12 @@ sprint:
   plans:
     - docs/DOCS_STREAMLINE_2026Q2.md
     - docs/sprints/README.md
+closes_pr_urls:
+  - https://github.com/paperwork-labs/paperwork/pull/142
+  - https://github.com/paperwork-labs/paperwork/pull/143
+  - https://github.com/paperwork-labs/paperwork/pull/144
+closes_workstreams: []
+last_auto_status_check_at: null
 ---
 
 # Docs Streamline + Trackers Spine — 2026 Q2

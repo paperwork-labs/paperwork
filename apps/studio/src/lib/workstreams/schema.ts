@@ -124,7 +124,7 @@ export const WorkstreamsBoardBrainEnvelopeSchema = WorkstreamsFileBaseSchema.ext
   generated_at: z.string(),
   source: z.enum(["brain-writeback", "bundled-json-fallback"]),
   ttl_seconds: z.number().int().nonnegative(),
-  writeback_last_run_at: z.string().nullable().optional(),
+  writeback_last_run_at: z.string().datetime().nullable(),
 }).superRefine(_refineWorkstreamsFile);
 
 export type Workstream = z.infer<typeof WorkstreamSchema>;

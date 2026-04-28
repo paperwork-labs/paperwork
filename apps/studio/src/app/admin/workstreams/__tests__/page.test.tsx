@@ -15,6 +15,16 @@ vi.mock("next/headers", () => ({
     }),
 }));
 
+function brainEnvelopePayload() {
+  return {
+    ...workstreamsJson,
+    generated_at: "2026-04-28T12:00:00Z",
+    source: "brain-writeback" as const,
+    ttl_seconds: 60,
+    writeback_last_run_at: null,
+  };
+}
+
 const fetchMock = vi.fn();
 
 describe("/admin/workstreams page module", () => {
@@ -23,7 +33,7 @@ describe("/admin/workstreams page module", () => {
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockImplementation(async (url: string | URL) => {
       if (String(url).includes("/api/admin/workstreams")) {
-        return new Response(JSON.stringify(workstreamsJson), {
+        return new Response(JSON.stringify(brainEnvelopePayload()), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
@@ -44,15 +54,18 @@ describe("/admin/workstreams page module", () => {
     expect(tree).toBeTruthy();
     render(tree);
     expect(screen.queryByTestId("workstreams-stale-banner")).toBeNull();
+    expect(screen.getByTestId("workstreams-brain-freshness-banner").textContent).toMatch(
+      /Last sync:/,
+    );
   });
 
-  it("shows stale snapshot banner when Brain proxy returns 5xx", async () => {
+  it("shows bundled fallback banner when Brain proxy returns 5xx", async () => {
     fetchMock.mockImplementation(async () => new Response("", { status: 503 }));
     const { default: AdminWorkstreamsPage } = await import("../page");
     const tree = await AdminWorkstreamsPage();
     render(tree);
-    expect(screen.getByTestId("workstreams-stale-banner").textContent).toMatch(
-      /Live Brain unavailable/,
+    expect(screen.getByTestId("workstreams-bundled-fallback-banner").textContent).toMatch(
+      /Brain unreachable/,
     );
   });
 });

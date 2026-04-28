@@ -1,6 +1,7 @@
 import workstreamsJson from "@/data/workstreams.json";
 import { headers } from "next/headers";
 import {
+  WorkstreamsBoardBrainEnvelopeSchema,
   WorkstreamsFileSchema,
   computeKpis,
 } from "@/lib/workstreams/schema";
@@ -22,6 +23,25 @@ async function resolveBaseUrl(): Promise<string> {
   return `${proto}://${host}`;
 }
 
+function relativeAgo(iso: string): string {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "unknown time";
+  const sec = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 48) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  return `${day}d ago`;
+}
+
+function bundledCommitLabel(): string {
+  const sha = process.env.VERCEL_GIT_COMMIT_SHA?.trim();
+  if (sha && sha.length >= 7) return sha.slice(0, 7);
+  return "local-dev";
+}
+
 function staleBannerFromBuildSnapshot(updatedIso: string): string {
   return `Live Brain unavailable — showing last build's snapshot from ${updatedIso}.`;
 }
@@ -32,23 +52,42 @@ export default async function AdminWorkstreamsPage() {
 
   let parsedFile = fallbackParsed;
   let staleDataBanner: string | null = null;
+  let brainFreshnessBanner: string | null = null;
+  let bundledFallbackBanner: string | null = null;
+  let legacyBrainShapeBanner: string | null = null;
 
   const base = await resolveBaseUrl();
   try {
     const res = await fetch(`${base}/api/admin/workstreams`, { cache: "no-store" });
     if (res.ok) {
       const raw: unknown = await res.json();
-      const live = WorkstreamsFileSchema.safeParse(raw);
-      if (live.success) {
-        parsedFile = live.data;
+      const env = WorkstreamsBoardBrainEnvelopeSchema.safeParse(raw);
+      if (env.success) {
+        const e = env.data;
+        parsedFile = WorkstreamsFileSchema.parse({
+          version: e.version,
+          updated: e.updated,
+          workstreams: e.workstreams,
+        });
+        brainFreshnessBanner = `Last sync: ${relativeAgo(e.generated_at)} from Brain`;
+        if (e.source === "bundled-json-fallback") {
+          bundledFallbackBanner = `Brain unreachable — showing bundled snapshot from ${bundledCommitLabel()}`;
+        }
       } else {
-        staleDataBanner = staleBannerFromBuildSnapshot(fallbackUpdated);
+        const legacy = WorkstreamsFileSchema.safeParse(raw);
+        if (legacy.success) {
+          parsedFile = legacy.data;
+          legacyBrainShapeBanner =
+            "Brain returned legacy board JSON (no freshness envelope). Refetch after Brain deploy.";
+        } else {
+          staleDataBanner = staleBannerFromBuildSnapshot(fallbackUpdated);
+        }
       }
     } else {
-      staleDataBanner = staleBannerFromBuildSnapshot(fallbackUpdated);
+      bundledFallbackBanner = `Brain unreachable — showing bundled snapshot from ${bundledCommitLabel()}`;
     }
   } catch {
-    staleDataBanner = staleBannerFromBuildSnapshot(fallbackUpdated);
+    bundledFallbackBanner = `Brain unreachable — showing bundled snapshot from ${bundledCommitLabel()}`;
   }
 
   const kpis = computeKpis(parsedFile);
@@ -58,6 +97,9 @@ export default async function AdminWorkstreamsPage() {
       kpis={kpis}
       parsedFile={parsedFile}
       staleDataBanner={staleDataBanner}
+      brainFreshnessBanner={brainFreshnessBanner}
+      bundledFallbackBanner={bundledFallbackBanner}
+      legacyBrainShapeBanner={legacyBrainShapeBanner}
     />
   );
 }

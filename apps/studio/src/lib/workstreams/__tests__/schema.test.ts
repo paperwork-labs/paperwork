@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import workstreamsJson from "../../../data/workstreams.json";
 
 import {
+  WorkstreamsBoardBrainEnvelopeSchema,
   WorkstreamsFileSchema,
   computeKpis,
   dispatchableWorkstreams,
@@ -113,14 +114,22 @@ describe("workstreams schema", () => {
     const parsed = WorkstreamsFileSchema.parse(workstreamsJson);
     const kpis = computeKpis(parsed);
     expect(kpis.total).toBe(parsed.workstreams.length);
-    expect(
-      kpis.completed +
-        kpis.active +
-        kpis.blocked +
-        kpis.cancelled,
-    ).toBeLessThanOrEqual(kpis.total);
+    expect(kpis.active + kpis.pending + kpis.blocked + kpis.completed + kpis.cancelled).toBe(
+      kpis.total,
+    );
     expect(kpis.avg_percent_done).toBeGreaterThanOrEqual(0);
     expect(kpis.avg_percent_done).toBeLessThanOrEqual(100);
+  });
+
+  it("parses Brain workstreams-board envelope", () => {
+    const parsed = WorkstreamsBoardBrainEnvelopeSchema.safeParse({
+      ...workstreamsJson,
+      generated_at: "2026-04-28T12:00:00Z",
+      source: "brain-writeback",
+      ttl_seconds: 60,
+      writeback_last_run_at: null,
+    });
+    expect(parsed.success).toBe(true);
   });
 
   it("docs/infra/WORKSTREAMS_BOARD.md exists alongside the schema", () => {
