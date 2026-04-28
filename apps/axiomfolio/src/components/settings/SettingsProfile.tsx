@@ -5,7 +5,7 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { PageContainer, PageHeader } from "@/components/ui/Page";
 import { authApi, handleApiError } from "@/services/api";
-import { useAuth } from "@/context/AuthContext";
+import { useBackendUser } from "@/hooks/use-backend-user";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils";
 
 export default function SettingsProfile() {
-  const { user, refreshMe } = useAuth();
+  const { user, refreshMe } = useBackendUser();
   const [fullName, setFullName] = React.useState(user?.full_name || "");
   const [email, setEmail] = React.useState(user?.email || "");
   const [currentPasswordForEmail, setCurrentPasswordForEmail] = React.useState("");

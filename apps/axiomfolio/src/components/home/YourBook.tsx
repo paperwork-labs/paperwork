@@ -17,7 +17,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/skeleton';
 import StageBadge from '@/components/shared/StageBadge';
-import { useAuth } from '@/context/AuthContext';
+import { useBackendUserOptional } from '@/hooks/use-backend-user';
 import {
   useAccountBalances,
   usePositions,
@@ -157,7 +157,7 @@ function MobileRow({ row, currency }: PositionRowProps) {
 
 function YourBookInner() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user } = useBackendUserOptional();
   const currency =
     typeof user?.currency_preference === 'string' && user.currency_preference.trim() !== ''
       ? user.currency_preference

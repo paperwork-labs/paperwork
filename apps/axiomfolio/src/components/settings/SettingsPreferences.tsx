@@ -4,7 +4,7 @@ import React from "react";
 import toast from "react-hot-toast";
 import { PageHeader } from "@/components/ui/Page";
 import { authApi, handleApiError } from "@/services/api";
-import { useAuth } from "@/context/AuthContext";
+import { useBackendUser } from "@/hooks/use-backend-user";
 import { useColorMode } from "@/theme/colorMode";
 import { IANA_TIMEZONES } from "@/constants/timezones";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,7 @@ const selectClass =
 type SaveStatus = "idle" | "saving" | "saved" | "error";
 
 export default function SettingsPreferences() {
-  const { user, refreshMe } = useAuth();
+  const { user, refreshMe } = useBackendUser();
   const { colorModePreference, setColorModePreference } = useColorMode();
 
   const [themePref, setThemePref] = React.useState<"system" | "light" | "dark">("system");

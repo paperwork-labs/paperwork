@@ -33,7 +33,7 @@ import ErrorState from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/input";
 import { Page, PageHeader } from "@/components/ui/Page";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAuth } from "@/context/AuthContext";
+import { useBackendUser } from "@/hooks/use-backend-user";
 import { accountsApi, handleApiError } from "@/services/api";
 import { cn } from "@/lib/utils";
 import { isPlatformAdminRole } from "@/utils/userRole";
@@ -250,7 +250,7 @@ function AccountRow({
 
 function AccountsManagementContent() {
   const router = useRouter();
-  const { user: currentUser } = useAuth();
+  const { user: currentUser } = useBackendUser();
   const showSyncHistory = isPlatformAdminRole(currentUser?.role);
   const queryClient = useQueryClient();
   const [confirmDisconnectId, setConfirmDisconnectId] = React.useState<number | null>(null);

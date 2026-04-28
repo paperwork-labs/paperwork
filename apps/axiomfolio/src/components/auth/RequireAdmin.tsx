@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
+import { useBackendUser } from "@/hooks/use-backend-user";
 import { isPlatformAdminRole } from "@/utils/userRole";
 
 export function RequireAdmin({ children }: { children: React.ReactNode }) {
-  const { user, ready } = useAuth();
+  const { user, ready } = useBackendUser();
   const router = useRouter();
 
   React.useEffect(() => {

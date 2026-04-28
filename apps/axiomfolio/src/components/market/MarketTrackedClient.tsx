@@ -10,7 +10,7 @@ import { ChartContext, SymbolLink, ChartSlidePanel, PortfolioSymbolsContext } fr
 import TradeModal from '@/components/orders/TradeModal';
 import StageBadge from '@/components/shared/StageBadge';
 import PnlText from '@/components/shared/PnlText';
-import { useAuth } from '@/context/AuthContext';
+import { useBackendUser } from '@/hooks/use-backend-user';
 import { isPlatformAdminRole } from '@/utils/userRole';
 import { ETF_SYMBOL_SET } from '@/constants/etf';
 import { STAGE_COLORS, ACTION_COLORS } from '@/constants/chart';
@@ -290,7 +290,7 @@ const MarketTrackedClient: React.FC = () => {
     return s ? `?${s}` : '';
   }, [searchParams]);
   const { timezone, currency } = useUserPreferences();
-  const { user } = useAuth();
+  const { user } = useBackendUser();
   const portfolioQuery = usePortfolioSymbols();
   const portfolioSymbols = portfolioQuery.data ?? {};
 

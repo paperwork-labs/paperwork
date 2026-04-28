@@ -19,7 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { useAuth } from "@/context/AuthContext";
+import { useBackendUser } from "@/hooks/use-backend-user";
 import { isPlatformAdminRole } from "@/utils/userRole";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -185,7 +185,7 @@ function SettingsBreadcrumb({ clusters }: { clusters: readonly SettingsCluster[]
 }
 
 export default function SettingsShell({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user } = useBackendUser();
   const isAdmin = isPlatformAdminRole(user?.role);
   const [isDesktop, setIsDesktop] = React.useState(
     typeof window !== "undefined" ? window.matchMedia("(min-width: 48em)").matches : true,

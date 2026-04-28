@@ -9,6 +9,8 @@
 
 import axios from 'axios';
 
+import { getClerkSessionTokenForApi } from '@/lib/clerk-api-token';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || '/api/v1';
 
 const client = axios.create({
@@ -17,8 +19,8 @@ const client = axios.create({
   timeout: 30000,
 });
 
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('qm_token');
+client.interceptors.request.use(async (config) => {
+  const token = await getClerkSessionTokenForApi();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

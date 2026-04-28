@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 import { adminUsersApi, approveUser, deleteUser } from "@/services/api";
 import { formatDate } from "@/utils/format";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
-import { useAuth } from "@/context/AuthContext";
+import { useBackendUser } from "@/hooks/use-backend-user";
 import { isPlatformAdminRole } from "@/utils/userRole";
 import { PageContainer, PageHeader } from "@/components/ui/Page";
 import { Badge } from "@/components/ui/badge";
@@ -61,7 +61,7 @@ const tableWrap = "overflow-x-auto rounded-xl border border-border";
 export default function SettingsUsersClient() {
   const router = useRouter();
   const { timezone } = useUserPreferences();
-  const { user: currentUser, ready } = useAuth();
+  const { user: currentUser, ready } = useBackendUser();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [loading, setLoading] = useState(false);

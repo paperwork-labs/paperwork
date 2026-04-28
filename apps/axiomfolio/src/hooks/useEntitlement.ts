@@ -12,9 +12,9 @@
  * source of truth stays in `feature_catalog.py`.
  */
 
+import { useUser } from '@clerk/nextjs';
 import { useQuery } from '@tanstack/react-query';
 
-import { useAuthOptional } from '../context/AuthContext';
 import api from '../services/api';
 import type {
   MeResponse,
@@ -49,8 +49,8 @@ interface UseEntitlementResult {
  * after a successful upgrade to refresh immediately.
  */
 export function useEntitlement(): UseEntitlementResult {
-  const auth = useAuthOptional();
-  const tokenPresent = Boolean(auth?.token);
+  const { isLoaded, isSignedIn } = useUser();
+  const sessionPresent = Boolean(isLoaded && isSignedIn);
 
   const { data, isLoading, isError } = useQuery<MeResponse | null>({
     queryKey: ['entitlement', 'me'],
@@ -58,7 +58,7 @@ export function useEntitlement(): UseEntitlementResult {
       const res = await api.get<MeResponse>('/entitlements/me');
       return res?.data ?? null;
     },
-    enabled: tokenPresent,
+    enabled: sessionPresent,
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
     retry: 2,

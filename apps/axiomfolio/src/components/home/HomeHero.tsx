@@ -33,7 +33,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAuth } from '@/context/AuthContext';
+import { useBackendUser } from '@/hooks/use-backend-user';
 import { marketDataApi, portfolioApi } from '@/services/api';
 import type { DashboardResponse } from '@/services/api';
 import {
@@ -273,7 +273,7 @@ function HomeHeroInner({
   brokersLoading = false,
   onRetryBrokers,
 }: HomeHeroProps) {
-  const { user } = useAuth();
+  const { user } = useBackendUser();
   const router = useRouter();
   const displayName =
     (typeof user?.full_name === 'string' && user.full_name.trim()) ||

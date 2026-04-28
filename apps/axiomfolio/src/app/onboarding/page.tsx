@@ -6,7 +6,7 @@ import { CheckCircle, ChevronRight, Link2, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/context/AuthContext";
+import { useBackendUser } from "@/hooks/use-backend-user";
 import { RequireAuthClient } from "@/components/auth/RequireAuthClient";
 
 type Step = "welcome" | "verify" | "broker" | "sync" | "complete";
@@ -21,7 +21,7 @@ const STEPS: { id: Step; title: string; description: string }[] = [
 
 function OnboardingContent() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user } = useBackendUser();
   const [currentStep, setCurrentStep] = React.useState<Step>("welcome");
   const [skippedBroker, setSkippedBroker] = React.useState(false);
 

@@ -34,7 +34,7 @@ import type { Column, FilterGroup } from '@/components/SortableTable';
 import { useOptions, usePortfolioSync, usePortfolioAccounts } from '@/hooks/usePortfolio';
 import { useUserPreferences } from '@/hooks/useUserPreferences';
 import { useAccountContext } from '@/context/AccountContext';
-import { useAuthOptional } from '@/context/AuthContext';
+import { useBackendUserOptional } from '@/hooks/use-backend-user';
 import { isPlatformAdminRole } from '@/utils/userRole';
 import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import type { TooltipValueType } from 'recharts';
@@ -104,8 +104,8 @@ const PortfolioOptionsClient: React.FC = () => {
   const optionsQuery = useOptions(selected === 'all' ? undefined : selected);
   const accountsQuery = usePortfolioAccounts();
   const syncMutation = usePortfolioSync();
-  const auth = useAuthOptional();
-  const isAdmin = isPlatformAdminRole(auth?.user?.role);
+  const { user: backendUser } = useBackendUserOptional();
+  const isAdmin = isPlatformAdminRole(backendUser?.role);
 
   const gatewayQuery = useQuery({
     queryKey: ['ibGatewayStatus'],

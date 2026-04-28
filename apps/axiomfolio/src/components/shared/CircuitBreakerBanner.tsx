@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-import { useAuth } from '../../context/AuthContext';
+import { useBackendUser } from '@/hooks/use-backend-user';
 import { isPlatformAdminRole } from '../../utils/userRole';
 import { useCircuitBreakerStatus, useResetCircuitBreakerKillSwitch } from '../../hooks/useCircuitBreaker';
 import type { CircuitBreakerStatus } from '../../types/circuitBreaker';
@@ -124,7 +124,7 @@ function BannerBody({
 }
 
 export function CircuitBreakerBanner() {
-  const { user } = useAuth();
+  const { user } = useBackendUser();
   const isAdmin = isPlatformAdminRole(user?.role);
   const { data, isPending, isError } = useCircuitBreakerStatus();
   const resetMutation = useResetCircuitBreakerKillSwitch();

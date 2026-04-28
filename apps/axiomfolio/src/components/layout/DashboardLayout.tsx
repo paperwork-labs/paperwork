@@ -24,8 +24,10 @@ import {
 import * as Dialog from "@radix-ui/react-dialog";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 
+import { useAuth, useUser } from '@clerk/nextjs';
+
 import { useAccountContext } from '../../context/AccountContext';
-import { useAuth } from '../../context/AuthContext';
+import { useBackendUser } from '@/hooks/use-backend-user';
 import { isPlatformAdminRole } from '../../utils/userRole';
 import AppDivider from '../ui/AppDivider';
 import AppLogo from '../ui/AppLogo';
@@ -235,7 +237,21 @@ const DashboardLayout: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { accounts } = useAccountContext();
-  const { user, logout } = useAuth();
+  const { user } = useBackendUser();
+  const { signOut } = useAuth();
+  const { user: clerkUser } = useUser();
+
+  const displayUser = useMemo(() => {
+    if (user) return user;
+    if (!clerkUser) return null;
+    return {
+      full_name: clerkUser.fullName || null,
+      username:
+        clerkUser.username ||
+        clerkUser.primaryEmailAddress?.emailAddress?.split('@')[0] ||
+        null,
+    };
+  }, [user, clerkUser]);
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(() => {
     try {
       const raw = window.localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY);
@@ -619,9 +635,9 @@ const DashboardLayout: React.FC = () => {
                 <DropdownMenu.Trigger asChild>
                   <Button type="button" variant="ghost" size="sm" className="gap-2 px-2 font-normal">
                     <span className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                      {formatUserDisplayName(user).slice(0, 1).toUpperCase()}
+                      {formatUserDisplayName(displayUser).slice(0, 1).toUpperCase()}
                     </span>
-                    <span className="text-sm">{formatUserDisplayName(user)}</span>
+                    <span className="text-sm">{formatUserDisplayName(displayUser)}</span>
                   </Button>
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Portal>
@@ -635,7 +651,7 @@ const DashboardLayout: React.FC = () => {
                   >
                     <div className="px-2 py-1">
                       <p className="text-xs tracking-wide text-muted-foreground uppercase">Account</p>
-                      <p className="mt-1 text-sm font-semibold">{formatUserDisplayName(user)}</p>
+                      <p className="mt-1 text-sm font-semibold">{formatUserDisplayName(displayUser)}</p>
                     </div>
                     <AppDivider />
                     <DropdownMenu.Item
@@ -683,8 +699,7 @@ const DashboardLayout: React.FC = () => {
                     <DropdownMenu.Item
                       className="cursor-default rounded-sm px-2 py-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground"
                       onSelect={() => {
-                        logout();
-                        navigate('/sign-in');
+                        void signOut().then(() => navigate('/sign-in'));
                       }}
                     >
                       Logout

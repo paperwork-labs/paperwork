@@ -21,13 +21,11 @@ const MATCHED_ROUTES = new Set(["/system-status", "/portfolio", "/scanner"]);
 /**
  * AxiomFolio (Next.js) — Clerk session is recognized on every non-public route via
  * `await auth()` (session refresh / request context). No `auth().protect()` — the
- * client gate is `RequireAuthClient` (Clerk OR legacy `qm_token`).
+ * client gate is `RequireAuthClient` (Clerk).
  */
 const isClerkPublicRoute = createRouteMatcher([
   "/",
   "/auth/callback",
-  "/login",
-  "/register",
   "/auth/forgot-password(.*)",
   "/auth/reset-password(.*)",
   "/sign-in(.*)",

@@ -6,17 +6,17 @@ import { Loader2 } from "lucide-react";
 
 const LAST_ROUTE_STORAGE_KEY = "qm.ui.last_route";
 
+/**
+ * Legacy hash-token callback route. Clerk uses hosted sign-in; this page only
+ * restores the last in-app route when users land here without a token fragment.
+ */
 export default function AuthCallbackPage() {
   const router = useRouter();
 
   React.useEffect(() => {
     const hash = window.location.hash.replace("#", "");
     const params = new URLSearchParams(hash);
-    const token = params.get("token");
-
-    if (token) {
-      localStorage.setItem("qm_token", token);
-      window.dispatchEvent(new Event("auth:login"));
+    if (params.get("token")) {
       window.history.replaceState(null, "", window.location.pathname);
     }
 

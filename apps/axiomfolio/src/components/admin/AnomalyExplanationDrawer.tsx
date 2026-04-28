@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ErrorState } from '@/components/ui/ErrorState';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useAuth } from '@/context/AuthContext';
+import { useBackendUser } from '@/hooks/use-backend-user';
 import { cn } from '@/lib/utils';
 import {
   explainDimension,
@@ -267,7 +267,7 @@ export function AnomalyExplanationDrawer({
   onOpenChange,
   trigger,
 }: AnomalyExplanationDrawerProps) {
-  const { user } = useAuth();
+  const { user } = useBackendUser();
   const isAdmin = isPlatformAdminRole(user?.role);
 
   const mutation = useMutation({

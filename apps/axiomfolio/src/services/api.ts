@@ -6,7 +6,7 @@ import axios, {
 } from 'axios';
 
 import { normalizeRegimeCurrentBody } from './regimeCurrentNormalize';
-import { performDistributedTokenRefresh } from './authRefreshCoordination';
+import { getClerkSessionTokenForApi } from '@/lib/clerk-api-token';
 
 declare module 'axios' {
   interface AxiosRequestConfig<D = any> {
@@ -145,14 +145,16 @@ if (typeof baseHttpAdapter === 'function') {
 }
 
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
     try {
-      const token = localStorage.getItem('qm_token');
+      const token = await getClerkSessionTokenForApi();
       if (token) {
         config.headers = config.headers || {};
         (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
       }
-    } catch { }
+    } catch {
+      /* ignore */
+    }
 
     if (config.method === 'get') {
       config.headers['Cache-Control'] = 'max-age=30';
@@ -165,92 +167,10 @@ api.interceptors.request.use(
   }
 );
 
-let isRefreshing = false;
-let refreshSubscribers: Array<{ resolve: (token: string) => void; reject: (err: Error) => void }> = [];
-
-function onRefreshed(token: string) {
-  refreshSubscribers.forEach(sub => sub.resolve(token));
-  refreshSubscribers = [];
-}
-
-function onRefreshFailed(err: Error) {
-  refreshSubscribers.forEach(sub => sub.reject(err));
-  refreshSubscribers = [];
-}
-
-/** Reject queued waiters, clear refresh state, then logout. Always call this (or onRefreshed + isRefreshing=false) before clearing the session. */
-function finalizeAuthRefreshFailure(err: Error): Promise<never> {
-  onRefreshFailed(err);
-  isRefreshing = false;
-  try {
-    localStorage.removeItem('qm_token');
-  } catch {
-    /* ignore */
-  }
-  window.dispatchEvent(new Event('auth:logout'));
-  return Promise.reject(new Error('Session expired'));
-}
-
 api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config;
-
-    if (
-      error.response?.status === 401 &&
-      originalRequest?.url &&
-      !originalRequest.url.includes('/auth/login') &&
-      !originalRequest.url.includes('/auth/register') &&
-      !originalRequest.url.includes('/auth/refresh')
-    ) {
-      const orig = originalRequest as typeof originalRequest & { _noRetry?: boolean; _retry?: boolean };
-      if (!orig._retry) {
-        if (isRefreshing) {
-          // Same as the leader: one refresh attempt per request; replay must not re-enter this block or we loop on repeated 401.
-          orig._retry = true;
-          return new Promise((resolve, reject) => {
-            refreshSubscribers.push({
-              resolve: (token: string) => {
-                if (originalRequest.headers) {
-                  (originalRequest.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-                }
-                resolve(api(originalRequest));
-              },
-              reject,
-            });
-          });
-        }
-
-        orig._retry = true;
-        isRefreshing = true;
-        try {
-          const doRefresh = async () => {
-            const resp = await api.post(
-              '/auth/refresh',
-              null,
-              { withCredentials: true, _noRetry: true } as Record<string, unknown>,
-            );
-            const token = resp.data?.access_token;
-            if (!token) {
-              throw new Error('Refresh succeeded but no access_token returned');
-            }
-            return token as string;
-          };
-          const newToken = await performDistributedTokenRefresh(doRefresh);
-          localStorage.setItem('qm_token', newToken);
-          if (originalRequest.headers) {
-            (originalRequest.headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
-          }
-          onRefreshed(newToken);
-          isRefreshing = false;
-          return api(originalRequest);
-        } catch (refreshErr) {
-          return finalizeAuthRefreshFailure(
-            refreshErr instanceof Error ? refreshErr : new Error('Refresh failed'),
-          );
-        }
-      }
-    }
 
     const orig = originalRequest as typeof originalRequest & {
       _noRetry?: boolean;
