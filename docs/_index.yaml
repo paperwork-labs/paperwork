@@ -346,6 +346,13 @@ docs:
     tags: [finance, procurement]
     owners: [cfo]
     category: reference
+  - slug: brain-deploy-recovery
+    path: docs/runbooks/BRAIN_DEPLOY_RECOVERY.md
+    title: Brain deploy recovery (Render / Postgres / Docker)
+    summary: Operational notes for incidents that surfaced in April 2026 and the guardrails that now block repeats at merge time.
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: canon
     path: docs/brand/CANON.md
     title: Brand canon
