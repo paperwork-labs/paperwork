@@ -24,4 +24,7 @@ def test_critical_scheduler_installs_pass_misfire_grace_time() -> None:
 
     assert names_to_grace["Workstream progress JSON writeback (Track Z)"] >= 60
     assert names_to_grace["Sprint auto-logger (merged PRs → docs/sprints Outcome)"] >= 60
-    assert names_to_grace["Sprint auto-close (merged PRs + completed workstreams → status: closed)"] >= 60
+    assert (
+        names_to_grace["Sprint auto-close (merged PRs + completed workstreams → status: closed)"]
+        >= 60
+    )
