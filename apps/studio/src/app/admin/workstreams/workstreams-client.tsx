@@ -1,5 +1,6 @@
 "use client";
 
+import type * as React from "react";
 import {
   DndContext,
   type DragEndEvent,
@@ -48,7 +49,17 @@ export function WorkstreamsBoardClient({
 
   const [orderedIds, setOrderedIds] = useState<string[]>(() =>
     [...parsedFile.workstreams]
-      .sort((a, b) => a.priority - b.priority)
+      .sort((a, b) => {
+        const aDone = a.status === "completed" ? 1 : 0;
+        const bDone = b.status === "completed" ? 1 : 0;
+        if (aDone !== bDone) return aDone - bDone;
+        if (aDone === 1) {
+          const aT = new Date(a.last_activity).getTime();
+          const bT = new Date(b.last_activity).getTime();
+          return bT - aT;
+        }
+        return a.priority - b.priority;
+      })
       .map((w) => w.id),
   );
 
@@ -165,17 +176,47 @@ export function WorkstreamsBoardClient({
                   strategy={verticalListSortingStrategy}
                 >
                   <ul className="space-y-2" role="list">
-                    {visibleIds.map((id, index) => {
-                      const ws = byId.get(id);
-                      if (!ws) return null;
-                      return (
-                        <SortableWorkstreamRow
-                          key={id}
-                          rank={index + 1}
-                          ws={ws}
-                        />
-                      );
-                    })}
+                    {(() => {
+                      let completedSeen = false;
+                      let activeRank = 0;
+                      let completedRank = 0;
+                      const activeTotal = visibleIds.filter(
+                        (id) => byId.get(id)?.status !== "completed",
+                      ).length;
+                      const completedTotal = visibleIds.length - activeTotal;
+                      const rendered: React.ReactNode[] = [];
+                      for (const id of visibleIds) {
+                        const ws = byId.get(id);
+                        if (!ws) continue;
+                        const isDone = ws.status === "completed";
+                        if (isDone && !completedSeen) {
+                          completedSeen = true;
+                          rendered.push(
+                            <li
+                              key="__completed_divider"
+                              aria-hidden="true"
+                              className="!mt-6 list-none border-t border-zinc-800/70 pt-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500"
+                            >
+                              Completed · {completedTotal} shipped
+                            </li>,
+                          );
+                        }
+                        if (isDone) completedRank += 1;
+                        else activeRank += 1;
+                        rendered.push(
+                          <SortableWorkstreamRow
+                            key={id}
+                            rank={isDone ? completedRank : activeRank}
+                            ws={ws}
+                          />,
+                        );
+                      }
+                      if (!completedSeen && activeTotal === 0) {
+                        return null;
+                      }
+                      void completedTotal;
+                      return rendered;
+                    })()}
                   </ul>
                 </SortableContext>
               </DndContext>
