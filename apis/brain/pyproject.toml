@@ -73,7 +73,6 @@ disallow_any_generics = false
 module = [
   "app.main",
   "app.mcp_server",
-  "app.models.episode",
   "app.routers.admin",
   "app.routers.brain",
   "app.schedulers.cost_dashboard",
@@ -85,14 +84,10 @@ module = [
   "app.services.continuous_learning",
   "app.services.embeddings",
   "app.services.entity_extraction",
-  "app.services.idempotency",
   "app.services.llm",
   "app.services.memory",
   "app.services.observability",
   "app.services.router",
-  "app.services.tracker_slash",
-  "app.tools.github",
   "app.tools.memory_tools",
-  "app.tools.vault",
 ]
 ignore_errors = true

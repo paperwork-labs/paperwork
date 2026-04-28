@@ -3,6 +3,7 @@ Values returned to tool execution layer only, never injected into LLM prompt."""
 
 import logging
 from dataclasses import dataclass
+from typing import Any
 
 import httpx
 
@@ -16,7 +17,7 @@ class VaultResult:
     success: bool
     value: str | None = None
     error: str | None = None
-    metadata: dict | None = None
+    metadata: dict[str, Any] | None = None
 
 
 async def vault_list() -> VaultResult:

@@ -4,13 +4,14 @@ medallion: ops
 """
 
 import logging
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 TTL_SECONDS = 300
 
 
-async def check_and_set(redis_client, request_id: str, organization_id: str = "") -> bool:
+async def check_and_set(redis_client: Any, request_id: str, organization_id: str = "") -> bool:
     """Returns True if this request_id was already processed. Sets it if not."""
     if not redis_client or not request_id:
         return False
