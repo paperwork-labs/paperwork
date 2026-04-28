@@ -8,6 +8,7 @@ Canonical playbook for humans and AI agents working this repo. **Detail lives in
 - `apis/*` — FastAPI backends (`apis/brain` = shared orchestration)
 - `packages/*` — shared libraries (`ui`, `auth-clerk`, analytics, data, …)
 - `docs/*` — cross-cutting runbooks (infra, brand, secrets)
+- **Docs as Obsidian vault** — see [`docs/HOW_TO_NAVIGATE.md`](docs/HOW_TO_NAVIGATE.md) if you want graph view / backlinks while navigating.
 - Full stack notes: [.cursorrules](.cursorrules), [.cursor/rules/engineering.mdc](.cursor/rules/engineering.mdc)
 - **Vercel apps**: Run `pnpm vercel:link` once per machine so every app under `apps/` has a local `.vercel` link (env pull, deploy, secrets sync). See [docs/infra/VERCEL_LINKING.md](docs/infra/VERCEL_LINKING.md).
 

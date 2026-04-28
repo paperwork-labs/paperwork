@@ -61,6 +61,7 @@ EXCLUDED_SUBDIRS = {
     "templates",
     "handoffs",
     "axiomfolio",
+    "journal",
 }
 EXCLUDED_FILES = {
     "docs/SLACK_SPRINT_TEMPLATE.md",

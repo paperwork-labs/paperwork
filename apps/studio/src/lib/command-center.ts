@@ -242,61 +242,6 @@ function getBrainApiRoot() {
   return raw.endsWith("/api/v1") ? raw : `${raw}/api/v1`;
 }
 
-/** Brain origin without ``/api/v1`` suffix — for ``/internal/*`` routes on the Brain service. */
-function getBrainServiceRoot() {
-  const raw = normalizeBaseUrl(process.env.BRAIN_API_URL);
-  if (!raw) return undefined;
-  return raw.replace(/\/api\/v1\/?$/, "");
-}
-
-export type AgentSprintTask = {
-  task_id: string;
-  title: string;
-  scope: string;
-  estimated_minutes: number;
-  agent_type: string;
-  model_hint: string;
-  depends_on: string[];
-  touches_paths: string[];
-  source: Record<string, unknown>;
-};
-
-export type AgentSprintRecord = {
-  sprint_id: string;
-  generated_at: string;
-  timezone: string;
-  tasks: AgentSprintTask[];
-  total_minutes: number;
-  parallelizability_score: number;
-  status: string;
-};
-
-export type AgentSprintsTodayPayload = {
-  sprints: AgentSprintRecord[];
-  metrics: {
-    tasks_generated_today: number;
-    sprints_generated_today: number;
-    average_sprint_size: number;
-  };
-  generated_through: string;
-};
-
-/**
- * ``GET {BRAIN}/internal/agent-sprints/today`` — cheap-agent sprint buckets (24h window).
- */
-export async function getAgentSprintsToday(): Promise<AgentSprintsTodayPayload | null> {
-  const base = getBrainServiceRoot();
-  const secret = process.env.BRAIN_API_SECRET?.trim();
-  if (!base || !secret) return null;
-  const data = await fetchJson<{
-    success?: boolean;
-    data?: AgentSprintsTodayPayload;
-  }>(`${base}/internal/agent-sprints/today`, {
-    headers: { "X-Brain-Secret": secret },
-  });
-  return data?.data ?? null;
-}
-
 export async function getBrainPersonas(): Promise<BrainPersonaSpec[]> {
   const apiRoot = getBrainApiRoot();
   const secret = process.env.BRAIN_API_SECRET?.trim();
