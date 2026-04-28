@@ -16,6 +16,8 @@ to ``CLOUDFLARE_API_TOKEN`` (the account-wide token used for writes).
 per-zone read tokens must not be used for mutations.
 
 See ``docs/runbooks/CLOUDFLARE_OWNERSHIP.md``.
+
+medallion: ops
 """
 
 from __future__ import annotations
