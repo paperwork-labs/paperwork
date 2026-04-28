@@ -325,12 +325,26 @@ docs:
     owners: [infra-ops]
     category: runbooks
   # ── Reference ─────────────────────────────────────────
+  - slug: auth-provider-bakeoff-2026q2
+    path: docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md
+    title: Auth Provider Bakeoff — 2026 Q2
+    summary: "Decision record: stay on Clerk vs Better Auth, Stack Auth, Auth0, or self-hosted Auth.js. Scoring matrix, migration cost analysis, recommendation per surface (consumer vs Distill enterprise SAML/OIDC)."
+    tags: [auth, decisions, clerk]
+    owners: [strategy]
+    category: reference
   - slug: billing-vendor-checklist
     path: docs/BILLING_VENDOR_CHECKLIST.md
     title: Billing + Vendor Checklist
     summary: Must-have checks before onboarding a paid vendor.
     tags: [finance, procurement]
     owners: [cfo]
+    category: reference
+  - slug: brand-canon
+    path: docs/brand/CANON.md
+    title: Brand canon
+    summary: "Single source of truth for marks, palettes, and visual grammar. Per-product palette table, asset lock status (LOCKED / EXPLORING / GARBAGE), visual grammar rules, SVG-vs-PNG guidance, and add/replace workflows."
+    tags: [brand, reference, canon]
+    owners: [brand]
     category: reference
   - slug: prompts
     path: docs/brand/PROMPTS.md
