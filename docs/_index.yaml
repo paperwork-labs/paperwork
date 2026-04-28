@@ -332,6 +332,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: axiomfolio-phase-3-runbook
+    path: docs/infra/AXIOMFOLIO_PHASE_3_RUNBOOK.md
+    title: AxiomFolio Phase 3 — DNS & custom-domain cutover runbook
+    summary: "Phase 3 moves `axiomfolio.com`, `www.axiomfolio.com`, and `api.axiomfolio.com` from the founder’s **personal** Render workspace to **Paperwork Labs (org)** services, and points Cloudflare at the…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: billing-vendor-checklist
     path: docs/BILLING_VENDOR_CHECKLIST.md
     title: Billing + Vendor Checklist
