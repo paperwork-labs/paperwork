@@ -5,6 +5,8 @@ alwaysApply: true
 
 # Smart Delegation
 
+**Companion doctrine**: [cheap-agent-fleet.mdc](mdc:.cursor/rules/cheap-agent-fleet.mdc) covers HOW to operate the cheap-agent fleet at scale (orchestrator validation, merge queue, learning). This file covers WHEN to delegate. If they disagree, `cheap-agent-fleet.mdc` wins.
+
 Delegate to `Task` with `model: "fast"` and appropriate `subagent_type` for:
 
 ## Shell Subagent (`subagent_type: "shell"`)
@@ -33,9 +35,15 @@ Delegate to `Task` with `model: "fast"` and appropriate `subagent_type` for:
 - Architecture decisions and trade-offs
 - Brain API reasoning, memory logic, and persona routing
 - State Filing Engine portal automation scripts
-- Code review of subagent output for correctness
+- **Code review of every cheap-agent PR before self-merge** (mandatory per `cheap-agent-fleet.mdc` rule #3)
+- **Merge orchestration / rebase queue** (single-writer; cheap agents never merge directly per rule #4)
+- **Doctrine / rule authoring** (architecture artifacts)
 - Complex multi-step reasoning requiring cross-file context
 - Anything where a mistake is costly or compliance-related
+
+## Never dispatch Opus as subagent (HARD)
+
+Subagents must always use cheap models: `composer-1.5`, `composer-2-fast`, `gpt-5.5-medium`, `claude-4.6-sonnet-medium-thinking`. Never spawn an Opus subagent. If Opus is needed for the work, the orchestrator (Opus) does it directly. See `cheap-agent-fleet.mdc` rule #2 for full rationale.
 
 ## Parallel Execution
 

@@ -1,0 +1,169 @@
+---
+description: 48-hour blitz doctrine — cheap-agent fleet operating rules (orchestration, validation, learning)
+alwaysApply: true
+---
+
+# Cheap-Agent Fleet Doctrine
+
+These six rules govern how Opus (the orchestrator) and Brain (in Phase H) dispatch, supervise, and learn from cheap-agent subagent fleets. They survive the 48-hour L4 blitz and become permanent operating doctrine.
+
+Companion: [delegation.mdc](mdc:.cursor/rules/delegation.mdc) covers WHEN to delegate; this file covers HOW to operate the fleet at scale.
+
+## 1. Founder decisions = empty by default (HARD)
+
+The orchestrator (Opus, then Brain in Phase H) decides everything data-driven. Founder is escalated to ONLY on three triggers:
+
+1. **Genuinely novel strategic decision** with no data precedent (e.g., "should we acquire X?")
+2. **>$50/mo new recurring spend** unjustifiable from existing cost data
+3. **Non-reversible blast radius** action (delete prod database, decommission legal entity, reissue SSL trust chains)
+
+Routine examples that DO NOT escalate:
+- Stack audit verdicts: orchestrator decides KEEP/UPGRADE/REPLACE row-by-row from data. UPGRADE auto if active community + version current. REPLACE only if data shows clear win on cost / performance / reliability.
+- L4 handoff signoff: fires automatically when Tier 1 acceptance criteria pass.
+- Workstream prioritization within an objective: orchestrator ranks by `objective_weight × predicted_impact / cost`.
+
+If unsure whether something escalates, default to NOT escalating and document the decision in [apis/brain/data/procedural_memory.yaml](mdc:apis/brain/data/procedural_memory.yaml). Founder can override later.
+
+## 2. Never Opus as subagent (HARD)
+
+Subagents always use cheap models. The Task tool `model:` parameter must resolve to:
+
+- `composer-1.5`
+- `composer-2-fast`
+- `gpt-5.5-medium`
+- `claude-4.6-sonnet-medium-thinking`
+
+Opus stays at orchestrator level only. Never dispatch Opus as a subagent. This rule applies to:
+
+- Manual `Task` tool invocations
+- Brain's automated agent dispatcher (`apis/brain/app/services/agent_dispatcher.py` and similar)
+- Any future Phase H self-dispatch loop Brain runs against itself
+
+**Rationale:**
+
+- **Cost**: Opus per-token >> cheap models; a fleet of 20 cheap agents costs less than 2 parallel Opus subagents.
+- **Quality model fit**: Opus is best at cross-file reasoning, architecture, validation. Cheap models are best at narrow-scope execution (rename a function, write a YAML schema, add a test).
+- **Throughput**: Opus rate-limits harder than Composer. Parallelizing 12 cheap agents is feasible; parallelizing 12 Opus agents is not.
+- **Operates like human orgs**: engineers execute under tech-lead direction. Same pattern.
+
+If Opus is needed for the work itself, the orchestrator (Opus) does it directly — does not spawn another Opus.
+
+## 3. Mandatory orchestrator diff-review of every cheap-agent PR (HARD)
+
+Every PR a cheap-agent opens gets a manual diff review by the orchestrator before self-merge. CI pass alone is INSUFFICIENT.
+
+Required review pass (orchestrator runs through each):
+
+1. Does the diff match the workstream's stated acceptance criteria?
+2. Are there silent fallbacks the agent introduced (`except Exception: pass`, defaulting to empty data, etc.)?
+3. Are there hardcoded values that should be config?
+4. Are tests present for new behavior?
+5. Does the agent's PR body honestly describe what's NOT done (per rule #5)?
+
+If any answer is "no" or "unclear":
+
+- Add a review comment requesting fix
+- Re-dispatch the agent with the specific feedback
+- Do NOT merge until clean
+
+**Rationale:**
+
+- **No silent fallback rule**: "CI passed therefore correct" is silent fallback. Many real bugs ship despite green CI.
+- **Brain learning loop**: Reviews flag patterns (good and bad) → patterns extract into [apis/brain/data/procedural_memory.yaml](mdc:apis/brain/data/procedural_memory.yaml) → Brain learns which agent types make which mistakes → WS-64 dispatches better next time.
+- **Cheap-agent acceptance rate is not 100%**: even at 90% acceptance, 1-in-10 PRs has a real issue. Without review, that's 1-in-10 going to prod.
+
+When Brain runs Phase H, this becomes: every Brain-dispatched cheap-agent PR gets Brain's own validator step before self-merge. Same principle, automated.
+
+## 4. Merge orchestration via rebase queue (HARD)
+
+All cheap-agent PR merges serialize through a single-writer rebase queue. Implementation:
+
+- Each cheap-agent finishes PR + opens it; **never merges directly**.
+- Orchestrator pulls next PR off queue head.
+- Auto-rebase on main; if conflicts → orchestrator resolves OR re-dispatches with conflict context.
+- Merge happens at queue head only; **one-at-a-time**.
+- Queue depth + ETA published to Studio dashboard via Brain freshness surface.
+
+State for the queue lives at [apis/brain/data/merge_queue.json](mdc:apis/brain/data/merge_queue.json) (created by `scripts/blitz_orchestrator.py`). Schema:
+
+```json
+{
+  "queue": [
+    {"pr": 401, "branch": "feat/ws-42-drift", "agent_id": "composer-1.5-a", "status": "pending"},
+    {"pr": 402, "branch": "feat/ws-43-freshness", "agent_id": "composer-2-fast-b", "status": "rebasing"}
+  ],
+  "current": null,
+  "updated_at": "2026-04-28T23:00:00Z"
+}
+```
+
+**Rationale:**
+
+- **N parallel agents = N² conflict potential**: 12 agents touching shared files is conflict chaos.
+- **Without queue**: agents rebase → conflict → re-dispatch → ad infinitum (work amplification).
+- **With queue**: agents work in isolation; orchestrator handles all rebase friction once.
+- Same pattern as Mergify, Bazel build queues, git LFS file locks.
+
+Exception: PRs that touch ZERO shared files with the queue head can merge in parallel. Orchestrator decides.
+
+## 5. Honest scope overflow (HARD)
+
+Cheap agents under deadline pressure are tempted to "claim done" on partial work. Anti-pattern.
+
+Standard:
+
+- Every workstream has explicit acceptance criteria (in the agent prompt).
+- Cheap-agent PR body MUST list what's NOT done in addition to what's done. Use this template:
+
+```markdown
+## Acceptance criteria
+- [x] Foo implemented
+- [x] Test for foo
+- [ ] Bar (DEFERRED: rationale)
+- [ ] Baz (BLOCKED: needs Y)
+
+## Not done in this PR
+- Long-tail item N (becomes Phase H Brain-self-prioritized work)
+```
+
+- Long-tail items that overflow the deadline are NEVER silently dropped — they become explicit Phase H Brain-self-prioritized workstreams via `apis/brain/data/long_tail.json`.
+- Founder gets transparent visibility: "blitz delivered L4 + L5 capability; here are the N long-tail items Brain is now working on autonomously."
+
+This is "no silent fallback" applied to scope, not just data.
+
+## 6. Brain learns from hour 0, not hour N (HARD)
+
+Procedural memory + outcome measurement are FIRST-CLASS, not afterthoughts. Every cheap-agent PR merge MUST write to:
+
+- [apis/brain/data/pr_outcomes.json](mdc:apis/brain/data/pr_outcomes.json) — outcome at 1h/24h/7d (CI pass, deploy success, revert?)
+- [apis/brain/data/agent_dispatch_log.json](mdc:apis/brain/data/agent_dispatch_log.json) — agent type + model + workstream type + success metric
+- [apis/brain/data/procedural_memory.yaml](mdc:apis/brain/data/procedural_memory.yaml) — patterns from incidents + retros + orchestrator review notes
+- [apis/brain/data/self_merge_promotions.json](mdc:apis/brain/data/self_merge_promotions.json) — graduation track record (N=50 clean merges → promote to brain-code self-merge)
+
+By hour 24 of the blitz: 50-100 data points; WS-64 (self-improvement loop) activates with that data. By hour 48: Brain can already answer "which cheap-agent model has highest acceptance rate for drift-detector workstreams?" and dispatches accordingly.
+
+The orchestrator (Opus, then Brain) reads these files weekly to:
+
+- Re-rank dispatch preferences by agent type × workstream type
+- Identify bottlenecks (slow steps, error-prone patches)
+- Compose monthly self-improvement report (Phase H)
+
+## Operating cadence (during blitz)
+
+```
+hour 0-3:  Safety bones (kill switch, procedural memory, outcome scaffold) + this rule file
+hour 3-9:  Hands (self-merge, auto-revert) — Brain can ship + roll back
+hour 9-24: Mass parallel sprint (12+ cheap agents) — orchestrator validates + serializes
+hour 24-36: Platform + L5 brain (8+ cheap agents)
+hour 36-48: Validation + L4 handoff
+```
+
+## When this rule applies
+
+- During the 48-hour L4 blitz: every dispatch.
+- After L4: Brain inherits this doctrine. Phase H Brain-self-dispatch loop must obey all 6 rules.
+- For ad-hoc Opus sessions: rules 2 (cheap subagents) and 3 (diff-review) always apply.
+
+## Source of truth
+
+This rule file IS the doctrine. If [delegation.mdc](mdc:.cursor/rules/delegation.mdc) and this file disagree, this file wins (it is more recent and more specific).
