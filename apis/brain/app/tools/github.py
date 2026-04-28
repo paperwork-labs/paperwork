@@ -264,6 +264,64 @@ async def create_github_issue(title: str, body: str, labels: list[str] | None = 
     return _scrub(f"Issue #{num} created: {url}")
 
 
+async def search_github_issues(
+    query: str,
+    *,
+    per_page: int = 10,
+    max_pages: int = 2,
+) -> list[dict[str, Any]]:
+    """Search issues/PRs; returns raw ``items`` dicts (``number``, ``html_url``, …)."""
+    items_out: list[dict[str, Any]] = []
+    page = 1
+    try:
+        async with _gh_client() as client:
+            while page <= max_pages:
+                r = await client.get(
+                    "/search/issues",
+                    params={"q": query.strip(), "per_page": per_page, "page": page},
+                )
+                if r.status_code == 422:
+                    logger.warning("search_github_issues: %s", _error_message("search", r))
+                    break
+                r.raise_for_status()
+                payload: dict[str, Any] = r.json()
+                items = payload.get("items") or []
+                if not isinstance(items, list) or not items:
+                    break
+                for it in items:
+                    if isinstance(it, dict):
+                        items_out.append(it)
+                if len(items) < per_page:
+                    break
+                page += 1
+    except httpx.HTTPStatusError as e:
+        logger.warning("search_github_issues failed: %s", e)
+        return []
+    except (httpx.RequestError, ValueError, TypeError) as e:
+        logger.warning("search_github_issues failed: %s", e)
+        return []
+    return items_out
+
+
+async def add_github_issue_comment(issue_number: int, body: str) -> str:
+    """Post a comment on an issue or PR (same endpoint)."""
+    owner, repo = _repo_parts()
+    try:
+        async with _gh_client() as client:
+            r = await client.post(
+                f"/repos/{owner}/{repo}/issues/{int(issue_number)}/comments",
+                json={"body": body.strip()},
+            )
+            r.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        logger.warning("add_github_issue_comment failed: #%s %s", issue_number, e)
+        return _error_message("add_github_issue_comment", e.response)
+    except (httpx.RequestError, ValueError, TypeError) as e:
+        logger.warning("add_github_issue_comment failed: #%s %s", issue_number, e)
+        return _scrub(f"add_github_issue_comment error: {e}")
+    return _scrub(f"Comment added on #{issue_number}")
+
+
 async def commit_github_file(path: str, content: str, message: str, branch: str = "main") -> str:
     """Create or update a file on a branch; returns new commit SHA."""
     owner, repo = _repo_parts()

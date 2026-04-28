@@ -24,6 +24,7 @@ from app.services.continuous_learning import (
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import review_pr, sweep_open_prs
 from app.services.seed import ingest_docs, ingest_sprint_lessons
+from app.services.vercel_quota_monitor import latest_vercel_quota_snapshots
 
 logger = logging.getLogger(__name__)
 
@@ -156,6 +157,31 @@ async def n8n_mirror_scheduler_status(
             "per_job": [],
         }
     )
+
+
+@router.get("/vercel-quota")
+async def get_vercel_quota_snapshots(
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Latest Vercel quota snapshot batch (Studio / infra dashboards)."""
+    rows = await latest_vercel_quota_snapshots(db)
+    batch_at = rows[0].created_at.isoformat() if rows else None
+    snapshots = [
+        {
+            "id": r.id,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "project_id": r.project_id,
+            "project_name": r.project_name,
+            "window_days": r.window_days,
+            "deploy_count": r.deploy_count,
+            "build_minutes": r.build_minutes,
+            "source_breakdown": r.source_breakdown or {},
+            "meta": r.meta or {},
+        }
+        for r in rows
+    ]
+    return success_response({"batch_at": batch_at, "count": len(snapshots), "snapshots": snapshots})
 
 
 @router.get("/personas")

@@ -269,6 +269,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install infra_health job")
 
     try:
+        from app.schedulers.quota_monitors import vercel as vercel_quota_monitor
+
+        vercel_quota_monitor.install(sched)
+    except Exception:
+        logger.exception("Failed to install vercel_quota_monitor job")
+
+    try:
         from app.schedulers import agent_sprint_scheduler
 
         agent_sprint_scheduler.install(sched)

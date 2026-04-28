@@ -6,6 +6,7 @@ from app.models.cost import Cost
 from app.models.entity import Entity, EntityEdge
 from app.models.episode import Episode
 from app.models.organization import Organization, Team, TeamMember
+from app.models.quota_snapshot import VercelQuotaSnapshot
 from app.models.scheduler_run import SchedulerRun
 from app.models.secrets_intelligence import BrainSecretsEpisode, BrainSecretsRegistry
 from app.models.skill import Skill, UserSkill
@@ -35,6 +36,7 @@ __all__ = [
     "UserProfile",
     "UserSkill",
     "UserVault",
+    "VercelQuotaSnapshot",
     "WorkstreamDispatchLog",
     "WorkstreamProgressSnapshot",
 ]
