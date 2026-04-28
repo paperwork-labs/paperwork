@@ -360,5 +360,6 @@ def install(scheduler: AsyncIOScheduler) -> None:
         max_instances=1,
         coalesce=True,
         replace_existing=True,
+        misfire_grace_time=60,
     )
     logger.info("sprint_auto_logger installed: every 15 minutes (UTC)")

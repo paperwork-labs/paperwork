@@ -118,5 +118,6 @@ def install(scheduler: AsyncIOScheduler) -> None:
         max_instances=1,
         coalesce=True,
         replace_existing=True,
+        misfire_grace_time=60,
     )
     logger.info("APScheduler job %r registered (Wednesday 17:00 UTC)", _JOB_ID)

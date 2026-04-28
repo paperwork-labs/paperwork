@@ -231,6 +231,8 @@ jobs:
           python-version: "3.13"
           cache: pip
       - run: pip install -r requirements.txt
+      - run: python scripts/check_apscheduler_misfire.py
+        working-directory: ${{ github.workspace }}
       - run: ruff check .
       - run: ruff format --check .
       - run: mypy app --config-file ./pyproject.toml

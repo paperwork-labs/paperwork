@@ -108,7 +108,11 @@ def start_scheduler() -> AsyncIOScheduler | None:
 
     minutes = max(1, int(settings.SCHEDULER_PR_SWEEP_MINUTES or 30))
     jobstores = apscheduler_db.build_sqlalchemy_jobstores()
-    sched = AsyncIOScheduler(jobstores=jobstores, timezone="UTC")
+    sched = AsyncIOScheduler(
+        jobstores=jobstores,
+        timezone="UTC",
+        job_defaults={"misfire_grace_time": 60},
+    )
     sched.add_job(
         _run_pr_sweep,
         trigger=IntervalTrigger(minutes=minutes, timezone=UTC),
@@ -117,6 +121,7 @@ def start_scheduler() -> AsyncIOScheduler | None:
         max_instances=1,
         coalesce=True,
         replace_existing=True,
+        misfire_grace_time=60,
     )
 
     # Track C: proactive persona cadence runs on the same scheduler so we keep

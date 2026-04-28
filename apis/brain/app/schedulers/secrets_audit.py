@@ -207,6 +207,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
             max_instances=1,
             coalesce=True,
             replace_existing=True,
+            misfire_grace_time=60,
         )
         logger.info("Registered %s (03:00 America/Los_Angeles)", _JOB_DRIFT)
     if _owns_rotation():
@@ -218,6 +219,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
             max_instances=1,
             coalesce=True,
             replace_existing=True,
+            misfire_grace_time=60,
         )
         logger.info("Registered %s (09:00 America/Los_Angeles)", _JOB_ROTATION)
     if _owns_health():
@@ -229,5 +231,6 @@ def install(scheduler: AsyncIOScheduler) -> None:
             max_instances=1,
             coalesce=True,
             replace_existing=True,
+            misfire_grace_time=60,
         )
         logger.info("Registered %s (hourly UTC)", _JOB_HEALTH)

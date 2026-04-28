@@ -127,5 +127,6 @@ def install(scheduler: AsyncIOScheduler) -> None:
         max_instances=1,
         coalesce=True,
         replace_existing=True,
+        misfire_grace_time=60,
     )
     logger.info("brain_agent_sprint_planner installed: Cron */4 hour America/Los_Angeles")

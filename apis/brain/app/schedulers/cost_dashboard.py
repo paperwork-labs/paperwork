@@ -133,5 +133,6 @@ def install(scheduler) -> None:
         max_instances=1,
         coalesce=True,
         replace_existing=True,
+        misfire_grace_time=60,
     )
     logger.info("APScheduler job 'cfo_cost_dashboard' registered (daily 15:30 UTC)")
