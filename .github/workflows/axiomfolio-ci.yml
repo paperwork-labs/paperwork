@@ -11,6 +11,7 @@ name: AxiomFolio CI
     branches: [main]
     paths:
       - "apis/axiomfolio/**"
+      - "packages/auth-clerk/src/python/**"
       - "apps/axiomfolio/**"
       - "infra/compose.dev.yaml"
       - "infra/init-test-db.sh"
@@ -21,6 +22,7 @@ name: AxiomFolio CI
     branches: [main]
     paths:
       - "apis/axiomfolio/**"
+      - "packages/auth-clerk/src/python/**"
       - "apps/axiomfolio/**"
       - "infra/compose.dev.yaml"
       - "infra/init-test-db.sh"
@@ -62,6 +64,7 @@ jobs:
             backend:
               - 'apis/axiomfolio/app/**'
               - 'apis/axiomfolio/Dockerfile'
+              - 'packages/auth-clerk/src/python/**'
               - 'apis/axiomfolio/requirements*.txt'
               - 'apis/axiomfolio/pyproject.toml'
               - 'apis/axiomfolio/Makefile'

@@ -146,8 +146,8 @@ services:
   api-axiomfolio:
     container_name: axiomfolio-api
     build:
-      context: ../apis/axiomfolio
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apis/axiomfolio/Dockerfile
     ports:
       - "8004:8000"
     volumes:
@@ -188,8 +188,8 @@ services:
   celery-axiomfolio-worker:
     container_name: axiomfolio-celery-worker
     build:
-      context: ../apis/axiomfolio
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apis/axiomfolio/Dockerfile
     volumes:
       - ../apis/axiomfolio:/app
     env_file:
@@ -226,8 +226,8 @@ services:
   celery-axiomfolio-worker-heavy:
     container_name: axiomfolio-celery-worker-heavy
     build:
-      context: ../apis/axiomfolio
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apis/axiomfolio/Dockerfile
     volumes:
       - ../apis/axiomfolio:/app
     env_file:
@@ -255,8 +255,8 @@ services:
   celery-axiomfolio-beat:
     container_name: axiomfolio-celery-beat
     build:
-      context: ../apis/axiomfolio
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: apis/axiomfolio/Dockerfile
     volumes:
       - ../apis/axiomfolio:/app
     env_file:

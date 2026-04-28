@@ -10,14 +10,15 @@ RUN apt-get update && apt-get install -y \
     g++ \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Build context is the monorepo root (see render.yaml). Install Python deps +
+# paperwork-auth (Clerk JWT) from packages/auth-clerk.
+COPY apis/axiomfolio/requirements.txt .
+COPY packages/auth-clerk/src/python /tmp/paperwork-auth
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir "/tmp/paperwork-auth[fastapi]"
 
-# Copy application code. Matches the paperwork house pattern (see apis/brain/
-# Dockerfile): WORKDIR /app + COPY app/ ./app/ yields /app/app/ so absolute
-# imports like `app.api.main:app` resolve against PYTHONPATH=/app.
-COPY app/ ./app/
+# Application code: WORKDIR /app + COPY app/ ./app/ yields /app/app/ for `app.api.main:app`.
+COPY apis/axiomfolio/app/ ./app/
 
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash app \
