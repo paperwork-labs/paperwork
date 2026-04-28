@@ -95,6 +95,7 @@ def test_install_registers_friday_cron_job():
         max_instances=1,
         coalesce=True,
         replace_existing=True,
+        misfire_grace_time=60,
     )
     tr = sched.add_job.call_args[1]["trigger"]
     assert isinstance(tr, CronTrigger)
