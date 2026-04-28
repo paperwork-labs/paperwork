@@ -416,6 +416,13 @@ docs:
     tags: [infra]
     owners: [infra-ops]
     category: reference
+  - slug: how-to-navigate
+    path: docs/HOW_TO_NAVIGATE.md
+    title: Navigate `docs/` (Obsidian vault)
+    summary: "This folder stays **markdown-first** for GitHub, CI, and agents. You can also open **`docs/` as an Obsidian vault** for graph view, backlinks, and quick switching—without changing how anyone else…"
+    tags: [docs, obsidian]
+    owners: [strategy]
+    category: reference
   - slug: readme
     path: docs/brand/README.md
     title: Paperwork Labs brand asset registry
