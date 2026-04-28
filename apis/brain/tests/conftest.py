@@ -1,3 +1,4 @@
+import builtins
 import os
 from collections.abc import AsyncGenerator
 
@@ -22,7 +23,7 @@ class FakeRedis:
 
     def __init__(self) -> None:
         self._store: dict[str, str] = {}
-        self._sets: dict[str, set[str]] = {}
+        self._sets: dict[str, builtins.set[str]] = {}
 
     async def get(self, key: str) -> str | None:
         return self._store.get(key)
@@ -42,12 +43,24 @@ class FakeRedis:
         self._store.clear()
         self._sets.clear()
 
-    async def smembers(self, key: str) -> set[str]:
-        return self._sets.get(key, set())
+    async def smembers(self, key: str) -> builtins.set[str]:
+        return self._sets.get(key, builtins.set())
+
+    async def set(
+        self,
+        key: str,
+        value: str,
+        nx: bool = False,
+        ex: int | None = None,
+    ) -> bool | None:
+        if nx and key in self._store:
+            return None
+        self._store[key] = value
+        return True
 
     async def sadd(self, key: str, *values: str) -> int:
         if key not in self._sets:
-            self._sets[key] = set()
+            self._sets[key] = builtins.set()
         added = 0
         for v in values:
             if v not in self._sets[key]:

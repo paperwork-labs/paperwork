@@ -25,6 +25,7 @@ from app.database import async_session_factory
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers._history import run_with_scheduler_record
 from app.tools import github as gh
+from app.tools.redis import release_scheduler_lock, try_acquire_scheduler_lock
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -34,6 +35,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _JOB_ID = "sprint_auto_logger"
+_SCHEDULER_LOCK_KEY = "brain:scheduler:sprint_auto_logger:lock"
+_SCHEDULER_LOCK_TTL_SECONDS = 300
 
 # Mirrors Studio ``apps/studio/src/app/admin/sprints/page.tsx`` (keep in sync).
 PR_REF_RE = re.compile(r"(?:#|PR\s*#|pull/)(\d{2,5})", re.I)
@@ -344,9 +347,22 @@ async def _run_body(*, since_override: datetime | None = None) -> None:
 
 
 async def run_sprint_auto_logger(*, since_override: datetime | None = None) -> None:
+    async def _runner() -> None:
+        acquired = await try_acquire_scheduler_lock(
+            _SCHEDULER_LOCK_KEY,
+            _SCHEDULER_LOCK_TTL_SECONDS,
+        )
+        if not acquired:
+            logger.info("sprint_auto_logger: another worker holds the lock, skipping")
+            return
+        try:
+            await _run_body(since_override=since_override)
+        finally:
+            await release_scheduler_lock(_SCHEDULER_LOCK_KEY)
+
     await run_with_scheduler_record(
         _JOB_ID,
-        lambda: _run_body(since_override=since_override),
+        _runner,
         metadata={"source": "sprint_auto_logger"},
     )
 
