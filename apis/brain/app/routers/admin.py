@@ -18,6 +18,7 @@ from app.models.episode import Episode
 from app.models.scheduler_run import SchedulerRun
 from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
+from app.services.blitz_progress_poster import blitz_status_snapshot
 from app.services.continuous_learning import (
     ingest_decisions,
     ingest_merged_prs,
@@ -322,6 +323,20 @@ async def list_personas(
             "personas": [spec.model_dump() for spec in specs],
         }
     )
+
+
+@router.get("/blitz-status")
+async def get_blitz_status(
+    _auth: None = Depends(_require_admin),
+):
+    """Current cheap-agent blitz queue state plus markdown hourly summary."""
+    snapshot = blitz_status_snapshot()
+    return {
+        "queue_depth": snapshot.queue_depth,
+        "current": snapshot.current,
+        "last_complete": snapshot.last_complete,
+        "hourly_summary": snapshot.hourly_summary,
+    }
 
 
 class PRSweepRequest(BaseModel):
