@@ -1,41 +1,30 @@
 "use client";
 
 import * as React from "react";
-import { ClippedWordmark } from "@paperwork-labs/ui";
+import Image from "next/image";
 
-const STORAGE_KEY = "pwl-clipped-wordmark-session";
-
+/**
+ * Parent clipped lockup for Studio marketing surfaces — static locked raster.
+ *
+ * Previously drove a session-once entrance animation via the removed
+ * `ClippedWordmark` component; that animation was dropped in favor of the
+ * canonical PNG (`docs/brand/CANON.md`). Rebuilding entrance motion as a PNG
+ * sprite sequence is queued under `t2-animation`, gated on the founder picking
+ * the P5 sprite source.
+ */
 export function SessionClippedWordmark({
-  surface,
   className,
 }: {
-  surface: "light" | "dark";
   className?: string;
 }): React.ReactElement {
-  const [playEntrance, setPlayEntrance] = React.useState(false);
-  const [hydrated, setHydrated] = React.useState(false);
-
-  React.useEffect(() => {
-    const seen = window.sessionStorage.getItem(STORAGE_KEY);
-    if (!seen) {
-      window.sessionStorage.setItem(STORAGE_KEY, "1");
-      setPlayEntrance(true);
-    }
-    setHydrated(true);
-  }, []);
-
-  if (!hydrated) {
-    return (
-      <ClippedWordmark animated={false} surface={surface} className={className} />
-    );
-  }
-
   return (
-    <ClippedWordmark
-      key={playEntrance ? "play" : "static"}
-      animated={playEntrance}
-      surface={surface}
+    <Image
+      src="/brand/renders/paperclip-LOCKED-canonical-1024.png"
+      alt="Paperwork Labs"
+      width={1408}
+      height={768}
       className={className}
+      priority
     />
   );
 }

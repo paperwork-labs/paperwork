@@ -20,11 +20,11 @@ const WORDMARK_FONT_FAMILY =
  * -0.02em`. Color is inherited via `currentColor` so callers can flip
  * light-on-dark / dark-on-light from the parent.
  *
- * The SVG viewBox is sized for the bare wordmark (no clip, no padding); the
- * P5 composition lives in `ClippedWordmark` which positions a `ClipMark`
- * over the top-left of the "P". Canvas is 1000 x 200 user units so cap-height
- * lands near 120 (matches docs/brand/CANON.md § Visual grammar at the
- * P5 5:1 viewBox).
+ * The SVG viewBox is sized for the bare wordmark (no clip, no padding).
+ * The parent clipped lockup (paperclip + this wordmark) ships only as the
+ * locked PNG (`apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png`)
+ * consumed via `next/image` or `<img>` — see docs/brand/CANON.md. Canvas is
+ * 1000 × 200 user units so cap-height lands near 120 (matches § Visual grammar).
  *
  * Spec: docs/brand/CANON.md § Visual grammar + .cursor/rules/brand.mdc (voice/copy).
  */

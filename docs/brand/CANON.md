@@ -46,15 +46,17 @@ The agent constraint is simple: **locked = ship as-is, exploring = founder-only,
 
 ### Locked PNG renders (parent paperclip — P1/P2/P3/P4)
 
-The parent paperclip mark is **PNG-first** (AI-generated, founder-approved) until the founder picks the P5 clipped-wordmark winner and we ship final SVG retraces. Until then, treat these PNGs as canonical and reference them via `next/image` (do not embed as inline base64).
+The parent paperclip mark is **PNG-first** (AI-generated, founder-approved) until the founder picks the P5 clipped-wordmark winner and we ship final SVG retraces. Until then, treat these PNGs as canonical and reference them via `next/image` in Next.js apps or plain `<img>` elsewhere (do not embed as inline base64).
 
 | File | Use |
 | --- | --- |
-| [`apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png`](../../apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png) | P1 diagonal — expressive default (marketing, OG) |
-| [`apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png`](../../apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png) | P2 vertical — favicon canon |
+| [`apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png`](../../apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png) | **P1 — horizontal lockup** (paperclip + “Paperwork Labs” wordmark). Marketing, OG, Studio header/sign-in, and any React surface that needs the full parent mark. |
+| [`apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png`](../../apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png) | **P2 — vertical icon** (favicon-style square glyph). |
 | [`apps/studio/public/brand/renders/paperclip-vertical-1024-v1.png`](../../apps/studio/public/brand/renders/paperclip-vertical-1024-v1.png) | P2 vertical — secondary tile |
 | [`apps/studio/public/brand/renders/paperclip-lockup-horizontal-v1.png`](../../apps/studio/public/brand/renders/paperclip-lockup-horizontal-v1.png) | P3 horizontal lockup (header bar) |
 | [`apps/studio/public/brand/renders/paperclip-lockup-stacked-v1.png`](../../apps/studio/public/brand/renders/paperclip-lockup-stacked-v1.png) | P4 stacked lockup (square card) |
+
+React surfaces import these paths from the consuming app’s `public/` root (e.g. `src="/brand/renders/paperclip-LOCKED-canonical-1024.png"` with Next.js `<Image>`). Copy the files into each app’s `public/brand/renders/` when the app cannot rely on another package’s static assets.
 
 ### Needs founder review (do not delete, do not canonize)
 
@@ -117,11 +119,13 @@ Mandatory for any new mark.
 | --- | --- | --- |
 | Favicon (16/32/48) | PNG | Browsers rasterize anyway; PNG keeps anti-aliased AI artwork crisp at 16px. |
 | OG image / social card | PNG | Static, big canvas, photoreal-friendly. |
-| In-app icon component (`packages/ui/src/components/brand/`) | PNG via `next/image` for parent paperclip; SVG inline for locked droplet marks | Parent mark is AI-generated PNG until P5 retrace. Droplet marks are vector and inline-friendly. |
+| Parent paperclip (any in-app or marketing surface) | PNG via `next/image` or `<img>` | Only the locked renders under `apps/studio/public/brand/renders/` (and copies in each app’s `public/`). Do not recreate geometry in TSX/SVG. |
+| Typesetting wordmark (`packages/ui/src/components/brand/Wordmark.tsx`) | SVG (`<text>` in Inter Tight) | Typesetting-only; not the paperclip. Parent lockups use the **P1** PNG above. |
+| Locked droplet product marks | SVG inline where appropriate | Distinct from the parent paperclip; follow per-product rows in this doc. |
 | Marketing hero | PNG | Allows CSS sheen / filter / blur to ride on top. |
-| Print / spec sheet | SVG (locked droplet marks only) | Vector for press. Parent paperclip ships as 4096px PNG until retrace. |
+| Print / spec sheet | SVG (locked droplet marks only) | Vector for press. Parent paperclip ships as raster until retrace. |
 
-The component contract: any brand React component must accept a `surface: "light" | "dark"` prop and pick the correct ink + variant. Components in [`packages/ui/src/components/brand/`](../../packages/ui/src/components/brand/) MUST follow this contract; consumer apps import from there, never inline a different mark.
+Shared typesetting for “Paperwork Labs” lives in [`packages/ui/src/components/brand/Wordmark.tsx`](../../packages/ui/src/components/brand/Wordmark.tsx). Parent paperclip compositions are **not** implemented as React geometry components — consumers reference the locked PNG paths from their app `public/` folders.
 
 ## Workflows
 
@@ -154,9 +158,9 @@ When the founder asks for a new variant:
 
 Parent **P5 clipped wordmark** runtime motion (see § **Locked PNG renders** / **When to use SVG vs PNG** above): entrance **once per session** (e.g. a `sessionStorage` flag—never on every SPA navigation); total choreography ~**700 ms** (wordmark opacity, clip translate / rotate settling near **−15°**); optional subtle **hover wiggle** only for hover-capable pointers. **`prefers-reduced-motion: reduce`**: skip the entrance entirely; render the static end-state. Use **`transform` + `opacity` only** for the animated path; no shadows on the clip during motion.
 
-**Do not:** re-run entrance on route changes; animate the wordmark beyond a simple fade-in; animate or pulse the amber span; bounce past the final clip tilt; use the full P5 clipped composition below **~24 px** (use vertical / lockup tiers instead—see **When to use SVG vs PNG**). Prefer shared implementations under [`packages/ui/src/components/brand/`](../../packages/ui/src/components/brand/).
+**Do not:** re-run entrance on route changes; animate the wordmark beyond a simple fade-in; animate or pulse the amber span; bounce past the final clip tilt; use the full P5 clipped composition below **~24 px** (use vertical / lockup tiers instead—see **When to use SVG vs PNG**).
 
-**Future queue:** final layered SVG for P5 (z-order); Storybook / a11y verification for motion paths.
+**Future queue:** final layered SVG for P5 (z-order); Storybook / a11y verification for motion paths; `SessionClippedWordmark` (Studio) currently renders the **P1** PNG statically — session-once entrance will return as a PNG sprite sequence under `t2-animation` once the founder picks the sprite source (per this §).
 
 ## Don'ts
 
@@ -164,9 +168,10 @@ Parent **P5 clipped wordmark** runtime motion (see § **Locked PNG renders** / *
 - Do not recolor a locked mark — open a brand review.
 - Do not add a second accent in the same glyph.
 - Do not hand-author an SVG that imitates the droplet family — agents authoring marks has been the source of every "garbage" entry above.
+- Do not author hand-drawn paperclip geometry in TSX/JSX (`<path d="M ... A ... 0 0 1 ...">` paths that imitate the droplet family). Same anti-pattern as hand-authored SVGs. Always reference the locked PNG renders under `apps/studio/public/brand/renders/` via `<Image>` from `next/image` (Next.js apps) or plain `<img>` (non-Next surfaces).
 - Do not cite the legacy `PROMPTS.md`, `ANIMATION.md`, or `research/` files under `docs/brand/`. Those were deleted in #314; if you find them in a stale checkout, ignore.
 
 ## Related
 
 - [`.cursor/rules/brand.mdc`](../../.cursor/rules/brand.mdc) — voice, tone, legal copy, social handles. Always-on rule.
-- [`packages/ui/src/components/brand/`](../../packages/ui/src/components/brand/) — React components. Surface contract enforced here.
+- [`packages/ui/src/components/brand/`](../../packages/ui/src/components/brand/) — Shared typesetting (`Wordmark`); parent paperclip = locked PNGs in consuming apps.

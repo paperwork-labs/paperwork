@@ -301,7 +301,7 @@ jobs:
               def sameref(m; r):
                 (m != "" and r != "" and (m == r or m[0:7] == r[0:7]));
               [.deployments[]? | select(.readyState == "READY")
-                | select(sameref(cand(.); ($MERGE|norm)) or sameref(cand(.); ($HEAD|norm)))]
+                | select(sameref(cand(.); norm($MERGE)) or sameref(cand(.); norm($HEAD)))]
               | sort_by(.createdAt) | reverse | first | .uid // empty
             ' /tmp/vlist.json
           }

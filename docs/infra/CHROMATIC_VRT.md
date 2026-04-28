@@ -64,7 +64,7 @@ workflow runs in the Actions tab.
 | Reduced-motion variants | YES | Same as static end-state |
 | Dark-surface variants | YES | Deterministic |
 | Theme variants (×6 products) | YES | Deterministic |
-| Animated entrance (e.g., `ClippedWordmark Animated`) | NO | Pause-at-end-of-animation captures one frame, but the timeline can shift across runs; we explicitly disable to avoid flake |
+| Animated entrance (multi-keyframe brand intros) | NO | Pause-at-end-of-animation captures one frame, but the timeline can shift across runs; we explicitly disable to avoid flake |
 | Hover micro-interactions (e.g., `HoverWiggle`) | NO | No way to deterministically trigger hover in headless |
 | Charts with live data | NO | Data-dependent |
 
