@@ -55,5 +55,6 @@ def install(scheduler: AsyncIOScheduler) -> None:
         max_instances=1,
         coalesce=True,
         replace_existing=True,
+        misfire_grace_time=60,
     )
     logger.info("merged_prs_ingest installed: every %d hours", hours)

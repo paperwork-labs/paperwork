@@ -54,5 +54,6 @@ def install(scheduler: AsyncIOScheduler) -> None:
         max_instances=1,
         coalesce=True,
         replace_existing=True,
+        misfire_grace_time=60,
     )
     logger.info("ingest_postmortems_cadence installed: 03:30 UTC daily")
