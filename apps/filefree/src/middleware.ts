@@ -7,18 +7,15 @@ import type { NextRequest } from "next/server";
 
 const PROTECTED_PREFIXES = ["/file", "/dashboard"];
 const AUTH_PAGES = ["/auth/login", "/auth/register"];
-const SESSION_COOKIE = "session";
 
 /**
- * FileFree auth: dual-mode consumer access (legacy session cookie OR Clerk) for
- * `/file` and `/dashboard`; legacy `/auth/*` still recognized for mid-session
- * users. New sign-in surface is `/sign-in` (Clerk). Admin (production):
- * Clerk + Basic Auth — unchanged.
+ * FileFree consumer auth (WS-13 stage 3): Clerk-only for `/file` and `/dashboard`.
+ * Legacy `/auth/login` and `/auth/register` redirect at the page level to Clerk.
  *
- * Consumer (WS-13 stage 1–2):
- * - Protected routes: allow if session cookie OR `auth().userId`.
- * - Legacy auth pages: if either session is present, redirect to `/file`.
- * - Unauthenticated protected → `/sign-in?redirect_url=…` (Clerk).
+ * Consumer:
+ * - Protected routes: allow when `auth().userId` is present.
+ * - Legacy auth URLs: if signed in via Clerk, redirect to `/file`.
+ * - Unauthenticated protected → `/sign-in?redirect_url=…`.
  *
  * Admin (production only, `/admin` and `/api/admin`):
  * 1) `auth().userId` (Clerk) → allow
@@ -105,8 +102,7 @@ function isConsumerAuthPath(pathname: string): boolean {
 
 function consumerAuthGate(request: NextRequest, clerkUserId: string | null): NextResponse | null {
   const { pathname } = request.nextUrl;
-  const hasSession = request.cookies.has(SESSION_COOKIE);
-  const authed = hasSession || Boolean(clerkUserId);
+  const authed = Boolean(clerkUserId);
 
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   if (isProtected && !authed) {
