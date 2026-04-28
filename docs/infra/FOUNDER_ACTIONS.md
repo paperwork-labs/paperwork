@@ -108,10 +108,10 @@ Tracked in: `chore/axiomfolio-vercel-cutover` ([#306](https://github.com/paperwo
 - **Why this matters:** Ex-n8n crons run on Brain when `BRAIN_SCHEDULER_ENABLED=true`. Remove stale `BRAIN_OWNS_DAILY_BRIEFING`-style env vars from Render so operators are not misled (they are ignored by code).
 - **Where:** Render `brain-api` environment variables; full matrix in `docs/infra/BRAIN_SCHEDULER.md`.
 - **Steps:**
-  1. Ex-n8n crons are **always on** when `BRAIN_SCHEDULER_ENABLED=true` (cutover flags retired). Optional gates remain for sprint auto-logger / sprint planner / agent sprint scheduler / PR triage — see [BRAIN_SCHEDULER.md](BRAIN_SCHEDULER.md).
+  1. Ex-n8n crons and J1 ambient-learning schedulers (sprint auto-logger, merged-PR / decision / postmortem ingesters) are **always on** when `BRAIN_SCHEDULER_ENABLED=true`. Optional gates remain for sprint planner / agent sprint scheduler / PR triage — see [BRAIN_SCHEDULER.md](BRAIN_SCHEDULER.md).
   2. Watch `#engineering` / `#engineering-cron-shadow` and Brain logs; confirm no duplicate user-facing posts.
   3. Remove obsolete `BRAIN_OWNS_DAILY_BRIEFING` (and siblings) from Render env if still present — they are ignored.
-  4. **Optional (operational):** `BRAIN_OWNS_SPRINT_AUTO_LOGGER=true` only after GitHub bot-PR path is accepted.
+  4. Remove obsolete `BRAIN_OWNS_SPRINT_AUTO_LOGGER` and any `BRAIN_OWNS_*INGEST*` / `BRAIN_OWNS_*INGESTER` keys if still present — they are ignored (WS-18 / J1 retirement).
 - **Verification:** `GET /internal/schedulers` or `SELECT id FROM apscheduler_jobs`; optional `GET /api/v1/admin/scheduler/n8n-mirror/status` returns `retired: true`.
 - **Source:** PR #245, `docs/infra/BRAIN_SCHEDULER.md`
 - **ETA:** ~60+ min (spread across days; not one sitting)

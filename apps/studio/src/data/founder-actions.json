@@ -108,7 +108,7 @@
             "1. One flag at a time, enable e.g. `BRAIN_OWNS_DAILY_BRIEFING=true` after shadow validation.",
             "2. Watch `#engineering` / `#engineering-cron-shadow` and Brain logs; confirm no duplicate user-facing posts.",
             "3. Repeat for: `BRAIN_OWNS_BRAIN_WEEKLY`, `BRAIN_OWNS_WEEKLY_STRATEGY`, `BRAIN_OWNS_SPRINT_KICKOFF`, `BRAIN_OWNS_INFRA_HEARTBEAT`, `BRAIN_OWNS_CREDENTIAL_EXPIRY`, `BRAIN_OWNS_INFRA_HEALTH`.",
-            "4. **Optional (operational):** `BRAIN_OWNS_SPRINT_AUTO_LOGGER=true` only after GitHub bot-PR path is accepted."
+            "4. Remove obsolete `BRAIN_OWNS_SPRINT_AUTO_LOGGER` / ingester env keys if still present (J1 retired — schedulers follow `BRAIN_SCHEDULER_ENABLED` only)."
           ],
           "verification": "`GET /api/v1/admin/scheduler/n8n-mirror/status` (with `X-Brain-Secret`); job rows in `apscheduler_jobs` as expected.",
           "source": "PR #245, `docs/infra/BRAIN_SCHEDULER.md`",

@@ -27,14 +27,12 @@ Use this runbook when **`RENDER_API_KEY` is not available** for automation, or a
 
 ## Set / update these variables (exact values)
 
+Ambient-learning schedulers (**sprint auto-logger**, **merged PRs**, **decisions**, **postmortems**) register whenever **`BRAIN_SCHEDULER_ENABLED=true`** — the retired `BRAIN_OWNS_SPRINT_AUTO_LOGGER` / `BRAIN_OWNS_*_INGEST*` / `BRAIN_OWNS_*_INGESTER` env keys are **ignored** if still present in the dashboard (remove them to avoid confusion).
+
 Add or edit so the **value** matches exactly:
 
 | Key | Value |
 | --- | --- |
-| `BRAIN_OWNS_SPRINT_AUTO_LOGGER` | `true` |
-| `BRAIN_OWNS_INGEST_MERGED_PRS` | `true` |
-| `BRAIN_OWNS_INGEST_DECISIONS` | `true` |
-| `BRAIN_OWNS_INGEST_POSTMORTEMS` | `true` |
 | `REPO_ROOT` | `/opt/render/project/src` |
 
 **`REPO_ROOT` note:** [`render.yaml`](../../render.yaml) builds `brain-api` with Docker (`dockerContext: .`). At runtime the container filesystem is the image (see [`apis/brain/Dockerfile`](../../apis/brain/Dockerfile)); `/opt/render/project/src` is the common path for **non-Docker** Render runtimes. If file-based ingesters (`docs/decisions`, sprint postmortems under `docs/`) scan zero files after deploy, open **Render Shell** (if enabled) or check logs — you may need a follow-up to align `REPO_ROOT` with where the monorepo tree is visible, or expand the image. Setting the variable as above matches ops intent and [`docs/sprints/BRAIN_CONTINUOUS_LEARNING_2026Q3.md`](../sprints/BRAIN_CONTINUOUS_LEARNING_2026Q3.md).
@@ -58,9 +56,7 @@ curl -sS https://brain.paperworklabs.com/health
 - `merged_prs_ingest installed`
 - `ingest_decisions_cadence installed`
 - `ingest_postmortems_cadence installed`
-- `sprint_auto_logger installed` **only if** `BRAIN_OWNS_SPRINT_AUTO_LOGGER` is true (if you see `BRAIN_OWNS_SPRINT_AUTO_LOGGER is not true — skipping`, the var is missing or not `true`).
-
-**Note:** The three `BRAIN_OWNS_INGEST_*` keys are set for operational alignment; in current code the merged-PR / decision / postmortem cadences are registered whenever the scheduler starts — the **`BRAIN_OWNS_SPRINT_AUTO_LOGGER`** flag **does** gate the sprint auto-logger job in code.
+- `sprint_auto_logger installed`
 
 **Database (optional, requires read access to Brain `DATABASE_URL`):** recent scheduler rows:
 
