@@ -1,24 +1,31 @@
 ---
 title: Brand canon (2026 Q2) — final
 owner: brand
-last_reviewed: 2026-04-26
+last_reviewed: 2026-04-27
 doc_kind: sprint
 domain: company
-status: active
+status: shipped
+lessons:
+  - Applying one Azure+Amber system to every product mark produced six indistinguishable lockups; per-product research-backed palettes beat a single template.
+  - Forcing identical lockup geometry across apps homogenized the family; droplet-plus-dot vocabulary preserves organic similarity without rigid sameness.
+  - Theme tokens under packages/ui stayed scaffolding on purpose — full per-app migration belongs in a dedicated engineering sprint, not in canon docs.
+  - Brain stays non-droplet and emerald-forward so custody-oriented AI does not blend into a generic “purple AI” cluster.
 sprint:
   start: 2026-04-25
-  end: 2026-05-16
-  duration_weeks: ~3
+  end: 2026-04-26
+  duration_weeks: ~1
+  pr: 172
+  prs: [162, 172]
 related_prs:
-  - "PR #162 (McKinsey-style framing — superseded)"
-  - "PR #172 (per-product palettes + droplet-family SVG locks + docs)"
+  - 162
+  - 172
 ---
 
 # Brand canon (2026 Q2) — final state
 
 **Purpose:** Lock Paperwork Labs’ post–AxiomFolio architecture: per-product **full palettes**, **organic similarity > forced unification**, a shared **droplet + dot** vocabulary for consumer marks (except Brain and the parent paperclip), and clear handoff to engineering (theme migration is a **separate** sprint).
 
-**Status:** Decided. Founder approved research-locked picks and SVG sources 2026-04-26.
+**Status:** Shipped 2026-04-26 ([PR #172](https://github.com/paperwork-labs/paperwork/pull/172) squash-merge). Founder approved research-locked picks and SVG sources 2026-04-26; planned calendar window through mid-May was conservative — canon assets and docs landed with #172.
 
 **Scope of PR #172 (evolved):** Brand rules, `docs/brand/*`, parent/Studio marks (interim hand where noted), **locked SVG icons** + **PNG renders** for FileFree, LaunchFree, Distill, Trinkets. **Not in scope:** merging `packages/ui/src/themes.css` to final per-app tokens (banner marks file as scaffolding); **not** merging; **not** swapping every in-app CTA without a theme sprint.
 
@@ -100,6 +107,13 @@ What is **not** the family thread:
 6. **Engineering** — `packages/ui/src/themes.css` left as **scaffolding** until a dedicated theme-migration sprint re-homes tokens under `apps/{product}/…`.
 
 ---
+
+## What we learned
+
+- Applying one Azure+Amber system to every product mark produced six indistinguishable lockups; per-product research-backed palettes beat a single template.
+- Forcing identical lockup geometry across apps homogenized the family; droplet-plus-dot vocabulary preserves organic similarity without rigid sameness.
+- Theme tokens under `packages/ui` stayed scaffolding on purpose — full per-app migration belongs in a dedicated engineering sprint, not in canon docs.
+- Brain stays non-droplet and emerald-forward so custody-oriented AI does not blend into a generic “purple AI” cluster.
 
 ## 6. Brain as B2C meta-product (unchanged strategy)
 
