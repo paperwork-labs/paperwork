@@ -1,24 +1,5 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "schema": {
-    "description": "Per-PR outcome tracking for Brain learning loop (cheap-agent-fleet.mdc rule #6). Brain measures impact of every merged PR at 1h/24h/7d/14d/30d horizons. Surfaces as 'PR ROI' in Studio.",
-    "entry": {
-      "pr_number": "int",
-      "merged_at": "RFC3339Z",
-      "merged_by_agent": "str | null (agent id, e.g. 'composer-1.5-a' or 'orchestrator-opus' for human merges)",
-      "agent_model": "str | null (e.g. 'composer-1.5')",
-      "subagent_type": "str | null (e.g. 'shell', 'generalPurpose')",
-      "workstream_ids": "list[str] (closes_workstreams)",
-      "workstream_types": "list[str] (e.g. 'drift-detector', 'kill-switch')",
-      "outcomes": {
-        "h1": {"ci_pass": "bool", "deploy_success": "bool | null", "reverted": "bool", "checked_at": "RFC3339Z"},
-        "h24": {"ci_pass": "bool", "deploy_success": "bool | null", "reverted": "bool", "checked_at": "RFC3339Z"},
-        "d7": {"objective_metric_delta": "dict[str, float] | null", "checked_at": "RFC3339Z | null"},
-        "d14": {"objective_metric_delta": "dict[str, float] | null", "checked_at": "RFC3339Z | null"},
-        "d30": {"objective_metric_delta": "dict[str, float] | null", "checked_at": "RFC3339Z | null"}
-      }
-    }
-  },
-  "version": 1,
+  "schema": "pr_outcomes/v1",
+  "description": "Per-merged-PR outcome measurements (WS-62). Appended on merge by orchestrator; horizons (h1/h24/d7/d14/d30) filled by follow-on schedulers + operators. Pydantic spec: apis/brain/app/schemas/pr_outcomes.py.",
   "outcomes": []
 }

@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.services.pr_outcomes as pr_outcomes_service
 from app.config import settings
 from app.database import async_session_factory, get_db
 from app.models.episode import Episode
@@ -260,6 +261,27 @@ async def get_workstreams_board(
     payload["ttl_seconds"] = 60
     payload["writeback_last_run_at"] = writeback_last
     return payload
+
+
+@router.get("/pr-outcomes")
+async def get_pr_outcomes(
+    workstream_id: str | None = None,
+    limit: int = Query(50, ge=1, le=500),
+    _auth: None = Depends(_require_admin),
+):
+    """List recorded PR merge outcomes (WS-62), optionally filtered by workstream id."""
+    rows = pr_outcomes_service.list_pr_outcomes_for_query(
+        workstream_id=workstream_id,
+        limit=limit,
+    )
+    return success_response(
+        {
+            "workstream_id": workstream_id,
+            "limit": limit,
+            "count": len(rows),
+            "outcomes": [r.model_dump(mode="json") for r in rows],
+        }
+    )
 
 
 @router.get("/vercel-quota")
