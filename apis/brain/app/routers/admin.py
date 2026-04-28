@@ -23,6 +23,8 @@ from app.services.continuous_learning import (
     ingest_postmortems,
 )
 from app.services.github_actions_quota_monitor import latest_github_actions_quota_snapshots
+from app.services.kill_switch import is_brain_paused
+from app.services.kill_switch import reason as brain_pause_reason
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import review_pr, sweep_open_prs
 from app.services.render_quota_monitor import (
@@ -200,6 +202,20 @@ async def n8n_mirror_scheduler_status(
             ),
             "global_enabled": False,
             "per_job": [],
+        }
+    )
+
+
+@router.get("/system-health")
+async def system_health_summary(
+    _auth: None = Depends(_require_admin),
+):
+    """Operator snapshot for Studio admin; extends over time (WS-45: pause flag)."""
+    paused = is_brain_paused()
+    return success_response(
+        {
+            "brain_paused": paused,
+            "brain_paused_reason": brain_pause_reason() if paused else None,
         }
     )
 
