@@ -5,20 +5,33 @@ import { usePathname } from "next/navigation";
 import { LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUser } from "@clerk/nextjs";
 
 import { Button } from "@paperwork-labs/ui";
 import { useAuthStore } from "@/stores/auth-store";
 import { useLogout } from "@/hooks/use-auth";
 
-const AUTH_PATHS = ["/auth"];
+const HIDE_NAV_PREFIXES = ["/auth", "/sign-in", "/sign-up"];
 
 export function Nav() {
   const pathname = usePathname();
   const { isAuthenticated, isLoading, user } = useAuthStore();
+  const { isLoaded: clerkLoaded, isSignedIn, user: clerkUser } = useUser();
   const logout = useLogout();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  if (AUTH_PATHS.some((p) => pathname.startsWith(p))) return null;
+  if (HIDE_NAV_PREFIXES.some((p) => pathname.startsWith(p))) return null;
+
+  const authLoading = isLoading || !clerkLoaded;
+  const loggedIn = isAuthenticated || Boolean(isSignedIn);
+  const displayUser =
+    user ??
+    (clerkUser
+      ? {
+          email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
+          full_name: clerkUser.fullName ?? undefined,
+        }
+      : null);
 
   return (
     <nav className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-lg">
@@ -34,7 +47,12 @@ export function Nav() {
 
         {/* Desktop */}
         <div className="hidden items-center gap-3 sm:flex">
-          <NavLinks isAuthenticated={isAuthenticated} isLoading={isLoading} user={user} logout={logout} />
+          <NavLinks
+            loggedIn={loggedIn}
+            isLoading={authLoading}
+            user={displayUser}
+            logout={logout}
+          />
         </div>
 
         {/* Mobile toggle */}
@@ -58,9 +76,9 @@ export function Nav() {
             transition={{ duration: 0.2 }}
           >
             <NavLinks
-              isAuthenticated={isAuthenticated}
-              isLoading={isLoading}
-              user={user}
+              loggedIn={loggedIn}
+              isLoading={authLoading}
+              user={displayUser}
               logout={logout}
               mobile
               onNavigate={() => setMobileOpen(false)}
@@ -73,14 +91,14 @@ export function Nav() {
 }
 
 function NavLinks({
-  isAuthenticated,
+  loggedIn,
   isLoading,
   user,
   logout,
   mobile,
   onNavigate,
 }: {
-  isAuthenticated: boolean;
+  loggedIn: boolean;
   isLoading: boolean;
   user: { full_name?: string; email: string } | null;
   logout: ReturnType<typeof useLogout>;
@@ -93,8 +111,8 @@ function NavLinks({
     ? "text-sm text-muted-foreground hover:text-foreground transition"
     : "text-sm text-muted-foreground hover:text-foreground transition";
 
-  if (isAuthenticated && user) {
-    const initial = (user.full_name?.[0] ?? user.email[0]).toUpperCase();
+  if (loggedIn && user) {
+    const initial = (user.full_name?.[0] ?? user.email[0] ?? "U").toUpperCase();
 
     return (
       <>
@@ -135,11 +153,11 @@ function NavLinks({
       <Link href="/pricing" className={linkClass} onClick={onNavigate}>
         Pricing
       </Link>
-      <Link href="/auth/login" className={linkClass} onClick={onNavigate}>
+      <Link href="/sign-in" className={linkClass} onClick={onNavigate}>
         Sign in
       </Link>
       <Button asChild size="sm" className="bg-gradient-to-r from-violet-600 to-purple-600 text-white border-0 hover:from-violet-500 hover:to-purple-500">
-        <Link href="/auth/register" onClick={onNavigate}>
+        <Link href="/sign-up" onClick={onNavigate}>
           Sign up free
         </Link>
       </Button>

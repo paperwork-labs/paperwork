@@ -318,7 +318,7 @@ function ResultStep({ data, onRetry }: { data: ExtractionResponse; onRetry: () =
             asChild
             className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500"
           >
-            <Link href="/auth/register">
+            <Link href="/sign-up">
               Create Free Account
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
@@ -381,7 +381,7 @@ function RateLimitStep() {
           asChild
           className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500"
         >
-          <Link href="/auth/register">
+          <Link href="/sign-up">
             Create Free Account
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
