@@ -1,0 +1,256 @@
+name: Agent sprint runner (Track Z)
+
+# Entry point dispatched by `apis/brain/app/schedulers/workstream_dispatcher.py`
+# (every 30 min, top-3 brain-owned workstreams) and by founder-triggered manual
+# runs.
+#
+# v1 behaviour (today):
+#   1. Re-validate guardrails against the live workstreams.json so we don't
+#      dispatch when the workstream is blocked or already at the cap.
+#   2. Open a "task ticket" PR titled `[ticket] track:<brief_tag>` whose body
+#      is the rendered brief. A human or downstream agent picks it up.
+#   3. POST the run_id + ticket_pr_url back to Brain's dispatch_log webhook so
+#      the Studio board surfaces it.
+#
+# v2 path (queued — see docs/infra/WORKSTREAMS_BOARD.md § Future queue):
+#   Replace the "create ticket PR" step with a real cheap-subagent invocation
+#   (Cursor Cloud Agent, Codex CLI, etc.) that opens a real implementation PR
+#   directly. Inputs and guardrails stay the same.
+
+on:
+  workflow_dispatch:
+    inputs:
+      brief_tag:
+        description: "Workstream brief_tag, e.g. track:c-auth-clerk-package (matches workstreams.json)"
+        required: true
+        type: string
+      title:
+        description: "Workstream title (cosmetic, used in PR title)"
+        required: true
+        type: string
+      notes:
+        description: "Per-workstream notes from workstreams.json"
+        required: false
+        type: string
+        default: ""
+      related_plan:
+        description: "Plan slug under ~/.cursor/plans for additional context"
+        required: false
+        type: string
+        default: ""
+      model:
+        description: "Model hint for the (future) cheap subagent runtime"
+        required: false
+        type: choice
+        default: composer-2-fast
+        options:
+          - composer-2-fast
+          - composer-1.5
+          - gpt-5.5-medium
+      max_open_tickets_per_workstream:
+        description: "Guardrail: skip dispatch if this many open tickets already exist for the brief_tag (default 1)"
+        required: false
+        type: string
+        default: "1"
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: agent-sprint-runner-${{ inputs.brief_tag }}
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: Open ticket PR for ${{ inputs.brief_tag }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BRIEF_TAG: ${{ inputs.brief_tag }}
+      TITLE: ${{ inputs.title }}
+      NOTES: ${{ inputs.notes }}
+      RELATED_PLAN: ${{ inputs.related_plan }}
+      MODEL: ${{ inputs.model }}
+      MAX_OPEN: ${{ inputs.max_open_tickets_per_workstream }}
+      RUN_ID: ${{ github.run_id }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Validate brief_tag format
+        run: |
+          set -euo pipefail
+          if ! [[ "${BRIEF_TAG}" =~ ^track:[a-z0-9-]+$ ]]; then
+            echo "::error::brief_tag must match 'track:<kebab-slug>'; got '${BRIEF_TAG}'"
+            exit 1
+          fi
+          echo "brief_tag OK: ${BRIEF_TAG}"
+
+      - name: Guardrail — workstream not blocked, owner=brain
+        id: guard
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+
+          path = "apps/studio/src/data/workstreams.json"
+          brief_tag = os.environ["BRIEF_TAG"]
+
+          with open(path) as f:
+              data = json.load(f)
+
+          ws = next((w for w in data["workstreams"] if w["brief_tag"] == brief_tag), None)
+          if ws is None:
+              print(f"::error::No workstream in {path} with brief_tag='{brief_tag}'")
+              sys.exit(1)
+          if ws["status"] == "blocked":
+              print(f"::error::Workstream {ws['id']} is blocked; refuse dispatch. Blockers: {ws['blockers']}")
+              sys.exit(1)
+          if ws["status"] == "completed":
+              print(f"::error::Workstream {ws['id']} is completed; refuse dispatch.")
+              sys.exit(1)
+          if ws["owner"] != "brain":
+              print(f"::error::Workstream {ws['id']} owner='{ws['owner']}' is not 'brain'; refuse dispatch.")
+              sys.exit(1)
+          # Pretty-print the resolved record into outputs for later steps.
+          out = os.environ["GITHUB_OUTPUT"]
+          with open(out, "a") as fh:
+              fh.write(f"workstream_id={ws['id']}\n")
+              fh.write(f"track={ws['track']}\n")
+              fh.write(f"priority={ws['priority']}\n")
+              fh.write(f"percent_done={ws['percent_done']}\n")
+              fh.write(f"estimated_pr_count={ws.get('estimated_pr_count') or ''}\n")
+          print(f"Guardrail OK: {ws['id']} priority={ws['priority']} percent_done={ws['percent_done']}")
+          PY
+
+      - name: Guardrail — open ticket cap per workstream
+        id: ticket-cap
+        run: |
+          set -euo pipefail
+          QUERY="repo:${{ github.repository }} is:pr is:open in:body \"${BRIEF_TAG}\" in:title [ticket]"
+          OPEN_COUNT=$(gh search prs --json url --limit 100 --repo "${{ github.repository }}" --state open "${BRIEF_TAG}" "[ticket]" | jq 'length')
+          echo "open_tickets=${OPEN_COUNT}" >> "${GITHUB_OUTPUT}"
+          echo "Open tickets for ${BRIEF_TAG}: ${OPEN_COUNT} (cap ${MAX_OPEN})"
+          if [ "${OPEN_COUNT}" -ge "${MAX_OPEN}" ]; then
+            echo "::warning::At/above per-workstream ticket cap (${OPEN_COUNT} >= ${MAX_OPEN}); skipping new ticket."
+            echo "skipped=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "skipped=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Render brief
+        if: steps.ticket-cap.outputs.skipped != 'true'
+        id: brief
+        run: |
+          set -euo pipefail
+          BRANCH="ticket/${BRIEF_TAG#track:}-${RUN_ID}"
+          echo "branch=${BRANCH}" >> "${GITHUB_OUTPUT}"
+          mkdir -p .agent-tickets
+          cat > ".agent-tickets/${BRANCH//\//_}.md" <<EOF
+          # Agent ticket — ${TITLE}
+
+          **Workstream**: \`${{ steps.guard.outputs.workstream_id }}\` (track ${{ steps.guard.outputs.track }}, priority ${{ steps.guard.outputs.priority }}, ${{ steps.guard.outputs.percent_done }}% done)
+          **brief_tag**: \`${BRIEF_TAG}\`
+          **Dispatched by**: \`workstream_dispatcher.py\` via [run ${RUN_ID}](${RUN_URL})
+          **Suggested model**: \`${MODEL}\`
+          **Related plan**: ${RELATED_PLAN:-_(none)_}
+
+          ## Notes from workstreams.json
+
+          ${NOTES:-_(none)_}
+
+          ## Standing rules — apply to every ticket
+
+          1. ONE concern per PR. Title must start with the appropriate type prefix (\`feat\`, \`chore\`, \`docs\`, \`fix\`).
+          2. Include \`${BRIEF_TAG}\` literally in the PR body — that's how \`workstream_progress.py\` counts your work toward % done.
+          3. Don't author SVGs by hand (see \`docs/brand/CANON.md\` § Garbage / SVG vs PNG).
+          4. Don't gate behaviour on \`BRAIN_OWNS_*\` flags — they're retired.
+          5. \`pnpm install --frozen-lockfile --ignore-scripts\` must pass; the \`code-quality.lockfile-gate\` job will catch drift.
+          6. New \`apps/*/vercel.json\` or new packages must satisfy \`scripts/verify-vercel-json-canon.mjs\`.
+          7. Stories live under \`apps/design/src/stories/\` ONLY (\`scripts/verify-no-stories-in-packages.mjs\`).
+
+          ## How to claim this ticket
+
+          - Local: \`gh pr checkout <this-PR>\` and run a local Cursor Agent against the body. Use \`${MODEL}\` if you want to mirror the suggested model.
+          - Cloud (future): when the cheap-subagent runtime path exists, this ticket PR will be replaced by a direct implementation PR.
+
+          ## Definition of done
+
+          - PR open against \`main\` with the implementation, body containing \`${BRIEF_TAG}\`.
+          - This ticket PR closed (auto-closes on merge of the implementation PR if you reference \`Closes #<ticket-pr>\`).
+          - \`workstream_progress.py\` flips the workstream toward 100% on the next hourly tick.
+          EOF
+          echo "ticket_path=.agent-tickets/${BRANCH//\//_}.md" >> "${GITHUB_OUTPUT}"
+
+      - name: Open ticket PR
+        if: steps.ticket-cap.outputs.skipped != 'true'
+        id: open-pr
+        run: |
+          set -euo pipefail
+          BRANCH="${{ steps.brief.outputs.branch }}"
+          git config user.name  "paperwork-labs-bot"
+          git config user.email "bot@paperworklabs.com"
+          git checkout -b "${BRANCH}"
+          git add "${{ steps.brief.outputs.ticket_path }}"
+          git commit -m "ticket(${BRIEF_TAG#track:}): dispatched by run ${RUN_ID}"
+          git push -u origin "${BRANCH}"
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "${BRANCH}" \
+            --title "[ticket] ${TITLE} (${BRIEF_TAG})" \
+            --body-file "${{ steps.brief.outputs.ticket_path }}" \
+            --label agent-ticket)
+          echo "ticket_pr_url=${PR_URL}" >> "${GITHUB_OUTPUT}"
+          echo "Opened ticket PR: ${PR_URL}"
+
+      - name: Notify Brain dispatch_log
+        if: steps.ticket-cap.outputs.skipped != 'true'
+        env:
+          BRAIN_API_URL: ${{ secrets.BRAIN_API_URL }}
+          BRAIN_INTERNAL_TOKEN: ${{ secrets.BRAIN_INTERNAL_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BRAIN_API_URL:-}" ] || [ -z "${BRAIN_INTERNAL_TOKEN:-}" ]; then
+            echo "::warning::Brain webhook secrets not set — dispatch_log will be backfilled by workstream_progress.py"
+            exit 0
+          fi
+          PAYLOAD=$(jq -nc \
+            --arg ws_id "${{ steps.guard.outputs.workstream_id }}" \
+            --arg brief "${BRIEF_TAG}" \
+            --arg run "${RUN_URL}" \
+            --arg ticket "${{ steps.open-pr.outputs.ticket_pr_url }}" \
+            --arg model "${MODEL}" \
+            '{workstream_id: $ws_id, brief_tag: $brief, run_url: $run, ticket_pr_url: $ticket, model: $model}')
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${BRAIN_INTERNAL_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "${PAYLOAD}" \
+            "${BRAIN_API_URL%/}/api/v1/workstreams/dispatch-log" \
+            || echo "::warning::Brain dispatch-log POST failed (non-fatal)"
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Agent sprint runner — \`${BRIEF_TAG}\`"
+            echo
+            echo "| field | value |"
+            echo "| --- | --- |"
+            echo "| workstream | \`${{ steps.guard.outputs.workstream_id }}\` |"
+            echo "| track | ${{ steps.guard.outputs.track }} |"
+            echo "| priority | ${{ steps.guard.outputs.priority }} |"
+            echo "| percent_done (pre-dispatch) | ${{ steps.guard.outputs.percent_done }}% |"
+            echo "| open tickets (post) | ${{ steps.ticket-cap.outputs.open_tickets }} |"
+            echo "| skipped (cap) | ${{ steps.ticket-cap.outputs.skipped }} |"
+            echo "| ticket PR | ${{ steps.open-pr.outputs.ticket_pr_url || '_(not opened — capped or guarded)_' }} |"
+            echo "| model hint | ${MODEL} |"
+            echo "| run | ${RUN_URL} |"
+          } >> "${GITHUB_STEP_SUMMARY}"
