@@ -357,9 +357,9 @@ async def persist_snapshots(
                         "batch_id": batch_id,
                         "team_id": team_id,
                         "calendar_day_deploy_count_utc": cal_deploys,
-                        "utc_date": datetime.fromtimestamp(
-                            now_ms / 1000.0, tz=UTC
-                        ).date().isoformat(),
+                        "utc_date": datetime.fromtimestamp(now_ms / 1000.0, tz=UTC)
+                        .date()
+                        .isoformat(),
                     },
                 )
             )
@@ -399,9 +399,7 @@ async def run_vercel_quota_monitor_tick(
         for pid, pname in projects:
             if not pid:
                 continue
-            deploys = await fetch_deployments_since(
-                http_client, token, team_id, pid, since_ms
-            )
+            deploys = await fetch_deployments_since(http_client, token, team_id, pid, since_ms)
             per_project.append(
                 {
                     "project_id": pid,

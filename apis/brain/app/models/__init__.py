@@ -6,13 +6,13 @@ from app.models.cost import Cost
 from app.models.entity import Entity, EntityEdge
 from app.models.episode import Episode
 from app.models.organization import Organization, Team, TeamMember
+from app.models.quota_snapshot import VercelQuotaSnapshot
 from app.models.scheduler_run import SchedulerRun
 from app.models.secrets_intelligence import BrainSecretsEpisode, BrainSecretsRegistry
 from app.models.skill import Skill, UserSkill
 from app.models.summary import Summary
 from app.models.user_profile import UserProfile
 from app.models.vault import UserVault
-from app.models.quota_snapshot import VercelQuotaSnapshot
 from app.models.workstream_board import WorkstreamDispatchLog, WorkstreamProgressSnapshot
 
 __all__ = [
