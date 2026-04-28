@@ -388,3 +388,112 @@ jobs:
         if: failure() && steps.app_filter.outputs.active == 'true'
         run: |
           echo "::error::Vercel auto-promote failed for app **${{ matrix.project }}** (project_id=${{ steps.vercel_project.outputs.project_id }}). Check the job log above: GitHub (gh pr / path filter), Vercel production fetch, find READY deployment, or promote API."
+
+  # Catches silent regressions like the jq norm/0 bug (2026-04-24 -> 2026-04-28),
+  # where every matrix leg failed for ~12 PRs in a row and no one noticed because
+  # the post-merge workflow doesn't show as a check on closed PRs. If ALL real
+  # legs (i.e. excluding `design` placeholder) failed, open or update a tracking
+  # issue so it surfaces in the engineering issue list immediately.
+  notify-on-pipeline-broken:
+    name: Open tracking issue if every real leg failed
+    needs: promote
+    if: always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Decide if we should alert
+        id: decide
+        env:
+          PROMOTE_RESULT: ${{ needs.promote.result }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # Matrix `result` is "failure" when ANY leg failed (fail-fast=false).
+          # We want to alert only when EVERY real leg failed — i.e. the structural
+          # case (jq bug, expired token, removed project_id) — not single-app flakes.
+          # To compute that, check the per-job conclusions via the Actions API.
+          legs="$(gh api "repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
+            --jq '[.jobs[] | select(.name | startswith("promote [")) | {name: .name, conclusion: .conclusion}]')"
+          echo "legs=$legs"
+          total="$(echo "$legs" | jq 'length')"
+          # Real legs = anything that isn't the design placeholder (still TBD_CREATE_BEFORE_MERGE)
+          real="$(echo "$legs" | jq '[.[] | select(.name != "promote [design]")] | length')"
+          real_failed="$(echo "$legs" | jq '[.[] | select(.name != "promote [design]" and .conclusion == "failure")] | length')"
+          real_succeeded="$(echo "$legs" | jq '[.[] | select(.name != "promote [design]" and .conclusion == "success")] | length')"
+          echo "total=$total real=$real real_failed=$real_failed real_succeeded=$real_succeeded"
+          if [ "$real" -gt 0 ] && [ "$real_failed" -eq "$real" ]; then
+            echo "alert=true" >> "$GITHUB_OUTPUT"
+            echo "summary=All ${real} real promote legs failed (likely structural — jq script, expired token, project_id missing). One-leg flakes do not alert." >> "$GITHUB_OUTPUT"
+          else
+            echo "alert=false" >> "$GITHUB_OUTPUT"
+            echo "summary=Real legs: ${real_succeeded}/${real} succeeded; ${real_failed} failed. Not alerting (partial failure)." >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip alert when not needed
+        if: steps.decide.outputs.alert != 'true'
+        run: |
+          echo "::notice::${{ steps.decide.outputs.summary }}"
+
+      - name: Open or comment on tracking issue
+        if: steps.decide.outputs.alert == 'true'
+        uses: actions/github-script@v9
+        env:
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SUMMARY: ${{ steps.decide.outputs.summary }}
+        with:
+          script: |
+            const title = '[infra] Vercel auto-promote pipeline structurally broken';
+            const runUrl = process.env.RUN_URL;
+            const summary = process.env.SUMMARY;
+            const sha = context.sha.slice(0, 7);
+            const eventName = context.eventName;
+            const body = [
+              `## Auto-promote pipeline alert`,
+              ``,
+              `Workflow run: ${runUrl}`,
+              `Triggering event: \`${eventName}\` at \`${sha}\``,
+              ``,
+              `**Decision**: ${summary}`,
+              ``,
+              `When every real matrix leg fails on the same run, the cause is almost always structural (e.g. \`jq\` syntax in the matcher, expired \`VERCEL_API_TOKEN\`, or a removed \`project_id\` in \`scripts/vercel-projects.json\`). Single-app flakes never trigger this alert.`,
+              ``,
+              `### Triage`,
+              `- \`gh run view ${process.env.RUN_ID} --log-failed | head -200\``,
+              `- If the failure is in **Find READY deployment for PR head**: most likely Vercel didn't build the merge SHA (path filter or webhook miss). Push a path-relevant commit instead of force-rebuilding via API (preserves the daily \`api-deployments-free-per-day\` quota).`,
+              `- If the failure is in **Verify Vercel API token configured** or HTTP 401/403 from the API: rotate \`VERCEL_API_TOKEN\` per \`docs/infra/VERCEL_AUTO_PROMOTE.md § Setup\`.`,
+              `- If the failure is in **jq** parse: check the matcher script at the top of the "Find READY" step.`,
+              ``,
+              `### Why this issue exists`,
+              `Post-merge workflow runs don't show as checks on closed PRs, so silent failures go unnoticed for days. This issue is the alarm. See PR #319 (jq norm/0) and PR #320 for context on prior incidents.`,
+            ].join('\n');
+
+            const repo = { owner: context.repo.owner, repo: context.repo.repo };
+            const existing = await github.rest.issues.listForRepo({
+              ...repo,
+              state: 'open',
+              labels: 'infra-alert,auto-promote',
+              per_page: 5,
+            });
+            const match = existing.data.find((i) => i.title === title);
+            if (match) {
+              await github.rest.issues.createComment({
+                ...repo,
+                issue_number: match.number,
+                body: `Recurrence: ${runUrl} (${sha})\n\n${summary}`,
+              });
+              core.notice(`Commented on existing tracking issue #${match.number}`);
+            } else {
+              const created = await github.rest.issues.create({
+                ...repo,
+                title,
+                body,
+                labels: ['infra-alert', 'auto-promote'],
+              });
+              core.notice(`Opened tracking issue #${created.data.number}`);
+            }
