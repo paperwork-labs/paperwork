@@ -2,7 +2,7 @@
 
 Replaces the **Sprint Close** n8n workflow (``0 21 * * 5``) that fetched
 TASKS/KNOWLEDGE, called OpenAI, posted to ``#sprints``, and updated
-``docs/KNOWLEDGE.md`` — see ``infra/hetzner/workflows/sprint-close.json`` and
+``docs/KNOWLEDGE.md`` — see ``infra/hetzner/workflows/retired/sprint-close.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md``.
 
 Cutover uses :func:`app.services.agent.process` with ``persona_pin="strategy"``

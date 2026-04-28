@@ -2,7 +2,7 @@
 
 Replaces the **Sprint Kickoff** n8n workflow (``0 7 * * 1``) that POSTs
 ``/api/v1/brain/process`` to ``#sprints`` and announces in ``#all-paperwork-labs``
-— see ``infra/hetzner/workflows/sprint-kickoff.json`` and
+— see ``infra/hetzner/workflows/retired/sprint-kickoff.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`` (Track K).
 """
 

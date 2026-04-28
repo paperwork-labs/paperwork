@@ -2,7 +2,7 @@
 
 Replaces the **Annual Data Update Trigger (P2.10)** n8n workflow (``0 9 1 10 *``) that
 posts the October checklist to ``#engineering`` — see
-``infra/hetzner/workflows/data-annual-update.json`` and
+``infra/hetzner/workflows/retired/data-annual-update.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`` (Track K).
 """
 
