@@ -144,7 +144,7 @@ Goal: Brain becomes the **ops “pimp daddy”** for Render quota — **proactiv
 
 ### 5.1 Scheduler job: `render_quota_monitor`
 
-- **Module:** `apis/brain/app/schedulers/render_quota_monitor.py` (name follows existing snake_case jobs).
+- **Module:** new file `render_quota_monitor.py` under the Brain schedulers package (name follows existing snake_case jobs).
 - **Schedule:** APScheduler **`IntervalTrigger`** every **6 hours** (or cron `0 */6 * * *` UTC — match [`infra-health.yaml`](../../.github/workflows/infra-health.yaml) spirit).
 - **Gating:** Register in the same **`install(scheduler)`** pattern as [`infra_health.py`](../brain/app/schedulers/infra_health.py) / cost jobs. **Only** gate on **`BRAIN_SCHEDULER_ENABLED`** (must **not** introduce a new `BRAIN_OWNS_*` flag per direction).
 - **Behavior:**
