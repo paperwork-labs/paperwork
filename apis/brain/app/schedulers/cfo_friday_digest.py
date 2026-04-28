@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
@@ -37,14 +38,22 @@ _ORG_ID = "paperwork-labs"
 
 
 def _default_tracker_path() -> Path:
-    return (
-        Path(__file__).resolve().parents[4]
-        / "apps"
-        / "studio"
-        / "src"
-        / "data"
-        / "tracker-index.json"
-    )
+    """Walk up from this file (or honour ``$REPO_ROOT``) to find the tracker JSON.
+
+    Defensive against the Docker layout where ``parents[4]`` doesn't exist —
+    in the Brain image the file is bundled at
+    ``/app/apps/studio/src/data/tracker-index.json`` (see ``apis/brain/Dockerfile``).
+    """
+    rel = Path("apps") / "studio" / "src" / "data" / "tracker-index.json"
+    env = os.environ.get("REPO_ROOT")
+    if env:
+        return Path(env) / rel
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / rel
+        if candidate.exists():
+            return candidate
+    return Path("/app") / rel
 
 
 def load_tracker_index(path: Path | None = None) -> dict[str, Any] | None:
