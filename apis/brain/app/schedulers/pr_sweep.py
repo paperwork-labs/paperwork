@@ -122,6 +122,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
     # Track C: proactive persona cadence runs on the same scheduler so we keep
     # a single lifecycle.
     try:
+        from app.schedulers import partnership_outreach_drafter
+
+        partnership_outreach_drafter.install(sched)
+    except Exception:
+        logger.exception("Failed to install partnership_outreach_drafter job")
+
+    try:
         from app.schedulers import proactive_cadence
 
         proactive_cadence.install(sched)
