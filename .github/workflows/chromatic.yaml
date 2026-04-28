@@ -30,7 +30,7 @@ jobs:
   chromatic:
     name: Chromatic
     runs-on: ubuntu-latest
-    # Do not use `if: secrets.*` (invalid in workflow schema); Chromatic no-ops when token missing.
+    # Do not use `if: secrets.*` on the publish step (schema); detect token via step output instead.
     env:
       # 4 GiB headroom for the Storybook build on 30+ stories with theme variants.
       NODE_OPTIONS: --max-old-space-size=4096
@@ -53,7 +53,18 @@ jobs:
       - name: Build Storybook
         run: pnpm --filter @paperwork-labs/design build-storybook
 
+      - name: Detect Chromatic project token
+        id: chromatic_token
+        run: |
+          if [ -n "${{ secrets.CHROMATIC_PROJECT_TOKEN }}" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping Chromatic publish (CHROMATIC_PROJECT_TOKEN not set). Storybook build still verified above."
+          fi
+
       - name: Publish to Chromatic
+        if: steps.chromatic_token.outputs.publish == 'true'
         uses: chromaui/action@v11
         with:
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
