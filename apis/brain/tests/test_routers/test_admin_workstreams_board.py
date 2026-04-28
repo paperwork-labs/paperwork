@@ -30,3 +30,7 @@ async def test_admin_workstreams_board_returns_file_shape(
     assert "updated" in body
     assert isinstance(body.get("workstreams"), list)
     assert len(body["workstreams"]) >= 1
+    assert body.get("generated_at")
+    assert body.get("source") == "brain-writeback"
+    assert body.get("ttl_seconds") == 60
+    assert "writeback_last_run_at" in body

@@ -16,7 +16,7 @@ _ID_RE = re.compile(r"^WS-\d{2,3}-[a-z0-9-]+$")
 _TRACK_RE = re.compile(r"^[A-Z][0-9A-Z]{0,2}$")
 _BRIEF_TAG_RE = re.compile(r"^track:[a-z0-9-]+$")
 
-WorkstreamStatus = Literal["pending", "in_progress", "blocked", "completed"]
+WorkstreamStatus = Literal["pending", "in_progress", "blocked", "completed", "cancelled"]
 WorkstreamOwner = Literal["brain", "founder", "opus"]
 
 
@@ -37,6 +37,12 @@ class Workstream(BaseModel):
     estimated_pr_count: int | None = Field(None, gt=0)
     github_actions_workflow: str | None = None
     related_plan: str | None = None
+    updated_at: str | None = None
+    override_percent: int | None = Field(None, ge=0, le=100)
+    derived_percent: int | None = Field(None, ge=0, le=100)
+    pr_url: str | None = None
+    prs: list[int] | None = None
+    pr_numbers: list[int] | None = None
 
     @field_validator("id")
     @classmethod
@@ -89,6 +95,10 @@ class WorkstreamsFile(BaseModel):
             if ws.status == "completed" and ws.percent_done != 100:
                 raise ValueError(
                     f"{ws.id}: completed status requires percent_done=100 (got {ws.percent_done})"
+                )
+            if ws.status == "cancelled" and ws.percent_done != 0:
+                raise ValueError(
+                    f"{ws.id}: cancelled status requires percent_done=0 (got {ws.percent_done})"
                 )
             if ws.status == "blocked" and len(ws.blockers) == 0:
                 raise ValueError(

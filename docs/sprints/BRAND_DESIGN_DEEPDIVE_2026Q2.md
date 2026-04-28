@@ -19,6 +19,11 @@ sprint:
 related_prs:
   - 162
   - 172
+closes_pr_urls:
+  - https://github.com/paperwork-labs/paperwork/pull/162
+  - https://github.com/paperwork-labs/paperwork/pull/172
+closes_workstreams: []
+last_auto_status_check_at: null
 ---
 
 # Brand canon (2026 Q2) — final state

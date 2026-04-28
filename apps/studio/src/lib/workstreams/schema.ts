@@ -21,6 +21,7 @@ export const WorkstreamStatusSchema = z.enum([
   "in_progress",
   "blocked",
   "completed",
+  "cancelled",
 ]);
 
 export const WorkstreamOwnerSchema = z.enum([
@@ -54,51 +55,77 @@ export const WorkstreamSchema = z.object({
   estimated_pr_count: z.number().int().positive().nullable().default(null),
   github_actions_workflow: z.string().nullable().default(null),
   related_plan: z.string().nullable().default(null),
+  updated_at: z.string().datetime().nullable().optional(),
+  override_percent: z.number().int().min(0).max(100).nullable().optional(),
+  derived_percent: z.number().int().min(0).max(100).nullable().optional(),
+  pr_url: z.string().nullable().optional(),
+  prs: z.array(z.number().int().positive()).nullable().optional(),
+  pr_numbers: z.array(z.number().int().positive()).nullable().optional(),
 });
 
-export const WorkstreamsFileSchema = z
-  .object({
-    version: z.literal(1),
-    updated: z.string().datetime(),
-    workstreams: z.array(WorkstreamSchema),
-  })
-  .superRefine((file, ctx) => {
-    const ids = file.workstreams.map((w) => w.id);
-    const idSet = new Set(ids);
-    if (idSet.size !== ids.length) {
+const WorkstreamsFileBaseSchema = z.object({
+  version: z.literal(1),
+  updated: z.string().datetime(),
+  workstreams: z.array(WorkstreamSchema),
+});
+
+function _refineWorkstreamsFile(
+  file: z.infer<typeof WorkstreamsFileBaseSchema>,
+  ctx: z.RefinementCtx,
+) {
+  const ids = file.workstreams.map((w) => w.id);
+  const idSet = new Set(ids);
+  if (idSet.size !== ids.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Workstream ids must be unique",
+      path: ["workstreams"],
+    });
+  }
+  const priorities = file.workstreams.map((w) => w.priority);
+  const prioritySet = new Set(priorities);
+  if (prioritySet.size !== priorities.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        "Workstream priorities must be unique — drag-reorder relies on stable ordering",
+      path: ["workstreams"],
+    });
+  }
+  for (const ws of file.workstreams) {
+    if (ws.status === "completed" && ws.percent_done !== 100) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Workstream ids must be unique",
+        message: `${ws.id}: completed status requires percent_done=100 (got ${ws.percent_done})`,
         path: ["workstreams"],
       });
     }
-    const priorities = file.workstreams.map((w) => w.priority);
-    const prioritySet = new Set(priorities);
-    if (prioritySet.size !== priorities.length) {
+    if (ws.status === "blocked" && ws.blockers.length === 0) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message:
-          "Workstream priorities must be unique — drag-reorder relies on stable ordering",
+        message: `${ws.id}: blocked status requires at least one entry in blockers[]`,
         path: ["workstreams"],
       });
     }
-    for (const ws of file.workstreams) {
-      if (ws.status === "completed" && ws.percent_done !== 100) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `${ws.id}: completed status requires percent_done=100 (got ${ws.percent_done})`,
-          path: ["workstreams"],
-        });
-      }
-      if (ws.status === "blocked" && ws.blockers.length === 0) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: `${ws.id}: blocked status requires at least one entry in blockers[]`,
-          path: ["workstreams"],
-        });
-      }
+    if (ws.status === "cancelled" && ws.percent_done !== 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${ws.id}: cancelled status requires percent_done=0 (got ${ws.percent_done})`,
+        path: ["workstreams"],
+      });
     }
-  });
+  }
+}
+
+export const WorkstreamsFileSchema =
+  WorkstreamsFileBaseSchema.superRefine(_refineWorkstreamsFile);
+
+export const WorkstreamsBoardBrainEnvelopeSchema = WorkstreamsFileBaseSchema.extend({
+  generated_at: z.string(),
+  source: z.enum(["brain-writeback", "bundled-json-fallback"]),
+  ttl_seconds: z.number().int().nonnegative(),
+  writeback_last_run_at: z.string().datetime().nullable(),
+}).superRefine(_refineWorkstreamsFile);
 
 export type Workstream = z.infer<typeof WorkstreamSchema>;
 export type WorkstreamsFile = z.infer<typeof WorkstreamsFileSchema>;
@@ -140,23 +167,26 @@ export function dispatchableWorkstreams(
 export interface WorkstreamKpis {
   total: number;
   active: number;
+  pending: number;
   blocked: number;
   completed: number;
+  cancelled: number;
   avg_percent_done: number;
 }
 
 export function computeKpis(file: WorkstreamsFile): WorkstreamKpis {
   const total = file.workstreams.length;
-  const active = file.workstreams.filter(
-    (w) => w.status === "pending" || w.status === "in_progress",
-  ).length;
+  const active = file.workstreams.filter((w) => w.status === "in_progress").length;
+  const pending = file.workstreams.filter((w) => w.status === "pending").length;
   const blocked = file.workstreams.filter((w) => w.status === "blocked").length;
   const completed = file.workstreams.filter((w) => w.status === "completed").length;
+  const cancelled = file.workstreams.filter((w) => w.status === "cancelled").length;
+  const forAvg = file.workstreams.filter(
+    (w) => w.status === "pending" || w.status === "in_progress",
+  );
   const avg_percent_done =
-    total === 0
+    forAvg.length === 0
       ? 0
-      : Math.round(
-          file.workstreams.reduce((acc, w) => acc + w.percent_done, 0) / total,
-        );
-  return { total, active, blocked, completed, avg_percent_done };
+      : Math.round(forAvg.reduce((acc, w) => acc + w.percent_done, 0) / forAvg.length);
+  return { total, active, pending, blocked, completed, cancelled, avg_percent_done };
 }

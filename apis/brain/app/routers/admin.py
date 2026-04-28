@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import async_session_factory, get_db
 from app.models.episode import Episode
+from app.models.scheduler_run import SchedulerRun
 from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
 from app.services.continuous_learning import (
@@ -203,19 +204,46 @@ async def n8n_mirror_scheduler_status(
     )
 
 
+def _rfc3339_utc_z(dt: datetime) -> str:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 @router.get("/workstreams-board")
-async def get_workstreams_board(_auth: None = Depends(_require_admin)):
+async def get_workstreams_board(
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
     """Return ``workstreams.json`` as Brain sees it on disk (loader cache bypass).
 
     Proxied by Studio ``GET /api/admin/workstreams`` for a live admin board without
-    waiting for a Studio redeploy. Response shape matches ``WorkstreamsFileSchema``
-    in ``apps/studio/src/lib/workstreams/schema.ts`` (not wrapped in ``success_response``).
+    waiting for a Studio redeploy. Wraps the file with provenance metadata expected
+    by ``WorkstreamsBoardBrainEnvelopeSchema`` in ``apps/studio/src/lib/workstreams/schema.ts``.
     """
     from app.schemas.workstream import workstreams_file_to_json_dict
     from app.services.workstreams_loader import load_workstreams_file
 
+    generated = datetime.now(UTC)
+    wb_stmt = (
+        select(SchedulerRun.finished_at)
+        .where(
+            SchedulerRun.job_id == "workstream_progress_writeback",
+            SchedulerRun.status == "success",
+        )
+        .order_by(SchedulerRun.finished_at.desc())
+        .limit(1)
+    )
+    wb_row = (await db.execute(wb_stmt)).scalar_one_or_none()
+    writeback_last = _rfc3339_utc_z(wb_row) if wb_row is not None else None
+
     file = load_workstreams_file(bypass_cache=True)
-    return workstreams_file_to_json_dict(file)
+    payload = workstreams_file_to_json_dict(file)
+    payload["generated_at"] = _rfc3339_utc_z(generated)
+    payload["source"] = "brain-writeback"
+    payload["ttl_seconds"] = 60
+    payload["writeback_last_run_at"] = writeback_last
+    return payload
 
 
 @router.get("/vercel-quota")

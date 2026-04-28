@@ -169,6 +169,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install cpa_tax_review job")
 
     try:
+        from app.schedulers import sprint_completion
+
+        sprint_completion.install(sched)
+    except Exception:
+        logger.exception("Failed to install sprint_md_auto_close job")
+
+    try:
         from app.schedulers import sprint_lessons
 
         sprint_lessons.install(sched)
