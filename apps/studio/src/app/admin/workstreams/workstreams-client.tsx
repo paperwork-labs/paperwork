@@ -268,11 +268,12 @@ function KpiStrip({ kpis }: { kpis: WorkstreamKpis }) {
     { label: "Active", value: kpis.active },
     { label: "Blocked", value: kpis.blocked },
     { label: "Completed", value: kpis.completed },
+    { label: "Cancelled", value: kpis.cancelled },
     { label: "Avg % done", value: `${kpis.avg_percent_done}%`, tabular: true },
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
       {cards.map((c) => (
         <div
           key={c.label}
@@ -336,6 +337,7 @@ function FilterRail({
               <option value="in_progress">in_progress</option>
               <option value="blocked">blocked</option>
               <option value="completed">completed</option>
+              <option value="cancelled">cancelled</option>
             </select>
           </label>
           <label className="block space-y-1">

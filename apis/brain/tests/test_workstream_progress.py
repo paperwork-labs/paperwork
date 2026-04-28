@@ -37,6 +37,10 @@ def test_snapshot_status_completed_only_when_no_open() -> None:
     assert wp.compute_snapshot_status(80, 0, "pending", merged_pr_count=1) == "in_progress"
 
 
+def test_snapshot_status_cancelled_unchanged() -> None:
+    assert wp.compute_snapshot_status(50, 0, "cancelled", merged_pr_count=3) == "cancelled"
+
+
 def _one_ws(**kwargs) -> WorkstreamsFile:  # type: ignore[no-untyped-def]
     defaults = {
         "id": "WS-01-prog",

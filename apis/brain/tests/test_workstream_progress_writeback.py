@@ -41,6 +41,7 @@ def _ws(
         estimated_pr_count=2,
         github_actions_workflow=None,
         related_plan=None,
+        updated_at="2026-04-27T12:00:00Z",
     )
 
 

@@ -30,6 +30,8 @@ export function statusPillClass(status: WorkstreamStatus): string {
       return "border-amber-700/70 bg-amber-950/45 text-amber-200";
     case "completed":
       return "border-emerald-700/70 bg-emerald-950/45 text-emerald-200";
+    case "cancelled":
+      return "border-rose-800/60 bg-rose-950/40 text-rose-200";
     default:
       return "border-zinc-600 bg-zinc-900 text-zinc-300";
   }

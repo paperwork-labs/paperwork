@@ -24,6 +24,7 @@ from app.database import async_session_factory
 from app.models.workstream_board import WorkstreamDispatchLog, WorkstreamProgressSnapshot
 from app.schedulers._history import run_with_scheduler_record
 from app.schemas.workstream import Workstream, WorkstreamsFile, workstreams_file_to_json_dict
+from app.services import workstream_progress_derive as derive
 from app.services.workstreams_loader import invalidate_workstreams_cache, load_workstreams_file
 from app.tools import github as gh
 from app.tools.redis import release_scheduler_lock, try_acquire_scheduler_lock
@@ -39,6 +40,7 @@ _PR_TITLE = "chore(brain): workstream progress sync (auto)"
 _HEAD_PREFIX = "bot/workstream-progress-"
 _SCHEDULER_LOCK_KEY = "brain:scheduler:workstream_progress_writeback:lock"
 _SCHEDULER_LOCK_TTL_SECONDS = 300
+_BACKFILL_UPDATED_AT_FLOOR = "2020-01-01T00:00:00Z"
 
 
 @dataclass
@@ -61,11 +63,14 @@ class _RowDelta:
     status_after: str
     last_pr_before: int | None
     last_pr_after: int | None
+    derived_before: int | None = None
+    derived_after: int | None = None
 
 
 @dataclass
 class _WritebackState:
     deltas: list[_RowDelta] = field(default_factory=list)
+    backfill_only: bool = False
 
 
 def _iso_z(dt: datetime) -> str:
@@ -93,6 +98,8 @@ def _merge_status(current: str, proposed: str) -> str | None:
     if current == "blocked":
         return None
     if current == "completed":
+        return None
+    if current == "cancelled":
         return None
     if proposed == "pending" and current == "in_progress":
         return None
@@ -166,21 +173,98 @@ def _pretty_json(payload: dict[str, Any]) -> str:
     return json.dumps(payload, indent=2) + "\n"
 
 
-def _build_pr_body(deltas: list[_RowDelta], commit_sha: str) -> str:
+def _workstreams_payload_equal(a: WorkstreamsFile, b: WorkstreamsFile) -> bool:
+    return workstreams_file_to_json_dict(a) == workstreams_file_to_json_dict(b)
+
+
+def _workstream_rows_equal(left: list[Workstream], right: list[Workstream]) -> bool:
+    if len(left) != len(right):
+        return False
+    return [w.model_dump(mode="json") for w in left] == [w.model_dump(mode="json") for w in right]
+
+
+async def _backfill_null_updated_at_inplace(data: WorkstreamsFile) -> WorkstreamsFile:
+    """One-time migration: null ``updated_at`` → earliest linked PR ``created_at`` or floor."""
+    if not settings.GITHUB_TOKEN.strip():
+        out: list[Workstream] = []
+        changed = False
+        for ws in data.workstreams:
+            if ws.updated_at is not None:
+                out.append(ws)
+                continue
+            out.append(ws.model_copy(update={"updated_at": _BACKFILL_UPDATED_AT_FLOOR}))
+            changed = True
+        if not changed:
+            return data
+        return WorkstreamsFile(version=data.version, updated=data.updated, workstreams=out)
+
+    out_rows: list[Workstream] = []
+    for ws in data.workstreams:
+        if ws.updated_at is not None:
+            out_rows.append(ws)
+            continue
+        nums = derive.collect_linked_pr_numbers(ws)
+        best: datetime | None = None
+        for n in nums[:25]:
+            pr = await gh.get_github_pull_dict(n)
+            if not pr:
+                continue
+            ca = pr.get("created_at")
+            if not isinstance(ca, str):
+                continue
+            try:
+                dt = datetime.fromisoformat(ca.replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            if best is None or dt < best:
+                best = dt
+        chosen = _iso_z(best) if best is not None else _BACKFILL_UPDATED_AT_FLOOR
+        out_rows.append(ws.model_copy(update={"updated_at": chosen}))
+    return WorkstreamsFile(version=data.version, updated=data.updated, workstreams=out_rows)
+
+
+def _build_pr_body(
+    deltas: list[_RowDelta],
+    commit_sha: str,
+    *,
+    backfill_only: bool = False,
+) -> str:
+    if backfill_only or not deltas:
+        return (
+            "Automated workstream board sync — `updated_at` backfill and/or metadata-only "
+            "refresh (see commit diff).\n\n"
+            f"_Commit: `{commit_sha[:7]}`_"
+        )
     lines = [
-        "Automated workstream board sync from Brain snapshots + dispatch log.",
+        "Automated workstream board sync from Brain snapshots + dispatch log "
+        "+ linked-PR-derived progress where available.",
         "",
-        "| id | percent_done | status | last_pr |",
-        "| --- | --- | --- | --- |",
+        "| id | percent_done | status | last_pr | derived |",
+        "| --- | --- | --- | --- | --- |",
     ]
     for d in deltas:
         lines.append(
             f"| `{d.wid}` | {d.pct_before} → {d.pct_after} | "
             f"{d.status_before} → {d.status_after} | "
-            f"{d.last_pr_before} → {d.last_pr_after} |"
+            f"{d.last_pr_before} → {d.last_pr_after} | "
+            f"{d.derived_before} → {d.derived_after} |"
         )
     lines.extend(["", f"_Commit: `{commit_sha[:7]}`_"])
     return "\n".join(lines)
+
+
+def _resolve_percent_done(
+    ws: Workstream,
+    snap: WorkstreamProgressSnapshot | None,
+    derived_percent: int | None,
+) -> int:
+    if ws.override_percent is not None:
+        return ws.override_percent
+    if derived_percent is not None:
+        return derived_percent
+    if snap is not None:
+        return snap.percent_done
+    return ws.percent_done
 
 
 def _patch_one_workstream(
@@ -188,28 +272,41 @@ def _patch_one_workstream(
     snap: WorkstreamProgressSnapshot | None,
     dispatch_pr: int | None,
     dispatch_row: WorkstreamDispatchLog | None,
+    derived_from_github: int | None,
     state: _WritebackState,
 ) -> Workstream:
     pct_before = ws.percent_done
     status_before = ws.status
     last_pr_before = ws.last_pr
+    derived_before = ws.derived_percent
 
-    new_pct = ws.percent_done
     new_status = ws.status
     new_last_pr = ws.last_pr
 
     if snap is not None:
-        new_pct = snap.percent_done
         merged = _merge_status(ws.status, snap.computed_status)
         if merged is not None:
             new_status = merged  # type: ignore[assignment]
-        if new_status == "completed" or ws.status == "completed":
-            new_pct = 100
+
+    new_pct = _resolve_percent_done(ws, snap, derived_from_github)
+    if ws.status == "cancelled":
+        new_pct = 0
+        new_status = "cancelled"
+    elif new_status == "completed" or ws.status == "completed":
+        new_pct = 100
+        new_status = "completed"
 
     if dispatch_pr is not None and (new_last_pr is None or dispatch_pr > new_last_pr):
         new_last_pr = dispatch_pr
 
-    material = new_pct != pct_before or new_status != status_before or new_last_pr != last_pr_before
+    new_derived = derived_from_github
+    now_iso = _iso_z(datetime.now(UTC))
+    material = (
+        new_pct != pct_before
+        or new_status != status_before
+        or new_last_pr != last_pr_before
+        or new_derived != derived_before
+    )
     if not material:
         return ws
 
@@ -225,6 +322,8 @@ def _patch_one_workstream(
             "status": new_status,
             "last_pr": new_last_pr,
             "last_activity": new_last_activity,
+            "derived_percent": new_derived,
+            "updated_at": now_iso,
         }
     )
     state.deltas.append(
@@ -236,6 +335,8 @@ def _patch_one_workstream(
             status_after=new_status,
             last_pr_before=last_pr_before,
             last_pr_after=new_last_pr,
+            derived_before=derived_before,
+            derived_after=new_derived,
         )
     )
     return updated
@@ -245,8 +346,10 @@ def _apply_patches_validated(
     base: WorkstreamsFile,
     snaps: dict[str, WorkstreamProgressSnapshot],
     disp: dict[str, WorkstreamDispatchLog],
+    derived_map: dict[str, int | None],
+    disk_base: WorkstreamsFile,
 ) -> tuple[WorkstreamsFile | None, _WritebackState]:
-    """Return updated file + deltas, or None if every patch was rejected."""
+    """Return updated file + deltas, or None if nothing changed vs ``disk_base`` rows."""
     state = _WritebackState()
     new_streams: list[Workstream] = []
     updated_ts = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -255,12 +358,17 @@ def _apply_patches_validated(
         snap = snaps.get(orig.id)
         drow = disp.get(orig.id)
         dpr = _pr_from_dispatch_inputs(drow.inputs_json if drow else None)
-        if snap is None and dpr is None:
-            new_streams.append(orig)
-            continue
+        derived_here = derived_map.get(orig.id)
 
         before_len = len(state.deltas)
-        candidate = _patch_one_workstream(orig, snap, dpr, drow, state)
+        candidate = _patch_one_workstream(
+            orig,
+            snap,
+            dpr,
+            drow,
+            derived_here,
+            state,
+        )
         if candidate is orig:
             new_streams.append(orig)
             continue
@@ -283,8 +391,11 @@ def _apply_patches_validated(
 
         new_streams.append(validated.workstreams[len(new_streams)])
 
-    if not state.deltas:
+    if not state.deltas and _workstream_rows_equal(new_streams, disk_base.workstreams):
         return None, state
+
+    if not state.deltas:
+        state.backfill_only = True
 
     final_try = WorkstreamsFile(version=base.version, updated=updated_ts, workstreams=new_streams)
     try:
@@ -348,7 +459,7 @@ async def _finalize_new_pr_on_branch(
     if not commit_sha:
         raise RuntimeError("commit_files_to_branch failed")
 
-    body = _build_pr_body(state.deltas, commit_sha)
+    body = _build_pr_body(state.deltas, commit_sha, backfill_only=state.backfill_only)
     pr = await gh.create_github_pull(
         head=branch,
         base="main",
@@ -433,23 +544,49 @@ async def run_workstream_progress_writeback() -> WorkstreamWritebackResult:
         return WorkstreamWritebackResult(skipped=True, skip_reason="scheduler_lock_held")
 
     try:
-        base = load_workstreams_file(bypass_cache=True)
+        disk_base = load_workstreams_file(bypass_cache=True)
+        prepared = await _backfill_null_updated_at_inplace(disk_base)
+        if settings.GITHUB_TOKEN.strip():
+            derived_map = await derive.compute_derived_percents_for_workstreams(
+                prepared.workstreams,
+            )
+        else:
+            derived_map = {w.id: None for w in prepared.workstreams}
         snaps, disp = await _load_snapshot_dispatch_maps()
 
-        new_file, wstate = _apply_patches_validated(base, snaps, disp)
-        if new_file is None or not wstate.deltas:
-            logger.info("workstream_progress_writeback: no drift")
-            return WorkstreamWritebackResult(no_drift=True)
+        new_file, wstate = _apply_patches_validated(prepared, snaps, disp, derived_map, disk_base)
+        if new_file is None:
+            if not _workstreams_payload_equal(prepared, disk_base):
+                new_file = WorkstreamsFile(
+                    version=prepared.version,
+                    updated=datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    workstreams=prepared.workstreams,
+                )
+                wstate = _WritebackState(backfill_only=True)
+            else:
+                logger.info("workstream_progress_writeback: no drift")
+                return WorkstreamWritebackResult(no_drift=True)
 
-        pr_meta = await _open_or_amend_writeback_pr(new_file, wstate)
+        try:
+            pr_meta = await _open_or_amend_writeback_pr(new_file, wstate)
+        except Exception as e:
+            logger.error(
+                "INCIDENT_CANDIDATE workstream_progress_writeback GitHub PR failed "
+                "(check agent_scheduler_runs job_id=%s): %s",
+                _JOB_ID,
+                e,
+            )
+            raise
+
+        changed = len(wstate.deltas) if wstate.deltas else (1 if wstate.backfill_only else 0)
         logger.info(
             "workstream_progress_writeback: %s PR #%s (%d workstreams)",
             "amended" if pr_meta.get("amended") else "opened",
             pr_meta.get("number"),
-            len(wstate.deltas),
+            changed,
         )
         return WorkstreamWritebackResult(
-            workstreams_changed=len(wstate.deltas),
+            workstreams_changed=changed,
             pr_number=int(pr_meta["number"]) if pr_meta.get("number") is not None else None,
             pr_url=str(pr_meta.get("html_url") or ""),
             amended_existing_pr=bool(pr_meta.get("amended")),

@@ -113,9 +113,12 @@ describe("workstreams schema", () => {
     const parsed = WorkstreamsFileSchema.parse(workstreamsJson);
     const kpis = computeKpis(parsed);
     expect(kpis.total).toBe(parsed.workstreams.length);
-    expect(kpis.completed + kpis.active + kpis.blocked).toBeLessThanOrEqual(
-      kpis.total,
-    );
+    expect(
+      kpis.completed +
+        kpis.active +
+        kpis.blocked +
+        kpis.cancelled,
+    ).toBeLessThanOrEqual(kpis.total);
     expect(kpis.avg_percent_done).toBeGreaterThanOrEqual(0);
     expect(kpis.avg_percent_done).toBeLessThanOrEqual(100);
   });

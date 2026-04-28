@@ -24,7 +24,7 @@ type Workstream = {
   title: string;                 // <= 100 chars
   track: string;                 // SSO-Q2 track letter (A, B1, F3, K, M, ...)
   priority: number;              // unique, 0 = highest; reordered via DnD
-  status: "pending" | "in_progress" | "blocked" | "completed";
+  status: "pending" | "in_progress" | "blocked" | "completed" | "cancelled";
   percent_done: number;          // 0–100, computed by workstream_progress.py
   owner: "brain" | "founder" | "opus";
   brief_tag: string;             // `track:<slug>` — appears in PR body, drives % done
@@ -55,6 +55,7 @@ type Workstream = {
 | `in_progress` | At least one PR open or merged against the `brief_tag`; still dispatchable when below 100 |
 | `blocked` | Explicit blocker; never dispatched. Schema enforces `blockers.length > 0`. |
 | `completed` | Done. Schema enforces `percent_done === 100`. Read-only in UI. |
+| `cancelled` | Intentionally abandoned (e.g. superseded or wrong approach). Schema enforces `percent_done === 0`. Never dispatched; writeback never mutates. |
 
 ## Brain dispatch contract
 
@@ -109,6 +110,7 @@ Computed by `computeKpis()` in `schema.ts`:
 - `active` — `pending` + `in_progress`
 - `blocked` — `status === "blocked"`
 - `completed` — `status === "completed"`
+- `cancelled` — `status === "cancelled"`
 - `avg_percent_done` — mean of all `percent_done` values
 
 ## Adding a workstream
