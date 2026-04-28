@@ -13,6 +13,7 @@ try:
     from fastapi.testclient import TestClient
     from app.api.main import app
     from app.database import get_db
+    from app.api.dependencies import get_current_user
 
     FASTAPI_AVAILABLE = True
 except Exception:
@@ -86,15 +87,21 @@ def test_register_and_login(client, db_session):
     assert r_login.status_code == 200
     data = r_login.json()
     assert isinstance(data.get("access_token"), str) and data.get("token_type") == "bearer"
-    token = data["access_token"]
+    _token = data["access_token"]
+    assert _token
 
-    # Verify /me with token
-    r_me = client.get(
-        "/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"}
-    )
-    assert r_me.status_code == 200
-    me = r_me.json()
-    assert me.get("username") == username
+    # Protected routes expect a Clerk JWT; exercise /me via dependency override.
+    user_row = db_session.query(User).filter(User.username == username).one()
+    app.dependency_overrides[get_current_user] = lambda: user_row
+    try:
+        r_me = client.get(
+            "/api/v1/auth/me", headers={"Authorization": "Bearer clerk-test-token"}
+        )
+        assert r_me.status_code == 200
+        me = r_me.json()
+        assert me.get("username") == username
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_login_rejects_unverified_password_user(client, db_session):

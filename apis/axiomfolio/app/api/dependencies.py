@@ -14,8 +14,12 @@ from typing import Optional, List, Literal
 from app.database import get_db
 from app.models.user import User
 from app.models.user import UserRole
-from app.api.security import decode_token
 from app.config import settings
+from app.services.auth.clerk_user import (
+    get_or_create_user_for_clerk,
+    verify_bearer_clerk_token,
+)
+from paperwork_auth.jwks import ClerkAuthError
 
 logger = logging.getLogger(__name__)
 
@@ -56,21 +60,35 @@ async def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     """
-    Dependency to get current authenticated user.
+    Dependency to get current authenticated user (Clerk session JWT).
     Used by all protected endpoints.
     """
+    if not (settings.CLERK_JWT_ISSUER or "").strip():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Clerk authentication is not configured (CLERK_JWT_ISSUER)",
+        )
     try:
         token = credentials.credentials
-        payload = decode_token(token)
-        username = payload.get("sub")
-        if not username:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject")
-        user = db.query(User).filter(User.username == username).first()
-
-        if not user:
+        try:
+            claims = verify_bearer_clerk_token(token)
+        except ClerkAuthError as exc:
+            logger.warning("Clerk JWT rejected: %s", exc)
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
-            )
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            ) from exc
+
+        try:
+            user = get_or_create_user_for_clerk(db, claims)
+        except ClerkAuthError as exc:
+            logger.warning("Clerk user resolution failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            ) from exc
 
         if not user.is_active:
             raise HTTPException(
@@ -190,17 +208,33 @@ async def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Security(optional_security),
     db: Session = Depends(get_db),
 ):
-    """Return None if no credentials provided; otherwise validate like get_current_user."""
+    """Return None if no credentials provided; otherwise validate Clerk JWT like get_current_user."""
     if not credentials:
         return None
+    if not (settings.CLERK_JWT_ISSUER or "").strip():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Clerk authentication is not configured (CLERK_JWT_ISSUER)",
+        )
     try:
         token = credentials.credentials
-        payload = decode_token(token)
-        username = payload.get("sub")
-        if not username:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token subject")
-        user = db.query(User).filter(User.username == username).first()
-        if not user or not user.is_active:
+        try:
+            claims = verify_bearer_clerk_token(token)
+        except ClerkAuthError as exc:
+            logger.warning("Optional Clerk JWT rejected: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            ) from exc
+        try:
+            user = get_or_create_user_for_clerk(db, claims)
+        except ClerkAuthError as exc:
+            logger.warning("Optional Clerk user resolution failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            ) from exc
+        if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid user"
             )

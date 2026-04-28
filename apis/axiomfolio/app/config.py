@@ -196,6 +196,14 @@ class Settings(BaseSettings):
     DISCORD_BOT_TOKEN: Optional[str] = None
     DISCORD_BOT_DEFAULT_CHANNEL_ID: Optional[str] = None
 
+    # Clerk session JWT (WS-14 / Track B5) — ``Authorization: Bearer`` from Next.js.
+    # Issuer = Clerk Frontend API URL, e.g. https://clerk.example.com
+    CLERK_JWT_ISSUER: Optional[str] = None
+    CLERK_JWT_AUDIENCE: Optional[str] = None
+    # Optional Backend API key (sk_...) to load primary email when the JWT has no email claim.
+    CLERK_SECRET_KEY: Optional[str] = None
+    CLERK_API_URL: str = "https://api.clerk.com"
+
     # Security Configuration
     SECRET_KEY: str = "your-secret-key-here-change-in-production"
     OAUTH_STATE_SECRET: Optional[str] = None
