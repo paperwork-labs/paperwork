@@ -1,0 +1,10 @@
+{
+  "alwaysUpdateLinks": true,
+  "defaultViewMode": "preview",
+  "newLinkFormat": "relative",
+  "readableLineLength": true,
+  "showIndentGuide": true,
+  "strictLineBreaks": false,
+  "useMarkdownLinks": true,
+  "vimMode": false
+}
