@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth, useClerk } from "@clerk/nextjs";
+import { useClerk } from "@clerk/nextjs";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -135,35 +135,22 @@ export function useAppleAuth() {
 
 export function useLogout() {
   const { clearAuth } = useAuthStore();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { signOut } = useClerk();
-  const { isSignedIn } = useAuth();
 
   return useMutation({
     mutationFn: async () => {
-      const { isAuthenticated, csrfToken: token } = useAuthStore.getState();
-      if (isAuthenticated) {
-        const headers: Record<string, string> = {};
-        if (token) headers["X-CSRF-Token"] = token;
-        await api.post("/api/v1/auth/logout", null, { headers });
-      }
-    },
-    onSuccess: async () => {
       clearAuth();
       queryClient.removeQueries({ queryKey: ["auth"] });
-      if (isSignedIn) {
-        const origin = typeof window !== "undefined" ? window.location.origin : "";
-        await signOut({ redirectUrl: origin ? `${origin}/` : "/" });
-        return;
-      }
-      router.push("/");
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      await signOut({ redirectUrl: origin ? `${origin}/` : "/" });
     },
     onError: (error: Error) => {
       toast.error(error.message);
       clearAuth();
       queryClient.removeQueries({ queryKey: ["auth"] });
-      router.push("/");
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      void signOut({ redirectUrl: origin ? `${origin}/` : "/" });
     },
   });
 }
