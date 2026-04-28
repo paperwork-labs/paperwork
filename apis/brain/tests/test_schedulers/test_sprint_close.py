@@ -110,8 +110,13 @@ async def test_github_commit_failure_records_error(
     )
 
     async def _put_fail(*_a, **kwargs):
-        req = httpx.Request("PUT", "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/KNOWLEDGE.md")
-        raise httpx.HTTPStatusError("server error", request=req, response=httpx.Response(500, request=req))
+        req = httpx.Request(
+            "PUT",
+            "https://api.github.com/repos/paperwork-labs/paperwork/contents/docs/KNOWLEDGE.md",
+        )
+        raise httpx.HTTPStatusError(
+            "server error", request=req, response=httpx.Response(500, request=req)
+        )
 
     monkeypatch.setattr(sprint_close, "_github_append_sprint_close_to_knowledge", _put_fail)
     await run_sprint_close()

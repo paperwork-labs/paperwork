@@ -150,9 +150,9 @@ async def _latest_dispatch_by_id(session: AsyncSession) -> dict[str, WorkstreamD
     return by_id
 
 
-async def _load_snapshot_dispatch_maps() -> (
-    tuple[dict[str, WorkstreamProgressSnapshot], dict[str, WorkstreamDispatchLog]]
-):
+async def _load_snapshot_dispatch_maps() -> tuple[
+    dict[str, WorkstreamProgressSnapshot], dict[str, WorkstreamDispatchLog]
+]:
     async with async_session_factory() as db:
         snaps = await _latest_snapshots_by_id(db)
         disp = await _latest_dispatch_by_id(db)
@@ -206,11 +206,7 @@ def _patch_one_workstream(
     if dispatch_pr is not None and (new_last_pr is None or dispatch_pr > new_last_pr):
         new_last_pr = dispatch_pr
 
-    material = (
-        new_pct != pct_before
-        or new_status != status_before
-        or new_last_pr != last_pr_before
-    )
+    material = new_pct != pct_before or new_status != status_before or new_last_pr != last_pr_before
     if not material:
         return ws
 
@@ -375,9 +371,7 @@ async def _open_or_amend_writeback_pr(
 
 async def run_workstream_progress_writeback() -> WorkstreamWritebackResult:
     if not settings.BRAIN_SCHEDULER_ENABLED:
-        return WorkstreamWritebackResult(
-            skipped=True, skip_reason="BRAIN_SCHEDULER_ENABLED=false"
-        )
+        return WorkstreamWritebackResult(skipped=True, skip_reason="BRAIN_SCHEDULER_ENABLED=false")
 
     base = load_workstreams_file(bypass_cache=True)
     snaps, disp = await _load_snapshot_dispatch_maps()

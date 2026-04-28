@@ -9,9 +9,7 @@ from app.schedulers.apscheduler_db import apscheduler_sync_database_url
 
 def test_apscheduler_sync_database_url_rewrites_ssl_to_sslmode_for_psycopg2() -> None:
     """Neon-style async URL uses ssl= after Settings normalization; libpq needs sslmode."""
-    async_url = (
-        "postgresql+asyncpg://user:pass@ep.example.aws.neon.tech/db?ssl=require"
-    )
+    async_url = "postgresql+asyncpg://user:pass@ep.example.aws.neon.tech/db?ssl=require"
     sync_url = apscheduler_sync_database_url(async_url)
     assert "+asyncpg" not in sync_url
     assert "ssl=require" not in sync_url

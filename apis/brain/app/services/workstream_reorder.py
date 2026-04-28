@@ -75,8 +75,7 @@ async def open_reorder_workstreams_pr(ordered_ids: list[str]) -> dict[str, Any]:
         base="main",
         title="chore(workstreams): reorder via Studio",
         body=(
-            "Automated priority rewrite from Studio drag-reorder.\n\n"
-            f"_Commit: `{commit_sha[:7]}`_"
+            f"Automated priority rewrite from Studio drag-reorder.\n\n_Commit: `{commit_sha[:7]}`_"
         ),
     )
     if not pr:

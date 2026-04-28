@@ -41,14 +41,18 @@ async def test_run_success_records_scheduler_row(
         yield db_session
 
     monkeypatch.setattr(_history, "async_session_factory", lambda: _fake_context())
-    mock_process = AsyncMock(return_value={"response": "weekly body", "persona": "ea", "model": "x"})
+    mock_process = AsyncMock(
+        return_value={"response": "weekly body", "persona": "ea", "model": "x"}
+    )
     monkeypatch.setattr(brain_weekly_briefing.brain_agent, "process", mock_process)
     post = AsyncMock()
     monkeypatch.setattr(brain_weekly_briefing.slack_outbound, "post_message", post)
     await run_weekly_briefing()
     await db_session.commit()
     r = (
-        await db_session.execute(select(SchedulerRun).where(SchedulerRun.job_id == "brain_weekly_briefing"))
+        await db_session.execute(
+            select(SchedulerRun).where(SchedulerRun.job_id == "brain_weekly_briefing")
+        )
     ).scalar_one()
     assert r.status == "success"
     assert r.error_text is None
@@ -74,7 +78,9 @@ async def test_run_error_records_and_does_not_raise(
     await run_weekly_briefing()
     await db_session.commit()
     r = (
-        await db_session.execute(select(SchedulerRun).where(SchedulerRun.job_id == "brain_weekly_briefing"))
+        await db_session.execute(
+            select(SchedulerRun).where(SchedulerRun.job_id == "brain_weekly_briefing")
+        )
     ).scalar_one()
     assert r.status == "error"
     assert r.error_text is not None

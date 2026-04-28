@@ -58,9 +58,7 @@ def compute_snapshot_status(
 
 async def run_workstream_progress() -> WorkstreamProgressResult:
     if not settings.BRAIN_SCHEDULER_ENABLED:
-        return WorkstreamProgressResult(
-            skipped=True, skip_reason="BRAIN_SCHEDULER_ENABLED=false"
-        )
+        return WorkstreamProgressResult(skipped=True, skip_reason="BRAIN_SCHEDULER_ENABLED=false")
 
     data = load_workstreams_file()
     result = WorkstreamProgressResult()

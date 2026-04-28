@@ -59,7 +59,9 @@ async def test_run_success_records_scheduler_row(
     await run_infra_heartbeat()
     await db_session.commit()
     r = (
-        await db_session.execute(select(SchedulerRun).where(SchedulerRun.job_id == "brain_infra_heartbeat"))
+        await db_session.execute(
+            select(SchedulerRun).where(SchedulerRun.job_id == "brain_infra_heartbeat")
+        )
     ).scalar_one()
     assert r.status == "success"
     assert r.error_text is None
@@ -98,7 +100,9 @@ async def test_run_slack_error_records_and_reraises(
         await run_infra_heartbeat()
     await db_session.commit()
     r = (
-        await db_session.execute(select(SchedulerRun).where(SchedulerRun.job_id == "brain_infra_heartbeat"))
+        await db_session.execute(
+            select(SchedulerRun).where(SchedulerRun.job_id == "brain_infra_heartbeat")
+        )
     ).scalar_one()
     assert r.status == "error"
     assert r.error_text is not None

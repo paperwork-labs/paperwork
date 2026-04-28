@@ -127,7 +127,9 @@ class _FakeAsyncClient:
     async def __aexit__(self, *a: Any) -> None:
         pass
 
-    async def get(self, url: str, headers: dict[str, str] | None = None, timeout: Any = None) -> Any:
+    async def get(
+        self, url: str, headers: dict[str, str] | None = None, timeout: Any = None
+    ) -> Any:
         return await self._handler(url)
 
 

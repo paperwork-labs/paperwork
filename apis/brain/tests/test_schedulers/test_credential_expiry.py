@@ -52,7 +52,9 @@ async def test_run_success_records_scheduler_row(
     await run_credential_expiry_check()
     await db_session.commit()
     r = (
-        await db_session.execute(select(SchedulerRun).where(SchedulerRun.job_id == "brain_credential_expiry"))
+        await db_session.execute(
+            select(SchedulerRun).where(SchedulerRun.job_id == "brain_credential_expiry")
+        )
     ).scalar_one()
     assert r.status == "success"
     assert r.error_text is None
@@ -80,7 +82,9 @@ async def test_run_credential_check_raises_records_error(
         await run_credential_expiry_check()
     await db_session.commit()
     r = (
-        await db_session.execute(select(SchedulerRun).where(SchedulerRun.job_id == "brain_credential_expiry"))
+        await db_session.execute(
+            select(SchedulerRun).where(SchedulerRun.job_id == "brain_credential_expiry")
+        )
     ).scalar_one()
     assert r.status == "error"
     assert r.error_text is not None

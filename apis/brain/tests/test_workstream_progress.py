@@ -93,6 +93,7 @@ async def test_run_workstream_progress_records_snapshot(monkeypatch: pytest.Monk
         "app.services.workstream_progress.load_workstreams_file",
         lambda **_: _one_ws(),
     )
+
     async def _fake_search(_tag: str) -> tuple[int, int]:
         return (2, 0)
 

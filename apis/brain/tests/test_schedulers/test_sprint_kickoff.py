@@ -58,9 +58,7 @@ async def test_run_success_records_scheduler_row(
     assert r.status == "success"
     assert r.error_text is None
     post.assert_awaited()
-    assert any(
-        c.kwargs.get("channel_id") == "C0AMEQV199P" for c in post.await_args_list
-    )
+    assert any(c.kwargs.get("channel_id") == "C0AMEQV199P" for c in post.await_args_list)
     mock_process.assert_awaited_once()
     _args, kwargs = mock_process.call_args
     assert kwargs.get("persona_pin") == "strategy"
