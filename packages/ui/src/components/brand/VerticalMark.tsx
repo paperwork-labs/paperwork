@@ -22,7 +22,7 @@ export interface VerticalMarkProps {
  *
  * Slate strokes use `currentColor`; amber reads from
  * `var(--pwl-clip-accent)` with a fallback to amber-500 (#F59E0B). Use the
- * raster-equivalent SVG at `apps/studio/public/brand/paperwork-labs/paperclip/mark-vertical.svg`
+ * locked raster at `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png`
  * for non-React surfaces (favicon, OG cards).
  *
  * Spec: docs/brand/PROMPTS.md § P2 + § Composition rules.

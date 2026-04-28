@@ -13,7 +13,6 @@
 | `axiomfolio-lockup.svg` | Mark + name | Horizontal combo for external use (docs, marketing) on light backgrounds. |
 | `axiomfolio-lockup-dark.svg` | Mark + name | Same combo with light fills for dark backgrounds. |
 | `axiomfolio-lockup-surface.svg` | Mark + name | Combo on a light surface chip for dark backgrounds. |
-| `axiomfolio.svg` | Legacy | Deprecated — use `axiomfolio-icon-star.svg` instead. |
 
 ## React Component
 

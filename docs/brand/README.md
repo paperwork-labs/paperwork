@@ -51,13 +51,11 @@ Each row is the lock for marks, social templates, and (after the theme-migration
 
 | File | Use | Note |
 | --- | --- | --- |
-| *Future:* AI paperclip from [`PROMPTS.md`](PROMPTS.md) | Favicon, avatar | Replaces interim assets when ready. |
-| `apps/studio/public/brand/paperwork-labs/icon.svg` | Favicon, launcher | **Interim** hand mark. |
-| `apps/studio/public/brand/paperwork-labs/lockup.svg` | Light surfaces | **Interim** lockup. |
-| `apps/studio/public/brand/paperwork-labs/lockup-dark.svg` | Dark surfaces | **Interim** lockup. |
-| `apps/studio/public/brand/paperwork-labs/paperclip/mark-diagonal.svg` | P1 diagonal mark | Parent paperclip (expressive default). |
-| `apps/studio/public/brand/paperwork-labs/paperclip/mark-vertical.svg` | P2 vertical mark | Canonical parent icon / multi-app favicon source. |
-| `apps/studio/public/brand/paperwork-labs/paperclip/clipped-wordmark.svg` | P5 clipped wordmark | Clip + "Paperwork Labs" wordmark. |
+| `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-1024.png` | P1 diagonal | Parent paperclip (expressive default); marketing / OG. |
+| `apps/studio/public/brand/renders/paperclip-LOCKED-canonical-icon-1024.png` | P2 vertical | Canonical parent icon / favicon source. |
+| `apps/studio/public/brand/renders/paperclip-lockup-horizontal-v1.png` | P3 horizontal lockup | Header bar; surface tint via CSS. |
+| `apps/studio/public/brand/renders/paperclip-lockup-stacked-v1.png` | P4 stacked lockup | Square card. |
+| P5 clipped-wordmark | Clip + "Paperwork Labs" wordmark | Gated on founder pick — see [`CANON.md`](CANON.md). |
 
 ### Studio
 
@@ -71,7 +69,6 @@ Each row is the lock for marks, social templates, and (after the theme-migration
 
 | File | Use |
 | --- | --- |
-| `apps/axiomfolio/src/assets/logos/axiomfolio.svg` | Legacy app icon (prefer star) |
 | `apps/axiomfolio/src/assets/logos/axiomfolio-icon-star.svg` | **Canonical** 128×128 star / favicon source |
 | `apps/axiomfolio/src/assets/logos/axiomfolio-lockup.svg` | Wordmark + mark |
 
