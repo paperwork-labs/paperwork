@@ -1,19 +1,16 @@
 """Brain-owned sprint auto-logger — merged PRs → ``## Outcome`` bullets via bot PR.
 
 Opens **one** batched PR per tick (design A: single source of truth in git
-markdown). Gated by :envvar:`BRAIN_OWNS_SPRINT_AUTO_LOGGER`.
+markdown). Registers whenever :envvar:`BRAIN_SCHEDULER_ENABLED` is true (same
+pattern as other Brain-first schedulers after Track K / J1 flag retirement).
 
-# OPERATIONAL GATE — default off because this opens real GitHub PRs that edit
-# ``docs/sprints/*.md`` (repo writes, not n8n shadow compare). There is no n8n
-# mirror for this job. Flip ``BRAIN_OWNS_SPRINT_AUTO_LOGGER=true`` in Render
-# after validating ``GITHUB_TOKEN`` scopes and reviewing one dry-run tick in
-# staging or a canary deploy.
+This job opens real GitHub PRs that edit ``docs/sprints/*.md`` — validate
+``GITHUB_TOKEN`` scopes in staging before relying on it in production.
 """
 
 from __future__ import annotations
 
 import logging
-import os
 import re
 import time
 from collections import defaultdict
@@ -52,15 +49,6 @@ OUTCOME_HEADERS = ("## Outcome", "## Outcomes")
 SECTION_HEADER_RE = re.compile(r"^##\s+", re.MULTILINE)
 FRONTMATTER_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 SAFE_SPRINT_PATH_RE = re.compile(r"\Adocs/sprints/[a-zA-Z0-9_-]+\.md\Z")
-
-
-def _owns_sprint_autologger() -> bool:
-    return os.getenv("BRAIN_OWNS_SPRINT_AUTO_LOGGER", "false").lower() in (
-        "1",
-        "true",
-        "yes",
-        "on",
-    )
 
 
 def strip_conventional_prefix(title: str) -> str:
@@ -364,9 +352,6 @@ async def run_sprint_auto_logger(*, since_override: datetime | None = None) -> N
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
-    if not _owns_sprint_autologger():
-        logger.info("BRAIN_OWNS_SPRINT_AUTO_LOGGER is not true — skipping sprint_auto_logger job")
-        return
     scheduler.add_job(
         run_sprint_auto_logger,
         trigger=CronTrigger.from_crontab("*/15 * * * *", timezone=UTC),

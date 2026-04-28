@@ -68,13 +68,13 @@ class Settings(BaseSettings):
     #   data jobs register whenever ``BRAIN_SCHEDULER_ENABLED`` is true (Track K
     #   cutover flags retired; see ``chore/brain-delete-legacy-owns-flags``).
     #
-    # * **Operational gate** — ``BRAIN_OWNS_SPRINT_AUTO_LOGGER`` only: bot PRs
-    #   into sprint markdown; no n8n counterpart. Stays default-off until ops
-    #   validates GitHub automation.
+    # * **J1 ambient learning** — sprint auto-logger, merged-PR / decision /
+    #   postmortem ingest cadences register whenever ``BRAIN_SCHEDULER_ENABLED``
+    #   is true (``BRAIN_OWNS_SPRINT_AUTO_LOGGER`` and legacy ``BRAIN_OWNS_*``
+    #   ingester keys retired; WS-18 / J1).
     #
-    # * **Net-new / always on** — PR sweep, proactive cadence, ingest cadences,
-    #   merged-PR memory, CFO/QA Slack jobs, etc. register whenever
-    #   ``BRAIN_SCHEDULER_ENABLED`` is true.
+    # * **Net-new / always on** — PR sweep, proactive cadence, CFO/QA Slack
+    #   jobs, etc. register whenever ``BRAIN_SCHEDULER_ENABLED`` is true.
     # Track: sprint-lessons ingest cadence (hours). Bullets under
     # ``## What we learned`` in docs/sprints/*.md become memory episodes.
     # 6h is plenty — sprint markdown changes ship via PR, not continuously.

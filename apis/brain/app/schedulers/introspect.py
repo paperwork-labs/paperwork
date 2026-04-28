@@ -24,7 +24,7 @@ _CUTOVER_JOB_IDS: frozenset[str] = frozenset(
     }
 )
 
-# Operational (non-n8n-replacement) gated automation.
+# Operational first-party jobs (not ex-n8n cutover replacements).
 _OPERATIONAL_JOB_IDS: frozenset[str] = frozenset(
     {
         "sprint_auto_logger",

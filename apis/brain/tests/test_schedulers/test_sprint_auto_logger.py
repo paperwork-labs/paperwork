@@ -143,16 +143,11 @@ related_prs:
     assert nums == [5, 10, 99]
 
 
-def test_install_respects_brain_owns_flag(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("BRAIN_OWNS_SPRINT_AUTO_LOGGER", raising=False)
+def test_install_registers_job_when_scheduler_enabled_path() -> None:
+    """``install`` always registers the job; ``BRAIN_SCHEDULER_ENABLED`` gates startup in pr_sweep."""
     sched = AsyncIOScheduler(timezone="UTC")
     sal.install(sched)
-    assert len(sched.get_jobs()) == 0
-
-    monkeypatch.setenv("BRAIN_OWNS_SPRINT_AUTO_LOGGER", "true")
-    sched2 = AsyncIOScheduler(timezone="UTC")
-    sal.install(sched2)
-    jobs = sched2.get_jobs()
+    jobs = sched.get_jobs()
     assert len(jobs) == 1
     assert jobs[0].id == "sprint_auto_logger"
     t = jobs[0].trigger

@@ -69,7 +69,6 @@ Source JSON used `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 
 | Scheduler / `job_id` | Schedule (UTC) | Render env flag | Why gated |
 | --- | --- | --- | --- |
-| `sprint_auto_logger` | `*/15 * * * *` | `BRAIN_OWNS_SPRINT_AUTO_LOGGER` | Opens **batched bot PRs** that edit `docs/sprints/*.md`; no n8n counterpart. Flip after validating GitHub token scopes and a canary tick. Manual backfill: `cd apis/brain && python -m app.cli.sprint_auto_logger_cli --since YYYY-MM-DD`. |
 | `brain_agent_sprint_planner` | `0 */4 * * *` (tz `America/Los_Angeles`) | `BRAIN_OWNS_AGENT_SPRINT_SCHEDULER` | Heuristic cheap-agent tasks → 1-day buckets; persists under `apis/brain/data/`. HTTP: `/internal/agent-sprints/today`, `/internal/agent-sprints/regenerate`. See [AGENT_SPRINT_PLANNING.md](./AGENT_SPRINT_PLANNING.md). |
 
 ### Net-new (on when `BRAIN_SCHEDULER_ENABLED`)
@@ -82,6 +81,7 @@ Source JSON used `n8n-nodes-base.scheduleTrigger` with a cron expression or (Inf
 | `qa_weekly_report` | Sun 17:00 | Registry digest → Slack |
 | `cfo_friday_digest` | Fri 18:00 | Tracker + CFO persona → Slack |
 | `sprint_lessons_ingest` | interval (default 6h) | Sprint markdown → memory |
+| `sprint_auto_logger` | `*/15 * * * *` | Batched bot PRs editing `docs/sprints/*.md`; validate `GITHUB_TOKEN`. Manual backfill: `cd apis/brain && python -m app.cli.sprint_auto_logger_cli --since YYYY-MM-DD`. |
 | `merged_prs_ingest` | interval (default 6h) | Merged PRs → memory |
 | `ingest_decisions_daily` | daily 03:00 | ADR docs → memory |
 | `ingest_postmortems_daily` | daily 03:30 | Postmortems / incidents → memory |

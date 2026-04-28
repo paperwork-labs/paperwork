@@ -12,7 +12,7 @@ status: active
 
 ## Founder action: optional gates (still default-off)
 
-1. **Sprint automation:** `BRAIN_OWNS_SPRINT_AUTO_LOGGER`, `BRAIN_OWNS_SPRINT_PLANNER`, `BRAIN_OWNS_AGENT_SPRINT_SCHEDULER` — validate GitHub tokens and workflows before enabling.
+1. **Sprint automation:** `BRAIN_OWNS_SPRINT_PLANNER`, `BRAIN_OWNS_AGENT_SPRINT_SCHEDULER` — validate GitHub tokens and workflows before enabling. Sprint auto-logger and ingest cadences register with `BRAIN_SCHEDULER_ENABLED` only (J1 flags retired).
 2. **PR triage:** `BRAIN_OWNS_PR_TRIAGE` — classifiers on the PR sweep tick.
 3. **Secrets jobs:** `BRAIN_OWNS_SECRETS_*` — default on; set `false` to disable individual secrets audit cadences.
 
@@ -36,7 +36,7 @@ status: active
 | [brain_weekly_strategy](https://github.com/paperwork-labs/paperwork/blob/main/apis/brain/app/schedulers/weekly_strategy.py) | Brain APScheduler | `0 9 * * 1` UTC Mon | Brain / Render | ✅ Live | Monday strategy check-in | — | [Architecture](/admin/architecture) |
 | [brain_sprint_kickoff](https://github.com/paperwork-labs/paperwork/blob/main/apis/brain/app/schedulers/sprint_kickoff.py) | Brain APScheduler | `0 7 * * 1` UTC Mon | Brain / Render | ✅ Live | Sprint kickoff to `#sprints` + `#all-paperwork-labs` | — | [Architecture](/admin/architecture) |
 | [brain_sprint_close](https://github.com/paperwork-labs/paperwork/blob/main/apis/brain/app/schedulers/sprint_close.py) | Brain APScheduler | `0 21 * * 5` UTC | Brain / Render | ✅ Live | Friday sprint close + `KNOWLEDGE.md` append | — | [Architecture](/admin/architecture) |
-| [sprint_auto_logger](https://github.com/paperwork-labs/paperwork/blob/main/apis/brain/app/schedulers/sprint_auto_logger.py) | Brain APScheduler | `*/15 * * * *` UTC | Brain / Render | 🟡 Gated (default `false`) | Bot PRs to log merged sprint PRs in `docs/sprints` | `BRAIN_OWNS_SPRINT_AUTO_LOGGER` | [Sprints](/admin/sprints) |
+| [sprint_auto_logger](https://github.com/paperwork-labs/paperwork/blob/main/apis/brain/app/schedulers/sprint_auto_logger.py) | Brain APScheduler | `*/15 * * * *` UTC | Brain / Render | ✅ Live when `BRAIN_SCHEDULER_ENABLED` | Bot PRs to log merged sprint PRs in `docs/sprints` | `GITHUB_TOKEN` | [Sprints](/admin/sprints) |
 | [brain_sprint_planner](https://github.com/paperwork-labs/paperwork/blob/main/apis/brain/app/schedulers/sprint_planner.py) | Brain APScheduler | `0 14 * * 1` **America/Los_Angeles** Mon | Brain / Render | 🟡 Gated (default `false`) | Weekly planning prompt → `#strategy` (+ optional `KNOWLEDGE.md` append) | `BRAIN_OWNS_SPRINT_PLANNER` | [Automation](/admin/automation) |
 | [brain_infra_heartbeat](https://github.com/paperwork-labs/paperwork/blob/main/apis/brain/app/schedulers/infra_heartbeat.py) | Brain APScheduler | `0 8 * * *` UTC | Brain / Render | ✅ Live | n8n-shaped infra heartbeat to Slack | — | [Architecture](/admin/architecture) |
 | [brain_credential_expiry](https://github.com/paperwork-labs/paperwork/blob/main/apis/brain/app/schedulers/credential_expiry.py) | Brain APScheduler | `0 8 * * *` UTC | Brain / Render | ✅ Live | Vault / expiry report to `#alerts` | — | [Architecture](/admin/architecture) |
@@ -59,7 +59,7 @@ status: active
 | [vercel-promote-on-merge](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/vercel-promote-on-merge.yaml) | GitHub Actions | on PR closed to `main` + manual | GitHub + Vercel | ✅ Live | Promote READY preview to production | `VERCEL_API_TOKEN` | — |
 | [ci](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/ci.yaml) + [persona-vocab](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/persona-vocab.yaml) + [medallion-lint](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/medallion-lint.yaml) + [brain-personas-doc](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/brain-personas-doc.yaml) + [axiomfolio-ci](https://github.com/paperwork-labs/paperwork/blob/main/.github/workflows/axiomfolio-ci.yml) | GitHub Actions | on push/PR paths | GitHub | ✅ Live | CI matrix / quality gates | — | — |
 
-**Tally:** Prefer the Status column over this line — it drifts. Ex-n8n Brain crons are ✅ **live** when `BRAIN_SCHEDULER_ENABLED`. Optional 🟡 rows still use `BRAIN_OWNS_SPRINT_AUTO_LOGGER`, `BRAIN_OWNS_SPRINT_PLANNER`, `BRAIN_OWNS_AGENT_SPRINT_SCHEDULER`, or `BRAIN_OWNS_PR_TRIAGE`. The n8n shadow mirror family is ⚫ **retired** (module removed).
+**Tally:** Prefer the Status column over this line — it drifts. Ex-n8n Brain crons and J1 ambient-learning schedulers (sprint auto-logger, merged-PR / decision / postmortem ingesters) are ✅ **live** when `BRAIN_SCHEDULER_ENABLED`. Optional 🟡 rows still use `BRAIN_OWNS_SPRINT_PLANNER`, `BRAIN_OWNS_AGENT_SPRINT_SCHEDULER`, or `BRAIN_OWNS_PR_TRIAGE`. The n8n shadow mirror family is ⚫ **retired** (module removed).
 
 **Notes:** Vercel **preview/production builds** and Render **deploy hooks** are not cron schedules; they appear under each platform’s dashboard. Retired n8n workflow JSON lives under `infra/hetzner/workflows/retired/`. Track J/K reference: [SSO + convergence plan (`.cursor/plans`)](https://github.com/paperwork-labs/paperwork) — `sso_customer_unification_2026q2` (*founder’s local plan file, not in repo root*).
 
