@@ -8,6 +8,7 @@ from app.models.episode import Episode
 from app.models.github_actions_quota_snapshot import GitHubActionsQuotaSnapshot
 from app.models.organization import Organization, Team, TeamMember
 from app.models.quota_snapshot import VercelQuotaSnapshot
+from app.models.render_quota_snapshot import RenderQuotaSnapshot
 from app.models.scheduler_run import SchedulerRun
 from app.models.secrets_intelligence import BrainSecretsEpisode, BrainSecretsRegistry
 from app.models.skill import Skill, UserSkill
@@ -30,6 +31,7 @@ __all__ = [
     "Episode",
     "GitHubActionsQuotaSnapshot",
     "Organization",
+    "RenderQuotaSnapshot",
     "SchedulerRun",
     "Skill",
     "Summary",

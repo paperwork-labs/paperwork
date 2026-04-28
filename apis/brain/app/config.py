@@ -118,6 +118,7 @@ class Settings(BaseSettings):
 
     # Infra health tools (optional; empty = tool reports not configured)
     RENDER_API_KEY: str = ""
+    RENDER_PIPELINE_MINUTES_INCLUDED: float = 500.0
     VERCEL_API_TOKEN: str = ""
     NEON_API_KEY: str = ""
     N8N_URL: str = "https://n8n.paperworklabs.com"
