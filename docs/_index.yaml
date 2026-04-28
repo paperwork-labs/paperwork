@@ -451,6 +451,13 @@ docs:
     tags: [product, spec]
     owners: [engineering, ux]
     category: reference
+  - slug: render-quota-audit-2026q2
+    path: docs/infra/RENDER_QUOTA_AUDIT_2026Q2.md
+    title: Render pipeline minutes — quota audit (2026 Q2)
+    summary: "**Context:** Workspace billing shows **~1,078 / 500** included pipeline minutes month-to-date (~115% overage, ~\\$2.89 unbilled at published overage rates — figures from founder; not re-derived here)."
+    tags: [infra, audit]
+    owners: [infra-ops]
+    category: reference
   - slug: runbook-template
     path: docs/RUNBOOK_TEMPLATE.md
     title: Runbook Template
