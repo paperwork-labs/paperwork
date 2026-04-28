@@ -198,13 +198,6 @@ docs:
     tags: [design, chromatic, ci, storybook]
     owners: [infra-ops, ux-lead]
     category: runbooks
-  - slug: clerk-dns-incident-2026-04-28
-    path: docs/runbooks/CLERK_DNS_INCIDENT_2026-04-28.md
-    title: Clerk + Cloudflare DNS incident (2026-04-28)
-    summary: "Post-mortem: Cloudflare zone migration dropped Clerk CNAMEs; Studio sign-in broke; recovery, temporary redirect, and durable guards (reconcile script + pre-deploy + Brain scheduler)."
-    tags: [clerk, cloudflare, dns, studio, auth, incident]
-    owners: [infra-ops]
-    category: runbooks
   - slug: clerk-satellite-topology
     path: docs/infra/CLERK_SATELLITE_TOPOLOGY.md
     title: Clerk multi-domain satellite topology
@@ -224,13 +217,6 @@ docs:
     title: Cloudflare account ownership + migration
     summary: "Completed 2026-04-28: all production zones on Paperwork Labs work Cloudflare account (former founder personal account migrated-from) + token rotation and ongoing DNS ops."
     tags: [cloudflare, dns, secrets, migration, security]
-    owners: [infra-ops]
-    category: runbooks
-  - slug: cloudflare-zone-decommission
-    path: docs/runbooks/CLOUDFLARE_ZONE_DECOMMISSION.md
-    title: Cloudflare zone decommission (old personal account)
-    summary: "After NS soak (~24h), delete the five migrated zones from the founder's former personal Cloudflare account using scripts/cloudflare_decommission_zones.py."
-    tags: [cloudflare, dns, migration, security]
     owners: [infra-ops]
     category: runbooks
   - slug: credentials
