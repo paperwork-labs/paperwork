@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "cd1ea33b6339",
+  "content_hash": "6509c86377d8",
   "products": [
     {
       "label": "AxiomFolio",
@@ -337,34 +337,6 @@
     {
       "blocker": null,
       "domain": "company",
-      "duration_weeks": "~3",
-      "effective_status": "in_progress",
-      "end": "2026-05-16",
-      "followups": [],
-      "goal": null,
-      "last_reviewed": "2026-04-26",
-      "lessons": [],
-      "outcome_bullets": [],
-      "owner": "brand",
-      "path": "docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md",
-      "personas": [],
-      "plans": [],
-      "pr": null,
-      "pr_url": null,
-      "raw_status": "active",
-      "related_prs": [
-        172,
-        162
-      ],
-      "ships": [],
-      "slug": "brand-design-deepdive-2026q2",
-      "start": "2026-04-25",
-      "status": "in_progress",
-      "title": "Brand canon (2026 Q2) \u2014 final state"
-    },
-    {
-      "blocker": null,
-      "domain": "company",
       "duration_weeks": 2,
       "effective_status": "in_progress",
       "end": "2026-05-09",
@@ -376,14 +348,14 @@
       "lessons": [
         "Per-job `SCHEDULER_N8N_MIRROR_*` must use the same uppercased job id as `N8N_MIRROR_SPECS` (e.g. `N8N_SHADOW_BRAIN_DAILY`, not a short name like `pr_sweep` \u2014 the in-process `pr_sweep` scheduler is separate from n8n mirror ids).",
         "A single `clerkMiddleware` handler can grant production admin access if either `auth().userId` (Clerk) is present or the legacy Basic `Authorization` header matches `ADMIN_EMAILS` / `ADMIN_ACCESS_PASSWORD`, while local dev can keep admin routes open by short-circuiting on `NODE_ENV === \"development\"`.",
-        "A dedicated **`BRAIN_OWNS_*` env flag** can gate the first-party APScheduler job while `should_register_n8n_shadow_for_job` drops the matching `n8n_shadow_*` row \u2014 no duplicate schedules without editing n8n JSON.",
+        "During cutover, **`BRAIN_OWNS_*` env flags** gated first-party jobs and shadow suppression; those flags are **retired** now that Track K is complete \u2014 see [BRAIN_SCHEDULER.md](../infra/BRAIN_SCHEDULER.md).",
         "Subagents working on the same monorepo branch will collide on `pnpm-lock.yaml` if they install dependencies in parallel from a shared worktree. Solution: use `best-of-n-runner` to give each subagent its own isolated git worktree; each branch's lockfile diff stays tightly scoped to that PR's package."
       ],
       "outcome_bullets": [
         "_Tracking \u2014 updates as each track ships_",
-        "2026-04-26: Track K \u2014 `brain_data_source_monitor` cutover (LA tz, `BRAIN_OWNS_DATA_SOURCE_MONITOR=true`)",
-        "2026-04-26: Track K \u2014 `brain_data_deep_validator` cutover (LA tz, `BRAIN_OWNS_DATA_DEEP_VALIDATOR=true`)",
-        "2026-04-26: Track K \u2014 `brain_data_annual_update` cutover (LA tz, `BRAIN_OWNS_DATA_ANNUAL_UPDATE=true`)",
+        "2026-04-26: Track K \u2014 `brain_data_source_monitor` cutover (LA tz; flag since retired)",
+        "2026-04-26: Track K \u2014 `brain_data_deep_validator` cutover (LA tz; flag since retired)",
+        "2026-04-26: Track K \u2014 `brain_data_annual_update` cutover (LA tz; flag since retired)",
         "shipped 2026-04-25: **T2.3** \u2014 Persona vocabulary unified across Brain `PersonaSpec/`, Studio `WORKFLOW_META`, `system-graph.json` `owner_persona`, and n8n `persona_pin`. CI gate `scripts/check_persona_vocabulary.py` blocks future drift. PR #150.",
         "shipped 2026-04-25: **T3.1b** \u2014 Studio Clerk pages adopt the dark-themed `studioClerkAppearance` (HSL CSS-var bridge to Clerk variables + custom `elements` Tailwind). PR #152.",
         "shipped 2026-04-26: **T3.2 (Trinkets)** \u2014 `<ClerkProvider>`, sign-in/up catch-all routes, `clerkMiddleware` (public utility app; no legacy session or Basic Auth to compose). Trinkets Clerk appearance: indigo `#6366F1` + sky cyan `#38BDF8`. Runbook: [docs/infra/CLERK_TRINKETS.md](../infra/CLERK_TRINKETS.md). PR #197.",
@@ -431,8 +403,42 @@
     {
       "blocker": null,
       "domain": "company",
+      "duration_weeks": "~1",
+      "effective_status": "shipped",
+      "end": "2026-04-26",
+      "followups": [],
+      "goal": null,
+      "last_reviewed": "2026-04-27",
+      "lessons": [
+        "Applying one Azure+Amber system to every product mark produced six indistinguishable lockups; per-product research-backed palettes beat a single template.",
+        "Forcing identical lockup geometry across apps homogenized the family; droplet-plus-dot vocabulary preserves organic similarity without rigid sameness.",
+        "Theme tokens under `packages/ui` stayed scaffolding on purpose \u2014 full per-app migration belongs in a dedicated engineering sprint, not in canon docs.",
+        "Brain stays non-droplet and emerald-forward so custody-oriented AI does not blend into a generic \u201cpurple AI\u201d cluster."
+      ],
+      "outcome_bullets": [],
+      "owner": "brand",
+      "path": "docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md",
+      "personas": [],
+      "plans": [],
+      "pr": 172,
+      "pr_state": "MERGED",
+      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/172",
+      "raw_status": "shipped",
+      "related_prs": [
+        162,
+        172
+      ],
+      "ships": [],
+      "slug": "brand-design-deepdive-2026q2",
+      "start": "2026-04-25",
+      "status": "shipped",
+      "title": "Brand canon (2026 Q2) \u2014 final state"
+    },
+    {
+      "blocker": null,
+      "domain": "company",
       "duration_weeks": 1,
-      "effective_status": "in_progress",
+      "effective_status": "shipped",
       "end": "2026-04-26",
       "followups": [
         "shipped 2026-04-25: **F-1 (operator, single click)** completed \u2014 all AxiomFolio + brain-api + filefree-api services now associated with the consolidated root `render.yaml` Blueprint via Render Dashboard's \"New Blueprint \u2192 Associate existing services\" flow. (PR #143)",
@@ -445,7 +451,7 @@
         "Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`."
       ],
       "goal": "Land Phase 1 of the docs streamline, give the company a repo-native long-term tracker (no Jira / Notion), and wire Brain into both so a CFO digest and Slack slash commands work off the same JSON the UI reads.",
-      "last_reviewed": "2026-04-25",
+      "last_reviewed": "2026-04-27",
       "lessons": [
         "Server components that read env-injected data (`DATABASE_URL`, runtime probes) MUST mark `dynamic = \"force-dynamic\"`; otherwise Next.js prerenders them at build time and the user sees stale \"not configured\" forever. Caught only because the user noticed the Secrets page had silently regressed.",
         "A repo-native tracker beats Jira when the docs are already where work is happening \u2014 the cost was one Python script + one JSON output. CFO digest, Slack slash commands, and Studio pages all read the same file.",
@@ -474,9 +480,10 @@
         "docs/DOCS_STREAMLINE_2026Q2.md",
         "docs/sprints/README.md"
       ],
-      "pr": 142,
-      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/142",
-      "raw_status": "active",
+      "pr": 144,
+      "pr_state": "MERGED",
+      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/144",
+      "raw_status": "shipped",
       "related_prs": [
         142,
         143,
@@ -491,7 +498,7 @@
       ],
       "slug": "docs-streamline-and-trackers-2026q2",
       "start": "2026-04-24",
-      "status": "in_progress",
+      "status": "shipped",
       "title": "Docs Streamline + Trackers Spine \u2014 2026 Q2"
     },
     {
@@ -540,6 +547,7 @@
         "docs/PERSONA_PLATFORM.md"
       ],
       "pr": 141,
+      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/141",
       "raw_status": "shipped",
       "related_prs": [
