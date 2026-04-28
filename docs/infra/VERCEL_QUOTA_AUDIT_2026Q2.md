@@ -8,7 +8,7 @@ audit_window_utc: "Rolling 30-day window ending 2026-04-28T03:44:47Z (script `ge
 
 # Vercel quota audit (2026 Q2)
 
-Read-only audit of **Paperwork Labs** (`team_RwfzJ9ySyLuVcoWdKJfXC7h5`) deployment volume, build minutes, and deployment *source* attribution. Companion to the parallel **Render** and **GitHub Actions** quota audits (`docs/infra/RENDER_QUOTA_AUDIT_2026Q2.md`, `docs/infra/GITHUB_ACTIONS_QUOTA_AUDIT_2026Q2.md`). **No** Vercel project settings or workflows were changed.
+Read-only audit of **Paperwork Labs** (`team_RwfzJ9ySyLuVcoWdKJfXC7h5`) deployment volume, build minutes, and deployment *source* attribution. Companion to the parallel **Render** and **GitHub Actions** quota audits ([RENDER_QUOTA_AUDIT_2026Q2.md](RENDER_QUOTA_AUDIT_2026Q2.md), [GITHUB_ACTIONS_QUOTA_AUDIT_2026Q2.md](GITHUB_ACTIONS_QUOTA_AUDIT_2026Q2.md)). **No** Vercel project settings or workflows were changed.
 
 **How numbers were produced:** `VERCEL_API_TOKEN` from `bash scripts/vault-get.sh VERCEL_API_TOKEN`, `TEAM_ID=$(jq -r '.teamId' scripts/vercel-projects.json)`. Python 3 iterated `GET https://api.vercel.com/v9/projects` and, per project, paginated `GET https://api.vercel.com/v6/deployments?projectId=…&teamId=…&limit=100[&until=…]` until the oldest row in a page was older than the rolling **30-day** cutoff (`now_ms − 30 × 86_400_000`). Build minutes used Vercel timestamps: `(ready − buildingAt) / 60_000` when both present.
 
@@ -233,10 +233,10 @@ All three audits should land **matching shapes**:
 
 | Concern | Pattern |
 |---------|---------|
-| Brain code layout | **`apis/brain/app/schedulers/quota_monitors/{vercel,render,gh_actions}.py`** |
-| Persistence | **`VercelQuotaSnapshot`**, **`RenderQuotaSnapshot`**, **`GitHubActionsQuotaSnapshot`** (parallel tables, same retention policy class) |
-| Admin API | **`GET /api/v1/admin/{vercel,render,gh_actions}-quota`** |
-| Studio UI | One shared **`apps/studio/src/app/admin/infrastructure/quota-panel.tsx`** composes all three |
+| Brain code layout | New `quota_monitors/` subpackage under Brain schedulers, with one module per platform (`vercel`, `render`, `gh_actions`) |
+| Persistence | **VercelQuotaSnapshot**, **RenderQuotaSnapshot**, **GitHubActionsQuotaSnapshot** (parallel tables, same retention policy class) |
+| Admin API | New `GET /api/v1/admin/{vercel,render,gh_actions}-quota` endpoints on Brain |
+| Studio UI | One shared **quota-panel.tsx** under `apps/studio/src/app/admin/infrastructure/` composes all three |
 | Issue labels | **`infra-alert,<platform>-quota`** (e.g. `vercel-quota`, `render-quota`, `gh-actions-quota`) |
 
 **Architecture (one paragraph):** Three lightweight schedulers run on **Brain** behind **`BRAIN_SCHEDULER_ENABLED`**, each performing **read-only** vendor API polls and **upserting** append-only **`{Vendor}QuotaSnapshot`** rows (**Postgres**). **Studio’s** infra page calls **thin JSON endpoints** (`/api/v1/admin/{platform}-quota`) and **`quota-panel.tsx`** merges the series so operators see **Vercel, Render, and GitHub Actions** quota telemetry with **parallel alarm routing** via **GitHub Issues** + **`infra-alert`**.
