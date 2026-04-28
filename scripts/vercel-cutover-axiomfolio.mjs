@@ -1,14 +1,28 @@
 #!/usr/bin/env node
 /**
- * One-off helper for legacy `axiomfolio` → Next.js metadata + prod deploy before domains move to `axiomfolio-next`.
+ * In-place cutover of the `axiomfolio` Vercel project from Vite → Next.js.
+ *
+ * Strategy: keep the canonical project id (which already owns the verified
+ * axiomfolio.com + www.axiomfolio.com domains), just change framework + root +
+ * install + output via PATCH, then trigger a fresh production deploy of `main`
+ * HEAD against it. This avoids any domain migration.
+ *
+ * The earlier stop-gap `axiomfolio-next` project (prj_z3JVQGLLfsJO2QZJnK5BvMjfFoK3)
+ * was never used and was deleted on 2026-04-28. Do not reference it in new code.
+ *
  * Default: dry-run (prints planned Vercel API calls). Use `--apply` to execute.
  *
- * Requires: VERCEL_API_TOKEN (team scope). Optional: GITHUB_TOKEN for higher GitHub API rate limits when resolving main SHA.
+ * Requires: VERCEL_API_TOKEN (team scope). Optional: GITHUB_TOKEN for higher
+ * GitHub API rate limits when resolving main SHA.
  */
 
 const TEAM_ID = "team_RwfzJ9ySyLuVcoWdKJfXC7h5";
-const LEGACY_PROJECT_ID = "prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE";
-const NEXT_PROJECT_ID = "prj_z3JVQGLLfsJO2QZJnK5BvMjfFoK3";
+// PATCH target = the canonical `axiomfolio` Vercel project that owns
+// axiomfolio.com + www.axiomfolio.com (verified). Originally framework=vite;
+// this script flips it in-place to Next.js so we don't have to migrate
+// domains. The earlier stop-gap `axiomfolio-next` project was never used
+// and was deleted on 2026-04-28.
+const AXIOMFOLIO_PROJECT_ID = "prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE";
 const GITHUB_REPO_ID = 1175885030;
 
 const PATCH_BODY = {
@@ -24,7 +38,7 @@ const PATCH_BODY = {
 const VERCEL_ORIGIN = "https://api.vercel.com";
 
 function projectUrl() {
-  return `${VERCEL_ORIGIN}/v9/projects/${encodeURIComponent(LEGACY_PROJECT_ID)}?teamId=${encodeURIComponent(TEAM_ID)}`;
+  return `${VERCEL_ORIGIN}/v9/projects/${encodeURIComponent(AXIOMFOLIO_PROJECT_ID)}?teamId=${encodeURIComponent(TEAM_ID)}`;
 }
 
 function deploymentsUrl() {
@@ -102,7 +116,7 @@ async function main() {
   }
 
   console.error(
-    `Canonical Next.js project id (dashboard): ${NEXT_PROJECT_ID} — this script targets legacy ${LEGACY_PROJECT_ID} for PATCH + deploy fallback.`,
+    `Target Vercel project: ${AXIOMFOLIO_PROJECT_ID} (canonical 'axiomfolio'; PATCH framework -> nextjs + deploy main HEAD).`,
   );
 
   const mainSha = await resolveMainSha();
@@ -126,7 +140,7 @@ async function main() {
             sha: mainSha,
             repoId: GITHUB_REPO_ID,
           },
-          project: LEGACY_PROJECT_ID,
+          project: AXIOMFOLIO_PROJECT_ID,
           name: "axiomfolio",
         },
         null,
@@ -173,7 +187,7 @@ async function main() {
       sha: mainSha,
       repoId: GITHUB_REPO_ID,
     },
-    project: LEGACY_PROJECT_ID,
+    project: AXIOMFOLIO_PROJECT_ID,
     name: "axiomfolio",
   };
   const postRes = await vercelReq(true, token, "POST", deploymentsUrl(), postBody);

@@ -14,16 +14,22 @@ Single-source list of one-time blockers that require founder credentials. Once a
 
 **Rules:** no secrets in this file — point to 1Password, Vercel/Render/GitHub/Clerk dashboards, or the secrets vault. If live state is unknown, the item is marked **`[VERIFY]`** with a concrete check.
 
-## 2026-04-27 — AxiomFolio Vercel cutover (one-time, ~5 min)
+## 2026-04-28 — AxiomFolio Vercel cutover (in-place; mostly done)
 
-The legacy `axiomfolio` Vercel project (framework=vite) is being retired in favour of `axiomfolio-next` (framework=nextjs). The cutover script in `scripts/vercel-cutover-axiomfolio.mjs` updates project metadata; founder must finish two dashboard actions:
+The canonical `axiomfolio` Vercel project (`prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE`) — which already owns `axiomfolio.com` + `www.axiomfolio.com` (verified) — was originally framework=vite. We flipped it in-place to Next.js rather than migrate domains to a separate project. Step A (PATCH framework + root + install + output) ran successfully on 2026-04-28 via `scripts/vercel-cutover-axiomfolio.mjs --apply`.
 
-1. **Move domains.** In Vercel dashboard → `axiomfolio` (legacy) → Settings → Domains, transfer `axiomfolio-paperwork-labs.vercel.app` and `axiomfolio-git-main-paperwork-labs.vercel.app` to `axiomfolio-next`.
-2. **Delete legacy project.** Vercel dashboard → `axiomfolio` (legacy) → Settings → General → Delete Project.
+The earlier stop-gap `axiomfolio-next` project was never used and was deleted via the Vercel API on 2026-04-28. There is now exactly one canonical AxiomFolio Vercel project: `axiomfolio`.
 
-After (1), the script in this PR is no longer needed (it patched the legacy project as a fallback in case domains take a while to move). After (2), production AxiomFolio deploys exclusively from `axiomfolio-next`.
+**Remaining founder action (one click, after Vercel hobby quota reset ≈ 2026-04-28T21:13Z):**
 
-Tracked in: `chore/axiomfolio-vercel-cutover` ([#306](https://github.com/paperwork-labs/paperwork/pull/306)).
+- Re-run the cutover deploy: GitHub Actions → **"Vercel cutover — axiomfolio"** → Run workflow. This deploys `main` HEAD against the canonical project. Step A is idempotent (skips PATCH if framework already nextjs).
+- Or via CLI: `gh workflow run vercel-cutover-axiomfolio.yml`.
+
+After the deploy lands READY, `axiomfolio.com` + `www.axiomfolio.com` start serving the Next.js app from `main`. Confirm at the Vercel dashboard → `axiomfolio` → Domains (the "Invalid Configuration" warning resolves once a successful production deployment exists).
+
+**DNS at Cloudflare** (the domain registrar is Spaceship, but DNS is on Cloudflare): keep the existing records pointing to Vercel — apex `A` to `76.76.21.21`, `www` `CNAME` to `cname.vercel-dns.com`, both proxy=DNS only (gray cloud). No nameserver change at Spaceship is required.
+
+Tracked in: `chore/axiomfolio-vercel-cutover` ([#306](https://github.com/paperwork-labs/paperwork/pull/306)) and the cutover workflow PR.
 
 ## Pending — Critical (blocks production)
 
@@ -111,7 +117,7 @@ Tracked in: `chore/axiomfolio-vercel-cutover` ([#306](https://github.com/paperwo
 - **ETA:** ~60+ min (spread across days; not one sitting)
 
 ### 6. Vercel auto-promote matrix placeholders + stale production recovery — `[VERIFY]`
-- **Why this matters:** `.github/workflows/vercel-promote-on-merge.yaml` includes rows with `project_id: TBD_CREATE_BEFORE_MERGE` (`axiomfolio-next`, `trinkets`, `accounts`). Those jobs intentionally skip until real `prj_…` ids exist. Separately, if **no** READY deployment exists for the merge commit on a real project, **promote cannot fix production** (alias-only); CI must fail loudly — see `docs/infra/VERCEL_AUTO_PROMOTE.md`.
+- **Why this matters:** `.github/workflows/vercel-promote-on-merge.yaml` includes rows with `project_id: TBD_CREATE_BEFORE_MERGE` (`design`, `accounts`). Those jobs intentionally skip until real `prj_…` ids exist. Separately, if **no** READY deployment exists for the merge commit on a real project, **promote cannot fix production** (alias-only); CI must fail loudly — see `docs/infra/VERCEL_AUTO_PROMOTE.md`.
 - **Where:** [Vercel — Paperwork Labs](https://vercel.com/paperwork-labs); workflow matrix; optional `gh secret list` for `VERCEL_API_TOKEN`.
 - **Steps:**
   1. For each placeholder row: create or locate the Vercel project, copy **Project ID** from Settings → General, replace `TBD_CREATE_BEFORE_MERGE` in the workflow (do not invent ids).

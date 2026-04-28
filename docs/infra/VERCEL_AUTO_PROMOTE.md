@@ -48,7 +48,6 @@ Source of truth: `scripts/vercel-projects.json` (keep the workflow `matrix.inclu
 | `filefree` | `prj_DNPGX5GrYcwer9oANv90NKqIT67I` | `VERCEL_PROJECT_ID_FILEFREE` |
 | `distill` | `prj_1TKlkMmY3vLVNfAfRxUY57z43m11` | `VERCEL_PROJECT_ID_DISTILL` |
 | `launchfree` | `prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7` | `VERCEL_PROJECT_ID_LAUNCHFREE` |
-| `axiomfolio-next` | `prj_z3JVQGLLfsJO2QZJnK5BvMjfFoK3` | `VERCEL_PROJECT_ID_AXIOMFOLIO_NEXT` |
 | `axiomfolio` | `prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE` | `VERCEL_PROJECT_ID_AXIOMFOLIO` |
 | `trinkets` | `prj_MFUxaJCbQuSdJZWWVgaEtRllKjzB` | `VERCEL_PROJECT_ID_TRINKETS` |
 | `design` | `TBD_CREATE_BEFORE_MERGE` (skip until linked) | `VERCEL_PROJECT_ID_DESIGN` |
@@ -147,7 +146,7 @@ gh workflow run vercel-promote-on-merge.yaml \
   -f app=studio
 ```
 
-`app` must match the matrix `project` slug (e.g. `studio`, `filefree`, `axiomfolio-next`).
+`app` must match the matrix `project` slug (e.g. `studio`, `filefree`, `axiomfolio`).
 
 **Check production vs `main`:** In the Vercel dashboard, open the project → **Deployments** → **Production** and compare the commit SHA to `git log -1 --oneline origin/main`.
 
