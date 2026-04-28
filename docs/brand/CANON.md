@@ -164,7 +164,7 @@ Parent **P5 clipped wordmark** runtime motion (see § **Locked PNG renders** / *
 - Do not recolor a locked mark — open a brand review.
 - Do not add a second accent in the same glyph.
 - Do not hand-author an SVG that imitates the droplet family — agents authoring marks has been the source of every "garbage" entry above.
-- Do not cite `docs/brand/PROMPTS.md`, `docs/brand/ANIMATION.md`, or `docs/brand/research/`. Those are deleted; if you find them in a stale checkout, ignore.
+- Do not cite the legacy `PROMPTS.md`, `ANIMATION.md`, or `research/` files under `docs/brand/`. Those were deleted in #314; if you find them in a stale checkout, ignore.
 
 ## Related
 

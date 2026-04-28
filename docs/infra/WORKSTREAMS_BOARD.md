@@ -119,8 +119,49 @@ Computed by `computeKpis()` in `schema.ts`:
 4. Pick a `brief_tag` of the form `track:<kebab-slug>` that future subagents will include in their PR bodies.
 5. CI (`schema.test.ts`) catches malformed entries.
 
+## `agent-sprint-runner.yml` workflow contract
+
+[`.github/workflows/agent-sprint-runner.yml`](../../.github/workflows/agent-sprint-runner.yml) is the `workflow_dispatch` entry point that the Brain dispatcher invokes. v1 behaviour is intentionally conservative: it opens a "task ticket" PR (label `agent-ticket`) whose body is the rendered brief; a human or downstream agent picks the ticket up. v2 will swap the ticket-PR step for a real cheap-subagent invocation (Cursor Cloud Agent, Codex CLI, or similar) without changing the dispatch contract.
+
+### Inputs (mirror the Brain dispatcher payload)
+
+| Input | Required | Source |
+| --- | --- | --- |
+| `brief_tag` | yes | `workstream.brief_tag` |
+| `title` | yes | `workstream.title` |
+| `notes` | no | `workstream.notes` |
+| `related_plan` | no | `workstream.related_plan` |
+| `model` | no | dispatcher passes `composer-2-fast`; choices: `composer-2-fast`, `composer-1.5`, `gpt-5.5-medium` |
+| `max_open_tickets_per_workstream` | no | guardrail cap (default `1`) |
+
+### Guardrails enforced inside the workflow
+
+1. `brief_tag` must match `^track:[a-z0-9-]+$`.
+2. Workstream must exist in `apps/studio/src/data/workstreams.json`.
+3. Workstream `status` must not be `blocked` or `completed`.
+4. Workstream `owner` must be `brain`.
+5. Open ticket PR count for the `brief_tag` must be `< max_open_tickets_per_workstream` (skipped with a warning if at/above cap).
+
+### Standing rules embedded in every brief
+
+The workflow renders the same standing rules into every ticket body. Update them in one place by editing `agent-sprint-runner.yml`:
+
+- ONE concern per PR, type-prefixed title.
+- PR body must literally contain the `brief_tag` (so `workstream_progress.py` counts it).
+- No hand-authored SVGs.
+- No `BRAIN_OWNS_*` flag gating.
+- `pnpm install --frozen-lockfile --ignore-scripts` must pass (`code-quality.lockfile-gate`).
+- `apps/*/vercel.json` must satisfy `scripts/verify-vercel-json-canon.mjs`.
+- Stories live under `apps/design/src/stories/` only.
+
+### Brain dispatch_log webhook (best-effort)
+
+When `BRAIN_API_URL` and `BRAIN_INTERNAL_TOKEN` repo secrets are set, the workflow POSTs the run + ticket URL to `${BRAIN_API_URL}/api/v1/workstreams/dispatch-log`. Failure is non-fatal — the hourly `workstream_progress.py` job will backfill from the `agent-ticket`-labelled PR list either way. (Endpoint is queued for the next Brain PR; until it lands, the warning is expected.)
+
 ## Future queue
 
+- Brain `/api/v1/workstreams/dispatch-log` POST endpoint (companion to the workflow above)
+- Replace the v1 ticket-PR step with a real cheap-subagent invocation
 - Optimistic UI reorder with debounced PR creation
 - Per-workstream subagent dispatch log inline in the row
 - "Unblock me" action that posts a comment on the blocking workstream
