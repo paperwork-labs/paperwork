@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { PlatformHealthSummary } from "@/lib/infra-types";
+import QuotaGitHubActionsPanel from "./quota-github-actions-panel";
+import QuotaRenderPanel from "./quota-render-panel";
+import QuotaVercelPanel from "./quota-vercel-panel";
 
 type InfraService = {
   service: string;
@@ -173,6 +176,7 @@ export default function InfraClient({
   const [refreshing, setRefreshing] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshError, setRefreshError] = useState<string | null>(null);
+  const [quotaRefresh, setQuotaRefresh] = useState(0);
 
   const { platformRows, otherRows } = useMemo(() => {
     const platformRowsInner = services.filter(
@@ -205,6 +209,7 @@ export default function InfraClient({
       if (data.platformPartial) setPlatformPartial(data.platformPartial);
       setCheckedAt(data.checkedAt);
       setRefreshError(null);
+      setQuotaRefresh((q) => q + 1);
     } catch (err) {
       setRefreshError(err instanceof Error ? err.message : "Refresh failed");
     } finally {
@@ -352,6 +357,28 @@ export default function InfraClient({
           </p>
           <p className="text-sm text-zinc-500">HTTP / token checks</p>
         </motion.div>
+      </motion.section>
+
+      <motion.section
+        variants={fadeUp}
+        initial="hidden"
+        animate="show"
+        className="space-y-3"
+        data-testid="infra-quota-panels"
+        aria-label="Vendor quota snapshots via Brain API"
+      >
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Vendor quotas</p>
+          <p className="mt-1 text-sm text-zinc-400">
+            Brain-maintained snapshots (Vercel, GitHub Actions, Render). Bands: green below 60%,
+            amber 60–85%, red above 85% of modeled caps — scan the top stripe on each card.
+          </p>
+        </div>
+        <div className="grid gap-4 xl:grid-cols-3">
+          <QuotaVercelPanel refreshSignal={quotaRefresh} />
+          <QuotaGitHubActionsPanel refreshSignal={quotaRefresh} />
+          <QuotaRenderPanel refreshSignal={quotaRefresh} />
+        </div>
       </motion.section>
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3">
