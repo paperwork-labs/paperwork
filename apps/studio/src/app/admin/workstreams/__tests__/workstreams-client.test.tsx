@@ -29,6 +29,26 @@ describe("WorkstreamsBoardClient", () => {
     ).toBeTruthy();
   });
 
+  it("groups completed below incomplete with a 'Completed · N shipped' divider", () => {
+    const kpis = computeKpis(parsedFixture);
+    const { container } = render(
+      <WorkstreamsBoardClient kpis={kpis} parsedFile={parsedFixture} />,
+    );
+
+    const completedTotal = parsedFixture.workstreams.filter(
+      (w) => w.status === "completed",
+    ).length;
+    const activeTotal = parsedFixture.workstreams.length - completedTotal;
+    expect(completedTotal).toBeGreaterThan(0);
+    expect(activeTotal).toBeGreaterThan(0);
+
+    const items = Array.from(container.querySelectorAll("ul[role='list'] > li"));
+    const dividerIdx = items.findIndex((el) =>
+      el.textContent?.startsWith(`Completed · ${completedTotal} shipped`),
+    );
+    expect(dividerIdx).toBe(activeTotal);
+  });
+
   it("supports keyboard focus on drag handles (DnD interaction smoke)", async () => {
     const user = userEvent.setup();
     const kpis = computeKpis(parsedFixture);

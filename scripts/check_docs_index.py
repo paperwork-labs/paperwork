@@ -28,6 +28,8 @@ EXCLUDED_SUBDIRS = {
     "archive",
     "templates",
     "handoffs",
+    # Daily / scratch notes (Obsidian daily-notes → docs/journal/) — not docs-hub entries.
+    "journal",
     # The axiomfolio/ subtree is an internal migration snapshot — lots of
     # plan drafts, design-system pages, and per-quarter audits. Not the
     # target of /admin/docs yet. If you need it indexed, add a specific

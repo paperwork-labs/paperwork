@@ -1,0 +1,12 @@
+{
+  "accentColor": "#58a6ff",
+  "baseFontSize": 16,
+  "cssTheme": "",
+  "interfaceFontFamily": "",
+  "monospaceFontFamily": "JetBrains Mono, SFMono-Regular, Menlo, Consolas, monospace",
+  "nativeMenus": false,
+  "showViewHeader": true,
+  "textFontFamily": "",
+  "theme": "obsidian",
+  "translucency": false
+}

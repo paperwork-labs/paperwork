@@ -332,6 +332,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: axiomfolio-phase-3-runbook
+    path: docs/infra/AXIOMFOLIO_PHASE_3_RUNBOOK.md
+    title: AxiomFolio Phase 3 — DNS & custom-domain cutover runbook
+    summary: "Phase 3 moves `axiomfolio.com`, `www.axiomfolio.com`, and `api.axiomfolio.com` from the founder’s **personal** Render workspace to **Paperwork Labs (org)** services, and points Cloudflare at the…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: billing-vendor-checklist
     path: docs/BILLING_VENDOR_CHECKLIST.md
     title: Billing + Vendor Checklist
@@ -409,12 +416,26 @@ docs:
     tags: [finance, cfo]
     owners: [cfo]
     category: reference
+  - slug: github-actions-quota-audit-2026q2
+    path: docs/infra/GITHUB_ACTIONS_QUOTA_AUDIT_2026Q2.md
+    title: GitHub Actions quota audit (2026 Q2)
+    summary: Founder switched `paperwork-labs/paperwork` to **public** after exhausting GitHub Actions minutes on **private** repos (public OSS repos currently receive **effectively unlimited** Actions minutes…
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: infra
     path: docs/INFRA.md
     title: Infra Overview
     summary: "What runs where — Render, Vercel, Hetzner, Neon."
     tags: [infra]
     owners: [infra-ops]
+    category: reference
+  - slug: how-to-navigate
+    path: docs/HOW_TO_NAVIGATE.md
+    title: Navigate `docs/` (Obsidian vault)
+    summary: "This folder stays **markdown-first** for GitHub, CI, and agents. You can also open **`docs/` as an Obsidian vault** for graph view, backlinks, and quick switching—without changing how anyone else…"
+    tags: [docs, obsidian]
+    owners: [strategy]
     category: reference
   - slug: readme
     path: docs/brand/README.md
@@ -451,6 +472,13 @@ docs:
     tags: [product, spec]
     owners: [engineering, ux]
     category: reference
+  - slug: render-quota-audit-2026q2
+    path: docs/infra/RENDER_QUOTA_AUDIT_2026Q2.md
+    title: Render pipeline minutes — quota audit (2026 Q2)
+    summary: "**Context:** Workspace billing shows **~1,078 / 500** included pipeline minutes month-to-date (~115% overage, ~\\$2.89 unbilled at published overage rates — figures from founder; not re-derived here)."
+    tags: [infra, audit]
+    owners: [infra-ops]
+    category: reference
   - slug: runbook-template
     path: docs/RUNBOOK_TEMPLATE.md
     title: Runbook Template
@@ -485,6 +513,13 @@ docs:
     summary: "Every app deployed on Vercel needs a local **link** so the CLI knows which team and project to use. That state lives in `apps/<name>/.vercel/project.json`, which is **gitignored** (it contains IDs…"
     tags: []
     owners: [strategy]
+    category: reference
+  - slug: vercel-quota-audit-2026q2
+    path: docs/infra/VERCEL_QUOTA_AUDIT_2026Q2.md
+    title: Vercel quota audit (2026 Q2)
+    summary: "Read-only audit of **Paperwork Labs** (`team_RwfzJ9ySyLuVcoWdKJfXC7h5`) deployment volume, build minutes, and deployment *source* attribution. Companion to the parallel **Render** and **GitHub…"
+    tags: []
+    owners: [infra]
     category: reference
   - slug: workstreams-board
     path: docs/infra/WORKSTREAMS_BOARD.md

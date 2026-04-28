@@ -1,0 +1,35 @@
+{
+  "collapse-color-groups": false,
+  "collapse-display": false,
+  "collapse-filter": true,
+  "collapse-forces": false,
+  "close": false,
+  "colorGroups": [
+    {
+      "color": { "a": 1, "rgb": 16711680 },
+      "query": "path:infra/"
+    },
+    {
+      "color": { "a": 1, "rgb": 65280 },
+      "query": "path:sprints/"
+    },
+    {
+      "color": { "a": 1, "rgb": 65535 },
+      "query": "path:axiomfolio/"
+    }
+  ],
+  "hideUnresolved": false,
+  "lineSizeMultiplier": 1,
+  "linkDistance": 250,
+  "linkStrength": 1,
+  "centerStrength": 0.2,
+  "repelStrength": 12,
+  "nodeSizeMultiplier": 1,
+  "scale": 0.25,
+  "search": "",
+  "showArrow": false,
+  "showAttachments": false,
+  "showOrphans": true,
+  "showTags": true,
+  "textFadeMultiplier": 0
+}

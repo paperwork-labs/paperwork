@@ -1,0 +1,4 @@
+# Obsidian local vault state (copy docs/.obsidian-recommended/ into .obsidian/ once)
+.obsidian/
+.obsidian.vimrc
+.trash/

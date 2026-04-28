@@ -59,6 +59,65 @@ Source of truth: `scripts/vercel-projects.json` (keep the workflow `matrix.inclu
 
 Rows with `TBD_CREATE_BEFORE_MERGE` (and no repository variable override) **skip cleanly** (exit 0) so merges stay green until the founder adds a real `prj_…` id.
 
+## Quota — promote vs deploy decision tree
+
+Vercel hobby has two separate quotas. The right reflex when production looks stale is *almost never* "force a build via the API".
+
+| Action | Mechanism | Counts against |
+| --- | --- | --- |
+| `POST /v10/projects/{id}/promote/{deploymentId}` (this workflow) | Alias flip — points the production hostname at an existing READY deployment | Nothing — free, idempotent |
+| Push to a Vercel-watched branch | Vercel's GitHub webhook fires, monorepo path filter decides per-project, then build | Build minutes (~100 h/month — plenty of headroom) |
+| `vercel deploy --prod` (CLI) | Uploads source + creates a build via the Vercel API | `api-deployments-free-per-day` (**100/day, hard cap**) |
+| `POST /v13/deployments` (force-rebuild via API) | Same as above, just lower-level | `api-deployments-free-per-day` (**100/day, hard cap**) |
+| `scripts/vercel-cutover-axiomfolio.mjs --apply` | PATCH project metadata (free) + `POST /v13/deployments` (counts) | `api-deployments-free-per-day` for Step B |
+
+### "Production is stale on app `<X>` — what do I do?"
+
+```
+Is the project's `framework` setting wrong (e.g. vite when source is Next.js)?
+├── Yes → run the cutover script (it PATCHes framework + triggers one fresh build).
+│         Step B will eat one of the day's 100 deploys; that's the trade-off for a
+│         framework change.
+│
+└── No, framework is correct, prod is just behind ──┐
+                                                    │
+    Did Vercel build the merge SHA at all?          │
+    ├── Yes (READY preview exists) → re-run         │
+    │       `vercel-promote-on-merge` via           │
+    │       workflow_dispatch with that PR number.  │
+    │       Pure alias flip, zero quota.            │
+    │                                               │
+    └── No (Vercel webhook missed or path filter ───┘
+            skipped) → push a path-relevant commit
+            (touches apps/<X>/, packages/, pnpm-lock.yaml,
+            or package.json). Vercel webhook fires, builds
+            for free, then auto-promote aliases it.
+            Zero quota cost.
+```
+
+**Anti-pattern (do not do):** when prod looks stale, reach for `POST /v13/deployments` to force a build for the current `main` HEAD. That's how we burned through the entire 100/day cap on 2026-04-28 catching up multiple apps that had been frozen by a separate jq bug. The same fix could have been done for free with one path-relevant commit.
+
+### When the daily quota is exhausted
+
+The Vercel API returns HTTP 402 with:
+
+```json
+{
+  "error": {
+    "code": "payment_required",
+    "message": "Resource is limited - try again in 24 hours (more than 100, code: \"api-deployments-free-per-day\").",
+    "limit": { "total": 100, "remaining": 0, "reset": 1777427588794 },
+    "resource": "api-deployments-free-per-day"
+  }
+}
+```
+
+`reset` is a Unix epoch in **milliseconds**. The cutover script pretty-prints this. Webhook-triggered builds keep working while the API quota is exhausted — the cap is per-API-call, not per-build.
+
+### Self-healing alarm
+
+`.github/workflows/vercel-promote-on-merge.yaml` includes a `notify-on-pipeline-broken` job that opens (or comments on) a tracking issue tagged `infra-alert,auto-promote` whenever **every real matrix leg** (i.e. excluding the `design` placeholder) fails on the same run. Single-app flakes do not alert — only structural failures (jq syntax, expired token, missing project_id). Put in place after the [jq norm/0 incident (PR #319)](https://github.com/paperwork-labs/repository/pull/319) where every promote job failed for ~12 PRs in a row and went unnoticed because post-merge workflow runs don't show as checks on closed PRs.
+
 ## How it works
 
 1. A PR merges to `main`. GitHub fires the workflow (or you run `workflow_dispatch`).

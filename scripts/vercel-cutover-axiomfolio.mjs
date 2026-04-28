@@ -192,6 +192,29 @@ async function main() {
   };
   const postRes = await vercelReq(true, token, "POST", deploymentsUrl(), postBody);
   if (!postRes.ok) {
+    // Pretty-print the most common 402 (Vercel hobby `api-deployments-free-per-day`)
+    // so the founder gets a precise reset timestamp + a recovery hint instead of
+    // raw JSON. See docs/infra/VERCEL_AUTO_PROMOTE.md § Quota.
+    const code = postRes.json?.error?.code;
+    const limit = postRes.json?.error?.limit;
+    if (postRes.code === 402 && code === "payment_required" && limit?.reset) {
+      const resetIso = new Date(Number(limit.reset)).toISOString();
+      const remaining = limit.remaining ?? 0;
+      const total = limit.total ?? 100;
+      console.error("");
+      console.error("Vercel hobby tier daily deployment quota exhausted.");
+      console.error(`  resource: ${postRes.json.error.resource ?? "api-deployments-free-per-day"}`);
+      console.error(`  used:     ${total - remaining}/${total}`);
+      console.error(`  resets:   ${resetIso}`);
+      console.error("");
+      console.error("This API call was reserved for an in-place framework cutover.");
+      console.error("To advance production WITHOUT burning the daily quota, push a");
+      console.error("path-relevant commit (touches apps/axiomfolio/, packages/, pnpm-lock.yaml,");
+      console.error("or package.json) — Vercel's Git webhook will build it for free, then");
+      console.error("vercel-promote-on-merge will alias the resulting READY deployment to");
+      console.error("production. See docs/infra/VERCEL_AUTO_PROMOTE.md § Quota.");
+      process.exit(1);
+    }
     console.error(postRes.text.slice(0, 2000));
     process.exit(1);
   }
