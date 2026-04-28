@@ -328,8 +328,8 @@ docs:
   - slug: auth-provider-bakeoff-2026q2
     path: docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md
     title: Auth Provider Bakeoff — 2026 Q2
-    summary: "Decision record: stay on Clerk vs Better Auth, Stack Auth, Auth0, or self-hosted Auth.js. Scoring matrix, migration cost analysis, recommendation per surface (consumer vs Distill enterprise SAML/OIDC)."
-    tags: [auth, decisions, clerk]
+    summary: "**Context:** Vercel-hosted Next.js monorepo; six sub-products (Studio, AxiomFolio-next, FileFree, LaunchFree, Distill, Trinkets) on Clerk via Vercel Marketplace; ~1 week integration sunk; Clerk…"
+    tags: []
     owners: [strategy]
     category: reference
   - slug: billing-vendor-checklist
@@ -339,11 +339,11 @@ docs:
     tags: [finance, procurement]
     owners: [cfo]
     category: reference
-  - slug: brand-canon
+  - slug: canon
     path: docs/brand/CANON.md
     title: Brand canon
-    summary: "Single source of truth for marks, palettes, and visual grammar. Per-product palette table, asset lock status (LOCKED / EXPLORING / GARBAGE), visual grammar rules, SVG-vs-PNG guidance, and add/replace workflows."
-    tags: [brand, reference, canon]
+    summary: "Single source of truth for marks, palettes, and visual grammar. Voice, tone, legal copy, and social handles remain in [`.cursor/rules/brand.mdc`](../../.cursor/rules/brand.mdc) (always-on rule)."
+    tags: [company, reference]
     owners: [brand]
     category: reference
   - slug: prompts
@@ -493,19 +493,19 @@ docs:
     tags: []
     owners: [infra]
     category: reference
-  - slug: workstreams-board
-    path: docs/infra/WORKSTREAMS_BOARD.md
-    title: Workstreams board (Track Z)
-    summary: "Single drag-reorderable list of every active workstream. The Brain dispatcher reads the order on a cadence and pushes cheap subagents at the top-N. percent_done is computed ambiently from merged-PR brief_tag matches."
-    tags: [infra, brain, studio, dispatch]
-    owners: [infra, brain]
-    category: reference
   - slug: vercel-linking
     path: docs/infra/VERCEL_LINKING.md
     title: Vercel linking (monorepo)
     summary: "Every app deployed on Vercel needs a local **link** so the CLI knows which team and project to use. That state lives in `apps/<name>/.vercel/project.json`, which is **gitignored** (it contains IDs…"
     tags: []
     owners: [strategy]
+    category: reference
+  - slug: workstreams-board
+    path: docs/infra/WORKSTREAMS_BOARD.md
+    title: Workstreams board (Track Z)
+    summary: Single drag-reorderable list of every active workstream. The Brain dispatcher reads the order on a cadence and pushes cheap subagents at the top-N. percent_done is computed ambiently from merged-PR brief_tag matches.
+    tags: [infra, brain, studio, dispatch]
+    owners: [infra, brain]
     category: reference
   # ── Plans ─────────────────────────────────────────
   - slug: axiomfolio-gaps
