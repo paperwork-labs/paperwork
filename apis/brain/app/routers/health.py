@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -16,7 +17,7 @@ router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
-async def health_check():
+async def health_check() -> JSONResponse:
     return success_response(
         {
             "status": "ok",
@@ -27,7 +28,7 @@ async def health_check():
 
 
 @router.get("/health/deep")
-async def deep_health_check(db: AsyncSession = Depends(get_db)):
+async def deep_health_check(db: AsyncSession = Depends(get_db)) -> JSONResponse:
     db_connected = False
     db_error = None
     try:
@@ -41,7 +42,8 @@ async def deep_health_check(db: AsyncSession = Depends(get_db)):
     redis_error = None
     try:
         redis_client = get_redis()
-        await redis_client.ping()
+        # TODO(medallion): redis-asyncio stubs ping() as bool|Awaitable; runtime is async.
+        await redis_client.ping()  # type: ignore[misc]
         redis_connected = True
     except Exception as exc:
         redis_error = f"{type(exc).__name__}: {exc}"
@@ -49,7 +51,7 @@ async def deep_health_check(db: AsyncSession = Depends(get_db)):
 
     all_healthy = db_connected and redis_connected
     status = "healthy" if all_healthy else "degraded"
-    data: dict = {
+    data: dict[str, Any] = {
         "status": status,
         "service": "brain",
         "version": settings.APP_VERSION,

@@ -15,9 +15,12 @@ import json
 import logging
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from apscheduler.triggers.cron import CronTrigger
+
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from app.config import settings
 from app.database import async_session_factory
@@ -49,7 +52,7 @@ def load_tracker_index(path: Path | None = None) -> dict[str, Any] | None:
     if not p.exists():
         return None
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        return cast("dict[str, Any]", json.loads(p.read_text(encoding="utf-8")))
     except (OSError, json.JSONDecodeError):
         return None
 
@@ -259,7 +262,7 @@ async def _format_cost_hint_for_log(redis_client: Any | None) -> str:
         return "unavailable"
 
 
-def install(scheduler) -> None:
+def install(scheduler: AsyncIOScheduler) -> None:
     scheduler.add_job(
         _run_friday_digest,
         trigger=CronTrigger(day_of_week="fri", hour=18, minute=0, timezone="UTC"),
