@@ -24,6 +24,10 @@ from app.services.continuous_learning import (
 from app.services.github_actions_quota_monitor import latest_github_actions_quota_snapshots
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import review_pr, sweep_open_prs
+from app.services.render_quota_monitor import (
+    build_render_quota_admin_data,
+    latest_render_quota_snapshot,
+)
 from app.services.seed import ingest_docs, ingest_sprint_lessons
 from app.services.vercel_quota_monitor import latest_vercel_quota_snapshots
 
@@ -165,6 +169,16 @@ async def get_github_actions_quota_snapshots(
         for r in rows
     ]
     return success_response({"batch_at": batch_at, "count": len(snapshots), "snapshots": snapshots})
+
+
+@router.get("/render-quota")
+async def get_render_quota(
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Latest Render pipeline quota snapshot (`GET /api/v1/admin/render-quota`)."""
+    row = await latest_render_quota_snapshot(db)
+    return success_response(build_render_quota_admin_data(row))
 
 
 @router.get("/scheduler/n8n-mirror/status")
