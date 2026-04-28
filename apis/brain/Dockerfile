@@ -30,6 +30,9 @@ COPY docs/.doc-drift-baseline.json /app/docs/.doc-drift-baseline.json
 COPY apps/studio/src/data/workstreams.json /app/apps/studio/src/data/workstreams.json
 COPY apps/studio/src/data/tracker-index.json /app/apps/studio/src/data/tracker-index.json
 
+# WS-37: Clerk ↔ Cloudflare DNS check-only job (APScheduler) shells out to this script.
+COPY scripts/reconcile_clerk_dns.py /app/scripts/reconcile_clerk_dns.py
+
 RUN chown -R appuser:appuser /app
 USER appuser
 EXPOSE 8000

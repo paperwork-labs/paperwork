@@ -35,8 +35,11 @@ known-first-party = ["app"]
 # CI-facing CLIs/tests: intentional stdout/stderr output; trusted subprocess to git.
 "scripts/check_alembic_heads.py" = ["T201"]
 "scripts/check_dockerfile_healthcheck.py" = ["T201", "S603"]
-"scripts/check_parents_import_safety.py" = ["T201"]
-"scripts/tests/test_parents_import_safety_examples.py" = ["S603"]
+"scripts/cloudflare_decommission_zones.py" = ["T201"]
+"scripts/cloudflare_issue_readonly_tokens.py" = ["T201"]
+"scripts/reconcile_clerk_dns.py" = ["T201", "S603"]
+"scripts/check_pre_deploy.py" = ["T201", "S603"]
+"tests/scripts/**" = ["T201", "ARG002"]
 
 [tool.mypy]
 python_version = "3.11"

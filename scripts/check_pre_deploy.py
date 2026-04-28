@@ -6,8 +6,9 @@ Exit codes:
   1  Unexpected error (network/parse)
   2  Deploy quota below threshold
   3  Required env var missing on target
-  4  Missing BRAIN_ADMIN_TOKEN / VERCEL_API_TOKEN when a step needs them
+  4  Missing BRAIN_ADMIN_TOKEN / VERCEL_API_TOKEN / Clerk+Cloudflare tokens when a step needs them
   5  --require-all-checks set but a skip flag was used
+  6  Clerk↔Cloudflare DNS drift (``scripts/reconcile_clerk_dns.py --check-only`` failed)
 
 Requires PyYAML (``pip install pyyaml``) — same as apis/brain.
 """
@@ -17,6 +18,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -40,6 +42,8 @@ DEFAULT_QUOTA_THRESHOLD = 5
 DEFAULT_TEAM_ID = "team_RwfzJ9ySyLuVcoWdKJfXC7h5"
 HOBBY_DEPLOY_DAILY_CAP = 100
 VERCEL_API_ORIGIN = os.environ.get("VERCEL_API_BASE_URL", "https://api.vercel.com").rstrip("/")
+# Clerk-backed Vercel apps: DNS must match Clerk ``cname_targets`` + paperworklabs ops rows.
+_PROJECTS_CLERK_DNS_GUARD: frozenset[str] = frozenset({"studio", "axiomfolio", "filefree"})
 
 
 def _eprint(*args: object) -> None:
@@ -258,6 +262,14 @@ def main(argv: list[str] | None = None) -> int:
         "--skip-env-vars", action="store_true", help="Skip required env manifest check (emergency)."
     )
     parser.add_argument(
+        "--skip-clerk-dns",
+        action="store_true",
+        help=(
+            "Skip scripts/reconcile_clerk_dns.py --check-only "
+            "(emergency; studio/axiomfolio/filefree only)."
+        ),
+    )
+    parser.add_argument(
         "--require-all-checks",
         action="store_true",
         help="Fail if any skip flag is set (prevents silent bypass).",
@@ -269,6 +281,8 @@ def main(argv: list[str] | None = None) -> int:
         bypass_bits.append("skip-quota")
     if args.skip_env_vars:
         bypass_bits.append("skip-env-vars")
+    if args.skip_clerk_dns:
+        bypass_bits.append("skip-clerk-dns")
     if bypass_bits and args.require_all_checks:
         _eprint(
             "PRE_DEPLOY_GUARD_BYPASS_USED "
@@ -367,6 +381,42 @@ def main(argv: list[str] | None = None) -> int:
             )
             return 3
 
+    # --- Clerk ↔ Cloudflare DNS (Clerk ``cname_targets`` + paperworklabs ops rows) ---
+    if args.project in _PROJECTS_CLERK_DNS_GUARD and not args.skip_clerk_dns:
+        clerk = (os.environ.get("CLERK_SECRET_KEY") or "").strip()
+        cf = (os.environ.get("CLOUDFLARE_API_TOKEN") or os.environ.get("CF_TOKEN") or "").strip()
+        if not clerk or not cf:
+            _eprint(
+                "CLERK_SECRET_KEY and CLOUDFLARE_API_TOKEN (or CF_TOKEN) are required for "
+                f"Clerk DNS verification on project {args.project!r}. "
+                "Configure GitHub Actions secrets / local env, or pass --skip-clerk-dns "
+                "(emergency only).",
+            )
+            return 4
+        script_path = _REPO_ROOT / "scripts" / "reconcile_clerk_dns.py"
+        if not script_path.is_file():
+            _eprint(f"Clerk DNS script missing: {script_path}")
+            return 1
+        try:
+            proc = subprocess.run(
+                [sys.executable, str(script_path), "--check-only"],
+                cwd=str(_REPO_ROOT),
+                capture_output=True,
+                text=True,
+                timeout=180,
+                env=os.environ.copy(),
+            )
+        except subprocess.TimeoutExpired:
+            _eprint("Clerk DNS check timed out after 180s.")
+            return 1
+        if proc.returncode != 0:
+            _eprint(
+                "CLERK_DNS_CHECK_FAILED — scripts/reconcile_clerk_dns.py --check-only "
+                f"exited {proc.returncode}.\n--- stdout ---\n{proc.stdout}"
+                f"\n--- stderr ---\n{proc.stderr}",
+            )
+            return 6 if proc.returncode == 2 else 1
+
     bits: list[str] = []
     if not args.skip_quota:
         bits.append(f"{remaining} quota remaining")
@@ -376,6 +426,11 @@ def main(argv: list[str] | None = None) -> int:
         bits.append("all required env vars present")
     else:
         bits.append("env var check skipped")
+    if args.project in _PROJECTS_CLERK_DNS_GUARD:
+        if args.skip_clerk_dns:
+            bits.append("Clerk DNS check skipped")
+        else:
+            bits.append("Clerk DNS check passed")
     sys.stdout.write(f"OK — {', '.join(bits)} for {args.project}:{args.target}\n")
     return 0
 
