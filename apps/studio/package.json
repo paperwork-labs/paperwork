@@ -20,6 +20,10 @@
   "dependencies": {
     "@clerk/nextjs": "^7.2.7",
     "@clerk/themes": "^2.4.57",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/modifiers": "^6.0.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@neondatabase/serverless": "^1.1.0",
     "@paperwork-labs/auth-clerk": "workspace:*",
     "@paperwork-labs/pwa": "workspace:*",
@@ -39,12 +43,15 @@
     "recharts": "^3.8.1",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.2.4",
     "@tailwindcss/typography": "^0.5.19",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/dagre": "^0.7.54",
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",

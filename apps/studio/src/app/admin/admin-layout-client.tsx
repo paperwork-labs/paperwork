@@ -20,6 +20,7 @@ import {
   Sparkles,
   Activity,
   GitBranch,
+  Kanban,
 } from "lucide-react";
 
 type NavItem = {
@@ -50,6 +51,7 @@ function buildNavGroups(
         { href: "/admin/products", label: "Products", icon: Boxes },
         { href: "/admin/sprints", label: "Sprints", icon: Rocket },
         { href: "/admin/agent-sprints", label: "Agent sprints", icon: Bot },
+        { href: "/admin/workstreams", label: "Workstreams", icon: Kanban },
       ],
     },
     {
