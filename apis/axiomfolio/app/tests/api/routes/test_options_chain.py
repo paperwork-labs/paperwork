@@ -11,6 +11,7 @@ import pytest
 from app.models.watchlist import Watchlist
 
 try:
+    from fastapi import HTTPException, Request, status as _fa_status
     from fastapi.testclient import TestClient
     from app.api.main import app
 
@@ -18,7 +19,10 @@ try:
 except Exception:
     _HAS_APP = False
 
+from app.api.dependencies import get_current_user, get_optional_user
+from app.api.security import decode_token
 from app.database import get_db
+from app.models.user import User as _AuthUser
 from app.tests.auth_test_utils import approve_user_for_login_tests
 
 
@@ -31,7 +35,18 @@ def client():
 
 @pytest.fixture
 def client_with_db(client, db_session):
-    """API requests use the test transaction so ORM data is visible to routes."""
+    """API requests use the test transaction so ORM data is visible to routes.
+
+    Auth: both ``get_current_user`` and ``get_optional_user`` are overridden
+    to resolve the legacy ``/auth/login`` access token (HS256, ``sub`` =
+    username) issued by ``_register_and_login`` to a ``User`` row. The
+    production deps verify a Clerk session JWT (WS-14 / Track B5); these
+    route tests pre-date that cutover and continue to exercise authorization
+    paths via the username/password login helper. Both deps are overridden
+    because the options router runs ``require_non_market_access`` (built on
+    ``get_optional_user``) at the router level before the route's own
+    ``Depends(get_current_user)`` fires.
+    """
     if db_session is None:
         yield client
         return
@@ -39,11 +54,50 @@ def client_with_db(client, db_session):
     def _ov():
         yield db_session
 
+    def _resolve_user(request: Request) -> _AuthUser:
+        auth = request.headers.get("authorization") or ""
+        if not auth.lower().startswith("bearer "):
+            raise HTTPException(
+                status_code=_fa_status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
+        token = auth.split(" ", 1)[1].strip()
+        try:
+            claims = decode_token(token, expected_type="access")
+        except Exception as exc:
+            raise HTTPException(
+                status_code=_fa_status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            ) from exc
+        username = claims.get("sub")
+        user = (
+            db_session.query(_AuthUser)
+            .filter(_AuthUser.username == username)
+            .one_or_none()
+            if username
+            else None
+        )
+        if user is None:
+            raise HTTPException(
+                status_code=_fa_status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
+        return user
+
+    def _resolve_optional_user(request: Request):
+        if not (request.headers.get("authorization") or ""):
+            return None
+        return _resolve_user(request)
+
     app.dependency_overrides[get_db] = _ov
+    app.dependency_overrides[get_current_user] = _resolve_user
+    app.dependency_overrides[get_optional_user] = _resolve_optional_user
     try:
         yield client
     finally:
         app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(get_optional_user, None)
 
 
 def _register_and_login(
@@ -64,24 +118,18 @@ def _register_and_login(
     )
     assert r.status_code == 200
     approve_user_for_login_tests(username, db=db)
-    r2 = client.post(
-        "/api/v1/auth/login", json={"email": email, "password": password}
-    )
+    r2 = client.post("/api/v1/auth/login", json={"email": email, "password": password})
     assert r2.status_code == 200
     return r2.json()["access_token"]
 
 
-def test_user_cannot_read_symbol_only_in_other_watchlist(
-    client_with_db, db_session
-):
+def test_user_cannot_read_symbol_only_in_other_watchlist(client_with_db, db_session):
     au = f"a_{uuid.uuid4().hex[:6]}"
     bu = f"b_{uuid.uuid4().hex[:6]}"
     ta = _register_and_login(
         client_with_db, au, "Passw0rd!", f"{au}@t.com", db=db_session
     )
-    _register_and_login(
-        client_with_db, bu, "Passw0rd!", f"{bu}@t.com", db=db_session
-    )
+    _register_and_login(client_with_db, bu, "Passw0rd!", f"{bu}@t.com", db=db_session)
     from app.models.user import User
 
     ub = db_session.query(User).filter(User.username == bu).one()
@@ -95,9 +143,7 @@ def test_user_cannot_read_symbol_only_in_other_watchlist(
     assert r.status_code == 404
 
 
-def test_source_unavailable_returns_503(
-    client_with_db, db_session, monkeypatch
-):
+def test_source_unavailable_returns_503(client_with_db, db_session, monkeypatch):
     u = f"u_{uuid.uuid4().hex[:6]}"
     token = _register_and_login(
         client_with_db, u, "Passw0rd!", f"{u}@t.com", db=db_session
@@ -116,8 +162,7 @@ def test_source_unavailable_returns_503(
         raise ChainSourceUnavailableError("no chain")
 
     monkeypatch.setattr(
-        "app.services.gold.options_chain_surface."
-        "OptionsChainSurface.resolve_rows",
+        "app.services.gold.options_chain_surface.OptionsChainSurface.resolve_rows",
         _boom,
     )
     r = client_with_db.get(

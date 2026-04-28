@@ -1,1 +1,4 @@
-"""Auth helpers (Clerk session resolution, etc.)."""
+"""Auth helpers (Clerk session resolution, etc.).
+
+medallion: ops
+"""

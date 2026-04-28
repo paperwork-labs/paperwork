@@ -47,6 +47,7 @@ apps:
       execution: execution
       # Ops
       agent: ops
+      auth: ops
       billing: ops
       brain: ops
       clients: ops
