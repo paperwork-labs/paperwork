@@ -2,7 +2,14 @@ import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
-const PUBLIC_PATHS = new Set(['/login', '/register', '/invite', '/auth/callback']);
+const PUBLIC_PATHS = new Set([
+  '/login',
+  '/register',
+  '/sign-in',
+  '/sign-up',
+  '/invite',
+  '/auth/callback',
+]);
 
 function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PATHS.has(pathname)) return true;
@@ -18,6 +25,8 @@ function isPublicPath(pathname: string): boolean {
  * listener still clears React state and localStorage; this component owns the
  * routing + user-facing notification side effects so the page never gets stuck
  * in a "Loading…" state with all queries silently 401'ing.
+ *
+ * WS-14: send users to Clerk sign-in (`/login` still redirects there in Next).
  */
 const AuthLogoutListener: React.FC = () => {
   const navigate = useNavigate();
@@ -29,7 +38,7 @@ const AuthLogoutListener: React.FC = () => {
         return;
       }
       toast.error('Session expired. Please sign in again.', { id: 'auth-session-expired' });
-      navigate('/login', { replace: true, state: { from: location } });
+      navigate('/sign-in', { replace: true, state: { from: location } });
     };
     window.addEventListener('auth:logout', handler);
     return () => window.removeEventListener('auth:logout', handler);

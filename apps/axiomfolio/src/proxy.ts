@@ -19,8 +19,9 @@ import type { NextFetchEvent, NextRequest } from "next/server";
 const MATCHED_ROUTES = new Set(["/system-status", "/portfolio", "/scanner"]);
 
 /**
- * AxiomFolio (Next.js) — foundation Clerk + legacy `qm_token` auth.
- * `RequireAuthClient` remains the client gate. No server-side `auth().protect()`.
+ * AxiomFolio (Next.js) — Clerk session is recognized on every non-public route via
+ * `await auth()` (session refresh / request context). No `auth().protect()` — the
+ * client gate is `RequireAuthClient` (Clerk OR legacy `qm_token`).
  */
 const isClerkPublicRoute = createRouteMatcher([
   "/",
@@ -36,11 +37,11 @@ const isClerkPublicRoute = createRouteMatcher([
   "/api/health/(.*)",
 ]);
 
-const clerk = clerkMiddleware((_, request) => {
+const clerk = clerkMiddleware(async (auth, request) => {
   if (isClerkPublicRoute(request)) {
     return;
   }
-  // Non-blocking: all other routes pass through; legacy auth unchanged.
+  await auth();
 });
 
 function isEnabled(): boolean {

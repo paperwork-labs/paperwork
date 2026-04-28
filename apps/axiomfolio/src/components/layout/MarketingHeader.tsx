@@ -50,12 +50,12 @@ function MarketingNavLinks({
         );
       })}
       <Button asChild size="sm" variant="default" className={cn(stacked && 'w-full')}>
-        <Link href="/login" onClick={onNavigate}>
+        <Link href="/sign-in" onClick={onNavigate}>
           Sign in
         </Link>
       </Button>
       <Button asChild size="sm" variant="outline" className={cn(stacked && 'w-full')}>
-        <Link href="/register" onClick={onNavigate}>
+        <Link href="/sign-up" onClick={onNavigate}>
           Register
         </Link>
       </Button>

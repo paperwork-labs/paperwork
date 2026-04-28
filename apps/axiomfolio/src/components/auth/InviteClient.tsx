@@ -58,7 +58,7 @@ export default function InviteClient({ token }: InviteClientProps) {
         full_name: fullName.trim(),
       });
       toast.success("Invite accepted. You can now log in.");
-      router.push("/login");
+      router.push("/sign-in");
     } catch (e: unknown) {
       const ax = e as { response?: { data?: { detail?: string } }; message?: string };
       toast.error(ax?.response?.data?.detail || ax?.message || "Failed to accept invite");

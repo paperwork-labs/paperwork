@@ -39,7 +39,7 @@ export interface PricingTier {
   /** Transparency microcopy: "Your subscription covers X". */
   covers_copy: string;
   cta_label: string;
-  /** Free public route to navigate to (e.g. `"/register"`); `null` for paid tiers. */
+  /** Free public route to navigate to (e.g. `"/sign-up"`); `null` for paid tiers. */
   cta_route: string | null;
   /** True for tiers that go through sales (Enterprise) instead of self-serve. */
   is_contact_sales: boolean;
