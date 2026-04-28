@@ -29,11 +29,11 @@
       "repositoryVariable": "VERCEL_PROJECT_ID_LAUNCHFREE"
     },
     {
-      "slug": "axiomfolio-next",
+      "slug": "axiomfolio",
       "repoRoot": "apps/axiomfolio",
-      "projectId": "prj_z3JVQGLLfsJO2QZJnK5BvMjfFoK3",
-      "repositoryVariable": "VERCEL_PROJECT_ID_AXIOMFOLIO_NEXT",
-      "notes": "Canonical AxiomFolio — Next.js project. Replaces legacy 'axiomfolio' Vite project (retired 2026-04-27 by chore/axiomfolio-vercel-cutover). Founder must move domain axiomfolio-paperwork-labs.vercel.app to this project + delete legacy project in Vercel dashboard."
+      "projectId": "prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE",
+      "repositoryVariable": "VERCEL_PROJECT_ID_AXIOMFOLIO",
+      "notes": "Canonical AxiomFolio — owns axiomfolio.com + www.axiomfolio.com (verified). Originally a Vite project; PATCHed in-place to Next.js on 2026-04-28 (framework + root + install + output) by scripts/vercel-cutover-axiomfolio.mjs. The temporary 'axiomfolio-next' project (prj_z3JVQGLLfsJO2QZJnK5BvMjfFoK3) was never used and has been deleted."
     },
     {
       "slug": "trinkets",
