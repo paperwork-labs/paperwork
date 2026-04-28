@@ -22,7 +22,7 @@ class _CombinedHandler(BaseHTTPRequestHandler):
     brain_payload: ClassVar[dict[str, object]] = {}
     vercel_payload: ClassVar[dict[str, object]] = {}
 
-    def log_message(self, format: str, *args: object) -> None:
+    def log_message(self, fmt: str, *args: object) -> None:
         return
 
     def do_GET(self) -> None:
@@ -77,7 +77,7 @@ def _run_script(
     if port is not None:
         base_env["BRAIN_BASE_URL"] = f"http://127.0.0.1:{port}"
         base_env["VERCEL_API_BASE_URL"] = f"http://127.0.0.1:{port}"
-    return subprocess.run(  # noqa: S603
+    return subprocess.run(
         [
             sys.executable,
             str(SCRIPT),
