@@ -2,10 +2,16 @@ title = "Paperwork gitleaks config"
 [extend]
 useDefault = true
 [allowlist]
-description = "Test fixtures with high-entropy but non-secret values"
+description = "Test fixtures and public infra identifiers (not secrets)"
 paths = [
   '''apps/studio/__tests__/secrets-intake\.test\.ts''',
 ]
 regexes = [
   '''ABCDEFGHIJKLMNOPQRSTUVWXYZ234567''',
+  # Render service IDs (e.g. srv-d7lg0o77f7vs73b2k7m0) — visible in dashboard URLs, not secrets
+  '''srv-[a-z0-9]{20}''',
+  # Render database / postgres IDs (e.g. dpg-d725m719fqoc739rc3f0-a)
+  '''dpg-[a-z0-9]{20}(-[a-z])?''',
+  # Cloudflare zone IDs (32-hex, public, visible in dashboard)
+  '''[Zz]one[_-]?[Ii][Dd]\s*=\s*["'][a-f0-9]{32}["']''',
 ]
