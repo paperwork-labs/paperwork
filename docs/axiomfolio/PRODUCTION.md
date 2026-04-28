@@ -166,10 +166,12 @@ Optional:
 
 #### Cloudflare DNS
 
-Nameservers (configured in Spaceship):
+Nameservers (delegation at **Spaceship** registrar → Cloudflare zone on work account):
 
-- `emely.ns.cloudflare.com`
-- `kayden.ns.cloudflare.com`
+- `janet.ns.cloudflare.com`
+- `noel.ns.cloudflare.com`
+
+Canonical account + zone IDs: `docs/runbooks/CLOUDFLARE_OWNERSHIP.md`.
 
 DNS records (configured in Cloudflare dashboard):
 

@@ -5,16 +5,15 @@ owner: infra-ops
 status: active
 domain: infra
 doc_kind: runbook
-summary: "Move all production zones from Sankalp404@gmail.com personal Cloudflare account to a Paperwork Labs work account + token rotation playbook."
+summary: "Completed 2026-04-28: all production zones on Paperwork Labs work Cloudflare account (former founder personal account migrated-from) + token rotation and ongoing DNS ops."
 tags: [cloudflare, dns, secrets, migration, security]
 ---
 
 # Cloudflare account ownership + migration
 
-This runbook captures the **one-time founder migration** from the personal
-Cloudflare account (`Sankalp404@gmail.com`) to a Paperwork Labs work account,
-and the **ongoing operational procedures** (token rotation, zone admission,
-team access) once the work account is canonical.
+> **As of 2026-04-28, all 5 production zones are migrated** to the Paperwork Labs work Cloudflare account (`7e8976a674c66193992c04d61d5a6747`). This runbook is **historical reference** (how we cut over) **plus ongoing operational procedures** (tokens, new zones, team access).
+
+This runbook captures the **founder migration** (completed 2026-04-28) from the **former** personal Cloudflare account (`Sankalp404@gmail.com` — migrated-from, not current production ownership) to the **work** account, and the **ongoing operational procedures** (token rotation, zone admission, team access) now that the work account is canonical.
 
 ## Migration status (live)
 
@@ -22,16 +21,15 @@ team access) once the work account is canonical.
 |---|---|---|---|---|
 | `paperworklabs.com` | ✅ migrated 2026-04-28 | `7e8976a674c66193992c04d61d5a6747` | `6efe0c9f87c80a21617ff040fa2e55dd` | NS=`janet+noel.ns.cloudflare.com`. Spaceship registrar updated. Status=active. |
 | `axiomfolio.com` | ✅ migrated 2026-04-28 | `7e8976a674c66193992c04d61d5a6747` | `e06277688d45265fb6e1240ca17e796e` | NS=`janet+noel.ns.cloudflare.com`. All A/CNAME records auto-imported. Status=active. Production 200 OK across `axiomfolio.com / www / api`. |
-| `filefree.ai` | not yet migrated | — | — | Pending. Bring under work account when next touching DNS. |
-| `launchfree.ai` | not yet migrated | — | — | Pending. |
-| `distill.tax` | not yet migrated | — | — | Pending. |
+| `filefree.ai` | ✅ migrated 2026-04-28 | `7e8976a674c66193992c04d61d5a6747` | `0ec8bf3e6992c73725c2a0b6cf549cfa` | NS=`janet+noel.ns.cloudflare.com`. Spaceship registrar updated. Zone activated work account **~20:11 UTC**. Status=active. |
+| `launchfree.ai` | ✅ migrated 2026-04-28 | `7e8976a674c66193992c04d61d5a6747` | `38e6ea06b1380246082b83399826ac22` | NS=`janet+noel.ns.cloudflare.com`. Spaceship registrar updated. Zone activated **~20:12 UTC**. Status=active. |
+| `distill.tax` | ✅ migrated 2026-04-28 | `7e8976a674c66193992c04d61d5a6747` | `0497b4c7e9c65e62bd016f940d62e8e8` | NS=`janet+noel.ns.cloudflare.com`. Spaceship registrar updated. Zone activated **~20:24 UTC**. Status=active. |
 
 **Phase 2 (paperworklabs.com)** and **Phase 3 (axiomfolio.com)** below are
 historical playbooks — both completed 2026-04-28. Use them as reference if a
 similar migration is needed in the future, or for emergency rollback.
 
-**Old personal-account zones**: keep for 24h soak (until ~2026-04-29 21:00 UTC),
-then delete from `Sankalp404@gmail.com`'s Cloudflare account.
+**Old zones on the former personal account** (`Sankalp404@gmail.com`, migrated-from): keep for 24h soak (until ~2026-04-29 21:00 UTC), then delete from that **former** Cloudflare account — they are not production DNS.
 
 ## Why migrate
 
@@ -43,27 +41,29 @@ then delete from `Sankalp404@gmail.com`'s Cloudflare account.
 | Single billing record | Cleaner books for tax / cap table / acquisition |
 | Audit log clarity | Personal account commingles personal-domain history with business |
 
-## Inventory (target end state)
+## Inventory (canonical end state — achieved 2026-04-28)
 
-All paperwork-labs production zones live on the **work account**:
+All paperwork-labs production zones **now** live on the **work account** (`7e8976a674c66193992c04d61d5a6747`):
 
-| Zone | Current home | Target home | Migration risk |
+| Zone | Before (migration source) | After (canonical) | Outcome |
 |---|---|---|---|
-| `paperworklabs.com` | Personal (in "Finish setup" — never went live) | Work | **None** — switch zones before nameservers go live |
-| `axiomfolio.com` | Personal (active, proxied traffic) | Work | **Medium** — ~5-10 min DNS gap if records mismatch |
-| `filefree.ai` | TBD (likely registrar default) | Work | Low — bring under work when we migrate it from registrar nameservers |
-| `launchfree.ai` | TBD | Work | Low |
-| `distill.tax` | TBD | Work | Low |
-| `tools.filefree.ai` | Subdomain of `filefree.ai` | Inherits | n/a |
+| `paperworklabs.com` | Former personal account ("Finish setup" — never served production from personal NS) | Work | Cutover completed; NS + registrar aligned |
+| `axiomfolio.com` | Former personal account (live proxied traffic) | Work | Cutover completed; records preserved via import |
+| `filefree.ai` | Former personal / prior delegation | Work | Cutover completed 2026-04-28 (~20:11 UTC) |
+| `launchfree.ai` | Former personal / prior delegation | Work | Cutover completed 2026-04-28 (~20:12 UTC) |
+| `distill.tax` | Former personal / prior delegation | Work | Cutover completed 2026-04-28 (~20:24 UTC) |
+| `tools.filefree.ai` | Subdomain of `filefree.ai` | Inherits `filefree.ai` zone | n/a |
 
 ## Phase 1 — Set up work account (founder UI, ~15 min)
 
 1. Sign up at [cloudflare.com](https://cloudflare.com) with a workspace email — `ops@paperworklabs.com` or `founders@paperworklabs.com`. Use a Google Workspace alias if a dedicated mailbox doesn't exist yet.
 2. **Enable 2FA on day 1**: Settings → Authentication → Two-Factor Authentication → TOTP (not SMS). Save recovery codes to 1Password / Bitwarden.
-3. Create a backup-recovery email (`Sankalp404@gmail.com` is fine here — belt + suspenders for solo founder lockout).
+3. Create a backup-recovery email (any trusted personal inbox the founder controls — e.g. the **former** personal account used pre-migration — belt + suspenders for solo-founder lockout).
 4. Add Founder 2 (when they have a Paperwork Labs email) as `Domain Admin` member.
 
 ## Phase 2 — `paperworklabs.com` (zero-risk switch)
+
+> ✅ Completed 2026-04-28.
 
 This zone never finished setup on the personal account, so cutover is trivial.
 
@@ -81,6 +81,8 @@ dig +trace ns paperworklabs.com
 **No DNS records existed yet** so there's nothing to import. After nameserver propagation, configure DNS records as `apps/accounts/`, `apps/design/`, etc come online (CNAMEs to Vercel).
 
 ## Phase 3 — `axiomfolio.com` (live traffic — careful)
+
+> ✅ Completed 2026-04-28.
 
 ```bash
 # (founder UI on personal account)
@@ -103,10 +105,10 @@ curl -sS -o /dev/null -w '%{http_code}\n' https://axiomfolio.com
 curl -sS -o /dev/null -w '%{http_code}\n' https://api.axiomfolio.com
 # Both should return 200 / their normal app responses.
 
-# 8. Wait 24h before deleting the zone from the personal account.
+# 8. Wait 24h before deleting the zone from the former personal account.
 ```
 
-**Rollback**: revert nameservers at the registrar to the personal-account values. Within 5-15 min traffic resumes against the old zone (which is still active until you delete it).
+**Rollback**: revert nameservers at the registrar to the **former** personal-account values. Within 5-15 min traffic resumes against the old zone (which is still active until you delete it).
 
 ## Phase 4 — Token rotation (founder + agent)
 
@@ -210,17 +212,21 @@ borrow from this in the existing `apps/studio/` admin secrets surface.)
 
 If anything goes sideways during Phase 3:
 
-1. **Revert nameservers** at the registrar (use the original personal-account values).
+1. **Revert nameservers** at the registrar (use the original **former** personal-account values).
 2. Wait 5-15 min for DNS to propagate back.
-3. Personal-account zone is still configured and "Active" until you explicitly delete it — **do not delete the personal zone for at least 24h after work zone goes live**.
+3. The **former** personal-account zone is still configured and "Active" until you explicitly delete it — **do not delete that zone for at least 24h after the work zone goes live**.
 
-## What lands in this PR (vs founder UI work)
+## Deliverables (migration complete)
 
-| Action | Code | Founder UI |
+| Action | Code / docs | Founder UI |
 |---|---|---|
 | This runbook | ✓ | — |
-| Token in vault + Render + GH Actions | (next PR after token issued) | — |
-| Cloudflare account creation | — | ✓ |
+| Token in vault + Render + GH Actions | ✓ (account-scoped `paperwork-brain`) | — |
+| Cloudflare work account | — | ✓ |
 | 2FA enrollment | — | ✓ |
-| Zone migration | — | ✓ |
-| Nameserver switch at registrar | — | ✓ |
+| Zone migration (all 5 prod zones) | — | ✓ |
+| Nameserver switch at registrar (Spaceship) | — | ✓ |
+
+## What we learned
+
+For **every** production zone (`paperworklabs.com`, `axiomfolio.com`, `filefree.ai`, `launchfree.ai`, `distill.tax`), Cloudflare’s **Import** flow accepted **BIND-style zone exports** from the source account (or equivalent) without a manual record-by-record rebuild. After import, we verified proxy flags and critical hostnames, switched registrar nameservers to the work-account pair (`janet.ns.cloudflare.com` + `noel.ns.cloudflare.com`), and confirmed HTTP 200 on apex + key subdomains. **No zone required a fully manual DNS rewrite** — plan for import + diff + NS cutover, not spreadsheet-driven copy-paste.

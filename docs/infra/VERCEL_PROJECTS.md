@@ -14,9 +14,9 @@ All current production-track projects, last verified 2026-04-28:
 |---|---|---|---|---|---|
 | Studio | `studio` | `prj_FZvJJnDdQqawjBpJAwC0SuwyMzFT` | `apps/studio` | Next.js | `paperworklabs.com` (apex via Vercel) |
 | AxiomFolio | `axiomfolio` | `prj_7L9N3FpOFRsc12tMfKKWa8q2lDLE` | `apps/axiomfolio` | Next.js | `www.axiomfolio.com` (cutover blocked on quota — see WS-02) |
-| FileFree | `filefree` | `prj_DNPGX5GrYcwer9oANv90NKqIT67I` | `apps/filefree` | Next.js | TBD |
-| LaunchFree | `launchfree` | `prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7` | `apps/launchfree` | Next.js | TBD |
-| Distill | `distill` | `prj_1TKlkMmY3vLVNfAfRxUY57z43m11` | `apps/distill` | Next.js | TBD |
+| FileFree | `filefree` | `prj_DNPGX5GrYcwer9oANv90NKqIT67I` | `apps/filefree` | Next.js | `filefree.ai` |
+| LaunchFree | `launchfree` | `prj_hXQNtz5g7IAwx8lvCkODWxOyHcP7` | `apps/launchfree` | Next.js | `launchfree.ai` |
+| Distill | `distill` | `prj_1TKlkMmY3vLVNfAfRxUY57z43m11` | `apps/distill` | Next.js | `distill.tax` |
 | Design canvas | `design` | `prj_L14nQSlh3AognlHdC8KaJotVJzit` | `apps/design` | Vite (Storybook static) | `design.paperworklabs.com` |
 | Accounts (Clerk satellite root) | `accounts` | `prj_DidXdCyMrnrigX5us9Sv4noysUil` | `apps/accounts` | Next.js | `accounts.paperworklabs.com` |
 
