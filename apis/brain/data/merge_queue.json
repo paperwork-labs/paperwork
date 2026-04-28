@@ -1,0 +1,23 @@
+{
+  "schema": {
+    "description": "Single-writer rebase queue for serializing cheap-agent PR merges (cheap-agent-fleet.mdc rule #4). Orchestrator (Opus, then Brain) is the only writer; cheap agents only enqueue. Studio dashboard surfaces depth + ETA via Brain freshness API.",
+    "entry": {
+      "pr": "int",
+      "branch": "str",
+      "agent_id": "str (e.g. 'composer-1.5-a')",
+      "agent_model": "str",
+      "subagent_type": "str",
+      "workstream_id": "str",
+      "enqueued_at": "RFC3339Z",
+      "status": "str (one of: 'pending', 'rebasing', 'review', 'merging', 'merged', 'failed', 'rejected')",
+      "shared_files_with_head": "list[str] (used to decide if can merge in parallel with current head per rule #4 exception)",
+      "review_iterations": "int (rounds of orchestrator diff-review)",
+      "last_status_change_at": "RFC3339Z",
+      "notes": "str (free text)"
+    }
+  },
+  "version": 1,
+  "current": null,
+  "queue": [],
+  "updated_at": "2026-04-28T23:00:00Z"
+}

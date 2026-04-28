@@ -1,0 +1,51 @@
+# Procedural memory — Brain's "when X, do Y" rules
+#
+# Source: cheap-agent-fleet.mdc rule #6.
+# Distilled from incident retros, post-merge review notes, and dispatch outcomes.
+# Read by apis/brain/app/services/strategic_planner.py to bias workstream
+# decomposition and agent dispatch (WS-64 self-improvement loop).
+#
+# Each rule has:
+#   - id: snake_case unique
+#   - when: trigger condition (free text + optional structured fields)
+#   - do: action / preference (free text)
+#   - source: where the rule came from (PR #, incident name, retro)
+#   - learned_at: when added (RFC3339Z UTC)
+#   - confidence: low | medium | high
+#   - applies_to: list of [orchestrator, brain-self-dispatch, cheap-agents]
+#
+# This file is YAML to keep editing-by-human friendly while still machine-readable.
+
+version: 1
+rules:
+  - id: ruff_format_pre_push_guard
+    when: "any cheap agent edits Python under apis/brain/ or scripts/"
+    do: "agent must run `ruff format --check .` before push; orchestrator includes the guard in dispatch prompt"
+    source: "PR #374 — Brain Tests CI failure on missing ruff format on tests/test_schedulers/test_misfire_grace.py"
+    learned_at: "2026-04-28T22:30:00Z"
+    confidence: high
+    applies_to: [cheap-agents, brain-self-dispatch]
+
+  - id: workstream_priority_unique
+    when: "agent adds new entry to apps/studio/src/data/workstreams.json"
+    do: "agent must select an unused priority; orchestrator validates via WorkstreamsFile.model_validate(); rebase queue catches collisions across parallel agents"
+    source: "PR #372/373 rebase — WS-37/WS-39/WS-40 priority collisions with WS-41 in main"
+    learned_at: "2026-04-28T23:30:00Z"
+    confidence: high
+    applies_to: [cheap-agents, orchestrator]
+
+  - id: cancelled_status_estimated_pr_count_null
+    when: "agent sets workstream status to 'cancelled'"
+    do: "set estimated_pr_count to null (NOT 0 — schema rejects 0 via gt=0); set percent_done=0; document cancellation reason in notes"
+    source: "PR #372 — WS-15 cancellation with epc=0 caused pydantic ValidationError"
+    learned_at: "2026-04-28T23:30:00Z"
+    confidence: high
+    applies_to: [cheap-agents, brain-self-dispatch]
+
+  - id: vercel_design_storybook_known_failure
+    when: "Vercel - design check fails on a PR"
+    do: "orchestrator does NOT block merge on this check; tracked as pre-existing rolldown/storybook 10/vite 8 incompatibility; will become Phase H Brain-self-prioritized work"
+    source: "PR #374/#372/#373 — design storybook build fails with rolldown enhanced-resolve binding error"
+    learned_at: "2026-04-28T23:00:00Z"
+    confidence: high
+    applies_to: [orchestrator]
