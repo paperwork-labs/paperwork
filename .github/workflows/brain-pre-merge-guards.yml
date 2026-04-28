@@ -1,0 +1,47 @@
+name: Brain pre-merge guards
+
+"on":
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/brain-pre-merge-guards.yml"
+      - "apis/brain/**"
+      - "apis/**/Dockerfile"
+      - "apis/**/Dockerfile.*"
+      - "scripts/check_*.py"
+      - "scripts/tests/**"
+      - "scripts/test_inputs/parents_import_safety/**"
+  workflow_dispatch:
+
+concurrency:
+  group: brain-pre-merge-guards-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  guards:
+    name: Alembic + Dockerfile + parents[K] guards (stdlib only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: "3.11"
+
+      - name: Alembic single-head checker
+        run: python3 scripts/check_alembic_heads.py
+
+      - name: Dockerfile HEALTHCHECK start-period checker
+        run: python3 scripts/check_dockerfile_healthcheck.py
+
+      - name: Parents import-safety checker
+        run: python3 scripts/check_parents_import_safety.py
+
+      - name: Parents checker fixture unittest
+        run: python3 -m unittest scripts/tests/test_parents_import_safety_examples.py
