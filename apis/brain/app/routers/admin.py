@@ -28,6 +28,7 @@ from app.services.kill_switch import is_brain_paused
 from app.services.kill_switch import reason as brain_pause_reason
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import review_pr, sweep_open_prs
+from app.services.procedural_memory import load_rules
 from app.services.render_quota_monitor import (
     build_render_quota_admin_data,
     latest_render_quota_snapshot,
@@ -747,5 +748,36 @@ async def brain_learning_summary(
                 "tokens_out": t_out,
             },
             "spark": spark,
+        }
+    )
+
+
+@router.get("/procedural-memory")
+async def get_procedural_memory(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Return all procedural rules for the admin dashboard.
+
+    Reads ``apis/brain/data/procedural_memory.yaml`` on every call.
+    ``last_consolidated_at`` is null until WS-64 writes it.
+    """
+    rules = load_rules()
+    serialised = [
+        {
+            "id": r.id,
+            "when": r.when,
+            "do": r.do,
+            "source": r.source,
+            "learned_at": r.learned_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "confidence": r.confidence,
+            "applies_to": list(r.applies_to),
+        }
+        for r in rules
+    ]
+    return success_response(
+        {
+            "rules": serialised,
+            "count": len(serialised),
+            "last_consolidated_at": None,
         }
     )
