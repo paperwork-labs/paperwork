@@ -247,6 +247,13 @@ docs:
     tags: [runbook, tax, irs]
     owners: [tax-domain, legal]
     category: runbooks
+  - slug: email-deliverability
+    path: docs/runbooks/EMAIL_DELIVERABILITY.md
+    title: Email deliverability (SPF + DMARC)
+    summary: "SPF and DMARC for paperworklabs.com (Google Workspace + Clerk via Postmark), how to extend SPF, read DMARC reports, and tighten from p=quarantine to p=reject."
+    tags: [dns, email, dmarc, spf, clerk, postmark]
+    owners: [infra-ops]
+    category: runbooks
   - slug: founder-actions
     path: docs/infra/FOUNDER_ACTIONS.md
     title: Founder-Only Actions
