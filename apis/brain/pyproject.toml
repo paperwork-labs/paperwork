@@ -75,7 +75,6 @@ module = [
   "app.models.episode",
   "app.routers.admin",
   "app.routers.brain",
-  "app.schedulers.cfo_friday_digest",
   "app.schedulers.cost_dashboard",
   "app.schedulers.data_deep_validator",
   "app.schedulers.proactive_cadence",
