@@ -8,30 +8,26 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@clerk/nextjs";
 
 import { Button } from "@paperwork-labs/ui";
-import { useAuthStore } from "@/stores/auth-store";
 import { useLogout } from "@/hooks/use-auth";
 
 const HIDE_NAV_PREFIXES = ["/auth", "/sign-in", "/sign-up"];
 
 export function Nav() {
   const pathname = usePathname();
-  const { isAuthenticated, isLoading, user } = useAuthStore();
   const { isLoaded: clerkLoaded, isSignedIn, user: clerkUser } = useUser();
   const logout = useLogout();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   if (HIDE_NAV_PREFIXES.some((p) => pathname.startsWith(p))) return null;
 
-  const authLoading = isLoading || !clerkLoaded;
-  const loggedIn = isAuthenticated || Boolean(isSignedIn);
-  const displayUser =
-    user ??
-    (clerkUser
-      ? {
-          email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
-          full_name: clerkUser.fullName ?? undefined,
-        }
-      : null);
+  const authLoading = !clerkLoaded;
+  const loggedIn = Boolean(isSignedIn);
+  const displayUser = clerkUser
+    ? {
+        email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
+        full_name: clerkUser.fullName ?? undefined,
+      }
+    : null;
 
   return (
     <nav className="fixed top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-lg">

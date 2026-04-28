@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** WS-13: primary consumer sign-up is Clerk at `/sign-up`. Legacy UI: `legacy-register-page.tsx`. */
+/** Bookmark-compat redirect — consumer sign-up is Clerk at `/sign-up`. */
 export default function RegisterPage() {
   redirect("/sign-up");
 }
