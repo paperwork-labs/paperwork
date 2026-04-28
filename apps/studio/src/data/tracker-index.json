@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "1ae9e986ca95",
+  "content_hash": "56567a895fef",
   "products": [
     {
       "label": "AxiomFolio",
@@ -458,7 +458,7 @@
       ],
       "outcome_bullets": [
         "shipped 2026-04-25: VMP-SUMMARY \u2192 VENTURE_MASTER_PLAN TL;DR merge (final \u00a76 pair). Compact summary now lives at the top of the canonical plan; verbatim copy archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. (PR #143)",
-        "17 stale docs retired to `docs/archive/`, 70 retained docs got standardized YAML frontmatter, 1 collision rename (`docs/axiomfolio/KNOWLEDGE.md` \u2192 `DECISIONS.md`).",
+        "17 stale docs retired to `docs/archive/`, 70 retained docs got standardized YAML frontmatter, 1 collision rename (`docs/axiomfolio/DECISIONS.md` \u2192 `DECISIONS.md`).",
         "`docs/philosophy/` folder bootstrapped with 7 immutable philosophy docs (Brain, Infra, Data, AI Model, Automation, Tax, Formation) + `README.md` index, all CODEOWNERS-locked to `@paperwork-labs/founders`.",
         "Three-tier tracker spine: company (`docs/TASKS.md`), per-product (`docs/<product>/plans/*`), cross-cutting sprints (`docs/sprints/*`). Generator: `scripts/generate_tracker_index.py` \u2192 `apps/studio/src/data/tracker-index.json` (deterministic, content-hash, CI-gated).",
         "Studio: `/admin/tasks`, `/admin/products`, `/admin/products/<slug>/plan`, rebuilt `/admin/sprints`, plus `TrackersRail` on `/admin` overview. Nav reorganized into Overview / Trackers / System.",
