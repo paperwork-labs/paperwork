@@ -13,11 +13,15 @@ They are kept here for historical reference only and are **not** loaded by n8n f
 | `credential-expiry-check.json` | `apis/brain/app/schedulers/credential_expiry.py` (`brain_credential_expiry`) | _(same)_ | [#170](https://github.com/paperwork-labs/paperwork/pull/170) |
 | `infra-health-check.json` | `apis/brain/app/schedulers/infra_health.py` (`brain_infra_health`) | _(same)_ | [#201](https://github.com/paperwork-labs/paperwork/pull/201) |
 | `brain-pr-summary.json` | `apis/brain/app/schedulers/pr_sweep.py` (`pr_sweep`) + `sweep_open_prs` / PR review (not an n8n **mirror** row) | — (see [#131](https://github.com/paperwork-labs/paperwork/pull/131)) | [#131](https://github.com/paperwork-labs/paperwork/pull/131) |
-| `sprint-kickoff.json` | `apis/brain/app/schedulers/sprint_kickoff.py` (`brain_sprint_kickoff`) | Mon 07:00 UTC cron; Brain posts `#sprints` + `#all-paperwork-labs` | WS-23-trackf1-n8n-retire |
-| `sprint-close.json` | `apis/brain/app/schedulers/sprint_close.py` (`brain_sprint_close`) | Fri 21:00 UTC cron; Brain posts + KNOWLEDGE.md append | WS-23-trackf1-n8n-retire |
 | `data-annual-update.json` | `apis/brain/app/schedulers/data_annual_update.py` (`brain_data_annual_update`) | Annual October checklist → `#engineering` | WS-23-trackf1-n8n-retire |
 | `data-deep-validator.json` | `apis/brain/app/schedulers/data_deep_validator.py` (`brain_data_deep_validator`) | Monthly DOR/sample validation digest → Slack | WS-23-trackf1-n8n-retire |
 | `data-source-monitor.json` | `apis/brain/app/schedulers/data_source_monitor.py` (`brain_data_source_monitor`) | Weekly external source hash monitor → Slack | WS-23-trackf1-n8n-retire |
+| `decision-logger.json` | _(none — WS-19)_ | Slack Events webhook flow; replacement is a future Brain HTTP handler, not APScheduler. | WS-19 |
+| `growth-content-writer.json` | `apis/brain/app/schedulers/growth_content_writer.py` (`growth_content_writer`) | Weekly cron (export was webhook-only). | WS-19 |
+| `qa-security-scan.json` | `apis/brain/app/schedulers/qa_security_scan.py` (`qa_security_scan`) | Weekly Brain `persona_pin=qa` (export was webhook-only). | WS-19 |
+| `social-content-generator.json` | `apis/brain/app/schedulers/social_content_generator.py` (`social_content_generator`) | Weekly cron (export was webhook-only). | WS-19 |
+| `sprint-close.json` | `apis/brain/app/schedulers/sprint_close.py` (`brain_sprint_close`) | Fri 21:00 UTC cron; Brain posts + KNOWLEDGE.md append | WS-23-trackf1-n8n-retire |
+| `sprint-kickoff.json` | `apis/brain/app/schedulers/sprint_kickoff.py` (`brain_sprint_kickoff`) | Mon 07:00 UTC cron; Brain posts `#sprints` + `#all-paperwork-labs` | WS-23-trackf1-n8n-retire |
 
 ## Follow-up
 

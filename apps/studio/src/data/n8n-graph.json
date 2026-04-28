@@ -1,5 +1,5 @@
 {
-  "content_hash": "9eb96fc40410",
+  "content_hash": "e0c1b062a3eb",
   "source": "infra/hetzner/workflows/*.json",
   "workflows": [
     {
@@ -151,102 +151,6 @@
       "persona_pin": "cpa"
     },
     {
-      "name": "Decision Logger",
-      "file": "decision-logger.json",
-      "node_count": 8,
-      "nodes": [
-        {
-          "id": "webhook-decisions",
-          "name": "Webhook",
-          "type": "n8n-nodes-base.webhook",
-          "x": 250,
-          "y": 300
-        },
-        {
-          "id": "filter-decision-messages",
-          "name": "Filter Decision Messages",
-          "type": "n8n-nodes-base.code",
-          "x": 500,
-          "y": 300
-        },
-        {
-          "id": "fetch-decision-thread",
-          "name": "Fetch Thread History",
-          "type": "n8n-nodes-base.httpRequest",
-          "x": 750,
-          "y": 300
-        },
-        {
-          "id": "fetch-knowledge-for-decision",
-          "name": "Fetch KNOWLEDGE.md",
-          "type": "n8n-nodes-base.httpRequest",
-          "x": 1000,
-          "y": 300
-        },
-        {
-          "id": "format-decision",
-          "name": "Format Decision",
-          "type": "n8n-nodes-base.code",
-          "x": 1250,
-          "y": 300
-        },
-        {
-          "id": "prepare-commit",
-          "name": "Prepare Commit",
-          "type": "n8n-nodes-base.code",
-          "x": 1500,
-          "y": 300
-        },
-        {
-          "id": "commit-to-github",
-          "name": "Commit to GitHub",
-          "type": "n8n-nodes-base.httpRequest",
-          "x": 1750,
-          "y": 300
-        },
-        {
-          "id": "confirm-in-thread",
-          "name": "Confirm in Thread",
-          "type": "n8n-nodes-base.httpRequest",
-          "x": 2000,
-          "y": 300
-        }
-      ],
-      "edges": [
-        {
-          "from": "Fetch Thread History",
-          "to": "Fetch KNOWLEDGE.md"
-        },
-        {
-          "from": "Fetch KNOWLEDGE.md",
-          "to": "Format Decision"
-        },
-        {
-          "from": "Format Decision",
-          "to": "Prepare Commit"
-        },
-        {
-          "from": "Prepare Commit",
-          "to": "Commit to GitHub"
-        },
-        {
-          "from": "Commit to GitHub",
-          "to": "Confirm in Thread"
-        },
-        {
-          "from": "Webhook",
-          "to": "Filter Decision Messages"
-        },
-        {
-          "from": "Filter Decision Messages",
-          "to": "Fetch Thread History"
-        }
-      ],
-      "pattern": "webhook",
-      "calls_brain": false,
-      "persona_pin": null
-    },
-    {
       "name": "Error Notification",
       "file": "error-notification.json",
       "node_count": 3,
@@ -284,58 +188,6 @@
         }
       ],
       "pattern": "unknown",
-      "calls_brain": false,
-      "persona_pin": null
-    },
-    {
-      "name": "Growth Content Writer",
-      "file": "growth-content-writer.json",
-      "node_count": 4,
-      "nodes": [
-        {
-          "id": "webhook-growth",
-          "name": "Webhook",
-          "type": "n8n-nodes-base.webhook",
-          "x": 250,
-          "y": 300
-        },
-        {
-          "id": "openai-growth",
-          "name": "Generate Growth Content",
-          "type": "@n8n/n8n-nodes-langchain.openAi",
-          "x": 500,
-          "y": 300
-        },
-        {
-          "id": "format-growth-slack",
-          "name": "Format for Slack",
-          "type": "n8n-nodes-base.code",
-          "x": 750,
-          "y": 300
-        },
-        {
-          "id": "slack-growth",
-          "name": "Post to Slack",
-          "type": "n8n-nodes-base.httpRequest",
-          "x": 1000,
-          "y": 300
-        }
-      ],
-      "edges": [
-        {
-          "from": "Webhook",
-          "to": "Generate Growth Content"
-        },
-        {
-          "from": "Generate Growth Content",
-          "to": "Format for Slack"
-        },
-        {
-          "from": "Format for Slack",
-          "to": "Post to Slack"
-        }
-      ],
-      "pattern": "webhook",
       "calls_brain": false,
       "persona_pin": null
     },
@@ -432,88 +284,6 @@
         },
         {
           "from": "Draft Partnership Content",
-          "to": "Format for Slack"
-        },
-        {
-          "from": "Format for Slack",
-          "to": "Post to Slack"
-        }
-      ],
-      "pattern": "webhook",
-      "calls_brain": false,
-      "persona_pin": null
-    },
-    {
-      "name": "QA Security Scan",
-      "file": "qa-security-scan.json",
-      "node_count": 2,
-      "nodes": [
-        {
-          "id": "webhook-qa",
-          "name": "Webhook",
-          "type": "n8n-nodes-base.webhook",
-          "x": 240,
-          "y": 300
-        },
-        {
-          "id": "call-brain-qa",
-          "name": "Call Brain (persona_pin=qa)",
-          "type": "n8n-nodes-base.httpRequest",
-          "x": 460,
-          "y": 300
-        }
-      ],
-      "edges": [
-        {
-          "from": "Webhook",
-          "to": "Call Brain (persona_pin=qa)"
-        }
-      ],
-      "pattern": "webhook",
-      "calls_brain": true,
-      "persona_pin": "qa"
-    },
-    {
-      "name": "Social Content Generator",
-      "file": "social-content-generator.json",
-      "node_count": 4,
-      "nodes": [
-        {
-          "id": "webhook-social",
-          "name": "Webhook",
-          "type": "n8n-nodes-base.webhook",
-          "x": 250,
-          "y": 300
-        },
-        {
-          "id": "openai-social",
-          "name": "Generate Social Content",
-          "type": "@n8n/n8n-nodes-langchain.openAi",
-          "x": 500,
-          "y": 300
-        },
-        {
-          "id": "format-social-slack",
-          "name": "Format for Slack",
-          "type": "n8n-nodes-base.code",
-          "x": 750,
-          "y": 300
-        },
-        {
-          "id": "slack-social",
-          "name": "Post to Slack",
-          "type": "n8n-nodes-base.httpRequest",
-          "x": 1000,
-          "y": 300
-        }
-      ],
-      "edges": [
-        {
-          "from": "Webhook",
-          "to": "Generate Social Content"
-        },
-        {
-          "from": "Generate Social Content",
           "to": "Format for Slack"
         },
         {
