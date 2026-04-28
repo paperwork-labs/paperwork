@@ -514,6 +514,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: vercel-projects
+    path: docs/infra/VERCEL_PROJECTS.md
+    title: Vercel projects (monorepo)
+    summary: "This document tracks which Vercel projects are **connected to the git repository** (automatic previews + production deploys from pushes) versus **orphaned** (manual deploy only, dashboard shows…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: vercel-quota-audit-2026q2
     path: docs/infra/VERCEL_QUOTA_AUDIT_2026Q2.md
     title: Vercel quota audit (2026 Q2)
