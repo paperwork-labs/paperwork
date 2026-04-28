@@ -49,8 +49,7 @@ from app.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
-# medallion: allow silver for day PnL refresh after transaction ingest
-from app.services.silver.portfolio.day_pnl_service import recompute_day_pnl_for_rows
+from app.services.ops.bronze_silver_bridge import recompute_day_pnl_for_rows
 
 logger = logging.getLogger(__name__)
 
