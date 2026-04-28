@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "082c9db44f3e",
+  "content_hash": "0e90ee7bd6ed",
   "products": [
     {
       "label": "AxiomFolio",
@@ -272,9 +272,9 @@
     {
       "blocker": null,
       "domain": "company",
-      "duration_weeks": null,
+      "duration_weeks": 10,
       "effective_status": "in_progress",
-      "end": null,
+      "end": "2026-07-01",
       "followups": [
         "Optional: GitHub org webhook \u2192 immediate merged-PR episode for hot PRs (out of scope for this sprint)."
       ],
@@ -286,157 +286,29 @@
       "outcome_bullets": [],
       "owner": "brain",
       "path": "docs/sprints/BRAIN_CONTINUOUS_LEARNING_2026Q3.md",
-      "personas": [],
+      "personas": [
+        "engineering",
+        "agent-ops"
+      ],
       "plans": [],
       "pr": null,
       "pr_url": null,
       "raw_status": "active",
       "related_prs": [],
-      "ships": [],
+      "ships": [
+        "brain"
+      ],
       "slug": "brain-continuous-learning-2026q3",
-      "start": null,
+      "start": "2026-04-26",
       "status": "in_progress",
       "title": "Brain continuous learning (ambient signals)"
     },
     {
       "blocker": null,
       "domain": "company",
-      "duration_weeks": null,
-      "effective_status": "shipped",
-      "end": null,
-      "followups": [],
-      "goal": null,
-      "last_reviewed": "2026-04-27",
-      "lessons": [
-        "Applying one Azure+Amber system to every product mark produced six indistinguishable lockups; per-product research-backed palettes beat a single template.",
-        "Forcing identical lockup geometry across apps homogenized the family; droplet-plus-dot vocabulary preserves organic similarity without rigid sameness.",
-        "Theme tokens under `packages/ui` stayed scaffolding on purpose \u2014 full per-app migration belongs in a dedicated engineering sprint, not in canon docs.",
-        "Brain stays non-droplet and emerald-forward so custody-oriented AI does not blend into a generic \u201cpurple AI\u201d cluster."
-      ],
-      "outcome_bullets": [],
-      "owner": "brand",
-      "path": "docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md",
-      "personas": [],
-      "plans": [],
-      "pr": null,
-      "pr_url": null,
-      "raw_status": "shipped",
-      "related_prs": [
-        172,
-        162
-      ],
-      "ships": [],
-      "slug": "brand-design-deepdive-2026q2",
-      "start": null,
-      "status": "shipped",
-      "title": "Brand canon (2026 Q2) \u2014 final state"
-    },
-    {
-      "blocker": null,
-      "domain": "company",
-      "duration_weeks": null,
-      "effective_status": "shipped",
-      "end": null,
-      "followups": [
-        "shipped 2026-04-25: **F-1 (operator, single click)** completed \u2014 all AxiomFolio + brain-api + filefree-api services now associated with the consolidated root `render.yaml` Blueprint via Render Dashboard's \"New Blueprint \u2192 Associate existing services\" flow. (PR #143)",
-        "shipped 2026-04-25: **F-2 launchfree-api decision** \u2014 commented out (not deleted) in `render.yaml` with re-enable workflow documented inline. Frontend renders mocks, $7/mo for empty backend defers. (PR #144)",
-        "F-3 env var naming (done): canonical `VERCEL_API_TOKEN` in `render.yaml`, Studio, Brain, and GitHub Actions (Track I2 removed Brain `VERCEL_TOKEN` alias; founder aligns Render env key name if needed).",
-        "F-5 `brain-api` `GITHUB_WEBHOOK_SECRET`: declare with `sync: false` in `render.yaml`, then operator pastes the value once. Until then GitHub webhooks land but skip signature verification.",
-        "Studio `/admin/infrastructure` six-service health: extend probes so AxiomFolio API + 2 workers + frontend + Redis + DB all show green alongside FileFree and Brain. `RENDER_API_KEY` already wired \u2014 pull `live`/`build_failed` per service so F-6-style silent breakage is impossible.",
-        "AxiomFolio Next.js migration: 4/102 routes ported (`/`, `/system-status`, `/portfolio`, `/scanner` shells); plan target Q3, decommissions Render static hosting in favor of Vercel \u2014 see [docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md](../axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).",
-        "Severity vocabulary review: existing 7 runbooks use yellow/red; if we want S0\u2013S3 vocabulary across the company, that's a one-shot rename (defer until cross-product alignment).",
-        "Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`."
-      ],
-      "goal": "Land Phase 1 of the docs streamline, give the company a repo-native long-term tracker (no Jira / Notion), and wire Brain into both so a CFO digest and Slack slash commands work off the same JSON the UI reads.",
-      "last_reviewed": "2026-04-27",
-      "lessons": [
-        "Server components that read env-injected data (`DATABASE_URL`, runtime probes) MUST mark `dynamic = \"force-dynamic\"`; otherwise Next.js prerenders them at build time and the user sees stale \"not configured\" forever. Caught only because the user noticed the Secrets page had silently regressed.",
-        "A repo-native tracker beats Jira when the docs are already where work is happening \u2014 the cost was one Python script + one JSON output. CFO digest, Slack slash commands, and Studio pages all read the same file.",
-        "Cheap-model parallel delegation (8 explore subagents) cleared the docs inventory in minutes; Sonnet then consolidated. Pattern reusable for every audit-style task."
-      ],
-      "outcome_bullets": [
-        "shipped 2026-04-25: VMP-SUMMARY \u2192 VENTURE_MASTER_PLAN TL;DR merge (final \u00a76 pair). Compact summary now lives at the top of the canonical plan; verbatim copy archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. (PR #143)",
-        "17 stale docs retired to `docs/archive/`, 70 retained docs got standardized YAML frontmatter, 1 collision rename (`docs/axiomfolio/DECISIONS.md` \u2192 `DECISIONS.md`).",
-        "`docs/philosophy/` folder bootstrapped with 7 immutable philosophy docs (Brain, Infra, Data, AI Model, Automation, Tax, Formation) + `README.md` index, all CODEOWNERS-locked to `@paperwork-labs/founders`.",
-        "Three-tier tracker spine: company (`docs/TASKS.md`), per-product (`docs/<product>/plans/*`), cross-cutting sprints (`docs/sprints/*`). Generator: `scripts/generate_tracker_index.py` \u2192 `apps/studio/src/data/tracker-index.json` (deterministic, content-hash, CI-gated).",
-        "Studio: `/admin/tasks`, `/admin/products`, `/admin/products/<slug>/plan`, rebuilt `/admin/sprints`, plus `TrackersRail` on `/admin` overview. Nav reorganized into Overview / Trackers / System.",
-        "Brain: `apis/brain/app/schedulers/cfo_friday_digest.py` (Fridays 18:00 UTC, `persona_pin=cfo`, `#cfo` channel) + `/sprint`, `/tasks`, `/plan` Slack slash commands reading the same `tracker-index.json`.",
-        "Make helpers: `make tracker-index`, `make tracker-check`, `make sprint-shipped PR=NNN`, `make plan-status`, `make docs-freshness`.",
-        "CI gates: `tracker-index.yaml` (drift), `docs-freshness.yaml` (warn-only on `last_reviewed > 90d`), `runbook-template.yaml` (warn-only on missing required sections)."
-      ],
-      "owner": "engineering",
-      "path": "docs/sprints/DOCS_STREAMLINE_AND_TRACKERS_2026Q2.md",
-      "personas": [],
-      "plans": [],
-      "pr": null,
-      "pr_url": null,
-      "raw_status": "shipped",
-      "related_prs": [
-        144,
-        142,
-        143,
-        140
-      ],
-      "ships": [],
-      "slug": "docs-streamline-and-trackers-2026q2",
-      "start": null,
-      "status": "shipped",
-      "title": "Docs Streamline + Trackers Spine \u2014 2026 Q2"
-    },
-    {
-      "blocker": null,
-      "domain": "company",
-      "duration_weeks": null,
-      "effective_status": "shipped",
-      "end": null,
-      "followups": [
-        "`/admin/tasks` (renders `docs/TASKS.md` as company tracker) \u2014 moving to follow-up sprint",
-        "`/admin/products/<slug>/plan` per-product master plan views \u2014 moving to follow-up sprint",
-        "`scripts/generate_tracker_index.py` to unify TASKS + sprints + plans + per-product PRDs into one JSON index \u2014 moving to follow-up sprint",
-        "Friday CFO digest via Brain `persona_pin=cfo`",
-        "`/sprint`, `/tasks`, `/plan <slug>` Slack slash commands",
-        "Shipped (2026-04-26):: Vercel auto-promote matrix expanded to include `axiomfolio-next`, `trinkets`, and `accounts` (placeholder `TBD_CREATE_BEFORE_MERGE` until Vercel projects are linked; skip-guard in workflow). See `.github/workflows/vercel-promote-on-merge.yaml` and `docs/infra/VERCEL_AUTO_PROMOTE.md`."
-      ],
-      "goal": "Land the infrastructure and automation foundation Paperwork Labs needs before feature work resumes \u2014 persona platform, model selection, doc-vs-code truth checks, AxiomFolio brain delegation, and a Studio command center that stays honest about reality.",
-      "last_reviewed": "2026-04-23",
-      "lessons": [
-        "Auto-generated docs need a `last_modified` per generator, not per filesystem mtime.: mtime drifts on rebase and CI. Generators now write a `content_hash` field that's stable across runs.",
-        "CI gates are only as good as their idempotence.: The n8n snapshot was failing every CI run because of an ISO timestamp; switched to content-hash and it's been silent since.",
-        "Persona pinning beats keyword routing: for any caller that already knows which employee to invoke. n8n was the obvious win; AxiomFolio is the second.",
-        "BYOK + delegation is a real architecture, not a hack.: AxiomFolio users can still bring their own keys; if they don't, AxiomFolio routes to Paperwork Brain. We track cost in one place either way."
-      ],
-      "outcome_bullets": [
-        "Brain is now the single LLM gateway. n8n workflows shrink to webhook \u2192 Brain (`persona_pin=<slug>`) \u2192 Slack post. No model selection in n8n.",
-        "Persona platform: typed `PersonaSpec` per persona, per-persona cost ceilings, rate limiting, golden suites in CI (4 lanes), nightly summary.",
-        "Doc-vs-code truth check: `scripts/check_doc_code_refs.py` flags dead `file:line` references in docs. Baseline mode lets us iterate without churn.",
-        "AxiomFolio's `TradingAgent` (renamed from `AgentBrain`) delegates LLM calls to Paperwork Brain via `persona_pin=trading`. BYOK preserved. New `/admin/agent/deep-analyze` endpoint demonstrates the `extract_reason` chain strategy (Flash extracts, Sonnet reasons).",
-        "`packages/pwa` shared package: PWA manifest generation, install prompt, installability hook. Studio + AxiomFolio both consumers.",
-        "n8n workflow DAGs: snapshotted via `scripts/snapshot_n8n_graphs.py` to a static JSON, rendered in `/admin/workflows`. Deterministic (content-hash, no timestamps) so CI doesn't flake.",
-        "Studio: `/admin` overview now reflects real state (PRs, n8n executions, infra health), not stub cards. New `/admin/docs` hub with category navigation. New `/admin/architecture` system map.",
-        "`docs/_index.yaml` taxonomy: every doc is categorized, owned, and rendered in the UI."
-      ],
-      "owner": "engineering",
-      "path": "docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md",
-      "personas": [],
-      "plans": [],
-      "pr": null,
-      "pr_url": null,
-      "raw_status": "shipped",
-      "related_prs": [
-        141
-      ],
-      "ships": [],
-      "slug": "infra-automation-hardening-2026q2",
-      "start": null,
-      "status": "shipped",
-      "title": "Infra & Automation Hardening \u2014 2026 Q2"
-    },
-    {
-      "blocker": null,
-      "domain": "company",
-      "duration_weeks": null,
+      "duration_weeks": 10,
       "effective_status": "in_progress",
-      "end": null,
+      "end": "2026-06-30",
       "followups": [],
       "goal": "Close the **\u201cStudio shows sprint progress automatically\u201d** loop: Brain appends shipped lines to sprint markdown under `## Outcome`, Studio\u2019s living tracker reads the same files, and the founder sees sprint cards move without hand-copying PR titles.",
       "last_reviewed": "2026-04-26",
@@ -458,16 +330,16 @@
       ],
       "ships": [],
       "slug": "sprint-automation-2026q3",
-      "start": null,
+      "start": "2026-04-26",
       "status": "in_progress",
       "title": "Sprint Automation (2026 Q3)"
     },
     {
       "blocker": null,
       "domain": "company",
-      "duration_weeks": null,
+      "duration_weeks": 2,
       "effective_status": "in_progress",
-      "end": null,
+      "end": "2026-05-09",
       "followups": [
         "~~**Track H4 \u2014 `apps/accounts/`** on `accounts.paperworklabs.com` (custom Paperwork ID headline host per [CLERK_SATELLITE_TOPOLOGY.md](../infra/CLERK_SATELLITE_TOPOLOGY.md))~~ \u2014 **superseded** by Clerk\u2019s auto-hosted Account Portal on the primary domain; see [`docs/KNOWLEDGE.md`](../KNOWLEDGE.md) \u00a7D92."
       ],
@@ -525,9 +397,170 @@
       ],
       "ships": [],
       "slug": "streamline-sso-dags-2026q2",
-      "start": null,
+      "start": "2026-04-25",
       "status": "in_progress",
       "title": "Streamline + SSO + Real DAGs (2026 Q2)"
+    },
+    {
+      "blocker": null,
+      "domain": "company",
+      "duration_weeks": "~1",
+      "effective_status": "shipped",
+      "end": "2026-04-26",
+      "followups": [],
+      "goal": null,
+      "last_reviewed": "2026-04-27",
+      "lessons": [
+        "Applying one Azure+Amber system to every product mark produced six indistinguishable lockups; per-product research-backed palettes beat a single template.",
+        "Forcing identical lockup geometry across apps homogenized the family; droplet-plus-dot vocabulary preserves organic similarity without rigid sameness.",
+        "Theme tokens under `packages/ui` stayed scaffolding on purpose \u2014 full per-app migration belongs in a dedicated engineering sprint, not in canon docs.",
+        "Brain stays non-droplet and emerald-forward so custody-oriented AI does not blend into a generic \u201cpurple AI\u201d cluster."
+      ],
+      "outcome_bullets": [],
+      "owner": "brand",
+      "path": "docs/sprints/BRAND_DESIGN_DEEPDIVE_2026Q2.md",
+      "personas": [],
+      "plans": [],
+      "pr": 172,
+      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/172",
+      "raw_status": "shipped",
+      "related_prs": [
+        162,
+        172
+      ],
+      "ships": [],
+      "slug": "brand-design-deepdive-2026q2",
+      "start": "2026-04-25",
+      "status": "shipped",
+      "title": "Brand canon (2026 Q2) \u2014 final state"
+    },
+    {
+      "blocker": null,
+      "domain": "company",
+      "duration_weeks": 1,
+      "effective_status": "shipped",
+      "end": "2026-04-26",
+      "followups": [
+        "shipped 2026-04-25: **F-1 (operator, single click)** completed \u2014 all AxiomFolio + brain-api + filefree-api services now associated with the consolidated root `render.yaml` Blueprint via Render Dashboard's \"New Blueprint \u2192 Associate existing services\" flow. (PR #143)",
+        "shipped 2026-04-25: **F-2 launchfree-api decision** \u2014 commented out (not deleted) in `render.yaml` with re-enable workflow documented inline. Frontend renders mocks, $7/mo for empty backend defers. (PR #144)",
+        "F-3 env var naming (done): canonical `VERCEL_API_TOKEN` in `render.yaml`, Studio, Brain, and GitHub Actions (Track I2 removed Brain `VERCEL_TOKEN` alias; founder aligns Render env key name if needed).",
+        "F-5 `brain-api` `GITHUB_WEBHOOK_SECRET`: declare with `sync: false` in `render.yaml`, then operator pastes the value once. Until then GitHub webhooks land but skip signature verification.",
+        "Studio `/admin/infrastructure` six-service health: extend probes so AxiomFolio API + 2 workers + frontend + Redis + DB all show green alongside FileFree and Brain. `RENDER_API_KEY` already wired \u2014 pull `live`/`build_failed` per service so F-6-style silent breakage is impossible.",
+        "AxiomFolio Next.js migration: 4/102 routes ported (`/`, `/system-status`, `/portfolio`, `/scanner` shells); plan target Q3, decommissions Render static hosting in favor of Vercel \u2014 see [docs/axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md](../axiomfolio/plans/NEXTJS_MIGRATION_2026Q3.md).",
+        "Severity vocabulary review: existing 7 runbooks use yellow/red; if we want S0\u2013S3 vocabulary across the company, that's a one-shot rename (defer until cross-product alignment).",
+        "Promote `make runbook-check` to strict mode once we backfill the missing `docs/runbooks/HISTORICAL_IMPORT_IBKR.md` referenced from `GAPS_2026Q2`."
+      ],
+      "goal": "Land Phase 1 of the docs streamline, give the company a repo-native long-term tracker (no Jira / Notion), and wire Brain into both so a CFO digest and Slack slash commands work off the same JSON the UI reads.",
+      "last_reviewed": "2026-04-27",
+      "lessons": [
+        "Server components that read env-injected data (`DATABASE_URL`, runtime probes) MUST mark `dynamic = \"force-dynamic\"`; otherwise Next.js prerenders them at build time and the user sees stale \"not configured\" forever. Caught only because the user noticed the Secrets page had silently regressed.",
+        "A repo-native tracker beats Jira when the docs are already where work is happening \u2014 the cost was one Python script + one JSON output. CFO digest, Slack slash commands, and Studio pages all read the same file.",
+        "Cheap-model parallel delegation (8 explore subagents) cleared the docs inventory in minutes; Sonnet then consolidated. Pattern reusable for every audit-style task."
+      ],
+      "outcome_bullets": [
+        "shipped 2026-04-25: VMP-SUMMARY \u2192 VENTURE_MASTER_PLAN TL;DR merge (final \u00a76 pair). Compact summary now lives at the top of the canonical plan; verbatim copy archived at `docs/archive/VMP-SUMMARY-2026-03-18.md`. (PR #143)",
+        "17 stale docs retired to `docs/archive/`, 70 retained docs got standardized YAML frontmatter, 1 collision rename (`docs/axiomfolio/DECISIONS.md` \u2192 `DECISIONS.md`).",
+        "`docs/philosophy/` folder bootstrapped with 7 immutable philosophy docs (Brain, Infra, Data, AI Model, Automation, Tax, Formation) + `README.md` index, all CODEOWNERS-locked to `@paperwork-labs/founders`.",
+        "Three-tier tracker spine: company (`docs/TASKS.md`), per-product (`docs/<product>/plans/*`), cross-cutting sprints (`docs/sprints/*`). Generator: `scripts/generate_tracker_index.py` \u2192 `apps/studio/src/data/tracker-index.json` (deterministic, content-hash, CI-gated).",
+        "Studio: `/admin/tasks`, `/admin/products`, `/admin/products/<slug>/plan`, rebuilt `/admin/sprints`, plus `TrackersRail` on `/admin` overview. Nav reorganized into Overview / Trackers / System.",
+        "Brain: `apis/brain/app/schedulers/cfo_friday_digest.py` (Fridays 18:00 UTC, `persona_pin=cfo`, `#cfo` channel) + `/sprint`, `/tasks`, `/plan` Slack slash commands reading the same `tracker-index.json`.",
+        "Make helpers: `make tracker-index`, `make tracker-check`, `make sprint-shipped PR=NNN`, `make plan-status`, `make docs-freshness`.",
+        "CI gates: `tracker-index.yaml` (drift), `docs-freshness.yaml` (warn-only on `last_reviewed > 90d`), `runbook-template.yaml` (warn-only on missing required sections)."
+      ],
+      "owner": "engineering",
+      "path": "docs/sprints/DOCS_STREAMLINE_AND_TRACKERS_2026Q2.md",
+      "personas": [
+        "agent-ops",
+        "engineering",
+        "cfo",
+        "qa",
+        "infra-ops"
+      ],
+      "plans": [
+        "docs/DOCS_STREAMLINE_2026Q2.md",
+        "docs/sprints/README.md"
+      ],
+      "pr": 144,
+      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/144",
+      "raw_status": "shipped",
+      "related_prs": [
+        142,
+        143,
+        144,
+        140
+      ],
+      "ships": [
+        "studio",
+        "docs",
+        "brain",
+        "infra"
+      ],
+      "slug": "docs-streamline-and-trackers-2026q2",
+      "start": "2026-04-24",
+      "status": "shipped",
+      "title": "Docs Streamline + Trackers Spine \u2014 2026 Q2"
+    },
+    {
+      "blocker": null,
+      "domain": "company",
+      "duration_weeks": 4,
+      "effective_status": "shipped",
+      "end": "2026-04-23",
+      "followups": [
+        "`/admin/tasks` (renders `docs/TASKS.md` as company tracker) \u2014 moving to follow-up sprint",
+        "`/admin/products/<slug>/plan` per-product master plan views \u2014 moving to follow-up sprint",
+        "`scripts/generate_tracker_index.py` to unify TASKS + sprints + plans + per-product PRDs into one JSON index \u2014 moving to follow-up sprint",
+        "Friday CFO digest via Brain `persona_pin=cfo`",
+        "`/sprint`, `/tasks`, `/plan <slug>` Slack slash commands",
+        "Shipped (2026-04-26):: Vercel auto-promote matrix expanded to include `axiomfolio-next`, `trinkets`, and `accounts` (placeholder `TBD_CREATE_BEFORE_MERGE` until Vercel projects are linked; skip-guard in workflow). See `.github/workflows/vercel-promote-on-merge.yaml` and `docs/infra/VERCEL_AUTO_PROMOTE.md`."
+      ],
+      "goal": "Land the infrastructure and automation foundation Paperwork Labs needs before feature work resumes \u2014 persona platform, model selection, doc-vs-code truth checks, AxiomFolio brain delegation, and a Studio command center that stays honest about reality.",
+      "last_reviewed": "2026-04-23",
+      "lessons": [
+        "Auto-generated docs need a `last_modified` per generator, not per filesystem mtime.: mtime drifts on rebase and CI. Generators now write a `content_hash` field that's stable across runs.",
+        "CI gates are only as good as their idempotence.: The n8n snapshot was failing every CI run because of an ISO timestamp; switched to content-hash and it's been silent since.",
+        "Persona pinning beats keyword routing: for any caller that already knows which employee to invoke. n8n was the obvious win; AxiomFolio is the second.",
+        "BYOK + delegation is a real architecture, not a hack.: AxiomFolio users can still bring their own keys; if they don't, AxiomFolio routes to Paperwork Brain. We track cost in one place either way."
+      ],
+      "outcome_bullets": [
+        "Brain is now the single LLM gateway. n8n workflows shrink to webhook \u2192 Brain (`persona_pin=<slug>`) \u2192 Slack post. No model selection in n8n.",
+        "Persona platform: typed `PersonaSpec` per persona, per-persona cost ceilings, rate limiting, golden suites in CI (4 lanes), nightly summary.",
+        "Doc-vs-code truth check: `scripts/check_doc_code_refs.py` flags dead `file:line` references in docs. Baseline mode lets us iterate without churn.",
+        "AxiomFolio's `TradingAgent` (renamed from `AgentBrain`) delegates LLM calls to Paperwork Brain via `persona_pin=trading`. BYOK preserved. New `/admin/agent/deep-analyze` endpoint demonstrates the `extract_reason` chain strategy (Flash extracts, Sonnet reasons).",
+        "`packages/pwa` shared package: PWA manifest generation, install prompt, installability hook. Studio + AxiomFolio both consumers.",
+        "n8n workflow DAGs: snapshotted via `scripts/snapshot_n8n_graphs.py` to a static JSON, rendered in `/admin/workflows`. Deterministic (content-hash, no timestamps) so CI doesn't flake.",
+        "Studio: `/admin` overview now reflects real state (PRs, n8n executions, infra health), not stub cards. New `/admin/docs` hub with category navigation. New `/admin/architecture` system map.",
+        "`docs/_index.yaml` taxonomy: every doc is categorized, owned, and rendered in the UI."
+      ],
+      "owner": "engineering",
+      "path": "docs/sprints/INFRA_AUTOMATION_HARDENING_2026Q2.md",
+      "personas": [
+        "agent-ops",
+        "engineering",
+        "infra-ops",
+        "qa"
+      ],
+      "plans": [
+        "docs/INFRA.md",
+        "docs/BRAIN_ARCHITECTURE.md",
+        "docs/PERSONA_PLATFORM.md"
+      ],
+      "pr": 141,
+      "pr_url": "https://github.com/paperwork-labs/paperwork/pull/141",
+      "raw_status": "shipped",
+      "related_prs": [
+        141
+      ],
+      "ships": [
+        "studio",
+        "brain",
+        "axiomfolio",
+        "n8n"
+      ],
+      "slug": "infra-automation-hardening-2026q2",
+      "start": "2026-04-01",
+      "status": "shipped",
+      "title": "Infra & Automation Hardening \u2014 2026 Q2"
     }
   ]
 }
