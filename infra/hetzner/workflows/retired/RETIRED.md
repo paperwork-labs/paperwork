@@ -22,6 +22,8 @@ They are kept here for historical reference only and are **not** loaded by n8n f
 | `social-content-generator.json` | `apis/brain/app/schedulers/social_content_generator.py` (`social_content_generator`) | Weekly cron (export was webhook-only). | WS-19 |
 | `sprint-close.json` | `apis/brain/app/schedulers/sprint_close.py` (`brain_sprint_close`) | Fri 21:00 UTC cron; Brain posts + KNOWLEDGE.md append | WS-23-trackf1-n8n-retire |
 | `sprint-kickoff.json` | `apis/brain/app/schedulers/sprint_kickoff.py` (`brain_sprint_kickoff`) | Mon 07:00 UTC cron; Brain posts `#sprints` + `#all-paperwork-labs` | WS-23-trackf1-n8n-retire |
+| `cpa-tax-review.json` | `apis/brain/app/schedulers/cpa_tax_review.py` (`cpa_tax_review`) | Weekly Thu 13:00 UTC; Brain `persona_pin=cpa` (export was webhook-only). | WS-19 batch 3 |
+| `partnership-outreach-drafter.json` | `apis/brain/app/schedulers/partnership_outreach_drafter.py` (`partnership_outreach_drafter`) | Weekly Fri 14:00 UTC; OpenAI → Slack `#general` (export was webhook-only). | WS-19 batch 3 |
 
 ## Follow-up
 

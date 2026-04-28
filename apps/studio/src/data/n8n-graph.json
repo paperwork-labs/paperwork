@@ -1,5 +1,5 @@
 {
-  "content_hash": "e0c1b062a3eb",
+  "content_hash": "ccb5934548f0",
   "source": "infra/hetzner/workflows/*.json",
   "workflows": [
     {
@@ -121,36 +121,6 @@
       "persona_pin": null
     },
     {
-      "name": "CPA Tax Review",
-      "file": "cpa-tax-review.json",
-      "node_count": 2,
-      "nodes": [
-        {
-          "id": "webhook-cpa",
-          "name": "Webhook",
-          "type": "n8n-nodes-base.webhook",
-          "x": 240,
-          "y": 300
-        },
-        {
-          "id": "call-brain-cpa",
-          "name": "Call Brain (persona_pin=cpa)",
-          "type": "n8n-nodes-base.httpRequest",
-          "x": 460,
-          "y": 300
-        }
-      ],
-      "edges": [
-        {
-          "from": "Webhook",
-          "to": "Call Brain (persona_pin=cpa)"
-        }
-      ],
-      "pattern": "webhook",
-      "calls_brain": true,
-      "persona_pin": "cpa"
-    },
-    {
       "name": "Error Notification",
       "file": "error-notification.json",
       "node_count": 3,
@@ -237,58 +207,6 @@
         {
           "from": "Format Response",
           "to": "Respond"
-        }
-      ],
-      "pattern": "webhook",
-      "calls_brain": false,
-      "persona_pin": null
-    },
-    {
-      "name": "Partnership Outreach Drafter",
-      "file": "partnership-outreach-drafter.json",
-      "node_count": 4,
-      "nodes": [
-        {
-          "id": "webhook-partnerships",
-          "name": "Webhook",
-          "type": "n8n-nodes-base.webhook",
-          "x": 250,
-          "y": 300
-        },
-        {
-          "id": "openai-partnerships",
-          "name": "Draft Partnership Content",
-          "type": "@n8n/n8n-nodes-langchain.openAi",
-          "x": 500,
-          "y": 300
-        },
-        {
-          "id": "format-partnerships-slack",
-          "name": "Format for Slack",
-          "type": "n8n-nodes-base.code",
-          "x": 750,
-          "y": 300
-        },
-        {
-          "id": "slack-partnerships",
-          "name": "Post to Slack",
-          "type": "n8n-nodes-base.httpRequest",
-          "x": 1000,
-          "y": 300
-        }
-      ],
-      "edges": [
-        {
-          "from": "Webhook",
-          "to": "Draft Partnership Content"
-        },
-        {
-          "from": "Draft Partnership Content",
-          "to": "Format for Slack"
-        },
-        {
-          "from": "Format for Slack",
-          "to": "Post to Slack"
         }
       ],
       "pattern": "webhook",
