@@ -40,7 +40,7 @@ ignore = ["PTH"]
 "app/routers/**" = ["B008", "ARG001"]
 "app/dependencies.py" = ["B008"]
 "app/api/secrets.py" = ["B008"]  # FastAPI Depends() in route defaults (same pattern as routers)
-"tests/**" = ["E501", "ARG001", "ARG002"]  # test mocks deserve long URL strings & unused mock-signature args
+"tests/**" = ["E501", "ARG001", "ARG002", "TC002", "TC003"]  # test mocks deserve long URL strings, unused mock-signature args, and runtime-typed sqlalchemy/datetime imports
 
 [tool.mypy]
 python_version = "3.13"
