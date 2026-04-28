@@ -15,7 +15,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
-import { useAuthOptional } from '@/context/AuthContext';
+import { useBackendUserOptional } from '@/hooks/use-backend-user';
 import { isPlatformAdminRole } from '@/utils/userRole';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -808,8 +808,8 @@ const MarketDashboardClient: React.FC = () => {
   const portfolioSymbols = portfolioQuery.data ?? {};
   const { collapsed, toggle } = useSectionCollapse();
   const { health: healthData } = useAdminHealth();
-  const auth = useAuthOptional();
-  const isAdminUser = isPlatformAdminRole(auth?.user?.role);
+  const { user: backendUser } = useBackendUserOptional();
+  const isAdminUser = isPlatformAdminRole(backendUser?.role);
 
   const [activeView, setActiveView] = React.useState<DashboardView>(() => {
     try {

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
-import { useAuthOptional } from "../context/AuthContext";
+import { useBackendUserOptional } from "@/hooks/use-backend-user";
 
 export type TableDensity = "comfortable" | "compact";
 export type ColorPalette = "default" | "cb";
@@ -42,8 +42,7 @@ export function useUserPreferences(): {
   coverageHistogramWindowDays: number | null;
   colorPalette: ColorPalette;
 } {
-  const auth = useAuthOptional();
-  const user = auth?.user ?? null;
+  const { user } = useBackendUserOptional();
 
   // Subscribe to localStorage changes so the hook re-renders when
   // `setColorPalettePreference()` is invoked imperatively. Server-stored

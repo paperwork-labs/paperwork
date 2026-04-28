@@ -1,21 +1,21 @@
 "use client";
 
 import { useCallback } from "react";
-
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "@clerk/nextjs";
 
 /**
  * Download a same-origin or API URL with the same Bearer token axios uses,
  * avoiding `window.open` which does not attach `Authorization`.
  */
 export function useAuthenticatedDownload() {
-  const { token } = useAuth();
+  const { getToken } = useAuth();
 
   const download = useCallback(
     async (url: string, filename: string) => {
       const headers: HeadersInit = {
         Accept: "text/csv,application/octet-stream,*/*",
       };
+      const token = await getToken();
       if (token) {
         (headers as Record<string, string>)["Authorization"] = `Bearer ${token}`;
       }
@@ -45,7 +45,7 @@ export function useAuthenticatedDownload() {
         URL.revokeObjectURL(objectUrl);
       }
     },
-    [token],
+    [getToken],
   );
 
   return { download };

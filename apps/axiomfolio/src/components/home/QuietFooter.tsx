@@ -12,7 +12,7 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import StatCard from '@/components/shared/StatCard';
-import { useAuth } from '@/context/AuthContext';
+import { useBackendUserOptional } from '@/hooks/use-backend-user';
 import {
   usePnlSummary,
   usePortfolioInsights,
@@ -68,7 +68,7 @@ function toNumberOrNull(value: unknown): number | null {
 }
 
 function QuietFooterInner() {
-  const { user } = useAuth();
+  const { user } = useBackendUserOptional();
   const currency =
     typeof user?.currency_preference === 'string' && user.currency_preference.trim() !== ''
       ? user.currency_preference

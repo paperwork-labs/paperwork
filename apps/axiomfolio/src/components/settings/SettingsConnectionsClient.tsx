@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 import { accountsApi, aggregatorApi, handleApiError } from "@/services/api";
 import api from "@/services/api";
 import { useConnectJobPoll } from "@/hooks/useConnectJobPoll";
-import { useAuth } from "@/context/AuthContext";
+import { useBackendUser } from "@/hooks/use-backend-user";
 import { useAccountContext } from "@/context/AccountContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { formatDateTime, formatRelativeTime } from "@/utils/format";
@@ -84,7 +84,7 @@ function legacyToast(args: {
 export default function SettingsConnectionsClient() {
   const queryClient = useQueryClient();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user } = useBackendUser();
   const { refetch: refetchGlobalAccounts } = useAccountContext();
   const { timezone } = useUserPreferences();
   const [accounts, setAccounts] = useState<any[]>([]);

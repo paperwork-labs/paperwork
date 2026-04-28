@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useUser } from '@clerk/nextjs';
+
 import api from '../services/api';
-import { useAuth } from './AuthContext';
 
 // Bucket categories expose fast "all my taxable / retirement / health-savings"
 // scopes without needing to pick each individual account. `string` is a
@@ -52,7 +53,7 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<SelectedAccount>('all');
   const [refetchVersion, setRefetchVersion] = useState(0);
-  const { token, ready } = useAuth();
+  const { isLoaded, isSignedIn } = useUser();
 
   // Bootstrap selected from URL or localStorage
   useEffect(() => {
@@ -79,10 +80,10 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
     localStorage.setItem(STORAGE_KEY, selected);
   }, [selected]);
 
-  // Load accounts list (only when authenticated)
+  // Load accounts list (only when authenticated with Clerk)
   useEffect(() => {
     const load = async () => {
-      if (!ready || !token) {
+      if (!isLoaded || !isSignedIn) {
         setAccounts([]);
         setError(null);
         setLoading(false);
@@ -119,7 +120,7 @@ export const AccountProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     };
     load();
-  }, [token, ready, refetchVersion]);
+  }, [isLoaded, isSignedIn, refetchVersion]);
 
   // Reset selection when the selected account is no longer in the enabled list
   useEffect(() => {
@@ -152,5 +153,4 @@ export const useAccountContext = (): AccountContextValue => {
   if (!ctx) throw new Error('useAccountContext must be used within AccountProvider');
   return ctx;
 };
-
 

@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   transpilePackages: ["@paperwork-labs/ui"],
+  async redirects() {
+    return [
+      { source: "/login", destination: "/sign-in", permanent: false },
+      { source: "/register", destination: "/sign-up", permanent: false },
+    ];
+  },
   async headers() {
     return [
       {
