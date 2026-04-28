@@ -14,10 +14,8 @@ import pytest
 from app.config import settings
 from app.models.broker_account import BrokerAccount, BrokerType, AccountType
 from app.models.user import User
-from app.services.bronze.schwab.sync_service import (
-    RECONCILE_ANOMALY_KEY,
-    SchwabSyncService,
-)
+from app.services.ops.bronze_silver_bridge import RECONCILE_ANOMALY_KEY
+from app.services.bronze.schwab.sync_service import SchwabSyncService
 
 
 class _FakeRedis:

@@ -34,8 +34,7 @@ from app.services.oauth.encryption import (
     EncryptionUnavailableError,
     decrypt,
 )
-# medallion: allow silver for post-ingest tax-lot closing reconciliation
-from app.services.silver.portfolio.closing_lot_matcher import reconcile_closing_lots
+from app.services.ops.bronze_silver_bridge import reconcile_closing_lots
 
 logger = logging.getLogger(__name__)
 

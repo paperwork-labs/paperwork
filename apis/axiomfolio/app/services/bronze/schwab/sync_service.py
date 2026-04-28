@@ -24,13 +24,11 @@ from app.services.portfolio.account_credentials_service import (
     account_credentials_service,
     CredentialsNotFoundError,
 )
-# medallion: allow silver for post-ingest tax-lot closing reconciliation
-from app.services.silver.portfolio.closing_lot_matcher import (
+from app.services.ops.bronze_silver_bridge import (
     MatchResult,
+    get_market_quote_service,
+    record_reconcile_closing_lots_anomaly,
     reconcile_closing_lots,
-)
-# medallion: allow silver for day PnL refresh after transaction ingest
-from app.services.silver.portfolio.day_pnl_service import (
     recompute_day_pnl_for_rows,
     recompute_position_day_pnl,
 )
@@ -38,26 +36,6 @@ from app.models.options import Option
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-
-# Redis observability: closing-lot reconciliation failure count. ``incr`` then
-# ``expire`` on every failure sets a 7-day TTL from that event (fixed window per
-# failure, not a single TTL from the first failure only).
-RECONCILE_ANOMALY_KEY = "reconcile:anomaly:total"
-_RECONCILE_ANOMALY_TTL_S = 60 * 60 * 24 * 7
-
-
-def _record_reconcile_closing_lots_anomaly() -> None:
-    try:
-        # medallion: allow silver for market-data/Redis lookaside in sync I/O path
-        from app.services.silver.market.market_data_service import infra
-
-        r = getattr(infra, "redis_client", None)
-        if r is None:
-            return
-        r.incr(RECONCILE_ANOMALY_KEY)
-        r.expire(RECONCILE_ANOMALY_KEY, _RECONCILE_ANOMALY_TTL_S)
-    except Exception as e:  # pragma: no cover - best-effort
-        logger.warning("reconcile_anomaly: redis increment failed: %s", e)
 
 SCHWAB_TYPE_MAP = {
     "TRADE": TransactionType.BUY,
@@ -280,7 +258,7 @@ class SchwabSyncService:
                     match_result.warnings[0] if match_result.warnings else "n/a",
                 )
         except Exception as exc:  # noqa: BLE001
-            _record_reconcile_closing_lots_anomaly()
+            record_reconcile_closing_lots_anomaly()
             logger.warning(
                 "reconcile_closing_lots failed for user=%s account=%s: %s",
                 account.user_id,
@@ -308,8 +286,7 @@ class SchwabSyncService:
 
     async def _refresh_prices(self, account: BrokerAccount, session: Session) -> Dict:
         """Fetch current prices concurrently and update position market data."""
-        # medallion: allow silver for market-data/Redis lookaside in sync I/O path
-        from app.services.silver.market.market_data_service import quote
+        quote = get_market_quote_service()
 
         positions = (
             session.query(Position)

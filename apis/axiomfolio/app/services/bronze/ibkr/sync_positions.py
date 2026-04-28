@@ -20,8 +20,10 @@ from app.models.portfolio import PositionCategory
 from app.models.position import Position, PositionStatus, PositionType
 from app.models.tax_lot import TaxLotSource
 from app.services.clients.ibkr_flexquery_client import IBKRFlexQueryClient
-# medallion: allow silver for day PnL refresh after transaction ingest
-from app.services.silver.portfolio.day_pnl_service import recompute_day_pnl_for_rows
+from app.services.ops.bronze_silver_bridge import (
+    get_market_quote_service,
+    recompute_day_pnl_for_rows,
+)
 
 from .helpers import coerce_date, safe_float, DEFAULT_CURRENCY, DEFAULT_ASSET_CATEGORY
 
@@ -696,8 +698,7 @@ async def sync_option_positions(
 
 async def refresh_prices(db: Session, broker_account: BrokerAccount) -> Dict:
     """Refresh current prices for positions and tax lots."""
-    # medallion: allow silver for market-data/Redis lookaside in sync I/O path
-    from app.services.silver.market.market_data_service import quote
+    quote = get_market_quote_service()
 
     positions = db.query(Position).filter(Position.account_id == broker_account.id).all()
     positions = [p for p in positions if p.quantity != 0 and p.symbol]
