@@ -21,6 +21,64 @@ importers:
         specifier: ^2.9.6
         version: 2.9.6
 
+  apps/accounts:
+    dependencies:
+      '@clerk/nextjs':
+        specifier: ^7.2.7
+        version: 7.2.7(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@clerk/themes':
+        specifier: ^2.4.57
+        version: 2.4.57(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@paperwork-labs/auth-clerk':
+        specifier: workspace:*
+        version: link:../../packages/auth-clerk
+      '@paperwork-labs/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@vercel/analytics':
+        specifier: ^2.0.1
+        version: 2.0.1(next@16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
+      next:
+        specifier: ^16.2.4
+        version: 16.2.4(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      react:
+        specifier: ^19.2.5
+        version: 19.2.5
+      react-dom:
+        specifier: ^19.2.5
+        version: 19.2.5(react@19.2.5)
+    devDependencies:
+      '@tailwindcss/postcss':
+        specifier: ^4.2.4
+        version: 4.2.4
+      '@types/node':
+        specifier: ^25.6.0
+        version: 25.6.0
+      '@types/react':
+        specifier: ^19.2.0
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.2.0
+        version: 19.2.3(@types/react@19.2.14)
+      autoprefixer:
+        specifier: ^10.5.0
+        version: 10.5.0(postcss@8.5.12)
+      eslint:
+        specifier: ^10.2.1
+        version: 10.2.1(jiti@2.6.1)
+      eslint-config-next:
+        specifier: ^16.2.4
+        version: 16.2.4(eslint@10.2.1(jiti@2.6.1))(typescript@5.9.3)
+      postcss:
+        specifier: ^8.5.12
+        version: 8.5.12
+      tailwindcss:
+        specifier: ^4.2.4
+        version: 4.2.4
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
   apps/axiomfolio:
     dependencies:
       '@clerk/nextjs':
