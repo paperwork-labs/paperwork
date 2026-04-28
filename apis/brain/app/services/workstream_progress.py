@@ -72,9 +72,7 @@ async def run_workstream_progress() -> WorkstreamProgressResult:
     for ws in data.workstreams:
         merged, open_n = await wh.search_prs_with_brief_tag_in_body(ws.brief_tag)
         pct, denom = compute_percent_done(merged, open_n, ws.estimated_pr_count)
-        computed_status = compute_snapshot_status(
-            pct, open_n, ws.status, merged_pr_count=merged
-        )
+        computed_status = compute_snapshot_status(pct, open_n, ws.status, merged_pr_count=merged)
 
         async with async_session_factory() as db:
             snap = WorkstreamProgressSnapshot(
