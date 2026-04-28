@@ -1,4 +1,7 @@
-"""GitHub Actions workflow_dispatch + search helpers for workstreams (Track Z)."""
+"""GitHub Actions workflow_dispatch + search helpers for workstreams (Track Z).
+
+medallion: ops
+"""
 
 from __future__ import annotations
 

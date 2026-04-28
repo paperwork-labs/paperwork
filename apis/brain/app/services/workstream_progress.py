@@ -1,4 +1,7 @@
-"""Hourly workstream progress — ``percent_done`` from GitHub PR search (Track Z)."""
+"""Hourly workstream progress — ``percent_done`` from GitHub PR search (Track Z).
+
+medallion: ops
+"""
 
 from __future__ import annotations
 

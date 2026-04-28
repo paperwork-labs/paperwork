@@ -1,4 +1,7 @@
-"""Open a GitHub PR that rewrites ``workstreams.json`` priorities (Track Z)."""
+"""Open a GitHub PR that rewrites ``workstreams.json`` priorities (Track Z).
+
+medallion: ops
+"""
 
 from __future__ import annotations
 

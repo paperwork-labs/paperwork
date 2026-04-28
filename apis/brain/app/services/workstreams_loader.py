@@ -1,4 +1,7 @@
-"""Load and parse ``apps/studio/src/data/workstreams.json`` from the monorepo checkout."""
+"""Load and parse ``apps/studio/src/data/workstreams.json`` from the monorepo checkout.
+
+medallion: ops
+"""
 
 from __future__ import annotations
 
