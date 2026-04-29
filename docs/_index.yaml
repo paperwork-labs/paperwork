@@ -563,6 +563,13 @@ docs:
     tags: [runbook, template, ops]
     owners: [agent-ops]
     category: reference
+  - slug: filefree-preview-clerk-envs
+    path: docs/runbooks/filefree-preview-clerk-envs.md
+    title: "Runbook: FileFree — Clerk Auth Env Vars for All Vercel Environments"
+    summary: "Without `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_SIGN_UP_URL` set in the Vercel environment, Clerk's server-side middleware does not know where the embedded auth pages live. It falls…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: secret-intake
     path: docs/infra/SECRET_INTAKE.md
     title: Secret intake (Studio)
