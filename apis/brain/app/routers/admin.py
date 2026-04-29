@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.anomaly_detection as anomaly_detection_svc
 import app.services.app_registry as app_registry_svc
+import app.services.kg_validation as kg_validation_svc
 import app.services.operating_score as operating_score_svc
 import app.services.pr_outcomes as pr_outcomes_service
 import app.services.self_improvement as self_improvement_svc
@@ -1059,6 +1060,19 @@ async def get_anomaly_alerts(
             "total": len(file.alerts),
             "open": len(open_alerts),
             "alerts": [a.model_dump(mode="json") for a in file.alerts],
+@router.get("/kg-validation")
+async def get_kg_validation(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Return the latest KG validation snapshot plus recent history (WS-52)."""
+    file = kg_validation_svc.load_validation_file()
+    return success_response(
+        {
+            "current": file.current.model_dump(mode="json") if file.current else None,
+            "history_last_10": [
+                h.model_dump(mode="json") for h in (file.history or [])[:10]
+            ],
+            "passed": file.current.passed if file.current else None,
         }
     )
 
@@ -1076,6 +1090,26 @@ async def post_anomaly_alerts_recompute(
             anomaly_detection_svc.auto_resolve_alerts()
         except Exception:
             logger.exception("anomaly-alerts/recompute background task raised")
+@router.post("/kg-validation/recompute")
+async def post_kg_validation_recompute(
+    background_tasks: BackgroundTasks,
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Trigger an immediate KG validation run in the background (WS-52)."""
+
+    async def _run() -> None:
+        try:
+            run = await asyncio.to_thread(kg_validation_svc.validate)
+            await asyncio.to_thread(kg_validation_svc.record_validation_run, run)
+            logger.info(
+                "kg-validation/recompute: passed=%s violations=%d",
+                run.passed,
+                len(run.violations),
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("kg-validation/recompute background task failed")
 
     background_tasks.add_task(_run)
     return success_response({"accepted": True})
