@@ -74,7 +74,8 @@ def _fetch_team_metadata(token: str) -> dict[str, Any]:
     url = f"{_VERCEL_API}/v1/teams/{_TEAM_ID}?slug=paperwork-labs"
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
     with urllib.request.urlopen(req, timeout=15) as resp:
-        return json.load(resp)
+        data: dict[str, Any] = json.load(resp)
+        return data
 
 
 def _fetch_usage_summary(token: str) -> dict[str, Any]:
@@ -122,7 +123,8 @@ def _load_state() -> dict[str, Any]:
     if not p.exists():
         return {"alerts_fired": {}, "history": []}
     try:
-        return json.loads(p.read_text())
+        loaded: dict[str, Any] = json.loads(p.read_text())
+        return loaded
     except json.JSONDecodeError:
         logger.warning("vercel_billing.json corrupt; starting fresh")
         return {"alerts_fired": {}, "history": []}
@@ -191,16 +193,19 @@ def run() -> dict[str, Any]:
         logger.exception("vercel_billing_monitor: fetch failed")
         return {"ok": False, "reason": "fetch_error", "error": str(e)}
 
-    spent = usage.get("spent_usd")
-    budget = usage.get("budget_usd")
+    spent_raw = usage.get("spent_usd")
+    budget_raw = usage.get("budget_usd")
 
-    if spent is None:
+    if spent_raw is None:
         # Vercel didn't expose the field. We capture raw payload for diagnostics.
         logger.warning(
             "vercel_billing_monitor: spent_usd unavailable; raw=%s",
             usage.get("raw_billing"),
         )
         return {"ok": False, "reason": "no_spend_field"}
+
+    spent: float = float(spent_raw)
+    budget: float = float(budget_raw) if budget_raw is not None else _budget_threshold_usd()
 
     state = _load_state()
     period_key = _period_key(usage.get("period_end"))
