@@ -1,20 +1,47 @@
 "use client";
 
-import { useCallback } from "react";
+import { lazy, useCallback, useMemo, type LazyExoticComponent, type ComponentType, type ReactNode } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
   TabbedPageShell as BaseTabbedPageShell,
-  type TabbedPageShellProps as BaseProps,
   type TabbedShellTabDef,
 } from "@paperwork-labs/ui";
 
-export type TabbedPageShellNextProps<T extends string> = Omit<
-  BaseProps<T>,
-  "activeTab" | "onTabChange"
-> & {
-  paramKey?: string;
+/**
+ * Tab definition for studio pages. Accepts either:
+ * - `Content`: a React.LazyExoticComponent (preferred, matches `@paperwork-labs/ui`)
+ * - `content`: a ReactNode (eager, for simple scaffold pages)
+ *
+ * The shell wraps `content` in a tiny lazy adapter so the underlying primitive
+ * always sees a Content component.
+ */
+export type StudioTabDef<T extends string> = {
+  id: T;
+  label: string;
+  Content?: LazyExoticComponent<ComponentType>;
+  content?: ReactNode;
 };
+
+export type TabbedPageShellNextProps<T extends string> = {
+  tabs: readonly StudioTabDef<T>[];
+  defaultTab: T;
+  paramKey?: string;
+  className?: string;
+  tabsListClassName?: string;
+  endAdornment?: ReactNode;
+};
+
+function adaptTab<T extends string>(t: StudioTabDef<T>): TabbedShellTabDef<T> {
+  if (t.Content) {
+    return { id: t.id, label: t.label, Content: t.Content };
+  }
+  const node = t.content ?? null;
+  const Adapter = lazy(async () => ({
+    default: () => <>{node}</>,
+  }));
+  return { id: t.id, label: t.label, Content: Adapter };
+}
 
 export function TabbedPageShell<T extends string>(props: TabbedPageShellNextProps<T>) {
   const { tabs, defaultTab, paramKey = "tab", ...rest } = props;
@@ -25,6 +52,8 @@ export function TabbedPageShell<T extends string>(props: TabbedPageShellNextProp
   const fromUrl = searchParams.get(paramKey);
   const allowedIds = tabs.map((t) => t.id);
   const activeTab = (allowedIds.includes(fromUrl as T) ? (fromUrl as T) : defaultTab) as T;
+
+  const adaptedTabs = useMemo(() => tabs.map((t) => adaptTab(t)), [tabs]);
 
   const onTabChange = useCallback(
     (tab: T) => {
@@ -39,7 +68,7 @@ export function TabbedPageShell<T extends string>(props: TabbedPageShellNextProp
   return (
     <BaseTabbedPageShell
       {...rest}
-      tabs={tabs}
+      tabs={adaptedTabs}
       defaultTab={defaultTab}
       activeTab={activeTab}
       onTabChange={onTabChange}

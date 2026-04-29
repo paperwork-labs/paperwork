@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { TabbedPageShellNodeNext } from "@/components/layout/TabbedPageShellNext";
+
+import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import InfraOverviewTab from "./tabs/overview-tab";
 import ServicesTab from "./tabs/services-tab";
 import SecretsTab from "./tabs/secrets-tab";
@@ -77,7 +78,7 @@ export default function InfrastructurePage() {
           Services health, secrets vault, logs, and cost tracking.
         </p>
       </header>
-      <TabbedPageShellNodeNext tabs={tabs} defaultTab="overview" />
+      <TabbedPageShell tabs={tabs} defaultTab="overview" />
     </div>
   );
 }

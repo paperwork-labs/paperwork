@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { TabbedPageShellNodeNext } from "@/components/layout/TabbedPageShellNext";
+
+import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import OverviewTab from "./tabs/overview-tab";
 import AnalyticsTab from "./tabs/analytics-tab";
 import FlowsTab from "./tabs/flows-tab";
@@ -66,7 +67,7 @@ export default function ArchitecturePage() {
           System graph, analytics, automation flows, and data sources.
         </p>
       </header>
-      <TabbedPageShellNodeNext tabs={tabs} defaultTab="overview" />
+      <TabbedPageShell tabs={tabs} defaultTab="overview" />
     </div>
   );
 }
