@@ -149,12 +149,23 @@ class Settings(BaseSettings):
     BRAIN_OWNS_SPRINT_PLANNER: bool = False
 
     # Cloudflare — account-wide write + optional per-zone DNS read (see cloudflare_client).
+    # Account-wide fallback (legacy); prefer per-zone write tokens below.
     CLOUDFLARE_API_TOKEN: str = ""
+    # Per-zone read-only tokens (issued by scripts/cloudflare_issue_readonly_tokens.py).
     CLOUDFLARE_READONLY_TOKEN_PAPERWORKLABS: str = ""
     CLOUDFLARE_READONLY_TOKEN_AXIOMFOLIO: str = ""
     CLOUDFLARE_READONLY_TOKEN_FILEFREE: str = ""
     CLOUDFLARE_READONLY_TOKEN_LAUNCHFREE: str = ""
     CLOUDFLARE_READONLY_TOKEN_DISTILL_TAX: str = ""
+    # Per-zone write tokens (WS-47): Zone:Read + DNS:Edit + Cache Purge:Edit only.
+    # Resolver in cloudflare_token_resolver.py reads these via os.environ directly
+    # (extra="ignore" means pydantic-settings silently drops unknown keys, so we
+    # declare each one explicitly here so IDE tooling + env-check can validate them).
+    CLOUDFLARE_TOKEN_PAPERWORKLABS_COM: str = ""
+    CLOUDFLARE_TOKEN_AXIOMFOLIO_COM: str = ""
+    CLOUDFLARE_TOKEN_FILEFREE_AI: str = ""
+    CLOUDFLARE_TOKEN_LAUNCHFREE_AI: str = ""
+    CLOUDFLARE_TOKEN_DISTILL_TAX: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

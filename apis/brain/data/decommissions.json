@@ -1,0 +1,19 @@
+{
+  "schema": "decommissions/v1",
+  "description": "Canonical record of decommissioned domains, Vercel projects, and apps. Brain reads this for ops decisions and the admin dashboard.",
+  "entries": [
+    {
+      "id": "apps-paperworklabs-com",
+      "domain": "apps.paperworklabs.com",
+      "vercel_project": "apps",
+      "clerk_instance": null,
+      "decommissioned_at": null,
+      "decommissioned_by": null,
+      "reason": "apps.paperworklabs.com was a stub Next.js app intended to host a custom Clerk Account Portal (user settings, billing). Clerk now hosts the Account Portal natively via its hosted pages (accounts.<domain>), making this app redundant. apps/accounts/ directory has 248 LoC, no active users, no meaningful traffic, deploy_target=vercel, conformance score 0.33. Safe to decommission — reclaims a Vercel project slot and simplifies the monorepo.",
+      "status": "proposed",
+      "notes": "WS-48 (Phase C Wallet). Script at scripts/decommission/apps-paperworklabs-com.sh. Run after verifying zero traffic in analytics dashboard.",
+      "last_30d_traffic_check": null,
+      "blockers": []
+    }
+  ]
+}

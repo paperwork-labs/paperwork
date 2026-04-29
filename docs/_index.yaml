@@ -472,6 +472,20 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: cloudflare-per-zone-tokens
+    path: docs/runbooks/cloudflare-per-zone-tokens.md
+    title: Cloudflare Per-Zone Write Tokens
+    summary: "**Status:** Active — WS-47 (Phase C Wallet) **Owner:** ops-engineer **Last updated:** 2026-04-28"
+    tags: []
+    owners: [strategy]
+    category: reference
+  - slug: decommission-checklist
+    path: docs/runbooks/decommission-checklist.md
+    title: Domain / App Decommission Checklist
+    summary: "**Owner:** ops-engineer **Last updated:** 2026-04-28 **Source of truth for completed decommissions:** `apis/brain/data/decommissions.json` **Admin endpoint:** `GET /api/v1/admin/decommissions`"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: financials
     path: docs/FINANCIALS.md
     title: Financials
