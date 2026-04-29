@@ -98,6 +98,14 @@ rules:
     confidence: medium
     applies_to: [brain-self-dispatch]
 
+  - id: cloudflare_write_must_use_zone_resolver
+    when: "agent or service writes to Cloudflare (DNS record mutation, cache purge, WAF rule)"
+    do: "must call cloudflare_token_resolver.resolve_write_token(apex) or write_auth_headers(apex) — never use settings.CLOUDFLARE_API_TOKEN directly for write operations; pass the specific apex zone so the resolver picks the narrowest-scoped per-zone token; if per-zone token is absent the resolver falls back with a warning but the intent must always be zone-specific"
+    source: "PR WS-47 — per-zone CF write tokens; reduces blast radius from account-wide token leak to single zone"
+    learned_at: "2026-04-28T02:21:00Z"
+    confidence: high
+    applies_to: [cheap-agents, brain-self-dispatch, orchestrator]
+
   - id: dora_metrics_freshness_24h
     when: "POS pillar 2 (dora_elite) collector cannot reach `gh api`"
     do: "fallback to bootstrap estimate but tag the entry with measured=False and notes='gh CLI unavailable'; orchestrator should not block POS update"

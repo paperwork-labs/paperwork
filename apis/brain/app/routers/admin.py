@@ -28,6 +28,7 @@ from app.models.episode import Episode
 from app.models.scheduler_run import SchedulerRun
 from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
+from app.services import decommissions as decommissions_svc
 from app.services import iac_drift
 from app.services.auto_revert import list_incidents
 from app.services.blitz_progress_poster import blitz_status_snapshot
@@ -1078,6 +1079,26 @@ async def post_anomaly_alerts_recompute(
 
     background_tasks.add_task(_run)
     return success_response({"accepted": True})
+
+
+@router.get("/decommissions")
+async def get_decommissions(
+    status: str | None = Query(None, description="Filter by status: proposed | scheduled | done"),
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Return decommissions.json entries (WS-48).
+
+    Optionally filter by ``status`` (proposed | scheduled | done).
+    Always bypasses the service cache for freshness.
+    """
+    entries = decommissions_svc.list_entries(status=status, bypass_cache=True)
+    return success_response(
+        {
+            "count": len(entries),
+            "status_filter": status,
+            "entries": [e.model_dump(mode="json") for e in entries],
+        }
+    )
 
 
 @router.get("/procedural-memory")
