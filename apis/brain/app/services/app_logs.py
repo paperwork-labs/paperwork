@@ -422,7 +422,7 @@ def pull_vercel_logs() -> list[AppLogEntry]:
                             ),
                             app=project_name,
                             service=project_name,
-                            severity=severity,  # type: ignore[arg-type]
+                            severity=severity,
                             message=text[:2000],
                             attrs={"deployment_id": dep_id, "event_type": event_type},
                             source="vercel-pull",
@@ -535,7 +535,7 @@ def pull_render_logs() -> list[AppLogEntry]:
                         id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"render:{svc_id}:{dep_id}")),
                         app=svc_name,
                         service=svc_name,
-                        severity=severity,  # type: ignore[arg-type]
+                        severity=severity,
                         message=f"Deploy {dep_id} status: {dep_status}",
                         attrs={"deploy_id": dep_id, "deploy_status": dep_status},
                         source="render-pull",
@@ -694,7 +694,7 @@ def _fire_log_anomaly_alert(
         return
 
     try:
-        from app.services.conversations import create_conversation  # type: ignore[import]
+        from app.services.conversations import create_conversation
 
         create_conversation(
             title=f"Log anomaly: {app}/{service} error spike",
