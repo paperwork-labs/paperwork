@@ -7,13 +7,19 @@ export default function AdminLayout({
   children: React.ReactNode;
 }>) {
   const c = founderData.counts;
-  const founderPending =
-    typeof c.critical === "number" && typeof c.totalPending === "number"
-      ? {
-          count: c.totalPending,
-          hasCritical: c.critical > 0,
-        }
-      : null;
+  if (
+    !c ||
+    typeof c.critical !== "number" ||
+    typeof c.totalPending !== "number"
+  ) {
+    throw new Error(
+      "Admin layout: founder-actions.json must include counts.critical and counts.totalPending (numbers). Run apps/studio/scripts/sync-founder-actions.mjs.",
+    );
+  }
+  const founderPending = {
+    count: c.totalPending,
+    hasCritical: c.critical > 0,
+  };
 
   return (
     <AdminLayoutClient founderPending={founderPending}>
