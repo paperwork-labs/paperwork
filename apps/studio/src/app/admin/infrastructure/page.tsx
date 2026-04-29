@@ -1,30 +1,83 @@
-import { getInfrastructureView } from "@/lib/command-center";
-import { getE2EInfrastructureFixture } from "@/lib/e2e-infra-mock";
-import InfraClient from "./infra-client";
+import { Suspense } from "react";
+import { TabbedPageShellNodeNext } from "@/components/layout/TabbedPageShellNext";
+import InfraOverviewTab from "./tabs/overview-tab";
+import ServicesTab from "./tabs/services-tab";
+import SecretsTab from "./tabs/secrets-tab";
+import LogsTab from "./tabs/logs-tab";
+import CostTab from "./tabs/cost-tab";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function InfrastructurePage() {
-  const checkedAt = new Date().toISOString();
-  if (process.env.STUDIO_E2E_FIXTURE === "1") {
-    const e2e = getE2EInfrastructureFixture();
-    return (
-      <InfraClient
-        initialServices={e2e.services}
-        initialPlatformSummary={e2e.platformSummary}
-        initialPlatformPartial={e2e.platformPartial}
-        initialCheckedAt={checkedAt}
-      />
-    );
-  }
-  const view = await getInfrastructureView();
+function TabSkeleton() {
   return (
-    <InfraClient
-      initialServices={view.services}
-      initialPlatformSummary={view.platformSummary}
-      initialPlatformPartial={view.platformPartial}
-      initialCheckedAt={checkedAt}
-    />
+    <div className="flex flex-col gap-3 py-4" aria-busy="true">
+      <div className="h-8 w-full max-w-md animate-pulse rounded-md bg-zinc-800" />
+      <div className="h-48 w-full animate-pulse rounded-lg bg-zinc-800" />
+    </div>
+  );
+}
+
+export default function InfrastructurePage() {
+  const tabs = [
+    {
+      id: "overview" as const,
+      label: "Overview",
+      content: (
+        <Suspense fallback={<TabSkeleton />}>
+          <InfraOverviewTab />
+        </Suspense>
+      ),
+    },
+    {
+      id: "services" as const,
+      label: "Services",
+      content: (
+        <Suspense fallback={<TabSkeleton />}>
+          <ServicesTab />
+        </Suspense>
+      ),
+    },
+    {
+      id: "secrets" as const,
+      label: "Secrets",
+      content: (
+        <Suspense fallback={<TabSkeleton />}>
+          <SecretsTab />
+        </Suspense>
+      ),
+    },
+    {
+      id: "logs" as const,
+      label: "Logs",
+      content: (
+        <Suspense fallback={<TabSkeleton />}>
+          <LogsTab />
+        </Suspense>
+      ),
+    },
+    {
+      id: "cost" as const,
+      label: "Cost",
+      content: (
+        <Suspense fallback={<TabSkeleton />}>
+          <CostTab />
+        </Suspense>
+      ),
+    },
+  ] as const;
+
+  return (
+    <div className="space-y-4">
+      <header>
+        <h1 className="bg-gradient-to-r from-zinc-200 to-zinc-400 bg-clip-text text-2xl font-semibold tracking-tight text-transparent">
+          Infrastructure
+        </h1>
+        <p className="mt-1 text-sm text-zinc-400">
+          Services health, secrets vault, logs, and cost tracking.
+        </p>
+      </header>
+      <TabbedPageShellNodeNext tabs={tabs} defaultTab="overview" />
+    </div>
   );
 }

@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
+// Folded into Brain → Self-Improvement → Learning tab (WS-69 PR C). 308 permanent redirect.
 export default function LegacyBrainLearningPage() {
-  redirect("/admin/brain/learning");
+  permanentRedirect("/admin/brain/self-improvement?tab=learning");
 }
