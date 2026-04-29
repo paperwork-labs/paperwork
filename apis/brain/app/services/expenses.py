@@ -21,10 +21,12 @@ import json
 import logging
 import os
 import uuid
-from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from app.schemas.expenses import (
     CategoryTotal,
@@ -33,10 +35,10 @@ from app.schemas.expenses import (
     ExpenseCreate,
     ExpenseEdit,
     ExpenseRoutingRules,
+    ExpensesListPage,
     ExpenseSource,
     ExpenseStatus,
     ExpenseStatusUpdate,
-    ExpensesListPage,
     MonthlyRollup,
     QuarterlyRollup,
 )
