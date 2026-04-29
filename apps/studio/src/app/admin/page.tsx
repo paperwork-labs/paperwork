@@ -1,3 +1,4 @@
+import { BrainImprovementGauge } from "@/components/admin/BrainImprovementGauge";
 import { OperatingScoreGauge } from "@/components/admin/OperatingScoreGauge";
 import { SprintVelocityTile } from "@/components/admin/SprintVelocityTile";
 import {
@@ -45,8 +46,9 @@ export default async function AdminOverviewPage() {
   return (
     <div className="space-y-6">
       <TrackersRail />
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <OperatingScoreGauge />
+        <BrainImprovementGauge />
         <SprintVelocityTile />
       </div>
       <OverviewClient

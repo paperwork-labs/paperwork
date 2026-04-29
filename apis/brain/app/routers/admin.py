@@ -1258,3 +1258,23 @@ async def post_coach_preflight(
             degraded=True,
             degraded_reason=str(exc),
         )
+
+
+# ---------------------------------------------------------------------------
+# WS-69 PR D — Brain Improvement Index
+# ---------------------------------------------------------------------------
+
+
+@router.get("/brain-improvement-index")
+async def get_brain_improvement_index(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Return the current Brain Improvement Index score and sub-metrics.
+
+    Composite 0-100 score from three sub-metrics in v1:
+    acceptance_rate (40%), promotion_progress (30%), rules_learning (20%),
+    retro_delta (10%). Empty data returns honest zero — never fabricated.
+    History_12w is empty until a weekly cron persists scores (planned PR P+).
+    """
+    response = self_improvement_svc.brain_improvement_response()
+    return success_response(response.model_dump(mode="json"))
