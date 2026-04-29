@@ -1,0 +1,44 @@
+schema: slack_routing/v1
+description: "Channel routing + thread/dedup config for Brain Slack notifications."
+
+# Default channel when event_type has no explicit mapping.
+default_channel: "#ops"
+
+# Per-event-type channel assignments.
+channels:
+  pr_merged: "#ops"
+  pr_failed: "#ops"
+  anomaly_low: "#ops"
+  anomaly_medium: "#ops"
+  anomaly_high: "#alerts"
+  weekly_retro: "#strategy"
+  blitz_progress: "#ops"
+  iac_drift: "#ops"
+  incident_high: "#alerts"
+  pos_score: "#strategy"
+  infra_heartbeat: "#ops"
+  credential_expiry: "#ops"
+  data_source_alert: "#ops"
+  clerk_dns_drift: "#alerts"
+  sprint_kickoff: "#strategy"
+  sprint_complete: "#strategy"
+  cost_dashboard: "#strategy"
+  cfo_digest: "#strategy"
+  qa_report: "#ops"
+  general: "#ops"
+
+# Collapse identical (channel, key, severity) alerts within this window.
+dedup_window_minutes: 60
+
+# Brain-wide hourly Slack post cap; overflow falls back to email digest.
+rate_limit_per_hour: 30
+
+# Outside quiet hours and on weekends, only severity >= threshold posts immediately.
+quiet_hours:
+  start: "22:00"
+  end: "09:00"
+  timezone: "UTC"
+  weekends_quiet: true
+
+# Minimum severity that bypasses quiet hours ("low" | "medium" | "high").
+quiet_severity_threshold: high
