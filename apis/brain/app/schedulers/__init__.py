@@ -39,6 +39,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
         self_merge_promotion.install(scheduler)
     except Exception:
         logger.exception("Failed to install self_merge_promotion job")
+    try:
+        from app.schedulers import self_prioritization
+
+        self_prioritization.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install self_prioritization job")
     return scheduler
 
 

@@ -18,6 +18,7 @@ import app.services.app_registry as app_registry_svc
 import app.services.operating_score as operating_score_svc
 import app.services.pr_outcomes as pr_outcomes_service
 import app.services.self_merge_gate as self_merge_gate
+import app.services.self_prioritization as self_prioritization_svc
 from app.config import settings
 from app.database import async_session_factory, get_db
 from app.models.episode import Episode
@@ -115,6 +116,10 @@ async def trigger_sprint_lessons_ingestion(
 class IngestOptionalBody(BaseModel):
     dry_run: bool = False
     limit: int | None = None
+
+
+class RejectWorkstreamCandidateRequest(BaseModel):
+    founder_reason: str = Field(..., min_length=1, max_length=500)
 
 
 @router.post("/ingest-merged-prs")
@@ -364,6 +369,56 @@ async def get_pr_outcomes(
             "outcomes": [r.model_dump(mode="json") for r in rows],
         }
     )
+
+
+@router.get("/workstream-candidates")
+async def get_workstream_candidates(
+    _auth: None = Depends(_require_admin),
+):
+    """List Brain-generated workstream proposals awaiting founder review."""
+    file = self_prioritization_svc.load_candidates_file()
+    cutoff = datetime.now(UTC) - timedelta(days=30)
+    history_last_30 = [row for row in file.history if row.proposed_at.astimezone(UTC) >= cutoff]
+    top_5 = sorted(file.candidates, key=lambda row: row.score, reverse=True)[:5]
+    return success_response(
+        {
+            "generated_at": file.generated_at,
+            "count": len(file.candidates),
+            "top_5": [row.model_dump(mode="json") for row in top_5],
+            "history_last_30": [row.model_dump(mode="json") for row in history_last_30],
+        }
+    )
+
+
+@router.post("/workstream-candidates/{candidate_id}/promote")
+async def promote_workstream_candidate(
+    candidate_id: str,
+    _auth: None = Depends(_require_admin),
+):
+    """Promote one proposed Brain candidate into Studio workstreams.json."""
+    try:
+        result = self_prioritization_svc.promote_candidate(candidate_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return success_response(jsonable_encoder(result.workstream))
+
+
+@router.post("/workstream-candidates/{candidate_id}/reject")
+async def reject_workstream_candidate(
+    candidate_id: str,
+    body: RejectWorkstreamCandidateRequest,
+    _auth: None = Depends(_require_admin),
+):
+    """Reject one proposed Brain candidate with the founder's reason."""
+    try:
+        candidate = self_prioritization_svc.reject_candidate(candidate_id, body.founder_reason)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return success_response(jsonable_encoder(candidate.model_dump(mode="json")))
 
 
 @router.get("/self-merge-status")

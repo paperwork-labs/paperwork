@@ -1116,24 +1116,20 @@
       "related_plan": "level_4_autonomy_+_platform"
     },
     {
-      "id": "WS-63-self-prioritization",
-      "title": "Phase G2 \u2014 Self-prioritization (Brain proposes top-N workstreams; founder Slack-emoji approves)",
+      "id": "WS-63-brain-self-prioritization",
+      "title": "Brain self-prioritization service and daily candidate scheduler",
       "track": "Z",
       "priority": 60,
-      "status": "pending",
-      "percent_done": 0,
+      "status": "in_progress",
+      "percent_done": 80,
       "owner": "brain",
-      "brief_tag": "track:self-prioritization",
-      "blockers": [
-        "WS-61 OBJECTIVES.yaml",
-        "WS-62 outcome",
-        "Phase F"
-      ],
+      "brief_tag": "track:brain-self-prioritization",
+      "blockers": [],
       "last_pr": null,
-      "last_activity": "2026-04-28T23:33:17Z",
+      "last_activity": "2026-04-29T12:00:00Z",
       "last_dispatched_at": null,
-      "notes": "Brain ranks candidate workstreams by objective_weight \u00d7 predicted_impact / cost. Top-N proposals open as draft PRs. Founder reviews via Slack #brain-asks digest; approval is a 1-click reaction emoji. Lands at L4 handoff.",
-      "estimated_pr_count": 2,
+      "notes": "PR <num>: Brain proposes daily candidates from signals; founder promotes via admin endpoint. Studio review UI in WS-64 sister PR or follow-up.",
+      "estimated_pr_count": 1,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"
     },

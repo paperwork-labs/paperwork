@@ -1,0 +1,8 @@
+{
+  "schema": "workstream_candidates/v1",
+  "description": "Brain-generated workstream proposals (Phase G2). Founder reviews + promotes to apps/studio/src/data/workstreams.json.",
+  "version": 1,
+  "generated_at": null,
+  "candidates": [],
+  "history": []
+}
