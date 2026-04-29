@@ -169,3 +169,27 @@ rules:
     learned_at: "2026-04-29T05:30:00Z"
     confidence: high
     applies_to: [cheap-agents, brain-self-dispatch, orchestrator]
+
+  - id: brain_owns_logs_first_class_not_third_party_default
+    when: "designing observability / log aggregation after STACK_AUDIT_2026-Q2 (log/infra observability row)"
+    do: "default architecture is Brain-first: apps push to a Brain log-ingestion path OR Brain pulls Vercel/Render log APIs on a schedule; persist in apis/brain/data/app_logs.json (or Postgres if volume warrants); extend WS-50 anomaly_detection to treat error-level log spikes as signals; Studio admin gets a Logs surface (may land as IA reorg PR M or Architecture tab); high-severity log matches can fan out via web push when PR I ships. Do NOT add Better Stack / Datadog / Logtail as the default — founder may opt in later with explicit budget + vendor decision."
+    source: "orchestrator decision in chat (2026-04-29): align logs with Brain-as-engine; avoid middleware vendors for default path"
+    learned_at: "2026-04-29T08:45:00Z"
+    confidence: high
+    applies_to: [orchestrator, brain-self-dispatch, cheap-agents]
+
+  - id: clerk_free_plan_until_mau_scale_auth_clerk_shell
+    when: "stack audit or vendor review asks about Clerk Pro / 'Powered by Clerk' on customer auth UIs"
+    do: "stay on free Clerk tier until MAU scale (~10k) warrants Pro for TOS/branding compliance. Customer-facing pages use @paperwork-labs/auth-clerk appearance (footer/footerAction hidden per create-clerk-appearance.ts). This is an intentional gray-zone vs strict Clerk TOS on free tier; budget Clerk Pro into Year 2 product economics when traffic demands. No standing workstream PR required — flag to founder if Clerk sales or MAU triggers escalation."
+    source: "STACK_AUDIT_2026-Q2 founder decision + code inspection of packages/auth-clerk appearance presets"
+    learned_at: "2026-04-29T08:45:00Z"
+    confidence: medium
+    applies_to: [orchestrator]
+
+  - id: secrets_registry_hardening_ws57_batch_c
+    when: "Phase E / WS-57 batch C executes after stack-audit green-light"
+    do: "harden secrets posture as registry + drift detection + rotation calendar (not a new vendor vault): single inventory across Vercel/Render/GitHub/Cloudflare/Studio vault; detect same-key different-value across providers; surface in Studio under Architecture > Infrastructure > Secrets tab per IA reorg PR C. Cheap-agent dispatch separate from Studio IA feature work; coordinate file overlap with admin infrastructure routes only."
+    source: "STACK_AUDIT_2026-Q2 DevOps secret-management row + orchestrator chat (2026-04-29)"
+    learned_at: "2026-04-29T08:45:00Z"
+    confidence: high
+    applies_to: [orchestrator, brain-self-dispatch, cheap-agents]
