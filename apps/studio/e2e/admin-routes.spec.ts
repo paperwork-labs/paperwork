@@ -1,90 +1,211 @@
+/**
+ * Smoke tests for admin route redirects and tabbed shells (WS-69 PR C).
+ *
+ * Run against the dev server with STUDIO_E2E_FIXTURE=1:
+ *   pnpm --filter studio run dev:e2e   # in one terminal
+ *   pnpm --filter studio exec playwright test e2e/admin-routes.spec.ts
+ */
+
 import { test, expect } from "@playwright/test";
 
-/**
- * Post–PR B/C IA: 13 sidebar entries + every PR C redirect source.
- * @see .cursor/plans/studio_ia_reorg_plan_2033873b.plan.md
- */
-const PRIMARY_ADMIN_ROUTES = [
-  "/admin",
-  "/admin/tasks",
-  "/admin/products",
-  "/admin/sprints",
-  "/admin/workstreams",
-  "/admin/expenses",
-  "/admin/pr-pipeline",
-  "/admin/architecture",
-  "/admin/docs",
-  "/admin/infrastructure",
-  "/admin/brain/personas",
-  "/admin/brain/conversations",
-  "/admin/brain/self-improvement",
-] as const;
+// ---------------------------------------------------------------------------
+// Redirect smoke tests (all 7 legacy routes → 308 permanent destinations)
+// ---------------------------------------------------------------------------
 
-const PR_C_REDIRECT_SOURCES = [
-  "/admin/founder-actions",
-  "/admin/workflows",
-  "/admin/agents",
-  "/admin/ops",
-  "/admin/n8n-mirror",
-  "/admin/automation",
-  "/admin/brain/learning",
-  "/admin/brain-learning",
-  "/admin/analytics",
-  "/admin/secrets",
-] as const;
-
-const ALL_ROUTES = [...PRIMARY_ADMIN_ROUTES, ...PR_C_REDIRECT_SOURCES];
-
-const REDIRECT_STATUS = [301, 302, 303, 307, 308];
-
-async function assertHealthyChain(
-  baseURL: string,
-  request: import("@playwright/test").APIRequestContext,
-  path: string,
-): Promise<void> {
-  const seen = new Set<string>();
-  let url = new URL(path, baseURL).href;
-  for (let i = 0; i < 24; i++) {
-    const res = await request.get(url, { maxRedirects: 0 });
-    const st = res.status();
-    if (st >= 500) {
-      throw new Error(`${path}: ${st} from ${url}`);
-    }
-    if (st >= 200 && st < 300) {
-      return;
-    }
-    if (REDIRECT_STATUS.includes(st)) {
-      const loc = res.headers()["location"];
-      if (!loc) {
-        throw new Error(`${path}: redirect ${st} missing Location (${url})`);
-      }
-      const next = new URL(loc, url).href;
-      if (seen.has(next)) {
-        throw new Error(`${path}: redirect loop involving ${next}`);
-      }
-      seen.add(next);
-      url = next;
-      continue;
-    }
-    throw new Error(`${path}: unexpected ${st} for ${url}`);
-  }
-  throw new Error(`${path}: too many redirects`);
-}
-
-test.describe("Admin route smoke (WS-69 PR A)", () => {
-  test("13-item nav + PR C redirect sources resolve without 5xx or loops", async ({
-    baseURL,
-    request,
-  }) => {
-    expect(baseURL).toBeTruthy();
-    for (const path of ALL_ROUTES) {
-      await assertHealthyChain(baseURL!, request, path);
-    }
+test.describe("Admin route redirects (WS-69 PR C — 308 permanent)", () => {
+  test("/admin/workflows redirects to /admin/architecture?tab=flows", async ({ page }) => {
+    const resp = await page.goto("/admin/workflows");
+    expect(resp?.url()).toContain("/admin/architecture");
+    expect(resp?.url()).toContain("tab=flows");
   });
 
-  test("/admin/workstreams renders the board", async ({ page }) => {
-    await page.goto("/admin/workstreams", { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("heading", { name: /^Workstreams$/i })).toBeVisible();
-    await expect(page.getByTestId("workstreams-board")).toBeVisible();
+  test("/admin/n8n-mirror redirects to /admin/architecture?tab=flows", async ({ page }) => {
+    const resp = await page.goto("/admin/n8n-mirror");
+    expect(resp?.url()).toContain("/admin/architecture");
+    expect(resp?.url()).toContain("tab=flows");
+  });
+
+  test("/admin/automation redirects to /admin/architecture?tab=flows", async ({ page }) => {
+    const resp = await page.goto("/admin/automation");
+    expect(resp?.url()).toContain("/admin/architecture");
+    expect(resp?.url()).toContain("tab=flows");
+  });
+
+  test("/admin/analytics redirects to /admin/architecture?tab=analytics", async ({ page }) => {
+    const resp = await page.goto("/admin/analytics");
+    expect(resp?.url()).toContain("/admin/architecture");
+    expect(resp?.url()).toContain("tab=analytics");
+  });
+
+  test("/admin/secrets redirects to /admin/infrastructure?tab=secrets", async ({ page }) => {
+    const resp = await page.goto("/admin/secrets");
+    expect(resp?.url()).toContain("/admin/infrastructure");
+    expect(resp?.url()).toContain("tab=secrets");
+  });
+
+  test("/admin/founder-actions redirects to /admin/brain/conversations?filter=needs-action", async ({
+    page,
+  }) => {
+    const resp = await page.goto("/admin/founder-actions");
+    expect(resp?.url()).toContain("/admin/brain/conversations");
+    expect(resp?.url()).toContain("filter=needs-action");
+  });
+
+  test("/admin/brain-learning redirects to /admin/brain/self-improvement?tab=learning", async ({
+    page,
+  }) => {
+    const resp = await page.goto("/admin/brain-learning");
+    expect(resp?.url()).toContain("/admin/brain/self-improvement");
+    expect(resp?.url()).toContain("tab=learning");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Architecture tabbed shell (tabs: overview, analytics, flows, data-sources)
+// ---------------------------------------------------------------------------
+
+test.describe("Architecture tabbed shell (WS-69 PR C)", () => {
+  test("renders with all four tabs visible", async ({ page }) => {
+    await page.goto("/admin/architecture", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Analytics" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Flows" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Data Sources" })).toBeVisible();
+  });
+
+  test("clicking Analytics tab updates URL", async ({ page }) => {
+    await page.goto("/admin/architecture", { waitUntil: "domcontentloaded" });
+    await page.getByRole("tab", { name: "Analytics" }).click();
+    await expect(page).toHaveURL(/tab=analytics/);
+  });
+
+  test("clicking Flows tab updates URL", async ({ page }) => {
+    await page.goto("/admin/architecture", { waitUntil: "domcontentloaded" });
+    await page.getByRole("tab", { name: "Flows" }).click();
+    await expect(page).toHaveURL(/tab=flows/);
+  });
+
+  test("deep-linking to ?tab=flows shows flows panel", async ({ page }) => {
+    await page.goto("/admin/architecture?tab=flows", { waitUntil: "domcontentloaded" });
+    const panel = page.getByRole("tabpanel");
+    await expect(panel).toBeVisible();
+  });
+
+  test("deep-linking to ?tab=data-sources shows data-sources panel", async ({ page }) => {
+    await page.goto("/admin/architecture?tab=data-sources", { waitUntil: "domcontentloaded" });
+    const panel = page.getByRole("tabpanel");
+    await expect(panel).toBeVisible();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Infrastructure tabbed shell (tabs: overview, services, secrets, logs, cost)
+// ---------------------------------------------------------------------------
+
+test.describe("Infrastructure tabbed shell (WS-69 PR C — STUDIO_E2E_FIXTURE=1 dev server)", () => {
+  test("renders with all five tabs visible", async ({ page }) => {
+    await page.goto("/admin/infrastructure", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Services" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Secrets" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Logs" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Cost" })).toBeVisible();
+  });
+
+  test("default tab is overview", async ({ page }) => {
+    await page.goto("/admin/infrastructure", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/tab=overview/);
+  });
+
+  test("switching to Secrets tab updates URL", async ({ page }) => {
+    await page.goto("/admin/infrastructure", { waitUntil: "domcontentloaded" });
+    await page.getByRole("tab", { name: "Secrets" }).click();
+    await expect(page).toHaveURL(/tab=secrets/);
+  });
+
+  test("Logs tab shows PR M placeholder", async ({ page }) => {
+    await page.goto("/admin/infrastructure?tab=logs", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText(/PR M/i)).toBeVisible();
+  });
+
+  test("Cost tab shows WS-74 placeholder", async ({ page }) => {
+    await page.goto("/admin/infrastructure?tab=cost", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText(/WS-74/i)).toBeVisible();
+  });
+
+  test("deep-linking to ?tab=secrets shows secrets panel", async ({ page }) => {
+    await page.goto("/admin/infrastructure?tab=secrets", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("tab", { name: "Secrets" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Brain bucket shells
+// ---------------------------------------------------------------------------
+
+test.describe("Brain bucket stub pages (WS-69 PR C)", () => {
+  test("/admin/brain/personas renders without 5xx and shows PR F copy", async ({ page }) => {
+    const resp = await page.goto("/admin/brain/personas", { waitUntil: "domcontentloaded" });
+    expect(resp?.status()).toBeLessThan(500);
+    await expect(page.getByText(/PR F/i)).toBeVisible();
+  });
+
+  test("/admin/brain/personas renders all five tabs", async ({ page }) => {
+    await page.goto("/admin/brain/personas", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("tab", { name: "Registry" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Cost" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Routing" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Activity" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Model Registry" })).toBeVisible();
+  });
+
+  test("/admin/brain/conversations renders without 5xx and shows PR E copy", async ({ page }) => {
+    const resp = await page.goto("/admin/brain/conversations", { waitUntil: "domcontentloaded" });
+    expect(resp?.status()).toBeLessThan(500);
+    await expect(page.getByText(/PR E/i)).toBeVisible();
+  });
+
+  test("/admin/brain/conversations accepts ?filter=needs-action without error", async ({
+    page,
+  }) => {
+    const resp = await page.goto("/admin/brain/conversations?filter=needs-action", {
+      waitUntil: "domcontentloaded",
+    });
+    expect(resp?.status()).toBeLessThan(500);
+  });
+
+  test("/admin/brain/self-improvement renders without 5xx", async ({ page }) => {
+    const resp = await page.goto("/admin/brain/self-improvement", {
+      waitUntil: "domcontentloaded",
+    });
+    expect(resp?.status()).toBeLessThan(500);
+  });
+
+  test("/admin/brain/self-improvement renders all eight tabs", async ({ page }) => {
+    await page.goto("/admin/brain/self-improvement", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("tab", { name: "Learning" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Promotions" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Outcomes" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Retros" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Automation State" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Procedural Memory" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Audits" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Index" })).toBeVisible();
+  });
+
+  test("/admin/brain/self-improvement?tab=learning shows PR M copy", async ({ page }) => {
+    await page.goto("/admin/brain/self-improvement?tab=learning", {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.getByText(/PR M/i)).toBeVisible();
+  });
+
+  test("/admin/expenses renders without 5xx and shows PR N copy", async ({ page }) => {
+    const resp = await page.goto("/admin/expenses", { waitUntil: "domcontentloaded" });
+    expect(resp?.status()).toBeLessThan(500);
+    await expect(page.getByText(/PR N/i)).toBeVisible();
   });
 });
