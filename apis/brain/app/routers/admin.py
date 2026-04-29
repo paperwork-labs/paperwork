@@ -18,7 +18,11 @@ from app.models.episode import Episode
 from app.models.scheduler_run import SchedulerRun
 from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
+<<<<<<< HEAD
 from app.services.blitz_progress_poster import blitz_status_snapshot
+=======
+from app.services.auto_revert import list_incidents
+>>>>>>> 85b20b259 (feat(brain): WS-46 auto-revert post-merge CI failures)
 from app.services.continuous_learning import (
     ingest_decisions,
     ingest_merged_prs,
@@ -282,6 +286,22 @@ async def get_pr_outcomes(
             "limit": limit,
             "count": len(rows),
             "outcomes": [r.model_dump(mode="json") for r in rows],
+        }
+    )
+
+
+@router.get("/incidents")
+async def get_incidents(
+    limit: int = Query(20, ge=1, le=500),
+    _auth: None = Depends(_require_admin),
+):
+    """List recent Brain operational incidents."""
+    rows = list_incidents(limit=limit)
+    return success_response(
+        {
+            "limit": limit,
+            "count": len(rows),
+            "incidents": [r.model_dump(mode="json") for r in rows],
         }
     )
 
