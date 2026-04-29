@@ -23,6 +23,10 @@ services:
     runtime: python
     region: oregon
     plan: starter
+    buildFilter:
+      paths:
+        - apis/filefree/**
+        - packages/auth-clerk/src/python/**
     buildCommand: cd apis/filefree && pip install -r requirements.txt
     preDeployCommand: cd apis/filefree && alembic upgrade head
     startCommand: cd apis/filefree && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
@@ -109,6 +113,11 @@ services:
     region: oregon
     plan: starter
     numInstances: 1
+    buildFilter:
+      paths:
+        - apis/brain/**
+        - packages/auth-clerk/src/python/**
+        - .cursor/rules/**
     dockerfilePath: apis/brain/Dockerfile
     # Track F / H12: build from repo root so Dockerfile can COPY .cursor/rules/*.mdc
     # into the image. Without this, persona instructions required a live GitHub round
@@ -186,6 +195,10 @@ services:
     runtime: docker
     rootDir: .
     plan: standard
+    buildFilter:
+      paths:
+        - apis/axiomfolio/**
+        - packages/auth-clerk/**
     dockerfilePath: apis/axiomfolio/Dockerfile
     healthCheckPath: /health
     autoDeploy: true
@@ -235,6 +248,10 @@ services:
     runtime: docker
     rootDir: .
     plan: standard
+    buildFilter:
+      paths:
+        - apis/axiomfolio/**
+        - packages/auth-clerk/**
     dockerfilePath: apis/axiomfolio/Dockerfile
     autoDeploy: true
     envVars:
@@ -276,6 +293,10 @@ services:
     runtime: docker
     rootDir: .
     plan: standard
+    buildFilter:
+      paths:
+        - apis/axiomfolio/**
+        - packages/auth-clerk/**
     dockerfilePath: apis/axiomfolio/Dockerfile
     autoDeploy: true
     envVars:

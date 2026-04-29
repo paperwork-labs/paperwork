@@ -2,8 +2,16 @@ name: Axe a11y CI
 on:
   pull_request:
     types: [labeled, synchronize, opened]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - ".github/workflows/axe-a11y-ci.yml"
   push:
     branches: [main]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - ".github/workflows/axe-a11y-ci.yml"
 
 permissions:
   contents: write

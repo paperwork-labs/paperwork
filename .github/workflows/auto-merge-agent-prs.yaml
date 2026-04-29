@@ -10,8 +10,6 @@ name: Auto-merge GREEN agent PRs
 on:
   schedule:
     - cron: "*/30 * * * *"
-  pull_request:
-    types: [opened, reopened, synchronize, ready_for_review, labeled, unlabeled]
   workflow_dispatch:
     inputs:
       pr_number:

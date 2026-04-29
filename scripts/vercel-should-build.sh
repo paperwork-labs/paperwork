@@ -2,6 +2,9 @@
 # Vercel ignoreCommand helper — determines whether a build should proceed.
 # Exit 1 = proceed with build, Exit 0 = skip build.
 # Called by each app's vercel.json ignoreCommand.
+#
+# Vercel provides VERCEL_GIT_PREVIOUS_SHA for the comparison base.
+# Shallow clones may not have HEAD~1, so we prefer the env var.
 
 set -euo pipefail
 
@@ -13,14 +16,19 @@ if git log -1 --pretty=%an 2>/dev/null | grep -qi dependabot; then
   exit 0
 fi
 
-# If we can determine changed files and they are ALL in non-app directories,
-# skip the build. This prevents 6 preview deploys on docs/data-only PRs.
-if CHANGED=$(git diff HEAD~1 --name-only 2>/dev/null); then
+# Determine the comparison base SHA — prefer Vercel's env var over HEAD~1
+# because Vercel uses shallow clones where HEAD~1 may not exist.
+BASE_SHA="${VERCEL_GIT_PREVIOUS_SHA:-}"
+if [ -z "$BASE_SHA" ]; then
+  BASE_SHA=$(git rev-parse HEAD~1 2>/dev/null || echo "")
+fi
+
+if [ -n "$BASE_SHA" ]; then
+  CHANGED=$(git diff "$BASE_SHA" --name-only 2>/dev/null || echo "")
   if [ -n "$CHANGED" ]; then
-    # Check if ANY changed file is outside the "safe to skip" directories
     APP_RELEVANT=$(echo "$CHANGED" | grep -vE '^(docs/|apis/|infra/|scripts/|\.github/|\.cursor/)' || true)
     if [ -z "$APP_RELEVANT" ]; then
-      echo "Only docs/apis/infra/scripts changed — skipping build"
+      echo "Only docs/apis/infra/scripts changed — skipping build for $APP_PKG"
       exit 0
     fi
   fi

@@ -11,6 +11,10 @@ name: Chromatic visual regression
 on:
   push:
     branches: [main]
+    paths:
+      - "apps/design/**"
+      - "packages/**/src/**"
+      - ".github/workflows/chromatic.yaml"
   pull_request:
     branches: [main]
     paths:

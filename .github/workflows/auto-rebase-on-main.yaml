@@ -7,6 +7,10 @@ name: Auto-rebase open PRs on main
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".cursor/**"
   workflow_run:
     workflows: ["Post-main regenerate indexes"]
     types:

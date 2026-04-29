@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "265003849f22",
+  "content_hash": "64adc1a9411e",
   "products": [
     {
       "label": "AxiomFolio",
@@ -435,7 +435,6 @@
         "docs/STACK_AUDIT_2026-Q2.md"
       ],
       "pr": 412,
-      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/412",
       "raw_status": "shipped",
       "related_prs": [
@@ -509,7 +508,6 @@
       "personas": [],
       "plans": [],
       "pr": 172,
-      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/172",
       "raw_status": "shipped",
       "related_prs": [
@@ -569,7 +567,6 @@
         "docs/sprints/README.md"
       ],
       "pr": 144,
-      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/144",
       "raw_status": "shipped",
       "related_prs": [
@@ -635,7 +632,6 @@
         "docs/PERSONA_PLATFORM.md"
       ],
       "pr": 141,
-      "pr_state": "MERGED",
       "pr_url": "https://github.com/paperwork-labs/paperwork/pull/141",
       "raw_status": "shipped",
       "related_prs": [
