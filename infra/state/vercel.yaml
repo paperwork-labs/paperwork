@@ -1,0 +1,7 @@
+schema:
+  description: "Canonical Vercel project envs/config. Drift detector reconciles this vs live API state every 30 min."
+version: 1
+projects:
+  # Initially empty — populate via initial reconcile from live state
+  []
+last_reconciled_at: null
