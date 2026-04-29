@@ -528,6 +528,13 @@ docs:
     tags: [product, spec]
     owners: [engineering, ux]
     category: reference
+  - slug: pwl-cli
+    path: docs/runbooks/pwl-cli.md
+    title: pwl CLI Runbook
+    summary: "`pwl` is the Paperwork Labs monorepo CLI. It gives operators one place to inspect apps, scaffold new services, and keep Brain's app manifest current."
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: render-quota-audit-2026q2
     path: docs/infra/RENDER_QUOTA_AUDIT_2026Q2.md
     title: Render pipeline minutes — quota audit (2026 Q2)
