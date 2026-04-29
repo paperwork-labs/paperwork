@@ -1,0 +1,22 @@
+{
+  "schema": "sprint_velocity/v1",
+  "description": "Weekly sprint velocity computed from PR merge cadence + workstream completions (WS-51). Pydantic spec: apis/brain/app/schemas/sprint_velocity.py.",
+  "current": {
+    "week_start": "2026-04-21",
+    "week_end": "2026-04-27",
+    "prs_merged": 22,
+    "by_author": {
+      "founder": 1,
+      "brain-self-dispatch": 4,
+      "cheap-agent": 17
+    },
+    "workstreams_completed": 9,
+    "workstreams_completed_estimated_pr_count": 11,
+    "story_points_burned": 11,
+    "throughput_per_day": 3.14,
+    "measured": false,
+    "notes": "Manually seeded bootstrap; pr_outcomes.json was empty at time of seeding. Numbers derived from git log + workstream audit on 2026-04-28.",
+    "computed_at": "2026-04-28T02:50:00Z"
+  },
+  "history": []
+}

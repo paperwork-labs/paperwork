@@ -57,6 +57,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
         anomaly_detection.install(scheduler)
     except Exception:
         logger.exception("Failed to install anomaly_detection_hourly job")
+    try:
+        from app.schedulers import sprint_velocity
+
+        sprint_velocity.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install sprint_velocity_weekly job")
     return scheduler
 
 
