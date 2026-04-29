@@ -128,7 +128,7 @@ rules:
     source: "fix/vercel-cost-bleed-stop — Vercel on-demand budget hit 91% before any alert because every PR rebuilt all 8 apps"
     learned_at: "2026-04-29T03:55:00Z"
     confidence: high
-    applies_to: [cheap-agents, brain-self-dispatch, orchestrator, founder]
+    applies_to: [cheap-agents, brain-self-dispatch, orchestrator]
 
   - id: cost_guards_must_alert_below_cap_not_at_cap
     when: "Brain or persona introduces a cost-bearing capability (LLM API, paid SaaS quota, infrastructure metered resource)"

@@ -197,10 +197,11 @@ def run() -> dict[str, Any]:
     budget_raw = usage.get("budget_usd")
 
     if spent_raw is None:
-        # Vercel didn't expose the field. We capture raw payload for diagnostics.
+        raw = usage.get("raw_billing")
+        keys = sorted(raw.keys()) if isinstance(raw, dict) else type(raw).__name__
         logger.warning(
-            "vercel_billing_monitor: spent_usd unavailable; raw=%s",
-            usage.get("raw_billing"),
+            "vercel_billing_monitor: spent_usd unavailable; payload_keys=%s",
+            keys,
         )
         return {"ok": False, "reason": "no_spend_field"}
 
