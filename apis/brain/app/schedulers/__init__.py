@@ -81,6 +81,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
         slack_morning_digest.install(scheduler)
     except Exception:
         logger.exception("Failed to install slack_morning_digest job")
+    try:
+        from app.schedulers import log_pull
+
+        log_pull.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install log_pull_hourly job")
     return scheduler
 
 

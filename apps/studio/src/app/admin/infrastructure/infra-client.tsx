@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   RefreshCw,
   ExternalLink,
@@ -20,6 +21,14 @@ import type { PlatformHealthSummary } from "@/lib/infra-types";
 import QuotaGitHubActionsPanel from "./quota-github-actions-panel";
 import QuotaRenderPanel from "./quota-render-panel";
 import QuotaVercelPanel from "./quota-vercel-panel";
+import LogsTab from "./tabs/logs-tab";
+
+type InfraTab = "overview" | "logs";
+
+const TAB_LABELS: Record<InfraTab, string> = {
+  overview: "Overview",
+  logs: "Logs",
+};
 
 type InfraService = {
   service: string;
@@ -167,6 +176,22 @@ export default function InfraClient({
   initialPlatformPartial?: string[];
   initialCheckedAt: string;
 }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const activeTab: InfraTab =
+    searchParams.get("tab") === "logs" ? "logs" : "overview";
+
+  function setActiveTab(tab: InfraTab) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === "overview") {
+      params.delete("tab");
+    } else {
+      params.set("tab", tab);
+    }
+    router.push(`${pathname}?${params.toString()}`);
+  }
+
   const [services, setServices] = useState(initialServices);
   const [platformSummary, setPlatformSummary] = useState<PlatformHealthSummary | undefined>(
     initialPlatformSummary,
@@ -261,13 +286,40 @@ export default function InfraClient({
     <div className="space-y-6">
       <div>
         <h1 className="bg-gradient-to-r from-zinc-200 to-zinc-400 bg-clip-text text-2xl font-semibold tracking-tight text-transparent">
-          Infrastructure Health
+          Infrastructure
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Provider-native deploy state for every Render service + Vercel project, plus reachability
-          and integration checks. Q2 Tech Debt (Track I4).
+          Provider-native deploy state for every Render service + Vercel project, plus reachability,
+          integration checks, and application logs.
         </p>
       </div>
+
+      {/* Tab navigation — PR C will refactor into a shared tabbed shell */}
+      <nav
+        className="flex gap-1 border-b border-zinc-800"
+        aria-label="Infrastructure tabs"
+        role="tablist"
+      >
+        {(Object.keys(TAB_LABELS) as InfraTab[]).map((tab) => (
+          <button
+            key={tab}
+            role="tab"
+            aria-selected={activeTab === tab}
+            onClick={() => setActiveTab(tab)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              activeTab === tab
+                ? "border-zinc-100 text-zinc-100"
+                : "border-transparent text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            {TAB_LABELS[tab]}
+          </button>
+        ))}
+      </nav>
+
+      {activeTab === "logs" && <LogsTab />}
+
+      {activeTab === "overview" && <div className="space-y-6">
 
       <section
         className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4"
@@ -540,6 +592,7 @@ export default function InfraClient({
           );
         })}
       </motion.div>
+      </div>}
     </div>
   );
 }

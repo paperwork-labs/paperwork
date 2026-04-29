@@ -47,6 +47,10 @@ ignore = ["PTH"]
 "app/dependencies.py" = ["B008"]
 "app/api/secrets.py" = ["B008"]  # FastAPI Depends() in route defaults (same pattern as routers)
 "tests/**" = ["E501", "ARG001", "ARG002", "TC002", "TC003"]  # test mocks deserve long URL strings, unused mock-signature args, and runtime-typed sqlalchemy/datetime imports
+"app/schemas/app_log.py" = ["TC003"]  # Pydantic resolves datetime at model validation time
+"app/services/app_logs.py" = ["TC003"]  # collections.abc.Callable typing idiom matching pr_outcomes fences
+"app/routers/logs.py" = ["TC001"]  # FastAPI route params need schema imports at runtime
+"app/schedulers/log_pull.py" = ["TC001"]  # AppLog/Anomaly used at runtime in type annotations
 
 [tool.mypy]
 python_version = "3.13"

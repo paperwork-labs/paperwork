@@ -1,0 +1,6 @@
+{
+  "description": "Brain-owned application logs (WS-69). Capped at 5000 entries; oldest entries are dropped when the cap is reached.",
+  "last_pulled_at": {},
+  "logs": [],
+  "schema": "app_logs/v1"
+}
