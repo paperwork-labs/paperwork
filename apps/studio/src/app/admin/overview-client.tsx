@@ -24,6 +24,8 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
+import { BrainFreshnessTile } from "@/components/admin/BrainFreshnessTile";
+
 type N8nWorkflow = {
   id: string;
   name: string;
@@ -344,6 +346,8 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           {formatTimePT(fetchedAt)} PT
         </span>
       </motion.div>
+
+      <BrainFreshnessTile />
 
       {/* Daily Briefing Widget */}
       {lastBriefingExec && (

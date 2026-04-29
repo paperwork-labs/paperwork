@@ -25,8 +25,6 @@ from app.services.continuous_learning import (
     ingest_postmortems,
 )
 from app.services.github_actions_quota_monitor import latest_github_actions_quota_snapshots
-from app.services.kill_switch import is_brain_paused
-from app.services.kill_switch import reason as brain_pause_reason
 from app.services.pr_merge_sweep import merge_ready_prs
 from app.services.pr_review import review_pr, sweep_open_prs
 from app.services.procedural_memory import load_rules
@@ -35,6 +33,7 @@ from app.services.render_quota_monitor import (
     latest_render_quota_snapshot,
 )
 from app.services.seed import ingest_docs, ingest_sprint_lessons
+from app.services.system_health import system_health_snapshot
 from app.services.vercel_quota_monitor import latest_vercel_quota_snapshots
 
 logger = logging.getLogger(__name__)
@@ -213,14 +212,8 @@ async def n8n_mirror_scheduler_status(
 async def system_health_summary(
     _auth: None = Depends(_require_admin),
 ):
-    """Operator snapshot for Studio admin; extends over time (WS-45: pause flag)."""
-    paused = is_brain_paused()
-    return success_response(
-        {
-            "brain_paused": paused,
-            "brain_paused_reason": brain_pause_reason() if paused else None,
-        }
-    )
+    """Operator snapshot for Studio admin; WS-43 freshness + WS-45 pause flag."""
+    return success_response(system_health_snapshot())
 
 
 def _rfc3339_utc_z(dt: datetime) -> str:
