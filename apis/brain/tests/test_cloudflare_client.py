@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from app.services import cloudflare_client as cf
+from app.services import cloudflare_token_resolver as cf_resolver
 
 
 def _settings(
@@ -52,10 +53,8 @@ def test_bearer_read_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_cloudflare_auth_headers_write_ignores_readonly(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        cf,
-        "settings",
-        _settings(api="write-wide", ro_pp="ro-pp"),
-    )
+    fake_settings = _settings(api="write-wide", ro_pp="ro-pp")
+    monkeypatch.setattr(cf, "settings", fake_settings)
+    monkeypatch.setattr(cf_resolver, "settings", fake_settings)
     h = cf.cloudflare_auth_headers(hostname_or_apex="paperworklabs.com", write=True)
     assert h["Authorization"] == "Bearer write-wide"
