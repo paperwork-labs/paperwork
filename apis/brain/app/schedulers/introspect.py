@@ -70,6 +70,7 @@ def list_apscheduler_jobs() -> list[dict[str, Any]]:
         out.append(
             {
                 "id": job_id,
+                "name": getattr(job, "name", None) or job_id,
                 "next_run": next_str,
                 "trigger": trigger_str,
                 "enabled": True,

@@ -21,6 +21,7 @@ import {
   Activity,
   GitBranch,
   Kanban,
+  TrendingUp,
 } from "lucide-react";
 
 type NavItem = {
@@ -65,6 +66,7 @@ function buildNavGroups(
         { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
         { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
         { href: "/admin/brain/learning", label: "Brain learning", icon: Sparkles },
+        { href: "/admin/brain/self-improvement", label: "Self-improvement", icon: TrendingUp },
         { href: "/admin/secrets", label: "Secrets", icon: KeyRound },
         {
           href: "/admin/founder-actions",
