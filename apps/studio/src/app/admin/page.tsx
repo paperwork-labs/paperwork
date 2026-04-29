@@ -1,3 +1,4 @@
+import { OperatingScoreGauge } from "@/components/admin/OperatingScoreGauge";
 import {
   getBrainPRReviews,
   getInfrastructureStatus,
@@ -7,8 +8,8 @@ import {
   getRecentPullRequests,
   getRecentSlackActivity,
 } from "@/lib/command-center";
-import OverviewClient from "./overview-client";
 import { TrackersRail } from "./_components/trackers-rail";
+import OverviewClient from "./overview-client";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -43,6 +44,7 @@ export default async function AdminOverviewPage() {
   return (
     <div className="space-y-6">
       <TrackersRail />
+      <OperatingScoreGauge />
       <OverviewClient
         initial={{
           workflows,
