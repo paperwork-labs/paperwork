@@ -69,6 +69,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
         vercel_billing_monitor.install(scheduler)
     except Exception:
         logger.exception("Failed to install vercel_billing_monitor_hourly job")
+    try:
+        from app.schedulers import kg_validation
+
+        kg_validation.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install kg_self_validation_daily job")
     return scheduler
 
 

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-04-29T12:00:00Z",
+  "updated": "2026-04-29T14:00:00Z",
   "workstreams": [
     {
       "id": "WS-01-vercel-install-canon",
@@ -902,15 +902,15 @@
       "title": "Phase D \u2014 Knowledge-graph self-validation (24h cron, auto-reconcile)",
       "track": "Z",
       "priority": 49,
-      "status": "pending",
-      "percent_done": 0,
+      "status": "completed",
+      "percent_done": 100,
       "owner": "brain",
       "brief_tag": "track:kg-self-validation",
       "blockers": [],
       "last_pr": null,
-      "last_activity": "2026-04-28T23:33:17Z",
-      "last_dispatched_at": null,
-      "notes": "Brain checks: do workstreams reference real PRs? sprints reference real workstreams? runbooks reference real scripts? Drift = auto-reconcile PR.",
+      "last_activity": "2026-04-29T02:00:00Z",
+      "last_dispatched_at": "2026-04-29T01:45:00Z",
+      "notes": "6-rule KG validator: schema_validation, workstream_id_references, persona_owner_references, procedural_memory_freshness, dangling_dispatch_log, operating_score_pillar_consistency. Daily cron 06:00 UTC. GET+POST /admin/kg-validation endpoints. Procedural memory gate blocks self-merge promotion on high violations.",
       "estimated_pr_count": 1,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"

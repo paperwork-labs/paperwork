@@ -145,3 +145,11 @@ rules:
     learned_at: "2026-04-29T03:55:00Z"
     confidence: high
     applies_to: [brain-self-dispatch, orchestrator]
+
+  - id: kg_validation_runs_before_self_merge_promotion
+    when: "self_merge_promotion service evaluates whether to graduate a tier"
+    do: "block promotion if kg_validation has any high-severity violation in the last 24h; read apis/brain/data/kg_validation.json current.violations and filter by severity='high' and validated_at within last 24h; if any exist, log and return without promoting"
+    source: "WS-52 — KG self-validation ships daily cron; high violations indicate corrupted or drifted data files that could destabilize self-merge decisions"
+    learned_at: "2026-04-29T02:00:00Z"
+    confidence: medium
+    applies_to: [brain-self-dispatch]
