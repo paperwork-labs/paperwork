@@ -1207,7 +1207,7 @@
       "last_pr": null,
       "last_activity": "2026-04-29T12:00:00Z",
       "last_dispatched_at": null,
-      "notes": "10-pillar composite score (Autonomy, DORA, Stack modernity, Web perf+UX, A11y+DS, Code quality, Data architecture, Reliability+security, Knowledge capital, Persona coverage). Weekly cron computes from existing telemetry + per-pillar collectors. L4 acceptance = POS>=80 with no pillar<70; L5 = POS>=90 sustained 4 weeks. Founder dashboard reduces to one gauge.; pillars 2 (DORA) + 3 (stack-modernity) made measured=True after PR #390",
+      "notes": "10-pillar composite score (Autonomy, DORA, Stack modernity, Web perf+UX, A11y+DS, Code quality, Data architecture, Reliability+security, Knowledge capital, Persona coverage). Weekly cron computes from existing telemetry + per-pillar collectors. L4 acceptance = POS>=80 with no pillar<70; L5 = POS>=90 sustained 4 weeks. Founder dashboard reduces to one gauge.; pillars 2 (DORA) + 3 (stack-modernity) made measured=True after PR #390; Studio gauge tile + recompute button live in /admin/overview",
       "estimated_pr_count": 3,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"
