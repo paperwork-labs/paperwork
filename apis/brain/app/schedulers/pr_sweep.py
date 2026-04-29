@@ -124,6 +124,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         misfire_grace_time=60,
     )
 
+    try:
+        from app.schedulers import auto_revert
+
+        auto_revert.install(sched)
+    except Exception:
+        logger.exception("Failed to install auto_revert job")
+
     # Track C: proactive persona cadence runs on the same scheduler so we keep
     # a single lifecycle.
     try:

@@ -1,0 +1,5 @@
+{
+  "schema": "incidents/v1",
+  "description": "Operational incidents recorded by Brain automation. Pydantic spec: apis/brain/app/schemas/incidents.py. Each incident includes incident_id (uuid), opened_at (RFC3339Z), kind, pr_number_reverted, revert_pr_number, ci_failure_run_url, detected_at, closed_at, root_cause, and notes.",
+  "incidents": []
+}
