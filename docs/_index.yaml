@@ -507,6 +507,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: handoff-2026-04-29-l4-blitz-closeout
+    path: docs/strategy/HANDOFF_2026-04-29_L4_BLITZ_CLOSEOUT.md
+    title: Handoff — End of L4/L5 Blitz Chat → New Work
+    summary: "**Date**: 2026-04-29 **From**: orchestrator chat that ran the 48-hour Level 4 / Level 5 blitz + Vercel cost crisis + strategic shift to Brain-first / Studio-PWA / drop Slack-and-n8n **To**: (1)…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: infra
     path: docs/INFRA.md
     title: Infra Overview
@@ -647,6 +654,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: studio-ia-reorg-brief
+    path: docs/strategy/STUDIO_IA_REORG_BRIEF.md
+    title: WS-69 — Studio IA Reorg + Sprint/Plan Data Reconcile
+    summary: "**Status**: brief / not yet planned **Priority**: medium (founder-noticed UX rot, no $$ bleed) **Blocked by**: nothing **Related**: WS-67 (Brain coach), tracker-index spine (PR #144) **Authored**:…"
+    tags: []
+    owners: [strategy]
+    category: reference
   # ── Plans ─────────────────────────────────────────
   - slug: axiomfolio-gaps
     path: docs/axiomfolio/plans/GAPS_2026Q2.md
@@ -718,6 +732,13 @@ docs:
     summary: "4-week sprint — persona platform, n8n streamline, Studio command-center."
     tags: [sprint, infra, automation]
     owners: [engineering, agent-ops]
+    category: sprints
+  - slug: l4-autonomy-l5-seeds-2026q2
+    path: docs/sprints/L4_AUTONOMY_L5_SEEDS_2026Q2.md
+    title: Level 4 Autonomy + L5 Self-Improvement Blitz — 2026-04-28/29
+    summary: "**Sprint window**: 2026-04-28 18:00 PT → 2026-04-29 09:55 PT (~16 working hours, ~36 PRs) **Lead PR (closeout)**: [#412 (WS-57 batch A)](https://github.com/paperwork-labs/paperwork/pull/412)…"
+    tags: [company, sprint]
+    owners: [engineering]
     category: sprints
   - slug: sprint-automation-2026q3
     path: docs/sprints/SPRINT_AUTOMATION_2026Q3.md
