@@ -87,7 +87,14 @@ def start_scheduler() -> AsyncIOScheduler | None:
         audit_runner.install(scheduler)
     except Exception:
         logger.exception("Failed to install audit_runner jobs")
+    try:
+        from app.schedulers import log_pull
+
+        log_pull.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install app_log_pull_hourly job")
     return scheduler
 
 
 __all__ = ["get_scheduler", "shutdown_scheduler", "start_scheduler"]
+

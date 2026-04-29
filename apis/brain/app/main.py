@@ -24,6 +24,7 @@ from app.routers import (
     admin,
     admin_audits,
     admin_learning,
+    admin_logs,
     brain,
     conversations,
     expenses,
@@ -198,6 +199,7 @@ app.include_router(internal_secrets_router)
 app.include_router(workstreams.router, prefix="/api/v1")
 app.include_router(conversations.router, prefix="/api/v1")
 app.include_router(expenses.router, prefix="/api/v1")
+app.include_router(admin_logs.router, prefix="/api/v1")
 
 
 @app.get("/internal/schedulers", tags=["internal"])

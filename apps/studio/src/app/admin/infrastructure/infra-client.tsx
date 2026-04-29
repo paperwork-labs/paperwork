@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   RefreshCw,
   ExternalLink,
@@ -14,12 +15,14 @@ import {
   AlertTriangle,
   XCircle,
   Layers,
+  ScrollText,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import type { PlatformHealthSummary } from "@/lib/infra-types";
 import QuotaGitHubActionsPanel from "./quota-github-actions-panel";
 import QuotaRenderPanel from "./quota-render-panel";
 import QuotaVercelPanel from "./quota-vercel-panel";
+import LogsTab from "./_tabs/logs-tab";
 
 type InfraService = {
   service: string;
@@ -167,6 +170,16 @@ export default function InfraClient({
   initialPlatformPartial?: string[];
   initialCheckedAt: string;
 }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const activeTab = searchParams.get("tab") ?? "services";
+
+  const setTab = (tab: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", tab);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
+
   const [services, setServices] = useState(initialServices);
   const [platformSummary, setPlatformSummary] = useState<PlatformHealthSummary | undefined>(
     initialPlatformSummary,
@@ -269,6 +282,48 @@ export default function InfraClient({
         </p>
       </div>
 
+      {/* Tab bar */}
+      <div
+        className="flex gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 p-1"
+        role="tablist"
+        aria-label="Infrastructure view tabs"
+      >
+        <button
+          role="tab"
+          aria-selected={activeTab === "services"}
+          onClick={() => setTab("services")}
+          className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            activeTab === "services"
+              ? "bg-zinc-700 text-zinc-100"
+              : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+          }`}
+        >
+          <Layers className="h-3.5 w-3.5" />
+          Services
+        </button>
+        <button
+          role="tab"
+          aria-selected={activeTab === "logs"}
+          onClick={() => setTab("logs")}
+          className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+            activeTab === "logs"
+              ? "bg-zinc-700 text-zinc-100"
+              : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+          }`}
+        >
+          <ScrollText className="h-3.5 w-3.5" />
+          Logs
+        </button>
+      </div>
+
+      {activeTab === "logs" && (
+        <div role="tabpanel" aria-label="Application logs">
+          <LogsTab />
+        </div>
+      )}
+
+      {activeTab !== "logs" && (
+      <>
       <section
         className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4"
         data-testid="infra-health-summary"
@@ -485,6 +540,7 @@ export default function InfraClient({
                 </p>
               </div>
               <div className="grid gap-3 md:grid-cols-2">
+
                 {catServices.map((svc) => (
                   <div
                     key={svc.service}
@@ -540,6 +596,8 @@ export default function InfraClient({
           );
         })}
       </motion.div>
+      </>
+      )}
     </div>
   );
 }
