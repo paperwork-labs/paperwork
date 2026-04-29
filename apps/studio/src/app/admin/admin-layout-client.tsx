@@ -7,28 +7,27 @@ import {
   LayoutDashboard,
   Settings2,
   Shield,
-  KeyRound,
   Rocket,
-  Bot,
-  BarChart3,
-  BookOpen,
-  Workflow,
   Target,
   Boxes,
-  Timer,
-  ListChecks,
+  BookOpen,
   Sparkles,
-  Activity,
   GitBranch,
   Kanban,
+  Workflow,
+  Receipt,
+  Users,
+  MessageSquare,
 } from "lucide-react";
 
 type NavItem = {
   href: string;
   label: string;
   icon: typeof LayoutDashboard;
-  /** Sidebar badge: pending founder action count (only Founder actions item uses this) */
+  /** Pending founder-only items (Conversations nav — data from founder-actions sync until PR E) */
   pendingBadge?: { count: number; hasCritical: boolean } | null;
+  /** Static sidebar count; always rendered including 0 (PR N wires Expenses) */
+  staticPendingCount?: number;
 };
 
 type NavGroup = {
@@ -51,35 +50,80 @@ function buildNavGroups(
         { href: "/admin/products", label: "Products", icon: Boxes },
         { href: "/admin/sprints", label: "Sprints", icon: Rocket },
         { href: "/admin/workstreams", label: "Workstreams", icon: Kanban },
+        { href: "/admin/pr-pipeline", label: "PR pipeline", icon: GitBranch },
+        {
+          href: "/admin/expenses",
+          label: "Expenses",
+          icon: Receipt,
+          staticPendingCount: 0,
+        },
       ],
     },
     {
-      label: "System",
+      label: "Architecture",
       items: [
         { href: "/admin/architecture", label: "Architecture", icon: Workflow },
-        { href: "/admin/pr-pipeline", label: "PR pipeline", icon: GitBranch },
-        { href: "/admin/workflows", label: "Workflows", icon: Bot },
-        { href: "/admin/n8n-mirror", label: "n8n cron mirror", icon: Timer },
         { href: "/admin/docs", label: "Docs", icon: BookOpen },
-        { href: "/admin/automation", label: "Automation", icon: Activity },
-        { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
         { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
-        { href: "/admin/brain/learning", label: "Brain learning", icon: Sparkles },
-        { href: "/admin/secrets", label: "Secrets", icon: KeyRound },
+      ],
+    },
+    {
+      label: "Brain",
+      items: [
+        { href: "/admin/brain/personas", label: "Personas", icon: Users },
         {
-          href: "/admin/founder-actions",
-          label: "Founder actions",
-          icon: ListChecks,
+          href: "/admin/brain/conversations",
+          label: "Conversations",
+          icon: MessageSquare,
           pendingBadge: founderPending,
+        },
+        {
+          href: "/admin/brain/self-improvement",
+          label: "Self-improvement",
+          icon: Sparkles,
         },
       ],
     },
   ];
 }
 
+const FOOTER_VENDOR_LINKS: {
+  category: string;
+  links: { label: string; href: string }[];
+}[] = [
+  {
+    category: "Hosting",
+    links: [
+      { label: "Vercel", href: "https://vercel.com/paperwork-labs" },
+      { label: "Render", href: "https://dashboard.render.com" },
+      { label: "Cloudflare", href: "https://dash.cloudflare.com" },
+    ],
+  },
+  {
+    category: "Code",
+    links: [{ label: "GitHub", href: "https://github.com/paperwork-labs" }],
+  },
+  {
+    category: "AI cost",
+    links: [
+      { label: "Anthropic console", href: "https://console.anthropic.com" },
+      { label: "OpenAI usage", href: "https://platform.openai.com/usage" },
+    ],
+  },
+  {
+    category: "Comms",
+    links: [
+      {
+        label: "Slack #brain-status",
+        href: "https://app.slack.com/client",
+      },
+    ],
+  },
+];
+
 type Props = {
   children: React.ReactNode;
-  /** Null if founder-actions data failed to load */
+  /** Null only when caller could not derive counts (layout throws on bad JSON) */
   founderPending: { count: number; hasCritical: boolean } | null;
 };
 
@@ -95,7 +139,7 @@ export function AdminLayoutClient({ children, founderPending }: Props) {
             <p className="mb-5 bg-gradient-to-r from-zinc-300 to-zinc-500 bg-clip-text text-xs font-semibold uppercase tracking-widest text-transparent">
               Command Center
             </p>
-            <nav className="space-y-4">
+            <nav className="space-y-4" aria-label="Admin">
               {navGroups.map((group, groupIdx) => (
                 <div
                   key={group.label ?? `group-${groupIdx}`}
@@ -113,7 +157,8 @@ export function AdminLayoutClient({ children, founderPending }: Props) {
                         pathname.startsWith(item.href));
                     const Icon = item.icon;
                     const badge = item.pendingBadge;
-                    const showBadge = badge && badge.count > 0;
+                    const showPendingBadge = badge && badge.count > 0;
+                    const staticCount = item.staticPendingCount;
                     return (
                       <Link
                         key={item.href}
@@ -132,53 +177,60 @@ export function AdminLayoutClient({ children, founderPending }: Props) {
                           />
                           <span className="truncate">{item.label}</span>
                         </span>
-                        {showBadge ? (
-                          <span
-                            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${
-                              badge.hasCritical
-                                ? "bg-red-500/20 text-red-300"
-                                : "bg-amber-500/20 text-amber-200"
-                            }`}
-                            title="Pending founder-only items"
-                          >
-                            {badge.count} pending
-                          </span>
-                        ) : null}
+                        <span className="flex shrink-0 flex-col items-end gap-0.5">
+                          {showPendingBadge ? (
+                            <span
+                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${
+                                badge.hasCritical
+                                  ? "bg-red-500/20 text-red-300"
+                                  : "bg-amber-500/20 text-amber-200"
+                              }`}
+                              title="Pending founder-only items"
+                            >
+                              {badge.count} pending
+                            </span>
+                          ) : null}
+                          {staticCount !== undefined ? (
+                            <span
+                              className="rounded-full bg-zinc-800/90 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-zinc-500"
+                              title="Expense approvals — live count in PR N"
+                            >
+                              {staticCount} pending
+                            </span>
+                          ) : null}
+                        </span>
                       </Link>
                     );
                   })}
                 </div>
               ))}
             </nav>
-            <div className="mt-6 border-t border-zinc-800/60 pt-4">
-              <div className="space-y-1.5 text-xs">
-                <a
-                  href="https://n8n.paperworklabs.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 text-zinc-500 transition hover:text-zinc-300"
-                >
-                  <Settings2 className="h-3 w-3" />
-                  n8n editor
-                </a>
-                <a
-                  href="https://vercel.com/paperwork-labs"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 text-zinc-500 transition hover:text-zinc-300"
-                >
-                  <Settings2 className="h-3 w-3" />
-                  Vercel
-                </a>
-                <a
-                  href="https://dashboard.render.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 text-zinc-500 transition hover:text-zinc-300"
-                >
-                  <Settings2 className="h-3 w-3" />
-                  Render
-                </a>
+            <div
+              className="mt-6 border-t border-zinc-800/60 pt-4"
+              data-testid="admin-vendor-footer"
+            >
+              <div className="space-y-3 text-xs">
+                {FOOTER_VENDOR_LINKS.map((section) => (
+                  <div key={section.category} className="space-y-1">
+                    <p className="px-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+                      {section.category}
+                    </p>
+                    <div className="space-y-1">
+                      {section.links.map((link) => (
+                        <a
+                          key={link.href + link.label}
+                          href={link.href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-2 text-zinc-500 transition hover:text-zinc-300"
+                        >
+                          <Settings2 className="h-3 w-3 shrink-0" />
+                          {link.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
