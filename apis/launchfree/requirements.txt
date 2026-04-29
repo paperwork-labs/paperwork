@@ -11,3 +11,4 @@ alembic>=1.18.4
 # Dev / Test (normalized with STACK_AUDIT 2026-Q2)
 pytest>=9.0.3
 pytest-asyncio>=1.3.0
+ruff>=0.15.12
