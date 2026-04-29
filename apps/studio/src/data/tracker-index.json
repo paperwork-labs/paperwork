@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "64adc1a9411e",
+  "content_hash": "116e0d9ebba3",
   "products": [
     {
       "label": "AxiomFolio",
@@ -647,6 +647,31 @@
       "start": "2026-04-01",
       "status": "shipped",
       "title": "Infra & Automation Hardening \u2014 2026 Q2"
+    },
+    {
+      "blocker": null,
+      "domain": null,
+      "duration_weeks": null,
+      "effective_status": "in_progress",
+      "end": null,
+      "followups": [],
+      "goal": null,
+      "last_reviewed": null,
+      "lessons": [],
+      "outcome_bullets": [],
+      "owner": null,
+      "path": "docs/sprints/STUDIO_TRACKER_RECONCILE_2026Q2.md",
+      "personas": [],
+      "plans": [],
+      "pr": null,
+      "pr_url": null,
+      "raw_status": "in_progress",
+      "related_prs": [],
+      "ships": [],
+      "slug": "studio-tracker-reconcile-2026q2",
+      "start": null,
+      "status": "in_progress",
+      "title": "Studio tracker reconcile \u2014 WS-69 PR A (2026 Q2)"
     }
   ]
 }
