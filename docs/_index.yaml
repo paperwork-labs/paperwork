@@ -395,6 +395,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: brain-self-prioritization
+    path: docs/runbooks/brain-self-prioritization.md
+    title: Brain Self-Prioritization
+    summary: Brain self-prioritization is the Phase G2 loop that proposes workstreams before they become real tracker entries. It writes proposals to `apis/brain/data/workstream_candidates.json`; the founder…
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: canon
     path: docs/brand/CANON.md
     title: Brand canon
