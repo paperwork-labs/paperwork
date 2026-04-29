@@ -77,6 +77,10 @@ make logs        # Tail all logs
 make db          # Open psql shell
 ```
 
+## Tools
+
+- **`pwl`** (`tools/pwl`) is the Paperwork Labs CLI for monorepo health checks and new app scaffolding. Install with `uv pip install -e tools/pwl`, then run `pwl --help`.
+
 ### Without Docker
 
 ```bash
