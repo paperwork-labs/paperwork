@@ -114,9 +114,13 @@ describe("workstreams schema", () => {
     const parsed = WorkstreamsFileSchema.parse(workstreamsJson);
     const kpis = computeKpis(parsed);
     expect(kpis.total).toBe(parsed.workstreams.length);
-    expect(kpis.active + kpis.pending + kpis.blocked + kpis.completed + kpis.cancelled).toBe(
+    expect(kpis.active + kpis.blocked + kpis.completed + kpis.cancelled).toBe(
       kpis.total,
     );
+    const inFlightManual = parsed.workstreams.filter(
+      (w) => w.status === "pending" || w.status === "in_progress",
+    ).length;
+    expect(kpis.active).toBe(inFlightManual);
     expect(kpis.avg_percent_done).toBeGreaterThanOrEqual(0);
     expect(kpis.avg_percent_done).toBeLessThanOrEqual(100);
   });

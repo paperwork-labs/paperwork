@@ -16,6 +16,8 @@
 
 import { z } from "zod";
 
+import { computeWorkstreamsBoardKpis, isWorkstreamInFlight } from "../tracker-reconcile";
+
 export const WorkstreamStatusSchema = z.enum([
   "pending",
   "in_progress",
@@ -151,7 +153,7 @@ export function dispatchableWorkstreams(
 ): Workstream[] {
   return file.workstreams
     .filter((w) => w.owner === "brain")
-    .filter((w) => w.status === "pending" || w.status === "in_progress")
+    .filter((w) => isWorkstreamInFlight(w))
     .filter((w) => w.blockers.length === 0)
     .filter((w) => {
       if (!w.last_dispatched_at) return true;
@@ -166,8 +168,8 @@ export function dispatchableWorkstreams(
  */
 export interface WorkstreamKpis {
   total: number;
+  /** pending + in_progress after `normalizedWorkstreamStatusForKpi` (legacy `"active"` → in_progress). */
   active: number;
-  pending: number;
   blocked: number;
   completed: number;
   cancelled: number;
@@ -175,18 +177,5 @@ export interface WorkstreamKpis {
 }
 
 export function computeKpis(file: WorkstreamsFile): WorkstreamKpis {
-  const total = file.workstreams.length;
-  const active = file.workstreams.filter((w) => w.status === "in_progress").length;
-  const pending = file.workstreams.filter((w) => w.status === "pending").length;
-  const blocked = file.workstreams.filter((w) => w.status === "blocked").length;
-  const completed = file.workstreams.filter((w) => w.status === "completed").length;
-  const cancelled = file.workstreams.filter((w) => w.status === "cancelled").length;
-  const forAvg = file.workstreams.filter(
-    (w) => w.status === "pending" || w.status === "in_progress",
-  );
-  const avg_percent_done =
-    forAvg.length === 0
-      ? 0
-      : Math.round(forAvg.reduce((acc, w) => acc + w.percent_done, 0) / forAvg.length);
-  return { total, active, pending, blocked, completed, cancelled, avg_percent_done };
+  return computeWorkstreamsBoardKpis(file);
 }

@@ -1,9 +1,9 @@
 import workstreamsJson from "@/data/workstreams.json";
+import { computeWorkstreamsBoardKpis } from "@/lib/tracker-reconcile";
 import { headers } from "next/headers";
 import {
   WorkstreamsBoardBrainEnvelopeSchema,
   WorkstreamsFileSchema,
-  computeKpis,
 } from "@/lib/workstreams/schema";
 import { getStudioPublicOrigin } from "@/lib/studio-public-url";
 
@@ -90,7 +90,7 @@ export default async function AdminWorkstreamsPage() {
     bundledFallbackBanner = `Brain unreachable — showing bundled snapshot from ${bundledCommitLabel()}`;
   }
 
-  const kpis = computeKpis(parsedFile);
+  const kpis = computeWorkstreamsBoardKpis(parsedFile);
 
   return (
     <WorkstreamsBoardClient

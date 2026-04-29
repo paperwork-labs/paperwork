@@ -23,7 +23,8 @@ describe("WorkstreamsBoardClient", () => {
       /workstreams/i,
     );
     expect(screen.getByText("Total")).toBeTruthy();
-    expect(screen.getByText("Pending")).toBeTruthy();
+    expect(screen.getByText("Active workstreams")).toBeTruthy();
+    expect(screen.getByText("Cancelled")).toBeTruthy();
     expect(screen.getByText("Avg % done")).toBeTruthy();
     expect(
       screen.getByText(/Workstreams board \(Track Z\)/i),
