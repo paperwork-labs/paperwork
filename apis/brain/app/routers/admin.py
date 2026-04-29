@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.anomaly_detection as anomaly_detection_svc
 import app.services.app_registry as app_registry_svc
+import app.services.coach_preflight as coach_preflight_svc
 import app.services.kg_validation as kg_validation_svc
 import app.services.operating_score as operating_score_svc
 import app.services.pr_outcomes as pr_outcomes_service
@@ -29,6 +30,7 @@ from app.models.episode import Episode
 from app.models.scheduler_run import SchedulerRun
 from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
+from app.schemas.coach_preflight import CoachPreflightRequest, CoachPreflightResponse, CostPredict
 from app.services import decommissions as decommissions_svc
 from app.services import iac_drift
 from app.services.auto_revert import list_incidents
@@ -1227,3 +1229,32 @@ async def post_slack_routing_test(
             "decision": decision.model_dump(mode="json"),
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# WS-67.A — Coach preflight
+# ---------------------------------------------------------------------------
+
+
+@router.post("/coach/preflight", response_model=CoachPreflightResponse)
+async def post_coach_preflight(
+    body: CoachPreflightRequest,
+    _auth: None = Depends(_require_admin),
+) -> CoachPreflightResponse:
+    """WS-67.A — Brain coach preflight.
+
+    Surfaces relevant procedural rules, recent incidents, and cost predictions
+    for Opus before non-trivial dispatches/merges.  Always returns 200; uses
+    degraded mode on data errors so callers are never blocked by a 500.
+    """
+    try:
+        return coach_preflight_svc.run_preflight(body)
+    except Exception as exc:
+        logger.exception("coach/preflight service error")
+        return CoachPreflightResponse(
+            matched_rules=[],
+            recent_incidents=[],
+            predicted_cost=CostPredict(note=f"service error: {exc}"),
+            degraded=True,
+            degraded_reason=str(exc),
+        )
