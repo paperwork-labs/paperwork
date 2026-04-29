@@ -19,6 +19,7 @@ from typing import Any
 import httpx
 
 from app.config import settings
+from app.services.self_merge_gate import current_tier, pr_qualifies_for_self_merge
 from app.tools.github import _gh_client, _repo_parts
 
 logger = logging.getLogger(__name__)
@@ -147,6 +148,32 @@ async def merge_ready_prs(*, limit: int = 50) -> dict[str, Any]:
                             "reason": f"checks not green ({len(not_ready)} pending/failed)",
                         }
                     )
+                    continue
+
+                try:
+                    files_res = await client.get(
+                        f"/repos/{owner}/{repo}/pulls/{number}/files",
+                        params={"per_page": 100},
+                    )
+                    files_res.raise_for_status()
+                    pr_paths = [
+                        str(file.get("filename") or "").strip()
+                        for file in files_res.json()
+                        if isinstance(file, dict) and str(file.get("filename") or "").strip()
+                    ]
+                except httpx.HTTPError as e:
+                    errors.append({"number": number, "error": f"files: {e}"})
+                    continue
+
+                allowed, reason = pr_qualifies_for_self_merge(pr_paths)
+                if not allowed:
+                    tier = current_tier()
+                    logger.info(
+                        "self-merge gate: PR #%d has paths outside current tier (%s); skipping",
+                        number,
+                        tier,
+                    )
+                    skipped.append({"number": number, "reason": f"self-merge gate: {reason}"})
                     continue
 
                 try:
