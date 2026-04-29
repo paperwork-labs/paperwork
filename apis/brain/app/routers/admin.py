@@ -1060,6 +1060,10 @@ async def get_anomaly_alerts(
             "total": len(file.alerts),
             "open": len(open_alerts),
             "alerts": [a.model_dump(mode="json") for a in file.alerts],
+        }
+    )
+
+
 @router.get("/kg-validation")
 async def get_kg_validation(
     _auth: None = Depends(_require_admin),
@@ -1069,9 +1073,7 @@ async def get_kg_validation(
     return success_response(
         {
             "current": file.current.model_dump(mode="json") if file.current else None,
-            "history_last_10": [
-                h.model_dump(mode="json") for h in (file.history or [])[:10]
-            ],
+            "history_last_10": [h.model_dump(mode="json") for h in (file.history or [])[:10]],
             "passed": file.current.passed if file.current else None,
         }
     )
@@ -1090,6 +1092,11 @@ async def post_anomaly_alerts_recompute(
             anomaly_detection_svc.auto_resolve_alerts()
         except Exception:
             logger.exception("anomaly-alerts/recompute background task raised")
+
+    background_tasks.add_task(_run)
+    return success_response({"accepted": True})
+
+
 @router.post("/kg-validation/recompute")
 async def post_kg_validation_recompute(
     background_tasks: BackgroundTasks,
