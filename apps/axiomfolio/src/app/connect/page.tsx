@@ -24,7 +24,7 @@ import { useRouter } from "next/navigation";
 import { ChartGlassCard } from "@/components/ui/ChartGlassCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
-import { Page, PageHeader } from "@/components/ui/Page";
+import { Page, PageHeader } from "@paperwork-labs/ui";
 import { SegmentedPeriodSelector } from "@/components/ui/SegmentedPeriodSelector";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";

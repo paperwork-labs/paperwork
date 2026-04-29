@@ -21,7 +21,7 @@ import * as React from 'react';
 import axios from 'axios';
 import { Loader2, Play, Sparkles } from 'lucide-react';
 
-import { Page, PageHeader } from '@/components/ui/Page';
+import { Page, PageHeader } from '@paperwork-labs/ui';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';

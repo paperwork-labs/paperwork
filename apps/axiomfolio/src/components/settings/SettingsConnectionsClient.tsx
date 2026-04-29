@@ -29,7 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import AppCard from "@/components/ui/AppCard";
-import { PageContainer, PageHeader } from "@/components/ui/Page";
+import { PageContainer, PageHeader } from "@paperwork-labs/ui";
 import { cn } from "@/lib/utils";
 import { accountsApi, aggregatorApi, handleApiError } from "@/services/api";
 import api from "@/services/api";

@@ -34,7 +34,7 @@ import { Button } from "@/components/ui/button";
 import { TierCard } from "@/components/pricing/TierCard";
 import { ComparisonTable } from "@/components/pricing/ComparisonTable";
 import { PricingFAQ } from "@/components/pricing/PricingFAQ";
-import { PageContainer } from "@/components/ui/Page";
+import { PageContainer } from "@paperwork-labs/ui";
 import type { PricingCatalogResponse, PricingTier } from "@/types/pricing";
 
 // Contact-sales mailto target for Enterprise / other high-touch tiers.

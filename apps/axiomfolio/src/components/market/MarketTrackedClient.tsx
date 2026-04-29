@@ -25,7 +25,7 @@ import { formatDateTime, formatMoney } from '@/utils/format';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Page, PageHeader } from '@/components/ui/Page';
+import { Page, PageHeader } from '@paperwork-labs/ui';
 import Pagination from '@/components/ui/Pagination';
 import { cn } from '@/lib/utils';
 import { semanticTextColorClass } from '@/lib/semantic-text-color';

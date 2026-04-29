@@ -2,8 +2,8 @@
 
 import * as React from "react";
 
-import { Page, PageHeader } from "@/components/ui/Page";
-import { TabbedPageShell } from "@/components/layout/TabbedPageShell";
+import { Page, PageHeader } from "@paperwork-labs/ui";
+import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import SentimentBanner from "@/components/regime/SentimentBanner";
 import { SyncStatusStrip } from "@/components/portfolio/SyncStatusStrip";
 

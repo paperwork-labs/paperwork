@@ -12,7 +12,7 @@ import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { ChartGlassCard } from "@/components/ui/ChartGlassCard";
-import { Page, PageHeader } from "@/components/ui/Page";
+import { Page, PageHeader } from "@paperwork-labs/ui";
 
 import { BrokerLogo } from "@/components/connect/BrokerLogo";
 

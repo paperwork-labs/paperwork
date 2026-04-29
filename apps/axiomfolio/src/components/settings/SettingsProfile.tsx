@@ -3,7 +3,7 @@
 import React from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
-import { PageContainer, PageHeader } from "@/components/ui/Page";
+import { PageContainer, PageHeader } from "@paperwork-labs/ui";
 import { authApi, handleApiError } from "@/services/api";
 import { useBackendUser } from "@/hooks/use-backend-user";
 import { Button } from "@/components/ui/button";

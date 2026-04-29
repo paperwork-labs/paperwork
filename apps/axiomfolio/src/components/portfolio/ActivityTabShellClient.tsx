@@ -2,8 +2,8 @@
 
 import * as React from "react";
 
-import { Page, PageHeader } from "@/components/ui/Page";
-import { TabbedPageShell } from "@/components/layout/TabbedPageShell";
+import { Page, PageHeader } from "@paperwork-labs/ui";
+import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 
 const OrdersTab = React.lazy(() => import("@/components/portfolio/PortfolioOrdersClient"));
 const TransactionsTab = React.lazy(() => import("@/components/portfolio/PortfolioTransactionsClient"));

@@ -1,12 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import ErrorBoundary from "@/components/ErrorBoundary";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
+import { Skeleton } from "./skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 
 const ActiveTabContext = React.createContext<string | null>(null);
 
@@ -25,20 +23,51 @@ export function useActiveTab<T extends string>(): T {
 export type TabbedShellTabDef<T extends string> = {
   id: T;
   label: string;
-  /** Lazy tab body — wrapped in Suspense + ErrorBoundary by the shell. */
+  /** Lazy tab body — wrapped in Suspense + error boundary by the shell. */
   Content: React.LazyExoticComponent<React.ComponentType>;
 };
 
 export type TabbedPageShellProps<T extends string> = {
   tabs: readonly TabbedShellTabDef<T>[];
   defaultTab: T;
-  /** URL query key for the active tab (default: tab). */
-  paramKey?: string;
+  /** Currently active tab id. Host app reads it from URL/router state and passes here. */
+  activeTab: T;
+  /** Host app updates URL/router state when the user clicks a tab. */
+  onTabChange: (tab: T) => void;
   className?: string;
   tabsListClassName?: string;
   /** Optional controls rendered beside the tab list (filters, actions). */
   endAdornment?: React.ReactNode;
 };
+
+type TabPanelErrorBoundaryProps = {
+  children: React.ReactNode;
+  fallback: React.ReactNode;
+};
+
+type TabPanelErrorBoundaryState = { hasError: boolean };
+
+class TabPanelErrorBoundary extends React.Component<
+  TabPanelErrorBoundaryProps,
+  TabPanelErrorBoundaryState
+> {
+  state: TabPanelErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): TabPanelErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch() {
+    // Surface via fallback UI; callers may attach logging in a future revision.
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 function TabPanelSkeleton() {
   return (
@@ -57,67 +86,40 @@ function TabPanelSkeleton() {
 export function TabbedPageShell<T extends string>({
   tabs,
   defaultTab,
-  paramKey = "tab",
+  activeTab,
+  onTabChange,
   className,
   tabsListClassName,
   endAdornment,
 }: TabbedPageShellProps<T>) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const allowed = React.useMemo(() => new Set(tabs.map((t) => t.id)), [tabs]);
-
-  const replaceSearchParams = React.useCallback(
-    (updater: (prev: URLSearchParams) => URLSearchParams) => {
-      const prev = new URLSearchParams(searchParams.toString());
-      const next = updater(prev);
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname);
-    },
-    [pathname, router, searchParams],
-  );
-
-  const raw = searchParams.get(paramKey) ?? "";
-  const resolved: T = (allowed.has(raw as T) ? raw : defaultTab) as T;
-
-  React.useEffect(() => {
-    if (allowed.has(raw as T)) return;
-    if (raw !== "") {
-      replaceSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set(paramKey, defaultTab);
-        return next;
-      });
-    }
-  }, [allowed, defaultTab, paramKey, raw, replaceSearchParams]);
+  const resolved: T = (allowed.has(activeTab) ? activeTab : defaultTab) as T;
 
   const setTab = React.useCallback(
     (next: string) => {
       if (!allowed.has(next as T)) return;
-      replaceSearchParams((prev) => {
-        const p = new URLSearchParams(prev);
-        p.set(paramKey, next);
-        return p;
-      });
+      onTabChange(next as T);
     },
-    [allowed, paramKey, replaceSearchParams],
+    [allowed, onTabChange],
   );
 
-  React.useEffect(() => {
-    if (raw !== "") return;
-    replaceSearchParams((prev) => {
-      const p = new URLSearchParams(prev);
-      const cur = p.get(paramKey);
-      if (cur == null || cur === "") p.set(paramKey, defaultTab);
-      return p;
-    });
-  }, [defaultTab, paramKey, raw, replaceSearchParams]);
+  const tabErrorFallback = (
+    <div
+      className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground"
+      role="alert"
+    >
+      This tab failed to render. Try another tab or reload the page.
+    </div>
+  );
 
   return (
     <ActiveTabContext.Provider value={resolved}>
       <Tabs value={resolved} onValueChange={setTab} className={cn("w-full", className)}>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <TabsList variant="line" className={cn("h-auto w-full flex-wrap justify-start p-1 sm:w-auto", tabsListClassName)}>
+          <TabsList
+            variant="line"
+            className={cn("h-auto w-full flex-wrap justify-start p-1 sm:w-auto", tabsListClassName)}
+          >
             {tabs.map((t) => (
               <TabsTrigger key={t.id} value={t.id} className="gap-1.5">
                 {t.label}
@@ -128,17 +130,11 @@ export function TabbedPageShell<T extends string>({
         </div>
         {tabs.map((t) => (
           <TabsContent key={t.id} value={t.id} className="mt-0 outline-none">
-            <ErrorBoundary
-              fallback={
-                <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground" role="alert">
-                  This tab failed to render. Try another tab or reload the page.
-                </div>
-              }
-            >
+            <TabPanelErrorBoundary fallback={tabErrorFallback}>
               <React.Suspense fallback={<TabPanelSkeleton />}>
                 <t.Content />
               </React.Suspense>
-            </ErrorBoundary>
+            </TabPanelErrorBoundary>
           </TabsContent>
         ))}
       </Tabs>

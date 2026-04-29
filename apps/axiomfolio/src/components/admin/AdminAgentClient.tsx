@@ -17,7 +17,7 @@ import {
 import { AUTONOMY_LEVELS } from "@/components/agent/types"
 import { useChatContext } from "@/components/chat/ChatProvider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@paperwork-labs/ui"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"

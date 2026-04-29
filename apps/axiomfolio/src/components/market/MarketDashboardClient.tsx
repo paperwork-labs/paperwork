@@ -20,7 +20,7 @@ import { isPlatformAdminRole } from '@/utils/userRole';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Page } from '@/components/ui/Page';
+import { Page } from '@paperwork-labs/ui';
 import { cn } from '@/lib/utils';
 import { heatTextClass, semanticTextColorClass } from '@/lib/semantic-text-color';
 import { marketDataApi } from '@/services/api';

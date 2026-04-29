@@ -10,7 +10,7 @@ import SortableTable, { type Column, type FilterGroup } from '@/components/Sorta
 import FinvizHeatMap, { type FinvizData } from '@/components/charts/FinvizHeatMap';
 import { TableSkeleton } from '@/components/shared/Skeleton';
 import { useAccountFilter } from '@/hooks/useAccountFilter';
-import PageHeader from '@/components/ui/PageHeader';
+import { PageHeader } from "@paperwork-labs/ui";
 import StageBadge from '@/components/shared/StageBadge';
 import PnlText from '@/components/shared/PnlText';
 import { usePositions, usePortfolioSync, usePortfolioAccounts } from '@/hooks/usePortfolio';

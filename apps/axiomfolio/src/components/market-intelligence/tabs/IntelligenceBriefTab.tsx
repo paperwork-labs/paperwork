@@ -30,7 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useActiveTab } from '@/components/layout/TabbedPageShell';
+import { useActiveTab } from '@/components/layout/TabbedPageShellNext';
 import { heatTextClass, semanticTextColorClass } from '@/lib/semantic-text-color';
 
 /* ─── Constants ─── */

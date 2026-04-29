@@ -26,7 +26,7 @@ import { HomeHeroGated } from "@/components/home/HomeHero";
 import { NerveCenter } from "@/components/home/NerveCenter";
 import { QuietFooter } from "@/components/home/QuietFooter";
 import { YourBook } from "@/components/home/YourBook";
-import { Page } from "@/components/ui/Page";
+import { Page } from "@paperwork-labs/ui";
 import { portfolioApi } from "@/services/api";
 
 interface SectionHeadingProps {
