@@ -140,8 +140,7 @@ before touching complex routes.
    pointing at `VITE_API_BASE_URL` → `NEXT_PUBLIC_API_BASE_URL`.
 3. `apps/axiomfolio/src/app/layout.tsx`: root layout + Providers (Query
    client, Auth, ColorMode, PortfolioAccount).
-4. `apps/axiomfolio/src/app/login/page.tsx`: port `pages/Login.tsx` as-is
-   with `"use client"`.
+4. Port `pages/Login.tsx` to a new App Router client page under `src/app/` (route path TBD for `/login`) with `"use client"`.
 5. **Next.js middleware** (file not created yet in this snapshot): read `qm_token` cookie, redirect
    unauthenticated users away from anything not under `/{login,register,
    auth,invite,share,pricing,why-free}`.
