@@ -1030,7 +1030,7 @@
       "last_pr": 388,
       "last_activity": "2026-04-28T23:33:17Z",
       "last_dispatched_at": null,
-      "notes": "PR #388 landed the CLI shell, doctor, list-apps, and new-app command surface. WS-59 now owns the working API scaffold implementation.",
+      "notes": "PR #388 landed the CLI shell, doctor, list-apps, and new-app command surface. WS-59 completed the working API scaffold implementation.",
       "estimated_pr_count": 4,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"
@@ -1040,28 +1040,28 @@
       "title": "Phase F \u2014 Template authoring kit (how to add a new pwl template)",
       "track": "Z",
       "priority": 56,
-      "status": "in_progress",
-      "percent_done": 80,
+      "status": "completed",
+      "percent_done": 100,
       "owner": "brain",
       "brief_tag": "track:template-authoring-kit",
       "blockers": [
         "WS-58 pwl CLI"
       ],
-      "last_pr": null,
+      "last_pr": 392,
       "last_activity": "2026-04-28T23:33:17Z",
       "last_dispatched_at": null,
-      "notes": "API template + tests are implemented for pwl new-app --type api. Web template and existing-app onboarding remain in WS-60.",
+      "notes": "PR #392 landed the API template authoring kit and working pwl new-app --type api scaffold. Existing-app onboarding is WS-60.",
       "estimated_pr_count": 1,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"
     },
     {
-      "id": "WS-60-onboard-existing-apps-to-templates",
+      "id": "WS-60-pwl-onboard-existing-apps",
       "title": "Phase F \u2014 Onboard existing apps to platform templates",
       "track": "Z",
       "priority": 57,
-      "status": "pending",
-      "percent_done": 0,
+      "status": "in_progress",
+      "percent_done": 80,
       "owner": "brain",
       "brief_tag": "track:onboard-existing-apps",
       "blockers": [
@@ -1071,7 +1071,7 @@
       "last_pr": null,
       "last_activity": "2026-04-28T23:33:17Z",
       "last_dispatched_at": null,
-      "notes": "Convert apps to template-derived so future template upgrades cascade via reconcile PRs. 1 app onboarded in 48h blitz; remaining 4 become Brain Phase H work via long_tail.json.",
+      "notes": "PR <num>: pwl onboard + registry-build + Brain reader. Phase F complete pending founder green-light.",
       "estimated_pr_count": 5,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"

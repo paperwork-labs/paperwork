@@ -9,6 +9,8 @@ import json
 import os
 from pathlib import Path
 
+from app.services import app_registry
+
 
 def _brain_data_dir() -> Path:
     here = Path(__file__).resolve()
@@ -23,7 +25,20 @@ def _pr_outcomes_path() -> Path:
     return _brain_data_dir() / "pr_outcomes.json"
 
 
+def _registry_conformance_component() -> tuple[float, bool, str]:
+    try:
+        registry = app_registry.load_registry()
+    except FileNotFoundError:
+        return (0.0, False, "app registry missing — no autonomy penalty")
+
+    scores = [entry.conformance.score for entry in registry.apps]
+    avg = sum(scores) / len(scores) if scores else 0.0
+    points = 10.0 if avg > 0.8 else 0.0
+    return (points, True, f"registry conformance avg={avg:.2f}; bonus={points:.0f}")
+
+
 def collect() -> tuple[float, bool, str]:
+    registry_points, registry_measured, registry_note = _registry_conformance_component()
     path = _pr_outcomes_path()
     outcomes: list[object] = []
     if path.is_file():
@@ -35,7 +50,11 @@ def collect() -> tuple[float, bool, str]:
             outcomes = []
 
     if len(outcomes) < 10:
-        return (20.0, False, "bootstrap estimate — corpus building")
+        return (
+            min(100.0, 20.0 + registry_points),
+            registry_measured,
+            f"bootstrap estimate — corpus building; {registry_note}",
+        )
 
     brain_merges = 0
     for row in outcomes:
@@ -46,10 +65,10 @@ def collect() -> tuple[float, bool, str]:
             brain_merges += 1
 
     ratio = brain_merges / max(len(outcomes), 1)
-    score = min(100.0, ratio * 100.0)
+    score = min(100.0, ratio * 100.0 + registry_points)
     return (
         score,
         True,
         f"Measured self-merge ratio from pr_outcomes (brain-* / total merges): "
-        f"{brain_merges}/{len(outcomes)}",
+        f"{brain_merges}/{len(outcomes)}; {registry_note}",
     )

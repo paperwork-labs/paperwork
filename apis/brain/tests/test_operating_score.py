@@ -128,6 +128,7 @@ def test_autonomy_under_ten_is_bootstrap(
     po = tmp_path / "po.json"
     po.write_text('{"schema":"pr_outcomes/v1","description":"x","outcomes":[]}')
     monkeypatch.setenv("BRAIN_PR_OUTCOMES_JSON", str(po))
+    monkeypatch.setenv("BRAIN_APP_REGISTRY_JSON", str(tmp_path / "no-registry.json"))
     s, ok, notes = autonomy.collect()
     assert s == 20.0 and ok is False
     assert "corpus building" in notes.lower()

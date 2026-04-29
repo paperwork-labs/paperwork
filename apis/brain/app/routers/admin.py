@@ -2,8 +2,10 @@ import asyncio
 import hmac
 import logging
 import os
+import subprocess
 from datetime import UTC, datetime, timedelta
 from datetime import date as date_type
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
@@ -12,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.services.app_registry as app_registry_svc
 import app.services.operating_score as operating_score_svc
 import app.services.pr_outcomes as pr_outcomes_service
 import app.services.self_merge_gate as self_merge_gate
@@ -68,6 +71,18 @@ def _repo_root() -> str:
         "REPO_ROOT",
         os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))),
     )
+
+
+def _monorepo_root() -> Path:
+    env = os.environ.get("REPO_ROOT", "").strip()
+    if env:
+        return Path(env)
+    current = Path(__file__).resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / ".cursor" / "rules").is_dir() and (candidate / "apis" / "brain").is_dir():
+            return candidate
+    msg = "Paperwork monorepo root not found"
+    raise RuntimeError(msg)
 
 
 @router.post("/seed")
@@ -220,6 +235,59 @@ async def system_health_summary(
 ):
     """Operator snapshot for Studio admin; WS-43 freshness + WS-45 pause flag."""
     return success_response(system_health_snapshot())
+
+
+@router.get("/app-registry")
+async def get_app_registry(
+    _auth: None = Depends(_require_admin),
+):
+    """Return Brain's source-of-truth monorepo app registry summary."""
+    registry = app_registry_svc.load_registry()
+    summary = app_registry_svc.conformance_summary()
+    return success_response(
+        {
+            "generated_at": registry.generated_at,
+            "total": summary["total"],
+            "by_type": summary["by_type"],
+            "conformance_summary": summary,
+            "apps_low_conformance": summary["low_conformance"],
+        }
+    )
+
+
+@router.post("/app-registry/regenerate")
+async def regenerate_app_registry(
+    _auth: None = Depends(_require_admin),
+):
+    """Regenerate app_registry.json with pwl and return the fresh summary."""
+    root = _monorepo_root()
+    try:
+        result = subprocess.run(
+            ["pwl", "registry-build"],
+            cwd=root,
+            capture_output=True,
+            check=False,
+            text=True,
+        )
+    except OSError as exc:
+        detail = f"pwl registry-build failed to start: {exc}"
+        raise HTTPException(status_code=500, detail=detail) from exc
+
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or "pwl registry-build failed"
+        raise HTTPException(status_code=500, detail=detail)
+
+    registry = app_registry_svc.load_registry()
+    summary = app_registry_svc.conformance_summary()
+    return success_response(
+        {
+            "generated_at": registry.generated_at,
+            "total": summary["total"],
+            "by_type": summary["by_type"],
+            "conformance_summary": summary,
+            "apps_low_conformance": summary["low_conformance"],
+        }
+    )
 
 
 @router.get("/drift-status")

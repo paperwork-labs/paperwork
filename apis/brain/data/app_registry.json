@@ -1,0 +1,658 @@
+{
+  "apps": [
+    {
+      "conformance": {
+        "missing_markers": [
+          "[tool.pytest.ini_options]",
+          ".python-version"
+        ],
+        "score": 0.7143
+      },
+      "depends_on_services": [
+        "postgres",
+        "redis"
+      ],
+      "deploy_target": "render",
+      "formatter": "ruff format",
+      "framework": "FastAPI",
+      "language": "python",
+      "language_version": "unknown",
+      "last_modified": "2026-04-28T22:15:39Z",
+      "linter": "ruff",
+      "name": "axiomfolio",
+      "owner_persona": "systematic-trader",
+      "package_manager": "uv",
+      "path": "apis/axiomfolio",
+      "service_name": "axiomfolio-api",
+      "size_signals": {
+        "lines_of_code_approx": 189281,
+        "py_files": 882,
+        "ts_files": 0
+      },
+      "test_runner": "pytest",
+      "type": "python-api"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          ".python-version"
+        ],
+        "score": 0.875
+      },
+      "depends_on_services": [
+        "anthropic",
+        "openai",
+        "postgres",
+        "redis"
+      ],
+      "deploy_target": "render",
+      "formatter": "ruff format",
+      "framework": "FastAPI",
+      "language": "python",
+      "language_version": "unknown",
+      "last_modified": "2026-04-28T18:21:57Z",
+      "linter": "ruff",
+      "name": "brain",
+      "owner_persona": "ops-engineer",
+      "package_manager": "uv",
+      "path": "apis/brain",
+      "service_name": "brain-api",
+      "size_signals": {
+        "lines_of_code_approx": 38887,
+        "py_files": 267,
+        "ts_files": 0
+      },
+      "test_runner": "pytest",
+      "type": "python-api"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "[tool.pytest.ini_options]",
+          ".python-version",
+          "README.md"
+        ],
+        "score": 0.5714
+      },
+      "depends_on_services": [
+        "openai",
+        "postgres",
+        "redis"
+      ],
+      "deploy_target": "render",
+      "formatter": "ruff format",
+      "framework": "FastAPI",
+      "language": "python",
+      "language_version": "unknown",
+      "last_modified": "2026-04-27T02:45:41Z",
+      "linter": "ruff",
+      "name": "filefree",
+      "owner_persona": "tax-domain",
+      "package_manager": "uv",
+      "path": "apis/filefree",
+      "service_name": "filefree-api",
+      "size_signals": {
+        "lines_of_code_approx": 4205,
+        "py_files": 64,
+        "ts_files": 0
+      },
+      "test_runner": "pytest",
+      "type": "python-api"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "[tool.pytest.ini_options]",
+          ".python-version",
+          "tests/",
+          "README.md"
+        ],
+        "score": 0.4286
+      },
+      "depends_on_services": [],
+      "deploy_target": "unknown",
+      "formatter": "ruff format",
+      "framework": "FastAPI",
+      "language": "python",
+      "language_version": ">=3.11",
+      "last_modified": "2026-04-27T09:24:06Z",
+      "linter": "ruff",
+      "name": "launchfree",
+      "owner_persona": "ops-engineer",
+      "package_manager": "uv",
+      "path": "apis/launchfree",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 929,
+        "py_files": 17,
+        "ts_files": 0
+      },
+      "test_runner": "unknown",
+      "type": "python-api"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "tests/",
+          "README.md"
+        ],
+        "score": 0.3333
+      },
+      "depends_on_services": [
+        "vercel"
+      ],
+      "deploy_target": "vercel",
+      "formatter": "unknown",
+      "framework": "Next.js",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-28T09:48:16Z",
+      "linter": "unknown",
+      "name": "accounts",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "apps/accounts",
+      "service_name": "accounts",
+      "size_signals": {
+        "lines_of_code_approx": 248,
+        "py_files": 0,
+        "ts_files": 11
+      },
+      "test_runner": "unknown",
+      "type": "next-app"
+    },
+    {
+      "conformance": {
+        "missing_markers": [],
+        "score": 1.0
+      },
+      "depends_on_services": [
+        "vercel"
+      ],
+      "deploy_target": "vercel",
+      "formatter": "unknown",
+      "framework": "Next.js",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-28T09:50:07Z",
+      "linter": "unknown",
+      "name": "axiomfolio",
+      "owner_persona": "systematic-trader",
+      "package_manager": "pnpm",
+      "path": "apps/axiomfolio",
+      "service_name": "axiomfolio",
+      "size_signals": {
+        "lines_of_code_approx": 70628,
+        "py_files": 0,
+        "ts_files": 423
+      },
+      "test_runner": "unknown",
+      "type": "next-app"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "tests/"
+        ],
+        "score": 0.6667
+      },
+      "depends_on_services": [],
+      "deploy_target": "vercel",
+      "formatter": "unknown",
+      "framework": "Node",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-28T13:27:13Z",
+      "linter": "unknown",
+      "name": "design",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "apps/design",
+      "service_name": "design",
+      "size_signals": {
+        "lines_of_code_approx": 790,
+        "py_files": 0,
+        "ts_files": 12
+      },
+      "test_runner": "unknown",
+      "type": "package"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "tests/"
+        ],
+        "score": 0.6667
+      },
+      "depends_on_services": [
+        "vercel"
+      ],
+      "deploy_target": "vercel",
+      "formatter": "unknown",
+      "framework": "Next.js",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-28T00:37:47Z",
+      "linter": "unknown",
+      "name": "distill",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "apps/distill",
+      "service_name": "distill",
+      "size_signals": {
+        "lines_of_code_approx": 317,
+        "py_files": 0,
+        "ts_files": 12
+      },
+      "test_runner": "unknown",
+      "type": "next-app"
+    },
+    {
+      "conformance": {
+        "missing_markers": [],
+        "score": 1.0
+      },
+      "depends_on_services": [
+        "vercel"
+      ],
+      "deploy_target": "vercel",
+      "formatter": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+      "framework": "Next.js",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-28T12:06:35Z",
+      "linter": "unknown",
+      "name": "filefree",
+      "owner_persona": "tax-domain",
+      "package_manager": "pnpm",
+      "path": "apps/filefree",
+      "service_name": "filefree",
+      "size_signals": {
+        "lines_of_code_approx": 9762,
+        "py_files": 0,
+        "ts_files": 98
+      },
+      "test_runner": "vitest",
+      "type": "next-app"
+    },
+    {
+      "conformance": {
+        "missing_markers": [],
+        "score": 1.0
+      },
+      "depends_on_services": [
+        "vercel"
+      ],
+      "deploy_target": "vercel",
+      "formatter": "unknown",
+      "framework": "Next.js",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-28T00:37:47Z",
+      "linter": "unknown",
+      "name": "launchfree",
+      "owner_persona": "ops-engineer",
+      "package_manager": "pnpm",
+      "path": "apps/launchfree",
+      "service_name": "launchfree",
+      "size_signals": {
+        "lines_of_code_approx": 7322,
+        "py_files": 0,
+        "ts_files": 53
+      },
+      "test_runner": "vitest",
+      "type": "next-app"
+    },
+    {
+      "conformance": {
+        "missing_markers": [],
+        "score": 1.0
+      },
+      "depends_on_services": [
+        "vercel"
+      ],
+      "deploy_target": "vercel",
+      "formatter": "unknown",
+      "framework": "Next.js",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-28T18:22:03Z",
+      "linter": "unknown",
+      "name": "studio",
+      "owner_persona": "ops-engineer",
+      "package_manager": "pnpm",
+      "path": "apps/studio",
+      "service_name": "studio",
+      "size_signals": {
+        "lines_of_code_approx": 16213,
+        "py_files": 0,
+        "ts_files": 129
+      },
+      "test_runner": "vitest",
+      "type": "next-app"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "tests/",
+          "README.md"
+        ],
+        "score": 0.3333
+      },
+      "depends_on_services": [
+        "vercel"
+      ],
+      "deploy_target": "vercel",
+      "formatter": "unknown",
+      "framework": "Next.js",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-28T00:37:47Z",
+      "linter": "unknown",
+      "name": "trinkets",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "apps/trinkets",
+      "service_name": "trinkets",
+      "size_signals": {
+        "lines_of_code_approx": 307,
+        "py_files": 0,
+        "ts_files": 11
+      },
+      "test_runner": "unknown",
+      "type": "next-app"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "tests/",
+          "README.md"
+        ],
+        "score": 0.3333
+      },
+      "depends_on_services": [
+        "vercel"
+      ],
+      "deploy_target": "unknown",
+      "formatter": "unknown",
+      "framework": "Next.js",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-26T11:39:29Z",
+      "linter": "unknown",
+      "name": "analytics",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "packages/analytics",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 166,
+        "py_files": 0,
+        "ts_files": 4
+      },
+      "test_runner": "unknown",
+      "type": "package"
+    },
+    {
+      "conformance": {
+        "missing_markers": [],
+        "score": 1.0
+      },
+      "depends_on_services": [
+        "vercel"
+      ],
+      "deploy_target": "unknown",
+      "formatter": "unknown",
+      "framework": "Next.js",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-28T01:14:04Z",
+      "linter": "unknown",
+      "name": "auth-clerk",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "packages/auth-clerk",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 1762,
+        "py_files": 3,
+        "ts_files": 22
+      },
+      "test_runner": "vitest",
+      "type": "package"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "README.md"
+        ],
+        "score": 0.6667
+      },
+      "depends_on_services": [],
+      "deploy_target": "unknown",
+      "formatter": "unknown",
+      "framework": "Node",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-27T09:23:46Z",
+      "linter": "unknown",
+      "name": "data",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "packages/data",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 3168,
+        "py_files": 0,
+        "ts_files": 25
+      },
+      "test_runner": "vitest",
+      "type": "package"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "tests/",
+          "README.md"
+        ],
+        "score": 0.3333
+      },
+      "depends_on_services": [],
+      "deploy_target": "unknown",
+      "formatter": "unknown",
+      "framework": "Node",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-03-21T15:32:17Z",
+      "linter": "unknown",
+      "name": "document-processing",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "packages/document-processing",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 10,
+        "py_files": 0,
+        "ts_files": 1
+      },
+      "test_runner": "unknown",
+      "type": "package"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "README.md"
+        ],
+        "score": 0.6667
+      },
+      "depends_on_services": [],
+      "deploy_target": "unknown",
+      "formatter": "unknown",
+      "framework": "Node",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-27T09:23:46Z",
+      "linter": "unknown",
+      "name": "filing-engine",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "packages/filing-engine",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 2631,
+        "py_files": 0,
+        "ts_files": 27
+      },
+      "test_runner": "vitest",
+      "type": "package"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "tests/",
+          "README.md"
+        ],
+        "score": 0.3333
+      },
+      "depends_on_services": [],
+      "deploy_target": "unknown",
+      "formatter": "unknown",
+      "framework": "Node",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-24T21:59:42Z",
+      "linter": "unknown",
+      "name": "pwa",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "packages/pwa",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 487,
+        "py_files": 0,
+        "ts_files": 5
+      },
+      "test_runner": "unknown",
+      "type": "package"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "tests/",
+          "README.md"
+        ],
+        "score": 0.3333
+      },
+      "depends_on_services": [],
+      "deploy_target": "unknown",
+      "formatter": "unknown",
+      "framework": "Node",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-03-21T15:32:17Z",
+      "linter": "unknown",
+      "name": "tax-engine",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "packages/tax-engine",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 10,
+        "py_files": 0,
+        "ts_files": 1
+      },
+      "test_runner": "unknown",
+      "type": "package"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "tests/"
+        ],
+        "score": 0.6667
+      },
+      "depends_on_services": [],
+      "deploy_target": "unknown",
+      "formatter": "unknown",
+      "framework": "Node",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-28T01:14:04Z",
+      "linter": "eslint",
+      "name": "ui",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "packages/ui",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 1649,
+        "py_files": 0,
+        "ts_files": 27
+      },
+      "test_runner": "unknown",
+      "type": "package"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          "tests/",
+          "README.md"
+        ],
+        "score": 0.3333
+      },
+      "depends_on_services": [],
+      "deploy_target": "unknown",
+      "formatter": "unknown",
+      "framework": "Node",
+      "language": "typescript",
+      "language_version": "20",
+      "last_modified": "2026-04-26T09:30:20Z",
+      "linter": "unknown",
+      "name": "vault",
+      "owner_persona": "unassigned",
+      "package_manager": "pnpm",
+      "path": "packages/vault",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 205,
+        "py_files": 0,
+        "ts_files": 3
+      },
+      "test_runner": "unknown",
+      "type": "package"
+    },
+    {
+      "conformance": {
+        "missing_markers": [
+          ".python-version"
+        ],
+        "score": 0.8333
+      },
+      "depends_on_services": [],
+      "deploy_target": "unknown",
+      "formatter": "ruff format",
+      "framework": "Python",
+      "language": "python",
+      "language_version": ">=3.11",
+      "last_modified": "2026-04-28T18:22:03Z",
+      "linter": "ruff",
+      "name": "pwl",
+      "owner_persona": "unassigned",
+      "package_manager": "uv",
+      "path": "tools/pwl",
+      "service_name": null,
+      "size_signals": {
+        "lines_of_code_approx": 1615,
+        "py_files": 18,
+        "ts_files": 0
+      },
+      "test_runner": "pytest",
+      "type": "package"
+    }
+  ],
+  "description": "All monorepo apps + their conformance status. Brain reads this for systemwide ops decisions.",
+  "generated_at": "2026-04-29T01:28:43Z",
+  "generated_by": "pwl registry-build",
+  "schema": "app_registry/v1",
+  "version": 1
+}
