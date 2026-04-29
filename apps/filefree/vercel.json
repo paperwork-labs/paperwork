@@ -12,5 +12,5 @@
       "main": true
     }
   },
-  "ignoreCommand": "bash -c 'if git log -1 --pretty=%an | grep -qi dependabot; then echo \"Dependabot commit, skipping build\" && exit 0; fi; npx -y turbo-ignore @paperwork-labs/filefree --fallback=HEAD~10'"
+  "ignoreCommand": "bash ../../scripts/vercel-should-build.sh @paperwork-labs/filefree"
 }

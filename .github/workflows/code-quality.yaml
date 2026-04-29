@@ -3,8 +3,23 @@ name: Code quality
 on:
   pull_request:
     branches: [main]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "scripts/**"
+      - "**/vercel.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/code-quality.yaml"
   push:
     branches: [main]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "scripts/**"
+      - "**/vercel.json"
+      - ".github/workflows/code-quality.yaml"
 
 concurrency:
   group: code-quality-${{ github.ref }}

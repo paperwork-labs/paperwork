@@ -3,8 +3,16 @@ name: Timezone discipline (Ruff DTZ)
 on:
   pull_request:
     branches: [main]
+    paths:
+      - "apis/**/*.py"
+      - "packages/**/*.py"
+      - ".github/workflows/timezone-discipline.yaml"
   push:
     branches: [main]
+    paths:
+      - "apis/**/*.py"
+      - "packages/**/*.py"
+      - ".github/workflows/timezone-discipline.yaml"
 
 concurrency:
   group: timezone-discipline-${{ github.ref }}
