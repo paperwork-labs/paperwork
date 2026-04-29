@@ -41,9 +41,11 @@ _FOUNDER_AGENT_NAMES = frozenset({"founder", "human", "", "none"})
 
 
 def _brain_data_dir() -> str:
+    # services/ -> app/ -> brain/ ; data lives at brain/data, not brain/app/data
     here = os.path.dirname(os.path.abspath(__file__))
     brain_app = os.path.dirname(here)
-    return os.path.join(brain_app, "data")
+    brain_root = os.path.dirname(brain_app)
+    return os.path.join(brain_root, "data")
 
 
 def sprint_velocity_file_path() -> str:
@@ -288,7 +290,9 @@ def compute_velocity(week_offset: int = 0) -> SprintVelocityEntry:
     prs_merged = len(week_outcomes)
 
     ws_completed = len(completed_ws)
-    ws_estimated_prs = sum((epc if isinstance(epc, int) else 0) for _, epc in completed_ws)
+    ws_estimated_prs = sum(
+        (epc if isinstance(epc, int) else 0) for _, epc in completed_ws
+    )
     story_points_burned = ws_estimated_prs
 
     days_in_week = 7.0
@@ -324,7 +328,7 @@ def _atomic_write_json(path: str, data: dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
-def _with_lock(exclusive: bool, fn: Callable[[], _T]) -> _T:
+def _with_lock(exclusive: bool, fn: "Callable[[], _T]") -> _T:
     lp = _lock_path()
     os.makedirs(os.path.dirname(lp) or ".", exist_ok=True)
     lock_mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
