@@ -1,5 +1,5 @@
 schema:
-  description: "Paperwork Operating Score (POS) v2 — 10 pillars, mapped to industry standards. Weekly composite. Target: POS>=90 best-in-class autonomous company."
+  description: "Paperwork Operating Score (POS) v2 — 11 pillars, mapped to industry standards. Weekly composite. Target: POS>=90 best-in-class autonomous company."
 version: 1
 target_total: 90
 graduation_gates:
@@ -55,14 +55,20 @@ pillars:
     measurement_source: "Render/Vercel uptime API + WS-42 drift detector + GitHub Advanced Security + secret-scan"
     description: "Uptime SLO, IaC drift coverage, OWASP Top 10 scan, dependency CVEs, secret leaks"
   - id: knowledge_capital
-    weight: 6
+    weight: 4
     industry_reference: "(custom — compounding moat)"
     target: 80
     measurement_source: "procedural_memory.yaml + pr_outcomes.json + doc lastmod stamps"
     description: "Procedural rules growth, PR outcomes corpus completeness, doc freshness"
   - id: persona_coverage
-    weight: 6
+    weight: 4
     industry_reference: "(custom — staff completeness)"
     target: 80
     measurement_source: "apis/brain/app/personas/ + persona telemetry"
     description: "Business functions with working persona, persona response p95, persona contradiction rate"
+  - id: audit_freshness
+    weight: 4
+    industry_reference: "(custom — Brain self-auditing cadence)"
+    target: 80
+    measurement_source: "apis/brain/data/audit_runs.json + audit_registry.json"
+    description: "% of enabled Brain audits with a run within 1.5× their cadence period (WS-69 PR P)"
