@@ -7,6 +7,7 @@ from datetime import date as date_type
 from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,6 +35,7 @@ from app.services.render_quota_monitor import (
     latest_render_quota_snapshot,
 )
 from app.services.seed import ingest_docs, ingest_sprint_lessons
+from app.services.strategic_objectives import objectives_summary as strategic_objectives_summary
 from app.services.system_health import system_health_snapshot
 from app.services.vercel_quota_monitor import latest_vercel_quota_snapshots
 
@@ -775,6 +777,14 @@ async def brain_learning_summary(
             "spark": spark,
         }
     )
+
+
+@router.get("/strategic-objectives")
+async def get_strategic_objectives_summary(
+    _auth: None = Depends(_require_admin),
+):
+    """Summary of ``docs/strategy/OBJECTIVES.yaml`` for Studio / ops dashboards."""
+    return success_response(jsonable_encoder(strategic_objectives_summary()))
 
 
 @router.get("/procedural-memory")
