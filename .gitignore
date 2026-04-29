@@ -171,6 +171,12 @@ gitleaks-report.json
 # Brain local ingest idempotency pins (runtime; recreated by ingesters)
 apis/brain/data/ingested_*.json
 
+# Brain collector metric byproducts (regenerated on each weekly POS run)
+apis/brain/data/code_quality_metrics.json
+apis/brain/data/dora_metrics.json
+apis/brain/data/reliability_metrics.json
+apis/brain/data/data_architecture_metrics.json
+
 # Obsidian (founder-local vault UI when opening docs/ — see docs/HOW_TO_NAVIGATE.md)
 .obsidian/
 .obsidian.vimrc
