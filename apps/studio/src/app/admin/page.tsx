@@ -1,4 +1,5 @@
 import { OperatingScoreGauge } from "@/components/admin/OperatingScoreGauge";
+import { SprintVelocityTile } from "@/components/admin/SprintVelocityTile";
 import {
   getBrainPRReviews,
   getInfrastructureStatus,
@@ -44,7 +45,10 @@ export default async function AdminOverviewPage() {
   return (
     <div className="space-y-6">
       <TrackersRail />
-      <OperatingScoreGauge />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <OperatingScoreGauge />
+        <SprintVelocityTile />
+      </div>
       <OverviewClient
         initial={{
           workflows,

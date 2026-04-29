@@ -21,6 +21,7 @@ import app.services.pr_outcomes as pr_outcomes_service
 import app.services.self_improvement as self_improvement_svc
 import app.services.self_merge_gate as self_merge_gate
 import app.services.self_prioritization as self_prioritization_svc
+import app.services.sprint_velocity as sprint_velocity_svc
 from app.config import settings
 from app.database import async_session_factory, get_db
 from app.models.episode import Episode
@@ -1010,6 +1011,28 @@ async def get_weekly_retros(
         },
     }
     return success_response(jsonable_encoder(payload))
+
+
+@router.get("/sprint-velocity")
+async def get_sprint_velocity(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Return latest sprint velocity snapshot + bounded history for dashboards."""
+    blob = sprint_velocity_svc.read_velocity_file()
+    payload = {
+        "current": blob.current.model_dump(mode="json", by_alias=True) if blob.current else None,
+        "history_last_12": [h.model_dump(mode="json", by_alias=True) for h in blob.history[-12:]],
+    }
+    return success_response(jsonable_encoder(payload))
+
+
+@router.post("/sprint-velocity/recompute")
+async def post_sprint_velocity_recompute(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Admin-only synchronous sprint velocity recomputation — persists like the weekly cron."""
+    entry = sprint_velocity_svc.record_weekly_velocity()
+    return success_response(jsonable_encoder(entry.model_dump(mode="json", by_alias=True)))
 
 
 @router.post("/weekly-retros/recompute")
