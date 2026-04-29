@@ -479,6 +479,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: cloudflare-token-inventory
+    path: docs/infra/CLOUDFLARE_TOKEN_INVENTORY.md
+    title: Cloudflare token inventory (WS-57 batch A)
+    summary: Scoped-token posture follows WS-47 (`apis/brain/app/services/cloudflare_token_resolver.py`). This table documents **direct** use of `CLOUDFLARE_API_TOKEN` / env reads outside the resolver.
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: decommission-checklist
     path: docs/runbooks/decommission-checklist.md
     title: Domain / App Decommission Checklist
