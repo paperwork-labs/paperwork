@@ -20,6 +20,7 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
     render(
       <AdminLayoutClient
         founderPending={{ count: 4, hasCritical: true }}
+        expensesPending={null}
       >
         <p>child</p>
       </AdminLayoutClient>,
@@ -62,13 +63,16 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
     expect(within(footer).getByText("Comms")).toBeTruthy();
   });
 
-  it("shows Expenses static 0 pending badge", () => {
+  it("shows Expenses live pending badge when expensesPending is provided", () => {
     render(
-      <AdminLayoutClient founderPending={{ count: 0, hasCritical: false }}>
+      <AdminLayoutClient
+        founderPending={{ count: 0, hasCritical: false }}
+        expensesPending={{ count: 3, hasCritical: false }}
+      >
         <span />
       </AdminLayoutClient>,
     );
     const expenses = screen.getByRole("link", { name: /Expenses/i });
-    expect(within(expenses).getByText("0 pending")).toBeTruthy();
+    expect(within(expenses).getByText("3 pending")).toBeTruthy();
   });
 });

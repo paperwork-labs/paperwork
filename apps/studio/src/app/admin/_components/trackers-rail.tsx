@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Target, Boxes, Rocket } from "lucide-react";
+import { Target, Boxes, Rocket, Receipt } from "lucide-react";
 
+import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 import { loadTrackerIndex } from "@/lib/tracker";
 import {
   activePlansForUi,
@@ -9,7 +10,42 @@ import {
   shippedSprintsForUi,
 } from "@/lib/tracker-reconcile";
 
-export function TrackersRail() {
+async function fetchExpensesOverview(): Promise<{
+  pendingCount: number;
+  monthCents: number;
+} | null> {
+  const auth = getBrainAdminFetchOptions();
+  if (!auth.ok) return null;
+  try {
+    const now = new Date();
+    const [pendingRes, rollupRes] = await Promise.all([
+      fetch(`${auth.root}/admin/expenses?status=pending&count_only=true`, {
+        headers: { "X-Brain-Secret": auth.secret },
+        cache: "no-store",
+      }),
+      fetch(
+        `${auth.root}/admin/expenses/rollup?year=${now.getFullYear()}&month=${now.getMonth() + 1}`,
+        { headers: { "X-Brain-Secret": auth.secret }, cache: "no-store" }
+      ),
+    ]);
+    const pendingJson = pendingRes.ok ? await pendingRes.json() : null;
+    const rollupJson = rollupRes.ok ? await rollupRes.json() : null;
+    return {
+      pendingCount: pendingJson?.success ? (pendingJson.data?.total ?? 0) : 0,
+      monthCents: rollupJson?.success ? (rollupJson.data?.total_cents ?? 0) : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function formatCentsBrief(cents: number): string {
+  const dollars = cents / 100;
+  if (dollars >= 1000) return `$${(dollars / 1000).toFixed(1)}k`;
+  return `$${dollars.toFixed(0)}`;
+}
+
+export async function TrackersRail() {
   const tracker = loadTrackerIndex();
   const allPlans = tracker.products.flatMap((p) => p.plans);
   const activePlans = activePlansForUi(allPlans);
@@ -17,10 +53,12 @@ export function TrackersRail() {
   const activeSprintCount = activeSprintsForUi(tracker.sprints).length;
   const shippedSprintCount = shippedSprintsForUi(tracker.sprints).length;
 
+  const expensesOverview = await fetchExpensesOverview();
+
   return (
     <section
       aria-label="Trackers"
-      className="grid gap-3 md:grid-cols-3"
+      className="grid gap-3 md:grid-cols-4"
     >
       <Link
         href="/admin/tasks"
@@ -88,6 +126,36 @@ export function TrackersRail() {
         </p>
         <p className="mt-3 text-xs text-zinc-400 group-hover:text-zinc-200">
           Sprints →
+        </p>
+      </Link>
+
+      <Link
+        href="/admin/expenses"
+        className="group rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 transition hover:border-zinc-700 hover:bg-zinc-900"
+      >
+        <div className="flex items-center gap-2 text-zinc-400">
+          <Receipt className="h-4 w-4" />
+          <span className="text-xs font-semibold uppercase tracking-wide">
+            Expenses
+          </span>
+        </div>
+        {expensesOverview !== null ? (
+          <>
+            <p className="mt-3 text-2xl font-semibold text-zinc-100">
+              {expensesOverview.pendingCount}
+            </p>
+            <p className="text-xs text-zinc-500">
+              pending · {formatCentsBrief(expensesOverview.monthCents)} this month
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="mt-3 text-2xl font-semibold text-zinc-100">—</p>
+            <p className="text-xs text-zinc-500">Brain API unavailable</p>
+          </>
+        )}
+        <p className="mt-3 text-xs text-zinc-400 group-hover:text-zinc-200">
+          Expenses →
         </p>
       </Link>
     </section>

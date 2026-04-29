@@ -1,0 +1,11 @@
+{
+  "auto_approve_threshold_cents": 0,
+  "auto_approve_categories": ["infra", "ai", "tools", "domains", "ops"],
+  "always_review_categories": ["contractors", "legal", "tax", "misc"],
+  "flag_amount_cents_above": 100000,
+  "founder_card_default_source": "founder-card",
+  "subscription_skip_approval": false,
+  "updated_at": "2026-04-29T19:00:00Z",
+  "updated_by": "founder",
+  "history": []
+}
