@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 import type { CriticalDate, Plan, Sprint } from "@/lib/tracker";
+import type { Workstream } from "@/lib/workstreams/schema";
+import { WorkstreamsFileSchema } from "@/lib/workstreams/schema";
+import workstreamsJson from "@/data/workstreams.json";
 import {
   activePlansForUi,
   activeSprintsForUi,
   companyTasksOpenCount,
+  computeEffectiveSprintStatus,
+  computeWorkstreamsBoardKpis,
+  isWorkstreamInFlight,
+  normalizedWorkstreamStatusForKpi,
   shippedPlansForUi,
   shippedSprintsForUi,
-  computeEffectiveSprintStatus,
 } from "@/lib/tracker-reconcile";
 
 const basePlan = (over: Partial<Plan>): Plan => ({
@@ -92,5 +98,36 @@ describe("tracker-reconcile", () => {
     expect(shippedSprintsForUi([])).toEqual([]);
     expect(activePlansForUi([])).toEqual([]);
     expect(shippedPlansForUi([])).toEqual([]);
+  });
+
+  describe("workstreams board KPI normalization", () => {
+    const parsed = WorkstreamsFileSchema.parse(workstreamsJson);
+
+    it("computeWorkstreamsBoardKpis matches enum counts from bundled JSON", () => {
+      const kpis = computeWorkstreamsBoardKpis(parsed);
+      const pendingInProg = parsed.workstreams.filter((w) =>
+        ["pending", "in_progress"].includes(w.status),
+      ).length;
+      const blocked = parsed.workstreams.filter((w) => w.status === "blocked").length;
+      const completed = parsed.workstreams.filter((w) => w.status === "completed").length;
+      const cancelled = parsed.workstreams.filter((w) => w.status === "cancelled").length;
+      expect(kpis.total).toBe(parsed.workstreams.length);
+      expect(kpis.active).toBe(pendingInProg);
+      expect(kpis.blocked).toBe(blocked);
+      expect(kpis.completed).toBe(completed);
+      expect(kpis.cancelled).toBe(cancelled);
+      expect(kpis.active + kpis.blocked + kpis.completed + kpis.cancelled).toBe(kpis.total);
+    });
+
+    it("normalizes legacy active token toward in-progress flight for KPI parity with plans/sprints", () => {
+      const baseline = parsed.workstreams[0]!;
+      const legacy: Workstream = {
+        ...baseline,
+        /** Runtime-only stray token outside Zod-valid JSON rows. */
+        status: "active" as Workstream["status"],
+      };
+      expect(normalizedWorkstreamStatusForKpi(legacy)).toBe("in_progress");
+      expect(isWorkstreamInFlight(legacy)).toBe(true);
+    });
   });
 });

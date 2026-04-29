@@ -307,9 +307,9 @@ function KpiStrip({ kpis }: { kpis: WorkstreamKpis }) {
     tabular?: boolean;
   }[] = [
     { label: "Total", value: kpis.total },
-    { label: "Active", value: kpis.active },
-    { label: "Pending", value: kpis.pending },
+    { label: "Active workstreams", value: kpis.active },
     { label: "Blocked", value: kpis.blocked },
+    { label: "Cancelled", value: kpis.cancelled },
     { label: "Completed", value: kpis.completed },
     { label: "Avg % done", value: `${kpis.avg_percent_done}%`, tabular: true },
   ];

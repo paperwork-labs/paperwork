@@ -1,4 +1,10 @@
 import type { CriticalDate, Plan, Sprint } from "./tracker";
+import type {
+  Workstream,
+  WorkstreamsFile,
+  WorkstreamKpis,
+  WorkstreamStatus,
+} from "./workstreams/schema";
 
 export type SprintPillStatus =
   | "planned"
@@ -135,4 +141,47 @@ export function shippedSprintsForUi(sprints: Sprint[]): Sprint[] {
 export function companyTasksOpenCount(dates: CriticalDate[]): number {
   if (!dates.length) return 0;
   return dates.filter((d) => !/done|complete/i.test(d.status ?? "")).length;
+}
+
+// --- Workstreams board (parity with sprint/plan `isLegacyActiveToken` normalization) ---
+
+/** Maps legacy `"active"` to `in_progress`; otherwise returns canonical typed status from JSON. */
+export function normalizedWorkstreamStatusForKpi(ws: Pick<Workstream, "status">): WorkstreamStatus {
+  const raw = String(ws.status ?? "").trim();
+  const lower = raw.toLowerCase();
+  if (isLegacyActiveToken(lower)) return "in_progress";
+  return ws.status;
+}
+
+/** pending + in_progress (blocked is its own KPI). */
+export function isWorkstreamInFlight(ws: Pick<Workstream, "status">): boolean {
+  const s = normalizedWorkstreamStatusForKpi(ws);
+  return s === "pending" || s === "in_progress";
+}
+
+export function isWorkstreamBlockedForBoardKpi(ws: Pick<Workstream, "status">): boolean {
+  return normalizedWorkstreamStatusForKpi(ws) === "blocked";
+}
+
+export function isWorkstreamCompletedForBoardKpi(ws: Pick<Workstream, "status">): boolean {
+  return normalizedWorkstreamStatusForKpi(ws) === "completed";
+}
+
+export function isWorkstreamCancelledForBoardKpi(ws: Pick<Workstream, "status">): boolean {
+  return normalizedWorkstreamStatusForKpi(ws) === "cancelled";
+}
+
+/** Board KPI totals for `/admin/workstreams`; buckets sum to row count for valid JSON rows. */
+export function computeWorkstreamsBoardKpis(file: WorkstreamsFile): WorkstreamKpis {
+  const total = file.workstreams.length;
+  const active = file.workstreams.filter((w) => isWorkstreamInFlight(w)).length;
+  const blocked = file.workstreams.filter((w) => isWorkstreamBlockedForBoardKpi(w)).length;
+  const completed = file.workstreams.filter((w) => isWorkstreamCompletedForBoardKpi(w)).length;
+  const cancelled = file.workstreams.filter((w) => isWorkstreamCancelledForBoardKpi(w)).length;
+  const forAvg = file.workstreams.filter((w) => isWorkstreamInFlight(w));
+  const avg_percent_done =
+    forAvg.length === 0
+      ? 0
+      : Math.round(forAvg.reduce((acc, w) => acc + w.percent_done, 0) / forAvg.length);
+  return { total, active, blocked, completed, cancelled, avg_percent_done };
 }
