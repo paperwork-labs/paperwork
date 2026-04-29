@@ -51,6 +51,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
         self_improvement.install(scheduler)
     except Exception:
         logger.exception("Failed to install self_improvement_weekly_retro job")
+    try:
+        from app.schedulers import anomaly_detection
+
+        anomaly_detection.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install anomaly_detection_hourly job")
     return scheduler
 
 

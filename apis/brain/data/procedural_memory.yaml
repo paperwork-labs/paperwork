@@ -90,6 +90,14 @@ rules:
     confidence: high
     applies_to: [orchestrator, brain-self-dispatch]
 
+  - id: anomaly_alert_severity_threshold
+    when: "an anomaly's |z-score| >= 3.5 sustains for >24h (high severity, unresolved)"
+    do: "open a severity:high issue in linear/github (or append to apis/brain/data/incidents.json) and notify founder via Slack (#brain-asks); orchestrator should not auto-resolve without confirmation"
+    source: "WS-50 anomaly detection implementation — Phase D Eyes+Voice"
+    learned_at: "2026-04-28T02:21:00Z"
+    confidence: medium
+    applies_to: [brain-self-dispatch]
+
   - id: dora_metrics_freshness_24h
     when: "POS pillar 2 (dora_elite) collector cannot reach `gh api`"
     do: "fallback to bootstrap estimate but tag the entry with measured=False and notes='gh CLI unavailable'; orchestrator should not block POS update"

@@ -1,0 +1,5 @@
+{
+  "schema": "anomaly_alerts/v1",
+  "description": "Anomalies detected by the anomaly detection service. Z-score-based with rolling 7d baseline.",
+  "alerts": []
+}
