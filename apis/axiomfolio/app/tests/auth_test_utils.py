@@ -13,6 +13,36 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 
+def make_user_dependency_override(username: str):
+    """Return a FastAPI dependency callable for ``app.dependency_overrides[get_current_user]``.
+
+    The returned callable depends on ``get_db`` (the *same* session as the route
+    handler), so the ``User`` object is properly attached to the request's DB session.
+    This means ``db.commit()`` and ``db.refresh(user)`` inside routes work correctly.
+    Suitable for any test that needs to call protected endpoints without a real Clerk JWT.
+
+    Usage::
+
+        from app.api.dependencies import get_current_user
+        from app.tests.auth_test_utils import make_user_dependency_override
+
+        app.dependency_overrides[get_current_user] = make_user_dependency_override(username)
+        try:
+            ...  # make requests
+        finally:
+            app.dependency_overrides.pop(get_current_user, None)
+    """
+    from fastapi import Depends
+    from sqlalchemy.orm import Session as _Session
+    from app.database import get_db
+    from app.models.user import User
+
+    async def _override(db: _Session = Depends(get_db)) -> User:
+        return db.query(User).filter(User.username == username).first()
+
+    return _override
+
+
 def approve_user_for_login_tests(username: str, db: Optional[Session] = None) -> None:
     """Approve and verify a user for login tests.
 

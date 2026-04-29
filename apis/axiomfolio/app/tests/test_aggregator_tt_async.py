@@ -3,8 +3,9 @@ import asyncio
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_current_user
 from app.api.main import app
-from app.tests.auth_test_utils import approve_user_for_login_tests
+from app.tests.auth_test_utils import approve_user_for_login_tests, make_user_dependency_override
 
 
 @pytest.fixture(scope="module")
@@ -23,14 +24,12 @@ def _login(client):
     if r.status_code != 200:
         pytest.skip("auth endpoint not available in test env")
     approve_user_for_login_tests(username)
-    r2 = client.post("/api/v1/auth/login", json={"email": email, "password": password})
-    assert r2.status_code == 200
-    return r.json().get("id"), r2.json()["access_token"]
+    return r.json().get("id"), username
 
 
 def test_tastytrade_connect_async_success(client, monkeypatch):
-    user_id, token = _login(client)
-    if not token:
+    user_id, username = _login(client)
+    if not username:
         pytest.skip("login failed in test env")
 
     class DummyTT:
@@ -54,16 +53,20 @@ def test_tastytrade_connect_async_success(client, monkeypatch):
         return loop.create_task(coro) if loop.is_running() else asyncio.run(coro)
     monkeypatch.setattr(agg_module.asyncio, "create_task", _create_task)
 
-    r = client.post(
-        "/api/v1/aggregator/tastytrade/connect",
-        json={"client_id": "test_client_id", "client_secret": "test_secret", "refresh_token": "test_refresh"},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert r.status_code == 200
-    job_id = r.json().get("job_id")
-    assert job_id
+    app.dependency_overrides[get_current_user] = make_user_dependency_override(username)
+    try:
+        r = client.post(
+            "/api/v1/aggregator/tastytrade/connect",
+            json={"client_id": "test_client_id", "client_secret": "test_secret", "refresh_token": "test_refresh"},
+            headers={"Authorization": "Bearer test"},
+        )
+        assert r.status_code == 200
+        job_id = r.json().get("job_id")
+        assert job_id
 
-    rs = client.get(f"/api/v1/aggregator/tastytrade/status?job_id={job_id}", headers={"Authorization": f"Bearer {token}"})
-    assert rs.status_code == 200
-    body = rs.json()
-    assert body.get("job_state") in ("success", None)
+        rs = client.get(f"/api/v1/aggregator/tastytrade/status?job_id={job_id}", headers={"Authorization": "Bearer test"})
+        assert rs.status_code == 200
+        body = rs.json()
+        assert body.get("job_state") in ("success", None)
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)

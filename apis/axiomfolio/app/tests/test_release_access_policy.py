@@ -5,10 +5,10 @@ import pytest
 from fastapi.testclient import TestClient
 from starlette.requests import Request
 
-from app.api.dependencies import evaluate_release_access, require_non_market_access
+from app.api.dependencies import evaluate_release_access, get_current_user, get_market_data_viewer, require_non_market_access
 from app.api.main import app
 from app.models.user import UserRole
-from app.tests.auth_test_utils import approve_user_for_login_tests
+from app.tests.auth_test_utils import approve_user_for_login_tests, make_user_dependency_override
 
 
 @pytest.fixture(scope="module")
@@ -52,19 +52,31 @@ def test_release_policy_authenticated_non_admin_portfolio_allowed():
 
 def test_authenticated_non_admin_portfolio_api_allowed(client: TestClient):
     user_username = f"user_{uuid.uuid4().hex[:8]}"
-    user_token = _register_and_login(client, user_username, "Passw0rd!", f"{user_username}@example.com")
-
-    market_res = client.get(
-        "/api/v1/market-data/universe/tracked",
-        headers=_auth(user_token),
+    reg = client.post(
+        "/api/v1/auth/register",
+        json={"username": user_username, "email": f"{user_username}@example.com", "password": "Passw0rd!"},
     )
-    assert market_res.status_code == 200
+    assert reg.status_code == 200
+    approve_user_for_login_tests(user_username)
 
-    portfolio_res = client.get(
-        "/api/v1/portfolio/stocks",
-        headers=_auth(user_token),
-    )
-    assert portfolio_res.status_code == 200
+    user_override = make_user_dependency_override(user_username)
+    app.dependency_overrides[get_current_user] = user_override
+    app.dependency_overrides[get_market_data_viewer] = user_override
+    try:
+        market_res = client.get(
+            "/api/v1/market-data/universe/tracked",
+            headers={"Authorization": "Bearer test"},
+        )
+        assert market_res.status_code == 200
+
+        portfolio_res = client.get(
+            "/api/v1/portfolio/stocks",
+            headers={"Authorization": "Bearer test"},
+        )
+        assert portfolio_res.status_code == 200
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(get_market_data_viewer, None)
 
 
 @pytest.mark.asyncio

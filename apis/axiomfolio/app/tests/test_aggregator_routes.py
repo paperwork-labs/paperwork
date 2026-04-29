@@ -4,10 +4,10 @@ import jwt
 import pytest
 
 from app.api.main import app
-from app.api.dependencies import get_db
+from app.api.dependencies import get_current_user, get_db
 from app.config import settings
 from app.models.broker_account import BrokerAccount, BrokerType, AccountType
-from app.tests.auth_test_utils import approve_user_for_login_tests
+from app.tests.auth_test_utils import approve_user_for_login_tests, make_user_dependency_override
 
 
 try:
@@ -81,12 +81,13 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
     monkeypatch.setattr(settings, "SCHWAB_REDIRECT_URI", "http://localhost/cb")
 
     _login_tuple = _login_token(client)
-    token, username = _login_tuple
+    _token, username = _login_tuple
 
     def _override_db():
         yield db_session
 
     app.dependency_overrides[get_db] = _override_db
+    app.dependency_overrides[get_current_user] = make_user_dependency_override(username)
     account_id = _create_schwab_account_for_user(username, db_session)
 
     # Stub httpx.AsyncClient for /schwab/link (probe GET)
@@ -120,7 +121,7 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
         r_link = client.post(
             "/api/v1/aggregator/schwab/link",
             json={"account_id": account_id, "trading": False},
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": "Bearer test"},
         )
         assert r_link.status_code == 200
         url = r_link.json()["url"]
@@ -139,6 +140,7 @@ def test_link_and_callback_flow(client, monkeypatch, db_session):
         assert r_cb.status_code in (302, 307)
         assert "schwab=linked" in r_cb.headers.get("location", "")
     finally:
+        app.dependency_overrides.pop(get_current_user, None)
         app.dependency_overrides.pop(get_db, None)
 
 
