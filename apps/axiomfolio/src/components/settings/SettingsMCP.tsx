@@ -5,7 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { Copy, KeyRound, Loader2, ShieldAlert, Trash2 } from "lucide-react";
 
-import { PageHeader } from "@/components/ui/Page";
+import { PageHeader } from "@paperwork-labs/ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

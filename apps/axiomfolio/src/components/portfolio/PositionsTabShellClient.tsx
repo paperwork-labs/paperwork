@@ -3,8 +3,7 @@
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Page, PageHeader } from "@/components/ui/Page";
-import { TabbedPageShell } from "@/components/layout/TabbedPageShell";
+import { Page, PageHeader, TabbedPageShell } from "@paperwork-labs/ui";
 
 const HoldingsTab = React.lazy(() => import("@/components/portfolio/PortfolioHoldingsClient"));
 const OptionsTab = React.lazy(() => import("@/components/portfolio/PortfolioOptionsClient"));

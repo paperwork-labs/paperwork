@@ -45,7 +45,7 @@ import FormField from '@/components/ui/FormField';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import PageHeader from '@/components/ui/PageHeader';
+import { PageHeader } from "@paperwork-labs/ui";
 import { portfolioApi, handleApiError, unwrapResponse } from '@/services/api';
 import api from '@/services/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

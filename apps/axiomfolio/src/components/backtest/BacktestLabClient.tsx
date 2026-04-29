@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { TabbedPageShell } from "@/components/layout/TabbedPageShell";
+import { TabbedPageShell } from "@paperwork-labs/ui";
 
 const WalkForwardClient = React.lazy(() => import("@/components/backtest/WalkForwardClient"));
 const MonteCarloClient = React.lazy(() => import("@/components/backtest/MonteCarloClient"));

@@ -9,7 +9,7 @@ import { ChartContext, ChartSlidePanel } from '@/components/market/SymbolChartUI
 import StatCard from '@/components/shared/StatCard';
 import StageBar from '@/components/shared/StageBar';
 import PnlText from '@/components/shared/PnlText';
-import { PageHeader } from '@/components/ui/Page';
+import { PageHeader } from '@paperwork-labs/ui';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

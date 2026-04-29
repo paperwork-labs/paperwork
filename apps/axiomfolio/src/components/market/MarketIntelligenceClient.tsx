@@ -3,8 +3,7 @@
 import * as React from "react";
 
 import { ChartContext, ChartSlidePanel } from "@/components/market/SymbolChartUI";
-import { TabbedPageShell } from "@/components/layout/TabbedPageShell";
-import { Page } from "@/components/ui/Page";
+import { Page, TabbedPageShell } from "@paperwork-labs/ui";
 
 const IntelligenceBriefTab = React.lazy(
   () => import("@/components/market-intelligence/tabs/IntelligenceBriefTab"),

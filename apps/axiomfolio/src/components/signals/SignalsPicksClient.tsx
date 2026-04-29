@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { PageContainer } from "@/components/ui/Page";
+import { PageContainer } from "@paperwork-labs/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import { actionChipClass } from "@/lib/picks";
 import { cn } from "@/lib/utils";

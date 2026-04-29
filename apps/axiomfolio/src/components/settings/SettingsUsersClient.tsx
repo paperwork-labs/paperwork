@@ -10,7 +10,7 @@ import { formatDate } from "@/utils/format";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useBackendUser } from "@/hooks/use-backend-user";
 import { isPlatformAdminRole } from "@/utils/userRole";
-import { PageContainer, PageHeader } from "@/components/ui/Page";
+import { PageContainer, PageHeader } from "@paperwork-labs/ui";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

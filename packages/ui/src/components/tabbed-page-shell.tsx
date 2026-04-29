@@ -3,10 +3,9 @@
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import ErrorBoundary from "@/components/ErrorBoundary";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
+import { Skeleton } from "./skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 
 const ActiveTabContext = React.createContext<string | null>(null);
 
@@ -25,7 +24,7 @@ export function useActiveTab<T extends string>(): T {
 export type TabbedShellTabDef<T extends string> = {
   id: T;
   label: string;
-  /** Lazy tab body — wrapped in Suspense + ErrorBoundary by the shell. */
+  /** Lazy tab body — wrapped in Suspense + error boundary by the shell. */
   Content: React.LazyExoticComponent<React.ComponentType>;
 };
 
@@ -39,6 +38,35 @@ export type TabbedPageShellProps<T extends string> = {
   /** Optional controls rendered beside the tab list (filters, actions). */
   endAdornment?: React.ReactNode;
 };
+
+type TabPanelErrorBoundaryProps = {
+  children: React.ReactNode;
+  fallback: React.ReactNode;
+};
+
+type TabPanelErrorBoundaryState = { hasError: boolean };
+
+class TabPanelErrorBoundary extends React.Component<
+  TabPanelErrorBoundaryProps,
+  TabPanelErrorBoundaryState
+> {
+  state: TabPanelErrorBoundaryState = { hasError: false };
+
+  static getDerivedStateFromError(): TabPanelErrorBoundaryState {
+    return { hasError: true };
+  }
+
+  componentDidCatch() {
+    // Surface via fallback UI; callers may attach logging in a future revision.
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
 
 function TabPanelSkeleton() {
   return (
@@ -113,11 +141,23 @@ export function TabbedPageShell<T extends string>({
     });
   }, [defaultTab, paramKey, raw, replaceSearchParams]);
 
+  const tabErrorFallback = (
+    <div
+      className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground"
+      role="alert"
+    >
+      This tab failed to render. Try another tab or reload the page.
+    </div>
+  );
+
   return (
     <ActiveTabContext.Provider value={resolved}>
       <Tabs value={resolved} onValueChange={setTab} className={cn("w-full", className)}>
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <TabsList variant="line" className={cn("h-auto w-full flex-wrap justify-start p-1 sm:w-auto", tabsListClassName)}>
+          <TabsList
+            variant="line"
+            className={cn("h-auto w-full flex-wrap justify-start p-1 sm:w-auto", tabsListClassName)}
+          >
             {tabs.map((t) => (
               <TabsTrigger key={t.id} value={t.id} className="gap-1.5">
                 {t.label}
@@ -128,17 +168,11 @@ export function TabbedPageShell<T extends string>({
         </div>
         {tabs.map((t) => (
           <TabsContent key={t.id} value={t.id} className="mt-0 outline-none">
-            <ErrorBoundary
-              fallback={
-                <div className="rounded-lg border border-border bg-muted/30 p-4 text-sm text-muted-foreground" role="alert">
-                  This tab failed to render. Try another tab or reload the page.
-                </div>
-              }
-            >
+            <TabPanelErrorBoundary fallback={tabErrorFallback}>
               <React.Suspense fallback={<TabPanelSkeleton />}>
                 <t.Content />
               </React.Suspense>
-            </ErrorBoundary>
+            </TabPanelErrorBoundary>
           </TabsContent>
         ))}
       </Tabs>

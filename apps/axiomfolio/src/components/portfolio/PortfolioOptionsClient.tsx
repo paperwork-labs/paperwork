@@ -26,7 +26,7 @@ import { ChartContext, SymbolLink, ChartSlidePanel } from '@/components/market/S
 import StatCard from '@/components/shared/StatCard';
 import { StatCardSkeleton, TableSkeleton } from '@/components/shared/Skeleton';
 import PnlText from '@/components/shared/PnlText';
-import PageHeader from '@/components/ui/PageHeader';
+import { PageHeader } from "@paperwork-labs/ui";
 import { BrokerBadge } from '@/components/shared/BrokerBadge';
 import { useAccountFilter } from '@/hooks/useAccountFilter';
 import SortableTable from '@/components/SortableTable';

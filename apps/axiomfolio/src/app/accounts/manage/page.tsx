@@ -31,7 +31,7 @@ import {
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorState from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/input";
-import { Page, PageHeader } from "@/components/ui/Page";
+import { Page, PageHeader } from "@paperwork-labs/ui";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useBackendUser } from "@/hooks/use-backend-user";
 import { accountsApi, handleApiError } from "@/services/api";

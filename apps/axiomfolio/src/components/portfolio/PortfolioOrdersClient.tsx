@@ -6,7 +6,7 @@ import { Loader2, Sparkles } from 'lucide-react';
 import hotToast from 'react-hot-toast';
 import { ChartContext, ChartSlidePanel } from '@/components/market/SymbolChartUI';
 import SortableTable, { type Column } from '@/components/SortableTable';
-import PageHeader from '@/components/ui/PageHeader';
+import { PageHeader } from "@paperwork-labs/ui";
 import { formatMoney, formatDateTimeFriendly } from '@/utils/format';
 import api, { handleApiError } from '@/services/api';
 import { useUserPreferences } from '@/hooks/useUserPreferences';

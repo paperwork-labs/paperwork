@@ -8,7 +8,7 @@ import toast from "react-hot-toast";
 
 import { MarketingFooter } from "@/components/layout/MarketingFooter";
 import { MarketingHeader } from "@/components/layout/MarketingHeader";
-import { PageContainer } from "@/components/ui/Page";
+import { PageContainer } from "@paperwork-labs/ui";
 import PublicStatsStrip from "@/components/transparency/PublicStatsStrip";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";

@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { Loader2, RefreshCw } from 'lucide-react';
-import PageHeader from '@/components/ui/PageHeader';
+import { PageHeader } from "@paperwork-labs/ui";
 import { TableSkeleton } from '@/components/shared/Skeleton';
 import Pagination from '@/components/ui/Pagination';
 import SortableTable, { type Column } from '@/components/SortableTable';

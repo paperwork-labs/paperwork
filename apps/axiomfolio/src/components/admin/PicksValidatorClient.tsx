@@ -22,7 +22,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@paperwork-labs/ui';
 import { Textarea } from '@/components/ui/textarea';
 import { actionChipClass } from '@/lib/picks';
 import { cn } from '@/lib/utils';

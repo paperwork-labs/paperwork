@@ -14,7 +14,7 @@ import { semanticTextColorClass } from '@/lib/semantic-text-color';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import PageHeader from '@/components/ui/PageHeader';
+import { PageHeader } from "@paperwork-labs/ui";
 import type { IndicatorToggles, ChartEvent, ChartEventType } from '@/components/charts/SymbolChartWithMarkers';
 import { getStoredIndicators, storeIndicators } from '@/components/charts/SymbolChartWithMarkers';
 import { buildTradeSegmentsFromActivity } from '@/components/charts/TradeSegments';

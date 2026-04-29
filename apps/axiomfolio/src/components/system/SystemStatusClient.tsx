@@ -55,7 +55,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { PageContainer } from '@/components/ui/Page';
+import { PageContainer } from '@paperwork-labs/ui';
 import { cn } from '@/lib/utils';
 import ErrorBoundary from '@/components/ErrorBoundary';
 

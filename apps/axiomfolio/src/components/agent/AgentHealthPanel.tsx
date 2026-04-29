@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@paperwork-labs/ui"
 import { cn } from "@/lib/utils"
 
 import { AUTONOMY_LEVELS, type HealthData, type HealthSignal } from "./types"

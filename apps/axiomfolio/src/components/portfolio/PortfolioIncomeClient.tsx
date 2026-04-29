@@ -9,7 +9,7 @@
 import * as React from "react";
 
 import { IncomeCalendar } from "@/components/portfolio/IncomeCalendar";
-import { Page, PageHeader } from "@/components/ui/Page";
+import { Page, PageHeader } from "@paperwork-labs/ui";
 
 const PortfolioIncomeClient: React.FC = () => {
   return (

@@ -2,7 +2,7 @@
 
 import React from "react";
 import toast from "react-hot-toast";
-import { PageHeader } from "@/components/ui/Page";
+import { PageHeader } from "@paperwork-labs/ui";
 import { authApi, handleApiError } from "@/services/api";
 import { useBackendUser } from "@/hooks/use-backend-user";
 import { useColorMode } from "@/theme/colorMode";

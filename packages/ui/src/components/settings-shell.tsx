@@ -1,104 +1,72 @@
 "use client";
 
-import React from "react";
-import Link from "next/link";
+import * as React from "react";
 import { usePathname } from "next/navigation";
-import {
-  Activity,
-  Bell,
-  ChevronRight,
-  ClipboardList,
-  Cpu,
-  Database,
-  KeyRound,
-  Link2,
-  Lock,
-  ShieldAlert,
-  Sliders,
-  User,
-  type LucideIcon,
-} from "lucide-react";
+import { ChevronRight, type LucideIcon } from "lucide-react";
 
-import { useBackendUser } from "@/hooks/use-backend-user";
-import { isPlatformAdminRole } from "@/utils/userRole";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
+import { Button } from "./button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip";
 
-type SettingsLink = {
+export type SettingsLink = {
   to: string;
   label: string;
   icon: LucideIcon;
 };
 
-type SettingsCluster = {
+export type SettingsCluster = {
   id: string;
   label: string;
   items: readonly SettingsLink[];
   adminOnly?: boolean;
 };
 
-const CLUSTERS: readonly SettingsCluster[] = [
-  {
-    id: "account",
-    label: "Account",
-    items: [
-      { to: "/settings/profile", label: "Profile", icon: User },
-      { to: "/settings/preferences", label: "Preferences", icon: Sliders },
-      { to: "/settings/notifications", label: "Notifications", icon: Bell },
-    ],
-  },
-  {
-    id: "connections",
-    label: "Connections",
-    items: [
-      { to: "/settings/connections", label: "Brokers", icon: Link2 },
-      {
-        to: "/settings/connections/historical-import",
-        label: "Historical import",
-        icon: Database,
-      },
-    ],
-  },
-  {
-    id: "trading",
-    label: "Trading",
-    items: [
-      { to: "/settings/account-risk", label: "Account risk", icon: ShieldAlert },
-    ],
-  },
-  {
-    id: "ai",
-    label: "AI",
-    items: [
-      { to: "/settings/ai-keys", label: "AI keys", icon: KeyRound },
-      { to: "/settings/mcp", label: "MCP tokens", icon: KeyRound },
-    ],
-  },
-  {
-    id: "privacy",
-    label: "Privacy",
-    items: [{ to: "/settings/data-privacy", label: "Data privacy", icon: Lock }],
-  },
-  {
-    id: "admin",
-    label: "Admin",
-    adminOnly: true,
-    items: [
-      { to: "/system-status", label: "System Status", icon: Activity },
-      { to: "/settings/users", label: "Users", icon: User },
-      { to: "/settings/admin/agent", label: "Agent", icon: Cpu },
-      { to: "/settings/admin/picks", label: "Picks validator", icon: ClipboardList },
-    ],
-  },
-];
+export type SettingsShellLinkComponent = React.ComponentType<{
+  href: string;
+  className?: string;
+  scroll?: boolean;
+  children: React.ReactNode;
+}>;
 
-function MenuLink({ to, children }: { to: string; children: React.ReactNode }) {
+export type SettingsShellProps = {
+  children: React.ReactNode;
+  clusters: readonly SettingsCluster[];
+  /** Next.js `Link` or compatible router link. */
+  LinkComponent: SettingsShellLinkComponent;
+  /** Root path for the "Settings" crumb (default `/settings/profile`). */
+  settingsHomeHref?: string;
+  /** When omitted, `adminOnly` clusters are hidden. */
+  useAdminGate?: () => boolean;
+};
+
+export function resolveBreadcrumb(
+  pathname: string,
+  clusters: readonly SettingsCluster[],
+): { cluster: string; page: string } | null {
+  for (const cluster of clusters) {
+    for (const item of cluster.items) {
+      if (pathname === item.to || pathname.startsWith(`${item.to}/`)) {
+        return { cluster: cluster.label, page: item.label };
+      }
+    }
+  }
+  return null;
+}
+
+function MenuLink({
+  to,
+  children,
+  LinkComponent,
+}: {
+  to: string;
+  children: React.ReactNode;
+  LinkComponent: SettingsShellLinkComponent;
+}) {
   const pathname = usePathname();
   const isActive = pathname === to;
 
   return (
-    <Link href={to} className="block no-underline" scroll={false}>
+    <LinkComponent href={to} className="block no-underline" scroll={false}>
       <Button
         type="button"
         variant="ghost"
@@ -111,16 +79,26 @@ function MenuLink({ to, children }: { to: string; children: React.ReactNode }) {
       >
         {children}
       </Button>
-    </Link>
+    </LinkComponent>
   );
 }
 
-function SettingsIconLink({ to, label, Icon }: { to: string; label: string; Icon: LucideIcon }) {
+function SettingsIconLink({
+  to,
+  label,
+  Icon,
+  LinkComponent,
+}: {
+  to: string;
+  label: string;
+  Icon: LucideIcon;
+  LinkComponent: SettingsShellLinkComponent;
+}) {
   const pathname = usePathname();
   const isActive = pathname === to;
 
   return (
-    <Link href={to} className="no-underline" scroll={false}>
+    <LinkComponent href={to} className="no-underline" scroll={false}>
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
@@ -142,36 +120,30 @@ function SettingsIconLink({ to, label, Icon }: { to: string; label: string; Icon
           {label}
         </TooltipContent>
       </Tooltip>
-    </Link>
+    </LinkComponent>
   );
 }
 
-export function resolveBreadcrumb(
-  pathname: string,
-  clusters: readonly SettingsCluster[],
-): { cluster: string; page: string } | null {
-  for (const cluster of clusters) {
-    for (const item of cluster.items) {
-      if (pathname === item.to || pathname.startsWith(`${item.to}/`)) {
-        return { cluster: cluster.label, page: item.label };
-      }
-    }
-  }
-  return null;
-}
-
-function SettingsBreadcrumb({ clusters }: { clusters: readonly SettingsCluster[] }) {
+function SettingsBreadcrumb({
+  resolveClusters,
+  settingsHomeHref,
+  LinkComponent,
+}: {
+  resolveClusters: readonly SettingsCluster[];
+  settingsHomeHref: string;
+  LinkComponent: SettingsShellLinkComponent;
+}) {
   const pathname = usePathname();
-  const crumb = resolveBreadcrumb(pathname, clusters);
+  const crumb = resolveBreadcrumb(pathname, resolveClusters);
   return (
     <nav
       aria-label="Settings breadcrumb"
       className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground"
       data-testid="settings-breadcrumb"
     >
-      <Link href="/settings/profile" className="hover:text-foreground">
+      <LinkComponent href={settingsHomeHref} className="hover:text-foreground" scroll={false}>
         Settings
-      </Link>
+      </LinkComponent>
       {crumb ? (
         <>
           <ChevronRight className="size-3 shrink-0" aria-hidden />
@@ -184,9 +156,14 @@ function SettingsBreadcrumb({ clusters }: { clusters: readonly SettingsCluster[]
   );
 }
 
-export default function SettingsShell({ children }: { children: React.ReactNode }) {
-  const { user } = useBackendUser();
-  const isAdmin = isPlatformAdminRole(user?.role);
+export function SettingsShell({
+  children,
+  clusters,
+  LinkComponent,
+  settingsHomeHref = "/settings/profile",
+  useAdminGate,
+}: SettingsShellProps) {
+  const isAdmin = useAdminGate?.() ?? false;
   const [isDesktop, setIsDesktop] = React.useState(
     typeof window !== "undefined" ? window.matchMedia("(min-width: 48em)").matches : true,
   );
@@ -198,7 +175,10 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
     return () => mq.removeEventListener("change", handler);
   }, []);
 
-  const visibleClusters = CLUSTERS.filter((c) => !c.adminOnly || isAdmin);
+  const visibleClusters = React.useMemo(
+    () => clusters.filter((c) => !c.adminOnly || isAdmin),
+    [clusters, isAdmin],
+  );
 
   return (
     <div className="min-h-0 w-full min-w-0">
@@ -223,7 +203,7 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                         {cluster.label}
                       </p>
                       {cluster.items.map((item) => (
-                        <MenuLink key={item.to} to={item.to}>
+                        <MenuLink key={item.to} to={item.to} LinkComponent={LinkComponent}>
                           {item.label}
                         </MenuLink>
                       ))}
@@ -240,13 +220,18 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
                       to={item.to}
                       label={item.label}
                       Icon={item.icon}
+                      LinkComponent={LinkComponent}
                     />
                   )),
                 )}
               </nav>
             )}
             <div className="min-w-0 flex-1 overflow-x-hidden">
-              <SettingsBreadcrumb clusters={CLUSTERS} />
+              <SettingsBreadcrumb
+                resolveClusters={clusters}
+                settingsHomeHref={settingsHomeHref}
+                LinkComponent={LinkComponent}
+              />
               {children}
             </div>
           </div>
@@ -255,3 +240,5 @@ export default function SettingsShell({ children }: { children: React.ReactNode 
     </div>
   );
 }
+
+export default SettingsShell;

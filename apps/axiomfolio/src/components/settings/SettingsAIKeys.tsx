@@ -4,7 +4,7 @@ import React from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 
-import { PageContainer, PageHeader } from "@/components/ui/Page";
+import { PageContainer, PageHeader } from "@paperwork-labs/ui";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";

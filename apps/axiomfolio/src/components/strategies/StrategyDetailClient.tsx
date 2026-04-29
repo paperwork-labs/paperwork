@@ -6,7 +6,16 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
-import { Page, PageHeader } from "@/components/ui/Page";
+import {
+  Page,
+  PageHeader,
+  StatusBadge,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  type StatusTone,
+} from "@paperwork-labs/ui";
 import { EntryExitRules } from "@/components/strategy/RuleDisplay";
 import BacktestResults from "@/components/strategy/BacktestResults";
 import { BacktestStatusBadge } from "@/components/strategy/BacktestStatusBadge";
@@ -18,7 +27,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { semanticTextColorClass } from '@/lib/semantic-text-color';
 import { SymbolLink, ChartContext, ChartSlidePanel } from '@/components/market/SymbolChartUI';
@@ -27,13 +35,16 @@ function extractData<T>(resp: { data?: { data?: T } }): T {
   return (resp?.data as { data?: T })?.data ?? (resp?.data as T);
 }
 
-const STATUS_BADGE_CLASS: Record<StrategyStatus, string> = {
-  active: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-200',
-  paused: 'border-amber-500/40 bg-amber-500/10 text-amber-900 dark:text-amber-100',
-  draft: 'border-border bg-muted/60 text-muted-foreground',
-  stopped: 'border-destructive/40 bg-destructive/10 text-destructive',
-  archived: 'border-destructive/40 bg-destructive/10 text-destructive',
-};
+function strategyStatusTone(status: StrategyStatus): StatusTone {
+  const m: Record<StrategyStatus, StatusTone> = {
+    active: "strategy-active",
+    paused: "strategy-paused",
+    draft: "strategy-draft",
+    stopped: "strategy-stopped",
+    archived: "strategy-archived",
+  };
+  return m[status] ?? "strategy-draft";
+}
 
 interface SignalSubResult {
   rule: string;
@@ -354,12 +365,9 @@ export default function StrategyDetailClient() {
               </Button>
             )}
             <BacktestStatusBadge validation={strategy.backtest_validation} className="h-6 px-2.5 text-xs" />
-            <Badge
-              variant="outline"
-              className={cn('h-6 px-2.5 text-xs font-medium', STATUS_BADGE_CLASS[strategy.status] ?? STATUS_BADGE_CLASS.draft)}
-            >
+            <StatusBadge tone={strategyStatusTone(strategy.status)} className="h-6 px-2.5 text-xs">
               {strategy.status}
-            </Badge>
+            </StatusBadge>
           </div>
         }
       />

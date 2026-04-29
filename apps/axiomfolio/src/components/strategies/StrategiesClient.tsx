@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Clock, Loader2, Pause, Play, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Page, PageHeader } from "@/components/ui/Page";
+import { Page, PageHeader } from "@paperwork-labs/ui";
 import EmptyState from "@/components/ui/EmptyState";
 import StrategyTemplateCard from "@/components/strategy/StrategyTemplateCard";
 import { BacktestStatusBadge } from "@/components/strategy/BacktestStatusBadge";

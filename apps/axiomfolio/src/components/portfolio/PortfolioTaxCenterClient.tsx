@@ -3,7 +3,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Download, Loader2, Receipt, Search } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
-import PageHeader from '@/components/ui/PageHeader';
+import { PageHeader } from "@paperwork-labs/ui";
 import { API_BASE_URL, portfolioApi } from '@/services/api';
 import { useAuthenticatedDownload } from '@/hooks/use-authenticated-download';
 import { usePortfolioInsights, useRealizedGains } from '@/hooks/usePortfolio';
