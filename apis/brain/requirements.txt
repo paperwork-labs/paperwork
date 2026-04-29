@@ -7,7 +7,7 @@ gunicorn>=23.0.0
 sqlalchemy[asyncio]>=2.0.49
 asyncpg>=0.30.0
 alembic>=1.18.4
-pgvector>=0.3.0
+pgvector>=0.4.2
 
 # Validation & settings
 pydantic>=2.13.3
