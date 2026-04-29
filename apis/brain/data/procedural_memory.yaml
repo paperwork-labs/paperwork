@@ -19,7 +19,7 @@
 version: 1
 rules:
   - id: ruff_format_pre_push_guard
-    when: "any cheap agent edits Python under apis/brain/ or scripts/"
+    when: "ruff or format check is skipped before push; any cheap agent edits Python under apis/brain/ or scripts/"
     do: "agent must run `ruff format --check .` before push; orchestrator includes the guard in dispatch prompt"
     source: "PR #374 — Brain Tests CI failure on missing ruff format on tests/test_schedulers/test_misfire_grace.py"
     learned_at: "2026-04-28T22:30:00Z"
