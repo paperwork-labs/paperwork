@@ -1,6 +1,7 @@
 import { Suspense } from "react";
-import { TabbedPageShellNodeNext } from "@/components/layout/TabbedPageShellNext";
 import { Bot } from "lucide-react";
+
+import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default function BrainPersonasPage() {
           PR F populates all tabs.
         </p>
       </header>
-      <TabbedPageShellNodeNext tabs={tabs} defaultTab="registry" />
+      <TabbedPageShell tabs={tabs} defaultTab="registry" />
     </div>
   );
 }
