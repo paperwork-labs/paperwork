@@ -286,8 +286,7 @@ def query_logs(
     if search:
         q = search.lower()
         results = [
-            e
-            for e in results
+            e for e in results
             if q in e.message.lower() or any(q in str(v).lower() for v in e.attrs.values())
         ]
 
@@ -302,7 +301,11 @@ def query_logs(
             ts_str, entry_id = cursor.split("|", 1)
             cursor_dt = datetime.fromisoformat(ts_str)
             # Skip everything at or newer than the cursor position
-            results = [e for e in results if (e.occurred_at, e.id) < (cursor_dt, entry_id)]
+            results = [
+                e
+                for e in results
+                if (e.occurred_at, e.id) < (cursor_dt, entry_id)
+            ]
 
     page = results[:limit]
     next_cursor: str | None = None
@@ -414,12 +417,10 @@ def pull_vercel_logs() -> list[AppLogEntry]:
 
                     entries.append(
                         AppLogEntry(
-                            id=str(
-                                uuid.uuid5(
-                                    uuid.NAMESPACE_URL,
-                                    f"vercel:{dep_id}:{event.get('id', text[:40])}",
-                                )
-                            ),
+                            id=str(uuid.uuid5(
+                                uuid.NAMESPACE_URL,
+                                f"vercel:{dep_id}:{event.get('id', text[:40])}",
+                            )),
                             app=project_name,
                             service=project_name,
                             severity=severity,
@@ -610,7 +611,9 @@ def evaluate_log_anomalies() -> int:
             if len(bucket_counts) < 3:
                 continue
 
-            error_rates = [bc["error"] / max(bc["total"], 1) for bc in bucket_counts.values()]
+            error_rates = [
+                bc["error"] / max(bc["total"], 1) for bc in bucket_counts.values()
+            ]
             baseline_mean = statistics.mean(error_rates)
             if len(error_rates) < 2:
                 continue
@@ -694,13 +697,16 @@ def _fire_log_anomaly_alert(
         return
 
     try:
+        from app.schemas.conversation import ConversationCreate
         from app.services.conversations import create_conversation
 
         create_conversation(
-            title=f"Log anomaly: {app}/{service} error spike",
-            body=message,
-            tags=["alert", "log-anomaly", f"app:{app}"],
-            urgency="high",
+            ConversationCreate(
+                title=f"Log anomaly: {app}/{service} error spike",
+                body_md=message,
+                tags=["alert", "log-anomaly", f"app:{app}"],
+                urgency="high",
+            )
         )
         logger.info(
             "app_logs.anomaly: Conversation created for %s/%s",
