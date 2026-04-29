@@ -190,6 +190,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install sprint_lessons job")
 
     try:
+        from app.schedulers import operating_score as operating_score_job
+
+        operating_score_job.install(sched)
+    except Exception:
+        logger.exception("Failed to install operating_score_weekly job")
+
+    try:
         from app.schedulers import merged_prs_ingest
 
         merged_prs_ingest.install(sched)

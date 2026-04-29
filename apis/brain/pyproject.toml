@@ -40,6 +40,7 @@ ignore = ["PTH"]
 "app/schemas/procedural_memory.py" = ["TC003"]  # Pydantic resolves datetime at model validation time
 "app/schemas/strategic_objectives.py" = ["TC003"]  # Pydantic resolves datetime at model validation time
 "app/services/vercel_quota_monitor.py" = ["TC002"]  # AsyncSession used at runtime (SQLAlchemy session API)
+"app/services/operating_score.py" = ["TC003"]  # collections.abc.Callable typing idiom matching pr_outcomes fences
 "app/routers/**" = ["B008", "ARG001"]
 "app/dependencies.py" = ["B008"]
 "app/api/secrets.py" = ["B008"]  # FastAPI Depends() in route defaults (same pattern as routers)

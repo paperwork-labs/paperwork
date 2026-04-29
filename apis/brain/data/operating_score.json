@@ -1,0 +1,6 @@
+{
+  "schema": "operating_score/v1",
+  "description": "Paperwork Operating Score (POS) — weekly composite. Spec: apis/brain/data/operating_score_spec.yaml.",
+  "current": null,
+  "history": []
+}
