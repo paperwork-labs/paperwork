@@ -80,6 +80,7 @@ make db          # Open psql shell
 ## Tools
 
 - **`pwl`** (`tools/pwl`) is the Paperwork Labs CLI for monorepo health checks and new app scaffolding. Install with `uv pip install -e tools/pwl`, then run `pwl --help`.
+- `pwl new-app foo --type api` now creates a FastAPI service under `apis/foo/`, updates `render.yaml`, and adds a Studio workstream onboarding entry.
 
 ### Without Docker
 

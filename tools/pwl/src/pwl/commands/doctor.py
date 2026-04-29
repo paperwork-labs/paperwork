@@ -1,6 +1,7 @@
 import json
 import shutil
 import subprocess
+from importlib import resources
 from pathlib import Path
 
 import typer
@@ -68,6 +69,24 @@ def _merge_queue_status(root: Path) -> tuple[str, str]:
     return PASS, "Merge queue is empty"
 
 
+def _template_status() -> tuple[str, str]:
+    main_template = resources.files("pwl.templates").joinpath(
+        "app_skeleton",
+        "api",
+        "src",
+        "${name_snake}",
+        "main.py.tmpl",
+    )
+    try:
+        content = main_template.read_text()
+    except (FileNotFoundError, ModuleNotFoundError, OSError) as exc:
+        return FAIL, f"API app skeleton template is missing: {exc}"
+
+    if "FastAPI" not in content or "/healthz" not in content:
+        return FAIL, "API app skeleton main.py.tmpl is not parseable"
+    return PASS, "Found app_skeleton/api main.py.tmpl"
+
+
 def _render(results: list[tuple[str, str, str]]) -> None:
     table = Table(title="pwl doctor")
     table.add_column("Check")
@@ -97,6 +116,7 @@ def doctor() -> None:
     results.append(("pnpm", *_binary_status("pnpm")))
     results.append(("env files", *_env_status(root)))
     results.append(("merge queue", *_merge_queue_status(root)))
+    results.append(("templates", *_template_status()))
 
     _render(results)
     if any(status == FAIL for _, status, _ in results):

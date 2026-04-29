@@ -1,0 +1,62 @@
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
+from uuid import uuid4
+
+from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import PlainTextResponse
+
+from ${name_snake}.config import get_settings
+
+SERVICE_NAME = "${name}"
+SERVICE_VERSION = "0.1.0"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    app.state.settings = get_settings()
+    yield
+
+
+app = FastAPI(
+    title="${name_pascal} API",
+    version=SERVICE_VERSION,
+    lifespan=lifespan,
+)
+
+settings = get_settings()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.middleware("http")
+async def request_id_middleware(
+    request: Request,
+    call_next: Callable[[Request], Awaitable[Response]],
+) -> Response:
+    request_id = request.headers.get("x-request-id", str(uuid4()))
+    response = await call_next(request)
+    response.headers["x-request-id"] = request_id
+    return response
+
+
+@app.get("/healthz")
+async def healthz() -> dict[str, str | bool]:
+    return {"ok": True, "service": SERVICE_NAME, "version": SERVICE_VERSION}
+
+
+@app.get("/metrics", response_class=PlainTextResponse)
+async def metrics() -> str:
+    return "\n".join(
+        [
+            "# HELP paperwork_service_up Service availability placeholder",
+            "# TYPE paperwork_service_up gauge",
+            'paperwork_service_up{service="${name}"} 1',
+            "",
+        ]
+    )
