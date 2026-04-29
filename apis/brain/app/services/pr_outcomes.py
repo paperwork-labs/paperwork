@@ -34,8 +34,11 @@ _TMP_SUFFIX = ".tmp"
 
 
 def _brain_data_dir() -> str:
-    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    d = os.path.join(root, "data")
+    # services/ -> app/ -> brain/ ; data lives at brain/data, not brain/app/data
+    here = os.path.dirname(os.path.abspath(__file__))
+    brain_app = os.path.dirname(here)
+    brain_root = os.path.dirname(brain_app)
+    d = os.path.join(brain_root, "data")
     os.makedirs(d, exist_ok=True)
     return d
 

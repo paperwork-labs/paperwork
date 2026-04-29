@@ -63,6 +63,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
         sprint_velocity.install(scheduler)
     except Exception:
         logger.exception("Failed to install sprint_velocity_weekly job")
+    try:
+        from app.schedulers import vercel_billing_monitor
+
+        vercel_billing_monitor.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install vercel_billing_monitor_hourly job")
     return scheduler
 
 

@@ -290,9 +290,7 @@ def compute_velocity(week_offset: int = 0) -> SprintVelocityEntry:
     prs_merged = len(week_outcomes)
 
     ws_completed = len(completed_ws)
-    ws_estimated_prs = sum(
-        (epc if isinstance(epc, int) else 0) for _, epc in completed_ws
-    )
+    ws_estimated_prs = sum((epc if isinstance(epc, int) else 0) for _, epc in completed_ws)
     story_points_burned = ws_estimated_prs
 
     days_in_week = 7.0
@@ -328,7 +326,7 @@ def _atomic_write_json(path: str, data: dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
-def _with_lock(exclusive: bool, fn: "Callable[[], _T]") -> _T:
+def _with_lock(exclusive: bool, fn: Callable[[], _T]) -> _T:
     lp = _lock_path()
     os.makedirs(os.path.dirname(lp) or ".", exist_ok=True)
     lock_mode = fcntl.LOCK_EX if exclusive else fcntl.LOCK_SH
