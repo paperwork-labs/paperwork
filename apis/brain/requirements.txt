@@ -25,7 +25,7 @@ openai>=1.57.0
 fastmcp>=2.6.0
 
 # Redis
-redis>=5.2.0
+redis>=7.4.0
 
 # Observability (D41)
 langfuse>=2.0.0
