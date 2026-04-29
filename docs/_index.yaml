@@ -633,6 +633,13 @@ docs:
     tags: [infra, brain, studio, dispatch]
     owners: [infra, brain]
     category: reference
+  - slug: ws-67-brain-coach
+    path: docs/strategy/WS-67-BRAIN-COACH.md
+    title: WS-67 — Brain coach for Opus
+    summary: "Brain is not just an L5 self-improving system. **Brain is the operating intelligence that wraps every agent action** — pre-flight, in-action, post-action — with context, memory, and learning."
+    tags: []
+    owners: [strategy]
+    category: reference
   # ── Plans ─────────────────────────────────────────
   - slug: axiomfolio-gaps
     path: docs/axiomfolio/plans/GAPS_2026Q2.md
