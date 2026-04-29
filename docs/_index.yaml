@@ -754,6 +754,13 @@ docs:
     tags: [company, sprint]
     owners: [engineering]
     category: sprints
+  - slug: studio-tracker-reconcile-2026q2
+    path: docs/sprints/STUDIO_TRACKER_RECONCILE_2026Q2.md
+    title: Studio tracker reconcile — WS-69 PR A (2026 Q2)
+    summary: "WS-69 PR A — centralize tracker status reconciliation in tracker-reconcile.ts, fix Overview tile drift (in_progress vs active), align /admin counts, add Playwright admin-routes smoke."
+    tags: [company, sprint, studio, ws-69]
+    owners: [engineering, brain]
+    category: sprints
   # ── Generated ─────────────────────────────────────────
   - slug: axiomfolio-integration
     path: docs/AXIOMFOLIO_INTEGRATION.generated.md

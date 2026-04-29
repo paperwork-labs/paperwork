@@ -2,37 +2,20 @@ import Link from "next/link";
 import { Target, Boxes, Rocket } from "lucide-react";
 
 import { loadTrackerIndex } from "@/lib/tracker";
+import {
+  activePlansForUi,
+  activeSprintsForUi,
+  companyTasksOpenCount,
+  shippedSprintsForUi,
+} from "@/lib/tracker-reconcile";
 
 export function TrackersRail() {
-  let summary: {
-    openCriticalDates: number;
-    productCount: number;
-    activePlanCount: number;
-    activeSprintCount: number;
-    shippedSprintCount: number;
-  };
-  try {
-    const tracker = loadTrackerIndex();
-    const openCriticalDates = (tracker.company?.critical_dates ?? []).filter(
-      (d) => !/done|complete/i.test(d.status)
-    ).length;
-    const productCount = tracker.products.length;
-    const activePlanCount = tracker.products.reduce(
-      (acc, p) => acc + p.plans.filter((pl) => pl.status === "active").length,
-      0
-    );
-    const activeSprintCount = tracker.sprints.filter((s) => s.status === "active").length;
-    const shippedSprintCount = tracker.sprints.filter((s) => s.status === "shipped").length;
-    summary = {
-      openCriticalDates,
-      productCount,
-      activePlanCount,
-      activeSprintCount,
-      shippedSprintCount,
-    };
-  } catch {
-    return null;
-  }
+  const tracker = loadTrackerIndex();
+  const allPlans = tracker.products.flatMap((p) => p.plans);
+  const activePlans = activePlansForUi(allPlans);
+  const openTasks = companyTasksOpenCount(tracker.company?.critical_dates ?? []);
+  const activeSprintCount = activeSprintsForUi(tracker.sprints).length;
+  const shippedSprintCount = shippedSprintsForUi(tracker.sprints).length;
 
   return (
     <section
@@ -50,10 +33,10 @@ export function TrackersRail() {
           </span>
         </div>
         <p className="mt-3 text-2xl font-semibold text-zinc-100">
-          {summary.openCriticalDates}
+          {openTasks}
         </p>
         <p className="text-xs text-zinc-500">
-          critical dates open in <code>docs/TASKS.md</code>
+          Company tasks · {openTasks} open
         </p>
         <p className="mt-3 text-xs text-zinc-400 group-hover:text-zinc-200">
           Tasks →
@@ -71,13 +54,13 @@ export function TrackersRail() {
           </span>
         </div>
         <p className="mt-3 text-2xl font-semibold text-zinc-100">
-          {summary.activePlanCount}
+          {activePlans.length}
           <span className="text-base font-normal text-zinc-500">
-            {" "}/ {summary.productCount}
+            {" "}/ {tracker.products.length}
           </span>
         </p>
         <p className="text-xs text-zinc-500">
-          active plans across products
+          in-flight product plans · {activePlans.length} of {tracker.products.length}
         </p>
         <p className="mt-3 text-xs text-zinc-400 group-hover:text-zinc-200">
           Plans →
@@ -95,12 +78,14 @@ export function TrackersRail() {
           </span>
         </div>
         <p className="mt-3 text-2xl font-semibold text-zinc-100">
-          {summary.activeSprintCount}
+          {activeSprintCount}
           <span className="text-base font-normal text-zinc-500">
-            {" "}+ {summary.shippedSprintCount} shipped
+            {" "}· {shippedSprintCount} shipped
           </span>
         </p>
-        <p className="text-xs text-zinc-500">cross-cutting work logs</p>
+        <p className="text-xs text-zinc-500">
+          Sprints · {activeSprintCount} active · {shippedSprintCount} shipped
+        </p>
         <p className="mt-3 text-xs text-zinc-400 group-hover:text-zinc-200">
           Sprints →
         </p>

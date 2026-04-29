@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CheckCircle2, AlertTriangle, Circle, ExternalLink } from "lucide-react";
 
 import { loadTrackerIndex } from "@/lib/tracker";
+import { companyTasksOpenCount } from "@/lib/tracker-reconcile";
 
 export const dynamic = "force-static";
 
@@ -24,6 +25,7 @@ function statusTone(status: string): {
 
 export default function TasksPage() {
   const { company } = loadTrackerIndex();
+  const openDates = companyTasksOpenCount(company.critical_dates);
 
   return (
     <div className="space-y-6">
@@ -68,7 +70,7 @@ export default function TasksPage() {
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-zinc-100">Critical Dates</h2>
           <span className="text-[10px] uppercase tracking-wide text-zinc-500">
-            {company.critical_dates.length} milestones
+            {openDates} open · {company.critical_dates.length} milestones
           </span>
         </div>
         <div className="overflow-hidden rounded-lg border border-zinc-800">

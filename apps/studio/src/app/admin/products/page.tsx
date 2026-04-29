@@ -2,11 +2,14 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 
 import { loadTrackerIndex } from "@/lib/tracker";
+import { activePlansForUi } from "@/lib/tracker-reconcile";
 
 export const dynamic = "force-static";
 
 export default function ProductsIndexPage() {
   const { products } = loadTrackerIndex();
+  const allPlans = products.flatMap((p) => p.plans);
+  const inFlightPlans = activePlansForUi(allPlans).length;
 
   return (
     <div className="space-y-6">
@@ -16,6 +19,10 @@ export default function ProductsIndexPage() {
           Per-product master plans, gap audits, and migration roadmaps. Each
           product owns its own folder under <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs">docs/&lt;product&gt;/plans/</code>;
           this page is the cross-product roll-up.
+        </p>
+        <p className="text-xs text-zinc-500">
+          {inFlightPlans} in-flight plan{inFlightPlans === 1 ? "" : "s"} across{" "}
+          {products.length} product{products.length === 1 ? "" : "s"} (same roll-up as Overview).
         </p>
       </header>
 
