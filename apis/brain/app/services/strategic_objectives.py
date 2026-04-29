@@ -50,7 +50,7 @@ def load_objectives() -> list[StrategicObjective]:
     return load_strategic_objectives_file().objectives
 
 
-def objectives_summary() -> dict:
+def objectives_summary() -> dict[str, object]:
     file = load_strategic_objectives_file()
     horizons = sorted({o.horizon for o in file.objectives})
     return {
