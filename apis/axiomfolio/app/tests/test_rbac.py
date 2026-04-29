@@ -2,8 +2,9 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_current_user
 from app.api.main import app
-from app.tests.auth_test_utils import approve_user_for_login_tests
+from app.tests.auth_test_utils import approve_user_for_login_tests, make_user_dependency_override
 
 
 @pytest.fixture(scope="module")
@@ -26,12 +27,19 @@ def _register_and_login(client, username: str, password: str, email: str):
 
 def test_me_includes_role(client):
     u = f"user_{uuid.uuid4().hex[:6]}"
-    token = _register_and_login(client, u, "Passw0rd!", f"{u}@example.com")
-    me = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
-    assert me.status_code == 200
-    body = me.json()
-    assert "role" in body
-    assert body["username"] == u
+    r = client.post("/api/v1/auth/register", json={"username": u, "email": f"{u}@example.com", "password": "Passw0rd!"})
+    assert r.status_code == 200
+    approve_user_for_login_tests(u)
+
+    app.dependency_overrides[get_current_user] = make_user_dependency_override(u)
+    try:
+        me = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer test"})
+        assert me.status_code == 200
+        body = me.json()
+        assert "role" in body
+        assert body["username"] == u
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_admin_guard_blocks_non_admin(client):

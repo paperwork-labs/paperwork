@@ -81,7 +81,7 @@ class TestAuthenticatedAccess:
     def auth_headers(self, client):
         from unittest.mock import MagicMock
 
-        from app.api.dependencies import get_current_user
+        from app.api.dependencies import get_current_user, get_market_data_viewer
         from app.models.user import User, UserRole
 
         u = MagicMock(spec=User)
@@ -90,10 +90,12 @@ class TestAuthenticatedAccess:
         u.is_approved = True
         u.role = UserRole.ANALYST
         app.dependency_overrides[get_current_user] = lambda: u
+        app.dependency_overrides[get_market_data_viewer] = lambda: u
         try:
             yield {"Authorization": "Bearer test-clerk-session"}
         finally:
             app.dependency_overrides.pop(get_current_user, None)
+            app.dependency_overrides.pop(get_market_data_viewer, None)
 
     def test_snapshots_with_token(self, client, auth_headers):
         r = client.get("/api/v1/market-data/snapshots", headers=auth_headers)

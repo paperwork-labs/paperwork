@@ -1,8 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_current_user
 from app.api.main import app
-from app.tests.auth_test_utils import approve_user_for_login_tests
+from app.tests.auth_test_utils import approve_user_for_login_tests, make_user_dependency_override
 from app.models.market_data import MarketSnapshot
 from app.models.index_constituent import IndexConstituent
 from datetime import datetime, timedelta, timezone
@@ -43,7 +44,8 @@ async def test_admin_snapshot_digest_sends_via_brain(monkeypatch, db_session):
 
     app.dependency_overrides[get_db] = _override_get_db
     try:
-        token = _register_and_login_admin(client, db_session)
+        _register_and_login_admin(client, db_session)
+        app.dependency_overrides[get_current_user] = make_user_dependency_override("admin_digest")
 
         db_session.add(IndexConstituent(index_name="SP500", symbol="AAA", is_active=True))
         db_session.add(IndexConstituent(index_name="SP500", symbol="BBB", is_active=True))
@@ -97,7 +99,7 @@ async def test_admin_snapshot_digest_sends_via_brain(monkeypatch, db_session):
 
         r = client.post(
             "/api/v1/market-data/admin/snapshots/discord-digest",
-            headers={"Authorization": f"Bearer {token}"},
+            headers={"Authorization": "Bearer test"},
         )
         assert r.status_code == 200, r.text
         body = r.json()
@@ -107,6 +109,7 @@ async def test_admin_snapshot_digest_sends_via_brain(monkeypatch, db_session):
         assert "MarketSnapshot digest" in calls[0][1]["content"]
         assert "Top RS" in calls[0][1]["content"]
     finally:
+        app.dependency_overrides.pop(get_current_user, None)
         app.dependency_overrides.pop(get_db, None)
 
 

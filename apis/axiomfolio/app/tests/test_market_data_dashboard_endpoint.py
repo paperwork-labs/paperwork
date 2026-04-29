@@ -3,8 +3,9 @@ import uuid
 import pytest
 from fastapi.testclient import TestClient
 
+from app.api.dependencies import get_market_data_viewer
 from app.api.main import app
-from app.tests.auth_test_utils import approve_user_for_login_tests
+from app.tests.auth_test_utils import approve_user_for_login_tests, make_user_dependency_override
 
 
 @pytest.fixture(scope="module")
@@ -58,23 +59,26 @@ def test_market_dashboard_endpoint_returns_summary_shape(client: TestClient):
     password = "AdminPassw0rd!"
     _register_and_login(client, username, password, f"{username}@example.com")
     _elevate_user_to_admin(username)
-    token = _login(client, f"{username}@example.com", password)
 
-    res = client.get(
-        "/api/v1/market-data/dashboard",
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    assert res.status_code == 200
-    body = res.json()
-    assert "generated_at" in body
-    assert "tracked_count" in body
-    assert "snapshot_count" in body
-    assert "coverage" in body
-    assert "regime" in body
-    assert "leaders" in body
-    assert "setups" in body
-    assert "sector_momentum" in body
-    assert "action_queue" in body
-    assert isinstance(body["leaders"], list)
-    assert isinstance(body["sector_momentum"], list)
-    assert isinstance(body["action_queue"], list)
+    app.dependency_overrides[get_market_data_viewer] = make_user_dependency_override(username)
+    try:
+        res = client.get(
+            "/api/v1/market-data/dashboard",
+            headers={"Authorization": "Bearer test"},
+        )
+        assert res.status_code == 200
+        body = res.json()
+        assert "generated_at" in body
+        assert "tracked_count" in body
+        assert "snapshot_count" in body
+        assert "coverage" in body
+        assert "regime" in body
+        assert "leaders" in body
+        assert "setups" in body
+        assert "sector_momentum" in body
+        assert "action_queue" in body
+        assert isinstance(body["leaders"], list)
+        assert isinstance(body["sector_momentum"], list)
+        assert isinstance(body["action_queue"], list)
+    finally:
+        app.dependency_overrides.pop(get_market_data_viewer, None)
