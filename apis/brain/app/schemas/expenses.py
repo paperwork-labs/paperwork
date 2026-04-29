@@ -9,7 +9,7 @@ medallion: ops
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -143,4 +143,4 @@ class ExpenseRoutingRules(BaseModel):
     subscription_skip_approval: bool = False
     updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     updated_by: str = "founder"
-    history: list[dict] = Field(default_factory=list)
+    history: list[dict[str, Any]] = Field(default_factory=list)

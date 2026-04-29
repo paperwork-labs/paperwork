@@ -21,8 +21,10 @@ import json
 import logging
 import os
 import uuid
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from app.schemas.expenses import (
     CategoryTotal,
@@ -31,10 +33,10 @@ from app.schemas.expenses import (
     ExpenseCreate,
     ExpenseEdit,
     ExpenseRoutingRules,
-    ExpensesListPage,
     ExpenseSource,
     ExpenseStatus,
     ExpenseStatusUpdate,
+    ExpensesListPage,
     MonthlyRollup,
     QuarterlyRollup,
 )
@@ -94,7 +96,7 @@ def _rules_json_path() -> Path:
 # ---------------------------------------------------------------------------
 
 
-def _read_expenses_raw() -> list[dict]:
+def _read_expenses_raw() -> list[dict[str, Any]]:
     path = _expenses_json_path()
     if not path.exists():
         return []
@@ -105,14 +107,16 @@ def _read_expenses_raw() -> list[dict]:
             return data
         # Tolerate {"expenses": [...]} envelope
         if isinstance(data, dict) and "expenses" in data:
-            return data["expenses"]
+            envelope = data["expenses"]
+            if isinstance(envelope, list):
+                return envelope
         return []
     except (json.JSONDecodeError, OSError):
         logger.warning("expenses.json unreadable — treating as empty")
         return []
 
 
-def _write_expenses_raw(rows: list[dict]) -> None:
+def _write_expenses_raw(rows: list[dict[str, Any]]) -> None:
     path = _expenses_json_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
@@ -121,7 +125,9 @@ def _write_expenses_raw(rows: list[dict]) -> None:
     tmp.replace(path)
 
 
-def _locked_read_write(fn):  # type: ignore[no-untyped-def]
+def _locked_read_write(
+    fn: Callable[[list[dict[str, Any]]], list[dict[str, Any]]],
+) -> None:
     """Acquire a file lock around expenses.json, run fn(rows) -> rows, persist."""
     lock_path = _expenses_json_path().with_suffix(".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -210,7 +216,7 @@ def submit_expense(payload: ExpenseCreate) -> Expense:
 
     row = expense.model_dump(mode="json")
 
-    def mutate(rows: list[dict]) -> list[dict]:
+    def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         rows.append(row)
         return rows
 
@@ -223,7 +229,7 @@ def submit_expense(payload: ExpenseCreate) -> Expense:
 # ---------------------------------------------------------------------------
 
 
-def _parse_expense(raw: dict) -> Expense | None:
+def _parse_expense(raw: dict[str, Any]) -> Expense | None:
     try:
         return Expense.model_validate(raw)
     except Exception:
@@ -304,7 +310,7 @@ def get_expense(expense_id: str) -> Expense | None:
 def update_expense_status(expense_id: str, update: ExpenseStatusUpdate) -> Expense | None:
     result: list[Expense] = []
 
-    def mutate(rows: list[dict]) -> list[dict]:
+    def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for i, raw in enumerate(rows):
             if raw.get("id") == expense_id:
                 expense = _parse_expense(raw)
@@ -314,7 +320,10 @@ def update_expense_status(expense_id: str, update: ExpenseStatusUpdate) -> Expen
                 if update.status not in allowed:
                     raise ValueError(f"Cannot transition {expense.status} → {update.status}")
                 now = datetime.now(UTC).isoformat()
-                patch: dict = {"status": update.status, "notes": update.notes or expense.notes}
+                patch: dict[str, Any] = {
+                    "status": update.status,
+                    "notes": update.notes or expense.notes,
+                }
                 if update.status == "approved":
                     patch["approved_at"] = now
                 elif update.status == "reimbursed":
@@ -332,7 +341,7 @@ def update_expense_status(expense_id: str, update: ExpenseStatusUpdate) -> Expen
 def edit_expense(expense_id: str, edit: ExpenseEdit) -> Expense | None:
     result: list[Expense] = []
 
-    def mutate(rows: list[dict]) -> list[dict]:
+    def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for i, raw in enumerate(rows):
             if raw.get("id") == expense_id:
                 expense = _parse_expense(raw)
@@ -349,10 +358,10 @@ def edit_expense(expense_id: str, edit: ExpenseEdit) -> Expense | None:
     return result[0] if result else None
 
 
-def attach_receipt(expense_id: str, receipt_data: dict) -> Expense | None:
+def attach_receipt(expense_id: str, receipt_data: dict[str, Any]) -> Expense | None:
     result: list[Expense] = []
 
-    def mutate(rows: list[dict]) -> list[dict]:
+    def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         for i, raw in enumerate(rows):
             if raw.get("id") == expense_id:
                 expense = _parse_expense(raw)
@@ -379,7 +388,7 @@ def _filter_by_month(items: list[Expense], year: int, month: int) -> list[Expens
 
 
 def _category_breakdown(items: list[Expense]) -> list[CategoryTotal]:
-    totals: dict[str, dict] = {}
+    totals: dict[str, dict[str, Any]] = {}
     for e in items:
         cat = e.category
         if cat not in totals:
@@ -526,7 +535,7 @@ def upsert_expense_raw(expense: Expense) -> bool:
     """Insert expense if id not already present. Returns True if inserted."""
     inserted: list[bool] = [False]
 
-    def mutate(rows: list[dict]) -> list[dict]:
+    def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         existing_ids = {r.get("id") for r in rows}
         if expense.id not in existing_ids:
             rows.append(expense.model_dump(mode="json"))

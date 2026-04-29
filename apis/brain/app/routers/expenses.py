@@ -19,6 +19,7 @@ from __future__ import annotations
 import hmac
 import json
 import logging
+from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.responses import Response
@@ -60,18 +61,18 @@ async def get_rollup(
     month: int | None = Query(default=None),
     quarter: int | None = Query(default=None),
     _auth: None = Depends(_require_admin),
-):
+) -> Any:
     """Monthly or quarterly rollup. Provide year+month or year+quarter."""
     if month is not None:
         if not 1 <= month <= 12:
             return error_response("month must be 1-12", 422)
-        rollup = expense_svc.compute_monthly_rollup(year, month)
-        return success_response(rollup.model_dump(mode="json"))
+        monthly = expense_svc.compute_monthly_rollup(year, month)
+        return success_response(monthly.model_dump(mode="json"))
     if quarter is not None:
         if not 1 <= quarter <= 4:
             return error_response("quarter must be 1-4", 422)
-        rollup = expense_svc.compute_quarterly_rollup(year, quarter)
-        return success_response(rollup.model_dump(mode="json"))
+        quarterly = expense_svc.compute_quarterly_rollup(year, quarter)
+        return success_response(quarterly.model_dump(mode="json"))
     return error_response("Provide month or quarter", 422)
 
 
@@ -82,7 +83,7 @@ async def export_csv(
     year: int | None = Query(default=None),
     month: int | None = Query(default=None),
     _auth: None = Depends(_require_admin),
-):
+) -> Response:
     csv_str = expense_svc.export_csv(status=status, category=category, year=year, month=month)
     return Response(
         content=csv_str,
@@ -92,7 +93,7 @@ async def export_csv(
 
 
 @router.get("/rules")
-async def get_routing_rules(_auth: None = Depends(_require_admin)):
+async def get_routing_rules(_auth: None = Depends(_require_admin)) -> Any:
     """Read current routing rules. PR O adds the writer (PUT /admin/expenses/rules)."""
     rules = expense_svc.load_routing_rules()
     return success_response(rules.model_dump(mode="json"))
@@ -115,7 +116,7 @@ async def list_expenses(
     cursor: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     _auth: None = Depends(_require_admin),
-):
+) -> Any:
     page = expense_svc.list_expenses(
         status=status,
         category=category,
@@ -135,7 +136,7 @@ async def submit_expense(
     body: str = Form(..., description="JSON-encoded ExpenseCreate"),
     receipt: UploadFile | None = File(default=None),
     _auth: None = Depends(_require_admin),
-):
+) -> Any:
     """Submit a new expense (multipart). body is JSON-encoded ExpenseCreate."""
     try:
         payload_dict = json.loads(body)
@@ -162,7 +163,9 @@ async def submit_expense(
                 size_bytes=len(content),
                 stored_path=stored_path,
             )
-            expense = expense_svc.attach_receipt(expense.id, receipt_data.model_dump(mode="json"))
+            updated = expense_svc.attach_receipt(expense.id, receipt_data.model_dump(mode="json"))
+            if updated is not None:
+                expense = updated
         except ValueError as exc:
             logger.warning("Receipt upload rejected for expense %s: %s", expense.id, exc)
             return error_response(f"Receipt rejected: {exc}", 422)
@@ -176,7 +179,7 @@ async def submit_expense(
 
 
 @router.get("/{expense_id}")
-async def get_expense(expense_id: str, _auth: None = Depends(_require_admin)):
+async def get_expense(expense_id: str, _auth: None = Depends(_require_admin)) -> Any:
     expense = expense_svc.get_expense(expense_id)
     if expense is None:
         raise HTTPException(status_code=404, detail="Expense not found")
@@ -188,7 +191,7 @@ async def edit_expense(
     expense_id: str,
     edit: ExpenseEdit,
     _auth: None = Depends(_require_admin),
-):
+) -> Any:
     updated = expense_svc.edit_expense(expense_id, edit)
     if updated is None:
         raise HTTPException(status_code=404, detail="Expense not found")
@@ -200,7 +203,7 @@ async def update_expense_status(
     expense_id: str,
     body: ExpenseStatusUpdate,
     _auth: None = Depends(_require_admin),
-):
+) -> Any:
     try:
         updated = expense_svc.update_expense_status(expense_id, body)
     except ValueError as exc:
