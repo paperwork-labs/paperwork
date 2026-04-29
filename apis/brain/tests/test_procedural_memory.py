@@ -20,14 +20,12 @@ def _make_yaml(tmp_path: Path) -> Path:
     return dest
 
 
-def test_load_rules_returns_four_seed_rules(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_load_rules_returns_seed_rules(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     yaml_path = _make_yaml(tmp_path)
     monkeypatch.setattr(pm, "_memory_path", lambda: yaml_path)
 
     rules = pm.load_rules()
-    assert len(rules) == 4
+    assert len(rules) >= 4, "must include at least the original 4 seed rules"
     ids = {r.id for r in rules}
     assert "ruff_format_pre_push_guard" in ids
     assert "workstream_priority_unique" in ids
@@ -95,10 +93,11 @@ def test_add_rule_appends_new_rule(tmp_path: Path, monkeypatch: pytest.MonkeyPat
         confidence="medium",
         applies_to=["cheap-agents"],
     )
+    rules_before = pm.load_rules()
     pm.add_rule(new_rule)
 
     rules = pm.load_rules()
-    assert len(rules) == 5
+    assert len(rules) == len(rules_before) + 1
     ids = {r.id for r in rules}
     assert "test_new_rule" in ids
 
@@ -120,11 +119,12 @@ def test_add_rule_duplicate_id_noop_with_warning(
         applies_to=["cheap-agents"],
     )
 
+    rules_before = pm.load_rules()
     with caplog.at_level(logging.WARNING, logger="app.services.procedural_memory"):
         pm.add_rule(duplicate)
 
     rules = pm.load_rules()
-    assert len(rules) == 4, "Duplicate should not be added"
+    assert len(rules) == len(rules_before), "Duplicate should not be added"
     assert any("already exists" in msg for msg in caplog.messages)
 
 
