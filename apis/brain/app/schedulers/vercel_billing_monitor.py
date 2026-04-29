@@ -30,13 +30,24 @@ async def _tick() -> None:
         # Slack routing handled by services.slack_router once that lands;
         # for now we log structured so log-shipper can pick it up.
         for a in alerts:
-            logger.warning(
-                "vercel_budget_alert severity=%s pct=%.1f spent=%.2f budget=%.2f",
-                a["severity"],
-                a["pct"],
-                a["spent_usd"],
-                a["budget_usd"],
-            )
+            pct = a.get("pct")
+            if pct is None:
+                logger.warning(
+                    "vercel_budget_alert severity=%s level=%s spent=%.2f budget=%.2f msg=%s",
+                    a["severity"],
+                    a.get("level", ""),
+                    a["spent_usd"],
+                    a["budget_usd"],
+                    a.get("message", ""),
+                )
+            else:
+                logger.warning(
+                    "vercel_budget_alert severity=%s pct=%.1f spent=%.2f budget=%.2f",
+                    a["severity"],
+                    pct,
+                    a["spent_usd"],
+                    a["budget_usd"],
+                )
 
 
 def install(scheduler: AsyncIOScheduler) -> None:
