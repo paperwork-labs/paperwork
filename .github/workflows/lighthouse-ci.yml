@@ -1,0 +1,53 @@
+name: Lighthouse CI
+
+on:
+  pull_request:
+    types: [labeled, opened, synchronize]
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  lhci:
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'lighthouse')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+      - run: npm i -g @lhci/cli@0.14.x
+      - name: Wait for Vercel preview
+        id: vercel
+        run: |
+          # Try to fetch the studio preview URL from gh API; fallback to production for push events
+          if [ "${{ github.event_name }}" = "push" ]; then
+            URL="https://studio.paperworklabs.com"
+          else
+            URL=$(gh pr view ${{ github.event.pull_request.number }} --json statusCheckRollup --jq '.statusCheckRollup[]? | select(.context // .name | tostring | startswith("Vercel - studio")) | .targetUrl' | head -1)
+          fi
+          echo "url=${URL:-https://studio.paperworklabs.com}" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run Lighthouse CI
+        run: |
+          lhci collect --url=${{ steps.vercel.outputs.url }} --numberOfRuns=2 || true
+          lhci assert --preset=lighthouse:no-pwa || echo "ASSERTIONS FAILED but continuing for telemetry"
+          lhci upload --target=temporary-public-storage || true
+      - name: Persist summary
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p apis/brain/data
+          python3 .github/scripts/lhci_summary_to_brain.py
+        env:
+          LHCI_PREVIEW_URL: ${{ steps.vercel.outputs.url }}
+      - name: Commit summary back
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "brain-bot"
+          git config user.email "brain@paperworklabs.com"
+          git add apis/brain/data/lighthouse_ci_runs.json
+          git diff --cached --quiet || (git commit -m "chore(brain): record Lighthouse-CI run for POS pillar 4" && git push)

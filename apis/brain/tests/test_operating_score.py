@@ -215,6 +215,60 @@ def test_concurrent_writes_no_exceptions(monkeypatch: pytest.MonkeyPatch, tmp_pa
     assert isinstance(data.get("history"), list)
 
 
+def test_web_perf_ux_collector_reads_lighthouse_runs_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    lj = tmp_path / "lh.json"
+    lj.write_text(
+        json.dumps(
+            {
+                "schema": "lighthouse_ci_runs/v1",
+                "runs": [
+                    {
+                        "run_at": "2026-04-29T02:05:06Z",
+                        "url": "https://example.test/",
+                        "scores": {
+                            "performance": 0.8,
+                            "accessibility": 0.7,
+                            "best_practices": 0.9,
+                            "seo": 0.85,
+                        },
+                        "metrics": {
+                            "lcp_ms": 100.0,
+                            "cls": 0.0,
+                            "tbt_ms": 0.0,
+                            "fcp_ms": 90.0,
+                        },
+                        "commit_sha": "abc123",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("BRAIN_LIGHTHOUSE_CI_RUNS_JSON", str(lj))
+    s, ok, notes = web_perf_ux.collect()
+    want = ((0.8 + 0.7 + 0.9 + 0.85) / 4.0) * 100.0
+    assert ok is True and pytest.approx(s) == want
+    assert "lighthouse_ci_runs.json @ 2026-04-29T02:05:06Z" in notes
+
+
+def test_web_perf_ux_collector_empty_file_returns_bootstrap(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    lj = tmp_path / "lh_empty.json"
+    lj.write_text(
+        '{"schema":"lighthouse_ci_runs/v1","runs":[]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("BRAIN_LIGHTHOUSE_CI_RUNS_JSON", str(lj))
+    score, mf, notes = web_perf_ux.collect()
+    assert score == pytest.approx(55.0) and mf is False
+    assert "no Lighthouse-CI runs yet" in notes
+
+
 def test_atomic_write_roundtrip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _tiny_spec(monkeypatch, tmp_path)
     jq = tmp_path / "r.json"

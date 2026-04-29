@@ -1,0 +1,5 @@
+{
+  "schema": "lighthouse_ci_runs/v1",
+  "description": "Lighthouse-CI scores per main-branch run. POS pillar 4 (web_perf_ux) reads the latest entry.",
+  "runs": []
+}

@@ -65,3 +65,11 @@ rules:
     learned_at: "2026-04-29T00:00:00Z"
     confidence: high
     applies_to: [orchestrator]
+
+  - id: lighthouse_label_for_pr_perf_check
+    when: "PR introduces web frontend changes (apps/* or packages/ui)"
+    do: "add 'lighthouse' label to trigger Lighthouse-CI workflow on the preview deploy; orchestrator can label via gh pr edit --add-label lighthouse"
+    source: "POS pillar 4 (web_perf_ux) — Lighthouse-CI runs only on labeled PRs to save CI minutes; main runs always collect"
+    learned_at: "2026-04-29T01:00:00Z"
+    confidence: high
+    applies_to: [orchestrator, cheap-agents]
