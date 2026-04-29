@@ -18,6 +18,7 @@ from app.models.episode import Episode
 from app.models.scheduler_run import SchedulerRun
 from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
+from app.services import iac_drift
 from app.services.auto_revert import list_incidents
 from app.services.blitz_progress_poster import blitz_status_snapshot
 from app.services.continuous_learning import (
@@ -215,6 +216,19 @@ async def system_health_summary(
 ):
     """Operator snapshot for Studio admin; WS-43 freshness + WS-45 pause flag."""
     return success_response(system_health_snapshot())
+
+
+@router.get("/drift-status")
+async def drift_status(
+    _auth: None = Depends(_require_admin),
+):
+    """Latest IaC drift detector summary and open reconcile alerts."""
+    return success_response(
+        {
+            "latest_run": iac_drift.latest_run_summary(),
+            "open_alerts": iac_drift.open_alerts(),
+        }
+    )
 
 
 def _rfc3339_utc_z(dt: datetime) -> str:
