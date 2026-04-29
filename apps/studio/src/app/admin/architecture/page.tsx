@@ -2,8 +2,8 @@ import { Suspense } from "react";
 import { TabbedPageShellNodeNext } from "@/components/layout/TabbedPageShellNext";
 import OverviewTab from "./tabs/overview-tab";
 import AnalyticsTab from "./tabs/analytics-tab";
-import WorkflowsTab from "./tabs/workflows-tab";
-import IntegrationsTab from "./tabs/integrations-tab";
+import FlowsTab from "./tabs/flows-tab";
+import DataSourcesTab from "./tabs/data-sources-tab";
 
 export const dynamic = "force-dynamic";
 
@@ -37,20 +37,20 @@ export default function ArchitecturePage() {
       ),
     },
     {
-      id: "workflows" as const,
-      label: "Workflows",
+      id: "flows" as const,
+      label: "Flows",
       content: (
         <Suspense fallback={<TabSkeleton />}>
-          <WorkflowsTab />
+          <FlowsTab />
         </Suspense>
       ),
     },
     {
-      id: "integrations" as const,
-      label: "Integrations",
+      id: "data-sources" as const,
+      label: "Data Sources",
       content: (
         <Suspense fallback={<TabSkeleton />}>
-          <IntegrationsTab />
+          <DataSourcesTab />
         </Suspense>
       ),
     },
@@ -63,7 +63,7 @@ export default function ArchitecturePage() {
           Architecture
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
-          System graph, analytics, workflows, and integrations.
+          System graph, analytics, automation flows, and data sources.
         </p>
       </header>
       <TabbedPageShellNodeNext tabs={tabs} defaultTab="overview" />

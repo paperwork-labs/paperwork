@@ -1,6 +1,6 @@
 import { permanentRedirect } from "next/navigation";
 
-// n8n is decommissioned (PR J). Redirects to Architecture → Integrations tab (WS-69 PR C).
+// Folded into Architecture → Flows tab (WS-69 PR C). 308 permanent redirect.
 export default function N8nMirrorLegacyPage() {
-  permanentRedirect("/admin/architecture?tab=integrations");
+  permanentRedirect("/admin/architecture?tab=flows");
 }
