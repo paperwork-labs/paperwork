@@ -206,7 +206,10 @@ export function WorkstreamsBoardClient({
           <div className="min-w-0 flex-1 space-y-6">
             <KpiStrip kpis={kpis} />
 
-            <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+            <section
+              data-testid="workstreams-board"
+              className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4"
+            >
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
                 <p className="text-sm font-medium text-zinc-200">
                   Board ({visibleIds.length} shown)

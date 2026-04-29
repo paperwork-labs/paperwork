@@ -19,10 +19,11 @@ import { SprintMarkdown } from "@/components/sprint/SprintMarkdown";
 import {
   findPreviousShippedSprint,
   getDisplayPillStatus,
+  isLegacyActiveToken,
   isSprintActiveForUi,
   isSprintShippedForUi,
   orderSprintsChronological,
-} from "@/lib/sprint-reconcile";
+} from "@/lib/tracker-reconcile";
 import { buildTracker, type TrackerItem } from "@/lib/sprint-tracker";
 
 export const dynamic = "force-static";
@@ -76,7 +77,12 @@ const STATUS_TONE: Record<
 function tone(pill: string) {
   const p = (pill || "paused").toLowerCase();
   if (STATUS_TONE[p]) return STATUS_TONE[p]!;
-  if (p === "in progress" || p === "in_progress" || p === "active" || p === "planned")
+  if (
+    p === "in progress" ||
+    p === "in_progress" ||
+    p === "planned" ||
+    isLegacyActiveToken(p)
+  )
     return STATUS_TONE.in_progress;
   if (p === "on_hold" || p === "on-hold") return STATUS_TONE.paused;
   return STATUS_TONE.paused;

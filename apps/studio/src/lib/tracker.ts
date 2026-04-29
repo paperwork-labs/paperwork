@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import { activeSprintsForUi, shippedSprintsForUi } from "./tracker-reconcile";
+
 export type CriticalDate = {
   milestone: string;
   deadline: string;
@@ -90,9 +92,9 @@ export function findProduct(slug: string): Product | undefined {
 }
 
 export function activeSprints(): Sprint[] {
-  return loadTrackerIndex().sprints.filter((s) => s.status === "active");
+  return activeSprintsForUi(loadTrackerIndex().sprints);
 }
 
 export function shippedSprints(): Sprint[] {
-  return loadTrackerIndex().sprints.filter((s) => s.status === "shipped");
+  return shippedSprintsForUi(loadTrackerIndex().sprints);
 }
