@@ -14,6 +14,7 @@ import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 _BOOTSTRAP = (75.0, False, "gh CLI unavailable; bootstrap estimate")
 
@@ -39,10 +40,13 @@ def _repo_slug() -> str | None:
     except (OSError, subprocess.CalledProcessError, subprocess.TimeoutExpired):
         return None
     url = cp.stdout.strip().removesuffix(".git")
-    if "github.com/" in url:
-        tail = url.split("github.com/", 1)[1].strip("/").split("/")
-    elif "github.com:" in url:
-        tail = url.split("github.com:", 1)[1].strip("/").split("/")
+    parsed = urlparse(url)
+    if parsed.scheme in ("https", "http") and parsed.netloc == "github.com":
+        tail = parsed.path.strip("/").split("/")
+    elif url.startswith("git@github.com:"):
+        tail = url.split("git@github.com:", 1)[1].strip("/").split("/")
+    elif url.startswith("ssh://git@github.com/"):
+        tail = url.split("ssh://git@github.com/", 1)[1].strip("/").split("/")
     else:
         return None
     if len(tail) >= 2:
