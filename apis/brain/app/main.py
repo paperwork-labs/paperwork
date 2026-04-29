@@ -22,6 +22,7 @@ from app.rate_limit import limiter
 from app.redis import close_redis, get_redis, init_redis
 from app.routers import (
     admin,
+    admin_audits,
     admin_learning,
     brain,
     conversations,
@@ -191,6 +192,7 @@ app.include_router(brain.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(admin_learning.router, prefix="/api/v1")
+app.include_router(admin_audits.router, prefix="/api/v1")
 app.include_router(agent_sprints_router)
 app.include_router(internal_secrets_router)
 app.include_router(workstreams.router, prefix="/api/v1")

@@ -22,6 +22,7 @@ export function SelfImprovementClient({ payload, brainConfigured }: SelfImprovem
     | "retros"
     | "automation-state"
     | "procedural-memory"
+    | "audits"
     | "index"
   >[] => {
     const learningTab = lazy(() =>
@@ -59,6 +60,16 @@ export function SelfImprovementClient({ payload, brainConfigured }: SelfImprovem
         default: () => <m.IndexTab payload={payload} brainConfigured={brainConfigured} />,
       })),
     );
+    const auditsTab = lazy(() =>
+      import("./_tabs/audits-tab").then((m) => ({
+        default: () => (
+          <m.AuditsTab
+            brainApiUrl={process.env.NEXT_PUBLIC_BRAIN_API_URL ?? null}
+            brainApiSecret={process.env.NEXT_PUBLIC_BRAIN_API_SECRET ?? null}
+          />
+        ),
+      })),
+    );
 
     return [
       { id: "learning", label: "Learning", Content: learningTab },
@@ -67,6 +78,7 @@ export function SelfImprovementClient({ payload, brainConfigured }: SelfImprovem
       { id: "retros", label: "Retros", Content: retrosTab },
       { id: "automation-state", label: "Automation", Content: automationTab },
       { id: "procedural-memory", label: "Procedural memory", Content: proceduralTab },
+      { id: "audits", label: "Audits", Content: auditsTab },
       { id: "index", label: "Index", Content: indexTab },
     ];
   }, [payload, brainConfigured]);

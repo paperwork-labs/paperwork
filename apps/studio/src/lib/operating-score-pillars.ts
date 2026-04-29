@@ -11,6 +11,7 @@ export const OPERATING_SCORE_PILLAR_ORDER = [
   "reliability_security",
   "knowledge_capital",
   "persona_coverage",
+  "audit_freshness",
 ] as const;
 
 export type OperatingScorePillarId = (typeof OPERATING_SCORE_PILLAR_ORDER)[number];
@@ -26,6 +27,7 @@ const LABELS: Record<OperatingScorePillarId, string> = {
   reliability_security: "Reliability & security",
   knowledge_capital: "Knowledge capital",
   persona_coverage: "Persona coverage",
+  audit_freshness: "Audit freshness",
 };
 
 export function operatingScorePillarLabel(id: string): string {

@@ -193,3 +193,11 @@ rules:
     learned_at: "2026-04-29T08:45:00Z"
     confidence: high
     applies_to: [orchestrator, brain-self-dispatch, cheap-agents]
+
+  - id: ws71_superseded_by_ws69_pr_p
+    when: "WS-71 or any reference to a standalone audit-cadence workstream is encountered"
+    do: "WS-71 has been folded into WS-69 PR P (feat/ws-69-pr-p-audit-cadence). Do not create or dispatch separate WS-71 work. All audit registry, adaptive cadence, and POS audit_freshness pillar work is implemented in PR P. Reference WS-69 PR P for scope and acceptance criteria."
+    source: "orchestrator decision 2026-04-29: WS-71 superseded by WS-69 PR P per plan ALPHA merge"
+    learned_at: "2026-04-29T14:26:00Z"
+    confidence: high
+    applies_to: [orchestrator, brain-self-dispatch, cheap-agents]
