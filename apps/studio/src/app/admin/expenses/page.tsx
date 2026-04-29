@@ -1,32 +1,72 @@
-import { Receipt } from "lucide-react";
+import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
+import { ExpensesClient } from "./expenses-client";
+import type { Expense, ExpensesListPage, ExpenseRoutingRules } from "@/types/expenses";
 
 export const dynamic = "force-dynamic";
 
-// PR N populates this page with full expense tracking, budget vs. actuals,
-// and vendor cost breakdown.
+async function fetchExpenses(auth: {
+  root: string;
+  secret: string;
+}): Promise<{ expenses: Expense[]; total: number }> {
+  try {
+    const res = await fetch(
+      `${auth.root}/admin/expenses?status=pending&limit=50`,
+      {
+        headers: { "X-Brain-Secret": auth.secret },
+        cache: "no-store",
+      }
+    );
+    if (!res.ok) return { expenses: [], total: 0 };
+    const json = await res.json();
+    if (!json.success) return { expenses: [], total: 0 };
+    const page = json.data as ExpensesListPage;
+    return { expenses: page.items, total: page.total };
+  } catch {
+    return { expenses: [], total: 0 };
+  }
+}
 
-export default function ExpensesPage() {
-  return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="bg-gradient-to-r from-zinc-200 to-zinc-400 bg-clip-text text-2xl font-semibold tracking-tight text-transparent">
-          Expenses
-        </h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Company expense tracking, budget vs. actuals, and vendor cost breakdown.
+async function fetchRules(auth: {
+  root: string;
+  secret: string;
+}): Promise<ExpenseRoutingRules | null> {
+  try {
+    const res = await fetch(`${auth.root}/admin/expenses/rules`, {
+      headers: { "X-Brain-Secret": auth.secret },
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.success ? (json.data as ExpenseRoutingRules) : null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function ExpensesPage() {
+  const auth = getBrainAdminFetchOptions();
+
+  if (!auth.ok) {
+    return (
+      <div className="rounded-xl border border-red-900/40 bg-red-500/5 p-8 text-center">
+        <p className="text-sm font-medium text-red-400">Brain API not configured</p>
+        <p className="mt-1 text-xs text-red-500/70">
+          Set BRAIN_API_URL and BRAIN_API_SECRET to enable Expenses.
         </p>
-      </header>
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700 bg-zinc-900/40 py-20 text-center">
-        <Receipt className="mb-4 h-10 w-10 text-zinc-600" />
-        <h2 className="text-base font-semibold text-zinc-300">Expenses — coming soon</h2>
-        <p className="mt-2 max-w-md text-sm text-zinc-500">
-          Full expense ledger with budget vs. actuals, vendor breakdown, and monthly trend
-          charts. PR N wires the data pipeline and renders the expense dashboard.
-        </p>
-        <span className="mt-4 rounded-full border border-zinc-700 bg-zinc-800 px-3 py-1 text-xs font-medium text-zinc-400">
-          PR N populates
-        </span>
       </div>
-    </div>
+    );
+  }
+
+  const [{ expenses, total }, rules] = await Promise.all([
+    fetchExpenses(auth),
+    fetchRules(auth),
+  ]);
+
+  return (
+    <ExpensesClient
+      initialExpenses={expenses}
+      initialTotal={total}
+      rules={rules}
+    />
   );
 }

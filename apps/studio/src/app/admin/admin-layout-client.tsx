@@ -36,7 +36,8 @@ type NavGroup = {
 };
 
 function buildNavGroups(
-  founderPending: { count: number; hasCritical: boolean } | null
+  founderPending: { count: number; hasCritical: boolean } | null,
+  expensesPending: { count: number; hasCritical: boolean } | null
 ): NavGroup[] {
   return [
     {
@@ -55,7 +56,7 @@ function buildNavGroups(
           href: "/admin/expenses",
           label: "Expenses",
           icon: Receipt,
-          staticPendingCount: 0,
+          pendingBadge: expensesPending,
         },
       ],
     },
@@ -125,11 +126,13 @@ type Props = {
   children: React.ReactNode;
   /** Null only when caller could not derive counts (layout throws on bad JSON) */
   founderPending: { count: number; hasCritical: boolean } | null;
+  /** Null if expenses data failed to load */
+  expensesPending: { count: number; hasCritical: boolean } | null;
 };
 
-export function AdminLayoutClient({ children, founderPending }: Props) {
+export function AdminLayoutClient({ children, founderPending, expensesPending }: Props) {
   const pathname = usePathname();
-  const navGroups = buildNavGroups(founderPending);
+  const navGroups = buildNavGroups(founderPending, expensesPending);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">

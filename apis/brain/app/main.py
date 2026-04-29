@@ -20,7 +20,16 @@ from app.database import async_session_factory, engine
 from app.mcp_server import create_mcp_app
 from app.rate_limit import limiter
 from app.redis import close_redis, get_redis, init_redis
-from app.routers import admin, admin_learning, brain, conversations, health, webhooks, workstreams
+from app.routers import (
+    admin,
+    admin_learning,
+    brain,
+    conversations,
+    expenses,
+    health,
+    webhooks,
+    workstreams,
+)
 from app.schedulers import shutdown_scheduler, start_scheduler
 from app.services.observability import init_langfuse
 from app.tools import memory_tools
@@ -186,6 +195,7 @@ app.include_router(agent_sprints_router)
 app.include_router(internal_secrets_router)
 app.include_router(workstreams.router, prefix="/api/v1")
 app.include_router(conversations.router, prefix="/api/v1")
+app.include_router(expenses.router, prefix="/api/v1")
 
 
 @app.get("/internal/schedulers", tags=["internal"])
