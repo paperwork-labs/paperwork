@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -21,7 +24,6 @@ from app.services.operating_score_collectors import (
     autonomy,
     code_quality,
     data_architecture,
-    dora_elite,
     knowledge_capital,
     reliability_security,
     stack_modernity,
@@ -103,8 +105,6 @@ def test_record_score_appends_updates_current(
 @pytest.mark.parametrize(
     ("collector", "want", "measured"),
     [
-        (dora_elite.collect, 75.0, False),
-        (stack_modernity.collect, 65.0, False),
         (web_perf_ux.collect, 55.0, False),
         (a11y_design_system.collect, 50.0, False),
         (code_quality.collect, 75.0, False),
@@ -277,6 +277,111 @@ def test_atomic_write_roundtrip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     pos.record_score(mk_entry(44.44))
     raw = json.loads(jq.read_text(encoding="utf-8"))
     assert pytest.approx(float(raw["current"]["total"])) == 44.44
+
+
+def test_dora_collector_with_gh_available_returns_measured(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    import app.services.operating_score_collectors.dora_elite as de
+
+    monkeypatch.setattr(de, "_brain_data_dir", lambda: tmp_path)
+
+    hits = {"i": 0}
+
+    def fake_search_ordered(q: str) -> int:
+        if "Revert in:title" in q:
+            return 2
+        hits["i"] += 1
+        if hits["i"] == 1:
+            return 10
+        return 20
+
+    monkeypatch.setattr(de, "_repo_slug", lambda: "paperworklabs/paperwork")
+    monkeypatch.setattr(de, "_search_issues_total", fake_search_ordered)
+    monkeypatch.setattr(
+        de, "_lead_time_median_recent", lambda _s, _b: (10.0, [{} for _ in range(30)])
+    )
+    monkeypatch.setattr(de, "_workflow_mttr_hours", lambda _s, _w, _b: 2.0)
+
+    score, measured, _notes = de.collect()
+    assert measured is True
+    assert pytest.approx(score) == 77.5
+    dumped = json.loads((tmp_path / "dora_metrics.json").read_text(encoding="utf-8"))
+    assert dumped["schema"] == "dora_metrics/v1"
+
+
+def test_dora_collector_gh_unavailable_returns_bootstrap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import app.services.operating_score_collectors.dora_elite as de
+
+    monkeypatch.setattr(de, "_repo_slug", lambda: "paperworklabs/paperwork")
+
+    def boom(_q: str) -> int:
+        raise subprocess.CalledProcessError(1, ["gh", "api"])
+
+    monkeypatch.setattr(de, "_search_issues_total", boom)
+    score, measured, notes = de.collect()
+    assert measured is False and pytest.approx(score) == 75.0
+    assert "gh CLI unavailable" in notes
+
+
+def test_stack_modernity_reads_audit_doc(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    p = tmp_path / "STACK_AUDIT.md"
+    p.write_text(
+        "## Executive Summary\n\n"
+        "- KEEP: 10\n"
+        "- UPGRADE: 10\n"
+        "- REPLACE: 10\n"
+        "**Audit date:** 2026-04-29\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("BRAIN_STACK_AUDIT_MD", str(p))
+    monkeypatch.setenv("BRAIN_REPO_ROOT", str(tmp_path))
+
+    score, measured, notes = stack_modernity.collect()
+    assert measured is True and pytest.approx(score) == 50.0
+    assert "KEEP / 10 UPGRADE / 10 REPLACE" in notes
+
+
+def test_stack_modernity_audit_stale_penalty(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    p = tmp_path / "STACK_AUDIT.md"
+    p.write_text(
+        "## Executive Summary\n\n"
+        "- KEEP: 10\n"
+        "- UPGRADE: 10\n"
+        "- REPLACE: 10\n"
+        "**Audit date:** 2026-04-29\n",
+        encoding="utf-8",
+    )
+    old = time.time() - 86400 * 91
+    os.utime(p, (old, old))
+
+    monkeypatch.setenv("BRAIN_STACK_AUDIT_MD", str(p))
+    monkeypatch.setenv("BRAIN_REPO_ROOT", str(tmp_path))
+
+    score, measured, notes = stack_modernity.collect()
+    assert measured is True and pytest.approx(score) == 35.0
+    assert "audit stale: " in notes
+
+
+def test_stack_modernity_no_audit_returns_bootstrap(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("BRAIN_STACK_AUDIT_MD", str(tmp_path / "nope.md"))
+    monkeypatch.setenv("BRAIN_REPO_ROOT", str(tmp_path))
+
+    score, measured, notes = stack_modernity.collect()
+    assert measured is False and pytest.approx(score) == 65.0
+    assert "WS-49" in notes
 
 
 def test_collector_exception_yields_fallback(

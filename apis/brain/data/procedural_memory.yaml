@@ -73,3 +73,19 @@ rules:
     learned_at: "2026-04-29T01:00:00Z"
     confidence: high
     applies_to: [orchestrator, cheap-agents]
+
+  - id: stack_audit_quarterly_refresh
+    when: "POS pillar 3 (stack_modernity) reports audit_stale_days > 75"
+    do: "open a WS-49 refresh PR (re-run the audit, update STACK_AUDIT_<year>-Q<quarter>.md, register in docs/_index.yaml)"
+    source: "POS pillar 3 collector — quarterly refresh keeps stack-modernity score honest"
+    learned_at: "2026-04-29T01:30:00Z"
+    confidence: high
+    applies_to: [orchestrator, brain-self-dispatch]
+
+  - id: dora_metrics_freshness_24h
+    when: "POS pillar 2 (dora_elite) collector cannot reach `gh api`"
+    do: "fallback to bootstrap estimate but tag the entry with measured=False and notes='gh CLI unavailable'; orchestrator should not block POS update"
+    source: "POS pillar 2 collector — gh outages should not zero the score"
+    learned_at: "2026-04-29T01:30:00Z"
+    confidence: high
+    applies_to: [orchestrator]
