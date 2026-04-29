@@ -1,0 +1,17 @@
+# Strategic objectives — founder writes when motivated; Brain reads continuously
+# Cadence is rolling/adaptive: founder edits trigger re-decomposition within 1h.
+# If untouched for `review_cadence_days`, Brain pings #brain-asks.
+schema:
+  description: "Founder-written strategic objectives. Brain decomposes into candidate workstreams."
+  entry:
+    id: "kebab-slug, e.g. 'dominate-axiomfolio-launch'"
+    objective: "1-3 sentence objective statement"
+    horizon: "30d | 60d | 90d | 180d | 365d"
+    metric: "string — single primary metric name"
+    target: "string — what 'success' looks like (numeric or qualitative)"
+    review_cadence_days: "int — how often Brain checks if founder still wants this"
+    written_at: "RFC3339Z"
+    notes: "free text"
+version: 1
+objectives: []
+last_reviewed_at: null

@@ -38,6 +38,7 @@ ignore = ["PTH"]
 "app/models/workstream_board.py" = ["TC003"]
 "app/models/github_actions_quota_snapshot.py" = ["TC003"]
 "app/schemas/procedural_memory.py" = ["TC003"]  # Pydantic resolves datetime at model validation time
+"app/schemas/strategic_objectives.py" = ["TC003"]  # Pydantic resolves datetime at model validation time
 "app/services/vercel_quota_monitor.py" = ["TC002"]  # AsyncSession used at runtime (SQLAlchemy session API)
 "app/routers/**" = ["B008", "ARG001"]
 "app/dependencies.py" = ["B008"]
