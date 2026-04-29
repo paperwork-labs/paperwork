@@ -113,3 +113,35 @@ rules:
     learned_at: "2026-04-29T01:30:00Z"
     confidence: high
     applies_to: [orchestrator]
+
+  - id: brain_data_dir_traverses_three_levels
+    when: "a service file in apis/brain/app/services/X.py needs to compute the brain data dir path"
+    do: "MUST traverse three dirname levels (services -> app -> brain) and join with 'data'; pattern os.path.dirname(os.path.dirname(os.path.dirname(__file__))) + '/data' OR Path(__file__).resolve().parents[2] / 'data'; doing only two levels lands at brain/app/data which is the WRONG location and silently writes runtime state to a data dir that no admin endpoint reads from. Verified-broken examples: operating_score.py (fixed PR #403), sprint_velocity.py (fixed in WS-51), pr_outcomes.py (fixed in fix/vercel-cost-bleed-stop)"
+    source: "recurring path bug found in 3+ services; cheap agents copy the wrong pattern from peer files"
+    learned_at: "2026-04-29T03:55:00Z"
+    confidence: high
+    applies_to: [cheap-agents, brain-self-dispatch, orchestrator]
+
+  - id: vercel_monorepo_must_use_turbo_ignore
+    when: "a Vercel project sits in apps/<name>/ inside the pnpm/turbo monorepo and its vercel.json has an ignoreCommand that does not call turbo-ignore"
+    do: "the ignoreCommand MUST run turbo-ignore <pkg-name> --fallback=HEAD~10 (after the dependabot-skip prefix) so Vercel skips builds when neither the app nor any of its workspace dependencies changed; without turbo-ignore every commit to anywhere in the monorepo rebuilds every Vercel project, burning build minutes + on-demand spend. Caught: $36.58/$40 on-demand spend caused by 1000 studio rebuilds in 30 days when only ~80 actually changed studio code"
+    source: "fix/vercel-cost-bleed-stop — Vercel on-demand budget hit 91% before any alert because every PR rebuilt all 8 apps"
+    learned_at: "2026-04-29T03:55:00Z"
+    confidence: high
+    applies_to: [cheap-agents, brain-self-dispatch, orchestrator, founder]
+
+  - id: cost_guards_must_alert_below_cap_not_at_cap
+    when: "Brain or persona introduces a cost-bearing capability (LLM API, paid SaaS quota, infrastructure metered resource)"
+    do: "the monitor MUST emit alerts at 50%, 75%, and 90% of the cap, NOT only at 100%; reaching 100% is too late — services pause or get rate-limited then. Use vercel_billing_monitor.evaluate_alerts() as the reference pattern. Each threshold dedups per billing cycle so we only get one alert per level per period."
+    source: "Vercel on-demand budget hit 91% with zero prior warning — by-design failure of the existing alert-at-cap setting"
+    learned_at: "2026-04-29T03:55:00Z"
+    confidence: high
+    applies_to: [orchestrator, brain-self-dispatch]
+
+  - id: brain_must_act_as_opus_coach_for_recurring_failures
+    when: "Brain detects a procedural-memory rule pattern matching a planned action (Opus dispatching agent, drafting plan, requesting merge), OR detects an outcome that triggered an existing rule"
+    do: "Brain SHOULD surface the relevant rules to Opus before the action runs (pre-flight checklist), and SHOULD auto-distill recurring failure signatures into new procedural rules during weekly retro; concretely: (a) /api/v1/admin/coach/preflight endpoint returns rules matching {action_type, files_touched, persona, recent_pr_path_globs}; (b) Opus consults that endpoint as the first step of any non-trivial dispatch or merge; (c) self_improvement weekly retro identifies repeats (>=3 incidents same root cause) and proposes new rules; this is WS-67 Brain-coach pattern requested by founder during cost-bleed incident"
+    source: "founder note: 'we building brain, brain could leverage your skills well while remembering to do this for you... how we make this what we just did become like a smart check or something'"
+    learned_at: "2026-04-29T03:55:00Z"
+    confidence: high
+    applies_to: [brain-self-dispatch, orchestrator]
