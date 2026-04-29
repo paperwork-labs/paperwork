@@ -97,4 +97,3 @@ def start_scheduler() -> AsyncIOScheduler | None:
 
 
 __all__ = ["get_scheduler", "shutdown_scheduler", "start_scheduler"]
-
