@@ -16,6 +16,37 @@
 
 import { z } from "zod";
 
+const instantParseOk = z.string().refine((s) => !Number.isNaN(Date.parse(s)), {
+  message: "Expected parseable ISO-8601 timestamp",
+});
+
+/** ISO-8601 datetime; normalizes date-only ``YYYY-MM-DD`` to midnight UTC (Brain / EA edits). */
+function zDateTimeLoose() {
+  return z.preprocess(
+    (v) => {
+      if (v === null || v === undefined) return v;
+      if (typeof v !== "string") return v;
+      const s = v.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00:00.000Z`;
+      return s;
+    },
+    instantParseOk,
+  );
+}
+
+function zDateTimeLooseNullable() {
+  return z.preprocess(
+    (v) => {
+      if (v === null || v === undefined) return v;
+      if (typeof v !== "string") return v;
+      const s = v.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00:00.000Z`;
+      return s;
+    },
+    z.union([z.null(), instantParseOk]),
+  );
+}
+
 export const WorkstreamStatusSchema = z.enum([
   "pending",
   "in_progress",
@@ -49,8 +80,8 @@ export const WorkstreamSchema = z.object({
   brief_tag: z.string().regex(BRIEF_TAG_RE, "brief_tag must be 'track:<kebab-slug>'"),
   blockers: z.array(z.string().min(3)).default([]),
   last_pr: z.number().int().positive().nullable(),
-  last_activity: z.string().datetime(),
-  last_dispatched_at: z.string().datetime().nullable(),
+  last_activity: zDateTimeLoose(),
+  last_dispatched_at: zDateTimeLooseNullable(),
   notes: z.string().max(500).default(""),
   estimated_pr_count: z.number().int().positive().nullable().default(null),
   github_actions_workflow: z.string().nullable().default(null),

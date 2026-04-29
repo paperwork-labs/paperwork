@@ -28,6 +28,8 @@
     "@paperwork-labs/auth-clerk": "workspace:*",
     "@paperwork-labs/pwa": "workspace:*",
     "@paperwork-labs/ui": "workspace:*",
+    "@radix-ui/react-tabs": "^1.1.3",
+    "class-variance-authority": "^0.7.1",
     "@tanstack/react-query": "^5.100.5",
     "@vercel/analytics": "^2.0.1",
     "@xyflow/react": "^12.10.2",

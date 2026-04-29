@@ -51,6 +51,12 @@ from app.services.render_quota_monitor import (
 from app.services.seed import ingest_docs, ingest_sprint_lessons
 from app.services.strategic_objectives import objectives_summary as strategic_objectives_summary
 from app.services.system_health import system_health_snapshot
+from app.services.persona_surface import (
+    aggregate_persona_cost,
+    list_cursor_rule_personas,
+    load_persona_activity,
+    load_routing_rules,
+)
 from app.services.vercel_quota_monitor import latest_vercel_quota_snapshots
 
 logger = logging.getLogger(__name__)
@@ -511,6 +517,46 @@ async def list_personas(
             "personas": [spec.model_dump() for spec in specs],
         }
     )
+
+
+@router.get("/personas/list")
+async def list_personas_cursor_rules(
+    _auth: None = Depends(_require_admin),
+):
+    """Structured rows for every ``.cursor/rules/*.mdc`` (Studio Personas tab)."""
+    try:
+        rows = list_cursor_rule_personas()
+    except RuntimeError as e:
+        raise HTTPException(status_code=503, detail=str(e)) from e
+    return success_response({"count": len(rows), "personas": rows})
+
+
+@router.get("/personas/cost")
+async def get_personas_cost(
+    window: str = Query("7d", description="Aggregation window: 7d or 30d."),
+    _auth: None = Depends(_require_admin),
+):
+    """Token + USD aggregates from ``apis/brain/data/persona_cost.json`` when present."""
+    w = window if window in ("7d", "30d") else "7d"
+    payload = aggregate_persona_cost(window=w)
+    return success_response(payload)
+
+
+@router.get("/personas/routing")
+async def get_personas_routing(
+    _auth: None = Depends(_require_admin),
+):
+    """Persona routing tables (JSON file or derived from ``routing.py``)."""
+    return success_response(load_routing_rules())
+
+
+@router.get("/personas/activity")
+async def get_personas_activity(
+    limit: int = Query(50, ge=1, le=200),
+    _auth: None = Depends(_require_admin),
+):
+    """Recent persona invocations from ``apis/brain/data/persona_activity.json``."""
+    return success_response(load_persona_activity(limit=limit))
 
 
 @router.get("/blitz-status")
