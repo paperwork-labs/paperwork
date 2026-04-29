@@ -1,4 +1,4 @@
-"""Reliability + security pillar — quota snapshots, IaC canon, secret scan, incidents.
+"""Reliability + security pillar — quota snapshots, IaC canon, gitleaks workflow, incidents.
 
 medallion: ops
 """
@@ -170,7 +170,7 @@ def _find_gitleaks_workflow(repo: Path) -> str | None:
     return None
 
 
-def _secret_scan_subscore(repo: Path, now: datetime) -> tuple[float, str]:
+def _gitleaks_workflow_subscore(repo: Path, now: datetime) -> tuple[float, str]:
     wf = _find_gitleaks_workflow(repo)
     if wf is None:
         return (0.0, "no_gitleaks_workflow")
@@ -273,7 +273,7 @@ def collect() -> tuple[float, bool, str]:
         sub_iac = _score_iac_layer_count(len(layers))
         quota_files = _quota_snapshot_paths(data)
         sub_uptime, uptime_note = _uptime_subscore(quota_files, now)
-        sub_leaks, leaks_note = _secret_scan_subscore(repo, now)
+        sub_leaks, leaks_note = _gitleaks_workflow_subscore(repo, now)
         inc_n = _incidents_last_30d(data, now)
         sub_inc = _score_incidents(inc_n)
 

@@ -480,7 +480,7 @@ def test_reliability_security_collector_with_iac_state(
 
     monkeypatch.setattr(
         reliability_security,
-        "_secret_scan_subscore",
+        "_gitleaks_workflow_subscore",
         lambda _repo, _now: (100.0, "mock_ok"),
     )
 
