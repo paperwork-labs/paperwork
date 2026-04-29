@@ -581,10 +581,7 @@ def _promotion_progress(promotions: SelfMergePromotionsFile) -> float:
     reverted_originals: set[int] = set()
     for revert in promotions.reverts:
         rev_at = revert.reverted_at
-        if rev_at.tzinfo is None:
-            rev_at = rev_at.replace(tzinfo=UTC)
-        else:
-            rev_at = rev_at.astimezone(UTC)
+        rev_at = rev_at.replace(tzinfo=UTC) if rev_at.tzinfo is None else rev_at.astimezone(UTC)
         if rev_at < cutoff:
             continue
         for merge in promotions.merges:

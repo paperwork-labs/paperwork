@@ -8,7 +8,7 @@ medallion: ops
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime  # noqa: TC003 — Pydantic resolves datetime at model validation time
 
 from pydantic import BaseModel, Field
 
@@ -51,5 +51,7 @@ class BrainImprovementResponse(BaseModel):
     current: BrainImprovementCurrent
     history_12w: list[BrainImprovementHistoryEntry] = Field(
         default_factory=list,
-        description="Weekly scores for the last 12 weeks, oldest-first. Empty until history accumulates.",
+        description=(
+            "Weekly scores for the last 12 weeks, oldest-first. Empty until history accumulates."
+        ),
     )

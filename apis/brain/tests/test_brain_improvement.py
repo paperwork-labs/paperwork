@@ -15,7 +15,6 @@ import yaml
 
 from app.services.self_improvement import compute_brain_improvement_index
 
-
 # ---------------------------------------------------------------------------
 # Helpers to write fixture files
 # ---------------------------------------------------------------------------
@@ -273,9 +272,8 @@ def test_mid_tier_rules_count(mid_tier_fixture):
 
 
 def test_mid_tier_score_band(mid_tier_fixture):
+    """Expected math: 0.40*100 + 0.30*40 + 0.20*20 + 0.10*(50+1*2.5) = 61.25 -> round 61."""
     result = compute_brain_improvement_index()
-    # Expected: 0.40*100 + 0.30*40 + 0.20*20 + 0.10*(50+1*2.5)
-    #         = 40 + 12 + 4 + 5.25 = 61.25 → round → 61
     assert 30 <= result.score <= 75
 
 
@@ -305,9 +303,8 @@ def test_graduated_rules_saturated(graduated_fixture):
 
 
 def test_graduated_score_band(graduated_fixture):
+    """Expected math: 0.40*100 + 0.30*100 + 0.20*100 + 0.10*87.5 = 98.75 -> round 99."""
     result = compute_brain_improvement_index()
-    # Expected: 0.40*100 + 0.30*100 + 0.20*100 + 0.10*(50+15*2.5)
-    #         = 40 + 30 + 20 + 0.10*87.5 = 40+30+20+8.75 = 98.75 → round → 99
     assert 70 <= result.score <= 100
 
 
@@ -396,7 +393,7 @@ def test_all_reverted_acceptance_zero(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# Tests: computed_at is timezone-aware
+# Tests: computed_at metadata
 # ---------------------------------------------------------------------------
 
 
