@@ -43,7 +43,7 @@ apscheduler[sqlalchemy]>=3.11.2
 psycopg2-binary>=2.9.9
 
 # Dev / Test
-pytest>=8.3.0
+pytest>=9.0.3
 pytest-asyncio>=1.3.0
 ruff>=0.15.11
 mypy>=1.13.0
