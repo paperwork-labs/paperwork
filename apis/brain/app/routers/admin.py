@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.services.anomaly_detection as anomaly_detection_svc
 import app.services.app_registry as app_registry_svc
 import app.services.operating_score as operating_score_svc
 import app.services.pr_outcomes as pr_outcomes_service
@@ -1019,6 +1020,41 @@ async def post_weekly_retros_recompute(
     retro = self_improvement_svc.compute_weekly_retro()
     self_improvement_svc.record_retro(retro)
     return success_response(jsonable_encoder(retro.model_dump(mode="json")))
+
+
+@router.get("/anomaly-alerts")
+async def get_anomaly_alerts(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Return the latest anomaly alerts blob (WS-50)."""
+    file = anomaly_detection_svc.read_alerts_file()
+    open_alerts = [a for a in file.alerts if a.resolved_at is None]
+    return success_response(
+        {
+            "schema": file.schema_,
+            "total": len(file.alerts),
+            "open": len(open_alerts),
+            "alerts": [a.model_dump(mode="json") for a in file.alerts],
+        }
+    )
+
+
+@router.post("/anomaly-alerts/recompute")
+async def post_anomaly_alerts_recompute(
+    background_tasks: BackgroundTasks,
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Trigger manual anomaly recompute + auto-resolve pass in the background (WS-50)."""
+
+    def _run() -> None:
+        try:
+            anomaly_detection_svc.compute_anomalies()
+            anomaly_detection_svc.auto_resolve_alerts()
+        except Exception:
+            logger.exception("anomaly-alerts/recompute background task raised")
+
+    background_tasks.add_task(_run)
+    return success_response({"accepted": True})
 
 
 @router.get("/procedural-memory")
