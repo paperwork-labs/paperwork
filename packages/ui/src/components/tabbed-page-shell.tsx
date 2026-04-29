@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { cn } from "../lib/utils";
 import { Skeleton } from "./skeleton";
@@ -31,8 +30,10 @@ export type TabbedShellTabDef<T extends string> = {
 export type TabbedPageShellProps<T extends string> = {
   tabs: readonly TabbedShellTabDef<T>[];
   defaultTab: T;
-  /** URL query key for the active tab (default: tab). */
-  paramKey?: string;
+  /** Currently active tab id. Host app reads it from URL/router state and passes here. */
+  activeTab: T;
+  /** Host app updates URL/router state when the user clicks a tab. */
+  onTabChange: (tab: T) => void;
   className?: string;
   tabsListClassName?: string;
   /** Optional controls rendered beside the tab list (filters, actions). */
@@ -85,61 +86,22 @@ function TabPanelSkeleton() {
 export function TabbedPageShell<T extends string>({
   tabs,
   defaultTab,
-  paramKey = "tab",
+  activeTab,
+  onTabChange,
   className,
   tabsListClassName,
   endAdornment,
 }: TabbedPageShellProps<T>) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const allowed = React.useMemo(() => new Set(tabs.map((t) => t.id)), [tabs]);
-
-  const replaceSearchParams = React.useCallback(
-    (updater: (prev: URLSearchParams) => URLSearchParams) => {
-      const prev = new URLSearchParams(searchParams.toString());
-      const next = updater(prev);
-      const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname);
-    },
-    [pathname, router, searchParams],
-  );
-
-  const raw = searchParams.get(paramKey) ?? "";
-  const resolved: T = (allowed.has(raw as T) ? raw : defaultTab) as T;
-
-  React.useEffect(() => {
-    if (allowed.has(raw as T)) return;
-    if (raw !== "") {
-      replaceSearchParams((prev) => {
-        const next = new URLSearchParams(prev);
-        next.set(paramKey, defaultTab);
-        return next;
-      });
-    }
-  }, [allowed, defaultTab, paramKey, raw, replaceSearchParams]);
+  const resolved: T = (allowed.has(activeTab) ? activeTab : defaultTab) as T;
 
   const setTab = React.useCallback(
     (next: string) => {
       if (!allowed.has(next as T)) return;
-      replaceSearchParams((prev) => {
-        const p = new URLSearchParams(prev);
-        p.set(paramKey, next);
-        return p;
-      });
+      onTabChange(next as T);
     },
-    [allowed, paramKey, replaceSearchParams],
+    [allowed, onTabChange],
   );
-
-  React.useEffect(() => {
-    if (raw !== "") return;
-    replaceSearchParams((prev) => {
-      const p = new URLSearchParams(prev);
-      const cur = p.get(paramKey);
-      if (cur == null || cur === "") p.set(paramKey, defaultTab);
-      return p;
-    });
-  }, [defaultTab, paramKey, raw, replaceSearchParams]);
 
   const tabErrorFallback = (
     <div

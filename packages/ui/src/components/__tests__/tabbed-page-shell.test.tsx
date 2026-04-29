@@ -1,25 +1,9 @@
 import * as React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-
-const replace = vi.fn();
-let searchParams = new URLSearchParams("tab=one");
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace }),
-  usePathname: () => "/portfolio",
-  useSearchParams: () => searchParams,
-}));
+import userEvent from "@testing-library/user-event";
 
 import { TabbedPageShell, useActiveTab } from "../tabbed-page-shell";
-
-function ThrowingPanel(): never {
-  throw new Error("boom");
-}
-
-const LazyThrow = React.lazy(async () => ({
-  default: ThrowingPanel,
-}));
 
 const LazyOne = React.lazy(async () => ({
   default: function One() {
@@ -38,16 +22,26 @@ const LazyTwo = React.lazy(async () => ({
   },
 }));
 
+function ThrowingPanel(): never {
+  throw new Error("boom");
+}
+
+const LazyThrow = React.lazy(async () => ({
+  default: ThrowingPanel,
+}));
+
 describe("TabbedPageShell", () => {
+  let onTabChange: ReturnType<typeof vi.fn>;
   beforeEach(() => {
-    replace.mockClear();
-    searchParams = new URLSearchParams("tab=one");
+    onTabChange = vi.fn();
   });
 
   it("renders tab labels and shows active panel content", async () => {
     render(
       <TabbedPageShell
         defaultTab="one"
+        activeTab="one"
+        onTabChange={onTabChange}
         tabs={[
           { id: "one", label: "First", Content: LazyOne },
           { id: "two", label: "Second", Content: LazyTwo },
@@ -58,11 +52,12 @@ describe("TabbedPageShell", () => {
     await waitFor(() => expect(screen.getByTestId("panel-one")).toBeInTheDocument());
   });
 
-  it("useActiveTab reflects resolved tab id", async () => {
-    searchParams = new URLSearchParams("tab=two");
+  it("useActiveTab reflects activeTab prop", async () => {
     render(
       <TabbedPageShell
         defaultTab="one"
+        activeTab="two"
+        onTabChange={onTabChange}
         tabs={[
           { id: "one", label: "First", Content: LazyOne },
           { id: "two", label: "Second", Content: LazyTwo },
@@ -72,10 +67,27 @@ describe("TabbedPageShell", () => {
     await waitFor(() => expect(screen.getByTestId("active")).toHaveTextContent("two"));
   });
 
+  it("falls back to defaultTab when activeTab is invalid", async () => {
+    render(
+      <TabbedPageShell
+        defaultTab="one"
+        activeTab={"bad" as "one" | "two"}
+        onTabChange={onTabChange}
+        tabs={[
+          { id: "one", label: "First", Content: LazyOne },
+          { id: "two", label: "Second", Content: LazyTwo },
+        ]}
+      />,
+    );
+    await waitFor(() => expect(screen.getByTestId("panel-one")).toBeInTheDocument());
+  });
+
   it("renders endAdornment when provided", () => {
     render(
       <TabbedPageShell
         defaultTab="one"
+        activeTab="one"
+        onTabChange={onTabChange}
         endAdornment={<span data-testid="extra">Extra</span>}
         tabs={[{ id: "one", label: "First", Content: LazyOne }]}
       />,
@@ -83,39 +95,41 @@ describe("TabbedPageShell", () => {
     expect(screen.getByTestId("extra")).toHaveTextContent("Extra");
   });
 
-  it("seeds default tab in URL when param missing", async () => {
-    searchParams = new URLSearchParams("");
+  it("invokes onTabChange when user activates a tab", async () => {
+    const user = userEvent.setup();
     render(
       <TabbedPageShell
         defaultTab="one"
+        activeTab="one"
+        onTabChange={onTabChange}
         tabs={[
           { id: "one", label: "First", Content: LazyOne },
           { id: "two", label: "Second", Content: LazyTwo },
         ]}
       />,
     );
-    await waitFor(() => expect(replace).toHaveBeenCalled());
+    await user.click(screen.getByRole("tab", { name: "Second" }));
+    expect(onTabChange).toHaveBeenCalledWith("two");
   });
 
-  it("normalizes invalid tab query via router.replace", async () => {
-    searchParams = new URLSearchParams("tab=bad");
+  it("ignores invalid tab ids passed up from Tabs", () => {
     render(
       <TabbedPageShell
         defaultTab="one"
-        tabs={[
-          { id: "one", label: "First", Content: LazyOne },
-          { id: "two", label: "Second", Content: LazyTwo },
-        ]}
+        activeTab="one"
+        onTabChange={onTabChange}
+        tabs={[{ id: "one", label: "First", Content: LazyOne }]}
       />,
     );
-    await waitFor(() => expect(replace).toHaveBeenCalled());
+    expect(onTabChange).not.toHaveBeenCalled();
   });
 
   it("shows tab error fallback when lazy panel throws", async () => {
-    searchParams = new URLSearchParams("tab=one");
     render(
       <TabbedPageShell
         defaultTab="one"
+        activeTab="one"
+        onTabChange={onTabChange}
         tabs={[{ id: "one", label: "Broken", Content: LazyThrow }]}
       />,
     );

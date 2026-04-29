@@ -2,7 +2,8 @@
 
 import * as React from "react";
 
-import { Page, PageHeader, TabbedPageShell } from "@paperwork-labs/ui";
+import { Page, PageHeader } from "@paperwork-labs/ui";
+import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 
 const GlossaryTab = React.lazy(() => import("@/components/market-education/tabs/GlossaryTab"));
 const DeepDivesTab = React.lazy(() => import("@/components/market-education/tabs/DeepDivesTab"));

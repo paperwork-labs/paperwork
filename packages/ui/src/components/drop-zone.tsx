@@ -92,7 +92,7 @@ export function DropZone({ accept, maxBytes, onUpload, multiple = false, childre
         revokePreviews();
         return;
       }
-      window.setTimeout(() => setProgress(null), 400);
+      globalThis.setTimeout(() => setProgress(null), 400);
     },
     [onUpload, revokePreviews, validateFiles],
   );

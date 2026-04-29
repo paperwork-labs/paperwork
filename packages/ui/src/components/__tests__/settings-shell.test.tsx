@@ -3,12 +3,6 @@ import { User } from "lucide-react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
-const mockPathname = vi.fn();
-
-vi.mock("next/navigation", () => ({
-  usePathname: () => mockPathname(),
-}));
-
 import { SettingsShell, resolveBreadcrumb, type SettingsCluster } from "../settings-shell";
 
 function TestLink({
@@ -65,8 +59,7 @@ describe("resolveBreadcrumb", () => {
 
 describe("SettingsShell", () => {
   beforeEach(() => {
-    mockPathname.mockReturnValue("/settings/profile");
-    Object.defineProperty(window, "matchMedia", {
+    Object.defineProperty(globalThis, "matchMedia", {
       writable: true,
       configurable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -80,28 +73,41 @@ describe("SettingsShell", () => {
 
   it("renders children and nav labels", () => {
     const { getByTestId } = render(
-      <SettingsShell clusters={clusters} LinkComponent={TestLink} useAdminGate={() => false}>
+      <SettingsShell
+        clusters={clusters}
+        LinkComponent={TestLink}
+        pathname="/settings/profile"
+        useAdminGate={() => false}
+      >
         <main data-testid="child">Inner</main>
       </SettingsShell>,
     );
     expect(getByTestId("child")).toHaveTextContent("Inner");
-    expect(within(getByTestId("settings-cluster-account")).getByRole("button", { name: "Profile" })).toBeInTheDocument();
+    expect(
+      within(getByTestId("settings-cluster-account")).getByRole("button", { name: "Profile" }),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId("settings-cluster-admin")).not.toBeInTheDocument();
   });
 
   it("shows admin cluster when useAdminGate is true", () => {
-    mockPathname.mockReturnValue("/settings/admin");
     const { getByTestId } = render(
-      <SettingsShell clusters={clusters} LinkComponent={TestLink} useAdminGate={() => true}>
+      <SettingsShell
+        clusters={clusters}
+        LinkComponent={TestLink}
+        pathname="/settings/admin"
+        useAdminGate={() => true}
+      >
         <div>Admin body</div>
       </SettingsShell>,
     );
     expect(getByTestId("settings-cluster-admin")).toBeInTheDocument();
-    expect(within(getByTestId("settings-cluster-admin")).getByRole("button", { name: "Admin page" })).toBeInTheDocument();
+    expect(
+      within(getByTestId("settings-cluster-admin")).getByRole("button", { name: "Admin page" }),
+    ).toBeInTheDocument();
   });
 
   it("uses compact icon nav when viewport is narrow", () => {
-    Object.defineProperty(window, "matchMedia", {
+    Object.defineProperty(globalThis, "matchMedia", {
       writable: true,
       configurable: true,
       value: vi.fn().mockImplementation((query: string) => ({
@@ -111,9 +117,13 @@ describe("SettingsShell", () => {
         removeEventListener: vi.fn(),
       })),
     });
-    mockPathname.mockReturnValue("/settings/profile");
     const { getByLabelText } = render(
-      <SettingsShell clusters={clusters} LinkComponent={TestLink} useAdminGate={() => false}>
+      <SettingsShell
+        clusters={clusters}
+        LinkComponent={TestLink}
+        pathname="/settings/profile"
+        useAdminGate={() => false}
+      >
         <div />
       </SettingsShell>,
     );
@@ -122,7 +132,12 @@ describe("SettingsShell", () => {
 
   it("renders breadcrumb trail when path matches", () => {
     const { getByTestId } = render(
-      <SettingsShell clusters={clusters} LinkComponent={TestLink} settingsHomeHref="/settings/profile">
+      <SettingsShell
+        clusters={clusters}
+        LinkComponent={TestLink}
+        pathname="/settings/profile"
+        settingsHomeHref="/settings/profile"
+      >
         <div />
       </SettingsShell>,
     );
@@ -130,5 +145,16 @@ describe("SettingsShell", () => {
     expect(crumb).toHaveTextContent("Settings");
     expect(crumb).toHaveTextContent("Account");
     expect(crumb).toHaveTextContent("Profile");
+  });
+
+  it("hides crumb segments when pathname is unknown", () => {
+    const { getByTestId } = render(
+      <SettingsShell clusters={clusters} LinkComponent={TestLink} pathname="/somewhere/else">
+        <div />
+      </SettingsShell>,
+    );
+    const crumb = getByTestId("settings-breadcrumb");
+    expect(crumb).toHaveTextContent("Settings");
+    expect(crumb).not.toHaveTextContent("Account");
   });
 });

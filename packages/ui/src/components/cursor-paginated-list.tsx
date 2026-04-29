@@ -101,11 +101,11 @@ export function CursorPaginatedList<T>({
 
   React.useEffect(() => {
     if (autoRefreshMs == null || autoRefreshMs <= 0) return;
-    const id = window.setInterval(() => {
+    const id = globalThis.setInterval(() => {
       if (document.visibilityState === "hidden") return;
       void loadInitial();
     }, autoRefreshMs);
-    return () => window.clearInterval(id);
+    return () => globalThis.clearInterval(id);
   }, [autoRefreshMs, loadInitial]);
 
   React.useEffect(() => {

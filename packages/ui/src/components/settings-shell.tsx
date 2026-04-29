@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import { usePathname } from "next/navigation";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 
 import { cn } from "../lib/utils";
@@ -33,6 +32,8 @@ export type SettingsShellProps = {
   clusters: readonly SettingsCluster[];
   /** Next.js `Link` or compatible router link. */
   LinkComponent: SettingsShellLinkComponent;
+  /** Current pathname from host router (e.g. Next.js `usePathname()`). */
+  pathname: string;
   /** Root path for the "Settings" crumb (default `/settings/profile`). */
   settingsHomeHref?: string;
   /** When omitted, `adminOnly` clusters are hidden. */
@@ -55,14 +56,15 @@ export function resolveBreadcrumb(
 
 function MenuLink({
   to,
+  pathname,
   children,
   LinkComponent,
 }: {
   to: string;
+  pathname: string;
   children: React.ReactNode;
   LinkComponent: SettingsShellLinkComponent;
 }) {
-  const pathname = usePathname();
   const isActive = pathname === to;
 
   return (
@@ -85,16 +87,17 @@ function MenuLink({
 
 function SettingsIconLink({
   to,
+  pathname,
   label,
   Icon,
   LinkComponent,
 }: {
   to: string;
+  pathname: string;
   label: string;
   Icon: LucideIcon;
   LinkComponent: SettingsShellLinkComponent;
 }) {
-  const pathname = usePathname();
   const isActive = pathname === to;
 
   return (
@@ -125,15 +128,16 @@ function SettingsIconLink({
 }
 
 function SettingsBreadcrumb({
+  pathname,
   resolveClusters,
   settingsHomeHref,
   LinkComponent,
 }: {
+  pathname: string;
   resolveClusters: readonly SettingsCluster[];
   settingsHomeHref: string;
   LinkComponent: SettingsShellLinkComponent;
 }) {
-  const pathname = usePathname();
   const crumb = resolveBreadcrumb(pathname, resolveClusters);
   return (
     <nav
@@ -156,20 +160,27 @@ function SettingsBreadcrumb({
   );
 }
 
+function readDesktopMatch(query: string): boolean {
+  const mm = (globalThis as { matchMedia?: (q: string) => MediaQueryList }).matchMedia;
+  if (typeof mm !== "function") return true;
+  return mm(query).matches;
+}
+
 export function SettingsShell({
   children,
   clusters,
   LinkComponent,
+  pathname,
   settingsHomeHref = "/settings/profile",
   useAdminGate,
 }: SettingsShellProps) {
   const isAdmin = useAdminGate?.() ?? false;
-  const [isDesktop, setIsDesktop] = React.useState(
-    typeof window !== "undefined" ? window.matchMedia("(min-width: 48em)").matches : true,
-  );
+  const [isDesktop, setIsDesktop] = React.useState(() => readDesktopMatch("(min-width: 48em)"));
 
   React.useEffect(() => {
-    const mq = window.matchMedia("(min-width: 48em)");
+    const mm = (globalThis as { matchMedia?: (q: string) => MediaQueryList }).matchMedia;
+    if (typeof mm !== "function") return;
+    const mq = mm("(min-width: 48em)");
     const handler = () => setIsDesktop(mq.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
@@ -203,7 +214,12 @@ export function SettingsShell({
                         {cluster.label}
                       </p>
                       {cluster.items.map((item) => (
-                        <MenuLink key={item.to} to={item.to} LinkComponent={LinkComponent}>
+                        <MenuLink
+                          key={item.to}
+                          to={item.to}
+                          pathname={pathname}
+                          LinkComponent={LinkComponent}
+                        >
                           {item.label}
                         </MenuLink>
                       ))}
@@ -218,6 +234,7 @@ export function SettingsShell({
                     <SettingsIconLink
                       key={item.to}
                       to={item.to}
+                      pathname={pathname}
                       label={item.label}
                       Icon={item.icon}
                       LinkComponent={LinkComponent}
@@ -228,6 +245,7 @@ export function SettingsShell({
             )}
             <div className="min-w-0 flex-1 overflow-x-hidden">
               <SettingsBreadcrumb
+                pathname={pathname}
                 resolveClusters={clusters}
                 settingsHomeHref={settingsHomeHref}
                 LinkComponent={LinkComponent}
