@@ -153,3 +153,11 @@ rules:
     learned_at: "2026-04-29T02:00:00Z"
     confidence: medium
     applies_to: [brain-self-dispatch]
+
+  - id: opus_offloads_mechanical_rebases_to_merge_orchestrator
+    when: "Opus has multiple reviewed-and-approved PRs that conflict with main due to recent merges (admin.py / schedulers/__init__.py / procedural_memory.yaml / workstreams.json append-only files)"
+    do: "dispatch a cheap-agent merge-orchestrator with the conflict-resolution rules (append-only for admin.py + schedulers + procedural_memory; by-id patch for workstreams.json with priority deduplication); orchestrator handles rebase + quality gates + force-push + CI wait; Opus retains the manual diff-review + merge-button click"
+    source: "founder feedback during Phase D blitz: Opus was doing mechanical conflict resolution that cheap agents can do (PR #401 rebase took ~10 min of Opus time)"
+    learned_at: "2026-04-29T03:05:00Z"
+    confidence: high
+    applies_to: [orchestrator]
