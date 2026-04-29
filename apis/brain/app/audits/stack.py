@@ -147,5 +147,5 @@ def run() -> AuditRun:
         ran_at=now,
         findings=findings,
         summary=summary,
-        next_cadence=next_cadence,  # type: ignore[arg-type]
+        next_cadence=next_cadence,
     )
