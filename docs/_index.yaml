@@ -486,6 +486,13 @@ docs:
     tags: [company, reference]
     owners: [brand]
     category: reference
+  - slug: stack-audit-2026-q2
+    path: docs/STACK_AUDIT_2026-Q2.md
+    title: Paperwork Labs Stack Audit - 2026 Q2
+    summary: "**Audit date:** 2026-04-29 **Auditor:** Brain (autonomous read-only audit, WS-49) **Source-of-truth files inspected:** `package.json`, `pnpm-workspace.yaml`, `pyproject.toml`, `requirements.txt`,…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: prd
     path: docs/PRD.md
     title: Paperwork PRD
