@@ -4,9 +4,9 @@ uvicorn[standard]>=0.32.0
 gunicorn>=23.0.0
 
 # Database
-sqlalchemy[asyncio]>=2.0.36
+sqlalchemy[asyncio]>=2.0.49
 asyncpg>=0.31.0
-alembic>=1.14.0
+alembic>=1.18.4
 
 # Validation & settings
 pydantic>=2.13.3

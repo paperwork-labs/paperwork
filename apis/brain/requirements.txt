@@ -1,12 +1,12 @@
 # Web framework
-fastapi>=0.115.0
+fastapi>=0.136.1
 uvicorn[standard]>=0.32.0
 gunicorn>=23.0.0
 
 # Database
 sqlalchemy[asyncio]>=2.0.49
 asyncpg>=0.30.0
-alembic>=1.14.0
+alembic>=1.18.4
 pgvector>=0.3.0
 
 # Validation & settings
