@@ -107,7 +107,6 @@ def test_record_score_appends_updates_current(
     [
         (web_perf_ux.collect, 55.0, False),
         (a11y_design_system.collect, 50.0, False),
-        (data_architecture.collect, 55.0, False),
     ],
 )
 def test_bootstrap_collectors_stub(
@@ -549,6 +548,238 @@ def test_a11y_collector_empty_returns_bootstrap(
     score, mf, notes = a11y_design_system.collect()
     assert score == pytest.approx(50.0) and mf is False
     assert "no axe-core runs yet" in notes
+
+
+# ---------------------------------------------------------------------------
+# Autonomy collector — new real-implementation tests
+# ---------------------------------------------------------------------------
+
+
+def _make_outcomes(n_brain: int, n_founder: int, n_agent: int) -> str:
+    """Build a pr_outcomes JSON string with synthetic entries."""
+    rows = []
+    for i in range(n_brain):
+        rows.append(
+            {
+                "pr_number": 1000 + i,
+                "merged_at": "2026-04-01T12:00:00Z",
+                "merged_by_agent": "brain-self-dispatch",
+                "agent_model": "composer-1.5",
+                "subagent_type": "generalPurpose",
+            }
+        )
+    for i in range(n_founder):
+        rows.append(
+            {
+                "pr_number": 2000 + i,
+                "merged_at": "2026-04-01T12:00:00Z",
+                "merged_by_agent": "founder",
+                "agent_model": "n/a",
+                "subagent_type": "n/a",
+            }
+        )
+    for i in range(n_agent):
+        rows.append(
+            {
+                "pr_number": 3000 + i,
+                "merged_at": "2026-04-01T12:00:00Z",
+                "merged_by_agent": "cheap-agent",
+                "agent_model": "composer-1.5",
+                "subagent_type": "shell",
+            }
+        )
+    return json.dumps({"schema": "pr_outcomes/v1", "description": "t", "outcomes": rows})
+
+
+def _make_dispatches(n: int) -> str:
+    """Build an agent_dispatch_log JSON string with n dispatch entries."""
+    dispatches = [
+        {
+            "dispatch_id": f"d-{i:04d}",
+            "dispatched_at": "2026-04-01T10:00:00Z",
+            "agent_model": "composer-1.5",
+            "subagent_type": "shell",
+            "workstream_id": f"WS-{i}",
+            "workstream_type": "platform-cli",
+            "blast_radius": "brain-code",
+            "task_summary": f"task {i}",
+            "branch": None,
+            "pr_number": None,
+            "outcome": {
+                "ci_initial_pass": None,
+                "review_pass": None,
+                "review_iterations": 0,
+                "merged_at": None,
+                "reverted": None,
+                "wall_clock_seconds": None,
+            },
+        }
+        for i in range(n)
+    ]
+    return json.dumps(
+        {
+            "schema": {},
+            "version": 1,
+            "dispatches": dispatches,
+            "updated_at": "2026-04-28T00:00:00Z",
+        }
+    )
+
+
+def test_autonomy_collector_with_full_corpus(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Full corpus (≥10 outcomes, ≥20 dispatches) → measured=True, score>50."""
+    import app.services.operating_score_collectors.autonomy as aut
+
+    po = tmp_path / "po.json"
+    po.write_text(_make_outcomes(15, 5, 5), encoding="utf-8")
+    dl = tmp_path / "dl.json"
+    dl.write_text(_make_dispatches(25), encoding="utf-8")
+
+    monkeypatch.setenv("BRAIN_PR_OUTCOMES_JSON", str(po))
+    monkeypatch.setenv("BRAIN_AGENT_DISPATCH_LOG_JSON", str(dl))
+    monkeypatch.setenv("BRAIN_APP_REGISTRY_JSON", str(tmp_path / "no-registry.json"))
+    monkeypatch.setattr(aut, "_estimate_founder_ops_minutes", lambda: 0.0)
+
+    score, measured, notes = aut.collect()
+    assert measured is True
+    assert score > 50.0
+    assert "self_merge=" in notes
+
+
+def test_autonomy_collector_bootstrap_when_corpus_too_small(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Alias test matching the pre-existing bootstrap behaviour (corpus < 10)."""
+    import app.services.operating_score_collectors.autonomy as aut
+
+    po = tmp_path / "po.json"
+    po.write_text(_make_outcomes(5, 0, 0), encoding="utf-8")
+    dl = tmp_path / "dl.json"
+    dl.write_text(_make_dispatches(5), encoding="utf-8")
+
+    monkeypatch.setenv("BRAIN_PR_OUTCOMES_JSON", str(po))
+    monkeypatch.setenv("BRAIN_AGENT_DISPATCH_LOG_JSON", str(dl))
+    monkeypatch.setenv("BRAIN_APP_REGISTRY_JSON", str(tmp_path / "no-registry.json"))
+
+    _score, measured, notes = aut.collect()
+    assert measured is False
+    assert "corpus building" in notes.lower()
+
+
+@pytest.mark.parametrize(
+    ("brain_prs", "total_prs", "expected_score"),
+    [
+        (0, 20, 0.0),
+        (10, 20, 50.0),
+        (20, 20, 100.0),
+    ],
+)
+def test_autonomy_self_merge_ratio_subscore(
+    brain_prs: int,
+    total_prs: int,
+    expected_score: float,
+) -> None:
+    """_score_ratio(ratio) is linear 0→100 for 0%, 50%, 100% merge ratio."""
+    import app.services.operating_score_collectors.autonomy as aut
+
+    ratio = brain_prs / max(total_prs, 1)
+    assert pytest.approx(aut._score_ratio(ratio)) == expected_score  # type: ignore[attr-defined]
+
+
+# ---------------------------------------------------------------------------
+# Data architecture collector — new real-implementation tests
+# ---------------------------------------------------------------------------
+
+
+def test_data_architecture_collector_with_brain_tree(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Against real brain dirs (with a mocked medallion subprocess) → measured=True."""
+    import app.services.operating_score_collectors.data_architecture as da
+
+    brain_root = Path(__file__).resolve().parents[1]
+    monorepo_root = brain_root.parents[1]
+    monkeypatch.setenv("BRAIN_PACKAGE_ROOT", str(brain_root))
+    monkeypatch.setenv("BRAIN_REPO_ROOT", str(monorepo_root))
+
+    monkeypatch.setattr(
+        da,
+        "_medallion_tag_coverage",
+        lambda _r, _b: (100.0, "mock: all tagged"),
+    )
+
+    score, measured, notes = da.collect()
+    assert measured is True
+    assert score > 0.0
+    assert "data_architecture:" in notes
+
+
+def test_data_architecture_collector_bootstrap_with_empty_dirs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Empty tmp dir (no data/ or schemas/) → measured=False."""
+    monkeypatch.setenv("BRAIN_PACKAGE_ROOT", str(tmp_path))
+    monkeypatch.setenv("BRAIN_REPO_ROOT", str(tmp_path))
+
+    score, measured, _notes = data_architecture.collect()
+    assert measured is False
+    assert pytest.approx(score) == 55.0
+
+
+def test_data_architecture_medallion_subscore_uses_check_imports(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Mock subprocess → verify medallion sub-score math."""
+    import subprocess as _subprocess
+
+    import app.services.operating_score_collectors.data_architecture as da
+
+    # Create minimal brain dir structure so bootstrap guard passes
+    (tmp_path / "data").mkdir()
+    (tmp_path / "app" / "schemas").mkdir(parents=True)
+    # Write one JSON + matching schema so schema_coverage > 0
+    (tmp_path / "data" / "pr_outcomes.json").write_text(
+        '{"schema":"pr_outcomes/v1","outcomes":[]}', encoding="utf-8"
+    )
+    (tmp_path / "app" / "schemas" / "pr_outcomes.py").write_text("", encoding="utf-8")
+
+    monkeypatch.setenv("BRAIN_PACKAGE_ROOT", str(tmp_path))
+    monkeypatch.setenv("BRAIN_REPO_ROOT", str(tmp_path))
+
+    # Simulate a medallion script returning 80 tagged, 20 untagged → 80% coverage
+    fake_stdout = (
+        "[brain] Files by layer:\n"
+        "  bronze      0\n"
+        "  silver      0\n"
+        "  gold        0\n"
+        "  execution   0\n"
+        "  ops        80\n"
+        "[brain] Imports checked: 10\n"
+    )
+    fake_stderr = "[brain] error: 20 .py files under app missing medallion tag.\n"
+
+    def fake_run(cmd: list[str], **kwargs: object) -> _subprocess.CompletedProcess[str]:
+        return _subprocess.CompletedProcess(cmd, 2, fake_stdout, fake_stderr)
+
+    monkeypatch.setattr(da.subprocess, "run", fake_run)
+
+    # Create a dummy script path so the existence check passes
+    scripts_dir = tmp_path / "scripts" / "medallion"
+    scripts_dir.mkdir(parents=True)
+    (scripts_dir / "check_imports.py").write_text("", encoding="utf-8")
+    monkeypatch.setattr(da, "_monorepo_root", lambda: tmp_path)
+    monkeypatch.setattr(da, "_brain_dir", lambda: tmp_path)
+
+    _score, measured, notes = da.collect()
+    # Medallion should be 80% (80 / 100)
+    assert measured is True
+    assert "80/100" in notes or "80%" in notes
 
 
 # --- helpers -----------------------------------------------------------
