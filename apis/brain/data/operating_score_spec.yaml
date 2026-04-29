@@ -1,0 +1,68 @@
+schema:
+  description: "Paperwork Operating Score (POS) v2 — 10 pillars, mapped to industry standards. Weekly composite. Target: POS>=90 best-in-class autonomous company."
+version: 1
+target_total: 90
+graduation_gates:
+  l4: { min_total: 80, min_pillar: 70 }
+  l5: { min_total: 90, sustained_weeks: 4 }
+pillars:
+  - id: autonomy
+    weight: 13
+    industry_reference: "(custom — unique to autonomous company)"
+    target: 80
+    measurement_source: "apis/brain/data/pr_outcomes.json + agent_dispatch_log.json"
+    description: "Brain self-merge ratio, Brain self-proposal ratio, founder ops minutes/month"
+  - id: dora_elite
+    weight: 13
+    industry_reference: "DORA / Accelerate (https://dora.dev)"
+    target: 80
+    measurement_source: "gh api runs + Vercel/Render deploy logs"
+    description: "Deploy frequency, lead time for changes, change failure rate, MTTR"
+  - id: stack_modernity
+    weight: 13
+    industry_reference: "DependencyTrack + Vercel knowledge-update"
+    target: 80
+    measurement_source: "pnpm outdated --json + uv pip list --outdated + docs/STACK_AUDIT_2026-Q2.md (WS-49)"
+    description: "% deps within 1 major of latest, framework currency, stack-audit KEEP-ratio"
+  - id: web_perf_ux
+    weight: 13
+    industry_reference: "Google Core Web Vitals + Apple HIG + NN/g heuristics"
+    target: 80
+    measurement_source: "Lighthouse-CI on every PR + @vercel/speed-insights p75"
+    description: "LCP, CLS, INP, TBT, font/image hygiene, bundle size"
+  - id: a11y_design_system
+    weight: 9
+    industry_reference: "WCAG 2.2 AA"
+    target: 80
+    measurement_source: "axe-core CI + Storybook visual-regression + token-coverage scanner"
+    description: "WCAG AA contrast pass-rate, axe violations, % components from design system, type-scale conformance"
+  - id: code_quality
+    weight: 9
+    industry_reference: "SonarQube + CodeScene-style"
+    target: 80
+    measurement_source: "pytest --cov, tsc --noEmit, radon, jscpd"
+    description: "Test coverage, type-check clean, cyclomatic complexity p95, dead code, duplicate ratio"
+  - id: data_architecture
+    weight: 9
+    industry_reference: "DAMA-DMBOK + Data Mesh"
+    target: 80
+    measurement_source: "Postgres pg_stat_statements + Redis info + Vercel Speed Insights"
+    description: "Batching ratio, cache hit ratio, query p95, streaming-where-appropriate"
+  - id: reliability_security
+    weight: 9
+    industry_reference: "SOC 2 CC + OWASP ASVS L1"
+    target: 80
+    measurement_source: "Render/Vercel uptime API + WS-42 drift detector + GitHub Advanced Security + secret-scan"
+    description: "Uptime SLO, IaC drift coverage, OWASP Top 10 scan, dependency CVEs, secret leaks"
+  - id: knowledge_capital
+    weight: 6
+    industry_reference: "(custom — compounding moat)"
+    target: 80
+    measurement_source: "procedural_memory.yaml + pr_outcomes.json + doc lastmod stamps"
+    description: "Procedural rules growth, PR outcomes corpus completeness, doc freshness"
+  - id: persona_coverage
+    weight: 6
+    industry_reference: "(custom — staff completeness)"
+    target: 80
+    measurement_source: "apis/brain/app/personas/ + persona telemetry"
+    description: "Business functions with working persona, persona response p95, persona contradiction rate"

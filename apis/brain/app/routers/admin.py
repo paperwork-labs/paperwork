@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import app.services.operating_score as operating_score_svc
 import app.services.pr_outcomes as pr_outcomes_service
 from app.config import settings
 from app.database import async_session_factory, get_db
@@ -799,6 +800,35 @@ async def get_strategic_objectives_summary(
 ):
     """Summary of ``docs/strategy/OBJECTIVES.yaml`` for Studio / ops dashboards."""
     return success_response(jsonable_encoder(strategic_objectives_summary()))
+
+
+@router.get("/operating-score")
+async def get_operating_score(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Return latest POS snapshot + last week history tails for dashboards."""
+    blob = operating_score_svc.read_operating_file()
+    gate_payload = (
+        blob.current.gates.model_dump(mode="json")
+        if blob.current
+        else {"l4_pass": False, "l5_pass": False, "lowest_pillar": ""}
+    )
+    payload = {
+        "current": blob.current.model_dump(mode="json") if blob.current else None,
+        "history_last_12": [h.model_dump(mode="json") for h in blob.history[-12:]],
+        "gates": gate_payload,
+    }
+    return success_response(jsonable_encoder(payload))
+
+
+@router.post("/operating-score/recompute")
+async def post_operating_score_recompute(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Admin-only synchronous POS recomputation — persists snapshot like the weekly cron."""
+    entry = operating_score_svc.compute_score()
+    operating_score_svc.record_score(entry)
+    return success_response(jsonable_encoder(entry.model_dump(mode="json")))
 
 
 @router.get("/procedural-memory")
