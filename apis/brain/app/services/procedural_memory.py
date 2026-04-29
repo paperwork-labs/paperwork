@@ -3,6 +3,8 @@
 Procedural rules encode "when X, do Y" knowledge distilled from incidents,
 PR retros, and dispatch outcomes.  The WS-64 self-improvement loop consumes
 these rules to bias agent dispatch and workstream decomposition.
+
+medallion: ops
 """
 
 from __future__ import annotations
