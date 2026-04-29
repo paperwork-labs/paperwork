@@ -1146,7 +1146,7 @@
       "last_pr": null,
       "last_activity": "2026-04-29T12:00:00Z",
       "last_dispatched_at": null,
-      "notes": "PR TBD: weekly retro service + scheduler. Closes Phase G2 (L5 seed). Studio retro tile is follow-up.",
+      "notes": "PR #398: weekly retro service + scheduler. Closes Phase G2 (L5 seed). Studio retro tile is follow-up.",
       "estimated_pr_count": 1,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"
