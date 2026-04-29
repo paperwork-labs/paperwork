@@ -45,6 +45,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
         self_prioritization.install(scheduler)
     except Exception:
         logger.exception("Failed to install self_prioritization job")
+    try:
+        from app.schedulers import self_improvement
+
+        self_improvement.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install self_improvement_weekly_retro job")
     return scheduler
 
 

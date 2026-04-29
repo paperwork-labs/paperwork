@@ -1,0 +1,6 @@
+{
+  "schema": "weekly_retros/v1",
+  "description": "Brain weekly retrospective — Phase G2 self-improvement loop. Each entry summarizes a 7-day window.",
+  "version": 1,
+  "retros": []
+}

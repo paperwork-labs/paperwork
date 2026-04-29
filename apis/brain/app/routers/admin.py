@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.services.app_registry as app_registry_svc
 import app.services.operating_score as operating_score_svc
 import app.services.pr_outcomes as pr_outcomes_service
+import app.services.self_improvement as self_improvement_svc
 import app.services.self_merge_gate as self_merge_gate
 import app.services.self_prioritization as self_prioritization_svc
 from app.config import settings
@@ -983,6 +984,41 @@ async def post_operating_score_recompute(
     entry = operating_score_svc.compute_score()
     operating_score_svc.record_score(entry)
     return success_response(jsonable_encoder(entry.model_dump(mode="json")))
+
+
+@router.get("/weekly-retros")
+async def get_weekly_retros(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Return Brain weekly retrospectives and a quarter summary."""
+    retros = self_improvement_svc.latest_retros(52)
+    latest_4 = retros[:4]
+    quarter = retros[:13]
+    avg_pos_change = (
+        round(sum(row.summary.pos_total_change for row in quarter) / len(quarter), 4)
+        if quarter
+        else 0.0
+    )
+    payload = {
+        "count": len(retros),
+        "latest_4": [row.model_dump(mode="json") for row in latest_4],
+        "summary_quarter": {
+            "avg_pos_change": avg_pos_change,
+            "total_merges": sum(row.summary.merges for row in quarter),
+            "total_reverts": sum(row.summary.reverts for row in quarter),
+        },
+    }
+    return success_response(jsonable_encoder(payload))
+
+
+@router.post("/weekly-retros/recompute")
+async def post_weekly_retros_recompute(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Admin-only synchronous weekly retro recomputation for the current UTC week ending."""
+    retro = self_improvement_svc.compute_weekly_retro()
+    self_improvement_svc.record_retro(retro)
+    return success_response(jsonable_encoder(retro.model_dump(mode="json")))
 
 
 @router.get("/procedural-memory")

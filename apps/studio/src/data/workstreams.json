@@ -1134,23 +1134,20 @@
       "related_plan": "level_4_autonomy_+_platform"
     },
     {
-      "id": "WS-64-self-improvement-loop",
-      "title": "Phase G2 \u2014 Self-improvement loop (Brain ships PRs to its own bottlenecks weekly)",
+      "id": "WS-64-brain-self-improvement-loop",
+      "title": "WS-64 Brain self-improvement loop",
       "track": "Z",
       "priority": 61,
-      "status": "pending",
-      "percent_done": 0,
+      "status": "in_progress",
+      "percent_done": 80,
       "owner": "brain",
       "brief_tag": "track:self-improvement-loop",
-      "blockers": [
-        "WS-63 self-prioritization",
-        "4-6 weeks of self-merge track record"
-      ],
+      "blockers": [],
       "last_pr": null,
-      "last_activity": "2026-04-28T23:33:17Z",
+      "last_activity": "2026-04-29T12:00:00Z",
       "last_dispatched_at": null,
-      "notes": "Brain analyzes its own bottlenecks weekly: scheduler P95 regressions, writeback error rate, slow API calls, low-acceptance-rate subagent task types. Proposes self-improvement workstreams. Activates at L4 handoff.",
-      "estimated_pr_count": 2,
+      "notes": "PR TBD: weekly retro service + scheduler. Closes Phase G2 (L5 seed). Studio retro tile is follow-up.",
+      "estimated_pr_count": 1,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"
     },
