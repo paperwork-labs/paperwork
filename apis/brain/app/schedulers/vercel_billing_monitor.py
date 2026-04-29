@@ -47,4 +47,5 @@ def install(scheduler: AsyncIOScheduler) -> None:
         replace_existing=True,
         coalesce=True,
         max_instances=1,
+        misfire_grace_time=300,
     )
