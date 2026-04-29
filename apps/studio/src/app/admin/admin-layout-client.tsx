@@ -21,6 +21,7 @@ import {
   Activity,
   GitBranch,
   Kanban,
+  Receipt,
 } from "lucide-react";
 
 type NavItem = {
@@ -29,6 +30,8 @@ type NavItem = {
   icon: typeof LayoutDashboard;
   /** Sidebar badge: pending founder action count (only Founder actions item uses this) */
   pendingBadge?: { count: number; hasCritical: boolean } | null;
+  /** Simple numeric badge (e.g. expenses pending count) */
+  countBadge?: number | null;
 };
 
 type NavGroup = {
@@ -37,7 +40,8 @@ type NavGroup = {
 };
 
 function buildNavGroups(
-  founderPending: { count: number; hasCritical: boolean } | null
+  founderPending: { count: number; hasCritical: boolean } | null,
+  expensesPendingCount: number | null,
 ): NavGroup[] {
   return [
     {
@@ -51,6 +55,12 @@ function buildNavGroups(
         { href: "/admin/products", label: "Products", icon: Boxes },
         { href: "/admin/sprints", label: "Sprints", icon: Rocket },
         { href: "/admin/workstreams", label: "Workstreams", icon: Kanban },
+        {
+          href: "/admin/expenses",
+          label: "Expenses",
+          icon: Receipt,
+          countBadge: expensesPendingCount,
+        },
       ],
     },
     {
@@ -81,11 +91,13 @@ type Props = {
   children: React.ReactNode;
   /** Null if founder-actions data failed to load */
   founderPending: { count: number; hasCritical: boolean } | null;
+  /** Live pending + flagged expense count from Brain (null if Brain unavailable) */
+  expensesPendingCount?: number | null;
 };
 
-export function AdminLayoutClient({ children, founderPending }: Props) {
+export function AdminLayoutClient({ children, founderPending, expensesPendingCount = null }: Props) {
   const pathname = usePathname();
-  const navGroups = buildNavGroups(founderPending);
+  const navGroups = buildNavGroups(founderPending, expensesPendingCount);
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -114,6 +126,8 @@ export function AdminLayoutClient({ children, founderPending }: Props) {
                     const Icon = item.icon;
                     const badge = item.pendingBadge;
                     const showBadge = badge && badge.count > 0;
+                    const showCountBadge =
+                      typeof item.countBadge === "number" && item.countBadge > 0;
                     return (
                       <Link
                         key={item.href}
@@ -142,6 +156,14 @@ export function AdminLayoutClient({ children, founderPending }: Props) {
                             title="Pending founder-only items"
                           >
                             {badge.count} pending
+                          </span>
+                        ) : null}
+                        {showCountBadge ? (
+                          <span
+                            className="shrink-0 rounded-full bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-amber-200"
+                            title="Pending expenses awaiting approval"
+                          >
+                            {item.countBadge}
                           </span>
                         ) : null}
                       </Link>

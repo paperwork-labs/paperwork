@@ -1,7 +1,8 @@
 import { AdminLayoutClient } from "./admin-layout-client";
 import founderData from "@/data/founder-actions.json";
+import { fetchPendingCount } from "@/lib/expenses";
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -15,8 +16,14 @@ export default function AdminLayout({
         }
       : null;
 
+  // Live expense pending count for sidebar badge; 0 on Brain unavailability
+  const expensesPendingCount = await fetchPendingCount().catch(() => 0);
+
   return (
-    <AdminLayoutClient founderPending={founderPending}>
+    <AdminLayoutClient
+      founderPending={founderPending}
+      expensesPendingCount={expensesPendingCount}
+    >
       {children}
     </AdminLayoutClient>
   );
