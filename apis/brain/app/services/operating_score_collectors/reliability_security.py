@@ -273,11 +273,11 @@ def collect() -> tuple[float, bool, str]:
         sub_iac = _score_iac_layer_count(len(layers))
         quota_files = _quota_snapshot_paths(data)
         sub_uptime, uptime_note = _uptime_subscore(quota_files, now)
-        sub_secret, secret_note = _secret_scan_subscore(repo, now)
+        sub_leaks, leaks_note = _secret_scan_subscore(repo, now)
         inc_n = _incidents_last_30d(data, now)
         sub_inc = _score_incidents(inc_n)
 
-        pillars_avg = (sub_iac + sub_uptime + sub_secret + sub_inc) / 4.0
+        pillars_avg = (sub_iac + sub_uptime + sub_leaks + sub_inc) / 4.0
         total = max(0.0, min(100.0, math.floor(pillars_avg * 10000 + 0.5) / 10000))
 
         blob = {
@@ -290,17 +290,17 @@ def collect() -> tuple[float, bool, str]:
             "sub_scores": {
                 "iac_drift_coverage": round(sub_iac, 4),
                 "uptime_slo": round(sub_uptime, 4),
-                "secret_scan_freshness": round(sub_secret, 4),
+                "gitleaks_freshness": round(sub_leaks, 4),
                 "incident_rate": round(sub_inc, 4),
             },
             "uptime_signal": uptime_note,
-            "secret_scan_signal": secret_note,
+            "gitleaks_signal": leaks_note,
         }
         _write_metrics(blob, data)
 
         notes = (
             f"reliability_security: layers={sorted(layers)} quota_files={len(quota_files)} "
-            f"{uptime_note} {secret_note} incidents_30d={inc_n}"
+            f"{uptime_note} {leaks_note} incidents_30d={inc_n}"
         )
         return (total, True, notes)
     except (OSError, ValueError, TypeError, yaml.YAMLError):
