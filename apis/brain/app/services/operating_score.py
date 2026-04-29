@@ -42,8 +42,10 @@ def _brain_services_dir() -> str:
 
 
 def _brain_data_dir() -> str:
+    # services/ -> app/ -> brain/ ; data lives at brain/data, not brain/app/data
     brain_app = os.path.dirname(_brain_services_dir())
-    return os.path.join(brain_app, "data")
+    brain_root = os.path.dirname(brain_app)
+    return os.path.join(brain_root, "data")
 
 
 def operating_score_spec_path() -> str:
