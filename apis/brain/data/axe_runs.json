@@ -1,0 +1,5 @@
+{
+  "schema": "axe_runs/v1",
+  "description": "axe-core a11y scores per main-branch run. POS pillar 5 (a11y_design_system) reads the latest entry.",
+  "runs": []
+}

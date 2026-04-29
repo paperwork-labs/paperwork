@@ -504,6 +504,53 @@ def test_reliability_security_collector_empty_returns_bootstrap(
     assert "canonical" in notes.lower()
 
 
+def test_a11y_collector_reads_axe_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """1 critical violation => 100 - 20 = 80 (POS axe formula in CI script)."""
+    ax = tmp_path / "axe.json"
+    ax.write_text(
+        json.dumps(
+            {
+                "schema": "axe_runs/v1",
+                "runs": [
+                    {
+                        "run_at": "2026-04-29T12:00:00Z",
+                        "url": "https://studio.paperworklabs.com/",
+                        "violations": {"critical": 1, "serious": 0, "moderate": 0, "minor": 0},
+                        "passes": 12,
+                        "incomplete": 1,
+                        "score": 80.0,
+                        "commit_sha": "abc",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("BRAIN_AXE_RUNS_JSON", str(ax))
+    monkeypatch.setenv("BRAIN_REPO_ROOT", str(tmp_path))
+    s, ok, notes = a11y_design_system.collect()
+    assert ok is True and pytest.approx(s) == 80.0
+    assert "from axe_runs.json @ 2026-04-29T12:00:00Z" in notes
+
+
+def test_a11y_collector_empty_returns_bootstrap(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    ax = tmp_path / "axe_empty.json"
+    ax.write_text(
+        '{"schema":"axe_runs/v1","runs":[]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("BRAIN_AXE_RUNS_JSON", str(ax))
+    score, mf, notes = a11y_design_system.collect()
+    assert score == pytest.approx(50.0) and mf is False
+    assert "no axe-core runs yet" in notes
+
+
 # --- helpers -----------------------------------------------------------
 
 

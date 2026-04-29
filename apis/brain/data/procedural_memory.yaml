@@ -74,6 +74,14 @@ rules:
     confidence: high
     applies_to: [orchestrator, cheap-agents]
 
+  - id: a11y_label_for_pr_axe_check
+    when: "PR introduces user-facing UI changes (apps/* or packages/ui)"
+    do: "add 'a11y' label to trigger axe-core workflow on the preview deploy; orchestrator can label via gh pr edit --add-label a11y"
+    source: "POS pillar 5 (a11y_design_system) — axe runs only on labeled PRs to save CI minutes; main always runs"
+    learned_at: "2026-04-29T02:00:00Z"
+    confidence: high
+    applies_to: [orchestrator, cheap-agents]
+
   - id: stack_audit_quarterly_refresh
     when: "POS pillar 3 (stack_modernity) reports audit_stale_days > 75"
     do: "open a WS-49 refresh PR (re-run the audit, update STACK_AUDIT_<year>-Q<quarter>.md, register in docs/_index.yaml)"
