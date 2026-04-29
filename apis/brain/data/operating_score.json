@@ -1,6 +1,168 @@
 {
-  "schema": "operating_score/v1",
-  "description": "Paperwork Operating Score (POS) — weekly composite. Spec: apis/brain/data/operating_score_spec.yaml.",
-  "current": null,
-  "history": []
+  "current": {
+    "computed_at": "2026-04-29T02:49:47Z",
+    "gates": {
+      "l4_pass": false,
+      "l5_pass": false,
+      "lowest_pillar": "knowledge_capital"
+    },
+    "pillars": {
+      "a11y_design_system": {
+        "measured": false,
+        "notes": "no axe-core runs yet \u2014 collector deferred until first run",
+        "score": 50.0,
+        "weight": 9,
+        "weighted": 4.5
+      },
+      "autonomy": {
+        "measured": true,
+        "notes": "bootstrap estimate \u2014 corpus building; registry conformance avg=0.64; bonus=0",
+        "score": 20.0,
+        "weight": 13,
+        "weighted": 2.6
+      },
+      "code_quality": {
+        "measured": true,
+        "notes": "code_quality: coverage_measured=False cov_pct=0.0 mypy=0 ruff=0 cyclomatic_p95=12.00",
+        "score": 82.5,
+        "weight": 9,
+        "weighted": 7.425
+      },
+      "data_architecture": {
+        "measured": false,
+        "notes": "bootstrap estimate \u2014 pg_stat_statements collector deferred",
+        "score": 55.0,
+        "weight": 9,
+        "weighted": 4.95
+      },
+      "dora_elite": {
+        "measured": true,
+        "notes": "DORA from gh api (paperwork-labs/paperwork); deploy_7d=284 merges_30d=295 reverts=1 lead_n=30 wf=lighthouse-ci.yml",
+        "score": 100.0,
+        "weight": 13,
+        "weighted": 13.0
+      },
+      "knowledge_capital": {
+        "measured": true,
+        "notes": "rules=0; outcomes_total=0; with_h24=0; completion_pct\u22480.0; formula=min(100, rules*5 + pct/2)=0.0",
+        "score": 0.0,
+        "weight": 6,
+        "weighted": 0.0
+      },
+      "persona_coverage": {
+        "measured": true,
+        "notes": "Counted 16 personas/specs/*.yaml + 51 persona-shaped .cursor/rules *.mdc; score=min(100,count*5)=100.0",
+        "score": 100.0,
+        "weight": 6,
+        "weighted": 6.0
+      },
+      "reliability_security": {
+        "measured": true,
+        "notes": "reliability_security: layers=['vercel'] quota_files=0 no_quota_json gitleaks_recent_ok incidents_30d=0",
+        "score": 77.5,
+        "weight": 9,
+        "weighted": 6.975
+      },
+      "stack_modernity": {
+        "measured": true,
+        "notes": "from STACK_AUDIT_2026-Q2.md (32 KEEP / 30 UPGRADE / 3 REPLACE)",
+        "score": 72.3077,
+        "weight": 13,
+        "weighted": 9.400001
+      },
+      "web_perf_ux": {
+        "measured": false,
+        "notes": "no Lighthouse-CI runs yet \u2014 collector deferred until first run",
+        "score": 55.0,
+        "weight": 13,
+        "weighted": 7.15
+      }
+    },
+    "total": 62.0
+  },
+  "description": "Paperwork Operating Score (POS) \u2014 weekly composite. Spec: apis/brain/data/operating_score_spec.yaml.",
+  "history": [
+    {
+      "computed_at": "2026-04-29T02:49:47Z",
+      "gates": {
+        "l4_pass": false,
+        "l5_pass": false,
+        "lowest_pillar": "knowledge_capital"
+      },
+      "pillars": {
+        "a11y_design_system": {
+          "measured": false,
+          "notes": "no axe-core runs yet \u2014 collector deferred until first run",
+          "score": 50.0,
+          "weight": 9,
+          "weighted": 4.5
+        },
+        "autonomy": {
+          "measured": true,
+          "notes": "bootstrap estimate \u2014 corpus building; registry conformance avg=0.64; bonus=0",
+          "score": 20.0,
+          "weight": 13,
+          "weighted": 2.6
+        },
+        "code_quality": {
+          "measured": true,
+          "notes": "code_quality: coverage_measured=False cov_pct=0.0 mypy=0 ruff=0 cyclomatic_p95=12.00",
+          "score": 82.5,
+          "weight": 9,
+          "weighted": 7.425
+        },
+        "data_architecture": {
+          "measured": false,
+          "notes": "bootstrap estimate \u2014 pg_stat_statements collector deferred",
+          "score": 55.0,
+          "weight": 9,
+          "weighted": 4.95
+        },
+        "dora_elite": {
+          "measured": true,
+          "notes": "DORA from gh api (paperwork-labs/paperwork); deploy_7d=284 merges_30d=295 reverts=1 lead_n=30 wf=lighthouse-ci.yml",
+          "score": 100.0,
+          "weight": 13,
+          "weighted": 13.0
+        },
+        "knowledge_capital": {
+          "measured": true,
+          "notes": "rules=0; outcomes_total=0; with_h24=0; completion_pct\u22480.0; formula=min(100, rules*5 + pct/2)=0.0",
+          "score": 0.0,
+          "weight": 6,
+          "weighted": 0.0
+        },
+        "persona_coverage": {
+          "measured": true,
+          "notes": "Counted 16 personas/specs/*.yaml + 51 persona-shaped .cursor/rules *.mdc; score=min(100,count*5)=100.0",
+          "score": 100.0,
+          "weight": 6,
+          "weighted": 6.0
+        },
+        "reliability_security": {
+          "measured": true,
+          "notes": "reliability_security: layers=['vercel'] quota_files=0 no_quota_json gitleaks_recent_ok incidents_30d=0",
+          "score": 77.5,
+          "weight": 9,
+          "weighted": 6.975
+        },
+        "stack_modernity": {
+          "measured": true,
+          "notes": "from STACK_AUDIT_2026-Q2.md (32 KEEP / 30 UPGRADE / 3 REPLACE)",
+          "score": 72.3077,
+          "weight": 13,
+          "weighted": 9.400001
+        },
+        "web_perf_ux": {
+          "measured": false,
+          "notes": "no Lighthouse-CI runs yet \u2014 collector deferred until first run",
+          "score": 55.0,
+          "weight": 13,
+          "weighted": 7.15
+        }
+      },
+      "total": 62.0
+    }
+  ],
+  "schema": "operating_score/v1"
 }
