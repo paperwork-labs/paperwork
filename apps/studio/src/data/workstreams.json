@@ -1027,10 +1027,10 @@
       "blockers": [
         "WS-44 self-merge"
       ],
-      "last_pr": null,
+      "last_pr": 388,
       "last_activity": "2026-04-28T23:33:17Z",
       "last_dispatched_at": null,
-      "notes": "pwl new-app <name> --template [next-saas|fastapi-api|brain-scheduler]. Outputs: code scaffold + Vercel project + Cloudflare CNAMEs + Clerk satellite + CI workflow + runbook stub + workstream entry + PR. THIS IS THE L4 HANDOFF DELIVERABLE. PR TBD: CLI shell + doctor + list-apps + new-app stub. Full new-app impl in WS-59.",
+      "notes": "pwl new-app <name> --template [next-saas|fastapi-api|brain-scheduler]. Outputs: code scaffold + Vercel project + Cloudflare CNAMEs + Clerk satellite + CI workflow + runbook stub + workstream entry + PR. THIS IS THE L4 HANDOFF DELIVERABLE. PR #388: CLI shell + doctor + list-apps + new-app stub. Full new-app impl in WS-59.",
       "estimated_pr_count": 4,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"
