@@ -557,11 +557,11 @@ def _acceptance_rate(pr_file: PrOutcomesFile) -> float:
 
     Returns 0.0 if no measured outcomes exist — honest zero, not a fabrication.
     """
-    measured = [o for o in pr_file.outcomes if o.outcomes.h24 is not None]
-    if not measured:
+    h24_outcomes = [o.outcomes.h24 for o in pr_file.outcomes if o.outcomes.h24 is not None]
+    if not h24_outcomes:
         return 0.0
-    not_reverted = sum(1 for o in measured if not o.outcomes.h24.reverted)  # type: ignore[union-attr]
-    return round(not_reverted / len(measured) * 100.0, 2)
+    not_reverted = sum(1 for h24 in h24_outcomes if not h24.reverted)
+    return round(not_reverted / len(h24_outcomes) * 100.0, 2)
 
 
 def _promotion_progress(promotions: SelfMergePromotionsFile) -> float:
