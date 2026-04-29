@@ -22,7 +22,7 @@ anthropic>=0.97.0
 openai>=1.57.0
 
 # MCP server
-fastmcp>=2.6.0
+fastmcp>=3.2.4
 
 # Redis
 redis>=7.4.0
