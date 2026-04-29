@@ -11,9 +11,9 @@ from pydantic import BaseModel, ConfigDict, Field
 class IacStateFile(BaseModel, ABC):
     """Common contract shared by all canonical infra state YAML files."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    schema: dict[str, Any]
+    iac_schema: dict[str, Any] = Field(alias="schema")
     version: int = 1
     last_reconciled_at: str | None = None
 

@@ -11,14 +11,18 @@ routers or services; that would break clean shutdown.
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from .pr_sweep import get_scheduler, shutdown_scheduler
 from .pr_sweep import start_scheduler as _start_scheduler
 
+if TYPE_CHECKING:
+    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 logger = logging.getLogger(__name__)
 
 
-def start_scheduler():
+def start_scheduler() -> AsyncIOScheduler | None:
     """Start the shared Brain scheduler and register package-level jobs."""
     scheduler = _start_scheduler()
     if scheduler is None:
