@@ -19,9 +19,11 @@ from typing import TYPE_CHECKING, TypeVar, cast
 
 import yaml
 
+from app.schemas.brain_improvement import BrainImprovementCurrent, BrainImprovementResponse
 from app.schemas.operating_score import OperatingScoreFile
 from app.schemas.pr_outcomes import PrOutcomesFile
 from app.schemas.procedural_memory import ProceduralMemoryFile, ProceduralRule
+from app.schemas.self_merge import SelfMergePromotionsFile
 from app.schemas.strategic_objectives import StrategicObjective, StrategicObjectivesFile
 from app.schemas.weekly_retro import RetroSummary, RuleChange, WeeklyRetro, WeeklyRetrosFile
 
@@ -35,7 +37,24 @@ _ENV_CANDIDATES = "BRAIN_WORKSTREAM_CANDIDATES_JSON"
 _ENV_INCIDENTS = "BRAIN_INCIDENTS_JSON"
 _ENV_PROCEDURAL_MEMORY = "BRAIN_PROCEDURAL_MEMORY_YAML"
 _ENV_WORKSTREAMS = "BRAIN_WORKSTREAMS_JSON"
+_ENV_SELF_MERGE_PROMOTIONS = "BRAIN_SELF_MERGE_PROMOTIONS_JSON"
 _TMP_SUFFIX = ".tmp"
+
+# ---------------------------------------------------------------------------
+# Brain Improvement Index — weights (must sum to 1.0)
+# acceptance_rate: are Brain-merged PRs sticking (not reverting at h24)?
+# promotion_progress: how far along the self-merge graduation track?
+# rules_learning: richness of procedural memory (proxy for learning velocity)
+# retro_delta: is POS trending up from Brain's weekly retro?
+# ---------------------------------------------------------------------------
+_BII_W_ACCEPTANCE = 0.40
+_BII_W_PROMOTION = 0.30
+_BII_W_RULES = 0.20
+_BII_W_RETRO = 0.10
+_BII_RULES_CAP = 50  # rules_count at which rules sub-metric saturates at 100
+_BII_PROMOTION_THRESHOLD = 50  # clean merges required per tier transition
+_BII_RETRO_NEUTRAL = 50.0  # normalized score when pos_total_change == 0
+_BII_RETRO_SCALE = 2.5  # 1 POS point → 2.5 normalized points (±20 → 0..100)
 
 
 def _repo_root() -> Path:
@@ -511,3 +530,185 @@ def propose_rule_revisions() -> list[RuleChange]:
     revert/rule outcome data accumulates.
     """
     return []
+
+
+# ---------------------------------------------------------------------------
+# Brain Improvement Index (WS-69 PR D)
+# ---------------------------------------------------------------------------
+
+
+def _self_merge_promotions_path() -> Path:
+    override = os.environ.get(_ENV_SELF_MERGE_PROMOTIONS, "").strip()
+    if override:
+        return Path(override)
+    return _brain_data_dir() / "self_merge_promotions.json"
+
+
+def _load_self_merge_promotions() -> SelfMergePromotionsFile | None:
+    path = _self_merge_promotions_path()
+    if not path.is_file():
+        return None
+    raw = _read_json_mapping(path)
+    return SelfMergePromotionsFile.model_validate(raw)
+
+
+def _acceptance_rate(pr_file: PrOutcomesFile) -> float:
+    """Return % of h24-measured PRs where reverted=False.
+
+    Returns 0.0 if no measured outcomes exist — honest zero, not a fabrication.
+    """
+    h24_outcomes = [o.outcomes.h24 for o in pr_file.outcomes if o.outcomes.h24 is not None]
+    if not h24_outcomes:
+        return 0.0
+    not_reverted = sum(1 for h24 in h24_outcomes if not h24.reverted)
+    return round(not_reverted / len(h24_outcomes) * 100.0, 2)
+
+
+def _promotion_progress(promotions: SelfMergePromotionsFile) -> float:
+    """Return progress toward next tier as a 0-100 float.
+
+    Counts clean merges for the current tier (all merges in the current tier,
+    ignoring reverted ones from the last 30 days to mirror self_merge_gate).
+    Caps at 100.0 when fully graduated (tier == app-code).
+    """
+    if promotions.current_tier == "app-code":
+        return 100.0
+
+    tier = promotions.current_tier
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(days=30)
+
+    reverted_originals: set[int] = set()
+    for revert in promotions.reverts:
+        rev_at = revert.reverted_at
+        rev_at = rev_at.replace(tzinfo=UTC) if rev_at.tzinfo is None else rev_at.astimezone(UTC)
+        if rev_at < cutoff:
+            continue
+        for merge in promotions.merges:
+            if merge.pr_number == revert.original_pr and merge.tier == tier:
+                reverted_originals.add(revert.original_pr)
+
+    clean = sum(
+        1 for m in promotions.merges if m.tier == tier and m.pr_number not in reverted_originals
+    )
+    progress = min(clean / _BII_PROMOTION_THRESHOLD * 100.0, 100.0)
+    return round(progress, 2)
+
+
+def compute_brain_improvement_index(
+    at: datetime | None = None,
+) -> BrainImprovementCurrent:
+    """Compute the Brain Improvement Index at a point-in-time snapshot.
+
+    Score formula (weighted average of normalized 0-100 sub-metrics):
+      score = round(
+          0.40 * acceptance_rate_pct +   # PRs not reverting at h24
+          0.30 * promotion_progress_pct + # progress toward next self-merge tier
+          0.20 * rules_normalized +       # procedural memory richness (cap=50 rules)
+          0.10 * retro_delta_normalized   # POS trend from latest weekly retro
+      )
+
+    Empty-state contract (no-silent-fallback):
+      - If pr_outcomes.json, self_merge_promotions.json, or
+        procedural_memory.yaml is MISSING from disk, return score=0 with
+        note="insufficient data: <filename> not found".
+      - Never divide by zero.
+      - Never fabricate counts.
+    """
+    computed_at = at or datetime.now(UTC)
+    if computed_at.tzinfo is None:
+        computed_at = computed_at.replace(tzinfo=UTC)
+
+    # --- load sources (file-missing = hard 0) ---
+    pr_path = _pr_outcomes_path()
+    if not pr_path.is_file():
+        return BrainImprovementCurrent(
+            score=0,
+            acceptance_rate_pct=0.0,
+            promotion_progress_pct=0.0,
+            rules_count=0,
+            retro_delta_pct=0.0,
+            computed_at=computed_at,
+            note="insufficient data: pr_outcomes.json not found",
+        )
+    pr_file = _load_pr_outcomes()
+
+    promotions = _load_self_merge_promotions()
+    if promotions is None:
+        return BrainImprovementCurrent(
+            score=0,
+            acceptance_rate_pct=0.0,
+            promotion_progress_pct=0.0,
+            rules_count=0,
+            retro_delta_pct=0.0,
+            computed_at=computed_at,
+            note="insufficient data: self_merge_promotions.json not found",
+        )
+
+    mem_path = _procedural_memory_path()
+    if not mem_path.is_file():
+        return BrainImprovementCurrent(
+            score=0,
+            acceptance_rate_pct=0.0,
+            promotion_progress_pct=0.0,
+            rules_count=0,
+            retro_delta_pct=0.0,
+            computed_at=computed_at,
+            note="insufficient data: procedural_memory.yaml not found",
+        )
+
+    # --- sub-metric: acceptance rate ---
+    acceptance_rate_pct = _acceptance_rate(pr_file)
+
+    # --- sub-metric: promotion progress ---
+    promotion_progress_pct = _promotion_progress(promotions)
+
+    # --- sub-metric: rules count (proxy for learning velocity) ---
+    rules = _load_procedural_rules()
+    rules_count = len(rules)
+    rules_normalized = min(rules_count / _BII_RULES_CAP * 100.0, 100.0)
+
+    # --- sub-metric: retro delta (0 when no retros recorded yet — honest zero) ---
+    retros = _load_retros_unlocked()
+    if retros.retros:
+        latest_retro = max(retros.retros, key=lambda r: r.week_ending)
+        retro_delta_pct = float(latest_retro.summary.pos_total_change)
+        retro_normalized = max(
+            0.0, min(100.0, _BII_RETRO_NEUTRAL + retro_delta_pct * _BII_RETRO_SCALE)
+        )
+    else:
+        retro_delta_pct = 0.0
+        retro_normalized = 0.0  # no retro history — honest zero, never fabricated
+
+    # --- composite score ---
+    raw_score = (
+        _BII_W_ACCEPTANCE * acceptance_rate_pct
+        + _BII_W_PROMOTION * promotion_progress_pct
+        + _BII_W_RULES * rules_normalized
+        + _BII_W_RETRO * retro_normalized
+    )
+    score = max(0, min(100, round(raw_score)))
+
+    note = ""
+    if not pr_file.outcomes:
+        note = "insufficient data: no PR outcomes measured yet"
+
+    return BrainImprovementCurrent(
+        score=score,
+        acceptance_rate_pct=acceptance_rate_pct,
+        promotion_progress_pct=promotion_progress_pct,
+        rules_count=rules_count,
+        retro_delta_pct=retro_delta_pct,
+        computed_at=computed_at,
+        note=note,
+    )
+
+
+def brain_improvement_response() -> BrainImprovementResponse:
+    """Return the full BrainImprovementResponse including empty history_12w.
+
+    History accumulates once a weekly score-storage cron (PR P+) is wired up.
+    Until then, history_12w is always an empty list — honest, never fabricated.
+    """
+    current = compute_brain_improvement_index()
+    return BrainImprovementResponse(current=current, history_12w=[])
