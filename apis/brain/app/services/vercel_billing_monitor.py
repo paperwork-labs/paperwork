@@ -114,7 +114,6 @@ def _fetch_usage_summary(token: str) -> dict[str, Any]:
         "budget_usd": budget_usd,
         "period_start": billing.get("currentPeriodStart"),
         "period_end": billing.get("currentPeriodEnd"),
-        "raw_billing": billing,
     }
 
 
@@ -197,12 +196,7 @@ def run() -> dict[str, Any]:
     budget_raw = usage.get("budget_usd")
 
     if spent_raw is None:
-        raw = usage.get("raw_billing")
-        keys = sorted(raw.keys()) if isinstance(raw, dict) else type(raw).__name__
-        logger.warning(
-            "vercel_billing_monitor: spent_usd unavailable; payload_keys=%s",
-            keys,
-        )
+        logger.warning("vercel_billing_monitor: spent_usd absent from billing response")
         return {"ok": False, "reason": "no_spend_field"}
 
     spent: float = float(spent_raw)
