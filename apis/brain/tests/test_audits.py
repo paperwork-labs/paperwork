@@ -44,7 +44,9 @@ def _warn_finding(audit_id: str = "stack") -> AuditFinding:
 
 
 def _error_finding(audit_id: str = "stack") -> AuditFinding:
-    return AuditFinding(audit_id=audit_id, severity="error", title="critical", detail="critical issue")
+    return AuditFinding(
+        audit_id=audit_id, severity="error", title="critical", detail="critical issue"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +218,9 @@ def test_cadence_relaxes_monthly_to_quarterly(tmp_path: Path) -> None:
 
         base_time = datetime.now(tz=UTC) - timedelta(days=120)
         runs = [
-            _make_run("stack", findings=[_info_finding()], ran_at=base_time + timedelta(days=i * 30))
+            _make_run(
+                "stack", findings=[_info_finding()], ran_at=base_time + timedelta(days=i * 30)
+            )
             for i in range(4)
         ]
         audits._save_runs(runs)
@@ -232,7 +236,9 @@ def test_cadence_does_not_relax_before_4_runs(tmp_path: Path) -> None:
 
         audits.load_registry()
         runs = [
-            _make_run("stack", findings=[_info_finding()], ran_at=datetime.now(tz=UTC) - timedelta(days=i))
+            _make_run(
+                "stack", findings=[_info_finding()], ran_at=datetime.now(tz=UTC) - timedelta(days=i)
+            )
             for i in range(3)
         ]
         audits._save_runs(runs)
@@ -281,7 +287,9 @@ def test_manual_override_respected_no_auto_adjust(tmp_path: Path) -> None:
 
         # Even 4 clean runs should NOT auto-adjust since manual override is active
         runs = [
-            _make_run("stack", findings=[_info_finding()], ran_at=datetime.now(tz=UTC) - timedelta(days=i))
+            _make_run(
+                "stack", findings=[_info_finding()], ran_at=datetime.now(tz=UTC) - timedelta(days=i)
+            )
             for i in range(4)
         ]
         audits._save_runs(runs)
@@ -361,7 +369,11 @@ def test_audit_freshness_all_fresh(tmp_path: Path) -> None:
         # Give each audit a fresh run
         defs = audits.load_registry()
         runs = [
-            _make_run(d.id, findings=[_info_finding(d.id)], ran_at=datetime.now(tz=UTC) - timedelta(hours=1))
+            _make_run(
+                d.id,
+                findings=[_info_finding(d.id)],
+                ran_at=datetime.now(tz=UTC) - timedelta(hours=1),
+            )
             for d in defs
             if d.enabled
         ]
@@ -413,8 +425,7 @@ def test_runs_capped_at_100(tmp_path: Path) -> None:
 
         audits.load_registry()
         runs = [
-            _make_run("stack", ran_at=datetime.now(tz=UTC) - timedelta(hours=i))
-            for i in range(110)
+            _make_run("stack", ran_at=datetime.now(tz=UTC) - timedelta(hours=i)) for i in range(110)
         ]
         audits._save_runs(runs)
         loaded = audits.load_runs()

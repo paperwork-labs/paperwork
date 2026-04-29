@@ -247,8 +247,8 @@ def set_audit_cadence(audit_id: str, cadence: AuditCadence, *, manual: bool = Tr
                 from_cadence=old,
                 to_cadence=cadence,
                 reason=(
-                "manual override via admin API" if manual else "auto-adjust by cadence engine"
-            ),
+                    "manual override via admin API" if manual else "auto-adjust by cadence engine"
+                ),
                 adjusted_at=datetime.now(tz=UTC),
                 manual_override=manual,
             )

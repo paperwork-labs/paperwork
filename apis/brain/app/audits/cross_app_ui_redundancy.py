@@ -71,9 +71,7 @@ def _extract_component_names_from_file(path: Path) -> list[str]:
     export_fn = re.findall(r"export\s+(?:default\s+)?function\s+([A-Z][A-Za-z0-9_]*)", source)
     names.extend(export_fn)
 
-    export_const = re.findall(
-        r"export\s+const\s+([A-Z][A-Za-z0-9_]*)\s*[=:]", source
-    )
+    export_const = re.findall(r"export\s+const\s+([A-Z][A-Za-z0-9_]*)\s*[=:]", source)
     names.extend(export_const)
 
     return list(dict.fromkeys(names))  # deduplicate, preserve order
