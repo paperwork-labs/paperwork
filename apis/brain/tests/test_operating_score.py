@@ -107,9 +107,7 @@ def test_record_score_appends_updates_current(
     [
         (web_perf_ux.collect, 55.0, False),
         (a11y_design_system.collect, 50.0, False),
-        (code_quality.collect, 75.0, False),
         (data_architecture.collect, 55.0, False),
-        (reliability_security.collect, 60.0, False),
     ],
 )
 def test_bootstrap_collectors_stub(
@@ -399,6 +397,110 @@ def test_collector_exception_yields_fallback(
     entry = pos.compute_score()
     ap = entry.pillars["autonomy"]
     assert ap.score == pytest.approx(50.0) and ap.measured is False
+
+
+def test_code_quality_collector_with_coverage_xml(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    brain = tmp_path / "apis" / "brain"
+    (brain / "app").mkdir(parents=True)
+    (brain / "app" / "sample.py").write_text("def f():\n    return 1\n", encoding="utf-8")
+    (brain / "coverage.xml").write_text(
+        '<?xml version="1.0" ?><coverage line-rate="0.9" branch-rate="0"><packages/></coverage>\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("BRAIN_PACKAGE_ROOT", str(brain))
+
+    def fake_run(
+        cmd: list[str],
+        cwd: Path,
+        *,
+        timeout: float = 600,
+    ) -> subprocess.CompletedProcess[str]:
+        _ = cwd, timeout
+        if "mypy" in cmd:
+            return subprocess.CompletedProcess(cmd, 0, "Success: no issues found\n", "")
+        if "ruff" in cmd:
+            return subprocess.CompletedProcess(cmd, 0, "[]", "")
+        raise AssertionError(cmd)
+
+    monkeypatch.setattr(code_quality, "_run", fake_run)
+
+    score, measured, _notes = code_quality.collect()
+    assert measured is True
+    want = (90.0 + 100.0 + 100.0 + 100.0) / 4.0
+    assert pytest.approx(score) == want
+    dumped = json.loads((brain / "data" / "code_quality_metrics.json").read_text(encoding="utf-8"))
+    assert dumped["schema"] == "code_quality_metrics/v1"
+    assert pytest.approx(float(dumped["sub_scores"]["test_coverage"])) == 90.0
+
+
+def test_code_quality_collector_no_tools_returns_bootstrap(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    brain = tmp_path / "apis" / "brain"
+    (brain / "app").mkdir(parents=True)
+    monkeypatch.setenv("BRAIN_PACKAGE_ROOT", str(brain))
+
+    def boom(
+        cmd: list[str],
+        cwd: Path,
+        *,
+        timeout: float = 600,
+    ) -> subprocess.CompletedProcess[str]:
+        _ = cmd, cwd, timeout
+        raise FileNotFoundError("uv")
+
+    monkeypatch.setattr(code_quality, "_run", boom)
+    score, measured, notes = code_quality.collect()
+    assert measured is False and pytest.approx(score) == 75.0
+    assert "tooling unavailable" in notes
+
+
+def test_reliability_security_collector_with_iac_state(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "iac_state_vercel.yaml").write_text(
+        "schema:\n  description: t\nversion: 1\n",
+        encoding="utf-8",
+    )
+    tmp_path.joinpath("render_quota_probe.json").write_text(
+        json.dumps({"recorded_at": "2026-04-28T15:00:00Z"}),
+        encoding="utf-8",
+    )
+    (tmp_path / "incidents.json").write_text(
+        '{"schema":"incidents/v1","incidents":[]}',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("BRAIN_RELIABILITY_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("BRAIN_REPO_ROOT", str(tmp_path))
+
+    monkeypatch.setattr(
+        reliability_security,
+        "_gitleaks_workflow_subscore",
+        lambda _repo, _now: (100.0, "mock_ok"),
+    )
+
+    score, measured, _notes = reliability_security.collect()
+    assert measured is True
+    want = (50.0 + 100.0 + 100.0 + 100.0) / 4.0
+    assert pytest.approx(score) == want
+    payload = json.loads((tmp_path / "reliability_metrics.json").read_text(encoding="utf-8"))
+    assert payload["schema"] == "reliability_metrics/v1"
+
+
+def test_reliability_security_collector_empty_returns_bootstrap(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("BRAIN_RELIABILITY_DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("BRAIN_REPO_ROOT", str(tmp_path))
+    score, measured, notes = reliability_security.collect()
+    assert measured is False and pytest.approx(score) == 60.0
+    assert "canonical" in notes.lower()
 
 
 # --- helpers -----------------------------------------------------------
