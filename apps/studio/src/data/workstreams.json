@@ -1202,32 +1202,40 @@
       "related_plan": "level_4_autonomy_+_platform"
     },
     {
-      "id": "WS-67",
-      "title": "Brain coach for Opus \u2014 pre-flight rules surfacing + recurring-failure auto-distill",
-      "owner": "brain",
-      "status": "proposed",
+      "id": "WS-67-brain-coach-for-opus",
+      "title": "WS-67 \u2014 Brain coach for Opus (preflight rules + auto-distill failures)",
+      "track": "Z",
       "priority": 67,
-      "depends_on": [
-        "WS-65"
-      ],
-      "blocks": [],
-      "estimated_prs": 3,
-      "complexity": "medium",
-      "percent_done": 0,
-      "notes": "Brain becomes Opus's coach: (a) /api/v1/admin/coach/preflight endpoint returns procedural rules matching {action_type, files_touched, persona, recent_pr_path_globs}; (b) Opus consults pre-flight as first step of any non-trivial dispatch or merge; (c) weekly retro auto-distills repeat failures (>=3 incidents same root cause) into new rules. Founder request during cost-bleed incident: 'how we make this what we just did become like a smart check'."
+      "status": "in_progress",
+      "percent_done": 5,
+      "owner": "brain",
+      "brief_tag": "track:brain-coach-for-opus",
+      "blockers": [],
+      "last_pr": 407,
+      "last_activity": "2026-04-29T04:25:00Z",
+      "last_dispatched_at": "2026-04-29T04:25:00Z",
+      "notes": "Brain becomes Opus's coach: pre-flight rule surfacing + auto-distill recurring failures. Design at docs/strategy/WS-67-BRAIN-COACH.md. Sub-PRs: A=preflight endpoint (in progress), B=cursor rule, C=plan critique, D=conflict radar, E=auto-distill, F=MCP server, G=conversational. Foundation rule seeded in PR #407.",
+      "estimated_pr_count": 5,
+      "github_actions_workflow": null,
+      "related_plan": "level_5_self_improvement"
     },
     {
-      "id": "WS-68",
-      "title": "Vercel cost bleed stop \u2014 turbo-ignore on all apps + on-demand budget monitor",
-      "owner": "brain",
-      "status": "in_progress",
+      "id": "WS-68-vercel-cost-bleed-stop",
+      "title": "WS-68 \u2014 Vercel cost bleed stop (turbo-ignore + on-demand budget monitor)",
+      "track": "Z",
       "priority": 68,
-      "depends_on": [],
-      "blocks": [],
-      "estimated_prs": 1,
-      "complexity": "small",
+      "status": "in_progress",
       "percent_done": 80,
-      "notes": "Discovered Vercel on-demand spend at 91% with zero alert. Root cause: every PR rebuilt every app because vercel.json ignoreCommand only skipped Dependabot. Fix: turbo-ignore <pkg> on all 8 vercel.json files + new vercel_billing_monitor.py service that polls hourly and alerts at 50/75/90/100% (instead of only at 100%). Includes pr_outcomes.py path bug fix (same _brain_data_dir bug as PR #403)."
+      "owner": "brain",
+      "brief_tag": "track:vercel-cost-bleed-stop",
+      "blockers": [],
+      "last_pr": 407,
+      "last_activity": "2026-04-29T04:25:00Z",
+      "last_dispatched_at": "2026-04-29T04:25:00Z",
+      "notes": "On-demand at 91% with no alerts. Root: every PR rebuilt every app. Fix: turbo-ignore <pkg> on all 8 vercel.json + Brain hourly billing monitor at 50/75/90/100%. Includes pr_outcomes.py path bug fix.",
+      "estimated_pr_count": 1,
+      "github_actions_workflow": null,
+      "related_plan": "level_4_autonomy_+_platform"
     }
   ]
 }

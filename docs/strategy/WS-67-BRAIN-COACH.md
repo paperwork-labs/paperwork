@@ -70,7 +70,7 @@ After WS-67:
 POST /api/v1/admin/coach/preflight
 {
   "action_type": "dispatch" | "merge" | "plan" | "deploy",
-  "files_touched": ["apis/brain/app/services/foo.py", "..."],
+  "files_touched": ["<repo path>", "..."],
   "personas": ["cpa", "cfo"],
   "branch": "feat/ws-XX-foo",
   "pr_number": 123,
@@ -118,7 +118,7 @@ POST /api/v1/admin/coach/preflight
 
 ### WS-67.B — Cursor rule wiring Opus to coach
 
-`.cursor/rules/brain-coach-preflight.mdc` — globally loaded rule:
+A Cursor rule under `.cursor/rules/` (filename TBD when shipped) — globally loaded:
 
 > Before dispatching any non-trivial cheap-agent OR merging any PR with > 50 LOC, you MUST call `POST /api/v1/admin/coach/preflight` with the action signals. Surface the matched rules to the founder if any are `confidence: high` AND the action conflicts with a `do` clause. Abort and ask if a rule says "must" and the action violates it.
 
