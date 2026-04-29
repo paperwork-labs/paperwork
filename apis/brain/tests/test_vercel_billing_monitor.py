@@ -48,7 +48,37 @@ def test_new_period_resets_dedup() -> None:
     assert alerts[0]["threshold"] == 0.5
 
 
-def test_zero_budget_does_not_divide() -> None:
-    fired: dict[str, list[float]] = {}
-    alerts = evaluate_alerts(spent_usd=10.0, budget_usd=0.0, fired=fired, period_key="2026-04")
+def test_any_spend_alert_fires_when_budget_zero_and_spent_above_zero() -> None:
+    fired: dict[str, list[float | str]] = {}
+    alerts = evaluate_alerts(spent_usd=1.5, budget_usd=0.0, fired=fired, period_key="2026-04")
+    assert len(alerts) == 1
+    assert alerts[0]["level"] == "any_spend"
+    assert alerts[0]["severity"] == "high"
+    assert alerts[0]["spent_usd"] == 1.5
+    assert alerts[0]["budget_usd"] == 0.0
+    assert alerts[0]["pct"] is None
+    assert "message" in alerts[0]
+    assert fired == {"2026-04": ["any_spend"]}
+
+
+def test_any_spend_alert_dedupes_within_same_period() -> None:
+    fired: dict[str, list[float | str]] = {}
+    evaluate_alerts(spent_usd=0.01, budget_usd=0.0, fired=fired, period_key="2026-04")
+    alerts2 = evaluate_alerts(spent_usd=5.0, budget_usd=0.0, fired=fired, period_key="2026-04")
+    assert alerts2 == []
+
+
+def test_any_spend_alert_resets_on_new_period() -> None:
+    fired: dict[str, list[float | str]] = {"2026-04": ["any_spend"]}
+    alerts = evaluate_alerts(spent_usd=2.0, budget_usd=0.0, fired=fired, period_key="2026-05")
+    assert len(alerts) == 1
+    assert alerts[0]["level"] == "any_spend"
+    assert "any_spend" in fired["2026-04"]
+    assert fired["2026-05"] == ["any_spend"]
+
+
+def test_zero_spend_zero_budget_emits_no_alert() -> None:
+    fired: dict[str, list[float | str]] = {}
+    alerts = evaluate_alerts(spent_usd=0.0, budget_usd=0.0, fired=fired, period_key="2026-04")
     assert alerts == []
+    assert fired == {}

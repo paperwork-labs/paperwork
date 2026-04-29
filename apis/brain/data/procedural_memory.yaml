@@ -161,3 +161,11 @@ rules:
     learned_at: "2026-04-29T03:05:00Z"
     confidence: high
     applies_to: [orchestrator]
+
+  - id: babysit_agents_must_not_auto_merge
+    when: "an agent is dispatched to babysit a PR (drive CI green) per babysit skill"
+    do: "the agent MUST disable auto-merge if it is on (`gh pr merge <num> --disable-auto`); MUST NOT call `gh pr merge`; MUST stop at green-and-mergeable + post summary comment. Per `mandatory_opus_diff_review`, Opus reviews the diff manually and clicks merge. Violation: PR #407 was auto-merged by github-actions[bot] despite explicit 'do not merge' instruction in the babysit prompt — root cause was babysitter enabling auto-merge instead of disabling it."
+    source: "PR #407 retrospective — babysit agent enabled auto-merge before posting completion comment"
+    learned_at: "2026-04-29T05:30:00Z"
+    confidence: high
+    applies_to: [cheap-agents, brain-self-dispatch, orchestrator]

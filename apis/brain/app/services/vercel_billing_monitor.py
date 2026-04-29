@@ -60,6 +60,9 @@ def _vercel_token() -> str | None:
 
 
 def _budget_threshold_usd() -> float:
+    # Default $40 when unset. Set ``VERCEL_ONDEMAND_BUDGET_USD=0`` to mirror a
+    # Vercel team on-demand hard cap of $0: ``evaluate_alerts`` then uses
+    # any-spend mode (alert on any spend > $0 for the period).
     raw = os.environ.get("VERCEL_ONDEMAND_BUDGET_USD", "40").strip()
     try:
         return float(raw)
@@ -150,14 +153,35 @@ def _period_key(period_end: str | None) -> str:
 
 
 def evaluate_alerts(
-    spent_usd: float, budget_usd: float, fired: dict[str, list[float]], period_key: str
+    spent_usd: float,
+    budget_usd: float,
+    fired: dict[str, list[float | str]],
+    period_key: str,
 ) -> list[dict[str, Any]]:
     """Pure helper for tests: returns new alerts to fire. Mutates `fired`."""
+    new_alerts: list[dict[str, Any]] = []
     if budget_usd <= 0:
-        return []
+        if spent_usd <= 0:
+            return new_alerts
+        period_fired = set(fired.get(period_key, []))
+        if "any_spend" in period_fired:
+            return new_alerts
+        new_alerts.append(
+            {
+                "level": "any_spend",
+                "severity": "high",
+                "spent_usd": round(spent_usd, 2),
+                "budget_usd": 0.0,
+                "pct": None,
+                "message": "Vercel on-demand spend > $0 against $0 cap",
+            }
+        )
+        period_fired.add("any_spend")
+        fired[period_key] = ["any_spend"]
+        return new_alerts
+
     pct = spent_usd / budget_usd
     period_fired = set(fired.get(period_key, []))
-    new_alerts: list[dict[str, Any]] = []
     for threshold in _ALERT_THRESHOLDS:
         if pct >= threshold and threshold not in period_fired:
             new_alerts.append(
@@ -167,7 +191,6 @@ def evaluate_alerts(
                     "spent_usd": round(spent_usd, 2),
                     "budget_usd": round(budget_usd, 2),
                     "pct": round(pct * 100, 1),
-                    "period": period_key,
                 }
             )
             period_fired.add(threshold)
