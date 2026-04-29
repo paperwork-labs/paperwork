@@ -1,0 +1,23 @@
+# ${name_pascal}
+
+FastAPI service scaffolded by `pwl new-app ${name}`.
+
+## Local Development
+
+```bash
+uv sync --extra dev
+uv run uvicorn ${name_snake}.main:app --reload
+```
+
+Health check:
+
+```bash
+curl http://localhost:8000/healthz
+```
+
+## Environment
+
+- `ENVIRONMENT`: deployment environment (`development`, `staging`, `production`)
+- `CORS_ORIGINS`: comma-separated allowed origins
+
+Generated for Paperwork Labs by ${author} in ${year}.
