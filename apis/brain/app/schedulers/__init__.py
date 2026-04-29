@@ -33,6 +33,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
         iac_drift.install(scheduler)
     except Exception:
         logger.exception("Failed to install iac_drift_detector job")
+    try:
+        from app.schedulers import self_merge_promotion
+
+        self_merge_promotion.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install self_merge_promotion job")
     return scheduler
 
 

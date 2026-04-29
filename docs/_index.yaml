@@ -388,6 +388,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: brain-self-merge-graduation
+    path: docs/runbooks/brain-self-merge-graduation.md
+    title: Brain Self-Merge Graduation
+    summary: "Brain self-merge starts in a narrow data-only tier and graduates only after a clean track record. The source of truth is `apis/brain/data/self_merge_promotions.json`, with service logic in…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: canon
     path: docs/brand/CANON.md
     title: Brand canon

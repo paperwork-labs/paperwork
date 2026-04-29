@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.operating_score as operating_score_svc
 import app.services.pr_outcomes as pr_outcomes_service
+import app.services.self_merge_gate as self_merge_gate
 from app.config import settings
 from app.database import async_session_factory, get_db
 from app.models.episode import Episode
@@ -295,6 +296,36 @@ async def get_pr_outcomes(
             "outcomes": [r.model_dump(mode="json") for r in rows],
         }
     )
+
+
+@router.get("/self-merge-status")
+async def get_self_merge_status(
+    _auth: None = Depends(_require_admin),
+):
+    """Current Brain self-merge graduation status (WS-44)."""
+    data = self_merge_gate.load_promotions_file()
+    recent_merges = sorted(data.merges, key=lambda row: row.merged_at, reverse=True)[:10]
+    recent_reverts = sorted(data.reverts, key=lambda row: row.reverted_at, reverse=True)[:5]
+    return success_response(
+        {
+            "current_tier": data.current_tier,
+            "clean_merge_count": self_merge_gate.clean_merge_count(),
+            "eligible_for_promotion": self_merge_gate.eligible_for_promotion(),
+            "recent_merges_last_10": [r.model_dump(mode="json") for r in recent_merges],
+            "recent_reverts_last_5": [r.model_dump(mode="json") for r in recent_reverts],
+        }
+    )
+
+
+@router.post("/self-merge-promote")
+async def post_self_merge_promote(
+    _auth: None = Depends(_require_admin),
+):
+    """Founder override endpoint for the WS-44 self-merge promotion gate."""
+    record = self_merge_gate.promote()
+    if record is None:
+        raise HTTPException(status_code=409, detail="Self-merge promotion gate is not eligible")
+    return success_response(jsonable_encoder(record.model_dump(mode="json")))
 
 
 @router.get("/incidents")
