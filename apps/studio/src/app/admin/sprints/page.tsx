@@ -14,6 +14,7 @@ import {
   ArchiveRestore,
 } from "lucide-react";
 
+import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { loadTrackerIndex, type Sprint } from "@/lib/tracker";
 import { SprintMarkdown } from "@/components/sprint/SprintMarkdown";
 import {
@@ -118,38 +119,35 @@ export default function SprintsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-2">
-        <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight">Sprints</h1>
+      <HqPageHeader
+        title="Sprints"
+        actions={
           <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
             cross-cutting work logs
           </span>
-        </div>
-        <p className="text-sm text-zinc-400">
-          Each sprint links the plan that was used and the PRs that landed.
-          Sourced from{" "}
-          <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs">
-            docs/sprints/
-          </code>
-          . Per-product roadmaps live under{" "}
-          <Link href="/admin/products" className="underline hover:text-zinc-200">
-            Products
-          </Link>
-          ; the company tracker is{" "}
-          <Link href="/admin/tasks" className="underline hover:text-zinc-200">
-            Tasks
-          </Link>
-          .{" "}
-          {active.length > 0 ? (
-            <span className="text-amber-300">
-              {active.length} active · {shipped.length} shipped
-            </span>
-          ) : (
-            <span>{shipped.length} shipped</span>
-          )}
-          <span className="ml-2 text-zinc-500">· click any sprint to expand its full brief</span>
-        </p>
-      </header>
+        }
+      />
+      <p className="text-sm text-zinc-400">
+        Each sprint links the plan that was used and the PRs that landed. Sourced from{" "}
+        <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-xs">docs/sprints/</code>. Per-product
+        roadmaps live under{" "}
+        <Link href="/admin/products" className="underline hover:text-zinc-200">
+          Products
+        </Link>
+        ; the company tracker is{" "}
+        <Link href="/admin/tasks" className="underline hover:text-zinc-200">
+          Tasks
+        </Link>
+        .{" "}
+        {active.length > 0 ? (
+          <span className="text-amber-300">
+            {active.length} active · {shipped.length} shipped
+          </span>
+        ) : (
+          <span>{shipped.length} shipped</span>
+        )}
+        <span className="ml-2 text-zinc-500">· click any sprint to expand its full brief</span>
+      </p>
 
       {featured ? <FeaturedSprint sprint={featured} allSprints={ordered} /> : null}
 

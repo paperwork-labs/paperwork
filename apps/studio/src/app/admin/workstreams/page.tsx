@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import workstreamsJson from "@/data/workstreams.json";
 import { computeWorkstreamsBoardKpis } from "@/lib/tracker-reconcile";
 import { headers } from "next/headers";
@@ -93,13 +95,15 @@ export default async function AdminWorkstreamsPage() {
   const kpis = computeWorkstreamsBoardKpis(parsedFile);
 
   return (
-    <WorkstreamsBoardClient
-      kpis={kpis}
-      parsedFile={parsedFile}
-      staleDataBanner={staleDataBanner}
-      brainFreshnessBanner={brainFreshnessBanner}
-      bundledFallbackBanner={bundledFallbackBanner}
-      legacyBrainShapeBanner={legacyBrainShapeBanner}
-    />
+    <Suspense fallback={<div className="animate-pulse text-sm text-zinc-500">Loading workstreams…</div>}>
+      <WorkstreamsBoardClient
+        kpis={kpis}
+        parsedFile={parsedFile}
+        staleDataBanner={staleDataBanner}
+        brainFreshnessBanner={brainFreshnessBanner}
+        bundledFallbackBanner={bundledFallbackBanner}
+        legacyBrainShapeBanner={legacyBrainShapeBanner}
+      />
+    </Suspense>
   );
 }

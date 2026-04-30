@@ -18,7 +18,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function AdminOverviewPage() {
-  const [workflows, executions, prs, infrastructure, ciRuns, brainReviews, slackActivity] =
+  const [workflows, executions, prsResult, infrastructure, ciRunsResult, brainReviews, slackActivity] =
     await Promise.all([
       getN8nWorkflows(),
       getN8nExecutions(50),
@@ -28,7 +28,7 @@ export default async function AdminOverviewPage() {
       getBrainPRReviews(50),
       getRecentSlackActivity(15),
     ]);
-  const prsWithReview = prs.map((pr) => {
+  const prsWithReview = prsResult.data.map((pr) => {
     const review = brainReviews.get(pr.number);
     return review
       ? {
@@ -59,7 +59,9 @@ export default async function AdminOverviewPage() {
           executions,
           prs: prsWithReview,
           infrastructure,
-          ciRuns,
+          ciRuns: ciRunsResult.data,
+          githubPrMissingCred: prsResult.missingCred,
+          githubCiMissingCred: ciRunsResult.missingCred,
           slackActivity,
           fetchedAt: new Date().toISOString(),
         }}

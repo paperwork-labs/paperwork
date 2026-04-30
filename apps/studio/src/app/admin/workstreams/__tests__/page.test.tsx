@@ -2,6 +2,12 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import workstreamsJson from "@/data/workstreams.json";
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: vi.fn() }),
+  usePathname: () => "/admin/workstreams",
+}));
 import {
   WorkstreamsFileSchema,
   computeKpis,

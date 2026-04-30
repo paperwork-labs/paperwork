@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GitBranch, GitPullRequest, AlertTriangle, Activity } from "lucide-react";
 
+import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { getPrPipelineDashboardCached } from "@/lib/pr-pipeline";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,8 @@ function badge(bucket: "green" | "yellow" | "red") {
 
 export default async function PrPipelinePage() {
   const data = await getPrPipelineDashboardCached();
+  const githubTokenMissing =
+    typeof data.error === "string" && data.error.includes("GITHUB_TOKEN");
 
   return (
     <div className="space-y-8">
@@ -35,7 +38,19 @@ export default async function PrPipelinePage() {
         {data.fetchedAt ? (
           <p className="mt-1 font-mono text-xs text-zinc-600">Fetched {data.fetchedAt}</p>
         ) : null}
-        {data.error ? (
+        {githubTokenMissing ? (
+          <div className="mt-4">
+            <HqMissingCredCard
+              service="GitHub"
+              envVar="GITHUB_TOKEN"
+              reconnectAction={{
+                label: "Reconnect",
+                href: "https://vercel.com/docs/projects/environment-variables",
+              }}
+              docsLink="https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/PR_PIPELINE_AUTOMATION.md"
+            />
+          </div>
+        ) : data.error ? (
           <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
             {data.error}
           </p>
@@ -67,7 +82,9 @@ export default async function PrPipelinePage() {
               {data.pulls.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-3 py-6 text-center text-zinc-500">
-                    No open PRs to main (or missing token).
+                    {githubTokenMissing
+                      ? "No open PRs loaded — configure GITHUB_TOKEN using the notice above."
+                      : "No open PRs to main."}
                   </td>
                 </tr>
               ) : (

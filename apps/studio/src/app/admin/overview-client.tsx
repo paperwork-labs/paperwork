@@ -25,6 +25,8 @@ import {
 import { motion } from "framer-motion";
 
 import { BrainFreshnessTile } from "@/components/admin/BrainFreshnessTile";
+import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
+import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 
 type N8nWorkflow = {
   id: string;
@@ -92,6 +94,8 @@ type OverviewData = {
   ciRuns: CIRun[];
   slackActivity?: SlackActivityEntry[];
   fetchedAt: string;
+  githubPrMissingCred?: "GITHUB_TOKEN";
+  githubCiMissingCred?: "GITHUB_TOKEN";
 };
 
 type ActivityItem = {
@@ -179,6 +183,8 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
 
   const { workflows, executions, prs, infrastructure, ciRuns, fetchedAt } = data;
   const slackActivity = data.slackActivity ?? [];
+  const githubPrMissingCred = data.githubPrMissingCred;
+  const githubCiMissingCred = data.githubCiMissingCred;
 
   const activeWorkflows = workflows.filter((w) => w.active).length;
   const workflowNameById = useMemo(
@@ -390,82 +396,58 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         initial="hidden"
         animate="show"
       >
-        <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center gap-2">
-            <Zap className="h-4 w-4 text-zinc-500" />
-            <p className="text-xs uppercase tracking-wide text-zinc-400">Active workflows</p>
-          </div>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
-            {workflows.length > 0 ? (
-              <>
-                <span className={activeWorkflows === workflows.length ? "text-emerald-300" : "text-zinc-100"}>
-                  {activeWorkflows}
-                </span>
-                <span className="text-zinc-500">/{workflows.length}</span>
-              </>
-            ) : (
-              <span className="text-zinc-500">—</span>
-            )}
-          </p>
-          <p className="text-sm text-zinc-500">n8n workflows enabled</p>
+        <motion.div variants={fadeUp}>
+          <HqStatCard
+            variant="default"
+            status={workflows.length > 0 && activeWorkflows === workflows.length ? "success" : "neutral"}
+            icon={<Zap className="h-4 w-4 text-zinc-500" />}
+            label="Active workflows"
+            value={workflows.length > 0 ? `${activeWorkflows}/${workflows.length}` : "—"}
+            helpText="n8n workflows enabled"
+          />
         </motion.div>
 
-        <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center gap-2">
-            <Activity className="h-4 w-4 text-zinc-500" />
-            <p className="text-xs uppercase tracking-wide text-zinc-400">24h executions</p>
-          </div>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-100">
-            {executionsLastDay.length}
-          </p>
-          <p className="text-sm text-zinc-500">
-            <span className="text-emerald-400">{successfulLastDay}</span> success{" "}
-            <span className="text-zinc-600">/</span>{" "}
-            <span className={failedLastDay > 0 ? "text-rose-400" : "text-zinc-500"}>
-              {failedLastDay}
-            </span>{" "}
-            failed
-          </p>
+        <motion.div variants={fadeUp}>
+          <HqStatCard
+            variant="default"
+            status={failedLastDay > 0 ? "danger" : "neutral"}
+            icon={<Activity className="h-4 w-4 text-zinc-500" />}
+            label="24h executions"
+            value={executionsLastDay.length}
+            helpText={`${successfulLastDay} success / ${failedLastDay} failed`}
+          />
         </motion.div>
 
-        <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center gap-2">
-            <GitPullRequest className="h-4 w-4 text-zinc-500" />
-            <p className="text-xs uppercase tracking-wide text-zinc-400">Open PRs</p>
-          </div>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-100">{prs.length}</p>
-          <p className="text-sm text-zinc-500">
-            <span className="text-emerald-400">
-              {prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length}
-            </span>{" "}
-            approved ·{" "}
-            <span className="text-amber-400">
-              {prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length}
-            </span>{" "}
-            commented ·{" "}
-            <span className="text-rose-400">
-              {prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length}
-            </span>{" "}
-            changes ·{" "}
-            <span className="text-zinc-500">
-              {prs.filter((pr) => !pr.brain_review).length}
-            </span>{" "}
-            unreviewed
-          </p>
+        <motion.div variants={fadeUp}>
+          <HqStatCard
+            variant="default"
+            status={githubPrMissingCred ? "warning" : "neutral"}
+            icon={<GitPullRequest className="h-4 w-4 text-zinc-500" />}
+            label="Open PRs"
+            value={githubPrMissingCred ? "—" : prs.length}
+            helpText={
+              githubPrMissingCred
+                ? "Connect GITHUB_TOKEN to load pull requests."
+                : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
+            }
+          />
         </motion.div>
 
-        <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-zinc-500" />
-            <p className="text-xs uppercase tracking-wide text-zinc-400">Infra health</p>
-          </div>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
-            <span className={healthyInfra === infrastructure.length ? "text-emerald-300" : "text-zinc-100"}>
-              {healthyInfra}
-            </span>
-            <span className="text-zinc-500">/{infrastructure.length}</span>
-          </p>
-          <p className="text-sm text-zinc-500">provider checks passing</p>
+        <motion.div variants={fadeUp}>
+          <HqStatCard
+            variant="default"
+            status={
+              healthyInfra === infrastructure.length && infrastructure.length > 0
+                ? "success"
+                : degradedInfra > 0
+                  ? "danger"
+                  : "neutral"
+            }
+            icon={<Shield className="h-4 w-4 text-zinc-500" />}
+            label="Infra health"
+            value={infrastructure.length > 0 ? `${healthyInfra}/${infrastructure.length}` : "—"}
+            helpText="provider checks passing"
+          />
         </motion.div>
       </motion.section>
 
@@ -514,7 +496,18 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
             </a>
           </div>
           <div className="space-y-1.5 max-h-72 overflow-y-auto">
-            {ciRuns.length === 0 ? (
+            {githubCiMissingCred ? (
+              <HqMissingCredCard
+                service="GitHub Actions"
+                envVar="GITHUB_TOKEN"
+                reconnectAction={{
+                  label: "Reconnect",
+                  href: "https://vercel.com/docs/projects/environment-variables",
+                }}
+                docsLink="https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/PR_PIPELINE_AUTOMATION.md"
+                description="We can't load recent workflow runs because GITHUB_TOKEN is not set in this environment. Set the env var in Vercel / Render then redeploy."
+              />
+            ) : ciRuns.length === 0 ? (
               <p className="py-2 text-sm text-zinc-500">No CI runs found.</p>
             ) : (
               ciRuns.map((run) => (
