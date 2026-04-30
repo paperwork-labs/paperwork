@@ -1,0 +1,25 @@
+[
+  {
+    "id": "onboarding",
+    "title": "Onboarding for Brain personas",
+    "docs": [
+      "BRAIN_PHILOSOPHY",
+      "AGENTS",
+      "BRAIN_ARCHITECTURE",
+      "BRAIN_PERSONAS"
+    ],
+    "est_minutes": 45
+  },
+  {
+    "id": "dispatch",
+    "title": "How to dispatch a cheap-agent PR",
+    "docs": ["cheap-agent-fleet", "delegation", "workflows", "git-workflow"],
+    "est_minutes": 20
+  },
+  {
+    "id": "money",
+    "title": "How money flows",
+    "docs": ["cfo", "expense-schemas", "vendor-schemas", "revenue-engineer"],
+    "est_minutes": 25
+  }
+]

@@ -4,6 +4,14 @@ import path from "node:path";
 import matter from "gray-matter";
 import yaml from "js-yaml";
 
+import {
+  computeFreshness,
+  computeReadTime,
+  docKindToHubCategory,
+  type FreshnessLevel,
+  type HubDocCategory,
+} from "@/lib/doc-metadata";
+
 // Track N of the Infra & Automation Hardening Sprint.
 // Single source of truth for the Studio /admin/docs hub. Reads
 // docs/_index.yaml from the repo root and returns typed entries that the
@@ -53,8 +61,8 @@ type IndexFile = {
 };
 
 function repoRoot(): string {
-  // apps/studio/src/lib/docs.ts → ../../../../ = monorepo root.
-  return path.resolve(process.cwd(), "../..");
+  // apps/studio → monorepo root; turbopackIgnore avoids tracing cwd as a repo-wide glob.
+  return path.join(/* turbopackIgnore: true */ process.cwd(), "..", "..");
 }
 
 function indexPath(): string {
@@ -82,7 +90,7 @@ export function loadDocsIndex(): {
 
   const root = repoRoot();
   const entries: DocEntry[] = parsed.docs.map((entry) => {
-    const full = path.join(root, entry.path);
+    const full = path.join(/* turbopackIgnore: true */ root, entry.path);
     let exists = false;
     try {
       exists = fs.statSync(full).isFile();
@@ -109,6 +117,60 @@ export function findDocBySlug(slug: string): DocEntry | undefined {
   return loadDocsIndex().entries.find((d) => d.slug === slug);
 }
 
+export type { FreshnessLevel, HubDocCategory };
+
+export type DocHubEntry = DocEntry & {
+  docKind: string | null;
+  hubCategory: HubDocCategory;
+  lastReviewed: string | null;
+  wordCount: number;
+  readMinutes: number;
+  freshness: FreshnessLevel;
+};
+
+function parseFrontmatterString(
+  fm: Record<string, unknown>,
+  snake: string,
+  camel: string,
+): string | null {
+  const v = fm[snake] ?? fm[camel];
+  if (typeof v !== "string" || !v.trim()) return null;
+  return v.trim();
+}
+
+/** Every indexed doc with frontmatter-derived read time, freshness, and hub category. */
+export function loadDocHubEntries(): DocHubEntry[] {
+  const { entries } = loadDocsIndex();
+  const root = repoRoot();
+  const rows: DocHubEntry[] = entries.map((entry) => {
+    const full = path.join(/* turbopackIgnore: true */ root, entry.path);
+    let wordCount = 0;
+    let lastReviewed: string | null = null;
+    let docKind: string | null = null;
+    try {
+      const raw = fs.readFileSync(full, "utf-8");
+      const { content, data } = matter(raw);
+      wordCount = content.split(/\s+/).filter(Boolean).length;
+      const fm = data as Record<string, unknown>;
+      lastReviewed = parseFrontmatterString(fm, "last_reviewed", "lastReviewed");
+      docKind = parseFrontmatterString(fm, "doc_kind", "docKind");
+    } catch {
+      // Missing or unreadable file — keep zeros / nulls.
+    }
+    return {
+      ...entry,
+      docKind,
+      hubCategory: docKindToHubCategory(docKind),
+      lastReviewed,
+      wordCount,
+      readMinutes: computeReadTime(wordCount),
+      freshness: computeFreshness(lastReviewed),
+    };
+  });
+  rows.sort((a, b) => a.title.localeCompare(b.title));
+  return rows;
+}
+
 export type DocContent = {
   entry: DocEntry;
   markdown: string;
@@ -120,7 +182,7 @@ export type DocContent = {
 export function loadDocContent(slug: string): DocContent | null {
   const entry = findDocBySlug(slug);
   if (!entry) return null;
-  const full = path.join(repoRoot(), entry.path);
+  const full = path.join(/* turbopackIgnore: true */ repoRoot(), entry.path);
   let raw: string;
   try {
     raw = fs.readFileSync(full, "utf-8");
