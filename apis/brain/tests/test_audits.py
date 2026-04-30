@@ -86,7 +86,7 @@ def test_registry_seed_is_idempotent(tmp_path: Path) -> None:
         defs1 = audits.load_registry()
         defs2 = audits.load_registry()
 
-    assert len(defs1) == len(defs2) == 11
+    assert len(defs1) == len(defs2) == 12
 
 
 def test_all_audits_default_weekly(tmp_path: Path) -> None:
@@ -384,7 +384,7 @@ def test_audit_freshness_all_fresh(tmp_path: Path) -> None:
 
     assert measured is True
     assert score == 100.0
-    assert "11/11" in notes
+    assert "12/12" in notes
 
 
 def test_audit_freshness_none_run(tmp_path: Path) -> None:
@@ -411,8 +411,8 @@ def test_audit_freshness_partial(tmp_path: Path) -> None:
         score, measured, _notes2 = audits.audit_freshness()
 
     assert measured is True
-    # 1 out of 11
-    assert abs(score - (1 / 11 * 100)) < 0.1
+    # 1 out of 12
+    assert abs(score - (1 / 12 * 100)) < 0.1
 
 
 # ---------------------------------------------------------------------------
