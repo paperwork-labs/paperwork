@@ -5,10 +5,26 @@ import {
   readFounderActionsJsonFromDisk,
 } from "@/lib/founder-actions-source";
 import { getE2EMutableListPage } from "@/lib/e2e-conversations-mutable";
+import { getE2EConversationsListPage } from "@/lib/e2e-conversations-fixture";
+import { getRepoRoot, loadPersonaRegistry } from "@/lib/personas";
 import type { ConversationsListPage } from "@/types/conversations";
+import type { BrainPersonaOption } from "./conversation-composer";
 import { ConversationsClient } from "./conversations-client";
 
 export const dynamic = "force-dynamic";
+
+function loadReplyPersonas(): BrainPersonaOption[] {
+  try {
+    const root = getRepoRoot();
+    return loadPersonaRegistry(root).map((r) => ({
+      id: r.personaId,
+      label: r.name,
+      description: r.description,
+    }));
+  } catch {
+    return [];
+  }
+}
 
 type BackfillPayload = {
   created?: number;
@@ -72,6 +88,7 @@ async function fetchListPage(
 export default async function ConversationsPage() {
   const composePersonaOptions = await resolveComposePersonaOptions();
   const auth = getBrainAdminFetchOptions();
+  const replyPersonas = loadReplyPersonas();
 
   if (process.env.STUDIO_E2E_FIXTURE === "1") {
     return (
@@ -80,6 +97,7 @@ export default async function ConversationsPage() {
         initialPage={getE2EMutableListPage()}
         setupError={null}
         composePersonaOptions={composePersonaOptions}
+        replyPersonas={replyPersonas}
       />
     );
   }
@@ -91,6 +109,7 @@ export default async function ConversationsPage() {
         initialPage={null}
         setupError={null}
         composePersonaOptions={composePersonaOptions}
+        replyPersonas={replyPersonas}
       />
     );
   }
@@ -103,6 +122,7 @@ export default async function ConversationsPage() {
         initialPage={null}
         setupError={disk.message}
         composePersonaOptions={composePersonaOptions}
+        replyPersonas={replyPersonas}
       />
     );
   }
@@ -137,6 +157,7 @@ export default async function ConversationsPage() {
       initialPage={initialPage}
       setupError={setupError}
       composePersonaOptions={composePersonaOptions}
+      replyPersonas={replyPersonas}
     />
   );
 }
