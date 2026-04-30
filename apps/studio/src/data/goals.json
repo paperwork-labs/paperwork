@@ -1,0 +1,90 @@
+{
+  "quarter": "2026-Q2",
+  "objectives": [
+    {
+      "id": "obj-1",
+      "title": "Ship Studio as Company HQ (WS-76)",
+      "owner": "founder",
+      "key_results": [
+        {
+          "id": "kr-1-1",
+          "title": "18+ PRs merged for WS-76",
+          "target": 40,
+          "current": 18,
+          "unit": "PRs",
+          "source_url": null
+        },
+        {
+          "id": "kr-1-2",
+          "title": "Studio daily active use by founder",
+          "target": 30,
+          "current": 0,
+          "unit": "days",
+          "source_url": null
+        },
+        {
+          "id": "kr-1-3",
+          "title": "Cmd+K opens in <100ms",
+          "target": 100,
+          "current": 0,
+          "unit": "ms",
+          "source_url": null
+        }
+      ]
+    },
+    {
+      "id": "obj-2",
+      "title": "Brain Autonomy Level 4",
+      "owner": "brain",
+      "key_results": [
+        {
+          "id": "kr-2-1",
+          "title": "Auto-distillation rules proposed",
+          "target": 50,
+          "current": 0,
+          "unit": "rules",
+          "source_url": null
+        },
+        {
+          "id": "kr-2-2",
+          "title": "Audit coverage",
+          "target": 15,
+          "current": 13,
+          "unit": "audits",
+          "source_url": null
+        },
+        {
+          "id": "kr-2-3",
+          "title": "Self-merge promotion candidates",
+          "target": 5,
+          "current": 0,
+          "unit": "personas",
+          "source_url": null
+        }
+      ]
+    },
+    {
+      "id": "obj-3",
+      "title": "Revenue foundation",
+      "owner": "founder",
+      "key_results": [
+        {
+          "id": "kr-3-1",
+          "title": "AxiomFolio MRR",
+          "target": 100,
+          "current": 0,
+          "unit": "USD",
+          "source_url": null
+        },
+        {
+          "id": "kr-3-2",
+          "title": "Products with public landing page",
+          "target": 7,
+          "current": 0,
+          "unit": "products",
+          "source_url": null
+        }
+      ]
+    }
+  ]
+}

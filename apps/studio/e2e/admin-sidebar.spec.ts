@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Admin sidebar (E2E — STUDIO_E2E_FIXTURE=1 dev server)", () => {
-  test("WS-69 PR B: 13 nav links, Brain group, expenses link, 6 vendor footer links", async ({
+  test("WS-69 PR B: 15 nav links, Brain group, expenses link, 6 vendor footer links", async ({
     page,
   }) => {
     await page.goto("/admin", { waitUntil: "domcontentloaded" });
     const nav = page.getByRole("navigation", { name: "Admin" });
-    await expect(nav.getByRole("link")).toHaveCount(13);
+    await expect(nav.getByRole("link")).toHaveCount(15);
     await expect(nav.getByText("Brain", { exact: true })).toBeVisible();
     await expect(
       nav.getByRole("link", { name: /Expenses/i }),

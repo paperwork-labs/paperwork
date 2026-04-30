@@ -4,6 +4,7 @@ import {
   Shield,
   Rocket,
   Target,
+  ListChecks,
   Boxes,
   BookOpen,
   Sparkles,
@@ -13,6 +14,7 @@ import {
   Receipt,
   Users,
   MessageSquare,
+  Calendar as CalendarIcon,
 } from "lucide-react";
 
 export type NavItem = {
@@ -42,7 +44,9 @@ export function buildNavGroups(
     {
       label: "Trackers",
       items: [
-        { href: "/admin/tasks", label: "Tasks (company)", icon: Target },
+        { href: "/admin/tasks", label: "Tasks (company)", icon: ListChecks },
+        { href: "/admin/goals", label: "Goals", icon: Target },
+        { href: "/admin/calendar", label: "Calendar", icon: CalendarIcon },
         { href: "/admin/products", label: "Products", icon: Boxes },
         { href: "/admin/sprints", label: "Sprints", icon: Rocket },
         { href: "/admin/workstreams", label: "Workstreams", icon: Kanban },

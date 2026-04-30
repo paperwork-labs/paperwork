@@ -2,6 +2,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLayoutClient } from "../admin-layout-client";
+import { buildNavGroups } from "@/lib/admin-navigation";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin",
@@ -18,7 +19,7 @@ afterEach(() => {
 });
 
 describe("AdminLayoutClient (WS-69 PR B nav)", () => {
-  it("renders 13 sidebar links in 4 sections, Brain bucket, expenses + conversations badge, footer vendors", () => {
+  it("sidebar link count matches buildNavGroups + shows Calendar in Trackers", () => {
     render(
       <AdminLayoutClient
         founderPending={{ count: 4, hasCritical: true }}
@@ -30,7 +31,11 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
 
     const nav = screen.getByRole("navigation", { name: "Admin" });
     const navLinks = within(nav).getAllByRole("link");
-    expect(navLinks).toHaveLength(13);
+    const expectedCount = buildNavGroups(
+      { count: 4, hasCritical: true },
+      null,
+    ).reduce((acc, g) => acc + g.items.length, 0);
+    expect(navLinks).toHaveLength(expectedCount);
 
     expect(screen.getByText("Command Center")).toBeTruthy();
     expect(screen.getByText("Trackers")).toBeTruthy();
@@ -43,6 +48,9 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
 
     const trackersGroup = screen.getByText("Trackers")
       .parentElement as HTMLElement;
+    expect(
+      within(trackersGroup).getByRole("link", { name: /^Calendar$/i }).getAttribute("href"),
+    ).toBe("/admin/calendar");
     const expensesInTrackers = within(trackersGroup).getByRole("link", {
       name: /Expenses/i,
     });
