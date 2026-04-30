@@ -107,7 +107,9 @@ def test_aggregate_pct_two_files_one_complete(tmp_path: Path) -> None:
     assert r.completeness_pct == 50.0
 
 
-def test_run_opens_conversation_when_below_threshold(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_opens_conversation_when_below_threshold(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("BRAIN_RUNBOOK_REPO_ROOT", str(tmp_path))
     _write(tmp_path, "docs/runbooks/a.md", "# only")
     _write(tmp_path, "docs/runbooks/b.md", "# only")
@@ -124,7 +126,9 @@ def test_run_opens_conversation_when_below_threshold(tmp_path: Path, monkeypatch
     assert r.completeness_pct < COMPLETENESS_ALERT_THRESHOLD
 
 
-def test_run_no_conversation_at_or_above_threshold(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_no_conversation_at_or_above_threshold(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("BRAIN_RUNBOOK_REPO_ROOT", str(tmp_path))
     for name in ("a.md", "b.md", "c.md", "d.md", "e.md"):
         _write(tmp_path, f"docs/runbooks/{name}", _GOOD_RUNBOOK)
