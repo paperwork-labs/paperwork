@@ -93,4 +93,10 @@ def start_scheduler() -> AsyncIOScheduler | None:
         expense_monthly_close.install(scheduler)
     except Exception:
         logger.exception("Failed to install expense_monthly_close job")
+    try:
+        from app.schedulers import ux_probe_runner
+
+        ux_probe_runner.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install ux_probe_runner job")
     return scheduler

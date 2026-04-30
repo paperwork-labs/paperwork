@@ -14,6 +14,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.agent_sprints import router as agent_sprints_router
+from app.api.probe_results import router as probe_results_router
 from app.api.secrets import router as internal_secrets_router
 from app.config import settings
 from app.database import async_session_factory, engine
@@ -203,6 +204,7 @@ app.include_router(admin_learning.router, prefix="/api/v1")
 app.include_router(admin_audits.router, prefix="/api/v1")
 app.include_router(auto_distillation.router, prefix="/api/v1")
 app.include_router(agent_sprints_router)
+app.include_router(probe_results_router)
 app.include_router(internal_secrets_router)
 app.include_router(workstreams.router, prefix="/api/v1")
 app.include_router(conversations.router, prefix="/api/v1")

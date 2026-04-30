@@ -1,0 +1,5 @@
+{
+  "schema": "probe_results/v1",
+  "description": "Wave PROBE synthetic UX probe results (rolling 1000 entries). Written by apis/brain/app/schedulers/ux_probe_runner.py every 5 min.",
+  "results": []
+}
