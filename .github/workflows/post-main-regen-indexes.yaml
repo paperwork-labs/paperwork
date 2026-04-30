@@ -68,7 +68,7 @@ jobs:
         with:
           node-version: "20"
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         if: steps.skip.outputs.skip != 'true'
         with:
           python-version: "3.12"
