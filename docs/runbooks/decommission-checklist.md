@@ -210,7 +210,6 @@ Slack workspace deletion is a **founder-side billing action** and is NOT include
 Decommission the workspace separately via Slack → Settings & Permissions → Billing once you
 confirm zero active integrations.
 
-### Hetzner VPS shutdown
+### Hetzner VPS — repurpose (not shutdown)
 
-Hetzner instance shutdown is a **separate runbook entry** (infra-level, not in this PR diff).
-The n8n service on Hetzner can be stopped independently once the workspace billing step is done.
+The Hetzner CX22 instance is **repurposed** for **Wave M** social automation (fresh n8n + Cloudflare Tunnel), not destroyed. Legacy Brain-mirror n8n is cleaned up per [hetzner-socials-repurpose.md](./hetzner-socials-repurpose.md) and [n8n-deprecated-cleanup.md](./n8n-deprecated-cleanup.md). Stop deprecated containers and remove old workflow configs as part of Phase 1; Slack workspace billing remains a separate founder action if the workspace is still active.

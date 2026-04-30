@@ -254,6 +254,13 @@ docs:
     tags: [runbook, dependabot, pr]
     owners: [engineering, infra-ops]
     category: runbooks
+  - slug: n8n-deprecated-cleanup
+    path: docs/runbooks/n8n-deprecated-cleanup.md
+    title: Deprecated n8n Workflows (Hetzner) — Retired
+    summary: "Retired Brain-slack-adapter, error-notification, and infra slash workflows that lived on Hetzner before social repurpose; pointers to inventory and PR J context."
+    tags: [n8n, hetzner, retired, ws-69, runbook]
+    owners: [infra-ops]
+    category: runbooks
   - slug: design-canvas-deploy
     path: docs/infra/DESIGN_CANVAS_DEPLOY.md
     title: Design Canvas (Storybook) deploy
@@ -288,6 +295,13 @@ docs:
     summary: Shared drive topology + MCP wiring.
     tags: [runbook, drive, mcp]
     owners: [agent-ops, ea]
+    category: runbooks
+  - slug: hetzner-socials-repurpose
+    path: docs/runbooks/hetzner-socials-repurpose.md
+    title: Hetzner VPS — Social Automation Repurpose
+    summary: "Repurpose CX22 from deprecated Brain-mirror n8n to fresh n8n + Cloudflare Tunnel for Wave M social automation (phased cleanup, install, wiring)."
+    tags: [hetzner, n8n, cloudflare, runbook, social, infra]
+    owners: [infra-ops]
     category: runbooks
   - slug: launchfree-api-health
     path: docs/runbooks/launchfree-api-health.md
