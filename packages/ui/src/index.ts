@@ -44,4 +44,11 @@ export {
 export { DropZone, type DropZoneProps } from "./components/drop-zone";
 export { StatusBadge, type StatusBadgeProps, type StatusTone } from "./components/status-badge";
 
+export {
+  BrainChat,
+  type BrainChatMessage,
+  type BrainChatProps,
+  type BrainChatVariant,
+} from "./components/BrainChat";
+
 export { formatInUserTZ } from "./lib/datetime";

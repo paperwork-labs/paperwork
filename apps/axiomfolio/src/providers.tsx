@@ -4,6 +4,7 @@ import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 
+import { BrainChatPanel } from "@/components/BrainChatPanel";
 import { ClerkTokenBridge } from "@/components/providers/ClerkTokenBridge";
 import { AccountProvider } from "@/context/AccountContext";
 import { ColorModeProvider } from "@/theme/colorMode";
@@ -17,6 +18,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <ClerkTokenBridge />
         <AccountProvider>
           {children}
+          <BrainChatPanel />
           <Toaster position="top-right" />
         </AccountProvider>
       </QueryClientProvider>
