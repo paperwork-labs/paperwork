@@ -19,6 +19,7 @@
     "./components/sign-up-shell": "./src/components/sign-up-shell.tsx",
     "./components/require-auth": "./src/components/require-auth.tsx",
     "./components/require-admin": "./src/components/require-admin.tsx",
+    "./localization": "./src/localization.ts",
     "./appearance": "./src/appearance/index.ts",
     "./appearance/presets": "./src/appearance/presets.ts",
     "./server/clerk": "./src/server/clerk-nextjs.ts",

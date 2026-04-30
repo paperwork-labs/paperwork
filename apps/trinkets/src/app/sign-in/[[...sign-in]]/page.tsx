@@ -2,21 +2,25 @@ import { SignIn } from "@clerk/nextjs";
 import { SignInShell } from "@paperwork-labs/auth-clerk/components/sign-in-shell";
 import { trinketsAppearance } from "@paperwork-labs/auth-clerk/appearance";
 
+import { AuthMarketingNav } from "@/components/clerk/AuthMarketingNav";
 import { ClerkAuthPageShell } from "@/components/clerk/ClerkAuthPageShell";
 import { TrinketsWordmark } from "@/components/clerk/TrinketsWordmark";
 
 export default function SignInPage() {
   return (
-    <ClerkAuthPageShell>
-      <SignInShell
-        appName="Trinkets"
-        appSlug="trinkets"
-        appWordmark={<TrinketsWordmark />}
-        appTagline="Tools for FileFree"
-        appearance={trinketsAppearance}
-      >
-        <SignIn />
-      </SignInShell>
-    </ClerkAuthPageShell>
+    <>
+      <AuthMarketingNav />
+      <ClerkAuthPageShell>
+        <SignInShell
+          appName="Trinkets"
+          appSlug="trinkets"
+          appWordmark={<TrinketsWordmark />}
+          appTagline="Tools for FileFree"
+          appearance={trinketsAppearance}
+        >
+          <SignIn />
+        </SignInShell>
+      </ClerkAuthPageShell>
+    </>
   );
 }

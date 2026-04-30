@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { axiomfolioAppearance } from "@paperwork-labs/auth-clerk/appearance";
+import { createProductClerkLocalization } from "@paperwork-labs/auth-clerk/localization";
 import { Providers } from "../providers";
+
+const clerkLocalization = createProductClerkLocalization("AxiomFolio");
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://axiomfolio.com"),
@@ -37,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-background text-foreground antialiased">
         <ClerkProvider
           appearance={axiomfolioAppearance}
+          localization={clerkLocalization}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
         >

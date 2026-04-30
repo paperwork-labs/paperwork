@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "@/components/providers";
 import { Nav } from "@/components/nav";
 import { fileFreeAppearance } from "@paperwork-labs/auth-clerk/appearance";
+import { createProductClerkLocalization } from "@paperwork-labs/auth-clerk/localization";
 import "./globals.css";
 
 const inter = Inter({
@@ -18,6 +19,8 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500", "600"],
   variable: "--font-jetbrains",
 });
+
+const clerkLocalization = createProductClerkLocalization("FileFree");
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://filefree.ai"),
@@ -88,6 +91,7 @@ export default function RootLayout({
       >
         <ClerkProvider
           appearance={fileFreeAppearance}
+          localization={clerkLocalization}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
         >

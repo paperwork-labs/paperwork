@@ -4,6 +4,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { Providers } from "@/lib/providers";
 import { launchFreeAppearance } from "@paperwork-labs/auth-clerk/appearance";
+import { createProductClerkLocalization } from "@paperwork-labs/auth-clerk/localization";
 import "./globals.css";
 
 const inter = Inter({
@@ -15,6 +16,8 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
 });
+
+const clerkLocalization = createProductClerkLocalization("LaunchFree");
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://launchfree.ai"),
@@ -57,6 +60,7 @@ export default function RootLayout({
       >
         <ClerkProvider
           appearance={launchFreeAppearance}
+          localization={clerkLocalization}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
         >

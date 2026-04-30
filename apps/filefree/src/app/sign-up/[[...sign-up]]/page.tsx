@@ -14,6 +14,7 @@ export default function SignUpPage() {
         appWordmark={<FileFreeWordmark />}
         appTagline="Free tax filing"
         appearance={fileFreeAppearance}
+        showAttribution={false}
       >
         <SignUp />
       </SignUpShell>
