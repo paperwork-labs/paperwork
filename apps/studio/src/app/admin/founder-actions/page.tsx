@@ -1,7 +1,7 @@
 import { permanentRedirect } from "next/navigation";
 
-// Founder actions are now Brain → Conversations with ?filter=needs-action (WS-69 PR C).
+// Legacy founder-actions now redirects to the Day-0 runbook (WS-76 PR-4).
 // 308 permanent redirect.
 export default function FounderActionsLegacyPage() {
-  permanentRedirect("/admin/brain/conversations?filter=needs-action");
+  permanentRedirect("/admin/runbook");
 }
