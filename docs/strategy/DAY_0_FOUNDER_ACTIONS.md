@@ -37,4 +37,4 @@ This worksheet is the single source of truth for founder-owned setup that can ru
 | 16 | PostHog project key + funnels seeded | 1hr | PR-24b | ☐ |
 | 17 | Viral account handle reservation (TikTok + IG + X + Threads) | 1hr | PR-38 | ☐ |
 
-<!-- TODO(WS-76): Register Brain audit `founder_actions_pending` (weekly cadence; counts ☐ rows) in audit_registry seed when a lightweight runner exists. -->
+> **TODO (WS-76):** Register Brain audit `founder_actions_pending` (weekly cadence; count open checkboxes) in `audit_registry.json` seed when a lightweight runner exists.
