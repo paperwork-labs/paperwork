@@ -20,10 +20,23 @@ from app.services.email_outbound import (
 # ---------------------------------------------------------------------------
 
 
-def test_build_deep_link_includes_id() -> None:
+def test_build_deep_link_includes_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.services.email_outbound.settings",
+        MagicMock(STUDIO_BASE_URL="https://studio.example.com"),
+    )
     link = _build_deep_link("abc-123")
     assert "abc-123" in link
-    assert link.startswith("https://studio.paperworklabs.com/admin/brain/conversations/")
+    assert link.startswith("https://studio.example.com/admin/brain/conversations/")
+
+
+def test_build_deep_link_falls_back_when_studio_base_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "app.services.email_outbound.settings",
+        MagicMock(STUDIO_BASE_URL=""),
+    )
+    link = _build_deep_link("x")
+    assert link.startswith("https://studio.paperworklabs.com/")
 
 
 # ---------------------------------------------------------------------------
@@ -187,6 +200,34 @@ def test_send_body_includes_attachment_links(monkeypatch: pytest.MonkeyPatch) ->
 # ---------------------------------------------------------------------------
 # send_conversation_email — SMTP send failure → RuntimeError
 # ---------------------------------------------------------------------------
+
+
+def test_send_html_part_escapes_script_tags(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("app.services.email_outbound.settings", _make_mock_settings())
+
+    mock_smtp = MagicMock()
+    mock_smtp.__enter__ = MagicMock(return_value=mock_smtp)
+    mock_smtp.__exit__ = MagicMock(return_value=False)
+
+    malicious = "<script>alert(1)</script>"
+    with patch("app.services.email_outbound.smtplib.SMTP", return_value=mock_smtp):
+        send_conversation_email(
+            conversation_id="conv-xss",
+            title=malicious,
+            body_md=f"Line1\n{malicious}",
+            attachments=[{"id": malicious, "url": f"https://evil.example/q={malicious}"}],
+        )
+
+    msg: EmailMessage = mock_smtp.send_message.call_args[0][0]
+    html_payload = None
+    for part in msg.iter_parts():
+        if part.get_content_subtype() == "html":
+            html_payload = part.get_payload(decode=True)
+            break
+    assert html_payload is not None
+    html = html_payload.decode("utf-8")
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html or "script" in html
 
 
 def test_send_raises_runtime_error_on_smtp_failure(monkeypatch: pytest.MonkeyPatch) -> None:

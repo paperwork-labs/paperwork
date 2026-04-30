@@ -124,6 +124,8 @@ class Settings(BaseSettings):
     GMAIL_USERNAME: str = ""
     GMAIL_APP_PASSWORD: str = ""
     FOUNDER_FALLBACK_EMAIL: str = ""
+    # Deep links in founder-facing SMTP (WS-76). Override in env for previews / staging.
+    STUDIO_BASE_URL: str = "https://studio.paperworklabs.com"
 
     # Net-new schedulers: default on (set false to disable without removing code).
     BRAIN_OWNS_SECRETS_DRIFT_AUDIT: bool = True

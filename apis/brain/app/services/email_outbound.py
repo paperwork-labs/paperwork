@@ -11,6 +11,10 @@ if any are missing — no silent skip per no-silent-fallback.mdc):
 - ``GMAIL_APP_PASSWORD``: Google app password (16-char, generated per Google Account → Security)
 - ``FOUNDER_FALLBACK_EMAIL``: delivery address (e.g. ``founder@paperworklabs.com``)
 
+Optional:
+
+- ``STUDIO_BASE_URL``: base URL for Studio deep links (default ``https://studio.paperworklabs.com``).
+
 medallion: ops
 """
 
@@ -19,6 +23,7 @@ from __future__ import annotations
 import logging
 import smtplib
 from email.message import EmailMessage
+from html import escape
 
 from app.config import settings
 
@@ -26,7 +31,6 @@ logger = logging.getLogger(__name__)
 
 _SMTP_HOST = "smtp.gmail.com"
 _SMTP_PORT = 587
-_STUDIO_BASE = "https://studio.paperworklabs.com"
 
 
 class EmailConfigError(RuntimeError):
@@ -60,8 +64,13 @@ def _require_smtp_config() -> tuple[str, str, str]:
     return username, app_password, to_address
 
 
+def _studio_base() -> str:
+    return (getattr(settings, "STUDIO_BASE_URL", "") or "").strip().rstrip("/")
+
+
 def _build_deep_link(conversation_id: str) -> str:
-    return f"{_STUDIO_BASE}/admin/brain/conversations/{conversation_id}"
+    base = _studio_base() or "https://studio.paperworklabs.com"
+    return f"{base}/admin/brain/conversations/{conversation_id}"
 
 
 def _build_attachment_lines(attachments: list[dict[str, str]]) -> str:
@@ -84,6 +93,10 @@ def send_conversation_email(
 ) -> None:
     """Send a Gmail SMTP email for a high/critical conversation.
 
+    Plain-text parts use the raw title and body (human-readable markdown).
+    The HTML alternative escapes dynamic strings so injected markup cannot
+    execute in HTML-capable clients.
+
     Raises:
         EmailConfigError: if any of the three required env vars are missing.
         RuntimeError: if the SMTP connection or send fails.
@@ -95,22 +108,31 @@ def send_conversation_email(
     deep_link = _build_deep_link(conversation_id)
     att_lines = _build_attachment_lines(attachments or [])
 
-    subject = f"[Brain] {title}"
+    subject_title = " ".join(title.splitlines()).strip()
+    subject = f"[Brain] {subject_title}"
     text_body = f"{title}\n\n{body_md}\n\nOpen in Brain: {deep_link}{att_lines}"
-    html_body = (
-        f"<h2>{title}</h2>"
-        f"<p>{body_md.replace(chr(10), '<br>')}</p>"
-        f"<p><a href='{deep_link}'>Open in Brain →</a></p>"
-        + (
-            "<ul>"
-            + "".join(
-                f"<li><a href='{a.get('url', '')}'>{a.get('id', a.get('url', ''))}</a></li>"
-                for a in (attachments or [])
+
+    title_html = escape(title)
+    body_html = escape(body_md).replace("\n", "<br>\n")
+    deep_esc = escape(deep_link, quote=True)
+    att_html = ""
+    if attachments:
+        parts: list[str] = []
+        for a in attachments:
+            url = a.get("url", "") or ""
+            label = a.get("id", url) or url
+            parts.append(
+                "<li>"
+                f'<a href="{escape(url, quote=True)}">{escape(label)}</a>'
+                "</li>"
             )
-            + "</ul>"
-            if attachments
-            else ""
-        )
+        att_html = "<ul>" + "".join(parts) + "</ul>"
+
+    html_body = (
+        f"<h2>{title_html}</h2>"
+        f"<p>{body_html}</p>"
+        f'<p><a href="{deep_esc}">Open in Brain →</a></p>'
+        f"{att_html}"
     )
 
     msg = EmailMessage()
