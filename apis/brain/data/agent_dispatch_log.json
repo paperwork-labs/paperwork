@@ -10,6 +10,7 @@
       "workstream_type": "str (e.g. 'drift-detector', 'kill-switch', 'platform-cli')",
       "blast_radius": "str (one of: 'data-only', 'brain-code', 'app-code', 'infra')",
       "task_summary": "str (<=500 chars)",
+      "preflight_consulted": "bool — true if recall_memory ran in orchestrator context within 5 min before dispatch (WS-67.B); default false when unknown",
       "branch": "str | null",
       "pr_number": "int | null (set after agent opens PR)",
       "outcome": {

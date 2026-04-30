@@ -9,6 +9,8 @@ These six rules govern how Opus (the orchestrator) and Brain (in Phase H) dispat
 
 Companion: [delegation.mdc](mdc:.cursor/rules/delegation.mdc) covers WHEN to delegate; this file covers HOW to operate the fleet at scale.
 
+Brain preflight (WS-67.B): [brain-coach.mdc](mdc:.cursor/rules/brain-coach.mdc) — consult procedural memory before dispatch or irreversible decisions; set `preflight_consulted` on each dispatch log entry.
+
 ## 1. Founder decisions = empty by default (HARD)
 
 The orchestrator (Opus, then Brain in Phase H) decides everything data-driven. Founder is escalated to ONLY on three triggers:

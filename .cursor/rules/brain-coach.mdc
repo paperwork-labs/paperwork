@@ -1,0 +1,53 @@
+---
+description: Brain-coach — consult procedural memory before non-trivial actions
+alwaysApply: true
+---
+
+# Brain Coach
+
+Before you dispatch cheap-agents, decide architecture, or take a non-reversible step, query Brain’s procedural memory. Brain holds context you do not have in the current file window:
+
+- What was tried before for similar work and how it went
+- Which cheap-agent model tends to fit which task shape
+- Patterns that failed in this repo historically
+- Conventions and guardrails that live outside the immediate diff
+
+A `recall_memory` query costs on the order of **~$0.01** in token spend. A mis-dispatched cheap-agent that opens the wrong PR can cost **30–60+ minutes** of orchestrator and review time.
+
+## When to consult (HARD)
+
+1. Before dispatching any cheap-agent (`Task` with `model:` such as `composer-1.5`, `composer-2-fast`, etc.)
+2. Before merging a PR a subagent opened (after your diff-review, still consult if the merge is non-obvious)
+3. Before introducing a new pattern (new util, schema, or naming convention)
+4. Before adopting a tool, library, or service not already established in the repo
+5. Before escalating to the founder (confirm it is truly one of the fleet’s escalation triggers)
+
+## How to consult
+
+Call the **`recall_memory`** Brain tool, or read [apis/brain/data/procedural_memory.yaml](mdc:apis/brain/data/procedural_memory.yaml) directly when no live Brain session is available. Query with **work context**, not a vague question. Examples:
+
+- “About to dispatch `composer-1.5` to refactor TypeScript imports across packages — any past lessons?”
+- “Considering `@nivo/network` for force-directed graphs — has this repo tried it?”
+- “Adding a new audit for X — any pattern Brain prefers?”
+
+Format: one or two sentences of context plus the concrete decision. Brain returns procedural rules and relevant dispatch outcomes.
+
+## How to log compliance
+
+When dispatching a cheap-agent, include **`preflight_consulted: true|false`** in the dispatch log payload ([apis/brain/data/agent_dispatch_log.json](mdc:apis/brain/data/agent_dispatch_log.json)). The orchestrator should set this using `stamp_preflight` in [apis/brain/app/services/agent_dispatcher.py](mdc:apis/brain/app/services/agent_dispatcher.py): treat `recall_memory` as consulted if it ran in the dispatch context within the **last 5 minutes** before dispatch.
+
+If `preflight_consulted` is **false**, Brain may emit a coach conversation nudging the orchestrator (separate wiring). Repeated false can feed procedural-memory rule updates (see WS-67.E).
+
+## Why this exists
+
+- **Cost asymmetry**: recall is cheap; wrong parallel work is expensive.
+- **Compounding learning**: every dispatch outcome belongs in the learning loop; skipping the consult skips the loop.
+- **Honest discipline**: skipping to “save time” often ships known-bad patterns; preflight is cheap insurance.
+
+## Companion rules
+
+- [cheap-agent-fleet.mdc](mdc:.cursor/rules/cheap-agent-fleet.mdc) — when and how to run the cheap-agent fleet
+- [delegation.mdc](mdc:.cursor/rules/delegation.mdc) — what to delegate vs. keep on the orchestrator
+- [no-silent-fallback.mdc](mdc:.cursor/rules/no-silent-fallback.mdc) — errors and gaps must be visible
+
+**Refs:** WS-67.B — Brain coach doctrine. WS-76 v2.6 Wave B PR-5.
