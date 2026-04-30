@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Layers, Radar, UsersRound, Wallet } from "lucide-react";
+import { Layers, MousePointer2, Radar, UserPlus, UsersRound, Wallet } from "lucide-react";
 
+import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
+import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import {
   type ProductRegistryEntry,
   type ProductStageFilter,
@@ -25,19 +27,13 @@ const FILTERS: { id: ProductStageFilter; label: string }[] = [
   { id: "ga", label: "GA" },
 ];
 
-export function ProductsPageClient({ products }: { products: ProductRegistryEntry[] }) {
+function DirectoryTab({ products }: { products: ProductRegistryEntry[] }) {
   const [filter, setFilter] = useState<ProductStageFilter>("all");
   const visible = useMemo(() => filterProductsByStage(products, filter), [products, filter]);
   const rollup = useMemo(() => computeProductsRollup(products), [products]);
 
   return (
     <div className="space-y-8">
-      <HqPageHeader
-        title="Products"
-        subtitle="All Paperwork Labs products"
-        breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Products" }]}
-      />
-
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <HqStatCard
           label="Total Products"
@@ -94,6 +90,108 @@ export function ProductsPageClient({ products }: { products: ProductRegistryEntr
           <ProductCard key={product.slug} product={product} />
         ))}
       </div>
+    </div>
+  );
+}
+
+function ProductGtmTab({ products }: { products: ProductRegistryEntry[] }) {
+  const placeholderVisitors = 0;
+  const placeholderMrr = 0;
+  const placeholderSignups = 0;
+
+  return (
+    <div className="space-y-8" data-testid="product-gtm-surface">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <HqStatCard
+          label="Total visitors"
+          value={placeholderVisitors}
+          icon={<MousePointer2 className="h-3.5 w-3.5 text-zinc-500" />}
+          variant="compact"
+          helpText="Placeholder — analytics not wired"
+        />
+        <HqStatCard
+          label="Total MRR (GTM)"
+          value={formatCurrencyUsd(placeholderMrr)}
+          icon={<Wallet className="h-3.5 w-3.5 text-zinc-500" />}
+          variant="compact"
+          helpText="Placeholder — not registry rollup"
+        />
+        <HqStatCard
+          label="Total signups"
+          value={placeholderSignups}
+          icon={<UserPlus className="h-3.5 w-3.5 text-zinc-500" />}
+          variant="compact"
+          helpText="Placeholder — acquisition not wired"
+        />
+      </div>
+
+      <div className="overflow-hidden rounded-xl border border-zinc-800/80">
+        <table className="w-full border-collapse text-left text-sm">
+          <thead>
+            <tr className="border-b border-zinc-800/80 bg-zinc-950/60">
+              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Product
+              </th>
+              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                MRR (registry)
+              </th>
+              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Visitors
+              </th>
+              <th className="px-4 py-3 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                Conversion
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.map((p) => (
+              <tr
+                key={p.slug}
+                data-testid="gtm-product-row"
+                data-product-slug={p.slug}
+                className="border-b border-zinc-800/50 last:border-0"
+              >
+                <td className="px-4 py-3 font-medium text-zinc-200">{p.name}</td>
+                <td className="px-4 py-3 tabular-nums text-zinc-300">{formatCurrencyUsd(p.mrr)}</td>
+                <td className="px-4 py-3 tabular-nums text-zinc-500">0</td>
+                <td className="px-4 py-3 tabular-nums text-zinc-500">0%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <HqEmptyState
+        title="GTM data sources not connected"
+        description="PostHog, Stripe Billing sync, and signup pipelines are not configured for this rollup yet (configured: false). Numbers above are intentional placeholders — not live attribution."
+      />
+    </div>
+  );
+}
+
+export function ProductsPageClient({ products }: { products: ProductRegistryEntry[] }) {
+  const tabs = [
+    {
+      id: "directory" as const,
+      label: "Directory",
+      content: <DirectoryTab products={products} />,
+    },
+    {
+      id: "gtm" as const,
+      label: "GTM",
+      content: <ProductGtmTab products={products} />,
+    },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <HqPageHeader
+        title="Products"
+        subtitle="All Paperwork Labs products"
+        breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Products" }]}
+      />
+
+      <TabbedPageShell tabs={tabs} defaultTab="directory" />
     </div>
   );
 }

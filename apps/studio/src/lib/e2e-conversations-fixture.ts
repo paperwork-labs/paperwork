@@ -1,4 +1,9 @@
-import type { Conversation, ConversationsListPage, UrgencyLevel } from "@/types/conversations";
+import type {
+  Conversation,
+  ConversationsListPage,
+  ConversationSentiment,
+  UrgencyLevel,
+} from "@/types/conversations";
 import founderActions from "@/data/founder-actions.json";
 import type { FounderActionsPayload } from "@/lib/founder-actions-source";
 
@@ -35,6 +40,81 @@ function itemUrgency(tierId: string, item: { urgency?: string }): UrgencyLevel {
   const u = item.urgency;
   if (u === "info" || u === "normal" || u === "high" || u === "critical") return u;
   return tierId === "critical" ? "critical" : "normal";
+}
+
+const SUPPORT_FIXTURE_ISO = "2026-02-01T15:30:00.000Z";
+
+const supportCustomerAuthor = {
+  id: "e2e-cust-support",
+  kind: "external" as const,
+  display_name: "Jordan K.",
+};
+
+/** Sample support tickets for AxiomFolio product cockpit (WS-76 PR-24a). */
+function e2eAxiomfolioSupportConversations(): Conversation[] {
+  const mk = (
+    id: string,
+    title: string,
+    status: Conversation["status"],
+    sentiment: ConversationSentiment,
+    persona: string | null,
+    body: string,
+  ): Conversation => ({
+    id,
+    organization_id: null,
+    product_slug: "axiomfolio",
+    sentiment,
+    title,
+    tags: ["support", "product-axiomfolio"],
+    urgency: status === "needs-action" ? "high" : "normal",
+    persona,
+    space: "axiomfolio",
+    participants: [founderAuthor, supportCustomerAuthor],
+    messages: [
+      {
+        id: `${id}-m1`,
+        author: supportCustomerAuthor,
+        body_md: body,
+        attachments: [],
+        created_at: SUPPORT_FIXTURE_ISO,
+        reactions: {},
+      },
+    ],
+    created_at: SUPPORT_FIXTURE_ISO,
+    updated_at: SUPPORT_FIXTURE_ISO,
+    status,
+    snooze_until: null,
+    parent_action_id: null,
+    links: null,
+    needs_founder_action: status === "needs-action",
+  });
+
+  return [
+    mk(
+      "e2e-support-axiom-billing",
+      "Question about Pro tier billing",
+      "open",
+      "neutral",
+      "coach",
+      "Hi — does the Pro plan include real-time risk alerts?",
+    ),
+    mk(
+      "e2e-support-axiom-feature",
+      "Feature request: custom benchmark",
+      "open",
+      "positive",
+      "power_user",
+      "Love the product. Any chance we can pin a custom benchmark to the overview?",
+    ),
+    mk(
+      "e2e-support-axiom-bug",
+      "Bug: CSV export stalls on large portfolios",
+      "needs-action",
+      "negative",
+      "customer",
+      "Export spins for 60s+ when universe >500 names — reproducible on our tenant.",
+    ),
+  ];
 }
 
 /**
@@ -87,7 +167,9 @@ export function getE2EConversationsListPage(): ConversationsListPage {
       });
     }
   }
-  return { items, next_cursor: null, total: items.length };
+  const support = e2eAxiomfolioSupportConversations();
+  const merged = [...items, ...support];
+  return { items: merged, next_cursor: null, total: merged.length };
 }
 
 export function getE2EConversationsBadge(): { count: number; hasCritical: boolean } {
