@@ -180,7 +180,7 @@ export function HqStatCard({
     >
       <div className="flex items-center gap-2">
         {icon}
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">{label}</p>
       </div>
       <p
         data-testid="hq-stat-value"
@@ -191,7 +191,7 @@ export function HqStatCard({
       {delta ? (
         <p className={`mt-0.5 text-xs font-medium ${deltaClass(delta.direction)}`}>{delta.value}</p>
       ) : null}
-      {helpText ? <p className="mt-1 text-xs text-zinc-500">{helpText}</p> : null}
+      {helpText ? <p className="mt-1 text-xs text-zinc-400">{helpText}</p> : null}
     </div>
   );
 }

@@ -110,7 +110,7 @@ function AdminSidebarPanel({
         {navGroups.map((group, groupIdx) => (
           <div key={group.label ?? `group-${groupIdx}`} className="space-y-1">
             {group.label ? (
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
                 {group.label}
               </p>
             ) : null}
@@ -187,7 +187,7 @@ function AdminSidebarPanel({
         <div className="space-y-3 text-xs">
           {FOOTER_VENDOR_LINKS.map((section) => (
             <div key={section.category} className="space-y-1">
-              <p className="px-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+              <p className="px-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-400">
                 {section.category}
               </p>
               <div className="space-y-1">
@@ -252,7 +252,7 @@ export function AdminLayoutClient({
 
       <div
         data-testid="admin-mobile-drawer-backdrop"
-        className={`fixed inset-0 z-[45] bg-black/60 motion-safe:motion-safe:transition-opacity md:hidden ${
+        className={`fixed inset-0 z-[45] bg-black/60 motion-safe:transition-opacity md:hidden ${
           mobileNavOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         aria-hidden={!mobileNavOpen}
@@ -293,7 +293,7 @@ export function AdminLayoutClient({
               aria-label="Open navigation menu"
               aria-expanded={mobileNavOpen}
               aria-controls="admin-mobile-drawer"
-              className={`mr-auto -ml-2 p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 md:hidden ${SIDEBAR_FOCUS_SURFACE}`}
+              className="mr-auto -ml-2 rounded-lg p-2 text-zinc-400 motion-safe:transition-colors hover:bg-zinc-800 hover:text-zinc-100 md:hidden"
               onClick={() => setMobileNavOpen(true)}
             >
               <Menu className="h-5 w-5" aria-hidden />

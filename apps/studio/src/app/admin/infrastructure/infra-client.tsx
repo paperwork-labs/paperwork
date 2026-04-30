@@ -99,7 +99,7 @@ function StatusDot({ healthy, configured }: { healthy: boolean; configured: bool
   if (healthy)
     return (
       <span className="relative inline-block h-2.5 w-2.5">
-        <span className="absolute inset-0 animate-ping rounded-full bg-[var(--status-success)] opacity-50" />
+        <span className="absolute inset-0 motion-safe:animate-ping rounded-full bg-[var(--status-success)] opacity-50" />
         <span className="relative inline-block h-2.5 w-2.5 rounded-full bg-[var(--status-success)]" />
       </span>
     );
@@ -744,7 +744,7 @@ export default function InfraClient({
           disabled={refreshing}
           className="flex items-center gap-2 rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "motion-safe:animate-spin" : ""}`} />
           Refresh
         </button>
       </div>

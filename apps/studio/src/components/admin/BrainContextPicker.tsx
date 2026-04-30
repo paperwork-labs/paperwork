@@ -77,20 +77,20 @@ export function BrainContextPicker() {
             type="button"
             data-testid="brain-context-picker-trigger"
             aria-label={`Brain workspace context: ${current.label}. Open menu to switch.`}
-            className="inline-flex items-center gap-2 rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-2 py-1.5 text-left text-xs text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-800/70"
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-2 py-1.5 text-left text-xs text-zinc-200 motion-safe:transition-colors hover:border-zinc-600 hover:bg-zinc-800/70"
           >
             <OptionAvatar id={context} size="sm" />
             <span className="hidden max-w-[10rem] truncate font-medium sm:inline">
               {current.label}
             </span>
-            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="min-w-[13.5rem] border-zinc-700 bg-zinc-900 text-zinc-100"
+          className="studio-overlay-focus-scope min-w-[13.5rem] border-zinc-700 bg-zinc-900 text-zinc-100"
         >
-          <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          <DropdownMenuLabel className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
             Brain context
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-zinc-800" />

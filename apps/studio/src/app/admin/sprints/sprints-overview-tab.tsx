@@ -562,7 +562,7 @@ function ExpandableSprintCard({
         <summary className="flex cursor-pointer list-none items-start justify-between gap-3 p-4 transition hover:bg-zinc-900/40">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-zinc-500 transition-transform group-open:rotate-0" />
+              <ChevronDown className="h-4 w-4 shrink-0 -rotate-90 text-zinc-400 motion-safe:transition-transform group-open:rotate-0" />
               <p className="truncate text-base font-medium text-zinc-100">{sprint.title}</p>
             </div>
             <p className="mt-1 ml-6 text-xs text-zinc-500">

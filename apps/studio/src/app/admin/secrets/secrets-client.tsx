@@ -562,7 +562,7 @@ export default function SecretsClient({
                                   exit={{ opacity: 0 }}
                                   className="flex items-center gap-2"
                                 >
-                                  <RefreshCw className="h-3 w-3 animate-spin text-zinc-500" />
+                                  <RefreshCw className="h-3 w-3 motion-safe:animate-spin text-zinc-400" />
                                   <span className="text-xs text-zinc-500">
                                     Decrypting...
                                   </span>

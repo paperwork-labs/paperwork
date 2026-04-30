@@ -43,7 +43,13 @@ describe("AdminLayoutClient (WS-76 PR-26 Money nav)", () => {
     ).reduce((acc, g) => acc + g.items.length, 0);
     expect(navLinks).toHaveLength(expectedCount);
 
-    expect(screen.getAllByText("Command Center").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Paperwork Labs").length).toBeGreaterThan(0);
+    const homeLinks = screen.getAllByTestId("admin-sidebar-home-link");
+    expect(homeLinks).toHaveLength(2);
+    homeLinks.forEach((el) => {
+      expect(el.getAttribute("href")).toBe("/admin");
+      expect(within(el as HTMLElement).getByText("Studio")).toBeTruthy();
+    });
     expect(screen.getAllByText("Money", { exact: true }).some((el) => el.tagName === "P")).toBe(
       true,
     );

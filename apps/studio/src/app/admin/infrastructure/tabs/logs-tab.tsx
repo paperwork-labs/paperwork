@@ -89,7 +89,7 @@ function LogRow({ entry }: { entry: AppLogEntry }) {
               aria-expanded={expanded}
             >
               <ChevronDown
-                className={`h-3 w-3 transition-transform ${expanded ? "rotate-180" : ""}`}
+                className={`h-3 w-3 motion-safe:transition-transform ${expanded ? "rotate-180" : ""}`}
               />
               {expanded ? "Hide" : "Show"} attrs
             </button>
@@ -243,7 +243,7 @@ export default function LogsTab() {
             disabled={refreshing}
             aria-label="Refresh logs"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "motion-safe:animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
