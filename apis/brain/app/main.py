@@ -30,6 +30,7 @@ from app.routers import (
     brain,
     conversations,
     cost_monitor,
+    error_ingest,
     expenses,
     health,
     infra_registry,
@@ -212,6 +213,8 @@ app.include_router(cost_monitor.router, prefix="/api/v1")
 app.include_router(vendors.router, prefix="/api/v1")
 app.include_router(admin_logs.router, prefix="/api/v1")
 app.include_router(voice_system.router, prefix="/api/v1")
+app.include_router(error_ingest.router, prefix="/v1")
+app.include_router(error_ingest.router, prefix="/api/v1")
 
 
 @app.get("/internal/schedulers", tags=["internal"])

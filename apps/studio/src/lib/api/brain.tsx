@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { captureError } from "@paperwork/observability";
 
 type ApiEnvelope<T> = { success?: boolean; data?: T; error?: string };
 
@@ -32,7 +33,10 @@ function usePollingJson<T>(path: string, refreshMs: number) {
         }
         setData(payload);
         setFailed(false);
-      } catch {
+      } catch (err) {
+        captureError(err instanceof Error ? err : String(err), {
+          context: { path, operation: "studio_brain_polling_fetch" },
+        });
         if (!cancelled) setFailed(true);
       }
     };

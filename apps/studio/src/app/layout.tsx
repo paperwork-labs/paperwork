@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 import { StudioInstallPrompt } from "@/components/pwa/StudioInstallPrompt";
+import { ObservabilityBootstrap } from "./observability-bootstrap";
 import { studioAppearance } from "@paperwork-labs/auth-clerk/appearance";
 
 const inter = Inter({
@@ -77,6 +78,11 @@ export default function RootLayout({
         >
           {children}
           <StudioInstallPrompt />
+          <ObservabilityBootstrap
+            brainUrl={process.env.BRAIN_API_URL ?? ""}
+            brainToken={process.env.BRAIN_API_INTERNAL_TOKEN ?? ""}
+            env={process.env.NODE_ENV === "production" ? "production" : "preview"}
+          />
           <Analytics />
         </ClerkProvider>
       </body>
