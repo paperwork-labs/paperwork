@@ -3,98 +3,11 @@
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  LayoutDashboard,
-  Settings2,
-  Shield,
-  Rocket,
-  Target,
-  Boxes,
-  BookOpen,
-  Sparkles,
-  GitBranch,
-  Kanban,
-  Workflow,
-  Receipt,
-  Users,
-  MessageSquare,
-} from "lucide-react";
+import { Settings2 } from "lucide-react";
 
 import { HqPageContainer } from "@/components/admin/hq/HqPageContainer";
-
-type NavItem = {
-  href: string;
-  label: string;
-  icon: typeof LayoutDashboard;
-  /** Pending founder-only items (Conversations nav — data from founder-actions sync until PR E) */
-  pendingBadge?: { count: number; hasCritical: boolean } | null;
-  /** Static sidebar count; always rendered including 0 (PR N wires Expenses) */
-  staticPendingCount?: number;
-};
-
-type NavGroup = {
-  label: string | null;
-  items: NavItem[];
-};
-
-function buildNavGroups(
-  founderPending: { count: number; hasCritical: boolean } | null,
-  expensesPending: { count: number; hasCritical: boolean } | null
-): NavGroup[] {
-  return [
-    {
-      label: null,
-      items: [{ href: "/admin", label: "Overview", icon: LayoutDashboard }],
-    },
-    {
-      label: "Trackers",
-      items: [
-        { href: "/admin/tasks", label: "Tasks (company)", icon: Target },
-        { href: "/admin/products", label: "Products", icon: Boxes },
-        { href: "/admin/sprints", label: "Sprints", icon: Rocket },
-        { href: "/admin/workstreams", label: "Workstreams", icon: Kanban },
-        { href: "/admin/pr-pipeline", label: "PR pipeline", icon: GitBranch },
-        {
-          href: "/admin/expenses",
-          label: "Expenses",
-          icon: Receipt,
-          pendingBadge: expensesPending,
-        },
-      ],
-    },
-    {
-      label: "Operations",
-      items: [
-        { href: "/admin/runbook", label: "Runbook", icon: BookOpen },
-      ],
-    },
-    {
-      label: "Architecture",
-      items: [
-        { href: "/admin/architecture", label: "Architecture", icon: Workflow },
-        { href: "/admin/docs", label: "Docs", icon: BookOpen },
-        { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
-      ],
-    },
-    {
-      label: "Brain",
-      items: [
-        { href: "/admin/brain/personas", label: "Personas", icon: Users },
-        {
-          href: "/admin/brain/conversations",
-          label: "Conversations",
-          icon: MessageSquare,
-          pendingBadge: founderPending,
-        },
-        {
-          href: "/admin/brain/self-improvement",
-          label: "Self-improvement",
-          icon: Sparkles,
-        },
-      ],
-    },
-  ];
-}
+import { CommandPalette } from "@/components/admin/CommandPalette";
+import { buildNavGroups } from "@/lib/admin-navigation";
 
 const FOOTER_VENDOR_LINKS: {
   category: string;
@@ -135,12 +48,21 @@ export function AdminLayoutClient({ children, founderPending, expensesPending }:
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
+      <CommandPalette />
       <HqPageContainer variant="wide" className="flex gap-8 py-8">
         <aside className="w-60 shrink-0">
           <div className="sticky top-8 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-4">
-            <p className="mb-5 bg-gradient-to-r from-zinc-300 to-zinc-500 bg-clip-text text-xs font-semibold uppercase tracking-widest text-transparent">
-              Command Center
-            </p>
+            <div className="mb-5 flex items-start justify-between gap-2">
+              <p className="bg-gradient-to-r from-zinc-300 to-zinc-500 bg-clip-text text-xs font-semibold uppercase tracking-widest text-transparent">
+                Command Center
+              </p>
+              <kbd
+                className="rounded border border-zinc-700/60 bg-zinc-800/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-zinc-500"
+                title="Open command palette"
+              >
+                ⌘K
+              </kbd>
+            </div>
             <nav className="space-y-4" aria-label="Admin">
               {navGroups.map((group, groupIdx) => (
                 <div
