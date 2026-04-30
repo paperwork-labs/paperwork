@@ -263,6 +263,7 @@ export function AdminLayoutClient({
         id="admin-mobile-drawer"
         data-testid="admin-mobile-drawer"
         aria-hidden={!mobileNavOpen}
+        inert={!mobileNavOpen ? true : undefined}
         className={`fixed inset-y-0 left-0 z-[50] w-60 max-w-[min(16rem,calc(100vw-2rem))] overflow-y-auto border-r border-zinc-800/80 bg-zinc-950 p-4 shadow-2xl motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out md:hidden ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}

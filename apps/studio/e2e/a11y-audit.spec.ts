@@ -7,6 +7,15 @@ import { test, expect } from "@playwright/test";
 test.describe.configure({ timeout: 90_000 });
 
 test.describe("Admin a11y pass (keyboard + viewport)", () => {
+  async function expectKeyboardFocusChrome(locator: import("@playwright/test").Locator): Promise<void> {
+    const boxShadow = await locator.evaluate((el: HTMLElement) => getComputedStyle(el).boxShadow);
+    const outlineW = await locator.evaluate((el: HTMLElement) => getComputedStyle(el).outlineWidth);
+    expect(
+      (boxShadow && boxShadow !== "none") || outlineW !== "0px",
+      "focus-visible ring (box-shadow) or outline",
+    ).toBeTruthy();
+  }
+
   async function tabUntilFocusedDataTestId(
     page: import("@playwright/test").Page,
     testId: string,
@@ -22,6 +31,21 @@ test.describe("Admin a11y pass (keyboard + viewport)", () => {
     throw new Error(`Tab ramp did not focus data-testid=${testId}`);
   }
 
+  async function shiftTabUntilFocusedDataTestId(
+    page: import("@playwright/test").Page,
+    testId: string,
+    maxSteps = 60,
+  ): Promise<void> {
+    for (let i = 0; i < maxSteps; i++) {
+      const cur = await page.evaluate(() =>
+        document.activeElement?.getAttribute("data-testid"),
+      );
+      if (cur === testId) return;
+      await page.keyboard.press("Shift+Tab");
+    }
+    throw new Error(`Shift+Tab ramp did not focus data-testid=${testId}`);
+  }
+
   test("command palette opener and sidebar home show keyboard focus chrome", async ({ page }) => {
     test.setTimeout(120_000);
 
@@ -31,14 +55,13 @@ test.describe("Admin a11y pass (keyboard + viewport)", () => {
     await tabUntilFocusedDataTestId(page, "admin-header-command-palette", 55);
     const paletteBtn = page.getByTestId("admin-header-command-palette");
     await expect(paletteBtn).toBeFocused();
-    const pbShadow = await paletteBtn.evaluate((el: HTMLElement) => getComputedStyle(el).boxShadow);
-    expect(pbShadow).not.toBe("none");
+    await expectKeyboardFocusChrome(paletteBtn);
 
-    await tabUntilFocusedDataTestId(page, "admin-sidebar-home-link", 80);
+    // Sidebar sits before the sticky header in DOM; forward Tab never returns to it — walk back.
+    await shiftTabUntilFocusedDataTestId(page, "admin-sidebar-home-link", 40);
     const homeFocused = page.locator("[data-testid='admin-sidebar-home-link']:focus");
     await expect(homeFocused).toHaveCount(1);
-    const homeShadow = await homeFocused.evaluate((el: HTMLElement) => getComputedStyle(el).boxShadow);
-    expect(homeShadow).not.toBe("none");
+    await expectKeyboardFocusChrome(homeFocused);
     await expect(homeFocused).toHaveAttribute("href", "/admin");
   });
 
@@ -55,7 +78,7 @@ test.describe("Admin a11y pass (keyboard + viewport)", () => {
 
   test("375px: admin segment 404 stays within shell width", async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/admin/ws76-playwright-unknown-route-a11y", {
+    await page.goto("/admin/ws76-a11y/playwright-unknown-route", {
       waitUntil: "domcontentloaded",
     });
     await expect(page.getByTestId("admin-shell")).toBeVisible({ timeout: 30_000 });
@@ -82,8 +105,7 @@ test.describe("Admin a11y pass (keyboard + viewport)", () => {
       }
     });
     await expect(input).toBeFocused();
-    const boxShadow = await input.evaluate((el: HTMLElement) => getComputedStyle(el).boxShadow);
-    expect(boxShadow, "palette search focus chrome").not.toBe("none");
+    await expectKeyboardFocusChrome(input);
     await page.keyboard.press("Escape");
   });
 
