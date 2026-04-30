@@ -6,7 +6,7 @@ medallion: ops
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from apscheduler.triggers.cron import CronTrigger
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 _JOB_ID = "vercel_billing_monitor_hourly"
 
 
-def _alert_title_and_body(alert: dict) -> tuple[str, str]:
+def _alert_title_and_body(alert: dict[str, Any]) -> tuple[str, str]:
     """Build Conversation title and markdown body for one billing alert."""
     spent = alert.get("spent_usd")
     budget = alert.get("budget_usd")
