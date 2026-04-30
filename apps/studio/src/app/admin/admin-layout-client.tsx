@@ -20,6 +20,8 @@ import {
   MessageSquare,
 } from "lucide-react";
 
+import { HqPageContainer } from "@/components/admin/hq/HqPageContainer";
+
 type NavItem = {
   href: string;
   label: string;
@@ -127,7 +129,7 @@ export function AdminLayoutClient({ children, founderPending, expensesPending }:
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="mx-auto flex w-full max-w-7xl gap-8 px-6 py-8">
+      <HqPageContainer variant="wide" className="flex gap-8 py-8">
         <aside className="w-60 shrink-0">
           <div className="sticky top-8 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-4">
             <p className="mb-5 bg-gradient-to-r from-zinc-300 to-zinc-500 bg-clip-text text-xs font-semibold uppercase tracking-widest text-transparent">
@@ -147,8 +149,7 @@ export function AdminLayoutClient({ children, founderPending, expensesPending }:
                   {group.items.map((item) => {
                     const isActive =
                       pathname === item.href ||
-                      (item.href !== "/admin" &&
-                        pathname.startsWith(item.href));
+                      (item.href !== "/admin" && pathname.startsWith(item.href));
                     const Icon = item.icon;
                     const badge = item.pendingBadge;
                     const showPendingBadge = badge && badge.count > 0;
@@ -176,8 +177,8 @@ export function AdminLayoutClient({ children, founderPending, expensesPending }:
                             <span
                               className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${
                                 badge.hasCritical
-                                  ? "bg-red-500/20 text-red-300"
-                                  : "bg-amber-500/20 text-amber-200"
+                                  ? "bg-[var(--status-danger-bg)] text-[var(--status-danger)]"
+                                  : "bg-[var(--status-warning-bg)] text-[var(--status-warning)]"
                               }`}
                               title="Pending founder-only items"
                             >
@@ -235,7 +236,7 @@ export function AdminLayoutClient({ children, founderPending, expensesPending }:
           </div>
           {children}
         </main>
-      </div>
+      </HqPageContainer>
     </div>
   );
 }

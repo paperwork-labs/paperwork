@@ -34,7 +34,7 @@ function statusDot(status: string) {
       className={[
         "mt-1 inline-block h-2 w-2 shrink-0 rounded-full",
         status === "active"
-          ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.7)]"
+          ? "bg-[var(--status-success)] shadow-[0_0_6px_rgba(16,185,129,0.7)]"
           : "bg-zinc-600",
       ].join(" ")}
     />

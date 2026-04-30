@@ -8,9 +8,9 @@ export const dynamic = "force-dynamic";
 
 function badge(bucket: "green" | "yellow" | "red") {
   const map = {
-    green: "border-emerald-500/50 bg-emerald-950/40 text-emerald-200",
-    yellow: "border-amber-500/50 bg-amber-950/40 text-amber-200",
-    red: "border-rose-500/50 bg-rose-950/40 text-rose-200",
+    green: "border-[var(--status-success)]/50 bg-[var(--status-success-bg)] text-[var(--status-success)]",
+    yellow: "border-[var(--status-warning)]/50 bg-[var(--status-warning-bg)] text-[var(--status-warning)]",
+    red: "border-[var(--status-danger)]/50 bg-[var(--status-danger-bg)] text-[var(--status-danger)]",
   } as const;
   const label = { green: "Green", yellow: "Yellow", red: "Red" }[bucket];
   return (
@@ -51,7 +51,7 @@ export default async function PrPipelinePage() {
             />
           </div>
         ) : data.error ? (
-          <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-950/30 px-3 py-2 text-sm text-amber-200">
+          <p className="mt-3 rounded-lg border border-[var(--status-warning)]/30 bg-[var(--status-warning-bg)] px-3 py-2 text-sm text-[var(--status-warning)]">
             {data.error}
           </p>
         ) : null}
@@ -93,7 +93,7 @@ export default async function PrPipelinePage() {
                     <td className="px-3 py-2">
                       <a
                         href={row.html_url}
-                        className="font-mono text-sky-400 hover:underline"
+                        className="font-mono text-[var(--status-info)] hover:underline"
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -132,7 +132,7 @@ export default async function PrPipelinePage() {
                 <li key={r.id}>
                   <a
                     href={r.html_url}
-                    className="text-sky-400 hover:underline"
+                    className="text-[var(--status-info)] hover:underline"
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -159,7 +159,7 @@ export default async function PrPipelinePage() {
                 <li key={r.id}>
                   <a
                     href={r.html_url}
-                    className="text-sky-400 hover:underline"
+                    className="text-[var(--status-info)] hover:underline"
                     target="_blank"
                     rel="noreferrer"
                   >
@@ -177,7 +177,7 @@ export default async function PrPipelinePage() {
 
       <section className="space-y-3">
         <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-zinc-500">
-          <AlertTriangle className="h-4 w-4 text-amber-500/80" />
+          <AlertTriangle className="h-4 w-4 text-[var(--status-warning)]/80" />
           Stuck / escalated (label{" "}
           <code className="rounded bg-zinc-800 px-1">pr-pipeline-escalated</code>)
         </h2>
@@ -189,7 +189,7 @@ export default async function PrPipelinePage() {
               <li key={i.number}>
                 <a
                   href={i.html_url}
-                  className="font-mono text-sky-400 hover:underline"
+                  className="font-mono text-[var(--status-info)] hover:underline"
                   target="_blank"
                   rel="noreferrer"
                 >
@@ -210,7 +210,7 @@ export default async function PrPipelinePage() {
           Docs:{" "}
           <Link
             href="https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/PR_PIPELINE_AUTOMATION.md"
-            className="text-sky-500 hover:underline"
+            className="text-[var(--status-info)] hover:underline"
             target="_blank"
             rel="noreferrer"
           >

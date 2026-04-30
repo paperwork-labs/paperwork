@@ -230,7 +230,7 @@ export default function LogsTab() {
             variant="ghost"
             size="sm"
             onClick={() => setAutoRefresh((v) => !v)}
-            className={`text-xs ${autoRefresh ? "text-emerald-400" : "text-zinc-500"}`}
+            className={`text-xs ${autoRefresh ? "text-[var(--status-success)]" : "text-zinc-500"}`}
             aria-pressed={autoRefresh}
             aria-label={autoRefresh ? "Disable auto-refresh" : "Enable auto-refresh"}
           >

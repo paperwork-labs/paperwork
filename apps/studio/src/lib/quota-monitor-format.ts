@@ -32,24 +32,24 @@ export function toneAccentClass(tone: ThresholdTone): {
   switch (tone) {
     case "warn":
       return {
-        bg: "bg-amber-500/90",
-        text: "text-amber-200",
-        bar: "bg-amber-400",
-        dot: "bg-amber-400",
+        bg: "bg-[var(--status-warning)]",
+        text: "text-[var(--status-warning)]",
+        bar: "bg-[var(--status-warning)]",
+        dot: "bg-[var(--status-warning)]",
       };
     case "bad":
       return {
-        bg: "bg-rose-500/90",
-        text: "text-rose-200",
-        bar: "bg-rose-400",
-        dot: "bg-rose-400",
+        bg: "bg-[var(--status-danger)]",
+        text: "text-[var(--status-danger)]",
+        bar: "bg-[var(--status-danger)]",
+        dot: "bg-[var(--status-danger)]",
       };
     default:
       return {
-        bg: "bg-emerald-500/90",
-        text: "text-emerald-200",
-        bar: "bg-emerald-400",
-        dot: "bg-emerald-400",
+        bg: "bg-[var(--status-success)]",
+        text: "text-[var(--status-success)]",
+        bar: "bg-[var(--status-success)]",
+        dot: "bg-[var(--status-success)]",
       };
   }
 }

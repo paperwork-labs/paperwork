@@ -266,7 +266,7 @@ export function WorkstreamsBoardClient({
           <div
             data-testid="workstreams-bundled-fallback-banner"
             aria-live="polite"
-            className="rounded-lg border border-amber-400/50 bg-amber-400/10 px-3 py-2 text-sm text-amber-50"
+            className="rounded-lg border border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)] px-3 py-2 text-sm text-[color-mix(in_srgb,var(--status-warning)_90%,white)]"
           >
             {bundledFallbackBanner}
           </div>
@@ -276,7 +276,7 @@ export function WorkstreamsBoardClient({
           <div
             data-testid="workstreams-brain-freshness-banner"
             aria-live="polite"
-            className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-50"
+            className="rounded-lg border border-[var(--status-success)]/35 bg-[var(--status-success-bg)] px-3 py-2 text-sm text-[color-mix(in_srgb,var(--status-success)_88%,white)]"
           >
             {brainFreshnessBanner}
           </div>
@@ -286,7 +286,7 @@ export function WorkstreamsBoardClient({
           <div
             data-testid="workstreams-legacy-brain-banner"
             aria-live="polite"
-            className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100"
+            className="rounded-lg border border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)] px-3 py-2 text-sm text-[color-mix(in_srgb,var(--status-warning)_88%,white)]"
           >
             {legacyBrainShapeBanner}
           </div>
@@ -296,7 +296,7 @@ export function WorkstreamsBoardClient({
           <div
             data-testid="workstreams-stale-banner"
             aria-live="polite"
-            className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100"
+            className="rounded-lg border border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)] px-3 py-2 text-sm text-[color-mix(in_srgb,var(--status-warning)_88%,white)]"
           >
             {staleDataBanner}
           </div>

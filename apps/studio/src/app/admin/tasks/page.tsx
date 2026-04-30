@@ -12,13 +12,13 @@ function statusTone(status: string): {
 } {
   const lower = status.toLowerCase();
   if (lower.includes("done") || lower.includes("complete") || lower.includes("shipped")) {
-    return { icon: CheckCircle2, className: "text-emerald-300 bg-emerald-500/10" };
+    return { icon: CheckCircle2, className: "text-[var(--status-success)] bg-[var(--status-success-bg)]" };
   }
   if (lower.includes("not started") || lower.includes("blocked")) {
-    return { icon: AlertTriangle, className: "text-rose-300 bg-rose-500/10" };
+    return { icon: AlertTriangle, className: "text-[var(--status-danger)] bg-[var(--status-danger-bg)]" };
   }
   if (lower.includes("progress") || lower.includes("active") || lower.includes("review")) {
-    return { icon: Circle, className: "text-amber-300 bg-amber-500/10" };
+    return { icon: Circle, className: "text-[var(--status-warning)] bg-[var(--status-warning-bg)]" };
   }
   return { icon: Circle, className: "text-zinc-300 bg-zinc-700/40" };
 }

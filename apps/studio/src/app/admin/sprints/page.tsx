@@ -35,22 +35,26 @@ const STATUS_TONE: Record<
 > = {
   shipped: {
     icon: GitMerge,
-    className: "text-emerald-300 bg-emerald-500/10 border-emerald-500/30",
+    className:
+      "text-[var(--status-success)] bg-[var(--status-success-bg)] border-[var(--status-success)]/30",
     label: "shipped",
   },
   in_progress: {
     icon: Play,
-    className: "text-amber-300 bg-amber-500/10 border-amber-500/30",
+    className:
+      "text-[var(--status-warning)] bg-[var(--status-warning-bg)] border-[var(--status-warning)]/30",
     label: "in progress",
   },
   active: {
     icon: Play,
-    className: "text-amber-300 bg-amber-500/10 border-amber-500/30",
+    className:
+      "text-[var(--status-warning)] bg-[var(--status-warning-bg)] border-[var(--status-warning)]/30",
     label: "active",
   },
   planned: {
     icon: Play,
-    className: "text-sky-200 bg-sky-500/10 border-sky-500/30",
+    className:
+      "text-[var(--status-info)] bg-[var(--status-info-bg)] border-[var(--status-info)]/30",
     label: "planned",
   },
   paused: {
@@ -65,12 +69,14 @@ const STATUS_TONE: Record<
   },
   dropped: {
     icon: XCircle,
-    className: "text-rose-300 bg-rose-500/10 border-rose-500/30",
+    className:
+      "text-[var(--status-danger)] bg-[var(--status-danger-bg)] border-[var(--status-danger)]/30",
     label: "dropped",
   },
   abandoned: {
     icon: XCircle,
-    className: "text-rose-300 bg-rose-500/10 border-rose-500/30",
+    className:
+      "text-[var(--status-danger)] bg-[var(--status-danger-bg)] border-[var(--status-danger)]/30",
     label: "abandoned",
   },
 };
@@ -140,7 +146,7 @@ export default function SprintsPage() {
         </Link>
         .{" "}
         {active.length > 0 ? (
-          <span className="text-amber-300">
+          <span className="text-[var(--status-warning)]">
             {active.length} active · {shipped.length} shipped
           </span>
         ) : (
@@ -212,7 +218,7 @@ function DeferredFromPreviousSprint({
         <span className="font-medium text-fuchsia-100">{prev.title}</span>
         <span className="text-zinc-500"> (see that sprint&rsquo;s follow-ups) · </span>
         <a
-          className="text-sky-300 hover:text-sky-200"
+          className="text-[var(--status-info)] hover:opacity-90"
           target="_blank"
           rel="noreferrer"
           href={`https://github.com/paperwork-labs/paperwork/blob/main/${encodeURI(prev.path)}`}
@@ -236,8 +242,8 @@ function FeaturedSprint({
   const Icon = t.icon;
   const isActive = isSprintActiveForUi(sprint);
   const headerClass = isActive
-    ? "border-amber-500/40 bg-gradient-to-br from-amber-500/10 via-zinc-900/60 to-zinc-900/60"
-    : "border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 via-zinc-900/60 to-zinc-900/60";
+    ? "border-[var(--status-warning)]/40 bg-gradient-to-br from-[var(--status-warning-bg)] via-zinc-900/60 to-zinc-900/60"
+    : "border-[var(--status-success)]/30 bg-gradient-to-br from-[var(--status-success-bg)] via-zinc-900/60 to-zinc-900/60";
 
   return (
     <section className={`rounded-2xl border p-6 ${headerClass}`}>
@@ -317,7 +323,7 @@ function SprintBriefBlocks({ sprint }: { sprint: Sprint }) {
                   href={planUrl(plan)}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-sky-300 hover:text-sky-200"
+                  className="inline-flex items-center gap-1 text-[var(--status-info)] hover:opacity-90"
                 >
                   {planLabel(plan)}
                   <ExternalLink className="h-3 w-3" />
@@ -365,9 +371,9 @@ function SprintBriefBlocks({ sprint }: { sprint: Sprint }) {
           target="_blank"
           rel="noreferrer"
           title={sprint.path}
-          className="group flex min-w-0 items-center gap-1 text-sky-300 hover:text-sky-200"
+          className="group flex min-w-0 items-center gap-1 text-[var(--status-info)] hover:opacity-90"
         >
-          <code className="block min-w-0 flex-1 truncate rounded bg-zinc-900/60 px-1.5 py-0.5 text-xs text-sky-300/90 group-hover:text-sky-200">
+          <code className="block min-w-0 flex-1 truncate rounded bg-zinc-900/60 px-1.5 py-0.5 text-xs text-[var(--status-info)] group-hover:opacity-100">
             {sprint.path}
           </code>
           <ExternalLink className="h-3 w-3 shrink-0" />
@@ -391,7 +397,7 @@ function LessonsBlock({ sprint, startOpen }: { sprint: Sprint; startOpen?: boole
       <ul className="mt-3 space-y-1.5 text-sm leading-relaxed text-zinc-300">
         {lessons.map((line, i) => (
           <li key={i} className="flex gap-2">
-            <span className="mt-2 inline-block h-1 w-1 shrink-0 rounded-full bg-amber-300" />
+            <span className="mt-2 inline-block h-1 w-1 shrink-0 rounded-full bg-[var(--status-warning)]" />
             <span>{line}</span>
           </li>
         ))}
@@ -423,11 +429,11 @@ function LivingTracker({ sprint }: { sprint: Sprint }) {
           <ArrowRight className="h-3 w-3" /> Living tracker
         </p>
         <p className="text-[10px] uppercase tracking-wide text-zinc-500">
-          <span className="text-emerald-300">{shipped.length} shipped</span>
+          <span className="text-[var(--status-success)]">{shipped.length} shipped</span>
           {pending.length > 0 ? (
             <>
               <span className="mx-1.5 text-zinc-600">·</span>
-              <span className="text-amber-300">{pending.length} pending</span>
+              <span className="text-[var(--status-warning)]">{pending.length} pending</span>
             </>
           ) : null}
           {deferred.length > 0 ? (
@@ -466,14 +472,16 @@ const TRACKER_ROW_TONE: Record<
 > = {
   shipped: {
     icon: CheckCircle2,
-    iconColor: "text-emerald-400",
-    pillClass: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
+    iconColor: "text-[var(--status-success)]",
+    pillClass:
+      "bg-[var(--status-success-bg)] text-[var(--status-success)] border-[var(--status-success)]/30",
     textColor: "text-zinc-200",
   },
   pending: {
     icon: Clock3,
-    iconColor: "text-amber-300",
-    pillClass: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+    iconColor: "text-[var(--status-warning)]",
+    pillClass:
+      "bg-[var(--status-warning-bg)] text-[var(--status-warning)] border-[var(--status-warning)]/30",
     textColor: "text-zinc-200",
   },
   deferred: {
@@ -484,9 +492,10 @@ const TRACKER_ROW_TONE: Record<
   },
   dropped: {
     icon: XCircle,
-    iconColor: "text-rose-300",
-    pillClass: "bg-rose-500/10 text-rose-300 border-rose-500/30",
-    textColor: "text-rose-200/80",
+    iconColor: "text-[var(--status-danger)]",
+    pillClass:
+      "bg-[var(--status-danger-bg)] text-[var(--status-danger)] border-[var(--status-danger)]/30",
+    textColor: "text-[color-mix(in_srgb,var(--status-danger)_80%,white)]",
   },
 };
 
@@ -512,7 +521,7 @@ function TrackerRow({ item }: { item: TrackerItem }) {
               href={prUrl(item.pr)}
               target="_blank"
               rel="noreferrer"
-              className="text-sky-300 hover:text-sky-200"
+              className="text-[var(--status-info)] hover:opacity-90"
             >
               PR #{item.pr}
             </a>
@@ -594,11 +603,11 @@ function ExpandableSprintCard({
               {tracker.length > 0 ? (
                 <span className="ml-2 text-zinc-600">
                   ·{" "}
-                  <span className="text-emerald-300">{shippedCount} shipped</span>
+                  <span className="text-[var(--status-success)]">{shippedCount} shipped</span>
                   {pendingCount > 0 ? (
                     <>
                       <span className="mx-1 text-zinc-600">/</span>
-                      <span className="text-amber-300">{pendingCount} pending</span>
+                      <span className="text-[var(--status-warning)]">{pendingCount} pending</span>
                     </>
                   ) : null}
                   {deferredCount > 0 ? (
@@ -610,13 +619,15 @@ function ExpandableSprintCard({
                   {droppedCount > 0 ? (
                     <>
                       <span className="mx-1 text-zinc-600">/</span>
-                      <span className="text-rose-200/80">{droppedCount} dropped</span>
+                      <span className="text-[color-mix(in_srgb,var(--status-danger)_82%,white)]">
+                        {droppedCount} dropped
+                      </span>
                     </>
                   ) : null}
                 </span>
               ) : null}
               {lessonsCount > 0 ? (
-                <span className="ml-2 text-amber-300/80">
+                <span className="ml-2 text-[var(--status-warning)]/80">
                   · {lessonsCount} lesson{lessonsCount === 1 ? "" : "s"}
                 </span>
               ) : null}
