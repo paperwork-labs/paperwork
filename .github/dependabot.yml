@@ -112,10 +112,10 @@ updates:
       - dependency-name: "react"
         update-types: ["version-update:semver-major"]
     groups:
-      axiomfolio-frontend-minor-and-patch:
+      axiomfolio-minor-and-patch:
         applies-to: version-updates
         update-types: ["minor", "patch"]
-      axiomfolio-frontend-devdeps:
+      axiomfolio-devdeps:
         applies-to: version-updates
         dependency-type: "development"
         update-types: ["minor", "patch"]

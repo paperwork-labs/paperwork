@@ -33,7 +33,7 @@ status: draft
 | **axiomfolio-api** | Web | Standard | Docker | `apis/axiomfolio` | **`paperwork-labs/axiomfolio`** ⚠️ | yes | 2 | 1 | ~131 s | ~4 |
 | **axiomfolio-worker** | Worker | Standard | Docker | `apis/axiomfolio` | **`paperwork-labs/axiomfolio`** ⚠️ | yes | 2 | 1 | ~95 s | ~3 |
 | **axiomfolio-worker-heavy** | Worker | Standard | Docker | `apis/axiomfolio` | **`paperwork-labs/axiomfolio`** ⚠️ | yes | 2 | 1 | ~92 s | ~3 |
-| **axiomfolio-frontend** | Static site | _(API blank)_ | Static (`type: static_site`) | `apps/axiomfolio` | **`paperwork-labs/axiomfolio`** ⚠️ | yes | 4 | 1 | ~55 s | ~4 |
+| ~~**axiomfolio-frontend**~~ _(RETIRED **2026-04-30**)_ | Static site | _(API blank)_ | Static (`type: static_site`) | `apps/axiomfolio` | **`paperwork-labs/axiomfolio`** ⚠️ | yes | 4 | 1 | ~55 s | ~4 |
 
 ¹ **Build attempts:** deploy rows whose `startedAt` falls inside the rolling window (includes superseded/canceled/failed).
 
@@ -42,6 +42,7 @@ status: draft
 ³ **Sum** of those durations → approximate pipeline minutes attributed to that service in the window.
 
 **Combined approximate rolling-30d pipeline minutes (sum of column): ~732 min.**  
+(Historical snapshot: **`axiomfolio-frontend`** row above existed at audit time and was **retired from Render 2026-04-30**.)  
 Dashboard **~1,078 MTD** is higher — consistent with **calendar month**, **different cutoff**, or additional billing mechanics not exposed on deploy objects alone.
 
 ### Deploy status breakdown (high signal)
@@ -112,9 +113,9 @@ All three show **`trigger: new_commit`** in the deploy payload (same merge caden
 
 **Refuted for *live API wiring today*.**
 
-Live services **`axiomfolio-api`**, **`axiomfolio-worker`**, **`axiomfolio-worker-heavy`**, **`axiomfolio-frontend`** still point at **`https://github.com/paperwork-labs/axiomfolio`**, not the monorepo (Render API `repo` field). In the rolling window each had **2–4** deploy attempts — **not** multiples of every monorepo push.
+Live services **`axiomfolio-api`**, **`axiomfolio-worker`**, **`axiomfolio-worker-heavy`** still point at **`https://github.com/paperwork-labs/axiomfolio`**, not the monorepo (Render API `repo` field). ~~**`axiomfolio-frontend`**~~ was **retired 2026-04-30** (UI on Vercel). In the rolling window each remaining service had **2–4** deploy attempts — **not** multiples of every monorepo push.
 
-After **[RENDER_REPOINT](RENDER_REPOINT.md)** / blueprint sync repoints those services at **`paperwork-labs/paperwork`**, **(b) becomes a real risk**: four parallel Docker/static builds per relevant merge unless **`buildFilter`** / **`rootDir`** discipline is applied.
+After **[RENDER_REPOINT](RENDER_REPOINT.md)** / blueprint sync repoints those services at **`paperwork-labs/paperwork`**, **(b) becomes a real risk**: parallel Docker builds per relevant merge unless **`buildFilter`** / **`rootDir`** discipline is applied (formerly four builds including static frontend; now three backends).
 
 ### (c) Auto-deploys trigger from `main` regardless of path changed
 
@@ -133,7 +134,7 @@ Ordered by **leverage** (cheap / high impact first).
 | 1 | **Unblock Brain deploys:** diagnose **`update_failed`** root cause (image push, registry, Dockerfile, health check, migration, OOM — pull **Deploy** + **Logs** in Render for `dep-d7o0o0ek1jcs739rmqq0` lineage) and ship a green deploy. Every avoided failure cycle saves **~1.5–3 min × N merges**. | **Tens to 200+ min** while failure mode persists (scales with merge rate) | Low — restores production deploy path | Operational: fix failure; merge; verify `live` |
 | 2 | Add **`buildFilter`** to **`brain-api`** (and optionally **`filefree-api`**) so only paths relevant to each service trigger builds — e.g. `paths` glob for `apis/brain/**`, `.cursor/rules/**`, shared packages if any. | **High** if many merges skip those paths (docs-only, other apps) — **50–300+ min**/month in active monorepo dev (rough; measure after 2 weeks) | Medium — a change that skips a needed deploy if filters are too tight; mitigate with explicit includes for shared libs | Edit root `render.yaml` per [Render `buildFilter`](https://render.com/docs/blueprint-spec); **Sync Blueprint**; verify one doc-only push does **not** queue build |
 | 3 | Enable **“auto-deploy after CI checks pass”** (Render dashboard / supported API) where appropriate so GitHub **`ci.yaml`** gates deploy. | Saves minutes on **broken** commits that would fail fast in CI | Medium — slower time-to-prod; requires reliable CI | Dashboard: Deploys → settings; align with GitHub branch protection |
-| 4 | **Delete or disable** stale **`axiomfolio-frontend`** on Render if Vercel is canonical (inventory already marks it); stops accidental static builds. | Small today (few deploys on old repo); **prevents future** 4× multiplier after repoint | Low if traffic is truly on Vercel | Dashboard delete; confirm DNS |
+| 4 | ~~**Delete or disable** stale **`axiomfolio-frontend`** on Render~~ — **done** (dashboard deleted **2026-04-30**). | _(was)_ Small; avoided future static builds | — | — |
 | 5 | After AxiomFolio repoint: ensure **`buildFilter`** / **`rootDir`** so **one** logical change does not always build **three** identical images if Render allows shared image (if not, accept 3× or consolidate workers). | **2×** duplicate Docker builds for same digest (heuristic) | Medium | Research Render “same commit” dedup; else document accept 3× |
 
 ---
