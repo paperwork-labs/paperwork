@@ -1,0 +1,636 @@
+{
+  "nodes": [
+    {
+      "id": "ARCHITECTURE",
+      "slug": "architecture",
+      "title": "Paperwork Architecture",
+      "kind": "architecture",
+      "category": "architecture",
+      "read_time_min": 25,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 8,
+      "links_out": 5
+    },
+    {
+      "id": "AI_MODEL_PHILOSOPHY",
+      "slug": "ai-model-philosophy",
+      "title": "AI Model Philosophy",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 12,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 3
+    },
+    {
+      "id": "INFRA_PHILOSOPHY",
+      "slug": "infra-philosophy",
+      "title": "Infra Philosophy",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 10,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 2
+    },
+    {
+      "id": "BRAIN_PHILOSOPHY",
+      "slug": "brain-philosophy",
+      "title": "Brain Philosophy",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 15,
+      "last_reviewed": "2026-04-22",
+      "freshness": "fresh",
+      "links_in": 5,
+      "links_out": 1
+    },
+    {
+      "id": "DATA_PHILOSOPHY",
+      "slug": "data-philosophy",
+      "title": "Data Philosophy",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 8,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "AXIOMFOLIO_ARCHITECTURE",
+      "slug": "axiomfolio-architecture",
+      "title": "AxiomFolio Architecture",
+      "kind": "architecture",
+      "category": "architecture",
+      "read_time_min": 20,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "BRAIN_ARCHITECTURE",
+      "slug": "brain-architecture",
+      "title": "Brain Architecture",
+      "kind": "architecture",
+      "category": "architecture",
+      "read_time_min": 92,
+      "last_reviewed": "2026-04-24",
+      "freshness": "fresh",
+      "links_in": 3,
+      "links_out": 4,
+      "facets": {
+        "runbooks": [
+          {
+            "name": "Brain Deploy Recovery",
+            "slug": "brain-deploy-recovery"
+          },
+          {
+            "name": "Pre-deploy guard",
+            "slug": "pre-deploy-guard"
+          }
+        ],
+        "workstreams": [
+          "WS-76"
+        ],
+        "personas": [
+          "agent-ops"
+        ]
+      }
+    },
+    {
+      "id": "GROUND_TRUTH",
+      "slug": "ground-truth",
+      "title": "Ground Truth",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "SECRETS",
+      "slug": "secrets",
+      "title": "Credential Rotation",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 11,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 0
+    },
+    {
+      "id": "BRAIN_DEPLOY_RECOVERY",
+      "slug": "brain-deploy-recovery",
+      "title": "Brain Deploy Recovery",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 14,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "VENTURE_MASTER_PLAN",
+      "slug": "venture-master-plan",
+      "title": "Venture Master Plan",
+      "kind": "strategy",
+      "category": "philosophy",
+      "read_time_min": 30,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 3
+    },
+    {
+      "id": "AGENT_SPRINT_PLANNING",
+      "slug": "agent-sprint-planning",
+      "title": "Cheap-agent sprint planning (Brain)",
+      "kind": "strategy",
+      "category": "runbooks",
+      "read_time_min": 12,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 2
+    },
+    {
+      "id": "STACK_AUDIT_2026_Q2",
+      "slug": "stack-audit-2026-q2",
+      "title": "Stack Audit 2026 Q2",
+      "kind": "strategy",
+      "category": "plans",
+      "read_time_min": 15,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "PRODUCT_SPEC",
+      "slug": "product-spec",
+      "title": "Product Spec",
+      "kind": "architecture",
+      "category": "reference",
+      "read_time_min": 40,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 0
+    },
+    {
+      "id": "RENDER_INVENTORY",
+      "slug": "render-inventory",
+      "title": "Render Inventory",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 9,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "STUDIO_ENV",
+      "slug": "studio-env",
+      "title": "Studio Environment Variables",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "PR_PIPELINE_AUTOMATION",
+      "slug": "pr-pipeline-automation",
+      "title": "PR Pipeline Automation",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 10,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 4,
+      "links_out": 0
+    },
+    {
+      "id": "DAY_0_FOUNDER_ACTIONS",
+      "slug": "day-0-founder-actions",
+      "title": "Day 0 Founder Actions",
+      "kind": "playbook",
+      "category": "reference",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "DECOMMISSION_CHECKLIST",
+      "slug": "decommission-checklist",
+      "title": "Decommission Checklist",
+      "kind": "playbook",
+      "category": "runbooks",
+      "read_time_min": 8,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "FOUNDER_ACTIONS",
+      "slug": "founder-actions",
+      "title": "Founder Actions",
+      "kind": "playbook",
+      "category": "plans",
+      "read_time_min": 7,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "HOW_TO_NAVIGATE",
+      "slug": "how-to-navigate",
+      "title": "How to Navigate Docs",
+      "kind": "playbook",
+      "category": "reference",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "AUTH_PROVIDER_BAKEOFF_2026Q2",
+      "slug": "auth-provider-bakeoff-2026q2",
+      "title": "Auth Provider Bakeoff — 2026 Q2",
+      "kind": "decision",
+      "category": "reference",
+      "read_time_min": 22,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "CANON",
+      "slug": "canon",
+      "title": "Canon",
+      "kind": "philosophy",
+      "category": "reference",
+      "read_time_min": 9,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "AUTOMATION_PHILOSOPHY",
+      "slug": "automation-philosophy",
+      "title": "Automation Philosophy",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 7,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "CLERK_STUDIO",
+      "slug": "clerk-studio",
+      "title": "Clerk SSO — Paperwork Studio (Next.js)",
+      "kind": "runbook",
+      "category": "reference",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 0
+    },
+    {
+      "id": "PRE_DEPLOY_GUARD",
+      "slug": "pre-deploy-guard",
+      "title": "Pre-deploy guard",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 8,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "BRAIN_PR_REVIEW",
+      "slug": "brain-pr-review",
+      "title": "Brain PR Review",
+      "kind": "architecture",
+      "category": "architecture",
+      "read_time_min": 11,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "PRD",
+      "slug": "prd",
+      "title": "PRD",
+      "kind": "architecture",
+      "category": "reference",
+      "read_time_min": 35,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 2
+    },
+    {
+      "id": "KNOWLEDGE",
+      "slug": "knowledge",
+      "title": "Company Knowledge",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 18,
+      "last_reviewed": "2026-01-10",
+      "freshness": "aging",
+      "links_in": 1,
+      "links_out": 2
+    },
+    {
+      "id": "BRAIN_PERSONAS_GENERATED",
+      "slug": "brain-personas-generated",
+      "title": "Brain Personas (generated)",
+      "kind": "architecture",
+      "category": "generated",
+      "read_time_min": 42,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 2
+    }
+  ],
+  "edges": [
+    {
+      "source": "BRAIN_PHILOSOPHY",
+      "target": "ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AI_MODEL_PHILOSOPHY",
+      "target": "ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AI_MODEL_PHILOSOPHY",
+      "target": "BRAIN_ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "INFRA_PHILOSOPHY",
+      "target": "ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "DATA_PHILOSOPHY",
+      "target": "ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "GROUND_TRUTH",
+      "target": "ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CANON",
+      "target": "GROUND_TRUTH",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AUTOMATION_PHILOSOPHY",
+      "target": "BRAIN_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "AXIOMFOLIO_ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "BRAIN_ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "BRAIN_PR_REVIEW",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VENTURE_MASTER_PLAN",
+      "target": "ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VENTURE_MASTER_PLAN",
+      "target": "PRODUCT_SPEC",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STACK_AUDIT_2026_Q2",
+      "target": "ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AGENT_SPRINT_PLANNING",
+      "target": "VENTURE_MASTER_PLAN",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AGENT_SPRINT_PLANNING",
+      "target": "PR_PIPELINE_AUTOMATION",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "SECRETS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_ARCHITECTURE",
+      "target": "BRAIN_DEPLOY_RECOVERY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_ARCHITECTURE",
+      "target": "STUDIO_ENV",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_ARCHITECTURE",
+      "target": "BRAIN_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STUDIO_ENV",
+      "target": "CLERK_STUDIO",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "INFRA_PHILOSOPHY",
+      "target": "RENDER_INVENTORY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "RENDER_INVENTORY",
+      "target": "PRE_DEPLOY_GUARD",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "PR_PIPELINE_AUTOMATION",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "DAY_0_FOUNDER_ACTIONS",
+      "target": "HOW_TO_NAVIGATE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "FOUNDER_ACTIONS",
+      "target": "DAY_0_FOUNDER_ACTIONS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "HOW_TO_NAVIGATE",
+      "target": "ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "DECOMMISSION_CHECKLIST",
+      "target": "INFRA_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AUTH_PROVIDER_BAKEOFF_2026Q2",
+      "target": "CLERK_STUDIO",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_DEPLOY_RECOVERY",
+      "target": "SECRETS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PRD",
+      "target": "PRODUCT_SPEC",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PRD",
+      "target": "VENTURE_MASTER_PLAN",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PRE_DEPLOY_GUARD",
+      "target": "PR_PIPELINE_AUTOMATION",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_PR_REVIEW",
+      "target": "PR_PIPELINE_AUTOMATION",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AI_MODEL_PHILOSOPHY",
+      "target": "BRAIN_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AXIOMFOLIO_ARCHITECTURE",
+      "target": "VENTURE_MASTER_PLAN",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "KNOWLEDGE",
+      "target": "BRAIN_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "KNOWLEDGE",
+      "target": "DATA_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_PERSONAS_GENERATED",
+      "target": "BRAIN_ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_PERSONAS_GENERATED",
+      "target": "BRAIN_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_ARCHITECTURE",
+      "target": "BRAIN_PERSONAS_GENERATED",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VENTURE_MASTER_PLAN",
+      "target": "KNOWLEDGE",
+      "kind": "explicit-link",
+      "strength": 1
+    }
+  ]
+}

@@ -11,6 +11,10 @@ import { HqPageContainer } from "@/components/admin/hq/HqPageContainer";
 import { CommandPalette, openCommandPalette } from "@/components/admin/CommandPalette";
 import { buildNavGroups, type NavGroup } from "@/lib/admin-navigation";
 
+/** Shared hover surface for sidebar/header controls; `:focus-visible` ring from `globals.css`. */
+const SIDEBAR_FOCUS_SURFACE =
+  "rounded-lg outline-none hover:bg-zinc-800/40 motion-safe:transition-colors";
+
 const FOOTER_VENDOR_LINKS: {
   category: string;
   links: { label: string; href: string }[];
@@ -81,11 +85,22 @@ function AdminSidebarPanel({
   return (
     <div className="sticky top-8 rounded-xl border border-zinc-800/80 bg-zinc-900/60 p-4">
       <div className="mb-5 flex items-start justify-between gap-2">
-        <p className="bg-gradient-to-r from-zinc-300 to-zinc-500 bg-clip-text text-xs font-semibold uppercase tracking-widest text-transparent">
-          Command Center
-        </p>
+        <Link
+          href="/admin"
+          data-testid="admin-sidebar-home-link"
+          aria-label="Paperwork Studio — admin home"
+          onClick={onNavLinkClick}
+          className={`min-w-0 block p-1 ${SIDEBAR_FOCUS_SURFACE}`}
+        >
+          <span className="block text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+            Paperwork Labs
+          </span>
+          <span className="mt-0.5 block text-lg font-bold leading-tight tracking-tight text-zinc-100">
+            Studio
+          </span>
+        </Link>
         <kbd
-          className="rounded border border-zinc-700/60 bg-zinc-800/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-zinc-500"
+          className="rounded border border-zinc-700/60 bg-zinc-800/80 px-1.5 py-0.5 font-mono text-[10px] font-medium text-zinc-400"
           title="Open command palette"
         >
           ⌘K
@@ -95,7 +110,7 @@ function AdminSidebarPanel({
         {navGroups.map((group, groupIdx) => (
           <div key={group.label ?? `group-${groupIdx}`} className="space-y-1">
             {group.label ? (
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
                 {group.label}
               </p>
             ) : null}
@@ -110,7 +125,7 @@ function AdminSidebarPanel({
                   key={item.href}
                   href={item.href}
                   onClick={onNavLinkClick}
-                  className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
+                  className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm motion-safe:transition-colors ${
                     isActive
                       ? "border-l-2 border-zinc-400 bg-zinc-800/80 font-medium text-zinc-100"
                       : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
@@ -119,7 +134,7 @@ function AdminSidebarPanel({
                   <span className="flex min-w-0 items-center gap-2.5">
                     <Icon
                       className={`h-4 w-4 shrink-0 ${
-                        isActive ? "text-zinc-300" : "text-zinc-500"
+                        isActive ? "text-zinc-300" : "text-zinc-400"
                       }`}
                     />
                     <span className="truncate">{item.label}</span>
@@ -152,7 +167,7 @@ function AdminSidebarPanel({
                     ) : null}
                     {staticCount !== undefined ? (
                       <span
-                        className="rounded-full bg-zinc-800/90 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-zinc-500"
+                        className="rounded-full bg-zinc-800/90 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-zinc-400"
                         title="Expense approvals — live count in PR N"
                       >
                         {staticCount} pending
@@ -172,7 +187,7 @@ function AdminSidebarPanel({
         <div className="space-y-3 text-xs">
           {FOOTER_VENDOR_LINKS.map((section) => (
             <div key={section.category} className="space-y-1">
-              <p className="px-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-600">
+              <p className="px-0.5 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
                 {section.category}
               </p>
               <div className="space-y-1">
@@ -183,7 +198,7 @@ function AdminSidebarPanel({
                     target="_blank"
                     rel="noreferrer"
                     onClick={onNavLinkClick}
-                    className="flex items-center gap-2 text-zinc-500 transition hover:text-zinc-300"
+                    className="flex items-center gap-2 text-zinc-400 motion-safe:transition-colors hover:text-zinc-300"
                   >
                     <Settings2 className="h-3 w-3 shrink-0" />
                     {link.label}
@@ -237,7 +252,7 @@ export function AdminLayoutClient({
 
       <div
         data-testid="admin-mobile-drawer-backdrop"
-        className={`fixed inset-0 z-[45] bg-black/60 transition-opacity md:hidden ${
+        className={`fixed inset-0 z-[45] bg-black/60 motion-safe:motion-safe:transition-opacity md:hidden ${
           mobileNavOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
         }`}
         aria-hidden={!mobileNavOpen}
@@ -248,7 +263,7 @@ export function AdminLayoutClient({
         id="admin-mobile-drawer"
         data-testid="admin-mobile-drawer"
         aria-hidden={!mobileNavOpen}
-        className={`fixed inset-y-0 left-0 z-[50] w-60 max-w-[min(16rem,calc(100vw-2rem))] overflow-y-auto border-r border-zinc-800/80 bg-zinc-950 p-4 shadow-2xl transition-transform duration-200 ease-out md:hidden ${
+        className={`fixed inset-y-0 left-0 z-[50] w-60 max-w-[min(16rem,calc(100vw-2rem))] overflow-y-auto border-r border-zinc-800/80 bg-zinc-950 p-4 shadow-2xl motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out md:hidden ${
           mobileNavOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
         }`}
       >
@@ -278,7 +293,7 @@ export function AdminLayoutClient({
               aria-label="Open navigation menu"
               aria-expanded={mobileNavOpen}
               aria-controls="admin-mobile-drawer"
-              className="mr-auto -ml-2 rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100 md:hidden"
+              className={`mr-auto -ml-2 p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 md:hidden ${SIDEBAR_FOCUS_SURFACE}`}
               onClick={() => setMobileNavOpen(true)}
             >
               <Menu className="h-5 w-5" aria-hidden />
@@ -287,11 +302,11 @@ export function AdminLayoutClient({
               type="button"
               data-testid="admin-header-command-palette"
               onClick={() => openCommandPalette()}
-              className="inline-flex items-center gap-2 rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-400 transition hover:border-zinc-600 hover:text-zinc-200"
+              className="inline-flex items-center gap-2 rounded-lg border border-zinc-700/80 bg-zinc-900/60 px-2.5 py-1.5 text-xs text-zinc-400 motion-safe:transition-colors hover:border-zinc-600 hover:text-zinc-200"
               title="Search and jump (⌘K)"
             >
-              <span className="hidden text-zinc-500 sm:inline">Search</span>
-              <kbd className="rounded border border-zinc-700/60 bg-zinc-800/80 px-1 py-0.5 font-mono text-[10px] font-medium text-zinc-500">
+              <span className="hidden text-zinc-400 sm:inline">Search</span>
+              <kbd className="rounded border border-zinc-700/60 bg-zinc-800/80 px-1 py-0.5 font-mono text-[10px] font-medium text-zinc-400">
                 ⌘K
               </kbd>
             </button>
