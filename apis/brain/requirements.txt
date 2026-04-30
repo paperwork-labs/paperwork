@@ -31,7 +31,7 @@ redis>=7.4.0
 langfuse>=2.0.0
 
 # Web Push (VAPID, WS-69 PR I)
-pywebpush>=2.0.0
+pywebpush>=2.3.0
 
 # Utilities
 httpx>=0.28.1
