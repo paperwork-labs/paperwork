@@ -32,6 +32,7 @@ from app.routers import (
     expenses,
     health,
     infra_registry,
+    vendors,
     webhooks,
     workstreams,
 )
@@ -168,7 +169,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=[
         "Content-Type",
         "Authorization",
@@ -205,6 +206,7 @@ app.include_router(workstreams.router, prefix="/api/v1")
 app.include_router(conversations.router, prefix="/api/v1")
 app.include_router(expenses.router, prefix="/api/v1")
 app.include_router(cost_monitor.router, prefix="/api/v1")
+app.include_router(vendors.router, prefix="/api/v1")
 app.include_router(admin_logs.router, prefix="/api/v1")
 
 
