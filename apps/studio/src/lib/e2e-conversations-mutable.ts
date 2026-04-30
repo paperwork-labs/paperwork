@@ -2,6 +2,7 @@ import type {
   Attachment,
   Conversation,
   ConversationParticipant,
+  ConversationSentiment,
   ConversationSpace,
   ConversationsListPage,
   StatusLevel,
@@ -35,7 +36,12 @@ function ensureStore(): Map<string, Conversation> {
     store = new Map(
       page.items.map((c, i) => {
         const clone = deepClone(c);
-        clone.space = SPACE_ROTATION[i % SPACE_ROTATION.length];
+        const ps = clone.product_slug?.trim();
+        if (ps && SPACE_IDS.has(ps as ConversationSpace)) {
+          clone.space = ps as ConversationSpace;
+        } else {
+          clone.space = SPACE_ROTATION[i % SPACE_ROTATION.length];
+        }
         return [clone.id, clone];
       }),
     );
@@ -161,6 +167,16 @@ export function e2eCreateConversation(raw: Record<string, unknown>): Conversatio
   const persona =
     typeof raw.persona === "string" && raw.persona.trim() ? raw.persona.trim() : null;
 
+  const productSlugRaw = raw.product_slug;
+  const product_slug =
+    typeof productSlugRaw === "string" && productSlugRaw.trim() ? productSlugRaw.trim() : null;
+
+  const sentimentRaw = raw.sentiment;
+  const sentiment: ConversationSentiment | null =
+    sentimentRaw === "positive" || sentimentRaw === "neutral" || sentimentRaw === "negative"
+      ? sentimentRaw
+      : null;
+
   const attachments: Attachment[] = Array.isArray(raw.attachments)
     ? (raw.attachments as Attachment[])
     : [];
@@ -169,6 +185,8 @@ export function e2eCreateConversation(raw: Record<string, unknown>): Conversatio
   const rawSpace = raw.space;
   if (typeof rawSpace === "string" && SPACE_IDS.has(rawSpace as ConversationSpace)) {
     space = rawSpace as ConversationSpace;
+  } else if (product_slug && SPACE_IDS.has(product_slug as ConversationSpace)) {
+    space = product_slug as ConversationSpace;
   }
 
   const now = new Date().toISOString();
@@ -194,6 +212,8 @@ export function e2eCreateConversation(raw: Record<string, unknown>): Conversatio
     tags,
     urgency,
     persona,
+    product_slug,
+    sentiment,
     participants,
     messages,
     created_at: now,

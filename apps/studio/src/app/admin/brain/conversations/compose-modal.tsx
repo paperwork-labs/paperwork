@@ -12,6 +12,16 @@ import type {
 import type { ComposePersonaOption } from "@/lib/compose-persona-options";
 import { CONVERSATION_SPACES, inferSpaceFromTopic } from "@/lib/conversation-spaces";
 
+/** Optional seed when opening compose from product cockpit support (WS-76 PR-24a). */
+export type ComposeModalPrefill = {
+  title?: string;
+  bodyMd?: string;
+  space?: ConversationSpace;
+  tags?: string;
+  /** Sent as `product_slug` on create. */
+  productSlug?: string | null;
+};
+
 const URGENCY_OPTIONS: { value: UrgencyLevel; label: string }[] = [
   { value: "info", label: "Info" },
   { value: "normal", label: "Normal" },
@@ -32,9 +42,10 @@ interface Props {
   onClose: () => void;
   onSuccess: (conv: Conversation) => void;
   personaOptions: ComposePersonaOption[];
+  prefill?: ComposeModalPrefill | null;
 }
 
-export function ComposeModal({ onClose, onSuccess, personaOptions }: Props) {
+export function ComposeModal({ onClose, onSuccess, personaOptions, prefill }: Props) {
   const [title, setTitle] = useState("");
   const [bodyMd, setBodyMd] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -53,6 +64,17 @@ export function ComposeModal({ onClose, onSuccess, personaOptions }: Props) {
     if (spaceManualRef.current) return;
     setSpace(inferSpaceFromTopic(title));
   }, [title]);
+
+  useEffect(() => {
+    if (!prefill) return;
+    if (prefill.title !== undefined) setTitle(prefill.title);
+    if (prefill.bodyMd !== undefined) setBodyMd(prefill.bodyMd);
+    if (prefill.tags !== undefined) setTagsInput(prefill.tags);
+    if (prefill.space) {
+      spaceManualRef.current = true;
+      setSpace(prefill.space);
+    }
+  }, [prefill]);
 
   const togglePersona = (id: string) => {
     setPersonaIds((prev) => {
@@ -131,7 +153,7 @@ export function ComposeModal({ onClose, onSuccess, personaOptions }: Props) {
       const primaryPersona =
         personaParticipants.length > 0 ? personaParticipants[0]!.id : null;
 
-      const body = {
+      const body: Record<string, unknown> = {
         title: title.trim(),
         body_md: bodyMd,
         tags,
@@ -141,6 +163,8 @@ export function ComposeModal({ onClose, onSuccess, personaOptions }: Props) {
         participants,
         attachments,
       };
+      const ps = prefill?.productSlug?.trim();
+      if (ps) body.product_slug = ps;
       const res = await fetch("/api/admin/conversations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

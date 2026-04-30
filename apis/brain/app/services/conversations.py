@@ -258,6 +258,8 @@ def create_conversation(
         tags=create.tags,
         urgency=create.urgency,
         persona=create.persona,
+        product_slug=create.product_slug,
+        sentiment=create.sentiment,
         participants=create.participants,
         messages=(
             [
@@ -386,6 +388,7 @@ def list_conversations(
     limit: int = 50,
     *,
     organization_id: str | None = None,
+    product_slug: str | None = None,
 ) -> ConversationsListPage:
     """Return a cursor-paginated page of conversations.
 
@@ -418,6 +421,8 @@ def list_conversations(
         if filter_status and conv.status != filter_status:
             continue
         if not _conversation_matches_organization(conv, organization_id):
+            continue
+        if product_slug and (conv.product_slug or "") != product_slug:
             continue
         convs.append(conv)
 

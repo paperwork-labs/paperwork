@@ -36,6 +36,9 @@ export interface ThreadMessage {
 export type UrgencyLevel = "info" | "normal" | "high" | "critical";
 export type StatusLevel = "open" | "needs-action" | "snoozed" | "resolved" | "archived";
 
+/** Inferred or labeled customer tone for support inbox (WS-76 PR-24a). */
+export type ConversationSentiment = "positive" | "neutral" | "negative";
+
 /** Routing channel for multi-participant / product-aligned inbox (WS-76 PR-21). */
 export type ConversationSpace =
   | "personal"
@@ -53,6 +56,10 @@ export interface Conversation {
   id: string;
   /** Forward-compat: org scoping for multi-tenant Brain (WS-76 PR-27). */
   organization_id?: string | null;
+  /** Product cockpit / support routing — filters inbox by registry slug (WS-76 PR-24a). */
+  product_slug?: string | null;
+  /** Support / CX labeling; omit when unknown. */
+  sentiment?: ConversationSentiment | null;
   title: string;
   tags: string[];
   urgency: UrgencyLevel;
@@ -96,6 +103,8 @@ export interface ConversationCreate {
   urgency?: UrgencyLevel;
   persona?: string | null;
   space?: ConversationSpace | null;
+  product_slug?: string | null;
+  sentiment?: ConversationSentiment | null;
   participants?: ConversationParticipant[];
   parent_action_id?: string | null;
   attachments?: Attachment[];

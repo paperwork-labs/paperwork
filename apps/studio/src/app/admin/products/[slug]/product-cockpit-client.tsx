@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ExternalLink, FileText, UserCircle, UsersRound, Wallet } from "lucide-react";
 
+import { ProductSupportPanel } from "@/app/admin/products/[slug]/product-support-panel";
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
@@ -186,6 +187,41 @@ function PlansPanel({ docs, productSlug }: { docs: ProductPlanDocRef[]; productS
   );
 }
 
+function MetricsPanel({ product }: { product: ProductRegistryEntry }) {
+  return (
+    <div className="space-y-10" data-testid="product-metrics-tab">
+      <section aria-label="PostHog analytics" className="space-y-4">
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[var(--status-muted)]">
+          PostHog
+        </h3>
+        <div
+          data-testid="metrics-posthog-placeholder"
+          className="flex min-h-[140px] flex-col items-center justify-center rounded-xl border border-dashed border-zinc-700/70 bg-zinc-950/25 px-6 text-center"
+        >
+          <p className="text-sm font-medium text-zinc-400">Insight embed placeholder</p>
+          <p className="mt-1 max-w-sm text-xs text-zinc-600">
+            Reserved region for PostHog dashboard or shared insights — not rendered until configured.
+          </p>
+        </div>
+        <HqEmptyState
+          title="PostHog not configured"
+          description="Set embed / project credentials to show live product analytics (configured: false). This is an explicit empty state — not synthetic traffic."
+        />
+      </section>
+
+      <section aria-label="Stripe revenue" className="space-y-4">
+        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-[var(--status-muted)]">
+          Stripe MRR
+        </h3>
+        <HqEmptyState
+          title="Stripe MRR not connected"
+          description={`Live MRR from Stripe is not wired for ${product.name} (configured: false). Overview uses registry figures only.`}
+        />
+      </section>
+    </div>
+  );
+}
+
 function PricingPanel({ product }: { product: ProductRegistryEntry }) {
   const tiers = product.pricing_tiers ?? [];
   if (tiers.length === 0) {
@@ -259,16 +295,12 @@ export function ProductCockpitClient({
     {
       id: "support" as const,
       label: "Support",
-      content: (
-        <HqEmptyState title="Support" description="Support inbox coming in PR-24a" />
-      ),
+      content: <ProductSupportPanel productSlug={product.slug} productName={product.name} />,
     },
     {
       id: "metrics" as const,
       label: "Metrics",
-      content: (
-        <HqEmptyState title="Metrics" description="Metrics dashboard coming soon" />
-      ),
+      content: <MetricsPanel product={product} />,
     },
   ] as const;
 

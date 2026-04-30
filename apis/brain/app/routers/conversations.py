@@ -72,6 +72,10 @@ def list_conversations(
         description="Cursor for pagination (last conversation id seen)",
     ),
     limit: int = Query(50, ge=1, le=200),
+    product_slug: str | None = Query(
+        None,
+        description="When set, only conversations with this product_slug are returned (WS-76 PR-24a).",
+    ),
     ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
@@ -82,6 +86,7 @@ def list_conversations(
         cursor=cursor,
         limit=limit,
         organization_id=ctx.organization_id,
+        product_slug=product_slug,
     )
     return success_response(page.model_dump(mode="json"))
 
