@@ -62,6 +62,7 @@ class Conversation(BaseModel):
     parent_action_id: str | None = None
     links: ConversationLinks | None = None
     needs_founder_action: bool = False
+    organization_id: str | None = None  # WS-76 tenancy scope
 
 
 class ConversationsListPage(BaseModel):

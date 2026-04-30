@@ -54,6 +54,7 @@ class Expense(BaseModel):
     receipt: ReceiptAttachment | None = None
     tags: list[str] = Field(default_factory=list)
     conversation_id: str | None = None  # PR O wires this
+    organization_id: str | None = None  # WS-76 explicit tenancy on inserts
 
 
 class ExpenseCreate(BaseModel):

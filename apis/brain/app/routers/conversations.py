@@ -24,7 +24,9 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 
 import app.services.conversations as conv_svc
 import app.services.expenses as expense_svc
+from app.dependencies.auth import get_brain_user_context
 from app.schemas.base import error_response, success_response
+from app.schemas.brain_user_context import BrainUserContext  # noqa: TC001
 from app.schemas.conversation import (  # noqa: TC001
     AppendMessageRequest,
     ConversationCreate,
@@ -70,6 +72,7 @@ def list_conversations(
         description="Cursor for pagination (last conversation id seen)",
     ),
     limit: int = Query(50, ge=1, le=200),
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
     """List conversations with optional status filter, full-text search, and cursor pagination."""
@@ -78,6 +81,7 @@ def list_conversations(
         search=search,
         cursor=cursor,
         limit=limit,
+        organization_id=ctx.organization_id,
     )
     return success_response(page.model_dump(mode="json"))
 
@@ -89,10 +93,14 @@ def get_unread_count(
         alias="filter",
         description="Status filter for the count",
     ),
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
     """Return conversation count + critical flag (sidebar badge, PWA)."""
-    metrics = conv_svc.needs_action_badge_metrics(status_filter=status_filter)
+    metrics = conv_svc.needs_action_badge_metrics(
+        status_filter=status_filter,
+        organization_id=ctx.organization_id,
+    )
     return success_response(metrics)
 
 
@@ -104,11 +112,14 @@ def get_unread_count(
 @router.get("/conversations/{conversation_id}")
 def get_conversation(
     conversation_id: str,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
     try:
-        conv = conv_svc.get_conversation(conversation_id)
+        conv = conv_svc.get_conversation(conversation_id, organization_id=ctx.organization_id)
     except KeyError:
+        return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
+    except PermissionError:
         return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
     return success_response(conv.model_dump(mode="json"))
 
@@ -121,10 +132,15 @@ def get_conversation(
 @router.post("/conversations")
 def create_conversation(
     body: ConversationCreate,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
     """Create a new Conversation (used by personas + Studio)."""
-    conv = conv_svc.create_conversation(body)
+    conv = conv_svc.create_conversation(
+        body,
+        organization_id=ctx.organization_id,
+        push_user_id=ctx.brain_user_id,
+    )
     return success_response(conv.model_dump(mode="json"), status_code=201)
 
 
@@ -132,6 +148,7 @@ def create_conversation(
 def resolve_expense_conversation(
     conversation_id: str,
     body: ExpenseConversationResolveBody,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
     """Atomically resolve an expense-approval thread and update the linked Expense."""
@@ -140,6 +157,7 @@ def resolve_expense_conversation(
             conversation_id,
             body.expense_action,
             body.new_category,
+            organization_id=ctx.organization_id,
         )
     except ValueError as exc:
         return error_response(str(exc), status_code=422)
@@ -160,11 +178,14 @@ def resolve_expense_conversation(
 def append_message(
     conversation_id: str,
     body: AppendMessageRequest,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
     try:
-        msg = conv_svc.append_message(conversation_id, body)
+        msg = conv_svc.append_message(conversation_id, body, organization_id=ctx.organization_id)
     except KeyError:
+        return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
+    except PermissionError:
         return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
     return success_response(msg.model_dump(mode="json"), status_code=201)
 
@@ -178,11 +199,18 @@ def append_message(
 def update_status(
     conversation_id: str,
     body: StatusUpdateRequest,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
     try:
-        conv = conv_svc.update_conversation_status(conversation_id, body.status)
+        conv = conv_svc.update_conversation_status(
+            conversation_id,
+            body.status,
+            organization_id=ctx.organization_id,
+        )
     except KeyError:
+        return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
+    except PermissionError:
         return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
     return success_response(conv.model_dump(mode="json"))
 
@@ -196,11 +224,14 @@ def update_status(
 def snooze_conversation(
     conversation_id: str,
     body: SnoozeRequest,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
     try:
-        conv = conv_svc.snooze(conversation_id, body.until)
+        conv = conv_svc.snooze(conversation_id, body.until, organization_id=ctx.organization_id)
     except KeyError:
+        return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
+    except PermissionError:
         return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
     return success_response(conv.model_dump(mode="json"))
 
@@ -215,12 +246,21 @@ def react(
     conversation_id: str,
     message_id: str,
     body: ReactRequest,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
     try:
-        msg = conv_svc.react(conversation_id, message_id, body.emoji, body.participant_id)
+        msg = conv_svc.react(
+            conversation_id,
+            message_id,
+            body.emoji,
+            body.participant_id,
+            organization_id=ctx.organization_id,
+        )
     except KeyError as exc:
         return error_response(str(exc), status_code=404)
+    except PermissionError:
+        return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
     return success_response(msg.model_dump(mode="json"))
 
 
@@ -233,9 +273,10 @@ def react(
 def search_conversations(
     q: str = Query(..., min_length=1, description="Full-text search query"),
     limit: int = Query(20, ge=1, le=100),
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
-    results = conv_svc.search_conversations(q, limit=limit)
+    results = conv_svc.search_conversations(q, limit=limit, organization_id=ctx.organization_id)
     return success_response([c.model_dump(mode="json") for c in results])
 
 

@@ -1,4 +1,4 @@
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -153,6 +153,26 @@ class Settings(BaseSettings):
     CLOUDFLARE_TOKEN_FILEFREE_AI: str = ""
     CLOUDFLARE_TOKEN_LAUNCHFREE_AI: str = ""
     CLOUDFLARE_TOKEN_DISTILL_TAX: str = ""
+
+    # Brain tooling / tenancy (WS-76 PR-13): Clerk Bearer JWT maps via paperwork_links.json;
+    # without Bearer JWT, Brain falls back to these env vars (CI / scripts).
+    BRAIN_TOOLS_USER_ID: str = "1"
+    BRAIN_TOOLS_ORGANIZATION_ID: str = ""
+    CLERK_JWKS_URL: str = ""
+    CLERK_JWT_ISSUER: str = ""
+    CLERK_JWT_AUDIENCE: str = ""
+    BRAIN_ALLOW_UNVERIFIED_CLERK_JWT: bool = False
+
+    @field_validator("BRAIN_TOOLS_USER_ID", mode="before")
+    @classmethod
+    def _coerce_brain_tools_user_id(cls, value: object) -> str:
+        if isinstance(value, bool):
+            return str(int(value))
+        if isinstance(value, int):
+            return str(value)
+        if value is None:
+            return "1"
+        return str(value)
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

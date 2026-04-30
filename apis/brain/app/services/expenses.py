@@ -44,6 +44,31 @@ from app.schemas.expenses import (
 
 logger = logging.getLogger(__name__)
 
+
+def _legacy_org_id() -> str | None:
+    from app.config import settings
+
+    v = settings.BRAIN_TOOLS_ORGANIZATION_ID.strip()
+    return v or None
+
+
+def _expense_matches_organization(expense: Expense, organization_id: str | None) -> bool:
+    if organization_id is None:
+        return True
+    legacy = _legacy_org_id()
+    stored = expense.organization_id
+    if stored == organization_id:
+        return True
+    return stored is None and legacy is not None and organization_id == legacy
+
+
+def _ensure_expense_org(expense: Expense, organization_id: str | None) -> None:
+    if organization_id is None:
+        return
+    if not _expense_matches_organization(expense, organization_id):
+        raise PermissionError("Expense does not belong to this organization")
+
+
 _ENV_EXPENSES_JSON = "BRAIN_EXPENSES_JSON"
 _ENV_RULES_JSON = "BRAIN_EXPENSE_RULES_JSON"
 _ENV_REPO_ROOT = "REPO_ROOT"
@@ -258,6 +283,8 @@ def resolve_expense_linked_conversation(
     conversation_id: str,
     expense_action: str,
     new_category: ExpenseCategory | None,
+    *,
+    organization_id: str | None = None,
 ) -> tuple[Expense, Conversation]:
     """Atomically resolve the Conversation and update the linked Expense (expense lock held)."""
     from app.services import conversations as conv_svc
@@ -271,9 +298,13 @@ def resolve_expense_linked_conversation(
             os.environ["REPO_ROOT"] = derived
         try:
             try:
-                conv_inner = conv_svc.get_conversation(conversation_id)
+                conv_inner = conv_svc.get_conversation(
+                    conversation_id, organization_id=organization_id
+                )
             except KeyError as exc:
                 raise ValueError(f"Conversation {conversation_id!r} not found") from exc
+            except PermissionError as exc:
+                raise ValueError("Conversation not visible for this organization") from exc
             if conv_inner.links is None or not conv_inner.links.expense_id:
                 raise ValueError("Conversation has no expense_id link")
             eid = conv_inner.links.expense_id
@@ -283,6 +314,10 @@ def resolve_expense_linked_conversation(
                 expense = _parse_expense(raw)
                 if expense is None:
                     raise ValueError("Linked expense row is invalid")
+                try:
+                    _ensure_expense_org(expense, organization_id)
+                except PermissionError as exc:
+                    raise ValueError("Expense not visible for this organization") from exc
                 if expense.conversation_id != conversation_id:
                     raise ValueError("Expense is not linked to this conversation")
                 updated = _apply_expense_action(expense, expense_action, new_category)
@@ -310,7 +345,13 @@ def resolve_expense_linked_conversation(
     return out["expense"], out["conversation"]
 
 
-async def classify_and_route(payload: ExpenseCreate, *, expense_id: str) -> Expense:
+async def classify_and_route(
+    payload: ExpenseCreate,
+    *,
+    expense_id: str,
+    organization_id: str | None = None,
+    push_user_id: str | None = None,
+) -> Expense:
     """CFO classify when requested, apply routing rules, optionally create approval Conversation.
 
     Called from expense creation before the row is appended to ``expenses.json``.
@@ -353,6 +394,7 @@ async def classify_and_route(payload: ExpenseCreate, *, expense_id: str) -> Expe
         notes=payload.notes,
         tags=payload.tags,
         conversation_id=None,
+        organization_id=organization_id,
     )
 
     status, needs_conv = _routing_decision(expense, rules)
@@ -375,7 +417,11 @@ async def classify_and_route(payload: ExpenseCreate, *, expense_id: str) -> Expe
                 needs_founder_action=True,
                 links=ConversationLinks(expense_id=expense.id),
             )
-            conv = conv_svc.create_conversation(create)
+            conv = conv_svc.create_conversation(
+                create,
+                organization_id=organization_id,
+                push_user_id=push_user_id,
+            )
             return conv.id
 
         derived = derived_repo_root_from_expense_store()
@@ -392,10 +438,20 @@ async def classify_and_route(payload: ExpenseCreate, *, expense_id: str) -> Expe
     return expense
 
 
-async def _submit_expense_impl(payload: ExpenseCreate) -> Expense:
+async def _submit_expense_impl(
+    payload: ExpenseCreate,
+    *,
+    organization_id: str | None = None,
+    push_user_id: str | None = None,
+) -> Expense:
     """Create expense row: classify, route, persist."""
     expense_id = str(uuid.uuid4())
-    expense = await classify_and_route(payload, expense_id=expense_id)
+    expense = await classify_and_route(
+        payload,
+        expense_id=expense_id,
+        organization_id=organization_id,
+        push_user_id=push_user_id,
+    )
     row = expense.model_dump(mode="json")
 
     def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -406,17 +462,29 @@ async def _submit_expense_impl(payload: ExpenseCreate) -> Expense:
     return expense
 
 
-def submit_expense(payload: ExpenseCreate) -> Expense:
+def submit_expense(
+    payload: ExpenseCreate,
+    *,
+    organization_id: str | None = None,
+    push_user_id: str | None = None,
+) -> Expense:
     """Sync entrypoint for tests and tooling. Async callers must use ``asyncio.to_thread``."""
     import asyncio
 
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        return asyncio.run(_submit_expense_impl(payload))
+        return asyncio.run(
+            _submit_expense_impl(
+                payload,
+                organization_id=organization_id,
+                push_user_id=push_user_id,
+            )
+        )
     raise RuntimeError(
         "submit_expense() cannot run inside an active event loop; "
-        "await asyncio.to_thread(expenses.submit_expense, payload) instead"
+        "await asyncio.to_thread(expenses.submit_expense, payload, "
+        "organization_id=organization_id, push_user_id=push_user_id) instead"
     )
 
 
@@ -444,12 +512,15 @@ def list_expenses(
     count_only: bool = False,
     cursor: str | None = None,
     limit: int = 50,
+    organization_id: str | None = None,
 ) -> ExpensesListPage:
     rows = _read_expenses_raw()
     items: list[Expense] = []
     for raw in rows:
         expense = _parse_expense(raw)
         if expense is None:
+            continue
+        if not _expense_matches_organization(expense, organization_id):
             continue
         if status and expense.status != status:
             continue
@@ -490,11 +561,18 @@ def list_expenses(
     )
 
 
-def get_expense(expense_id: str) -> Expense | None:
+def get_expense(expense_id: str, *, organization_id: str | None = None) -> Expense | None:
     rows = _read_expenses_raw()
     for raw in rows:
         if raw.get("id") == expense_id:
-            return _parse_expense(raw)
+            expense = _parse_expense(raw)
+            if expense is None:
+                return None
+            try:
+                _ensure_expense_org(expense, organization_id)
+            except PermissionError:
+                return None
+            return expense
     return None
 
 
@@ -503,7 +581,12 @@ def get_expense(expense_id: str) -> Expense | None:
 # ---------------------------------------------------------------------------
 
 
-def update_expense_status(expense_id: str, update: ExpenseStatusUpdate) -> Expense | None:
+def update_expense_status(
+    expense_id: str,
+    update: ExpenseStatusUpdate,
+    *,
+    organization_id: str | None = None,
+) -> Expense | None:
     result: list[Expense] = []
 
     def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -512,6 +595,10 @@ def update_expense_status(expense_id: str, update: ExpenseStatusUpdate) -> Expen
                 expense = _parse_expense(raw)
                 if expense is None:
                     continue
+                try:
+                    _ensure_expense_org(expense, organization_id)
+                except PermissionError:
+                    return rows
                 allowed = _ALLOWED_TRANSITIONS.get(expense.status, set())
                 if update.status not in allowed:
                     raise ValueError(f"Cannot transition {expense.status} → {update.status}")
@@ -534,7 +621,12 @@ def update_expense_status(expense_id: str, update: ExpenseStatusUpdate) -> Expen
     return result[0] if result else None
 
 
-def edit_expense(expense_id: str, edit: ExpenseEdit) -> Expense | None:
+def edit_expense(
+    expense_id: str,
+    edit: ExpenseEdit,
+    *,
+    organization_id: str | None = None,
+) -> Expense | None:
     result: list[Expense] = []
 
     def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -543,6 +635,10 @@ def edit_expense(expense_id: str, edit: ExpenseEdit) -> Expense | None:
                 expense = _parse_expense(raw)
                 if expense is None:
                     continue
+                try:
+                    _ensure_expense_org(expense, organization_id)
+                except PermissionError:
+                    return rows
                 patch = dict(edit.model_dump(exclude_none=True))
                 updated = expense.model_copy(update=patch)
                 rows[i] = updated.model_dump(mode="json")
@@ -554,7 +650,12 @@ def edit_expense(expense_id: str, edit: ExpenseEdit) -> Expense | None:
     return result[0] if result else None
 
 
-def attach_receipt(expense_id: str, receipt_data: dict[str, Any]) -> Expense | None:
+def attach_receipt(
+    expense_id: str,
+    receipt_data: dict[str, Any],
+    *,
+    organization_id: str | None = None,
+) -> Expense | None:
     result: list[Expense] = []
 
     def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -563,6 +664,10 @@ def attach_receipt(expense_id: str, receipt_data: dict[str, Any]) -> Expense | N
                 expense = _parse_expense(raw)
                 if expense is None:
                     continue
+                try:
+                    _ensure_expense_org(expense, organization_id)
+                except PermissionError:
+                    return rows
                 updated = expense.model_copy(update={"receipt": receipt_data})
                 rows[i] = updated.model_dump(mode="json")
                 result.append(updated)
@@ -594,9 +699,19 @@ def _category_breakdown(items: list[Expense]) -> list[CategoryTotal]:
     return [CategoryTotal(**v) for v in sorted(totals.values(), key=lambda x: -x["amount_cents"])]
 
 
-def compute_monthly_rollup(year: int, month: int) -> MonthlyRollup:
+def compute_monthly_rollup(
+    year: int,
+    month: int,
+    *,
+    organization_id: str | None = None,
+) -> MonthlyRollup:
     rows = _read_expenses_raw()
-    all_expenses = [e for raw in rows if (e := _parse_expense(raw)) is not None]
+    all_expenses = [
+        e
+        for raw in rows
+        if (e := _parse_expense(raw)) is not None
+        and _expense_matches_organization(e, organization_id)
+    ]
     month_items = _filter_by_month(all_expenses, year, month)
 
     total_cents = sum(e.amount_cents for e in month_items)
@@ -637,14 +752,27 @@ def compute_monthly_rollup(year: int, month: int) -> MonthlyRollup:
     )
 
 
-def compute_quarterly_rollup(year: int, quarter: int) -> QuarterlyRollup:
+def compute_quarterly_rollup(
+    year: int,
+    quarter: int,
+    *,
+    organization_id: str | None = None,
+) -> QuarterlyRollup:
     if not 1 <= quarter <= 4:
         raise ValueError(f"Quarter must be 1-4, got {quarter}")
     first_month = (quarter - 1) * 3 + 1
-    months = [compute_monthly_rollup(year, first_month + i) for i in range(3)]
+    months = [
+        compute_monthly_rollup(year, first_month + i, organization_id=organization_id)
+        for i in range(3)
+    ]
     all_items = []
     rows = _read_expenses_raw()
-    all_expenses = [e for raw in rows if (e := _parse_expense(raw)) is not None]
+    all_expenses = [
+        e
+        for raw in rows
+        if (e := _parse_expense(raw)) is not None
+        and _expense_matches_organization(e, organization_id)
+    ]
     for i in range(3):
         all_items.extend(_filter_by_month(all_expenses, year, first_month + i))
 
@@ -692,8 +820,16 @@ def export_csv(
     category: ExpenseCategory | None = None,
     year: int | None = None,
     month: int | None = None,
+    organization_id: str | None = None,
 ) -> str:
-    page = list_expenses(status=status, category=category, year=year, month=month, limit=10000)
+    page = list_expenses(
+        status=status,
+        category=category,
+        year=year,
+        month=month,
+        limit=10000,
+        organization_id=organization_id,
+    )
     output = io.StringIO()
     writer = csv.DictWriter(output, fieldnames=_CSV_COLUMNS, extrasaction="ignore")
     writer.writeheader()
