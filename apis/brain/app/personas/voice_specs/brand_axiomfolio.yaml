@@ -1,0 +1,23 @@
+
+slug: brand_axiomfolio
+voice:
+  mode: shadow
+  anchors:
+    - author: AxiomFolio positioning baseline
+      source: brand_guidelines_internal
+      sample_count: 0
+  corpus_dir: voice/corpus/brand_axiomfolio
+  cross_genre_pull_allowed:
+    sources: []
+    min_compliance_level: regulated_safe
+  forbidden_phrases:
+    - guaranteed return
+    - risk-free
+    - double your money
+  signature_moves:
+    - evidence_first
+    - calm_precision
+  platform_targets:
+    - twitter
+    - linkedin
+    - discord

@@ -1,0 +1,25 @@
+
+slug: founder_sankalp
+voice:
+  mode: shadow
+  anchors:
+    - author: Naval Ravikant
+      source: naval
+      sample_count: 0
+    - author: Patrick McKenzie
+      source: patio11
+      sample_count: 0
+    - author: Patrick Collison
+      source: collison
+      sample_count: 0
+  corpus_dir: ""
+  cross_genre_pull_allowed:
+    sources: []
+    min_compliance_level: standard
+  forbidden_phrases: []
+  signature_moves:
+    - long_form_paradox
+    - operators_pre_operators
+  platform_targets:
+    - twitter
+    - linkedin
