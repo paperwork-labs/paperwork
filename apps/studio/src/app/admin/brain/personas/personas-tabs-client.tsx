@@ -57,6 +57,13 @@ export function PersonasTabsClient({ data }: { data: PersonasPagePayload }) {
   return (
     <PersonasDataContext.Provider value={data}>
       <div className="space-y-8">
+        {data.brainApiError && (
+          <div className="rounded-lg border border-amber-700/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-300">
+            <span className="font-semibold">Brain API error — showing snapshot data:</span>{" "}
+            {data.brainApiError}
+          </div>
+        )}
+
         <HqPageHeader
           title="People"
           subtitle="AI team members — Cursor rule specs, dispatch activity, promotions, spend, routing, and registry."

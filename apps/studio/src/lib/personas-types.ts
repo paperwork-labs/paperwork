@@ -126,5 +126,10 @@ export type PersonasPagePayload = {
     note: string | null;
   };
   modelRegistry: { source: BrainDataSourceStatus; tables: MarkdownTable[] };
+  /**
+   * Non-null when BRAIN_API_URL is configured but the request failed.
+   * Pages should render an error banner. Null means no error.
+   */
+  brainApiError?: string | null;
 };
 

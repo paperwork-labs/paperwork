@@ -17,6 +17,13 @@ export function RunbookClient({ data }: { data: RunbookData }) {
 
   return (
     <div className="space-y-8">
+      {data.sourceError && (
+        <div className="rounded-lg border border-amber-700/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-300">
+          <span className="font-semibold">Brain API error — showing snapshot data:</span>{" "}
+          {data.sourceError}
+        </div>
+      )}
+
       <HqPageHeader
         title="Runbook"
         subtitle="Day-0 setup checklist and operational tasks"

@@ -1,0 +1,138 @@
+{
+  "sections": [
+    {
+      "title": "Critical path (do these in Week 1, parallel to engineering)",
+      "items": [
+        {
+          "id": 1,
+          "task": "Voice corpus export — 50-100 LinkedIn + X posts to `apis/brain/data/voice_corpus/sankalp/raw/`",
+          "time": "1hr",
+          "unblocks": "PR-32, PR-35, PR-36, PR-38, PR-39",
+          "done": false
+        },
+        {
+          "id": 2,
+          "task": "VAPID key generation (web push)",
+          "time": "5min",
+          "unblocks": "PR-2, PR-4",
+          "done": false
+        },
+        {
+          "id": 3,
+          "task": "Gmail app password",
+          "time": "5min",
+          "unblocks": "PR-2, PR-4",
+          "done": false
+        },
+        {
+          "id": 4,
+          "task": "Olga Clerk provisioning",
+          "time": "10min",
+          "unblocks": "PR-4, PR-28",
+          "done": false
+        },
+        {
+          "id": 5,
+          "task": "Vercel team budget cap",
+          "time": "5min",
+          "unblocks": "PR-4, PR-10",
+          "done": false
+        },
+        {
+          "id": 6,
+          "task": "Cancel Slack workspace",
+          "time": "2min",
+          "unblocks": "Wave 0",
+          "done": false
+        },
+        {
+          "id": 7,
+          "task": "Cancel ngrok subscription (if active)",
+          "time": "2min",
+          "unblocks": "PR-11",
+          "done": false
+        },
+        {
+          "id": 8,
+          "task": "Genre catalog ratification (pick 1 starting viral genre)",
+          "time": "30min",
+          "unblocks": "PR-38",
+          "done": false
+        }
+      ]
+    },
+    {
+      "title": "Vendor account setups (when their PR opens)",
+      "items": [
+        {
+          "id": 9,
+          "task": "Postproxy/Late vendor account + first OAuth",
+          "time": "1hr",
+          "unblocks": "PR-31",
+          "done": false
+        },
+        {
+          "id": 10,
+          "task": "Opus Clip Pro account + API key",
+          "time": "15min",
+          "unblocks": "PR-35",
+          "done": false
+        },
+        {
+          "id": 11,
+          "task": "Apify account + first actor enable",
+          "time": "30min",
+          "unblocks": "PR-37",
+          "done": false
+        },
+        {
+          "id": 12,
+          "task": "Cloudflare Tunnel + Zero Trust dual-app",
+          "time": "1hr",
+          "unblocks": "PR-30",
+          "done": false
+        },
+        {
+          "id": 13,
+          "task": "Hetzner pre-snapshot before n8n reinstall",
+          "time": "15min",
+          "unblocks": "PR-30",
+          "done": false
+        },
+        {
+          "id": 14,
+          "task": "Google Calendar OAuth scopes",
+          "time": "15min",
+          "unblocks": "PR-17a",
+          "done": false
+        },
+        {
+          "id": 15,
+          "task": "Stripe MRR webhook to Studio",
+          "time": "30min",
+          "unblocks": "PR-24b",
+          "done": false
+        },
+        {
+          "id": 16,
+          "task": "PostHog project key + funnels seeded",
+          "time": "1hr",
+          "unblocks": "PR-24b",
+          "done": false
+        },
+        {
+          "id": 17,
+          "task": "Viral account handle reservation (TikTok + IG + X + Threads)",
+          "time": "1hr",
+          "unblocks": "PR-38",
+          "done": false
+        }
+      ]
+    }
+  ],
+  "total": 17,
+  "completed": 0,
+  "remaining": 17,
+  "estTimeLeftMin": 464,
+  "generatedFrom": "docs/strategy/DAY_0_FOUNDER_ACTIONS.md"
+}
