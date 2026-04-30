@@ -13,6 +13,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
+class ConversationLinks(BaseModel):
+    """Typed cross-links from a Conversation to other Brain entities."""
+
+    expense_id: str | None = None
+
+
 class ConversationParticipant(BaseModel):
     id: str
     kind: Literal["founder", "persona", "cofounder", "external"]
@@ -54,6 +60,8 @@ class Conversation(BaseModel):
     status: StatusLevel = "open"
     snooze_until: datetime | None = None
     parent_action_id: str | None = None
+    links: ConversationLinks | None = None
+    needs_founder_action: bool = False
 
 
 class ConversationsListPage(BaseModel):
@@ -73,6 +81,8 @@ class ConversationCreate(BaseModel):
     participants: list[ConversationParticipant] = Field(default_factory=list)
     parent_action_id: str | None = None
     attachments: list[Attachment] = Field(default_factory=list)
+    links: ConversationLinks | None = None
+    needs_founder_action: bool = False
 
 
 class ConversationUpdate(BaseModel):

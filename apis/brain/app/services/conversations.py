@@ -38,6 +38,17 @@ from app.schemas.conversation import (
     UrgencyLevel,
 )
 
+_EXPENSE_TAG_ALLOWLIST = frozenset(
+    {"expense-approval", "expense-monthly-close", "expense-rule-change"}
+)
+
+
+def _validate_conversation_tags(tags: list[str]) -> None:
+    for t in tags:
+        if t.startswith("expense-") and t not in _EXPENSE_TAG_ALLOWLIST:
+            raise ValueError(f"Unknown expense-related tag: {t!r}")
+
+
 logger = logging.getLogger(__name__)
 
 _fts_lock = threading.Lock()
@@ -205,7 +216,11 @@ def _default_status(urgency: UrgencyLevel) -> StatusLevel:
 
 def create_conversation(create: ConversationCreate) -> Conversation:
     """Create a new Conversation and persist it to disk."""
+    _validate_conversation_tags(create.tags)
     now = datetime.now(UTC)
+    status: StatusLevel = (
+        "needs-action" if create.needs_founder_action else _default_status(create.urgency)
+    )
     conv = Conversation(
         id=str(uuid4()),
         title=create.title,
@@ -231,12 +246,48 @@ def create_conversation(create: ConversationCreate) -> Conversation:
         ),
         created_at=now,
         updated_at=now,
-        status=_default_status(create.urgency),
+        status=status,
         snooze_until=None,
         parent_action_id=create.parent_action_id,
+        links=create.links,
+        needs_founder_action=create.needs_founder_action,
     )
     _save_conversation(conv)
+    _maybe_push_notify(conv)
     return conv
+
+
+def _maybe_push_notify(conv: Conversation) -> None:
+    """Fan out a web push notification for high/critical conversations.
+
+    Dead-letters on failure — never blocks the create path.
+    SMTP fallback ships in PR J.
+    """
+    if conv.urgency not in _HIGH_URGENCY or not conv.needs_founder_action:
+        return
+
+    import contextlib
+
+    import app.services.web_push as wp_svc
+    from app.services.web_push import VapidConfigError
+
+    unread = unread_count(status_filter="needs-action")
+    body_text = conv.messages[0].body_md[:120] if conv.messages else ""
+    payload = {
+        "title": f"Brain: {conv.title}",
+        "body": body_text,
+        "url": f"/admin/brain/conversations/{conv.id}",
+        "unreadCount": unread,
+    }
+    with contextlib.suppress(VapidConfigError):
+        # VapidConfigError is logged by web_push service; suppress here so
+        # the conversation is still created cleanly when VAPID is unconfigured.
+        try:
+            wp_svc.fan_out_push(user_id="founder", payload=payload)
+        except VapidConfigError:
+            logger.info("web_push: VAPID not configured — skipping push for conv %s", conv.id)
+        except Exception as exc:
+            logger.warning("web_push: fan_out error for conv %s: %s", conv.id, exc)
 
 
 def get_conversation(conversation_id: str) -> Conversation:

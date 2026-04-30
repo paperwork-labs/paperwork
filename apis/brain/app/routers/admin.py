@@ -1278,3 +1278,65 @@ async def get_brain_improvement_index(
     """
     response = self_improvement_svc.brain_improvement_response()
     return success_response(response.model_dump(mode="json"))
+
+
+# ---------------------------------------------------------------------------
+# WS-69 PR I — Web Push (VAPID)
+# ---------------------------------------------------------------------------
+
+
+class WebPushSubscribeBody(BaseModel):
+    user_id: str = Field(default="founder")
+    endpoint: str
+    p256dh: str
+    auth: str = Field(alias="auth")
+
+    model_config = {"populate_by_name": True}
+
+
+class WebPushUnsubscribeBody(BaseModel):
+    endpoint: str
+
+
+@router.get("/web-push/vapid-public-key")
+async def get_vapid_public_key(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Return the VAPID public key for client-side push subscription."""
+    import app.services.web_push as wp_svc
+    from app.services.web_push import VapidConfigError
+
+    try:
+        pub = wp_svc.get_vapid_public_key()
+    except VapidConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    return success_response({"vapid_public_key": pub})
+
+
+@router.post("/web-push/subscribe")
+async def web_push_subscribe(
+    body: WebPushSubscribeBody,
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Register a PushSubscription for the founder."""
+    import app.services.web_push as wp_svc
+
+    wp_svc.subscribe(
+        user_id=body.user_id,
+        endpoint=body.endpoint,
+        p256dh=body.p256dh,
+        auth=body.auth,
+    )
+    return success_response({"subscribed": True})
+
+
+@router.post("/web-push/unsubscribe")
+async def web_push_unsubscribe(
+    body: WebPushUnsubscribeBody,
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Remove a PushSubscription by endpoint (idempotent)."""
+    import app.services.web_push as wp_svc
+
+    wp_svc.unsubscribe(endpoint=body.endpoint)
+    return success_response({"unsubscribed": True})

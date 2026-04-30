@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   Archive,
+  Bell,
   BellOff,
   CheckCircle2,
   ChevronDown,
@@ -23,6 +24,8 @@ import type {
   ThreadMessage,
   UrgencyLevel,
 } from "@/types/conversations";
+import { AppBadgeManager, useUnreadCount } from "@/components/pwa/AppBadgeManager";
+import { isPushSupported } from "@/lib/web-push";
 import { ComposeModal } from "./compose-modal";
 import { SnoozePicker } from "./snooze-picker";
 
@@ -287,11 +290,14 @@ export function ConversationsClient({ brainConfigured, initialPage }: Props) {
 
   return (
     <div className="flex h-[calc(100vh-10rem)] flex-col gap-4 overflow-hidden">
+      {/* Badge manager — mounts silently, clears badge since inbox is open */}
+      <AppBadgeManager clearOnMount />
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <MessageSquare className="h-5 w-5 text-sky-400" />
           <h1 className="text-xl font-semibold text-zinc-100">Conversations</h1>
+          <PushBadgePill />
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -581,5 +587,32 @@ function EmptyState({ filter, search }: { filter: FilterChip; search: string }) 
     <div data-testid="conversations-empty-filter" className="p-8 text-center text-sm text-zinc-500">
       No conversations match this filter
     </div>
+  );
+}
+
+function PushBadgePill() {
+  const [pushOn, setPushOn] = useState(false);
+  const count = useUnreadCount();
+
+  useEffect(() => {
+    if (!isPushSupported()) return;
+    if (Notification.permission === "granted") {
+      setPushOn(true);
+    }
+  }, []);
+
+  if (!pushOn) return null;
+
+  return (
+    <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-300 ring-1 ring-emerald-500/30">
+      <Bell className="h-3 w-3" />
+      Push: On
+      {count > 0 && (
+        <>
+          {" · "}
+          <span>Badge: {count}</span>
+        </>
+      )}
+    </span>
   );
 }
