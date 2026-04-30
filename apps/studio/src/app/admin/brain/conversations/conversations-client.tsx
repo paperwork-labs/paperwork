@@ -51,7 +51,21 @@ import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqErrorState } from "@/components/admin/hq/HqErrorState";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { ComposeModal } from "./compose-modal";
+import {
+  createSlashCommands,
+  runSlashPrefixedLine,
+  SlashCommandValidationError,
+} from "@/lib/slash-commands";
+import { ConversationComposer } from "./conversation-composer";
+import type { BrainPersonaOption } from "./conversation-composer";
 import { SnoozePicker } from "./snooze-picker";
+
+function prependPersonaRoutingLine(body: string): string {
+  const mentions = Array.from(body.matchAll(/@([\w-]+)/g)).map((m) => m[1]);
+  if (mentions.length === 0) return body;
+  const unique = [...new Set(mentions)].map((m) => `\`@${m}\``).join(", ");
+  return `**Route to persona:** ${unique}\n\n${body}`;
+}
 
 const FILTER_LABELS: Record<FilterChip, string> = {
   "needs-action": "Needs action",
@@ -240,6 +254,7 @@ interface Props {
   /** Founder-actions source or Brain backfill/list failure — no silent empty inbox. */
   setupError?: string | null;
   composePersonaOptions?: ComposePersonaOption[];
+  replyPersonas?: BrainPersonaOption[];
 }
 
 export function ConversationsClient({
@@ -247,6 +262,7 @@ export function ConversationsClient({
   initialPage,
   setupError = null,
   composePersonaOptions = [],
+  replyPersonas = [],
 }: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -269,6 +285,7 @@ export function ConversationsClient({
   const [replyLoading, setReplyLoading] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
   const [snoozingId, setSnoozingId] = useState<string | null>(null);
+  const [composerError, setComposerError] = useState<string | null>(null);
   const [threadAnchorId, setThreadAnchorId] = useState<string | null>(null);
   const [threadPanelEntered, setThreadPanelEntered] = useState(false);
   const [threadReplyText, setThreadReplyText] = useState("");
@@ -410,24 +427,73 @@ export function ConversationsClient({
     if (json.success && json.data) updateSelectedFromList(json.data);
   };
 
-  const handleReply = async () => {
-    if (!selected || !replyText.trim()) return;
-    setReplyLoading(true);
-    try {
+  const emitThreadMarkdown = useCallback(
+    async (bodyMd: string): Promise<void> => {
+      if (!selected) return;
       const json = await apiFetch(`/api/admin/conversations/${selected.id}/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           author: { id: "founder", kind: "founder", display_name: "Founder" },
-          body_md: replyText.trim(),
+          body_md: bodyMd,
           attachments: [],
         }),
       });
-      if (json.success) {
+      if (!json.success) {
+        throw new SlashCommandValidationError(json.error ?? "Failed to post message");
+      }
+      const convJson = await apiFetch(`/api/admin/conversations/${selected.id}`);
+      if (convJson.success && convJson.data) updateSelectedFromList(convJson.data);
+    },
+    [selected],
+  );
+
+  const slashCommandsRegistry = useMemo(() => {
+    if (!selected) return [];
+    return createSlashCommands({
+      conversationId: selected.id,
+      emitMessage: emitThreadMarkdown,
+    });
+  }, [selected, emitThreadMarkdown]);
+
+  const handleReply = async () => {
+    if (!selected || !replyText.trim()) return;
+    setReplyLoading(true);
+    setComposerError(null);
+    try {
+      const trimmed = replyText.trim();
+      const slashOutcome = await runSlashPrefixedLine(trimmed, slashCommandsRegistry);
+      if (slashOutcome.status === "validation_failed") {
+        setComposerError(slashOutcome.message);
+        return;
+      }
+      if (slashOutcome.status === "completed") {
         setReplyText("");
-        // Refresh the selected conversation
-        const convJson = await apiFetch(`/api/admin/conversations/${selected.id}`);
-        if (convJson.success && convJson.data) updateSelectedFromList(convJson.data);
+        return;
+      }
+
+      const plainBody = prependPersonaRoutingLine(trimmed);
+      const json = await apiFetch(`/api/admin/conversations/${selected.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          author: { id: "founder", kind: "founder", display_name: "Founder" },
+          body_md: plainBody,
+          attachments: [],
+        }),
+      });
+      if (!json.success) {
+        setComposerError(json.error ?? "Unknown error posting reply");
+        return;
+      }
+      setReplyText("");
+      const convJson = await apiFetch(`/api/admin/conversations/${selected.id}`);
+      if (convJson.success && convJson.data) updateSelectedFromList(convJson.data);
+    } catch (e) {
+      if (e instanceof SlashCommandValidationError) {
+        setComposerError(e.message);
+      } else {
+        setComposerError(e instanceof Error ? e.message : "Unexpected error sending reply");
       }
     } finally {
       setReplyLoading(false);
