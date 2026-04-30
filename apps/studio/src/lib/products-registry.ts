@@ -2,6 +2,14 @@
 
 export type ProductStage = "concept" | "alpha" | "beta" | "ga";
 
+export type ProductPricingTier = {
+  id: string;
+  name: string;
+  /** Monthly USD; `null` means custom / contact sales */
+  price_monthly_usd: number | null;
+  blurb?: string;
+};
+
 export type ProductRegistryEntry = {
   slug: string;
   name: string;
@@ -13,6 +21,7 @@ export type ProductRegistryEntry = {
   owner_persona: string;
   url: string | null;
   admin_url: string;
+  pricing_tiers?: ProductPricingTier[];
 };
 
 export type ProductsRegistryFile = {

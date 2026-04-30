@@ -10,7 +10,27 @@
       "active_users": 0,
       "owner_persona": "cfo",
       "url": "https://axiomfolio.com",
-      "admin_url": "/admin/products/axiomfolio"
+      "admin_url": "/admin/products/axiomfolio",
+      "pricing_tiers": [
+        {
+          "id": "starter",
+          "name": "Starter",
+          "price_monthly_usd": 0,
+          "blurb": "Paper trading and core portfolio views"
+        },
+        {
+          "id": "pro",
+          "name": "Pro",
+          "price_monthly_usd": 49,
+          "blurb": "Live accounts, automation, and advanced risk"
+        },
+        {
+          "id": "enterprise",
+          "name": "Enterprise",
+          "price_monthly_usd": null,
+          "blurb": "SSO, dedicated support, and custom workflows"
+        }
+      ]
     },
     {
       "slug": "filefree",
@@ -22,7 +42,8 @@
       "active_users": 0,
       "owner_persona": "founder",
       "url": "https://filefree.com",
-      "admin_url": "/admin/products/filefree"
+      "admin_url": "/admin/products/filefree",
+      "pricing_tiers": []
     },
     {
       "slug": "launchfree",
@@ -34,7 +55,8 @@
       "active_users": 0,
       "owner_persona": "founder",
       "url": "https://launchfree.com",
-      "admin_url": "/admin/products/launchfree"
+      "admin_url": "/admin/products/launchfree",
+      "pricing_tiers": []
     },
     {
       "slug": "distill",
@@ -46,7 +68,8 @@
       "active_users": 0,
       "owner_persona": "brain",
       "url": null,
-      "admin_url": "/admin/products/distill"
+      "admin_url": "/admin/products/distill",
+      "pricing_tiers": []
     },
     {
       "slug": "trinkets",
@@ -58,7 +81,8 @@
       "active_users": 0,
       "owner_persona": "founder",
       "url": null,
-      "admin_url": "/admin/products/trinkets"
+      "admin_url": "/admin/products/trinkets",
+      "pricing_tiers": []
     },
     {
       "slug": "studio",
@@ -70,7 +94,15 @@
       "active_users": 1,
       "owner_persona": "founder",
       "url": "https://paperworklabs.com",
-      "admin_url": "/admin"
+      "admin_url": "/admin",
+      "pricing_tiers": [
+        {
+          "id": "internal",
+          "name": "Internal",
+          "price_monthly_usd": 0,
+          "blurb": "Operator workspace — not customer-priced"
+        }
+      ]
     },
     {
       "slug": "brain",
@@ -82,7 +114,8 @@
       "active_users": 0,
       "owner_persona": "brain",
       "url": null,
-      "admin_url": "/admin/brain"
+      "admin_url": "/admin/brain",
+      "pricing_tiers": []
     }
   ]
 }
