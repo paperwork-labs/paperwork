@@ -1,9 +1,10 @@
+import { resolveComposePersonaOptions } from "@/lib/compose-persona-options";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 import {
   countFounderActionItems,
   readFounderActionsJsonFromDisk,
 } from "@/lib/founder-actions-source";
-import { getE2EConversationsListPage } from "@/lib/e2e-conversations-fixture";
+import { getE2EMutableListPage } from "@/lib/e2e-conversations-mutable";
 import type { ConversationsListPage } from "@/types/conversations";
 import { ConversationsClient } from "./conversations-client";
 
@@ -69,26 +70,40 @@ async function fetchListPage(
 }
 
 export default async function ConversationsPage() {
+  const composePersonaOptions = await resolveComposePersonaOptions();
   const auth = getBrainAdminFetchOptions();
 
   if (process.env.STUDIO_E2E_FIXTURE === "1") {
     return (
       <ConversationsClient
         brainConfigured
-        initialPage={getE2EConversationsListPage()}
+        initialPage={getE2EMutableListPage()}
         setupError={null}
+        composePersonaOptions={composePersonaOptions}
       />
     );
   }
 
   if (!auth.ok) {
-    return <ConversationsClient brainConfigured={false} initialPage={null} setupError={null} />;
+    return (
+      <ConversationsClient
+        brainConfigured={false}
+        initialPage={null}
+        setupError={null}
+        composePersonaOptions={composePersonaOptions}
+      />
+    );
   }
 
   const disk = readFounderActionsJsonFromDisk();
   if (!disk.ok) {
     return (
-      <ConversationsClient brainConfigured initialPage={null} setupError={disk.message} />
+      <ConversationsClient
+        brainConfigured
+        initialPage={null}
+        setupError={disk.message}
+        composePersonaOptions={composePersonaOptions}
+      />
     );
   }
 
@@ -117,6 +132,11 @@ export default async function ConversationsPage() {
   }
 
   return (
-    <ConversationsClient brainConfigured initialPage={initialPage} setupError={setupError} />
+    <ConversationsClient
+      brainConfigured
+      initialPage={initialPage}
+      setupError={setupError}
+      composePersonaOptions={composePersonaOptions}
+    />
   );
 }

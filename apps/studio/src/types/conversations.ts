@@ -29,10 +29,20 @@ export interface ThreadMessage {
   attachments: Attachment[];
   created_at: string; // ISO 8601
   reactions: Record<string, string[]>; // emoji → participant_ids
+  parent_message_id?: string | null;
 }
 
 export type UrgencyLevel = "info" | "normal" | "high" | "critical";
 export type StatusLevel = "open" | "needs-action" | "snoozed" | "resolved" | "archived";
+
+/** Routing channel for multi-participant / product-aligned inbox (WS-76 PR-21). */
+export type ConversationSpace =
+  | "personal"
+  | "paperwork-labs"
+  | "axiomfolio"
+  | "filefree"
+  | "runbook-asks"
+  | "incidents";
 
 export interface ConversationLinks {
   expense_id?: string | null;
@@ -44,6 +54,8 @@ export interface Conversation {
   tags: string[];
   urgency: UrgencyLevel;
   persona: string | null;
+  /** Absent rows default to `paperwork-labs` in Studio. */
+  space?: ConversationSpace | null;
   participants: ConversationParticipant[];
   messages: ThreadMessage[];
   created_at: string;
@@ -80,6 +92,7 @@ export interface ConversationCreate {
   tags?: string[];
   urgency?: UrgencyLevel;
   persona?: string | null;
+  space?: ConversationSpace | null;
   participants?: ConversationParticipant[];
   parent_action_id?: string | null;
   attachments?: Attachment[];

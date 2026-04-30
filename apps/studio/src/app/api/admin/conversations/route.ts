@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getE2EConversationsListPage } from "@/lib/e2e-conversations-fixture";
+
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
+import { e2eCreateConversation, getE2EMutableListPage } from "@/lib/e2e-conversations-mutable";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ function notConfigured() {
 
 export async function GET(req: NextRequest) {
   if (process.env.STUDIO_E2E_FIXTURE === "1") {
-    return NextResponse.json({ success: true, data: getE2EConversationsListPage() });
+    return NextResponse.json({ success: true, data: getE2EMutableListPage() });
   }
 
   const auth = getBrainAdminFetchOptions();
@@ -36,6 +37,17 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  if (process.env.STUDIO_E2E_FIXTURE === "1") {
+    try {
+      const raw = (await req.json()) as Record<string, unknown>;
+      const data = e2eCreateConversation(raw);
+      return NextResponse.json({ success: true, data }, { status: 201 });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Invalid compose payload";
+      return NextResponse.json({ success: false, error: msg }, { status: 400 });
+    }
+  }
+
   const auth = getBrainAdminFetchOptions();
   if (!auth.ok) return notConfigured();
 
