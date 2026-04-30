@@ -1,0 +1,28 @@
+
+slug: viral_trader_humor
+voice:
+  mode: active
+  anchors:
+    - author: "Anonymous finmeme corpus"
+      source: finmeme_blend_v1
+      sample_count: 48
+    - author: Desk joke rollup
+      source: trading_floor_bits
+      sample_count: 15
+    - author: Volatility shitpost set
+      source: vix_meme_pack
+      sample_count: 22
+  corpus_dir: voice/corpus/viral_trader_humor
+  cross_genre_pull_allowed:
+    sources:
+      - founder_sankalp
+    min_compliance_level: creative_free
+  forbidden_phrases:
+    - guaranteed return
+    - risk-free
+  signature_moves:
+    - one_liner_reveal
+    - chart_meme_callback
+  platform_targets:
+    - twitter
+    - threads

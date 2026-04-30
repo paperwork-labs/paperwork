@@ -56,7 +56,12 @@
     "docs/strategy/N8N_DECOMMISSION_INVENTORY.md::scripts/deploy-n8n-workflows.sh",
     "docs/strategy/N8N_DECOMMISSION_INVENTORY.md::scripts/fix-n8n-env.sh",
     "docs/strategy/N8N_DECOMMISSION_INVENTORY.md::scripts/n8n-activate-workflows.sh",
-    "docs/strategy/N8N_DECOMMISSION_INVENTORY.md::scripts/snapshot_n8n_graphs.py"
+    "docs/strategy/N8N_DECOMMISSION_INVENTORY.md::scripts/snapshot_n8n_graphs.py",
+    "docs/strategy/STUDIO_UX_AUDIT_2026Q2.md::apps/studio/src/app/admin/infrastructure/tabs/overview-tab.tsx"
   ],
-  "stale": []
+  "stale": [
+    "docs/strategy/STUDIO_UX_AUDIT_2026Q2.md::apps/studio/src/app/admin/docs/page.tsx:41",
+    "docs/strategy/STUDIO_UX_AUDIT_2026Q2.md::apps/studio/src/app/admin/sprints/page.tsx:580",
+    "docs/strategy/STUDIO_UX_AUDIT_2026Q2.md::apps/studio/src/app/admin/sprints/page.tsx:77"
+  ]
 }
