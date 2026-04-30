@@ -1,4 +1,7 @@
-"""Append-only error ingestion store for Wave PROBE PR-PB3."""
+"""Append-only error ingestion store for Wave PROBE PR-PB3.
+
+medallion: ops
+"""
 
 from __future__ import annotations
 
@@ -236,7 +239,9 @@ def query_aggregates(*, since: datetime | None = None, limit: int = 50) -> list[
         for record in records:
             by_fingerprint.setdefault(record.fingerprint, []).append(record)
 
-        counts = Counter({fingerprint: len(items) for fingerprint, items in by_fingerprint.items()})
+        counts = Counter(
+            {fingerprint: len(items) for fingerprint, items in by_fingerprint.items()}
+        )
         rows: list[dict[str, Any]] = []
         for fingerprint, _count in counts.most_common(limit):
             items = by_fingerprint[fingerprint]
