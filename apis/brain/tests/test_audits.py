@@ -54,13 +54,13 @@ def _error_finding(audit_id: str = "stack") -> AuditFinding:
 # ---------------------------------------------------------------------------
 
 
-def test_registry_seeds_11_audits(tmp_path: Path) -> None:
+def test_registry_seeds_12_audits(tmp_path: Path) -> None:
     with patch("app.services.audits._brain_data_dir", return_value=tmp_path):
         from app.services import audits
 
         defs = audits.load_registry()
 
-    assert len(defs) == 11
+    assert len(defs) == 12
     ids = {d.id for d in defs}
     expected = {
         "stack",
@@ -74,6 +74,7 @@ def test_registry_seeds_11_audits(tmp_path: Path) -> None:
         "lighthouse",
         "vendor_renewal",
         "cross_app_ui_redundancy",
+        "auto_distillation",
     }
     assert ids == expected
 
