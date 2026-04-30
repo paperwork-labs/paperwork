@@ -315,10 +315,6 @@ export async function getN8nExecutions(limit = 20) {
   return data?.data ?? [];
 }
 
-/** True when Studio has an n8n REST base URL plus API key or basic auth (same gate as workflow/execution fetches). */
-export function isN8nIntegrationConfigured(): boolean {
-  return Boolean(getN8nApiRoot() && getN8nHeaders());
-}
 
 export type MissingGithubCredential = "GITHUB_TOKEN";
 
