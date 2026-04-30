@@ -121,11 +121,7 @@ def send_conversation_email(
         for a in attachments:
             url = a.get("url", "") or ""
             label = a.get("id", url) or url
-            parts.append(
-                "<li>"
-                f'<a href="{escape(url, quote=True)}">{escape(label)}</a>'
-                "</li>"
-            )
+            parts.append(f'<li><a href="{escape(url, quote=True)}">{escape(label)}</a></li>')
         att_html = "<ul>" + "".join(parts) + "</ul>"
 
     html_body = (
