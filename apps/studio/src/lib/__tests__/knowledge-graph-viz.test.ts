@@ -1,21 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
-import {
-  __resetKnowledgeGraphVizCacheForTests,
-  getKnowledgeGraphVizPayload,
-  isKnowHotZoneNode,
-} from "@/lib/knowledge-graph-viz";
+import { getKnowledgeGraphVizPayload, isKnowHotZoneNode } from "@/lib/knowledge-graph-viz";
 
 describe("knowledge-graph-viz", () => {
-  beforeEach(() => {
-    __resetKnowledgeGraphVizCacheForTests();
-  });
-
-  it("loads bundled graph with viz links anchored to ids", () => {
+  it("loads bundled graph with nodes and links", () => {
     const g = getKnowledgeGraphVizPayload();
-    expect(g.nodes.length).toBeGreaterThanOrEqual(20);
-    expect(g.links.length).toBeGreaterThanOrEqual(10);
-
+    expect(g.nodes.length).toBeGreaterThan(20);
+    expect(g.links.length).toBeGreaterThan(10);
     const ids = new Set(g.nodes.map((n) => n.id));
     for (const l of g.links) {
       expect(ids.has(l.source)).toBe(true);

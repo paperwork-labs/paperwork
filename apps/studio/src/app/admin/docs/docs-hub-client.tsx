@@ -82,7 +82,15 @@ export function DocsHubClient({ entries, readingPaths }: DocsHubClientProps) {
         }
       />
 
-      <DocsHubSearchForm />
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+        <DocsHubSearchForm />
+        <Link
+          href="/admin/docs/graph"
+          className="inline-flex items-center justify-center rounded-lg border border-zinc-700 bg-zinc-900/50 px-3 py-2 text-xs font-medium text-zinc-200 transition hover:border-sky-500/40 hover:bg-zinc-800/80 hover:text-white"
+        >
+          Knowledge graph
+        </Link>
+      </div>
 
       <section aria-labelledby="reading-paths-heading" className="space-y-3">
         <div className="flex items-center gap-2">

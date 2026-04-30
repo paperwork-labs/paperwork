@@ -20,6 +20,7 @@ import {
   Building2,
   FileText,
   CircleDollarSign,
+  Network,
 } from "lucide-react";
 
 export type NavItem = {
@@ -94,6 +95,7 @@ export function buildNavGroups(
       items: [
         { href: "/admin/architecture", label: "Architecture", icon: Workflow },
         { href: "/admin/docs", label: "Docs", icon: BookOpen },
+        { href: "/admin/docs/graph", label: "Knowledge Graph", icon: Network },
         { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
       ],
     },
