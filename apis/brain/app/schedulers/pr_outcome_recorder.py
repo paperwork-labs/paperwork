@@ -146,8 +146,10 @@ def _parse_pr_payload(pr: dict[str, Any]) -> MergedPullRequest | None:
     merged_at = str(pr.get("merged_at") or "").strip()
     if not merged_at:
         return None
-    head = pr.get("head") if isinstance(pr.get("head"), dict) else {}
-    user = pr.get("user") if isinstance(pr.get("user"), dict) else {}
+    head_raw = pr.get("head")
+    head: dict[str, Any] = head_raw if isinstance(head_raw, dict) else {}
+    user_raw = pr.get("user")
+    user: dict[str, Any] = user_raw if isinstance(user_raw, dict) else {}
     return MergedPullRequest(
         number=int(pr.get("number") or 0),
         merged_at=merged_at,
