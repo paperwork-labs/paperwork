@@ -32,6 +32,8 @@ export function statusPillClass(status: WorkstreamStatus): string {
       return "border-emerald-700/70 bg-emerald-950/45 text-emerald-200";
     case "cancelled":
       return "border-rose-800/60 bg-rose-950/40 text-rose-200";
+    case "deferred":
+      return "border-slate-700/70 bg-slate-950/50 text-slate-300";
     default:
       return "border-zinc-600 bg-zinc-900 text-zinc-300";
   }

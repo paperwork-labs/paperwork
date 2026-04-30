@@ -25,9 +25,10 @@ describe("bundled workstreams KPI parity (/admin/workstreams)", () => {
     expect(kpis.blocked).toBe(ws.filter((w) => w.status === "blocked").length);
     expect(kpis.completed).toBe(ws.filter((w) => w.status === "completed").length);
     expect(kpis.cancelled).toBe(ws.filter((w) => w.status === "cancelled").length);
+    expect(kpis.deferred).toBe(ws.filter((w) => w.status === "deferred").length);
     expect(kpis.total).toBe(ws.length);
     expect(
-      kpis.active + kpis.blocked + kpis.completed + kpis.cancelled,
+      kpis.active + kpis.blocked + kpis.completed + kpis.cancelled + kpis.deferred,
     ).toBe(kpis.total);
 
     const forAvg = ws.filter(

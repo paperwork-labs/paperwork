@@ -24,6 +24,7 @@ export const WorkstreamStatusSchema = z.enum([
   "blocked",
   "completed",
   "cancelled",
+  "deferred",
 ]);
 
 export const WorkstreamOwnerSchema = z.enum([
@@ -65,6 +66,10 @@ export const WorkstreamSchema = z.object({
   pr_numbers: z.array(z.number().int().positive()).nullable().optional(),
   /** Optional calendar deadline (ISO date `YYYY-MM-DD` or full datetime). WS-76 calendar. */
   due_at: z.string().min(4).optional(),
+  /** Short summary on the board (optional; complements `notes`). */
+  description: z.string().min(3).max(400).optional(),
+  /** Optional dependency shorthand (e.g. `ws-76`); display/metadata unless Brain honours it. */
+  depends_on: z.array(z.string().min(2).max(64)).optional(),
 });
 
 const WorkstreamsFileBaseSchema = z.object({
@@ -115,6 +120,13 @@ function _refineWorkstreamsFile(
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `${ws.id}: cancelled status requires percent_done=0 (got ${ws.percent_done})`,
+        path: ["workstreams"],
+      });
+    }
+    if (ws.status === "deferred" && ws.percent_done !== 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${ws.id}: deferred status requires percent_done=0 (got ${ws.percent_done})`,
         path: ["workstreams"],
       });
     }
@@ -175,6 +187,7 @@ export interface WorkstreamKpis {
   blocked: number;
   completed: number;
   cancelled: number;
+  deferred: number;
   avg_percent_done: number;
 }
 

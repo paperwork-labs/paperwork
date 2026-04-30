@@ -101,6 +101,8 @@ def _merge_status(current: str, proposed: str) -> str | None:
         return None
     if current == "cancelled":
         return None
+    if current == "deferred":
+        return None
     if proposed == "pending" and current == "in_progress":
         return None
     if current == "pending":
@@ -292,6 +294,9 @@ def _patch_one_workstream(
     if ws.status == "cancelled":
         new_pct = 0
         new_status = "cancelled"
+    elif ws.status == "deferred":
+        new_pct = 0
+        new_status = "deferred"
     elif new_status == "completed" or ws.status == "completed":
         new_pct = 100
         new_status = "completed"

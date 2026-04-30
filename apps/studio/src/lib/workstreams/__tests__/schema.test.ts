@@ -114,7 +114,7 @@ describe("workstreams schema", () => {
     const parsed = WorkstreamsFileSchema.parse(workstreamsJson);
     const kpis = computeKpis(parsed);
     expect(kpis.total).toBe(parsed.workstreams.length);
-    expect(kpis.active + kpis.blocked + kpis.completed + kpis.cancelled).toBe(
+    expect(kpis.active + kpis.blocked + kpis.completed + kpis.cancelled + kpis.deferred).toBe(
       kpis.total,
     );
     const inFlightManual = parsed.workstreams.filter(

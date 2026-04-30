@@ -171,6 +171,10 @@ export function isWorkstreamCancelledForBoardKpi(ws: Pick<Workstream, "status">)
   return normalizedWorkstreamStatusForKpi(ws) === "cancelled";
 }
 
+export function isWorkstreamDeferredForBoardKpi(ws: Pick<Workstream, "status">): boolean {
+  return normalizedWorkstreamStatusForKpi(ws) === "deferred";
+}
+
 /** Board KPI totals for `/admin/workstreams`; buckets sum to row count for valid JSON rows. */
 export function computeWorkstreamsBoardKpis(file: WorkstreamsFile): WorkstreamKpis {
   const total = file.workstreams.length;
@@ -178,10 +182,11 @@ export function computeWorkstreamsBoardKpis(file: WorkstreamsFile): WorkstreamKp
   const blocked = file.workstreams.filter((w) => isWorkstreamBlockedForBoardKpi(w)).length;
   const completed = file.workstreams.filter((w) => isWorkstreamCompletedForBoardKpi(w)).length;
   const cancelled = file.workstreams.filter((w) => isWorkstreamCancelledForBoardKpi(w)).length;
+  const deferred = file.workstreams.filter((w) => isWorkstreamDeferredForBoardKpi(w)).length;
   const forAvg = file.workstreams.filter((w) => isWorkstreamInFlight(w));
   const avg_percent_done =
     forAvg.length === 0
       ? 0
       : Math.round(forAvg.reduce((acc, w) => acc + w.percent_done, 0) / forAvg.length);
-  return { total, active, blocked, completed, cancelled, avg_percent_done };
+  return { total, active, blocked, completed, cancelled, deferred, avg_percent_done };
 }
