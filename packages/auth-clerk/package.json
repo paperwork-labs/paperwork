@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "@paperwork-labs/ui": "workspace:*",
-    "jose": "^5.9.6"
+    "jose": "^6.2.3"
   },
   "devDependencies": {
     "@clerk/nextjs": "^7.2.8",
