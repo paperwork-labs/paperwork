@@ -46,10 +46,13 @@ class ThreadMessage(BaseModel):
 
 UrgencyLevel = Literal["info", "normal", "high", "critical"]
 StatusLevel = Literal["open", "needs-action", "snoozed", "resolved", "archived"]
+ConversationSentiment = Literal["positive", "neutral", "negative"]
 
 
 class Conversation(BaseModel):
     id: str
+    product_slug: str | None = None  # WS-76 PR-24a — product cockpit support routing
+    sentiment: ConversationSentiment | None = None
     title: str
     tags: list[str] = Field(default_factory=list)
     urgency: UrgencyLevel = "normal"
@@ -80,6 +83,8 @@ class ConversationCreate(BaseModel):
     tags: list[str] = Field(default_factory=list)
     urgency: UrgencyLevel = "normal"
     persona: str | None = None
+    product_slug: str | None = None
+    sentiment: ConversationSentiment | None = None
     participants: list[ConversationParticipant] = Field(default_factory=list)
     parent_action_id: str | None = None
     attachments: list[Attachment] = Field(default_factory=list)

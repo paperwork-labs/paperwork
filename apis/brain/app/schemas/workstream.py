@@ -9,14 +9,15 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-# Parity: Studio ``schema.ts`` — ``DISPATCH_COOLDOWN_MS`` / ``dispatchableWorkstreams``.
 DISPATCH_COOLDOWN_MS = 4 * 60 * 60 * 1000
 
 _ID_RE = re.compile(r"^WS-\d{2,3}-[a-z0-9-]+$")
 _TRACK_RE = re.compile(r"^[A-Z][0-9A-Z]{0,2}$")
 _BRIEF_TAG_RE = re.compile(r"^track:[a-z0-9-]+$")
 
-WorkstreamStatus = Literal["pending", "in_progress", "blocked", "completed", "cancelled"]
+WorkstreamStatus = Literal[
+    "pending", "in_progress", "blocked", "completed", "cancelled", "deferred"
+]
 WorkstreamOwner = Literal["brain", "founder", "opus"]
 
 
@@ -43,6 +44,8 @@ class Workstream(BaseModel):
     pr_url: str | None = None
     prs: list[int] | None = None
     pr_numbers: list[int] | None = None
+    description: str | None = Field(None, min_length=3, max_length=400)
+    depends_on: list[str] | None = None
 
     @field_validator("id")
     @classmethod
@@ -75,6 +78,16 @@ class Workstream(BaseModel):
                 raise ValueError("each blocker string must be at least 3 characters")
         return v
 
+    @field_validator("depends_on")
+    @classmethod
+    def _depends_on_elts(cls, v: list[str] | None) -> list[str] | None:
+        if v is None:
+            return v
+        for d in v:
+            if len(d) < 2 or len(d) > 64:
+                raise ValueError("each depends_on entry must be 2-64 characters")
+        return v
+
 
 class WorkstreamsFile(BaseModel):
     version: Literal[1]
@@ -100,6 +113,10 @@ class WorkstreamsFile(BaseModel):
                 raise ValueError(
                     f"{ws.id}: cancelled status requires percent_done=0 (got {ws.percent_done})"
                 )
+            if ws.status == "deferred" and ws.percent_done != 0:
+                raise ValueError(
+                    f"{ws.id}: deferred status requires percent_done=0 (got {ws.percent_done})"
+                )
             if ws.status == "blocked" and len(ws.blockers) == 0:
                 raise ValueError(
                     f"{ws.id}: blocked status requires at least one entry in blockers[]"
@@ -123,10 +140,6 @@ def dispatchable_workstreams(
     n: int = 3,
     now_ms: int | None = None,
 ) -> list[Workstream]:
-    """Mirror TS ``dispatchableWorkstreams`` in ``apps/studio/src/lib/workstreams/schema.ts``.
-
-    Selection order and filters must stay identical for the same logical input.
-    """
     if now_ms is None:
         now_ms = int(time.time() * 1000)
 
@@ -135,7 +148,6 @@ def dispatchable_workstreams(
             return True
         last_ms = _iso_to_unix_ms(last_iso)
         if last_ms is None:
-            # Match JS: ``Date.parse`` invalid → NaN → comparison fails → not dispatchable.
             return False
         return now_ms - last_ms > DISPATCH_COOLDOWN_MS
 
@@ -155,5 +167,4 @@ def dispatchable_workstreams(
 
 
 def workstreams_file_to_json_dict(file: WorkstreamsFile) -> dict[str, Any]:
-    """Serialize for ``json.dumps`` (plain dicts, JSON-friendly)."""
     return file.model_dump(mode="json")

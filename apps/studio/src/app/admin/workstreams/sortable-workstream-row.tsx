@@ -84,6 +84,24 @@ export function SortableWorkstreamRow({
             </span>
           </div>
 
+          {ws.description ? (
+            <p className="text-xs leading-snug text-zinc-400">{ws.description}</p>
+          ) : null}
+
+          {ws.depends_on != null && ws.depends_on.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {ws.depends_on.map((d) => (
+                <span
+                  key={d}
+                  className="rounded-md bg-zinc-800/80 px-2 py-0.5 font-mono text-[10px] text-zinc-400 ring-1 ring-zinc-700/60"
+                  title="Dependency"
+                >
+                  → {d}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-zinc-400">
             <span title={ws.last_activity}>
               {formatRelativeActivity(ws.last_activity)}

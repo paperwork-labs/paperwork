@@ -111,12 +111,16 @@ describe("tracker-reconcile", () => {
       const blocked = parsed.workstreams.filter((w) => w.status === "blocked").length;
       const completed = parsed.workstreams.filter((w) => w.status === "completed").length;
       const cancelled = parsed.workstreams.filter((w) => w.status === "cancelled").length;
+      const deferred = parsed.workstreams.filter((w) => w.status === "deferred").length;
       expect(kpis.total).toBe(parsed.workstreams.length);
       expect(kpis.active).toBe(pendingInProg);
       expect(kpis.blocked).toBe(blocked);
       expect(kpis.completed).toBe(completed);
       expect(kpis.cancelled).toBe(cancelled);
-      expect(kpis.active + kpis.blocked + kpis.completed + kpis.cancelled).toBe(kpis.total);
+      expect(kpis.deferred).toBe(deferred);
+      expect(kpis.active + kpis.blocked + kpis.completed + kpis.cancelled + kpis.deferred).toBe(
+        kpis.total,
+      );
     });
 
     it("normalizes legacy active token toward in-progress flight for KPI parity with plans/sprints", () => {
