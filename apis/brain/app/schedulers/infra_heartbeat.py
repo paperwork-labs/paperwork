@@ -33,7 +33,8 @@ def _format_heartbeat_message() -> str:
     now = datetime.now(UTC)
     return (
         f"**Daily Infra Heartbeat — {now.strftime('%Y-%m-%d %H:%M')} UTC**\n\n"
-        "Brain APScheduler is running. No critical alerts at heartbeat time.\n\n"
+        "This heartbeat job executed successfully (APScheduler fired; "
+        "conversation row recorded). It does not poll external alert systems.\n\n"
         "For full infra status see Render dashboard and `/admin/health`."
     )
 

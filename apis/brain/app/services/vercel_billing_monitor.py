@@ -10,10 +10,12 @@ spend on metered resources. This service closes that gap.
 Operation
 ---------
 Hourly cron polls the Vercel billing endpoint, persists a snapshot to
-``apis/brain/data/vercel_billing.json``, and emits Brain Conversation alerts at 50%,
-75%, 90%, and 100% of the configured on-demand budget. Each threshold
-fires at most once per billing cycle (dedup via the ``alerts_fired``
-field).
+``apis/brain/data/vercel_billing.json``, and returns threshold-crossing
+records from :func:`evaluate_alerts`. The APScheduler job in
+``app.schedulers.vercel_billing_monitor`` turns each alert into a Brain
+Conversation (tags ``vercel-budget``, ``paperwork-labs``, ``bill-pending``).
+Each threshold fires at most once per billing cycle (dedup via the
+``alerts_fired`` field).
 
 medallion: ops
 """
