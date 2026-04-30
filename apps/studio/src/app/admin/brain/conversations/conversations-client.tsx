@@ -11,6 +11,7 @@ import {
   BellOff,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   MessageSquare,
   Paperclip,
   Plus,
@@ -404,7 +405,8 @@ export function ConversationsClient({
       </div>
 
       {/* Filter chips + search */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col gap-2 md:flex-row md:flex-wrap md:items-center">
+        <div className="flex flex-wrap items-center gap-2">
         {filters.map((f) => {
           const count = filterCounts[f];
           return (
@@ -426,13 +428,14 @@ export function ConversationsClient({
             </button>
           );
         })}
-        <div className="relative ml-auto">
+        </div>
+        <div className="relative w-full md:ml-auto md:w-60">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-500" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search conversations…"
-            className="h-8 w-60 rounded-lg border border-zinc-800 bg-zinc-900 pl-8 pr-3 text-sm text-zinc-300 placeholder-zinc-600 outline-none focus:border-sky-500/50"
+            className="h-8 w-full rounded-lg border border-zinc-800 bg-zinc-900 pl-8 pr-3 text-sm text-zinc-300 placeholder-zinc-600 outline-none focus:border-sky-500/50"
           />
         </div>
       </div>
@@ -446,10 +449,14 @@ export function ConversationsClient({
         </div>
       )}
 
-      {/* 2-pane layout */}
-      <div className="flex min-h-0 flex-1 gap-4">
+      {/* 2-pane layout — single pane on small screens */}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
         {/* Left inbox */}
-        <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/40">
+        <div
+          className={`flex min-h-0 flex-col overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/40 md:w-80 md:shrink-0 ${
+            selected ? "hidden min-h-0 md:flex" : "flex w-full min-h-0 flex-1"
+          }`}
+        >
           <div className="min-h-0 flex-1 overflow-y-auto">
             {loading && conversations.length === 0 ? (
               <div data-testid="conversations-loading" className="p-6 text-center text-sm text-zinc-500">
@@ -509,19 +516,34 @@ export function ConversationsClient({
         </div>
 
         {/* Right thread pane */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/40">
+        <div
+          data-testid="conversations-thread-pane"
+          className={`flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/40 ${
+            selected ? "flex min-h-0 w-full" : "hidden min-h-0 md:flex"
+          }`}
+        >
           {selected ? (
             <>
               {/* Thread header */}
               <div className="flex items-center justify-between gap-3 border-b border-zinc-800/60 p-4">
-                <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 flex-1 items-start gap-2">
+                  <button
+                    type="button"
+                    aria-label="Back to inbox"
+                    data-testid="conversations-mobile-back"
+                    className="mt-0.5 shrink-0 rounded-lg p-1 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100 md:hidden"
+                    onClick={() => setSelected(null)}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <UrgencyDot urgency={selected.urgency} />
                     <h2 className="truncate text-sm font-semibold text-zinc-100">
                       {selected.title}
                     </h2>
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-1.5 pl-4">
+                  <div className="mt-1 flex flex-wrap gap-1.5 md:pl-4">
                     <StatusBadge status={selected.status} />
                     {selected.tags.map((tag) => (
                       <span
@@ -531,6 +553,7 @@ export function ConversationsClient({
                         {tag}
                       </span>
                     ))}
+                  </div>
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">

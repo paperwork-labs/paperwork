@@ -26,7 +26,8 @@ describe("HqPageContainer", () => {
     const el = container.firstElementChild as HTMLElement;
     expect(el.className).toContain("max-w-[960px]");
     expect(el.className).toContain("mx-auto");
-    expect(el.className).toContain("px-6");
+    expect(el.className).toContain("px-4");
+    expect(el.className).toContain("md:px-6");
   });
 
   it("applies narrow, wide, and full variants", () => {

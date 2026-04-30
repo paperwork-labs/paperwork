@@ -27,7 +27,7 @@ export function RunbookClient({ data }: { data: RunbookData }) {
       />
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <HqStatCard
           label="Total Items"
           value={data.total}

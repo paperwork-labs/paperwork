@@ -67,7 +67,7 @@ export function PersonasTabsClient({ data }: { data: PersonasPagePayload }) {
           ]}
         />
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <HqStatCard
             label="Active personas"
             value={data.dashboard.activePersonas}

@@ -262,7 +262,7 @@ export default function WorkflowsRoster({
             </Link>
           ))}
         </div>
-        <div className="overflow-x-auto">
+        <div className="-mx-1 overflow-x-auto scroll-smooth pb-1 [scrollbar-gutter:stable] md:mx-0">
           <table className="w-full min-w-[620px] text-left text-sm">
             <thead className="text-xs uppercase tracking-wide text-zinc-500">
               <tr>

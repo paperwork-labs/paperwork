@@ -81,8 +81,8 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setOpen}
       label="Command palette"
-      overlayClassName="fixed inset-0 z-50 bg-black/40 backdrop-blur-xl transition-opacity duration-150 data-[state=closed]:opacity-0 data-[state=open]:opacity-100"
-      contentClassName="fixed left-1/2 top-1/2 z-50 max-h-[min(80vh,560px)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-zinc-700/50 bg-zinc-900/95 p-0 shadow-2xl backdrop-blur-xl transition-all duration-150 data-[state=closed]:scale-95 data-[state=closed]:opacity-0 data-[state=open]:scale-100 data-[state=open]:opacity-100"
+      overlayClassName="fixed inset-0 z-[70] bg-black/40 backdrop-blur-xl transition-opacity duration-150 data-[state=closed]:opacity-0 data-[state=open]:opacity-100"
+      contentClassName="fixed left-3 right-3 top-[max(0.75rem,6vh)] z-[71] mx-auto max-h-[min(80vh,560px)] w-auto max-w-none overflow-hidden rounded-xl border border-zinc-700/50 bg-zinc-900/95 p-0 shadow-2xl backdrop-blur-xl transition-all duration-150 data-[state=closed]:scale-95 data-[state=closed]:opacity-0 data-[state=open]:scale-100 data-[state=open]:opacity-100 md:left-1/2 md:right-auto md:top-1/2 md:w-[calc(100%-2rem)] md:max-w-xl md:-translate-x-1/2 md:-translate-y-1/2"
     >
       <h2 id="studio-command-palette-title" className="sr-only">
         Command palette

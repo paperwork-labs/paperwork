@@ -73,7 +73,7 @@ export default function TasksPage() {
             {openDates} open · {company.critical_dates.length} milestones
           </span>
         </div>
-        <div className="overflow-hidden rounded-lg border border-zinc-800">
+        <div className="overflow-x-auto rounded-lg border border-zinc-800">
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-900/80 text-xs uppercase tracking-wide text-zinc-500">
               <tr>

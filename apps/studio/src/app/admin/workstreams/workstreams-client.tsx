@@ -365,7 +365,7 @@ export function WorkstreamsBoardClient({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <HqStatCard variant="compact" label="Total" value={kpis.total} />
           <HqStatCard variant="compact" label="Active workstreams" value={kpis.active} />
           <HqStatCard variant="compact" label="Blocked" value={kpis.blocked} status="danger" />

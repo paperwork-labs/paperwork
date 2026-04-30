@@ -30,7 +30,7 @@ export default async function PrPipelinePage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold text-zinc-100">PR pipeline</h1>
+        <h1 className="text-xl font-semibold text-zinc-100 md:text-2xl">PR pipeline</h1>
         <p className="mt-1 text-sm text-zinc-500">
           Agent auto-merge, auto-rebase, and stuck-PR triage. Cached ~60s on the
           server; refresh the page to reload.

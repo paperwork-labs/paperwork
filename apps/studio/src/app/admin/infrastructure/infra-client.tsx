@@ -649,7 +649,7 @@ export default function InfraClient({
               ? `${degradedCount} check${degradedCount > 1 ? "s" : ""} degraded (below)`
               : "Supplementary checks"}
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           <HqStatCard
             label="Supplementary / HTTP"
             value={`${healthyCount}/${supplementaryRows.length}`}
