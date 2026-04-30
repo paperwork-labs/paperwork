@@ -26,6 +26,7 @@ from app.routers import (
     admin_learning,
     admin_logs,
     auto_distillation,
+    bills,
     brain,
     conversations,
     cost_monitor,
@@ -205,6 +206,7 @@ app.include_router(internal_secrets_router)
 app.include_router(workstreams.router, prefix="/api/v1")
 app.include_router(conversations.router, prefix="/api/v1")
 app.include_router(expenses.router, prefix="/api/v1")
+app.include_router(bills.router, prefix="/api/v1")
 app.include_router(cost_monitor.router, prefix="/api/v1")
 app.include_router(vendors.router, prefix="/api/v1")
 app.include_router(admin_logs.router, prefix="/api/v1")

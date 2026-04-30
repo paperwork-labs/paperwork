@@ -17,6 +17,9 @@ import {
   Calendar as CalendarIcon,
   UserCircle2,
   KeyRound,
+  Building2,
+  FileText,
+  CircleDollarSign,
 } from "lucide-react";
 
 export type NavItem = {
@@ -44,6 +47,24 @@ export function buildNavGroups(
       items: [{ href: "/admin", label: "Overview", icon: LayoutDashboard }],
     },
     {
+      label: "Money",
+      items: [
+        {
+          href: "/admin/expenses",
+          label: "Expenses",
+          icon: Receipt,
+          pendingBadge: expensesPending,
+        },
+        { href: "/admin/vendors", label: "Vendors", icon: Building2 },
+        { href: "/admin/bills", label: "Bills", icon: FileText },
+        {
+          href: "/admin/infrastructure?tab=cost",
+          label: "Cost monitor",
+          icon: CircleDollarSign,
+        },
+      ],
+    },
+    {
       label: "Trackers",
       items: [
         { href: "/admin/tasks", label: "Tasks (company)", icon: ListChecks },
@@ -53,12 +74,6 @@ export function buildNavGroups(
         { href: "/admin/sprints", label: "Sprints", icon: Rocket },
         { href: "/admin/workstreams", label: "Workstreams", icon: Kanban },
         { href: "/admin/pr-pipeline", label: "PR pipeline", icon: GitBranch },
-        {
-          href: "/admin/expenses",
-          label: "Expenses",
-          icon: Receipt,
-          pendingBadge: expensesPending,
-        },
       ],
     },
     {
