@@ -315,7 +315,6 @@ export async function getN8nExecutions(limit = 20) {
   return data?.data ?? [];
 }
 
-
 export type MissingGithubCredential = "GITHUB_TOKEN";
 
 export type RecentPullRequestsResult = {
