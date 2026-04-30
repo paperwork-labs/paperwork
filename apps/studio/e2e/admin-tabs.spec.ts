@@ -98,9 +98,17 @@ test.describe("/admin/brain/personas — tab panels stay populated", () => {
     await expect(page).toHaveURL(/tab=routing/, { timeout: PANEL_TIMEOUT_MS });
     await expectActivePanelContains(page, /ea\.mdc|EA routing/i);
 
-    await page.getByRole("tab", { name: "Activity" }).click();
+    await page.getByRole("tab", { name: /activity stream/i }).click();
     await expect(page).toHaveURL(/tab=activity/, { timeout: PANEL_TIMEOUT_MS });
     await expectActivePanelContains(page, /agent_dispatch_log\.json/);
+
+    await page.getByRole("tab", { name: /promotions queue/i }).click();
+    await expect(page).toHaveURL(/tab=promotions-queue/, { timeout: PANEL_TIMEOUT_MS });
+    await expectActivePanelContains(page, /self_merge_promotions\.json/);
+
+    await page.getByRole("tab", { name: /open roles/i }).click();
+    await expect(page).toHaveURL(/tab=open-roles/, { timeout: PANEL_TIMEOUT_MS });
+    await expectActivePanelContains(page, /Model Assignment|No open roles|\.cursor\/rules/);
 
     await page.getByRole("tab", { name: /model registry/i }).click();
     await expect(page).toHaveURL(/tab=model-registry/, { timeout: PANEL_TIMEOUT_MS });

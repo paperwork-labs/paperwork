@@ -1,5 +1,7 @@
 "use client";
 
+import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
+
 import { usePersonasPagePayload } from "../personas-tabs-client";
 
 export default function ActivityTab() {
@@ -17,18 +19,28 @@ export default function ActivityTab() {
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">
-          Last 50 dispatches from{" "}
+          Recent persona-backed dispatches (newest first) from{" "}
           <code className="rounded bg-muted px-1 py-0.5 text-xs">
             apis/brain/data/agent_dispatch_log.json
-          </code>{" "}
-          (newest first).
+          </code>
+          .
         </p>
       )}
 
-      {activity.note ? (
+      {activity.note && activity.rows.length > 0 ? (
         <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
           {activity.note}
         </div>
+      ) : null}
+
+      {activity.source.ok && activity.rows.length === 0 ? (
+        <HqEmptyState
+          title="No dispatch activity yet"
+          description={
+            activity.note ??
+            "Cheap-agent dispatches will appear here once agent_dispatch_log.json records events."
+          }
+        />
       ) : null}
 
       {activity.rows.length > 0 ? (
@@ -62,3 +74,4 @@ export default function ActivityTab() {
     </div>
   );
 }
+

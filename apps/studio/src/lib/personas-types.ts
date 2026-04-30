@@ -90,9 +90,34 @@ export type MarkdownTable = {
   rows: string[][];
 };
 
+export type OpenRoleRow = Pick<PersonaRegistryRow, "personaId" | "name" | "relativePath">;
+
+/** KPI row for the People (personas) HQ dashboard. */
+export type PeopleDashboardStats = {
+  activePersonas: number;
+  dispatchesToday: number;
+  approvalRateLabel: string;
+  /** Placeholder until WS-76 PR-10 ships real spend rollup. */
+  dailyCostStatLabel: string;
+};
+
+export type PromotionsQueuePayload = {
+  source: BrainDataSourceStatus;
+  /** Normalized rows from `apis/brain/data/self_merge_promotions.json` promotions array. */
+  promotions: Record<string, unknown>[];
+};
+
+export type SelfMergePromotionsFile = {
+  promotions?: unknown[];
+  [key: string]: unknown;
+};
+
 export type PersonasPagePayload = {
   repoRoot: string;
+  dashboard: PeopleDashboardStats;
   registry: PersonaRegistryRow[];
+  openRoles: OpenRoleRow[];
+  promotions: PromotionsQueuePayload;
   cost: CostTabPayload;
   routing: { source: BrainDataSourceStatus; rows: EaRoutingRow[] };
   activity: {
@@ -102,3 +127,4 @@ export type PersonasPagePayload = {
   };
   modelRegistry: { source: BrainDataSourceStatus; tables: MarkdownTable[] };
 };
+

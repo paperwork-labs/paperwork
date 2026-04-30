@@ -14,11 +14,13 @@ describe("resolvePersonasTab", () => {
     expect(resolvePersonasTab("bogus")).toBe("registry");
   });
 
-  it("accepts all five ids", () => {
+  it("accepts all People dashboard tab ids", () => {
     expect(resolvePersonasTab("registry")).toBe("registry");
+    expect(resolvePersonasTab("activity")).toBe("activity");
+    expect(resolvePersonasTab("promotions-queue")).toBe("promotions-queue");
+    expect(resolvePersonasTab("open-roles")).toBe("open-roles");
     expect(resolvePersonasTab("cost")).toBe("cost");
     expect(resolvePersonasTab("routing")).toBe("routing");
-    expect(resolvePersonasTab("activity")).toBe("activity");
     expect(resolvePersonasTab("model-registry")).toBe("model-registry");
   });
 });

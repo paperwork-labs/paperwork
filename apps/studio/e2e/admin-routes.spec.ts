@@ -199,12 +199,12 @@ test.describe("Brain bucket stub pages (WS-69 PR C)", () => {
       test.skip();
       return;
     }
-    await expect(page.getByRole("main").getByRole("heading", { name: "Personas" })).toBeVisible({
+    await expect(page.getByRole("main").getByRole("heading", { name: "People" })).toBeVisible({
       timeout: 15_000,
     });
   });
 
-  test("/admin/brain/personas renders all five tabs", async ({ page }) => {
+  test("/admin/brain/personas renders all People dashboard tabs", async ({ page }) => {
     const resp = await page.goto("/admin/brain/personas", { waitUntil: "domcontentloaded" });
     if (!resp || resp.status() >= 500) {
       test.skip();
@@ -220,10 +220,12 @@ test.describe("Brain bucket stub pages (WS-69 PR C)", () => {
       return;
     }
     await waitForStudioTabShellHydrated(page);
-    await expect(page.getByRole("tab", { name: "Registry", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Specs", exact: true })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /activity stream/i })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /promotions queue/i })).toBeVisible();
+    await expect(page.getByRole("tab", { name: /open roles/i })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Cost" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Routing" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Activity" })).toBeVisible();
     await expect(page.getByRole("tab", { name: /model registry/i })).toBeVisible();
   });
 

@@ -72,7 +72,7 @@ export function buildNavGroups(
     {
       label: "Brain",
       items: [
-        { href: "/admin/brain/personas", label: "Personas", icon: Users },
+        { href: "/admin/brain/personas", label: "People", icon: Users },
         {
           href: "/admin/brain/conversations",
           label: "Conversations",

@@ -5,20 +5,24 @@ import {
   lazy,
   useContext,
   useMemo,
-  type LazyExoticComponent,
   type ComponentType,
+  type LazyExoticComponent,
 } from "react";
 
-import { Page, PageContainer, PageHeader } from "@paperwork-labs/ui";
+import { CheckCircle2, CircleDollarSign, Radio, Users } from "lucide-react";
 
+import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
+import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
-import type { PersonasPagePayload } from "@/lib/personas-types";
 import type { PersonasTabId } from "@/lib/personas-tab-params";
+import type { PersonasPagePayload } from "@/lib/personas-types";
 
 const RegistryTab = lazy(() => import("./_tabs/registry-tab"));
+const ActivityTab = lazy(() => import("./_tabs/activity-tab"));
+const PromotionsQueueTab = lazy(() => import("./_tabs/promotions-queue-tab"));
+const OpenRolesTab = lazy(() => import("./_tabs/open-roles-tab"));
 const CostTab = lazy(() => import("./_tabs/cost-tab"));
 const RoutingTab = lazy(() => import("./_tabs/routing-tab"));
-const ActivityTab = lazy(() => import("./_tabs/activity-tab"));
 const ModelRegistryTab = lazy(() => import("./_tabs/model-registry-tab"));
 
 const PersonasDataContext = createContext<PersonasPagePayload | null>(null);
@@ -37,10 +41,12 @@ function shellTabs(): readonly {
   Content: LazyExoticComponent<ComponentType>;
 }[] {
   return [
-    { id: "registry", label: "Registry", Content: RegistryTab },
+    { id: "registry", label: "Specs", Content: RegistryTab },
+    { id: "activity", label: "Activity stream", Content: ActivityTab },
+    { id: "promotions-queue", label: "Promotions queue", Content: PromotionsQueueTab },
+    { id: "open-roles", label: "Open roles", Content: OpenRolesTab },
     { id: "cost", label: "Cost", Content: CostTab },
     { id: "routing", label: "Routing", Content: RoutingTab },
-    { id: "activity", label: "Activity", Content: ActivityTab },
     { id: "model-registry", label: "Model registry", Content: ModelRegistryTab },
   ];
 }
@@ -50,15 +56,46 @@ export function PersonasTabsClient({ data }: { data: PersonasPagePayload }) {
 
   return (
     <PersonasDataContext.Provider value={data}>
-      <Page fullWidth>
-        <PageContainer width="wide">
-          <PageHeader
-            title="Personas"
-            subtitle="Cursor rule roster, Brain dispatch costs, EA routing map, activity, and AI model registry."
+      <div className="space-y-8">
+        <HqPageHeader
+          title="People"
+          subtitle="AI team members — Cursor rule specs, dispatch activity, promotions, spend, routing, and registry."
+          breadcrumbs={[
+            { label: "Admin", href: "/admin" },
+            { label: "Brain", href: "/admin/brain/self-improvement" },
+            { label: "People" },
+          ]}
+        />
+
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <HqStatCard
+            label="Active personas"
+            value={data.dashboard.activePersonas}
+            icon={<Users className="h-3.5 w-3.5 text-zinc-500" />}
+            helpText="Rules in .cursor/rules"
           />
-          <TabbedPageShell<PersonasTabId> tabs={tabs} defaultTab="registry" />
-        </PageContainer>
-      </Page>
+          <HqStatCard
+            label="Dispatches today"
+            value={data.dashboard.dispatchesToday}
+            icon={<Radio className="h-3.5 w-3.5 text-zinc-500" />}
+            helpText="agent_dispatch_log.json (UTC day)"
+          />
+          <HqStatCard
+            label="Approval rate"
+            value={data.dashboard.approvalRateLabel}
+            icon={<CheckCircle2 className="h-3.5 w-3.5 text-zinc-500" />}
+            helpText="Merged vs failed outcomes (last 30d)"
+          />
+          <HqStatCard
+            label="Daily cost"
+            value={data.dashboard.dailyCostStatLabel}
+            icon={<CircleDollarSign className="h-3.5 w-3.5 text-zinc-500" />}
+            helpText="$ / persona / day — PR-10"
+          />
+        </div>
+
+        <TabbedPageShell<PersonasTabId> tabs={tabs} defaultTab="registry" />
+      </div>
     </PersonasDataContext.Provider>
   );
 }

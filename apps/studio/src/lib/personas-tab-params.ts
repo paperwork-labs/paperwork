@@ -1,8 +1,10 @@
 export const PERSONA_TAB_IDS = [
   "registry",
+  "activity",
+  "promotions-queue",
+  "open-roles",
   "cost",
   "routing",
-  "activity",
   "model-registry",
 ] as const;
 
@@ -14,3 +16,4 @@ export function resolvePersonasTab(raw: string | undefined): PersonasTabId {
   }
   return "registry";
 }
+
