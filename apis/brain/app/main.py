@@ -28,6 +28,7 @@ from app.routers import (
     auto_distillation,
     brain,
     conversations,
+    cost_monitor,
     expenses,
     health,
     webhooks,
@@ -201,6 +202,7 @@ app.include_router(internal_secrets_router)
 app.include_router(workstreams.router, prefix="/api/v1")
 app.include_router(conversations.router, prefix="/api/v1")
 app.include_router(expenses.router, prefix="/api/v1")
+app.include_router(cost_monitor.router, prefix="/api/v1")
 app.include_router(admin_logs.router, prefix="/api/v1")
 
 
