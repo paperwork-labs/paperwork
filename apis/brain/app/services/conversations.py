@@ -645,7 +645,7 @@ def backfill_founder_actions_detailed(path: Path | None = None) -> FounderAction
             raw_urgency = item.get("urgency")
             urgency: UrgencyLevel = tier_urgency
             if raw_urgency in ("info", "normal", "high", "critical"):
-                urgency = raw_urgency  # type: ignore[assignment]
+                urgency = raw_urgency
 
             tags: list[str] = [tier_id, "founder-action"]
             src = item.get("source")
