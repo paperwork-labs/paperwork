@@ -12,7 +12,7 @@ alembic>=1.18.4
 pydantic>=2.13.3
 pydantic-settings>=2.14.0
 pydantic[email]>=2.13.3
-python-multipart>=0.0.17
+python-multipart>=0.0.27
 
 # Auth
 python-jose[cryptography]>=3.3.0
