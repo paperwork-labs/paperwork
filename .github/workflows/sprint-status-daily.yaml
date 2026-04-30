@@ -25,7 +25,7 @@ jobs:
       - uses: actions/setup-node@a3ce5138768d2e81ff563c0f318f72749631749f
         with:
           node-version: "20"
-      - uses: pnpm/action-setup@21a45dee091631fe79bdc9662f705f1de781ac42
+      - uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e
         with:
           version: 10
       - name: Install workspace deps
