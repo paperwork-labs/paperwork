@@ -3,6 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { trinketsAppearance } from "@paperwork-labs/auth-clerk/appearance";
+import { createProductClerkLocalization } from "@paperwork-labs/auth-clerk/localization";
 import "./globals.css";
 
 const inter = Inter({
@@ -14,6 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
 });
+
+const clerkLocalization = createProductClerkLocalization("Trinkets");
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://tools.filefree.ai"),
@@ -55,6 +58,7 @@ export default function RootLayout({
       >
         <ClerkProvider
           appearance={trinketsAppearance}
+          localization={clerkLocalization}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
         >

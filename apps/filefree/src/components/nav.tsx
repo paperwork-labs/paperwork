@@ -10,7 +10,7 @@ import { useUser } from "@clerk/nextjs";
 import { Button } from "@paperwork-labs/ui";
 import { useLogout } from "@/hooks/use-auth";
 
-const HIDE_NAV_PREFIXES = ["/auth", "/sign-in", "/sign-up"];
+const HIDE_NAV_PREFIXES = ["/auth"];
 
 export function Nav() {
   const pathname = usePathname();
@@ -20,7 +20,9 @@ export function Nav() {
 
   if (HIDE_NAV_PREFIXES.some((p) => pathname.startsWith(p))) return null;
 
-  const authLoading = !clerkLoaded;
+  const isAuthPage =
+    pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
+  const authLoading = !clerkLoaded && !isAuthPage;
   const loggedIn = Boolean(isSignedIn);
   const displayUser = clerkUser
     ? {

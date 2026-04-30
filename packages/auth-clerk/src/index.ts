@@ -14,6 +14,7 @@ export {
   formatSiblingExplainer,
   type PaperworkProduct,
 } from "./products";
+export { createProductClerkLocalization } from "./localization";
 
 export {
   createClerkAppearance,

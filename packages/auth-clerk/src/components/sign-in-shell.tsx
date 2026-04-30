@@ -73,6 +73,8 @@ export interface SignInShellProps {
   variant?: "customer" | "admin";
   /** Clerk Appearance object — usually built with `createClerkAppearance(...)`. */
   appearance?: Appearance;
+  /** Show the "{tagline}, by Paperwork Labs" attribution under the Clerk card. */
+  showAttribution?: boolean;
   /** The actual `<SignIn />` or `<SignUp />` element. */
   children: ReactNode;
 }
@@ -86,6 +88,7 @@ export function SignInShell({
   isPrimaryHost = false,
   variant = "customer",
   appearance,
+  showAttribution = true,
   children,
 }: SignInShellProps) {
   const headline = isPrimaryHost
@@ -132,12 +135,14 @@ export function SignInShell({
           className="mx-auto h-px w-16 bg-border/60"
           aria-hidden
         />
-        <p
-          className="text-sm text-muted-foreground"
-          data-testid="sign-in-shell-attribution"
-        >
-          {attribution}
-        </p>
+        {showAttribution && (
+          <p
+            className="text-sm text-muted-foreground"
+            data-testid="sign-in-shell-attribution"
+          >
+            {attribution}
+          </p>
+        )}
         {showExplainer && (
           <p
             className="text-xs text-muted-foreground/80"
