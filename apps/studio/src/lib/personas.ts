@@ -23,11 +23,16 @@ import type {
   AgentDispatchFile,
   BrainDataSourceStatus,
   CostTabPayload,
+  DispatchRecord,
   EaRoutingRow,
   MarkdownTable,
+  OpenRoleRow,
+  PeopleDashboardStats,
   PersonaRegistryRow,
   PersonasPagePayload,
   PrOutcomesFile,
+  PromotionsQueuePayload,
+  SelfMergePromotionsFile,
 } from "./personas-types";
 
 export function getRepoRoot(): string {
@@ -208,6 +213,99 @@ export function buildCostPayload(
   };
 }
 
+
+function utcCalendarDayFromIso(ts: string): string | null {
+  const ms = Date.parse(ts);
+  if (!Number.isFinite(ms)) return null;
+  return new Date(ms).toISOString().slice(0, 10);
+}
+
+function utcTodayCalendarDay(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Approval rate over dispatches from the last 30d with terminal-ish outcomes:
+ * merged counts toward pass; revert / CI fail / explicit review fail toward fail.
+ */
+function approvalRateLast30dLabel(dispatches: DispatchRecord[]): string {
+  const iso30 = daysAgoIso(30);
+  let pass = 0;
+  let fail = 0;
+  for (const d of dispatches) {
+    const ts = typeof d.dispatched_at === "string" ? d.dispatched_at : null;
+    if (!ts || ts < iso30) continue;
+    const o = d.outcome;
+    if (!o || typeof o !== "object") continue;
+    if (o.reverted === true) {
+      fail++;
+      continue;
+    }
+    if (typeof o.merged_at === "string" && o.merged_at.length > 0) {
+      pass++;
+      continue;
+    }
+    if (o.ci_initial_pass === false) {
+      fail++;
+      continue;
+    }
+    if (o.review_pass === false) {
+      fail++;
+      continue;
+    }
+  }
+  const decided = pass + fail;
+  if (decided === 0) return "—";
+  return `${Math.round((pass / decided) * 100)}%`;
+}
+
+export function buildPeopleDashboardStats(
+  dispatchRead: { status: BrainDataSourceStatus; data: AgentDispatchFile | null },
+  activePersonas: number,
+): PeopleDashboardStats {
+  const today = utcTodayCalendarDay();
+  let dispatchesToday = 0;
+  if (dispatchRead.status.ok && dispatchRead.data?.dispatches) {
+    for (const d of dispatchRead.data.dispatches) {
+      const ts = typeof d.dispatched_at === "string" ? d.dispatched_at : null;
+      if (!ts) continue;
+      const day = utcCalendarDayFromIso(ts);
+      if (day === today) dispatchesToday++;
+    }
+  }
+
+  const dispatches = dispatchRead.data?.dispatches ?? [];
+  const approvalRateLabel =
+    dispatchRead.status.ok && dispatches.length > 0
+      ? approvalRateLast30dLabel(dispatches)
+      : "—";
+
+  return {
+    activePersonas,
+    dispatchesToday,
+    approvalRateLabel,
+    dailyCostStatLabel: "—",
+  };
+}
+
+function loadPromotionsQueue(repoRoot: string): PromotionsQueuePayload {
+  const p = path.join(repoRoot, "apis", "brain", "data", "self_merge_promotions.json");
+  const read = readJsonIfPresent<SelfMergePromotionsFile>(p);
+  if (!read.status.ok || read.data == null) {
+    return { source: read.status, promotions: [] };
+  }
+  const raw = read.data.promotions;
+  const promotions: Record<string, unknown>[] = [];
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      if (item && typeof item === "object" && !Array.isArray(item)) {
+        promotions.push(item as Record<string, unknown>);
+      }
+    }
+  }
+  return { source: read.status, promotions };
+}
+
 export function loadEaRoutingTable(repoRoot: string): {
   source: BrainDataSourceStatus;
   rows: EaRoutingRow[];
@@ -374,13 +472,28 @@ export async function loadPersonasPageData(): Promise<PersonasPagePayload> {
   const repoRoot = getRepoRoot();
   const registry = loadPersonaRegistry(repoRoot);
   const ids = registry.map((r) => r.personaId);
+  const dispatchPath = path.join(repoRoot, "apis", "brain", "data", "agent_dispatch_log.json");
+  const dispatchRead = readJsonIfPresent<AgentDispatchFile>(dispatchPath);
+  const dashboard = buildPeopleDashboardStats(dispatchRead, registry.length);
+  const promotions = loadPromotionsQueue(repoRoot);
   const cost = buildCostPayload(repoRoot, ids);
   const routing = loadEaRoutingTable(repoRoot);
   const activity = buildActivityFeed(repoRoot, 50);
   const modelRegistry = loadModelRegistryTables(repoRoot);
+  const openRoles: OpenRoleRow[] = registry
+    .filter((r) => r.modelAssignment === null || r.modelAssignment.trim() === "")
+    .map((r) => ({
+      personaId: r.personaId,
+      name: r.name,
+      relativePath: r.relativePath,
+    }));
+
   return {
     repoRoot,
+    dashboard,
     registry,
+    openRoles,
+    promotions,
     cost,
     routing,
     activity,

@@ -1,5 +1,7 @@
 "use client";
 
+import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
+
 import { usePersonasPagePayload } from "../personas-tabs-client";
 
 function SourceBanner(props: { ok: boolean; path: string; message?: string }) {
@@ -23,6 +25,15 @@ export default function CostTab() {
 
   return (
     <div className="space-y-4">
+      <HqEmptyState
+        title="Per-persona daily cost rollup"
+        description="Spend roll-up as estimated dollars per persona per day ships in PR-10 (WS-76). Detailed dispatch counts and registry hints remain in the table below."
+      />
+
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+        Detailed dispatch & registry estimates
+      </p>
+
       <SourceBanner
         ok={cost.dispatchSource.ok}
         path={cost.dispatchSource.path}
