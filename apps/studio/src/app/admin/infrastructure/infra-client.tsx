@@ -611,7 +611,7 @@ export default function InfraClient({
 
       {/* API providers (PR-10) */}
       <section className="space-y-4" aria-label="API providers">
-        <SectionHeader title="API providers" icon={Cpu} pill="Cost monitor coming in PR-10" />
+        <SectionHeader title="API providers" icon={Cpu} pill="Ledger on Cost tab" />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {API_PROVIDER_CARDS.map((p) => (
             <HqEmptyState

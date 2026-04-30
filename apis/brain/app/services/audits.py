@@ -1,4 +1,4 @@
-"""Audit registry service — Brain-owned adaptive cadence for 12 audits.
+"""Audit registry service — Brain-owned adaptive cadence for 13 audits.
 
 File-locked JSON stores live in apis/brain/data/:
   audit_registry.json   — AuditDef list (seeded once, founder-overridable)
@@ -144,6 +144,14 @@ _SEED_AUDITS: list[dict[str, Any]] = [
         "name": "Auto-Distillation (failure clusters to procedural rules)",
         "cadence": "weekly",
         "runner_module": "app.audits.auto_distillation",
+        "pillar": "autonomy",
+        "enabled": True,
+    },
+    {
+        "id": "cost_monitor",
+        "name": "Cost Monitor (monthly budget utilization)",
+        "cadence": "weekly",
+        "runner_module": "app.audits.cost_monitor",
         "pillar": "autonomy",
         "enabled": True,
     },

@@ -1,0 +1,33 @@
+{
+  "entries": [
+    {
+      "date": "2026-04-30",
+      "vendor": "anthropic",
+      "category": "llm",
+      "amount_usd": 0,
+      "details": "placeholder"
+    },
+    {
+      "date": "2026-04-30",
+      "vendor": "render",
+      "category": "hosting",
+      "amount_usd": 0,
+      "details": "placeholder"
+    },
+    {
+      "date": "2026-04-30",
+      "vendor": "vercel",
+      "category": "hosting",
+      "amount_usd": 0,
+      "details": "placeholder"
+    }
+  ],
+  "monthly_budgets": {
+    "anthropic": null,
+    "openai": null,
+    "google": null,
+    "render": 50,
+    "vercel": 20,
+    "hetzner": 7
+  }
+}
