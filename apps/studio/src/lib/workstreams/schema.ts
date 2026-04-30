@@ -63,6 +63,8 @@ export const WorkstreamSchema = z.object({
   pr_url: z.string().nullable().optional(),
   prs: z.array(z.number().int().positive()).nullable().optional(),
   pr_numbers: z.array(z.number().int().positive()).nullable().optional(),
+  /** Optional calendar deadline (ISO date `YYYY-MM-DD` or full datetime). WS-76 calendar. */
+  due_at: z.string().min(4).optional(),
 });
 
 const WorkstreamsFileBaseSchema = z.object({
