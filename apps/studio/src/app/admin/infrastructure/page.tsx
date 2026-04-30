@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import ServicesTab from "./tabs/services-tab";
+import VendorsTab from "./tabs/vendors-tab";
 import SecretsTab from "./tabs/secrets-tab";
 import LogsTab from "./tabs/logs-tab";
 import CostTab from "./tabs/cost-tab";
@@ -21,6 +22,11 @@ export default async function InfrastructurePage({ searchParams }: PageProps) {
       id: "services" as const,
       label: "Services",
       content: <ServicesTab />,
+    },
+    {
+      id: "vendors" as const,
+      label: "Vendors",
+      content: <VendorsTab />,
     },
     {
       id: "secrets" as const,
