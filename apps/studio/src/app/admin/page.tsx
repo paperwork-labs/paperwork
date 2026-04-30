@@ -9,6 +9,7 @@ import {
   getRecentCIRuns,
   getRecentPullRequests,
   getRecentSlackActivity,
+  isN8nIntegrationConfigured,
 } from "@/lib/command-center";
 import { PushSubscribeCard } from "@/components/pwa/PushSubscribeCard";
 import { TrackersRail } from "./_components/trackers-rail";
@@ -44,6 +45,11 @@ export default async function AdminOverviewPage() {
       : pr;
   });
 
+  const slackDailyBriefingHref =
+    process.env.NEXT_PUBLIC_SLACK_DAILY_BRIEFING_URL?.trim() ||
+    process.env.SLACK_DAILY_BRIEFING_URL?.trim() ||
+    null;
+
   return (
     <div className="space-y-6">
       <PushSubscribeCard />
@@ -63,6 +69,8 @@ export default async function AdminOverviewPage() {
           githubPrMissingCred: prsResult.missingCred,
           githubCiMissingCred: ciRunsResult.missingCred,
           slackActivity,
+          n8nConfigured: isN8nIntegrationConfigured(),
+          slackDailyBriefingHref,
           fetchedAt: new Date().toISOString(),
         }}
       />

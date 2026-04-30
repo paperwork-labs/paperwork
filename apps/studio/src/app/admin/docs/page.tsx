@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { AlertTriangle, BookOpen, Lock, Search } from "lucide-react";
+import { AlertTriangle, BookOpen, Lock } from "lucide-react";
 
+import { DocsHubSearchForm } from "./docs-hub-search";
 import { groupDocsByCategory, type DocCategory } from "@/lib/docs";
 
 export const dynamic = "force-static";
@@ -38,25 +39,7 @@ export default function DocsHubPage() {
           Anything under <span className="text-zinc-300">/admin/docs/&lt;slug&gt;</span> is readable by
           agents for grounded responses.
         </p>
-        <form
-          action="/admin/docs/search"
-          method="GET"
-          className="flex max-w-xl items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2"
-        >
-          <Search className="h-4 w-4 text-zinc-500" />
-          <input
-            type="text"
-            name="q"
-            placeholder="Search titles, tags, owners…"
-            className="flex-1 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
-          />
-          <button
-            type="submit"
-            className="rounded-md bg-zinc-800 px-3 py-1 text-xs font-medium text-zinc-200 transition hover:bg-zinc-700"
-          >
-            Search
-          </button>
-        </form>
+        <DocsHubSearchForm />
       </header>
 
       {orderedCategories.map((cat) => {

@@ -212,6 +212,11 @@ function getN8nHeaders() {
   return undefined;
 }
 
+/** True when n8n API URL and credentials are present (F-014 / F-020 — not same as "zero workflows"). */
+export function isN8nIntegrationConfigured(): boolean {
+  return Boolean(getN8nApiRoot() && getN8nHeaders());
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T | null> {
   try {
     const res = await fetch(url, { ...init, cache: "no-store" });

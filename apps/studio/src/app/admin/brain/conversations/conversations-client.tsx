@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
+  AlertTriangle,
   Archive,
   Bell,
   BellOff,
@@ -28,6 +29,8 @@ import type {
 import { AppBadgeManager, useUnreadCount } from "@/components/pwa/AppBadgeManager";
 import { isPushSupported } from "@/lib/web-push";
 import { ExpenseConversationCard } from "@/components/admin/ExpenseConversationCard";
+import { HqErrorState } from "@/components/admin/hq/HqErrorState";
+import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { ComposeModal } from "./compose-modal";
 import { SnoozePicker } from "./snooze-picker";
 
@@ -53,6 +56,20 @@ const URGENCY_LABEL: Record<UrgencyLevel, string> = {
   critical: "critical",
 };
 
+function attachmentDescription(
+  att: Conversation["messages"][0]["attachments"][0],
+): string {
+  try {
+    const u = new URL(att.url);
+    const seg = u.pathname.split("/").filter(Boolean).pop();
+    if (seg) return decodeURIComponent(seg);
+  } catch {
+    /* ignore */
+  }
+  if (att.mime) return att.mime;
+  return "attachment";
+}
+
 function UrgencyDot({ urgency }: { urgency: UrgencyLevel }) {
   return (
     <span
@@ -69,7 +86,7 @@ function AttachmentThumb({ att }: { att: Conversation["messages"][0]["attachment
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={att.thumbnail_url ?? att.url}
-          alt="attachment"
+          alt={attachmentDescription(att)}
           className="h-16 w-16 rounded object-cover"
         />
       </a>
@@ -320,23 +337,24 @@ export function ConversationsClient({
   };
 
   if (setupError) {
+    const looksLikeBrainAuth =
+      /secret|401|403|unauthorized|forbidden|x-brain-secret/i.test(setupError);
     return (
-      <div
-        data-testid="conversations-setup-error"
-        className="rounded-xl border border-red-800/60 bg-red-900/20 p-8 text-center"
-      >
-        <p className="text-sm text-red-200">{setupError}</p>
-        <p className="mt-2 text-xs text-zinc-500">
-          {/* TODO(WS-76 PR-3): replace with HqErrorState when PR-3 lands */}
-          Retry reloads the page and re-runs founder-actions validation + Brain backfill.
-        </p>
-        <button
-          type="button"
-          className="mt-4 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
-          onClick={() => window.location.reload()}
-        >
-          Retry
-        </button>
+      <div data-testid="conversations-setup-error" className="space-y-4">
+        {looksLikeBrainAuth ? (
+          <HqMissingCredCard
+            service="Brain Conversations"
+            envVar="BRAIN_API_SECRET"
+            description="Studio could not authorize to Brain for this page. Check Brain admin secret matches deployment."
+          />
+        ) : null}
+        <HqErrorState
+          title="Conversations could not finish setup"
+          description="Retry reloads the page and re-runs founder-actions validation plus Brain backfill."
+          error={setupError}
+          onRetry={() => window.location.reload()}
+          icon={<AlertTriangle className="h-6 w-6" aria-hidden />}
+        />
       </div>
     );
   }

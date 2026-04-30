@@ -15,7 +15,8 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:visual": "playwright test admin-visual-polish.spec.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.2.8",

@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
-// Agents was merged into /admin/workflows (Track J, Week 1). Keep this redirect
-// so bookmarks + old Brain memory references survive.
+// Agents roster lives under Architecture → Flows. Avoid `/admin/workflows` intermediate redirect.
 export default function AgentsRedirect(): never {
-  redirect("/admin/workflows?tab=roster");
+  permanentRedirect("/admin/architecture?tab=flows");
 }

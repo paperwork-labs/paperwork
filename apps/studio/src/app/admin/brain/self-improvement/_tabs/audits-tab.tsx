@@ -99,29 +99,27 @@ function formatRelative(iso: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-type AuditsTabProps = {
-  brainApiUrl: string | null;
-  brainApiSecret: string | null;
-};
-
-export function AuditsTab({ brainApiUrl, brainApiSecret }: AuditsTabProps) {
+/** F-042/F-043 — Brain audit admin via same-origin proxy; no client Brain secret. */
+export function AuditsTab() {
   const [audits, setAudits] = useState<AuditRow[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [brainUnavailable, setBrainUnavailable] = useState(false);
   const [cadenceFilter, setCadenceFilter] = useState<AuditCadence | "all">("all");
   const [runningId, setRunningId] = useState<string | null>(null);
   const [overrideId, setOverrideId] = useState<string | null>(null);
 
-  const headers: Record<string, string> = brainApiSecret
-    ? { "X-Brain-Secret": brainApiSecret, "Content-Type": "application/json" }
-    : { "Content-Type": "application/json" };
-
   const loadAudits = useCallback(async () => {
-    if (!brainApiUrl) return;
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`${brainApiUrl}/api/v1/admin/audits`, { headers });
+      setBrainUnavailable(false);
+      const res = await fetch("/api/admin/brain/audits", { cache: "no-store" });
+      if (res.status === 503) {
+        setBrainUnavailable(true);
+        setAudits(null);
+        return;
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = (await res.json()) as { success: boolean; data: AuditRow[] };
       setAudits(body.data ?? []);
@@ -130,19 +128,18 @@ export function AuditsTab({ brainApiUrl, brainApiSecret }: AuditsTabProps) {
     } finally {
       setLoading(false);
     }
-  }, [brainApiUrl, brainApiSecret]);
+  }, []);
 
   useEffect(() => {
     void loadAudits();
   }, [loadAudits]);
 
   const triggerRun = async (auditId: string) => {
-    if (!brainApiUrl || runningId) return;
+    if (runningId) return;
     setRunningId(auditId);
     try {
-      const res = await fetch(`${brainApiUrl}/api/v1/admin/audits/${auditId}/run`, {
+      const res = await fetch(`/api/admin/brain/audits/${encodeURIComponent(auditId)}/run`, {
         method: "POST",
-        headers,
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       await loadAudits();
@@ -154,12 +151,11 @@ export function AuditsTab({ brainApiUrl, brainApiSecret }: AuditsTabProps) {
   };
 
   const overrideCadence = async (auditId: string, cadence: AuditCadence) => {
-    if (!brainApiUrl) return;
     setOverrideId(auditId);
     try {
-      const res = await fetch(`${brainApiUrl}/api/v1/admin/audits/${auditId}/cadence`, {
+      const res = await fetch(`/api/admin/brain/audits/${encodeURIComponent(auditId)}/cadence`, {
         method: "PUT",
-        headers,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ cadence }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -177,13 +173,14 @@ export function AuditsTab({ brainApiUrl, brainApiSecret }: AuditsTabProps) {
       : audits.filter((a) => a.cadence === cadenceFilter)
     : [];
 
-  if (!brainApiUrl) {
+  if (brainUnavailable) {
     return (
       <div className="flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100/90">
         <AlertCircle className="h-4 w-4 shrink-0" />
         <p>
-          Set <code className="rounded bg-zinc-800 px-1">BRAIN_API_URL</code> and{" "}
-          <code className="rounded bg-zinc-800 px-1">BRAIN_API_SECRET</code> to use audit management.
+          Brain admin proxy is not configured. Set <code className="rounded bg-zinc-800 px-1">BRAIN_API_URL</code>{" "}
+          and <code className="rounded bg-zinc-800 px-1">BRAIN_API_SECRET</code> on the Studio server (not in the
+          browser).
         </p>
       </div>
     );

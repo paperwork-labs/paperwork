@@ -32,6 +32,13 @@ function pathHint(href: string): string {
   }
 }
 
+export const STUDIO_COMMAND_PALETTE_OPEN_EVENT = "studio:open-command-palette";
+
+export function openCommandPalette() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(STUDIO_COMMAND_PALETTE_OPEN_EVENT));
+}
+
 export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -45,6 +52,12 @@ export function CommandPalette() {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener(STUDIO_COMMAND_PALETTE_OPEN_EVENT, onOpen);
+    return () => window.removeEventListener(STUDIO_COMMAND_PALETTE_OPEN_EVENT, onOpen);
   }, []);
 
   const navigationRows = useMemo(() => {
