@@ -1,0 +1,105 @@
+{
+  "schema": "brain_vendors/v1",
+  "vendors": [
+    {
+      "id": "vercel",
+      "name": "Vercel",
+      "domain": "vercel.com",
+      "category": "hosting",
+      "monthly_estimate_usd": null,
+      "contract_url": "https://vercel.com/pricing",
+      "owner_persona": null,
+      "organization_id": null
+    },
+    {
+      "id": "render",
+      "name": "Render",
+      "domain": "render.com",
+      "category": "hosting",
+      "monthly_estimate_usd": null,
+      "contract_url": "https://render.com/pricing",
+      "owner_persona": null,
+      "organization_id": null
+    },
+    {
+      "id": "cloudflare",
+      "name": "Cloudflare",
+      "domain": "cloudflare.com",
+      "category": "dns",
+      "monthly_estimate_usd": null,
+      "contract_url": "https://www.cloudflare.com/plans/",
+      "owner_persona": null,
+      "organization_id": null
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "domain": "github.com",
+      "category": "dev_platform",
+      "monthly_estimate_usd": null,
+      "contract_url": "https://github.com/pricing",
+      "owner_persona": null,
+      "organization_id": null
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "domain": "anthropic.com",
+      "category": "ai_provider",
+      "monthly_estimate_usd": null,
+      "contract_url": "https://www.anthropic.com/pricing",
+      "owner_persona": null,
+      "organization_id": null
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "domain": "openai.com",
+      "category": "ai_provider",
+      "monthly_estimate_usd": null,
+      "contract_url": "https://openai.com/pricing",
+      "owner_persona": null,
+      "organization_id": null
+    },
+    {
+      "id": "stripe",
+      "name": "Stripe",
+      "domain": "stripe.com",
+      "category": "payments",
+      "monthly_estimate_usd": null,
+      "contract_url": "https://stripe.com/pricing",
+      "owner_persona": null,
+      "organization_id": null
+    },
+    {
+      "id": "google",
+      "name": "Google (Gemini)",
+      "domain": "google.com",
+      "category": "ai_provider",
+      "monthly_estimate_usd": null,
+      "contract_url": "https://ai.google.dev/pricing",
+      "owner_persona": null,
+      "organization_id": null
+    },
+    {
+      "id": "hetzner",
+      "name": "Hetzner",
+      "domain": "hetzner.com",
+      "category": "hosting",
+      "monthly_estimate_usd": 7,
+      "contract_url": "https://www.hetzner.com/cloud",
+      "owner_persona": null,
+      "organization_id": null
+    },
+    {
+      "id": "clerk",
+      "name": "Clerk",
+      "domain": "clerk.com",
+      "category": "auth",
+      "monthly_estimate_usd": null,
+      "contract_url": "https://clerk.com/pricing",
+      "owner_persona": null,
+      "organization_id": null
+    }
+  ]
+}
