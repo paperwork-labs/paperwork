@@ -228,23 +228,23 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
   const trafficLightConfig = {
     green: {
       label: "All Systems Operational",
-      bg: "border-emerald-800/40 bg-emerald-950/20",
-      text: "text-emerald-300",
-      dotColor: "bg-emerald-400",
+      bg: "border-[var(--status-success)]/40 bg-[var(--status-success-bg)]",
+      text: "text-[var(--status-success)]",
+      dotColor: "bg-[var(--status-success)]",
       Icon: CheckCircle2,
     },
     yellow: {
       label: "Partially Degraded",
-      bg: "border-amber-800/40 bg-amber-950/20",
-      text: "text-amber-300",
-      dotColor: "bg-amber-400",
+      bg: "border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)]",
+      text: "text-[var(--status-warning)]",
+      dotColor: "bg-[var(--status-warning)]",
       Icon: AlertTriangle,
     },
     red: {
       label: "Service Issues Detected",
-      bg: "border-rose-800/40 bg-rose-950/20",
-      text: "text-rose-300",
-      dotColor: "bg-rose-400",
+      bg: "border-[var(--status-danger)]/40 bg-[var(--status-danger-bg)]",
+      text: "text-[var(--status-danger)]",
+      dotColor: "bg-[var(--status-danger)]",
       Icon: XCircle,
     },
   }[ventureHealth];
@@ -317,7 +317,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         </div>
         <div className="flex items-center gap-3">
           {refreshError && (
-            <span className="rounded-full border border-rose-800/40 bg-rose-950/20 px-2 py-0.5 text-xs text-rose-300">
+            <span className="rounded-full border border-[var(--status-danger)]/40 bg-[var(--status-danger-bg)] px-2 py-0.5 text-xs text-[var(--status-danger)]">
               Refresh failed: {refreshError}
             </span>
           )}
@@ -369,8 +369,8 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
                 <span
                   className={`ml-1.5 ${
                     lastBriefingExec.status === "success"
-                      ? "text-emerald-400"
-                      : "text-rose-400"
+                      ? "text-[var(--status-success)]"
+                      : "text-[var(--status-danger)]"
                   }`}
                 >
                   ({lastBriefingExec.status})
@@ -519,11 +519,11 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
                   className="flex items-center gap-2 rounded-md bg-zinc-800/40 px-3 py-2 text-xs transition hover:bg-zinc-800/60"
                 >
                   {run.status === "in_progress" || run.status === "queued" ? (
-                    <Clock className="h-3.5 w-3.5 animate-spin text-amber-400" />
+                    <Clock className="h-3.5 w-3.5 animate-spin text-[var(--status-warning)]" />
                   ) : run.conclusion === "success" ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-[var(--status-success)]" />
                   ) : run.conclusion === "failure" ? (
-                    <XCircle className="h-3.5 w-3.5 text-rose-400" />
+                    <XCircle className="h-3.5 w-3.5 text-[var(--status-danger)]" />
                   ) : (
                     <AlertTriangle className="h-3.5 w-3.5 text-zinc-400" />
                   )}
@@ -531,9 +531,9 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
                   <span
                     className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${
                       run.conclusion === "success"
-                        ? "bg-emerald-500/10 text-emerald-400"
+                        ? "bg-[var(--status-success-bg)] text-[var(--status-success)]"
                         : run.conclusion === "failure"
-                          ? "bg-rose-500/10 text-rose-400"
+                          ? "bg-[var(--status-danger-bg)] text-[var(--status-danger)]"
                           : "bg-zinc-500/10 text-zinc-400"
                     }`}
                   >
@@ -565,12 +565,12 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
             slackActivity.map((entry) => (
               <div key={entry.id} className="rounded-md bg-zinc-800/40 px-3 py-2 text-sm">
                 <div className="flex items-center gap-2">
-                  <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400" />
+                  <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--status-info)]" />
                   <span className="font-medium text-zinc-100">
                     {entry.persona}
                   </span>
                   {entry.persona_pinned ? (
-                    <span className="rounded-full bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
+                    <span className="rounded-full bg-[var(--status-info-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--status-info)]">
                       pinned
                     </span>
                   ) : null}
@@ -609,10 +609,10 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
                     <span
                       className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
                         item.status === "success"
-                          ? "bg-emerald-400"
+                          ? "bg-[var(--status-success)]"
                           : item.status === "error"
-                            ? "bg-rose-400"
-                            : "bg-zinc-500"
+                            ? "bg-[var(--status-danger)]"
+                            : "bg-[var(--status-muted)]"
                       }`}
                     />
                     <span className="font-medium text-zinc-200">{item.label}</span>

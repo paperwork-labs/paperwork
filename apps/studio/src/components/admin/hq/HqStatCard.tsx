@@ -1,4 +1,6 @@
-import type { CSSProperties, ReactNode } from "react";
+"use client";
+
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 export type HqStatCardStatus =
   | "neutral"
@@ -19,9 +21,8 @@ export type HqStatCardProps = {
 };
 
 /**
- * Inline semantic tokens (Wave L PR-B → tokens.css). Each status exposes the
- * full `--status-*` set so future global CSS can key off any variable; the
- * active row sets opacity 1 on its matching token.
+ * Inline semantic emphasis (card chrome). Count-up and delta read global
+ * `--status-*` from `src/styles/tokens.css`.
  */
 const STATUS_TOKEN_STYLE: Record<HqStatCardStatus, CSSProperties> = {
   neutral: {
@@ -76,10 +77,27 @@ const STATUS_TOKEN_STYLE: Record<HqStatCardStatus, CSSProperties> = {
   },
 };
 
+function easeOutCubic(t: number) {
+  return 1 - (1 - t) ** 3;
+}
+
+function fractionalDigits(n: number): number {
+  if (!Number.isFinite(n)) return 0;
+  const s = n.toString();
+  const dot = s.indexOf(".");
+  return dot === -1 ? 0 : s.length - dot - 1;
+}
+
+function formatAnimatedValue(raw: number, target: number): number | string {
+  const d = fractionalDigits(target);
+  if (d > 0) return Number(raw.toFixed(d));
+  return Math.round(raw);
+}
+
 function deltaClass(direction: "up" | "down" | "flat") {
-  if (direction === "up") return "text-[rgb(134,239,172)]";
-  if (direction === "down") return "text-[rgb(252,165,165)]";
-  return "text-zinc-500";
+  if (direction === "up") return "text-[var(--status-success)]";
+  if (direction === "down") return "text-[var(--status-danger)]";
+  return "text-[var(--status-muted)]";
 }
 
 /** KPI / stat tile for HQ dashboards — compact (6-up) or default (4-up) density. */
@@ -96,6 +114,63 @@ export function HqStatCard({
   const pad = variant === "compact" ? "px-3 py-2.5" : "px-4 py-4";
   const valueSize = variant === "compact" ? "text-xl" : "text-2xl";
 
+  const firstAnimDone = useRef(false);
+  const [displayValue, setDisplayValue] = useState<string | number>(() => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      if (
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ) {
+        return value;
+      }
+      return 0;
+    }
+    return value;
+  });
+
+  useEffect(() => {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+      setDisplayValue(value);
+      return;
+    }
+
+    const reduced =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduced) {
+      setDisplayValue(value);
+      firstAnimDone.current = true;
+      return;
+    }
+
+    if (firstAnimDone.current) {
+      setDisplayValue(value);
+      return;
+    }
+
+    const durationMs = 600;
+    const target = value;
+    let startWall: number | null = null;
+    let rafId = 0;
+
+    const frame = (now: number) => {
+      if (startWall === null) startWall = now;
+      const t = Math.min(1, (now - startWall) / durationMs);
+      const eased = easeOutCubic(t);
+      const current = eased * target;
+      setDisplayValue(formatAnimatedValue(current, target));
+      if (t < 1) {
+        rafId = requestAnimationFrame(frame);
+      } else {
+        setDisplayValue(target);
+        firstAnimDone.current = true;
+      }
+    };
+
+    rafId = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(rafId);
+  }, [value]);
+
   return (
     <div
       data-testid="hq-stat-card"
@@ -107,7 +182,12 @@ export function HqStatCard({
         {icon}
         <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">{label}</p>
       </div>
-      <p className={`mt-1 font-semibold tabular-nums ${valueSize}`}>{value}</p>
+      <p
+        data-testid="hq-stat-value"
+        className={`mt-1 font-semibold tabular-nums ${valueSize}`}
+      >
+        {displayValue}
+      </p>
       {delta ? (
         <p className={`mt-0.5 text-xs font-medium ${deltaClass(delta.direction)}`}>{delta.value}</p>
       ) : null}

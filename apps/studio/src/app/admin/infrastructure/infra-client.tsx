@@ -79,34 +79,40 @@ function formatTimePT(iso: string): string {
 
 function latencyColor(ms: number | null): string {
   if (ms === null) return "text-zinc-500";
-  if (ms < 300) return "text-emerald-400";
-  if (ms < 1000) return "text-amber-400";
-  return "text-rose-400";
+  if (ms < 300) return "text-[var(--status-success)]";
+  if (ms < 1000) return "text-[var(--status-warning)]";
+  return "text-[var(--status-danger)]";
 }
 
 function StatusIcon({ healthy, configured }: { healthy: boolean; configured: boolean }) {
-  if (!configured) return <AlertTriangle className="h-4 w-4 text-amber-400" />;
-  if (healthy) return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
-  return <XCircle className="h-4 w-4 text-rose-400" />;
+  if (!configured)
+    return <AlertTriangle className="h-4 w-4 text-[var(--status-warning)]" />;
+  if (healthy) return <CheckCircle2 className="h-4 w-4 text-[var(--status-success)]" />;
+  return <XCircle className="h-4 w-4 text-[var(--status-danger)]" />;
 }
 
 function StatusDot({ healthy, configured }: { healthy: boolean; configured: boolean }) {
   if (!configured)
-    return <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400" />;
+    return (
+      <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--status-warning)]" />
+    );
   if (healthy)
     return (
       <span className="relative inline-block h-2.5 w-2.5">
-        <span className="absolute inset-0 animate-ping rounded-full bg-emerald-400 opacity-50" />
-        <span className="relative inline-block h-2.5 w-2.5 rounded-full bg-emerald-400" />
+        <span className="absolute inset-0 animate-ping rounded-full bg-[var(--status-success)] opacity-50" />
+        <span className="relative inline-block h-2.5 w-2.5 rounded-full bg-[var(--status-success)]" />
       </span>
     );
-  return <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-400" />;
+  return <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--status-danger)]" />;
 }
 
 function platformStateBadgeClass(st?: string): string {
-  if (st === "live" || st === "ready") return "border-emerald-800/50 bg-emerald-950/40 text-emerald-200";
-  if (st === "building") return "border-amber-800/50 bg-amber-950/40 text-amber-200";
-  if (st === "failed" || st === "suspended") return "border-rose-800/50 bg-rose-950/40 text-rose-200";
+  if (st === "live" || st === "ready")
+    return "border-[var(--status-success)]/50 bg-[var(--status-success-bg)] text-[var(--status-success)]";
+  if (st === "building")
+    return "border-[var(--status-warning)]/50 bg-[var(--status-warning-bg)] text-[var(--status-warning)]";
+  if (st === "failed" || st === "suspended")
+    return "border-[var(--status-danger)]/50 bg-[var(--status-danger-bg)] text-[var(--status-danger)]";
   return "border-zinc-700 bg-zinc-900/80 text-zinc-300";
 }
 
@@ -183,8 +189,8 @@ function ServiceCard({ svc }: { svc: InfraService }) {
   const borderCls = !svc.configured
     ? "border-zinc-800"
     : svc.healthy
-      ? "border-emerald-800/20"
-      : "border-rose-800/30";
+      ? "border-[var(--status-success)]/20"
+      : "border-[var(--status-danger)]/30";
   return (
     <Card className={borderCls} id={svc.anchorId}>
       <CardContent className="p-4">
@@ -194,7 +200,7 @@ function ServiceCard({ svc }: { svc: InfraService }) {
             <p className="mt-0.5 text-xs text-zinc-500">
               {isVercel ? "Vercel" : "Render"} · {svc.platformType ?? "—"}
               {svc.deprecated ? (
-                <span className="ml-2 text-amber-200/90">
+                <span className="ml-2 text-[var(--status-warning)]/90">
                   · Scheduled for retirement (WS-02 Vercel cutover)
                 </span>
               ) : null}
@@ -237,7 +243,7 @@ function SupplementaryCard({ svc }: { svc: InfraService }) {
   return (
     <Card
       className={
-        !svc.configured ? "border-zinc-800" : svc.healthy ? "border-emerald-800/30" : "border-rose-800/30"
+        !svc.configured ? "border-zinc-800" : svc.healthy ? "border-[var(--status-success)]/30" : "border-[var(--status-danger)]/30"
       }
     >
       <CardContent className="p-4">
@@ -257,7 +263,7 @@ function SupplementaryCard({ svc }: { svc: InfraService }) {
         </div>
         <p className="mt-2 text-sm text-zinc-400">{svc.detail}</p>
         {svc.service === "LaunchFree API" && !svc.healthy && /404/i.test(svc.detail) ? (
-          <p className="mt-2 text-xs text-rose-300">
+          <p className="mt-2 text-xs text-[var(--status-danger)]">
             error:{" "}
             {svc.detail.includes("→ HTTP") ? svc.detail : `GET /health → ${svc.detail}`}
           </p>
@@ -288,7 +294,7 @@ function SupplementaryCard({ svc }: { svc: InfraService }) {
               href="https://github.com/paperwork-labs/paperwork/blob/main/docs/runbooks/launchfree-api-health.md"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-medium text-rose-200 hover:text-rose-100"
+              className="inline-flex items-center gap-1 text-xs font-medium text-[var(--status-danger)] hover:text-[color-mix(in_srgb,var(--status-danger)_80%,white)]"
             >
               Reconnect / fix endpoint <ExternalLink className="h-3 w-3" />
             </a>
@@ -484,7 +490,7 @@ export default function InfraClient({
               <a
                 key={p.anchorId}
                 href={`#${p.anchorId}`}
-                className="rounded border border-rose-900/50 bg-rose-950/30 px-2 py-0.5 text-rose-200 hover:bg-rose-900/30"
+                className="rounded border border-[var(--status-danger)]/50 bg-[var(--status-danger-bg)] px-2 py-0.5 text-[var(--status-danger)] hover:bg-[color-mix(in_srgb,var(--status-danger-bg)_150%,transparent)]"
               >
                 {p.service}
               </a>
@@ -492,7 +498,7 @@ export default function InfraClient({
           </div>
         )}
         {platformPartial.length > 0 && (
-          <p className="mt-2 text-xs text-amber-400/90">
+          <p className="mt-2 text-xs text-[var(--status-warning)]/90">
             Partial API notes: {platformPartial.join(" · ")}
           </p>
         )}
@@ -627,10 +633,10 @@ export default function InfraClient({
         <div
           className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium ${
             allHealthy
-              ? "border-emerald-800/40 bg-emerald-950/30 text-emerald-300"
+              ? "border-[var(--status-success)]/40 bg-[var(--status-success-bg)] text-[var(--status-success)]"
               : hasDegraded
-                ? "border border-rose-800/40 bg-rose-950/30 text-rose-300"
-                : "border border-amber-800/40 bg-amber-950/30 text-amber-300"
+                ? "border border-[var(--status-danger)]/40 bg-[var(--status-danger-bg)] text-[var(--status-danger)]"
+                : "border border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)] text-[var(--status-warning)]"
           }`}
         >
           <StatusDot
@@ -718,12 +724,12 @@ export default function InfraClient({
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="h-3 w-3 rounded border-zinc-600 bg-zinc-800 accent-emerald-500"
+              className="h-3 w-3 rounded border-zinc-600 bg-zinc-800 accent-[var(--status-success)]"
             />
             Auto-refresh 30s
           </label>
           {refreshError ? (
-            <span className="ml-3 rounded-full border border-rose-800/40 bg-rose-950/20 px-2 py-0.5 text-xs text-rose-300">
+            <span className="ml-3 rounded-full border border-[var(--status-danger)]/40 bg-[var(--status-danger-bg)] px-2 py-0.5 text-xs text-[var(--status-danger)]">
               Refresh failed: {refreshError}
             </span>
           ) : null}
