@@ -18,6 +18,15 @@ import {
   ChevronLeft,
   FileText,
   Layers,
+  MessageSquare,
+  Paperclip,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  TriangleAlert,
+  User,
+  X,
 } from "lucide-react";
 import type {
   Conversation,
@@ -66,9 +75,69 @@ const URGENCY_LABEL: Record<UrgencyLevel, string> = {
   critical: "critical",
 };
 
-  TriangleAlert,
-  User,
-  X,
+const SPACE_GLYPH_ICONS: Record<SpaceGlyphId, LucideIcon> = {
+  user: User,
+  building: Building2,
+  chart: ChartColumnBig,
+  file: FileText,
+  book: BookMarked,
+  alert: TriangleAlert,
+};
+
+function SpaceFilterChip({
+  testId,
+  label,
+  icon: Icon,
+  active,
+  onClick,
+  badge,
+}: {
+  testId: string;
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+  onClick: () => void;
+  badge: number;
+}) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      title={label}
+      onClick={onClick}
+      className={`flex min-w-0 max-w-[9rem] items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-xs transition ${
+        active
+          ? "bg-sky-500/20 text-sky-200 ring-1 ring-sky-500/40"
+          : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {badge > 0 ? (
+        <span className="shrink-0 rounded-full bg-zinc-700 px-1 py-0.5 text-[10px] tabular-nums text-zinc-200">
+          {badge}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+const QUICK_REACTION_EMOJIS = ["👍", "❤️", "✅", "👀", "🚀"] as const;
+
+const FOUNDER_PARTICIPANT_ID = "founder";
+
+function getThreadContext(messages: ThreadMessage[], anchorId: string) {
+  const byId = new Map(messages.map((m) => [m.id, m]));
+  const anchor = byId.get(anchorId);
+  if (!anchor) return null;
+  const root = anchor.parent_message_id
+    ? (byId.get(anchor.parent_message_id) ?? anchor)
+    : anchor;
+  const replies = messages
+    .filter((m) => m.parent_message_id === root.id)
+    .slice()
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  return { root, replies };
 }
 
 function attachmentDescription(
@@ -120,57 +189,19 @@ function AttachmentThumb({ att }: { att: Conversation["messages"][0]["attachment
   );
 }
 
-function MessageRow({
-  msg,
-  onPickReaction,
-  onOpenThread,
-}: {
-  msg: ThreadMessage;
-  onPickReaction: (emoji: string) => void;
-  onOpenThread: () => void;
-}) {
+function MessageBubble({ msg }: { msg: ThreadMessage }) {
   return (
-    <div className="group relative space-y-1" data-testid={`conversation-message-${msg.id}`}>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onOpenThread}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onOpenThread();
-          }
-        }}
-        className="cursor-pointer rounded-xl border border-zinc-800/80 bg-zinc-900/60 px-4 py-3 outline-none ring-ring ring-offset-2 ring-offset-zinc-950 transition hover:border-zinc-700/80 focus-visible:ring-2"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-zinc-300">
-              {msg.author.display_name ?? msg.author.id}
-            </span>
-            <span className="text-[10px] text-zinc-600">
-              {new Date(msg.created_at).toLocaleString()}
-            </span>
-          </div>
-          <div className="pointer-events-none flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100">
-            {QUICK_REACTION_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                data-testid={`conversation-reaction-pick-${emoji}`}
-                title={`React ${emoji}`}
-                className="rounded-full border border-border bg-muted/80 px-2 py-0.5 text-sm text-muted-foreground transition hover:bg-muted hover:text-foreground"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPickReaction(emoji);
-                }}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="prose prose-invert prose-sm mt-2 max-w-none text-zinc-300 prose-p:my-1 prose-a:text-sky-400 prose-code:rounded prose-code:bg-zinc-800 prose-code:px-1">
+    <div className="space-y-1">
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-medium text-zinc-300">
+          {msg.author.display_name ?? msg.author.id}
+        </span>
+        <span className="text-[10px] text-zinc-600">
+          {new Date(msg.created_at).toLocaleString()}
+        </span>
+      </div>
+      <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 px-4 py-3">
+        <div className="prose prose-invert prose-sm max-w-none text-zinc-300 prose-p:my-1 prose-a:text-sky-400 prose-code:rounded prose-code:bg-zinc-800 prose-code:px-1">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.body_md}</ReactMarkdown>
         </div>
         {msg.attachments.length > 0 && (
@@ -180,21 +211,20 @@ function MessageRow({
             ))}
           </div>
         )}
+        {Object.keys(msg.reactions).length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {Object.entries(msg.reactions).map(([emoji, reactors]) => (
+              <span
+                key={emoji}
+                className="rounded-full bg-zinc-800 px-2 py-0.5 text-sm"
+                title={reactors.join(", ")}
+              >
+                {emoji} {reactors.length}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
-      {Object.keys(msg.reactions).length > 0 && (
-        <div className="flex flex-wrap gap-1 pl-1">
-          {Object.entries(msg.reactions).map(([emoji, reactors]) => (
-            <span
-              key={emoji}
-              data-testid={`conversation-reaction-${emoji}`}
-              className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs tabular-nums text-muted-foreground"
-              title={reactors.join(", ")}
-            >
-              {emoji} {reactors.length}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -239,12 +269,11 @@ export function ConversationsClient({
   const [replyLoading, setReplyLoading] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
   const [snoozingId, setSnoozingId] = useState<string | null>(null);
-  const [spaceFilter, setSpaceFilter] = useState<ConversationSpace | "all">("all");
-
   const [threadAnchorId, setThreadAnchorId] = useState<string | null>(null);
   const [threadPanelEntered, setThreadPanelEntered] = useState(false);
   const [threadReplyText, setThreadReplyText] = useState("");
   const [threadReplyLoading, setThreadReplyLoading] = useState(false);
+  const [spaceFilter, setSpaceFilter] = useState<ConversationSpace | "all">("all");
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -261,21 +290,6 @@ export function ConversationsClient({
       if (searchRef.current) clearTimeout(searchRef.current);
     };
   }, [search]);
-
-  useEffect(() => {
-    setThreadAnchorId(null);
-    setThreadPanelEntered(false);
-    setThreadReplyText("");
-  }, [selected?.id]);
-
-  useEffect(() => {
-    if (!threadAnchorId) {
-      setThreadPanelEntered(false);
-      return;
-    }
-    const id = requestAnimationFrame(() => setThreadPanelEntered(true));
-    return () => cancelAnimationFrame(id);
-  }, [threadAnchorId]);
 
   const fetchPage = useCallback(
     async (filter: FilterChip, q: string, cursor?: string) => {
@@ -420,46 +434,6 @@ export function ConversationsClient({
     }
   };
 
-  const handleReaction = async (msgId: string, emoji: string) => {
-    if (!selected) return;
-    const json = await apiFetch(`/api/admin/conversations/${selected.id}/messages/${msgId}/react`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emoji, participant_id: FOUNDER_PARTICIPANT_ID }),
-    });
-    if (json.success && json.data) {
-      mergeMessageIntoConversation(selected.id, json.data as ThreadMessage);
-    }
-  };
-
-  const handleThreadReply = async () => {
-    if (!selected || !threadCtx || !threadReplyText.trim()) return;
-    setThreadReplyLoading(true);
-    try {
-      const json = await apiFetch(`/api/admin/conversations/${selected.id}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          author: {
-            id: FOUNDER_PARTICIPANT_ID,
-            kind: "founder",
-            display_name: "Founder",
-          },
-          body_md: threadReplyText.trim(),
-          attachments: [],
-          parent_message_id: threadCtx.root.id,
-        }),
-      });
-      if (json.success) {
-        setThreadReplyText("");
-        const convJson = await apiFetch(`/api/admin/conversations/${selected.id}`);
-        if (convJson.success && convJson.data) updateSelectedFromList(convJson.data);
-      }
-    } finally {
-      setThreadReplyLoading(false);
-    }
-  };
-
   const handleSnooze = async (conversationId: string, until: Date) => {
     const json = await apiFetch(`/api/admin/conversations/${conversationId}/snooze`, {
       method: "POST",
@@ -475,6 +449,20 @@ export function ConversationsClient({
     setSelected(conv);
     setShowCompose(false);
   };
+
+
+  const handleReaction = async (msgId: string, emoji: string) => {
+    if (!selected) return;
+    const json = await apiFetch(`/api/admin/conversations/${selected.id}/messages/${msgId}/react`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji, participant_id: FOUNDER_PARTICIPANT_ID }),
+    });
+    if (json.success && json.data) {
+      mergeMessageIntoConversation(selected.id, json.data as ThreadMessage);
+    }
+  };
+
 
   const displayedConversations = useMemo(() => {
     if (spaceFilter === "all") return conversations;
@@ -780,205 +768,62 @@ export function ConversationsClient({
                       <SnoozePicker
                         onSelect={(until) => void handleSnooze(selected.id, until)}
                         onClose={() => setSnoozingId(null)}
-        {/* Conversation + optional thread panel */}
-        <div className="relative flex min-h-0 min-w-0 flex-1 gap-0 overflow-hidden">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900/40">
-            {selected ? (
-              <>
-                <div className="flex items-center justify-between gap-3 border-b border-zinc-800/60 p-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <UrgencyDot urgency={selected.urgency} />
-                      <h2 className="truncate text-sm font-semibold text-zinc-100">
-                        {selected.title}
-                      </h2>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-1.5 pl-4">
-                      <StatusBadge status={selected.status} />
-                      {selected.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-400"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {selected.status !== "resolved" && (
-                      <ActionButton
-                        icon={<CheckCircle2 className="h-4 w-4" />}
-                        label="Resolve"
-                        onClick={() => void handleStatusAction(selected.id, "resolved")}
                       />
                     )}
-                    {selected.status === "resolved" && (
-                      <ActionButton
-                        icon={<RotateCcw className="h-4 w-4" />}
-                        label="Re-open"
-                        onClick={() => void handleStatusAction(selected.id, "needs-action")}
-                      />
-                    )}
-                    <div className="relative">
-                      <ActionButton
-                        icon={<BellOff className="h-4 w-4" />}
-                        label="Snooze"
-                        onClick={() => setSnoozingId(selected.id)}
-                      />
-                      {snoozingId === selected.id && (
-                        <SnoozePicker
-                          onSelect={(until) => void handleSnooze(selected.id, until)}
-                          onClose={() => setSnoozingId(null)}
-                        />
-                      )}
-                    </div>
-                    <ActionButton
-                      icon={<Archive className="h-4 w-4" />}
-                      label="Archive"
-                      onClick={() => void handleStatusAction(selected.id, "archived")}
-                    />
                   </div>
-                </div>
-
-                {selected.links?.expense_id ? (
-                  <div className="border-b border-zinc-800/60 px-4 pb-2">
-                    <ExpenseConversationCard
-                      conversationId={selected.id}
-                      expenseId={selected.links.expense_id}
-                      conversation={selected}
-                      onResolved={({ conversation: c }) => {
-                        updateSelectedFromList(c);
-                      }}
-                    />
-                  </div>
-                ) : null}
-
-                <div className="flex min-h-0 flex-1 flex-col-reverse gap-4 overflow-y-auto p-4">
-                  {[...selected.messages].reverse().map((msg) => (
-                    <MessageRow
-                      key={msg.id}
-                      msg={msg}
-                      onPickReaction={(emoji) => void handleReaction(msg.id, emoji)}
-                      onOpenThread={() => setThreadAnchorId(msg.id)}
-                    />
-                  ))}
-                </div>
-
-                <div className="border-t border-zinc-800/60 p-4" data-testid="conversation-main-reply">
-                  <textarea
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                    placeholder="Reply… (markdown supported)"
-                    rows={3}
-                    className="w-full resize-none rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-sky-500/50"
+                  <ActionButton
+                    icon={<Archive className="h-4 w-4" />}
+                    label="Archive"
+                    onClick={() => void handleStatusAction(selected.id, "archived")}
                   />
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => void handleReply()}
-                      disabled={replyLoading || !replyText.trim()}
-                      className="rounded-lg bg-sky-500/20 px-4 py-1.5 text-sm font-medium text-sky-300 ring-1 ring-sky-500/30 transition hover:bg-sky-500/30 disabled:opacity-40"
-                    >
-                      {replyLoading ? "Sending…" : "Send reply"}
-                    </button>
-                  </div>
                 </div>
-              </>
-            ) : (
-              <div className="flex flex-1 items-center justify-center text-sm text-zinc-600">
-                Select a conversation to view the thread
               </div>
-            )}
-          </div>
 
-          {threadAnchorId && threadCtx ? (
-            <>
-              <button
-                type="button"
-                aria-label="Close thread panel"
-                className={`fixed inset-0 z-40 bg-black/60 transition-opacity duration-300 md:hidden ${
-                  threadPanelEntered ? "opacity-100" : "pointer-events-none opacity-0"
-                }`}
-                onClick={closeThreadPanel}
-              />
-              <div
-                className={`fixed inset-y-0 right-0 z-50 flex h-full md:static md:z-auto ${
-                  threadPanelEntered ? "translate-x-0" : "translate-x-full"
-                } transition-transform duration-300 ease-out md:translate-x-0 md:overflow-hidden md:transition-[width] md:duration-300 md:ease-out ${
-                  threadPanelEntered ? "md:w-96" : "md:w-0 md:border-0"
-                }`}
-              >
-                <aside
-                  data-testid="conversation-thread-panel"
-                  className="flex h-full w-screen max-w-md flex-col border-l border-zinc-800 bg-zinc-950 shadow-2xl md:w-96 md:max-w-none md:shadow-none"
-                >
-                  <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-2">
-                    <p className="text-sm font-medium text-zinc-200">Thread</p>
-                    <button
-                      type="button"
-                      data-testid="conversation-thread-close"
-                      title="Close thread"
-                      className="rounded-lg p-2 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100"
-                      onClick={closeThreadPanel}
-                    >
-                      <X className="h-4 w-4" aria-hidden />
-                    </button>
-                  </div>
-                  <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
-                    <div>
-                      <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                        Original
-                      </p>
-                      <MessageRow
-                        msg={threadCtx.root}
-                        onPickReaction={(emoji: string) => void handleReaction(threadCtx.root.id, emoji)}
-                        onOpenThread={() => setThreadAnchorId(threadCtx.root.id)}
-                      />
-                    </div>
-                    {threadCtx.replies.length > 0 ? (
-                      <div>
-                        <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-                          Replies
-                        </p>
-                        <div className="space-y-3 border-l border-zinc-800 pl-3">
-                          {threadCtx.replies.map((m) => (
-                            <MessageRow
-                              key={m.id}
-                              msg={m}
-                              onPickReaction={(emoji: string) => void handleReaction(m.id, emoji)}
-                              onOpenThread={() => setThreadAnchorId(m.id)}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-zinc-500">No replies yet.</p>
-                    )}
-                  </div>
-                  <div className="border-t border-zinc-800 p-3" data-testid="conversation-thread-reply">
-                    <textarea
-                      value={threadReplyText}
-                      onChange={(e) => setThreadReplyText(e.target.value)}
-                      placeholder="Reply in thread…"
-                      rows={3}
-                      className="w-full resize-none rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-sky-500/50"
-                    />
-                    <div className="mt-2 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => void handleThreadReply()}
-                        disabled={threadReplyLoading || !threadReplyText.trim()}
-                        className="rounded-lg bg-sky-500/20 px-4 py-1.5 text-sm font-medium text-sky-300 ring-1 ring-sky-500/30 transition hover:bg-sky-500/30 disabled:opacity-40"
-                      >
-                        {threadReplyLoading ? "Sending…" : "Send"}
-                      </button>
-                    </div>
-                  </div>
-                </aside>
+              {selected.links?.expense_id ? (
+                <div className="border-b border-zinc-800/60 px-4 pb-2">
+                  <ExpenseConversationCard
+                    conversationId={selected.id}
+                    expenseId={selected.links.expense_id}
+                    conversation={selected}
+                    onResolved={({ conversation: c }) => {
+                      updateSelectedFromList(c);
+                    }}
+                  />
+                </div>
+              ) : null}
+
+              {/* Messages */}
+              <div className="flex min-h-0 flex-1 flex-col-reverse gap-4 overflow-y-auto p-4">
+                {[...selected.messages].reverse().map((msg) => (
+                  <MessageBubble key={msg.id} msg={msg} />
+                ))}
+              </div>
+
+              {/* Reply box */}
+              <div className="border-t border-zinc-800/60 p-4">
+                <textarea
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder="Reply… (markdown supported)"
+                  rows={3}
+                  className="w-full resize-none rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-sky-500/50"
+                />
+                <div className="mt-2 flex justify-end">
+                  <button
+                    onClick={() => void handleReply()}
+                    disabled={replyLoading || !replyText.trim()}
+                    className="rounded-lg bg-sky-500/20 px-4 py-1.5 text-sm font-medium text-sky-300 ring-1 ring-sky-500/30 transition hover:bg-sky-500/30 disabled:opacity-40"
+                  >
+                    {replyLoading ? "Sending…" : "Send reply"}
+                  </button>
+                </div>
               </div>
             </>
-          ) : null}
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-sm text-zinc-600">
+              Select a conversation to view the thread
+            </div>
+          )}
         </div>
       </div>
 

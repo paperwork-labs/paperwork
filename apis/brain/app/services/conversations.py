@@ -449,9 +449,8 @@ def append_message(
     """Append a ThreadMessage to an existing conversation."""
     conv = get_conversation(conversation_id, organization_id=organization_id)
     parent_id = req.parent_message_id
-    if parent_id:
-        if not any(m.id == parent_id for m in conv.messages):
-            raise ValueError(f"Parent message {parent_id!r} not found in conversation")
+    if parent_id and not any(m.id == parent_id for m in conv.messages):
+        raise ValueError(f"Parent message {parent_id!r} not found in conversation")
     now = datetime.now(UTC)
     msg = ThreadMessage(
         id=str(uuid4()),
