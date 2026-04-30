@@ -1,0 +1,226 @@
+{
+  "schema": "infra_registry/v1",
+  "description": "Canonical inventory of deployable surfaces (Render blueprint + Vercel monorepo) and third-party vendors. Source: root render.yaml, apps/studio/src/lib/infra-probes.ts, docs/infra/RENDER_INVENTORY.md.",
+  "services": [
+    {
+      "id": "studio",
+      "name": "Studio",
+      "provider": "vercel",
+      "type": "frontend",
+      "url": "https://www.paperworklabs.com",
+      "health_endpoint": null
+    },
+    {
+      "id": "axiomfolio",
+      "name": "AxiomFolio (Next.js)",
+      "provider": "vercel",
+      "type": "frontend",
+      "url": "https://axiomfolio.paperworklabs.com",
+      "health_endpoint": null
+    },
+    {
+      "id": "filefree",
+      "name": "FileFree",
+      "provider": "vercel",
+      "type": "frontend",
+      "url": "https://filefree.ai",
+      "health_endpoint": null
+    },
+    {
+      "id": "launchfree",
+      "name": "LaunchFree",
+      "provider": "vercel",
+      "type": "frontend",
+      "url": "https://launchfree.ai",
+      "health_endpoint": null
+    },
+    {
+      "id": "distill",
+      "name": "Distill",
+      "provider": "vercel",
+      "type": "frontend",
+      "url": "https://distill.paperworklabs.com",
+      "health_endpoint": null
+    },
+    {
+      "id": "trinkets",
+      "name": "Trinkets",
+      "provider": "vercel",
+      "type": "frontend",
+      "url": "https://tools.filefree.ai",
+      "health_endpoint": null
+    },
+    {
+      "id": "axiomfolio-marketing",
+      "name": "AxiomFolio marketing",
+      "provider": "vercel",
+      "type": "frontend",
+      "url": "https://axiomfolio.com",
+      "health_endpoint": null
+    },
+    {
+      "id": "paperworklabs",
+      "name": "Paperwork Labs (corporate)",
+      "provider": "vercel",
+      "type": "frontend",
+      "url": "https://paperworklabs.com",
+      "health_endpoint": null
+    },
+    {
+      "id": "filefree-api",
+      "name": "FileFree API",
+      "provider": "render",
+      "type": "backend",
+      "url": "https://api.filefree.ai",
+      "health_endpoint": "/health"
+    },
+    {
+      "id": "brain-api",
+      "name": "Brain API",
+      "provider": "render",
+      "type": "backend",
+      "url": "https://brain.paperworklabs.com",
+      "health_endpoint": "/health"
+    },
+    {
+      "id": "axiomfolio-api",
+      "name": "AxiomFolio API",
+      "provider": "render",
+      "type": "backend",
+      "url": "https://axiomfolio-api.onrender.com",
+      "health_endpoint": "/health"
+    },
+    {
+      "id": "axiomfolio-worker",
+      "name": "AxiomFolio worker (fast + beat)",
+      "provider": "render",
+      "type": "worker",
+      "url": null,
+      "health_endpoint": null
+    },
+    {
+      "id": "axiomfolio-worker-heavy",
+      "name": "AxiomFolio worker (heavy queue)",
+      "provider": "render",
+      "type": "worker",
+      "url": null,
+      "health_endpoint": null
+    },
+    {
+      "id": "axiomfolio-db",
+      "name": "AxiomFolio Postgres",
+      "provider": "render",
+      "type": "database",
+      "url": null,
+      "health_endpoint": null
+    },
+    {
+      "id": "axiomfolio-redis",
+      "name": "AxiomFolio Redis",
+      "provider": "render",
+      "type": "cache",
+      "url": null,
+      "health_endpoint": null
+    }
+  ],
+  "vendors": [
+    {
+      "id": "anthropic",
+      "name": "Anthropic",
+      "category": "ai_provider",
+      "pricing_url": "https://www.anthropic.com/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "category": "ai_provider",
+      "pricing_url": "https://openai.com/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "google",
+      "name": "Google (Gemini)",
+      "category": "ai_provider",
+      "pricing_url": "https://ai.google.dev/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "mistral",
+      "name": "Mistral AI",
+      "category": "ai_provider",
+      "pricing_url": "https://mistral.ai/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "perplexity",
+      "name": "Perplexity",
+      "category": "ai_provider",
+      "pricing_url": "https://www.perplexity.ai/hub/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "vercel",
+      "name": "Vercel",
+      "category": "hosting",
+      "pricing_url": "https://vercel.com/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "render",
+      "name": "Render",
+      "category": "hosting",
+      "pricing_url": "https://render.com/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "hetzner",
+      "name": "Hetzner",
+      "category": "hosting",
+      "pricing_url": "https://www.hetzner.com/cloud",
+      "monthly_budget": 7
+    },
+    {
+      "id": "clerk",
+      "name": "Clerk",
+      "category": "auth",
+      "pricing_url": "https://clerk.com/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "neon",
+      "name": "Neon",
+      "category": "database",
+      "pricing_url": "https://neon.tech/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "upstash",
+      "name": "Upstash",
+      "category": "cache",
+      "pricing_url": "https://upstash.com/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "langfuse",
+      "name": "Langfuse",
+      "category": "observability",
+      "pricing_url": "https://langfuse.com/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "github",
+      "name": "GitHub",
+      "category": "dev_platform",
+      "pricing_url": "https://github.com/pricing",
+      "monthly_budget": null
+    },
+    {
+      "id": "cloudflare",
+      "name": "Cloudflare",
+      "category": "dns",
+      "pricing_url": "https://www.cloudflare.com/plans/",
+      "monthly_budget": null
+    }
+  ]
+}
