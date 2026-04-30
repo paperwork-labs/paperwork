@@ -6,7 +6,7 @@ export type BreadcrumbItem =
   | { label: string; href?: undefined };
 
 export type HqPageHeaderProps = {
-  title: string;
+  title: ReactNode;
   subtitle?: string;
   eyebrow?: string;
   actions?: ReactNode;

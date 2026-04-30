@@ -212,7 +212,7 @@ function getN8nHeaders() {
   return undefined;
 }
 
-/** True when n8n API URL and credentials are present (F-014 / F-020 — not same as "zero workflows"). */
+/** True when n8n REST base URL and credentials are configured (F-014 / F-020; same gate as workflow/execution fetches). */
 export function isN8nIntegrationConfigured(): boolean {
   return Boolean(getN8nApiRoot() && getN8nHeaders());
 }
