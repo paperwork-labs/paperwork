@@ -1,14 +1,48 @@
 ---
 owner: founder
-last_reviewed: 2026-04-29
+last_reviewed: 2026-04-30
 doc_kind: strategy
 domain: paperwork-labs
 status: living
 ---
 
-# Day-0 Founder Actions Worksheet (WS-76)
+# Day-0 Founder Actions Worksheet (WS-82)
 
-This worksheet is the single source of truth for founder-owned setup that can run in parallel with engineering. Most items are account, OAuth, or vendor steps that do not block code merge but do block product loops when missing. **Voice corpus export** is the rate-limiting step for founder-voice and viral content work: start it in week one so tone and clip pipelines are not idle waiting on content.
+This worksheet is the single source of truth for founder-owned setup. Two tiers: **WS-82 Wave 0 P0** items are bleeding wounds — do today. **Critical path** items run in parallel to engineering through Week 1.
+
+## WS-82 Wave 0 P0 (DO TODAY — bleeding wounds)
+
+These cannot be auto-dispatched (require dashboard clicks). All other Wave 0 PRs are running via cheap agents.
+
+### A0. AxiomFolio login + DNS (founder cannot login to axiomfolio.com)
+
+**Render env vars (axiomfolio-api service)**:
+1. `render dashboard` → axiomfolio-api → Environment
+2. Add `CLERK_JWT_ISSUER` = (Clerk → API Keys → Frontend API URL — copy the `https://...clerk.accounts.dev` or production Clerk URL)
+3. Add `CLERK_SECRET_KEY` = (Clerk → API Keys → Secret keys → copy production key)
+4. Save → service auto-redeploys
+5. Also add both to `render.yaml` so the Render Blueprint enforces (see PR-A3 of WS-82 if open).
+
+**Cloudflare DNS (axiomfolio.com)**:
+1. Cloudflare Dashboard → axiomfolio.com → DNS
+2. Delete any A records for `@` or `axiomfolio.com` that point to Cloudflare IPs (162.159.x.x, 172.66.x.x — these are causing Error 1000 loops)
+3. Set apex `A` → `76.76.21.21` (Vercel anycast IP), Proxy status: **DNS only** (gray cloud, NOT orange)
+4. Set `www` `CNAME` → `cname.vercel-dns.com`, Proxy status: **DNS only**
+5. Wait ~2min for propagation, then test: `dig axiomfolio.com +short` should return `76.76.21.21`
+6. Browser test: `https://axiomfolio.com` should hit Vercel; `https://axiomfolio.com/sign-in` should show Clerk widget
+
+### A1. Studio Vercel env wiring (kills "Brain unreachable" + missing-cred banners)
+
+1. Vercel Dashboard → paperwork-labs → studio → Settings → Environment Variables
+2. Add (Production + Preview):
+   - `BRAIN_API_URL` = `https://brain-api.onrender.com` (or current Brain URL)
+   - `BRAIN_API_SECRET` = (vault → BRAIN_API_INTERNAL_TOKEN)
+   - `VERCEL_MONOREPO_PROJECT_NAMES` = `studio,axiomfolio,filefree,launchfree,distill,trinkets,paperworklabs`
+3. **Brain (Render)** → brain-api service → Environment Variables, add:
+   - `VERCEL_API_TOKEN` = (Vercel → Account Settings → Tokens → create "brain-api-quota-monitor")
+   - `RENDER_API_KEY` = (Render → Account Settings → API Keys → create "brain-api-quota-monitor")
+4. Redeploy Studio so env vars are picked up.
+5. Verify: `/admin` should NOT show "Brain unreachable"; `/admin/infrastructure?tab=services` should show per-project Vercel cards.
 
 ## Critical path (do these in Week 1, parallel to engineering)
 
