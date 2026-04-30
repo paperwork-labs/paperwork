@@ -135,9 +135,15 @@ async function apiFetch(path: string, opts?: RequestInit) {
 interface Props {
   brainConfigured: boolean;
   initialPage: ConversationsListPage | null;
+  /** Founder-actions source or Brain backfill/list failure — no silent empty inbox. */
+  setupError?: string | null;
 }
 
-export function ConversationsClient({ brainConfigured, initialPage }: Props) {
+export function ConversationsClient({
+  brainConfigured,
+  initialPage,
+  setupError = null,
+}: Props) {
   const [activeFilter, setActiveFilter] = useState<FilterChip>("needs-action");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -197,20 +203,47 @@ export function ConversationsClient({ brainConfigured, initialPage }: Props) {
 
   // Refetch when filter or search changes
   useEffect(() => {
+    if (setupError) return;
     setConversations([]);
     setNextCursor(null);
     void fetchPage(activeFilter, debouncedSearch);
-  }, [activeFilter, debouncedSearch, fetchPage]);
+  }, [activeFilter, debouncedSearch, fetchPage, setupError]);
 
-  // 60s auto-refresh
+  // 60s cadence: backfill (idempotent) then refresh; pause interval while tab hidden (Page Visibility).
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!document.hidden) {
-        void fetchPage(activeFilter, debouncedSearch);
+    if (!brainConfigured || setupError) return;
+
+    const POLL_MS = 60_000;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const run = () => {
+      if (document.visibilityState === "hidden") return;
+      void (async () => {
+        try {
+          await fetch("/api/admin/conversations/backfill", { method: "POST" });
+        } catch {
+          /* surfaced on fetchPage */
+        }
+        await fetchPage(activeFilter, debouncedSearch);
+      })();
+    };
+
+    const armInterval = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
       }
-    }, 60_000);
-    return () => clearInterval(interval);
-  }, [activeFilter, debouncedSearch, fetchPage]);
+      if (document.visibilityState !== "visible") return;
+      intervalId = setInterval(run, POLL_MS);
+    };
+
+    armInterval();
+    document.addEventListener("visibilitychange", armInterval);
+    return () => {
+      document.removeEventListener("visibilitychange", armInterval);
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [activeFilter, debouncedSearch, brainConfigured, fetchPage, setupError]);
 
   const loadMore = () => {
     if (nextCursor && !loading) {
@@ -274,6 +307,28 @@ export function ConversationsClient({ brainConfigured, initialPage }: Props) {
     setSelected(conv);
     setShowCompose(false);
   };
+
+  if (setupError) {
+    return (
+      <div
+        data-testid="conversations-setup-error"
+        className="rounded-xl border border-red-800/60 bg-red-900/20 p-8 text-center"
+      >
+        <p className="text-sm text-red-200">{setupError}</p>
+        <p className="mt-2 text-xs text-zinc-500">
+          {/* TODO(WS-76 PR-3): replace with HqErrorState when PR-3 lands */}
+          Retry reloads the page and re-runs founder-actions validation + Brain backfill.
+        </p>
+        <button
+          type="button"
+          className="mt-4 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-white"
+          onClick={() => window.location.reload()}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   if (!brainConfigured) {
     return (
@@ -374,7 +429,7 @@ export function ConversationsClient({ brainConfigured, initialPage }: Props) {
             ) : conversations.length === 0 ? (
               <EmptyState filter={activeFilter} search={debouncedSearch} />
             ) : (
-              <ul role="list" className="divide-y divide-zinc-800/60">
+              <ul role="list" data-testid="conversations-inbox-list" className="divide-y divide-zinc-800/60">
                 {conversations.map((conv) => (
                   <li key={conv.id}>
                     <button

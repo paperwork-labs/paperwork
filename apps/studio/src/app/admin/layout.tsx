@@ -1,10 +1,37 @@
 import { Suspense } from "react";
 
 import { AdminLayoutClient } from "./admin-layout-client";
+import { getE2EConversationsBadge } from "@/lib/e2e-conversations-fixture";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 import founderData from "@/data/founder-actions.json";
 
 export const dynamic = "force-dynamic";
+
+async function fetchFounderPendingFromBrain(): Promise<{
+  count: number;
+  hasCritical: boolean;
+} | null> {
+  const auth = getBrainAdminFetchOptions();
+  if (!auth.ok) return null;
+  try {
+    const res = await fetch(
+      `${auth.root}/admin/conversations/unread-count?filter=needs-action`,
+      { headers: { "X-Brain-Secret": auth.secret }, cache: "no-store" },
+    );
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      success?: boolean;
+      data?: { count?: number; has_critical?: boolean };
+    };
+    if (!json.success || json.data == null) return null;
+    return {
+      count: typeof json.data.count === "number" ? json.data.count : 0,
+      hasCritical: Boolean(json.data.has_critical),
+    };
+  } catch {
+    return null;
+  }
+}
 
 async function fetchExpensesPendingCount(): Promise<number> {
   const auth = getBrainAdminFetchOptions();
@@ -53,10 +80,14 @@ export default async function AdminLayout({
       "Admin layout: founder-actions.json must include counts.critical and counts.totalPending (numbers). Run apps/studio/scripts/sync-founder-actions.mjs.",
     );
   }
-  const founderPending = {
-    count: c.totalPending,
-    hasCritical: c.critical > 0,
-  };
+
+  const founderPending: { count: number; hasCritical: boolean } =
+    process.env.STUDIO_E2E_FIXTURE === "1"
+      ? getE2EConversationsBadge()
+      : (await fetchFounderPendingFromBrain()) ?? {
+          count: c.totalPending,
+          hasCritical: c.critical > 0,
+        };
 
   const [pendingCount, flaggedCount] = await Promise.all([
     fetchExpensesPendingCount(),

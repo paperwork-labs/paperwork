@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getE2EConversationsListPage } from "@/lib/e2e-conversations-fixture";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,10 @@ function notConfigured() {
 }
 
 export async function GET(req: NextRequest) {
+  if (process.env.STUDIO_E2E_FIXTURE === "1") {
+    return NextResponse.json({ success: true, data: getE2EConversationsListPage() });
+  }
+
   const auth = getBrainAdminFetchOptions();
   if (!auth.ok) return notConfigured();
 

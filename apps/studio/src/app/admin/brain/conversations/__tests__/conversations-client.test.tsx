@@ -69,6 +69,18 @@ describe("ConversationsClient", () => {
     expect(screen.getByText(/brain is not configured/i)).toBeTruthy();
   });
 
+  it("renders setup error with retry when founder-actions / backfill failed", () => {
+    render(
+      <ConversationsClient
+        brainConfigured
+        initialPage={null}
+        setupError="Could not read founder-actions.json: invalid JSON"
+      />,
+    );
+    expect(screen.getByTestId("conversations-setup-error")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /retry/i })).toBeTruthy();
+  });
+
   it("renders initial conversations from SSR data", async () => {
     const conv = makeConv({ title: "Alpha conversation" });
     // Make the fetch mock return the same page so refetch doesn't clear it
