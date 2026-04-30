@@ -145,11 +145,7 @@ def send_conversation_email(
             smtp.ehlo()
             smtp.login(username, app_password)
             smtp.send_message(msg)
-        logger.info(
-            "email_outbound: sent Brain notification to %s (conv=%s)",
-            to_address,
-            conversation_id,
-        )
+        logger.info("email_outbound: Brain notification email sent (conv=%s)", conversation_id)
     except smtplib.SMTPException as exc:
         raise RuntimeError(
             f"email_outbound: SMTP send failed for conversation {conversation_id!r}: {exc}"
