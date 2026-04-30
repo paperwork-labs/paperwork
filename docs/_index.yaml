@@ -289,6 +289,13 @@ docs:
     tags: [runbook, drive, mcp]
     owners: [agent-ops, ea]
     category: runbooks
+  - slug: launchfree-api-health
+    path: docs/runbooks/launchfree-api-health.md
+    title: LaunchFree API health (`/health`)
+    summary: "<a id=\"launchfree-api-health\"></a>"
+    tags: [launchfree, runbook]
+    owners: [ops]
+    category: runbooks
   - slug: issue-queue-2026-04-27
     path: docs/operations/ISSUE_QUEUE_2026-04-27.md
     title: Open issue queue — `paperwork-labs/paperwork`

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import {
   RefreshCw,
   ExternalLink,
@@ -15,32 +14,42 @@ import {
   AlertTriangle,
   XCircle,
   Layers,
-  ScrollText,
 } from "lucide-react";
-import { motion } from "framer-motion";
-import type { PlatformHealthSummary } from "@/lib/infra-types";
+import type { InfraStatus, PlatformHealthSummary } from "@/lib/infra-types";
 import QuotaGitHubActionsPanel from "./quota-github-actions-panel";
 import QuotaRenderPanel from "./quota-render-panel";
 import QuotaVercelPanel from "./quota-vercel-panel";
-import LogsTab from "./_tabs/logs-tab";
+import { Card, CardContent } from "@paperwork-labs/ui";
+import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
+import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
+import { HqStatCard } from "@/components/admin/hq/HqStatCard";
+import { SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES_CSV } from "@/lib/infra-probes";
 
-type InfraService = {
-  service: string;
-  category: "core" | "frontend" | "ops" | "data" | "cache" | "hosting";
-  configured: boolean;
-  healthy: boolean;
-  detail: string;
-  latencyMs: number | null;
-  dashboardUrl: string | null;
-  consoleUrl?: string | null;
-  probeKind?: "standard" | "render" | "vercel";
-  platformType?: string;
-  stateLabel?: "live" | "building" | "failed" | "suspended";
-  deployState?: string;
-  commitSha?: string | null;
-  lastDeployedAt?: string | null;
-  anchorId?: string;
-};
+type InfraService = InfraStatus;
+
+const RENDER_APIS_WEB = new Set([
+  "brain-api",
+  "filefree-api",
+  "axiomfolio-api",
+  "launchfree-api",
+]);
+const RENDER_WORKERS = new Set(["axiomfolio-worker", "axiomfolio-worker-heavy"]);
+const RENDER_DATA = new Set(["axiomfolio-db", "axiomfolio-redis"]);
+
+const CORE_HEALTH_PROBE_NAMES = new Set([
+  "Brain API (HTTP /health)",
+  "FileFree API (HTTP /health)",
+  "AxiomFolio API (HTTP /health)",
+  "LaunchFree API",
+]);
+
+const API_PROVIDER_CARDS: { name: string; consoleHref: string }[] = [
+  { name: "Anthropic", consoleHref: "https://console.anthropic.com/" },
+  { name: "OpenAI", consoleHref: "https://platform.openai.com/" },
+  { name: "Google Gemini", consoleHref: "https://aistudio.google.com/" },
+  { name: "Mistral", consoleHref: "https://console.mistral.ai/" },
+  { name: "Perplexity", consoleHref: "https://www.perplexity.ai/settings/api" },
+];
 
 const categoryMeta: Record<string, { label: string; icon: typeof Server }> = {
   core: { label: "Core APIs", icon: Server },
@@ -50,6 +59,9 @@ const categoryMeta: Record<string, { label: string; icon: typeof Server }> = {
   data: { label: "Data", icon: Database },
   cache: { label: "Cache", icon: HardDrive },
 };
+
+const DAY0_VERCEL_MONOREPO_DOCS_HREF =
+  "https://github.com/paperwork-labs/paperwork/blob/main/docs/strategy/DAY_0_FOUNDER_ACTIONS.md#item-19--set-vercel_monorepo_project_names";
 
 function formatTimePT(iso: string): string {
   try {
@@ -94,12 +106,10 @@ function StatusDot({ healthy, configured }: { healthy: boolean; configured: bool
 function platformStateBadgeClass(st?: string): string {
   if (st === "live" || st === "ready") return "border-emerald-800/50 bg-emerald-950/40 text-emerald-200";
   if (st === "building") return "border-amber-800/50 bg-amber-950/40 text-amber-200";
-  if (st === "failed" || st === "suspended")
-    return "border-rose-800/50 bg-rose-950/40 text-rose-200";
+  if (st === "failed" || st === "suspended") return "border-rose-800/50 bg-rose-950/40 text-rose-200";
   return "border-zinc-700 bg-zinc-900/80 text-zinc-300";
 }
 
-/** Badge label: provider deploy state (e.g. `build_failed`) when present; else bucket. */
 function platformProbeBadgeLabel(svc: InfraService): string {
   const raw = (svc.deployState ?? "").trim();
   if (raw && raw !== "?") return raw.replace(/_/g, " ");
@@ -148,38 +158,180 @@ function deriveSummary(services: InfraService[], fallback?: PlatformHealthSummar
   return { render, vercel };
 }
 
-const stagger = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.05 } },
-};
-const fadeUp = {
-  hidden: { opacity: 0, y: 8 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-};
-
 const AUTO_REFRESH_MS = 30_000;
+
+function renderRollupPill(rows: InfraService[]): string {
+  const active = rows.filter((r) => !r.deprecated);
+  const depBad = rows.filter((r) => r.deprecated && !r.healthy);
+  const healthyN = active.filter((r) => r.healthy).length;
+  const totalN = active.length;
+  if (totalN === 0) return "No Render rows";
+  let s = `${healthyN} of ${totalN} healthy`;
+  if (depBad.length) s += ` · ${depBad.length} deprecated (non-blocking)`;
+  return s;
+}
+
+function vercelRollupPill(v: PlatformHealthSummary["vercel"], hasNames: boolean): string {
+  if (!hasNames) return "Set env to list projects";
+  if (v.total === 0) return "No Vercel rows";
+  return `${v.live} of ${v.total} live`;
+}
+
+function ServiceCard({ svc }: { svc: InfraService }) {
+  const isVercel = svc.probeKind === "vercel";
+  const badgeTone = platformProbeBadgeTone(svc);
+  const borderCls = !svc.configured
+    ? "border-zinc-800"
+    : svc.healthy
+      ? "border-emerald-800/20"
+      : "border-rose-800/30";
+  return (
+    <Card className={borderCls} id={svc.anchorId}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="font-medium text-zinc-100">{svc.service}</p>
+            <p className="mt-0.5 text-xs text-zinc-500">
+              {isVercel ? "Vercel" : "Render"} · {svc.platformType ?? "—"}
+              {svc.deprecated ? (
+                <span className="ml-2 text-amber-200/90">
+                  · Scheduled for retirement (WS-02 Vercel cutover)
+                </span>
+              ) : null}
+            </p>
+          </div>
+          <span
+            className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium uppercase ${platformStateBadgeClass(
+              badgeTone,
+            )}`}
+            data-testid="infra-probe-state"
+          >
+            {svc.deprecated && (svc.deployState ?? "").toLowerCase().includes("fail")
+              ? "BUILD FAILED"
+              : platformProbeBadgeLabel(svc)}
+          </span>
+        </div>
+        <p className="mt-2 text-sm text-zinc-400">{svc.detail}</p>
+        {svc.commitSha ? <p className="mt-1 font-mono text-xs text-zinc-500">SHA {svc.commitSha}</p> : null}
+        {svc.lastDeployedAt ? (
+          <p className="text-xs text-zinc-500">Deployed {formatTimePT(svc.lastDeployedAt)} PT</p>
+        ) : null}
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          {svc.dashboardUrl ? (
+            <a
+              href={svc.dashboardUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
+            >
+              Open dashboard <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SupplementaryCard({ svc }: { svc: InfraService }) {
+  return (
+    <Card
+      className={
+        !svc.configured ? "border-zinc-800" : svc.healthy ? "border-emerald-800/30" : "border-rose-800/30"
+      }
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <StatusDot healthy={svc.healthy} configured={svc.configured} />
+            <p className="font-medium text-zinc-100">{svc.service}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {svc.latencyMs !== null ? (
+              <span className={`font-mono text-xs tabular-nums ${latencyColor(svc.latencyMs)}`}>
+                {svc.latencyMs}ms
+              </span>
+            ) : null}
+            <StatusIcon healthy={svc.healthy} configured={svc.configured} />
+          </div>
+        </div>
+        <p className="mt-2 text-sm text-zinc-400">{svc.detail}</p>
+        {svc.service === "LaunchFree API" && !svc.healthy && /404/i.test(svc.detail) ? (
+          <p className="mt-2 text-xs text-rose-300">
+            error:{" "}
+            {svc.detail.includes("→ HTTP") ? svc.detail : `GET /health → ${svc.detail}`}
+          </p>
+        ) : null}
+        <div className="mt-2 flex flex-wrap items-center gap-3">
+          {svc.dashboardUrl ? (
+            <a
+              href={svc.dashboardUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
+            >
+              Dashboard <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : null}
+          {svc.consoleUrl ? (
+            <a
+              href={svc.consoleUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
+            >
+              Console <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : null}
+          {svc.service === "LaunchFree API" && !svc.healthy && /404/i.test(svc.detail) ? (
+            <a
+              href="https://github.com/paperwork-labs/paperwork/blob/main/docs/runbooks/launchfree-api-health.md"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-xs font-medium text-rose-200 hover:text-rose-100"
+            >
+              Reconnect / fix endpoint <ExternalLink className="h-3 w-3" />
+            </a>
+          ) : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionHeader({
+  title,
+  pill,
+  icon: Icon,
+}: {
+  title: string;
+  pill: string;
+  icon: typeof Globe;
+}) {
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 text-zinc-500" aria-hidden />
+        <h2 className="text-sm font-semibold tracking-tight text-zinc-200">{title}</h2>
+      </div>
+      <span className="rounded-full border border-zinc-700 px-2.5 py-0.5 text-xs text-zinc-400">{pill}</span>
+    </div>
+  );
+}
 
 export default function InfraClient({
   initialServices,
   initialPlatformSummary,
   initialPlatformPartial = [],
   initialCheckedAt,
+  vercelMonorepoNamesConfigured,
 }: {
   initialServices: InfraService[];
   initialPlatformSummary?: PlatformHealthSummary;
   initialPlatformPartial?: string[];
   initialCheckedAt: string;
+  vercelMonorepoNamesConfigured: boolean;
 }) {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const activeTab = searchParams.get("tab") ?? "services";
-
-  const setTab = (tab: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("tab", tab);
-    router.replace(`?${params.toString()}`, { scroll: false });
-  };
-
   const [services, setServices] = useState(initialServices);
   const [platformSummary, setPlatformSummary] = useState<PlatformHealthSummary | undefined>(
     initialPlatformSummary,
@@ -204,6 +356,38 @@ export default function InfraClient({
   const summary = useMemo(
     () => deriveSummary(services, platformSummary),
     [services, platformSummary],
+  );
+
+  const vercelRows = useMemo(
+    () => platformRows.filter((s) => s.probeKind === "vercel"),
+    [platformRows],
+  );
+  const renderRows = useMemo(
+    () => platformRows.filter((s) => s.probeKind === "render"),
+    [platformRows],
+  );
+
+  const renderBySubgroup = useMemo(() => {
+    const apis: InfraService[] = [];
+    const workers: InfraService[] = [];
+    const data: InfraService[] = [];
+    const other: InfraService[] = [];
+    for (const r of renderRows) {
+      if (RENDER_APIS_WEB.has(r.service)) apis.push(r);
+      else if (RENDER_WORKERS.has(r.service)) workers.push(r);
+      else if (RENDER_DATA.has(r.service)) data.push(r);
+      else other.push(r);
+    }
+    return { apis, workers, data, other };
+  }, [renderRows]);
+
+  const coreHealthRows = useMemo(
+    () => otherRows.filter((s) => CORE_HEALTH_PROBE_NAMES.has(s.service)),
+    [otherRows],
+  );
+  const supplementaryRows = useMemo(
+    () => otherRows.filter((s) => !CORE_HEALTH_PROBE_NAMES.has(s.service)),
+    [otherRows],
   );
 
   const refresh = useCallback(async () => {
@@ -236,9 +420,9 @@ export default function InfraClient({
     return () => clearInterval(interval);
   }, [autoRefresh, refresh]);
 
-  const healthyCount = otherRows.filter((s) => s.healthy).length;
-  const configuredCount = otherRows.filter((s) => s.configured).length;
-  const degradedCount = otherRows.filter((s) => s.configured && !s.healthy).length;
+  const healthyCount = supplementaryRows.filter((s) => s.healthy).length;
+  const configuredCount = supplementaryRows.filter((s) => s.configured).length;
+  const degradedCount = supplementaryRows.filter((s) => s.configured && !s.healthy).length;
 
   const r = summary.render;
   const v = summary.vercel;
@@ -254,13 +438,16 @@ export default function InfraClient({
     ? `Vercel: ${v.live}/${v.total} live${v.building > 0 ? `, ${v.building} building` : ""}${
         v.failed > 0 ? `, ${v.failed} failed` : ""
       }`
-    : "Vercel: (no API data — set VERCEL_API_TOKEN + team)";
+    : vercelMonorepoNamesConfigured
+      ? "Vercel: (no API data — set VERCEL_API_TOKEN + team)"
+      : "Vercel: set VERCEL_MONOREPO_PROJECT_NAMES to enable project cards";
 
-  const allHealthy = degradedCount === 0 && otherRows.length > 0 && healthyCount === otherRows.length;
+  const allHealthy = degradedCount === 0 && supplementaryRows.length > 0 && healthyCount === supplementaryRows.length;
   const hasDegraded = degradedCount > 0;
 
   const grouped = new Map<string, InfraService[]>();
-  for (const s of otherRows) {
+  const supplementaryForCategories = supplementaryRows.filter((s) => !CORE_HEALTH_PROBE_NAMES.has(s.service));
+  for (const s of supplementaryForCategories) {
     const list = grouped.get(s.category) ?? [];
     list.push(s);
     grouped.set(s.category, list);
@@ -268,64 +455,15 @@ export default function InfraClient({
 
   const categoryOrder = ["core", "frontend", "ops", "hosting", "data", "cache"];
 
-  const quickJump = platformRows.filter((p) => p.stateLabel && p.stateLabel !== "live" && p.anchorId);
+  const quickJump = platformRows.filter((p) => p.stateLabel && p.stateLabel !== "live" && p.anchorId && !p.deprecated);
+
+  const showVercelMissingCred = !vercelMonorepoNamesConfigured;
+  const vercelCardsToShow = showVercelMissingCred ? [] : vercelRows;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="bg-gradient-to-r from-zinc-200 to-zinc-400 bg-clip-text text-2xl font-semibold tracking-tight text-transparent">
-          Infrastructure Health
-        </h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Provider-native deploy state for every Render service + Vercel project, plus reachability
-          and integration checks. Q2 Tech Debt (Track I4).
-        </p>
-      </div>
-
-      {/* Tab bar */}
-      <div
-        className="flex gap-1 rounded-lg border border-zinc-800 bg-zinc-900/60 p-1"
-        role="tablist"
-        aria-label="Infrastructure view tabs"
-      >
-        <button
-          role="tab"
-          aria-selected={activeTab === "services"}
-          onClick={() => setTab("services")}
-          className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-            activeTab === "services"
-              ? "bg-zinc-700 text-zinc-100"
-              : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-          }`}
-        >
-          <Layers className="h-3.5 w-3.5" />
-          Services
-        </button>
-        <button
-          role="tab"
-          aria-selected={activeTab === "logs"}
-          onClick={() => setTab("logs")}
-          className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-            activeTab === "logs"
-              ? "bg-zinc-700 text-zinc-100"
-              : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
-          }`}
-        >
-          <ScrollText className="h-3.5 w-3.5" />
-          Logs
-        </button>
-      </div>
-
-      {activeTab === "logs" && (
-        <div role="tabpanel" aria-label="Application logs">
-          <LogsTab />
-        </div>
-      )}
-
-      {activeTab !== "logs" && (
-      <>
+    <div className="space-y-10" suppressHydrationWarning>
       <section
-        className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4"
+        className="rounded-xl border border-zinc-800 p-4"
         data-testid="infra-health-summary"
         aria-label="Platform health summary"
       >
@@ -360,11 +498,136 @@ export default function InfraClient({
         )}
       </section>
 
-      <div className="flex items-center gap-3">
+      {/* Vercel */}
+      <section className="space-y-4" aria-label="Vercel frontends">
+        <SectionHeader
+          title="Vercel"
+          icon={Globe}
+          pill={vercelRollupPill(v, vercelMonorepoNamesConfigured)}
+        />
+        {showVercelMissingCred ? (
+          <HqMissingCredCard
+            service="Vercel"
+            envVar="VERCEL_MONOREPO_PROJECT_NAMES"
+            description={`Set this env var on the Studio Vercel project so we can surface real projects (replaces per-project MISSING placeholders). Suggested value: ${SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES_CSV}.`}
+            reconnectAction={{
+              label: "Set env var (Vercel dashboard)",
+              href: "https://vercel.com/paperwork-labs/studio/settings/environment-variables",
+            }}
+            docsLink={DAY0_VERCEL_MONOREPO_DOCS_HREF}
+          />
+        ) : null}
+        {!showVercelMissingCred && vercelCardsToShow.length > 0 ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            {vercelCardsToShow.map((svc) => (
+              <div
+                key={svc.service + (svc.anchorId ?? "") + (svc.probeKind ?? "")}
+                data-testid="infra-probe-row"
+              >
+                <ServiceCard svc={svc} />
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {!showVercelMissingCred && vercelCardsToShow.length === 0 ? (
+          <HqEmptyState
+            title="No Vercel project rows"
+            description="VERCEL_MONOREPO_PROJECT_NAMES is set but no matching projects were returned — check VERCEL_API_TOKEN, team scope, and slug spellings."
+          />
+        ) : null}
+        <QuotaVercelPanel refreshSignal={quotaRefresh} />
+      </section>
+
+      {/* Render */}
+      <section className="space-y-4" aria-label="Render backends and data">
+        <SectionHeader title="Render" icon={Layers} pill={renderRollupPill(renderRows)} />
+        <div className="space-y-6">
+          {renderBySubgroup.apis.length ? (
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">APIs / Web</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {renderBySubgroup.apis.map((svc) => (
+                  <div key={svc.anchorId} data-testid="infra-probe-row">
+                    <ServiceCard svc={svc} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {renderBySubgroup.workers.length ? (
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Workers</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {renderBySubgroup.workers.map((svc) => (
+                  <div key={svc.anchorId} data-testid="infra-probe-row">
+                    <ServiceCard svc={svc} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {renderBySubgroup.data.length ? (
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Data</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {renderBySubgroup.data.map((svc) => (
+                  <div key={svc.anchorId} data-testid="infra-probe-row">
+                    <ServiceCard svc={svc} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {renderBySubgroup.other.length ? (
+            <div>
+              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Other services</p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {renderBySubgroup.other.map((svc) => (
+                  <div key={svc.anchorId} data-testid="infra-probe-row">
+                    <ServiceCard svc={svc} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+        <QuotaRenderPanel refreshSignal={quotaRefresh} />
+
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Health probes</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {coreHealthRows.map((svc) => (
+              <SupplementaryCard key={svc.service} svc={svc} />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* API providers (PR-10) */}
+      <section className="space-y-4" aria-label="API providers">
+        <SectionHeader title="API providers" icon={Cpu} pill="Cost monitor coming in PR-10" />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {API_PROVIDER_CARDS.map((p) => (
+            <HqEmptyState
+              key={p.name}
+              title={p.name}
+              description="Quota wire-up coming in WS-76 PR-10."
+              action={{ label: "Open vendor console", href: p.consoleHref }}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Supplementary / synthetic */}
+      <section className="space-y-3" aria-label="Reachability and integrations">
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+          <Server className="h-3.5 w-3.5" />
+          Reachability & tokens
+        </div>
         <div
-          className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium ${
+          className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium ${
             allHealthy
-              ? "border border-emerald-800/40 bg-emerald-950/30 text-emerald-300"
+              ? "border-emerald-800/40 bg-emerald-950/30 text-emerald-300"
               : hasDegraded
                 ? "border border-rose-800/40 bg-rose-950/30 text-rose-300"
                 : "border border-amber-800/40 bg-amber-950/30 text-amber-300"
@@ -372,75 +635,83 @@ export default function InfraClient({
         >
           <StatusDot
             healthy={allHealthy}
-            configured={otherRows.length === 0 || configuredCount === otherRows.length}
+            configured={supplementaryRows.length === 0 || configuredCount === supplementaryRows.length}
           />
           {allHealthy
-            ? "All synthetic checks green"
+            ? "All supplementary checks green"
             : hasDegraded
               ? `${degradedCount} check${degradedCount > 1 ? "s" : ""} degraded (below)`
               : "Supplementary checks"}
         </div>
-      </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <HqStatCard
+            label="Supplementary / HTTP"
+            value={`${healthyCount}/${supplementaryRows.length}`}
+            helpText="Public URLs, tokens, and sidecar checks"
+            status={
+              supplementaryRows.length === 0
+                ? "neutral"
+                : healthyCount === supplementaryRows.length
+                  ? "success"
+                  : hasDegraded
+                    ? "danger"
+                    : "warning"
+            }
+          />
+          <HqStatCard
+            label="Degraded (below)"
+            value={degradedCount}
+            helpText="HTTP / token checks"
+            status={degradedCount > 0 ? "danger" : "success"}
+          />
+          <HqStatCard
+            label="Platform rows"
+            value={platformRows.length}
+            helpText="Render + Vercel API-backed"
+            status="neutral"
+          />
+        </div>
+        <div className="space-y-6">
+          {categoryOrder.map((cat) => {
+            const catServices = grouped.get(cat);
+            if (!catServices?.length) return null;
+            const meta = categoryMeta[cat] ?? { label: cat, icon: Server };
+            const CatIcon = meta.icon;
+            return (
+              <div key={cat}>
+                <div className="mb-3 flex items-center gap-2">
+                  <CatIcon className="h-4 w-4 text-zinc-500" />
+                  <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{meta.label}</p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {catServices.map((svc) => (
+                    <SupplementaryCard key={svc.service} svc={svc} />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
-      <motion.section
-        className="grid gap-4 md:grid-cols-3"
-        variants={stagger}
-        initial="hidden"
-        animate="show"
-      >
-        <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <p className="text-xs uppercase tracking-wide text-zinc-400">Platform rows</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums text-zinc-100">
-            {platformRows.length}
-          </p>
-          <p className="text-sm text-zinc-500">Render + Postgres + Key Value + Vercel</p>
-        </motion.div>
-        <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <p className="text-xs uppercase tracking-wide text-zinc-400">Supplementary / HTTP</p>
-          <p className="mt-2 text-2xl font-semibold tabular-nums">
-            <span className={healthyCount === otherRows.length ? "text-emerald-300" : "text-zinc-100"}>
-              {healthyCount}
-            </span>
-            <span className="text-zinc-500">/{otherRows.length}</span>
-          </p>
-          <p className="text-sm text-zinc-500">n8n, Slack, Neon, etc.</p>
-        </motion.div>
-        <motion.div variants={fadeUp} className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-          <p className="text-xs uppercase tracking-wide text-zinc-400">Degraded (below)</p>
-          <p className={`mt-2 text-2xl font-semibold tabular-nums ${degradedCount > 0 ? "text-rose-300" : "text-emerald-300"}`}>
-            {degradedCount}
-          </p>
-          <p className="text-sm text-zinc-500">HTTP / token checks</p>
-        </motion.div>
-      </motion.section>
-
-      <motion.section
-        variants={fadeUp}
-        initial="hidden"
-        animate="show"
-        className="space-y-3"
-        data-testid="infra-quota-panels"
-        aria-label="Vendor quota snapshots via Brain API"
-      >
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Vendor quotas</p>
+      <section data-testid="infra-quota-panels" aria-label="Vendor quota snapshots via Brain API">
+        <div className="mb-3">
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">GitHub Actions</p>
           <p className="mt-1 text-sm text-zinc-400">
-            Brain-maintained snapshots (Vercel, GitHub Actions, Render). Bands: green below 60%,
-            amber 60–85%, red above 85% of modeled caps — scan the top stripe on each card.
+            Org billing minutes · paid runners · Actions cache footprint (cross-repo).
           </p>
         </div>
-        <div className="grid gap-4 xl:grid-cols-3">
-          <QuotaVercelPanel refreshSignal={quotaRefresh} />
-          <QuotaGitHubActionsPanel refreshSignal={quotaRefresh} />
-          <QuotaRenderPanel refreshSignal={quotaRefresh} />
-        </div>
-      </motion.section>
+        <QuotaGitHubActionsPanel refreshSignal={quotaRefresh} />
+      </section>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-zinc-800 px-4 py-3">
         <div className="flex items-center gap-3 text-sm text-zinc-400">
           <Radio className="h-3.5 w-3.5" />
           <span>
-            Last checked: <span className="text-zinc-200">{formatTimePT(checkedAt)} PT</span>
+            Last checked:{" "}
+            <span className="text-zinc-200" suppressHydrationWarning>
+              {formatTimePT(checkedAt)} PT
+            </span>
           </span>
           <label className="flex cursor-pointer items-center gap-1.5 text-xs">
             <input
@@ -451,14 +722,15 @@ export default function InfraClient({
             />
             Auto-refresh 30s
           </label>
-          {refreshError && (
+          {refreshError ? (
             <span className="ml-3 rounded-full border border-rose-800/40 bg-rose-950/20 px-2 py-0.5 text-xs text-rose-300">
               Refresh failed: {refreshError}
             </span>
-          )}
+          ) : null}
         </div>
         <button
-          onClick={refresh}
+          type="button"
+          onClick={() => void refresh()}
           disabled={refreshing}
           className="flex items-center gap-2 rounded-md border border-zinc-700 px-3 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-800 hover:text-zinc-100 disabled:opacity-50"
         >
@@ -466,138 +738,6 @@ export default function InfraClient({
           Refresh
         </button>
       </div>
-
-      {platformRows.length > 0 && (
-        <motion.div variants={stagger} initial="hidden" animate="show" className="space-y-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Platform services</p>
-          <div className="grid gap-3 md:grid-cols-2">
-            {platformRows.map((svc) => (
-              <div
-                key={svc.service + (svc.anchorId ?? "") + (svc.probeKind ?? "")}
-                id={svc.anchorId}
-                data-testid="infra-probe-row"
-                className={`scroll-mt-24 rounded-xl border bg-zinc-900/60 p-4 ${
-                  !svc.configured
-                    ? "border-zinc-800"
-                    : svc.healthy
-                      ? "border-emerald-800/20"
-                      : "border-rose-800/30"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-zinc-100">{svc.service}</p>
-                    <p className="mt-0.5 text-xs text-zinc-500">
-                      {svc.probeKind === "vercel" ? "Vercel" : "Render"} · {svc.platformType ?? "—"}
-                    </p>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium uppercase ${platformStateBadgeClass(
-                      platformProbeBadgeTone(svc),
-                    )}`}
-                    data-testid="infra-probe-state"
-                  >
-                    {platformProbeBadgeLabel(svc)}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-zinc-400">{svc.detail}</p>
-                {svc.commitSha && (
-                  <p className="mt-1 font-mono text-xs text-zinc-500">SHA {svc.commitSha}</p>
-                )}
-                {svc.lastDeployedAt && (
-                  <p className="text-xs text-zinc-500">Deployed {formatTimePT(svc.lastDeployedAt)} PT</p>
-                )}
-                <div className="mt-2 flex flex-wrap items-center gap-3">
-                  {svc.dashboardUrl && (
-                    <a
-                      href={svc.dashboardUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
-                    >
-                      Open dashboard <ExternalLink className="h-3 w-3" />
-                    </a>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      <motion.div className="space-y-6" variants={stagger} initial="hidden" animate="show">
-        {categoryOrder.map((cat) => {
-          const catServices = grouped.get(cat);
-          if (!catServices?.length) return null;
-          const meta = categoryMeta[cat] ?? { label: cat, icon: Server };
-          const CatIcon = meta.icon;
-          return (
-            <motion.section key={cat} variants={fadeUp}>
-              <div className="mb-3 flex items-center gap-2">
-                <CatIcon className="h-4 w-4 text-zinc-500" />
-                <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">
-                  {meta.label}
-                </p>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-
-                {catServices.map((svc) => (
-                  <div
-                    key={svc.service}
-                    className={`rounded-xl border bg-zinc-900/60 p-4 transition ${
-                      !svc.configured
-                        ? "border-zinc-800"
-                        : svc.healthy
-                          ? "border-emerald-800/30"
-                          : "border-rose-800/30"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2.5">
-                        <StatusDot healthy={svc.healthy} configured={svc.configured} />
-                        <p className="font-medium text-zinc-100">{svc.service}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {svc.latencyMs !== null && (
-                          <span className={`font-mono text-xs tabular-nums ${latencyColor(svc.latencyMs)}`}>
-                            {svc.latencyMs}ms
-                          </span>
-                        )}
-                        <StatusIcon healthy={svc.healthy} configured={svc.configured} />
-                      </div>
-                    </div>
-                    <p className="mt-2 text-sm text-zinc-400">{svc.detail}</p>
-                    <div className="mt-2 flex flex-wrap items-center gap-3">
-                      {svc.dashboardUrl && (
-                        <a
-                          href={svc.dashboardUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
-                        >
-                          Dashboard <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                      {svc.consoleUrl && (
-                        <a
-                          href={svc.consoleUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
-                        >
-                          Console <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </motion.section>
-          );
-        })}
-      </motion.div>
-      </>
-      )}
     </div>
   );
 }

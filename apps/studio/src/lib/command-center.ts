@@ -615,6 +615,14 @@ async function checkWithLatency(
     const latencyMs = Math.round(performance.now() - start);
 
     let detail = response.ok ? "Reachable" : `HTTP ${response.status}`;
+    if (!response.ok && service === "LaunchFree API" && url) {
+      try {
+        const path = new URL(url).pathname || "/";
+        detail = `GET ${path} → HTTP ${response.status}`;
+      } catch {
+        detail = `HTTP ${response.status}`;
+      }
+    }
 
     if (response.ok && options?.validateJson) {
       try {

@@ -12,6 +12,7 @@ import {
 } from "@/lib/quota-monitor-format";
 import type { GitHubActionsQuotaApiPayload, GitHubActionsQuotaSnapshotRow } from "@/lib/quota-monitor-types";
 import { QuotaPanelFrame, fetchBrainEnvelope, quotaBar } from "./quota-shared";
+import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 
 const API = "/api/admin/quota/github-actions";
 
@@ -109,7 +110,7 @@ export default function QuotaGitHubActionsPanel(props: { refreshSignal: number }
     if (!repos.length) {
       return {
         worstPct: 0,
-        headline: "No GitHub Actions billing snapshots yet (Brain github_actions_quota_monitor).",
+        headline: "",
         recordedIso: payload?.batch_at ?? null,
       };
     }
@@ -187,6 +188,11 @@ export default function QuotaGitHubActionsPanel(props: { refreshSignal: number }
             })}
           </ul>
         </div>
+      ) : !loading && !error ? (
+        <HqEmptyState
+          title="No GitHub Actions billing snapshots yet"
+          description="Brain job `github_actions_quota_monitor` has not written snapshots — org billing minutes appear here once ingested."
+        />
       ) : null}
     </QuotaPanelFrame>
   );

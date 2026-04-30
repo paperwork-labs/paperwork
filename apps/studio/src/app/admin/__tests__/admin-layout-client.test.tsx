@@ -54,11 +54,12 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
     expect(within(convoLink).getByText("4 pending")).toBeTruthy();
 
     const footer = screen.getByTestId("admin-vendor-footer");
+    const vendorAnchors = within(footer).getAllByRole("link");
+    expect(vendorAnchors).toHaveLength(6);
+
     expect(within(footer).getByText("Hosting")).toBeTruthy();
     expect(within(footer).getByText("Code")).toBeTruthy();
     expect(within(footer).getByText("AI cost")).toBeTruthy();
-    const vendorAnchors = within(footer).getAllByRole("link");
-    expect(vendorAnchors).toHaveLength(6);
   });
 
   it("shows Expenses live pending badge when expensesPending is provided", () => {

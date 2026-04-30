@@ -1,6 +1,6 @@
 import type { InfrastructureView, InfraStatus } from "@/lib/infra-types";
 
-/** Platform rows aligned with root `render.yaml` + `VERCEL_MONOREPO_PROJECT_NAMES` (E2E / CI). */
+/** Platform rows aligned with root `render.yaml` + env-driven Vercel list (E2E / CI). */
 export function getE2EInfrastructureFixture(): InfrastructureView {
   const r = (
     name: string,
@@ -45,6 +45,7 @@ export function getE2EInfrastructureFixture(): InfrastructureView {
     r("brain-api", "web", "live"),
     r("filefree-api", "web", "live"),
     r("axiomfolio-api", "web", "failed"),
+    r("launchfree-api", "web", "live"),
     r("axiomfolio-worker", "worker", "live"),
     r("axiomfolio-worker-heavy", "worker", "live"),
     r("axiomfolio-db", "postgres", "live"),
@@ -59,7 +60,7 @@ export function getE2EInfrastructureFixture(): InfrastructureView {
   return {
     services: platformRows,
     platformSummary: {
-      render: { live: 6, building: 0, failed: 1, suspended: 0, total: 7 },
+      render: { live: 7, building: 0, failed: 1, suspended: 0, total: 8 },
       vercel: { live: 6, building: 0, failed: 1, suspended: 0, total: 6 },
     },
     platformPartial: [],

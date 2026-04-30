@@ -37,4 +37,23 @@ This worksheet is the single source of truth for founder-owned setup that can ru
 | 16 | PostHog project key + funnels seeded | 1hr | PR-24b | ☐ |
 | 17 | Viral account handle reservation (TikTok + IG + X + Threads) | 1hr | PR-38 | ☐ |
 
+### Item 18 — Retire `axiomfolio-frontend` Render static site
+
+<a id="item-18-retire-axiomfolio-frontend-render-static"></a>
+
+Post–WS-02 cutover, the AxiomFolio frontend lives on **Vercel**. The legacy Render **static_site** `axiomfolio-frontend` should be deleted to stop failed builds and billing noise.
+
+1. `render services list --output json | jq '.[] | select(.name == "axiomfolio-frontend")'`
+2. `render services delete <service-id>` (confirm workspace)
+
+### Item 19 — Set `VERCEL_MONOREPO_PROJECT_NAMES` on Studio (Vercel)
+
+<a id="item-19--set-vercel_monorepo_project_names"></a>
+
+Studio `/admin/infrastructure` reads this comma-separated list to know which Vercel project slugs to probe. Without it, the Services tab shows a single remediation card instead of per-project cards.
+
+1. In Vercel → **paperwork-labs** → **studio** → **Settings** → **Environment Variables**, add `VERCEL_MONOREPO_PROJECT_NAMES` for Production (and Preview if you use preview deploys for admin).
+2. Suggested value: `studio,axiomfolio,filefree,launchfree,distill,trinkets,axiomfolio-marketing,paperworklabs` (adjust slugs to match your team).
+3. Redeploy Studio so the var is live.
+
 > **TODO (WS-76):** Register Brain audit `founder_actions_pending` (weekly cadence; count open checkboxes) in `audit_registry.json` seed when a lightweight runner exists.

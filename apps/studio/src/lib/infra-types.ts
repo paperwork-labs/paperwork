@@ -25,6 +25,8 @@ export type InfraStatus = {
   lastDeployedAt?: string | null;
   /** In-page hash anchor, e.g. `render-srv-abc`. */
   anchorId?: string;
+  /** Retired services (e.g. static site post–WS-02 cutover) — UI may soften rollup severity. */
+  deprecated?: boolean;
 };
 
 export type PlatformStateCounts = {
