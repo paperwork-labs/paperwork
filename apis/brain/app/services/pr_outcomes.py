@@ -116,23 +116,34 @@ def record_merged_pr(
     subagent_type: str,
     workstream_ids: list[str],
     workstream_types: list[str],
+    *,
+    branch: str = "",
+    ci_status_at_merge: str = "unknown",
+    overwrite_existing: bool = False,
 ) -> None:
     def _m(data: PrOutcomesFile) -> None:
-        if any(r.pr_number == pr_number for r in data.outcomes):
-            msg = f"pr_outcomes: PR #{pr_number} already recorded"
-            raise ValueError(msg)
-        data.outcomes.append(
-            PrOutcome(
-                pr_number=pr_number,
-                merged_at=merged_at,
-                merged_by_agent=merged_by_agent,
-                agent_model=agent_model,
-                subagent_type=subagent_type,
-                workstream_ids=list(workstream_ids),
-                workstream_types=list(workstream_types),
-                outcomes=PrOutcomesOutcomes(),
-            )
+        incoming = PrOutcome(
+            pr_number=pr_number,
+            merged_at=merged_at,
+            merged_by_agent=merged_by_agent,
+            agent_model=agent_model,
+            subagent_type=subagent_type,
+            branch=branch,
+            ci_status_at_merge=ci_status_at_merge,
+            workstream_ids=list(workstream_ids),
+            workstream_types=list(workstream_types),
+            outcomes=PrOutcomesOutcomes(),
         )
+        for idx, row in enumerate(data.outcomes):
+            if row.pr_number != pr_number:
+                continue
+            if not overwrite_existing:
+                msg = f"pr_outcomes: PR #{pr_number} already recorded"
+                raise ValueError(msg)
+            incoming.outcomes = row.outcomes
+            data.outcomes[idx] = incoming
+            return
+        data.outcomes.append(incoming)
 
     _mutate(_m)
 

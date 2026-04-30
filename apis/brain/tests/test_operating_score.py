@@ -267,6 +267,86 @@ def test_web_perf_ux_collector_empty_file_returns_bootstrap(
     assert "no Lighthouse-CI runs yet" in notes
 
 
+def test_targeted_collectors_default_to_brain_data_dir() -> None:
+    brain_data = Path(__file__).resolve().parents[1] / "data"
+    assert autonomy._brain_data_dir() == brain_data  # type: ignore[attr-defined]
+    assert knowledge_capital._brain_data_dir() == brain_data  # type: ignore[attr-defined]
+    assert web_perf_ux._brain_data_dir() == brain_data  # type: ignore[attr-defined]
+
+
+def test_targeted_collectors_return_non_empty_from_fixture_data(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    outcomes = [
+        {
+            "pr_number": idx + 1,
+            "merged_at": "2026-04-28T13:00:00Z",
+            "merged_by_agent": "brain-test" if idx % 2 == 0 else "founder",
+            "agent_model": "composer-2-fast",
+            "subagent_type": "generalPurpose",
+            "workstream_ids": ["WS-82"],
+            "workstream_types": ["ops"],
+            "outcomes": {"h24": {"ci_pass": True, "deploy_success": True, "reverted": False}},
+        }
+        for idx in range(10)
+    ]
+    dispatches = [
+        {
+            "dispatch_id": f"d-{idx}",
+            "agent_model": "composer-2-fast",
+            "subagent_type": "generalPurpose",
+            "workstream_id": "WS-82",
+            "workstream_type": "ops",
+            "pr_number": idx + 1 if idx < 10 else None,
+        }
+        for idx in range(20)
+    ]
+
+    pr_file = tmp_path / "pr_outcomes.json"
+    pr_file.write_text(
+        json.dumps({"schema": "pr_outcomes/v1", "outcomes": outcomes}),
+        encoding="utf-8",
+    )
+    dispatch_file = tmp_path / "agent_dispatch_log.json"
+    dispatch_file.write_text(json.dumps({"dispatches": dispatches}), encoding="utf-8")
+    procedural = tmp_path / "procedural_memory.yaml"
+    procedural.write_text("version: 1\nrules:\n  - id: fixture_rule\n", encoding="utf-8")
+    lighthouse = tmp_path / "lighthouse_ci_runs.json"
+    lighthouse.write_text(
+        json.dumps(
+            {
+                "schema": "lighthouse_ci_runs/v1",
+                "runs": [
+                    {
+                        "run_at": "2026-04-29T02:05:06Z",
+                        "scores": {
+                            "performance": 0.8,
+                            "accessibility": 0.9,
+                            "best_practices": 0.85,
+                            "seo": 0.95,
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    monkeypatch.setenv("BRAIN_PR_OUTCOMES_JSON", str(pr_file))
+    monkeypatch.setenv("BRAIN_AGENT_DISPATCH_LOG_JSON", str(dispatch_file))
+    monkeypatch.setenv("BRAIN_PROCEDURAL_MEMORY_YAML", str(procedural))
+    monkeypatch.setenv("BRAIN_LIGHTHOUSE_CI_RUNS_JSON", str(lighthouse))
+    monkeypatch.setenv("BRAIN_APP_REGISTRY_JSON", str(tmp_path / "missing-registry.json"))
+    monkeypatch.setattr(autonomy, "_estimate_founder_ops_minutes", lambda: 0.0)
+
+    for collector in (autonomy.collect, knowledge_capital.collect, web_perf_ux.collect):
+        score, measured, notes = collector()
+        assert measured is True
+        assert score > 0.0
+        assert notes
+
+
 def test_atomic_write_roundtrip(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     _tiny_spec(monkeypatch, tmp_path)
     jq = tmp_path / "r.json"

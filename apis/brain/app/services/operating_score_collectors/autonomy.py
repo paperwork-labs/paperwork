@@ -41,8 +41,8 @@ _BOT_EMAIL_PATTERNS = (
 
 def _brain_data_dir() -> Path:
     here = Path(__file__).resolve()
-    brain_app = here.parents[2]
-    return brain_app / "data"
+    brain_root = here.parents[3]
+    return brain_root / "data"
 
 
 def _pr_outcomes_path() -> Path:

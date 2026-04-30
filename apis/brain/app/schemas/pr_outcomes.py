@@ -37,6 +37,8 @@ class PrOutcome(BaseModel):
     merged_by_agent: str
     agent_model: str
     subagent_type: str
+    branch: str = ""
+    ci_status_at_merge: str = "unknown"
     workstream_ids: list[str] = Field(default_factory=list)
     workstream_types: list[str] = Field(default_factory=list)
     outcomes: PrOutcomesOutcomes = Field(default_factory=PrOutcomesOutcomes)
