@@ -1,5 +1,7 @@
 """Cheap-agent dispatch helpers — preflight stamping for agent_dispatch_log (WS-67.B).
 
+medallion: ops
+
 Future: append helpers that write to apis/brain/data/agent_dispatch_log.json can call
 ``stamp_preflight`` before persisting each dispatch row.
 """
