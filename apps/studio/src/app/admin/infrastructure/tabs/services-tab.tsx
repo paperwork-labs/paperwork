@@ -1,5 +1,6 @@
 import { getInfrastructureView } from "@/lib/command-center";
 import { getE2EInfrastructureFixture } from "@/lib/e2e-infra-mock";
+import { parseVercelMonorepoProjectNamesFromEnv } from "@/lib/infra-probes";
 import InfraClient from "../infra-client";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,11 @@ export const revalidate = 0;
 // Content lifted from the original /admin/infrastructure page (WS-69 PR C).
 export default async function ServicesTab() {
   const checkedAt = new Date().toISOString();
+  const vercelMonorepoNamesConfigured =
+    process.env.STUDIO_E2E_FIXTURE === "1"
+      ? true
+      : Boolean(parseVercelMonorepoProjectNamesFromEnv()?.length);
+
   if (process.env.STUDIO_E2E_FIXTURE === "1") {
     const e2e = getE2EInfrastructureFixture();
     return (
@@ -16,6 +22,7 @@ export default async function ServicesTab() {
         initialPlatformSummary={e2e.platformSummary}
         initialPlatformPartial={e2e.platformPartial}
         initialCheckedAt={checkedAt}
+        vercelMonorepoNamesConfigured={vercelMonorepoNamesConfigured}
       />
     );
   }
@@ -26,6 +33,7 @@ export default async function ServicesTab() {
       initialPlatformSummary={view.platformSummary}
       initialPlatformPartial={view.platformPartial}
       initialCheckedAt={checkedAt}
+      vercelMonorepoNamesConfigured={vercelMonorepoNamesConfigured}
     />
   );
 }

@@ -81,7 +81,6 @@ export function QuotaPanelFrame({
   headline,
   children,
 }: QuotaPanelFrameProps) {
-  const stale = isStaleIso(recordedIso ?? null);
   const glanceTone = thresholdToneFromPct(worstPctGuess);
   const { bg, text, dot } = toneAccentClass(glanceTone);
 
@@ -117,13 +116,20 @@ export function QuotaPanelFrame({
           </p>
         ) : (
           <>
-            <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2">
-              <p className={`text-sm font-medium tabular-nums ${text}`}>{headline}</p>
-            </div>
-            {stale && recordedIso ? (
+            {headline.trim() ? (
+              <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2">
+                <p className={`text-sm font-medium tabular-nums ${text}`}>{headline}</p>
+              </div>
+            ) : null}
+            {recordedIso ? (
+              <p className="text-[10px] text-zinc-500">
+                Last checked: <span className="font-mono text-zinc-400">{recordedIso}</span>
+              </p>
+            ) : null}
+            {isStaleIso(recordedIso ?? null, 60) && recordedIso ? (
               <p className="flex items-start gap-1.5 rounded-md border border-amber-900/35 bg-amber-950/25 px-2 py-1.5 text-xs text-amber-200">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                Snapshot older than ~25 minutes (schedulers run every 15–30 min). Verified at{" "}
+                Snapshot older than 60 minutes — schedulers may be stuck. Verified at{" "}
                 <span className="font-mono">{recordedIso}</span>.
               </p>
             ) : null}

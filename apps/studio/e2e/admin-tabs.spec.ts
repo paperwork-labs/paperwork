@@ -56,20 +56,14 @@ test.describe("/admin/architecture — tab panels stay populated", () => {
 
 test.describe("/admin/infrastructure — tab panels stay populated", () => {
   test("each tab shows content after click", async ({ page }) => {
-    const resp = await page.goto("/admin/infrastructure?tab=overview", { waitUntil: "domcontentloaded" });
+    const resp = await page.goto("/admin/infrastructure?tab=services", { waitUntil: "domcontentloaded" });
     if (!resp || resp.status() === 404) {
       test.skip();
       return;
     }
 
     await waitForStudioTabShellHydrated(page);
-    await expectActivePanelContains(page, /Infrastructure overview/);
-
-    await page.getByRole("tab", { name: "Services" }).click();
-    await expect(page).toHaveURL(/tab=services/, { timeout: PANEL_TIMEOUT_MS });
-    await expect(activeTabPanel(page).getByTestId("infra-probe-row").first()).toBeVisible({
-      timeout: PANEL_TIMEOUT_MS,
-    });
+    await expectActivePanelContains(page, /Deploy platform|Render:|Vercel:/i);
 
     await page.getByRole("tab", { name: "Secrets" }).click();
     await expect(page).toHaveURL(/tab=secrets/, { timeout: PANEL_TIMEOUT_MS });
@@ -77,7 +71,7 @@ test.describe("/admin/infrastructure — tab panels stay populated", () => {
 
     await page.getByRole("tab", { name: "Logs" }).click();
     await expect(page).toHaveURL(/tab=logs/, { timeout: PANEL_TIMEOUT_MS });
-    await expectActivePanelContains(page, /PR M/i);
+    await expectActivePanelContains(page, /Application Logs|Brain-owned log store/i);
 
     await page.getByRole("tab", { name: "Cost" }).click();
     await expect(page).toHaveURL(/tab=cost/, { timeout: PANEL_TIMEOUT_MS });

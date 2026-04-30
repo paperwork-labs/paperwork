@@ -111,24 +111,29 @@ test.describe("Architecture tabbed shell (WS-69 PR C)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Infrastructure tabbed shell (tabs: overview, services, secrets, logs, cost)
+// Infrastructure tabbed shell (tabs: services, secrets, logs, cost)
 // ---------------------------------------------------------------------------
 
 test.describe("Infrastructure tabbed shell (WS-69 PR C — STUDIO_E2E_FIXTURE=1 dev server)", () => {
-  test("renders with all five tabs visible", async ({ page }) => {
+  test("renders with four tabs (Services, Secrets, Logs, Cost) — no Overview", async ({ page }) => {
     await page.goto("/admin/infrastructure", { waitUntil: "domcontentloaded" });
     await waitForStudioTabShellHydrated(page);
-    await expect(page.getByRole("tab", { name: "Overview" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Overview" })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "Services" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Secrets" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Logs" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Cost" })).toBeVisible();
   });
 
-  test("default tab is overview", async ({ page }) => {
+  test("default tab is services", async ({ page }) => {
     await page.goto("/admin/infrastructure", { waitUntil: "domcontentloaded" });
     await waitForStudioTabShellHydrated(page);
-    await expect(page.getByRole("tab", { name: "Overview" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: "Services" })).toHaveAttribute("aria-selected", "true");
+  });
+
+  test("?tab=overview redirects to services", async ({ page }) => {
+    await page.goto("/admin/infrastructure?tab=overview", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/tab=services/, { timeout: 15_000 });
   });
 
   test("switching to Secrets tab updates URL", async ({ page }) => {
@@ -138,7 +143,7 @@ test.describe("Infrastructure tabbed shell (WS-69 PR C — STUDIO_E2E_FIXTURE=1 
     await expect(page).toHaveURL(/tab=secrets/);
   });
 
-  test("Logs tab shows PR M placeholder", async ({ page }) => {
+  test("Logs tab shows application logs UI", async ({ page }) => {
     await page.goto("/admin/infrastructure", { waitUntil: "domcontentloaded" });
     await waitForStudioTabShellHydrated(page);
     await page.getByRole("tab", { name: "Logs" }).click();
@@ -146,7 +151,7 @@ test.describe("Infrastructure tabbed shell (WS-69 PR C — STUDIO_E2E_FIXTURE=1 
     await expect(page.getByRole("tab", { name: "Logs" })).toHaveAttribute("aria-selected", "true", {
       timeout: 15_000,
     });
-    await expect(page.locator('[role="tabpanel"]:not([hidden])').getByText(/PR M/i).first()).toBeVisible({
+    await expect(page.locator('[role="tabpanel"]:not([hidden])').getByText(/Application Logs|Brain-owned/i).first()).toBeVisible({
       timeout: 15_000,
     });
   });

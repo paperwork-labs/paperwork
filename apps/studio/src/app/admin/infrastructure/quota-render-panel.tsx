@@ -11,6 +11,7 @@ import {
 } from "@/lib/quota-monitor-format";
 import type { RenderQuotaApiPayload, RenderTopServiceMinutes } from "@/lib/quota-monitor-types";
 import { QuotaPanelFrame, fetchBrainEnvelope, quotaBar } from "./quota-shared";
+import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 
 const API = "/api/admin/quota/render";
 
@@ -42,7 +43,7 @@ export default function QuotaRenderPanel(props: { refreshSignal: number }) {
     if (!s) {
       return {
         worstPct: 0,
-        headline: "No Render workspace snapshot yet (Brain render_quota_monitor).",
+        headline: "",
         recordedIso: null as string | null,
         snap: null as typeof s,
       };
@@ -141,6 +142,11 @@ export default function QuotaRenderPanel(props: { refreshSignal: number }) {
             </div>
           ) : null}
         </div>
+      ) : !loading && !error ? (
+        <HqEmptyState
+          title="No Render workspace snapshot yet"
+          description="Brain job `render_quota_monitor` has not written a workspace snapshot — check Brain schedulers and Render API wiring."
+        />
       ) : null}
     </QuotaPanelFrame>
   );

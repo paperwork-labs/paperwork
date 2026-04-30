@@ -12,6 +12,7 @@ import {
 } from "@/lib/quota-monitor-format";
 import type { VercelQuotaApiPayload, VercelQuotaSnapshotRow } from "@/lib/quota-monitor-types";
 import { QuotaPanelFrame, fetchBrainEnvelope, quotaBar } from "./quota-shared";
+import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 
 const API = "/api/admin/quota/vercel";
 
@@ -70,7 +71,7 @@ export default function QuotaVercelPanel(props: { refreshSignal: number }) {
       .sort((a, b) => b.worst - a.worst);
 
     let worst = 0;
-    let headlineInner = "No Vercel quota snapshots yet (Brain vercel_quota_monitor).";
+    let headlineInner = "";
     if (teamMerged) {
       const dPct = pctOf(teamMerged.d24, VERCEL_DEPLOY_DAILY_CAP) ?? 0;
       const bPct = pctOf(teamMerged.m30, VERCEL_BUILD_30D_CAP) ?? 0;
@@ -136,6 +137,11 @@ export default function QuotaVercelPanel(props: { refreshSignal: number }) {
             </div>
           ) : null}
         </div>
+      ) : !loading && !error ? (
+        <HqEmptyState
+          title="No Vercel quota snapshots yet"
+          description="Brain job `vercel_quota_monitor` has not written snapshots — quotas appear here once the first batch lands."
+        />
       ) : null}
     </QuotaPanelFrame>
   );

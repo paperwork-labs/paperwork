@@ -18,6 +18,7 @@ export const RENDER_BLUEPRINT_WEB_WORKER_NAMES = [
   "brain-api",
   "filefree-api",
   "axiomfolio-api",
+  "launchfree-api",
   "axiomfolio-worker",
   "axiomfolio-worker-heavy",
 ] as const;
@@ -26,15 +27,34 @@ export const RENDER_BLUEPRINT_WEB_WORKER_NAMES = [
 export const RENDER_BLUEPRINT_POSTGRES_NAMES = ["axiomfolio-db"] as const;
 export const RENDER_BLUEPRINT_REDIS_NAMES = ["axiomfolio-redis"] as const;
 
-/** Vercel projects to probe (monorepo apps). Names match Vercel project slugs. */
-export const VERCEL_MONOREPO_PROJECT_NAMES = [
+/**
+ * Canonical monorepo Vercel project slugs (suggested `VERCEL_MONOREPO_PROJECT_NAMES` value).
+ * Runtime list comes only from `process.env.VERCEL_MONOREPO_PROJECT_NAMES` — see
+ * `parseVercelMonorepoProjectNamesFromEnv`.
+ */
+export const SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES = [
   "studio",
+  "axiomfolio",
   "filefree",
   "launchfree",
   "distill",
   "trinkets",
-  "axiomfolio",
+  "axiomfolio-marketing",
+  "paperworklabs",
 ] as const;
+
+export const SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES_CSV =
+  SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES.join(",");
+
+/** Legacy export — same as `SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES`. */
+export const VERCEL_MONOREPO_PROJECT_NAMES = SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES;
+
+export function parseVercelMonorepoProjectNamesFromEnv(): string[] | null {
+  const raw = process.env.VERCEL_MONOREPO_PROJECT_NAMES?.trim();
+  if (!raw) return null;
+  const parts = raw.split(",").map((s) => s.trim()).filter((s) => s.length > 0);
+  return parts.length > 0 ? parts : null;
+}
 
 type RenderService = {
   id: string;
@@ -361,7 +381,8 @@ function buildRenderWebRow(
       /\s+/g,
       " ",
     );
-  return {
+  const deprecated = svc.name === "axiomfolio-frontend";
+  const row: InfraStatus = {
     service: svc.name,
     category: "hosting",
     configured: true,
@@ -377,6 +398,8 @@ function buildRenderWebRow(
     lastDeployedAt: when ?? null,
     anchorId: `render-${svc.id.replace(/[^a-z0-9-]/gi, "-")}`,
   };
+  if (deprecated) row.deprecated = true;
+  return row;
 }
 
 function buildPostgresRow(pg: NamedDataResource): InfraStatus {
@@ -525,112 +548,116 @@ export async function collectRenderAndVercelProbes(
   }
 
   if (vercelToken) {
-    const projectByName = new Map<string, VercelProject>();
-    let until: number | undefined;
-    for (let page = 0; page < 30; page++) {
-      const u = new URL(`${VERCEL}/v9/projects`);
-      u.searchParams.set("limit", "100");
-      if (teamId) u.searchParams.set("teamId", teamId);
-      if (typeof until === "number") u.searchParams.set("until", String(until));
-      const res = await fetch(u, {
-        headers: { Authorization: `Bearer ${vercelToken}` },
-        cache: "no-store",
-      });
-      if (!res.ok) {
-        partial.push(`vercel:projects:${res.status}`);
-        break;
+    const monorepoNames = parseVercelMonorepoProjectNamesFromEnv();
+    if (!monorepoNames) {
+      partial.push("vercel:monorepo-project-names-unset");
+    } else {
+      const projectByName = new Map<string, VercelProject>();
+      let until: number | undefined;
+      for (let page = 0; page < 30; page++) {
+        const u = new URL(`${VERCEL}/v9/projects`);
+        u.searchParams.set("limit", "100");
+        if (teamId) u.searchParams.set("teamId", teamId);
+        if (typeof until === "number") u.searchParams.set("until", String(until));
+        const res = await fetch(u, {
+          headers: { Authorization: `Bearer ${vercelToken}` },
+          cache: "no-store",
+        });
+        if (!res.ok) {
+          partial.push(`vercel:projects:${res.status}`);
+          break;
+        }
+        const pageJson = (await res.json()) as VercelProjectsPage;
+        const projects = pageJson.projects ?? [];
+        for (const proj of projects) {
+          if (proj.name) projectByName.set(proj.name.toLowerCase(), proj);
+        }
+        const haveAll = monorepoNames.every((n) => projectByName.has(n.toLowerCase()));
+        if (haveAll) break;
+        if (pageJson.pagination?.next == null) break;
+        const nxt = pageJson.pagination.next;
+        if (typeof nxt === "number" && nxt > 0) until = nxt;
+        else break;
+        if (projects.length < 1) break;
       }
-      const pageJson = (await res.json()) as VercelProjectsPage;
-      const projects = pageJson.projects ?? [];
-      for (const proj of projects) {
-        if (proj.name) projectByName.set(proj.name.toLowerCase(), proj);
-      }
-      const haveAll = VERCEL_MONOREPO_PROJECT_NAMES.every((n) =>
-        projectByName.has(n.toLowerCase()),
-      );
-      if (haveAll) break;
-      if (pageJson.pagination?.next == null) break;
-      const nxt = pageJson.pagination.next;
-      if (typeof nxt === "number" && nxt > 0) until = nxt;
-      else break;
-      if (projects.length < 1) break;
-    }
 
-    for (const name of VERCEL_MONOREPO_PROJECT_NAMES) {
-      const proj = projectByName.get(name.toLowerCase());
-      if (!proj?.id) {
+      for (const name of monorepoNames) {
+        const proj = projectByName.get(name.toLowerCase());
+        if (!proj?.id) {
+          vercelRowsOrdered.push({
+            service: name,
+            category: "hosting",
+            configured: false,
+            healthy: false,
+            detail:
+              "Vercel · project slug not found under this team (rename or fix VERCEL_MONOREPO_PROJECT_NAMES)",
+            latencyMs: null,
+            dashboardUrl: `https://vercel.com/${vercelTeamSlug}`,
+            probeKind: "vercel",
+            platformType: "vercel-project",
+            stateLabel: "failed",
+            deployState: "missing",
+            commitSha: null,
+            lastDeployedAt: null,
+            anchorId: `vercel-expected-${name.replace(/[^a-z0-9-]/gi, "-")}`,
+          });
+          continue;
+        }
+
+        const dUrl = new URL(`${VERCEL}/v6/deployments`);
+        dUrl.searchParams.set("projectId", proj.id);
+        dUrl.searchParams.set("limit", "1");
+        dUrl.searchParams.set("target", "production");
+        if (teamId) dUrl.searchParams.set("teamId", teamId);
+        const dRes = await fetch(dUrl, {
+          headers: { Authorization: `Bearer ${vercelToken}` },
+          cache: "no-store",
+        });
+        let dep: VercelDeployment | undefined;
+        if (dRes.ok) {
+          const dJson = (await dRes.json()) as { deployments: VercelDeployment[] };
+          dep = dJson.deployments?.[0];
+        } else {
+          partial.push(`vercel:deployments:${name}:${dRes.status}`);
+        }
+        const b = vercelState(dep);
+        const healthy = platformHealthyFromBucket(b);
+        const sha = dep?.meta?.githubCommitSha || dep?.gitSource?.sha;
+        const created =
+          dep?.ready && dep.ready > 0
+            ? dep.ready
+            : dep?.createdAt
+              ? dep.createdAt
+              : dep?.created
+                ? dep.created * 1000
+                : null;
+        const stLabel = (dep?.readyState || dep?.state || "?").toLowerCase();
+        const detail =
+          `Vercel production · /v6/deployments · ${stLabel}${sha ? ` · ${sha.slice(0, 7)}` : ""}${created ? ` · ${new Date(created).toISOString()}` : ""}`.replace(
+            /\s+/g,
+            " ",
+          );
         vercelRowsOrdered.push({
-          service: name,
+          service: proj.name,
           category: "hosting",
-          configured: false,
-          healthy: false,
-          detail: "Vercel · project slug not found under this team (rename or add to VERCEL_MONOREPO_PROJECT_NAMES)",
+          configured: true,
+          healthy,
+          detail: detail.trim(),
           latencyMs: null,
-          dashboardUrl: `https://vercel.com/${vercelTeamSlug}`,
+          dashboardUrl: `https://vercel.com/${vercelTeamSlug}/${encodeURIComponent(proj.name)}`,
           probeKind: "vercel",
           platformType: "vercel-project",
-          stateLabel: "failed",
-          deployState: "missing",
-          commitSha: null,
-          lastDeployedAt: null,
-          anchorId: `vercel-expected-${name.replace(/[^a-z0-9-]/gi, "-")}`,
+          stateLabel: b,
+          deployState: stLabel,
+          commitSha: sha ?? null,
+          lastDeployedAt: created ? new Date(created).toISOString() : null,
+          anchorId: `vercel-${proj.id.replace(/[^a-z0-9-]/gi, "-")}`,
         });
-        continue;
       }
 
-      const dUrl = new URL(`${VERCEL}/v6/deployments`);
-      dUrl.searchParams.set("projectId", proj.id);
-      dUrl.searchParams.set("limit", "1");
-      dUrl.searchParams.set("target", "production");
-      if (teamId) dUrl.searchParams.set("teamId", teamId);
-      const dRes = await fetch(dUrl, {
-        headers: { Authorization: `Bearer ${vercelToken}` },
-        cache: "no-store",
-      });
-      let dep: VercelDeployment | undefined;
-      if (dRes.ok) {
-        const dJson = (await dRes.json()) as { deployments: VercelDeployment[] };
-        dep = dJson.deployments?.[0];
-      } else {
-        partial.push(`vercel:deployments:${name}:${dRes.status}`);
+      for (const r of vercelRowsOrdered) {
+        if (r.probeKind === "vercel" && r.stateLabel) bump(s.vercel, r.stateLabel);
       }
-      const b = vercelState(dep);
-      const healthy = platformHealthyFromBucket(b);
-      const sha = dep?.meta?.githubCommitSha || dep?.gitSource?.sha;
-      const created =
-        dep?.ready && dep.ready > 0
-          ? dep.ready
-          : dep?.createdAt
-            ? dep.createdAt
-            : dep?.created
-              ? dep.created * 1000
-              : null;
-      const stLabel = (dep?.readyState || dep?.state || "?").toLowerCase();
-      const detail =
-        `Vercel production · /v6/deployments · ${stLabel}${sha ? ` · ${sha.slice(0, 7)}` : ""}${created ? ` · ${new Date(created).toISOString()}` : ""}`.replace(
-          /\s+/g,
-          " ",
-        );
-      vercelRowsOrdered.push({
-        service: proj.name,
-        category: "hosting",
-        configured: true,
-        healthy,
-        detail: detail.trim(),
-        latencyMs: null,
-        dashboardUrl: `https://vercel.com/${vercelTeamSlug}/${encodeURIComponent(proj.name)}`,
-        probeKind: "vercel",
-        platformType: "vercel-project",
-        stateLabel: b,
-        deployState: stLabel,
-        commitSha: sha ?? null,
-        lastDeployedAt: created ? new Date(created).toISOString() : null,
-        anchorId: `vercel-${proj.id.replace(/[^a-z0-9-]/gi, "-")}`,
-      });
-    }
-
-    for (const r of vercelRowsOrdered) {
-      if (r.probeKind === "vercel" && r.stateLabel) bump(s.vercel, r.stateLabel);
     }
   } else {
     partial.push("vercel:token-missing");
