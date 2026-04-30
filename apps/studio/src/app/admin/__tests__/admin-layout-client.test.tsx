@@ -24,8 +24,8 @@ function renderAdminLayout(ui: ReactElement) {
   return render(<BrainContextProvider>{ui}</BrainContextProvider>);
 }
 
-describe("AdminLayoutClient (WS-69 PR B nav)", () => {
-  it("sidebar link count matches buildNavGroups + Trust, Trackers, Calendar", () => {
+describe("AdminLayoutClient (WS-76 PR-26 Money nav)", () => {
+  it("sidebar link count matches buildNavGroups + Money, Trust, Trackers, Calendar", () => {
     renderAdminLayout(
       <AdminLayoutClient
         founderPending={{ count: 4, hasCritical: true }}
@@ -35,7 +35,7 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
       </AdminLayoutClient>,
     );
 
-    const nav = screen.getByRole("navigation", { name: "Admin" });
+    const nav = screen.getAllByRole("navigation", { name: "Admin" })[0]!;
     const navLinks = within(nav).getAllByRole("link");
     const expectedCount = buildNavGroups(
       { count: 4, hasCritical: true },
@@ -44,6 +44,9 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
     expect(navLinks).toHaveLength(expectedCount);
 
     expect(screen.getAllByText("Command Center").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Money", { exact: true }).some((el) => el.tagName === "P")).toBe(
+      true,
+    );
     expect(screen.getAllByText("Trust", { exact: true }).some((el) => el.tagName === "P")).toBe(
       true,
     );
@@ -55,6 +58,8 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
     ).toBe("/admin/architecture");
     expect(screen.getAllByText("Brain", { exact: true }).length).toBeGreaterThan(0);
 
+    const trackersHeading = within(nav).getByText("Trackers", { exact: true });
+    const trackersGroup = trackersHeading.parentElement as HTMLElement;
     expect(
       within(nav).getByRole("link", { name: /^Calendar$/i }).getAttribute("href"),
     ).toBe("/admin/calendar");
@@ -62,6 +67,15 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
       name: /Expenses/i,
     });
     expect(expensesInNav.getAttribute("href")).toBe("/admin/expenses");
+    expect(
+      within(nav).getByRole("link", { name: /^Bills$/ }).getAttribute("href"),
+    ).toBe("/admin/bills");
+    expect(
+      within(nav).getByRole("link", { name: /^Vendors$/ }).getAttribute("href"),
+    ).toBe("/admin/vendors");
+    expect(
+      within(nav).getByRole("link", { name: /Cost monitor/i }).getAttribute("href"),
+    ).toBe("/admin/infrastructure?tab=cost");
     expect(
       within(nav).queryByRole("link", { name: /Founder actions/i }),
     ).toBeNull();

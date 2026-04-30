@@ -2,7 +2,7 @@
 
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, Settings2 } from "lucide-react";
 
@@ -43,13 +43,37 @@ type Props = {
   expensesCountsUnknown?: boolean;
 };
 
+function navItemIsActive(
+  pathname: string,
+  searchParams: URLSearchParams,
+  itemHref: string
+): boolean {
+  const [pathPart, queryPart] = itemHref.split("?");
+  if (queryPart) {
+    if (pathname !== pathPart) return false;
+    const want = new URLSearchParams(queryPart);
+    for (const key of want.keys()) {
+      if (searchParams.get(key) !== want.get(key)) return false;
+    }
+    return true;
+  }
+  if (itemHref === "/admin") return pathname === "/admin";
+  if (!pathname.startsWith(pathPart)) return false;
+  if (pathPart === "/admin/infrastructure" && searchParams.get("tab") === "cost") {
+    return false;
+  }
+  return true;
+}
+
 function AdminSidebarPanel({
   pathname,
+  searchParams,
   navGroups,
   expensesCountsUnknown,
   onNavLinkClick,
 }: {
   pathname: string;
+  searchParams: URLSearchParams;
   navGroups: NavGroup[];
   expensesCountsUnknown?: boolean;
   onNavLinkClick?: () => void;
@@ -76,9 +100,7 @@ function AdminSidebarPanel({
               </p>
             ) : null}
             {group.items.map((item) => {
-              const isActive =
-                pathname === item.href ||
-                (item.href !== "/admin" && pathname.startsWith(item.href));
+              const isActive = navItemIsActive(pathname, searchParams, item.href);
               const Icon = item.icon;
               const badge = item.pendingBadge;
               const showPendingBadge = badge && badge.count > 0;
@@ -183,6 +205,7 @@ export function AdminLayoutClient({
   expensesCountsUnknown = false,
 }: Props) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navGroups = buildNavGroups(founderPending, expensesPending);
 
@@ -231,6 +254,7 @@ export function AdminLayoutClient({
       >
         <AdminSidebarPanel
           pathname={pathname}
+          searchParams={searchParams}
           navGroups={navGroups}
           expensesCountsUnknown={expensesCountsUnknown}
           onNavLinkClick={() => setMobileNavOpen(false)}
@@ -241,6 +265,7 @@ export function AdminLayoutClient({
         <aside className="hidden w-60 shrink-0 md:block">
           <AdminSidebarPanel
             pathname={pathname}
+            searchParams={searchParams}
             navGroups={navGroups}
             expensesCountsUnknown={expensesCountsUnknown}
           />
