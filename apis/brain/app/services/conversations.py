@@ -258,10 +258,20 @@ def create_conversation(create: ConversationCreate) -> Conversation:
 
 
 def _maybe_push_or_email(conv: Conversation) -> None:
-    """Fan-out: try web push first; fall through to Gmail SMTP on push failure.
+    """Deliver founder notifications for high/critical + needs_founder_action.
 
-    Dead-letters on failure — never blocks the create path.
-    Triggers only when urgency in {high, critical} AND needs_founder_action.
+    Runs **web push** (when VAPID is configured) and **Gmail SMTP** as a
+    fallback when push is not configured or fails.
+
+    - Push payload body is truncated to **120 characters** (provider size caps).
+    - SMTP email uses the **full** first message body (no truncation).
+    - ``EmailConfigError`` (missing Gmail env) is **re-raised** so callers
+      see misconfiguration — no silent skip (no-silent-fallback.mdc).
+    - Other SMTP send failures are dead-lettered (logged at error); the
+      Conversation is already persisted.
+
+    Both channels are attempted when applicable: if push succeeds, SMTP is
+    skipped for that create to avoid duplicate notifications.
     """
     if conv.urgency not in _HIGH_URGENCY or not conv.needs_founder_action:
         return
@@ -272,10 +282,11 @@ def _maybe_push_or_email(conv: Conversation) -> None:
     from app.services.web_push import VapidConfigError
 
     unread = unread_count(status_filter="needs-action")
-    body_text = conv.messages[0].body_md[:120] if conv.messages else ""
+    full_body = conv.messages[0].body_md if conv.messages else ""
+    push_body = full_body[:120]
     push_payload = {
         "title": f"Brain: {conv.title}",
-        "body": body_text,
+        "body": push_body,
         "url": f"/admin/brain/conversations/{conv.id}",
         "unreadCount": unread,
     }
@@ -308,7 +319,7 @@ def _maybe_push_or_email(conv: Conversation) -> None:
         send_conversation_email(
             conversation_id=conv.id,
             title=conv.title,
-            body_md=body_text,
+            body_md=full_body,
             attachments=attachments or None,
         )
     except EmailConfigError:
