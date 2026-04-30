@@ -2,6 +2,7 @@ import { Suspense } from "react";
 
 import { AdminRouteFallback } from "./admin-route-fallback";
 import { AdminLayoutClient } from "./admin-layout-client";
+import { BrainContextProvider } from "@/lib/brain-context";
 import { getE2EMutableConversationsBadge } from "@/lib/e2e-conversations-mutable";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 import founderData from "@/data/founder-actions.json";
@@ -104,12 +105,14 @@ export default async function AdminLayout({
       : null;
 
   return (
-    <AdminLayoutClient
-      founderPending={founderPending}
-      expensesPending={expensesPending}
-      expensesCountsUnknown={expensesCountsUnknown}
-    >
-      <Suspense fallback={<AdminRouteFallback />}>{children}</Suspense>
-    </AdminLayoutClient>
+    <BrainContextProvider>
+      <AdminLayoutClient
+        founderPending={founderPending}
+        expensesPending={expensesPending}
+        expensesCountsUnknown={expensesCountsUnknown}
+      >
+        <Suspense fallback={<AdminRouteFallback />}>{children}</Suspense>
+      </AdminLayoutClient>
+    </BrainContextProvider>
   );
 }

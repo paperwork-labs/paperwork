@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Menu, Settings2 } from "lucide-react";
 
+import { BrainContextPicker } from "@/components/admin/BrainContextPicker";
 import { HqPageContainer } from "@/components/admin/hq/HqPageContainer";
 import { CommandPalette, openCommandPalette } from "@/components/admin/CommandPalette";
 import { buildNavGroups, type NavGroup } from "@/lib/admin-navigation";
@@ -269,6 +270,7 @@ export function AdminLayoutClient({
                 ⌘K
               </kbd>
             </button>
+            <BrainContextPicker />
             <UserButton />
           </div>
           {children}

@@ -51,6 +51,8 @@ export interface ConversationLinks {
 
 export interface Conversation {
   id: string;
+  /** Forward-compat: org scoping for multi-tenant Brain (WS-76 PR-27). */
+  organization_id?: string | null;
   title: string;
   tags: string[];
   urgency: UrgencyLevel;

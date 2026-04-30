@@ -1,7 +1,9 @@
+import type { ReactElement } from "react";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLayoutClient } from "../admin-layout-client";
+import { BrainContextProvider } from "@/lib/brain-context";
 import { buildNavGroups } from "@/lib/admin-navigation";
 
 vi.mock("next/navigation", () => ({
@@ -18,9 +20,13 @@ afterEach(() => {
   cleanup();
 });
 
+function renderAdminLayout(ui: ReactElement) {
+  return render(<BrainContextProvider>{ui}</BrainContextProvider>);
+}
+
 describe("AdminLayoutClient (WS-69 PR B nav)", () => {
   it("sidebar link count matches buildNavGroups + shows Calendar in Trackers", () => {
-    render(
+    renderAdminLayout(
       <AdminLayoutClient
         founderPending={{ count: 4, hasCritical: true }}
         expensesPending={null}
@@ -37,17 +43,17 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
     ).reduce((acc, g) => acc + g.items.length, 0);
     expect(navLinks).toHaveLength(expectedCount);
 
-    expect(screen.getByText("Command Center")).toBeTruthy();
-    expect(screen.getByText("Trackers")).toBeTruthy();
+    expect(screen.getAllByText("Command Center")).toHaveLength(2);
+    expect(within(nav).getByText("Trackers")).toBeTruthy();
     const archLabels = within(nav).getAllByText("Architecture");
     expect(archLabels.some((el) => el.tagName === "P")).toBe(true);
     expect(
       within(nav).getByRole("link", { name: /^Architecture$/ }).getAttribute("href"),
     ).toBe("/admin/architecture");
-    expect(screen.getByText("Brain")).toBeTruthy();
+    expect(within(nav).getByText("Brain")).toBeTruthy();
 
-    const trackersGroup = screen.getByText("Trackers")
-      .parentElement as HTMLElement;
+    const trackersLabel = within(nav).getByText("Trackers");
+    const trackersGroup = trackersLabel.parentElement as HTMLElement;
     expect(
       within(trackersGroup).getByRole("link", { name: /^Calendar$/i }).getAttribute("href"),
     ).toBe("/admin/calendar");
@@ -63,7 +69,7 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
     expect(convoLink.getAttribute("href")).toBe("/admin/brain/conversations");
     expect(within(convoLink).getByText("4 pending")).toBeTruthy();
 
-    const footer = screen.getByTestId("admin-vendor-footer");
+    const footer = screen.getAllByTestId("admin-vendor-footer")[1];
     const vendorAnchors = within(footer).getAllByRole("link");
     expect(vendorAnchors).toHaveLength(6);
 
@@ -73,7 +79,7 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
   });
 
   it("shows Expenses live pending badge when expensesPending is provided", () => {
-    render(
+    renderAdminLayout(
       <AdminLayoutClient
         founderPending={{ count: 0, hasCritical: false }}
         expensesPending={{ count: 3, hasCritical: false }}
