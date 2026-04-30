@@ -2,6 +2,8 @@
 
 Walks apps/*/src/components/ and packages/ui/src/components/ for component
 definitions with common structural patterns (Tabs, Page, *Shell, FilterChip, etc.).
+Also flags `apps/*/src/components/ui/*.tsx` files whose basename matches a
+top-level primitive in `packages/ui` (migration candidates).
 Compares name similarity and prop/tailwind density across apps.
 
 If ≥3 warn-severity findings persist for 4 consecutive runs, this runner writes
@@ -87,6 +89,53 @@ def _tailwind_density(path: Path) -> int:
     for match in _TAILWIND_RE.finditer(source):
         classes.update(match.group(1).split())
     return len(classes)
+
+
+def _collect_ui_primitive_basenames(pkg_components: Path) -> dict[str, list[str]]:
+    """Map lowercase filename → paths under packages/ui/src/components/*.tsx (non-recursive)."""
+    basenames: dict[str, list[str]] = defaultdict(list)
+    if not pkg_components.is_dir():
+        return dict(basenames)
+    for path in sorted(pkg_components.glob("*.tsx")):
+        basenames[path.name.lower()].append(str(path))
+    return dict(basenames)
+
+
+def _primitive_overlap_findings(repo_root: Path, audit_id: str) -> list[AuditFinding]:
+    """Flag apps/*/src/components/ui/*.tsx whose basename matches packages/ui primitives."""
+    pkg_basenames = _collect_ui_primitive_basenames(
+        repo_root / "packages" / "ui" / "src" / "components"
+    )
+    findings: list[AuditFinding] = []
+    apps_dir = repo_root / "apps"
+    if not apps_dir.is_dir():
+        return findings
+
+    for app_dir in sorted(apps_dir.iterdir()):
+        local_ui = app_dir / "src" / "components" / "ui"
+        if not local_ui.is_dir():
+            continue
+        for path in sorted(local_ui.glob("*.tsx")):
+            key = path.name.lower()
+            if key not in pkg_basenames:
+                continue
+            ui_refs = pkg_basenames[key]
+            findings.append(
+                AuditFinding(
+                    audit_id=audit_id,
+                    severity="info",
+                    title=f"Local UI primitive overlaps packages/ui: {path.name}",
+                    detail=(
+                        f"`apps/{app_dir.name}/src/components/ui/{path.name}`"
+                        " shares a basename with "
+                        f"@paperwork-labs/ui ({'; '.join(ui_refs[:2])}). "
+                        "Candidate for consolidation when styling and behavior align."
+                    ),
+                    file_path=str(path),
+                    line=None,
+                )
+            )
+    return findings
 
 
 def _collect_components(root: Path) -> dict[str, list[dict[str, Any]]]:
@@ -214,6 +263,8 @@ def run() -> AuditRun:
 
     components = _collect_components(root)
 
+    findings.extend(_primitive_overlap_findings(root, _AUDIT_ID))
+
     # Find components in >=2 apps (excluding @paperwork-labs/ui, which is expected)
     for name, occurrences in sorted(components.items()):
         apps_present = {o["app"] for o in occurrences}
@@ -245,7 +296,8 @@ def run() -> AuditRun:
             )
 
     warn_count = sum(1 for f in findings if f.severity == "warn")
-    if warn_count == 0:
+    has_primitive_overlap = any(f.title.startswith("Local UI primitive overlaps") for f in findings)
+    if warn_count == 0 and not has_primitive_overlap:
         findings.append(
             AuditFinding(
                 audit_id=_AUDIT_ID,
@@ -261,10 +313,12 @@ def run() -> AuditRun:
     if _check_consecutive_warn_threshold(warn_count):
         _write_long_tail_proposal(warn_count)
 
+    overlap_info = sum(1 for f in findings if f.title.startswith("Local UI primitive overlaps"))
     next_cadence = "weekly"
     summary = (
-        f"cross_app_ui_redundancy: {warn_count} duplicate pattern(s) found "
-        f"across {len(components)} component name(s) scanned."
+        f"cross_app_ui_redundancy: {warn_count} duplicate-pattern warn(s), "
+        f"{overlap_info} packages/ui basename overlap(s); "
+        f"{len(components)} component name(s) scanned."
     )
     return AuditRun(
         audit_id=_AUDIT_ID,

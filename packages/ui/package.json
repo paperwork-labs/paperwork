@@ -15,7 +15,8 @@
     "./filter-chip-row": "./src/components/filter-chip-row.tsx",
     "./cursor-paginated-list": "./src/components/cursor-paginated-list.tsx",
     "./drop-zone": "./src/components/drop-zone.tsx",
-    "./status-badge": "./src/components/status-badge.tsx"
+    "./status-badge": "./src/components/status-badge.tsx",
+    "./brain-chat": "./src/components/BrainChat.tsx"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
