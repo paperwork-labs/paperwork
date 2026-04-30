@@ -633,6 +633,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: skills-extraction-roadmap
+    path: docs/skills/SKILLS_EXTRACTION_ROADMAP.md
+    title: Skills extraction roadmap (WS-82 Wave 6)
+    summary: "Canonical packages/skills/* roadmap. 7 skills (gmail, document-processing, ledger, email-inbound, payments, banking, finance-oauth) packaged as workspace + Brain skill registry entry + future OSS marketplace (Wave OSS, Phase 15)."
+    tags: [paperwork-labs, skills, brain]
+    owners: [brain-skill-engineer]
+    category: reference
   - slug: stack-audit-2026q2
     path: docs/infra/STACK_AUDIT_2026Q2.md
     title: Stack audit — 2026 Q2 (WS-73 Batch B)
@@ -653,13 +660,6 @@ docs:
     summary: The Studio app exposes a Postgres-backed encrypted secrets store. These shell helpers call the Studio HTTP API so you do not need to hand-craft `curl` and JSON.
     tags: []
     owners: [strategy]
-    category: reference
-  - slug: skills-extraction-roadmap
-    path: docs/skills/SKILLS_EXTRACTION_ROADMAP.md
-    title: Skills extraction roadmap (WS-82 Wave 6)
-    summary: "Canonical packages/skills/* roadmap. 7 skills (gmail, document-processing, ledger, email-inbound, payments, banking, finance-oauth) packaged as workspace + Brain skill registry entry + future OSS marketplace (Wave OSS, Phase 15)."
-    tags: [paperwork-labs, skills, brain]
-    owners: [brain-skill-engineer]
     category: reference
   - slug: vercel-auto-promote
     path: docs/infra/VERCEL_AUTO_PROMOTE.md
