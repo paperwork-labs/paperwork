@@ -45,7 +45,8 @@ JOB_ID = "brain_ux_probe_runner"
 # Config
 # ---------------------------------------------------------------------------
 
-# Resolve monorepo root like other Brain modules (Docker flat /app vs dev tree); see app.services.workstreams_loader._repo_root
+# Resolve monorepo root like other Brain modules (Docker flat /app vs dev tree).
+# See app.services.workstreams_loader._repo_root for pattern.
 _REPO_ROOT = _repo_root()
 _PROBE_RESULTS_JSON = (
     Path(os.environ.get("BRAIN_PROBE_RESULTS_JSON", ""))

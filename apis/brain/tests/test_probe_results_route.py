@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
 from app.api import probe_results as probe_results_module
 from app.database import get_db
 from app.main import app
+from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture(autouse=True)
@@ -197,7 +194,7 @@ async def test_probe_health_overall_pass(monkeypatch: pytest.MonkeyPatch) -> Non
 @pytest.mark.asyncio
 async def test_probe_health_empty_results(monkeypatch: pytest.MonkeyPatch) -> None:
     """Empty results → 200 with explanatory note, not silent empty dict."""
-    monkeypatch.setattr(probe_results_module, "_load_results", lambda: [])
+    monkeypatch.setattr(probe_results_module, "_load_results", list)
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
