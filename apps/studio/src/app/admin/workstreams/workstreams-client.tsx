@@ -60,6 +60,7 @@ const STATUS_OPTIONS: ("all" | WorkstreamStatus)[] = [
   "blocked",
   "completed",
   "cancelled",
+  "deferred",
 ];
 
 const OWNER_OPTIONS: ("all" | WorkstreamOwner)[] = [
@@ -318,7 +319,7 @@ export function WorkstreamsBoardClient({
                   onClick={() => pickStatus(opt)}
                   className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${chipClass(active)}`}
                 >
-                  {opt === "all" ? "All" : opt}
+                  {opt === "all" ? "All" : opt.replace(/_/g, " ")}
                 </button>
               );
             })}
@@ -370,6 +371,7 @@ export function WorkstreamsBoardClient({
           <HqStatCard variant="compact" label="Active workstreams" value={kpis.active} />
           <HqStatCard variant="compact" label="Blocked" value={kpis.blocked} status="danger" />
           <HqStatCard variant="compact" label="Cancelled" value={kpis.cancelled} />
+          <HqStatCard variant="compact" label="Deferred" value={kpis.deferred} />
           <HqStatCard variant="compact" label="Completed" value={kpis.completed} status="success" />
           <HqStatCard
             variant="compact"
