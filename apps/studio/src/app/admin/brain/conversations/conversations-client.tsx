@@ -26,6 +26,7 @@ import {
   Search,
   TriangleAlert,
   User,
+  X,
 } from "lucide-react";
 import type {
   Conversation,
@@ -119,6 +120,24 @@ function SpaceFilterChip({
       ) : null}
     </button>
   );
+}
+
+const QUICK_REACTION_EMOJIS = ["👍", "❤️", "✅", "👀", "🚀"] as const;
+
+const FOUNDER_PARTICIPANT_ID = "founder";
+
+function getThreadContext(messages: ThreadMessage[], anchorId: string) {
+  const byId = new Map(messages.map((m) => [m.id, m]));
+  const anchor = byId.get(anchorId);
+  if (!anchor) return null;
+  const root = anchor.parent_message_id
+    ? (byId.get(anchor.parent_message_id) ?? anchor)
+    : anchor;
+  const replies = messages
+    .filter((m) => m.parent_message_id === root.id)
+    .slice()
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+  return { root, replies };
 }
 
 function attachmentDescription(
@@ -250,6 +269,10 @@ export function ConversationsClient({
   const [replyLoading, setReplyLoading] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
   const [snoozingId, setSnoozingId] = useState<string | null>(null);
+  const [threadAnchorId, setThreadAnchorId] = useState<string | null>(null);
+  const [threadPanelEntered, setThreadPanelEntered] = useState(false);
+  const [threadReplyText, setThreadReplyText] = useState("");
+  const [threadReplyLoading, setThreadReplyLoading] = useState(false);
   const [spaceFilter, setSpaceFilter] = useState<ConversationSpace | "all">("all");
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -352,6 +375,29 @@ export function ConversationsClient({
     if (selected?.id === updated.id) setSelected(updated);
   };
 
+  const mergeMessageIntoConversation = useCallback((conversationId: string, updatedMsg: ThreadMessage) => {
+    const patch = (c: Conversation): Conversation =>
+      c.id !== conversationId
+        ? c
+        : {
+            ...c,
+            messages: c.messages.map((m) => (m.id === updatedMsg.id ? updatedMsg : m)),
+            updated_at: new Date().toISOString(),
+          };
+    setConversations((prev) => prev.map(patch));
+    setSelected((s) => (s?.id === conversationId ? patch(s) : s));
+  }, []);
+
+  const closeThreadPanel = () => {
+    setThreadPanelEntered(false);
+    window.setTimeout(() => setThreadAnchorId(null), 280);
+  };
+
+  const threadCtx = useMemo(() => {
+    if (!selected || !threadAnchorId) return null;
+    return getThreadContext(selected.messages, threadAnchorId);
+  }, [selected, threadAnchorId]);
+
   const handleStatusAction = async (
     conversationId: string,
     status: StatusLevel,
@@ -403,6 +449,20 @@ export function ConversationsClient({
     setSelected(conv);
     setShowCompose(false);
   };
+
+
+  const handleReaction = async (msgId: string, emoji: string) => {
+    if (!selected) return;
+    const json = await apiFetch(`/api/admin/conversations/${selected.id}/messages/${msgId}/react`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emoji, participant_id: FOUNDER_PARTICIPANT_ID }),
+    });
+    if (json.success && json.data) {
+      mergeMessageIntoConversation(selected.id, json.data as ThreadMessage);
+    }
+  };
+
 
   const displayedConversations = useMemo(() => {
     if (spaceFilter === "all") return conversations;

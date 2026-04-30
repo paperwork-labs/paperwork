@@ -41,6 +41,7 @@ class ThreadMessage(BaseModel):
     attachments: list[Attachment] = Field(default_factory=list)
     created_at: datetime
     reactions: dict[str, list[str]] = Field(default_factory=dict)
+    parent_message_id: str | None = None
 
 
 UrgencyLevel = Literal["info", "normal", "high", "critical"]
@@ -99,6 +100,7 @@ class AppendMessageRequest(BaseModel):
     author: ConversationParticipant
     body_md: str = Field(..., min_length=1)
     attachments: list[Attachment] = Field(default_factory=list)
+    parent_message_id: str | None = None
 
 
 class ReactRequest(BaseModel):

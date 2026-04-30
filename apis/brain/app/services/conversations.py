@@ -448,6 +448,9 @@ def append_message(
 ) -> ThreadMessage:
     """Append a ThreadMessage to an existing conversation."""
     conv = get_conversation(conversation_id, organization_id=organization_id)
+    parent_id = req.parent_message_id
+    if parent_id and not any(m.id == parent_id for m in conv.messages):
+        raise ValueError(f"Parent message {parent_id!r} not found in conversation")
     now = datetime.now(UTC)
     msg = ThreadMessage(
         id=str(uuid4()),
@@ -456,6 +459,7 @@ def append_message(
         attachments=req.attachments,
         created_at=now,
         reactions={},
+        parent_message_id=parent_id,
     )
     conv.messages.append(msg)
     conv.updated_at = now
@@ -508,6 +512,8 @@ def react(
                 reactors.remove(participant_id)
             else:
                 reactors.append(participant_id)
+            if not reactors:
+                del msg.reactions[emoji]
             conv.updated_at = datetime.now(UTC)
             _save_conversation(conv)
             return msg

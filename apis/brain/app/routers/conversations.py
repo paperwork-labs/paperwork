@@ -187,6 +187,8 @@ def append_message(
         return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
     except PermissionError:
         return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
+    except ValueError as exc:
+        return error_response(str(exc), status_code=400)
     return success_response(msg.model_dump(mode="json"), status_code=201)
 
 
