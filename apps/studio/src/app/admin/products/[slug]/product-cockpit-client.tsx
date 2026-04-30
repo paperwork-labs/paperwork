@@ -315,11 +315,19 @@ export function ProductCockpitClient({
         title={<span style={{ color: product.color_accent }}>{product.name}</span>}
         subtitle={product.tagline}
         actions={
-          <span
-            className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${statusPillToneClass(stage)}`}
-          >
-            {productStageLabel(stage)}
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/admin/products/${product.slug}/health`}
+              className="inline-flex rounded-lg border border-zinc-700/90 bg-zinc-900/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-200 transition hover:border-zinc-600 hover:bg-zinc-800/80"
+            >
+              Health
+            </Link>
+            <span
+              className={`inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${statusPillToneClass(stage)}`}
+            >
+              {productStageLabel(stage)}
+            </span>
+          </div>
         }
       />
       <TabbedPageShell tabs={tabs} defaultTab="overview" />
