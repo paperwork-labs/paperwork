@@ -35,6 +35,8 @@ export interface ReceiptAttachment {
 
 export interface Expense {
   id: string;
+  /** Forward-compat: org scoping for multi-tenant Brain (WS-76 PR-27). */
+  organization_id?: string | null;
   vendor: string;
   amount_cents: number;
   currency: string;
