@@ -8,7 +8,7 @@ pydantic-settings==2.14.0
 python-dotenv==1.2.2
 loguru==0.7.3
 alembic==1.18.4
-Mako==1.3.11
+Mako==1.3.12
 slowapi==0.1.9
 python-json-logger==4.1.0
 
@@ -26,7 +26,7 @@ python-dateutil==2.9.0.post0
 alpha-vantage==3.0.0
 yfinance==1.3.0
 finnhub-python==2.4.28
-twelvedata==1.3.0
+twelvedata==1.4.0
 fmpsdk==20250102.0
 
 # Broker SDKs
@@ -80,7 +80,7 @@ stripe==15.1.0
 # Plaid Investments aggregator (Pro-tier broker.plaid_investments feature).
 # Used for read-only 401k / held-away sync; no order entry. See
 # app/services/portfolio/plaid/.
-plaid-python==39.1.0
+plaid-python==39.2.0
 
 # Backtest hyperparameter optimization
 optuna==4.8.0
