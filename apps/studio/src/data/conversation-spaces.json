@@ -1,0 +1,38 @@
+[
+  {
+    "id": "personal",
+    "name": "Personal",
+    "icon": "user",
+    "description": "Private thoughts and personal tasks"
+  },
+  {
+    "id": "paperwork-labs",
+    "name": "Paperwork Labs",
+    "icon": "building",
+    "description": "Company-wide discussions"
+  },
+  {
+    "id": "axiomfolio",
+    "name": "AxiomFolio",
+    "icon": "chart",
+    "description": "AxiomFolio product channel"
+  },
+  {
+    "id": "filefree",
+    "name": "FileFree",
+    "icon": "file",
+    "description": "FileFree product channel"
+  },
+  {
+    "id": "runbook-asks",
+    "name": "Runbook Asks",
+    "icon": "book",
+    "description": "Questions about runbooks and procedures"
+  },
+  {
+    "id": "incidents",
+    "name": "Incidents",
+    "icon": "alert",
+    "description": "Production incidents and post-mortems"
+  }
+]

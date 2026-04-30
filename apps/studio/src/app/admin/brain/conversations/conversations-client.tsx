@@ -1,35 +1,52 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
   Archive,
   Bell,
   BellOff,
+  BookMarked,
+  Building2,
+  ChartColumnBig,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
+  FileText,
+  Layers,
   MessageSquare,
   Paperclip,
   Plus,
   RefreshCw,
   RotateCcw,
   Search,
+  TriangleAlert,
+  User,
 } from "lucide-react";
 import type {
   Conversation,
+  ConversationSpace,
   ConversationsListPage,
   FilterChip,
   StatusLevel,
   ThreadMessage,
   UrgencyLevel,
 } from "@/types/conversations";
+import type { ComposePersonaOption } from "@/lib/compose-persona-options";
+import {
+  CONVERSATION_SPACES,
+  effectiveConversationSpace,
+  type SpaceGlyphId,
+  spaceDisplayName,
+} from "@/lib/conversation-spaces";
 import { AppBadgeManager, useUnreadCount } from "@/components/pwa/AppBadgeManager";
 import { isPushSupported } from "@/lib/web-push";
 import { ExpenseConversationCard } from "@/components/admin/ExpenseConversationCard";
+import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqErrorState } from "@/components/admin/hq/HqErrorState";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { ComposeModal } from "./compose-modal";
@@ -56,6 +73,53 @@ const URGENCY_LABEL: Record<UrgencyLevel, string> = {
   high: "high",
   critical: "critical",
 };
+
+const SPACE_GLYPH_ICONS: Record<SpaceGlyphId, LucideIcon> = {
+  user: User,
+  building: Building2,
+  chart: ChartColumnBig,
+  file: FileText,
+  book: BookMarked,
+  alert: TriangleAlert,
+};
+
+function SpaceFilterChip({
+  testId,
+  label,
+  icon: Icon,
+  active,
+  onClick,
+  badge,
+}: {
+  testId: string;
+  label: string;
+  icon: LucideIcon;
+  active: boolean;
+  onClick: () => void;
+  badge: number;
+}) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      title={label}
+      onClick={onClick}
+      className={`flex min-w-0 max-w-[9rem] items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-xs transition ${
+        active
+          ? "bg-sky-500/20 text-sky-200 ring-1 ring-sky-500/40"
+          : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+      }`}
+    >
+      <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {badge > 0 ? (
+        <span className="shrink-0 rounded-full bg-zinc-700 px-1 py-0.5 text-[10px] tabular-nums text-zinc-200">
+          {badge}
+        </span>
+      ) : null}
+    </button>
+  );
+}
 
 function attachmentDescription(
   att: Conversation["messages"][0]["attachments"][0],
@@ -156,12 +220,14 @@ interface Props {
   initialPage: ConversationsListPage | null;
   /** Founder-actions source or Brain backfill/list failure — no silent empty inbox. */
   setupError?: string | null;
+  composePersonaOptions?: ComposePersonaOption[];
 }
 
 export function ConversationsClient({
   brainConfigured,
   initialPage,
   setupError = null,
+  composePersonaOptions = [],
 }: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -184,6 +250,7 @@ export function ConversationsClient({
   const [replyLoading, setReplyLoading] = useState(false);
   const [showCompose, setShowCompose] = useState(false);
   const [snoozingId, setSnoozingId] = useState<string | null>(null);
+  const [spaceFilter, setSpaceFilter] = useState<ConversationSpace | "all">("all");
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -337,6 +404,23 @@ export function ConversationsClient({
     setShowCompose(false);
   };
 
+  const displayedConversations = useMemo(() => {
+    if (spaceFilter === "all") return conversations;
+    return conversations.filter((c) => effectiveConversationSpace(c) === spaceFilter);
+  }, [conversations, spaceFilter]);
+
+  const spaceUnreadCounts = useMemo(() => {
+    const bySpace: Partial<Record<ConversationSpace, number>> = {};
+    let all = 0;
+    for (const c of conversations) {
+      if (c.needs_founder_action === false) continue;
+      all++;
+      const sp = effectiveConversationSpace(c);
+      bySpace[sp] = (bySpace[sp] ?? 0) + 1;
+    }
+    return { all, bySpace };
+  }, [conversations]);
+
   if (setupError) {
     const looksLikeBrainAuth =
       /secret|401|403|unauthorized|forbidden|x-brain-secret/i.test(setupError);
@@ -457,6 +541,35 @@ export function ConversationsClient({
             selected ? "hidden min-h-0 md:flex" : "flex w-full min-h-0 flex-1"
           }`}
         >
+          <div className="shrink-0 space-y-1 border-b border-zinc-800/60 p-2">
+            <p className="px-1 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+              Channel
+            </p>
+            <div className="flex flex-wrap gap-1">
+              <SpaceFilterChip
+                testId="conversation-space-filter-all"
+                label="All"
+                icon={Layers}
+                active={spaceFilter === "all"}
+                onClick={() => setSpaceFilter("all")}
+                badge={spaceUnreadCounts.all}
+              />
+              {CONVERSATION_SPACES.map((s) => {
+                const Icon = SPACE_GLYPH_ICONS[s.icon];
+                return (
+                  <SpaceFilterChip
+                    key={s.id}
+                    testId={`conversation-space-filter-${s.id}`}
+                    label={s.name}
+                    icon={Icon}
+                    active={spaceFilter === s.id}
+                    onClick={() => setSpaceFilter(s.id)}
+                    badge={spaceUnreadCounts.bySpace[s.id] ?? 0}
+                  />
+                );
+              })}
+            </div>
+          </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {loading && conversations.length === 0 ? (
               <div data-testid="conversations-loading" className="p-6 text-center text-sm text-zinc-500">
@@ -464,11 +577,19 @@ export function ConversationsClient({
               </div>
             ) : conversations.length === 0 ? (
               <EmptyState filter={activeFilter} search={debouncedSearch} />
+            ) : displayedConversations.length === 0 ? (
+              <div className="p-4">
+                <HqEmptyState
+                  title="No conversations in this channel"
+                  description="Pick another space or choose All."
+                />
+              </div>
             ) : (
               <ul role="list" data-testid="conversations-inbox-list" className="divide-y divide-zinc-800/60">
-                {conversations.map((conv) => (
+                {displayedConversations.map((conv) => (
                   <li key={conv.id}>
                     <button
+                      type="button"
                       onClick={() => setSelected(conv)}
                       className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-zinc-800/50 ${
                         selected?.id === conv.id ? "bg-zinc-800/70" : ""
@@ -476,12 +597,12 @@ export function ConversationsClient({
                     >
                       <UrgencyDot urgency={conv.urgency} />
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-zinc-100">
-                          {conv.title}
-                        </p>
+                        <p className="truncate text-sm font-medium text-zinc-100">{conv.title}</p>
                         <p className="mt-0.5 truncate text-xs text-zinc-500">
                           {new Date(conv.updated_at).toLocaleDateString()}
                           {conv.persona ? ` · ${conv.persona}` : ""}
+                          {" · "}
+                          <span className="text-zinc-600">{spaceDisplayName(effectiveConversationSpace(conv))}</span>
                         </p>
                         {conv.tags.length > 0 && (
                           <div className="mt-1 flex flex-wrap gap-1">
@@ -545,6 +666,12 @@ export function ConversationsClient({
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1.5 md:pl-4">
                     <StatusBadge status={selected.status} />
+                    <span
+                      data-testid="conversation-detail-space"
+                      className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium text-violet-200 ring-1 ring-violet-500/30"
+                    >
+                      {spaceDisplayName(effectiveConversationSpace(selected))}
+                    </span>
                     {selected.tags.map((tag) => (
                       <span
                         key={tag}
@@ -642,6 +769,7 @@ export function ConversationsClient({
 
       {showCompose && (
         <ComposeModal
+          personaOptions={composePersonaOptions}
           onClose={() => setShowCompose(false)}
           onSuccess={handleComposeSuccess}
         />

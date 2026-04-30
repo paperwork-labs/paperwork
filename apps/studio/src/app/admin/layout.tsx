@@ -2,7 +2,7 @@ import { Suspense } from "react";
 
 import { AdminRouteFallback } from "./admin-route-fallback";
 import { AdminLayoutClient } from "./admin-layout-client";
-import { getE2EConversationsBadge } from "@/lib/e2e-conversations-fixture";
+import { getE2EMutableConversationsBadge } from "@/lib/e2e-conversations-mutable";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 import founderData from "@/data/founder-actions.json";
 
@@ -84,7 +84,7 @@ export default async function AdminLayout({
 
   const founderPending: { count: number; hasCritical: boolean } =
     process.env.STUDIO_E2E_FIXTURE === "1"
-      ? getE2EConversationsBadge()
+      ? getE2EMutableConversationsBadge()
       : (await fetchFounderPendingFromBrain()) ?? {
           count: c.totalPending,
           hasCritical: c.critical > 0,

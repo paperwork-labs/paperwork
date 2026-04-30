@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getE2EConversationsBadge } from "@/lib/e2e-conversations-fixture";
+import { getE2EMutableConversationsBadge } from "@/lib/e2e-conversations-mutable";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ function notConfigured() {
 /** Returns { count, has_critical } for sidebar + PWA badge (WS-76 PR-2 extends shape). */
 export async function GET() {
   if (process.env.STUDIO_E2E_FIXTURE === "1") {
-    const b = getE2EConversationsBadge();
+    const b = getE2EMutableConversationsBadge();
     return NextResponse.json({
       success: true,
       data: { count: b.count, has_critical: b.hasCritical },

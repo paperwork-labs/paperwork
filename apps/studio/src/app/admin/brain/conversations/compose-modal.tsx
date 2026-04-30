@@ -1,8 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Paperclip, X } from "lucide-react";
-import type { Attachment, Conversation, UrgencyLevel } from "@/types/conversations";
+import type {
+  Attachment,
+  Conversation,
+  ConversationParticipant,
+  ConversationSpace,
+  UrgencyLevel,
+} from "@/types/conversations";
+import type { ComposePersonaOption } from "@/lib/compose-persona-options";
+import { CONVERSATION_SPACES, inferSpaceFromTopic } from "@/lib/conversation-spaces";
 
 const URGENCY_OPTIONS: { value: UrgencyLevel; label: string }[] = [
   { value: "info", label: "Info" },
@@ -14,23 +22,46 @@ const URGENCY_OPTIONS: { value: UrgencyLevel; label: string }[] = [
 const ALLOWED_MIMES = ["image/png", "image/jpeg", "image/webp", "application/pdf"];
 const MAX_BYTES = 10 * 1024 * 1024;
 
+const FOUNDER: ConversationParticipant = {
+  id: "founder",
+  kind: "founder",
+  display_name: "Founder",
+};
+
 interface Props {
   onClose: () => void;
   onSuccess: (conv: Conversation) => void;
+  personaOptions: ComposePersonaOption[];
 }
 
-export function ComposeModal({ onClose, onSuccess }: Props) {
+export function ComposeModal({ onClose, onSuccess, personaOptions }: Props) {
   const [title, setTitle] = useState("");
   const [bodyMd, setBodyMd] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [urgency, setUrgency] = useState<UrgencyLevel>("normal");
-  const [persona, setPersona] = useState("");
+  const [space, setSpace] = useState<ConversationSpace>("paperwork-labs");
+  const [personaIds, setPersonaIds] = useState<Set<string>>(new Set());
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [previews, setPreviews] = useState<Map<string, string>>(new Map());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const spaceManualRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (spaceManualRef.current) return;
+    setSpace(inferSpaceFromTopic(title));
+  }, [title]);
+
+  const togglePersona = (id: string) => {
+    setPersonaIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return;
@@ -87,12 +118,27 @@ export function ComposeModal({ onClose, onSuccess }: Props) {
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
+      const personaParticipants: ConversationParticipant[] = [];
+      for (const id of personaIds) {
+        const opt = personaOptions.find((p) => p.id === id);
+        personaParticipants.push({
+          id,
+          kind: "persona",
+          display_name: opt?.label ?? id,
+        });
+      }
+      const participants: ConversationParticipant[] = [FOUNDER, ...personaParticipants];
+      const primaryPersona =
+        personaParticipants.length > 0 ? personaParticipants[0]!.id : null;
+
       const body = {
         title: title.trim(),
         body_md: bodyMd,
         tags,
         urgency,
-        persona: persona.trim() || null,
+        space,
+        persona: primaryPersona,
+        participants,
         attachments,
       };
       const res = await fetch("/api/admin/conversations", {
@@ -114,22 +160,30 @@ export function ComposeModal({ onClose, onSuccess }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+    <div
+      data-testid="compose-modal"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/60 p-4"
+    >
+      <div className="flex min-h-full items-center justify-center py-8">
+        <div className="w-full max-w-lg rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
           <h2 className="text-sm font-semibold text-zinc-100">New conversation</h2>
-          <button onClick={onClose} className="text-zinc-500 transition hover:text-zinc-300">
+          <button type="button" onClick={onClose} className="text-zinc-500 transition hover:text-zinc-300">
             <X className="h-4 w-4" />
           </button>
-        </div>
-        <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 p-5">
+          </div>
+          <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 p-5">
           {error && (
             <p className="rounded-lg bg-red-900/30 p-3 text-sm text-red-300">{error}</p>
           )}
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-400">Title *</label>
+            <label htmlFor="compose-title-input" className="mb-1 block text-xs font-medium text-zinc-400">
+              Title *
+            </label>
             <input
+              id="compose-title-input"
+              data-testid="compose-title-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Conversation title…"
@@ -138,8 +192,12 @@ export function ComposeModal({ onClose, onSuccess }: Props) {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-400">Body (markdown)</label>
+            <label htmlFor="compose-body-textarea" className="mb-1 block text-xs font-medium text-zinc-400">
+              Body (markdown)
+            </label>
             <textarea
+              id="compose-body-textarea"
+              data-testid="compose-body-textarea"
               value={bodyMd}
               onChange={(e) => setBodyMd(e.target.value)}
               placeholder="Write the opening message… (markdown supported)"
@@ -148,10 +206,64 @@ export function ComposeModal({ onClose, onSuccess }: Props) {
             />
           </div>
 
+          <div>
+            <label htmlFor="compose-space-select" className="mb-1 block text-xs font-medium text-zinc-400">
+              Space / channel
+            </label>
+            <select
+              id="compose-space-select"
+              data-testid="compose-space-select"
+              value={space}
+              onChange={(e) => {
+                spaceManualRef.current = true;
+                setSpace(e.target.value as ConversationSpace);
+              }}
+              className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 outline-none"
+            >
+              {CONVERSATION_SPACES.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-medium text-zinc-400">Participants</p>
+            <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-3">
+              <label className="flex cursor-default items-center gap-2 text-sm text-zinc-300">
+                <input type="checkbox" checked disabled data-testid="compose-persona-founder" className="rounded" />
+                Founder (always included)
+              </label>
+              {personaOptions.length === 0 ? (
+                <p className="text-xs text-zinc-500">No personas loaded — check Brain configuration.</p>
+              ) : (
+                personaOptions.map((opt) => (
+                  <label
+                    key={opt.id}
+                    className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={personaIds.has(opt.id)}
+                      onChange={() => togglePersona(opt.id)}
+                      data-testid={`compose-persona-${opt.id}`}
+                      className="rounded"
+                    />
+                    {opt.label}
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs font-medium text-zinc-400">Urgency</label>
+              <label htmlFor="compose-urgency" className="mb-1 block text-xs font-medium text-zinc-400">
+                Urgency
+              </label>
               <select
+                id="compose-urgency"
                 value={urgency}
                 onChange={(e) => setUrgency(e.target.value as UrgencyLevel)}
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 outline-none"
@@ -163,22 +275,14 @@ export function ComposeModal({ onClose, onSuccess }: Props) {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-zinc-400">Persona</label>
-              <input
-                value={persona}
-                onChange={(e) => setPersona(e.target.value)}
-                placeholder="e.g. cfo, ea…"
-                className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/50"
-              />
-            </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-400">
+            <label htmlFor="compose-tags" className="mb-1 block text-xs font-medium text-zinc-400">
               Tags (comma-separated)
             </label>
             <input
+              id="compose-tags"
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="e.g. infra, billing, urgent"
@@ -186,11 +290,15 @@ export function ComposeModal({ onClose, onSuccess }: Props) {
             />
           </div>
 
-          {/* Drop zone */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-zinc-400">Attachments</label>
+            <span className="mb-1 block text-xs font-medium text-zinc-400">Attachments</span>
             <div
               ref={dropRef}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") fileRef.current?.click();
+              }}
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => fileRef.current?.click()}
@@ -248,6 +356,7 @@ export function ComposeModal({ onClose, onSuccess }: Props) {
             </button>
             <button
               type="submit"
+              data-testid="compose-submit"
               disabled={submitting}
               className="rounded-lg bg-sky-500/20 px-4 py-2 text-sm font-medium text-sky-300 ring-1 ring-sky-500/30 transition hover:bg-sky-500/30 disabled:opacity-40"
             >
@@ -255,6 +364,7 @@ export function ComposeModal({ onClose, onSuccess }: Props) {
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );
