@@ -274,6 +274,76 @@ def _predict_cost(req: CoachPreflightRequest) -> CostPredict:
     )
 
 
+def get_coach_preflight_for_task(
+    task_description: str,
+    persona_id: str,
+) -> CoachPreflightResponse:
+    """Autopilot helper — surfaces procedural rules + past PR outcomes for a task.
+
+    Before dispatching any cheap-agent, Autopilot calls this to get:
+    - Matched procedural rules from procedural_memory.yaml whose ``when`` field
+      overlaps with the task description or persona_id.
+    - Recent PR outcomes (from incidents.json) related to the task.
+    - A cost prediction stub (no files_touched → no Vercel build estimate).
+
+    This is a thin wrapper over ``run_preflight``; it constructs a
+    ``CoachPreflightRequest`` from the task context so callers don't need to
+    know the internal schema.
+
+    Args:
+        task_description: Free-text description of the work to be done.
+        persona_id: Persona slug (e.g. "cpa", "ea", "portfolio-manager").
+
+    Returns:
+        CoachPreflightResponse with matched rules, recent incidents, and
+        predicted cost.  May be degraded if procedural_memory.yaml is missing.
+
+    Example:
+        preflight = get_coach_preflight_for_task(
+            task_description="Refactor TypeScript imports in packages/ui",
+            persona_id="ea",
+        )
+        if any(r.severity == "blocker" for r in preflight.matched_rules):
+            raise RuntimeError("Blocker rules matched — review before dispatch")
+    """
+    req = CoachPreflightRequest(
+        action_type="dispatch",
+        files_touched=[],
+        personas=[persona_id],
+        branch=None,
+        pr_number=None,
+        pr_path_globs=[],
+    )
+
+    response = run_preflight(req)
+
+    # Supplement: also try matching by task description keywords so rules
+    # whose ``when`` field mentions the task domain surface even when no
+    # files_touched overlap.
+    if not response.degraded:
+        task_keywords = [
+            w.lower()
+            for w in task_description.replace("/", " ").replace("-", " ").split()
+            if len(w) > 3
+        ]
+        if task_keywords:
+            rules, _, _ = _load_rules()
+            extra_req = CoachPreflightRequest(
+                action_type="dispatch",
+                files_touched=task_keywords,  # abuse files_touched for keyword matching
+                personas=[persona_id],
+            )
+            from app.schemas.coach_preflight import MatchedRule as _MatchedRule
+            extra_matched = _match_rules(rules, extra_req)
+            existing_ids = {r.id for r in response.matched_rules}
+            for rule in extra_matched:
+                if rule.id not in existing_ids:
+                    response.matched_rules.append(rule)
+                    existing_ids.add(rule.id)
+
+    return response
+
+
 def run_preflight(req: CoachPreflightRequest) -> CoachPreflightResponse:
     """Main entry point — pure sync, O(n) over rules, no LLM calls."""
     rules, degraded, degraded_reason = _load_rules()
