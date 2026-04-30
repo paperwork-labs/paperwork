@@ -1,0 +1,25 @@
+slug: viral_trader_humor
+voice:
+  mode: active
+  anchors:
+    - author: meme_arc_twitter
+      source: twitter_samples
+      sample_count: 24
+    - author: wsb_style_parody
+      source: corpus_memes
+      sample_count: 18
+    - author: financial_sitcom_clip
+      source: youtube_transcripts
+      sample_count: 6
+  corpus_dir: voice/viral_trader_humor
+  cross_genre_pull_allowed:
+    sources:
+      - founder_sankalp
+    min_compliance_level: creative_open
+  forbidden_phrases: []
+  signature_moves:
+    - one_liner_hook
+    - self_deprecating_risk_joke
+  platform_targets:
+    - twitter
+    - tiktok

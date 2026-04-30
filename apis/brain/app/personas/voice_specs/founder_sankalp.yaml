@@ -1,0 +1,22 @@
+slug: founder_sankalp
+voice:
+  mode: shadow
+  anchors:
+    - author: naval
+      source: public_writing
+      sample_count: 0
+    - author: patio11
+      source: public_writing
+      sample_count: 0
+    - author: collison
+      source: public_writing
+      sample_count: 0
+  corpus_dir: ""
+  cross_genre_pull_allowed:
+    sources: []
+    min_compliance_level: regulated_safe
+  forbidden_phrases: []
+  signature_moves: []
+  platform_targets:
+    - twitter
+    - linkedin

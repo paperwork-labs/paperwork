@@ -1,0 +1,25 @@
+slug: brand_axiomfolio
+voice:
+  mode: shadow
+  anchors:
+    - author: axiomfolio_brand_voice
+      source: internal_styleguide
+      sample_count: 0
+    - author: design_system_copy
+      source: docs
+      sample_count: 0
+  corpus_dir: voice/brand_axiomfolio
+  cross_genre_pull_allowed:
+    sources: []
+    min_compliance_level: restricted_financial
+  forbidden_phrases:
+    - guaranteed
+    - risk-free
+    - double your money
+  signature_moves:
+    - calm_expert_tone
+    - product_truth_only
+  platform_targets:
+    - twitter
+    - linkedin
+    - blog
