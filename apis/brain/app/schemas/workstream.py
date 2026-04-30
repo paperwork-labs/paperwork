@@ -85,7 +85,7 @@ class Workstream(BaseModel):
             return v
         for d in v:
             if len(d) < 2 or len(d) > 64:
-                raise ValueError("each depends_on entry must be 2–64 characters")
+                raise ValueError("each depends_on entry must be 2-64 characters")
         return v
 
 
