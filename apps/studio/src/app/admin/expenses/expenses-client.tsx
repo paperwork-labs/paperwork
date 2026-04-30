@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Plus, Search, FileDown } from "lucide-react";
 import type { Expense, ExpenseStatus, ExpenseRoutingRules } from "@/types/expenses";
 import { formatCents } from "@/types/expenses";
@@ -39,6 +39,7 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
   const [activeTab, setActiveTab] = useState<Tab>("inbox");
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
   const [total, setTotal] = useState(initialTotal);
+  const [rulesState, setRulesState] = useState<ExpenseRoutingRules | null>(rules);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(initialTotal > initialExpenses.length);
@@ -47,6 +48,10 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
   );
   const [showSubmit, setShowSubmit] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+
+  useEffect(() => {
+    setRulesState(rules);
+  }, [rules]);
 
   const tabStatuses = TAB_STATUSES[activeTab];
 
@@ -104,7 +109,7 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
       ? expenses.filter((e) => tabStatuses.includes(e.status))
       : expenses;
 
-  const threshold = rules?.auto_approve_threshold_cents ?? 0;
+  const threshold = rulesState?.auto_approve_threshold_cents ?? 0;
   const thresholdLabel =
     threshold === 0
       ? "all manual submissions route for approval"
@@ -162,7 +167,7 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
         {activeTab === "rollups" ? (
           <RollupTab initialYear={now.getFullYear()} initialMonth={now.getMonth() + 1} />
         ) : activeTab === "settings" ? (
-          <SettingsTab rules={rules} />
+          <SettingsTab rules={rulesState} onRulesSaved={(r) => setRulesState(r)} />
         ) : (
           <div className="space-y-3">
             {/* Search */}

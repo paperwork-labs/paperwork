@@ -26,6 +26,7 @@ import type {
 } from "@/types/conversations";
 import { AppBadgeManager, useUnreadCount } from "@/components/pwa/AppBadgeManager";
 import { isPushSupported } from "@/lib/web-push";
+import { ExpenseConversationCard } from "@/components/admin/ExpenseConversationCard";
 import { ComposeModal } from "./compose-modal";
 import { SnoozePicker } from "./snooze-picker";
 
@@ -483,6 +484,19 @@ export function ConversationsClient({ brainConfigured, initialPage }: Props) {
                   />
                 </div>
               </div>
+
+              {selected.links?.expense_id ? (
+                <div className="border-b border-zinc-800/60 px-4 pb-2">
+                  <ExpenseConversationCard
+                    conversationId={selected.id}
+                    expenseId={selected.links.expense_id}
+                    conversation={selected}
+                    onResolved={({ conversation: c }) => {
+                      updateSelectedFromList(c);
+                    }}
+                  />
+                </div>
+              ) : null}
 
               {/* Messages */}
               <div className="flex min-h-0 flex-1 flex-col-reverse gap-4 overflow-y-auto p-4">
