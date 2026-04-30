@@ -486,6 +486,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: day-0-founder-actions
+    path: docs/strategy/DAY_0_FOUNDER_ACTIONS.md
+    title: Day-0 Founder Actions Worksheet (WS-76)
+    summary: "This worksheet is the single source of truth for founder-owned setup that can run in parallel with engineering. Most items are account, OAuth, or vendor steps that do not block code merge but do…"
+    tags: [paperwork-labs, strategy]
+    owners: [founder]
+    category: reference
   - slug: decommission-checklist
     path: docs/runbooks/decommission-checklist.md
     title: Domain / App Decommission Checklist
@@ -654,18 +661,18 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: n8n-decommission-inventory
+    path: docs/strategy/N8N_DECOMMISSION_INVENTORY.md
+    title: WS-69 PR J — n8n Decommission Inventory
+    summary: Inventory of n8n + Slack references prior to PR J decommission. Historical record.
+    tags: [historical]
+    owners: [strategy]
+    category: reference
   - slug: studio-ia-reorg-brief
     path: docs/strategy/STUDIO_IA_REORG_BRIEF.md
     title: WS-69 — Studio IA Reorg + Sprint/Plan Data Reconcile
     summary: "**Status**: brief / not yet planned **Priority**: medium (founder-noticed UX rot, no $$ bleed) **Blocked by**: nothing **Related**: WS-67 (Brain coach), tracker-index spine (PR #144) **Authored**:…"
     tags: []
-    owners: [strategy]
-    category: reference
-  - slug: n8n-decommission-inventory
-    path: docs/strategy/N8N_DECOMMISSION_INVENTORY.md
-    title: WS-69 PR J — n8n Decommission Inventory
-    summary: "Inventory of n8n + Slack references prior to PR J decommission. Historical record."
-    tags: [historical]
     owners: [strategy]
     category: reference
   # ── Plans ─────────────────────────────────────────
