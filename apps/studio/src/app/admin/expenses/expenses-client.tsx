@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus, Search, FileDown } from "lucide-react";
 import type { Expense, ExpenseStatus, ExpenseRoutingRules } from "@/types/expenses";
 import { formatCents } from "@/types/expenses";
@@ -35,6 +36,10 @@ type Props = {
 };
 
 export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const now = new Date();
   const [activeTab, setActiveTab] = useState<Tab>("inbox");
   const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
@@ -52,6 +57,12 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
   useEffect(() => {
     setRulesState(rules);
   }, [rules]);
+
+  useEffect(() => {
+    if (searchParams.get("log") !== "1") return;
+    setShowSubmit(true);
+    router.replace(pathname, { scroll: false });
+  }, [searchParams, router, pathname]);
 
   const tabStatuses = TAB_STATUSES[activeTab];
 

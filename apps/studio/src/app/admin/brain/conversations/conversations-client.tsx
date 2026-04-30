@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -144,6 +145,10 @@ export function ConversationsClient({
   initialPage,
   setupError = null,
 }: Props) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [activeFilter, setActiveFilter] = useState<FilterChip>("needs-action");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -162,6 +167,12 @@ export function ConversationsClient({
   const [showCompose, setShowCompose] = useState(false);
   const [snoozingId, setSnoozingId] = useState<string | null>(null);
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("compose") !== "1") return;
+    setShowCompose(true);
+    router.replace(pathname, { scroll: false });
+  }, [searchParams, router, pathname]);
 
   // Debounce search input
   useEffect(() => {

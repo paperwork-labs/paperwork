@@ -5,6 +5,8 @@ import { AdminLayoutClient } from "../admin-layout-client";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin",
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@clerk/nextjs", () => ({
