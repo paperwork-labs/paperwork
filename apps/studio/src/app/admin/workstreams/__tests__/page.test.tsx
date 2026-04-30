@@ -66,8 +66,12 @@ describe("/admin/workstreams page module", () => {
     const tree = await AdminWorkstreamsPage();
     expect(tree).toBeTruthy();
     render(tree);
+    expect(screen.getByRole("tab", { name: "Board" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Sprints" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Cycles" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "PR Pipeline" })).toBeTruthy();
     expect(screen.queryByTestId("workstreams-stale-banner")).toBeNull();
-    expect(screen.getByTestId("workstreams-brain-freshness-banner").textContent).toMatch(
+    expect((await screen.findByTestId("workstreams-brain-freshness-banner")).textContent).toMatch(
       /Last sync:/,
     );
   });

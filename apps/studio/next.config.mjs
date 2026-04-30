@@ -41,6 +41,22 @@ const nextConfig = {
         destination: "/admin/brain/self-improvement?tab=learning",
         permanent: true,
       },
+      {
+        source: "/admin/sprints",
+        has: [{ type: "query", key: "tab", value: "cycles" }],
+        destination: "/admin/workstreams?tab=cycles",
+        permanent: true,
+      },
+      {
+        source: "/admin/sprints",
+        destination: "/admin/workstreams?tab=sprints",
+        permanent: true,
+      },
+      {
+        source: "/admin/pr-pipeline",
+        destination: "/admin/workstreams?tab=pr-pipeline",
+        permanent: true,
+      },
     ];
   },
   async headers() {

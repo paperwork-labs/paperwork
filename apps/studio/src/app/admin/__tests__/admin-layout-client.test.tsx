@@ -24,7 +24,7 @@ function renderAdminLayout(ui: ReactElement) {
   return render(<BrainContextProvider>{ui}</BrainContextProvider>);
 }
 
-describe("AdminLayoutClient (WS-76 PR-26 Money nav)", () => {
+describe("AdminLayoutClient (WS-82 PR-IA1 unified Workstreams nav)", () => {
   it("sidebar link count matches buildNavGroups + Money, Trust, Trackers, Calendar", () => {
     renderAdminLayout(
       <AdminLayoutClient
@@ -79,6 +79,11 @@ describe("AdminLayoutClient (WS-76 PR-26 Money nav)", () => {
     expect(
       within(nav).getByRole("link", { name: /^Vendors$/ }).getAttribute("href"),
     ).toBe("/admin/vendors");
+    expect(
+      within(nav).getByRole("link", { name: /^Workstreams$/ }).getAttribute("href"),
+    ).toBe("/admin/workstreams");
+    expect(within(nav).queryByRole("link", { name: /^Sprints$/ })).toBeNull();
+    expect(within(nav).queryByRole("link", { name: /^PR pipeline$/i })).toBeNull();
     expect(
       within(nav).queryByRole("link", { name: /Founder actions/i }),
     ).toBeNull();
