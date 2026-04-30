@@ -25,6 +25,7 @@ from app.routers import (
     admin_audits,
     admin_learning,
     admin_logs,
+    auto_distillation,
     brain,
     conversations,
     expenses,
@@ -194,6 +195,7 @@ app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(admin_learning.router, prefix="/api/v1")
 app.include_router(admin_audits.router, prefix="/api/v1")
+app.include_router(auto_distillation.router, prefix="/api/v1")
 app.include_router(agent_sprints_router)
 app.include_router(internal_secrets_router)
 app.include_router(workstreams.router, prefix="/api/v1")
