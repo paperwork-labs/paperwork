@@ -21,11 +21,13 @@ import {
   Cpu,
   Workflow,
   Clock,
+  Info,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { BrainFreshnessTile } from "@/components/admin/BrainFreshnessTile";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
+
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 
 type N8nWorkflow = {
@@ -96,6 +98,8 @@ type OverviewData = {
   fetchedAt: string;
   githubPrMissingCred?: "GITHUB_TOKEN";
   githubCiMissingCred?: "GITHUB_TOKEN";
+  n8nConfigured?: boolean;
+  slackDailyBriefingHref?: string | null;
 };
 
 type ActivityItem = {
@@ -185,6 +189,8 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
   const slackActivity = data.slackActivity ?? [];
   const githubPrMissingCred = data.githubPrMissingCred;
   const githubCiMissingCred = data.githubCiMissingCred;
+  const n8nConfigured = data.n8nConfigured ?? false;
+  const slackDailyBriefingHref = data.slackDailyBriefingHref ?? null;
 
   const activeWorkflows = workflows.filter((w) => w.active).length;
   const workflowNameById = useMemo(
@@ -213,41 +219,46 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
   const healthyInfra = infrastructure.filter((s) => s.healthy).length;
   const degradedInfra = infrastructure.filter((s) => s.configured && !s.healthy).length;
 
-  // Traffic light
-  const ventureHealth: "green" | "yellow" | "red" = useMemo(() => {
+  // Traffic light — "standby" = n8n not wired but nothing else degraded (F-020)
+  const ventureHealth: "green" | "yellow" | "red" | "standby" = useMemo(() => {
     if (degradedInfra > 0 || failedLastDay > 3) return "red";
-    if (
-      infrastructure.some((s) => !s.configured) ||
-      failedLastDay > 0 ||
-      workflows.length === 0
-    )
-      return "yellow";
+    if (infrastructure.some((s) => !s.configured) || failedLastDay > 0) return "yellow";
+    if (!n8nConfigured && workflows.length === 0) return "standby";
+    if (workflows.length === 0) return "yellow";
     return "green";
-  }, [degradedInfra, failedLastDay, infrastructure, workflows]);
+  }, [degradedInfra, failedLastDay, infrastructure, n8nConfigured, workflows.length]);
 
-  const trafficLightConfig = {
-    green: {
-      label: "All Systems Operational",
-      bg: "border-[var(--status-success)]/40 bg-[var(--status-success-bg)]",
-      text: "text-[var(--status-success)]",
-      dotColor: "bg-[var(--status-success)]",
-      Icon: CheckCircle2,
-    },
-    yellow: {
-      label: "Partially Degraded",
-      bg: "border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)]",
-      text: "text-[var(--status-warning)]",
-      dotColor: "bg-[var(--status-warning)]",
-      Icon: AlertTriangle,
-    },
-    red: {
-      label: "Service Issues Detected",
-      bg: "border-[var(--status-danger)]/40 bg-[var(--status-danger-bg)]",
-      text: "text-[var(--status-danger)]",
-      dotColor: "bg-[var(--status-danger)]",
-      Icon: XCircle,
-    },
-  }[ventureHealth];
+  const trafficLightConfig =
+    {
+      green: {
+        label: "All Systems Operational",
+        bg: "border-[var(--status-success)]/40 bg-[var(--status-success-bg)]",
+        text: "text-[var(--status-success)]",
+        dotColor: "bg-[var(--status-success)]",
+        Icon: CheckCircle2,
+      },
+      yellow: {
+        label: "Partially Degraded",
+        bg: "border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)]",
+        text: "text-[var(--status-warning)]",
+        dotColor: "bg-[var(--status-warning)]",
+        Icon: AlertTriangle,
+      },
+      red: {
+        label: "Service Issues Detected",
+        bg: "border-[var(--status-danger)]/40 bg-[var(--status-danger-bg)]",
+        text: "text-[var(--status-danger)]",
+        dotColor: "bg-[var(--status-danger)]",
+        Icon: XCircle,
+      },
+      standby: {
+        label: "Automation integrations on standby",
+        bg: "border-[var(--status-info)]/35 bg-[var(--status-info-bg)]",
+        text: "text-[var(--status-info)]",
+        dotColor: "bg-[var(--status-info)]",
+        Icon: Info,
+      },
+    }[ventureHealth];
 
   // Daily briefing detection — find the most recent EA workflow execution
   const lastBriefingExec = useMemo(() => {
@@ -278,15 +289,18 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
       ...prs.slice(0, 10).map((pr) => {
         const verdictTag = pr.brain_review
           ? pr.brain_review.verdict === "APPROVE"
-            ? "✓"
+            ? "Approved"
             : pr.brain_review.verdict === "REQUEST_CHANGES"
-              ? "!"
-              : "•"
+              ? "Changes requested"
+              : "Comment"
           : "";
         return {
           id: `pr-${pr.number}`,
           timestamp: pr.created_at,
-          label: `PR #${pr.number} ${verdictTag}`.trim(),
+          label:
+            verdictTag !== ""
+              ? `PR #${pr.number} · ${verdictTag}`
+              : `PR #${pr.number}`,
           detail: pr.title,
           href: pr.html_url,
           status: (pr.brain_review?.verdict === "REQUEST_CHANGES"
@@ -332,6 +346,19 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         </div>
       </div>
 
+      {!n8nConfigured ? (
+        <div
+          data-testid="overview-n8n-misconfig-banner"
+          className="rounded-xl border border-[var(--status-info)]/35 bg-[var(--status-info-bg)] px-4 py-3 text-sm text-[color-mix(in_srgb,var(--status-info)_88%,white)]"
+          role="status"
+        >
+          <span className="font-medium text-[var(--status-info)]">Automation data optional: </span>
+          n8n is not configured in this environment (set{" "}
+          <code className="rounded bg-black/30 px-1 font-mono text-xs">N8N_API_URL</code> and API
+          credentials). Dashboard tiles below will stay empty until wired.
+        </div>
+      ) : null}
+
       {/* Traffic Light */}
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
@@ -339,9 +366,11 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         className={`flex items-center gap-3 rounded-xl border px-5 py-4 ${trafficLightConfig.bg}`}
       >
         <span className="relative inline-block h-3 w-3">
-          {ventureHealth === "green" && (
-            <span className={`absolute inset-0 animate-ping rounded-full ${trafficLightConfig.dotColor} opacity-40`} />
-          )}
+          {ventureHealth === "green" ? (
+            <span
+              className={`absolute inset-0 motion-safe:animate-ping rounded-full ${trafficLightConfig.dotColor} opacity-40`}
+            />
+          ) : null}
           <span className={`relative inline-block h-3 w-3 rounded-full ${trafficLightConfig.dotColor}`} />
         </span>
         <trafficLightConfig.Icon className={`h-5 w-5 ${trafficLightConfig.text}`} />
@@ -379,12 +408,17 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
             </p>
           </div>
           <a
-            href="https://app.slack.com/client"
+            href={slackDailyBriefingHref || "https://app.slack.com/client"}
             target="_blank"
             rel="noreferrer"
             className="text-xs text-zinc-500 transition hover:text-zinc-300"
+            title={
+              slackDailyBriefingHref
+                ? "Open Slack"
+                : "Set NEXT_PUBLIC_SLACK_DAILY_BRIEFING_URL for a deep link to #daily-briefing"
+            }
           >
-            #daily-briefing
+            {slackDailyBriefingHref ? "#daily-briefing" : "Slack · #daily-briefing"}
           </a>
         </div>
       )}
@@ -644,10 +678,10 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           <p className="mb-3 text-sm font-medium text-zinc-200">Quick Links</p>
           <div className="space-y-1">
             {[
-              { label: "Workflows", href: "/admin/workflows", internal: true },
+              { label: "Workflows", href: "/admin/architecture?tab=flows", internal: true },
               { label: "Sprint tracker", href: "/admin/sprints", internal: true },
               { label: "Infrastructure", href: "/admin/infrastructure", internal: true },
-              { label: "Secrets vault", href: "/admin/secrets", internal: true },
+              { label: "Secrets vault", href: "/admin/infrastructure?tab=secrets", internal: true },
             ].map((link) => (
               <Link
                 key={link.href}

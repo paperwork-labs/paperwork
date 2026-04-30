@@ -700,7 +700,11 @@ export default function InfraClient({
         </div>
       </section>
 
-      <section data-testid="infra-quota-panels" aria-label="Vendor quota snapshots via Brain API">
+      <section
+        id="infra-quotas"
+        data-testid="infra-quota-panels"
+        aria-label="Vendor quota snapshots via Brain API"
+      >
         <div className="mb-3">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">GitHub Actions</p>
           <p className="mt-1 text-sm text-zinc-400">

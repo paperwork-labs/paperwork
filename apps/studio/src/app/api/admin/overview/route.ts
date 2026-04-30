@@ -8,6 +8,7 @@ import {
   getRecentCIRuns,
   getRecentPullRequests,
   getRecentSlackActivity,
+  isN8nIntegrationConfigured,
 } from "@/lib/command-center";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +51,11 @@ export async function GET() {
           githubPrMissingCred: prsResult.missingCred,
           githubCiMissingCred: ciRunsResult.missingCred,
           slackActivity,
+          n8nConfigured: isN8nIntegrationConfigured(),
+          slackDailyBriefingHref:
+            process.env.NEXT_PUBLIC_SLACK_DAILY_BRIEFING_URL?.trim() ||
+            process.env.SLACK_DAILY_BRIEFING_URL?.trim() ||
+            null,
         };
       });
 

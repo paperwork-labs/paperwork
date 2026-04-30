@@ -34,8 +34,26 @@ const InteractiveDag = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 text-sm text-zinc-500">
-        Loading interactive graph…
+      <div
+        className="min-h-[420px] space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/80 p-4"
+        data-testid="architecture-graph-skeleton"
+        aria-busy
+        aria-label="Loading architecture graph"
+      >
+        <div className="flex gap-2">
+          <div className="h-8 w-28 animate-pulse rounded-md bg-zinc-800/80" />
+          <div className="h-8 w-24 animate-pulse rounded-md bg-zinc-800/60" />
+          <div className="h-8 flex-1 animate-pulse rounded-md bg-zinc-800/40" />
+        </div>
+        <div className="grid flex-1 gap-3 md:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={`sk-${i}`}
+              className="h-24 animate-pulse rounded-lg bg-zinc-900/80"
+            />
+          ))}
+        </div>
+        <p className="text-center text-xs text-zinc-600">Loading interactive graph…</p>
       </div>
     ),
   },

@@ -81,12 +81,7 @@ const ProceduralMemoryTabLazy = lazy(() =>
 const AuditsTabLazy = lazy(() =>
   import("./_tabs/audits-tab").then((m) => ({
     default: function AuditsTabHost() {
-      return (
-        <m.AuditsTab
-          brainApiUrl={process.env.NEXT_PUBLIC_BRAIN_API_URL ?? null}
-          brainApiSecret={process.env.NEXT_PUBLIC_BRAIN_API_SECRET ?? null}
-        />
-      );
+      return <m.AuditsTab />;
     },
   })),
 );

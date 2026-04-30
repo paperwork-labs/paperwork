@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { AdminRouteFallback } from "./admin-route-fallback";
 import { AdminLayoutClient } from "./admin-layout-client";
 import { getE2EConversationsBadge } from "@/lib/e2e-conversations-fixture";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
@@ -33,35 +34,35 @@ async function fetchFounderPendingFromBrain(): Promise<{
   }
 }
 
-async function fetchExpensesPendingCount(): Promise<number> {
+async function fetchExpensesPendingCount(): Promise<number | null> {
   const auth = getBrainAdminFetchOptions();
-  if (!auth.ok) return 0;
+  if (!auth.ok) return null;
   try {
     const res = await fetch(
       `${auth.root}/admin/expenses?status=pending&count_only=true&limit=1`,
-      { headers: { "X-Brain-Secret": auth.secret }, cache: "no-store" }
+      { headers: { "X-Brain-Secret": auth.secret }, cache: "no-store" },
     );
-    if (!res.ok) return 0;
+    if (!res.ok) return null;
     const json = await res.json();
-    return json.success ? (json.data?.total ?? 0) : 0;
+    return json.success ? (json.data?.total ?? 0) : null;
   } catch {
-    return 0;
+    return null;
   }
 }
 
-async function fetchExpensesFlaggedCount(): Promise<number> {
+async function fetchExpensesFlaggedCount(): Promise<number | null> {
   const auth = getBrainAdminFetchOptions();
-  if (!auth.ok) return 0;
+  if (!auth.ok) return null;
   try {
     const res = await fetch(
       `${auth.root}/admin/expenses?status=flagged&count_only=true&limit=1`,
-      { headers: { "X-Brain-Secret": auth.secret }, cache: "no-store" }
+      { headers: { "X-Brain-Secret": auth.secret }, cache: "no-store" },
     );
-    if (!res.ok) return 0;
+    if (!res.ok) return null;
     const json = await res.json();
-    return json.success ? (json.data?.total ?? 0) : 0;
+    return json.success ? (json.data?.total ?? 0) : null;
   } catch {
-    return 0;
+    return null;
   }
 }
 
@@ -93,15 +94,22 @@ export default async function AdminLayout({
     fetchExpensesPendingCount(),
     fetchExpensesFlaggedCount(),
   ]);
-  const totalNeedsAction = pendingCount + flaggedCount;
+  const expensesCountsUnknown = pendingCount === null || flaggedCount === null;
+  const p = pendingCount ?? 0;
+  const f = flaggedCount ?? 0;
+  const totalNeedsAction = p + f;
   const expensesPending =
-    totalNeedsAction > 0
-      ? { count: totalNeedsAction, hasCritical: flaggedCount > 0 }
+    !expensesCountsUnknown && totalNeedsAction > 0
+      ? { count: totalNeedsAction, hasCritical: f > 0 }
       : null;
 
   return (
-    <AdminLayoutClient founderPending={founderPending} expensesPending={expensesPending}>
-      <Suspense fallback={null}>{children}</Suspense>
+    <AdminLayoutClient
+      founderPending={founderPending}
+      expensesPending={expensesPending}
+      expensesCountsUnknown={expensesCountsUnknown}
+    >
+      <Suspense fallback={<AdminRouteFallback />}>{children}</Suspense>
     </AdminLayoutClient>
   );
 }

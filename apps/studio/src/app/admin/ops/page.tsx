@@ -1,7 +1,6 @@
-import { redirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 
-// Ops was merged into /admin/workflows (Track J, Week 1). Keep this redirect
-// around indefinitely — bookmarks + old Brain memory references survive.
+// Ops was merged into Architecture → Flows. Avoid `/admin/workflows` hop (308) that drops query tabs.
 export default function OpsRedirect(): never {
-  redirect("/admin/workflows?tab=activity");
+  permanentRedirect("/admin/architecture?tab=flows");
 }

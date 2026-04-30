@@ -308,6 +308,37 @@ summary: "Read-only Studio admin UX audit for WS-76 Wave L PR-A — 56 findings 
 | F-055 | P1 | Tab shells | Incomplete keyboard tab pattern | PR-D | Arrow keys or docs waiver |
 | F-056 | P2 | Tab shells | Error boundary silent | PR-B | Log + optional toast |
 
+## WS-76 Wave L PR-C — remediation log
+
+Land on branch `wave-l-pr-c/page-polish` via commit titled **feat(studio): WS-76 Wave L PR-C — page-by-page UX polish (P0/P1 findings)** (`git log --grep 'WS-76 Wave L PR-C'` on that branch for the exact SHA).
+
+| ID | Done | Implementation note |
+|----|------|---------------------|
+| F-006 | ✓ | `layout` → `expensesCountsUnknown`; Expenses nav muted `…` when counts unknown. |
+| F-007 | ✓ | `AdminRouteFallback` + `Suspense` in admin `layout.tsx`. |
+| F-008 | ✓ | Mobile drawer + `AdminSidebarPanel` (`admin-layout-client.tsx`). |
+| F-014 | ✓ | Overview n8n banner + `n8nConfigured` from `isN8nIntegrationConfigured()` (SSR + `/api/admin/overview`). |
+| F-017 | ✓ | Reserved `border-l-2` on nav links. |
+| F-018 | ✓ | Overview quick link → `/admin/architecture?tab=flows`. |
+| F-020 | ✓ | Traffic light `standby` when n8n unwired and no workflows. |
+| F-021 | ✓ | Slack deep link env: `NEXT_PUBLIC_SLACK_DAILY_BRIEFING_URL` / `SLACK_DAILY_BRIEFING_URL`. |
+| F-022 | ✓ | PR activity text labels (`Approved`, etc.). |
+| F-023 | ✓ | `motion-safe:animate-ping` on green traffic light. |
+| F-024 | ✓ | `PushSubscribeCard`: `console.warn` on subscription probe failure. |
+| F-025 | ✓ | Architecture graph dynamic-import loading skeleton. |
+| F-029 | ✓ | Cost tab → Infrastructure Services `#infra-quotas`; `id="infra-quotas"` on quota section. |
+| F-039–F-041 | ✓ | Conversations: `HqErrorState` + optional `HqMissingCredCard`; attachment `alt` from path/mime. |
+| F-042–F-043 | ✓ | `/api/admin/brain/audits/*` proxy; `AuditsTab` same-origin fetches (no public Brain secret). |
+| F-045 | ✓ | Expenses list: `HqErrorState`, retry, `toast.error` on API failure. |
+| F-048 | ✓ | PR pipeline already distinguishes token vs empty (verified). |
+| F-050 | ✓ | Command palette: Workflows + Secrets deep links; `/admin/ops` + `/admin/agents` redirect straight to Architecture → Flows (no workflows hop). |
+| F-051 | ✓ | Docs hub: `DocsHubSearchForm` busy state. |
+| F-012 | — | Personas / `PageHeader` drift — deferred. |
+| F-031 | — | Sprints unknown pill — not in this PR. |
+| F-033 | — | No change (workstreams read-only copy already present). |
+| F-036 | — | Product plan `<details>` — not in this PR. |
+| F-001–F-005 | — | P0 data-honesty / infra tab namespace — **PR-B**. |
+
 ## Out of scope (deferred)
 
 - **No `/admin/runbook` route** — runbooks live under `docs/runbooks/` and the Docs hub (`/admin/docs`); a dedicated Studio runbook browser would be WS-77+ IA work, not this audit's implementation scope.

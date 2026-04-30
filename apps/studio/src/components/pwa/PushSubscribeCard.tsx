@@ -38,7 +38,9 @@ export function PushSubscribeCard() {
     setStatus(perm as Status);
     getCurrentSubscription()
       .then((sub) => setIsSubscribed(!!sub))
-      .catch(() => {});
+      .catch((err) => {
+        console.warn("[PushSubscribeCard] subscription probe failed", err);
+      });
   }, []);
 
   const handleSubscribe = useCallback(async () => {

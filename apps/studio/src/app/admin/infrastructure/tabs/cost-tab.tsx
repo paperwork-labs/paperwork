@@ -140,6 +140,16 @@ export default function CostTab() {
           <p className="mt-1 text-sm text-zinc-500">
             Ledger-backed totals and monthly budgets (Anthropic, OpenAI, Gemini, Render, Vercel, Hetzner).
           </p>
+          <p className="mt-2 text-xs text-zinc-500">
+            CI minutes, Render, and Vercel quota snapshots live under{" "}
+            <a
+              href="/admin/infrastructure?tab=services#infra-quotas"
+              className="text-[var(--status-info)] underline-offset-2 hover:underline"
+            >
+              Infrastructure → Services
+            </a>
+            .
+          </p>
         </div>
         <label className="flex flex-col gap-1 text-xs font-medium text-zinc-500">
           Month (UTC)

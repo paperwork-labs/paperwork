@@ -3,8 +3,10 @@
 import { useState, useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Plus, Search, FileDown } from "lucide-react";
+import { toast } from "sonner";
 import type { Expense, ExpenseStatus, ExpenseRoutingRules } from "@/types/expenses";
 import { formatCents } from "@/types/expenses";
+import { HqErrorState } from "@/components/admin/hq/HqErrorState";
 import { ExpenseRow } from "./expense-row";
 import { SubmitExpenseModal } from "./expense-modal";
 import { RollupTab } from "./rollup-tab";
@@ -53,6 +55,7 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
   );
   const [showSubmit, setShowSubmit] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
 
   useEffect(() => {
     setRulesState(rules);
@@ -78,8 +81,20 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
         params.set("limit", "50");
 
         const res = await fetch(`/api/admin/expenses?${params.toString()}`);
-        const json = await res.json();
-        if (!res.ok || !json.success) return;
+        const json = (await res.json().catch(() => ({}))) as {
+          success?: boolean;
+          error?: string;
+          data?: { items: Expense[]; total: number; has_more?: boolean; next_cursor?: string | null };
+        };
+        if (!res.ok || !json.success || !json.data) {
+          const msg =
+            json.error ??
+            (!res.ok ? `Could not load expenses (${res.status})` : "Brain returned an error for expenses.");
+          setListError(msg);
+          toast.error("Expenses list failed to load");
+          return;
+        }
+        setListError(null);
 
         const page = json.data;
         if (append) {
@@ -88,7 +103,7 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
           setExpenses(page.items);
         }
         setTotal(page.total);
-        setHasMore(page.has_more);
+        setHasMore(Boolean(page.has_more));
         setCursor(page.next_cursor ?? null);
       } finally {
         setLoading(false);
@@ -181,6 +196,14 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
           <SettingsTab rules={rulesState} onRulesSaved={(r) => setRulesState(r)} />
         ) : (
           <div className="space-y-3">
+            {listError ? (
+              <HqErrorState
+                title="Could not load expenses"
+                description="Distinct from an empty inbox: Brain or Studio returned an error. Check BRAIN_API_* env and network, then retry."
+                error={listError}
+                onRetry={() => void fetchExpenses(activeTab, search)}
+              />
+            ) : null}
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
@@ -209,11 +232,11 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
             </div>
 
             {/* List */}
-            {loading && visibleExpenses.length === 0 ? (
+            {loading && visibleExpenses.length === 0 && !listError ? (
               <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-8 text-center">
                 <p className="text-sm text-zinc-500">Loading…</p>
               </div>
-            ) : visibleExpenses.length === 0 ? (
+            ) : visibleExpenses.length === 0 && !listError ? (
               <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-10 text-center">
                 <p className="text-sm font-medium text-zinc-400">No expenses here</p>
                 <p className="mt-1 text-xs text-zinc-600">
