@@ -50,4 +50,4 @@ pytest>=9.0.3
 pytest-asyncio>=1.3.0
 ruff>=0.15.12
 mypy>=1.13.0
-types-PyYAML>=6.0.12  # mypy stubs for `import yaml` (sprint_planner.py); silences import-untyped under strict mypy
+types-PyYAML>=6.0.12.20260408  # mypy stubs for `import yaml` (sprint_planner.py); silences import-untyped under strict mypy
