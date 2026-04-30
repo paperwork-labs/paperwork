@@ -1,10 +1,10 @@
 {
   "current": {
-    "computed_at": "2026-04-29T02:50:50Z",
+    "computed_at": "2026-04-30T21:53:17Z",
     "gates": {
       "l4_pass": false,
       "l5_pass": false,
-      "lowest_pillar": "knowledge_capital"
+      "lowest_pillar": "audit_freshness"
     },
     "pillars": {
       "a11y_design_system": {
@@ -14,47 +14,54 @@
         "weight": 9,
         "weighted": 4.5
       },
+      "audit_freshness": {
+        "measured": true,
+        "notes": "0/13 audits fresh; stale: stack:never-run, runbook_completeness:never-run, persona_coverage:never-run, docs_freshness:never-run, cost:never-run, secrets_drift:never-run, kg_self_validate:never-run, a11y:never-run, lighthouse:never-run, vendor_renewal:never-run, cross_app_ui_redundancy:never-run, auto_distillation:never-run, cost_monitor:never-run",
+        "score": 0.0,
+        "weight": 4,
+        "weighted": 0.0
+      },
       "autonomy": {
         "measured": true,
-        "notes": "bootstrap estimate \u2014 corpus building; registry conformance avg=0.64; bonus=0",
+        "notes": "bootstrap estimate \u2014 corpus building; registry conformance avg=0.64",
         "score": 20.0,
         "weight": 13,
         "weighted": 2.6
       },
       "code_quality": {
         "measured": true,
-        "notes": "code_quality: coverage_measured=False cov_pct=0.0 mypy=0 ruff=0 cyclomatic_p95=12.00",
-        "score": 82.5,
+        "notes": "code_quality: coverage_measured=False cov_pct=0.0 mypy=3 ruff=3 cyclomatic_p95=11.15",
+        "score": 80.25,
         "weight": 9,
-        "weighted": 7.425
+        "weighted": 7.2225
       },
       "data_architecture": {
-        "measured": false,
-        "notes": "bootstrap estimate \u2014 pg_stat_statements collector deferred",
-        "score": 55.0,
+        "measured": true,
+        "notes": "data_architecture: medallion=100.0 (medallion: 88/88 tagged (100%)) | schema=59.3 (schemas: 16/27 data files have Pydantic schema (59%)) | dict=0.0 (data-dictionary.md missing) | migration=100.0 (alembic migrations present (8 version files))",
+        "score": 67.7778,
         "weight": 9,
-        "weighted": 4.95
+        "weighted": 6.100002
       },
       "dora_elite": {
         "measured": true,
-        "notes": "DORA from gh api (paperwork-labs/paperwork); deploy_7d=284 merges_30d=295 reverts=1 lead_n=30 wf=lighthouse-ci.yml",
+        "notes": "DORA from gh api (paperwork-labs/paperwork); deploy_7d=373 merges_30d=373 reverts=1 lead_n=30 wf=lighthouse-ci.yml",
         "score": 100.0,
         "weight": 13,
         "weighted": 13.0
       },
       "knowledge_capital": {
         "measured": true,
-        "notes": "rules=0; outcomes_total=0; with_h24=0; completion_pct\u22480.0; formula=min(100, rules*5 + pct/2)=0.0",
-        "score": 0.0,
-        "weight": 6,
-        "weighted": 0.0
+        "notes": "rules=23; outcomes_total=0; with_h24=0; completion_pct\u22480.0; formula=min(100, rules*5 + pct/2)=100.0",
+        "score": 100.0,
+        "weight": 4,
+        "weighted": 4.0
       },
       "persona_coverage": {
         "measured": true,
-        "notes": "Counted 16 personas/specs/*.yaml + 51 persona-shaped .cursor/rules *.mdc; score=min(100,count*5)=100.0",
+        "notes": "Counted 16 personas/specs/*.yaml + 52 persona-shaped .cursor/rules *.mdc; score=min(100,count*5)=100.0",
         "score": 100.0,
-        "weight": 6,
-        "weighted": 6.0
+        "weight": 4,
+        "weighted": 4.0
       },
       "reliability_security": {
         "measured": true,
@@ -78,7 +85,7 @@
         "weighted": 7.15
       }
     },
-    "total": 62.0
+    "total": 64.9475
   },
   "description": "Paperwork Operating Score (POS) \u2014 weekly composite. Spec: apis/brain/data/operating_score_spec.yaml.",
   "history": [
@@ -243,6 +250,94 @@
         }
       },
       "total": 62.0
+    },
+    {
+      "computed_at": "2026-04-30T21:53:17Z",
+      "gates": {
+        "l4_pass": false,
+        "l5_pass": false,
+        "lowest_pillar": "audit_freshness"
+      },
+      "pillars": {
+        "a11y_design_system": {
+          "measured": false,
+          "notes": "no axe-core runs yet \u2014 collector deferred until first run",
+          "score": 50.0,
+          "weight": 9,
+          "weighted": 4.5
+        },
+        "audit_freshness": {
+          "measured": true,
+          "notes": "0/13 audits fresh; stale: stack:never-run, runbook_completeness:never-run, persona_coverage:never-run, docs_freshness:never-run, cost:never-run, secrets_drift:never-run, kg_self_validate:never-run, a11y:never-run, lighthouse:never-run, vendor_renewal:never-run, cross_app_ui_redundancy:never-run, auto_distillation:never-run, cost_monitor:never-run",
+          "score": 0.0,
+          "weight": 4,
+          "weighted": 0.0
+        },
+        "autonomy": {
+          "measured": true,
+          "notes": "bootstrap estimate \u2014 corpus building; registry conformance avg=0.64",
+          "score": 20.0,
+          "weight": 13,
+          "weighted": 2.6
+        },
+        "code_quality": {
+          "measured": true,
+          "notes": "code_quality: coverage_measured=False cov_pct=0.0 mypy=3 ruff=3 cyclomatic_p95=11.15",
+          "score": 80.25,
+          "weight": 9,
+          "weighted": 7.2225
+        },
+        "data_architecture": {
+          "measured": true,
+          "notes": "data_architecture: medallion=100.0 (medallion: 88/88 tagged (100%)) | schema=59.3 (schemas: 16/27 data files have Pydantic schema (59%)) | dict=0.0 (data-dictionary.md missing) | migration=100.0 (alembic migrations present (8 version files))",
+          "score": 67.7778,
+          "weight": 9,
+          "weighted": 6.100002
+        },
+        "dora_elite": {
+          "measured": true,
+          "notes": "DORA from gh api (paperwork-labs/paperwork); deploy_7d=373 merges_30d=373 reverts=1 lead_n=30 wf=lighthouse-ci.yml",
+          "score": 100.0,
+          "weight": 13,
+          "weighted": 13.0
+        },
+        "knowledge_capital": {
+          "measured": true,
+          "notes": "rules=23; outcomes_total=0; with_h24=0; completion_pct\u22480.0; formula=min(100, rules*5 + pct/2)=100.0",
+          "score": 100.0,
+          "weight": 4,
+          "weighted": 4.0
+        },
+        "persona_coverage": {
+          "measured": true,
+          "notes": "Counted 16 personas/specs/*.yaml + 52 persona-shaped .cursor/rules *.mdc; score=min(100,count*5)=100.0",
+          "score": 100.0,
+          "weight": 4,
+          "weighted": 4.0
+        },
+        "reliability_security": {
+          "measured": true,
+          "notes": "reliability_security: layers=['vercel'] quota_files=0 no_quota_json gitleaks_recent_ok incidents_30d=0",
+          "score": 77.5,
+          "weight": 9,
+          "weighted": 6.975
+        },
+        "stack_modernity": {
+          "measured": true,
+          "notes": "from STACK_AUDIT_2026-Q2.md (32 KEEP / 30 UPGRADE / 3 REPLACE)",
+          "score": 72.3077,
+          "weight": 13,
+          "weighted": 9.400001
+        },
+        "web_perf_ux": {
+          "measured": false,
+          "notes": "no Lighthouse-CI runs yet \u2014 collector deferred until first run",
+          "score": 55.0,
+          "weight": 13,
+          "weighted": 7.15
+        }
+      },
+      "total": 64.9475
     }
   ],
   "schema": "operating_score/v1"

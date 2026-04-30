@@ -86,6 +86,8 @@ class Settings(BaseSettings):
     SCHEDULER_SPRINT_LESSONS_HOURS: int = 6
     # Merged-PR memory episodes (``source=merged_pr``), GitHub API.
     SCHEDULER_MERGED_PRS_HOURS: int = 6
+    # PR outcome recorder (``pr_outcome_recorder``), GitHub API -> pr_outcomes.json.
+    SCHEDULER_PR_OUTCOME_RECORDER_MINUTES: int = 30
     BRAIN_PR_REVIEW_MODEL: str = ""
     # When true, Brain's PR sweep runs optional triage classifiers
     # (stale nudge, thin ready review, rebase assist). Default off; founders

@@ -1,0 +1,106 @@
+[
+  {
+    "id": "stack",
+    "name": "Stack Modernity Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.stack",
+    "pillar": "stack_modernity",
+    "enabled": true
+  },
+  {
+    "id": "runbook_completeness",
+    "name": "Runbook Completeness Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.runbook_completeness",
+    "pillar": "knowledge_capital",
+    "enabled": true
+  },
+  {
+    "id": "persona_coverage",
+    "name": "Persona Coverage Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.persona_coverage",
+    "pillar": "persona_coverage",
+    "enabled": true
+  },
+  {
+    "id": "docs_freshness",
+    "name": "Docs Freshness Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.docs_freshness",
+    "pillar": "knowledge_capital",
+    "enabled": true
+  },
+  {
+    "id": "cost",
+    "name": "Cost Anomaly Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.cost",
+    "pillar": "autonomy",
+    "enabled": true
+  },
+  {
+    "id": "secrets_drift",
+    "name": "Secrets Drift Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.secrets_drift",
+    "pillar": "reliability_security",
+    "enabled": true
+  },
+  {
+    "id": "kg_self_validate",
+    "name": "Knowledge Graph Self-Validation Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.kg_self_validate",
+    "pillar": "knowledge_capital",
+    "enabled": true
+  },
+  {
+    "id": "a11y",
+    "name": "Accessibility (a11y) Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.a11y",
+    "pillar": "a11y_design_system",
+    "enabled": true
+  },
+  {
+    "id": "lighthouse",
+    "name": "Lighthouse Performance Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.lighthouse",
+    "pillar": "web_perf_ux",
+    "enabled": true
+  },
+  {
+    "id": "vendor_renewal",
+    "name": "Vendor Renewal Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.vendor_renewal",
+    "pillar": "reliability_security",
+    "enabled": true
+  },
+  {
+    "id": "cross_app_ui_redundancy",
+    "name": "Cross-App UI Redundancy Audit",
+    "cadence": "weekly",
+    "runner_module": "app.audits.cross_app_ui_redundancy",
+    "pillar": "code_quality",
+    "enabled": true
+  },
+  {
+    "id": "auto_distillation",
+    "name": "Auto-Distillation (failure clusters to procedural rules)",
+    "cadence": "weekly",
+    "runner_module": "app.audits.auto_distillation",
+    "pillar": "autonomy",
+    "enabled": true
+  },
+  {
+    "id": "cost_monitor",
+    "name": "Cost Monitor (monthly budget utilization)",
+    "cadence": "weekly",
+    "runner_module": "app.audits.cost_monitor",
+    "pillar": "autonomy",
+    "enabled": true
+  }
+]

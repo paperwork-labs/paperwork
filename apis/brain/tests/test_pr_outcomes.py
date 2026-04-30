@@ -74,11 +74,15 @@ def test_record_merged_pr_then_get_round_trip(outcomes_path: Path) -> None:
         "implementation",
         ["WS-41", "WS-10"],
         ["autonomy", "ops"],
+        branch="ws-41/example",
+        ci_status_at_merge="success",
     )
     row = pr_out.get_pr_outcome(501)
     assert row is not None
     assert row.pr_number == 501
     assert row.merged_at == "2026-04-28T12:00:00Z"
+    assert row.branch == "ws-41/example"
+    assert row.ci_status_at_merge == "success"
     assert row.workstream_ids == ["WS-41", "WS-10"]
     assert row.outcomes.h1 is None
     data = json.loads(outcomes_path.read_text(encoding="utf-8"))
@@ -134,6 +138,31 @@ def test_list_outcomes_for_workstream_finds_ws41(outcomes_path: Path) -> None:
 
 def test_get_pr_outcome_missing_returns_none(outcomes_path: Path) -> None:
     assert pr_out.get_pr_outcome(99999) is None
+
+
+def test_record_merged_pr_overwrite_preserves_horizons(outcomes_path: Path) -> None:
+    pr_out.record_merged_pr(77, "2026-04-28T13:00:00Z", "a", "m", "t", [], [])
+    pr_out.update_outcome_h24(77, True, True, False)
+
+    pr_out.record_merged_pr(
+        77,
+        "2026-04-28T13:00:01Z",
+        "brain-dispatch",
+        "composer-2-fast",
+        "generalPurpose",
+        ["WS-82"],
+        ["ops"],
+        branch="ws82/wave0/pr-a3-pr-outcomes-wiring",
+        ci_status_at_merge="success",
+        overwrite_existing=True,
+    )
+
+    row = pr_out.get_pr_outcome(77)
+    assert row is not None
+    assert row.merged_by_agent == "brain-dispatch"
+    assert row.branch == "ws82/wave0/pr-a3-pr-outcomes-wiring"
+    assert row.outcomes.h24 is not None
+    assert row.outcomes.h24.ci_pass is True
 
 
 @pytest.mark.asyncio

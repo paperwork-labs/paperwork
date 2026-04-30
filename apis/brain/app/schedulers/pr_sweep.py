@@ -204,6 +204,13 @@ def start_scheduler() -> AsyncIOScheduler | None:
         logger.exception("Failed to install merged_prs_ingest job")
 
     try:
+        from app.schedulers import pr_outcome_recorder
+
+        pr_outcome_recorder.install(sched)
+    except Exception:
+        logger.exception("Failed to install pr_outcome_recorder job")
+
+    try:
         from app.schedulers import ingest_decisions_cadence
 
         ingest_decisions_cadence.install(sched)
