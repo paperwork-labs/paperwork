@@ -20,7 +20,7 @@ export function HqPageContainer({
   className = "",
 }: HqPageContainerProps) {
   return (
-    <div className={`mx-auto w-full px-6 ${MAX_W[variant]} ${className}`.trim()}>
+    <div className={`mx-auto w-full px-4 md:px-6 ${MAX_W[variant]} ${className}`.trim()}>
       {children}
     </div>
   );

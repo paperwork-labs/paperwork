@@ -54,7 +54,7 @@ export function HqPageHeader({
               {eyebrow}
             </p>
           ) : null}
-          <h1 className="text-xl font-semibold tracking-tight text-zinc-100 md:text-2xl">
+          <h1 className="text-lg font-semibold tracking-tight text-zinc-100 md:text-xl lg:text-2xl">
             {title}
           </h1>
           {subtitle ? <p className="max-w-3xl text-sm text-zinc-400">{subtitle}</p> : null}

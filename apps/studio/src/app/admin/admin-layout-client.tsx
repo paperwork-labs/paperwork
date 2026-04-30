@@ -3,7 +3,7 @@
 import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu, Settings2 } from "lucide-react";
 
 import { HqPageContainer } from "@/components/admin/hq/HqPageContainer";
@@ -37,9 +37,7 @@ const FOOTER_VENDOR_LINKS: {
 
 type Props = {
   children: React.ReactNode;
-  /** Null only when caller could not derive counts (layout throws on bad JSON) */
   founderPending: { count: number; hasCritical: boolean } | null;
-  /** Null if expenses data failed to load */
   expensesPending: { count: number; hasCritical: boolean } | null;
   expensesCountsUnknown?: boolean;
 };
@@ -89,10 +87,10 @@ function AdminSidebarPanel({
                   key={item.href}
                   href={item.href}
                   onClick={onNavLinkClick}
-                  className={`flex items-center justify-between gap-2 rounded-lg border-l-2 px-3 py-2 text-sm transition-colors ${
+                  className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm transition-colors ${
                     isActive
-                      ? "border-zinc-400 bg-zinc-800/80 font-medium text-zinc-100"
-                      : "border-transparent text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+                      ? "border-l-2 border-zinc-400 bg-zinc-800/80 font-medium text-zinc-100"
+                      : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
                   }`}
                 >
                   <span className="flex min-w-0 items-center gap-2.5">
@@ -187,8 +185,30 @@ export function AdminLayoutClient({
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navGroups = buildNavGroups(founderPending, expensesPending);
 
+  useEffect(() => {
+    setMobileNavOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileNavOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [mobileNavOpen]);
+
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [mobileNavOpen]);
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div data-testid="admin-shell" className="min-h-screen overflow-x-hidden bg-zinc-950 text-zinc-100">
       <CommandPalette />
 
       <div
