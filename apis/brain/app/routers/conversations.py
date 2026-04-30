@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 
 import app.services.conversations as conv_svc
+import app.services.expenses as expense_svc
 from app.schemas.base import error_response, success_response
 from app.schemas.conversation import (  # noqa: TC001
     AppendMessageRequest,
@@ -31,6 +32,7 @@ from app.schemas.conversation import (  # noqa: TC001
     SnoozeRequest,
     StatusUpdateRequest,
 )
+from app.schemas.expenses import ExpenseConversationResolveBody  # noqa: TC001
 
 if TYPE_CHECKING:
     from fastapi.responses import JSONResponse
@@ -124,6 +126,29 @@ def create_conversation(
     """Create a new Conversation (used by personas + Studio)."""
     conv = conv_svc.create_conversation(body)
     return success_response(conv.model_dump(mode="json"), status_code=201)
+
+
+@router.post("/conversations/{conversation_id}/resolve")
+def resolve_expense_conversation(
+    conversation_id: str,
+    body: ExpenseConversationResolveBody,
+    _auth: None = Depends(_require_admin),
+) -> JSONResponse:
+    """Atomically resolve an expense-approval thread and update the linked Expense."""
+    try:
+        exp, conv = expense_svc.resolve_expense_linked_conversation(
+            conversation_id,
+            body.expense_action,
+            body.new_category,
+        )
+    except ValueError as exc:
+        return error_response(str(exc), status_code=422)
+    return success_response(
+        {
+            "expense": exp.model_dump(mode="json"),
+            "conversation": conv.model_dump(mode="json"),
+        }
+    )
 
 
 # ---------------------------------------------------------------------------

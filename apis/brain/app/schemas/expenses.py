@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # ---------------------------------------------------------------------------
 # Domain literals
@@ -65,11 +65,38 @@ class ExpenseCreate(BaseModel):
     occurred_at: str  # YYYY-MM-DD
     notes: str = ""
     tags: list[str] = Field(default_factory=list)
+    use_cfo_classify: bool = Field(
+        default=False,
+        description="When True, CFO persona sets category (overrides submitted category).",
+    )
 
 
 class ExpenseStatusUpdate(BaseModel):
     status: ExpenseStatus
     notes: str = ""
+
+
+ExpenseConversationAction = Literal[
+    "approve",
+    "approve-change-category",
+    "flag",
+    "reject",
+]
+
+
+class ExpenseConversationResolveBody(BaseModel):
+    """POST /admin/expenses/{id}/status — resolve via linked Conversation (atomic)."""
+
+    expense_action: ExpenseConversationAction
+    new_category: ExpenseCategory | None = None
+
+    @model_validator(mode="after")
+    def _require_category_for_change(self) -> ExpenseConversationResolveBody:
+        if self.expense_action == "approve-change-category" and self.new_category is None:
+            raise ValueError(
+                "new_category is required when expense_action is approve-change-category"
+            )
+        return self
 
 
 class ExpenseEdit(BaseModel):
@@ -144,3 +171,29 @@ class ExpenseRoutingRules(BaseModel):
     updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     updated_by: str = "founder"
     history: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class ExpenseRoutingRulesUpdate(BaseModel):
+    """Body for PUT /admin/expenses/rules — replaces tunable routing fields."""
+
+    auto_approve_threshold_cents: int = Field(..., ge=0)
+    auto_approve_categories: list[ExpenseCategory]
+    always_review_categories: list[ExpenseCategory]
+    flag_amount_cents_above: int = Field(..., ge=0)
+    founder_card_default_source: str = "founder-card"
+    subscription_skip_approval: bool = False
+    updated_by: str = "founder"
+
+    @model_validator(mode="after")
+    def _validate_sets_and_flag(self) -> ExpenseRoutingRulesUpdate:
+        auto_s = set(self.auto_approve_categories)
+        always_s = set(self.always_review_categories)
+        overlap = auto_s & always_s
+        if overlap:
+            raise ValueError(
+                "Categories cannot appear in both auto-approve and always-review: "
+                f"{sorted(overlap)}"
+            )
+        if self.flag_amount_cents_above < self.auto_approve_threshold_cents:
+            raise ValueError("flag_amount_cents_above must be >= auto_approve_threshold_cents")
+        return self

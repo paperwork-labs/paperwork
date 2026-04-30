@@ -16,13 +16,25 @@ medallion: ops
 
 from __future__ import annotations
 
+import asyncio
 import hmac
 import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import Response
+from pydantic import ValidationError
 
 import app.services.expense_receipts as receipt_svc
 import app.services.expenses as expense_svc
@@ -30,8 +42,10 @@ from app.config import settings
 from app.schemas.base import error_response, success_response
 from app.schemas.expenses import (
     ExpenseCategory,
+    ExpenseConversationResolveBody,
     ExpenseCreate,
     ExpenseEdit,
+    ExpenseRoutingRulesUpdate,
     ExpenseSource,
     ExpenseStatus,
     ExpenseStatusUpdate,
@@ -99,6 +113,60 @@ async def get_routing_rules(_auth: None = Depends(_require_admin)) -> Any:
     return success_response(rules.model_dump(mode="json"))
 
 
+@router.put("/rules")
+async def put_routing_rules(
+    body: ExpenseRoutingRulesUpdate,
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Replace routing rules with validation + optional audit Conversation on threshold raise."""
+    from app.schemas.conversation import ConversationCreate
+    from app.services import conversations as conv_svc
+    from app.services import expense_rules as erules
+
+    current = expense_svc.load_routing_rules()
+    old_threshold = current.auto_approve_threshold_cents
+    try:
+        merged = erules.merge_update(current, body)
+        saved = erules.save_rules(merged, updated_by=body.updated_by)
+    except ValueError as exc:
+        return error_response(str(exc), 422)
+
+    if body.auto_approve_threshold_cents > old_threshold:
+
+        def _audit() -> None:
+            diff_md = (
+                f"**Expense routing threshold raised**\n\n"
+                f"- **From:** ${old_threshold / 100:,.2f}\n"
+                f"- **To:** ${body.auto_approve_threshold_cents / 100:,.2f}\n"
+                f"- **By:** {body.updated_by}\n"
+            )
+            create = ConversationCreate(
+                title="Expense rules: auto-approve threshold raised",
+                body_md=diff_md,
+                tags=["expense-rule-change"],
+                urgency="info",
+                persona="cfo",
+                needs_founder_action=False,
+            )
+            conv_svc.create_conversation(create)
+
+        derived = expense_svc.derived_repo_root_from_expense_store()
+        if derived is not None:
+            import os
+
+            old_root = os.environ.get("REPO_ROOT")
+            os.environ["REPO_ROOT"] = derived
+            try:
+                _audit()
+            finally:
+                if old_root is None:
+                    os.environ.pop("REPO_ROOT", None)
+                else:
+                    os.environ["REPO_ROOT"] = old_root
+
+    return success_response(saved.model_dump(mode="json"))
+
+
 # ---------------------------------------------------------------------------
 # Collection
 # ---------------------------------------------------------------------------
@@ -144,7 +212,7 @@ async def submit_expense(
     except Exception as exc:
         return error_response(f"Invalid expense payload: {exc}", 422)
 
-    expense = expense_svc.submit_expense(payload)
+    expense = await asyncio.to_thread(expense_svc.submit_expense, payload)
 
     # Attach receipt if provided
     if receipt is not None:
@@ -201,9 +269,43 @@ async def edit_expense(
 @router.post("/{expense_id}/status")
 async def update_expense_status(
     expense_id: str,
-    body: ExpenseStatusUpdate,
+    request: Request,
     _auth: None = Depends(_require_admin),
 ) -> Any:
+    try:
+        raw = await request.json()
+    except Exception:
+        return error_response("Invalid JSON body", 422)
+
+    if isinstance(raw, dict) and "expense_action" in raw:
+        try:
+            resolve_body = ExpenseConversationResolveBody.model_validate(raw)
+        except ValidationError as exc:
+            return error_response(str(exc), 422)
+        exp = expense_svc.get_expense(expense_id)
+        if exp is None:
+            raise HTTPException(status_code=404, detail="Expense not found")
+        if not exp.conversation_id:
+            return error_response("Expense has no linked approval conversation", 422)
+        try:
+            updated_exp, conv = expense_svc.resolve_expense_linked_conversation(
+                exp.conversation_id,
+                resolve_body.expense_action,
+                resolve_body.new_category,
+            )
+        except ValueError as exc:
+            return error_response(str(exc), 422)
+        return success_response(
+            {
+                "expense": updated_exp.model_dump(mode="json"),
+                "conversation": conv.model_dump(mode="json"),
+            }
+        )
+
+    try:
+        body = ExpenseStatusUpdate.model_validate(raw)
+    except Exception as exc:
+        return error_response(f"Invalid status payload: {exc}", 422)
     try:
         updated = expense_svc.update_expense_status(expense_id, body)
     except ValueError as exc:

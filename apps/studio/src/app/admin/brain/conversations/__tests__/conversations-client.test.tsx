@@ -31,6 +31,7 @@ function makeConv(overrides: Partial<Conversation> = {}): Conversation {
     status: "needs-action",
     snooze_until: null,
     parent_action_id: null,
+    links: null,
     ...overrides,
   };
 }

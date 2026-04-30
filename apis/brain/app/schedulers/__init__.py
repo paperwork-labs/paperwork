@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from .pr_sweep import get_scheduler, shutdown_scheduler
+from .pr_sweep import shutdown_scheduler as shutdown_scheduler
 from .pr_sweep import start_scheduler as _start_scheduler
 
 if TYPE_CHECKING:
@@ -93,7 +93,10 @@ def start_scheduler() -> AsyncIOScheduler | None:
         log_pull.install(scheduler)
     except Exception:
         logger.exception("Failed to install app_log_pull_hourly job")
+    try:
+        from app.schedulers import expense_monthly_close
+
+        expense_monthly_close.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install expense_monthly_close job")
     return scheduler
-
-
-__all__ = ["get_scheduler", "shutdown_scheduler", "start_scheduler"]

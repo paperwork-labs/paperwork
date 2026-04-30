@@ -21,13 +21,12 @@ import json
 import logging
 import os
 import uuid
+from collections.abc import Callable  # noqa: TC003
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from collections.abc import Callable
-
+from app.schemas.conversation import Conversation, ConversationCreate, ConversationLinks
 from app.schemas.expenses import (
     CategoryTotal,
     Expense,
@@ -143,79 +142,260 @@ def _locked_read_write(
             fcntl.flock(lock_file, fcntl.LOCK_UN)
 
 
-# ---------------------------------------------------------------------------
-# Routing rules
-# ---------------------------------------------------------------------------
-
-
 def load_routing_rules() -> ExpenseRoutingRules:
-    path = _rules_json_path()
-    if not path.exists():
-        logger.info("expense_routing_rules.json not found — returning safe defaults")
-        return ExpenseRoutingRules()
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-        return ExpenseRoutingRules.model_validate(raw)
-    except Exception:
-        logger.warning("expense_routing_rules.json parse error — returning safe defaults")
-        return ExpenseRoutingRules()
+    """Load routing rules via ``expense_rules`` (raises on corrupt JSON — no silent fallback)."""
+    from app.services import expense_rules as erules
+
+    return erules.load_rules()
 
 
 def save_routing_rules(rules: ExpenseRoutingRules) -> ExpenseRoutingRules:
-    """Persist updated routing rules. PR O adds audit Conversation; PR N just writes the file."""
-    path = _rules_json_path()
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(rules.model_dump(mode="json"), indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-    return rules
+    """Persist routing rules with append-only history."""
+    from app.services import expense_rules as erules
+
+    return erules.save_rules(rules, updated_by=rules.updated_by)
 
 
-# ---------------------------------------------------------------------------
-# Submit
-# ---------------------------------------------------------------------------
+def derived_repo_root_from_expense_store() -> str | None:
+    """Resolve monorepo root for Conversations + audit posts.
+
+    Prefer deriving from ``BRAIN_EXPENSES_JSON`` when it lives under
+    ``.../apis/brain/data/``. Otherwise fall back to ``REPO_ROOT`` so
+    expense flows and rules PUT still create Conversations in dev/prod
+    without a custom expenses path env.
+    """
+    ex = os.environ.get(_ENV_EXPENSES_JSON, "").strip()
+    if ex:
+        p = Path(ex).resolve()
+        parts = p.parts
+        if "apis" in parts and "brain" in parts and "data" in parts:
+            i = parts.index("apis")
+            return str(Path(*parts[:i]))
+    root = os.environ.get(_ENV_REPO_ROOT, "").strip()
+    return root or None
 
 
-def _apply_routing(expense: Expense, rules: ExpenseRoutingRules) -> Expense:
-    """Apply routing rules to determine initial status."""
-    # Flag overrides everything
+def _with_repo_root_for_conversations(fn: Callable[[], str]) -> str:
+    derived = derived_repo_root_from_expense_store()
+    if derived is None:
+        return fn()
+    old = os.environ.get(_ENV_REPO_ROOT)
+    os.environ[_ENV_REPO_ROOT] = derived
+    try:
+        return fn()
+    finally:
+        if old is None:
+            os.environ.pop(_ENV_REPO_ROOT, None)
+        else:
+            os.environ[_ENV_REPO_ROOT] = old
+
+
+def _format_money_cents(cents: int, currency: str = "USD") -> str:
+    return f"{cents / 100:.2f} {currency}"
+
+
+def _render_expense_card_md(expense: Expense) -> str:
+    lines = [
+        "### Expense approval",
+        f"- **Vendor:** {expense.vendor}",
+        f"- **Amount:** {_format_money_cents(expense.amount_cents, expense.currency)}",
+        f"- **Category:** {expense.category}",
+        f"- **Classified by:** {expense.classified_by}",
+        f"- **Occurred:** {expense.occurred_at}",
+    ]
+    if expense.notes.strip():
+        lines.append(f"- **Notes:** {expense.notes.strip()}")
+    if expense.receipt:
+        lines.append(f"- **Receipt:** `{expense.receipt.filename}`")
+    lines.append("")
+    lines.append("Use the action buttons below to approve, change category, flag, or reject.")
+    return "\n".join(lines)
+
+
+def _routing_decision(expense: Expense, rules: ExpenseRoutingRules) -> tuple[ExpenseStatus, bool]:
+    """Return (status, needs_approval_conversation)."""
     if expense.amount_cents > rules.flag_amount_cents_above:
-        return expense.model_copy(update={"status": "flagged"})
-    # Always-review categories are never auto-approved
+        return "flagged", True
     if expense.category in rules.always_review_categories:
-        return expense.model_copy(update={"status": "pending"})
-    # Auto-approve when threshold > 0 and category eligible
+        return "pending", True
     if (
         rules.auto_approve_threshold_cents > 0
-        and expense.amount_cents <= rules.auto_approve_threshold_cents
+        and expense.amount_cents < rules.auto_approve_threshold_cents
         and expense.category in rules.auto_approve_categories
     ):
-        return expense.model_copy(
-            update={"status": "approved", "approved_at": datetime.now(UTC).isoformat()}
-        )
-    return expense
+        return "approved", False
+    return "pending", True
 
 
-def submit_expense(payload: ExpenseCreate) -> Expense:
+def _apply_expense_action(
+    expense: Expense,
+    expense_action: str,
+    new_category: ExpenseCategory | None,
+) -> Expense:
+    now = datetime.now(UTC).isoformat()
+    if expense_action == "approve":
+        target: ExpenseStatus = "approved"
+        patch: dict[str, Any] = {"status": target, "approved_at": now}
+    elif expense_action == "approve-change-category":
+        if new_category is None:
+            raise ValueError("new_category is required for approve-change-category")
+        patch = {"status": "approved", "category": new_category, "approved_at": now}
+    elif expense_action == "flag":
+        patch = {"status": "flagged"}
+    elif expense_action == "reject":
+        patch = {"status": "rejected"}
+    else:
+        raise ValueError(f"Unknown expense_action: {expense_action!r}")
+
+    allowed = _ALLOWED_TRANSITIONS.get(expense.status, set())
+    new_status = patch["status"]
+    if new_status not in allowed:
+        raise ValueError(f"Cannot transition {expense.status} → {new_status}")
+    return expense.model_copy(update=patch)
+
+
+def resolve_expense_linked_conversation(
+    conversation_id: str,
+    expense_action: str,
+    new_category: ExpenseCategory | None,
+) -> tuple[Expense, Conversation]:
+    """Atomically resolve the Conversation and update the linked Expense (expense lock held)."""
+    from app.services import conversations as conv_svc
+
+    out: dict[str, Any] = {}
+    derived = derived_repo_root_from_expense_store()
+
+    def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        old_root = os.environ.get("REPO_ROOT")
+        if derived is not None:
+            os.environ["REPO_ROOT"] = derived
+        try:
+            try:
+                conv_inner = conv_svc.get_conversation(conversation_id)
+            except KeyError as exc:
+                raise ValueError(f"Conversation {conversation_id!r} not found") from exc
+            if conv_inner.links is None or not conv_inner.links.expense_id:
+                raise ValueError("Conversation has no expense_id link")
+            eid = conv_inner.links.expense_id
+            for i, raw in enumerate(rows):
+                if raw.get("id") != eid:
+                    continue
+                expense = _parse_expense(raw)
+                if expense is None:
+                    raise ValueError("Linked expense row is invalid")
+                if expense.conversation_id != conversation_id:
+                    raise ValueError("Expense is not linked to this conversation")
+                updated = _apply_expense_action(expense, expense_action, new_category)
+                rows[i] = updated.model_dump(mode="json")
+                conv_done = conv_inner.model_copy(
+                    update={
+                        "status": "resolved",
+                        "updated_at": datetime.now(UTC),
+                        "needs_founder_action": False,
+                    }
+                )
+                conv_svc._save_conversation(conv_done)
+                out["expense"] = updated
+                out["conversation"] = conv_done
+                return rows
+            raise ValueError("Linked expense not found in store")
+        finally:
+            if derived is not None:
+                if old_root is None:
+                    os.environ.pop("REPO_ROOT", None)
+                else:
+                    os.environ["REPO_ROOT"] = old_root
+
+    _locked_read_write(mutate)
+    return out["expense"], out["conversation"]
+
+
+async def classify_and_route(payload: ExpenseCreate, *, expense_id: str) -> Expense:
+    """CFO classify when requested, apply routing rules, optionally create approval Conversation.
+
+    Called from expense creation before the row is appended to ``expenses.json``.
+    """
+    from app.personas import cfo_classifier
+    from app.services import conversations as conv_svc
+
     rules = load_routing_rules()
     now = datetime.now(UTC).isoformat()
+
+    category: ExpenseCategory = payload.category
+    classified_by = "founder"
+    if payload.use_cfo_classify:
+        try:
+            from app.redis import get_redis
+
+            redis_client = get_redis()
+        except RuntimeError:
+            redis_client = None
+        cat, _flag_reason = await cfo_classifier.classify(
+            amount_cents=payload.amount_cents,
+            merchant=payload.vendor,
+            description=payload.notes or "",
+            redis_client=redis_client,
+        )
+        category = cat
+        classified_by = "cfo-persona"
+
     expense = Expense(
-        id=str(uuid.uuid4()),
+        id=expense_id,
         vendor=payload.vendor,
         amount_cents=payload.amount_cents,
         currency=payload.currency,
-        category=payload.category,
+        category=category,
         status="pending",
         source=payload.source,
-        classified_by="founder",
+        classified_by=classified_by,
         occurred_at=payload.occurred_at,
         submitted_at=now,
         notes=payload.notes,
         tags=payload.tags,
+        conversation_id=None,
     )
-    expense = _apply_routing(expense, rules)
 
+    status, needs_conv = _routing_decision(expense, rules)
+    patch: dict[str, Any] = {"status": status}
+    if status == "approved":
+        patch["approved_at"] = datetime.now(UTC).isoformat()
+    expense = expense.model_copy(update=patch)
+
+    conv_id: str | None = None
+    if needs_conv:
+
+        def _mk() -> str:
+            amt = _format_money_cents(expense.amount_cents, expense.currency)
+            create = ConversationCreate(
+                title=f"Expense: {expense.vendor} ({amt})",
+                body_md=_render_expense_card_md(expense),
+                tags=["expense-approval"],
+                urgency="normal",
+                persona="cfo",
+                needs_founder_action=True,
+                links=ConversationLinks(expense_id=expense.id),
+            )
+            conv = conv_svc.create_conversation(create)
+            return conv.id
+
+        derived = derived_repo_root_from_expense_store()
+        if derived is not None:
+            conv_id = _with_repo_root_for_conversations(_mk)
+            expense = expense.model_copy(update={"conversation_id": conv_id})
+        else:
+            logger.warning(
+                "expense %s: skipping approval Conversation "
+                "(no REPO_ROOT / monorepo path for Conversations)",
+                expense.id,
+            )
+
+    return expense
+
+
+async def _submit_expense_impl(payload: ExpenseCreate) -> Expense:
+    """Create expense row: classify, route, persist."""
+    expense_id = str(uuid.uuid4())
+    expense = await classify_and_route(payload, expense_id=expense_id)
     row = expense.model_dump(mode="json")
 
     def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -224,6 +404,20 @@ def submit_expense(payload: ExpenseCreate) -> Expense:
 
     _locked_read_write(mutate)
     return expense
+
+
+def submit_expense(payload: ExpenseCreate) -> Expense:
+    """Sync entrypoint for tests and tooling. Async callers must use ``asyncio.to_thread``."""
+    import asyncio
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(_submit_expense_impl(payload))
+    raise RuntimeError(
+        "submit_expense() cannot run inside an active event loop; "
+        "await asyncio.to_thread(expenses.submit_expense, payload) instead"
+    )
 
 
 # ---------------------------------------------------------------------------

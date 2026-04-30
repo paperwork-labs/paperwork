@@ -34,6 +34,10 @@ export interface ThreadMessage {
 export type UrgencyLevel = "info" | "normal" | "high" | "critical";
 export type StatusLevel = "open" | "needs-action" | "snoozed" | "resolved" | "archived";
 
+export interface ConversationLinks {
+  expense_id?: string | null;
+}
+
 export interface Conversation {
   id: string;
   title: string;
@@ -47,6 +51,7 @@ export interface Conversation {
   status: StatusLevel;
   snooze_until: string | null;
   parent_action_id: string | null;
+  links?: ConversationLinks | null;
 }
 
 export interface ConversationsListPage {

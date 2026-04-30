@@ -476,7 +476,7 @@ class TestRoutingRules:
         reloaded = svc.load_routing_rules()
         assert reloaded.auto_approve_threshold_cents == 5000
 
-    def test_corrupted_rules_file_returns_defaults(
+    def test_corrupted_rules_file_raises(
         self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     ) -> None:
         rules_path = tmp_path / "bad_rules.json"
@@ -487,9 +487,8 @@ class TestRoutingRules:
         import app.services.expenses as svc
 
         importlib.reload(svc)
-        rules = svc.load_routing_rules()
-        # Should not raise; returns defaults
-        assert rules.auto_approve_threshold_cents == 0
+        with pytest.raises(ValueError, match="not valid JSON"):
+            svc.load_routing_rules()
 
 
 # ---------------------------------------------------------------------------
