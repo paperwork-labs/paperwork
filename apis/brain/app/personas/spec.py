@@ -101,10 +101,7 @@ class PersonaSpec(BaseModel):
     )
     owner_channel: str | None = Field(
         default=None,
-        description=(
-            "Default Slack channel where this persona posts. Used by scheduled "
-            "workflows migrated out of n8n."
-        ),
+        description=("Legacy channel hint for this persona. Kept for backwards-compat only."),
     )
     tone_prefix: str | None = Field(
         default=None,

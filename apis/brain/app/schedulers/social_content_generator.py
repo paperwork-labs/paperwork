@@ -1,7 +1,6 @@
 """Social content pack — ex-``social-content-generator.json`` (WS-19).
 
-The n8n flow: webhook → OpenAI ``gpt-4o`` (JSON object) → Slack ``#general``.
-Export had no schedule; this job runs weekly Wednesday 17:00 UTC.
+WS-69 PR J: Slack post removed; output lands in the Brain Conversations stream.
 
 medallion: ops
 """
@@ -10,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import httpx
@@ -17,8 +17,8 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
 from app.schedulers._history import run_with_scheduler_record
-from app.schedulers._n8n_slack_format import format_structured_json_for_slack
-from app.services import slack_outbound
+from app.schemas.conversation import ConversationCreate
+from app.services.conversations import create_conversation
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _JOB_ID = "social_content_generator"
-_SOCIAL_CHANNEL_ID = "C0AM01NHQ3Y"
 _SYSTEM_PROMPT = (
     "You are the social media manager for Paperwork Labs (paperworklabs.com), a venture that "
     "builds tools to eliminate paperwork. Products: FileFree (filefree.ai) — free AI-powered "
@@ -87,18 +86,44 @@ async def _openai_social_json() -> str:
         return ""
 
 
+def _format_for_conversation(raw: str, date_str: str) -> str:
+    """Convert JSON object to markdown for the Conversation body."""
+    if not raw.strip():
+        return "No output generated. Check workflow logs."
+    try:
+        obj: dict[str, object] = json.loads(raw)
+        parts: list[str] = [f"**Social Content Pack — {date_str}**\n"]
+        for k, v in obj.items():
+            label = k.replace("_", " ").title()
+            if isinstance(v, list):
+                lines = "\n".join(f"  - {item}" for item in v)
+                parts.append(f"**{label}:**\n{lines}")
+            elif isinstance(v, dict):
+                parts.append(f"**{label}:** {json.dumps(v)}")
+            else:
+                parts.append(f"**{label}:** {v}")
+        return "\n\n".join(parts)
+    except json.JSONDecodeError:
+        return raw
+
+
 async def _run_body() -> None:
     raw = await _openai_social_json()
     if not raw.strip():
         return
-    formatted = format_structured_json_for_slack(raw, header_prefix="Social Content")
-    await slack_outbound.post_message(
-        channel_id=_SOCIAL_CHANNEL_ID,
-        text=formatted,
-        username="Social",
-        icon_emoji=":parrot:",
+    date_str = datetime.now(UTC).date().isoformat()
+    body_md = _format_for_conversation(raw, date_str)
+    create_conversation(
+        ConversationCreate(
+            title=f"Social Content Pack — {date_str}",
+            body_md=body_md,
+            tags=["social-content"],
+            urgency="info",
+            persona="social",
+            needs_founder_action=False,
+        )
     )
-    logger.info("social_content_generator: posted to %s", _SOCIAL_CHANNEL_ID)
+    logger.info("social_content_generator: conversation created")
 
 
 async def run_social_content_generator() -> None:

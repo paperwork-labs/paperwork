@@ -164,10 +164,6 @@ services:
         sync: false
       - key: NEON_API_KEY
         sync: false
-      - key: N8N_URL
-        value: https://n8n.paperworklabs.com
-      - key: N8N_API_KEY
-        sync: false
       - key: UPSTASH_REDIS_REST_URL
         sync: false
       - key: UPSTASH_REDIS_REST_TOKEN

@@ -1,18 +1,21 @@
-"""Slack slash commands backed by tracker-index.json (/sprint, /tasks, /plan)."""
+"""Tracker formatter functions (/sprint, /tasks, /plan) backed by tracker-index.json.
 
-from contextlib import contextmanager
-from unittest.mock import patch
-from urllib.parse import urlencode
+WS-69 PR J: migrated from Slack slash command endpoint tests to direct unit
+tests of tracker_response_* functions (the Slack slash command endpoint was
+removed; the formatting logic lives on in tracker_slash.py for MCP tools / CLI).
+"""
 
-import pytest
-from starlette.background import BackgroundTasks
-from starlette.requests import Request
+from __future__ import annotations
 
-from app.routers import webhooks
-from app.services.tracker_slash import TRACKER_UNAVAILABLE_MSG
+from app.services.tracker_slash import (
+    TRACKER_UNAVAILABLE_MSG,
+    tracker_response_plan,
+    tracker_response_sprint,
+    tracker_response_tasks,
+)
 
 
-def _sample_index() -> dict:
+def _sample_index() -> dict:  # type: ignore[type-arg]
     return {
         "company": {
             "critical_dates": [
@@ -76,177 +79,51 @@ def _sample_index() -> dict:
     }
 
 
-def _make_slack_request(form: dict) -> Request:
-    body = urlencode(form).encode()
-    done = False
+def test_tracker_response_sprint_active_and_shipped() -> None:
+    idx = _sample_index()
 
-    async def receive():
-        nonlocal done
-        if not done:
-            done = True
-            return {"type": "http.request", "body": body, "more_body": False}
-        return {"type": "http.request", "body": b"", "more_body": False}
-
-    scope = {
-        "type": "http",
-        "asgi": {"version": "3.0", "spec_version": "2.3"},
-        "http_version": "1.1",
-        "method": "POST",
-        "scheme": "http",
-        "path": "/api/v1/webhooks/slack/command",
-        "raw_path": b"/api/v1/webhooks/slack/command",
-        "query_string": b"",
-        "headers": [(b"content-type", b"application/x-www-form-urlencoded")],
-        "client": ("test", 50000),
-        "server": ("test", 80),
-    }
-    return Request(scope, receive)
-
-
-@contextmanager
-def _slack_command_dev():
-    with (
-        patch("app.config.settings.ENVIRONMENT", "development"),
-        patch("app.config.settings.SLACK_SIGNING_SECRET", ""),
-    ):
-        yield
-
-
-@pytest.mark.asyncio
-async def test_slack_command_sprint_active_and_shipped(monkeypatch):
-    monkeypatch.setattr(webhooks, "load_tracker_index", lambda: _sample_index())
-
-    with _slack_command_dev():
-        r_active = await webhooks.slack_slash_command(
-            _make_slack_request(
-                {
-                    "command": "/sprint",
-                    "text": "",
-                    "user_id": "U1",
-                    "channel_id": "C1",
-                    "response_url": "https://hooks.slack.com/commands/fake",
-                },
-            ),
-            BackgroundTasks(),
-        )
+    r_active = tracker_response_sprint(idx, "")
     assert r_active["response_type"] == "in_channel"
     assert "Active sprints" in r_active["text"]
     assert "Current sprint" in r_active["text"]
 
-    with _slack_command_dev():
-        r_ship = await webhooks.slack_slash_command(
-            _make_slack_request(
-                {
-                    "command": "/sprint",
-                    "text": "shipped",
-                    "user_id": "U1",
-                    "channel_id": "C1",
-                    "response_url": "https://hooks.slack.com/commands/fake",
-                },
-            ),
-            BackgroundTasks(),
-        )
+    r_ship = tracker_response_sprint(idx, "shipped")
     assert r_ship["response_type"] == "in_channel"
     assert "Latest ship" in r_ship["text"]
     assert "pull/141" in r_ship["text"]
     assert "Old ship" in r_ship["text"]
 
 
-@pytest.mark.asyncio
-async def test_slack_command_tasks_open_and_all(monkeypatch):
-    monkeypatch.setattr(webhooks, "load_tracker_index", lambda: _sample_index())
+def test_tracker_response_tasks_open_and_all() -> None:
+    idx = _sample_index()
 
-    with _slack_command_dev():
-        r_open = await webhooks.slack_slash_command(
-            _make_slack_request(
-                {
-                    "command": "/tasks",
-                    "text": "",
-                    "user_id": "U1",
-                    "channel_id": "C1",
-                    "response_url": "https://hooks.slack.com/commands/fake",
-                },
-            ),
-            BackgroundTasks(),
-        )
+    r_open = tracker_response_tasks(idx, "")
     assert r_open["response_type"] == "in_channel"
     assert "Open item" in r_open["text"]
     assert "In flight" in r_open["text"]
     assert "Done item" not in r_open["text"]
 
-    with _slack_command_dev():
-        r_all = await webhooks.slack_slash_command(
-            _make_slack_request(
-                {
-                    "command": "/tasks",
-                    "text": "all",
-                    "user_id": "U1",
-                    "channel_id": "C1",
-                    "response_url": "https://hooks.slack.com/commands/fake",
-                },
-            ),
-            BackgroundTasks(),
-        )
+    r_all = tracker_response_tasks(idx, "all")
     assert r_all["response_type"] == "in_channel"
     assert "Done item" in r_all["text"]
 
 
-@pytest.mark.asyncio
-async def test_slack_command_plan_list_and_product(monkeypatch):
-    monkeypatch.setattr(webhooks, "load_tracker_index", lambda: _sample_index())
+def test_tracker_response_plan_list_and_product() -> None:
+    idx = _sample_index()
 
-    with _slack_command_dev():
-        r_list = await webhooks.slack_slash_command(
-            _make_slack_request(
-                {
-                    "command": "/plan",
-                    "text": "",
-                    "user_id": "U1",
-                    "channel_id": "C1",
-                    "response_url": "https://hooks.slack.com/commands/fake",
-                },
-            ),
-            BackgroundTasks(),
-        )
+    r_list = tracker_response_plan(idx, "")
     assert r_list["response_type"] == "in_channel"
     assert "demo" in r_list["text"]
     assert "1 plan" in r_list["text"]
 
-    with _slack_command_dev():
-        r_demo = await webhooks.slack_slash_command(
-            _make_slack_request(
-                {
-                    "command": "/plan",
-                    "text": "demo",
-                    "user_id": "U1",
-                    "channel_id": "C1",
-                    "response_url": "https://hooks.slack.com/commands/fake",
-                },
-            ),
-            BackgroundTasks(),
-        )
+    r_demo = tracker_response_plan(idx, "demo")
     assert r_demo["response_type"] == "in_channel"
     assert "Plan A" in r_demo["text"]
     assert "github.com" in r_demo["text"]
     assert "[active]" in r_demo["text"]
 
 
-@pytest.mark.asyncio
-async def test_slack_command_tracker_missing(monkeypatch):
-    monkeypatch.setattr(webhooks, "load_tracker_index", lambda: None)
-
-    with _slack_command_dev():
-        r = await webhooks.slack_slash_command(
-            _make_slack_request(
-                {
-                    "command": "/sprint",
-                    "text": "",
-                    "user_id": "U1",
-                    "channel_id": "C1",
-                    "response_url": "https://hooks.slack.com/commands/fake",
-                },
-            ),
-            BackgroundTasks(),
-        )
+def test_tracker_response_tracker_missing() -> None:
+    r = tracker_response_sprint(None, "")
     assert r["response_type"] == "ephemeral"
     assert r["text"] == TRACKER_UNAVAILABLE_MSG

@@ -14,7 +14,7 @@ class LLMUnavailableError(Exception):
     """Raised when every provider in the router failed.
 
     Use this instead of returning mock text — the agent layer can then
-    surface a real error (HTTP 503 / Slack message like
+    surface a real error (HTTP 503 / Brain Conversation alert like
     'Brain providers are degraded, try again shortly') rather than
     handing the user fake content labelled like a genuine answer.
     """

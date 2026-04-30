@@ -1,12 +1,12 @@
 """Data source URL monitor from Brain APScheduler (Track K — P2.8).
 
 Replaces the **Data Source Monitor (P2.8)** n8n workflow (``0 6 * * 1``) that
-hashes external tax-data pages and posts to Slack — see
-``infra/hetzner/workflows/retired/data-source-monitor.json`` and
-``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md``.
+hashed external tax-data pages and posted to the engineering channel — see
+``infra/hetzner/workflows/retired/data-source-monitor.json``.
 
-State persists in Redis (``brain:data_source_monitor:hashes``) when available; otherwise an
-in-memory map for the process lifetime (same pattern as ``infra_health.py``).
+WS-69 PR J: Slack post removed; alerts land in the Brain Conversations stream.
+
+State persists in Redis (``brain:data_source_monitor:hashes``) when available.
 """
 
 from __future__ import annotations
@@ -20,9 +20,9 @@ from zoneinfo import ZoneInfo
 import httpx
 from apscheduler.triggers.cron import CronTrigger
 
-from app.config import settings
-from app.schedulers._history import N8nMirrorRunSkipped, run_with_scheduler_record
-from app.services import slack_outbound
+from app.schedulers._history import SchedulerRunSkipped, run_with_scheduler_record
+from app.schemas.conversation import ConversationCreate
+from app.services.conversations import create_conversation
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -31,11 +31,9 @@ logger = logging.getLogger(__name__)
 
 JOB_ID = "brain_data_source_monitor"
 _REDIS_KEY = "brain:data_source_monitor:hashes"
-_SLACK_CHANNEL_ID = "C0ALVM4PAE7"
 _USER_AGENT = "Mozilla/5.0 (compatible; PaperworkLabs/1.0; data-monitor)"
 _HTTP_TIMEOUT = 15.0
 
-# Process-local fallback when Redis is not initialized or set/get fails.
 _mem_hashes: dict[str, str] = {}
 
 _SOURCES: tuple[tuple[str, str, str], ...] = (
@@ -68,7 +66,6 @@ _SOURCES: tuple[tuple[str, str, str], ...] = (
 
 
 def _signed32_hash(text: str) -> str:
-    """Match n8n ``Data Source Monitor`` rolling hash (``| 0`` per step)."""
     h = 0
     for ch in text:
         h = ((h << 5) - h + ord(ch)) & 0xFFFFFFFF
@@ -85,39 +82,44 @@ def _strip_html(body: str) -> str:
     return t.strip()[:50000]
 
 
-def _format_slack_message(results: list[dict[str, Any]]) -> str:
-    """Build Slack body matching ``data-source-monitor.json`` «Format Alert»."""
+def _format_conversation_body(results: list[dict[str, Any]]) -> str:
     changed = [r for r in results if r.get("changed")]
     errors = [r for r in results if r.get("status") == "error"]
     first_runs = [r for r in results if r.get("isFirstRun")]
 
     parts: list[str] = []
     if changed:
-        parts.append(":rotating_light: *Data Source Changes Detected*\n")
-        parts.append("The following tax data sources have changed since last check:")
+        parts.append("**Data Source Changes Detected**\n")
+        parts.append("The following tax data sources have changed since last check:\n")
         for c in changed:
-            parts.append(f"\u2022 *{c['name']}*: <{c['url']}|View page>")
+            parts.append(f"- **{c['name']}**: {c['url']}")
         parts.append(
-            "\n:point_right: Run `pnpm parse:tax` and `pnpm review` in `packages/data` to update. Also run `pnpm parse:formation` if formation sources changed."  # noqa: E501
+            "\nRun `pnpm parse:tax` and `pnpm review` in `packages/data` to update. "
+            "Also run `pnpm parse:formation` if formation sources changed."
         )
     if errors:
-        parts.append("\n:warning: *Source Fetch Errors*")
+        parts.append("\n**Source Fetch Errors**")
         for e in errors:
-            parts.append(f"\u2022 {e['name']}: {e.get('error', '')}")
+            parts.append(f"- {e['name']}: {e.get('error', '')}")
     if first_runs and not changed:
-        parts.append(":white_check_mark: *Data Source Monitor — Baseline Set*\n")
-        parts.append(
-            f"Monitoring {len(results)} source(s). Will alert on content changes.",
-        )
+        parts.append("**Data Source Monitor — Baseline Set**\n")
+        parts.append(f"Monitoring {len(results)} source(s). Will alert on content changes.")
     return "\n".join(parts)
 
 
-def _should_post_slack(results: list[dict[str, Any]]) -> bool:
-    """Mirror n8n: empty output when no changes, no errors, and no first runs."""
+def _should_post(results: list[dict[str, Any]]) -> bool:
     changed = [r for r in results if r.get("changed")]
     errors = [r for r in results if r.get("status") == "error"]
     first_runs = [r for r in results if r.get("isFirstRun")]
     return bool(changed or errors or first_runs)
+
+
+def _urgency_for_results(results: list[dict[str, Any]]) -> str:
+    changed = [r for r in results if r.get("changed")]
+    errors = [r for r in results if r.get("status") == "error"]
+    if changed or errors:
+        return "high"
+    return "info"
 
 
 async def _get_redis_or_none() -> Any:
@@ -170,9 +172,6 @@ async def _fetch_one(client: httpx.AsyncClient, url: str) -> str:
 
 
 async def _run_data_source_monitor_body() -> None:
-    if not (settings.SLACK_BOT_TOKEN or "").strip():
-        raise N8nMirrorRunSkipped()
-
     redis = await _get_redis_or_none()
     prior = await _load_hashes(redis)
 
@@ -219,22 +218,29 @@ async def _run_data_source_monitor_body() -> None:
 
     await _save_hashes(redis, next_hashes)
 
-    if not _should_post_slack(results):
-        raise N8nMirrorRunSkipped()
+    if not _should_post(results):
+        raise SchedulerRunSkipped()
 
-    msg = _format_slack_message(results)
+    msg = _format_conversation_body(results)
     if not msg.strip():
-        raise N8nMirrorRunSkipped()
+        raise SchedulerRunSkipped()
 
-    out = await slack_outbound.post_message(
-        channel_id=_SLACK_CHANNEL_ID,
-        text=msg,
-        username="Data Quality",
-        icon_emoji=":bar_chart:",
+    urgency = _urgency_for_results(results)
+    needs_founder_action = urgency == "high"
+    create_conversation(
+        ConversationCreate(
+            title=(
+                "Data Source Changes Detected"
+                if needs_founder_action
+                else "Data Source Monitor — Baseline Set"
+            ),
+            body_md=msg,
+            tags=["alert"],
+            urgency=urgency,
+            persona="ea",
+            needs_founder_action=needs_founder_action,
+        )
     )
-    if not out.get("ok"):
-        err = str(out.get("error") or "unknown_slack_error")
-        raise RuntimeError(f"Slack post failed: {err}")
 
 
 async def run_data_source_monitor() -> None:

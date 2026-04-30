@@ -73,7 +73,7 @@ class Settings(BaseSettings):
     #   is true (``BRAIN_OWNS_SPRINT_AUTO_LOGGER`` and legacy ``BRAIN_OWNS_*``
     #   ingester keys retired; WS-18 / J1).
     #
-    # * **Net-new / always on** — PR sweep, proactive cadence, CFO/QA Slack
+    # * **Net-new / always on** — PR sweep, proactive cadence, CFO/QA
     #   jobs, etc. register whenever ``BRAIN_SCHEDULER_ENABLED`` is true.
     #
     # * **n8n (left behind on purpose)** — non-cron workflows only (webhooks,
@@ -86,25 +86,6 @@ class Settings(BaseSettings):
     SCHEDULER_SPRINT_LESSONS_HOURS: int = 6
     # Merged-PR memory episodes (``source=merged_pr``), GitHub API.
     SCHEDULER_MERGED_PRS_HOURS: int = 6
-    # Legacy: per-job opt-in for n8n shadow rows (module removed; flag unused).
-    SCHEDULER_N8N_MIRROR_ENABLED: bool = False
-    # #engineering Slack channel ID for per-PR Brain review summaries.
-    SLACK_ENGINEERING_CHANNEL_ID: str = ""
-    # Track I: #cfo Slack channel ID for the daily cost dashboard.
-    # Falls back to #engineering if unset so the dashboard isn't silent.
-    SLACK_CFO_CHANNEL_ID: str = ""
-    # Track G: #qa Slack channel ID for the weekly agent-health digest
-    # and nightly golden-suite summary. Falls back to #engineering.
-    SLACK_QA_CHANNEL_ID: str = ""
-    # Track M.2: #trading Slack channel ID. Where the trading persona
-    # wakes up for risk-gate, approval-required, and stop-triggered
-    # events received via AxiomFolio webhooks. Falls back to #engineering
-    # so we don't swallow events silently.
-    SLACK_TRADING_CHANNEL_ID: str = ""
-    SLACK_BOT_TOKEN: str = ""
-    # Track C: Slack signing secret used to verify slash-command payloads
-    # (/persona, etc). Leave empty in dev to skip verification.
-    SLACK_SIGNING_SECRET: str = ""
     BRAIN_PR_REVIEW_MODEL: str = ""
     # When true, Brain's PR sweep runs optional triage classifiers
     # (stale nudge, thin ready review, rebase assist). Default off; founders
@@ -126,8 +107,6 @@ class Settings(BaseSettings):
     RENDER_PIPELINE_MINUTES_INCLUDED: float = 500.0
     VERCEL_API_TOKEN: str = ""
     NEON_API_KEY: str = ""
-    N8N_URL: str = "https://n8n.paperworklabs.com"
-    N8N_API_KEY: str = ""
     UPSTASH_REDIS_REST_URL: str = ""
     UPSTASH_REDIS_REST_TOKEN: str = ""
     # Vercel team id (optional; Vercel REST calls may require it for multi-team accounts).
@@ -140,6 +119,14 @@ class Settings(BaseSettings):
     BRAIN_SECRETS_RENDER_SERVICE_IDS: str = ""
     # JSON: service label → GET URL for `secrets_health_probe`, e.g. `{"studio":"https://.../api/health"}`.
     BRAIN_SECRETS_SERVICE_HEALTH_URLS: str = ""
+    # Gmail SMTP fallback (WS-69 PR J) — required for high/critical conversation email delivery.
+    # Generate an app password at Google Account → Security → 2-Step Verification → App passwords.
+    GMAIL_USERNAME: str = ""
+    GMAIL_APP_PASSWORD: str = ""
+    FOUNDER_FALLBACK_EMAIL: str = ""
+    # Deep links in founder-facing SMTP (WS-76). Override in env for previews / staging.
+    STUDIO_BASE_URL: str = "https://studio.paperworklabs.com"
+
     # Net-new schedulers: default on (set false to disable without removing code).
     BRAIN_OWNS_SECRETS_DRIFT_AUDIT: bool = True
     BRAIN_OWNS_SECRETS_ROTATION_MONITOR: bool = True

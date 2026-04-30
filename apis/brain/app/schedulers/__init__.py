@@ -76,12 +76,6 @@ def start_scheduler() -> AsyncIOScheduler | None:
     except Exception:
         logger.exception("Failed to install kg_self_validation_daily job")
     try:
-        from app.schedulers import slack_morning_digest
-
-        slack_morning_digest.install(scheduler)
-    except Exception:
-        logger.exception("Failed to install slack_morning_digest job")
-    try:
         from app.schedulers import audit_runner
 
         audit_runner.install(scheduler)

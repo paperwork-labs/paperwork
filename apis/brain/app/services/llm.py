@@ -494,7 +494,7 @@ async def classify_query(message: str, channel_id: str | None = None) -> dict:
 
     prompt = f"""Classify this user message for an AI assistant routing system.
 The assistant has tools for: GitHub (code, PRs, issues), infrastructure monitoring
-(Render, Vercel, Neon, n8n, Upstash), trading (portfolio, market scans, trade execution),
+(Render, Vercel, Neon, Upstash), trading (portfolio, market scans, trade execution),
 memory (past conversations), and secrets vault.
 
 Channel context: {channel_id or "unknown"}

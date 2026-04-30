@@ -1,9 +1,8 @@
-"""Infra health tools — Render, Vercel, Neon, n8n, Upstash (FastMCP-ready)."""
+"""Infra health tools — Render, Vercel, Neon, Upstash (FastMCP-ready)."""
 
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import re
 from datetime import UTC, datetime
@@ -28,13 +27,6 @@ def _fmt_ts(raw: str | None) -> str:
         return dt.strftime("%Y-%m-%d %H:%M UTC")
     except ValueError:
         return raw[:32] + ("…" if len(raw) > 32 else "")
-
-
-def _n8n_api_root(base: str) -> str:
-    b = base.strip().rstrip("/")
-    if b.endswith("/api/v1"):
-        return b
-    return f"{b}/api/v1"
 
 
 def _normalize_render_services(body: dict[str, Any]) -> list[dict[str, Any]]:
@@ -285,64 +277,6 @@ async def check_neon_status() -> str:
         return f"Neon check failed: {e}"
 
 
-async def check_n8n_status() -> str:
-    """Check n8n workflows and latest execution."""
-    api_key = (settings.N8N_API_KEY or "").strip()
-    base = (settings.N8N_URL or "").strip()
-    if not api_key or not base:
-        return "n8n: not configured (set N8N_URL and N8N_API_KEY)."
-
-    root = _n8n_api_root(base)
-    headers = {"X-N8N-API-KEY": api_key, "Accept": "application/json"}
-    try:
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            wf_res = await client.get(f"{root}/workflows", headers=headers)
-            if wf_res.status_code != 200:
-                return f"n8n workflows: HTTP {wf_res.status_code} — {(wf_res.text or '')[:300]}"
-
-            wf_body = wf_res.json()
-            workflows = wf_body.get("data") or wf_body.get("workflows") or []
-            if not isinstance(workflows, list):
-                workflows = []
-
-            total = len(workflows)
-            active = sum(1 for w in workflows if isinstance(w, dict) and w.get("active") is True)
-
-            ex_res = await client.get(
-                f"{root}/executions",
-                headers=headers,
-                params={"limit": "1"},
-            )
-            last_line = "last execution: n/a"
-            if ex_res.status_code == 200:
-                ex_body = ex_res.json()
-                rows = ex_body.get("data") or ex_body.get("executions") or []
-                if isinstance(rows, list) and rows:
-                    ex = rows[0]
-                    if isinstance(ex, dict):
-                        fin = ex.get("finished")
-                        status = ex.get("status") or ("finished" if fin else "running")
-                        mode = ex.get("mode") or ""
-                        stopped = ex.get("stoppedAt") or ex.get("stopped_at")
-                        wf_raw = ex.get("workflowData")
-                        wf_name = wf_raw.get("name") if isinstance(wf_raw, dict) else None
-                        wf_name = wf_name or ex.get("workflowId") or ""
-                        tail = f", workflow={wf_name}" if wf_name else ""
-                        last_line = (
-                            f"last execution: status={status}{(', mode=' + mode) if mode else ''}"
-                            f"{tail}; stopped={_fmt_ts(str(stopped)) if stopped else 'n/a'}"
-                        )
-                else:
-                    last_line = "last execution: none returned"
-            else:
-                last_line = f"last execution: HTTP {ex_res.status_code}"
-
-            return f"n8n: workflows={total}, active={active}\n{last_line}"
-    except Exception as e:
-        logger.warning("check_n8n_status failed: %s", e)
-        return f"n8n check failed: {e}"
-
-
 def _summarize_redis_info(text: str) -> str:
     lines = [ln.strip() for ln in text.splitlines() if ln.strip() and not ln.startswith("#")]
     memory_h = next((ln for ln in lines if ln.startswith("used_memory_human:")), "")
@@ -382,83 +316,3 @@ async def check_upstash_status() -> str:
     except Exception as e:
         logger.warning("check_upstash_status failed: %s", e)
         return f"Upstash check failed: {e}"
-
-
-# -- n8n Workflow Management ---------------------------------------------------
-
-
-async def list_n8n_workflows() -> str:
-    """List all n8n workflows with their active status."""
-    url = (settings.N8N_URL or "").strip().rstrip("/")
-    key = (settings.N8N_API_KEY or "").strip()
-    if not url or not key:
-        return "n8n: not configured."
-
-    try:
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            r = await client.get(
-                f"{url}/api/v1/workflows",
-                headers={"X-N8N-API-KEY": key},
-            )
-            if r.status_code != 200:
-                return f"n8n: HTTP {r.status_code}"
-            data = r.json().get("data", [])
-            lines = [
-                f"{'ACTIVE' if w.get('active') else 'INACTIVE':8} | {w.get('id'):>5} | {w.get('name', '?')}"  # noqa: E501
-                for w in data
-            ]
-            return f"n8n workflows ({len(data)}):\n" + "\n".join(lines)
-    except Exception as e:
-        return f"n8n list failed: {e}"
-
-
-async def activate_n8n_workflow(workflow_id: str, active: bool = True) -> str:
-    """Activate or deactivate an n8n workflow by ID."""
-    url = (settings.N8N_URL or "").strip().rstrip("/")
-    key = (settings.N8N_API_KEY or "").strip()
-    if not url or not key:
-        return "n8n: not configured."
-
-    action = "activate" if active else "deactivate"
-    try:
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            r = await client.patch(
-                f"{url}/api/v1/workflows/{workflow_id}",
-                headers={"X-N8N-API-KEY": key, "Content-Type": "application/json"},
-                json={"active": active},
-            )
-            if r.status_code != 200:
-                return f"n8n: failed to {action} workflow {workflow_id} — HTTP {r.status_code}: {r.text[:200]}"  # noqa: E501
-            name = r.json().get("name", workflow_id)
-            return f"n8n: workflow '{name}' (ID: {workflow_id}) is now {'ACTIVE' if active else 'INACTIVE'}."  # noqa: E501
-    except Exception as e:
-        return f"n8n {action} failed: {e}"
-
-
-async def import_n8n_workflow(workflow_json: str) -> str:
-    """Import a workflow into n8n from JSON string."""
-    url = (settings.N8N_URL or "").strip().rstrip("/")
-    key = (settings.N8N_API_KEY or "").strip()
-    if not url or not key:
-        return "n8n: not configured."
-
-    try:
-        workflow_data = json.loads(workflow_json)
-    except json.JSONDecodeError as e:
-        return f"Invalid JSON: {e}"
-
-    try:
-        async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
-            r = await client.post(
-                f"{url}/api/v1/workflows",
-                headers={"X-N8N-API-KEY": key, "Content-Type": "application/json"},
-                json=workflow_data,
-            )
-            if r.status_code not in (200, 201):
-                return f"n8n: import failed — HTTP {r.status_code}: {r.text[:200]}"
-            result = r.json()
-            return (
-                f"n8n: imported workflow '{result.get('name', '?')}' (ID: {result.get('id', '?')})."
-            )
-    except Exception as e:
-        return f"n8n import failed: {e}"

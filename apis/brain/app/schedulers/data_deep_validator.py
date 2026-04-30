@@ -12,6 +12,7 @@ import json
 import logging
 import random
 import re
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo
 
@@ -19,13 +20,16 @@ import httpx
 from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
-from app.schedulers._history import N8nMirrorRunSkipped, run_with_scheduler_record
-from app.services import slack_outbound
+from app.schedulers._history import run_with_scheduler_record
+from app.schemas.conversation import ConversationCreate
+from app.services.conversations import create_conversation
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 logger = logging.getLogger(__name__)
+
+_LA_TZ = ZoneInfo("America/Los_Angeles")
 
 JOB_ID = "brain_data_deep_validator"
 _GITHUB_REPO = "paperwork-labs/paperwork"
@@ -33,7 +37,6 @@ _SAMPLE_SIZE = 10
 _CANDIDATE_YEARS = (2026, 2025, 2024)
 _DOR_TIMEOUT_S = 15.0
 _DOR_MAX_CHARS = 20000
-_SLACK_CHANNEL_ID = "C0ALVM4PAE7"
 _HTTP_TIMEOUT = 60.0
 _DOR_UA = "Mozilla/5.0 (compatible; PaperworkLabs/1.0; data-validator)"
 
@@ -121,8 +124,6 @@ async def _list_source_files(client: httpx.AsyncClient) -> list[dict[str, Any]]:
 
 
 async def _run_data_deep_validator_body() -> None:
-    if not (settings.SLACK_BOT_TOKEN or "").strip():
-        raise N8nMirrorRunSkipped()
 
     async with httpx.AsyncClient(timeout=_HTTP_TIMEOUT) as client:
         files = await _list_source_files(client)
@@ -242,32 +243,32 @@ async def _run_data_deep_validator_body() -> None:
     n_clean = len(clean)
     n_issue = len(with_issues)
 
-    parts: list[str] = [f"*Monthly Data Validator — {total} states sampled*\n"]
+    date_s = datetime.now(_LA_TZ).date().isoformat()
+    parts: list[str] = [f"**Monthly Data Validator — {date_s} ({total} states sampled)**\n"]
     if n_issue > 0:
-        parts.append(":warning: *Issues Found*")
+        parts.append("## Issues Found")
         for r in with_issues:
             iss = r.get("issues") or []
-            bullet = f"\u2022 *{r.get('state')}* ({r.get('state_name')}): {'; '.join(iss)}"
+            bullet = f"- **{r.get('state')}** ({r.get('state_name')}): {'; '.join(iss)}"
             parts.append(bullet)
         parts.append("")
 
-    parts.append(f":white_check_mark: {n_clean}/{total} states validated clean")
+    parts.append(f"**{n_clean}/{total} states validated clean**")
     if n_issue > 0:
-        parts.append(
-            "\n:point_right: Investigate flagged states. Run `pnpm review` for full check."
-        )
+        parts.append("\nInvestigate flagged states. Run `pnpm review` for full check.")
     message = "\n".join(parts)
 
-    out = await slack_outbound.post_message(
-        channel_id=_SLACK_CHANNEL_ID,
-        text=message,
-        username="Data Quality",
-        icon_emoji=":mag:",
-        unfurl_links=False,
+    urgency = "high" if n_issue > 0 else "info"
+    create_conversation(
+        ConversationCreate(
+            title=f"Data Validator — {date_s} ({n_issue} issues)",
+            body_md=message,
+            tags=["data"],
+            urgency=urgency,
+            persona="ea",
+            needs_founder_action=n_issue > 0,
+        )
     )
-    if not out.get("ok"):
-        err = str(out.get("error") or "unknown_slack_error")
-        raise RuntimeError(f"Slack post failed: {err}")
 
 
 async def run_data_deep_validator() -> None:

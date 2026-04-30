@@ -40,14 +40,10 @@ from app.tools.github import (
     search_github_code,
 )
 from app.tools.infra import (
-    activate_n8n_workflow,
-    check_n8n_status,
     check_neon_status,
     check_render_status,
     check_upstash_status,
     check_vercel_status,
-    import_n8n_workflow,
-    list_n8n_workflows,
 )
 from app.tools.memory_tools import search_memory
 from app.tools.vault import vault_get, vault_list, vault_set
@@ -187,24 +183,9 @@ mcp.tool(name="check_vercel_status", description="Check recent Vercel deployment
 mcp.tool(name="check_neon_status", description="Check Neon PostgreSQL database status.")(
     check_neon_status
 )
-mcp.tool(name="check_n8n_status", description="Check n8n workflow automation status.")(
-    check_n8n_status
-)
 mcp.tool(name="check_upstash_status", description="Check Upstash Redis status.")(
     check_upstash_status
 )
-mcp.tool(
-    name="list_n8n_workflows",
-    description="List all n8n workflows with their active/inactive status.",
-)(list_n8n_workflows)
-mcp.tool(
-    name="activate_n8n_workflow",
-    description="Activate or deactivate an n8n workflow by ID (Tier 1: auto with notification).",
-)(activate_n8n_workflow)
-mcp.tool(
-    name="import_n8n_workflow",
-    description="Import a new workflow into n8n from JSON (Tier 2: draft action).",
-)(import_n8n_workflow)
 
 # -- AxiomFolio trading tools (8) ----------------------------------------------
 

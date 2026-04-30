@@ -1,7 +1,7 @@
 """Deprecated shim — use ``app.personas.routing`` instead.
 
-Kept for one release cycle so n8n workflows, cron scripts, and external
-callers don't break on import while we migrate Track F / H11.
+Kept for one release cycle so external callers don't break on import
+while we complete the Track F / H11 migration.
 
 medallion: ops
 """
@@ -38,8 +38,8 @@ def route_persona(
     """Back-compat wrapper: accepts both ``parent_persona`` and ``persona_pin``.
 
     New callers should import from ``app.personas.routing`` and use
-    ``persona_pin``. This wrapper is scheduled for deletion after the Track H
-    n8n migration lands.
+    ``persona_pin``. This wrapper is scheduled for deletion once all Track H
+    callers have migrated.
     """
     if parent_persona is not None and persona_pin is None:
         warnings.warn(

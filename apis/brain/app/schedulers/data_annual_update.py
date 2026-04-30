@@ -1,9 +1,10 @@
 """Annual tax data update reminder from Brain APScheduler (Track K / P2.10).
 
-Replaces the **Annual Data Update Trigger (P2.10)** n8n workflow (``0 9 1 10 *``) that
-posts the October checklist to ``#engineering`` — see
-``infra/hetzner/workflows/retired/data-annual-update.json`` and
-``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`` (Track K).
+Replaces the **Annual Data Update Trigger (P2.10)** n8n workflow (``0 9 1 10 *``)
+that posted the October checklist to the engineering channel — see
+``infra/hetzner/workflows/retired/data-annual-update.json``.
+
+WS-69 PR J: Slack post removed; output lands in the Brain Conversations stream.
 """
 
 from __future__ import annotations
@@ -15,9 +16,9 @@ from zoneinfo import ZoneInfo
 
 from apscheduler.triggers.cron import CronTrigger
 
-from app.config import settings
-from app.schedulers._history import N8nMirrorRunSkipped, run_with_scheduler_record
-from app.services import slack_outbound
+from app.schedulers._history import run_with_scheduler_record
+from app.schemas.conversation import ConversationCreate
+from app.services.conversations import create_conversation
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -25,19 +26,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 JOB_ID = "brain_data_annual_update"
-# Same as ``data-annual-update.json`` (``Format Checklist Message`` → post node).
-_ENGINEERING_SLACK_CHANNEL_ID = "C0ALLEKR9FZ"
 _TAX_FOUNDATION_URL = "https://taxfoundation.org/data/all/state/state-income-tax-rates"
 
 
 def _build_message(now: datetime) -> str:
-    """Slack text matching the n8n ``Format Checklist Message``
-    + ``Build Update Checklist`` nodes.
-    """
     next_tax_year = now.year + 1
     checklist = [
         f"1. IRS Revenue Procedure for TY{next_tax_year} - check if released at "
-        f"<https://www.irs.gov/irb|IRS Internal Revenue Bulletin>",
+        f"https://www.irs.gov/irb (IRS Internal Revenue Bulletin)",
         f"2. Download new Tax Foundation XLSX to packages/data/scripts/fixtures/, "
         f"then run `EXTRACT_TAX_YEAR={next_tax_year} pnpm parse:tax` in `packages/data`",
         "3. Run formation update: `pnpm parse:formation` (fees change annually)",
@@ -50,31 +46,30 @@ def _build_message(now: datetime) -> str:
         "10. Post confirmation to #engineering when done",
     ]
     parts: list[str] = [
-        f":calendar: *Annual Tax Data Update — TY{next_tax_year}*\n",
+        f"**Annual Tax Data Update — TY{next_tax_year}**\n",
         "It's October! Time to extract and validate tax data for the upcoming filing season.\n",
-        "*Checklist:*",
+        "**Checklist:**",
     ]
     for item in checklist:
-        parts.append(f"\u2022 {item}")
-    parts.append(f"\n*Key resource*: <{_TAX_FOUNDATION_URL}|Tax Foundation State Income Tax Rates>")
-    parts.append("\n:thread: Reply in this thread with progress updates.")
+        parts.append(f"- {item}")
+    parts.append(f"\n**Key resource**: {_TAX_FOUNDATION_URL}")
     return "\n".join(parts)
 
 
 async def _run_data_annual_update_body() -> None:
-    if not (settings.SLACK_BOT_TOKEN or "").strip():
-        raise N8nMirrorRunSkipped()
     now = datetime.now(UTC)
     text = _build_message(now)
-    result = await slack_outbound.post_message(
-        channel_id=_ENGINEERING_SLACK_CHANNEL_ID,
-        text=text,
-        username="Engineering",
-        icon_emoji=":calendar:",
+    next_tax_year = now.year + 1
+    create_conversation(
+        ConversationCreate(
+            title=f"Annual Tax Data Update — TY{next_tax_year}",
+            body_md=text,
+            tags=["data"],
+            urgency="normal",
+            persona="ea",
+            needs_founder_action=True,
+        )
     )
-    if not result.get("ok"):
-        err = str(result.get("error") or "unknown_slack_error")
-        raise RuntimeError(f"Slack post failed: {err}")
 
 
 async def run_data_annual_update() -> None:

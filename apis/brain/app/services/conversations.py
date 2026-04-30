@@ -253,15 +253,25 @@ def create_conversation(create: ConversationCreate) -> Conversation:
         needs_founder_action=create.needs_founder_action,
     )
     _save_conversation(conv)
-    _maybe_push_notify(conv)
+    _maybe_push_or_email(conv)
     return conv
 
 
-def _maybe_push_notify(conv: Conversation) -> None:
-    """Fan out a web push notification for high/critical conversations.
+def _maybe_push_or_email(conv: Conversation) -> None:
+    """Deliver founder notifications for high/critical + needs_founder_action.
 
-    Dead-letters on failure — never blocks the create path.
-    SMTP fallback ships in PR J.
+    Runs **web push** (when VAPID is configured) and **Gmail SMTP** as a
+    fallback when push is not configured or fails.
+
+    - Push payload body is truncated to **120 characters** (provider size caps).
+    - SMTP email uses the **full** first message body (no truncation).
+    - ``EmailConfigError`` (missing Gmail env) is **re-raised** so callers
+      see misconfiguration — no silent skip (no-silent-fallback.mdc).
+    - Other SMTP send failures are dead-lettered (logged at error); the
+      Conversation is already persisted.
+
+    Both channels are attempted when applicable: if push succeeds, SMTP is
+    skipped for that create to avoid duplicate notifications.
     """
     if conv.urgency not in _HIGH_URGENCY or not conv.needs_founder_action:
         return
@@ -272,22 +282,56 @@ def _maybe_push_notify(conv: Conversation) -> None:
     from app.services.web_push import VapidConfigError
 
     unread = unread_count(status_filter="needs-action")
-    body_text = conv.messages[0].body_md[:120] if conv.messages else ""
-    payload = {
+    full_body = conv.messages[0].body_md if conv.messages else ""
+    push_body = full_body[:120]
+    push_payload = {
         "title": f"Brain: {conv.title}",
-        "body": body_text,
+        "body": push_body,
         "url": f"/admin/brain/conversations/{conv.id}",
         "unreadCount": unread,
     }
+
+    push_delivered = False
     with contextlib.suppress(VapidConfigError):
-        # VapidConfigError is logged by web_push service; suppress here so
-        # the conversation is still created cleanly when VAPID is unconfigured.
         try:
-            wp_svc.fan_out_push(user_id="founder", payload=payload)
+            wp_svc.fan_out_push(user_id="founder", payload=push_payload)
+            push_delivered = True
         except VapidConfigError:
-            logger.info("web_push: VAPID not configured — skipping push for conv %s", conv.id)
+            logger.info(
+                "web_push: VAPID not configured — falling through to SMTP for conv %s",
+                conv.id,
+            )
         except Exception as exc:
-            logger.warning("web_push: fan_out error for conv %s: %s", conv.id, exc)
+            logger.warning(
+                "web_push: fan_out error for conv %s: %s — falling through to SMTP",
+                conv.id,
+                exc,
+            )
+
+    if push_delivered:
+        return
+
+    # Gmail SMTP fallback
+    from app.services.email_outbound import EmailConfigError, send_conversation_email
+
+    attachments = [{"id": a.id, "url": a.url} for msg in conv.messages for a in msg.attachments]
+    try:
+        send_conversation_email(
+            conversation_id=conv.id,
+            title=conv.title,
+            body_md=full_body,
+            attachments=attachments or None,
+        )
+    except EmailConfigError:
+        # Re-raise so callers know SMTP is not configured — no silent skip.
+        raise
+    except Exception as exc:
+        # SMTP send failure: dead-letter (log error, don't block conversation create).
+        logger.error(
+            "email_outbound: SMTP send failed for conv %s — dead-lettered: %s",
+            conv.id,
+            exc,
+        )
 
 
 def get_conversation(conversation_id: str) -> Conversation:

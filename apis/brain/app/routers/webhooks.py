@@ -10,7 +10,6 @@ It replaces three GitHub Actions workflows:
 
 from __future__ import annotations
 
-import contextlib
 import hashlib
 import hmac
 import json
@@ -25,12 +24,6 @@ from app.database import async_session_factory, get_db
 from app.services import memory
 from app.services.dependabot_classifier import classify_pr
 from app.services.pr_review import review_pr
-from app.services.tracker_slash import (
-    load_tracker_index,
-    slack_response_plan,
-    slack_response_sprint,
-    slack_response_tasks,
-)
 from app.tools import github as gh_tools
 
 if TYPE_CHECKING:
@@ -375,7 +368,7 @@ async def axiomfolio_webhook(
 
     # Track M.2: high-importance AxiomFolio events wake the trading persona.
     # The receiver used to be a silent sink; every risk-gate, approval, and
-    # stop-triggered now surfaces in #trading as a narrated Slack post with
+    # stop-triggered now surfaces as a Brain Conversation in the trading tag
     # a link back to the underlying episode. Non-critical events (trades,
     # scans) still just land in memory.
     if event_norm in _TRADING_WAKEUP_EVENTS:
@@ -432,23 +425,12 @@ async def _wake_trading_persona(
     the response lands in Brain memory (provenance), gets cost-tracked
     under the trading persona's ceiling, respects PII scrubbing, and
     picks up the trading persona's tone_prefix. Then — because the
-    webhook path has no Slack channel context — we use
-    ``slack_channel_id`` on the ProcessRequest to let Brain do the
-    post in one shot.
-
-    No Slack channel ID configured → noop. No Brain path at all → we
-    still stored the episode above, so nothing is lost.
+    Creates a Brain Conversation for high-priority trading events.
     """
     from app.redis import get_redis
+    from app.schemas.conversation import ConversationCreate
     from app.services import agent  # lazy import: avoids router-time cycle
-
-    channel_id = settings.SLACK_TRADING_CHANNEL_ID or settings.SLACK_ENGINEERING_CHANNEL_ID
-    if not channel_id:
-        logger.info(
-            "trading-persona wakeup skipped (no SLACK_TRADING_CHANNEL_ID): event=%s",
-            event,
-        )
-        return
+    from app.services.conversations import create_conversation
 
     prompt = (
         f"AxiomFolio webhook fired: `{event}`.\n\n"
@@ -465,7 +447,7 @@ async def _wake_trading_persona(
     except Exception:
         redis_client = None
 
-    await agent.process(
+    result = await agent.process(
         db,
         redis_client,
         message=prompt,
@@ -474,10 +456,20 @@ async def _wake_trading_persona(
         user_id="system:axiomfolio-webhook",
         thread_id=f"trading:webhook:{event_norm}",
         persona_pin="trading",
-        slack_channel_id=channel_id,
-        slack_username="Trading",
-        slack_icon_emoji=":chart_with_upwards_trend:",
     )
+
+    response_text = (result.get("response") or "").strip()
+    if response_text:
+        create_conversation(
+            ConversationCreate(
+                title=f"Trading Event: {event}",
+                body_md=f"{summary}\n\n{response_text}",
+                tags=["alert"],
+                urgency="high",
+                persona="trading",
+                needs_founder_action=True,
+            )
+        )
 
 
 # ---- GitHub PR webhook (Track B, Week 1) ------------------------------------
@@ -731,202 +723,3 @@ async def github_webhook(
 
     background_tasks.add_task(_process_github_webhook, event, payload, delivery)
     return {"received": True, "event": event, "delivery": delivery}
-
-
-# ---------------------------------------------------------------------------
-# Slack slash commands (Track C)
-# ---------------------------------------------------------------------------
-
-
-async def _verify_slack_signature(request: Request, raw_body: bytes) -> None:
-    """Verify X-Slack-Signature against SLACK_SIGNING_SECRET.
-
-    Slack signs each request as ``v0=<hex>`` where the payload is
-    ``v0:<timestamp>:<raw_body>`` and the key is the signing secret. We
-    skip verification when the secret is unset (dev) but log a warning so
-    it's obvious.
-    """
-    secret = (settings.SLACK_SIGNING_SECRET or "").strip()
-    if not secret:
-        if settings.ENVIRONMENT == "development":
-            logger.warning("SLACK_SIGNING_SECRET not set — skipping slash-command verification")
-            return
-        raise HTTPException(status_code=503, detail="Slack signing secret not configured")
-
-    ts = request.headers.get("X-Slack-Request-Timestamp", "")
-    sig = request.headers.get("X-Slack-Signature", "")
-    if not ts or not sig:
-        raise HTTPException(status_code=401, detail="Missing Slack signature headers")
-
-    basestring = f"v0:{ts}:{raw_body.decode('utf-8')}".encode()
-    expected = "v0=" + hmac.new(secret.encode(), basestring, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected, sig):
-        raise HTTPException(status_code=401, detail="Invalid Slack signature")
-
-
-_KNOWN_PERSONAS = {
-    "agent-ops",
-    "brand",
-    "cfo",
-    "cpa",
-    "ea",
-    "engineering",
-    "growth",
-    "infra-ops",
-    "legal",
-    "partnerships",
-    "qa",
-    "social",
-    "strategy",
-    "tax-domain",
-    "trading",
-    "ux",
-}
-
-
-async def _run_persona_command(
-    *,
-    persona: str,
-    message: str,
-    user_id: str,
-    channel_id: str,
-    response_url: str,
-) -> None:
-    """Background worker for /persona <slug> <message>.
-
-    We resolve Brain → persona_pin route, capture the response, and POST it
-    back to Slack's ``response_url`` as an ephemeral reply. The initial 200
-    ack fires instantly so we don't trip Slack's 3-second timeout.
-    """
-    import httpx
-
-    from app.database import async_session_factory
-    from app.redis import get_redis
-    from app.services import agent as brain_agent
-
-    redis_client = None
-    with contextlib.suppress(RuntimeError):
-        redis_client = get_redis()
-
-    try:
-        async with async_session_factory() as db:
-            result = await brain_agent.process(
-                db,
-                redis_client,
-                organization_id=DEFAULT_WEBHOOK_ORG_ID,
-                org_name="Paperwork Labs",
-                user_id=user_id,
-                message=message,
-                channel="slack",
-                channel_id=channel_id,
-                request_id=f"slash:persona:{user_id}:{channel_id}",
-                persona_pin=persona,
-            )
-            await db.commit()
-    except Exception as e:
-        logger.exception("persona slash command failed: %s", e)
-        result = {"response": f":warning: `/persona {persona}` failed: {e}"}
-
-    text = (result.get("response") or "").strip() or "_(empty reply)_"
-    payload = {
-        "response_type": "in_channel",
-        "text": f"*{persona}*: {text[:3500]}",
-    }
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            await client.post(response_url, json=payload)
-    except Exception:
-        logger.warning("Failed to POST back to Slack response_url", exc_info=True)
-
-
-@router.post("/slack/command")
-async def slack_slash_command(
-    request: Request,
-    background_tasks: BackgroundTasks,
-) -> dict[str, Any]:
-    """Handle Slack slash commands: ``/persona``, ``/sprint``, ``/tasks``, ``/plan``.
-
-    Slack sends ``application/x-www-form-urlencoded`` with fields:
-    ``command``, ``text``, ``user_id``, ``channel_id``, ``response_url``.
-    For ``/persona`` we respond within 3 seconds with an ack and do the real
-    work in the background, posting results to the ``response_url``. Tracker
-    commands return their payload immediately.
-    """
-    raw_body = await request.body()
-    await _verify_slack_signature(request, raw_body)
-
-    form: dict[str, str] = {}
-    for pair in raw_body.decode("utf-8").split("&"):
-        if "=" not in pair:
-            continue
-        k, v = pair.split("=", 1)
-        form[k] = _url_decode(v)
-
-    command = form.get("command", "").strip()
-    text = form.get("text", "").strip()
-    user_id = form.get("user_id", "")
-    channel_id = form.get("channel_id", "")
-    response_url = form.get("response_url", "")
-
-    if command == "/sprint":
-        return slack_response_sprint(load_tracker_index(), text)
-
-    if command == "/tasks":
-        return slack_response_tasks(load_tracker_index(), text)
-
-    if command == "/plan":
-        return slack_response_plan(load_tracker_index(), text)
-
-    if command != "/persona":
-        return {
-            "response_type": "ephemeral",
-            "text": (
-                f"Unknown command `{command}`. Try `/persona`, `/sprint`, `/tasks`, or `/plan`."
-            ),
-        }
-
-    parts = text.split(None, 1)
-    if not parts:
-        return {
-            "response_type": "ephemeral",
-            "text": (
-                "Usage: `/persona <slug> <message>`. Slugs: " + ", ".join(sorted(_KNOWN_PERSONAS))
-            ),
-        }
-
-    persona = parts[0].lower()
-    rest = parts[1] if len(parts) > 1 else ""
-
-    if persona not in _KNOWN_PERSONAS:
-        return {
-            "response_type": "ephemeral",
-            "text": (f"Unknown persona `{persona}`. Valid: " + ", ".join(sorted(_KNOWN_PERSONAS))),
-        }
-
-    if not rest:
-        return {
-            "response_type": "ephemeral",
-            "text": f"Give me something to ask {persona}. Example: `/persona {persona} what's our runway?`",  # noqa: E501
-        }
-
-    background_tasks.add_task(
-        _run_persona_command,
-        persona=persona,
-        message=rest,
-        user_id=user_id,
-        channel_id=channel_id,
-        response_url=response_url,
-    )
-
-    return {
-        "response_type": "ephemeral",
-        "text": f":hourglass_flowing_sand: Routing to *{persona}*…",
-    }
-
-
-def _url_decode(s: str) -> str:
-    """Minimal application/x-www-form-urlencoded decoder (no stdlib urllib import
-    at module top — keeps test imports fast)."""
-    from urllib.parse import unquote_plus
-
-    return unquote_plus(s)

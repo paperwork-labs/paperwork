@@ -219,28 +219,6 @@ async def get_render_quota(
     return success_response(build_render_quota_admin_data(row))
 
 
-@router.get("/scheduler/n8n-mirror/status")
-async def n8n_mirror_scheduler_status(
-    _auth: None = Depends(_require_admin),
-):
-    """Legacy endpoint: n8n shadow APScheduler jobs were removed (Track K complete).
-
-    First-party crons register when ``BRAIN_SCHEDULER_ENABLED`` is true; see
-    ``docs/infra/BRAIN_SCHEDULER.md``.
-    """
-    return success_response(
-        {
-            "retired": True,
-            "message": (
-                "n8n mirror rows retired in chore/brain-delete-legacy-owns-flags — "
-                "Brain owns these schedules permanently."
-            ),
-            "global_enabled": False,
-            "per_job": [],
-        }
-    )
-
-
 @router.get("/system-health")
 async def system_health_summary(
     _auth: None = Depends(_require_admin),
@@ -1171,62 +1149,6 @@ async def get_procedural_memory(
             "rules": serialised,
             "count": len(serialised),
             "last_consolidated_at": None,
-        }
-    )
-
-
-# ---------------------------------------------------------------------------
-# WS-53 — Slack routing admin
-# ---------------------------------------------------------------------------
-
-
-class SlackRoutingTestRequest(BaseModel):
-    event_type: str = Field(..., description="Event type to route (e.g. 'pr_merged')")
-    severity: str = Field("low", description="Severity: low | medium | high")
-    message: str = Field("", description="Preview message (not posted to Slack)")
-
-
-@router.get("/slack-routing")
-async def get_slack_routing(
-    _auth: None = Depends(_require_admin),
-) -> Any:
-    """Return the active Slack routing config and current dedup/rate-limit state."""
-    from app.services import slack_router
-    from app.services.slack_router import _load_config
-
-    cfg = _load_config()
-    dedup_state = slack_router.get_dedup_state()
-    return success_response(
-        {
-            "config": cfg.model_dump(mode="json", by_alias=False),
-            "dedup_state": dedup_state,
-        }
-    )
-
-
-@router.post("/slack-routing/test")
-async def post_slack_routing_test(
-    body: SlackRoutingTestRequest,
-    _auth: None = Depends(_require_admin),
-) -> Any:
-    """Dry-run routing decision for a given event_type + severity.
-
-    Does NOT post to Slack. Returns the RoutingDecision the router would
-    make if called right now.
-    """
-    from app.services import slack_router
-
-    decision = slack_router.route(
-        event_type=body.event_type,
-        severity=body.severity,
-        key=f"admin-test:{body.event_type}",
-    )
-    return success_response(
-        {
-            "event_type": body.event_type,
-            "severity": body.severity,
-            "message_preview": body.message[:200] if body.message else "",
-            "decision": decision.model_dump(mode="json"),
         }
     )
 

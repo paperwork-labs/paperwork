@@ -13,12 +13,11 @@ import logging
 import os
 from pathlib import Path
 
-from app.config import settings
-from app.services import slack_outbound
+from app.schemas.conversation import ConversationCreate
+from app.services.conversations import create_conversation
 
 logger = logging.getLogger(__name__)
 
-_SLACK_CHANNEL_ID = "C0ALVM4PAE7"  # same engineering channel as infra_health
 _JOB_LABEL = "clerk_dns_reconcile_check"
 
 
@@ -43,7 +42,7 @@ def _resolve_script_path() -> Path | None:
 
 
 async def run_clerk_dns_check_only_tick() -> None:
-    """Execute check-only reconcile; log + Slack on failure."""
+    """Execute check-only reconcile; log + create Brain Conversation on failure."""
     script = _resolve_script_path()
     if script is None:
         logger.warning(
@@ -84,17 +83,19 @@ async def run_clerk_dns_check_only_tick() -> None:
         stdout[-4000:],
         stderr[-4000:],
     )
-    eng = (settings.SLACK_ENGINEERING_CHANNEL_ID or "").strip() or _SLACK_CHANNEL_ID
-    text = (
-        f":rotating_light: *Clerk / Cloudflare DNS drift* (`reconcile_clerk_dns.py --check-only`)\n"
-        f"*exit* `{proc.returncode}`\n"
-        f"```{stderr[-3500:] or stdout[-3500:]}```"
+    detail = (stderr[-3000:] or stdout[-3000:]).strip()
+    body_md = (
+        f"**Clerk / Cloudflare DNS drift detected** (`reconcile_clerk_dns.py --check-only`)\n\n"
+        f"Exit code: `{proc.returncode}`\n\n"
+        f"```\n{detail}\n```"
     )
-    result = await slack_outbound.post_message(
-        channel_id=eng,
-        text=text,
-        username="Brain DNS watch",
-        icon_emoji=":earth_africa:",
+    create_conversation(
+        ConversationCreate(
+            title="Clerk/Cloudflare DNS Drift Detected",
+            body_md=body_md,
+            tags=["alert"],
+            urgency="high",
+            persona="ea",
+            needs_founder_action=True,
+        )
     )
-    if not result.get("ok"):
-        logger.warning("Slack notify failed: %s", result.get("error"))

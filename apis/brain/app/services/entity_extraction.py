@@ -51,7 +51,7 @@ Entity types to extract:
 - product: Products or services (e.g., FileFree, LaunchFree, TurboTax)
 - decision: Design decisions in D## format (e.g., D1, D47)
 - task: Task references in P#.# format (e.g., P11.4, P7.12)
-- technology: Technologies, frameworks, tools (e.g., FastAPI, PostgreSQL, n8n)
+- technology: Technologies, frameworks, tools (e.g., FastAPI, PostgreSQL, Redis)
 - concept: Key concepts or terms (e.g., MeF transmitter, hybrid retrieval)
 
 For each entity, provide:

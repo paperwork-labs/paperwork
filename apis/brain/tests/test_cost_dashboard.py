@@ -27,7 +27,7 @@ def test_format_dashboard_sorts_by_spent_descending():
 def test_format_dashboard_flags_over_80_percent():
     rows = [("cpa", 4.50, 5.00)]  # 90% used
     out = _format_dashboard(rows, total=4.50)
-    assert "near ceiling" in out
+    assert "Near ceiling" in out
     assert "cpa" in out
 
 

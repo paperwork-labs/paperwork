@@ -103,7 +103,7 @@ async def _app_lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
             logger.exception("brain_secrets_registry seed failed (non-fatal)")
 
     _app.mount("/mcp", mcp_application)
-    logger.info("FastMCP server mounted at /mcp (23 tools, auth-protected)")
+    logger.info("FastMCP server mounted at /mcp (auth-protected)")
 
     start_scheduler()
 

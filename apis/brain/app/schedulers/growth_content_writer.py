@@ -1,9 +1,6 @@
 """Growth marketing content — ex-``growth-content-writer.json`` (WS-19).
 
-The n8n flow used a secured webhook, OpenAI ``gpt-4o`` with a fixed system
-prompt (JSON object), formatted mrkdwn, and posted to ``#general``
-(``C0AM01NHQ3Y``). The export had no cron; this scheduler runs weekly
-(Tuesday 16:00 UTC).
+WS-69 PR J: Slack post removed; output lands in the Brain Conversations stream.
 
 medallion: ops
 """
@@ -12,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import httpx
@@ -19,8 +17,8 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
 from app.schedulers._history import run_with_scheduler_record
-from app.schedulers._n8n_slack_format import format_structured_json_for_slack
-from app.services import slack_outbound
+from app.schemas.conversation import ConversationCreate
+from app.services.conversations import create_conversation
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -28,7 +26,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _JOB_ID = "growth_content_writer"
-_GROWTH_CHANNEL_ID = "C0AM01NHQ3Y"
 _SYSTEM_PROMPT = (
     "You are the Head of Growth for Paperwork Labs (paperworklabs.com), focused primarily on "
     "FileFree (filefree.ai) — a free AI-powered tax filing app. Paperwork Labs also builds "
@@ -86,18 +83,43 @@ async def _openai_growth_json() -> str:
         return ""
 
 
+def _format_for_conversation(raw: str, date_str: str) -> str:
+    if not raw.strip():
+        return "No output generated. Check workflow logs."
+    try:
+        obj: dict[str, object] = json.loads(raw)
+        parts: list[str] = [f"**Growth Content — {date_str}**\n"]
+        for k, v in obj.items():
+            label = k.replace("_", " ").title()
+            if isinstance(v, list):
+                lines = "\n".join(f"  - {item}" for item in v)
+                parts.append(f"**{label}:**\n{lines}")
+            elif isinstance(v, dict):
+                parts.append(f"**{label}:** {json.dumps(v)}")
+            else:
+                parts.append(f"**{label}:** {v}")
+        return "\n\n".join(parts)
+    except json.JSONDecodeError:
+        return raw
+
+
 async def _run_body() -> None:
     raw = await _openai_growth_json()
     if not raw.strip():
         return
-    formatted = format_structured_json_for_slack(raw, header_prefix="Growth Content")
-    await slack_outbound.post_message(
-        channel_id=_GROWTH_CHANNEL_ID,
-        text=formatted,
-        username="Growth",
-        icon_emoji=":seedling:",
+    date_str = datetime.now(UTC).date().isoformat()
+    body_md = _format_for_conversation(raw, date_str)
+    create_conversation(
+        ConversationCreate(
+            title=f"Growth Content — {date_str}",
+            body_md=body_md,
+            tags=["growth"],
+            urgency="info",
+            persona="growth",
+            needs_founder_action=False,
+        )
     )
-    logger.info("growth_content_writer: posted to %s", _GROWTH_CHANNEL_ID)
+    logger.info("growth_content_writer: conversation created")
 
 
 async def run_growth_content_writer() -> None:

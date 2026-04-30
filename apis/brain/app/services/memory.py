@@ -210,14 +210,14 @@ async def get_thread_persona(
     organization_id: str,
     thread_key: str,
 ) -> str | None:
-    """Track C: return the persona that last replied in this Slack thread.
+    """Track C: return the persona that last replied in this thread.
 
-    ``thread_key`` should be ``"slack:<channel_id>:<thread_ts>"`` — the Slack
-    adapter builds it before calling Brain so the same key is used for every
-    message in a thread. If we find a prior Brain episode keyed by this
-    thread, we return the persona slug so the caller can pin future replies
-    to it. This is what makes a persona feel like a real employee in a
-    thread: once CPA picks up the conversation, CPA stays on it.
+    ``thread_key`` is a stable identifier for a conversation thread — e.g.
+    ``"conv:<conversation_id>"`` or any caller-provided string. Brain looks
+    for a prior episode keyed by this thread and returns the persona slug
+    so the caller can pin future replies to it. This makes a persona feel
+    like a real employee in a thread: once CPA picks up the conversation,
+    CPA stays on it.
 
     Returns None when the thread is brand-new or memory is cold — caller
     falls back to keyword routing in that case.

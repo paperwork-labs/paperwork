@@ -1,7 +1,6 @@
 """Partnership outreach drafts — ex-``partnership-outreach-drafter.json`` (WS-19).
 
-The n8n flow: webhook → OpenAI ``gpt-4o`` (structured JSON) → Slack ``#general``
-(``C0AM01NHQ3Y``). Export had no cron; this job runs weekly Friday 14:00 UTC.
+WS-69 PR J: Slack post removed; output lands in the Brain Conversations stream.
 
 medallion: ops
 """
@@ -10,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import httpx
@@ -17,8 +17,8 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
 from app.schedulers._history import run_with_scheduler_record
-from app.schedulers._n8n_slack_format import format_structured_json_for_slack
-from app.services import slack_outbound
+from app.schemas.conversation import ConversationCreate
+from app.services.conversations import create_conversation
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -26,33 +26,24 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _JOB_ID = "partnership_outreach_drafter"
-_PARTNERSHIPS_CHANNEL_ID = "C0AM01NHQ3Y"
 _SYSTEM_PROMPT = (
     "You are the Partnership Development Assistant for Paperwork Labs (paperworklabs.com). "
     "You support a partnerships co-founder (Founder 2) who has a FAANG background, two young "
     "kids, and 2-3 hours per week. Every deliverable must be ready to use in under 10 minutes.\n\n"
     "Paperwork Labs builds tools that eliminate paperwork:\n"
-    "- FileFree (filefree.ai): Free AI-powered tax filing. Shows users their refund amount and "
-    "presents personalized financial product recommendations at the moment of highest financial "
-    "intent.\n"
-    "- LaunchFree (launchfree.ai): Free LLC formation. Users form their LLC for free and get "
-    "recommended banking, payroll, insurance, and compliance services.\n"
-    "- Distill (distill.tax): B2B compliance automation APIs + CPA SaaS. Partners integrate tax, "
-    "formation, and compliance via API.\n\n"
+    "- FileFree (filefree.ai): Free AI-powered tax filing.\n"
+    "- LaunchFree (launchfree.ai): Free LLC formation.\n"
+    "- Distill (distill.tax): B2B compliance automation APIs + CPA SaaS.\n\n"
     "Partnership hit list:\n"
-    "FileFree: Marcus by Goldman Sachs (HYSA), Wealthfront (HYSA+investment), Betterment "
-    "(investment), Fidelity (IRA/brokerage), Column Tax (e-file SDK), Refundo (refund advance).\n"
-    "LaunchFree: Mercury (business banking), Relay (business banking), Gusto (payroll), "
-    "Deel (international payroll), Next Insurance (business insurance), Northwest RA "
-    "(registered agent).\n"
+    "FileFree: Marcus by Goldman Sachs (HYSA), Wealthfront, Betterment,"
+    " Fidelity, Column Tax, Refundo.\n"
+    "LaunchFree: Mercury, Relay, Gusto, Deel, Next Insurance, Northwest RA.\n"
     "Distill: CPA firms, fintech platforms, law firms, accounting software vendors.\n\n"
-    "Revenue context: Partnership revenue = 77% of projected FileFree revenue. LaunchFree revenue "
-    "comes from banking/payroll/insurance referrals + Compliance-as-a-Service ($49-99/yr).\n\n"
     "Output formats (produce ONE based on request):\n"
-    "1. outreach_email: subject, body, CTA. Ready to send.\n"
-    "2. deal_summary: one-page brief with partner details, pricing targets, questions.\n"
-    "3. call_prep: 5-min read with agenda, our ask, their concerns.\n"
-    "4. pipeline_update: partners by status, next actions.\n\n"
+    "1. outreach_email: subject, body, CTA.\n"
+    "2. deal_summary: one-page brief.\n"
+    "3. call_prep: 5-min read.\n"
+    "4. pipeline_update: partners by status.\n\n"
     "Return as structured JSON matching the requested format."
 )
 _USER_PROMPT = (
@@ -95,24 +86,43 @@ async def _openai_partnership_json() -> str:
         return ""
 
 
+def _format_for_conversation(raw: str, date_str: str) -> str:
+    if not raw.strip():
+        return "No output generated. Check workflow logs."
+    try:
+        obj: dict[str, object] = json.loads(raw)
+        parts: list[str] = [f"**Partnership Outreach — {date_str}**\n"]
+        for k, v in obj.items():
+            label = k.replace("_", " ").title()
+            if isinstance(v, list):
+                lines = "\n".join(f"  - {item}" for item in v)
+                parts.append(f"**{label}:**\n{lines}")
+            elif isinstance(v, dict):
+                parts.append(f"**{label}:** {json.dumps(v)}")
+            else:
+                parts.append(f"**{label}:** {v}")
+        return "\n\n".join(parts)
+    except json.JSONDecodeError:
+        return raw
+
+
 async def _run_body() -> None:
     raw = await _openai_partnership_json()
     if not raw.strip():
         return
-    formatted = format_structured_json_for_slack(
-        raw,
-        header_prefix="Partnership Outreach",
+    date_str = datetime.now(UTC).date().isoformat()
+    body_md = _format_for_conversation(raw, date_str)
+    create_conversation(
+        ConversationCreate(
+            title=f"Partnership Outreach — {date_str}",
+            body_md=body_md,
+            tags=["growth"],
+            urgency="info",
+            persona="partnerships",
+            needs_founder_action=False,
+        )
     )
-    await slack_outbound.post_message(
-        channel_id=_PARTNERSHIPS_CHANNEL_ID,
-        text=formatted,
-        username="Partnerships",
-        icon_emoji=":handshake:",
-    )
-    logger.info(
-        "partnership_outreach_drafter: posted to %s",
-        _PARTNERSHIPS_CHANNEL_ID,
-    )
+    logger.info("partnership_outreach_drafter: conversation created")
 
 
 async def run_partnership_outreach_drafter() -> None:
