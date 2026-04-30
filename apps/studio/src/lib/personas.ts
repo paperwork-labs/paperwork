@@ -35,6 +35,9 @@ import type {
   SelfMergePromotionsFile,
 } from "./personas-types";
 
+// Snapshot bundled at build time by scripts/snapshot-personas.ts
+import personasSnapshot from "@/data/personas-snapshot.json";
+
 export function getRepoRoot(): string {
   const cwd = process.cwd();
   const upTwo = path.resolve(cwd, "..", "..");
@@ -468,35 +471,105 @@ export function loadModelRegistryTables(repoRoot: string): {
   }
 }
 
-export async function loadPersonasPageData(): Promise<PersonasPagePayload> {
-  const repoRoot = getRepoRoot();
-  const registry = loadPersonaRegistry(repoRoot);
-  const ids = registry.map((r) => r.personaId);
-  const dispatchPath = path.join(repoRoot, "apis", "brain", "data", "agent_dispatch_log.json");
-  const dispatchRead = readJsonIfPresent<AgentDispatchFile>(dispatchPath);
-  const dashboard = buildPeopleDashboardStats(dispatchRead, registry.length);
-  const promotions = loadPromotionsQueue(repoRoot);
-  const cost = buildCostPayload(repoRoot, ids);
-  const routing = loadEaRoutingTable(repoRoot);
-  const activity = buildActivityFeed(repoRoot, 50);
-  const modelRegistry = loadModelRegistryTables(repoRoot);
-  const openRoles: OpenRoleRow[] = registry
-    .filter((r) => r.modelAssignment === null || r.modelAssignment.trim() === "")
-    .map((r) => ({
-      personaId: r.personaId,
-      name: r.name,
-      relativePath: r.relativePath,
-    }));
+// ---------------------------------------------------------------------------
+// Snapshot → PersonasPagePayload converter
+// ---------------------------------------------------------------------------
 
-  return {
-    repoRoot,
-    dashboard,
-    registry,
-    openRoles,
-    promotions,
-    cost,
-    routing,
-    activity,
-    modelRegistry,
+type PersonasSnapshotShape = {
+  registry: PersonaRegistryRow[];
+  openRoles: OpenRoleRow[];
+  cost: CostTabPayload;
+  routing: { source: BrainDataSourceStatus; rows: EaRoutingRow[] };
+  activity: {
+    source: BrainDataSourceStatus;
+    rows: ActivityFeedRow[];
+    note: string | null;
   };
+  modelRegistry: { source: BrainDataSourceStatus; tables: MarkdownTable[] };
+  promotions: PromotionsQueuePayload;
+};
+
+function snapshotToDashboard(snap: PersonasSnapshotShape): PeopleDashboardStats {
+  const today = new Date().toISOString().slice(0, 10);
+  let dispatchesToday = 0;
+  for (const row of snap.activity.rows) {
+    if (typeof row.dispatchedAt === "string") {
+      const day = row.dispatchedAt.slice(0, 10);
+      if (day === today) dispatchesToday++;
+    }
+  }
+  return {
+    activePersonas: snap.registry.length,
+    dispatchesToday,
+    approvalRateLabel: "—",
+    dailyCostStatLabel: "—",
+  };
+}
+
+function snapshotToPayload(
+  snap: PersonasSnapshotShape,
+  brainApiError?: string | null,
+): PersonasPagePayload {
+  return {
+    repoRoot: "snapshot",
+    dashboard: snapshotToDashboard(snap),
+    registry: snap.registry,
+    openRoles: snap.openRoles,
+    promotions: snap.promotions,
+    cost: snap.cost,
+    routing: snap.routing,
+    activity: snap.activity,
+    modelRegistry: snap.modelRegistry,
+    brainApiError: brainApiError ?? null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Main entry point
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns personas page data.
+ *
+ * - BRAIN_API_URL not set → snapshot (silent; production bootstrap path).
+ * - BRAIN_API_URL set, request OK → live Brain API data.
+ * - BRAIN_API_URL set, request FAILS → snapshot + brainApiError (NOT silent).
+ */
+export async function loadPersonasPageData(): Promise<PersonasPagePayload> {
+  const brainApiUrl = process.env.BRAIN_API_URL;
+
+  if (!brainApiUrl) {
+    return snapshotToPayload(personasSnapshot as unknown as PersonasSnapshotShape);
+  }
+
+  // Brain API is configured — try it.
+  try {
+    const res = await fetch(`${brainApiUrl}/admin/personas`, {
+      cache: "no-store",
+      headers: { "X-Brain-Secret": process.env.BRAIN_API_SECRET ?? "" },
+    });
+    if (!res.ok) {
+      return snapshotToPayload(
+        personasSnapshot as unknown as PersonasSnapshotShape,
+        `Brain API /admin/personas returned ${res.status} ${res.statusText}`,
+      );
+    }
+    const json = (await res.json()) as {
+      success?: boolean;
+      data?: PersonasPagePayload;
+      error?: string;
+    };
+    if (!json.success || !json.data) {
+      return snapshotToPayload(
+        personasSnapshot as unknown as PersonasSnapshotShape,
+        json.error ?? "Brain API returned no personas data.",
+      );
+    }
+    return { ...json.data, brainApiError: null };
+  } catch (e) {
+    return snapshotToPayload(
+      personasSnapshot as unknown as PersonasSnapshotShape,
+      e instanceof Error ? e.message : "Brain API request failed.",
+    );
+  }
 }

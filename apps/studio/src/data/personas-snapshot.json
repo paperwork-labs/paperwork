@@ -1,0 +1,1343 @@
+{
+  "generatedFrom": [
+    ".cursor/rules/*.mdc",
+    "apis/brain/data/agent_dispatch_log.json",
+    "apis/brain/data/pr_outcomes.json",
+    "apis/brain/data/self_merge_promotions.json",
+    "docs/AI_MODEL_REGISTRY.md"
+  ],
+  "registry": [
+    {
+      "personaId": "agent-ops",
+      "name": "AI Operations Lead",
+      "description": "AI Operations Lead persona -- owns all model routing decisions, monitors AI costs, conducts persona audits, evaluates new model releases. Invoke when choosing models for workflows, reviewing agent costs, adding new AI tasks, or evaluating new model releases.",
+      "relativePath": ".cursor/rules/agent-ops.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "alpha-researcher",
+      "name": "Alpha Researcher",
+      "description": "Alpha Researcher persona — finds and validates edge before it becomes code. Activates on factor, scan, alpha, candidate files.",
+      "relativePath": ".cursor/rules/alpha-researcher.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "brain-coach",
+      "name": "Brain Coach",
+      "description": "Brain-coach — consult procedural memory before non-trivial actions",
+      "relativePath": ".cursor/rules/brain-coach.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "brain-mcp-sync",
+      "name": "Brain MCP Tool Sync",
+      "description": "Enforces tool parity between AxiomFolio brain_tools.py and Paperwork Brain MCP registration",
+      "relativePath": ".cursor/rules/brain-mcp-sync.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "brain-skill-engineer",
+      "name": "Brain Skill Engineer",
+      "description": "Brain Skill Engineer persona — Paperwork Brain integration boundary, tool manifest, webhook contract.",
+      "relativePath": ".cursor/rules/brain-skill-engineer.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "brand",
+      "name": "Paperwork Labs Brand Guide",
+      "description": "Brand identity guide — Paperwork Labs brand hierarchy, per-product palettes, logo usage, typography, voice, and tone. Always active so all content and UI stays on-brand.",
+      "relativePath": ".cursor/rules/brand.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "capital-allocator",
+      "name": "Capital Allocator",
+      "description": "Capital Allocator persona — portfolio construction, rebalance, tax-aware exits, multi-strategy capital splits.",
+      "relativePath": ".cursor/rules/capital-allocator.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "cfo",
+      "name": "Paperwork Labs CFO / Cost Optimizer Context",
+      "description": "CFO / Cost Optimizer persona — unit economics, infrastructure spend, vendor evaluation, scaling projections, financial planning. Invoke when adding any new service, dependency, or vendor.",
+      "relativePath": ".cursor/rules/cfo.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "cheap-agent-fleet",
+      "name": "Cheap-Agent Fleet Doctrine",
+      "description": "48-hour blitz doctrine — cheap-agent fleet operating rules (orchestration, validation, learning)",
+      "relativePath": ".cursor/rules/cheap-agent-fleet.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "code-quality-guardian",
+      "name": "Code Quality Guardian",
+      "description": "Code quality gates for Paperwork Labs - tax/financial data requires zero tolerance for errors",
+      "relativePath": ".cursor/rules/code-quality-guardian.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "cpa",
+      "name": "Paperwork Labs CPA / Tax Advisor Context",
+      "description": "CPA / Tax Advisor persona — tax planning strategy, accuracy review, client advisory quality, professional standards. Invoke when generating AI advisory content, reviewing tax calculations for edge cases, writing user-facing tax explanations, or validating that tips are genuinely helpful and legally safe.",
+      "relativePath": ".cursor/rules/cpa.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "delegation",
+      "name": "Smart Delegation",
+      "description": "When to delegate work to fast/cheap subagents",
+      "relativePath": ".cursor/rules/delegation.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "dep-freshness",
+      "name": "Dependency Freshness",
+      "description": null,
+      "relativePath": ".cursor/rules/dep-freshness.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "ea",
+      "name": "Executive Assistant / Operator",
+      "description": "Executive Assistant / Operator — founder's daily operating partner and TPM. Handles briefings, sprint planning, decision logging, financial tracking, document maintenance, cross-workstream coordination, and Brain Conversations + PWA push as the canonical communication surface. This is the default persona for operational questions.",
+      "relativePath": ".cursor/rules/ea.mdc",
+      "modelAssignment": "## Model Assignment\n\n- Thread responses (general): GPT-4o-mini (fast, cheap)\n- Thread responses (complex strategy/analysis): GPT-4o\n- Daily briefing: GPT-4o-mini\n- Weekly planning: GPT-4o\n- Decision logging: GPT-4o-mini (structured formatting)\n- PR summarization: GPT-4o-mini",
+      "routingActive": true
+    },
+    {
+      "personaId": "education-sync",
+      "name": "Education Content Sync",
+      "description": null,
+      "relativePath": ".cursor/rules/education-sync.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "engineering",
+      "name": "Paperwork Labs Engineering Context",
+      "description": "Staff Engineer persona — tech stack, architecture, code conventions, security. This is the primary engineering context for all code generation.",
+      "relativePath": ".cursor/rules/engineering.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "git-workflow",
+      "name": "Git Workflow Rules",
+      "description": "Git workflow guardrails — enforces branch-based development with PRs. Always active.",
+      "relativePath": ".cursor/rules/git-workflow.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "growth",
+      "name": "Paperwork Labs Growth Context (FileFree-focused, pending Phase 6 product split)",
+      "description": "Head of Growth persona — marketing, content, SEO, social media, Gen Z voice, viral mechanics. Invoke when working on landing pages, content, social, referrals, or growth features.",
+      "relativePath": ".cursor/rules/growth.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "infra-ops",
+      "name": "Infra Ops Quality Guardian",
+      "description": "Infra Ops Quality Guardian — deployment scripts, Docker/compose configs, n8n workflow health, version management, CI/CD pipelines. Activates on infra, scripts, and CI changes.",
+      "relativePath": ".cursor/rules/infra-ops.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "legal",
+      "name": "Paperwork Labs Legal & Compliance Context",
+      "description": "General Counsel persona — compliance, EFIN, privacy, disclaimers, tax law boundaries, FTC disclosures. Invoke when working on legal pages, privacy policies, disclaimers, or compliance features.",
+      "relativePath": ".cursor/rules/legal.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "market-data-guardian",
+      "name": "Market Data Guardian",
+      "description": "Market data pipeline invariants and red lines",
+      "relativePath": ".cursor/rules/market-data-guardian.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "market-data-platform",
+      "name": "Market Data Platform Invariants",
+      "description": "Self-healing market data platform invariants — single source of truth, provider router, drift detection, point-in-time correctness.",
+      "relativePath": ".cursor/rules/market-data-platform.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "microstructure",
+      "name": "Microstructure",
+      "description": "Microstructure persona — order routing, fill quality, slippage modeling, smart order routing.",
+      "relativePath": ".cursor/rules/microstructure.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "no-hallucinated-ui-labels",
+      "name": "No Hallucinated UI Labels or Feature Names",
+      "description": "Never invent UI labels, button names, page names, or feature names. Always verify against the actual codebase.",
+      "relativePath": ".cursor/rules/no-hallucinated-ui-labels.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "no-silent-fallback",
+      "name": "No Silent Fallbacks",
+      "description": "Never silently coerce errors or empty data to zero / fallback values that look like success.",
+      "relativePath": ".cursor/rules/no-silent-fallback.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "ops-engineer",
+      "name": "Ops Engineer",
+      "description": "Ops Engineer persona — pipeline reliability, Celery, Docker, monitoring, health checks. Activates on tasks, infra, and ops files.",
+      "relativePath": ".cursor/rules/ops-engineer.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "packages-ui",
+      "name": "packages/ui guardrails",
+      "description": "Lock: @paperwork-labs/ui stays framework-agnostic (no Next/Vite/Node coupling).",
+      "relativePath": ".cursor/rules/packages-ui.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "partnerships",
+      "name": "Paperwork Labs Partnerships Context",
+      "description": "Partnership Development Assistant — drafts outreach emails, researches partners, prepares deal summaries, tracks pipeline. Supports a highly time-constrained partnerships co-founder. Every output must be actionable in 5-10 minutes.",
+      "relativePath": ".cursor/rules/partnerships.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "plan-mode-first",
+      "name": "Plan Mode First",
+      "description": "Use plan mode for any non-trivial change. Edits without a plan are forbidden for >2-file or architecture-touching work.",
+      "relativePath": ".cursor/rules/plan-mode-first.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "point-in-time-data",
+      "name": "Point-in-Time Data",
+      "description": "Point-in-time correctness for historical reads. Backtest validity depends on this.",
+      "relativePath": ".cursor/rules/point-in-time-data.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "portfolio-manager",
+      "name": "Portfolio Manager",
+      "description": "Portfolio Manager persona — position sizing, risk management, exit cascade, broker execution. Activates on portfolio/order/risk/execution files.",
+      "relativePath": ".cursor/rules/portfolio-manager.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "prod-database",
+      "name": "Production Database Access",
+      "description": "Production database access — how to connect to the Render-hosted Postgres. Activates when querying prod data, running diagnostics, or verifying deployments.",
+      "relativePath": ".cursor/rules/prod-database.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "production-verification",
+      "name": "Production Verification",
+      "description": "After any merge to main that touches prod, verify the change actually works in prod before claiming done.",
+      "relativePath": ".cursor/rules/production-verification.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "protected-regions",
+      "name": "Protected Regions - Ask Before Modifying",
+      "description": "Files requiring explicit approval before modification - capital protection, auth, core calculations",
+      "relativePath": ".cursor/rules/protected-regions.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "qa",
+      "name": "Paperwork Labs QA Lead Context",
+      "description": "QA Lead persona — testing, validation, security audits, PII leak detection, performance benchmarks, tax calculation accuracy. Invoke when writing tests, reviewing code for correctness, or preparing for launch. Nothing ships without passing QA.",
+      "relativePath": ".cursor/rules/qa.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "quant-analyst",
+      "name": "Quant Analyst",
+      "description": "Quant Analyst persona — Stage Analysis specification domain expert, financial math authority. Activates on indicator/stage/regime/backtest files.",
+      "relativePath": ".cursor/rules/quant-analyst.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "revenue-engineer",
+      "name": "Revenue Engineer",
+      "description": "Revenue Engineer persona — Stripe billing, tier gating, entitlements, conversion funnels.",
+      "relativePath": ".cursor/rules/revenue-engineer.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "risk-manager",
+      "name": "Risk Manager",
+      "description": "Risk Manager persona — PTJ/Dalio-style capital preservation, portfolio heat, circuit breakers. Activates on risk, circuit breaker, and position sizing files.",
+      "relativePath": ".cursor/rules/risk-manager.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "secrets-ops",
+      "name": "Secrets & Environment Variable Operations",
+      "description": "Secrets and environment variable management — inventory, environment matrix, validation. Always consult when touching env vars, secrets, infrastructure config, or debugging \"not configured\" errors.",
+      "relativePath": ".cursor/rules/secrets-ops.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "social",
+      "name": "Paperwork Labs Social Media Manager Context (FileFree-focused, pending Phase 6 split)",
+      "description": "Social Media Manager persona — platform-specific content strategy, paid amplification, analytics, creator outreach, hashtag strategy. Invoke when drafting social content, planning campaigns, or reviewing performance. Owns daily content pipeline.",
+      "relativePath": ".cursor/rules/social.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "strategy",
+      "name": "Paperwork Labs Strategy Context",
+      "description": "Chief of Staff persona — business strategy, planning, Slack + Google Drive operations, decision logging, operating cadence. Invoke when making strategic decisions, planning sprints, or managing the business.",
+      "relativePath": ".cursor/rules/strategy.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "swing-trader",
+      "name": "Swing Trader",
+      "description": "Swing Trader persona — Minervini/Weinstein-style stage and trend discipline, entry quality, staged exits. Activates on scan, stage, and exit cascade files.",
+      "relativePath": ".cursor/rules/swing-trader.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "systematic-trader",
+      "name": "Systematic Trader",
+      "description": "Systematic Trader persona — Seykota/Williams-style evidence, sample size, walk-forward validation. Activates on backtest, walk-forward, and paper validation files.",
+      "relativePath": ".cursor/rules/systematic-trader.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "tax-domain",
+      "name": "Paperwork Labs Tax Domain Expert Context",
+      "description": "Tax Domain Expert persona — IRS rules, form layouts, MeF XML schemas, tax law, filing status rules, bracket calculations, standard deductions. Invoke when working on tax calculations, form generation, e-file, or any tax-specific logic.",
+      "relativePath": ".cursor/rules/tax-domain.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "timezone",
+      "name": "Timezone discipline (non-negotiable)",
+      "description": "UTC in DB/API; user TZ only in UI; Ruff DTZ",
+      "relativePath": ".cursor/rules/timezone.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "token-efficiency",
+      "name": "Token Efficiency",
+      "description": null,
+      "relativePath": ".cursor/rules/token-efficiency.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "token-management",
+      "name": "Token Management & Work Delegation",
+      "description": "Token management, work delegation, and chat lifecycle rules. Governs how expensive models delegate to cheaper subagents, quality gates for delegated work, and when to suggest starting a fresh chat.",
+      "relativePath": ".cursor/rules/token-management.mdc",
+      "modelAssignment": null,
+      "routingActive": true
+    },
+    {
+      "personaId": "trading",
+      "name": "Paperwork Labs Trading Persona",
+      "description": "Trading persona — AxiomFolio integration, market analysis, portfolio management, trade execution with risk awareness. Direct, data-driven, never executes without approval.",
+      "relativePath": ".cursor/rules/trading.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "ux-lead",
+      "name": "UX Lead",
+      "description": "UX Lead persona — Radix UI + Tailwind conventions, design system, accessibility, chart UX. Activates on frontend component and style files.",
+      "relativePath": ".cursor/rules/ux-lead.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "ux",
+      "name": "Paperwork Labs UX/UI Lead Context",
+      "description": "UX/UI Lead persona — design system enforcement, accessibility, mobile-first, animation, anxiety-reducing UX, brand voice across all products. Invoke when building any user-facing component, page, or interaction.",
+      "relativePath": ".cursor/rules/ux.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "validator-curator",
+      "name": "Validator / Curator",
+      "description": "Validator persona (Twisted Slice) workflow — pseudonym enforcement, source attribution, picks pipeline.",
+      "relativePath": ".cursor/rules/validator-curator.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    },
+    {
+      "personaId": "workflows",
+      "name": "Paperwork Labs Workflow Playbooks",
+      "description": "Company operating playbooks — repeatable workflows with persona handoff chains. Invoke when starting any cross-functional process (shipping features, making decisions, publishing content, handling incidents).",
+      "relativePath": ".cursor/rules/workflows.mdc",
+      "modelAssignment": null,
+      "routingActive": false
+    }
+  ],
+  "openRoles": [
+    {
+      "personaId": "agent-ops",
+      "name": "AI Operations Lead",
+      "relativePath": ".cursor/rules/agent-ops.mdc"
+    },
+    {
+      "personaId": "alpha-researcher",
+      "name": "Alpha Researcher",
+      "relativePath": ".cursor/rules/alpha-researcher.mdc"
+    },
+    {
+      "personaId": "brain-coach",
+      "name": "Brain Coach",
+      "relativePath": ".cursor/rules/brain-coach.mdc"
+    },
+    {
+      "personaId": "brain-mcp-sync",
+      "name": "Brain MCP Tool Sync",
+      "relativePath": ".cursor/rules/brain-mcp-sync.mdc"
+    },
+    {
+      "personaId": "brain-skill-engineer",
+      "name": "Brain Skill Engineer",
+      "relativePath": ".cursor/rules/brain-skill-engineer.mdc"
+    },
+    {
+      "personaId": "brand",
+      "name": "Paperwork Labs Brand Guide",
+      "relativePath": ".cursor/rules/brand.mdc"
+    },
+    {
+      "personaId": "capital-allocator",
+      "name": "Capital Allocator",
+      "relativePath": ".cursor/rules/capital-allocator.mdc"
+    },
+    {
+      "personaId": "cfo",
+      "name": "Paperwork Labs CFO / Cost Optimizer Context",
+      "relativePath": ".cursor/rules/cfo.mdc"
+    },
+    {
+      "personaId": "cheap-agent-fleet",
+      "name": "Cheap-Agent Fleet Doctrine",
+      "relativePath": ".cursor/rules/cheap-agent-fleet.mdc"
+    },
+    {
+      "personaId": "code-quality-guardian",
+      "name": "Code Quality Guardian",
+      "relativePath": ".cursor/rules/code-quality-guardian.mdc"
+    },
+    {
+      "personaId": "cpa",
+      "name": "Paperwork Labs CPA / Tax Advisor Context",
+      "relativePath": ".cursor/rules/cpa.mdc"
+    },
+    {
+      "personaId": "delegation",
+      "name": "Smart Delegation",
+      "relativePath": ".cursor/rules/delegation.mdc"
+    },
+    {
+      "personaId": "dep-freshness",
+      "name": "Dependency Freshness",
+      "relativePath": ".cursor/rules/dep-freshness.mdc"
+    },
+    {
+      "personaId": "education-sync",
+      "name": "Education Content Sync",
+      "relativePath": ".cursor/rules/education-sync.mdc"
+    },
+    {
+      "personaId": "engineering",
+      "name": "Paperwork Labs Engineering Context",
+      "relativePath": ".cursor/rules/engineering.mdc"
+    },
+    {
+      "personaId": "git-workflow",
+      "name": "Git Workflow Rules",
+      "relativePath": ".cursor/rules/git-workflow.mdc"
+    },
+    {
+      "personaId": "growth",
+      "name": "Paperwork Labs Growth Context (FileFree-focused, pending Phase 6 product split)",
+      "relativePath": ".cursor/rules/growth.mdc"
+    },
+    {
+      "personaId": "infra-ops",
+      "name": "Infra Ops Quality Guardian",
+      "relativePath": ".cursor/rules/infra-ops.mdc"
+    },
+    {
+      "personaId": "legal",
+      "name": "Paperwork Labs Legal & Compliance Context",
+      "relativePath": ".cursor/rules/legal.mdc"
+    },
+    {
+      "personaId": "market-data-guardian",
+      "name": "Market Data Guardian",
+      "relativePath": ".cursor/rules/market-data-guardian.mdc"
+    },
+    {
+      "personaId": "market-data-platform",
+      "name": "Market Data Platform Invariants",
+      "relativePath": ".cursor/rules/market-data-platform.mdc"
+    },
+    {
+      "personaId": "microstructure",
+      "name": "Microstructure",
+      "relativePath": ".cursor/rules/microstructure.mdc"
+    },
+    {
+      "personaId": "no-hallucinated-ui-labels",
+      "name": "No Hallucinated UI Labels or Feature Names",
+      "relativePath": ".cursor/rules/no-hallucinated-ui-labels.mdc"
+    },
+    {
+      "personaId": "no-silent-fallback",
+      "name": "No Silent Fallbacks",
+      "relativePath": ".cursor/rules/no-silent-fallback.mdc"
+    },
+    {
+      "personaId": "ops-engineer",
+      "name": "Ops Engineer",
+      "relativePath": ".cursor/rules/ops-engineer.mdc"
+    },
+    {
+      "personaId": "packages-ui",
+      "name": "packages/ui guardrails",
+      "relativePath": ".cursor/rules/packages-ui.mdc"
+    },
+    {
+      "personaId": "partnerships",
+      "name": "Paperwork Labs Partnerships Context",
+      "relativePath": ".cursor/rules/partnerships.mdc"
+    },
+    {
+      "personaId": "plan-mode-first",
+      "name": "Plan Mode First",
+      "relativePath": ".cursor/rules/plan-mode-first.mdc"
+    },
+    {
+      "personaId": "point-in-time-data",
+      "name": "Point-in-Time Data",
+      "relativePath": ".cursor/rules/point-in-time-data.mdc"
+    },
+    {
+      "personaId": "portfolio-manager",
+      "name": "Portfolio Manager",
+      "relativePath": ".cursor/rules/portfolio-manager.mdc"
+    },
+    {
+      "personaId": "prod-database",
+      "name": "Production Database Access",
+      "relativePath": ".cursor/rules/prod-database.mdc"
+    },
+    {
+      "personaId": "production-verification",
+      "name": "Production Verification",
+      "relativePath": ".cursor/rules/production-verification.mdc"
+    },
+    {
+      "personaId": "protected-regions",
+      "name": "Protected Regions - Ask Before Modifying",
+      "relativePath": ".cursor/rules/protected-regions.mdc"
+    },
+    {
+      "personaId": "qa",
+      "name": "Paperwork Labs QA Lead Context",
+      "relativePath": ".cursor/rules/qa.mdc"
+    },
+    {
+      "personaId": "quant-analyst",
+      "name": "Quant Analyst",
+      "relativePath": ".cursor/rules/quant-analyst.mdc"
+    },
+    {
+      "personaId": "revenue-engineer",
+      "name": "Revenue Engineer",
+      "relativePath": ".cursor/rules/revenue-engineer.mdc"
+    },
+    {
+      "personaId": "risk-manager",
+      "name": "Risk Manager",
+      "relativePath": ".cursor/rules/risk-manager.mdc"
+    },
+    {
+      "personaId": "secrets-ops",
+      "name": "Secrets & Environment Variable Operations",
+      "relativePath": ".cursor/rules/secrets-ops.mdc"
+    },
+    {
+      "personaId": "social",
+      "name": "Paperwork Labs Social Media Manager Context (FileFree-focused, pending Phase 6 split)",
+      "relativePath": ".cursor/rules/social.mdc"
+    },
+    {
+      "personaId": "strategy",
+      "name": "Paperwork Labs Strategy Context",
+      "relativePath": ".cursor/rules/strategy.mdc"
+    },
+    {
+      "personaId": "swing-trader",
+      "name": "Swing Trader",
+      "relativePath": ".cursor/rules/swing-trader.mdc"
+    },
+    {
+      "personaId": "systematic-trader",
+      "name": "Systematic Trader",
+      "relativePath": ".cursor/rules/systematic-trader.mdc"
+    },
+    {
+      "personaId": "tax-domain",
+      "name": "Paperwork Labs Tax Domain Expert Context",
+      "relativePath": ".cursor/rules/tax-domain.mdc"
+    },
+    {
+      "personaId": "timezone",
+      "name": "Timezone discipline (non-negotiable)",
+      "relativePath": ".cursor/rules/timezone.mdc"
+    },
+    {
+      "personaId": "token-efficiency",
+      "name": "Token Efficiency",
+      "relativePath": ".cursor/rules/token-efficiency.mdc"
+    },
+    {
+      "personaId": "token-management",
+      "name": "Token Management & Work Delegation",
+      "relativePath": ".cursor/rules/token-management.mdc"
+    },
+    {
+      "personaId": "trading",
+      "name": "Paperwork Labs Trading Persona",
+      "relativePath": ".cursor/rules/trading.mdc"
+    },
+    {
+      "personaId": "ux-lead",
+      "name": "UX Lead",
+      "relativePath": ".cursor/rules/ux-lead.mdc"
+    },
+    {
+      "personaId": "ux",
+      "name": "Paperwork Labs UX/UI Lead Context",
+      "relativePath": ".cursor/rules/ux.mdc"
+    },
+    {
+      "personaId": "validator-curator",
+      "name": "Validator / Curator",
+      "relativePath": ".cursor/rules/validator-curator.mdc"
+    },
+    {
+      "personaId": "workflows",
+      "name": "Paperwork Labs Workflow Playbooks",
+      "relativePath": ".cursor/rules/workflows.mdc"
+    }
+  ],
+  "cost": {
+    "dispatchSource": {
+      "ok": true,
+      "path": "/private/tmp/ws82-w0/pr-a2-docs-snapshot/apis/brain/data/agent_dispatch_log.json"
+    },
+    "outcomesSource": {
+      "ok": true,
+      "path": "/private/tmp/ws82-w0/pr-a2-docs-snapshot/apis/brain/data/pr_outcomes.json"
+    },
+    "personaHasAttribution": false,
+    "attributionNote": "Dispatch log entries do not include `persona_slug` / `persona` / `persona_pin`; per-persona dispatch counts cannot be attributed.",
+    "avgTokensNote": "No merged PR outcomes — apis/brain/data/pr_outcomes.json has outcomes: [].",
+    "rows": [
+      {
+        "personaId": "agent-ops",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "alpha-researcher",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "brain-coach",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "brain-mcp-sync",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "brain-skill-engineer",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "brand",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "capital-allocator",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "cfo",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "cheap-agent-fleet",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "code-quality-guardian",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "cpa",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "delegation",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "dep-freshness",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "ea",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "education-sync",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "engineering",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "git-workflow",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "growth",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "infra-ops",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "legal",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "market-data-guardian",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "market-data-platform",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "microstructure",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "no-hallucinated-ui-labels",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "no-silent-fallback",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "ops-engineer",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "packages-ui",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "partnerships",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "plan-mode-first",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "point-in-time-data",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "portfolio-manager",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "prod-database",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "production-verification",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "protected-regions",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "qa",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "quant-analyst",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "revenue-engineer",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "risk-manager",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "secrets-ops",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "social",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "strategy",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "swing-trader",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "systematic-trader",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "tax-domain",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "timezone",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "token-efficiency",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "token-management",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "trading",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "ux-lead",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "ux",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "validator-curator",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      },
+      {
+        "personaId": "workflows",
+        "dispatch7d": null,
+        "dispatch30d": null,
+        "avgTokensPerDispatch": null,
+        "costNote": "see docs/AI_MODEL_REGISTRY.md"
+      }
+    ],
+    "globalDispatch7d": null,
+    "globalDispatch30d": null
+  },
+  "routing": {
+    "source": {
+      "ok": true,
+      "path": "/private/tmp/ws82-w0/pr-a2-docs-snapshot/.cursor/rules/ea.mdc"
+    },
+    "rows": [
+      {
+        "tag": "Historical Slack channel",
+        "routingTarget": "Channel ID"
+      },
+      {
+        "tag": "`#daily-briefing`",
+        "routingTarget": "`C0ALLJWR1HV`"
+      },
+      {
+        "tag": "`#weekly-plan`",
+        "routingTarget": "`C0AM014DFL6`"
+      },
+      {
+        "tag": "`#decisions`",
+        "routingTarget": "`C0AM2310P8A`"
+      },
+      {
+        "tag": "`#engineering`",
+        "routingTarget": "`C0ALLEKR9FZ`"
+      },
+      {
+        "tag": "`#alerts`",
+        "routingTarget": "`C0ALVM4PAE7`"
+      },
+      {
+        "tag": "`#filing-engine`",
+        "routingTarget": "`C0AMWB887KJ`"
+      },
+      {
+        "tag": "`#all-paperwork-labs`",
+        "routingTarget": "`C0AMEQV199P`"
+      },
+      {
+        "tag": "`#general`",
+        "routingTarget": "`C0AM01NHQ3Y`"
+      },
+      {
+        "tag": "`#deployment`",
+        "routingTarget": "`C0AMJTZRVA6`"
+      },
+      {
+        "tag": "`#social-content`",
+        "routingTarget": "`C0ALVG3EW1Z`"
+      },
+      {
+        "tag": "`#tax-insights`",
+        "routingTarget": "`C0APN01LDJN`"
+      },
+      {
+        "tag": "`#trading`",
+        "routingTarget": "`C0APFJSDB6X`"
+      }
+    ]
+  },
+  "activity": {
+    "source": {
+      "ok": true,
+      "path": "/private/tmp/ws82-w0/pr-a2-docs-snapshot/apis/brain/data/agent_dispatch_log.json"
+    },
+    "rows": [],
+    "note": "Dispatch log is empty — no rows in apis/brain/data/agent_dispatch_log.json yet."
+  },
+  "modelRegistry": {
+    "source": {
+      "ok": true,
+      "path": "/private/tmp/ws82-w0/pr-a2-docs-snapshot/docs/AI_MODEL_REGISTRY.md"
+    },
+    "tables": [
+      {
+        "title": "Brain PersonaSpec (default → escalation on `escalate_if` match)",
+        "headers": [
+          "Persona",
+          "Entry / trigger",
+          "Default model",
+          "Escalation model",
+          "Est. $ / run"
+        ],
+        "rows": [
+          [
+            "agent-ops",
+            "Brain `process`",
+            "`claude-sonnet-4-20250514`",
+            "`claude-opus-4-20250618`",
+            "$0.05–0.60"
+          ],
+          [
+            "brand",
+            "Brain `process`",
+            "`gpt-4o-mini`",
+            "`claude-sonnet-4-20250514`",
+            "$0.01–0.10"
+          ],
+          [
+            "cfo",
+            "Brain `process`",
+            "`claude-sonnet-4-20250514`",
+            "`claude-opus-4-20250618`",
+            "$0.05–0.60"
+          ],
+          [
+            "cpa",
+            "Brain `process`",
+            "`claude-sonnet-4-20250514`",
+            "`claude-opus-4-20250618`",
+            "$0.05–0.60"
+          ],
+          [
+            "ea",
+            "Brain `process`",
+            "`gpt-4o-mini`",
+            "`claude-sonnet-4-20250514`",
+            "$0.01–0.10"
+          ],
+          [
+            "engineering",
+            "Brain `process`",
+            "`claude-sonnet-4-20250514`",
+            "`claude-opus-4-20250618`",
+            "$0.05–0.80"
+          ],
+          [
+            "growth",
+            "Brain `process`",
+            "`gpt-4o-mini`",
+            "`claude-sonnet-4-20250514`",
+            "$0.01–0.10"
+          ],
+          [
+            "infra-ops",
+            "Brain `process`",
+            "`claude-sonnet-4-20250514`",
+            "`claude-opus-4-20250618`",
+            "$0.05–0.60"
+          ],
+          [
+            "legal",
+            "Brain `process`",
+            "`claude-sonnet-4-20250514`",
+            "`claude-opus-4-20250618`",
+            "$0.05–0.60"
+          ],
+          [
+            "partnerships",
+            "Brain `process`",
+            "`gpt-4o-mini`",
+            "`claude-sonnet-4-20250514`",
+            "$0.01–0.10"
+          ],
+          [
+            "qa",
+            "Brain `process`",
+            "`claude-sonnet-4-20250514`",
+            "`claude-opus-4-20250618`",
+            "$0.05–0.60"
+          ],
+          [
+            "social",
+            "Brain `process`",
+            "`gpt-4o-mini`",
+            "`claude-sonnet-4-20250514`",
+            "$0.01–0.10"
+          ],
+          [
+            "strategy",
+            "Brain `process`",
+            "`claude-sonnet-4-20250514`",
+            "`claude-opus-4-20250618`",
+            "$0.05–0.60"
+          ],
+          [
+            "tax-domain",
+            "Brain `process`",
+            "`o4-mini`",
+            "`claude-sonnet-4-20250514`",
+            "$0.02–0.20"
+          ],
+          [
+            "trading",
+            "Brain `process`",
+            "`claude-sonnet-4-20250514`",
+            "`claude-opus-4-20250618`",
+            "$0.05–0.60"
+          ],
+          [
+            "ux",
+            "Brain `process`",
+            "`gpt-4o-mini`",
+            "`claude-sonnet-4-20250514`",
+            "$0.01–0.10"
+          ]
+        ]
+      },
+      {
+        "title": "n8n workflows (repo: `infra/hetzner/workflows/*.json`, active tree only)",
+        "headers": [
+          "Persona or label",
+          "Workflow trigger",
+          "Model (today)",
+          "Est. $ / run"
+        ],
+        "rows": [
+          [
+            "(classifier)",
+            "**Brain daily / weekly / PR** — `brain_daily_briefing`, `brain_weekly_briefing`, `pr_sweep` (replaces exports in `retired/`)",
+            "**Brain-routed**",
+            "$0.02–0.40"
+          ],
+          [
+            "(thread persona)",
+            "**Brain Slack Adapter** — Slack events → same API, thread context",
+            "**Brain-routed** (no pin; sticky / classify)",
+            "$0.02–0.50"
+          ],
+          [
+            "strategy",
+            "**Sprint kickoff** — schedule, `persona_pin: strategy`",
+            "**Brain-routed via `strategy` PersonaSpec**",
+            "$0.05–0.50"
+          ],
+          [
+            "strategy",
+            "**Weekly strategy** — `brain_weekly_strategy` (replaces `retired/weekly-strategy-checkin.json`)",
+            "**Brain-routed** (`strategy` persona)",
+            "$0.10–0.50"
+          ],
+          [
+            "cpa",
+            "**CPA tax review** — webhook, `persona_pin: cpa`",
+            "**Brain-routed via `cpa` PersonaSpec**",
+            "$0.05–0.60"
+          ],
+          [
+            "qa",
+            "**QA security scan** — webhook, `persona_pin: qa`",
+            "**Brain-routed via `qa` PersonaSpec**",
+            "$0.05–0.60"
+          ],
+          [
+            "—",
+            "**Sprint close** — Fri cron, `langchain.openAi`",
+            "**Direct OpenAI `gpt-4o` (Track 2.1 migration pending)**",
+            "$0.10–0.50"
+          ],
+          [
+            "—",
+            "**Social content generator** — webhook, `langchain.openAi`",
+            "**Direct OpenAI `gpt-4o` (Track 2.1 migration pending)**",
+            "$0.10–0.50"
+          ],
+          [
+            "—",
+            "**Growth content writer** — webhook, `langchain.openAi`",
+            "**Direct OpenAI `gpt-4o` (Track 2.1 migration pending)**",
+            "$0.10–0.50"
+          ],
+          [
+            "—",
+            "**Partnership outreach drafter** — webhook, `langchain.openAi`",
+            "**Direct OpenAI `gpt-4o` (Track 2.1 migration pending)**",
+            "$0.10–0.50"
+          ]
+        ]
+      }
+    ]
+  },
+  "promotions": {
+    "source": {
+      "ok": true,
+      "path": "/private/tmp/ws82-w0/pr-a2-docs-snapshot/apis/brain/data/self_merge_promotions.json"
+    },
+    "promotions": []
+  }
+}

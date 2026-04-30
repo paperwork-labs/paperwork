@@ -1,6 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -24,103 +21,66 @@ export type RunbookData = {
   completed: number;
   remaining: number;
   estTimeLeftMin: number;
+  /**
+   * Populated only when BRAIN_API_URL is configured and the request fails.
+   * Callers should render an error banner when this field is non-null.
+   * Null means "no error" — either Brain API succeeded or it is not configured.
+   */
+  sourceError?: string | null;
 };
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Snapshot import (bundled at build time by scripts/snapshot-runbook.ts)
 // ---------------------------------------------------------------------------
 
-/** Convert a human time string like "1hr", "30min", "5min" to minutes. */
-function parseMinutes(raw: string): number {
-  const h = raw.match(/(\d+)\s*hr/);
-  const m = raw.match(/(\d+)\s*min/);
-  let total = 0;
-  if (h) total += parseInt(h[1], 10) * 60;
-  if (m) total += parseInt(m[1], 10);
-  return total;
-}
+import runbookSnapshot from "@/data/runbook-snapshot.json";
+
+const SNAPSHOT = runbookSnapshot as RunbookData;
+
+// ---------------------------------------------------------------------------
+// Brain API overlay
+// ---------------------------------------------------------------------------
 
 /**
- * Parse a single markdown table row into a RunbookItem.
- * Expected format: | # | Action | Time | Unblocks | ☐/☑ |
+ * Returns runbook data.
+ *
+ * - If BRAIN_API_URL is NOT set: returns bundled snapshot silently (production
+ *   bootstrap path until Brain API ships).
+ * - If BRAIN_API_URL is set and the request succeeds: returns live data.
+ * - If BRAIN_API_URL is set but the request FAILS: returns snapshot data
+ *   WITH sourceError populated so the caller can render an error banner.
+ *   This is NOT a silent fallback.
  */
-function parseRow(row: string): RunbookItem | null {
-  const cells = row
-    .split("|")
-    .map((c) => c.trim())
-    .filter(Boolean);
-  if (cells.length < 5) return null;
-  const id = parseInt(cells[0], 10);
-  if (Number.isNaN(id)) return null;
-  return {
-    id,
-    task: cells[1],
-    time: cells[2],
-    unblocks: cells[3],
-    done: cells[4] === "☑",
-  };
-}
+export async function parseDay0Runbook(): Promise<RunbookData> {
+  const brainApiUrl = process.env.BRAIN_API_URL;
 
-// ---------------------------------------------------------------------------
-// Main parser
-// ---------------------------------------------------------------------------
+  if (!brainApiUrl) {
+    return SNAPSHOT;
+  }
 
-export function parseDay0Runbook(): RunbookData {
-  const mdPath = path.resolve(
-    process.cwd(),
-    "docs/strategy/DAY_0_FOUNDER_ACTIONS.md",
-  );
-
-  // Fallback: monorepo root might differ from cwd in Next.js dev vs build.
-  let raw: string;
   try {
-    raw = fs.readFileSync(mdPath, "utf-8");
-  } catch {
-    // Try from repo root relative to this file's compiled location.
-    const altPath = path.resolve(
-      __dirname,
-      "../../../../docs/strategy/DAY_0_FOUNDER_ACTIONS.md",
-    );
-    raw = fs.readFileSync(altPath, "utf-8");
-  }
-
-  const lines = raw.split("\n");
-
-  const sections: RunbookSection[] = [];
-  let currentSection: RunbookSection | null = null;
-
-  for (const line of lines) {
-    // Detect section headings (## lines).
-    const headingMatch = line.match(/^##\s+(.+)/);
-    if (headingMatch) {
-      const title = headingMatch[1].trim();
-      currentSection = { title, items: [] };
-      sections.push(currentSection);
-      continue;
+    const res = await fetch(`${brainApiUrl}/admin/runbook`, {
+      cache: "no-store",
+      headers: { "X-Brain-Secret": process.env.BRAIN_API_SECRET ?? "" },
+    });
+    if (!res.ok) {
+      return {
+        ...SNAPSHOT,
+        sourceError: `Brain API /admin/runbook returned ${res.status} ${res.statusText}`,
+      };
     }
-
-    // Parse table rows (skip header / separator rows).
-    if (line.startsWith("|") && currentSection) {
-      const item = parseRow(line);
-      if (item) currentSection.items.push(item);
+    const json = (await res.json()) as { success?: boolean; data?: RunbookData; error?: string };
+    if (!json.success || !json.data) {
+      return {
+        ...SNAPSHOT,
+        sourceError: json.error ?? "Brain API returned no runbook data.",
+      };
     }
+    return { ...json.data, sourceError: null };
+  } catch (e) {
+    return {
+      ...SNAPSHOT,
+      sourceError: e instanceof Error ? e.message : "Brain API request failed.",
+    };
   }
-
-  // Remove sections with no items (e.g. the top-level title).
-  const populated = sections.filter((s) => s.items.length > 0);
-
-  const allItems = populated.flatMap((s) => s.items);
-  const completed = allItems.filter((i) => i.done).length;
-  const remaining = allItems.length - completed;
-  const estTimeLeftMin = allItems
-    .filter((i) => !i.done)
-    .reduce((sum, i) => sum + parseMinutes(i.time), 0);
-
-  return {
-    sections: populated,
-    total: allItems.length,
-    completed,
-    remaining,
-    estTimeLeftMin,
-  };
 }

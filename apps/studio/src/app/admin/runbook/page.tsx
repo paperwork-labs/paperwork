@@ -3,7 +3,7 @@ import { RunbookClient } from "./runbook-client";
 
 export const metadata = { title: "Runbook — Studio" };
 
-export default function RunbookPage() {
-  const data = parseDay0Runbook();
+export default async function RunbookPage() {
+  const data = await parseDay0Runbook();
   return <RunbookClient data={data} />;
 }
