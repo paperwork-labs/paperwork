@@ -61,6 +61,12 @@ function buildNavGroups(
       ],
     },
     {
+      label: "Operations",
+      items: [
+        { href: "/admin/runbook", label: "Runbook", icon: BookOpen },
+      ],
+    },
+    {
       label: "Architecture",
       items: [
         { href: "/admin/architecture", label: "Architecture", icon: Workflow },

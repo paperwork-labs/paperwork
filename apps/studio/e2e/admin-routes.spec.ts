@@ -49,12 +49,11 @@ test.describe("Admin route redirects (WS-69 PR C — 308 permanent)", () => {
     expect(resp?.url()).toContain("tab=secrets");
   });
 
-  test("/admin/founder-actions redirects to /admin/brain/conversations?filter=needs-action", async ({
+  test("/admin/founder-actions redirects to /admin/runbook", async ({
     page,
   }) => {
     const resp = await page.goto("/admin/founder-actions");
-    expect(resp?.url()).toContain("/admin/brain/conversations");
-    expect(resp?.url()).toContain("filter=needs-action");
+    expect(resp?.url()).toContain("/admin/runbook");
   });
 
   test("/admin/brain-learning redirects to /admin/brain/self-improvement?tab=learning", async ({
