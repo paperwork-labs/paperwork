@@ -633,6 +633,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: stack-audit-2026q2
+    path: docs/infra/STACK_AUDIT_2026Q2.md
+    title: Stack audit — 2026 Q2 (WS-73 Batch B)
+    summary: "Snapshot date: **2026-04-30**. Sources: root `package.json` engines, workspace `package.json` files, `pnpm-lock.yaml` resolution hints (`pnpm outdated -r`), `npm view` / registry metadata,…"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: studio-ux-audit-2026q2
     path: docs/strategy/STUDIO_UX_AUDIT_2026Q2.md
     title: Studio UX Audit — 2026 Q2 (WS-76 Wave L PR-A)
