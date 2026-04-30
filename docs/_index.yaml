@@ -612,6 +612,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: studio-ux-audit-2026q2
+    path: docs/strategy/STUDIO_UX_AUDIT_2026Q2.md
+    title: Studio UX Audit — 2026 Q2 (WS-76 Wave L PR-A)
+    summary: "Read-only Studio admin UX audit for WS-76 Wave L PR-A — 56 findings (P0 5, P1 32, P2 19) with file-and-line cites and a remediation table for PR-B, PR-C, and PR-D."
+    tags: [paperwork-labs, strategy]
+    owners: [founders]
+    category: reference
   - slug: secrets-ops
     path: docs/infra/SECRETS_OPS.md
     title: Studio vault — read / write helpers
