@@ -38,15 +38,25 @@ export default async function DocPage({ params }: { params: Params }) {
           <ArrowLeft className="h-3.5 w-3.5" />
           All docs
         </Link>
-        <a
-          href={githubUrl}
-          target="_blank"
-          rel="noreferrer"
-          className="flex items-center gap-1 hover:text-zinc-200"
-        >
-          <GithubMarkIcon className="h-3.5 w-3.5" />
-          View on GitHub
-        </a>
+        <div className="flex flex-wrap items-center gap-3">
+          {entry.exists ? (
+            <Link
+              href={`/admin/docs/${entry.slug}/edit`}
+              className="rounded-lg bg-sky-500/15 px-3 py-1.5 text-xs font-medium text-sky-300 ring-1 ring-sky-500/30 transition hover:bg-sky-500/25"
+            >
+              Edit in Studio
+            </Link>
+          ) : null}
+          <a
+            href={githubUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center gap-1 hover:text-zinc-200"
+          >
+            <GithubMarkIcon className="h-3.5 w-3.5" />
+            View on GitHub
+          </a>
+        </div>
       </nav>
 
       <header className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
