@@ -1,20 +1,34 @@
 "use client";
 
-import { lazy, useCallback, useMemo, type LazyExoticComponent, type ComponentType, type ReactNode } from "react";
+import {
+  Suspense,
+  createContext,
+  lazy,
+  useCallback,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type LazyExoticComponent,
+  type ComponentType,
+  type ReactNode,
+} from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
-  TabbedPageShell as BaseTabbedPageShell,
+  StudioTabbedPageShell,
   type TabbedShellTabDef,
-} from "@paperwork-labs/ui";
+} from "@/components/layout/studio-tabbed-page-shell";
 
 /**
  * Tab definition for studio pages. Accepts either:
  * - `Content`: a React.LazyExoticComponent (preferred, matches `@paperwork-labs/ui`)
  * - `content`: a ReactNode (eager, for simple scaffold pages)
  *
- * The shell wraps `content` in a tiny lazy adapter so the underlying primitive
- * always sees a Content component.
+ * Eager `content` is bridged into the UI shell via a **stable** lazy wrapper per
+ * `(pathname, tab id)` so React does not remount the tab panel on every parent render.
  */
 export type StudioTabDef<T extends string> = {
   id: T;
@@ -32,49 +46,136 @@ export type TabbedPageShellNextProps<T extends string> = {
   endAdornment?: ReactNode;
 };
 
-function adaptTab<T extends string>(t: StudioTabDef<T>): TabbedShellTabDef<T> {
-  if (t.Content) {
-    return { id: t.id, label: t.label, Content: t.Content };
+type EagerTabRegistry = {
+  mapRef: React.MutableRefObject<Map<string, ReactNode>>;
+};
+
+const EagerTabRegistryContext = createContext<EagerTabRegistry | null>(null);
+
+const eagerTabLazyByKey = new Map<string, LazyExoticComponent<ComponentType>>();
+
+function getStableEagerTabLazy(routeKey: string, tabId: string): LazyExoticComponent<ComponentType> {
+  const compositeKey = `${routeKey}::${tabId}`;
+  let LazyPanel = eagerTabLazyByKey.get(compositeKey);
+  if (!LazyPanel) {
+    LazyPanel = lazy(async () => {
+      function EagerTabPanel() {
+        const registry = useContext(EagerTabRegistryContext);
+        if (!registry) {
+          throw new Error("EagerTabPanel must render inside TabbedPageShell (registry missing)");
+        }
+        return <>{registry.mapRef.current.get(compositeKey) ?? null}</>;
+      }
+      return { default: EagerTabPanel };
+    });
+    eagerTabLazyByKey.set(compositeKey, LazyPanel);
   }
-  const node = t.content ?? null;
-  const Adapter = lazy(async () => ({
-    default: () => <>{node}</>,
-  }));
-  return { id: t.id, label: t.label, Content: Adapter };
+  return LazyPanel;
 }
 
-export function TabbedPageShell<T extends string>(props: TabbedPageShellNextProps<T>) {
+function buildAdaptedTabs<T extends string>(
+  tabs: readonly StudioTabDef<T>[],
+  routeKey: string,
+): TabbedShellTabDef<T>[] {
+  return tabs.map((t) => {
+    if (t.Content) {
+      return { id: t.id, label: t.label, Content: t.Content };
+    }
+    return {
+      id: t.id,
+      label: t.label,
+      Content: getStableEagerTabLazy(routeKey, String(t.id)),
+    };
+  });
+}
+
+function TabbedPageShellInner<T extends string>(props: TabbedPageShellNextProps<T>) {
   const { tabs, defaultTab, paramKey = "tab", ...rest } = props;
   const router = useRouter();
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "/";
   const searchParams = useSearchParams();
+  const routeKey = pathname || "/";
+
+  const mapRef = useRef<Map<string, ReactNode>>(new Map());
+  const registryValue = useMemo(() => ({ mapRef }), []);
+
+  const allowedIds = useMemo(() => tabs.map((t) => t.id), [tabs]);
 
   const fromUrl = searchParams.get(paramKey);
-  const allowedIds = tabs.map((t) => t.id);
-  const activeTab = (allowedIds.includes(fromUrl as T) ? (fromUrl as T) : defaultTab) as T;
+  const urlActiveTab = (allowedIds.includes(fromUrl as T) ? (fromUrl as T) : defaultTab) as T;
 
-  const adaptedTabs = useMemo(() => tabs.map((t) => adaptTab(t)), [tabs]);
+  const [optimisticTab, setOptimisticTab] = useState<T | null>(null);
+  const activeTab = (optimisticTab ?? urlActiveTab) as T;
+
+  useEffect(() => {
+    if (optimisticTab != null && optimisticTab === urlActiveTab) {
+      setOptimisticTab(null);
+    }
+  }, [optimisticTab, urlActiveTab]);
+
+  useLayoutEffect(() => {
+    const next = new Map<string, ReactNode>();
+    for (const t of tabs) {
+      if (!t.Content) {
+        next.set(`${routeKey}::${String(t.id)}`, t.content ?? null);
+      }
+    }
+    mapRef.current = next;
+  }, [tabs, routeKey]);
+
+  const adaptedTabs = useMemo(
+    () => buildAdaptedTabs(tabs, routeKey),
+    [tabs, routeKey],
+  );
 
   const onTabChange = useCallback(
     (tab: T) => {
-      const next = new URLSearchParams(searchParams.toString());
-      next.set(paramKey, tab);
+      setOptimisticTab(tab);
+      const qsBase =
+        typeof window !== "undefined"
+          ? window.location.search.slice(1)
+          : searchParams.toString();
+      const next = new URLSearchParams(qsBase);
+      next.set(paramKey, String(tab));
       const qs = next.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      const href = qs ? `${pathname}?${qs}` : pathname;
+      if (typeof window !== "undefined") {
+        window.history.replaceState(null, "", href);
+      }
+      router.replace(href, { scroll: false });
     },
     [router, pathname, searchParams, paramKey],
   );
 
   return (
-    <BaseTabbedPageShell
-      {...rest}
-      tabs={adaptedTabs}
-      defaultTab={defaultTab}
-      activeTab={activeTab}
-      onTabChange={onTabChange}
-    />
+    <EagerTabRegistryContext.Provider value={registryValue}>
+      <StudioTabbedPageShell
+        {...rest}
+        tabs={adaptedTabs}
+        defaultTab={defaultTab}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+      />
+    </EagerTabRegistryContext.Provider>
   );
 }
 
-export { useActiveTab } from "@paperwork-labs/ui";
+function TabbedPageShellFallback() {
+  return (
+    <div className="flex flex-col gap-3 py-4" aria-busy="true" aria-label="Loading tabs">
+      <div className="h-9 w-full max-w-md animate-pulse rounded-md bg-muted" />
+      <div className="h-48 w-full animate-pulse rounded-lg bg-muted" />
+    </div>
+  );
+}
+
+export function TabbedPageShell<T extends string>(props: TabbedPageShellNextProps<T>) {
+  return (
+    <Suspense fallback={<TabbedPageShellFallback />}>
+      <TabbedPageShellInner {...props} />
+    </Suspense>
+  );
+}
+
+export { useActiveTab } from "@/components/layout/studio-tabbed-page-shell";
 export type { TabbedShellTabDef };

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { AdminLayoutClient } from "./admin-layout-client";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 import founderData from "@/data/founder-actions.json";
@@ -68,7 +70,7 @@ export default async function AdminLayout({
 
   return (
     <AdminLayoutClient founderPending={founderPending} expensesPending={expensesPending}>
-      {children}
+      <Suspense fallback={null}>{children}</Suspense>
     </AdminLayoutClient>
   );
 }

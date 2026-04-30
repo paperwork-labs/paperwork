@@ -3,23 +3,17 @@
 import {
   createContext,
   lazy,
-  useCallback,
   useContext,
   useMemo,
   type LazyExoticComponent,
   type ComponentType,
 } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 
-import {
-  Page,
-  PageContainer,
-  PageHeader,
-  TabbedPageShell,
-} from "@paperwork-labs/ui";
+import { Page, PageContainer, PageHeader } from "@paperwork-labs/ui";
 
+import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import type { PersonasPagePayload } from "@/lib/personas-types";
-import { resolvePersonasTab, type PersonasTabId } from "@/lib/personas-tab-params";
+import type { PersonasTabId } from "@/lib/personas-tab-params";
 
 const RegistryTab = lazy(() => import("./_tabs/registry-tab"));
 const CostTab = lazy(() => import("./_tabs/cost-tab"));
@@ -52,20 +46,6 @@ function shellTabs(): readonly {
 }
 
 export function PersonasTabsClient({ data }: { data: PersonasPagePayload }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const activeTab = resolvePersonasTab(searchParams.get("tab") ?? undefined);
-
-  const onTabChange = useCallback(
-    (tab: PersonasTabId) => {
-      const q = new URLSearchParams(searchParams.toString());
-      q.set("tab", tab);
-      router.replace(`/admin/brain/personas?${q.toString()}`, { scroll: false });
-    },
-    [router, searchParams],
-  );
-
   const tabs = useMemo(() => shellTabs(), []);
 
   return (
@@ -76,12 +56,7 @@ export function PersonasTabsClient({ data }: { data: PersonasPagePayload }) {
             title="Personas"
             subtitle="Cursor rule roster, Brain dispatch costs, EA routing map, activity, and AI model registry."
           />
-          <TabbedPageShell<PersonasTabId>
-            tabs={tabs}
-            defaultTab="registry"
-            activeTab={activeTab}
-            onTabChange={onTabChange}
-          />
+          <TabbedPageShell<PersonasTabId> tabs={tabs} defaultTab="registry" />
         </PageContainer>
       </Page>
     </PersonasDataContext.Provider>
