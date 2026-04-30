@@ -1,8 +1,7 @@
-"""Scheduled CPA tax review — ex-``cpa-tax-review.json`` (WS-19).
+"""Scheduled CPA tax review (WS-19, weekly Thursday 13:00 UTC).
 
-The n8n export was webhook-only: ``POST`` to Brain ``/api/v1/brain/process`` with
-``persona_pin=cpa`` and Slack as ``#general`` (``C0AM01NHQ3Y``). This job runs
-the same Brain invocation on a weekly cadence (Thursday 13:00 UTC).
+Runs Brain with persona_pin=cpa on a weekly cadence.
+Output is stored in the Brain Conversations stream (WS-69 PR J).
 
 medallion: ops
 """
@@ -29,7 +28,6 @@ logger = logging.getLogger(__name__)
 _JOB_ID = "cpa_tax_review"
 _ORG_ID = "paperwork-labs"
 _ORG_NAME = "Paperwork Labs"
-_CPA_CHANNEL_ID = "C0AM01NHQ3Y"
 _DEFAULT_MESSAGE = "Run CPA tax review on latest filings and flag any Circular 230 issues."
 
 
@@ -46,12 +44,9 @@ async def _run_body() -> None:
             org_name=_ORG_NAME,
             user_id="brain-scheduler:cpa-tax-review",
             message=_DEFAULT_MESSAGE,
-            channel="n8n",
+            channel="conversations",
             request_id=request_id,
             persona_pin="cpa",
-            slack_channel_id=_CPA_CHANNEL_ID,
-            slack_username="CPA Advisor",
-            slack_icon_emoji=":nerd_face:",
         )
         await db.commit()
     logger.info("cpa_tax_review: Brain process completed (request_id=%s)", request_id)
@@ -70,7 +65,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
         run_cpa_tax_review,
         trigger=CronTrigger(day_of_week="thu", hour=13, minute=0, timezone="UTC"),
         id=_JOB_ID,
-        name="CPA tax review (Brain, ex-cpa-tax-review / n8n)",
+        name="CPA tax review (Brain, weekly Thursday)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,

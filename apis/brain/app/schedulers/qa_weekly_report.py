@@ -1,16 +1,8 @@
-"""Track G — weekly QA health digest.
+"""Track G — weekly QA health digest via Brain Conversations (WS-69 PR J).
 
-Sunday 17:00 UTC (≈10am PT): Brain posts a compact "how are the agents
-holding up?" digest to the #qa channel. Zero LLM spend — this is a
-deterministic readout of registry state, so it stays reliable even if
-upstream LLMs are down.
-
-What lands in #qa:
-1. Persona coverage: counts of specs, rules files, router keywords.
-2. Guardrail coverage: personas missing ceilings / rate limits / output
-   caps.
-3. Golden-suite pointer: link to the latest nightly CI run so QA can
-   open it if something looks off.
+Sunday 17:00 UTC (≈10am PT): Brain creates a compact "how are the agents
+holding up?" Conversation. Zero LLM spend — deterministic readout of registry
+state. Replaces the previous Slack post to #qa.
 
 medallion: ops
 """
@@ -25,21 +17,14 @@ from pathlib import Path
 
 from apscheduler.triggers.cron import CronTrigger
 
-from app.config import settings
 from app.personas import list_specs
-from app.services import slack_outbound
+from app.schemas.conversation import ConversationCreate
+from app.services.conversations import create_conversation
 
 logger = logging.getLogger(__name__)
 
 
 def _drift_baseline_path() -> Path:
-    """Locate ``docs/.doc-drift-baseline.json`` from anywhere we might be running.
-
-    In dev (monorepo checkout) ``parents[4]`` is the repo root. In the Brain
-    Docker image the file is bundled at ``/app/docs/.doc-drift-baseline.json``
-    (see ``apis/brain/Dockerfile``), so we prefer ``$REPO_ROOT`` / ``/app`` and
-    fall back to the parents-based lookup. Never raise at import time.
-    """
     env = os.environ.get("REPO_ROOT")
     if env:
         return Path(env) / "docs" / ".doc-drift-baseline.json"
@@ -48,9 +33,6 @@ def _drift_baseline_path() -> Path:
         candidate = parent / "docs" / ".doc-drift-baseline.json"
         if candidate.exists():
             return candidate
-    # Final fallback: container layout (`/app/docs/...`). Returned even if it
-    # does not exist; callers are expected to handle missing files via
-    # ``_load_drift_baseline`` which fails open to ``(0, 0)``.
     return Path("/app") / "docs" / ".doc-drift-baseline.json"
 
 
@@ -58,13 +40,6 @@ _DRIFT_BASELINE = _drift_baseline_path()
 
 
 def _load_drift_baseline() -> tuple[int, int]:
-    """Return (dead_refs, stale_lines) from the baseline snapshot.
-
-    Track K: the baseline is the snapshot of known doc/code drift. CI
-    catches *new* drift; the weekly report surfaces the residual debt so
-    we remember to pay it down. Fails open to (0, 0) if the file is
-    missing.
-    """
     if not _DRIFT_BASELINE.exists():
         return (0, 0)
     try:
@@ -88,64 +63,64 @@ def _build_digest() -> str:
 
     today = datetime.now(UTC).date().isoformat()
     lines = [
-        f"*QA · weekly agent health — {today}*",
+        f"**QA · weekly agent health — {today}**",
         "",
-        f"• *Personas registered:* {total}",
-        f"• *Compliance-flagged:* {len(compliance)} (`{', '.join(sorted(compliance)) or 'none'}`)",
+        f"- **Personas registered:** {total}",
+        f"- **Compliance-flagged:** {len(compliance)}"
+        f" (`{', '.join(sorted(compliance)) or 'none'}`)",
     ]
 
     if missing_ceiling or missing_rate_limit or missing_output_cap:
         lines.append("")
-        lines.append(":warning: *Guardrail gaps:*")
+        lines.append("**Guardrail gaps:**")
         if missing_ceiling:
             lines.append(
-                f"• Missing `daily_cost_ceiling_usd`: `{', '.join(sorted(missing_ceiling))}`"
+                f"- Missing `daily_cost_ceiling_usd`: `{', '.join(sorted(missing_ceiling))}`"
             )
         if missing_rate_limit:
             lines.append(
-                f"• Missing `requests_per_minute`: `{', '.join(sorted(missing_rate_limit))}`"
+                f"- Missing `requests_per_minute`: `{', '.join(sorted(missing_rate_limit))}`"
             )
         if missing_output_cap:
             lines.append(
-                f"• Missing `max_output_tokens`: `{', '.join(sorted(missing_output_cap))}`"
+                f"- Missing `max_output_tokens`: `{', '.join(sorted(missing_output_cap))}`"
             )
     else:
         lines.append("")
-        lines.append(":white_check_mark: All personas have ceilings, rate limits, and output caps.")
+        lines.append("All personas have ceilings, rate limits, and output caps.")
 
     dead_refs, stale_lines = _load_drift_baseline()
     lines.append("")
     if dead_refs or stale_lines:
         lines.append(
-            f":books: *Doc ↔ code drift debt:* {dead_refs} dead refs, "
+            f"**Doc ↔ code drift debt:** {dead_refs} dead refs, "
             f"{stale_lines} stale line numbers (baseline)."
         )
     else:
-        lines.append(":books: *Doc ↔ code drift:* clean :sparkles:")
+        lines.append("**Doc ↔ code drift:** clean")
 
     lines.append("")
     lines.append(
-        "_Nightly golden-suite results: "
-        "<https://github.com/paperwork-labs/paperwork/actions/workflows/"
-        "brain-golden-suite.yaml|GitHub Actions>._"
+        "Nightly golden-suite: "
+        "https://github.com/paperwork-labs/paperwork/actions/workflows/brain-golden-suite.yaml"
     )
     return "\n".join(lines)
 
 
 async def _run_weekly_tick() -> None:
     body = _build_digest()
-    channel_id = settings.SLACK_QA_CHANNEL_ID or settings.SLACK_ENGINEERING_CHANNEL_ID
-    if not channel_id:
-        logger.info("qa weekly: no target channel configured, skipping")
-        return
-    await slack_outbound.post_message(
-        channel=channel_id,
-        text=body,
-        username="QA",
-        icon_emoji=":detective:",
-        unfurl_links=False,
+    today = datetime.now(UTC).date().isoformat()
+    create_conversation(
+        ConversationCreate(
+            title=f"QA Weekly Agent Health — {today}",
+            body_md=body,
+            tags=["qa"],
+            urgency="normal",
+            persona="qa",
+            needs_founder_action=False,
+        )
     )
-    logger.info("qa weekly digest posted to %s", channel_id)
+    logger.info("qa weekly digest created as conversation")
 
 
 def install(scheduler) -> None:

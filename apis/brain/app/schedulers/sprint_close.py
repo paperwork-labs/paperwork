@@ -1,13 +1,11 @@
 """Brain-owned Sprint Close retro (Track K / STREAMLINE).
 
-Replaces the **Sprint Close** n8n workflow (``0 21 * * 5``) that fetched
-TASKS/KNOWLEDGE, called OpenAI, posted to ``#sprints``, and updated
-``docs/KNOWLEDGE.md`` — see ``infra/hetzner/workflows/retired/sprint-close.json`` and
+Replaces the **Sprint Close** n8n workflow (``0 21 * * 5``) — see
+``infra/hetzner/workflows/retired/sprint-close.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md``.
 
-Cutover uses :func:`app.services.agent.process` with ``persona_pin="strategy"``
-so Brain fetches context via tools and posts to Slack. This module appends the
-retro text to ``docs/KNOWLEDGE.md`` via the GitHub Contents API (``GITHUB_TOKEN``).
+WS-69 PR J: Slack post removed; output lands in the Brain Conversations stream.
+KNOWLEDGE.md append via GitHub API is preserved.
 """
 
 from __future__ import annotations
@@ -25,7 +23,9 @@ from apscheduler.triggers.cron import CronTrigger
 from app.database import async_session_factory
 from app.redis import get_redis
 from app.schedulers._history import run_with_scheduler_record
+from app.schemas.conversation import ConversationCreate
 from app.services import agent as brain_agent
+from app.services.conversations import create_conversation
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -33,8 +33,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _JOB_ID = "brain_sprint_close"
-# ``#sprints`` (``sprint-close.json``).
-_SPRINT_CHANNEL_ID = "C0AM3APFP99"
 _ORG_ID = "paperwork-labs"
 _ORG_NAME = "Paperwork Labs"
 _GITHUB_CONTENTS_URL = (
@@ -46,9 +44,9 @@ _KNOWLEDGE_APPEND_MAX = 8000
 _SPRINT_MESSAGE = (
     "It's Friday 9pm. Close this 5-day sprint with an honest retrospective using "
     "docs/TASKS.md, docs/KNOWLEDGE.md, recent commits, and recent closed PRs from "
-    "paperwork-labs/paperwork. Return Slack-ready markdown with five sections (each as "
-    "a *bold* header on its own line): *What Shipped*, *What Slipped*, *Quality Report*, "
-    "*Velocity Check*, *Next Sprint Preview*. Be direct and specific."
+    "paperwork-labs/paperwork. Return markdown with five sections (each as "
+    "a **bold** header on its own line): **What Shipped**, **What Slipped**, **Quality Report**, "
+    "**Velocity Check**, **Next Sprint Preview**. Be direct and specific."
 )
 
 
@@ -66,7 +64,6 @@ async def _github_append_sprint_close_to_knowledge(
     response_text: str,
     iso_date: str,
 ) -> None:
-    """GET current KNOWLEDGE.md, append sprint-close block, PUT with same ``sha``."""
     token = (os.getenv("GITHUB_TOKEN") or "").strip()
     if not token:
         raise RuntimeError("GITHUB_TOKEN is not set; cannot update KNOWLEDGE.md")
@@ -119,21 +116,26 @@ async def _run_sprint_close_body() -> None:
             org_name=_ORG_NAME,
             user_id="brain-scheduler:sprint-close",
             message=_SPRINT_MESSAGE,
-            channel="slack",
-            channel_id=_SPRINT_CHANNEL_ID,
+            channel="conversations",
             request_id=request_id,
             persona_pin="strategy",
-            slack_channel_id=_SPRINT_CHANNEL_ID,
-            slack_username="Sprint Retro",
-            slack_icon_emoji=":checkered_flag:",
         )
         await db.commit()
     response_text = str(result.get("response", "") or "")
+    create_conversation(
+        ConversationCreate(
+            title=f"Sprint Close Retro — {date_iso}",
+            body_md=response_text[:8000] or "Brain returned no retro.",
+            tags=["sprint-planning"],
+            urgency="normal",
+            persona="strategy",
+            needs_founder_action=False,
+        )
+    )
     await _github_append_sprint_close_to_knowledge(response_text=response_text, iso_date=date_iso)
 
 
 async def run_sprint_close() -> None:
-    """APScheduler entry: Brain process (strategy) posts to ``#sprints``; then KNOWLEDGE.md."""
     await run_with_scheduler_record(
         _JOB_ID,
         _run_sprint_close_body,

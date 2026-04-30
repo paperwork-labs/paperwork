@@ -8,7 +8,7 @@ from app.models.base import Base
 
 
 class ApiKey(Base):
-    """API key for programmatic Brain access (Slack bots, n8n, external tools)."""
+    """API key for programmatic Brain access (external tools, automation)."""
 
     __tablename__ = "agent_api_keys"
 

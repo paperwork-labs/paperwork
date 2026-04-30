@@ -1,4 +1,4 @@
-"""Hourly Vercel on-demand budget poll — fires Slack alerts at 50/75/90/100%.
+"""Hourly Vercel on-demand budget poll — fires Brain Conversation alerts at 50/75/90/100%.
 
 medallion: ops
 """
@@ -27,8 +27,8 @@ async def _tick() -> None:
         return
     alerts = result.get("alerts", [])
     if alerts:
-        # Slack routing handled by services.slack_router once that lands;
-        # for now we log structured so log-shipper can pick it up.
+        # TODO(WS-69): wire budget alerts into create_conversation for proper Brain routing.
+        # For now we log structured so log-shipper can pick it up.
         for a in alerts:
             pct = a.get("pct")
             if pct is None:

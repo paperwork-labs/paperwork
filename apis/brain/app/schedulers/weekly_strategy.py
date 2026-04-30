@@ -5,9 +5,7 @@ called OpenAI in n8n and posted to ``#all-paperwork-labs`` — see
 ``infra/hetzner/workflows/retired/weekly-strategy-checkin.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md``.
 
-Cutover path uses :func:`app.services.agent.process` with ``persona_pin="strategy"``
-(``app/personas/specs/strategy.yaml``) per Streamline T2 unified persona vocabulary,
-not a standalone OpenAI node in n8n.
+WS-69 PR J: Slack post removed; output lands in the Brain Conversations stream.
 """
 
 from __future__ import annotations
@@ -22,8 +20,9 @@ from apscheduler.triggers.cron import CronTrigger
 from app.database import async_session_factory
 from app.redis import get_redis
 from app.schedulers._history import run_with_scheduler_record
+from app.schemas.conversation import ConversationCreate
 from app.services import agent as brain_agent
-from app.services import slack_outbound
+from app.services.conversations import create_conversation
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -31,28 +30,15 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _JOB_ID = "brain_weekly_strategy"
-# Same as ``weekly-strategy-checkin.json`` (``#all-paperwork-labs``).
-_WEEKLY_STRATEGY_CHANNEL_ID = "C0AMEQV199P"
 _ORG_ID = "paperwork-labs"
 _ORG_NAME = "Paperwork Labs"
-# Matches n8n user prompt + thread-router footnote from the Format node.
 _WEEKLY_MESSAGE = (
     "Generate the weekly strategy check-in for this Monday. Consider the current date "
     "and where we should be in the sprint timeline across all Paperwork Labs products.\n\n"
     "Cover: progress vs the sprint plan across products, top risks, priorities for the "
     "coming week, 1-2 short actions for the partnerships co-founder, and any strategic "
-    "decisions needed. Format for Slack with clear sections.\n\n"
-    "_Thread router: reply with a persona name for a focused take._"
+    "decisions needed."
 )
-
-
-def _format_slack_body(raw: str) -> str:
-    text = (raw or "").strip()
-    if not text:
-        text = "Brain returned no response."
-    if len(text) > 3900:
-        return text[:3900] + "\n\n_(truncated)_"
-    return text
 
 
 async def _run_weekly_strategy_body() -> None:
@@ -68,25 +54,27 @@ async def _run_weekly_strategy_body() -> None:
             org_name=_ORG_NAME,
             user_id="brain-scheduler:weekly-strategy",
             message=_WEEKLY_MESSAGE,
-            channel="slack",
-            channel_id=_WEEKLY_STRATEGY_CHANNEL_ID,
+            channel="conversations",
             request_id=request_id,
             persona_pin="strategy",
         )
         await db.commit()
-    out = _format_slack_body(str(result.get("response", "") or ""))
-    date = datetime.now(UTC).date().isoformat()
-    text = f"*Weekly Strategy Check-in — {date}*\n\n{out}"
-    await slack_outbound.post_message(
-        channel_id=_WEEKLY_STRATEGY_CHANNEL_ID,
-        text=text,
-        username="Strategy",
-        icon_emoji=":brain:",
+    out = (str(result.get("response", "") or "")).strip() or "Brain returned no response."
+    date_str = datetime.now(UTC).date().isoformat()
+    create_conversation(
+        ConversationCreate(
+            title=f"Weekly Strategy Check-in — {date_str}",
+            body_md=out,
+            tags=["sprint-planning"],
+            urgency="normal",
+            persona="strategy",
+            needs_founder_action=False,
+        )
     )
 
 
 async def run_weekly_strategy() -> None:
-    """APScheduler entry: Brain process (strategy persona) + ``#all-paperwork-labs`` post."""
+    """APScheduler entry: strategy persona + Conversations create."""
     await run_with_scheduler_record(
         _JOB_ID,
         _run_weekly_strategy_body,

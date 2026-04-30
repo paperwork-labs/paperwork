@@ -111,15 +111,6 @@ const FOOTER_VENDOR_LINKS: {
       { label: "OpenAI usage", href: "https://platform.openai.com/usage" },
     ],
   },
-  {
-    category: "Comms",
-    links: [
-      {
-        label: "Slack #brain-status",
-        href: "https://app.slack.com/client",
-      },
-    ],
-  },
 ];
 
 type Props = {

@@ -165,3 +165,52 @@ this natively via hosted pages at `accounts.<domain>`. The app was never fully b
 - Confirm no redirect URIs in Clerk dashboard point to `apps.paperworklabs.com`
 
 See `apis/brain/data/decommissions.json` entry `apps-paperworklabs-com` for live status.
+
+---
+
+## Slack + n8n Full Decommission — 2026-04-29 (WS-69 PR J)
+
+**PR:** `feat(WS-69 PR J): n8n + Slack full decommission + Gmail SMTP fallback`
+**Branch:** `feat/ws-69-pr-j-decommission`
+**Date:** 2026-04-29
+**Author:** Brain AI (WS-69 implementation)
+
+### What was removed
+
+| System | Removed artefacts |
+|--------|------------------|
+| **Slack** | `slack_outbound.py`, `slack_router.py` (routing shim), `slack_routing.py` (schema), `slack_morning_digest.py`, `test_slack_outbound.py`, `test_slack_router.py`, `scripts/slack-persona.sh` |
+| **n8n** | `_n8n_slack_format.py`, `infra/hetzner/workflows/` directory, n8n scripts (`deploy-n8n-workflows.sh`, `n8n-activate-workflows.sh`, `snapshot_n8n_graphs.py`, `fix-n8n-env.sh`), `N8N_URL` + `N8N_API_KEY` from `render.yaml` + `config.py` |
+| **Studio** | `N8nMirrorStatusClient.tsx`, Slack `#brain-status` quick-link in admin footer |
+
+### What was added
+
+- `apis/brain/app/services/email_outbound.py` — Gmail SMTP fallback for `urgency∈{high,critical}` + `needs_founder_action=True` conversations
+- `apis/brain/scripts/conversations-persona.sh` — replacement for `scripts/slack-persona.sh`
+- `apis/brain/tests/test_email_outbound.py` — full SMTP mock test coverage
+
+### Scheduler migrations (Slack → Brain Conversations)
+
+All ~14 schedulers that previously called `slack_outbound.post_message(...)` now call
+`create_conversation(ConversationCreate(...))` with appropriate `tags`, `urgency`, `persona`,
+and `needs_founder_action`.
+
+### Day-0 founder actions required
+
+1. **Create Gmail app password** — Google Account → Security → 2-Step Verification → App passwords
+2. **Set Brain env vars on Render:**
+   - `GMAIL_USERNAME` — the Gmail address (e.g. `brain@paperworklabs.com`)
+   - `GMAIL_APP_PASSWORD` — 16-char app password
+   - `FOUNDER_FALLBACK_EMAIL` — delivery address
+3. Until vars are set, Brain returns `EmailConfigError` (HTTP 503) on high/critical conversation creates. Conversation is still persisted — only the email notification fails.
+
+### Slack workspace billing
+
+Slack workspace deletion is a **founder-side billing action** and is NOT included in this PR.
+Decommission the workspace separately via Slack → Settings & Permissions → Billing once you
+confirm zero active integrations.
+
+### Hetzner VPS shutdown
+
+Hetzner instance shutdown is a **separate runbook entry** (infra-level, not in this PR diff).
+The n8n service on Hetzner can be stopped independently once the workspace billing step is done.

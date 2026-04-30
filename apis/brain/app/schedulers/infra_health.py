@@ -1,27 +1,25 @@
-"""Infra health monitor from Brain APScheduler (interval, T1 — Infra Health Check cutover).
+"""Infra health monitor from Brain APScheduler (interval, T1).
 
-Replaces the **Infra Health Check** n8n workflow (30-minute interval) that queries
-the n8n REST API and posts deduped alerts to Slack — see
+Replaces the **Infra Health Check** n8n workflow (30-minute interval) — see
 ``infra/hetzner/workflows/retired/infra-health-check.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md``.
 
-This is the **first** first-party job using :class:`IntervalTrigger` (not
-``CronTrigger``), distinct from ``brain_infra_heartbeat`` (daily cron, PR #166).
+WS-69 PR J: n8n workflow check removed (n8n decommissioned). Now uses
+Brain's ``system_health`` service to probe Render/Vercel/Neon/Upstash.
+Creates a Conversation on alert; quiet otherwise.
 """
 
 from __future__ import annotations
 
 import logging
-import os
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
 from apscheduler.triggers.interval import IntervalTrigger
 
-from app.config import settings
-from app.schedulers import infra_heartbeat
-from app.schedulers._history import N8nMirrorRunSkipped, run_with_scheduler_record
-from app.services import slack_outbound
+from app.schedulers._history import SchedulerRunSkipped, run_with_scheduler_record
+from app.schemas.conversation import ConversationCreate
+from app.services.conversations import create_conversation
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -29,49 +27,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 JOB_ID = "brain_infra_health"
-# ``infra-health-check.json`` «Evaluate and Dedup» (same channel id as in that workflow).
-_SLACK_CHANNEL_ID = "C0ALVM4PAE7"
 _REDIS_PREFIX = "brain:infra_health:"
 _DEFAULT_REMINDER_HOURS = 4
 
-
-def _reminder_hours() -> float:
-    raw = (os.getenv("INFRA_HEALTH_REMINDER_HOURS") or "").strip()
-    if not raw:
-        return float(_DEFAULT_REMINDER_HOURS)
-    try:
-        return max(0.0, float(raw))
-    except ValueError:
-        return float(_DEFAULT_REMINDER_HOURS)
-
-
-def _fingerprint(check: dict[str, Any]) -> str:
-    """Match n8n «currentFingerprint»."""
-    h = check.get("healthy")
-    a = int(check.get("activeCount", 0))
-    t = int(check.get("totalCount", 0))
-    liv = str(check.get("livenessStatus", "000"))
-    return f"{h}|{a}/{t}|{liv}"
-
-
-def _format_issue_message(check: dict[str, Any]) -> str:
-    parts: list[str] = [":rotating_light: *Infra Health Check — ISSUES DETECTED*\n"]
-    parts.append(
-        f"*Workflows*: {int(check.get('activeCount', 0))}/{int(check.get('totalCount', 0))} active"
-    )
-    inactive = check.get("inactiveNames") or []
-    if isinstance(inactive, list) and inactive:
-        names = ", ".join(str(n) for n in inactive if n)
-        if names:
-            parts.append(f"  Inactive: {names}")
-    parts.append(f"*n8n liveness*: {check.get('livenessStatus', '000')}")
-    return "\n".join(parts)
-
-
-def _format_recovery_message(check: dict[str, Any]) -> str:
-    a = int(check.get("activeCount", 0))
-    t = int(check.get("totalCount", 0))
-    return f":white_check_mark: *Infra Health Check — All clear*\n{a}/{t} workflows active. n8n healthy."  # noqa: E501
+_mem_last_alert_at: datetime | None = None
 
 
 async def _get_redis_or_none() -> Any:
@@ -83,137 +42,95 @@ async def _get_redis_or_none() -> Any:
         return None
 
 
-# Process-local fallback when Redis is not initialized.
-_mem_fp: str | None = None
-_mem_last_healthy: bool | None = None
-_mem_last_slack_at: datetime | None = None
-
-
-async def _load_dedup_state(redis: Any) -> tuple[str | None, bool | None, datetime | None]:
+async def _load_last_alert_at(redis: Any) -> datetime | None:
+    global _mem_last_alert_at
     if redis is None:
-        return _mem_fp, _mem_last_healthy, _mem_last_slack_at
+        return _mem_last_alert_at
     try:
-        prev_fp = await redis.get(f"{_REDIS_PREFIX}last_fingerprint")
-        healthy_raw = await redis.get(f"{_REDIS_PREFIX}last_healthy")
-        at_raw = await redis.get(f"{_REDIS_PREFIX}last_slack_at")
-        prev_healthy: bool | None
-        prev_healthy = None if healthy_raw is None else str(healthy_raw) == "1"
-        last_slack: datetime | None = None
-        if at_raw:
-            try:
-                last_slack = datetime.fromisoformat(str(at_raw).replace("Z", "+00:00"))
-            except ValueError:
-                last_slack = None
-        return (str(prev_fp) if prev_fp else None, prev_healthy, last_slack)
+        raw = await redis.get(f"{_REDIS_PREFIX}last_alert_at")
+        if not raw:
+            return None
+        return datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
     except Exception:
-        logger.debug("infra_health: redis read failed; using in-memory state", exc_info=True)
-        return _mem_fp, _mem_last_healthy, _mem_last_slack_at
+        return _mem_last_alert_at
 
 
-async def _set_fp_and_healthy(redis: Any, fp: str, last_healthy: bool) -> None:
-    global _mem_fp, _mem_last_healthy
+async def _save_last_alert_at(redis: Any, at: datetime) -> None:
+    global _mem_last_alert_at
+    _mem_last_alert_at = at
     if redis is None:
-        _mem_fp = fp
-        _mem_last_healthy = last_healthy
         return
     try:
-        await redis.set(f"{_REDIS_PREFIX}last_fingerprint", fp)
-        await redis.set(f"{_REDIS_PREFIX}last_healthy", "1" if last_healthy else "0")
-    except Exception:
-        logger.debug("infra_health: redis write (fp) failed; memory fallback", exc_info=True)
-        _mem_fp = fp
-        _mem_last_healthy = last_healthy
-
-
-async def _set_post_state(redis: Any, fp: str, last_healthy: bool, at: datetime) -> None:
-    global _mem_fp, _mem_last_healthy, _mem_last_slack_at
-    if redis is None:
-        _mem_fp = fp
-        _mem_last_healthy = last_healthy
-        _mem_last_slack_at = at
-        return
-    try:
-        pipe = redis.pipeline()
-        pipe.set(f"{_REDIS_PREFIX}last_fingerprint", fp)
-        pipe.set(f"{_REDIS_PREFIX}last_healthy", "1" if last_healthy else "0")
-        pipe.set(
-            f"{_REDIS_PREFIX}last_slack_at",
+        await redis.set(
+            f"{_REDIS_PREFIX}last_alert_at",
             at.astimezone(UTC).isoformat(),
         )
-        await pipe.execute()
     except Exception:
-        logger.debug("infra_health: redis write (post) failed; memory fallback", exc_info=True)
-        _mem_fp = fp
-        _mem_last_healthy = last_healthy
-        _mem_last_slack_at = at
+        logger.debug("infra_health: redis write failed; memory fallback", exc_info=True)
 
 
-def _n8n_prev_healthy(stored: bool | None) -> bool:
-    """``state.lastHealthy !== false`` in n8n."""
-    if stored is None:
-        return True
-    return stored
+async def _probe_render_health() -> tuple[bool, list[str]]:
+    """Probe Render API for service health. Returns (healthy, issues)."""
+    import httpx
+
+    from app.config import settings
+
+    api_key = (settings.RENDER_API_KEY or "").strip()
+    if not api_key:
+        return True, []
+
+    issues: list[str] = []
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(
+                "https://api.render.com/v1/services",
+                headers={"Authorization": f"Bearer {api_key}", "Accept": "application/json"},
+            )
+        if r.status_code == 200:
+            services = r.json()
+            for svc in services if isinstance(services, list) else []:
+                item = svc.get("service") or svc
+                name = item.get("name", "?")
+                status = item.get("suspended", "not_suspended")
+                if status != "not_suspended":
+                    issues.append(f"Render service {name!r} is suspended")
+        elif r.status_code >= 400:
+            issues.append(f"Render API returned {r.status_code}")
+    except Exception as exc:
+        issues.append(f"Render API probe failed: {exc}")
+
+    return len(issues) == 0, issues
 
 
 async def _run_infra_health_body() -> None:
-    if not (settings.SLACK_BOT_TOKEN or "").strip():
-        raise N8nMirrorRunSkipped()
-
-    check = await infra_heartbeat._fetch_n8n_workflow_check()
-    fp = _fingerprint(check)
-    h = bool(check.get("healthy"))
-    redis = await _get_redis_or_none()
-    prev_fp, stored_healthy, last_slack_at = await _load_dedup_state(redis)
-    prev_healthy = _n8n_prev_healthy(stored_healthy)
     now = datetime.now(UTC)
+    redis = await _get_redis_or_none()
 
-    if prev_fp is not None and fp == prev_fp:
-        if h:
-            return
-        rh = _reminder_hours()
-        if rh <= 0 or last_slack_at is None or (now - last_slack_at) < timedelta(hours=rh):
-            return
-        text = _format_issue_message(check)
-        result = await slack_outbound.post_message(
-            channel_id=_SLACK_CHANNEL_ID,
-            text=text,
-            username="Engineering",
-            icon_emoji=":gear:",
-        )
-        if not result.get("ok"):
-            err = str(result.get("error") or "unknown_slack_error")
-            raise RuntimeError(f"Slack post failed: {err}")
-        await _set_post_state(redis, fp, h, now)
-        return
+    healthy, issues = await _probe_render_health()
 
-    if not h:
-        text = _format_issue_message(check)
-        result = await slack_outbound.post_message(
-            channel_id=_SLACK_CHANNEL_ID,
-            text=text,
-            username="Engineering",
-            icon_emoji=":gear:",
+    if healthy:
+        raise SchedulerRunSkipped()
+
+    last_alert_at = await _load_last_alert_at(redis)
+    reminder_delta = timedelta(hours=_DEFAULT_REMINDER_HOURS)
+    if last_alert_at is not None and (now - last_alert_at) < reminder_delta:
+        raise SchedulerRunSkipped()
+
+    body = "**Infra Health Check — Issues Detected**\n\n"
+    body += "\n".join(f"- {issue}" for issue in issues)
+    body += "\n\nCheck Render dashboard and `/admin/health` for details."
+
+    create_conversation(
+        ConversationCreate(
+            title="Infra Health Alert",
+            body_md=body,
+            tags=["alert"],
+            urgency="high",
+            persona="ea",
+            needs_founder_action=True,
         )
-        if not result.get("ok"):
-            err = str(result.get("error") or "unknown_slack_error")
-            raise RuntimeError(f"Slack post failed: {err}")
-        await _set_post_state(redis, fp, h, now)
-        return
-    if not prev_healthy:
-        text = _format_recovery_message(check)
-        result = await slack_outbound.post_message(
-            channel_id=_SLACK_CHANNEL_ID,
-            text=text,
-            username="Engineering",
-            icon_emoji=":gear:",
-        )
-        if not result.get("ok"):
-            err = str(result.get("error") or "unknown_slack_error")
-            raise RuntimeError(f"Slack post failed: {err}")
-        await _set_post_state(redis, fp, h, now)
-        return
-    # fp changed (or first run) but n8n would not emit Slack (e.g. still healthy) — persist state only.  # noqa: E501
-    await _set_fp_and_healthy(redis, fp, h)
+    )
+    await _save_last_alert_at(redis, now)
 
 
 async def run_infra_health() -> None:

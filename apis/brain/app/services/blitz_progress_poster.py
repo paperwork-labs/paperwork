@@ -1,8 +1,4 @@
-"""Compose the hourly blitz progress summary and route it through the Slack router.
-
-Composition (text) stays here; transport goes through
-``slack_router.routed_post`` so channel routing, dedup, rate-limit, and
-quiet-hours are all enforced automatically.
+"""Compose the hourly blitz progress summary and post it as a Brain Conversation (WS-69 PR J).
 
 medallion: ops
 """
@@ -271,18 +267,22 @@ def blitz_status_snapshot(root: Path | None = None) -> BlitzStatusSnapshot:
 
 
 async def post_blitz_progress(root: Path | None = None) -> dict[str, object]:
-    """Compose and post the hourly blitz progress via the Slack router.
+    """Compose hourly blitz progress and create a Brain Conversation."""
+    from datetime import UTC, datetime
 
-    Uses event_type="blitz_progress" so the router can apply channel
-    routing, dedup, rate-limit, and quiet-hour rules.
-    """
-    from app.services.slack_router import routed_post
+    from app.schemas.conversation import ConversationCreate
+    from app.services.conversations import create_conversation
 
     summary = compose_hourly_progress_summary(root=root)
-    return await routed_post(
-        event_type="blitz_progress",
-        severity="low",
-        key="blitz_progress_hourly",
-        text=summary,
-        root=root,
+    date_str = datetime.now(UTC).strftime("%Y-%m-%d %H:%M")
+    conv = create_conversation(
+        ConversationCreate(
+            title=f"Blitz Progress — {date_str} UTC",
+            body_md=summary,
+            tags=["sprint-planning"],
+            urgency="info",
+            persona="ea",
+            needs_founder_action=False,
+        )
     )
+    return {"ok": True, "conversation_id": conv.id}

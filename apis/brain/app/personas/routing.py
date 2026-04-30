@@ -129,7 +129,7 @@ def route_persona(
 
     ``persona_pin`` (Track F rename of ``parent_persona``) short-circuits the
     heuristic: if the caller already knows the persona (n8n, tool invocation,
-    explicit Slack ``/persona`` command) we trust it.
+    explicit ``/persona`` command) we trust it.
     """
     if persona_pin:
         return persona_pin

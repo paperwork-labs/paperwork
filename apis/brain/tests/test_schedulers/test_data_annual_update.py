@@ -1,20 +1,23 @@
-"""Brain-owned annual tax data update scheduler (Track K / P2.10)."""
+"""Brain-owned annual tax data update scheduler (Track K / P2.10).
+
+WS-69 PR J: Slack dependency removed. Tests updated to assert
+Brain Conversation creation instead of slack_outbound.post_message.
+"""
 
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
-from unittest.mock import AsyncMock
+from unittest.mock import patch
 
 import pytest
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from sqlalchemy import select
 
-from app.config import settings
 from app.models.scheduler_run import SchedulerRun
-from app.schedulers import _history, data_annual_update
+from app.schedulers import _history
 from app.schedulers.data_annual_update import _build_message, install, run_data_annual_update
 
 if TYPE_CHECKING:
@@ -58,13 +61,12 @@ def test_build_message_includes_all_ten_checklist_steps() -> None:
     assert "8. Create PR and merge to main" in text
     assert "9. Verify CI passes on the PR" in text
     assert "10. Post confirmation to #engineering when done" in text
-    assert "Tax Foundation State Income Tax Rates" in text
-    assert "Reply in this thread with progress updates" in text
+    assert "taxfoundation.org" in text
 
 
 @pytest.mark.asyncio
-async def test_run_skips_when_slack_token_missing(
-    db_session: AsyncSession,
+async def test_run_success_creates_conversation(
+    db_session: "AsyncSession",
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     @asynccontextmanager
@@ -72,32 +74,11 @@ async def test_run_skips_when_slack_token_missing(
         yield db_session
 
     monkeypatch.setattr(_history, "async_session_factory", lambda: _fake_context())
-    monkeypatch.setattr(settings, "SLACK_BOT_TOKEN", "", raising=False)
-    await run_data_annual_update()
-    await db_session.commit()
-    r = (
-        await db_session.execute(
-            select(SchedulerRun).where(SchedulerRun.job_id == "brain_data_annual_update"),
-        )
-    ).scalar_one()
-    assert r.status == "skipped"
 
+    with patch("app.schedulers.data_annual_update.create_conversation") as mock_conv:
+        await run_data_annual_update()
+        await db_session.commit()
 
-@pytest.mark.asyncio
-async def test_run_success_posts_to_engineering(
-    db_session: AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    @asynccontextmanager
-    async def _fake_context():
-        yield db_session
-
-    monkeypatch.setattr(_history, "async_session_factory", lambda: _fake_context())
-    monkeypatch.setattr(settings, "SLACK_BOT_TOKEN", "xoxb-test", raising=False)
-    post = AsyncMock(return_value={"ok": True, "ts": "1.0"})
-    monkeypatch.setattr(data_annual_update.slack_outbound, "post_message", post)
-    await run_data_annual_update()
-    await db_session.commit()
     r = (
         await db_session.execute(
             select(SchedulerRun).where(SchedulerRun.job_id == "brain_data_annual_update"),
@@ -105,35 +86,8 @@ async def test_run_success_posts_to_engineering(
     ).scalar_one()
     assert r.status == "success"
     assert r.error_text is None
-    post.assert_awaited_once()
-    assert post.await_args is not None
-    _, kwargs = post.await_args
-    assert kwargs.get("channel_id") == "C0ALLEKR9FZ"
-    assert kwargs.get("username") == "Engineering"
-    assert kwargs.get("icon_emoji") == ":calendar:"
-
-
-@pytest.mark.asyncio
-async def test_run_slack_failure_records_error(
-    db_session: AsyncSession,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    @asynccontextmanager
-    async def _fake_context():
-        yield db_session
-
-    monkeypatch.setattr(_history, "async_session_factory", lambda: _fake_context())
-    monkeypatch.setattr(settings, "SLACK_BOT_TOKEN", "xoxb-test", raising=False)
-    post = AsyncMock(return_value={"ok": False, "error": "channel_not_found"})
-    monkeypatch.setattr(data_annual_update.slack_outbound, "post_message", post)
-    with pytest.raises(RuntimeError, match="Slack post failed"):
-        await run_data_annual_update()
-    await db_session.commit()
-    r = (
-        await db_session.execute(
-            select(SchedulerRun).where(SchedulerRun.job_id == "brain_data_annual_update"),
-        )
-    ).scalar_one()
-    assert r.status == "error"
-    assert r.error_text is not None
-    assert "channel_not_found" in (r.error_text or "")
+    mock_conv.assert_called_once()
+    call_arg = mock_conv.call_args[0][0]
+    assert "Annual Tax Data Update" in call_arg.title
+    assert call_arg.needs_founder_action is True
+    assert "data" in call_arg.tags

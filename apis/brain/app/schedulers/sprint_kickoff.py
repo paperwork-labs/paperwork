@@ -1,9 +1,10 @@
 """Brain-owned Sprint Kickoff (Track K / n8n cron cutover).
 
-Replaces the **Sprint Kickoff** n8n workflow (``0 7 * * 1``) that POSTs
-``/api/v1/brain/process`` to ``#sprints`` and announces in ``#all-paperwork-labs``
-— see ``infra/hetzner/workflows/retired/sprint-kickoff.json`` and
+Replaces the **Sprint Kickoff** n8n workflow (``0 7 * * 1``) — see
+``infra/hetzner/workflows/retired/sprint-kickoff.json`` and
 ``docs/sprints/STREAMLINE_SSO_DAGS_2026Q2.md`` (Track K).
+
+WS-69 PR J: Slack post removed; output lands in the Brain Conversations stream.
 """
 
 from __future__ import annotations
@@ -18,8 +19,9 @@ from apscheduler.triggers.cron import CronTrigger
 from app.database import async_session_factory
 from app.redis import get_redis
 from app.schedulers._history import run_with_scheduler_record
+from app.schemas.conversation import ConversationCreate
 from app.services import agent as brain_agent
-from app.services import slack_outbound
+from app.services.conversations import create_conversation
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -27,21 +29,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _JOB_ID = "brain_sprint_kickoff"
-# Same as ``sprint-kickoff.json`` (``#sprints``).
-_SPRINTS_CHANNEL_ID = "C0AM3APFP99"
-# Announcement: ``#all-paperwork-labs`` (n8n second node).
-_ALL_PAPERWORK_LABS_CHANNEL_ID = "C0AMEQV199P"
 _ORG_ID = "paperwork-labs"
 _ORG_NAME = "Paperwork Labs"
 _SPRINT_MESSAGE = (
     "It's Monday. Generate a 5-day sprint kickoff for Paperwork Labs using the docs hub "
-    "(TASKS.md, KNOWLEDGE.md, VENTURE_MASTER_PLAN.md) and recent commits. Return Slack-ready "
+    "(TASKS.md, KNOWLEDGE.md, VENTURE_MASTER_PLAN.md) and recent commits. Return "
     "markdown with sections: Sprint Goals, Engineering Plan, Risk Assessment, Strategic "
     "Priority, Top 3 Priorities. Keep it concise and actionable."
-)
-_ANNOUNCEMENT_TEXT = (
-    ":rocket: New 5-day sprint kickoff just landed in <#C0AM3APFP99|sprints>. "
-    "Reply in-thread with a persona name for a focused take."
 )
 
 
@@ -51,34 +45,33 @@ async def _run_sprint_kickoff_body() -> None:
     with contextlib.suppress(RuntimeError):
         redis_client = get_redis()
     async with async_session_factory() as db:
-        await brain_agent.process(
+        result = await brain_agent.process(
             db,
             redis_client,
             organization_id=_ORG_ID,
             org_name=_ORG_NAME,
             user_id="brain-scheduler:sprint-kickoff",
             message=_SPRINT_MESSAGE,
-            channel="slack",
-            channel_id=_SPRINTS_CHANNEL_ID,
+            channel="conversations",
             request_id=request_id,
             persona_pin="strategy",
-            slack_username="Sprint Planning",
-            slack_icon_emoji=":rocket:",
         )
         await db.commit()
-    try:
-        await slack_outbound.post_message(
-            channel_id=_ALL_PAPERWORK_LABS_CHANNEL_ID,
-            text=_ANNOUNCEMENT_TEXT,
-            username="Sprint Planning",
-            icon_emoji=":rocket:",
+    response_text = str(result.get("response", "") or "")
+    date_iso = datetime.now(UTC).date().isoformat()
+    create_conversation(
+        ConversationCreate(
+            title=f"Sprint Kickoff — {date_iso}",
+            body_md=response_text[:8000] or "Brain returned no kickoff.",
+            tags=["sprint-planning"],
+            urgency="normal",
+            persona="strategy",
+            needs_founder_action=False,
         )
-    except Exception:
-        logger.exception("Sprint kickoff announcement post to #all-paperwork-labs failed")
+    )
 
 
 async def run_sprint_kickoff() -> None:
-    """APScheduler entry: strategy persona to ``#sprints`` + ``#all-paperwork-labs`` announcement."""  # noqa: E501
     await run_with_scheduler_record(
         _JOB_ID,
         _run_sprint_kickoff_body,

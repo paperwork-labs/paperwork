@@ -288,23 +288,13 @@ async def process(
     thread_id: str | None = None,
     persona_pin: str | None = None,
     strategy: str | None = None,
-    slack_channel_id: str | None = None,
-    slack_username: str | None = None,
-    slack_icon_emoji: str | None = None,
 ) -> dict:
     """Main agent loop entry point.
 
-    ``persona_pin`` (Track F) lets trusted callers (n8n, slash commands,
-    tool handlers) bypass the keyword router and force a specific persona.
-    When set, the router returns the pinned slug verbatim and the rest of
-    the pipeline (PersonaSpec lookup, model routing, cost ceiling) runs
-    against that persona.
-
-    ``slack_channel_id`` (Track H) collapses the old "LLM in n8n + Slack
-    poster" 3-node pattern into a single Brain call. When set, Brain
-    posts the generated response to the given Slack channel after
-    storing the episode. Failure to post never fails the request — we
-    log and continue so the HTTP response still lands.
+    ``persona_pin`` (Track F) lets trusted callers (tool handlers, schedulers)
+    bypass the keyword router and force a specific persona. When set, the router
+    returns the pinned slug verbatim and the rest of the pipeline (PersonaSpec
+    lookup, model routing, cost ceiling) runs against that persona.
     """
 
     is_duplicate = await idempotency.check_and_set(redis_client, request_id, organization_id)
@@ -621,7 +611,7 @@ async def process(
         )
 
     # H4: for compliance-flagged personas with a confidence_floor, stamp
-    # metadata so downstream UIs (Slack unfurls, Studio) can surface a
+    # metadata so downstream UIs (Studio) can surface a
     # "needs human review" badge. D7 will turn this into an actionable
     # review queue; today it's audit-trail only.
     episode_metadata: dict[str, object] = {}
@@ -664,8 +654,8 @@ async def process(
         else episode_metadata or None,
     )
 
-    # D4: stamp provenance on the response so downstream channels (Slack,
-    # Studio, n8n) can link back to the source episode. Skip for trivial
+    # D4: stamp provenance on the response so downstream channels (Studio)
+    # can link back to the source episode. Skip for trivial
     # duplicate/mock responses where content is empty.
     episode_uri = f"brain://episode/{episode.id}" if episode and episode.id else None
     stamped_content = result.content
@@ -705,25 +695,6 @@ async def process(
     else:
         trace.score(name="constitutional_safety", value=1.0)
     flush_traces()
-
-    # Track H — n8n 2-node pattern: when the caller passes slack_channel_id,
-    # Brain posts the response to Slack itself. Slack failures never break
-    # the HTTP response (n8n / slash commands still get the payload).
-    if slack_channel_id and stamped_content:
-        try:
-            from app.services import slack_outbound
-
-            username = slack_username or (
-                persona_spec.name.upper() if persona_spec else persona.title()
-            )
-            await slack_outbound.post_message(
-                channel_id=slack_channel_id,
-                text=stamped_content,
-                username=username,
-                icon_emoji=slack_icon_emoji,
-            )
-        except Exception as exc:
-            logger.warning("slack_channel post failed for %s: %s", slack_channel_id, exc)
 
     return {
         "response": stamped_content,

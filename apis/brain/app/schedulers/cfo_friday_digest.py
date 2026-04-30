@@ -1,10 +1,9 @@
-"""Friday 18:00 UTC CFO weekly digest to Slack (via ``persona_pin=cfo``).
+"""Friday 18:00 UTC CFO weekly digest via Brain Conversations (WS-69 PR J).
 
 Reads ``apps/studio/src/data/tracker-index.json`` when the monorepo is
 present; otherwise the brief notes that the index is unavailable.
 Summarization is one Brain pass with the CFO persona so the post matches
-#cfo voice. Posts to the same channel as the daily cost dashboard
-(``SLACK_CFO_CHANNEL_ID`` → ``#cfo``; falls back to #engineering).
+CFO voice. Creates a Conversation instead of posting to Slack.
 
 medallion: ops
 """
@@ -23,27 +22,20 @@ from apscheduler.triggers.cron import CronTrigger
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-from app.config import settings
 from app.database import async_session_factory
 from app.personas import list_specs
+from app.schemas.conversation import ConversationCreate
 from app.services import agent as brain_agent
-from app.services import slack_outbound
+from app.services.conversations import create_conversation
 
 logger = logging.getLogger(__name__)
 
-# Slack display name (persona is forced via ``persona_pin="cfo"`` in ``agent.process``)
 CFO_PERSONA_LABEL = "CFO"
 
 _ORG_ID = "paperwork-labs"
 
 
 def _default_tracker_path() -> Path:
-    """Walk up from this file (or honour ``$REPO_ROOT``) to find the tracker JSON.
-
-    Defensive against the Docker layout where ``parents[4]`` doesn't exist —
-    in the Brain image the file is bundled at
-    ``/app/apps/studio/src/data/tracker-index.json`` (see ``apis/brain/Dockerfile``).
-    """
     rel = Path("apps") / "studio" / "src" / "data" / "tracker-index.json"
     env = os.environ.get("REPO_ROOT")
     if env:
@@ -101,11 +93,6 @@ def build_friday_tracker_brief(
     *,
     as_of: date | None = None,
 ) -> tuple[str, dict[str, int]]:
-    """Build a facts block for the CFO. ``tracker`` is ``None`` if the index file is missing.
-
-    Returns ``(brief_markdown, meta)`` where ``meta`` has ``active_sprint_count`` and
-    ``plan_count`` (and ``shipped_last_7d_count``) for logging.
-    """
     day = as_of or datetime.now(UTC).date()
     if tracker is None:
         note = (
@@ -160,8 +147,6 @@ def build_friday_tracker_brief(
     plan_count = _count_active_plans(tracker)
     lines.append(f"\n*Active product plans (status=active):* {plan_count}")
 
-    # Weekly aggregate is not stored in Redis; optional same-day total is added at post time (logs only).  # noqa: E501
-
     brief = "\n".join(lines)
     meta = {
         "active_sprint_count": len(active),
@@ -173,10 +158,10 @@ def build_friday_tracker_brief(
 
 def _cfo_user_message(tracker_brief: str) -> str:
     return (
-        "You are producing the **Friday CFO digest** for internal leadership Slack.\n\n"
+        "You are producing the **Friday CFO digest** for internal leadership.\n\n"
         "## Instructions (follow for this turn)\n"
-        "Summarize the *tracker facts* below in **5-8 bullet points** using Slack-style "
-        "markdown. For every blocker, dependency, or material risk, name an **explicit owner** "
+        "Summarize the *tracker facts* below in **5-8 bullet points**. "
+        "For every blocker, dependency, or material risk, name an **explicit owner** "
         "(person or team). Be concise, finance-forward, and actionable. **No preamble** — start "
         "directly with the bullets.\n\n"
         "## Tracker facts (source of truth for this run)\n"
@@ -198,13 +183,6 @@ async def _run_friday_digest() -> None:
         except RuntimeError:
             pass
 
-        channel_id = (settings.SLACK_CFO_CHANNEL_ID or "").strip() or (
-            settings.SLACK_ENGINEERING_CHANNEL_ID or ""
-        ).strip()
-        if not channel_id:
-            logger.info("cfo friday: no target Slack channel configured, skipping")
-            return
-
         user_message = _cfo_user_message(tracker_brief)
 
         async with async_session_factory() as db:
@@ -215,8 +193,7 @@ async def _run_friday_digest() -> None:
                 org_name="Paperwork Labs",
                 user_id="brain-scheduler:cfo_friday",
                 message=user_message,
-                channel="slack-scheduler",
-                channel_id=channel_id,
+                channel="conversations",
                 request_id=f"cfo-friday-digest:{today}",
                 persona_pin="cfo",
             )
@@ -224,15 +201,18 @@ async def _run_friday_digest() -> None:
 
         body = (result.get("response") or "").strip()
         if not body:
-            logger.warning("cfo friday: Brain returned empty response; skipping Slack post")
+            logger.warning("cfo friday: Brain returned empty response; skipping Conversation")
             return
 
-        await slack_outbound.post_message(
-            channel=channel_id,
-            text=f"*{CFO_PERSONA_LABEL}* — Friday digest\n{body[:3500]}",
-            username=CFO_PERSONA_LABEL,
-            icon_emoji=":chart_with_upwards_trend:",
-            unfurl_links=False,
+        create_conversation(
+            ConversationCreate(
+                title=f"CFO Friday Digest — {today}",
+                body_md=f"**{CFO_PERSONA_LABEL}** — Friday digest\n\n{body}",
+                tags=["cfo"],
+                urgency="normal",
+                persona="cfo",
+                needs_founder_action=False,
+            )
         )
         cost_str = await _format_cost_hint_for_log(redis_client)
         logger.info(
@@ -259,7 +239,6 @@ async def _read_spend(redis_client: Any, persona: str) -> float:
 
 
 async def _format_cost_hint_for_log(redis_client: Any | None) -> str:
-    """Same-day all-persona total from Redis, if available (not a true weekly sum)."""
     if redis_client is None:
         return "unavailable"
     try:

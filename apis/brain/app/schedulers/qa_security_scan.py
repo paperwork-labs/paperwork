@@ -1,8 +1,7 @@
-"""Scheduled QA security audit — ex-``qa-security-scan.json`` (WS-19).
+"""Scheduled QA security audit (WS-19, weekly Monday 14:00 UTC).
 
-The n8n export was webhook-only: it forwarded a body to Brain
-``/api/v1/brain/process`` with ``persona_pin=qa`` and let Brain post to ``#qa``.
-This job runs the same Brain invocation on a weekly cadence (Monday 14:00 UTC).
+Runs Brain with persona_pin=qa on a weekly cadence.
+Output is stored in the Brain Conversations stream (WS-69 PR J).
 
 medallion: ops
 """
@@ -29,7 +28,6 @@ logger = logging.getLogger(__name__)
 _JOB_ID = "qa_security_scan"
 _ORG_ID = "paperwork-labs"
 _ORG_NAME = "Paperwork Labs"
-_QA_CHANNEL_ID = "C0ALLEKR9FZ"
 _DEFAULT_MESSAGE = (
     "Run a security audit on the latest changes. Return critical_issues, high_issues, "
     "medium_issues, test_cases, and pre-merge checklist."
@@ -49,12 +47,9 @@ async def _run_body() -> None:
             org_name=_ORG_NAME,
             user_id="brain-scheduler:qa-security-scan",
             message=_DEFAULT_MESSAGE,
-            channel="n8n",
+            channel="conversations",
             request_id=request_id,
             persona_pin="qa",
-            slack_channel_id=_QA_CHANNEL_ID,
-            slack_username="QA",
-            slack_icon_emoji=":detective:",
         )
         await db.commit()
     logger.info("qa_security_scan: Brain process completed (request_id=%s)", request_id)
@@ -73,7 +68,7 @@ def install(scheduler: AsyncIOScheduler) -> None:
         run_qa_security_scan,
         trigger=CronTrigger(day_of_week="mon", hour=14, minute=0, timezone="UTC"),
         id=_JOB_ID,
-        name="QA security scan (Brain, ex-qa-security-scan / n8n)",
+        name="QA security scan (Brain, weekly Monday)",
         max_instances=1,
         coalesce=True,
         replace_existing=True,

@@ -34,7 +34,9 @@ from sqlalchemy import and_, func, select
 
 from app.config import settings
 from app.models.episode import Episode
-from app.services import memory, slack_outbound
+from app.schemas.conversation import ConversationCreate
+from app.services import memory
+from app.services.conversations import create_conversation
 from app.services.pii import scrub_pii
 from app.tools import github as gh_tools
 
@@ -289,19 +291,17 @@ async def review_pr(
         logger.warning("Failed to persist PR review episode: %s", e)
 
     posted = not post_result.startswith(("review_github_pr error", "review_github_pr HTTP"))
-    slack_ts: str | None = None
     if posted:
         try:
-            slack_res = await _notify_slack_for_review(
+            _notify_conversation_for_review(
                 pr_number=pr_number,
                 verdict=verdict,
                 summary=str(parsed.get("summary") or ""),
                 model=model,
                 head_sha=head_sha,
             )
-            slack_ts = slack_res.get("ts")
         except Exception as e:
-            logger.warning("pr_review slack notify failed for #%s: %s", pr_number, e)
+            logger.warning("pr_review conversation notify failed for #%s: %s", pr_number, e)
 
     return {
         "posted": posted,
@@ -311,42 +311,42 @@ async def review_pr(
         "model": model,
         "number": pr_number,
         "head_sha": head_sha,
-        "slack_ts": slack_ts,
     }
 
 
-async def _notify_slack_for_review(
+def _notify_conversation_for_review(
     *,
     pr_number: int,
     verdict: str,
     summary: str,
     model: str,
     head_sha: str,
-) -> dict[str, Any]:
-    """Post a compact review card to the engineering channel.
-
-    Degrades cleanly when ``SLACK_ENGINEERING_CHANNEL_ID`` or
-    ``SLACK_BOT_TOKEN`` is unset.
-    """
-    channel = (settings.SLACK_ENGINEERING_CHANNEL_ID or "").strip()
-    if not channel:
-        return {"ok": False, "error": "SLACK_ENGINEERING_CHANNEL_ID not configured"}
-
+) -> None:
+    """Create a Brain Conversation for this PR review result."""
     owner, repo = _repo_parts_from_settings()
     pr_url = f"https://github.com/{owner}/{repo}/pull/{pr_number}"
-    verdict_emoji = {
-        "APPROVE": ":white_check_mark:",
-        "COMMENT": ":speech_balloon:",
-        "REQUEST_CHANGES": ":warning:",
-    }.get(verdict, ":speech_balloon:")
+    verdict_label = {
+        "APPROVE": "Approved",
+        "COMMENT": "Comment",
+        "REQUEST_CHANGES": "Changes Requested",
+    }.get(verdict, verdict)
 
     summary_line = (summary.strip().splitlines() or [""])[0][:300]
-    text = (
-        f"{verdict_emoji} Brain review on <{pr_url}|#{pr_number}>: *{verdict}*\n"
-        f"{summary_line}\n"
+    body_md = (
+        f"Brain review on [{owner}/{repo}#{pr_number}]({pr_url}): **{verdict_label}**\n\n"
+        f"{summary_line}\n\n"
         f"_model: `{model}` · head: `{head_sha[:7] if head_sha else '?'}`_"
     )
-    return await slack_outbound.post_message(channel=channel, text=text, unfurl_links=False)
+    create_conversation(
+        ConversationCreate(
+            title=f"PR #{pr_number} Brain Review: {verdict_label}",
+            body_md=body_md,
+            tags=["alert" if verdict == "REQUEST_CHANGES" else "qa"],
+            urgency="high" if verdict == "REQUEST_CHANGES" else "normal",
+            persona="qa",
+            needs_founder_action=False,
+        )
+    )
 
 
 # ---- sweep: Brain's autonomous "review everything new" loop ------------------

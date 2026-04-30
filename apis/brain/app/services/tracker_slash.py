@@ -1,4 +1,8 @@
-"""Format Slack slash command replies from ``tracker-index.json`` (Studio).
+"""Format tracker index data from ``tracker-index.json`` (Studio) for API replies.
+
+WS-69 PR J: renamed from slack_response_* to tracker_response_* since the
+Slack slash command endpoint was removed; the response format is still valid
+for any caller (MCP tools, CLI, web endpoints).
 
 medallion: ops
 """
@@ -65,7 +69,7 @@ def _is_sprint_active(status: str | None) -> bool:
     return status.strip().lower() not in {"shipped", "complete", "done"}
 
 
-def slack_response_sprint(index: dict[str, Any] | None, text: str) -> dict[str, Any]:
+def tracker_response_sprint(index: dict[str, Any] | None, text: str) -> dict[str, Any]:
     if index is None:
         return {"response_type": "ephemeral", "text": TRACKER_UNAVAILABLE_MSG}
 
@@ -119,7 +123,7 @@ def slack_response_sprint(index: dict[str, Any] | None, text: str) -> dict[str, 
     return {"response_type": "in_channel", "text": body}
 
 
-def slack_response_tasks(index: dict[str, Any] | None, text: str) -> dict[str, Any]:
+def tracker_response_tasks(index: dict[str, Any] | None, text: str) -> dict[str, Any]:
     if index is None:
         return {"response_type": "ephemeral", "text": TRACKER_UNAVAILABLE_MSG}
 
@@ -151,7 +155,7 @@ def slack_response_tasks(index: dict[str, Any] | None, text: str) -> dict[str, A
     return {"response_type": "in_channel", "text": header + "\n".join(lines)}
 
 
-def slack_response_plan(index: dict[str, Any] | None, text: str) -> dict[str, Any]:
+def tracker_response_plan(index: dict[str, Any] | None, text: str) -> dict[str, Any]:
     if index is None:
         return {"response_type": "ephemeral", "text": TRACKER_UNAVAILABLE_MSG}
 

@@ -1,6 +1,6 @@
 """Shared persistence for APScheduler job runs (``agent_scheduler_runs``).
 
-Used by the n8n shadow mirror module and first-party Brain crons (T1.2+)."""
+Used by first-party Brain crons (T1.2+)."""
 
 from __future__ import annotations
 
@@ -17,8 +17,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class N8nMirrorRunSkipped(Exception):
+class SchedulerRunSkipped(Exception):
     """Inner body may raise this to persist ``skipped`` (not ``error``)."""
+
+
+# Backwards-compat alias — kept so any external tooling that imports the old
+# name continues to work; remove after one full deploy cycle.
+N8nMirrorRunSkipped = SchedulerRunSkipped
 
 
 async def run_with_scheduler_record(
@@ -34,7 +39,7 @@ async def run_with_scheduler_record(
     to_raise: BaseException | None = None
     try:
         await runner()
-    except N8nMirrorRunSkipped:
+    except SchedulerRunSkipped:
         status = "skipped"
     except Exception as e:
         to_raise = e
