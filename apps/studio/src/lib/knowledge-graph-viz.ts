@@ -1,28 +1,28 @@
 import { z } from "zod";
 
 import graphJson from "@/data/knowledge-graph.json";
-import {
-  FreshnessSchema,
-  parseKnowledgeGraphFile,
-  vizEdgesFromKnowledgeGraph,
-} from "@/lib/knowledge-graph-data";
 import { docKindToHubCategory, HUB_CATEGORY_LABEL, type HubDocCategory } from "./doc-metadata";
 
-const LegacyNodeSchema = z.object({
+const FreshnessSchema = z.enum(["fresh", "aging", "stale", "unknown"]);
+
+const RawNodeSchema = z.object({
   id: z.string(),
   slug: z.string(),
   title: z.string(),
   category: z.string(),
   read_minutes: z.number(),
-  freshness: FreshnessSchema,
   links_in: z.number(),
+  freshness: FreshnessSchema,
 });
 
-type LegacyNode = z.infer<typeof LegacyNodeSchema>;
+const LinkSchema = z.object({
+  source: z.string(),
+  target: z.string(),
+});
 
-const LegacyFileSchema = z.object({
-  nodes: z.array(LegacyNodeSchema),
-  links: z.array(z.object({ source: z.string(), target: z.string() })),
+const FileSchema = z.object({
+  nodes: z.array(RawNodeSchema),
+  links: z.array(LinkSchema),
 });
 
 export const KNOW_HOT_ZONE_MIN_LINKS = 4;
@@ -68,56 +68,20 @@ export function isKnowHotZoneNode(node: KnowledgeGraphVizNode): boolean {
 
 let cached: KnowledgeGraphVizPayload | null = null;
 
-export function payloadFromModernFile(): KnowledgeGraphVizPayload {
-  const parsed = parseKnowledgeGraphFile(graphJson);
-  return {
-    nodes: parsed.nodes.map((n): KnowledgeGraphVizNode => ({
+export function getKnowledgeGraphVizPayload(): KnowledgeGraphVizPayload {
+  if (cached) return cached;
+  const parsed = FileSchema.parse(graphJson);
+  cached = {
+    nodes: parsed.nodes.map((n) => ({
       id: n.id,
       slug: n.slug,
       title: n.title,
-      category: docKindToHubCategory(n.kind),
-      read_minutes: n.read_time_min,
+      category: docKindToHubCategory(n.category),
+      read_minutes: n.read_minutes,
       links_in: n.links_in,
       freshness: n.freshness,
     })),
-    links: vizEdgesFromKnowledgeGraph(parsed).map((l) => ({ source: l.source, target: l.target })),
+    links: parsed.links,
   };
-}
-
-function vizNodeFromLegacyRow(n: LegacyNode): KnowledgeGraphVizNode {
-  return {
-    id: n.id,
-    slug: n.slug,
-    title: n.title,
-    category: docKindToHubCategory(n.category),
-    read_minutes: n.read_minutes,
-    links_in: n.links_in,
-    freshness: n.freshness,
-  };
-}
-
-export function payloadFromLegacyFile(raw: unknown): KnowledgeGraphVizPayload {
-  const legacy = LegacyFileSchema.parse(raw);
-  return {
-    nodes: legacy.nodes.map((n) => vizNodeFromLegacyRow(n)),
-    links: legacy.links.map((l) => ({ source: l.source, target: l.target })),
-  };
-}
-
-export function getKnowledgeGraphVizPayload(): KnowledgeGraphVizPayload {
-  if (cached) return cached;
-
-  const hint = graphJson as { edges?: unknown; links?: unknown };
-  if (Array.isArray(hint.edges)) {
-    cached = payloadFromModernFile();
-  } else if (Array.isArray(hint.links)) {
-    cached = payloadFromLegacyFile(graphJson);
-  } else {
-    throw new Error("knowledge-graph.json must include `edges` (modern) or `links` (legacy)");
-  }
   return cached;
-}
-
-export function __resetKnowledgeGraphVizCacheForTests(): void {
-  cached = null;
 }
