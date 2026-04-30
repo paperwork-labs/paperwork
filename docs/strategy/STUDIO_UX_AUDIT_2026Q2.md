@@ -310,7 +310,7 @@ summary: "Read-only Studio admin UX audit for WS-76 Wave L PR-A — 56 findings 
 
 ## WS-76 Wave L PR-C — remediation log
 
-Land on branch `wave-l-pr-c/page-polish` via commit titled **feat(studio): WS-76 Wave L PR-C — page-by-page UX polish (P0/P1 findings)** (`git log --grep 'WS-76 Wave L PR-C'` on that branch for the exact SHA).
+Land on branch `wave-l-pr-c/page-polish` via commit **`1f8052d46b3142db306168c630585d60a459a384`** ([PR #487](https://github.com/paperwork-labs/paperwork/pull/487)).
 
 | ID | Done | Implementation note |
 |----|------|---------------------|
