@@ -661,6 +661,13 @@ docs:
     tags: []
     owners: [strategy]
     category: reference
+  - slug: n8n-decommission-inventory
+    path: docs/strategy/N8N_DECOMMISSION_INVENTORY.md
+    title: WS-69 PR J — n8n Decommission Inventory
+    summary: "Inventory of n8n + Slack references prior to PR J decommission. Historical record."
+    tags: [historical]
+    owners: [strategy]
+    category: reference
   # ── Plans ─────────────────────────────────────────
   - slug: axiomfolio-gaps
     path: docs/axiomfolio/plans/GAPS_2026Q2.md

@@ -4,29 +4,23 @@ on:
   pull_request:
     paths:
       - "apis/brain/app/personas/**"
-      - "apps/studio/src/data/n8n-graph.json"
       - "docs/BRAIN_PERSONAS.md"
       - "docs/AXIOMFOLIO_INTEGRATION.generated.md"
       - "docs/axiomfolio/brain/axiomfolio_tools.yaml"
-      - "infra/hetzner/workflows/**"
       - "scripts/generate_brain_personas_doc.py"
       - "scripts/generate_axiomfolio_integration_doc.py"
       - "scripts/check_doc_code_refs.py"
-      - "scripts/snapshot_n8n_graphs.py"
       - ".github/workflows/brain-personas-doc.yaml"
   push:
     branches: [main]
     paths:
       - "apis/brain/app/personas/**"
-      - "apps/studio/src/data/n8n-graph.json"
       - "docs/BRAIN_PERSONAS.md"
       - "docs/AXIOMFOLIO_INTEGRATION.generated.md"
       - "docs/axiomfolio/brain/axiomfolio_tools.yaml"
-      - "infra/hetzner/workflows/**"
       - "scripts/generate_brain_personas_doc.py"
       - "scripts/generate_axiomfolio_integration_doc.py"
       - "scripts/check_doc_code_refs.py"
-      - "scripts/snapshot_n8n_graphs.py"
   workflow_dispatch:
 
 concurrency:
@@ -68,20 +62,3 @@ jobs:
         with:
           python-version: "3.12"
       - run: python scripts/check_doc_code_refs.py
-
-  n8n-graph-snapshot:
-    name: n8n graph snapshot ↔ workflow files
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-      - name: Regenerate snapshot
-        run: python scripts/snapshot_n8n_graphs.py
-      - name: Fail if snapshot changed
-        run: |
-          if ! git diff --exit-code -- apps/studio/src/data/n8n-graph.json; then
-            echo "::error::n8n-graph.json is stale. Run: python scripts/snapshot_n8n_graphs.py"
-            exit 1
-          fi

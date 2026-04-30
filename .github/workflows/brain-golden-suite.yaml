@@ -78,7 +78,6 @@ jobs:
         run: |
           pytest -q tests/test_persona_rate_limit.py \
             tests/test_cost_dashboard.py \
-            tests/test_slack_outbound.py \
             tests/test_pii.py
 
   summary:

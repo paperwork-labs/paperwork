@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any
+from typing import Any, cast
 
 from app.personas import get_spec
 from app.schemas.expenses import ExpenseCategory  # noqa: TC001
@@ -55,7 +55,7 @@ def _parse_category_json(content: str) -> tuple[ExpenseCategory, str | None]:
         raise ValueError(f"Invalid category from CFO classifier: {cat!r}")
     reason = data.get("flagged_reason")
     fr = str(reason).strip() if reason is not None else None
-    return cat, fr or None
+    return cast("ExpenseCategory", cat), fr or None
 
 
 async def classify(

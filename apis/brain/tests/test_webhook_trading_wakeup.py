@@ -43,7 +43,9 @@ async def test_wakeup_calls_agent_with_trading_persona_pin():
 
     Brain Conversation is only created when the agent returns a non-empty response.
     """
-    fake_process = AsyncMock(return_value={"response": "Risk gate activated. Monitor position.", "persona": "trading"})
+    fake_process = AsyncMock(
+        return_value={"response": "Risk gate activated. Monitor position.", "persona": "trading"}
+    )
     fake_redis = AsyncMock(return_value=None)
     mock_db = MagicMock()
 

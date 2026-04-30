@@ -66,7 +66,7 @@ def test_build_message_includes_all_ten_checklist_steps() -> None:
 
 @pytest.mark.asyncio
 async def test_run_success_creates_conversation(
-    db_session: "AsyncSession",
+    db_session: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     @asynccontextmanager
