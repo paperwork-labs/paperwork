@@ -16,7 +16,7 @@ const CACHE_TTL = 60_000;
 
 export async function GET() {
   const data = await cached("admin:overview", CACHE_TTL, async () => {
-      const [workflows, executions, prs, infrastructure, ciRuns, brainReviews, slackActivity] =
+      const [workflows, executions, prsResult, infrastructure, ciRunsResult, brainReviews, slackActivity] =
         await Promise.all([
           getN8nWorkflows(),
           getN8nExecutions(50),
@@ -26,7 +26,7 @@ export async function GET() {
           getBrainPRReviews(50),
           getRecentSlackActivity(15),
         ]);
-    const prsWithReview = prs.map((pr) => {
+    const prsWithReview = prsResult.data.map((pr) => {
       const review = brainReviews.get(pr.number);
       return review
         ? {
@@ -41,7 +41,16 @@ export async function GET() {
           }
         : pr;
     });
-        return { workflows, executions, prs: prsWithReview, infrastructure, ciRuns, slackActivity };
+        return {
+          workflows,
+          executions,
+          prs: prsWithReview,
+          infrastructure,
+          ciRuns: ciRunsResult.data,
+          githubPrMissingCred: prsResult.missingCred,
+          githubCiMissingCred: ciRunsResult.missingCred,
+          slackActivity,
+        };
       });
 
   return NextResponse.json({

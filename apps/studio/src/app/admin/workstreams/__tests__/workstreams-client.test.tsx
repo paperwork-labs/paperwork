@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import workstreamsJson from "@/data/workstreams.json";
 import {
@@ -9,6 +9,12 @@ import {
 } from "@/lib/workstreams/schema";
 
 import { WorkstreamsBoardClient } from "../workstreams-client";
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => ({ replace: vi.fn() }),
+  usePathname: () => "/admin/workstreams",
+}));
 
 const parsedFixture = WorkstreamsFileSchema.parse(workstreamsJson);
 
@@ -26,9 +32,8 @@ describe("WorkstreamsBoardClient", () => {
     expect(screen.getByText("Active workstreams")).toBeTruthy();
     expect(screen.getByText("Cancelled")).toBeTruthy();
     expect(screen.getByText("Avg % done")).toBeTruthy();
-    expect(
-      screen.getByText(/Workstreams board \(Track Z\)/i),
-    ).toBeTruthy();
+    expect(screen.getByText(/Track Z · read-only/i)).toBeTruthy();
+    expect(screen.getByText(/Cross-cutting work logs across the company/i)).toBeTruthy();
   });
 
   it("renders stale data banner when provided", () => {

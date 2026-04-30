@@ -310,9 +310,21 @@ export async function getN8nExecutions(limit = 20) {
   return data?.data ?? [];
 }
 
-export async function getRecentPullRequests(limit = 5) {
+export type MissingGithubCredential = "GITHUB_TOKEN";
+
+export type RecentPullRequestsResult = {
+  data: PullRequestSummary[];
+  missingCred?: MissingGithubCredential;
+};
+
+export type RecentCIRunsResult = {
+  data: CIRun[];
+  missingCred?: MissingGithubCredential;
+};
+
+export async function getRecentPullRequests(limit = 5): Promise<RecentPullRequestsResult> {
   const token = process.env.GITHUB_TOKEN;
-  if (!token) return [];
+  if (!token) return { data: [], missingCred: "GITHUB_TOKEN" };
   const data = await fetchJson<PullRequestSummary[]>(
     `https://api.github.com/repos/paperwork-labs/paperwork/pulls?state=open&per_page=${limit}`,
     {
@@ -322,7 +334,7 @@ export async function getRecentPullRequests(limit = 5) {
       },
     },
   );
-  return data ?? [];
+  return { data: data ?? [] };
 }
 
 export type BrainPRReview = {
@@ -545,9 +557,9 @@ export type CIRun = {
   updatedAt: string;
 };
 
-export async function getRecentCIRuns(limit = 10): Promise<CIRun[]> {
+export async function getRecentCIRuns(limit = 10): Promise<RecentCIRunsResult> {
   const token = process.env.GITHUB_TOKEN;
-  if (!token) return [];
+  if (!token) return { data: [], missingCred: "GITHUB_TOKEN" };
   const data = await fetchJson<{ workflow_runs?: Array<{
     id: number;
     name: string;
@@ -565,15 +577,17 @@ export async function getRecentCIRuns(limit = 10): Promise<CIRun[]> {
       },
     },
   );
-  return (data?.workflow_runs ?? []).map((r) => ({
-    id: r.id,
-    name: r.name,
-    status: r.status,
-    conclusion: r.conclusion,
-    url: r.html_url,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-  }));
+  return {
+    data: (data?.workflow_runs ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      status: r.status,
+      conclusion: r.conclusion,
+      url: r.html_url,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
+    })),
+  };
 }
 
 async function checkWithLatency(
