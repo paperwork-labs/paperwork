@@ -171,6 +171,19 @@ export function loadDocHubEntries(): DocHubEntry[] {
   return rows;
 }
 
+/** Full file on disk (including YAML frontmatter) for Studio editor + PR flow. */
+export function loadDocRaw(slug: string): { entry: DocEntry; raw: string } | null {
+  const entry = findDocBySlug(slug);
+  if (!entry) return null;
+  const full = path.join(repoRoot(), entry.path);
+  try {
+    const raw = fs.readFileSync(full, "utf-8");
+    return { entry, raw };
+  } catch {
+    return null;
+  }
+}
+
 export type DocContent = {
   entry: DocEntry;
   markdown: string;
