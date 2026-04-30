@@ -263,37 +263,48 @@ def resolve_expense_linked_conversation(
     from app.services import conversations as conv_svc
 
     out: dict[str, Any] = {}
+    derived = derived_repo_root_from_expense_store()
 
     def mutate(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        old_root = os.environ.get("REPO_ROOT")
+        if derived is not None:
+            os.environ["REPO_ROOT"] = derived
         try:
-            conv_inner = conv_svc.get_conversation(conversation_id)
-        except KeyError as exc:
-            raise ValueError(f"Conversation {conversation_id!r} not found") from exc
-        if conv_inner.links is None or not conv_inner.links.expense_id:
-            raise ValueError("Conversation has no expense_id link")
-        eid = conv_inner.links.expense_id
-        for i, raw in enumerate(rows):
-            if raw.get("id") != eid:
-                continue
-            expense = _parse_expense(raw)
-            if expense is None:
-                raise ValueError("Linked expense row is invalid")
-            if expense.conversation_id != conversation_id:
-                raise ValueError("Expense is not linked to this conversation")
-            updated = _apply_expense_action(expense, expense_action, new_category)
-            rows[i] = updated.model_dump(mode="json")
-            conv_done = conv_inner.model_copy(
-                update={
-                    "status": "resolved",
-                    "updated_at": datetime.now(UTC),
-                    "needs_founder_action": False,
-                }
-            )
-            conv_svc._save_conversation(conv_done)
-            out["expense"] = updated
-            out["conversation"] = conv_done
-            return rows
-        raise ValueError("Linked expense not found in store")
+            try:
+                conv_inner = conv_svc.get_conversation(conversation_id)
+            except KeyError as exc:
+                raise ValueError(f"Conversation {conversation_id!r} not found") from exc
+            if conv_inner.links is None or not conv_inner.links.expense_id:
+                raise ValueError("Conversation has no expense_id link")
+            eid = conv_inner.links.expense_id
+            for i, raw in enumerate(rows):
+                if raw.get("id") != eid:
+                    continue
+                expense = _parse_expense(raw)
+                if expense is None:
+                    raise ValueError("Linked expense row is invalid")
+                if expense.conversation_id != conversation_id:
+                    raise ValueError("Expense is not linked to this conversation")
+                updated = _apply_expense_action(expense, expense_action, new_category)
+                rows[i] = updated.model_dump(mode="json")
+                conv_done = conv_inner.model_copy(
+                    update={
+                        "status": "resolved",
+                        "updated_at": datetime.now(UTC),
+                        "needs_founder_action": False,
+                    }
+                )
+                conv_svc._save_conversation(conv_done)
+                out["expense"] = updated
+                out["conversation"] = conv_done
+                return rows
+            raise ValueError("Linked expense not found in store")
+        finally:
+            if derived is not None:
+                if old_root is None:
+                    os.environ.pop("REPO_ROOT", None)
+                else:
+                    os.environ["REPO_ROOT"] = old_root
 
     _locked_read_write(mutate)
     return out["expense"], out["conversation"]

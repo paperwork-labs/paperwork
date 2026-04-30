@@ -113,7 +113,7 @@ describe("OperatingScoreGaugeBody", () => {
     expect(gateRow.textContent).toMatch(/L5:\s*FAIL/);
   });
 
-  it("pillar table shows 10 rows", () => {
+  it("pillar table shows header plus one row per canonical pillar", () => {
     const current = entryWithTotal(80);
     const data: OperatingScoreResponse = {
       current,
@@ -123,7 +123,7 @@ describe("OperatingScoreGaugeBody", () => {
     render(<OperatingScoreGaugeBody data={data} brainConfigured />);
     const tbl = screen.getByTestId("operating-score-pillar-table");
     const rows = within(tbl).getAllByRole("row");
-    expect(rows.length).toBe(11);
+    expect(rows.length).toBe(OPERATING_SCORE_PILLAR_ORDER.length + 1);
   });
 
   it("trend arrows from history (last two entries)", () => {

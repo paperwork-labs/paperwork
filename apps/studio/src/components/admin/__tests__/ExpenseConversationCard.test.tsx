@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Conversation } from "@/types/conversations";
@@ -45,6 +45,7 @@ const sampleExpense: Expense = {
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  cleanup();
 });
 
 describe("ExpenseConversationCard", () => {

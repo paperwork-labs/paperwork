@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
@@ -29,6 +29,7 @@ const baseRules: ExpenseRoutingRules = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  cleanup();
   global.fetch = vi.fn().mockResolvedValue({
     ok: true,
     json: async () => ({ success: true, data: { items: [], total: 0, has_more: false } }),
