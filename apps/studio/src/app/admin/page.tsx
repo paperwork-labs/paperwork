@@ -10,6 +10,7 @@ import {
   getRecentPullRequests,
   getRecentSlackActivity,
 } from "@/lib/command-center";
+import { PushSubscribeCard } from "@/components/pwa/PushSubscribeCard";
 import { TrackersRail } from "./_components/trackers-rail";
 import OverviewClient from "./overview-client";
 
@@ -45,6 +46,7 @@ export default async function AdminOverviewPage() {
 
   return (
     <div className="space-y-6">
+      <PushSubscribeCard />
       <TrackersRail />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <OperatingScoreGauge />
