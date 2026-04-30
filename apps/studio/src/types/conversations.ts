@@ -52,6 +52,8 @@ export interface Conversation {
   snooze_until: string | null;
   parent_action_id: string | null;
   links?: ConversationLinks | null;
+  /** Brain field — optional on older persisted rows; inbox treats undefined as unknown. */
+  needs_founder_action?: boolean;
 }
 
 export interface ConversationsListPage {

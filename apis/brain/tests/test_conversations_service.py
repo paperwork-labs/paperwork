@@ -255,6 +255,14 @@ def test_unread_count_needs_action() -> None:
     assert count == 2
 
 
+def test_needs_action_badge_metrics_includes_critical_flag() -> None:
+    svc.create_conversation(_make_create(urgency="critical"))
+    svc.create_conversation(_make_create(urgency="high"))
+    metrics = svc.needs_action_badge_metrics(status_filter="needs-action")
+    assert metrics["count"] == 2
+    assert metrics["has_critical"] is True
+
+
 # ---------------------------------------------------------------------------
 # backfill
 # ---------------------------------------------------------------------------
@@ -314,9 +322,44 @@ def test_backfill_from_json_fallback(tmp_path: Path, monkeypatch: pytest.MonkeyP
 
     page = svc.list_conversations(status_filter="needs-action")
     assert page.total == 2
+    for c in page.items:
+        assert c.needs_founder_action is True
     titles = {c.title for c in page.items}
     assert "Fix the broken pipeline" in titles
     assert "Rotate API key" in titles
+
+
+def test_backfill_reads_brain_data_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """apis/brain/data/founder_actions.json is used when YAML + Studio JSON are absent."""
+    data_dir = tmp_path / "apis" / "brain" / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("REPO_ROOT", str(tmp_path))
+    payload = {
+        "tiers": [
+            {
+                "id": "operational",
+                "items": [
+                    {
+                        "title": "Brain JSON only item",
+                        "why": "w",
+                        "where": "x",
+                        "steps": [],
+                        "verification": "y",
+                        "eta": "1h",
+                        "runbookUrl": "https://example.com",
+                        "source": "runbook",
+                    }
+                ],
+            }
+        ],
+        "counts": {},
+    }
+    (data_dir / "founder_actions.json").write_text(json.dumps(payload), encoding="utf-8")
+    first = svc.backfill_founder_actions_detailed()
+    assert first.created == 1
+    assert first.source_kind == "brain_json"
+    second = svc.backfill_founder_actions_detailed()
+    assert second.created == 0
 
 
 def test_backfill_is_idempotent(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

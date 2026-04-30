@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getE2EConversationsBadge } from "@/lib/e2e-conversations-fixture";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 
 export const dynamic = "force-dynamic";
@@ -11,20 +10,20 @@ function notConfigured() {
   );
 }
 
-/** Returns { count, has_critical } for sidebar + PWA badge (WS-76 PR-2 extends shape). */
-export async function GET() {
+/** Proxies Brain founder-actions → Conversations idempotent backfill (WS-76 PR-2). */
+export async function POST() {
   if (process.env.STUDIO_E2E_FIXTURE === "1") {
-    const b = getE2EConversationsBadge();
     return NextResponse.json({
       success: true,
-      data: { count: b.count, has_critical: b.hasCritical },
+      data: { created: 0, source_kind: "e2e_fixture", parse_error: null },
     });
   }
 
   const auth = getBrainAdminFetchOptions();
   if (!auth.ok) return notConfigured();
 
-  const res = await fetch(`${auth.root}/admin/conversations/unread-count`, {
+  const res = await fetch(`${auth.root}/admin/conversations/_backfill-founder-actions`, {
+    method: "POST",
     headers: { "X-Brain-Secret": auth.secret },
     cache: "no-store",
   });

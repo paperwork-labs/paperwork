@@ -174,6 +174,11 @@ export function AdminLayoutClient({ children, founderPending, expensesPending }:
                         <span className="flex shrink-0 flex-col items-end gap-0.5">
                           {showPendingBadge ? (
                             <span
+                              data-testid={
+                                item.href === "/admin/brain/conversations"
+                                  ? "conversations-sidebar-badge"
+                                  : undefined
+                              }
                               className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums ${
                                 badge.hasCritical
                                   ? "bg-red-500/20 text-red-300"

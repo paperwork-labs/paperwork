@@ -19,9 +19,10 @@ import os
 import sqlite3
 import tempfile
 import threading
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 import yaml
@@ -479,63 +480,133 @@ def unread_count(status_filter: str = "needs-action") -> int:
     return page.total
 
 
+def needs_action_badge_metrics(status_filter: str = "needs-action") -> dict[str, int | bool]:
+    """Count + whether any matching row is urgency=critical (sidebar badge styling)."""
+    page = list_conversations(status_filter=status_filter, limit=10_000)
+    return {
+        "count": page.total,
+        "has_critical": any(c.urgency == "critical" for c in page.items),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Backfill
 # ---------------------------------------------------------------------------
 
+SourceKind = Literal["yaml", "brain_json", "studio_json", "none"]
+
+
+@dataclass(frozen=True)
+class FounderActionsBackfillResult:
+    """Outcome of ``backfill_founder_actions_detailed`` for admin + Studio callers."""
+
+    created: int
+    source_kind: SourceKind
+    parse_error: str | None = None
+
 
 def backfill_from_founder_actions_yaml(path: Path | None = None) -> int:
-    """One-shot migration: read legacy founder_actions data → create Conversations.
+    """Compatibility wrapper — returns only the created count."""
+    return backfill_founder_actions_detailed(path=path).created
 
-    Supports two source formats:
-    - YAML at ``path`` (or ``apis/brain/data/founder_actions.yaml`` if not found)
-    - JSON at ``apps/studio/src/data/founder-actions.json`` (Studio-built cache)
 
-    Each action item becomes one Conversation with:
-    - status = "needs-action"
-    - urgency derived from tier ("critical" tier → "critical", else "normal")
-    - parent_action_id = item title (slugified) for traceability
+def backfill_founder_actions_detailed(path: Path | None = None) -> FounderActionsBackfillResult:
+    """Import founder action tiers → Conversations (idempotent).
 
-    Returns the number of new conversations created (skips duplicates).
+    Resolution order:
+    1. Explicit ``path`` when provided (``.yaml`` via PyYAML, ``.json`` via stdlib json)
+    2. ``apis/brain/data/founder_actions.yaml``
+    3. ``apis/brain/data/founder_actions.json`` (canonical JSON sibling to YAML)
+    4. ``apps/studio/src/data/founder-actions.json`` (Studio sync output)
+
+    Idempotency: there is no ``source_ref`` field on ``Conversation`` today; we use
+    ``parent_action_id = slugify(title)`` as the stable dedup key (same title → same row).
+
+    Each new row uses ``needs_founder_action=True`` so status is ``needs-action`` and
+    founder notifications behave consistently.
     """
-    # Resolve data source
     data: dict[str, Any] | None = None
+    source_kind: SourceKind = "none"
+    parse_error: str | None = None
+    resolved_path: Path | None = None
 
-    if path is None:
-        path = _data_dir() / "founder_actions.yaml"
+    def _try_load_json(p: Path, kind: SourceKind) -> None:
+        nonlocal data, source_kind, parse_error, resolved_path
+        if data is not None:
+            return
+        if not p.exists():
+            return
+        try:
+            raw_json = p.read_text(encoding="utf-8")
+            data = json.loads(raw_json)
+            source_kind = kind
+            resolved_path = p
+            parse_error = None
+            logger.info("backfill: loaded JSON from %s", p)
+        except (OSError, json.JSONDecodeError) as exc:
+            parse_error = f"failed to read JSON {p}: {exc}"
+            logger.error("backfill: %s", parse_error)
 
-    if path.exists():
+    if path is not None and path.exists():
+        resolved_path = path
         try:
             raw = path.read_text(encoding="utf-8")
-            data = yaml.safe_load(raw)
-        except (OSError, yaml.YAMLError) as exc:
-            logger.error("backfill: failed to read YAML %s: %s", path, exc)
+            suf = path.suffix.lower()
+            if suf in {".yaml", ".yml"}:
+                data = yaml.safe_load(raw)
+                source_kind = "yaml"
+            elif suf == ".json":
+                data = json.loads(raw)
+                name = path.name.lower()
+                source_kind = "studio_json" if "founder-actions" in name else "brain_json"
+            else:
+                data = yaml.safe_load(raw)
+                source_kind = "yaml"
+            parse_error = None
+        except (OSError, yaml.YAMLError, json.JSONDecodeError) as exc:
+            parse_error = f"failed to read {path}: {exc}"
+            logger.error("backfill: %s", parse_error)
+            return FounderActionsBackfillResult(
+                created=0,
+                source_kind="none",
+                parse_error=parse_error,
+            )
 
     if data is None:
-        # Fall back to the Studio-built JSON cache.
-        # Monorepo root is 3 levels up from the data dir (data -> brain -> apis -> repo root),
-        # or from REPO_ROOT env var if available.
+        default_yaml = _data_dir() / "founder_actions.yaml"
+        if default_yaml.exists():
+            try:
+                raw = default_yaml.read_text(encoding="utf-8")
+                data = yaml.safe_load(raw)
+                source_kind = "yaml"
+                resolved_path = default_yaml
+                parse_error = None
+                logger.info("backfill: using YAML at %s", default_yaml)
+            except (OSError, yaml.YAMLError) as exc:
+                logger.warning("backfill: could not read default YAML %s: %s", default_yaml, exc)
+
+    if data is None:
+        _try_load_json(_data_dir() / "founder_actions.json", "brain_json")
+
+    if data is None:
         repo_root_env = os.environ.get("REPO_ROOT", "").strip()
         monorepo_root = Path(repo_root_env) if repo_root_env else _data_dir().parents[2]
-        json_fallback = monorepo_root / "apps" / "studio" / "src" / "data" / "founder-actions.json"
-        if json_fallback.exists():
-            try:
-                raw_json = json_fallback.read_text(encoding="utf-8")
-                data = json.loads(raw_json)
-                logger.info("backfill: using JSON fallback at %s", json_fallback)
-            except (OSError, json.JSONDecodeError) as exc:
-                logger.error("backfill: failed to read JSON fallback %s: %s", json_fallback, exc)
+        studio_json = monorepo_root / "apps" / "studio" / "src" / "data" / "founder-actions.json"
+        _try_load_json(studio_json, "studio_json")
+
+    if parse_error and data is None:
+        return FounderActionsBackfillResult(created=0, source_kind="none", parse_error=parse_error)
 
     if data is None:
         logger.warning("backfill: no founder_actions source found — skipping")
-        return 0
+        return FounderActionsBackfillResult(created=0, source_kind="none", parse_error=None)
 
     tiers: list[dict[str, Any]] = data.get("tiers", [])
     if not tiers:
-        logger.warning("backfill: founder_actions.yaml has no tiers — nothing to import")
-        return 0
+        msg = "founder_actions payload has no tiers — nothing to import"
+        logger.warning("backfill: %s", msg)
+        return FounderActionsBackfillResult(created=0, source_kind=source_kind, parse_error=msg)
 
-    # Index existing parent_action_ids to stay idempotent
     existing_ids: set[str] = set()
     for cid in _list_all_ids():
         conv = _load_conversation(cid)
@@ -545,18 +616,18 @@ def backfill_from_founder_actions_yaml(path: Path | None = None) -> int:
     created = 0
     for tier in tiers:
         tier_id: str = tier.get("id", "")
-        urgency: UrgencyLevel = "critical" if tier_id == "critical" else "normal"
+        tier_urgency: UrgencyLevel = "critical" if tier_id == "critical" else "normal"
         items: list[dict[str, Any]] = tier.get("items", [])
         for item in items:
-            title: str = item.get("title", "").strip()
+            title = str(item.get("title", "")).strip()
             if not title:
                 continue
+            # Stable dedup key — mirrors a future ``source_ref`` for founder-action imports.
             parent_action_id = _slugify(title)
             if parent_action_id in existing_ids:
                 logger.debug("backfill: skipping duplicate %r", parent_action_id)
                 continue
 
-            # Build body from available fields
             parts: list[str] = []
             if item.get("why"):
                 parts.append(f"**Why:** {item['why']}")
@@ -564,29 +635,45 @@ def backfill_from_founder_actions_yaml(path: Path | None = None) -> int:
                 parts.append(f"**Where:** {item['where']}")
             steps = item.get("steps", [])
             if steps:
-                parts.append("**Steps:**\n" + "\n".join(steps))
+                parts.append("**Steps:**\n" + "\n".join(str(s) for s in steps))
             if item.get("verification"):
                 parts.append(f"**Verification:** {item['verification']}")
             if item.get("eta"):
                 parts.append(f"**ETA:** {item['eta']}")
             body_md = "\n\n".join(parts)
 
+            raw_urgency = item.get("urgency")
+            urgency: UrgencyLevel = tier_urgency
+            if raw_urgency in ("info", "normal", "high", "critical"):
+                urgency = raw_urgency
+
+            tags: list[str] = [tier_id, "founder-action"]
+            src = item.get("source")
+            if isinstance(src, str) and src.strip():
+                slug = _slugify(src)[:40]
+                if slug:
+                    tags.append(f"founder-src-{slug}")
+
             create = ConversationCreate(
                 title=title,
                 body_md=body_md,
-                tags=[tier_id, "founder-action"],
+                tags=tags,
                 urgency=urgency,
                 parent_action_id=parent_action_id,
+                needs_founder_action=True,
             )
             conv = create_conversation(create)
-            # Override status to needs-action for all backfill items
-            update_conversation_status(conv.id, "needs-action")
             existing_ids.add(parent_action_id)
             created += 1
             logger.info("backfill: created conversation %r (%s)", conv.id, title)
 
-    logger.info("backfill: created %d conversations from %s", created, path)
-    return created
+    logger.info(
+        "backfill: created %d conversations (source=%s path=%s)",
+        created,
+        source_kind,
+        resolved_path,
+    )
+    return FounderActionsBackfillResult(created=created, source_kind=source_kind, parse_error=None)
 
 
 def _slugify(text: str) -> str:

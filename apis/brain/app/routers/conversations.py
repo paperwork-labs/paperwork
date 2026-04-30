@@ -91,9 +91,9 @@ def get_unread_count(
     ),
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
-    """Return conversation count matching *filter* (for PWA badge, PR I consumer)."""
-    count = conv_svc.unread_count(status_filter=status_filter)
-    return success_response({"count": count})
+    """Return conversation count + critical flag (sidebar badge, PWA)."""
+    metrics = conv_svc.needs_action_badge_metrics(status_filter=status_filter)
+    return success_response(metrics)
 
 
 # ---------------------------------------------------------------------------
@@ -248,6 +248,11 @@ def search_conversations(
 def backfill_founder_actions(
     _auth: None = Depends(_require_admin),
 ) -> JSONResponse:
-    """One-shot migration: import legacy founder_actions.yaml into Conversations."""
-    created = conv_svc.backfill_from_founder_actions_yaml()
-    return success_response({"created": created})
+    """Import founder_actions YAML/JSON → Conversations (idempotent)."""
+    result = conv_svc.backfill_founder_actions_detailed()
+    payload = {
+        "created": result.created,
+        "source_kind": result.source_kind,
+        "parse_error": result.parse_error,
+    }
+    return success_response(payload)
