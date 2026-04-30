@@ -1,5 +1,3 @@
-import { Suspense } from "react";
-
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import OverviewTab from "./tabs/overview-tab";
 import AnalyticsTab from "./tabs/analytics-tab";
@@ -8,52 +6,27 @@ import DataSourcesTab from "./tabs/data-sources-tab";
 
 export const dynamic = "force-dynamic";
 
-function TabSkeleton() {
-  return (
-    <div className="flex flex-col gap-3 py-4" aria-busy="true">
-      <div className="h-8 w-full max-w-md animate-pulse rounded-md bg-zinc-800" />
-      <div className="h-48 w-full animate-pulse rounded-lg bg-zinc-800" />
-    </div>
-  );
-}
-
 export default function ArchitecturePage() {
   const tabs = [
     {
       id: "overview" as const,
       label: "Overview",
-      content: (
-        <Suspense fallback={<TabSkeleton />}>
-          <OverviewTab />
-        </Suspense>
-      ),
+      content: <OverviewTab />,
     },
     {
       id: "analytics" as const,
       label: "Analytics",
-      content: (
-        <Suspense fallback={<TabSkeleton />}>
-          <AnalyticsTab />
-        </Suspense>
-      ),
+      content: <AnalyticsTab />,
     },
     {
       id: "flows" as const,
       label: "Flows",
-      content: (
-        <Suspense fallback={<TabSkeleton />}>
-          <FlowsTab />
-        </Suspense>
-      ),
+      content: <FlowsTab />,
     },
     {
       id: "data-sources" as const,
       label: "Data Sources",
-      content: (
-        <Suspense fallback={<TabSkeleton />}>
-          <DataSourcesTab />
-        </Suspense>
-      ),
+      content: <DataSourcesTab />,
     },
   ] as const;
 
