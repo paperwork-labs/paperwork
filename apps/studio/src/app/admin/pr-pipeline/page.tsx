@@ -22,24 +22,51 @@ function badge(bucket: "green" | "yellow" | "red") {
   );
 }
 
-export default async function PrPipelinePage() {
+type PrPipelineContentProps = {
+  showHeader?: boolean;
+};
+
+export async function PrPipelineContent({ showHeader = true }: PrPipelineContentProps = {}) {
   const data = await getPrPipelineDashboardCached();
   const githubTokenMissing =
     typeof data.error === "string" && data.error.includes("GITHUB_TOKEN");
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-100 md:text-2xl">PR pipeline</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Agent auto-merge, auto-rebase, and stuck-PR triage. Cached ~60s on the
-          server; refresh the page to reload.
-        </p>
-        {data.fetchedAt ? (
-          <p className="mt-1 font-mono text-xs text-zinc-600">Fetched {data.fetchedAt}</p>
-        ) : null}
-        {githubTokenMissing ? (
-          <div className="mt-4">
+      {showHeader ? (
+        <div>
+          <h1 className="text-xl font-semibold text-zinc-100 md:text-2xl">PR pipeline</h1>
+          <p className="mt-1 text-sm text-zinc-500">
+            Agent auto-merge, auto-rebase, and stuck-PR triage. Cached ~60s on the
+            server; refresh the page to reload.
+          </p>
+          {data.fetchedAt ? (
+            <p className="mt-1 font-mono text-xs text-zinc-600">Fetched {data.fetchedAt}</p>
+          ) : null}
+          {githubTokenMissing ? (
+            <div className="mt-4">
+              <HqMissingCredCard
+                service="GitHub"
+                envVar="GITHUB_TOKEN"
+                reconnectAction={{
+                  label: "Reconnect",
+                  href: "https://vercel.com/docs/projects/environment-variables",
+                }}
+                docsLink="https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/PR_PIPELINE_AUTOMATION.md"
+              />
+            </div>
+          ) : data.error ? (
+            <p className="mt-3 rounded-lg border border-[var(--status-warning)]/30 bg-[var(--status-warning-bg)] px-3 py-2 text-sm text-[var(--status-warning)]">
+              {data.error}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <>
+          {data.fetchedAt ? (
+            <p className="font-mono text-xs text-zinc-600">Fetched {data.fetchedAt}</p>
+          ) : null}
+          {githubTokenMissing ? (
             <HqMissingCredCard
               service="GitHub"
               envVar="GITHUB_TOKEN"
@@ -49,13 +76,13 @@ export default async function PrPipelinePage() {
               }}
               docsLink="https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/PR_PIPELINE_AUTOMATION.md"
             />
-          </div>
-        ) : data.error ? (
-          <p className="mt-3 rounded-lg border border-[var(--status-warning)]/30 bg-[var(--status-warning-bg)] px-3 py-2 text-sm text-[var(--status-warning)]">
-            {data.error}
-          </p>
-        ) : null}
-      </div>
+          ) : data.error ? (
+            <p className="rounded-lg border border-[var(--status-warning)]/30 bg-[var(--status-warning-bg)] px-3 py-2 text-sm text-[var(--status-warning)]">
+              {data.error}
+            </p>
+          ) : null}
+        </>
+      )}
 
       <section className="space-y-3">
         <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-zinc-500">
@@ -220,4 +247,8 @@ export default async function PrPipelinePage() {
       </section>
     </div>
   );
+}
+
+export default async function PrPipelinePage() {
+  return <PrPipelineContent />;
 }

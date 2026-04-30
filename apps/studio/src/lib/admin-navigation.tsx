@@ -2,13 +2,11 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Shield,
-  Rocket,
   Target,
   ListChecks,
   Boxes,
   BookOpen,
   Sparkles,
-  GitBranch,
   Kanban,
   Workflow,
   Receipt,
@@ -66,9 +64,7 @@ export function buildNavGroups(
         { href: "/admin/goals", label: "Goals", icon: Target },
         { href: "/admin/calendar", label: "Calendar", icon: CalendarIcon },
         { href: "/admin/products", label: "Products", icon: Boxes },
-        { href: "/admin/sprints", label: "Sprints", icon: Rocket },
         { href: "/admin/workstreams", label: "Workstreams", icon: Kanban },
-        { href: "/admin/pr-pipeline", label: "PR pipeline", icon: GitBranch },
       ],
     },
     {

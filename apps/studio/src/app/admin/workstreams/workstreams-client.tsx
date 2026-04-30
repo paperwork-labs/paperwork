@@ -40,6 +40,7 @@ import { SortableWorkstreamRow } from "./sortable-workstream-row";
 export type WorkstreamsBoardClientProps = {
   parsedFile: WorkstreamsFile;
   kpis: WorkstreamKpis;
+  showHeader?: boolean;
   /** Shown when live Brain fetch failed or returned invalid data (build snapshot in use). */
   staleDataBanner?: string | null;
   /** When Brain returned a freshness envelope — relative time since ``generated_at``. */
@@ -79,6 +80,7 @@ function chipClass(active: boolean) {
 export function WorkstreamsBoardClient({
   parsedFile,
   kpis,
+  showHeader = true,
   staleDataBanner = null,
   brainFreshnessBanner = null,
   bundledFallbackBanner = null,
@@ -250,18 +252,20 @@ export function WorkstreamsBoardClient({
   return (
     <>
       <div className="space-y-6">
-        <HqPageHeader
-          title="Workstreams"
-          subtitle="Cross-cutting work logs across the company"
-          actions={
-            <>
-              <Kanban className="h-5 w-5 text-violet-300" aria-hidden />
-              <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
-                Track Z · read-only
-              </span>
-            </>
-          }
-        />
+        {showHeader ? (
+          <HqPageHeader
+            title="Workstreams"
+            subtitle="Cross-cutting work logs across the company"
+            actions={
+              <>
+                <Kanban className="h-5 w-5 text-violet-300" aria-hidden />
+                <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] uppercase tracking-wide text-zinc-400">
+                  Track Z · read-only
+                </span>
+              </>
+            }
+          />
+        ) : null}
 
         {bundledFallbackBanner ? (
           <div
