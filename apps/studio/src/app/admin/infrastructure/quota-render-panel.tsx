@@ -10,7 +10,12 @@ import {
   toneAccentClass,
 } from "@/lib/quota-monitor-format";
 import type { RenderQuotaApiPayload, RenderTopServiceMinutes } from "@/lib/quota-monitor-types";
-import { QuotaPanelFrame, fetchBrainEnvelope, quotaBar } from "./quota-shared";
+import {
+  QuotaPanelFrame,
+  QUOTA_CRON_STALE_THRESHOLD_MINUTES,
+  fetchBrainEnvelope,
+  quotaBar,
+} from "./quota-shared";
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 
 const API = "/api/admin/quota/render";
@@ -98,6 +103,7 @@ export default function QuotaRenderPanel(props: { refreshSignal: number }) {
       recordedIso={recordedIso}
       worstPctGuess={worstPct}
       headline={headline}
+      staleThresholdMinutes={QUOTA_CRON_STALE_THRESHOLD_MINUTES.render}
     >
       {!loading && !error && snap ? (
         <div className="space-y-4 text-xs">

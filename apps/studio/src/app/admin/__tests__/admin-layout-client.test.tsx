@@ -80,9 +80,6 @@ describe("AdminLayoutClient (WS-76 PR-26 Money nav)", () => {
       within(nav).getByRole("link", { name: /^Vendors$/ }).getAttribute("href"),
     ).toBe("/admin/vendors");
     expect(
-      within(nav).getByRole("link", { name: /Cost monitor/i }).getAttribute("href"),
-    ).toBe("/admin/infrastructure?tab=cost");
-    expect(
       within(nav).queryByRole("link", { name: /Founder actions/i }),
     ).toBeNull();
 

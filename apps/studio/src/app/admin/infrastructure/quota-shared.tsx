@@ -12,6 +12,23 @@ import {
   type ThresholdTone,
 } from "@/lib/quota-monitor-format";
 
+/** Vendor cron cadence differs — stale banner thresholds per quota panel (minutes). */
+export const QUOTA_CRON_STALE_THRESHOLD_MINUTES = {
+  /** GH Actions org billing snapshot — daily cron */
+  githubActions: 1500,
+  vercel: 420,
+  render: 420,
+  default: 60,
+} as const;
+
+export function formatStaleAgeLabel(minutes: number): string {
+  if (minutes >= 60 && minutes % 60 === 0) {
+    const h = minutes / 60;
+    return `${h} hour${h === 1 ? "" : "s"}`;
+  }
+  return `${minutes} minutes`;
+}
+
 export async function fetchBrainEnvelope<T>(
   path: string,
 ): Promise<{ data: T | null; httpStatus: number; error: string | null }> {
@@ -64,6 +81,8 @@ type QuotaPanelFrameProps = {
   recordedIso: string | null | undefined;
   worstPctGuess: number;
   headline: string;
+  /** Minutes before snapshot is treated as stale (cron cadence varies by vendor). */
+  staleThresholdMinutes?: number;
   children?: ReactNode;
 };
 
@@ -79,6 +98,7 @@ export function QuotaPanelFrame({
   recordedIso,
   worstPctGuess,
   headline,
+  staleThresholdMinutes = QUOTA_CRON_STALE_THRESHOLD_MINUTES.default,
   children,
 }: QuotaPanelFrameProps) {
   const glanceTone = thresholdToneFromPct(worstPctGuess);
@@ -126,11 +146,11 @@ export function QuotaPanelFrame({
                 Last checked: <span className="font-mono text-zinc-400">{recordedIso}</span>
               </p>
             ) : null}
-            {isStaleIso(recordedIso ?? null, 60) && recordedIso ? (
+            {isStaleIso(recordedIso ?? null, staleThresholdMinutes) && recordedIso ? (
               <p className="flex items-start gap-1.5 rounded-md border border-amber-900/35 bg-amber-950/25 px-2 py-1.5 text-xs text-amber-200">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
-                Snapshot older than 60 minutes — schedulers may be stuck. Verified at{" "}
-                <span className="font-mono">{recordedIso}</span>.
+                Snapshot older than {formatStaleAgeLabel(staleThresholdMinutes)} — schedulers may be
+                stuck. Verified at <span className="font-mono">{recordedIso}</span>.
               </p>
             ) : null}
             {children}

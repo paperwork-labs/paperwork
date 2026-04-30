@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import workstreamsJson from "@/data/workstreams.json";
 
@@ -36,6 +36,7 @@ const fetchMock = vi.fn();
 describe("/admin/workstreams page module", () => {
   beforeEach(() => {
     vi.resetModules();
+    vi.unstubAllEnvs();
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockImplementation(async (url: string | URL) => {
       if (String(url).includes("/api/admin/workstreams")) {
@@ -48,6 +49,10 @@ describe("/admin/workstreams page module", () => {
     });
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   it("parses seeded workstreams.json without error", () => {
     const file = WorkstreamsFileSchema.parse(workstreamsJson);
     const kpis = computeKpis(file);
@@ -55,6 +60,8 @@ describe("/admin/workstreams page module", () => {
   });
 
   it("default export resolves to rendered markup when Brain proxy returns JSON", async () => {
+    vi.stubEnv("BRAIN_API_URL", "http://brain.test");
+    vi.stubEnv("BRAIN_API_SECRET", "test-secret");
     const { default: AdminWorkstreamsPage } = await import("../page");
     const tree = await AdminWorkstreamsPage();
     expect(tree).toBeTruthy();
@@ -65,13 +72,13 @@ describe("/admin/workstreams page module", () => {
     );
   });
 
-  it("shows bundled fallback banner when Brain proxy returns 5xx", async () => {
+  it("surfaces error when Brain is configured and proxy returns 5xx", async () => {
+    vi.stubEnv("BRAIN_API_URL", "http://brain.test");
+    vi.stubEnv("BRAIN_API_SECRET", "test-secret");
     fetchMock.mockImplementation(async () => new Response("", { status: 503 }));
     const { default: AdminWorkstreamsPage } = await import("../page");
     const tree = await AdminWorkstreamsPage();
     render(tree);
-    expect(screen.getByTestId("workstreams-bundled-fallback-banner").textContent).toMatch(
-      /Brain unreachable/,
-    );
+    expect(screen.getByRole("alert").textContent).toMatch(/Brain workstreams unavailable \(HTTP 503\)/);
   });
 });
