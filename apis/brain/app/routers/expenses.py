@@ -39,7 +39,9 @@ from pydantic import ValidationError
 import app.services.expense_receipts as receipt_svc
 import app.services.expenses as expense_svc
 from app.config import settings
+from app.dependencies.auth import get_brain_user_context
 from app.schemas.base import error_response, success_response
+from app.schemas.brain_user_context import BrainUserContext  # noqa: TC001
 from app.schemas.expenses import (
     ExpenseCategory,
     ExpenseConversationResolveBody,
@@ -74,18 +76,23 @@ async def get_rollup(
     year: int = Query(...),
     month: int | None = Query(default=None),
     quarter: int | None = Query(default=None),
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> Any:
     """Monthly or quarterly rollup. Provide year+month or year+quarter."""
     if month is not None:
         if not 1 <= month <= 12:
             return error_response("month must be 1-12", 422)
-        monthly = expense_svc.compute_monthly_rollup(year, month)
+        monthly = expense_svc.compute_monthly_rollup(
+            year, month, organization_id=ctx.organization_id
+        )
         return success_response(monthly.model_dump(mode="json"))
     if quarter is not None:
         if not 1 <= quarter <= 4:
             return error_response("quarter must be 1-4", 422)
-        quarterly = expense_svc.compute_quarterly_rollup(year, quarter)
+        quarterly = expense_svc.compute_quarterly_rollup(
+            year, quarter, organization_id=ctx.organization_id
+        )
         return success_response(quarterly.model_dump(mode="json"))
     return error_response("Provide month or quarter", 422)
 
@@ -96,9 +103,16 @@ async def export_csv(
     category: ExpenseCategory | None = Query(default=None),
     year: int | None = Query(default=None),
     month: int | None = Query(default=None),
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> Response:
-    csv_str = expense_svc.export_csv(status=status, category=category, year=year, month=month)
+    csv_str = expense_svc.export_csv(
+        status=status,
+        category=category,
+        year=year,
+        month=month,
+        organization_id=ctx.organization_id,
+    )
     return Response(
         content=csv_str,
         media_type="text/csv",
@@ -116,6 +130,7 @@ async def get_routing_rules(_auth: None = Depends(_require_admin)) -> Any:
 @router.put("/rules")
 async def put_routing_rules(
     body: ExpenseRoutingRulesUpdate,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> Any:
     """Replace routing rules with validation + optional audit Conversation on threshold raise."""
@@ -148,7 +163,11 @@ async def put_routing_rules(
                 persona="cfo",
                 needs_founder_action=False,
             )
-            conv_svc.create_conversation(create)
+            conv_svc.create_conversation(
+                create,
+                organization_id=ctx.organization_id,
+                push_user_id=ctx.brain_user_id,
+            )
 
         derived = expense_svc.derived_repo_root_from_expense_store()
         if derived is not None:
@@ -183,6 +202,7 @@ async def list_expenses(
     count_only: bool = Query(default=False),
     cursor: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> Any:
     page = expense_svc.list_expenses(
@@ -195,6 +215,7 @@ async def list_expenses(
         count_only=count_only,
         cursor=cursor,
         limit=limit,
+        organization_id=ctx.organization_id,
     )
     return success_response(page.model_dump(mode="json"))
 
@@ -203,6 +224,7 @@ async def list_expenses(
 async def submit_expense(
     body: str = Form(..., description="JSON-encoded ExpenseCreate"),
     receipt: UploadFile | None = File(default=None),
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> Any:
     """Submit a new expense (multipart). body is JSON-encoded ExpenseCreate."""
@@ -212,7 +234,13 @@ async def submit_expense(
     except Exception as exc:
         return error_response(f"Invalid expense payload: {exc}", 422)
 
-    expense = await asyncio.to_thread(expense_svc.submit_expense, payload)
+    expense = await asyncio.to_thread(
+        lambda: expense_svc.submit_expense(
+            payload,
+            organization_id=ctx.organization_id,
+            push_user_id=ctx.brain_user_id,
+        )
+    )
 
     # Attach receipt if provided
     if receipt is not None:
@@ -231,7 +259,11 @@ async def submit_expense(
                 size_bytes=len(content),
                 stored_path=stored_path,
             )
-            updated = expense_svc.attach_receipt(expense.id, receipt_data.model_dump(mode="json"))
+            updated = expense_svc.attach_receipt(
+                expense.id,
+                receipt_data.model_dump(mode="json"),
+                organization_id=ctx.organization_id,
+            )
             if updated is not None:
                 expense = updated
         except ValueError as exc:
@@ -247,8 +279,12 @@ async def submit_expense(
 
 
 @router.get("/{expense_id}")
-async def get_expense(expense_id: str, _auth: None = Depends(_require_admin)) -> Any:
-    expense = expense_svc.get_expense(expense_id)
+async def get_expense(
+    expense_id: str,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    expense = expense_svc.get_expense(expense_id, organization_id=ctx.organization_id)
     if expense is None:
         raise HTTPException(status_code=404, detail="Expense not found")
     return success_response(expense.model_dump(mode="json"))
@@ -258,9 +294,10 @@ async def get_expense(expense_id: str, _auth: None = Depends(_require_admin)) ->
 async def edit_expense(
     expense_id: str,
     edit: ExpenseEdit,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> Any:
-    updated = expense_svc.edit_expense(expense_id, edit)
+    updated = expense_svc.edit_expense(expense_id, edit, organization_id=ctx.organization_id)
     if updated is None:
         raise HTTPException(status_code=404, detail="Expense not found")
     return success_response(updated.model_dump(mode="json"))
@@ -270,6 +307,7 @@ async def edit_expense(
 async def update_expense_status(
     expense_id: str,
     request: Request,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
 ) -> Any:
     try:
@@ -282,7 +320,7 @@ async def update_expense_status(
             resolve_body = ExpenseConversationResolveBody.model_validate(raw)
         except ValidationError as exc:
             return error_response(str(exc), 422)
-        exp = expense_svc.get_expense(expense_id)
+        exp = expense_svc.get_expense(expense_id, organization_id=ctx.organization_id)
         if exp is None:
             raise HTTPException(status_code=404, detail="Expense not found")
         if not exp.conversation_id:
@@ -292,6 +330,7 @@ async def update_expense_status(
                 exp.conversation_id,
                 resolve_body.expense_action,
                 resolve_body.new_category,
+                organization_id=ctx.organization_id,
             )
         except ValueError as exc:
             return error_response(str(exc), 422)
@@ -307,7 +346,9 @@ async def update_expense_status(
     except Exception as exc:
         return error_response(f"Invalid status payload: {exc}", 422)
     try:
-        updated = expense_svc.update_expense_status(expense_id, body)
+        updated = expense_svc.update_expense_status(
+            expense_id, body, organization_id=ctx.organization_id
+        )
     except ValueError as exc:
         return error_response(str(exc), 422)
     if updated is None:

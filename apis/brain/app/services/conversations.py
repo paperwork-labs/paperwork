@@ -54,6 +54,31 @@ logger = logging.getLogger(__name__)
 
 _fts_lock = threading.Lock()
 
+
+def _legacy_org_id() -> str | None:
+    from app.config import settings
+
+    v = settings.BRAIN_TOOLS_ORGANIZATION_ID.strip()
+    return v or None
+
+
+def _conversation_matches_organization(conv: Conversation, organization_id: str | None) -> bool:
+    if organization_id is None:
+        return True
+    legacy = _legacy_org_id()
+    stored = conv.organization_id
+    if stored == organization_id:
+        return True
+    return stored is None and legacy is not None and organization_id == legacy
+
+
+def _ensure_conversation_organization(conv: Conversation, organization_id: str | None) -> None:
+    if organization_id is None:
+        return
+    if not _conversation_matches_organization(conv, organization_id):
+        raise PermissionError("Conversation does not belong to this organization")
+
+
 _HIGH_URGENCY: set[str] = {"high", "critical"}
 
 # ---------------------------------------------------------------------------
@@ -215,7 +240,12 @@ def _default_status(urgency: UrgencyLevel) -> StatusLevel:
 # ---------------------------------------------------------------------------
 
 
-def create_conversation(create: ConversationCreate) -> Conversation:
+def create_conversation(
+    create: ConversationCreate,
+    *,
+    organization_id: str | None = None,
+    push_user_id: str | None = None,
+) -> Conversation:
     """Create a new Conversation and persist it to disk."""
     _validate_conversation_tags(create.tags)
     now = datetime.now(UTC)
@@ -252,13 +282,14 @@ def create_conversation(create: ConversationCreate) -> Conversation:
         parent_action_id=create.parent_action_id,
         links=create.links,
         needs_founder_action=create.needs_founder_action,
+        organization_id=organization_id,
     )
     _save_conversation(conv)
-    _maybe_push_or_email(conv)
+    _maybe_push_or_email(conv, push_user_id=push_user_id or "founder")
     return conv
 
 
-def _maybe_push_or_email(conv: Conversation) -> None:
+def _maybe_push_or_email(conv: Conversation, *, push_user_id: str = "founder") -> None:
     """Deliver founder notifications for high/critical + needs_founder_action.
 
     Runs **web push** (when VAPID is configured) and **Gmail SMTP** as a
@@ -282,7 +313,7 @@ def _maybe_push_or_email(conv: Conversation) -> None:
     import app.services.web_push as wp_svc
     from app.services.web_push import VapidConfigError
 
-    unread = unread_count(status_filter="needs-action")
+    unread = unread_count(status_filter="needs-action", organization_id=conv.organization_id)
     full_body = conv.messages[0].body_md if conv.messages else ""
     push_body = full_body[:120]
     push_payload = {
@@ -295,7 +326,7 @@ def _maybe_push_or_email(conv: Conversation) -> None:
     push_delivered = False
     with contextlib.suppress(VapidConfigError):
         try:
-            wp_svc.fan_out_push(user_id="founder", payload=push_payload)
+            wp_svc.fan_out_push(user_id=push_user_id, payload=push_payload)
             push_delivered = True
         except VapidConfigError:
             logger.info(
@@ -335,14 +366,16 @@ def _maybe_push_or_email(conv: Conversation) -> None:
         )
 
 
-def get_conversation(conversation_id: str) -> Conversation:
+def get_conversation(conversation_id: str, *, organization_id: str | None = None) -> Conversation:
     """Load a single Conversation by ID.
 
     Raises KeyError if not found.
+    Raises PermissionError if the conversation does not belong to *organization_id*.
     """
     conv = _load_conversation(conversation_id)
     if conv is None:
         raise KeyError(f"Conversation {conversation_id!r} not found")
+    _ensure_conversation_organization(conv, organization_id)
     return conv
 
 
@@ -351,6 +384,8 @@ def list_conversations(
     search: str | None = None,
     cursor: str | None = None,
     limit: int = 50,
+    *,
+    organization_id: str | None = None,
 ) -> ConversationsListPage:
     """Return a cursor-paginated page of conversations.
 
@@ -382,6 +417,8 @@ def list_conversations(
             continue
         if filter_status and conv.status != filter_status:
             continue
+        if not _conversation_matches_organization(conv, organization_id):
+            continue
         convs.append(conv)
 
     # Sort newest first by updated_at
@@ -403,9 +440,14 @@ def list_conversations(
     return ConversationsListPage(items=page, next_cursor=next_cursor, total=total)
 
 
-def append_message(conversation_id: str, req: AppendMessageRequest) -> ThreadMessage:
+def append_message(
+    conversation_id: str,
+    req: AppendMessageRequest,
+    *,
+    organization_id: str | None = None,
+) -> ThreadMessage:
     """Append a ThreadMessage to an existing conversation."""
-    conv = get_conversation(conversation_id)
+    conv = get_conversation(conversation_id, organization_id=organization_id)
     now = datetime.now(UTC)
     msg = ThreadMessage(
         id=str(uuid4()),
@@ -421,9 +463,14 @@ def append_message(conversation_id: str, req: AppendMessageRequest) -> ThreadMes
     return msg
 
 
-def update_conversation_status(conversation_id: str, status: StatusLevel) -> Conversation:
+def update_conversation_status(
+    conversation_id: str,
+    status: StatusLevel,
+    *,
+    organization_id: str | None = None,
+) -> Conversation:
     """Update the status of a conversation."""
-    conv = get_conversation(conversation_id)
+    conv = get_conversation(conversation_id, organization_id=organization_id)
     conv.status = status
     conv.updated_at = datetime.now(UTC)
     if status != "snoozed":
@@ -432,9 +479,11 @@ def update_conversation_status(conversation_id: str, status: StatusLevel) -> Con
     return conv
 
 
-def snooze(conversation_id: str, until: datetime) -> Conversation:
+def snooze(
+    conversation_id: str, until: datetime, *, organization_id: str | None = None
+) -> Conversation:
     """Snooze a conversation until the given datetime."""
-    conv = get_conversation(conversation_id)
+    conv = get_conversation(conversation_id, organization_id=organization_id)
     conv.status = "snoozed"
     conv.snooze_until = until
     conv.updated_at = datetime.now(UTC)
@@ -447,9 +496,11 @@ def react(
     message_id: str,
     emoji: str,
     participant_id: str,
+    *,
+    organization_id: str | None = None,
 ) -> ThreadMessage:
     """Add (or remove if already present) an emoji reaction to a message."""
-    conv = get_conversation(conversation_id)
+    conv = get_conversation(conversation_id, organization_id=organization_id)
     for msg in conv.messages:
         if msg.id == message_id:
             reactors = msg.reactions.setdefault(emoji, [])
@@ -463,26 +514,39 @@ def react(
     raise KeyError(f"Message {message_id!r} not found in conversation {conversation_id!r}")
 
 
-def search_conversations(query: str, limit: int = 20) -> list[Conversation]:
+def search_conversations(
+    query: str,
+    limit: int = 20,
+    *,
+    organization_id: str | None = None,
+) -> list[Conversation]:
     """Full-text search via SQLite FTS5 sidecar index."""
     ids = _fts_search(query, limit=limit)
     results: list[Conversation] = []
     for cid in ids:
         conv = _load_conversation(cid)
-        if conv is not None:
+        if conv is not None and _conversation_matches_organization(conv, organization_id):
             results.append(conv)
     return results
 
 
-def unread_count(status_filter: str = "needs-action") -> int:
+def unread_count(status_filter: str = "needs-action", *, organization_id: str | None = None) -> int:
     """Return the count of conversations matching *status_filter* (for badge/PWA)."""
-    page = list_conversations(status_filter=status_filter, limit=10_000)
+    page = list_conversations(
+        status_filter=status_filter, limit=10_000, organization_id=organization_id
+    )
     return page.total
 
 
-def needs_action_badge_metrics(status_filter: str = "needs-action") -> dict[str, int | bool]:
+def needs_action_badge_metrics(
+    status_filter: str = "needs-action",
+    *,
+    organization_id: str | None = None,
+) -> dict[str, int | bool]:
     """Count + whether any matching row is urgency=critical (sidebar badge styling)."""
-    page = list_conversations(status_filter=status_filter, limit=10_000)
+    page = list_conversations(
+        status_filter=status_filter, limit=10_000, organization_id=organization_id
+    )
     return {
         "count": page.total,
         "has_critical": any(c.urgency == "critical" for c in page.items),
