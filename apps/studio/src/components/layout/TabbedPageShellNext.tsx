@@ -163,8 +163,8 @@ function TabbedPageShellInner<T extends string>(props: TabbedPageShellNextProps<
 function TabbedPageShellFallback() {
   return (
     <div className="flex flex-col gap-3 py-4" aria-busy="true" aria-label="Loading tabs">
-      <div className="h-9 w-full max-w-md animate-pulse rounded-md bg-muted" />
-      <div className="h-48 w-full animate-pulse rounded-lg bg-muted" />
+      <div className="h-9 w-full max-w-md motion-safe:animate-pulse rounded-md bg-muted" />
+      <div className="h-48 w-full motion-safe:animate-pulse rounded-lg bg-muted" />
     </div>
   );
 }

@@ -155,7 +155,7 @@ export function PushSubscribeCard() {
               disabled={isWorking}
               className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs text-muted-foreground transition hover:border-foreground/40 hover:text-foreground disabled:opacity-50"
             >
-              {isWorking ? <Loader2 className="size-3 animate-spin" /> : <BellOff className="size-3" />}
+              {isWorking ? <Loader2 className="size-3 motion-safe:animate-spin" /> : <BellOff className="size-3" />}
               Unsubscribe
             </button>
           ) : (
@@ -165,7 +165,7 @@ export function PushSubscribeCard() {
               disabled={isWorking}
               className="inline-flex h-8 items-center gap-1.5 rounded-md bg-foreground px-3 text-xs font-medium text-background transition hover:bg-foreground/90 disabled:opacity-50"
             >
-              {isWorking ? <Loader2 className="size-3 animate-spin" /> : <Bell className="size-3" />}
+              {isWorking ? <Loader2 className="size-3 motion-safe:animate-spin" /> : <Bell className="size-3" />}
               Enable push
             </button>
           )}

@@ -112,7 +112,7 @@ export default function CostTab() {
   if (loading && !summary) {
     return (
       <div className="flex items-center gap-2 text-sm text-zinc-500">
-        <RefreshCw className="h-4 w-4 animate-spin" />
+        <RefreshCw className="h-4 w-4 motion-safe:animate-spin" />
         Loading cost ledger…
       </div>
     );
@@ -245,7 +245,7 @@ export default function CostTab() {
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
                       <div
-                        className={`h-full rounded-full transition-all ${
+                        className={`h-full rounded-full motion-safe:transition-all ${
                           pct >= 100
                             ? "bg-[var(--status-danger)]"
                             : pct >= 80

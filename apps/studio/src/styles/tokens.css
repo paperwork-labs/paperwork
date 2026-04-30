@@ -1,13 +1,13 @@
 /**
  * Semantic status tokens (WS-76) — align with Tailwind emerald.500 / amber.400 /
- * red.400 / sky.400 / zinc.500. Use via `text-[var(--status-success)]`, etc.
+ * red.400 / sky.400; `--status-muted` lightened for ~4.5:1 on zinc-950 backgrounds.
  */
 :root {
   --status-success: #10b981;
   --status-warning: #fbbf24;
   --status-danger: #f87171;
   --status-info: #38bdf8;
-  --status-muted: #71717a;
+  --status-muted: #a1a1aa;
   --status-success-bg: rgb(16 185 129 / 0.1);
   --status-warning-bg: rgb(251 191 36 / 0.1);
   --status-danger-bg: rgb(248 113 113 / 0.1);

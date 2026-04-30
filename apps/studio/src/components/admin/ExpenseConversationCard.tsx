@@ -84,7 +84,7 @@ export function ExpenseConversationCard({
   if (loading) {
     return (
       <div className="mb-4 flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4 text-sm text-zinc-500">
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <Loader2 className="h-4 w-4 motion-safe:animate-spin" />
         Loading expense…
       </div>
     );
@@ -159,7 +159,7 @@ export function ExpenseConversationCard({
           onClick={() => void resolve("approve")}
           className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-200 ring-1 ring-emerald-500/30 disabled:opacity-40"
         >
-          {acting === "approve" ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
+          {acting === "approve" ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}
           Approve
         </button>
         <button
@@ -181,7 +181,7 @@ export function ExpenseConversationCard({
           onClick={() => void resolve("flag")}
           className="inline-flex items-center gap-1 rounded-lg bg-amber-500/15 px-3 py-1.5 text-xs font-medium text-amber-200 ring-1 ring-amber-500/30 disabled:opacity-40"
         >
-          {acting === "flag" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Flag className="h-3 w-3" />}
+          {acting === "flag" ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" /> : <Flag className="h-3 w-3" />}
           Flag
         </button>
         <button
@@ -191,7 +191,7 @@ export function ExpenseConversationCard({
           onClick={() => void resolve("reject")}
           className="inline-flex items-center gap-1 rounded-lg bg-red-500/15 px-3 py-1.5 text-xs font-medium text-red-200 ring-1 ring-red-500/30 disabled:opacity-40"
         >
-          {acting === "reject" ? <Loader2 className="h-3 w-3 animate-spin" /> : <XCircle className="h-3 w-3" />}
+          {acting === "reject" ? <Loader2 className="h-3 w-3 motion-safe:animate-spin" /> : <XCircle className="h-3 w-3" />}
           Reject
         </button>
       </div>

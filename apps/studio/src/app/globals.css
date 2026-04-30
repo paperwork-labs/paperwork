@@ -74,4 +74,25 @@
   body {
     @apply bg-background text-foreground antialiased;
   }
+
+  /**
+   * WS-76 PR-D — visible keyboard focus rings for Studio admin chrome and command palette subtree.
+   */
+  [data-testid="admin-shell"],
+  .studio-overlay-focus-scope {
+    & :where(
+        a[href],
+        button:not(:disabled),
+        [role="tab"],
+        [role="menuitem"],
+        input:not([type="hidden"]),
+        textarea,
+        select,
+        summary,
+        [cmdk-input],
+        [cmdk-item]
+      ):focus-visible {
+      @apply outline-none ring-2 ring-zinc-400/50;
+    }
+  }
 }

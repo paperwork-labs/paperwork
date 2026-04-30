@@ -48,7 +48,7 @@ export function quotaBar(pct: number | null | undefined, tone: ThresholdTone) {
   const { bar } = toneAccentClass(tone);
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-      <div className={`h-full rounded-full transition-all ${bar}`} style={{ width: `${p}%` }} />
+      <div className={`h-full rounded-full motion-safe:transition-all ${bar}`} style={{ width: `${p}%` }} />
     </div>
   );
 }
@@ -108,7 +108,7 @@ export function QuotaPanelFrame({
             <Skeleton className="h-10 w-full bg-zinc-800" />
             <Skeleton className="h-24 w-full bg-zinc-800" />
             <Skeleton className="h-24 w-full bg-zinc-800" />
-            <Loader2 className="h-4 w-4 animate-spin text-zinc-600" aria-hidden />
+            <Loader2 className="h-4 w-4 motion-safe:animate-spin text-zinc-600" aria-hidden />
           </div>
         ) : error ? (
           <p className="rounded-lg border border-rose-900/40 bg-rose-950/30 px-3 py-2 text-xs text-rose-200">
