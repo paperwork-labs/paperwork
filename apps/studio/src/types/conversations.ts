@@ -29,6 +29,7 @@ export interface ThreadMessage {
   attachments: Attachment[];
   created_at: string; // ISO 8601
   reactions: Record<string, string[]>; // emoji → participant_ids
+  /** Reply threading — parent message id in the same conversation. */
   parent_message_id?: string | null;
 }
 

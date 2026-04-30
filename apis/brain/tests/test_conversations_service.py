@@ -161,6 +161,31 @@ def test_append_message_missing_conv_raises() -> None:
         svc.append_message("no-such-id", req)
 
 
+def test_append_message_with_parent_sets_parent_message_id() -> None:
+    conv = svc.create_conversation(_make_create(body_md="root"))
+    root = conv.messages[0]
+    req = AppendMessageRequest(
+        author=ConversationParticipant(id="founder", kind="founder"),
+        body_md="reply text",
+        attachments=[],
+        parent_message_id=root.id,
+    )
+    msg = svc.append_message(conv.id, req)
+    assert msg.parent_message_id == root.id
+
+
+def test_append_message_bad_parent_raises_value_error() -> None:
+    conv = svc.create_conversation(_make_create(body_md="only"))
+    req = AppendMessageRequest(
+        author=ConversationParticipant(id="founder", kind="founder"),
+        body_md="orphan",
+        attachments=[],
+        parent_message_id="no-such-parent",
+    )
+    with pytest.raises(ValueError, match="Parent message"):
+        svc.append_message(conv.id, req)
+
+
 # ---------------------------------------------------------------------------
 # update_status
 # ---------------------------------------------------------------------------
@@ -214,7 +239,7 @@ def test_react_toggle_removes_existing() -> None:
     msg = conv.messages[0]
     svc.react(conv.id, msg.id, "👍", "founder")
     result = svc.react(conv.id, msg.id, "👍", "founder")  # toggle off
-    assert "founder" not in result.reactions.get("👍", [])
+    assert "👍" not in result.reactions
 
 
 def test_react_missing_message_raises() -> None:
