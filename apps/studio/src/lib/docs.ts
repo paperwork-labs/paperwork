@@ -61,8 +61,8 @@ type IndexFile = {
 };
 
 function repoRoot(): string {
-  // apps/studio/src/lib/docs.ts → ../../../../ = monorepo root.
-  return path.resolve(process.cwd(), "../..");
+  // apps/studio → monorepo root; turbopackIgnore avoids tracing cwd as a repo-wide glob.
+  return path.join(/* turbopackIgnore: true */ process.cwd(), "..", "..");
 }
 
 function indexPath(): string {
@@ -90,7 +90,7 @@ export function loadDocsIndex(): {
 
   const root = repoRoot();
   const entries: DocEntry[] = parsed.docs.map((entry) => {
-    const full = path.join(root, entry.path);
+    const full = path.join(/* turbopackIgnore: true */ root, entry.path);
     let exists = false;
     try {
       exists = fs.statSync(full).isFile();
@@ -143,7 +143,7 @@ export function loadDocHubEntries(): DocHubEntry[] {
   const { entries } = loadDocsIndex();
   const root = repoRoot();
   const rows: DocHubEntry[] = entries.map((entry) => {
-    const full = path.join(root, entry.path);
+    const full = path.join(/* turbopackIgnore: true */ root, entry.path);
     let wordCount = 0;
     let lastReviewed: string | null = null;
     let docKind: string | null = null;
@@ -182,7 +182,7 @@ export type DocContent = {
 export function loadDocContent(slug: string): DocContent | null {
   const entry = findDocBySlug(slug);
   if (!entry) return null;
-  const full = path.join(repoRoot(), entry.path);
+  const full = path.join(/* turbopackIgnore: true */ repoRoot(), entry.path);
   let raw: string;
   try {
     raw = fs.readFileSync(full, "utf-8");

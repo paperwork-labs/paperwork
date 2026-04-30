@@ -62,6 +62,7 @@ describe("docKindToHubCategory", () => {
     expect(docKindToHubCategory("")).toBe("uncategorized");
     expect(docKindToHubCategory("philosophy")).toBe("philosophy");
     expect(docKindToHubCategory("architecture")).toBe("architecture");
+    expect(docKindToHubCategory("strategy")).toBe("strategy");
     expect(docKindToHubCategory("plan")).toBe("strategy");
     expect(docKindToHubCategory("sprint")).toBe("strategy");
     expect(docKindToHubCategory("runbook")).toBe("runbook");

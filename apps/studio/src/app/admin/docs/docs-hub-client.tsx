@@ -14,6 +14,8 @@ export type ReadingPathClient = {
   id: string;
   title: string;
   est_minutes: number;
+  /** Steps listed on the path (may exceed resolved slugs when aliases are missing). */
+  docCount: number;
   resolvedCount: number;
   firstSlug: string | null;
 };
@@ -26,19 +28,18 @@ const FILTER_ORDER: Array<{ id: HubDocCategory | "all"; label: string }> = [
   { id: "runbook", label: "Runbook" },
   { id: "playbook", label: "Playbook" },
   { id: "decision-log", label: "Decision Log" },
-  { id: "uncategorized", label: "Triage" },
 ];
 
 function freshnessStyles(level: FreshnessLevel): string {
   switch (level) {
     case "fresh":
-      return "bg-emerald-500/10 text-emerald-400";
+      return "bg-[var(--status-success-bg)] text-[var(--status-success)]";
     case "aging":
-      return "bg-amber-500/10 text-amber-400";
+      return "bg-[var(--status-warning-bg)] text-[var(--status-warning)]";
     case "stale":
-      return "bg-red-500/10 text-red-400";
+      return "bg-[var(--status-danger-bg)] text-[var(--status-danger)]";
     default:
-      return "bg-zinc-800 text-zinc-500";
+      return "bg-zinc-800 text-[var(--status-muted)]";
   }
 }
 
@@ -101,7 +102,7 @@ export function DocsHubClient({ entries, readingPaths }: DocsHubClientProps) {
               >
                 <p className="text-sm font-medium text-zinc-100">{p.title}</p>
                 <p className="mt-2 text-xs text-zinc-500">
-                  {p.resolvedCount} docs · ~{p.est_minutes} min
+                  {p.docCount} docs · ~{p.est_minutes} min
                 </p>
               </Link>
             );
@@ -169,7 +170,14 @@ export function DocsHubClient({ entries, readingPaths }: DocsHubClientProps) {
               </div>
 
               {doc.freshness === "stale" && doc.lastReviewed ? (
-                <p className="mt-2 rounded-md border border-red-500/30 bg-red-500/5 px-2.5 py-1.5 text-[11px] text-red-200">
+                <p
+                  className="mt-2 rounded-md border px-2.5 py-1.5 text-[11px]"
+                  style={{
+                    backgroundColor: "var(--status-danger-bg)",
+                    color: "var(--status-danger)",
+                    borderColor: "color-mix(in srgb, var(--status-danger) 35%, transparent)",
+                  }}
+                >
                   Last reviewed {monthsSinceReview(doc.lastReviewed)} months ago
                 </p>
               ) : null}

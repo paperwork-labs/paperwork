@@ -11,6 +11,7 @@ export default function DocsHubPage() {
     id: p.id,
     title: p.title,
     est_minutes: p.est_minutes,
+    docCount: p.docs.length,
     resolvedCount: p.resolved.length,
     firstSlug: p.resolved[0]?.slug ?? null,
   }));
