@@ -18,7 +18,12 @@ from sqlalchemy import select
 
 from app.models.scheduler_run import SchedulerRun
 from app.schedulers import _history
-from app.schedulers.data_annual_update import _build_message, install, run_data_annual_update
+from app.schedulers.data_annual_update import (
+    _TAX_FOUNDATION_URL,
+    _build_message,
+    install,
+    run_data_annual_update,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -61,7 +66,7 @@ def test_build_message_includes_all_ten_checklist_steps() -> None:
     assert "8. Create PR and merge to main" in text
     assert "9. Verify CI passes on the PR" in text
     assert "10. Post confirmation to #engineering when done" in text
-    assert "taxfoundation.org" in text
+    assert _TAX_FOUNDATION_URL in text
 
 
 @pytest.mark.asyncio

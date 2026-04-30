@@ -146,8 +146,7 @@ def send_conversation_email(
             smtp.login(username, app_password)
             smtp.send_message(msg)
         logger.info(
-            "email_outbound: sent [Brain] %r to %s (conv=%s)",
-            title,
+            "email_outbound: sent Brain notification to %s (conv=%s)",
             to_address,
             conversation_id,
         )
