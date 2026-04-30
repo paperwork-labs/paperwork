@@ -26,13 +26,12 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
 from app.schemas.base import success_response
-from app.services.workstreams_loader import _repo_root
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/probes", tags=["probes"])
 
-_REPO_ROOT = _repo_root()
+_REPO_ROOT = Path(__file__).resolve().parents[5]  # apis/brain/app/api/routes → repo root
 _PROBE_RESULTS_JSON = (
     Path(os.environ.get("BRAIN_PROBE_RESULTS_JSON", ""))
     if os.environ.get("BRAIN_PROBE_RESULTS_JSON")
@@ -47,8 +46,7 @@ def _load_results() -> list[dict[str, Any]]:
     if not _PROBE_RESULTS_JSON.exists():
         return []
     payload = json.loads(_PROBE_RESULTS_JSON.read_text(encoding="utf-8"))
-    results: list[dict[str, Any]] = payload.get("results", [])
-    return results
+    return payload.get("results", [])
 
 
 @router.get("/results")

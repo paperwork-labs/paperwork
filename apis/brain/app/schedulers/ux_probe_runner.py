@@ -32,7 +32,6 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.schedulers._history import run_with_scheduler_record
 from app.schedulers._kill_switch_guard import skip_if_brain_paused
-from app.services.workstreams_loader import _repo_root
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -45,9 +44,7 @@ JOB_ID = "brain_ux_probe_runner"
 # Config
 # ---------------------------------------------------------------------------
 
-# Resolve monorepo root like other Brain modules (Docker flat /app vs dev tree).
-# See app.services.workstreams_loader._repo_root for pattern.
-_REPO_ROOT = _repo_root()
+_REPO_ROOT = Path(__file__).resolve().parents[4]  # apis/brain/app/schedulers → repo root
 _PROBE_RESULTS_JSON = (
     Path(os.environ.get("BRAIN_PROBE_RESULTS_JSON", ""))
     if os.environ.get("BRAIN_PROBE_RESULTS_JSON")
@@ -96,8 +93,7 @@ def _load_results() -> list[dict[str, Any]]:
         return []
     try:
         payload = json.loads(_PROBE_RESULTS_JSON.read_text(encoding="utf-8"))
-        results: list[dict[str, Any]] = payload.get("results", [])
-        return results
+        return payload.get("results", [])
     except (json.JSONDecodeError, OSError) as exc:
         logger.warning("probe_results.json unreadable (%s); starting fresh", exc)
         return []
@@ -134,8 +130,7 @@ def _parse_playwright_json(product: str) -> dict[str, Any] | None:
     if not files:
         return None
     try:
-        result: dict[str, Any] = json.loads(Path(files[-1]).read_text(encoding="utf-8"))
-        return result
+        return json.loads(Path(files[-1]).read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         logger.warning("Could not parse Playwright JSON for %s: %s", product, exc)
         return None
@@ -223,15 +218,12 @@ def _run_product_probe(product: str, base_url: str) -> dict[str, Any]:
 
     # Guard 2: detect "Playwright browsers not installed" specifically
     combined_output = (proc.stdout or "") + (proc.stderr or "")
-    low = combined_output.lower()
-    playwright_infra = ("playwright" in low or "browsertype.launch" in combined_output) and (
+    if "Playwright" in combined_output and (
         "browserType.launch" in combined_output
-        or "browsertype.launch" in low
         or "browser was not found" in combined_output
-        or "run playwright install" in low
-        or "executable doesn't exist" in low
-    )
-    if playwright_infra:
+        or "run playwright install" in combined_output
+        or "Executable doesn't exist" in combined_output
+    ):
         msg = (
             "Playwright browser binaries are not installed. "
             "Run: pnpm --filter @paperwork/probes exec playwright install chromium. "

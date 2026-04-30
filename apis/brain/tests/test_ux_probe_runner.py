@@ -7,23 +7,21 @@ from __future__ import annotations
 
 import json
 import subprocess
-from typing import TYPE_CHECKING
-from unittest.mock import patch
+from datetime import UTC, datetime
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.schedulers import ux_probe_runner
 
-if TYPE_CHECKING:
-    from pathlib import Path
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_completed(
-    returncode: int, stdout: str = "", stderr: str = ""
-) -> subprocess.CompletedProcess[str]:
+def _make_completed(returncode: int, stdout: str = "", stderr: str = "") -> subprocess.CompletedProcess:
     return subprocess.CompletedProcess(
         args=["pnpm", "--filter", "@paperwork/probes", "test:filefree"],
         returncode=returncode,
@@ -88,7 +86,7 @@ def test_run_product_probe_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPat
                                 "results": [
                                     {
                                         "status": "failed",
-                                        "error": {"message": "Expected 'FileFree'"},
+                                        "error": {"message": "Expected text 'FileFree' to be visible"},
                                         "attachments": [{"path": "/tmp/screenshot.png"}],
                                     }
                                 ]
@@ -118,7 +116,7 @@ def test_run_product_probe_failure(tmp_path: Path, monkeypatch: pytest.MonkeyPat
 # ---------------------------------------------------------------------------
 
 
-def test_run_product_probe_no_pnpm() -> None:
+def test_run_product_probe_no_pnpm(monkeypatch: pytest.MonkeyPatch) -> None:
     """Missing pnpm → infrastructure_error row, not a silent skip."""
     with patch("shutil.which", return_value=None):
         row = ux_probe_runner._run_product_probe("filefree", "https://filefree.ai")
@@ -128,9 +126,9 @@ def test_run_product_probe_no_pnpm() -> None:
     assert "pnpm not found" in row["error_message"]
 
 
-def test_run_product_probe_missing_browser() -> None:
+def test_run_product_probe_missing_browser(monkeypatch: pytest.MonkeyPatch) -> None:
     """Playwright browser not installed → infrastructure_error row, not a silent skip."""
-    stderr = "browserType.launch: Executable doesn't exist\nrun playwright install"
+    stderr = "browserType.launch: Executable doesn't exist at /path/chromium\nrun playwright install"
 
     with (
         patch("shutil.which", return_value="/usr/bin/pnpm"),
@@ -142,7 +140,7 @@ def test_run_product_probe_missing_browser() -> None:
     assert "browser binaries" in row["error_message"]
 
 
-def test_run_product_probe_timeout() -> None:
+def test_run_product_probe_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     """Subprocess timeout → status=timeout, not a silent skip."""
     with (
         patch("shutil.which", return_value="/usr/bin/pnpm"),
@@ -197,8 +195,10 @@ def test_append_result_creates_file(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
 def test_load_production_urls_missing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Missing production-urls.json raises FileNotFoundError (no silent fallback)."""
-    monkeypatch.setattr(ux_probe_runner, "_PRODUCTION_URLS_JSON", tmp_path / "nonexistent.json")
-    with pytest.raises(FileNotFoundError, match=r"production-urls\.json not found"):
+    monkeypatch.setattr(
+        ux_probe_runner, "_PRODUCTION_URLS_JSON", tmp_path / "nonexistent.json"
+    )
+    with pytest.raises(FileNotFoundError, match="production-urls.json not found"):
         ux_probe_runner._load_production_urls()
 
 
