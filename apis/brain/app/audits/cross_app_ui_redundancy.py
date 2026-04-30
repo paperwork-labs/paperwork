@@ -103,7 +103,9 @@ def _collect_ui_primitive_basenames(pkg_components: Path) -> dict[str, list[str]
 
 def _primitive_overlap_findings(repo_root: Path, audit_id: str) -> list[AuditFinding]:
     """Flag apps/*/src/components/ui/*.tsx whose basename matches packages/ui primitives."""
-    pkg_basenames = _collect_ui_primitive_basenames(repo_root / "packages" / "ui" / "src" / "components")
+    pkg_basenames = _collect_ui_primitive_basenames(
+        repo_root / "packages" / "ui" / "src" / "components"
+    )
     findings: list[AuditFinding] = []
     apps_dir = repo_root / "apps"
     if not apps_dir.is_dir():
@@ -124,7 +126,8 @@ def _primitive_overlap_findings(repo_root: Path, audit_id: str) -> list[AuditFin
                     severity="info",
                     title=f"Local UI primitive overlaps packages/ui: {path.name}",
                     detail=(
-                        f"`apps/{app_dir.name}/src/components/ui/{path.name}` shares a basename with "
+                        f"`apps/{app_dir.name}/src/components/ui/{path.name}`"
+                        " shares a basename with "
                         f"@paperwork-labs/ui ({'; '.join(ui_refs[:2])}). "
                         "Candidate for consolidation when styling and behavior align."
                     ),
@@ -293,9 +296,7 @@ def run() -> AuditRun:
             )
 
     warn_count = sum(1 for f in findings if f.severity == "warn")
-    has_primitive_overlap = any(
-        f.title.startswith("Local UI primitive overlaps") for f in findings
-    )
+    has_primitive_overlap = any(f.title.startswith("Local UI primitive overlaps") for f in findings)
     if warn_count == 0 and not has_primitive_overlap:
         findings.append(
             AuditFinding(
@@ -312,9 +313,7 @@ def run() -> AuditRun:
     if _check_consecutive_warn_threshold(warn_count):
         _write_long_tail_proposal(warn_count)
 
-    overlap_info = sum(
-        1 for f in findings if f.title.startswith("Local UI primitive overlaps")
-    )
+    overlap_info = sum(1 for f in findings if f.title.startswith("Local UI primitive overlaps"))
     next_cadence = "weekly"
     summary = (
         f"cross_app_ui_redundancy: {warn_count} duplicate-pattern warn(s), "

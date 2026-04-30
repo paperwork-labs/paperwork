@@ -15,6 +15,8 @@ import {
   Users,
   MessageSquare,
   Calendar as CalendarIcon,
+  UserCircle2,
+  KeyRound,
 } from "lucide-react";
 
 export type NavItem = {
@@ -63,6 +65,13 @@ export function buildNavGroups(
       label: "Operations",
       items: [
         { href: "/admin/runbook", label: "Runbook", icon: BookOpen },
+      ],
+    },
+    {
+      label: "Trust",
+      items: [
+        { href: "/admin/circles", label: "Circles", icon: UserCircle2 },
+        { href: "/admin/delegated", label: "Delegated access", icon: KeyRound },
       ],
     },
     {

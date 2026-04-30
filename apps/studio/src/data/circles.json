@@ -1,0 +1,27 @@
+{
+  "circles": [
+    {
+      "id": "circle-1",
+      "type": "household",
+      "name": "Sharma Family",
+      "members": [
+        { "user_id": "sankalp", "display_name": "Sankalp", "role": "owner" },
+        { "user_id": "olga", "display_name": "Olga", "role": "member" }
+      ],
+      "created_by": "sankalp",
+      "created_at": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "delegated_shares": [
+    {
+      "id": "share-1",
+      "owner_id": "sankalp",
+      "delegate_id": "cpa-fictional",
+      "delegate_name": "Sam (CPA)",
+      "scope": ["expenses:read", "bills:read"],
+      "expires_at": "2027-01-01T00:00:00Z",
+      "watermark": true,
+      "created_at": "2026-04-30T00:00:00Z"
+    }
+  ]
+}

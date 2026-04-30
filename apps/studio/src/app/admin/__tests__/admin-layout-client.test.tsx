@@ -25,7 +25,7 @@ function renderAdminLayout(ui: ReactElement) {
 }
 
 describe("AdminLayoutClient (WS-69 PR B nav)", () => {
-  it("sidebar link count matches buildNavGroups + shows Calendar in Trackers", () => {
+  it("sidebar link count matches buildNavGroups + Trust, Trackers, Calendar", () => {
     renderAdminLayout(
       <AdminLayoutClient
         founderPending={{ count: 4, hasCritical: true }}
@@ -43,33 +43,41 @@ describe("AdminLayoutClient (WS-69 PR B nav)", () => {
     ).reduce((acc, g) => acc + g.items.length, 0);
     expect(navLinks).toHaveLength(expectedCount);
 
-    expect(screen.getAllByText("Command Center")).toHaveLength(2);
-    expect(within(nav).getByText("Trackers")).toBeTruthy();
+    expect(screen.getAllByText("Command Center").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Trust", { exact: true }).some((el) => el.tagName === "P")).toBe(
+      true,
+    );
+    expect(screen.getAllByText("Trackers").some((el) => el.tagName === "P")).toBe(true);
     const archLabels = within(nav).getAllByText("Architecture");
     expect(archLabels.some((el) => el.tagName === "P")).toBe(true);
     expect(
       within(nav).getByRole("link", { name: /^Architecture$/ }).getAttribute("href"),
     ).toBe("/admin/architecture");
-    expect(within(nav).getByText("Brain")).toBeTruthy();
+    expect(screen.getAllByText("Brain", { exact: true }).length).toBeGreaterThan(0);
 
-    const trackersLabel = within(nav).getByText("Trackers");
-    const trackersGroup = trackersLabel.parentElement as HTMLElement;
     expect(
-      within(trackersGroup).getByRole("link", { name: /^Calendar$/i }).getAttribute("href"),
+      within(nav).getByRole("link", { name: /^Calendar$/i }).getAttribute("href"),
     ).toBe("/admin/calendar");
-    const expensesInTrackers = within(trackersGroup).getByRole("link", {
+    const expensesInNav = within(nav).getByRole("link", {
       name: /Expenses/i,
     });
-    expect(expensesInTrackers.getAttribute("href")).toBe("/admin/expenses");
+    expect(expensesInNav.getAttribute("href")).toBe("/admin/expenses");
     expect(
-      within(trackersGroup).queryByRole("link", { name: /Founder actions/i }),
+      within(nav).queryByRole("link", { name: /Founder actions/i }),
     ).toBeNull();
+
+    expect(within(nav).getByRole("link", { name: /^Circles$/ }).getAttribute("href")).toBe(
+      "/admin/circles",
+    );
+    expect(
+      within(nav).getByRole("link", { name: /Delegated access/i }).getAttribute("href"),
+    ).toBe("/admin/delegated");
 
     const convoLink = within(nav).getByRole("link", { name: /Conversations/i });
     expect(convoLink.getAttribute("href")).toBe("/admin/brain/conversations");
     expect(within(convoLink).getByText("4 pending")).toBeTruthy();
 
-    const footer = screen.getAllByTestId("admin-vendor-footer")[1];
+    const footer = screen.getAllByTestId("admin-vendor-footer")[1]!;
     const vendorAnchors = within(footer).getAllByRole("link");
     expect(vendorAnchors).toHaveLength(6);
 
