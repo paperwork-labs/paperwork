@@ -11,7 +11,12 @@ import {
   toneAccentClass,
 } from "@/lib/quota-monitor-format";
 import type { VercelQuotaApiPayload, VercelQuotaSnapshotRow } from "@/lib/quota-monitor-types";
-import { QuotaPanelFrame, fetchBrainEnvelope, quotaBar } from "./quota-shared";
+import {
+  QuotaPanelFrame,
+  QUOTA_CRON_STALE_THRESHOLD_MINUTES,
+  fetchBrainEnvelope,
+  quotaBar,
+} from "./quota-shared";
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 
 const API = "/api/admin/quota/vercel";
@@ -99,6 +104,7 @@ export default function QuotaVercelPanel(props: { refreshSignal: number }) {
       recordedIso={recordedIso}
       worstPctGuess={worstPct}
       headline={headline}
+      staleThresholdMinutes={QUOTA_CRON_STALE_THRESHOLD_MINUTES.vercel}
     >
       {!loading && !error && team ? (
         <div className="space-y-4 text-xs">

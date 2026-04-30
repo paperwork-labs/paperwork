@@ -19,7 +19,6 @@ import {
   KeyRound,
   Building2,
   FileText,
-  CircleDollarSign,
   Network,
 } from "lucide-react";
 
@@ -58,11 +57,6 @@ export function buildNavGroups(
         },
         { href: "/admin/vendors", label: "Vendors", icon: Building2 },
         { href: "/admin/bills", label: "Bills", icon: FileText },
-        {
-          href: "/admin/infrastructure?tab=cost",
-          label: "Cost monitor",
-          icon: CircleDollarSign,
-        },
       ],
     },
     {

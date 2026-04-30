@@ -375,7 +375,7 @@ export function WorkstreamsBoardClient({
           <HqStatCard variant="compact" label="Completed" value={kpis.completed} status="success" />
           <HqStatCard
             variant="compact"
-            label="Avg % done"
+            label="Avg progress (in-flight)"
             value={`${kpis.avg_percent_done}%`}
             status="info"
           />

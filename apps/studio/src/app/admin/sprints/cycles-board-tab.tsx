@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { Workstream, WorkstreamsFile } from "@/lib/workstreams/schema";
-import workstreamsJson from "@/data/workstreams.json";
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { loadTrackerIndex } from "@/lib/tracker";
 import { buildCyclesFromSprints } from "@/lib/cycles";
@@ -40,7 +39,12 @@ const COLUMN_LABEL: Record<ColumnKey, string> = {
   done: "Done",
 };
 
-export function CyclesBoardTab() {
+type CyclesBoardTabProps = {
+  workstreamsFile: WorkstreamsFile | null;
+  workstreamsError: string | null;
+};
+
+export function CyclesBoardTab({ workstreamsFile, workstreamsError }: CyclesBoardTabProps) {
   const { sprints } = loadTrackerIndex();
   const cycles = buildCyclesFromSprints(sprints);
   const currentCycle = cycles.find((c) => c.status === "active") ?? cycles[1];
@@ -51,15 +55,24 @@ export function CyclesBoardTab() {
     done: [],
   };
 
-  const workstreamsFile = workstreamsJson as WorkstreamsFile;
-
-  for (const ws of workstreamsFile.workstreams) {
-    const col = boardColumnForStatus(ws.status);
-    if (col) byColumn[col].push(ws);
+  if (workstreamsFile) {
+    for (const ws of workstreamsFile.workstreams) {
+      const col = boardColumnForStatus(ws.status);
+      if (col) byColumn[col].push(ws);
+    }
   }
 
   return (
     <div className="space-y-6">
+      {workstreamsError ? (
+        <div
+          role="alert"
+          className="rounded-lg border border-rose-900/40 bg-rose-950/30 px-4 py-3 text-sm text-rose-100"
+        >
+          {workstreamsError}
+        </div>
+      ) : null}
+
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
         <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-500">
           Current cycle
@@ -79,11 +92,11 @@ export function CyclesBoardTab() {
           sprint dates. Previous: <span className="text-zinc-400">{cycles[0]?.name}</span> · Next:{" "}
           <span className="text-zinc-400">{cycles[2]?.name}</span>
           <span className="text-zinc-600"> · </span>
-          Workstreams from{" "}
+          Workstreams match the{" "}
           <Link href="/admin/workstreams" className="text-[var(--status-info)] hover:opacity-90">
-            workstreams.json
-          </Link>
-          . Read-only board (v1).
+            Workstreams
+          </Link>{" "}
+          board (same Brain / bundled loader as that page). Read-only board (v1).
         </p>
       </div>
 
@@ -113,7 +126,11 @@ export function CyclesBoardTab() {
                 {items.length === 0 ? (
                   <HqEmptyState
                     title={`No ${COLUMN_LABEL[key].toLowerCase()} workstreams`}
-                    description="Nothing in this column right now."
+                    description={
+                      workstreamsError
+                        ? "Fix the load error above to show workstreams here."
+                        : "Nothing in this column right now."
+                    }
                   />
                 ) : (
                   items.map((ws) => <WorkstreamCycleCard key={ws.id} ws={ws} />)

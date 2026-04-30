@@ -2,15 +2,19 @@ import Link from "next/link";
 
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
+import { loadStudioWorkstreamsBoard, resolveStudioRequestBaseUrl } from "@/lib/cycles-data";
 import { loadTrackerIndex } from "@/lib/tracker";
 import { isSprintActiveForUi, isSprintShippedForUi } from "@/lib/tracker-reconcile";
 
 import { CyclesBoardTab } from "./cycles-board-tab";
 import { SprintsOverviewTab } from "./sprints-overview-tab";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
-export default function SprintsPage() {
+export default async function SprintsPage() {
+  const base = await resolveStudioRequestBaseUrl();
+  const wsLoaded = await loadStudioWorkstreamsBoard(base);
+
   const { sprints } = loadTrackerIndex();
   const active = sprints.filter((s) => isSprintActiveForUi(s));
   const shipped = sprints.filter((s) => isSprintShippedForUi(s));
@@ -24,7 +28,12 @@ export default function SprintsPage() {
     {
       id: "cycles" as const,
       label: "Cycles",
-      content: <CyclesBoardTab />,
+      content: (
+        <CyclesBoardTab
+          workstreamsFile={wsLoaded.ok ? wsLoaded.file : null}
+          workstreamsError={wsLoaded.ok ? null : wsLoaded.error}
+        />
+      ),
     },
   ] as const;
 
