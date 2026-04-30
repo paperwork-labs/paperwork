@@ -74,7 +74,9 @@ def list_conversations(
     limit: int = Query(50, ge=1, le=200),
     product_slug: str | None = Query(
         None,
-        description="When set, only conversations with this product_slug are returned (WS-76 PR-24a).",
+        description=(
+            "When set, only conversations with this product_slug are returned (WS-76 PR-24a)."
+        ),
     ),
     ctx: BrainUserContext = Depends(get_brain_user_context),
     _auth: None = Depends(_require_admin),
