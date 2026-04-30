@@ -26,12 +26,13 @@ from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 
 from app.schemas.base import success_response
+from app.services.workstreams_loader import _repo_root
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1/probes", tags=["probes"])
 
-_REPO_ROOT = Path(__file__).resolve().parents[5]  # apis/brain/app/api/routes → repo root
+_REPO_ROOT = _repo_root()
 _PROBE_RESULTS_JSON = (
     Path(os.environ.get("BRAIN_PROBE_RESULTS_JSON", ""))
     if os.environ.get("BRAIN_PROBE_RESULTS_JSON")

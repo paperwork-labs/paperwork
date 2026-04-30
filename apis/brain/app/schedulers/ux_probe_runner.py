@@ -32,6 +32,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.schedulers._history import run_with_scheduler_record
 from app.schedulers._kill_switch_guard import skip_if_brain_paused
+from app.services.workstreams_loader import _repo_root
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -44,7 +45,8 @@ JOB_ID = "brain_ux_probe_runner"
 # Config
 # ---------------------------------------------------------------------------
 
-_REPO_ROOT = Path(__file__).resolve().parents[4]  # apis/brain/app/schedulers → repo root
+# Resolve monorepo root like other Brain modules (Docker flat /app vs dev tree); see app.services.workstreams_loader._repo_root
+_REPO_ROOT = _repo_root()
 _PROBE_RESULTS_JSON = (
     Path(os.environ.get("BRAIN_PROBE_RESULTS_JSON", ""))
     if os.environ.get("BRAIN_PROBE_RESULTS_JSON")
@@ -218,12 +220,18 @@ def _run_product_probe(product: str, base_url: str) -> dict[str, Any]:
 
     # Guard 2: detect "Playwright browsers not installed" specifically
     combined_output = (proc.stdout or "") + (proc.stderr or "")
-    if "Playwright" in combined_output and (
-        "browserType.launch" in combined_output
-        or "browser was not found" in combined_output
-        or "run playwright install" in combined_output
-        or "Executable doesn't exist" in combined_output
-    ):
+    low = combined_output.lower()
+    playwright_infra = (
+        ("playwright" in low or "browsertype.launch" in combined_output)
+        and (
+            "browserType.launch" in combined_output
+            or "browsertype.launch" in low
+            or "browser was not found" in combined_output
+            or "run playwright install" in low
+            or "executable doesn't exist" in low
+        )
+    )
+    if playwright_infra:
         msg = (
             "Playwright browser binaries are not installed. "
             "Run: pnpm --filter @paperwork/probes exec playwright install chromium. "
