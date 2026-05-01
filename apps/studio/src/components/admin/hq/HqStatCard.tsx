@@ -18,6 +18,10 @@ export type HqStatCardProps = {
   status?: HqStatCardStatus;
   /** Optional leading icon inside the label row */
   icon?: ReactNode;
+  /** When set, the card renders as a button (filters, drill-down KPIs). */
+  onClick?: () => void;
+  /** Toggle / filter affordance when `onClick` is used */
+  selected?: boolean;
 };
 
 /**
@@ -109,10 +113,13 @@ export function HqStatCard({
   variant = "default",
   status = "neutral",
   icon,
+  onClick,
+  selected = false,
 }: HqStatCardProps) {
   const tokenStyle = STATUS_TOKEN_STYLE[status];
   const pad = variant === "compact" ? "px-3 py-2.5" : "px-4 py-4";
   const valueSize = variant === "compact" ? "text-xl" : "text-2xl";
+  const interactive = typeof onClick === "function";
 
   const firstAnimDone = useRef(false);
   const [displayValue, setDisplayValue] = useState<string | number>(() => {
@@ -171,13 +178,19 @@ export function HqStatCard({
     return () => cancelAnimationFrame(rafId);
   }, [value]);
 
-  return (
-    <div
-      data-testid="hq-stat-card"
-      data-hq-stat-status={status}
-      className={`rounded-xl border ring-1 ring-inset ring-black/5 ${pad}`}
-      style={tokenStyle}
-    >
+  const shellClass = [
+    "rounded-xl border ring-1 ring-inset ring-black/5",
+    pad,
+    interactive
+      ? "w-full cursor-pointer text-left transition hover:brightness-[1.06] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+      : "",
+    selected ? "outline outline-2 outline-offset-2 outline-violet-400/65" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const inner = (
+    <>
       <div className="flex items-center gap-2">
         {icon}
         <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">{label}</p>
@@ -192,6 +205,33 @@ export function HqStatCard({
         <p className={`mt-0.5 text-xs font-medium ${deltaClass(delta.direction)}`}>{delta.value}</p>
       ) : null}
       {helpText ? <p className="mt-1 text-xs text-zinc-400">{helpText}</p> : null}
+    </>
+  );
+
+  if (interactive) {
+    return (
+      <button
+        type="button"
+        data-testid="hq-stat-card"
+        data-hq-stat-status={status}
+        className={shellClass}
+        style={tokenStyle}
+        onClick={onClick}
+        aria-pressed={selected}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return (
+    <div
+      data-testid="hq-stat-card"
+      data-hq-stat-status={status}
+      className={shellClass}
+      style={tokenStyle}
+    >
+      {inner}
     </div>
   );
 }

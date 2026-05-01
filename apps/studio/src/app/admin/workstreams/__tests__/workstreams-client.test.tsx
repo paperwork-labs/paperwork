@@ -29,9 +29,8 @@ describe("WorkstreamsBoardClient", () => {
       /workstreams/i,
     );
     expect(screen.getByText("Total")).toBeTruthy();
-    expect(screen.getByText("Active workstreams")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /active/i })).toBeTruthy();
     expect(screen.getByText("Cancelled")).toBeTruthy();
-    expect(screen.getByText("Avg progress (in-flight)")).toBeTruthy();
     expect(screen.getByText(/Track Z · read-only/i)).toBeTruthy();
     expect(screen.getByText(/Cross-cutting work logs across the company/i)).toBeTruthy();
   });
