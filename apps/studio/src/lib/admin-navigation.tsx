@@ -18,6 +18,7 @@ import {
   Building2,
   FileText,
   Network,
+  Bot,
 } from "lucide-react";
 
 export type NavItem = {
@@ -92,6 +93,7 @@ export function buildNavGroups(
     {
       label: "Brain",
       items: [
+        { href: "/admin/autopilot", label: "Autopilot", icon: Bot },
         { href: "/admin/brain/personas", label: "People", icon: Users },
         {
           href: "/admin/brain/conversations",
