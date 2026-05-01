@@ -75,7 +75,7 @@ function parseDateFromChunk(chunk: string): Date | undefined {
   }
 
   const monthFirst = trimmed.match(
-    /^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})$/,
+    /^([A-Za-z]{3,12})[ \t]+(\d{1,2}),?[ \t]+(\d{4})$/,
   );
   if (monthFirst) {
     const mi = monthIndex(monthFirst[1]!);
@@ -88,7 +88,7 @@ function parseDateFromChunk(chunk: string): Date | undefined {
   }
 
   const dayFirst = trimmed.match(
-    /^(\d{1,2})\s+([A-Za-z]+),?\s+(\d{4})$/,
+    /^(\d{1,2})[ \t]+([A-Za-z]{3,12}),?[ \t]+(\d{4})$/,
   );
   if (dayFirst) {
     const mi = monthIndex(dayFirst[2]!);
@@ -104,7 +104,7 @@ function parseDateFromChunk(chunk: string): Date | undefined {
 }
 
 const DUE_LINE_RE =
-  /(?:^|\n)\s*(?:due|payment\s*due|due\s*by)\s*[:.]?\s*(.+)$/gim;
+  /^[ \t]*(?:due|payment[ \t]+due|due[ \t]+by)[ \t]*[:.]?[ \t]*(.+)$/gim;
 
 function extractDueDate(text: string): Date | undefined {
   let best: Date | undefined;
@@ -112,7 +112,7 @@ function extractDueDate(text: string): Date | undefined {
   for (const m of text.matchAll(DUE_LINE_RE)) {
     const rest = m[1]?.trim() ?? "";
     const isoInline = rest.match(
-      /(\d{1,4}[-/]\d{1,2}[-/]\d{1,4}|[A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+[A-Za-z]+,?\s+\d{4})/,
+      /(\d{1,4}[-/]\d{1,2}[-/]\d{1,4}|[A-Za-z]{3,12}[ \t]+\d{1,2},?[ \t]+\d{4}|\d{1,2}[ \t]+[A-Za-z]{3,12},?[ \t]+\d{4})/,
     );
     const chunk = isoInline?.[0] ?? rest;
     const d = parseDateFromChunk(chunk);
@@ -122,18 +122,18 @@ function extractDueDate(text: string): Date | undefined {
 }
 
 const INVOICE_NO_RE =
-  /(invoice|inv)\s*#?\s*[:.]?\s*([A-Z0-9-]+)/gi;
+  /\b(?:invoice|inv)[ \t]*#?[ \t]*[:.]?[ \t]*([A-Z0-9-]{1,48})\b/gi;
 
 function extractInvoiceNumber(text: string): string | undefined {
   INVOICE_NO_RE.lastIndex = 0;
   for (const m of text.matchAll(INVOICE_NO_RE)) {
-    const id = m[2]?.trim();
+    const id = m[1]?.trim();
     if (id) return id;
   }
   return undefined;
 }
 
-const BILL_FROM_RE = /bill\s+from\s*[:.]?\s*([^\n]+)/i;
+const BILL_FROM_RE = /bill[ \t]+from[ \t]*[:.]?[ \t]*([^\n]{1,400})/i;
 
 function extractVendor(text: string): string | undefined {
   const bill = text.match(BILL_FROM_RE);
@@ -157,7 +157,7 @@ type MoneyHit = { value: number; currency: string; score: number };
 
 function scoreLineForTotal(line: string): number {
   const lower = line.toLowerCase();
-  if (/total|amount\s*due|balance\s*due/.test(lower)) return 3;
+  if (/total|amount[ \t]*due|balance[ \t]*due/.test(lower)) return 3;
   if (/subtotal/.test(lower)) return 1;
   return 0;
 }
@@ -188,7 +188,7 @@ function collectMoneyHits(text: string): MoneyHit[] {
     }
 
     for (const m of line.matchAll(
-      /(?:total|amount\s*due|balance\s*due)\s*[:.]?\s*\$?\s*(\d+(?:,\d{3})*(?:\.\d{1,2})?)/gi,
+      /(?:total|amount[ \t]*due|balance[ \t]*due)[ \t]*[:.]?[ \t]*\$?[ \t]*(\d+(?:,\d{3})*(?:\.\d{1,2})?)/gi,
     )) {
       const value = parseMoneyAmount(m[1]!);
       if (Number.isFinite(value)) {
@@ -213,7 +213,7 @@ function extractPrimaryAmount(text: string): { value: number; currency: string }
 }
 
 const ISSUE_DATE_RE =
-  /(?:invoice\s*date|date\s*issued|issued\s*on)\s*[:.]?\s*(\d{1,4}[-/]\d{1,2}[-/]\d{1,4}|[A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}\s+[A-Za-z]+,?\s+\d{4})/i;
+  /\b(?:invoice[ \t]*date|date[ \t]*issued|issued[ \t]*on)[ \t]*[:.]?[ \t]*(\d{1,4}[-/]\d{1,2}[-/]\d{1,4}|[A-Za-z]{3,12}[ \t]+\d{1,2},?[ \t]+\d{4}|\d{1,2}[ \t]+[A-Za-z]{3,12},?[ \t]+\d{4})/i;
 
 function extractIssueDate(text: string): Date | undefined {
   const m = text.match(ISSUE_DATE_RE);
