@@ -3,7 +3,6 @@ import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import ServicesTab from "./tabs/services-tab";
 import VendorsTab from "./tabs/vendors-tab";
 import SecretsTab from "./tabs/secrets-tab";
-import LogsTab from "./tabs/logs-tab";
 import CostTab from "./tabs/cost-tab";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +14,9 @@ export default async function InfrastructurePage({ searchParams }: PageProps) {
   const { tab } = await searchParams;
   if (tab === "overview") {
     redirect("/admin/infrastructure?tab=services");
+  }
+  if (tab === "logs") {
+    redirect("/admin/infrastructure?tab=services&infraView=logs");
   }
 
   const tabs = [
@@ -32,11 +34,6 @@ export default async function InfrastructurePage({ searchParams }: PageProps) {
       id: "secrets" as const,
       label: "Secrets",
       content: <SecretsTab />,
-    },
-    {
-      id: "logs" as const,
-      label: "Logs",
-      content: <LogsTab />,
     },
     {
       id: "cost" as const,
