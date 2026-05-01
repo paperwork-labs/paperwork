@@ -60,27 +60,56 @@ function ownerBadgeClass(owner: string): string {
   return "border-zinc-600 bg-zinc-800/80 text-zinc-300";
 }
 
-export function GoalsClient({
-  data,
-  brainUnavailable = false,
+/** Shown when Brain has no goals endpoint, returns an error, or Studio env is missing Brain. */
+export function GoalsBrainDisconnected({
+  brainConfigured,
 }: {
-  data: GoalsJson;
-  brainUnavailable?: boolean;
+  /** True when BRAIN_API_URL / secret are set but goals could not be loaded. */
+  brainConfigured: boolean;
 }) {
+  return (
+    <div className="space-y-8">
+      <HqPageHeader
+        title="Goals & OKRs"
+        subtitle="Q2 2026 objectives and key results"
+        breadcrumbs={[
+          { label: "Admin", href: "/admin" },
+          { label: "Goals & OKRs" },
+        ]}
+      />
+
+      <div
+        role="status"
+        data-testid="goals-not-wired"
+        className="rounded-2xl border border-zinc-800/90 bg-zinc-950/80 p-8 ring-1 ring-zinc-800"
+      >
+        <p className="text-sm font-medium text-zinc-200">Not connected to Brain yet</p>
+        <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+          This page will show live objectives and key results when the Brain API exposes{" "}
+          <code className="rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-xs text-zinc-300">
+            GET /api/v1/admin/goals
+          </code>{" "}
+          and Studio can load it successfully.
+        </p>
+        <p className="mt-3 text-sm text-zinc-500">
+          {brainConfigured
+            ? "Brain is configured, but goals could not be loaded (missing route, auth, or server error). Check Brain logs and deployment."
+            : "Set BRAIN_API_URL and BRAIN_API_SECRET in this environment so Studio can call Brain."}
+        </p>
+        <p className="mt-4 text-xs text-zinc-600">
+          Static demo data is no longer shown here so the dashboard does not look live when it is not.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export function GoalsClient({ data }: { data: GoalsJson }) {
   const { objectives } = data;
   const rollup = computeGoalsRollup(objectives);
 
   return (
     <div className="space-y-8">
-      {brainUnavailable ? (
-        <div
-          role="status"
-          className="rounded-lg bg-zinc-800 px-3 py-2 text-xs text-amber-400"
-        >
-          Goals data is static — Brain API not connected
-        </div>
-      ) : null}
-
       <HqPageHeader
         title="Goals & OKRs"
         subtitle="Q2 2026 objectives and key results"

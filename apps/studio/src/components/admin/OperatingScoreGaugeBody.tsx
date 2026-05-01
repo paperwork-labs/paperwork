@@ -63,6 +63,80 @@ function weekTrendMeta(
   return { delta: current.total - baseline.total, baseline };
 }
 
+/** Prefer Brain `/admin/operating-score/history`; else merge tail + current. */
+function buildOperatingScoreSparkSeries(
+  current: OperatingScoreEntry | null,
+  historyTail: OperatingScoreEntry[],
+  apiHistory: OperatingScoreEntry[] | null | undefined,
+): OperatingScoreEntry[] {
+  const mergeSorted = (entries: OperatingScoreEntry[]) => {
+    const byTs = new Map<string, OperatingScoreEntry>();
+    for (const e of entries) byTs.set(e.computed_at, e);
+    return [...byTs.values()].sort((a, b) => Date.parse(a.computed_at) - Date.parse(b.computed_at));
+  };
+
+  if (apiHistory != null && apiHistory.length >= 2) {
+    return mergeSorted(apiHistory);
+  }
+  const merged: OperatingScoreEntry[] = [...historyTail];
+  if (current) merged.push(current);
+  return mergeSorted(merged);
+}
+
+function OperatingScoreSparkline({ series }: { series: OperatingScoreEntry[] }) {
+  if (series.length < 2) return null;
+  const w = 128;
+  const h = 40;
+  const padX = 2;
+  const padY = 4;
+  const vals = series.map((s) => s.total);
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const span = max - min || 1;
+  const innerW = w - 2 * padX;
+  const innerH = h - 2 * padY;
+  const pts = vals.map((v, i) => {
+    const x = padX + (i / (vals.length - 1)) * innerW;
+    const y = padY + (1 - (v - min) / span) * innerH;
+    return `${x},${y}`;
+  });
+
+  const first = vals[0];
+  const last = vals[vals.length - 1];
+  const trendUp = last > first + 0.05;
+  const trendDn = last < first - 0.05;
+  const strokeCls = trendUp
+    ? "text-emerald-400/85"
+    : trendDn
+      ? "text-rose-400/85"
+      : "text-zinc-400/80";
+
+  return (
+    <div className="flex flex-col items-end gap-1" data-testid="operating-score-sparkline-wrap">
+      <span className="text-[10px] font-medium uppercase tracking-wider text-zinc-600">Trend</span>
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="h-10 w-32 shrink-0 text-zinc-500"
+        role="img"
+        aria-label={`Operating score trend from ${first.toFixed(0)} to ${last.toFixed(0)} across ${vals.length} snapshots`}
+      >
+        <polyline
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          className={`${strokeCls} drop-shadow-[0_0_6px_rgba(34,211,238,0.08)]`}
+          points={pts.join(" ")}
+        />
+      </svg>
+      <span className="tabular-nums text-[10px] text-zinc-600">
+        {series[0]?.computed_at ? `${series[0].total.toFixed(0)} → ${series[series.length - 1]?.total.toFixed(0)}` : ""}
+      </span>
+    </div>
+  );
+}
+
 function useAnimatedOperatingTotal(target: number, durationMs = 900) {
   const [display, setDisplay] = useState(0);
   const rafRef = useRef(0);
@@ -235,10 +309,16 @@ function WeekTrendRow({
 export type OperatingScoreGaugeBodyProps = {
   data: OperatingScoreResponse;
   brainConfigured: boolean;
+  /** Optional series from Brain `GET /admin/operating-score/history` (chronological). */
+  operatingScoreHistory?: OperatingScoreEntry[] | null;
 };
 
 /** Presentational shell: used by the RSC and by unit tests. */
-export function OperatingScoreGaugeBody({ data, brainConfigured }: OperatingScoreGaugeBodyProps) {
+export function OperatingScoreGaugeBody({
+  data,
+  brainConfigured,
+  operatingScoreHistory,
+}: OperatingScoreGaugeBodyProps) {
   const gradientId = useId().replace(/:/g, "");
   const { current, history_last_12, gates } = data;
 
@@ -248,6 +328,11 @@ export function OperatingScoreGaugeBody({ data, brainConfigured }: OperatingScor
     if (current == null) return { delta: 0, baseline: null as OperatingScoreEntry | null };
     return weekTrendMeta(current, history_last_12);
   }, [current, history_last_12]);
+
+  const sparkSeries = useMemo(
+    () => buildOperatingScoreSparkSeries(current, history_last_12, operatingScoreHistory),
+    [current, history_last_12, operatingScoreHistory],
+  );
 
   if (!brainConfigured) {
     return (
@@ -279,17 +364,20 @@ export function OperatingScoreGaugeBody({ data, brainConfigured }: OperatingScor
         className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 ring-1 ring-zinc-800"
         data-testid="operating-score-empty"
       >
-        <div className="flex flex-col gap-1">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-            Operating score
-          </p>
-          <p className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-lg font-semibold tracking-tight text-transparent">
-            Company OS pulse
-          </p>
-          <p className="text-xs text-zinc-500">
-            Proxied from Brain{" "}
-            <code className="text-zinc-400">/api/v1/admin/operating-score</code>
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              Operating score
+            </p>
+            <p className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-lg font-semibold tracking-tight text-transparent">
+              Company OS pulse
+            </p>
+            <p className="text-xs text-zinc-500">
+              Proxied from Brain{" "}
+              <code className="text-zinc-400">/api/v1/admin/operating-score</code>
+            </p>
+          </div>
+          <OperatingScoreSparkline series={sparkSeries} />
         </div>
         <div className="mt-5 space-y-4">
           <p className="text-sm leading-relaxed text-zinc-300">
@@ -312,17 +400,20 @@ export function OperatingScoreGaugeBody({ data, brainConfigured }: OperatingScor
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 ring-1 ring-zinc-800">
-      <div className="flex flex-col gap-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          Operating score
-        </p>
-        <p className="bg-gradient-to-r from-zinc-100 via-zinc-200 to-zinc-400 bg-clip-text text-lg font-semibold tracking-tight text-transparent">
-          Company OS pulse
-        </p>
-        <p className="text-xs text-zinc-500">
-          Proxied from Brain{" "}
-          <code className="text-zinc-400">/api/v1/admin/operating-score</code>
-        </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            Operating score
+          </p>
+          <p className="bg-gradient-to-r from-zinc-100 via-zinc-200 to-zinc-400 bg-clip-text text-lg font-semibold tracking-tight text-transparent">
+            Company OS pulse
+          </p>
+          <p className="text-xs text-zinc-500">
+            Proxied from Brain{" "}
+            <code className="text-zinc-400">/api/v1/admin/operating-score</code>
+          </p>
+        </div>
+        <OperatingScoreSparkline series={sparkSeries} />
       </div>
 
       <WeekTrendRow delta={trend.delta} baseline={trend.baseline} />
