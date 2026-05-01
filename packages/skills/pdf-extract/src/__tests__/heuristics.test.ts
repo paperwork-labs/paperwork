@@ -33,7 +33,8 @@ describe("classifyAsInvoice heuristics", () => {
     const gap = " ".repeat(80_000);
     const text = `due${gap}invoice date:${gap}2026-03-01${gap}total${gap}$10.00`;
     const c = classifyAsInvoice(doc(text));
-    expect(c.amount?.value).toBe(10);
-    expect(c.issueDate?.getUTCFullYear()).toBe(2026);
+    expect(c).toBeDefined();
+    // Bounded spacing skips absurd same-line gaps; regression is hang-free completion.
+    expect(Number.isFinite(c.confidence)).toBe(true);
   });
 });

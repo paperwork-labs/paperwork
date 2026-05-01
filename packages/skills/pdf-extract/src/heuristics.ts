@@ -103,8 +103,9 @@ function parseDateFromChunk(chunk: string): Date | undefined {
   return undefined;
 }
 
+/** Bounded whitespace avoids polynomial backtracking on long TAB runs (CodeQL js/polynomial-redos). */
 const DUE_LINE_RE =
-  /^[ \t]*(?:due|payment[ \t]+due|due[ \t]+by)[ \t]*[:.]?[ \t]*(.+)$/gim;
+  /^[ \t]{0,96}(?:due|payment[ \t]{1,96}due|due[ \t]{1,96}by)[ \t]{0,96}[:.]?[ \t]{0,96}([^\r\n]{1,512})$/gim;
 
 function extractDueDate(text: string): Date | undefined {
   let best: Date | undefined;
@@ -112,7 +113,7 @@ function extractDueDate(text: string): Date | undefined {
   for (const m of text.matchAll(DUE_LINE_RE)) {
     const rest = m[1]?.trim() ?? "";
     const isoInline = rest.match(
-      /(\d{1,4}[-/]\d{1,2}[-/]\d{1,4}|[A-Za-z]{3,12}[ \t]+\d{1,2},?[ \t]+\d{4}|\d{1,2}[ \t]+[A-Za-z]{3,12},?[ \t]+\d{4})/,
+      /(\d{1,4}[-/]\d{1,2}[-/]\d{1,4}|[A-Za-z]{3,12}[ \t]{1,96}\d{1,2},?[ \t]{1,96}\d{4}|\d{1,2}[ \t]{1,96}[A-Za-z]{3,12},?[ \t]{1,96}\d{4})/,
     );
     const chunk = isoInline?.[0] ?? rest;
     const d = parseDateFromChunk(chunk);
@@ -122,7 +123,7 @@ function extractDueDate(text: string): Date | undefined {
 }
 
 const INVOICE_NO_RE =
-  /\b(?:invoice|inv)[ \t]*#?[ \t]*[:.]?[ \t]*([A-Z0-9-]{1,48})\b/gi;
+  /\b(?:invoice|inv)[ \t]{0,96}#?[ \t]{0,96}[:.]?[ \t]{0,96}([A-Z0-9-]{1,48})\b/gi;
 
 function extractInvoiceNumber(text: string): string | undefined {
   INVOICE_NO_RE.lastIndex = 0;
@@ -133,7 +134,8 @@ function extractInvoiceNumber(text: string): string | undefined {
   return undefined;
 }
 
-const BILL_FROM_RE = /bill[ \t]+from[ \t]*[:.]?[ \t]*([^\n]{1,400})/i;
+const BILL_FROM_RE =
+  /bill[ \t]{1,96}from[ \t]{0,96}[:.]?[ \t]{0,96}([^\n]{1,400})/i;
 
 function extractVendor(text: string): string | undefined {
   const bill = text.match(BILL_FROM_RE);
@@ -157,7 +159,8 @@ type MoneyHit = { value: number; currency: string; score: number };
 
 function scoreLineForTotal(line: string): number {
   const lower = line.toLowerCase();
-  if (/total|amount[ \t]*due|balance[ \t]*due/.test(lower)) return 3;
+  if (/total|amount[ \t]{0,96}due|balance[ \t]{0,96}due/.test(lower))
+    return 3;
   if (/subtotal/.test(lower)) return 1;
   return 0;
 }
@@ -170,7 +173,7 @@ function collectMoneyHits(text: string): MoneyHit[] {
     const ls = scoreLineForTotal(line);
 
     for (const m of line.matchAll(
-      /\$\s*(\d+(?:,\d{3})*(?:\.\d{1,2})?)/g,
+      /\$[ \t]{0,96}(\d+(?:,\d{3})*(?:\.\d{1,2})?)/g,
     )) {
       const value = parseMoneyAmount(m[1]!);
       if (Number.isFinite(value)) {
@@ -179,7 +182,7 @@ function collectMoneyHits(text: string): MoneyHit[] {
     }
 
     for (const m of line.matchAll(
-      /USD\s*(\d+(?:,\d{3})*(?:\.\d{1,2})?)/gi,
+      /USD[ \t]{0,96}(\d+(?:,\d{3})*(?:\.\d{1,2})?)/gi,
     )) {
       const value = parseMoneyAmount(m[1]!);
       if (Number.isFinite(value)) {
@@ -188,7 +191,7 @@ function collectMoneyHits(text: string): MoneyHit[] {
     }
 
     for (const m of line.matchAll(
-      /(?:total|amount[ \t]*due|balance[ \t]*due)[ \t]*[:.]?[ \t]*\$?[ \t]*(\d+(?:,\d{3})*(?:\.\d{1,2})?)/gi,
+      /(?:total|amount[ \t]{0,96}due|balance[ \t]{0,96}due)[ \t]{0,96}[:.]?[ \t]{0,96}\$?[ \t]{0,96}(\d+(?:,\d{3})*(?:\.\d{1,2})?)/gi,
     )) {
       const value = parseMoneyAmount(m[1]!);
       if (Number.isFinite(value)) {
@@ -213,7 +216,7 @@ function extractPrimaryAmount(text: string): { value: number; currency: string }
 }
 
 const ISSUE_DATE_RE =
-  /\b(?:invoice[ \t]*date|date[ \t]*issued|issued[ \t]*on)[ \t]*[:.]?[ \t]*(\d{1,4}[-/]\d{1,2}[-/]\d{1,4}|[A-Za-z]{3,12}[ \t]+\d{1,2},?[ \t]+\d{4}|\d{1,2}[ \t]+[A-Za-z]{3,12},?[ \t]+\d{4})/i;
+  /\b(?:invoice[ \t]{0,96}date|date[ \t]{0,96}issued|issued[ \t]{0,96}on)[ \t]{0,96}[:.]?[ \t]{0,96}(\d{1,4}[-/]\d{1,2}[-/]\d{1,4}|[A-Za-z]{3,12}[ \t]{1,96}\d{1,2},?[ \t]{1,96}\d{4}|\d{1,2}[ \t]{1,96}[A-Za-z]{3,12},?[ \t]{1,96}\d{4})/i;
 
 function extractIssueDate(text: string): Date | undefined {
   const m = text.match(ISSUE_DATE_RE);

@@ -63,4 +63,20 @@ Payment due: 2026-03-15
     expect(partial.dueDate).toBeUndefined();
     expect(partial.confidence).toBe(0.5);
   });
+
+  it("finishes on large noisy bodies without polynomial-regex slowdown", () => {
+    const noise = `${"A".repeat(99_900)}\nBill from: Co\nInvoice #: OK\n`;
+    const c = classifyAsInvoice(docFromText(noise));
+    expect(c.vendor).toContain("Co");
+    expect(c.invoiceNumber).toBe("OK");
+  });
+
+  it("finishes when lines contain huge TAB runs near invoice markers", () => {
+    const tabs = "\t".repeat(60_000);
+    const body = `due${tabs}\ntotal${tabs}$50\nBill from: Q\nInvoice #: I\n`;
+    const c = classifyAsInvoice(docFromText(body));
+    expect(c.vendor).toContain("Q");
+    expect(c.invoiceNumber).toBe("I");
+    expect(c.amount).toEqual({ value: 50, currency: "USD" });
+  });
 });
