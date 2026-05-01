@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import { BII_FORMULA } from "../brain-improvement-formula";
@@ -7,7 +10,8 @@ describe("resolveMonorepoRoot", () => {
   it("finds repo root from package cwd", () => {
     const root = resolveMonorepoRoot(process.cwd());
     expect(root).toBeTruthy();
-    expect(root!.includes("paperwork")).toBe(true);
+    expect(existsSync(join(root!, "pnpm-workspace.yaml"))).toBe(true);
+    expect(existsSync(join(root!, "apis", "brain"))).toBe(true);
   });
 });
 
