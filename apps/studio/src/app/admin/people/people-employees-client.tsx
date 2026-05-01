@@ -57,7 +57,7 @@ export function PeopleEmployeesClient({
         ]}
         actions={
           <Link
-            href="/admin/brain/personas"
+            href="/admin/people?view=workspace"
             className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-600/80 bg-zinc-900/60 px-3 py-1.5 text-xs font-medium text-zinc-200 motion-safe:transition-colors hover:border-zinc-500 hover:bg-zinc-800/80"
           >
             Full workspace
