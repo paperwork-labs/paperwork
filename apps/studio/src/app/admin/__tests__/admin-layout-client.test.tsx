@@ -1,5 +1,6 @@
 import type { ReactElement } from "react";
 import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLayoutClient } from "../admin-layout-client";
@@ -45,7 +46,7 @@ describe("AdminLayoutClient (WS-82 nav reorder — Brain, SYSTEMS, Money demoted
 
     expect(screen.getAllByText("Paperwork Labs").length).toBeGreaterThan(0);
     const homeLinks = screen.getAllByTestId("admin-sidebar-home-link");
-    expect(homeLinks).toHaveLength(2);
+    expect(homeLinks).toHaveLength(1);
     homeLinks.forEach((el) => {
       expect(el.getAttribute("href")).toBe("/admin");
       expect(within(el as HTMLElement).getByText("Studio")).toBeTruthy();
@@ -110,7 +111,7 @@ describe("AdminLayoutClient (WS-82 nav reorder — Brain, SYSTEMS, Money demoted
     expect(convoLink.getAttribute("href")).toBe("/admin/conversations");
     expect(within(convoLink).getByText("4 pending")).toBeTruthy();
 
-    const footer = screen.getAllByTestId("admin-vendor-footer")[1]!;
+    const footer = screen.getByTestId("admin-vendor-footer");
     const vendorAnchors = within(footer).getAllByRole("link");
     expect(vendorAnchors).toHaveLength(6);
 
@@ -130,5 +131,57 @@ describe("AdminLayoutClient (WS-82 nav reorder — Brain, SYSTEMS, Money demoted
     );
     const expenses = screen.getByRole("link", { name: /Expenses/i });
     expect(within(expenses).getByText("3 pending")).toBeTruthy();
+  });
+});
+
+describe("AdminLayoutClient mobile drawer", () => {
+  it("renders hamburger control with lg:hidden", () => {
+    renderAdminLayout(
+      <AdminLayoutClient founderPending={null} expensesPending={null}>
+        <span />
+      </AdminLayoutClient>,
+    );
+    const btn = screen.getByRole("button", { name: /open navigation menu/i });
+    expect(btn.className).toContain("lg:hidden");
+  });
+
+  it("toggles drawer when hamburger is clicked repeatedly", async () => {
+    const user = userEvent.setup();
+    renderAdminLayout(
+      <AdminLayoutClient founderPending={null} expensesPending={null}>
+        <span />
+      </AdminLayoutClient>,
+    );
+    const menuBtn = screen.getByRole("button", { name: /open navigation menu/i });
+    await user.click(menuBtn);
+    expect(screen.getByTestId("admin-mobile-drawer")).toBeTruthy();
+    await user.click(menuBtn);
+    expect(screen.queryByTestId("admin-mobile-drawer")).toBeNull();
+  });
+
+  it("opens drawer when hamburger is clicked", async () => {
+    const user = userEvent.setup();
+    renderAdminLayout(
+      <AdminLayoutClient founderPending={null} expensesPending={null}>
+        <span />
+      </AdminLayoutClient>,
+    );
+    expect(screen.queryByTestId("admin-mobile-drawer")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+    expect(screen.getByTestId("admin-mobile-drawer")).toBeTruthy();
+    expect(screen.getByTestId("admin-mobile-drawer-backdrop")).toBeTruthy();
+  });
+
+  it("closes drawer when backdrop is clicked", async () => {
+    const user = userEvent.setup();
+    renderAdminLayout(
+      <AdminLayoutClient founderPending={null} expensesPending={null}>
+        <span />
+      </AdminLayoutClient>,
+    );
+    await user.click(screen.getByRole("button", { name: /open navigation menu/i }));
+    await user.click(screen.getByRole("button", { name: /close menu/i }));
+    expect(screen.queryByTestId("admin-mobile-drawer")).toBeNull();
+    expect(screen.queryByTestId("admin-mobile-drawer-backdrop")).toBeNull();
   });
 });

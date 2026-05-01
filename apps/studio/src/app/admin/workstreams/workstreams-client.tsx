@@ -313,7 +313,7 @@ export function WorkstreamsBoardClient({
           <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
             Status · click a card to filter the board
           </p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
             <HqStatCard
               variant="compact"
               label="Total"
@@ -378,7 +378,7 @@ export function WorkstreamsBoardClient({
                   key={opt}
                   type="button"
                   onClick={() => pickOwner(opt)}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${chipClass(active)}`}
+                  className={`min-h-11 rounded-full border px-2.5 py-2 text-xs font-medium transition sm:min-h-0 sm:py-1 ${chipClass(active)}`}
                 >
                   {opt === "all" ? "All" : opt}
                 </button>
@@ -390,7 +390,7 @@ export function WorkstreamsBoardClient({
             <button
               type="button"
               onClick={() => pickTrack("all")}
-              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${chipClass(trackFilter === "all")}`}
+              className={`min-h-11 rounded-full border px-2.5 py-2 text-xs font-medium transition sm:min-h-0 sm:py-1 ${chipClass(trackFilter === "all")}`}
             >
               All
             </button>
@@ -401,7 +401,7 @@ export function WorkstreamsBoardClient({
                   key={t}
                   type="button"
                   onClick={() => pickTrack(t)}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${chipClass(active)}`}
+                  className={`min-h-11 rounded-full border px-2.5 py-2 text-xs font-medium transition sm:min-h-0 sm:py-1 ${chipClass(active)}`}
                 >
                   {t}
                 </button>

@@ -64,7 +64,7 @@ function DirectoryTab({
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <HqStatCard
           label="Total Products"
           value={rollup.totalProducts}
@@ -103,7 +103,7 @@ function DirectoryTab({
               role="tab"
               aria-selected={pressed}
               onClick={() => setFilter(f.id)}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+              className={`rounded-full border px-3 py-2 text-xs font-medium transition max-sm:min-h-11 ${
                 pressed
                   ? "border-[var(--status-info)]/50 bg-[rgb(12_74_110/0.22)] text-[rgb(224_242_254)]"
                   : "border-zinc-700 bg-zinc-900/50 text-zinc-400 hover:border-zinc-600 hover:text-zinc-200"
