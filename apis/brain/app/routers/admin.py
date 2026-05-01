@@ -1400,14 +1400,11 @@ async def get_brain_fill_meter(
                     "capacity_units": semantic_embedding_target,
                     "utilization_pct": semantic_pct,
                     "note": (
-                        "Capacity mirrors live episode count; "
-                        "embedding coverage vs corpus size."
+                        "Capacity mirrors live episode count; embedding coverage vs corpus size."
                     ),
                 },
             },
-            "notes": (
-                "Caps are planning defaults for Studio; tune when formal quotas exist."
-            ),
+            "notes": ("Caps are planning defaults for Studio; tune when formal quotas exist."),
         }
     )
 

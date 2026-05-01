@@ -28,7 +28,9 @@ async def test_ws82_admin_endpoints_require_secret(client: AsyncClient, path: st
 
 
 @pytest.mark.asyncio
-async def test_memory_stats_success_shape(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_memory_stats_success_shape(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(settings, "BRAIN_API_SECRET", "test-secret")
     res = await client.get(
         "/api/v1/admin/memory-stats",
@@ -106,7 +108,9 @@ async def test_operating_score_history_series_length(
 
 
 @pytest.mark.asyncio
-async def test_cost_breakdown_success_shape(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_cost_breakdown_success_shape(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(settings, "BRAIN_API_SECRET", "test-secret")
     res = await client.get(
         "/api/v1/admin/cost-breakdown?days=14",
@@ -121,7 +125,9 @@ async def test_cost_breakdown_success_shape(client: AsyncClient, monkeypatch: py
 
 
 @pytest.mark.asyncio
-async def test_brain_fill_meter_success_shape(client: AsyncClient, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_brain_fill_meter_success_shape(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr(settings, "BRAIN_API_SECRET", "test-secret")
     res = await client.get(
         "/api/v1/admin/brain-fill-meter",
