@@ -1,55 +1,32 @@
-import type { gmail_v1 } from "googleapis";
+export { GmailClient, createGmailClient } from "./client.js";
+export { GmailLabels, SYSTEM_LABELS, type SystemLabel } from "./labels.js";
+export {
+  GmailAttachments,
+  extractInlineImages,
+  getMessageBody,
+  getMessageHeaders,
+} from "./attachments.js";
+export type {
+  GmailCredentials,
+  GmailTokens,
+  GmailClientConfig,
+  MessageListOptions,
+  MessageListResult,
+  MessageGetOptions,
+  AttachmentInfo,
+  AttachmentData,
+  LabelInfo,
+  SendMessageOptions,
+  SendMessageResult,
+} from "./types.js";
 
-export type GmailMessage = gmail_v1.Schema$Message;
-export type GmailMessageList = gmail_v1.Schema$ListMessagesResponse;
+export const GMAIL_SCOPES = {
+  READONLY: "https://www.googleapis.com/auth/gmail.readonly",
+  SEND: "https://www.googleapis.com/auth/gmail.send",
+  COMPOSE: "https://www.googleapis.com/auth/gmail.compose",
+  MODIFY: "https://www.googleapis.com/auth/gmail.modify",
+  LABELS: "https://www.googleapis.com/auth/gmail.labels",
+  FULL_ACCESS: "https://mail.google.com/",
+} as const;
 
-export interface ParsedInvoice {
-  vendor: string | null;
-  amount: number | null;
-  currency: string | null;
-  dueDate: string | null;
-  invoiceNumber: string | null;
-  rawText: string;
-}
-
-export interface GmailClientConfig {
-  credentials: {
-    clientId: string;
-    clientSecret: string;
-    refreshToken: string;
-  };
-}
-
-export class GmailClient {
-  private config: GmailClientConfig;
-
-  constructor(config: GmailClientConfig) {
-    this.config = config;
-  }
-
-  async connect(): Promise<void> {
-    // TODO: Initialize googleapis OAuth2 client and verify connection
-    void this.config;
-    throw new Error("Not implemented");
-  }
-
-  async listMessages(query: string): Promise<GmailMessageList> {
-    // TODO: Use gmail.users.messages.list with query filter
-    // Example query: "from:billing@ subject:invoice"
-    void query;
-    throw new Error("Not implemented");
-  }
-
-  async getMessage(id: string): Promise<GmailMessage> {
-    // TODO: Use gmail.users.messages.get with full format
-    void id;
-    throw new Error("Not implemented");
-  }
-
-  async parseInvoice(message: GmailMessage): Promise<ParsedInvoice> {
-    // TODO: Extract invoice details from email body/attachments
-    // Will use LLM for parsing unstructured invoice data
-    void message;
-    throw new Error("Not implemented");
-  }
-}
+export type GmailScope = (typeof GMAIL_SCOPES)[keyof typeof GMAIL_SCOPES];
