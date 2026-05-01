@@ -179,11 +179,11 @@ _PRIORITY_ORDER: list[str] = [
     "legal",
     "cfo",
     "qa",
+    "data-ops",
     "agent-ops",
     "ops-engineer",
     "ux-lead",
     "growth",
-    "data-ops",
     "engineer",
 ]
 
@@ -247,8 +247,8 @@ def select_persona_for_task(
     """
     task_persona: str = _TASK_TYPE_MAP.get(task_type, _DEFAULT_PERSONA)
 
-    if product is not None:
-        product_persona: str = _PRODUCT_PERSONA_MAP.get(product, _DEFAULT_PERSONA)
+    if product is not None and product in _PRODUCT_PERSONA_MAP:
+        product_persona: str = _PRODUCT_PERSONA_MAP[product]
         product_domain: PersonaDispatchDomain | None = DISPATCH_REGISTRY.get(product_persona)
         if product_domain is not None:
             product_tier = product_domain["autonomy_tier"]
