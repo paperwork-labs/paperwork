@@ -8,6 +8,8 @@ status: active
 
 # Open issue queue — `paperwork-labs/paperwork`
 
+**TL;DR:** Snapshot of triage-ready GitHub issues from 2026-04-27. Read it when you want the next `ready` items to pick up or to see what the last sweep found.
+
 **Triage date:** 2026-04-27  
 **Scope:** Open issues at sweep time, ordered for contributor/agent pickup. Labels: `ready` = well-specified; `blocked-on-founder` = needs credentials or product call before execution.
 

@@ -7,6 +7,8 @@ status: active
 ---
 # Credential Registry
 
+**TL;DR:** Registry of every credential the stack uses. Read this when you onboard, rotate secrets, or audit access; add any new credential here before merge.
+
 Single source of truth for every credential across all systems. QA audits against this document. Any new credential MUST be added here before merge.
 
 **Last Updated**: 2026-03-08
@@ -14,7 +16,6 @@ Single source of truth for every credential across all systems. QA audits agains
 ---
 
 ## Core Infrastructure
-
 
 | Credential       | Purpose                           | Systems     | Where Configured                  | Rotation Policy                       | Owner       |
 | ---------------- | --------------------------------- | ----------- | --------------------------------- | ------------------------------------- | ----------- |

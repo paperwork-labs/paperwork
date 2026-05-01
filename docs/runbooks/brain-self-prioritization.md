@@ -1,5 +1,7 @@
 # Brain Self-Prioritization
 
+**TL;DR:** How Brain proposes workstream candidates from objectives, POS, and other signals before they become tracker entries. Read when you promote or reject a candidate via the admin API.
+
 Brain self-prioritization is the Phase G2 loop that proposes workstreams before
 they become real tracker entries. It writes proposals to
 `apis/brain/data/workstream_candidates.json`; the founder reviews them before

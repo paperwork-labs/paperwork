@@ -1,5 +1,7 @@
 # Deprecated n8n Workflows (Hetzner) — Retired
 
+**TL;DR:** Lists legacy Brain-mirror n8n flows that must stay off. Read before touching the Hetzner n8n host or Wave M social automation.
+
 **Status:** **RETIRED** (Brain-mirror / Slack-era automation)  
 **Last updated:** 2026-04-30  
 **Context:** Monorepo automation for Paperwork’s **cron-shaped** workloads moved to **Brain APScheduler**. Slack outbound and n8n Brain integration were removed in **WS-69 PR J** (see [decommission-checklist.md](./decommission-checklist.md)). The **Hetzner** n8n instance may still have held copies of these workflows until **Phase 1** of [hetzner-socials-repurpose.md](./hetzner-socials-repurpose.md) runs.

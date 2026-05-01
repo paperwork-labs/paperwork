@@ -7,6 +7,8 @@ status: active
 ---
 # Billing Email Migration Checklist
 
+**TL;DR:** Checklist for moving vendor billing to `billing@paperworklabs.com`. Use it when you migrate existing accounts or sign up for new services.
+
 **Goal**: Use `billing@paperworklabs.com` for all vendor accounts (subscriptions, servers, APIs, domains). Keeps business expenses separate from personal, clean audit trail.
 
 **Last updated**: 2026-03-17

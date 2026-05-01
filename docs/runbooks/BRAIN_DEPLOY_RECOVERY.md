@@ -1,5 +1,7 @@
 # Brain deploy recovery (Render / Postgres / Docker)
 
+**TL;DR:** Merge-time guards for Brain Alembic heads, Dockerfile healthchecks, and import path safety. Read this when Render boot fails after a migration or Dockerfile change.
+
 Operational notes for incidents that surfaced in April 2026 and the guardrails that now block repeats at merge time.
 
 ## Regression modes addressed
@@ -18,7 +20,7 @@ Operational notes for incidents that surfaced in April 2026 and the guardrails t
 
 ## Local verification (run from repo root)
 
-```
+```bash
 python scripts/check_alembic_heads.py &&
 python scripts/check_dockerfile_healthcheck.py &&
 python scripts/check_parents_import_safety.py

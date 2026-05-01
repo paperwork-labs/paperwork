@@ -52,7 +52,7 @@ Provisioned in [`apis/axiomfolio/render.yaml`](../apis/axiomfolio/render.yaml) w
 
 ## Directory layout
 
-```
+```text
 infra/
 ├── compose.dev.yaml             # THE unified dev compose
 ├── env.dev.defaults             # shared non-secret dev env (vault-free)
@@ -110,7 +110,7 @@ below; the same `down -v` resets both the pg17 bump and the role).
 
 Dev connection string (inside a container):
 
-```
+```text
 postgresql://paperwork:paperwork_dev@postgres:5432/<product>_dev
 ```
 

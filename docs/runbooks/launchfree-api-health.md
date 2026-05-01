@@ -8,6 +8,8 @@ status: stub
 
 # LaunchFree API health (`/health`)
 
+**TL;DR:** Triage when Studio shows LaunchFree `/health` as failing (often 404). Check env, Render logs, and the real URL before you change probes.
+
 <a id="launchfree-api-health"></a>
 
 ## Symptom

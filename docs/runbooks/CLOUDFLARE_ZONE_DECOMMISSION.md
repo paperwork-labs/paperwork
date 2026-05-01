@@ -11,6 +11,8 @@ tags: [cloudflare, dns, migration, security]
 
 # Cloudflare zone decommission (old personal account)
 
+**TL;DR:** After NS soak, delete duplicate zones from the founder’s old personal Cloudflare account using `scripts/cloudflare_decommission_zones.py`. Run only when the work account already serves production.
+
 ## When to run
 
 1. **At least ~24 hours after** nameserver / registrar cutover to the work account

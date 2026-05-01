@@ -11,6 +11,8 @@ tags: [cloudflare, dns, secrets, migration, security]
 
 # Cloudflare account ownership + migration
 
+**TL;DR:** How production zones moved from the founder’s personal Cloudflare account to the work account (done 2026-04-28), plus token rotation and day-to-day DNS ops.
+
 > **As of 2026-04-28, all 5 production zones are migrated** to the Paperwork Labs work Cloudflare account (`7e8976a674c66193992c04d61d5a6747`). This runbook is **historical reference** (how we cut over) **plus ongoing operational procedures** (tokens, new zones, team access).
 
 This runbook captures the **founder migration** (completed 2026-04-28) from the **former** personal Cloudflare account (`Sankalp404@gmail.com` — migrated-from, not current production ownership) to the **work** account, and the **ongoing operational procedures** (token rotation, zone admission, team access) now that the work account is canonical.

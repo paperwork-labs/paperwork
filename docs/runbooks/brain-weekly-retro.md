@@ -11,6 +11,8 @@ summary: How Brain computes, records, and recomputes weekly self-improvement ret
 
 # Brain Weekly Retro
 
+**TL;DR:** How Brain builds the weekly retro JSON from POS, PRs, incidents, and related data. Use when you recompute a week or interpret `weekly_retros.json`.
+
 Brain's weekly retro is the Phase G2 self-improvement loop. It turns the last seven days of PR outcomes, POS movement, incidents, candidate workstreams, objective progress, and procedural memory changes into `apis/brain/data/weekly_retros.json`.
 
 ## What Goes Into The Retro

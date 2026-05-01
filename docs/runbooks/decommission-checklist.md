@@ -1,5 +1,7 @@
 # Domain / App Decommission Checklist
 
+**TL;DR:** Steps to remove a domain or app safely while keeping audit history (archive Vercel, DNS cleanup, registry updates). Follow before you tear down production URLs.
+
 **Owner:** ops-engineer  
 **Last updated:** 2026-04-28  
 **Source of truth for completed decommissions:** `apis/brain/data/decommissions.json`  
