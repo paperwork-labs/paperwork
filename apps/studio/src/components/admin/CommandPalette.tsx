@@ -16,7 +16,7 @@ const EXTRA_NAV: PaletteNavRow[] = [
 
 const QUICK: PaletteNavRow[] = [
   {
-    href: "/admin/brain/conversations?compose=1",
+    href: "/admin/conversations?compose=1",
     label: "Compose conversation",
     icon: MessageSquarePlus,
   },

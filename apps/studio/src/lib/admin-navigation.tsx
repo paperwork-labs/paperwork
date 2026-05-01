@@ -94,9 +94,9 @@ export function buildNavGroups(
       label: "Brain",
       items: [
         { href: "/admin/autopilot", label: "Autopilot", icon: Bot },
-        { href: "/admin/brain/personas", label: "People", icon: Users },
+        { href: "/admin/people", label: "People", icon: Users },
         {
-          href: "/admin/brain/conversations",
+          href: "/admin/conversations",
           label: "Conversations",
           icon: MessageSquare,
           pendingBadge: founderPending,

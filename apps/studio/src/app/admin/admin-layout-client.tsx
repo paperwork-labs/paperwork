@@ -151,7 +151,7 @@ function AdminSidebarPanel({
                     {showPendingBadge ? (
                       <span
                         data-testid={
-                          item.href === "/admin/brain/conversations"
+                          item.href === "/admin/conversations"
                             ? "conversations-sidebar-badge"
                             : undefined
                         }
