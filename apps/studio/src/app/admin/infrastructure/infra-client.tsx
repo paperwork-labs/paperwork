@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   RefreshCw,
   ExternalLink,
@@ -24,6 +25,7 @@ import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 import { SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES_CSV } from "@/lib/infra-probes";
+import LogsTab from "./tabs/logs-tab";
 
 type InfraService = InfraStatus;
 
@@ -165,6 +167,23 @@ function deriveSummary(services: InfraService[], fallback?: PlatformHealthSummar
 }
 
 const AUTO_REFRESH_MS = 30_000;
+
+/** Inner Services workspace views — must not use `tab`; that param is owned by the page shell. */
+const INFRA_VIEW_PARAM = "infraView";
+type InfraInnerView = "dashboard" | "logs";
+
+function InfraClientSuspenseFallback() {
+  return (
+    <div
+      className="space-y-4 rounded-xl border border-zinc-800 p-6 motion-safe:animate-pulse"
+      aria-busy="true"
+      aria-label="Loading infrastructure"
+    >
+      <div className="h-9 max-w-md rounded-md bg-zinc-800" />
+      <div className="h-40 rounded-lg bg-zinc-900" />
+    </div>
+  );
+}
 
 function renderRollupPill(rows: InfraService[]): string {
   const active = rows.filter((r) => !r.deprecated);
@@ -325,7 +344,21 @@ function SectionHeader({
   );
 }
 
-export default function InfraClient({
+export default function InfraClient(props: {
+  initialServices: InfraService[];
+  initialPlatformSummary?: PlatformHealthSummary;
+  initialPlatformPartial?: string[];
+  initialCheckedAt: string;
+  vercelMonorepoNamesConfigured: boolean;
+}) {
+  return (
+    <Suspense fallback={<InfraClientSuspenseFallback />}>
+      <InfraClientImpl {...props} />
+    </Suspense>
+  );
+}
+
+function InfraClientImpl({
   initialServices,
   initialPlatformSummary,
   initialPlatformPartial = [],
@@ -466,13 +499,67 @@ export default function InfraClient({
   const showVercelMissingCred = !vercelMonorepoNamesConfigured;
   const vercelCardsToShow = showVercelMissingCred ? [] : vercelRows;
 
+  const router = useRouter();
+  const pathname = usePathname() ?? "/admin/infrastructure";
+  const searchParams = useSearchParams();
+  const infraView: InfraInnerView =
+    searchParams.get(INFRA_VIEW_PARAM) === "logs" ? "logs" : "dashboard";
+
+  const setInfraView = useCallback(
+    (next: InfraInnerView) => {
+      const p = new URLSearchParams(searchParams.toString());
+      if (next === "dashboard") p.delete(INFRA_VIEW_PARAM);
+      else p.set(INFRA_VIEW_PARAM, next);
+      const qs = p.toString();
+      const href = qs ? `${pathname}?${qs}` : pathname;
+      router.replace(href, { scroll: false });
+    },
+    [router, pathname, searchParams],
+  );
+
   return (
     <div className="space-y-10" suppressHydrationWarning>
-      <section
-        className="rounded-xl border border-zinc-800 p-4"
-        data-testid="infra-health-summary"
-        aria-label="Platform health summary"
+      <div
+        className="flex flex-wrap gap-2 rounded-xl border border-zinc-800 bg-zinc-950/40 p-2"
+        role="toolbar"
+        aria-label="Services workspace"
       >
+        <button
+          type="button"
+          data-testid="infra-inner-view-dashboard"
+          aria-pressed={infraView === "dashboard"}
+          onClick={() => setInfraView("dashboard")}
+          className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+            infraView === "dashboard"
+              ? "bg-zinc-700 text-zinc-100"
+              : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+          }`}
+        >
+          Dashboard
+        </button>
+        <button
+          type="button"
+          data-testid="infra-inner-view-logs"
+          aria-pressed={infraView === "logs"}
+          onClick={() => setInfraView("logs")}
+          className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+            infraView === "logs"
+              ? "bg-zinc-700 text-zinc-100"
+              : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+          }`}
+        >
+          Logs
+        </button>
+      </div>
+      {infraView === "logs" ? (
+        <LogsTab />
+      ) : (
+        <>
+          <section
+            className="rounded-xl border border-zinc-800 p-4"
+            data-testid="infra-health-summary"
+            aria-label="Platform health summary"
+          >
         <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
           <Layers className="h-3.5 w-3.5" />
           Deploy platform (source of truth)
@@ -748,6 +835,8 @@ export default function InfraClient({
           Refresh
         </button>
       </div>
+        </>
+      )}
     </div>
   );
 }

@@ -111,17 +111,20 @@ test.describe("Architecture tabbed shell (WS-69 PR C)", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Infrastructure tabbed shell (tabs: services, secrets, logs, cost)
+// Infrastructure tabbed shell (tabs: services, vendors, secrets, cost; logs under Services via infraView)
 // ---------------------------------------------------------------------------
 
 test.describe("Infrastructure tabbed shell (WS-69 PR C — STUDIO_E2E_FIXTURE=1 dev server)", () => {
-  test("renders with four tabs (Services, Secrets, Logs, Cost) — no Overview", async ({ page }) => {
+  test("renders top tabs (Services, Vendors, Secrets, Cost) — no Overview / no duplicate Logs shell tab", async ({
+    page,
+  }) => {
     await page.goto("/admin/infrastructure", { waitUntil: "domcontentloaded" });
     await waitForStudioTabShellHydrated(page);
     await expect(page.getByRole("tab", { name: "Overview" })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "Services" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Vendors" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Secrets" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Logs" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "Logs" })).toHaveCount(0);
     await expect(page.getByRole("tab", { name: "Cost" })).toBeVisible();
   });
 
@@ -143,12 +146,23 @@ test.describe("Infrastructure tabbed shell (WS-69 PR C — STUDIO_E2E_FIXTURE=1 
     await expect(page).toHaveURL(/tab=secrets/);
   });
 
-  test("Logs tab shows application logs UI", async ({ page }) => {
+  test("legacy ?tab=logs redirects to Services + infraView=logs", async ({ page }) => {
+    await page.goto("/admin/infrastructure?tab=logs", { waitUntil: "domcontentloaded" });
+    await expect(page).toHaveURL(/tab=services/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/infraView=logs/, { timeout: 15_000 });
+    await waitForStudioTabShellHydrated(page);
+    await expect(page.getByRole("tab", { name: "Services" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator('[role="tabpanel"]:not([hidden])').getByText(/Application Logs|Brain-owned/i).first()).toBeVisible({
+      timeout: 15_000,
+    });
+  });
+
+  test("Services inner Logs workspace shows application logs UI", async ({ page }) => {
     await page.goto("/admin/infrastructure", { waitUntil: "domcontentloaded" });
     await waitForStudioTabShellHydrated(page);
-    await page.getByRole("tab", { name: "Logs" }).click();
-    await expect(page).toHaveURL(/tab=logs/, { timeout: 15_000 });
-    await expect(page.getByRole("tab", { name: "Logs" })).toHaveAttribute("aria-selected", "true", {
+    await page.getByTestId("infra-inner-view-logs").click();
+    await expect(page).toHaveURL(/infraView=logs/, { timeout: 15_000 });
+    await expect(page.getByRole("tab", { name: "Services" })).toHaveAttribute("aria-selected", "true", {
       timeout: 15_000,
     });
     await expect(page.locator('[role="tabpanel"]:not([hidden])').getByText(/Application Logs|Brain-owned/i).first()).toBeVisible({

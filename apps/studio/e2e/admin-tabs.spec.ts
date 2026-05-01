@@ -69,8 +69,10 @@ test.describe("/admin/infrastructure — tab panels stay populated", () => {
     await expect(page).toHaveURL(/tab=secrets/, { timeout: PANEL_TIMEOUT_MS });
     await expectActivePanelContains(page, /Secrets Vault|DATABASE_URL not set|Database connection failed/i);
 
-    await page.getByRole("tab", { name: "Logs" }).click();
-    await expect(page).toHaveURL(/tab=logs/, { timeout: PANEL_TIMEOUT_MS });
+    await page.getByRole("tab", { name: "Services" }).click();
+    await expect(page).toHaveURL(/tab=services/, { timeout: PANEL_TIMEOUT_MS });
+    await page.getByTestId("infra-inner-view-logs").click();
+    await expect(page).toHaveURL(/infraView=logs/, { timeout: PANEL_TIMEOUT_MS });
     await expectActivePanelContains(page, /Application Logs|Brain-owned log store/i);
 
     await page.getByRole("tab", { name: "Cost" }).click();
