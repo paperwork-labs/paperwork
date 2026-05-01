@@ -2,8 +2,10 @@ import asyncio
 import hmac
 import json
 import logging
+import math
 import os
 import subprocess
+import uuid
 from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from datetime import date as date_type
@@ -1600,6 +1602,374 @@ async def get_procedural_memory(
             "last_consolidated_at": None,
         }
     )
+
+
+# ---------------------------------------------------------------------------
+# Goals / OKRs (JSON file, Studio GoalsJson shape)
+# ---------------------------------------------------------------------------
+
+
+def _goals_json_path() -> Path:
+    env = os.environ.get("BRAIN_GOALS_JSON", "").strip()
+    if env:
+        return Path(env)
+    return _monorepo_root() / "apis" / "brain" / "data" / "goals.json"
+
+
+def _goals_iso_now_z() -> str:
+    return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _new_goal_id() -> str:
+    return f"obj-{uuid.uuid4().hex[:12]}"
+
+
+def _new_kr_id() -> str:
+    return f"kr-{uuid.uuid4().hex[:12]}"
+
+
+def _kr_progress_pct(current: float, target: float) -> float:
+    if not math.isfinite(float(current)) or not math.isfinite(float(target)) or float(target) <= 0:
+        return 0.0
+    return round(min(100.0, (float(current) / float(target)) * 100.0), 2)
+
+
+class KeyResultUpsert(BaseModel):
+    """Key result payload for POST/PUT (Studio stores ``title``, ``current``)."""
+
+    id: str | None = None
+    title: str = Field(..., min_length=1)
+    target: float
+    current: float = 0
+    unit: str = ""
+    source_url: str | None = None
+
+
+class GoalCreateBody(BaseModel):
+    objective: str = Field(..., min_length=1)
+    key_results: list[KeyResultUpsert] = Field(default_factory=list)
+    owner: str = Field("", max_length=200)
+    quarter: str = Field(..., min_length=1, max_length=32)
+    due_date: str | None = Field(None, max_length=40)
+
+
+class GoalPatchBody(BaseModel):
+    objective: str | None = Field(None, min_length=1)
+    owner: str | None = Field(None, max_length=200)
+    quarter: str | None = Field(None, min_length=1, max_length=32)
+    due_date: str | None = Field(None, max_length=40)
+    key_results: list[KeyResultUpsert] | None = None
+
+
+class KRProgressPatchBody(BaseModel):
+    current_value: float
+    note: str | None = Field(None, max_length=1000)
+
+
+def _empty_goals_doc() -> dict[str, Any]:
+    return {"quarter": "", "objectives": []}
+
+
+def _coerce_float(v: object, default: float = 0.0) -> float:
+    try:
+        return float(v)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_kr_blob(kr_id: str, row: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {
+        "id": kr_id,
+        "title": str(row.get("title") or ""),
+        "target": _coerce_float(row.get("target"), 0.0),
+        "current": _coerce_float(row.get("current"), 0.0),
+        "unit": str(row.get("unit") or ""),
+        "source_url": row.get("source_url"),
+    }
+    note = row.get("note")
+    if isinstance(note, str) and note.strip():
+        out["note"] = note
+    return out
+
+
+def _build_kr_from_wire(wire: KeyResultUpsert) -> dict[str, Any]:
+    kid = wire.id.strip() if wire.id and wire.id.strip() else _new_kr_id()
+    return _normalize_kr_blob(
+        kid,
+        {
+            "title": wire.title,
+            "target": wire.target,
+            "current": wire.current,
+            "unit": wire.unit,
+            "source_url": wire.source_url,
+        },
+    )
+
+
+def _normalize_objective_blob(row: dict[str, Any]) -> dict[str, Any]:
+    krs_raw = row.get("key_results")
+    krs: list[dict[str, Any]] = []
+    if isinstance(krs_raw, list):
+        for kr in krs_raw:
+            if not isinstance(kr, dict):
+                continue
+            kid = str(kr.get("id") or "").strip() or _new_kr_id()
+            krs.append(_normalize_kr_blob(kid, kr))
+    oid = str(row.get("id") or "").strip() or _new_goal_id()
+    out: dict[str, Any] = {
+        "id": oid,
+        "title": str(row.get("title") or ""),
+        "owner": str(row.get("owner") or ""),
+        "key_results": krs,
+    }
+    if isinstance(row.get("due_date"), str) and row["due_date"]:
+        out["due_date"] = row["due_date"]
+    if isinstance(row.get("archived_at"), str) and row["archived_at"]:
+        out["archived_at"] = row["archived_at"]
+    return out
+
+
+def _sync_load_goals_file(path: Path) -> dict[str, Any]:
+    if not path.is_file():
+        return _empty_goals_doc()
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise OSError(str(exc)) from exc
+    if not isinstance(raw, dict):
+        msg = "goals.json must be a JSON object"
+        raise ValueError(msg)
+    quarter = raw.get("quarter", "")
+    objectives_raw = raw.get("objectives", [])
+    if not isinstance(quarter, str):
+        quarter = str(quarter) if quarter is not None else ""
+    objs: list[dict[str, Any]] = []
+    if isinstance(objectives_raw, list):
+        for row in objectives_raw:
+            if isinstance(row, dict):
+                objs.append(_normalize_objective_blob(row))
+    return {"quarter": quarter, "objectives": objs}
+
+
+def _sync_save_goals_file(path: Path, doc: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(doc, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _find_goal_index(doc: dict[str, Any], goal_id: str) -> int | None:
+    objs = doc.get("objectives")
+    if not isinstance(objs, list):
+        return None
+    for i, row in enumerate(objs):
+        if isinstance(row, dict) and str(row.get("id")) == goal_id:
+            return i
+    return None
+
+
+def _patch_kr_with_progress(kr: dict[str, Any], body: KRProgressPatchBody) -> dict[str, Any]:
+    updated = {k: v for k, v in kr.items() if k != "progress_pct"}
+    updated["current"] = float(body.current_value)
+    if body.note is not None:
+        if body.note.strip() == "":
+            updated.pop("note", None)
+        else:
+            updated["note"] = body.note
+    pct = _kr_progress_pct(
+        float(updated.get("current", 0)),
+        float(updated.get("target", 0)),
+    )
+    return {**updated, "progress_pct": pct}
+
+
+def _patch_key_result_inplace(
+    path: Path,
+    doc: dict[str, Any],
+    goal_id: str,
+    kr_id: str,
+    body: KRProgressPatchBody,
+) -> dict[str, Any]:
+    ix = _find_goal_index(doc, goal_id)
+    if ix is None:
+        msg = "goal not found"
+        raise KeyError(msg)
+    row = dict(doc["objectives"][ix])
+    krs = row.get("key_results")
+    if not isinstance(krs, list):
+        msg = "key result list missing"
+        raise KeyError(msg)
+    found_idx: int | None = None
+    found: dict[str, Any] | None = None
+    for j, kr in enumerate(krs):
+        if isinstance(kr, dict) and str(kr.get("id")) == kr_id:
+            found_idx = j
+            found = kr
+            break
+    if found_idx is None or found is None:
+        msg = "kr not found"
+        raise KeyError(msg)
+    patched = _patch_kr_with_progress(found, body)
+    store_kr = {k: v for k, v in patched.items() if k != "progress_pct"}
+    krs = list(krs)
+    krs[found_idx] = store_kr
+    row["key_results"] = krs
+    doc["objectives"][ix] = row
+    _sync_save_goals_file(path, doc)
+    return patched
+
+
+@router.get("/goals")
+async def get_goals(
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Return ``GoalsJson`` for Studio (``quarter`` + ``objectives`` list)."""
+
+    def _load() -> dict[str, Any]:
+        path = _goals_json_path()
+        return _sync_load_goals_file(path)
+
+    try:
+        payload = await asyncio.to_thread(_load)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return success_response(jsonable_encoder(payload))
+
+
+@router.post("/goals")
+async def post_goal(body: GoalCreateBody, _auth: None = Depends(_require_admin)) -> Any:
+    """Create one objective plus key results; sets top-level quarter from the payload."""
+
+    def _run() -> dict[str, Any]:
+        path = _goals_json_path()
+        doc = _sync_load_goals_file(path)
+        oid = _new_goal_id()
+        objective: dict[str, Any] = {
+            "id": oid,
+            "title": body.objective.strip(),
+            "owner": body.owner.strip(),
+            "key_results": [_build_kr_from_wire(w) for w in body.key_results],
+        }
+        if body.due_date is not None and body.due_date.strip():
+            objective["due_date"] = body.due_date.strip()
+        doc["quarter"] = body.quarter.strip()
+        objs = doc.setdefault("objectives", [])
+        if not isinstance(objs, list):
+            objs = []
+            doc["objectives"] = objs
+        objs.append(objective)
+        _sync_save_goals_file(path, doc)
+        return objective
+
+    try:
+        created = await asyncio.to_thread(_run)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return success_response(jsonable_encoder(created))
+
+
+@router.put("/goals/{goal_id}")
+async def put_goal(goal_id: str, body: GoalPatchBody, _auth: None = Depends(_require_admin)) -> Any:
+    """Merge fields into one objective by id (full ``key_results`` replace when supplied)."""
+
+    def _run() -> dict[str, Any]:
+        path = _goals_json_path()
+        doc = _sync_load_goals_file(path)
+        ix = _find_goal_index(doc, goal_id)
+        if ix is None:
+            raise ValueError(f"UNKNOWN_GOAL:{goal_id}")
+        existing = dict(doc["objectives"][ix])
+        if body.objective is not None:
+            existing["title"] = body.objective.strip()
+        if body.owner is not None:
+            existing["owner"] = body.owner.strip()
+        if body.due_date is not None:
+            if body.due_date.strip() == "":
+                existing.pop("due_date", None)
+            else:
+                existing["due_date"] = body.due_date.strip()
+        if body.key_results is not None:
+            existing["key_results"] = [_build_kr_from_wire(w) for w in body.key_results]
+        doc["objectives"][ix] = existing
+        if body.quarter is not None:
+            doc["quarter"] = body.quarter.strip()
+        _sync_save_goals_file(path, doc)
+        return existing
+
+    try:
+        updated = await asyncio.to_thread(_run)
+    except ValueError as exc:
+        if str(exc).startswith("UNKNOWN_GOAL:"):
+            raise HTTPException(status_code=404, detail=f"Goal not found: {goal_id}") from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return success_response(jsonable_encoder(updated))
+
+
+@router.delete("/goals/{goal_id}")
+async def delete_goal_archive(goal_id: str, _auth: None = Depends(_require_admin)) -> Any:
+    """Soft-delete one objective — sets ``archived_at`` UTC timestamp."""
+
+    def _run() -> dict[str, str]:
+        path = _goals_json_path()
+        doc = _sync_load_goals_file(path)
+        ix = _find_goal_index(doc, goal_id)
+        if ix is None:
+            raise ValueError(f"UNKNOWN_GOAL:{goal_id}")
+        archived = _goals_iso_now_z()
+        row = dict(doc["objectives"][ix])
+        row["archived_at"] = archived
+        doc["objectives"][ix] = row
+        _sync_save_goals_file(path, doc)
+        return {"id": goal_id, "archived_at": archived}
+
+    try:
+        out = await asyncio.to_thread(_run)
+    except ValueError as exc:
+        if str(exc).startswith("UNKNOWN_GOAL:"):
+            raise HTTPException(status_code=404, detail=f"Goal not found: {goal_id}") from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return success_response(jsonable_encoder(out))
+
+
+@router.patch("/goals/{goal_id}/key-results/{kr_id}")
+async def patch_key_result_progress(
+    goal_id: str,
+    kr_id: str,
+    body: KRProgressPatchBody,
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Update one KR ``current`` from ``current_value``; returns KR + ``progress_pct``."""
+
+    def _run() -> dict[str, Any]:
+        path = _goals_json_path()
+        doc = _sync_load_goals_file(path)
+        try:
+            return _patch_key_result_inplace(path, doc, goal_id, kr_id, body)
+        except KeyError as exc:
+            err = exc.args[0] if exc.args else None
+            if err == "kr not found":
+                raise ValueError(f"UNKNOWN_KR:{kr_id}") from exc
+            if err == "goal not found":
+                raise ValueError(f"UNKNOWN_GOAL:{goal_id}") from exc
+            raise ValueError(f"GOALS_CORRUPT:{err!s}") from exc
+
+    try:
+        patched = await asyncio.to_thread(_run)
+    except ValueError as exc:
+        s = str(exc)
+        if s.startswith("UNKNOWN_KR:"):
+            raise HTTPException(status_code=404, detail=f"Key result not found: {kr_id}") from exc
+        if s.startswith("UNKNOWN_GOAL:"):
+            raise HTTPException(status_code=404, detail=f"Goal not found: {goal_id}") from exc
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return success_response(jsonable_encoder(patched))
 
 
 # ---------------------------------------------------------------------------
