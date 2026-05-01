@@ -52,6 +52,23 @@ export interface CreateClerkAppearanceOptions {
    */
   destructive?: string;
   /**
+   * Text on primary-colored surfaces (CTA). Defaults to
+   * `"hsl(var(--primary-foreground))"` (`colorPrimaryForeground`).
+   */
+  primaryForeground?: string;
+  /**
+   * Focus ring color (`colorRing`). Defaults to `accent`.
+   */
+  ring?: string;
+  /**
+   * Neutral base for borders / secondary surfaces (`colorNeutral`).
+   */
+  neutral?: string;
+  /**
+   * Base border color (`colorBorder`).
+   */
+  border?: string;
+  /**
    * Border radius for inputs + buttons. Defaults to `"0.5rem"`.
    */
   borderRadius?: string;
@@ -125,6 +142,10 @@ export function createClerkAppearance(
     foreground = "hsl(var(--foreground))",
     mutedForeground = "hsl(var(--muted-foreground))",
     destructive = "hsl(var(--destructive))",
+    primaryForeground = "hsl(var(--primary-foreground))",
+    ring,
+    neutral,
+    border,
     borderRadius = "0.5rem",
     fontFamily = DEFAULT_FONT_FAMILY,
     isDark = true,
@@ -160,21 +181,32 @@ export function createClerkAppearance(
     ? { ...baseElements, ...elementOverrides }
     : baseElements;
 
+  const resolvedRing = ring ?? accent;
+
+  // Clerk deprecated colorText / colorInputBackground (2025-07-15). SDK v7 reads
+  // colorForeground, colorInput, colorMutedForeground, colorPrimaryForeground.
+  const variables: Record<string, string> = {
+    colorPrimary: primary,
+    colorBackground: background,
+    colorInput: inputBackground,
+    colorForeground: foreground,
+    colorInputForeground: foreground,
+    colorMutedForeground: mutedForeground,
+    colorPrimaryForeground: primaryForeground,
+    colorDanger: destructive,
+    colorRing: resolvedRing,
+    borderRadius,
+    fontFamily,
+  };
+
+  if (neutral !== undefined) variables.colorNeutral = neutral;
+  if (border !== undefined) variables.colorBorder = border;
+
   return {
     baseTheme: isDark ? dark : undefined,
     variables: {
-      colorPrimary: primary,
-      // `colorAccent` was added in @clerk/types v4; cast keeps us compatible
-      // when callers' lockfiles haven't bumped yet.
+      ...variables,
       ...(accent !== primary ? ({ colorAccent: accent } as Record<string, string>) : {}),
-      colorBackground: background,
-      colorInputBackground: inputBackground,
-      colorInputText: foreground,
-      colorText: foreground,
-      colorTextSecondary: mutedForeground,
-      colorDanger: destructive,
-      borderRadius,
-      fontFamily,
     },
     elements,
   };

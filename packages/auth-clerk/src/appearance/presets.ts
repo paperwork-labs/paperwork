@@ -79,19 +79,38 @@ export const distillAppearance: Appearance = createClerkAppearance({
 
 export const studioAppearance: Appearance = createClerkAppearance({
   primary: "hsl(var(--primary))",
+  accent: "hsl(199 89% 48%)",
+  background: "hsl(240 10% 3.9%)",
+  inputBackground: "hsl(240 3.7% 15.9%)",
+  foreground: "hsl(0 0% 98%)",
+  mutedForeground: "hsl(240 5% 64.9%)",
+  destructive: "hsl(0 62.8% 30.6%)",
+  primaryForeground: "hsl(210 40% 98%)",
+  ring: "hsl(199 89% 48%)",
+  neutral: "hsl(240 4% 46%)",
+  border: "hsl(240 3.7% 15.9%)",
   cardClassName:
     "border border-brand-primary/25 bg-brand-surface/60 shadow-2xl shadow-black/30",
   inputClassName:
-    "border-brand-primary/35 bg-brand-surface/50 transition focus:border-brand-accent",
+    "border-brand-primary/35 bg-brand-surface/50 text-zinc-100 placeholder:text-zinc-500 transition focus:border-brand-accent focus:ring-2 focus:ring-sky-500/55 focus:ring-offset-2 focus:ring-offset-zinc-950",
   socialButtonClassName:
-    "border-brand-primary/30 hover:bg-brand-primary/10 hover:border-brand-accent/35",
+    "border-brand-primary/30 bg-zinc-900/85 text-zinc-100 hover:bg-zinc-800/90 hover:border-brand-accent/35",
+  primaryButtonClassName:
+    "font-medium shadow-sm transition-colors hover:opacity-95 active:opacity-90 text-zinc-50",
   elementOverrides: {
     headerTitle: "text-zinc-100",
     headerSubtitle: "text-zinc-400",
     formFieldLabel: "text-zinc-200",
+    dividerText: "text-zinc-400",
+    dividerLine: "bg-zinc-700",
     identityPreview: "bg-brand-primary/10 border-brand-primary/30",
+    identityPreviewText: "text-zinc-100",
+    identityPreviewEditButton: "text-sky-400 hover:text-sky-300",
+    formResendCodeLink: "text-sky-400 hover:text-sky-300",
+    otpCodeFieldInput:
+      "border-brand-primary/35 bg-brand-surface/50 text-zinc-100 text-center tracking-widest transition focus:border-brand-accent focus:ring-2 focus:ring-sky-500/55 focus:ring-offset-2 focus:ring-offset-zinc-950",
     userButtonTrigger:
-      "rounded-lg p-0.5 transition hover:bg-brand-primary/10 focus:ring-2 focus:ring-brand-accent/35",
+      "rounded-lg p-0.5 transition hover:bg-brand-primary/10 focus:ring-2 focus:ring-sky-500/40 focus:ring-offset-2 focus:ring-offset-zinc-950",
     userButtonAvatarBox: "h-8 w-8 rounded-lg ring-1 ring-brand-accent/45",
   },
 });
