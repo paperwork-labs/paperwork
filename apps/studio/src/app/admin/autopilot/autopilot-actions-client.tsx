@@ -1,13 +1,38 @@
 "use client";
 
-// TODO: Wire to Brain dispatch approve/veto endpoints when implemented (Phase D)
-
 import { useState, useTransition } from "react";
 import { Check, X } from "lucide-react";
 
 import { approveDispatch, vetoDispatch } from "./actions";
 
-export function AutopilotActions({ taskId }: { taskId: string }) {
+export type AutopilotDispatchStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "vetoed";
+
+/** Renders approve/veto controls only when the dispatch is still pending founder review. */
+export function AutopilotActionsIfPending({
+  status,
+  taskId,
+  label,
+}: {
+  status: AutopilotDispatchStatus;
+  taskId: string;
+  label?: string;
+}) {
+  if (status !== "pending") return null;
+  return <AutopilotActions taskId={taskId} label={label} />;
+}
+
+export function AutopilotActions({
+  taskId,
+  label,
+}: {
+  taskId: string;
+  label?: string;
+}) {
   const [isPending, startTransition] = useTransition();
   const [vetoMode, setVetoMode] = useState(false);
   const [reason, setReason] = useState("");
@@ -20,7 +45,12 @@ export function AutopilotActions({ taskId }: { taskId: string }) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-testid={`autopilot-actions-${taskId}`}>
+      {label ? (
+        <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+          {label}
+        </p>
+      ) : null}
       {!vetoMode ? (
         <div className="flex items-center gap-2">
           <button
