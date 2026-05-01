@@ -1,0 +1,33 @@
+{
+  "name": "@paperwork/skills-gmail-inbound",
+  "version": "0.0.1",
+  "description": "Gmail OAuth, IMAP-style message pull, and invoice-oriented email + attachment parsing for bills ingestion.",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "googleapis": "^148.0.0",
+    "mailparser": "^3.7.1"
+  },
+  "devDependencies": {
+    "@types/mailparser": "^3.4.4",
+    "@types/node": "^25.6.0",
+    "tsup": "^8.3.7",
+    "typescript": "^5.6.0",
+    "vitest": "^4.1.5"
+  }
+}
