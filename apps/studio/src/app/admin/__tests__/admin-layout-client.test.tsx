@@ -79,7 +79,7 @@ describe("AdminLayoutClient (WS-82 PR-IA1 unified Workstreams nav)", () => {
     expect(expensesInNav.getAttribute("href")).toBe("/admin/expenses");
     expect(
       within(nav).getByRole("link", { name: /^Bills$/ }).getAttribute("href"),
-    ).toBe("/admin/money/bills");
+    ).toBe("/admin/bills");
     expect(
       within(nav).getByRole("link", { name: /^Vendors$/ }).getAttribute("href"),
     ).toBe("/admin/vendors");
