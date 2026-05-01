@@ -36,6 +36,7 @@ from app.routers import (
     health,
     infra_registry,
     memory,
+    persona_review,
     vendors,
     voice_system,
     webhooks,
@@ -202,6 +203,7 @@ app.include_router(infra_registry.router, prefix="/api/v1")
 app.include_router(brain.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(persona_review.router, prefix="/api/v1")
 app.include_router(admin_learning.router, prefix="/api/v1")
 app.include_router(admin_audits.router, prefix="/api/v1")
 app.include_router(auto_distillation.router, prefix="/api/v1")
