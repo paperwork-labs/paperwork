@@ -1,0 +1,20 @@
+From: Acme Vendor <vendor@example.com>
+To: billing@paperworklabs.com
+Subject: Invoice #12345 for your order
+Message-ID: <fixture-001@example.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="boundary_invoice_fixture"
+
+--boundary_invoice_fixture
+Content-Type: text/plain; charset=utf-8
+
+Please see attached invoice for $1,234.56.
+Due date: 01/15/2026
+
+--boundary_invoice_fixture
+Content-Type: application/pdf; name="invoice.pdf"
+Content-Disposition: attachment; filename="invoice.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQK
+--boundary_invoice_fixture--
