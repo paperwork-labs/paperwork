@@ -21,7 +21,7 @@ import { motion } from "framer-motion";
 import { BrainFreshnessTile } from "@/components/admin/BrainFreshnessTile";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 
-import { HqStatCard } from "@/components/admin/hq/HqStatCard";
+import { StatCard } from "@/components/admin/stat-card";
 
 type N8nWorkflow = {
   id: string;
@@ -145,9 +145,6 @@ const fadeUp = {
   hidden: { opacity: 0, y: 8 },
   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 };
-
-const STAT_CARD_LINK =
-  "block h-full rounded-xl ring-1 ring-zinc-800 outline-none transition duration-200 ease-out hover:scale-[1.02] hover:ring-zinc-700 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-amber-500/45";
 
 export default function OverviewClient({ initial }: { initial: OverviewData }) {
   const [data, setData] = useState(initial);
@@ -314,7 +311,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           <h1 className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-3xl font-semibold tracking-tight text-transparent">
             Company HQ
           </h1>
-          <p className="mt-1 text-sm text-zinc-400">
+          <p className="mt-1 max-w-2xl text-sm text-zinc-400">
             Brain-led operating picture — shipping, health, and what needs a decision.
           </p>
         </div>
@@ -393,117 +390,82 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
 
       {/* Stat cards — PRs, CI, infra, products */}
       <motion.section
-        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-6 lg:grid-cols-4"
         variants={stagger}
         initial="hidden"
         animate="show"
       >
-        <motion.div variants={fadeUp}>
-          <Link
+        <motion.div variants={fadeUp} className="min-h-0">
+          <StatCard
             href={
               githubPrDegraded
                 ? "/admin/infrastructure"
                 : "https://github.com/paperwork-labs/paperwork/pulls"
             }
-            className={STAT_CARD_LINK}
-            target={githubPrDegraded ? undefined : "_blank"}
-            rel={githubPrDegraded ? undefined : "noreferrer"}
-            aria-label={
+            external={!githubPrDegraded}
+            ariaLabel={
               githubPrDegraded ? "Open infrastructure to connect GitHub" : "Open GitHub pull requests"
             }
-          >
-            <HqStatCard
-              variant="default"
-              status={
-                githubPrDegraded ? "warning" : prsNeedingChanges > 0 ? "danger" : "neutral"
-              }
-              icon={<GitPullRequest className="h-4 w-4 text-zinc-500" />}
-              label="Open PRs"
-              value={githubPrDegraded ? "—" : prs.length}
-              helpText={
-                githubPrMissingCred
-                  ? "Connect GITHUB_TOKEN to load pull requests."
-                  : githubPrFetchError
-                    ? githubPrFetchError
-                    : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
-              }
-            />
-          </Link>
+            icon={<GitPullRequest className="h-4 w-4 text-zinc-500" />}
+            label="Open PRs"
+            value={githubPrDegraded ? "—" : prs.length}
+            hint={
+              githubPrMissingCred
+                ? "Connect GITHUB_TOKEN to load pull requests."
+                : githubPrFetchError
+                  ? githubPrFetchError
+                  : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
+            }
+          />
         </motion.div>
 
-        <motion.div variants={fadeUp}>
-          <a
+        <motion.div variants={fadeUp} className="min-h-0">
+          <StatCard
             href="https://github.com/paperwork-labs/paperwork/actions?query=branch%3Amain"
-            className={STAT_CARD_LINK}
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Open GitHub Actions for main branch"
-          >
-            <HqStatCard
-              variant="default"
-              status={
-                githubCiMissingCred
-                  ? "warning"
+            ariaLabel="Open GitHub Actions for main branch"
+            icon={<GitBranch className="h-4 w-4 text-zinc-500" />}
+            label="CI on main"
+            value={githubCiMissingCred ? "—" : ciRuns.length === 0 ? "—" : `${ciSuccessCount}/${ciRuns.length}`}
+            hint={
+              githubCiMissingCred
+                ? "Connect GITHUB_TOKEN to load workflow runs."
+                : ciRuns.length === 0
+                  ? "No recent runs loaded."
                   : ciFailureCount > 0
-                    ? "danger"
-                    : ciRuns.length > 0 && ciSuccessCount === ciRuns.length
-                      ? "success"
-                      : "neutral"
-              }
-              icon={<GitBranch className="h-4 w-4 text-zinc-500" />}
-              label="CI on main"
-              value={githubCiMissingCred ? "—" : ciRuns.length === 0 ? "—" : `${ciSuccessCount}/${ciRuns.length}`}
-              helpText={
-                githubCiMissingCred
-                  ? "Connect GITHUB_TOKEN to load workflow runs."
-                  : ciRuns.length === 0
-                    ? "No recent runs loaded."
-                    : ciFailureCount > 0
-                      ? `${ciFailureCount} failing · recent runs below`
-                      : "Recent runs below"
-              }
-            />
-          </a>
+                    ? `${ciFailureCount} failing · recent runs below`
+                    : "Recent runs below"
+            }
+          />
         </motion.div>
 
-        <motion.div variants={fadeUp}>
-          <Link href="/admin/infrastructure" className={STAT_CARD_LINK} aria-label="Open infrastructure status">
-            <HqStatCard
-              variant="default"
-              status={
-                healthyInfra === infrastructure.length && infrastructure.length > 0
-                  ? "success"
-                  : degradedInfra > 0
-                    ? "danger"
-                    : "neutral"
-              }
-              icon={<Shield className="h-4 w-4 text-zinc-500" />}
-              label="Infra health"
-              value={infrastructure.length > 0 ? `${healthyInfra}/${infrastructure.length}` : "—"}
-              helpText="Provider checks · Brain, APIs, frontends"
-            />
-          </Link>
+        <motion.div variants={fadeUp} className="min-h-0">
+          <StatCard
+            href="/admin/infrastructure"
+            ariaLabel="Open infrastructure status"
+            icon={<Shield className="h-4 w-4 text-zinc-500" />}
+            label="Infra health"
+            value={infrastructure.length > 0 ? `${healthyInfra}/${infrastructure.length}` : "—"}
+            hint="Provider checks · Brain, APIs, frontends"
+          />
         </motion.div>
 
-        <motion.div variants={fadeUp}>
-          <Link href="/admin/products" className={STAT_CARD_LINK} aria-label="Open products catalog">
-            <HqStatCard
-              variant="default"
-              status="neutral"
-              icon={<Layers3 className="h-4 w-4 text-zinc-500" />}
-              label="Products"
-              value="Catalog"
-              helpText="Ship matrix, plans, and product health"
-            />
-          </Link>
+        <motion.div variants={fadeUp} className="min-h-0">
+          <StatCard
+            href="/admin/products"
+            ariaLabel="Open products catalog"
+            icon={<Layers3 className="h-4 w-4 text-zinc-500" />}
+            label="Products"
+            value="Catalog"
+            hint="Ship matrix, plans, and product health"
+          />
         </motion.div>
       </motion.section>
 
       {/* Architecture + CI */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         <Link
           href="/admin/architecture"
-          className="group flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800 transition duration-200 ease-out hover:scale-[1.01] hover:border-zinc-700 hover:ring-zinc-700 active:scale-[0.995]"
+          className="group flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-950/40 p-5 ring-1 ring-zinc-800 transition duration-200 ease-out motion-safe:hover:border-zinc-700 motion-safe:hover:bg-zinc-900/50 motion-safe:hover:ring-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
         >
           <div>
             <div className="mb-3 flex items-center gap-2">
@@ -527,7 +489,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           </div>
         </Link>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-5 ring-1 ring-zinc-800">
           <div className="mb-3 flex items-center gap-2">
             <GitBranch className="h-4 w-4 text-zinc-500" />
             <p className="text-sm font-medium text-zinc-200">Recent CI on main</p>
@@ -588,8 +550,8 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         </section>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
+      <div className="grid gap-6 md:grid-cols-2">
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-5 ring-1 ring-zinc-800">
           <p className="mb-3 text-sm font-medium text-zinc-200">Shipping activity</p>
           <p className="mb-3 text-xs text-zinc-500">Pull requests and GitHub Actions — newest first.</p>
           <div className="max-h-96 space-y-1.5 overflow-y-auto">
@@ -631,7 +593,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           </div>
         </section>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-5 ring-1 ring-zinc-800">
           <p className="mb-3 text-sm font-medium text-zinc-200">Quick links</p>
           <div className="space-y-1">
             {[

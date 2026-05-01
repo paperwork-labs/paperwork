@@ -22,7 +22,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast, Toaster } from "sonner";
 
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
-import { HqStatCard } from "@/components/admin/hq/HqStatCard";
+import { StatCard } from "@/components/admin/stat-card";
 import type {
   WorkstreamOwner,
   WorkstreamsFile,
@@ -151,18 +151,21 @@ export function WorkstreamsBoardClient({
     [pathname, router, searchParams],
   );
 
-  const pickStatus = useCallback(
+  const statusHref = useCallback(
     (opt: BoardStatusFilter) => {
+      const next = new URLSearchParams(searchParams.toString());
       if (opt === "all") {
-        setQuery({ status: null });
-        return;
+        next.delete("status");
+      } else {
+        const matches =
+          opt === "active" ? statusFilter === "active" : statusFilter === opt;
+        if (matches) next.delete("status");
+        else next.set("status", opt);
       }
-      const matches =
-        opt === "active" ? statusFilter === "active" : statusFilter === opt;
-      if (matches) setQuery({ status: null });
-      else setQuery({ status: opt });
+      const q = next.toString();
+      return q ? `${pathname}?${q}` : pathname;
     },
-    [setQuery, statusFilter],
+    [pathname, searchParams, statusFilter],
   );
 
   const pickOwner = useCallback(
@@ -313,52 +316,53 @@ export function WorkstreamsBoardClient({
           <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
             Status · click a card to filter the board
           </p>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <HqStatCard
-              variant="compact"
+          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
+            <StatCard
+              compact
+              href={statusHref("all")}
+              ariaLabel={`Filter workstreams · total (${kpis.total})`}
               label="Total"
               value={kpis.total}
-              onClick={() => pickStatus("all")}
               selected={statusFilter === "all"}
             />
-            <HqStatCard
-              variant="compact"
+            <StatCard
+              compact
+              href={statusHref("active")}
+              ariaLabel={`Filter workstreams · active (${kpis.active})`}
               label="Active"
               value={kpis.active}
-              status="warning"
-              onClick={() => pickStatus("active")}
               selected={statusFilter === "active"}
             />
-            <HqStatCard
-              variant="compact"
+            <StatCard
+              compact
+              href={statusHref("blocked")}
+              ariaLabel={`Filter workstreams · blocked (${kpis.blocked})`}
               label="Blocked"
               value={kpis.blocked}
-              status="danger"
-              onClick={() => pickStatus("blocked")}
               selected={statusFilter === "blocked"}
             />
-            <HqStatCard
-              variant="compact"
+            <StatCard
+              compact
+              href={statusHref("completed")}
+              ariaLabel={`Filter workstreams · completed (${kpis.completed})`}
               label="Completed"
               value={kpis.completed}
-              status="success"
-              onClick={() => pickStatus("completed")}
               selected={statusFilter === "completed"}
             />
-            <HqStatCard
-              variant="compact"
+            <StatCard
+              compact
+              href={statusHref("cancelled")}
+              ariaLabel={`Filter workstreams · cancelled (${kpis.cancelled})`}
               label="Cancelled"
               value={kpis.cancelled}
-              status="danger"
-              onClick={() => pickStatus("cancelled")}
               selected={statusFilter === "cancelled"}
             />
-            <HqStatCard
-              variant="compact"
+            <StatCard
+              compact
+              href={statusHref("deferred")}
+              ariaLabel={`Filter workstreams · deferred (${kpis.deferred})`}
               label="Deferred"
               value={kpis.deferred}
-              status="info"
-              onClick={() => pickStatus("deferred")}
               selected={statusFilter === "deferred"}
             />
           </div>
@@ -378,7 +382,7 @@ export function WorkstreamsBoardClient({
                   key={opt}
                   type="button"
                   onClick={() => pickOwner(opt)}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${chipClass(active)}`}
+                  className={`inline-flex min-h-11 items-center rounded-full border px-3 py-2 text-xs font-medium transition lg:min-h-0 lg:px-2.5 lg:py-1 ${chipClass(active)}`}
                 >
                   {opt === "all" ? "All" : opt}
                 </button>
@@ -390,7 +394,7 @@ export function WorkstreamsBoardClient({
             <button
               type="button"
               onClick={() => pickTrack("all")}
-              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${chipClass(trackFilter === "all")}`}
+              className={`inline-flex min-h-11 items-center rounded-full border px-3 py-2 text-xs font-medium transition lg:min-h-0 lg:px-2.5 lg:py-1 ${chipClass(trackFilter === "all")}`}
             >
               All
             </button>
@@ -401,7 +405,7 @@ export function WorkstreamsBoardClient({
                   key={t}
                   type="button"
                   onClick={() => pickTrack(t)}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${chipClass(active)}`}
+                  className={`inline-flex min-h-11 items-center rounded-full border px-3 py-2 text-xs font-medium transition lg:min-h-0 lg:px-2.5 lg:py-1 ${chipClass(active)}`}
                 >
                   {t}
                 </button>

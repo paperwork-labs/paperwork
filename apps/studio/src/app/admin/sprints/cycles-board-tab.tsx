@@ -73,8 +73,12 @@ export function CyclesBoardTab({ workstreamsFile, workstreamsError }: CyclesBoar
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3">
-        <p className="text-[10px] font-medium uppercase tracking-[0.15em] text-zinc-500">
+      <Link
+        href="/admin/workstreams?tab=sprints"
+        className="block rounded-xl border border-zinc-800 bg-zinc-950/40 px-4 py-4 motion-safe:transition-colors motion-safe:hover:bg-zinc-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950"
+        aria-label="Open Sprint overview for the current cycle"
+      >
+        <p className="text-[11px] font-medium uppercase tracking-widest text-zinc-500">
           Current cycle
         </p>
         <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -92,16 +96,13 @@ export function CyclesBoardTab({ workstreamsFile, workstreamsError }: CyclesBoar
           sprint dates. Previous: <span className="text-zinc-400">{cycles[0]?.name}</span> · Next:{" "}
           <span className="text-zinc-400">{cycles[2]?.name}</span>
           <span className="text-zinc-600"> · </span>
-          Workstreams match the{" "}
-          <Link href="/admin/workstreams" className="text-[var(--status-info)] hover:opacity-90">
-            Workstreams
-          </Link>{" "}
-          board (same Brain / bundled loader as that page). Read-only board (v1).
+          Matches the <span className="font-medium text-zinc-300">Workstreams</span> board (Brain / bundled
+          loader). Tap to open Sprint overview — read-only board (v1).
         </p>
-      </div>
+      </Link>
 
       <div
-        className="grid grid-cols-1 gap-4 lg:grid-cols-3"
+        className="grid grid-cols-1 gap-6 lg:grid-cols-3"
         data-testid="cycles-board"
         aria-label="Cycles planning board"
       >

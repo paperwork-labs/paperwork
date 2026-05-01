@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import ReactMarkdown from "react-markdown";
@@ -50,7 +51,7 @@ import { ExpenseConversationCard } from "@/components/admin/ExpenseConversationC
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqErrorState } from "@/components/admin/hq/HqErrorState";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
-import { ComposeModal } from "./compose-modal";
+import { ComposeModal, type ComposeModalPrefill } from "./compose-modal";
 import {
   createSlashCommands,
   runSlashPrefixedLine,
@@ -136,22 +137,21 @@ function SpaceFilterChip({
   );
 }
 
-const QUICK_REACTION_EMOJIS = ["👍", "❤️", "✅", "👀", "🚀"] as const;
+/**
+ * TODO(PB-X): Brain POST `/admin/conversations/{id}/reply` with `{ persona_slug, content }`; enable when wired.
+ */
+const ADMIN_CONVERSATION_REPLY_WIRED = false;
 
-const FOUNDER_PARTICIPANT_ID = "founder";
-
-function getThreadContext(messages: ThreadMessage[], anchorId: string) {
-  const byId = new Map(messages.map((m) => [m.id, m]));
-  const anchor = byId.get(anchorId);
-  if (!anchor) return null;
-  const root = anchor.parent_message_id
-    ? (byId.get(anchor.parent_message_id) ?? anchor)
-    : anchor;
-  const replies = messages
-    .filter((m) => m.parent_message_id === root.id)
-    .slice()
-    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-  return { root, replies };
+function authorInitials(name: string | null | undefined, id: string): string {
+  const n = (name ?? "").trim();
+  if (n.length > 0) {
+    const parts = n.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0]![0]!}${parts[1]![0]!}`.toUpperCase();
+    }
+    return parts[0]!.slice(0, 2).toUpperCase();
+  }
+  return id.slice(0, 2).toUpperCase();
 }
 
 function attachmentDescription(
@@ -203,18 +203,30 @@ function AttachmentThumb({ att }: { att: Conversation["messages"][0]["attachment
   );
 }
 
-function MessageBubble({ msg }: { msg: ThreadMessage }) {
+function MessageBubble({ msg, highlighted }: { msg: ThreadMessage; highlighted?: boolean }) {
+  const label = msg.author.display_name ?? msg.author.id;
+  const initials = authorInitials(msg.author.display_name, msg.author.id);
   return (
-    <div className="space-y-1">
+    <div className="space-y-1" data-msg-id={msg.id}>
       <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-zinc-300">
-          {msg.author.display_name ?? msg.author.id}
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[11px] font-semibold uppercase text-zinc-200 ring-1 ring-zinc-700"
+          aria-hidden
+        >
+          {initials}
         </span>
+        <span className="text-xs font-medium text-zinc-300">{label}</span>
         <span className="text-[10px] text-zinc-600">
           {new Date(msg.created_at).toLocaleString()}
         </span>
       </div>
-      <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 px-4 py-3">
+      <div
+        className={`rounded-xl border px-4 py-3 ${
+          highlighted
+            ? "border-sky-500/50 bg-sky-950/30 ring-1 ring-sky-500/35"
+            : "border-zinc-800/80 bg-zinc-900/60"
+        }`}
+      >
         <div className="prose prose-invert prose-sm max-w-none text-zinc-300 prose-p:my-1 prose-a:text-sky-400 prose-code:rounded prose-code:bg-zinc-800 prose-code:px-1">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.body_md}</ReactMarkdown>
         </div>
@@ -271,6 +283,9 @@ export function ConversationsClient({
   const router = useRouter();
   const pathname = usePathname();
 
+  const composeParam = searchParams.get("compose") ?? "";
+  const composePersonaParam = searchParams.get("persona") ?? "";
+
   const [activeFilter, setActiveFilter] = useState<FilterChip>("needs-action");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -290,17 +305,33 @@ export function ConversationsClient({
   const [snoozingId, setSnoozingId] = useState<string | null>(null);
   const [composerError, setComposerError] = useState<string | null>(null);
   const [threadAnchorId, setThreadAnchorId] = useState<string | null>(null);
-  const [threadPanelEntered, setThreadPanelEntered] = useState(false);
-  const [threadReplyText, setThreadReplyText] = useState("");
-  const [threadReplyLoading, setThreadReplyLoading] = useState(false);
+  const [composePrefill, setComposePrefill] = useState<ComposeModalPrefill | null>(null);
+  const [threadReplyPersonaSlug, setThreadReplyPersonaSlug] = useState(
+    () => replyPersonas[0]?.id ?? "",
+  );
+  const [threadPersonaReplyText, setThreadPersonaReplyText] = useState("");
+  const [threadPersonaReplyError, setThreadPersonaReplyError] = useState<string | null>(null);
+  const [threadOptimisticSending, setThreadOptimisticSending] = useState(false);
   const [spaceFilter, setSpaceFilter] = useState<ConversationSpace | "all">("all");
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const threadScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (searchParams.get("compose") !== "1") return;
+    if (replyPersonas.length === 0) return;
+    setThreadReplyPersonaSlug((prev) => {
+      if (replyPersonas.some((p) => p.id === prev)) return prev;
+      return replyPersonas[0]!.id;
+    });
+  }, [replyPersonas]);
+
+  useEffect(() => {
+    const openCompose = composeParam === "true" || composeParam === "1";
+    if (!openCompose) return;
     setShowCompose(true);
+    const slug = composePersonaParam.trim();
+    setComposePrefill(slug ? { personaSlug: slug } : null);
     router.replace(pathname, { scroll: false });
-  }, [searchParams, router, pathname]);
+  }, [composeParam, composePersonaParam, router, pathname]);
 
   // Debounce search input
   useEffect(() => {
@@ -390,33 +421,36 @@ export function ConversationsClient({
     }
   };
 
-  const updateSelectedFromList = (updated: Conversation) => {
+  const updateSelectedFromList = useCallback((updated: Conversation) => {
     setConversations((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-    if (selected?.id === updated.id) setSelected(updated);
-  };
+    setSelected((s) => (s?.id === updated.id ? updated : s));
+  }, []);
 
-  const mergeMessageIntoConversation = useCallback((conversationId: string, updatedMsg: ThreadMessage) => {
+  const appendPersonaMessageOptimistic = useCallback((conversationId: string, msg: ThreadMessage) => {
     const patch = (c: Conversation): Conversation =>
       c.id !== conversationId
         ? c
         : {
             ...c,
-            messages: c.messages.map((m) => (m.id === updatedMsg.id ? updatedMsg : m)),
+            messages: [...c.messages, msg],
             updated_at: new Date().toISOString(),
           };
     setConversations((prev) => prev.map(patch));
     setSelected((s) => (s?.id === conversationId ? patch(s) : s));
   }, []);
 
-  const closeThreadPanel = () => {
-    setThreadPanelEntered(false);
-    window.setTimeout(() => setThreadAnchorId(null), 280);
-  };
-
-  const threadCtx = useMemo(() => {
-    if (!selected || !threadAnchorId) return null;
-    return getThreadContext(selected.messages, threadAnchorId);
-  }, [selected, threadAnchorId]);
+  const removeMessageById = useCallback((conversationId: string, messageId: string) => {
+    const patch = (c: Conversation): Conversation =>
+      c.id !== conversationId
+        ? c
+        : {
+            ...c,
+            messages: c.messages.filter((m) => m.id !== messageId),
+            updated_at: new Date().toISOString(),
+          };
+    setConversations((prev) => prev.map(patch));
+    setSelected((s) => (s?.id === conversationId ? patch(s) : s));
+  }, []);
 
   const handleStatusAction = async (
     conversationId: string,
@@ -448,7 +482,7 @@ export function ConversationsClient({
       const convJson = await apiFetch(`/api/admin/conversations/${selected.id}`);
       if (convJson.success && convJson.data) updateSelectedFromList(convJson.data);
     },
-    [selected],
+    [selected, updateSelectedFromList],
   );
 
   const slashCommandsRegistry = useMemo(() => {
@@ -503,6 +537,53 @@ export function ConversationsClient({
     }
   };
 
+  const handleThreadPersonaReply = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setThreadPersonaReplyError(null);
+    if (!ADMIN_CONVERSATION_REPLY_WIRED || !selected) return;
+    const personaSlug = threadReplyPersonaSlug.trim();
+    const content = threadPersonaReplyText.trim();
+    if (!personaSlug || !content) return;
+    const opt = replyPersonas.find((p) => p.id === personaSlug);
+    const displayName = opt?.label ?? personaSlug;
+    const tempId = `pending-reply-${crypto.randomUUID()}`;
+    const nowIso = new Date().toISOString();
+    const optimistic: ThreadMessage = {
+      id: tempId,
+      author: { id: personaSlug, kind: "persona", display_name: displayName },
+      body_md: content,
+      attachments: [],
+      created_at: nowIso,
+      reactions: {},
+    };
+    appendPersonaMessageOptimistic(selected.id, optimistic);
+    setThreadAnchorId(tempId);
+    setThreadPersonaReplyText("");
+    setThreadOptimisticSending(true);
+    try {
+      const json = await apiFetch(`/api/admin/conversations/${selected.id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ persona_slug: personaSlug, content }),
+      });
+      if (!json.success) {
+        removeMessageById(selected.id, tempId);
+        setThreadPersonaReplyError(json.error ?? "Failed to send reply");
+        setThreadPersonaReplyText(content);
+        setThreadOptimisticSending(false);
+        return;
+      }
+      const convJson = await apiFetch(`/api/admin/conversations/${selected.id}`);
+      if (convJson.success && convJson.data) updateSelectedFromList(convJson.data);
+    } catch (err) {
+      removeMessageById(selected.id, tempId);
+      setThreadPersonaReplyError(err instanceof Error ? err.message : "Network error");
+      setThreadPersonaReplyText(content);
+    } finally {
+      setThreadOptimisticSending(false);
+    }
+  };
+
   const handleSnooze = async (conversationId: string, until: Date) => {
     const json = await apiFetch(`/api/admin/conversations/${conversationId}/snooze`, {
       method: "POST",
@@ -516,20 +597,12 @@ export function ConversationsClient({
   const handleComposeSuccess = (conv: Conversation) => {
     setConversations((prev) => [conv, ...prev]);
     setSelected(conv);
+    const ordered = [...conv.messages].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+    setThreadAnchorId(ordered[ordered.length - 1]?.id ?? null);
     setShowCompose(false);
-  };
-
-
-  const handleReaction = async (msgId: string, emoji: string) => {
-    if (!selected) return;
-    const json = await apiFetch(`/api/admin/conversations/${selected.id}/messages/${msgId}/react`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emoji, participant_id: FOUNDER_PARTICIPANT_ID }),
-    });
-    if (json.success && json.data) {
-      mergeMessageIntoConversation(selected.id, json.data as ThreadMessage);
-    }
+    setComposePrefill(null);
   };
 
 
@@ -549,6 +622,38 @@ export function ConversationsClient({
     }
     return { all, bySpace };
   }, [conversations]);
+
+  const chronologicalMessages = useMemo(() => {
+    if (!selected) return [];
+    return [...selected.messages].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+  }, [selected]);
+
+  useEffect(() => {
+    if (!brainConfigured || !selected?.id) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const convJson = await apiFetch(`/api/admin/conversations/${selected.id}`);
+        if (cancelled || !convJson.success || !convJson.data) return;
+        updateSelectedFromList(convJson.data as Conversation);
+      } catch {
+        /* keep list-derived conversation */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [brainConfigured, selected?.id, updateSelectedFromList]);
+
+  useEffect(() => {
+    if (!threadAnchorId || !threadScrollRef.current) return;
+    const node = threadScrollRef.current.querySelector(
+      `[data-msg-id="${threadAnchorId}"]`,
+    );
+    node?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [threadAnchorId, selected?.id, chronologicalMessages.length]);
 
   if (setupError) {
     const looksLikeBrainAuth =
@@ -729,7 +834,16 @@ export function ConversationsClient({
                   <li key={conv.id}>
                     <button
                       type="button"
-                      onClick={() => setSelected(conv)}
+                      onClick={() => {
+                        setSelected(conv);
+                        const ordered = [...conv.messages].sort(
+                          (a, b) =>
+                            new Date(a.created_at).getTime() -
+                            new Date(b.created_at).getTime(),
+                        );
+                        const lastId = ordered[ordered.length - 1]?.id ?? null;
+                        setThreadAnchorId(lastId);
+                      }}
                       className={`flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-zinc-800/50 ${
                         selected?.id === conv.id ? "bg-zinc-800/70" : ""
                       }`}
@@ -792,7 +906,10 @@ export function ConversationsClient({
                     aria-label="Back to inbox"
                     data-testid="conversations-mobile-back"
                     className="mt-0.5 shrink-0 rounded-lg p-1 text-zinc-400 transition hover:bg-zinc-800 hover:text-zinc-100 md:hidden"
-                    onClick={() => setSelected(null)}
+                    onClick={() => {
+                      setSelected(null);
+                      setThreadAnchorId(null);
+                    }}
                   >
                     <ChevronLeft className="h-5 w-5" />
                   </button>
@@ -871,30 +988,110 @@ export function ConversationsClient({
                 </div>
               ) : null}
 
-              {/* Messages */}
-              <div className="flex min-h-0 flex-1 flex-col-reverse gap-4 overflow-y-auto p-4">
-                {[...selected.messages].reverse().map((msg) => (
-                  <MessageBubble key={msg.id} msg={msg} />
-                ))}
+              <div
+                ref={threadScrollRef}
+                data-testid="conversations-thread-subpanel"
+                className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
+              >
+                <div className="flex flex-col gap-4">
+                  {chronologicalMessages.map((msg) => (
+                    <MessageBubble
+                      key={msg.id}
+                      msg={msg}
+                      highlighted={Boolean(threadAnchorId) && msg.id === threadAnchorId}
+                    />
+                  ))}
+                </div>
               </div>
 
-              {/* Reply box */}
-              <div className="border-t border-zinc-800/60 p-4">
-                <textarea
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  placeholder="Reply… (markdown supported)"
-                  rows={3}
-                  className="w-full resize-none rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-sky-500/50"
-                />
-                <div className="mt-2 flex justify-end">
-                  <button
-                    onClick={() => void handleReply()}
-                    disabled={replyLoading || !replyText.trim()}
-                    className="rounded-lg bg-sky-500/20 px-4 py-1.5 text-sm font-medium text-sky-300 ring-1 ring-sky-500/30 transition hover:bg-sky-500/30 disabled:opacity-40"
-                  >
-                    {replyLoading ? "Sending…" : "Send reply"}
-                  </button>
+              <div className="shrink-0 space-y-4 border-t border-zinc-800/60 p-4">
+                <form
+                  data-testid="conversations-persona-reply-form"
+                  onSubmit={(e) => void handleThreadPersonaReply(e)}
+                  className="space-y-2"
+                >
+                  <label className="block text-xs font-medium text-zinc-500">
+                    Persona
+                    <select
+                      value={threadReplyPersonaSlug}
+                      onChange={(e) => setThreadReplyPersonaSlug(e.target.value)}
+                      disabled={replyPersonas.length === 0}
+                      className="mt-1 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-200 outline-none focus:border-sky-500/50 disabled:opacity-50"
+                      aria-label="Persona"
+                    >
+                      {replyPersonas.length === 0 ? (
+                        <option value="">No personas configured</option>
+                      ) : (
+                        replyPersonas.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </label>
+                  <textarea
+                    value={threadPersonaReplyText}
+                    onChange={(e) => setThreadPersonaReplyText(e.target.value)}
+                    placeholder="Write your reply…"
+                    rows={3}
+                    className="w-full resize-none rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-sky-500/50"
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={
+                        !ADMIN_CONVERSATION_REPLY_WIRED ||
+                        threadOptimisticSending ||
+                        !threadPersonaReplyText.trim() ||
+                        replyPersonas.length === 0
+                      }
+                      title={
+                        !ADMIN_CONVERSATION_REPLY_WIRED
+                          ? "Reply backend not yet wired (PB-X)"
+                          : undefined
+                      }
+                      className="rounded-lg bg-violet-500/20 px-4 py-1.5 text-sm font-medium text-violet-200 ring-1 ring-violet-500/35 transition hover:bg-violet-500/30 disabled:opacity-40"
+                    >
+                      {threadOptimisticSending ? "Sending…" : "Send"}
+                    </button>
+                  </div>
+                  {threadPersonaReplyError ? (
+                    <p
+                      role="alert"
+                      className="text-sm text-red-300"
+                      data-testid="conversations-persona-reply-error"
+                    >
+                      {threadPersonaReplyError}
+                    </p>
+                  ) : null}
+                </form>
+
+                <div className="border-t border-zinc-800/60 pt-4">
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+                    Founder
+                  </p>
+                  <ConversationComposer
+                    value={replyText}
+                    onChange={setReplyText}
+                    slashCommands={slashCommandsRegistry}
+                    personas={replyPersonas}
+                    disabled={replyLoading}
+                    placeholder="Reply… (markdown, slash commands, @mentions)"
+                  />
+                  {composerError ? (
+                    <p className="mt-2 text-sm text-red-300">{composerError}</p>
+                  ) : null}
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleReply()}
+                      disabled={replyLoading || !replyText.trim()}
+                      className="rounded-lg bg-sky-500/20 px-4 py-1.5 text-sm font-medium text-sky-300 ring-1 ring-sky-500/30 transition hover:bg-sky-500/30 disabled:opacity-40"
+                    >
+                      {replyLoading ? "Sending…" : "Send reply"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </>
@@ -909,7 +1106,11 @@ export function ConversationsClient({
       {showCompose && (
         <ComposeModal
           personaOptions={composePersonaOptions}
-          onClose={() => setShowCompose(false)}
+          prefill={composePrefill}
+          onClose={() => {
+            setShowCompose(false);
+            setComposePrefill(null);
+          }}
           onSuccess={handleComposeSuccess}
         />
       )}

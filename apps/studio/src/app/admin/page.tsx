@@ -94,15 +94,15 @@ export default async function AdminOverviewPage() {
     null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PushSubscribeCard />
       <BrainSaysOverviewCard summary={personaDispatchSummary} />
       <TrackersRail />
-      <section className="space-y-4">
+      <section className="space-y-6">
         <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-zinc-950 to-zinc-950/80 p-1 shadow-[0_0_0_1px_rgba(39,39,42,0.6)] ring-1 ring-zinc-800/90 lg:p-2">
           <OperatingScoreGauge />
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <BrainImprovementGauge />
           <SprintVelocityTile />
         </div>

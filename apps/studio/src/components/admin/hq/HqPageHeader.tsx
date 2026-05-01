@@ -57,7 +57,7 @@ export function HqPageHeader({
           <h1 className="text-lg font-semibold tracking-tight text-zinc-100 md:text-xl lg:text-2xl">
             {title}
           </h1>
-          {subtitle ? <p className="max-w-3xl text-sm text-zinc-400">{subtitle}</p> : null}
+          {subtitle ? <p className="max-w-2xl text-sm text-zinc-400">{subtitle}</p> : null}
         </div>
         {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
       </div>

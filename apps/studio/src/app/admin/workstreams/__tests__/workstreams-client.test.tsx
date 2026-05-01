@@ -29,7 +29,7 @@ describe("WorkstreamsBoardClient", () => {
       /workstreams/i,
     );
     expect(screen.getByText("Total")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /active/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /filter workstreams.*active/i })).toBeTruthy();
     expect(screen.getByText("Cancelled")).toBeTruthy();
     expect(screen.getByText(/Track Z · read-only/i)).toBeTruthy();
     expect(screen.getByText(/Cross-cutting work logs across the company/i)).toBeTruthy();

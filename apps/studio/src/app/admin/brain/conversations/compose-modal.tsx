@@ -20,6 +20,8 @@ export type ComposeModalPrefill = {
   tags?: string;
   /** Sent as `product_slug` on create. */
   productSlug?: string | null;
+  /** Pre-check persona by id/slug (e.g. ?compose=true&persona=cfo). */
+  personaSlug?: string | null;
 };
 
 const URGENCY_OPTIONS: { value: UrgencyLevel; label: string }[] = [
@@ -75,6 +77,17 @@ export function ComposeModal({ onClose, onSuccess, personaOptions, prefill }: Pr
       setSpace(prefill.space);
     }
   }, [prefill]);
+
+  const prefillPersonaSlug = prefill?.personaSlug ?? null;
+  useEffect(() => {
+    if (!prefillPersonaSlug) return;
+    const match = personaOptions.find((p) => p.id === prefillPersonaSlug);
+    if (!match) return;
+    setPersonaIds((prev) => {
+      if (prev.has(match.id)) return prev;
+      return new Set(prev).add(match.id);
+    });
+  }, [prefillPersonaSlug, personaOptions]);
 
   const togglePersona = (id: string) => {
     setPersonaIds((prev) => {

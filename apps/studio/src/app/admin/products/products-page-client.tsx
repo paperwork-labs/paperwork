@@ -8,7 +8,7 @@ import { cn } from "@paperwork-labs/ui";
 import { formatRelativeActivity } from "@/app/admin/workstreams/display-utils";
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
-import { HqStatCard } from "@/components/admin/hq/HqStatCard";
+import { StatCard } from "@/components/admin/stat-card";
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import type { ProductHealthPulse } from "@/lib/product-health-brain";
 import {
@@ -64,32 +64,31 @@ function DirectoryTab({
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <HqStatCard
+      <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+        <StatCard
           label="Total Products"
           value={rollup.totalProducts}
           icon={<Layers className="h-3.5 w-3.5 text-zinc-500" />}
-          variant="compact"
+          compact
         />
-        <HqStatCard
+        <StatCard
           label="Active"
-          status="success"
-          helpText="Beta + GA"
+          hint="Beta + GA"
           value={rollup.activeBetaOrGa}
           icon={<Radar className="h-3.5 w-3.5 text-zinc-500" />}
-          variant="compact"
+          compact
         />
-        <HqStatCard
+        <StatCard
           label="Total MRR"
           value={formatCurrencyUsd(rollup.totalMrr)}
           icon={<Wallet className="h-3.5 w-3.5 text-zinc-500" />}
-          variant="compact"
+          compact
         />
-        <HqStatCard
+        <StatCard
           label="Active Users"
           value={rollup.activeUsers}
           icon={<UsersRound className="h-3.5 w-3.5 text-zinc-500" />}
-          variant="compact"
+          compact
         />
       </div>
 
@@ -115,7 +114,7 @@ function DirectoryTab({
         })}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {visible.map((product) => (
           <ProductCard
             key={product.slug}
@@ -135,27 +134,27 @@ function ProductGtmTab({ products }: { products: ProductRegistryEntry[] }) {
 
   return (
     <div className="space-y-8" data-testid="product-gtm-surface">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <HqStatCard
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        <StatCard
           label="Total visitors"
           value={placeholderVisitors}
           icon={<MousePointer2 className="h-3.5 w-3.5 text-zinc-500" />}
-          variant="compact"
-          helpText="Placeholder — analytics not wired"
+          compact
+          hint="Placeholder — analytics not wired"
         />
-        <HqStatCard
+        <StatCard
           label="Total MRR (GTM)"
           value={formatCurrencyUsd(placeholderMrr)}
           icon={<Wallet className="h-3.5 w-3.5 text-zinc-500" />}
-          variant="compact"
-          helpText="Placeholder — not registry rollup"
+          compact
+          hint="Placeholder — not registry rollup"
         />
-        <HqStatCard
+        <StatCard
           label="Total signups"
           value={placeholderSignups}
           icon={<UserPlus className="h-3.5 w-3.5 text-zinc-500" />}
-          variant="compact"
-          helpText="Placeholder — acquisition not wired"
+          compact
+          hint="Placeholder — acquisition not wired"
         />
       </div>
 
