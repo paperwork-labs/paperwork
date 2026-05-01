@@ -5,7 +5,6 @@ import {
   readFounderActionsJsonFromDisk,
 } from "@/lib/founder-actions-source";
 import { getE2EMutableListPage } from "@/lib/e2e-conversations-mutable";
-import { getE2EConversationsListPage } from "@/lib/e2e-conversations-fixture";
 import { getRepoRoot, loadPersonaRegistry } from "@/lib/personas";
 import type { ConversationsListPage } from "@/types/conversations";
 import type { BrainPersonaOption } from "./conversation-composer";
@@ -96,6 +95,7 @@ export default async function ConversationsPage() {
         brainConfigured
         initialPage={getE2EMutableListPage()}
         setupError={null}
+        setupWarning={null}
         composePersonaOptions={composePersonaOptions}
         replyPersonas={replyPersonas}
       />
@@ -108,54 +108,54 @@ export default async function ConversationsPage() {
         brainConfigured={false}
         initialPage={null}
         setupError={null}
+        setupWarning={null}
         composePersonaOptions={composePersonaOptions}
         replyPersonas={replyPersonas}
       />
     );
   }
 
-  const disk = readFounderActionsJsonFromDisk();
-  if (!disk.ok) {
-    return (
-      <ConversationsClient
-        brainConfigured
-        initialPage={null}
-        setupError={disk.message}
-        composePersonaOptions={composePersonaOptions}
-        replyPersonas={replyPersonas}
-      />
-    );
-  }
-
-  let setupError: string | null = null;
-  const backfill = await postBackfill(auth.root, auth.secret);
-  if (!backfill.ok) {
-    setupError = backfill.error ?? "Backfill request failed.";
-  } else if (backfill.data?.parse_error) {
-    setupError = backfill.data.parse_error;
-  } else if (
-    backfill.data?.source_kind === "none" &&
-    countFounderActionItems(disk.parsed) > 0
-  ) {
-    setupError =
-      "Founder actions exist in apps/studio/src/data/founder-actions.json, but Brain could not load any founder-actions source. Check Brain deployment has monorepo files and REPO_ROOT.";
-  }
-
-  let initialPage: ConversationsListPage | null = null;
-  if (!setupError) {
-    const listed = await fetchListPage(auth.root, auth.secret);
-    if (listed.error) {
-      setupError = listed.error;
+  let setupWarning: string | null = null;
+  try {
+    const disk = readFounderActionsJsonFromDisk();
+    if (!disk.ok) {
+      console.warn("[conversations] founder-actions disk:", disk.message);
+      setupWarning = disk.message;
     } else {
-      initialPage = listed.page;
+      const backfill = await postBackfill(auth.root, auth.secret);
+      if (!backfill.ok) {
+        console.warn("[conversations] backfill:", backfill.error);
+        setupWarning = backfill.error ?? "Backfill request failed (inbox still loads).";
+      } else if (backfill.data?.parse_error) {
+        console.warn("[conversations] backfill parse_error:", backfill.data.parse_error);
+        setupWarning = backfill.data.parse_error;
+      } else if (
+        backfill.data?.source_kind === "none" &&
+        countFounderActionItems(disk.parsed) > 0
+      ) {
+        const msg =
+          "Founder actions exist in apps/studio/src/data/founder-actions.json, but Brain could not load any founder-actions source. Check Brain deployment has monorepo files and REPO_ROOT.";
+        console.warn("[conversations]", msg);
+        setupWarning = msg;
+      }
     }
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.warn("[conversations] disk/backfill setup:", msg);
+    setupWarning = `Setup step skipped: ${msg}`;
   }
+
+  const listed = await fetchListPage(auth.root, auth.secret);
+  const setupError =
+    listed.error && !listed.page ? listed.error : null;
+  const initialPage = listed.page;
 
   return (
     <ConversationsClient
       brainConfigured
       initialPage={initialPage}
       setupError={setupError}
+      setupWarning={setupWarning}
       composePersonaOptions={composePersonaOptions}
       replyPersonas={replyPersonas}
     />

@@ -61,11 +61,13 @@ export type StudioWorkstreamsBoardLoadResult =
 /**
  * Single loader for Studio workstreams board data.
  * - Brain not configured: bundled `workstreams.json` only (no HTTP).
- * - Brain configured: must load via `/api/admin/workstreams`; on failure returns `ok: false` (no silent bundled fallback).
+ * - Brain configured: loads via Brain `GET .../admin/workstreams-board` (server-to-server with
+ *   `X-Brain-Secret`). SSR must not call Studio `/api/admin/workstreams` (no Clerk cookie → 401).
  */
 export async function loadStudioWorkstreamsBoard(
   baseUrl: string,
 ): Promise<StudioWorkstreamsBoardLoadResult> {
+  void baseUrl;
   const fallbackParsed = WorkstreamsFileSchema.parse(workstreamsJson);
   const fallbackUpdated = fallbackParsed.updated;
 
@@ -82,7 +84,10 @@ export async function loadStudioWorkstreamsBoard(
   }
 
   try {
-    const res = await fetch(`${baseUrl}/api/admin/workstreams`, { cache: "no-store" });
+    const res = await fetch(`${auth.root}/admin/workstreams-board`, {
+      headers: { "X-Brain-Secret": auth.secret },
+      cache: "no-store",
+    });
     if (!res.ok) {
       let msg = `Brain workstreams unavailable (HTTP ${res.status}).`;
       try {

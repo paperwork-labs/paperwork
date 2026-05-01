@@ -251,8 +251,10 @@ async function apiFetch(path: string, opts?: RequestInit) {
 interface Props {
   brainConfigured: boolean;
   initialPage: ConversationsListPage | null;
-  /** Founder-actions source or Brain backfill/list failure — no silent empty inbox. */
+  /** Inbox load failed server-side — full-page error. */
   setupError?: string | null;
+  /** Disk / backfill issues — inline banner only; inbox still loads. */
+  setupWarning?: string | null;
   composePersonaOptions?: ComposePersonaOption[];
   replyPersonas?: BrainPersonaOption[];
 }
@@ -261,6 +263,7 @@ export function ConversationsClient({
   brainConfigured,
   initialPage,
   setupError = null,
+  setupWarning = null,
   composePersonaOptions = [],
   replyPersonas = [],
 }: Props) {
@@ -658,6 +661,16 @@ export function ConversationsClient({
           {error}
         </div>
       )}
+
+      {setupWarning ? (
+        <div
+          role="status"
+          data-testid="conversations-setup-warning"
+          className="rounded-lg border border-amber-800/50 bg-amber-950/40 px-3 py-2 text-sm text-amber-100/90"
+        >
+          {setupWarning}
+        </div>
+      ) : null}
 
       {/* 2-pane layout — single pane on small screens */}
       <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
