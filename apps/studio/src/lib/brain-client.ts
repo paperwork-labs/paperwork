@@ -13,7 +13,7 @@ import {
   type BrainAdminAuth,
   getBrainAdminFetchOptions,
 } from "@/lib/brain-admin-proxy";
-import type { GoalsJson } from "@/lib/goals-metrics";
+import type { GoalsJson, Objective } from "@/lib/goals-metrics";
 import type { BrainEnvelope } from "@/lib/quota-monitor-types";
 
 // ---------------------------------------------------------------------------
@@ -194,6 +194,165 @@ export type BrainFillMeterResponse = {
   };
   notes: string;
 };
+
+// ---------------------------------------------------------------------------
+// Standalone write helpers (Goals admin — POST/PUT/DELETE/PATCH)
+// ---------------------------------------------------------------------------
+
+export type GoalKeyResultInput = {
+  title: string;
+  target: number;
+  current?: number;
+  unit?: string;
+  source_url?: string | null;
+  id?: string | null;
+};
+
+export type CreateGoalInput = {
+  objective: string;
+  owner: string;
+  quarter: string;
+  due_date?: string | null;
+  key_results: GoalKeyResultInput[];
+};
+
+export type UpdateGoalInput = {
+  objective?: string;
+  owner?: string;
+  quarter?: string;
+  due_date?: string | null;
+  key_results?: GoalKeyResultInput[];
+};
+
+export type KeyResultProgressResponse = {
+  id: string;
+  title: string;
+  target: number;
+  current: number;
+  unit: string;
+  source_url: string | null;
+  note?: string;
+  progress_pct: number;
+};
+
+async function parseBrainAdminResponse<T>(label: string, res: Response): Promise<T> {
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new BrainClientError(
+      label,
+      res.status,
+      body
+        ? `HTTP ${res.status}: ${body.slice(0, 300)}`
+        : `HTTP ${res.status}`,
+    );
+  }
+
+  let json: unknown;
+  try {
+    json = await res.json();
+  } catch {
+    throw new BrainClientError(label, res.status, "invalid JSON body");
+  }
+
+  const envelope = json as BrainEnvelope<T>;
+  if (typeof envelope === "object" && envelope !== null && "success" in envelope) {
+    if (!envelope.success) {
+      throw new BrainClientError(
+        label,
+        res.status,
+        envelope.error ?? "Brain returned success=false",
+      );
+    }
+    if (envelope.data !== undefined) {
+      return envelope.data as T;
+    }
+  }
+
+  return json as T;
+}
+
+async function brainAdminMutationJson<T>(
+  label: string,
+  path: string,
+  method: string,
+  body?: unknown,
+): Promise<T> {
+  const auth = getBrainAdminFetchOptions();
+  if (!auth.ok) {
+    throw new BrainClientError(
+      label,
+      0,
+      "Brain admin API not configured (BRAIN_API_URL / BRAIN_API_SECRET)",
+    );
+  }
+
+  const headers: Record<string, string> = { "X-Brain-Secret": auth.secret };
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const url = `${auth.root}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+    });
+  } catch (err) {
+    throw new BrainClientError(
+      label,
+      0,
+      err instanceof Error ? err.message : "network error",
+    );
+  }
+
+  return parseBrainAdminResponse<T>(label, res);
+}
+
+/** POST ``/admin/goals`` — create objective + optional KRs; sets top-level quarter. */
+export async function createGoal(input: CreateGoalInput): Promise<Objective> {
+  return brainAdminMutationJson<Objective>("goals/create", "/admin/goals", "POST", input);
+}
+
+/** PUT ``/admin/goals/{goal_id}`` — partial update (replace ``key_results`` when supplied). */
+export async function updateGoal(goalId: string, input: UpdateGoalInput): Promise<Objective> {
+  return brainAdminMutationJson<Objective>(
+    "goals/update",
+    `/admin/goals/${encodeURIComponent(goalId)}`,
+    "PUT",
+    input,
+  );
+}
+
+/** DELETE ``/admin/goals/{goal_id}`` — soft-delete (``archived_at``). */
+export async function archiveGoal(goalId: string): Promise<{ id: string; archived_at: string }> {
+  return brainAdminMutationJson<{ id: string; archived_at: string }>(
+    "goals/archive",
+    `/admin/goals/${encodeURIComponent(goalId)}`,
+    "DELETE",
+  );
+}
+
+/** PATCH ``/admin/goals/{goal_id}/key-results/{kr_id}`` — set KR ``current`` from ``current_value``. */
+export async function updateKRProgress(
+  goalId: string,
+  krId: string,
+  currentValue: number,
+  note?: string | null,
+): Promise<KeyResultProgressResponse> {
+  const body: { current_value: number; note?: string } = { current_value: currentValue };
+  if (note !== undefined && note !== null && note !== "") {
+    body.note = note;
+  }
+  return brainAdminMutationJson<KeyResultProgressResponse>(
+    "goals/kr-progress",
+    `/admin/goals/${encodeURIComponent(goalId)}/key-results/${encodeURIComponent(krId)}`,
+    "PATCH",
+    body,
+  );
+}
 
 // ---------------------------------------------------------------------------
 // BrainClient
