@@ -222,15 +222,12 @@ def _run_product_probe(product: str, base_url: str) -> dict[str, Any]:
     # Guard 2: detect "Playwright browsers not installed" specifically
     combined_output = (proc.stdout or "") + (proc.stderr or "")
     low = combined_output.lower()
-    playwright_infra = (
-        ("playwright" in low or "browsertype.launch" in combined_output)
-        and (
-            "browserType.launch" in combined_output
-            or "browsertype.launch" in low
-            or "browser was not found" in combined_output
-            or "run playwright install" in low
-            or "executable doesn't exist" in low
-        )
+    playwright_infra = ("playwright" in low or "browsertype.launch" in combined_output) and (
+        "browserType.launch" in combined_output
+        or "browsertype.launch" in low
+        or "browser was not found" in combined_output
+        or "run playwright install" in low
+        or "executable doesn't exist" in low
     )
     if playwright_infra:
         msg = (

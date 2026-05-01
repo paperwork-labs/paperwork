@@ -197,9 +197,7 @@ def test_append_result_creates_file(tmp_path: Path, monkeypatch: pytest.MonkeyPa
 
 def test_load_production_urls_missing_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Missing production-urls.json raises FileNotFoundError (no silent fallback)."""
-    monkeypatch.setattr(
-        ux_probe_runner, "_PRODUCTION_URLS_JSON", tmp_path / "nonexistent.json"
-    )
+    monkeypatch.setattr(ux_probe_runner, "_PRODUCTION_URLS_JSON", tmp_path / "nonexistent.json")
     with pytest.raises(FileNotFoundError, match=r"production-urls\.json not found"):
         ux_probe_runner._load_production_urls()
 
