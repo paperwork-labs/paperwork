@@ -184,6 +184,31 @@ Correct procedure:
 - After rotation: update vault -> Hetzner .env -> n8n UI credentials -> restart services
 - Never rotate keys during active deploys or workflow executions
 
+## Autonomous Infrastructure Operations (CRITICAL)
+
+**NEVER ask the founder for dashboard clicks.** Brain and agents have programmatic access to all infrastructure credentials. See `docs/runbooks/CREDENTIAL_ACCESS.md` for full details.
+
+Quick reference:
+- **Vercel CLI**: Already authenticated, just run commands
+- **Render API key**: Pull from Vercel Studio's production env vars
+- **Cloudflare API token**: Fetch from Brain's Render env vars via Render API
+- **DNS changes**: Use Cloudflare API directly
+- **Env var changes**: Use `vercel env add` or Render API
+
+```bash
+# Get RENDER_API_KEY from Studio's Vercel env
+vercel link --yes --project studio
+vercel env pull .env.production.local --environment production --yes
+RENDER_API_KEY=$(grep "^RENDER_API_KEY" .env.production.local | cut -d'=' -f2 | tr -d '"')
+
+# Get Cloudflare creds from Brain's Render env
+curl -s -H "Authorization: Bearer $RENDER_API_KEY" \
+  "https://api.render.com/v1/services/srv-d74f3cmuk2gs73a4013g/env-vars" | \
+  jq -r '.[] | select(.envVar.key | test("CLOUDFLARE")) | "\(.envVar.key)=\(.envVar.value)"'
+```
+
+This is a core Brain moat — autonomous infrastructure operations without human intervention.
+
 ## Monitoring Checklist
 
 After significant infra changes, verify:
