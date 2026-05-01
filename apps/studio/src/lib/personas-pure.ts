@@ -1,4 +1,10 @@
-import type { DispatchRecord, EaRoutingRow, MarkdownTable, PrOutcomeRecord } from "./personas-types";
+import type {
+  ActivityActionType,
+  DispatchRecord,
+  EaRoutingRow,
+  MarkdownTable,
+  PrOutcomeRecord,
+} from "./personas-types";
 
 export function extractModelAssignmentSection(markdownBody: string): string | null {
   const match = markdownBody.match(/^## Model Assignment\s*$/im);
@@ -75,6 +81,32 @@ export function dispatchPersonaId(d: DispatchRecord): string | null {
     (typeof d.persona === "string" && d.persona.trim()) ||
     (typeof d.persona_pin === "string" && d.persona_pin.trim());
   return raw ? raw.trim().toLowerCase() : null;
+}
+
+/** Best-effort classification for activity timeline badges. */
+export function inferActivityActionType(d: DispatchRecord): ActivityActionType {
+  const summary =
+    typeof d.task_summary === "string" ? d.task_summary.toLowerCase() : "";
+  if (/escalat|founder approval|human[- ]in[- ]the[- ]loop|needs.?approval|blocker/.test(summary)) {
+    return "escalate";
+  }
+  const prNum = typeof d.pr_number === "number" ? d.pr_number : null;
+  if (prNum != null) return "review";
+  const o = d.outcome;
+  if (o && typeof o === "object" && "review_pass" in o) return "review";
+  if (/\breview\b|pr\s*#|pull request|diff-review/.test(summary)) return "review";
+  return "dispatch";
+}
+
+/** PR number when present; otherwise workstream type/id or em dash. */
+export function buildActivityTargetLabel(d: DispatchRecord): string {
+  const prNum = typeof d.pr_number === "number" ? d.pr_number : null;
+  if (prNum != null && Number.isFinite(prNum)) return `PR #${prNum}`;
+  const ws =
+    (typeof d.workstream_type === "string" && d.workstream_type.trim()) ||
+    (typeof d.workstream_id === "string" && d.workstream_id.trim()) ||
+    "—";
+  return ws;
 }
 
 export function parseEaTagRouting(eaMarkdown: string): EaRoutingRow[] {

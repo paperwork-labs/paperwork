@@ -11,6 +11,9 @@ export type BrainDataSourceStatus =
   | { ok: true; path: string }
   | { ok: false; path: string; message: string };
 
+/** Derived bucket for timeline badges (PR review vs cheap-agent dispatch vs escalation). */
+export type ActivityActionType = "dispatch" | "review" | "escalate" | "unknown";
+
 export type DispatchRecord = {
   dispatch_id?: string;
   dispatched_at?: string;
@@ -18,6 +21,7 @@ export type DispatchRecord = {
   persona_slug?: string;
   persona?: string;
   persona_pin?: string;
+  pr_number?: number | null;
   workstream_id?: string;
   workstream_type?: string;
   task_summary?: string;
@@ -79,9 +83,15 @@ export type EaRoutingRow = {
 export type ActivityFeedRow = {
   dispatchedAt: string;
   persona: string;
+  personaDisplayName?: string;
   workstreamTag: string;
   successLabel: string;
   costLabel: string;
+  actionType?: ActivityActionType;
+  /** PR number or workstream id/type */
+  targetLabel?: string;
+  description?: string;
+  prNumber?: number | null;
 };
 
 export type MarkdownTable = {

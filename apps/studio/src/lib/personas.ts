@@ -3,11 +3,16 @@ import path from "path";
 
 import matter from "gray-matter";
 
+import { brainApiV1Root, getBrainAdminFetchOptions } from "./brain-admin-proxy";
+import { BrainClient, BrainClientError } from "./brain-client";
+
 import {
   avgTokensFromOutcomes,
+  buildActivityTargetLabel,
   dispatchPersonaId,
   extractMainHeading,
   extractModelAssignmentSection,
+  inferActivityActionType,
   parseEaTagRouting,
   parseEstRangeUsd,
   parseMarkdownTables,
@@ -336,13 +341,128 @@ export function loadEaRoutingTable(repoRoot: string): {
   }
 }
 
+function buildPersonaDisplayNameMap(registry: PersonaRegistryRow[]): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const r of registry) {
+    m.set(r.personaId.toLowerCase(), r.name);
+  }
+  return m;
+}
+
+/** Mid-band model $/run hints keyed by model substring (Brain PersonaSpec table). */
+function loadModelCostLookupFromRegistryMd(repoRoot: string): Map<string, number> {
+  const registryPath = path.join(repoRoot, "docs", "AI_MODEL_REGISTRY.md");
+  let registryMd = "";
+  try {
+    registryMd = fs.readFileSync(registryPath, "utf8");
+  } catch {
+    registryMd = "";
+  }
+  const modelCost = new Map<string, number>();
+  if (!registryMd) return modelCost;
+  const block = registryMd.match(/### Brain PersonaSpec[\s\S]*?(?=### |\n## [^#]|$)/);
+  if (!block) return modelCost;
+  const lines = block[0].split("\n").filter((l) => l.startsWith("|"));
+  for (const line of lines) {
+    const cells = line
+      .split("|")
+      .map((c) => c.trim())
+      .filter(Boolean);
+    if (cells.length < 2) continue;
+    const modelCell = cells.find(
+      (c) => c.includes("claude-") || c.includes("gpt-") || c.includes("gemini"),
+    );
+    if (!modelCell) continue;
+    const est = cells[cells.length - 1];
+    const mid = parseEstRangeUsd(est);
+    const modelKey = modelCell.replace(/`/g, "").toLowerCase();
+    if (mid !== null) modelCost.set(modelKey, mid);
+  }
+  return modelCost;
+}
+
+function activityFeedRowFromDispatchRecord(
+  d: DispatchRecord,
+  modelCost: Map<string, number>,
+  personaNames: Map<string, string>,
+): ActivityFeedRow {
+  const ts = typeof d.dispatched_at === "string" ? d.dispatched_at : "—";
+  const personaKey =
+    dispatchPersonaId(d) ??
+    (typeof d.agent_model === "string" ? `model:${d.agent_model}` : "not attributed");
+  const slug = dispatchPersonaId(d);
+  const personaDisplayName =
+    slug != null
+      ? (personaNames.get(slug) ?? slug.replace(/-/g, " "))
+      : personaKey.startsWith("model:")
+        ? personaKey.replace(/^model:/, "")
+        : personaKey;
+  const ws =
+    (typeof d.workstream_type === "string" && d.workstream_type) ||
+    (typeof d.workstream_id === "string" && d.workstream_id) ||
+    "—";
+  let successLabel = "unknown";
+  const o = d.outcome;
+  if (o && typeof o === "object") {
+    if (o.reverted === true) successLabel = "reverted";
+    else if (typeof o.merged_at === "string" && o.merged_at.length > 0) successLabel = "merged";
+    else if (o.review_pass === true) successLabel = "review ok";
+    else if (o.ci_initial_pass === true) successLabel = "CI pass";
+    else if (o.ci_initial_pass === false) successLabel = "CI fail";
+  }
+
+  const am = typeof d.agent_model === "string" ? d.agent_model.toLowerCase() : "";
+  let costLabel = "—";
+  if (am) {
+    let found: number | undefined;
+    for (const [k, v] of modelCost) {
+      if (am.includes(k) || k.includes(am)) {
+        found = v;
+        break;
+      }
+    }
+    costLabel = found !== undefined ? `~$${found.toFixed(2)} est.` : "rate unknown";
+  }
+
+  const actionType = inferActivityActionType(d);
+  const targetLabel = buildActivityTargetLabel(d);
+  const summaryRaw = typeof d.task_summary === "string" ? d.task_summary.trim() : "";
+  const actionPhrase =
+    actionType === "dispatch"
+      ? "Agent dispatch"
+      : actionType === "review"
+        ? "PR review"
+        : actionType === "escalate"
+          ? "Escalation"
+          : "Persona event";
+  const description =
+    summaryRaw.length > 0
+      ? summaryRaw.length > 220
+        ? `${summaryRaw.slice(0, 220)}…`
+        : summaryRaw
+      : `${actionPhrase} · ${successLabel} · ${targetLabel}`;
+  const prNum = typeof d.pr_number === "number" ? d.pr_number : null;
+
+  return {
+    dispatchedAt: ts,
+    persona: personaKey,
+    personaDisplayName,
+    workstreamTag: ws,
+    successLabel,
+    costLabel,
+    actionType,
+    targetLabel,
+    description,
+    prNumber: prNum,
+  };
+}
+
 export function buildActivityFeed(repoRoot: string, limit: number): {
   source: BrainDataSourceStatus;
   rows: ActivityFeedRow[];
   note: string | null;
 } {
   const dispatchPath = path.join(repoRoot, "apis", "brain", "data", "agent_dispatch_log.json");
-  const registryPath = path.join(repoRoot, "docs", "AI_MODEL_REGISTRY.md");
   const read = readJsonIfPresent<AgentDispatchFile>(dispatchPath);
   if (!read.status.ok || !read.data) {
     return {
@@ -352,34 +472,9 @@ export function buildActivityFeed(repoRoot: string, limit: number): {
     };
   }
 
-  let registryMd = "";
-  try {
-    registryMd = fs.readFileSync(registryPath, "utf8");
-  } catch {
-    registryMd = "";
-  }
-  const modelCost = new Map<string, number>();
-  if (registryMd) {
-    const block = registryMd.match(
-      /### Brain PersonaSpec[\s\S]*?(?=### |\n## [^#]|$)/,
-    );
-    if (block) {
-      const lines = block[0].split("\n").filter((l) => l.startsWith("|"));
-      for (const line of lines) {
-        const cells = line
-          .split("|")
-          .map((c) => c.trim())
-          .filter(Boolean);
-        if (cells.length < 2) continue;
-        const modelCell = cells.find((c) => c.includes("claude-") || c.includes("gpt-") || c.includes("gemini"));
-        if (!modelCell) continue;
-        const est = cells[cells.length - 1];
-        const mid = parseEstRangeUsd(est);
-        const modelKey = modelCell.replace(/`/g, "").toLowerCase();
-        if (mid !== null) modelCost.set(modelKey, mid);
-      }
-    }
-  }
+  const registryRows = loadPersonaRegistry(repoRoot);
+  const personaNames = buildPersonaDisplayNameMap(registryRows);
+  const modelCost = loadModelCostLookupFromRegistryMd(repoRoot);
 
   const dispatches = [...(read.data.dispatches ?? [])].sort((a, b) => {
     const ta = typeof a.dispatched_at === "string" ? a.dispatched_at : "";
@@ -389,44 +484,7 @@ export function buildActivityFeed(repoRoot: string, limit: number): {
 
   const rows: ActivityFeedRow[] = [];
   for (const d of dispatches.slice(0, limit)) {
-    const ts = typeof d.dispatched_at === "string" ? d.dispatched_at : "—";
-    const persona =
-      dispatchPersonaId(d) ??
-      (typeof d.agent_model === "string" ? `model:${d.agent_model}` : "not attributed");
-    const ws =
-      (typeof d.workstream_type === "string" && d.workstream_type) ||
-      (typeof d.workstream_id === "string" && d.workstream_id) ||
-      "—";
-    let successLabel = "unknown";
-    const o = d.outcome;
-    if (o && typeof o === "object") {
-      if (o.reverted === true) successLabel = "reverted";
-      else if (typeof o.merged_at === "string" && o.merged_at.length > 0) successLabel = "merged";
-      else if (o.review_pass === true) successLabel = "review ok";
-      else if (o.ci_initial_pass === true) successLabel = "CI pass";
-      else if (o.ci_initial_pass === false) successLabel = "CI fail";
-    }
-
-    const am = typeof d.agent_model === "string" ? d.agent_model.toLowerCase() : "";
-    let costLabel = "—";
-    if (am) {
-      let found: number | undefined;
-      for (const [k, v] of modelCost) {
-        if (am.includes(k) || k.includes(am)) {
-          found = v;
-          break;
-        }
-      }
-      costLabel = found !== undefined ? `~$${found.toFixed(2)} est.` : "rate unknown";
-    }
-
-    rows.push({
-      dispatchedAt: ts,
-      persona,
-      workstreamTag: ws,
-      successLabel,
-      costLabel,
-    });
+    rows.push(activityFeedRowFromDispatchRecord(d, modelCost, personaNames));
   }
 
   const note =
@@ -435,6 +493,35 @@ export function buildActivityFeed(repoRoot: string, limit: number): {
       : null;
 
   return { source: read.status, rows, note };
+}
+
+/** Assemble People HQ payload from the local monorepo checkout (rules + brain data files). */
+export function buildPersonasPagePayloadFromRepo(repoRoot: string): PersonasPagePayload {
+  const registry = loadPersonaRegistry(repoRoot);
+  const personaIds = registry.map((r) => r.personaId);
+  const dispatchPath = path.join(repoRoot, "apis", "brain", "data", "agent_dispatch_log.json");
+  const dispatchRead = readJsonIfPresent<AgentDispatchFile>(dispatchPath);
+  const dashboard = buildPeopleDashboardStats(dispatchRead, registry.length);
+  const openRoles: OpenRoleRow[] = registry
+    .filter((r) => r.modelAssignment === null || !r.modelAssignment.trim())
+    .map((r) => ({
+      personaId: r.personaId,
+      name: r.name,
+      relativePath: r.relativePath,
+    }));
+
+  return {
+    repoRoot,
+    dashboard,
+    registry,
+    openRoles,
+    promotions: loadPromotionsQueue(repoRoot),
+    cost: buildCostPayload(repoRoot, personaIds),
+    routing: loadEaRoutingTable(repoRoot),
+    activity: buildActivityFeed(repoRoot, 100),
+    modelRegistry: loadModelRegistryTables(repoRoot),
+    brainApiError: null,
+  };
 }
 
 export function loadModelRegistryTables(repoRoot: string): {
@@ -531,45 +618,95 @@ function snapshotToPayload(
 /**
  * Returns personas page data.
  *
- * - BRAIN_API_URL not set → snapshot (silent; production bootstrap path).
- * - BRAIN_API_URL set, request OK → live Brain API data.
- * - BRAIN_API_URL set, request FAILS → snapshot + brainApiError (NOT silent).
+ * - BRAIN_API_URL not set → bundled snapshot (bootstrap path).
+ * - BRAIN_API_URL set → repo-derived registry/tabs plus persona dispatch activity from
+ *   Brain (`GET /admin/agent-dispatch-log`). Missing credentials or API failure surfaces
+ *   an explicit error on the activity stream (no silent fallback to local dispatch rows).
  */
 export async function loadPersonasPageData(): Promise<PersonasPagePayload> {
-  const brainApiUrl = process.env.BRAIN_API_URL;
+  const brainApiUrl = process.env.BRAIN_API_URL?.trim();
 
   if (!brainApiUrl) {
     return snapshotToPayload(personasSnapshot as unknown as PersonasSnapshotShape);
   }
 
-  // Brain API is configured — try it.
+  let base: PersonasPagePayload;
   try {
-    const res = await fetch(`${brainApiUrl}/admin/personas`, {
-      cache: "no-store",
-      headers: { "X-Brain-Secret": process.env.BRAIN_API_SECRET ?? "" },
-    });
-    if (!res.ok) {
-      return snapshotToPayload(
-        personasSnapshot as unknown as PersonasSnapshotShape,
-        `Brain API /admin/personas returned ${res.status} ${res.statusText}`,
-      );
-    }
-    const json = (await res.json()) as {
-      success?: boolean;
-      data?: PersonasPagePayload;
-      error?: string;
-    };
-    if (!json.success || !json.data) {
-      return snapshotToPayload(
-        personasSnapshot as unknown as PersonasSnapshotShape,
-        json.error ?? "Brain API returned no personas data.",
-      );
-    }
-    return { ...json.data, brainApiError: null };
+    base = buildPersonasPagePayloadFromRepo(getRepoRoot());
   } catch (e) {
     return snapshotToPayload(
       personasSnapshot as unknown as PersonasSnapshotShape,
-      e instanceof Error ? e.message : "Brain API request failed.",
+      e instanceof Error ? e.message : "Failed to load personas data from repo.",
     );
+  }
+
+  const auth = getBrainAdminFetchOptions();
+  const apiRoot = brainApiV1Root() ?? `${brainApiUrl.replace(/\/+$/, "")}/api/v1`;
+  const dispatchEndpoint = `${apiRoot}/admin/agent-dispatch-log`;
+
+  if (!auth.ok) {
+    return {
+      ...base,
+      activity: {
+        source: {
+          ok: false,
+          path: dispatchEndpoint,
+          message:
+            "Brain admin credentials incomplete — set BRAIN_API_URL and BRAIN_API_SECRET to load live persona dispatch activity.",
+        },
+        rows: [],
+        note: null,
+      },
+      brainApiError: null,
+    };
+  }
+
+  const client = new BrainClient(auth.root, auth.secret);
+  try {
+    const log = await client.getDispatchLog(100);
+    const records = log.dispatches as unknown as DispatchRecord[];
+    const modelCost = loadModelCostLookupFromRegistryMd(base.repoRoot);
+    const personaNames = buildPersonaDisplayNameMap(base.registry);
+    const rows = records.map((d) =>
+      activityFeedRowFromDispatchRecord(d, modelCost, personaNames),
+    );
+
+    const dispatchRead: { status: BrainDataSourceStatus; data: AgentDispatchFile | null } = {
+      status: { ok: true, path: dispatchEndpoint },
+      data: { dispatches: records },
+    };
+    const dashboard = buildPeopleDashboardStats(dispatchRead, base.registry.length);
+
+    const note =
+      records.length === 0
+        ? "Brain returned an empty dispatch log (agent_dispatch_log.json has no entries)."
+        : null;
+
+    return {
+      ...base,
+      dashboard,
+      activity: {
+        source: { ok: true, path: dispatchEndpoint },
+        rows,
+        note,
+      },
+      brainApiError: null,
+    };
+  } catch (e) {
+    const message =
+      e instanceof BrainClientError ? e.message : e instanceof Error ? e.message : String(e);
+    return {
+      ...base,
+      activity: {
+        source: {
+          ok: false,
+          path: dispatchEndpoint,
+          message,
+        },
+        rows: [],
+        note: null,
+      },
+      brainApiError: null,
+    };
   }
 }

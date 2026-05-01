@@ -56,6 +56,8 @@ export type DispatchLogEntry = {
   persona?: string | null;
   persona_slug?: string | null;
   persona_pin?: string | null;
+  pr_number?: number | null;
+  task_summary?: string | null;
   workstream_id?: string | null;
   workstream_type?: string | null;
   agent_model?: string | null;
@@ -133,7 +135,9 @@ export class BrainClient {
   }
 
   /**
-   * Fetch the agent dispatch log.
+   * Fetch persona/agent dispatch events from Brain (`agent_dispatch_log.json` on the Brain host).
+   * Uses `/admin/agent-dispatch-log` — not `/admin/logs` (that route is application logs).
+   *
    * @param limit  Max entries to return (default 100).
    * @param since  ISO-8601 lower bound for `dispatched_at`.
    */
@@ -145,8 +149,8 @@ export class BrainClient {
     params.set("limit", String(limit));
     if (since) params.set("since", since);
     return this.get<DispatchLogResponse>(
-      `/admin/logs?${params}`,
-      "dispatch-log",
+      `/admin/agent-dispatch-log?${params}`,
+      "agent-dispatch-log",
     );
   }
 
