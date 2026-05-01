@@ -3,6 +3,9 @@ import { CheckCircle2, XCircle, Clock, Zap, AlertTriangle, Bot } from "lucide-re
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 
+import { AutopilotActionsIfPending } from "./autopilot-actions-client";
+import { filterDispatchesToUtcToday } from "./dispatch-filters";
+
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Autopilot — Studio" };
@@ -14,7 +17,7 @@ type DispatchItem = {
   model: string;
   status: "pending" | "running" | "completed" | "failed" | "vetoed";
   created_at: string;
-};
+}
 
 type DispatchLog = {
   items: DispatchItem[];
@@ -23,7 +26,7 @@ type DispatchLog = {
     completed: number;
     failed: number;
     pending: number;
-    operating_score: number;
+    operating_score: number | null;
   };
 };
 
@@ -60,18 +63,22 @@ async function fetchDispatchLog(): Promise<DispatchLog | null> {
       created_at: ep.created_at ?? new Date().toISOString(),
     }));
 
+    const total = items.length;
     const completed = items.filter((i) => i.status === "completed").length;
     const failed = items.filter((i) => i.status === "failed").length;
     const pending = items.filter((i) => i.status === "pending").length;
 
+    const operating_score =
+      total === 0 ? null : Math.round((completed / total) * 100);
+
     return {
       items,
       summary: {
-        total_dispatched: items.length,
+        total_dispatched: total,
         completed,
         failed,
         pending,
-        operating_score: 0,
+        operating_score,
       },
     };
   } catch {
@@ -94,14 +101,29 @@ function statusConfig(status: DispatchItem["status"]) {
   }
 }
 
+function buildAutopilotSubtitle(todayItems: DispatchItem[]): string {
+  const x = todayItems.length;
+  const y = todayItems.filter((i) => i.status === "pending").length;
+  const taskWord = x === 1 ? "task" : "tasks";
+  const reviewClause =
+    y === 0
+      ? "none need your review."
+      : `${y} ${y === 1 ? "needs" : "need"} your review.`;
+  return `Brain dispatched ${x} ${taskWord} today; ${reviewClause}`;
+}
+
 export default async function AutopilotPage() {
   const data = await fetchDispatchLog();
+  const todayItems = data ? filterDispatchesToUtcToday(data.items) : [];
+  const subtitle = data
+    ? buildAutopilotSubtitle(todayItems)
+    : "Brain's dispatched work — review activity and outcomes";
 
   return (
     <div className="space-y-8" data-testid="admin-autopilot-page">
       <HqPageHeader
         title="Autopilot"
-        subtitle="Brain's dispatched work — review activity and outcomes"
+        subtitle={subtitle}
         breadcrumbs={[
           { label: "Admin", href: "/admin" },
           { label: "Autopilot" },
@@ -114,15 +136,19 @@ export default async function AutopilotPage() {
           Daily Briefing
         </h2>
         {data ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+          <div
+            className={`grid grid-cols-2 gap-4 ${data.summary.operating_score === null ? "md:grid-cols-4" : "md:grid-cols-5"}`}
+          >
             <BriefingStat label="Dispatched" value={data.summary.total_dispatched} />
             <BriefingStat label="Completed" value={data.summary.completed} className="text-emerald-400" />
             <BriefingStat label="Failed" value={data.summary.failed} className="text-red-400" />
             <BriefingStat label="Pending" value={data.summary.pending} className="text-zinc-300" />
-            <div className="flex flex-col items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/80 p-3">
-              <span className="text-[10px] uppercase tracking-wide text-zinc-500">Score</span>
-              <span className="text-2xl font-bold text-zinc-100">{data.summary.operating_score}</span>
-            </div>
+            {data.summary.operating_score !== null ? (
+              <div className="flex flex-col items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900/80 p-3">
+                <span className="text-[10px] uppercase tracking-wide text-zinc-500">Score</span>
+                <span className="text-2xl font-bold text-zinc-100">{data.summary.operating_score}</span>
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="flex items-center gap-2 text-sm text-zinc-500">
@@ -141,13 +167,13 @@ export default async function AutopilotPage() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
           Today&apos;s Dispatches
         </h2>
-        {!data || data.items.length === 0 ? (
+        {!data || todayItems.length === 0 ? (
           <div className="rounded-xl border border-dashed border-zinc-800 p-8 text-center text-sm text-zinc-500">
             No dispatched tasks today
           </div>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {data.items.map((item) => {
+            {todayItems.map((item) => {
               const cfg = statusConfig(item.status);
               const Icon = cfg.icon;
               return (
@@ -181,6 +207,11 @@ export default async function AutopilotPage() {
                       Pending founder review
                     </span>
                   )}
+                  <AutopilotActionsIfPending
+                    status={item.status}
+                    taskId={item.id}
+                    label={`Task #${item.id}`}
+                  />
                 </div>
               );
             })}
