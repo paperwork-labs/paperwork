@@ -5,7 +5,7 @@ doc_kind: reference
 domain: infra
 status: active
 ---
-# Paperwork Labs — Billing Email Migration Checklist
+# Billing Email Migration Checklist
 
 **Goal**: Use `billing@paperworklabs.com` for all vendor accounts (subscriptions, servers, APIs, domains). Keeps business expenses separate from personal, clean audit trail.
 

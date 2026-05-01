@@ -22,7 +22,7 @@ superseded_by: docs/VENTURE_MASTER_PLAN.md (TL;DR section at top)
 
 ---
 
-# Paperwork Labs — Venture Master Plan (Summary)
+# Venture Master Plan (Summary)
 
 **Derived from**: VENTURE_MASTER_PLAN.md (full version: 3509 lines)
 **Purpose**: Compact context for n8n workflows and cheaper AI models

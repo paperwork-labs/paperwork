@@ -5,7 +5,7 @@ doc_kind: reference
 domain: personas
 status: active
 ---
-# Paperwork Labs — Knowledge Base
+# Knowledge Base
 
 Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinkets). AI agents read this at session start. Update after significant decisions, learnings, or pattern discoveries.
 

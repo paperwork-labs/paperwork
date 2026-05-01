@@ -5,7 +5,7 @@ doc_kind: architecture
 domain: infra
 status: active
 ---
-# Paperwork Labs — Infra Architecture
+# Infra Architecture
 
 **Status**: Adopted 2026-04-23. Supersedes per-product dev compose files.
 

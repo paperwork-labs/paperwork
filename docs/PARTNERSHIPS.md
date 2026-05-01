@@ -5,7 +5,7 @@ doc_kind: reference
 domain: company
 status: active
 ---
-# Paperwork Labs — Partnership Playbook
+# Partnership Playbook
 
 **Canonical location**: Google Drive > Paperwork Labs HQ > Strategy > PARTNERSHIPS.md
 **Last synced**: 2026-03-18

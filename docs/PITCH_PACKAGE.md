@@ -5,7 +5,7 @@ doc_kind: plan
 domain: company
 status: active
 ---
-# Paperwork Labs — Executive Pitch Package
+# Executive Pitch Package
 
 **Canonical location**: Google Drive > Paperwork Labs HQ > Strategy > PITCH_PACKAGE.md
 **Last synced**: 2026-03-18

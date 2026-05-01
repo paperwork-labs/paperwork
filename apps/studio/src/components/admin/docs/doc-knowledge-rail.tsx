@@ -9,35 +9,42 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { cn } from "@paperwork-labs/ui";
+
 import { getKnowledgeRailForSlug } from "@/lib/knowledge-graph-data";
 
 type Props = {
   slug: string;
   markdownBody: string;
+  /** Merged onto the aside; use for layout (e.g. float breakpoints). */
+  className?: string;
 };
 
 function SectionTitle(props: { icon: LucideIcon; children: ReactNode }) {
   const Icon = props.icon;
   return (
-    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
-      <Icon className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
+    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+      <Icon className="h-3 w-3 text-zinc-600" aria-hidden />
       {props.children}
     </div>
   );
 }
 
-export function DocKnowledgeRail({ slug, markdownBody }: Props) {
+export function DocKnowledgeRail({ slug, markdownBody, className }: Props) {
   const rail = getKnowledgeRailForSlug(slug, markdownBody);
   const backlinksLabel =
     rail.linkedFrom.count === 1 ? "1 backlink" : `${rail.linkedFrom.count} backlinks`;
 
   return (
     <aside
-      className="space-y-5 rounded-xl border border-zinc-800 bg-zinc-950/55 p-4 text-xs text-zinc-300 lg:sticky lg:top-24"
+      className={cn(
+        "space-y-4 rounded-lg border border-zinc-700/90 bg-zinc-950/30 p-3 text-xs leading-snug text-zinc-400",
+        className,
+      )}
       aria-label="Doc knowledge graph"
       data-testid="doc-backlinks-panel"
     >
-      <div className="space-y-1 border-b border-zinc-800/80 pb-4">
+      <div className="space-y-1 border-b border-zinc-800/80 pb-3">
         <SectionTitle icon={Atom}>Knowledge graph</SectionTitle>
         <p className="text-[11px] text-zinc-500">
           {rail.inIndexedGraph

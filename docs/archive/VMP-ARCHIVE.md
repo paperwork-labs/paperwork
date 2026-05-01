@@ -1,4 +1,4 @@
-# Paperwork Labs — Venture Master Plan Archive
+# Venture Master Plan Archive
 
 Detailed specs archived from VENTURE_MASTER_PLAN.md per D52 (Doc Hygiene rules). These specs are Phase 5+ features that aren't needed in full detail yet, and review findings that are all FIXED. The main VMP retains summaries with references to this archive.
 

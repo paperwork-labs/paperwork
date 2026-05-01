@@ -1,4 +1,4 @@
-# Paperwork Labs Stack Audit - 2026 Q2
+# Stack Audit - 2026 Q2
 
 **Audit date:** 2026-04-29  
 **Auditor:** Brain (autonomous read-only audit, WS-49)  

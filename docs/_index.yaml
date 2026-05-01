@@ -375,7 +375,7 @@ docs:
     category: runbooks
   - slug: timezone-standards
     path: docs/infra/TIMEZONE_STANDARDS.md
-    title: Timezone standards (Paperwork Labs)
+    title: Timezone standards
     summary: "All datetimes stored in the database, transmitted in API responses, logged for audit, scheduled at the **system** level, and compared in server-side business logic are **UTC and timezone-aware**.…"
     tags: [infra, runbook]
     owners: [infra-ops]
@@ -565,14 +565,14 @@ docs:
     category: reference
   - slug: readme
     path: docs/brand/README.md
-    title: Paperwork Labs brand asset registry
+    title: Brand asset registry
     summary: "Single source of truth for canonical SVG marks across Paperwork Labs and its products. If a logo or product glyph isn't listed here, it isn't canonical yet."
     tags: [company, reference]
     owners: [brand]
     category: reference
   - slug: stack-audit-2026-q2
     path: docs/STACK_AUDIT_2026-Q2.md
-    title: Paperwork Labs Stack Audit - 2026 Q2
+    title: Stack Audit -- 2026 Q2
     summary: "**Audit date:** 2026-04-29 **Auditor:** Brain (autonomous read-only audit, WS-49) **Source-of-truth files inspected:** `package.json`, `pnpm-workspace.yaml`, `pyproject.toml`, `requirements.txt`,…"
     tags: []
     owners: [strategy]
