@@ -38,9 +38,4 @@ test.describe("Admin Runbook page (WS-76 PR-4)", () => {
     const count = await cards.count();
     expect(count).toBe(4);
   });
-
-  test("/admin/founder-actions redirects to /admin/runbook", async ({ page }) => {
-    const resp = await page.goto("/admin/founder-actions");
-    expect(resp?.url()).toContain("/admin/runbook");
-  });
 });

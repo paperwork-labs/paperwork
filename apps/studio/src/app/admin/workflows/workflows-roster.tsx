@@ -222,8 +222,8 @@ export default function WorkflowsRoster({
             </span>
             <Link
               href={{
-                pathname: "/admin/workflows",
-                query: { tab: "roster", workflow: workflowId, sort: sort === "desc" ? "asc" : "desc" },
+                pathname: "/admin/architecture",
+                query: { tab: "flows", workflow: workflowId, sort: sort === "desc" ? "asc" : "desc" },
               }}
               className="rounded-md border border-zinc-700 px-2 py-1 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100"
             >
@@ -234,8 +234,8 @@ export default function WorkflowsRoster({
         <div className="mb-3 flex flex-wrap gap-2 text-xs">
           <Link
             href={{
-              pathname: "/admin/workflows",
-              query: { tab: "roster", workflow: "all", sort },
+              pathname: "/admin/architecture",
+              query: { tab: "flows", workflow: "all", sort },
             }}
             className={`rounded-md border px-2 py-1 ${
               workflowId === "all"
@@ -249,8 +249,8 @@ export default function WorkflowsRoster({
             <Link
               key={workflow.id}
               href={{
-                pathname: "/admin/workflows",
-                query: { tab: "roster", workflow: workflow.id, sort },
+                pathname: "/admin/architecture",
+                query: { tab: "flows", workflow: workflow.id, sort },
               }}
               className={`rounded-md border px-2 py-1 ${
                 workflowId === workflow.id

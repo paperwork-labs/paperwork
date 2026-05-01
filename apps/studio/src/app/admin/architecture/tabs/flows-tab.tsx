@@ -1,9 +1,8 @@
 // Content moved from /admin/workflows (WS-69 PR C). The /admin/workflows route
 // now redirects here via next.config.mjs.
 //
-// Note: the inner nav links (roster / activity / graph) still deep-link to
-// /admin/workflows?tab=... which will redirect to this tab. Future work can
-// update those links to use the architecture?tab=workflows&subtab=... pattern.
+// Roster filter/sort links use /admin/architecture?tab=flows&... so query
+// params are not stripped by the /admin/workflows → architecture redirect.
 
 import {
   getBrainPersonas,
