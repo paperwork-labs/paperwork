@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import workstreamsJson from "@/data/workstreams.json";
@@ -9,6 +10,22 @@ import {
 } from "@/lib/workstreams/schema";
 
 import { WorkstreamsBoardClient } from "../workstreams-client";
+
+vi.mock("next/link", () => ({
+  default: ({
+    children,
+    href,
+    className,
+  }: {
+    children: ReactNode;
+    href: string;
+    className?: string;
+  }) => (
+    <a href={href} className={className}>
+      {children}
+    </a>
+  ),
+}));
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
@@ -29,7 +46,7 @@ describe("WorkstreamsBoardClient", () => {
       /workstreams/i,
     );
     expect(screen.getByText("Total")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /active/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /active/i })).toBeTruthy();
     expect(screen.getByText("Cancelled")).toBeTruthy();
     expect(screen.getByText(/Track Z · read-only/i)).toBeTruthy();
     expect(screen.getByText(/Cross-cutting work logs across the company/i)).toBeTruthy();

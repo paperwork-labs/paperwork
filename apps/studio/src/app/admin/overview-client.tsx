@@ -8,20 +8,17 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  GitPullRequest,
   GitBranch,
-  Shield,
   ArrowRight,
   Workflow,
   Clock,
-  Layers3,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { BrainFreshnessTile } from "@/components/admin/BrainFreshnessTile";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 
-import { HqStatCard } from "@/components/admin/hq/HqStatCard";
+import { StatCard } from "@/components/admin/stat-card";
 
 type N8nWorkflow = {
   id: string;
@@ -145,9 +142,6 @@ const fadeUp = {
   hidden: { opacity: 0, y: 8 },
   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 };
-
-const STAT_CARD_LINK =
-  "block h-full rounded-xl ring-1 ring-zinc-800 outline-none transition duration-200 ease-out hover:scale-[1.02] hover:ring-zinc-700 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-amber-500/45";
 
 export default function OverviewClient({ initial }: { initial: OverviewData }) {
   const [data, setData] = useState(initial);
@@ -308,7 +302,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
   }, [prs, ciRuns]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-3xl font-semibold tracking-tight text-transparent">
@@ -339,7 +333,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
       {githubAnyMissingCred || githubFetchErrorLines.length > 0 ? (
         <div
           data-testid="overview-github-honesty-banner"
-          className="space-y-3"
+          className="space-y-6"
           role="status"
         >
           {githubAnyMissingCred ? (
@@ -398,108 +392,86 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         initial="hidden"
         animate="show"
       >
-        <motion.div variants={fadeUp}>
-          <Link
+        <motion.div variants={fadeUp} className="min-h-[1px] min-w-0">
+          <StatCard
+            label="Open PRs"
+            value={githubPrDegraded ? "—" : prs.length}
             href={
               githubPrDegraded
                 ? "/admin/infrastructure"
-                : "https://github.com/paperwork-labs/paperwork/pulls"
+                : "/admin/workstreams?status=in_progress"
             }
-            className={STAT_CARD_LINK}
-            target={githubPrDegraded ? undefined : "_blank"}
-            rel={githubPrDegraded ? undefined : "noreferrer"}
-            aria-label={
-              githubPrDegraded ? "Open infrastructure to connect GitHub" : "Open GitHub pull requests"
+            hint={
+              githubPrMissingCred
+                ? "Connect GITHUB_TOKEN to load pull requests."
+                : githubPrFetchError
+                  ? githubPrFetchError
+                  : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
             }
-          >
-            <HqStatCard
-              variant="default"
-              status={
-                githubPrDegraded ? "warning" : prsNeedingChanges > 0 ? "danger" : "neutral"
-              }
-              icon={<GitPullRequest className="h-4 w-4 text-zinc-500" />}
-              label="Open PRs"
-              value={githubPrDegraded ? "—" : prs.length}
-              helpText={
-                githubPrMissingCred
-                  ? "Connect GITHUB_TOKEN to load pull requests."
-                  : githubPrFetchError
-                    ? githubPrFetchError
-                    : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
-              }
-            />
-          </Link>
+            className={
+              githubPrDegraded
+                ? "border-amber-500/35 bg-amber-950/15 ring-amber-500/25"
+                : prsNeedingChanges > 0
+                  ? "border-rose-500/35 bg-rose-950/15 ring-rose-500/25"
+                  : undefined
+            }
+          />
         </motion.div>
 
-        <motion.div variants={fadeUp}>
-          <a
+        <motion.div variants={fadeUp} className="min-h-[1px] min-w-0">
+          <StatCard
+            label="CI on main"
+            value={githubCiMissingCred ? "—" : ciRuns.length === 0 ? "—" : `${ciSuccessCount}/${ciRuns.length}`}
             href="https://github.com/paperwork-labs/paperwork/actions?query=branch%3Amain"
-            className={STAT_CARD_LINK}
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Open GitHub Actions for main branch"
-          >
-            <HqStatCard
-              variant="default"
-              status={
-                githubCiMissingCred
-                  ? "warning"
+            hint={
+              githubCiMissingCred
+                ? "Connect GITHUB_TOKEN to load workflow runs."
+                : ciRuns.length === 0
+                  ? "No recent runs loaded."
                   : ciFailureCount > 0
-                    ? "danger"
-                    : ciRuns.length > 0 && ciSuccessCount === ciRuns.length
-                      ? "success"
-                      : "neutral"
-              }
-              icon={<GitBranch className="h-4 w-4 text-zinc-500" />}
-              label="CI on main"
-              value={githubCiMissingCred ? "—" : ciRuns.length === 0 ? "—" : `${ciSuccessCount}/${ciRuns.length}`}
-              helpText={
-                githubCiMissingCred
-                  ? "Connect GITHUB_TOKEN to load workflow runs."
-                  : ciRuns.length === 0
-                    ? "No recent runs loaded."
-                    : ciFailureCount > 0
-                      ? `${ciFailureCount} failing · recent runs below`
-                      : "Recent runs below"
-              }
-            />
-          </a>
+                    ? `${ciFailureCount} failing · recent runs below`
+                    : "Recent runs below"
+            }
+            className={
+              githubCiMissingCred
+                ? "border-amber-500/35 bg-amber-950/15 ring-amber-500/25"
+                : ciFailureCount > 0
+                  ? "border-rose-500/35 bg-rose-950/15 ring-rose-500/25"
+                  : ciRuns.length > 0 && ciSuccessCount === ciRuns.length
+                    ? "border-emerald-500/35 bg-emerald-950/15 ring-emerald-500/25"
+                    : undefined
+            }
+          />
         </motion.div>
 
-        <motion.div variants={fadeUp}>
-          <Link href="/admin/infrastructure" className={STAT_CARD_LINK} aria-label="Open infrastructure status">
-            <HqStatCard
-              variant="default"
-              status={
-                healthyInfra === infrastructure.length && infrastructure.length > 0
-                  ? "success"
-                  : degradedInfra > 0
-                    ? "danger"
-                    : "neutral"
-              }
-              icon={<Shield className="h-4 w-4 text-zinc-500" />}
-              label="Infra health"
-              value={infrastructure.length > 0 ? `${healthyInfra}/${infrastructure.length}` : "—"}
-              helpText="Provider checks · Brain, APIs, frontends"
-            />
-          </Link>
+        <motion.div variants={fadeUp} className="min-h-[1px] min-w-0">
+          <StatCard
+            label="Infra health"
+            value={infrastructure.length > 0 ? `${healthyInfra}/${infrastructure.length}` : "—"}
+            href="/admin/infrastructure"
+            hint="Provider checks · Brain, APIs, frontends"
+            className={
+              healthyInfra === infrastructure.length && infrastructure.length > 0
+                ? "border-emerald-500/35 bg-emerald-950/15 ring-emerald-500/25"
+                : degradedInfra > 0
+                  ? "border-rose-500/35 bg-rose-950/15 ring-rose-500/25"
+                  : undefined
+            }
+          />
         </motion.div>
 
-        <motion.div variants={fadeUp}>
-          <Link href="/admin/products" className={STAT_CARD_LINK} aria-label="Open products catalog">
-            <HqStatCard
-              variant="default"
-              status="neutral"
-              icon={<Layers3 className="h-4 w-4 text-zinc-500" />}
-              label="Products"
-              value="Catalog"
-              helpText="Ship matrix, plans, and product health"
-            />
-          </Link>
+        <motion.div variants={fadeUp} className="min-h-[1px] min-w-0">
+          <StatCard
+            label="Products"
+            value="Catalog"
+            href="/admin/products"
+            hint="Ship matrix, plans, and product health"
+          />
         </motion.div>
       </motion.section>
 
       {/* Architecture + CI */}
+      <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
         <Link
           href="/admin/architecture"
@@ -587,7 +559,9 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           </div>
         </section>
       </div>
+      </div>
 
+      <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
           <p className="mb-3 text-sm font-medium text-zinc-200">Shipping activity</p>
@@ -651,6 +625,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
             ))}
           </div>
         </section>
+      </div>
       </div>
     </div>
   );

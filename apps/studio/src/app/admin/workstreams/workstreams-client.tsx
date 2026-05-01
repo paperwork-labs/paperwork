@@ -22,7 +22,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toast, Toaster } from "sonner";
 
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
-import { HqStatCard } from "@/components/admin/hq/HqStatCard";
+import { StatCard } from "@/components/admin/stat-card";
+import { cn } from "@paperwork-labs/ui";
 import type {
   WorkstreamOwner,
   WorkstreamsFile,
@@ -56,6 +57,17 @@ const reorderEnabled =
   process.env.NEXT_PUBLIC_WORKSTREAMS_REORDER_ENABLED === "true";
 
 type BoardStatusFilter = "all" | "active" | WorkstreamStatus;
+
+function statusStripHref(filter: BoardStatusFilter): string {
+  if (filter === "all") return "/admin/workstreams";
+  return `/admin/workstreams?status=${encodeURIComponent(filter)}`;
+}
+
+function statusStripCardClass(selected: boolean) {
+  return selected
+    ? "border-violet-500/45 bg-violet-500/10 ring-violet-400/35 hover:border-violet-400/55"
+    : undefined;
+}
 
 const OWNER_OPTIONS: ("all" | WorkstreamOwner)[] = [
   "all",
@@ -151,20 +163,6 @@ export function WorkstreamsBoardClient({
     [pathname, router, searchParams],
   );
 
-  const pickStatus = useCallback(
-    (opt: BoardStatusFilter) => {
-      if (opt === "all") {
-        setQuery({ status: null });
-        return;
-      }
-      const matches =
-        opt === "active" ? statusFilter === "active" : statusFilter === opt;
-      if (matches) setQuery({ status: null });
-      else setQuery({ status: opt });
-    },
-    [setQuery, statusFilter],
-  );
-
   const pickOwner = useCallback(
     (opt: (typeof OWNER_OPTIONS)[number]) => {
       if (opt === "all") {
@@ -253,7 +251,7 @@ export function WorkstreamsBoardClient({
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {showHeader ? (
           <HqPageHeader
             title="Workstreams"
@@ -314,52 +312,47 @@ export function WorkstreamsBoardClient({
             Status · click a card to filter the board
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-            <HqStatCard
-              variant="compact"
+            <StatCard
               label="Total"
               value={kpis.total}
-              onClick={() => pickStatus("all")}
-              selected={statusFilter === "all"}
+              href={statusStripHref("all")}
+              hint="All workstreams"
+              className={cn(statusStripCardClass(statusFilter === "all"))}
             />
-            <HqStatCard
-              variant="compact"
+            <StatCard
               label="Active"
               value={kpis.active}
-              status="warning"
-              onClick={() => pickStatus("active")}
-              selected={statusFilter === "active"}
+              href={statusStripHref("active")}
+              hint="In flight"
+              className={cn(statusStripCardClass(statusFilter === "active"))}
             />
-            <HqStatCard
-              variant="compact"
+            <StatCard
               label="Blocked"
               value={kpis.blocked}
-              status="danger"
-              onClick={() => pickStatus("blocked")}
-              selected={statusFilter === "blocked"}
+              href={statusStripHref("blocked")}
+              hint="Needs unblock"
+              className={cn(statusStripCardClass(statusFilter === "blocked"))}
             />
-            <HqStatCard
-              variant="compact"
+            <StatCard
               label="Completed"
               value={kpis.completed}
-              status="success"
-              onClick={() => pickStatus("completed")}
-              selected={statusFilter === "completed"}
+              href={statusStripHref("completed")}
+              hint="Shipped"
+              className={cn(statusStripCardClass(statusFilter === "completed"))}
             />
-            <HqStatCard
-              variant="compact"
+            <StatCard
               label="Cancelled"
               value={kpis.cancelled}
-              status="danger"
-              onClick={() => pickStatus("cancelled")}
-              selected={statusFilter === "cancelled"}
+              href={statusStripHref("cancelled")}
+              hint="Stopped"
+              className={cn(statusStripCardClass(statusFilter === "cancelled"))}
             />
-            <HqStatCard
-              variant="compact"
+            <StatCard
               label="Deferred"
               value={kpis.deferred}
-              status="info"
-              onClick={() => pickStatus("deferred")}
-              selected={statusFilter === "deferred"}
+              href={statusStripHref("deferred")}
+              hint="Parked"
+              className={cn(statusStripCardClass(statusFilter === "deferred"))}
             />
           </div>
         </div>
