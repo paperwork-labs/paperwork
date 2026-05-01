@@ -23,13 +23,102 @@ Brain and agents have programmatic access to all infrastructure credentials. **N
 ## Quick Reference: Service IDs
 
 ```bash
-# Brain API on Render
+# Render Services
 BRAIN_SERVICE_ID="srv-d74f3cmuk2gs73a4013g"
+AXIOMFOLIO_API_SERVICE_ID="srv-d7lg0o77f7vs73b2k7m0"
+AXIOMFOLIO_WORKER_SERVICE_ID="srv-d7lg0o77f7vs73b2k7lg"
+AXIOMFOLIO_WORKER_HEAVY_SERVICE_ID="srv-d7lg0o77f7vs73b2k7kg"
+FILEFREE_API_SERVICE_ID="srv-d70o3jvkijhs73a0ee7g"
 
 # Cloudflare Zone IDs
 AXIOMFOLIO_ZONE="e06277688d45265fb6e1240ca17e796e"
-# Add other zones as needed
+# Other zones: get via `GET /client/v4/zones?name=DOMAIN`
 ```
+
+## Full Credential Map
+
+All secrets accessible programmatically. **NEVER hardcode values in code or docs.**
+
+### Studio (Vercel) — source of truth for shared secrets
+Access: `vercel env pull .env.production.local --environment production --yes`
+
+| Key | Purpose |
+|-----|---------|
+| RENDER_API_KEY | Render API access (all services) |
+| VERCEL_API_TOKEN | Vercel API (deployments, domains) |
+| GITHUB_TOKEN | GitHub API (PRs, checks) |
+| NEON_API_KEY | Neon Postgres management |
+| NEON_PROJECT_ID | Neon project reference |
+| DATABASE_URL | Primary Neon Postgres connection |
+| UPSTASH_REDIS_REST_URL | Upstash Redis endpoint |
+| UPSTASH_REDIS_REST_TOKEN | Upstash Redis auth |
+| CLERK_SECRET_KEY | Clerk auth backend |
+| NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY | Clerk auth frontend |
+| BRAIN_API_URL | Brain API endpoint |
+| BRAIN_API_SECRET | Brain API auth |
+| SECRETS_API_KEY | Studio secrets vault API |
+| SECRETS_ENCRYPTION_KEY | Encryption for vault |
+| N8N_API_KEY | n8n workflow API |
+| N8N_API_URL | n8n endpoint |
+| SLACK_BOT_TOKEN | Slack integration |
+| POSTIZ_URL | Social posting service |
+| ADMIN_EMAILS | Admin user allowlist |
+| ADMIN_ACCESS_PASSWORD | Admin fallback auth |
+
+### Brain API (Render) — AI and infrastructure secrets
+Access: Render API with RENDER_API_KEY
+
+| Key | Purpose |
+|-----|---------|
+| ANTHROPIC_API_KEY | Claude API |
+| OPENAI_API_KEY | OpenAI API |
+| CLOUDFLARE_API_TOKEN | Cloudflare DNS/CDN management |
+| CLOUDFLARE_ACCOUNT_ID | Cloudflare account reference |
+| VERCEL_API_TOKEN | Vercel operations |
+| RENDER_API_KEY | Self-reference for Render ops |
+| NEON_API_KEY | Database management |
+| REDIS_URL | Redis connection |
+| BRAIN_API_SECRET | Internal auth |
+| BRAIN_MCP_TOKEN | MCP server auth |
+| LANGFUSE_HOST | LLM observability |
+| AXIOMFOLIO_API_KEY | AxiomFolio backend access |
+| N8N_API_KEY | Workflow automation |
+
+### AxiomFolio API (Render) — trading and market data
+Access: Render API with RENDER_API_KEY
+
+| Key | Purpose |
+|-----|---------|
+| ALPHA_VANTAGE_API_KEY | Market data |
+| FINNHUB_API_KEY | Market data |
+| POLYGON_API_KEY | Market data |
+| TWELVE_DATA_API_KEY | Market data |
+| OPENAI_API_KEY | AI features |
+| BRAIN_API_KEY | Brain integration |
+| BRAIN_WEBHOOK_SECRET | Webhook auth |
+| BRAIN_WEBHOOK_URL | Brain webhook endpoint |
+| RENDER_API_KEY | Self-reference |
+| NEW_RELIC_LICENSE_KEY | APM monitoring |
+| ENCRYPTION_KEY | Data encryption |
+
+### AxiomFolio (Vercel) — frontend auth
+Access: `vercel link --yes --project axiomfolio && vercel env ls`
+
+| Key | Purpose |
+|-----|---------|
+| CLERK_SECRET_KEY | Auth backend |
+| NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY | Auth frontend |
+| BRAIN_API_URL | Brain integration |
+| BRAIN_API_SECRET | Brain auth |
+
+### FileFree API (Render)
+Access: Render API with RENDER_API_KEY
+
+| Key | Purpose |
+|-----|---------|
+| DATABASE_URL | Postgres connection |
+| ENCRYPTION_KEY | Data encryption |
+| SECRET_KEY | App secret |
 
 ## Common Operations
 
