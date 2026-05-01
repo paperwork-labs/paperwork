@@ -3,8 +3,6 @@ import { CheckCircle2, XCircle, Clock, Zap, AlertTriangle, Bot } from "lucide-re
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 
-import { AutopilotActions } from "./autopilot-actions-client";
-
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Autopilot — Studio" };
@@ -103,7 +101,7 @@ export default async function AutopilotPage() {
     <div className="space-y-8" data-testid="admin-autopilot-page">
       <HqPageHeader
         title="Autopilot"
-        subtitle="Brain's dispatched work — approve or veto with one click"
+        subtitle="Brain's dispatched work — review activity and outcomes"
         breadcrumbs={[
           { label: "Admin", href: "/admin" },
           { label: "Autopilot" },
@@ -178,7 +176,11 @@ export default async function AutopilotPage() {
                       {new Date(item.created_at).toLocaleTimeString()}
                     </span>
                   </div>
-                  {item.status === "pending" && <AutopilotActions taskId={item.id} />}
+                  {item.status === "pending" && (
+                    <span className="inline-flex w-fit items-center rounded-md border border-amber-800/60 bg-amber-950/40 px-2 py-1 text-[10px] font-medium text-amber-200/90">
+                      Pending founder review
+                    </span>
+                  )}
                 </div>
               );
             })}

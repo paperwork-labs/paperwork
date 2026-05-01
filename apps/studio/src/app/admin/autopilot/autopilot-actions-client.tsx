@@ -1,5 +1,7 @@
 "use client";
 
+// TODO: Wire to Brain dispatch approve/veto endpoints when implemented (Phase D)
+
 import { useState, useTransition } from "react";
 import { Check, X } from "lucide-react";
 

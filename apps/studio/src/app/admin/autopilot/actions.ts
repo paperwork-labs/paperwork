@@ -1,5 +1,7 @@
 "use server";
 
+// TODO: Wire to Brain dispatch approve/veto endpoints when implemented (Phase D)
+
 import { revalidatePath } from "next/cache";
 
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
