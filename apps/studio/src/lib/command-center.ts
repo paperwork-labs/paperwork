@@ -558,6 +558,35 @@ export async function getRecentPullRequests(limit = 5): Promise<RecentPullReques
   return { data: result.data };
 }
 
+/**
+ * Count open GitHub issues (not PRs) with label `product:<slug>` on paperwork-labs/paperwork.
+ * Returns null when GITHUB_TOKEN is missing or the request fails — callers should hide the count.
+ */
+export async function countOpenIssuesForProductLabel(productSlug: string): Promise<number | null> {
+  const token = process.env.GITHUB_TOKEN?.trim();
+  if (!token) return null;
+  const label = `product:${productSlug}`;
+  let page = 1;
+  let total = 0;
+  type IssueRow = { pull_request?: unknown };
+  for (;;) {
+    const url = `https://api.github.com/repos/paperwork-labs/paperwork/issues?state=open&labels=${encodeURIComponent(label)}&per_page=100&page=${page}`;
+    const result = await fetchJsonResult<IssueRow[]>(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+      },
+    });
+    if (!result.ok) return null;
+    if (!Array.isArray(result.data)) return null;
+    const issuesOnly = result.data.filter((row) => row.pull_request == null);
+    total += issuesOnly.length;
+    if (result.data.length < 100) break;
+    page += 1;
+  }
+  return total;
+}
+
 export type BrainPRReview = {
   pr_number: number;
   head_sha: string;
