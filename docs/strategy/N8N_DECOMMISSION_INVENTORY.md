@@ -88,11 +88,11 @@ All retired per `infra/hetzner/workflows/retired/RETIRED.md`:
 | File | Description |
 |------|-------------|
 | `apps/studio/src/app/admin/workflows/page.tsx` | Now a 308 redirect stub |
-| `apps/studio/src/app/admin/workflows/n8n-graph.tsx` | n8n flow visualizer (used in Architecture → Flows tab via `flows-tab.tsx`) |
-| `apps/studio/src/app/admin/workflows/workflows-roster.tsx` | Workflow roster table (used in Architecture → Flows tab) |
+| `apps/studio/src/app/admin/workflows/n8n-graph.tsx` | n8n flow visualizer (component retained under workflows; Architecture Flows tab removed in PR-3 #565) |
+| `apps/studio/src/app/admin/workflows/workflows-roster.tsx` | Workflow roster table (same) |
 | `apps/studio/src/app/admin/n8n-mirror/page.tsx` | Now a 308 redirect stub |
-| `apps/studio/src/app/admin/architecture/tabs/flows-tab.tsx` | Consolidated n8n + workflow content (new home) |
-| `apps/studio/src/app/admin/architecture/tabs/data-sources-tab.tsx` | Data sources / integration status (was integrations-tab) |
+
+**Removed in PR-3 (#565):** consolidated Architecture tab implementations **flows-tab.tsx** and **data-sources-tab.tsx**. Redirect targets above still mention `?tab=flows`; reconcile when routing is updated.
 
 ### 2c. API routes
 

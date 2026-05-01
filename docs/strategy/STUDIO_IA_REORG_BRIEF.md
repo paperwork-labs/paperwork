@@ -29,7 +29,7 @@ The Studio admin nav has grown to **16 items in 3 groups** during the L4/L5 blit
 
 **Confirmed inconsistency** (verified at the diff level):
 - `apps/studio/src/app/admin/_components/trackers-rail.tsx` line 24-25 uses **raw** `s.status === "active" | "shipped"`.
-- `apps/studio/src/app/admin/sprints/page.tsx` line 102-103 uses **reconciled** `isSprintActiveForUi()` / `isSprintShippedForUi()` from `apps/studio/src/lib/sprint-reconcile.ts`.
+- `apps/studio/src/app/admin/sprints/sprints-overview-tab.tsx` line 119-127 uses **reconciled** `isSprintActiveForUi()` / `isSprintShippedForUi()` from `apps/studio/src/lib/sprint-reconcile.ts`.
 - Same JSON source, different numbers. That's why Overview says "0 + 3 shipped" while Sprints page can show different counts.
 
 **Suspected inconsistencies** (need a 30-min audit):
