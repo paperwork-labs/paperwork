@@ -1,0 +1,14 @@
+{
+  "name": "@paperwork/skill-payments",
+  "version": "0.0.1",
+  "description": "Stripe + Plaid integration primitives for payment tracking",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src"
+  },
+  "keywords": ["payments", "stripe", "plaid"],
+  "license": "UNLICENSED",
+  "private": true
+}
