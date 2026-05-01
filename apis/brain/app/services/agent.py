@@ -349,7 +349,10 @@ async def process(
         }
     )
 
-    persona_spec = get_persona_spec(persona)
+    try:
+        persona_spec = get_persona_spec(persona)
+    except ValueError:
+        persona_spec = None
 
     persona_instructions = await _load_persona_instructions(persona, redis_client)
     if persona_instructions:
