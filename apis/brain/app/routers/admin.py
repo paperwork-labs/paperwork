@@ -14,6 +14,7 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Header, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import Date, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -804,6 +805,59 @@ async def list_memory_episodes(
         for ep in rows
     ]
     return success_response({"count": len(episodes), "episodes": episodes})
+
+
+class MemorySearchBody(BaseModel):
+    query: str = Field(..., min_length=1, max_length=500)
+    limit: int = Field(10, ge=1, le=50)
+    source_prefix: str | None = None
+    min_importance: float | None = Field(None, ge=0.0, le=1.0)
+    organization_id: str = Field("paperwork-labs")
+    mode: str = Field("hybrid", pattern=r"^(semantic|keyword|hybrid)$")
+
+
+@router.post("/memory/search")
+async def admin_memory_search_endpoint(
+    body: MemorySearchBody,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Hybrid / keyword / semantic retrieval over episodic memory (admin primitive)."""
+    results, mode_used, keyword_fallback = await memory_svc.admin_memory_search(
+        db,
+        organization_id=body.organization_id,
+        query=body.query.strip(),
+        limit=body.limit,
+        source_prefix=body.source_prefix,
+        min_importance=body.min_importance,
+        mode=body.mode,
+    )
+    payload = {
+        "query": body.query.strip(),
+        "mode_used": mode_used,
+        "count": len(results),
+        "results": [
+            {
+                "id": ep.id,
+                "source": ep.source,
+                "summary": ep.summary,
+                "score": score,
+                "importance": ep.importance,
+                "created_at": ep.created_at.isoformat() if ep.created_at else None,
+                "metadata": ep.metadata_ or {},
+                "snippet": (ep.summary or "")[:200],
+            }
+            for ep, score in results
+        ],
+    }
+    headers: dict[str, str] = {}
+    if keyword_fallback:
+        headers["X-Brain-Search-Mode"] = "keyword-fallback"
+    return JSONResponse(
+        content={"success": True, "data": payload},
+        status_code=200,
+        headers=headers,
+    )
 
 
 AUTOPILOT_EPISODE_PREFIX = "autopilot"
