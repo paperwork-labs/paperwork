@@ -18,8 +18,18 @@ export default async function GoalsPage() {
     }
   }
 
-  return liveGoals ? (
-    <GoalsClient data={liveGoals} />
+  const visible =
+    liveGoals == null
+      ? null
+      : {
+          ...liveGoals,
+          objectives: liveGoals.objectives.filter(
+            (o) => !(o as { archived_at?: string | undefined }).archived_at,
+          ),
+        };
+
+  return visible ? (
+    <GoalsClient data={visible} />
   ) : (
     <GoalsBrainDisconnected brainConfigured={brain != null} />
   );
