@@ -103,11 +103,30 @@ export function decodeGmailRawBase64(raw: string): Buffer {
 
 const INVOICE_KEYWORD_RE = /\b(invoice|receipt|bill)\b/i;
 
+/** Strip `<...>` spans without regex backtracking (same naive semantics as `<[^>]+>`). */
+function stripHtmlTags(html: string): string {
+  let out = "";
+  let i = 0;
+  while (i < html.length) {
+    const lt = html.indexOf("<", i);
+    if (lt === -1) {
+      return out + html.slice(i);
+    }
+    out += html.slice(i, lt);
+    const gt = html.indexOf(">", lt + 1);
+    if (gt === -1) {
+      return out + html.slice(lt);
+    }
+    i = gt + 1;
+  }
+  return out;
+}
+
 export function emailBodyText(email: ParsedInboundEmail): string {
   const chunks: string[] = [];
   if (email.text) chunks.push(email.text);
   if (email.html) {
-    chunks.push(email.html.replace(/<[^>]+>/g, " "));
+    chunks.push(stripHtmlTags(email.html));
   }
   return chunks.join("\n").replace(/\s+/g, " ").trim();
 }
@@ -164,8 +183,9 @@ function parseDateCandidate(raw: string): Date | undefined {
 }
 
 export function extractDueDate(text: string): Date | undefined {
+  // Avoid overlapping `\s*` + `[:\s]+` (polynomial ReDoS); colon branch vs alphanumeric lookahead.
   const dueLabeled = text.match(
-    /due(?:\s*date)?[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}-\d{2}-\d{2}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i
+    /\bdue(?:\s+date)?\s*(?::\s+|(?=[\dA-Za-z]))(\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}-\d{2}-\d{2}|[A-Za-z]{3,9}[ \t]+\d{1,2},?[ \t]+\d{4})/i
   );
   if (dueLabeled?.[1]) {
     const d = parseDateCandidate(dueLabeled[1]);
