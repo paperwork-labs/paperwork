@@ -91,6 +91,10 @@ export function findProduct(slug: string): Product | undefined {
   return loadTrackerIndex().products.find((p) => p.slug === slug);
 }
 
+export function listTrackerProducts(): Product[] {
+  return loadTrackerIndex().products;
+}
+
 export function activeSprints(): Sprint[] {
   return activeSprintsForUi(loadTrackerIndex().sprints);
 }

@@ -199,37 +199,44 @@ export function ProductsPageClient({ products }: { products: ProductRegistryEntr
 function ProductCard({ product }: { product: ProductRegistryEntry }) {
   const stage = parseProductStatus(product.status);
   return (
-    <article
+    <Link
+      href={`/admin/products/${product.slug}`}
       data-testid="product-registry-card"
       data-product-slug={product.slug}
-      className="flex flex-col overflow-hidden rounded-xl border border-zinc-800/90 bg-zinc-950/40 ring-1 ring-inset ring-black/5"
+      className="group block overflow-hidden rounded-xl border border-zinc-800/90 bg-zinc-950/40 ring-1 ring-inset ring-black/5 motion-safe:transition-colors motion-safe:duration-200 hover:border-zinc-600/90 hover:bg-zinc-900/35 hover:shadow-lg hover:shadow-black/25 hover:ring-zinc-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--status-info)]"
     >
-      <div className="h-1 w-full shrink-0" style={{ backgroundColor: product.color_accent }} />
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h2 className="text-base font-semibold tracking-tight text-zinc-100">{product.name}</h2>
-          <span
-            className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusPillToneClass(stage)}`}
-          >
-            {productStageLabel(stage)}
-          </span>
+      <article className="flex flex-col">
+        <div
+          className="h-1 w-full shrink-0 motion-safe:transition-opacity group-hover:opacity-90"
+          style={{ backgroundColor: product.color_accent }}
+        />
+        <div className="flex flex-1 flex-col p-4">
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="text-base font-semibold tracking-tight text-zinc-100 group-hover:text-white">
+              {product.name}
+            </h2>
+            <span
+              className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusPillToneClass(stage)}`}
+            >
+              {productStageLabel(stage)}
+            </span>
+          </div>
+          <p className="mt-1 line-clamp-2 text-sm text-zinc-500 group-hover:text-zinc-400">
+            {product.tagline}
+          </p>
+          <p className="mt-3 text-xs text-zinc-500">
+            MRR{" "}
+            <span className="font-medium tabular-nums text-zinc-300 group-hover:text-zinc-200">
+              {formatCurrencyUsd(product.mrr)}
+            </span>
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-zinc-800/80 pt-4">
+            <span className="text-sm font-medium text-[var(--status-info)] group-hover:text-[rgb(186_230_253)]">
+              Open cockpit →
+            </span>
+          </div>
         </div>
-        <p className="mt-1 line-clamp-2 text-sm text-zinc-500">{product.tagline}</p>
-        <p className="mt-3 text-xs text-zinc-500">
-          MRR{" "}
-          <span className="font-medium tabular-nums text-zinc-300">
-            {formatCurrencyUsd(product.mrr)}
-          </span>
-        </p>
-        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-zinc-800/80 pt-4">
-          <Link
-            href={`/admin/products/${product.slug}`}
-            className="text-sm font-medium text-[var(--status-info)] transition hover:text-[rgb(186_230_253)]"
-          >
-            Open cockpit →
-          </Link>
-        </div>
-      </div>
-    </article>
+      </article>
+    </Link>
   );
 }
