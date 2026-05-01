@@ -23,5 +23,7 @@ export default async function ProductCockpitPage({
   const product = products.find((p) => p.slug === slug);
   if (!product) notFound();
   const planDocs = listProductMarkdownDocs(slug);
-  return <ProductCockpitClient product={product} planDocs={planDocs} />;
+  return (
+    <ProductCockpitClient product={product} planDocs={planDocs} allProducts={products} />
+  );
 }

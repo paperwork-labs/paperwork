@@ -11,6 +11,7 @@ import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import type { ProductPlanDocRef } from "@/lib/product-cockpit-docs";
 import type { ProductRegistryEntry } from "@/lib/products-registry";
+import { studioProductBreadcrumbOptions } from "@/lib/studio-product-switcher";
 import {
   formatCurrencyUsd,
   parseProductStatus,
@@ -258,9 +259,11 @@ function PricingPanel({ product }: { product: ProductRegistryEntry }) {
 export function ProductCockpitClient({
   product,
   planDocs,
+  allProducts,
 }: {
   product: ProductRegistryEntry;
   planDocs: ProductPlanDocRef[];
+  allProducts: ProductRegistryEntry[];
 }) {
   const stage = parseProductStatus(product.status);
 
@@ -310,7 +313,12 @@ export function ProductCockpitClient({
         breadcrumbs={[
           { label: "Admin", href: "/admin" },
           { label: "Products", href: "/admin/products" },
-          { label: product.name },
+          {
+            productSwitcher: {
+              currentSlug: product.slug,
+              options: studioProductBreadcrumbOptions(allProducts),
+            },
+          },
         ]}
         title={<span style={{ color: product.color_accent }}>{product.name}</span>}
         subtitle={product.tagline}

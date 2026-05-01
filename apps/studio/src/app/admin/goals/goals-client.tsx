@@ -11,6 +11,8 @@ import {
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 import type { GoalsJson } from "@/lib/goals-metrics";
+import { GoalsOperatingScorePanel } from "./goals-operating-panel";
+import type { GoalsOperatingScorePayload } from "./goals-operating-types";
 import {
   computeGoalsRollup,
   krProgressPct,
@@ -60,7 +62,13 @@ function ownerBadgeClass(owner: string): string {
   return "border-zinc-600 bg-zinc-800/80 text-zinc-300";
 }
 
-export function GoalsClient({ data }: { data: GoalsJson }) {
+export function GoalsClient({
+  data,
+  operatingScore,
+}: {
+  data: GoalsJson;
+  operatingScore: GoalsOperatingScorePayload;
+}) {
   const { objectives } = data;
   const rollup = computeGoalsRollup(objectives);
 
@@ -74,6 +82,8 @@ export function GoalsClient({ data }: { data: GoalsJson }) {
           { label: "Goals & OKRs" },
         ]}
       />
+
+      <GoalsOperatingScorePanel payload={operatingScore} />
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <HqStatCard
