@@ -82,8 +82,12 @@ function TabPanelSkeleton() {
   );
 }
 
+/** Horizontal scroll strip; tabs use flex-nowrap so laptop widths don’t wrap eight labels. */
+const tabListScrollHide =
+  "min-w-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden";
+
 const tabListLine =
-  "inline-flex h-auto w-fit flex-wrap items-center justify-center gap-1 rounded-none bg-transparent p-1 text-muted-foreground";
+  "inline-flex h-auto w-max max-w-none flex-nowrap items-center justify-start gap-1 rounded-none bg-transparent p-1 text-muted-foreground";
 
 const tabTriggerLine =
   "relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap motion-safe:transition-colors hover:text-foreground focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 dark:text-muted-foreground dark:hover:text-foreground";
@@ -107,6 +111,11 @@ export function StudioTabbedPageShell<T extends string>({
     setClientMounted(true);
   }, []);
 
+  const tabTriggerRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
+  React.useEffect(() => {
+    tabTriggerRefs.current = tabTriggerRefs.current.slice(0, tabs.length);
+  }, [tabs.length]);
+
   const allowed = React.useMemo(() => new Set(tabs.map((t) => t.id)), [tabs]);
   const resolved: T = (allowed.has(activeTab) ? activeTab : defaultTab) as T;
 
@@ -126,32 +135,58 @@ export function StudioTabbedPageShell<T extends string>({
         data-testid="studio-page-tabs"
         data-tabs-client-mounted={clientMounted ? "1" : "0"}
       >
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <div
-            role="tablist"
-            className={cn(tabListLine, "h-auto w-full justify-start sm:w-auto", tabsListClassName)}
-          >
-            {tabs.map((t) => {
-              const isActive = resolved === t.id;
-              return (
-                <button
-                  key={String(t.id)}
-                  type="button"
-                  role="tab"
-                  data-testid={`page-tab-${String(t.id)}`}
-                  aria-selected={isActive}
-                  id={`tab-${String(t.id)}`}
-                  tabIndex={isActive ? 0 : -1}
-                  className={cn(
-                    tabTriggerLine,
-                    isActive ? tabTriggerActiveLine : tabTriggerInactiveLine,
-                  )}
-                  onClick={() => onTabChange(t.id)}
-                >
-                  {t.label}
-                </button>
-              );
-            })}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className={cn("w-full min-w-0 sm:flex-1", tabListScrollHide)}>
+            <div
+              role="tablist"
+              className={cn(tabListLine, "h-auto", tabsListClassName)}
+            >
+              {tabs.map((t, index) => {
+                const isActive = resolved === t.id;
+                return (
+                  <button
+                    key={String(t.id)}
+                    ref={(el) => {
+                      tabTriggerRefs.current[index] = el;
+                    }}
+                    type="button"
+                    role="tab"
+                    data-testid={`page-tab-${String(t.id)}`}
+                    aria-selected={isActive}
+                    id={`tab-${String(t.id)}`}
+                    tabIndex={isActive ? 0 : -1}
+                    className={cn(
+                      tabTriggerLine,
+                      "shrink-0",
+                      isActive ? tabTriggerActiveLine : tabTriggerInactiveLine,
+                    )}
+                    onClick={() => onTabChange(t.id)}
+                    onKeyDown={(e) => {
+                      if (
+                        e.key !== "ArrowRight" &&
+                        e.key !== "ArrowLeft" &&
+                        e.key !== "Home" &&
+                        e.key !== "End"
+                      ) {
+                        return;
+                      }
+                      e.preventDefault();
+                      const len = tabs.length;
+                      let nextIndex = index;
+                      if (e.key === "ArrowRight") nextIndex = (index + 1) % len;
+                      if (e.key === "ArrowLeft") nextIndex = (index - 1 + len) % len;
+                      if (e.key === "Home") nextIndex = 0;
+                      if (e.key === "End") nextIndex = len - 1;
+                      const nextTab = tabs[nextIndex];
+                      onTabChange(nextTab.id);
+                      queueMicrotask(() => tabTriggerRefs.current[nextIndex]?.focus());
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
           {endAdornment ? <div className="flex flex-wrap items-center gap-2">{endAdornment}</div> : null}
         </div>
