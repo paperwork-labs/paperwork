@@ -45,6 +45,7 @@ def test_get_spec_missing_returns_none():
 
 
 def test_get_spec_handles_bad_input():
+    """Invalid slugs skip filesystem access and return None (same as unknown spec)."""
     assert get_spec("") is None
     assert get_spec("../../etc/passwd") is None
 

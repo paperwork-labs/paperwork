@@ -33,6 +33,7 @@ from app.config import settings
 from app.database import async_session_factory, get_db
 from app.models.episode import Episode
 from app.models.scheduler_run import SchedulerRun
+from app.personas import get_spec
 from app.personas import list_specs as list_persona_specs
 from app.schemas.base import success_response
 from app.schemas.coach_preflight import CoachPreflightRequest, CoachPreflightResponse, CostPredict
@@ -495,6 +496,79 @@ async def list_personas(
             "personas": [spec.model_dump() for spec in specs],
         }
     )
+
+
+class PersonaDispatchBody(BaseModel):
+    task_title: str = Field(..., min_length=1, max_length=200)
+    task_description: str = Field(..., min_length=1, max_length=4000)
+    target_repo: str | None = None
+    target_branch_base: str = "main"
+    suggested_branch_name: str | None = None
+    estimated_complexity: str = Field("low", pattern=r"^(low|medium|high)$")
+    requires_founder_review: bool = True
+    metadata: dict[str, Any] | None = None
+
+
+@router.post("/personas/{persona_slug}/dispatch")
+async def create_persona_autopilot_dispatch(
+    persona_slug: str,
+    body: PersonaDispatchBody,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+    organization_id: str = Query("paperwork-labs"),
+):
+    """Create a pending autopilot dispatch episode for founder approve/veto (WS-82).
+
+    Personas spawn cheap-agent work via memory episodes with ``source`` prefix
+    ``autopilot`` and ``metadata.status=pending``; ``POST /admin/dispatch/{id}/approve``
+    or ``veto`` transitions the task.
+    """
+    try:
+        spec = get_spec(persona_slug)
+    except ValueError:
+        raise HTTPException(status_code=404, detail=f"Unknown persona: {persona_slug}") from None
+    if spec is None:
+        raise HTTPException(status_code=404, detail=f"Unknown persona: {persona_slug}")
+
+    created_at = _rfc3339_utc_z(datetime.now(UTC))
+    target_repo = body.target_repo or "paperwork-labs/paperwork"
+    meta: dict[str, Any] = {
+        **(body.metadata or {}),
+        "status": "pending",
+        "persona": spec.name,
+        "task_title": body.task_title,
+        "task_description": body.task_description,
+        "target_repo": target_repo,
+        "target_branch_base": body.target_branch_base,
+        "suggested_branch_name": body.suggested_branch_name,
+        "estimated_complexity": body.estimated_complexity,
+        "requires_founder_review": body.requires_founder_review,
+        "created_at": created_at,
+        "created_by": spec.name,
+    }
+    importance = 0.7 if body.requires_founder_review else 0.5
+
+    episode = await memory_svc.store_episode(
+        db,
+        organization_id=organization_id,
+        source=f"autopilot:dispatch:{spec.name}",
+        summary=body.task_title,
+        persona=spec.name,
+        importance=importance,
+        metadata=meta,
+        skip_embedding=False,
+    )
+
+    payload: dict[str, Any] = {
+        "task_id": str(episode.id),
+        "status": "pending",
+        "persona": spec.name,
+        "created_at": created_at,
+    }
+    if body.requires_founder_review:
+        payload["requires_founder_review"] = True
+
+    return success_response(payload)
 
 
 def _agent_dispatch_log_path() -> Path:

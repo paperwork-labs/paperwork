@@ -46,7 +46,10 @@ def _get_redis_optional() -> Redis | None:
 
 def _resolve_persona_spec(persona_id: str) -> PersonaSpec:
     """Return the persona spec or raise 404."""
-    spec = get_spec(persona_id.strip())
+    try:
+        spec = get_spec(persona_id.strip())
+    except ValueError:
+        spec = None
     if spec is None:
         known = ", ".join(sorted(s.name for s in list_specs()))
         raise HTTPException(
