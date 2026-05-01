@@ -99,6 +99,102 @@ export type PersonasResponse = {
   personas: PersonaSpec[];
 };
 
+/** ``GET /admin/memory-stats`` — episode aggregates + storage estimate (WS-82 Phase D). */
+export type BrainMemoryStats = {
+  organization_id: string;
+  total_episodes: number;
+  episodes_by_source: { source: string; count: number }[];
+  other_sources_episode_count: number;
+  trailing_30_days: { episode_count: number; average_per_day: number };
+  storage_estimate_bytes: number;
+  storage_estimate_note: string;
+};
+
+export type PersonaDispatchSummaryRow = {
+  persona_slug: string;
+  dispatch_count: number;
+  success_count: number;
+  failure_count: number;
+  pending_outcome_count: number;
+  last_dispatch_at: string | null;
+  recent_dispatch_count_30d: number;
+  success_rate: number | null;
+};
+
+/** ``GET /admin/persona-dispatch-summary`` */
+export type PersonaDispatchSummaryResponse = {
+  source_path: string;
+  window_days: number;
+  dispatch_total: number;
+  personas: PersonaDispatchSummaryRow[];
+  recent_activity: Record<string, unknown>[];
+  notes: string;
+};
+
+/** ``GET /admin/operating-score/history`` */
+export type OperatingScoreHistoryResponse = {
+  days: number;
+  series: { date: string; total: number | null }[];
+  source: string;
+  granularity: string;
+};
+
+/** ``GET /admin/cost-breakdown`` — token-derived spend estimates */
+export type CostBreakdownResponse = {
+  organization_id: string;
+  window_days: number;
+  currency: string;
+  estimated: boolean;
+  pricing_note: string;
+  by_persona: {
+    persona: string;
+    tokens_in: number;
+    tokens_out: number;
+    estimated_usd: number;
+  }[];
+  by_model: {
+    model: string;
+    tokens_in: number;
+    tokens_out: number;
+    estimated_usd: number;
+  }[];
+  by_day: {
+    date: string;
+    tokens_in: number;
+    tokens_out: number;
+    estimated_usd: number;
+  }[];
+  totals: { tokens_in: number; tokens_out: number; estimated_usd: number };
+};
+
+/** ``GET /admin/brain-fill-meter`` */
+export type BrainFillMeterResponse = {
+  organization_id: string;
+  overall_utilization_pct: number;
+  tiers: {
+    episodic: {
+      label: string;
+      used_units: number;
+      capacity_units: number;
+      utilization_pct: number;
+    };
+    procedural: {
+      label: string;
+      used_units: number;
+      capacity_units: number;
+      utilization_pct: number;
+    };
+    semantic: {
+      label: string;
+      used_units: number;
+      capacity_units: number;
+      utilization_pct: number;
+      note?: string;
+    };
+  };
+  notes: string;
+};
+
 // ---------------------------------------------------------------------------
 // BrainClient
 // ---------------------------------------------------------------------------
@@ -171,6 +267,50 @@ export class BrainClient {
   /** Fetch goals / OKRs payload for Studio admin (same shape as static goals.json). */
   async getGoals(): Promise<GoalsJson> {
     return this.get<GoalsJson>("/admin/goals", "goals");
+  }
+
+  /** Memory layer statistics for Overview health tiles. */
+  async getMemoryStats(organizationId = "paperwork-labs"): Promise<BrainMemoryStats> {
+    const params = new URLSearchParams({ organization_id: organizationId });
+    return this.get<BrainMemoryStats>(`/admin/memory-stats?${params}`, "memory-stats");
+  }
+
+  /** Dispatch roll-ups for Personas admin enrichment. */
+  async getPersonaDispatchSummary(): Promise<PersonaDispatchSummaryResponse> {
+    return this.get<PersonaDispatchSummaryResponse>(
+      "/admin/persona-dispatch-summary",
+      "persona-dispatch-summary",
+    );
+  }
+
+  /** Daily operating score series (forward-filled) for sparklines. */
+  async getOperatingScoreHistory(days = 30): Promise<OperatingScoreHistoryResponse> {
+    const params = new URLSearchParams({ days: String(days) });
+    return this.get<OperatingScoreHistoryResponse>(
+      `/admin/operating-score/history?${params}`,
+      "operating-score/history",
+    );
+  }
+
+  /** LLM cost estimates from episode tokens (Infra cost tab). */
+  async getCostBreakdown(
+    days = 30,
+    organizationId = "paperwork-labs",
+  ): Promise<CostBreakdownResponse> {
+    const params = new URLSearchParams({
+      days: String(days),
+      organization_id: organizationId,
+    });
+    return this.get<CostBreakdownResponse>(`/admin/cost-breakdown?${params}`, "cost-breakdown");
+  }
+
+  /** Tier utilization snapshot (episodic / procedural / semantic). */
+  async getBrainFillMeter(organizationId = "paperwork-labs"): Promise<BrainFillMeterResponse> {
+    const params = new URLSearchParams({ organization_id: organizationId });
+    return this.get<BrainFillMeterResponse>(
+      `/admin/brain-fill-meter?${params}`,
+      "brain-fill-meter",
+    );
   }
 
   // -----------------------------------------------------------------------

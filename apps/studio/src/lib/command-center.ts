@@ -1,4 +1,11 @@
 import type { InfraStatus, InfrastructureView } from "@/lib/infra-types";
+import type {
+  BrainFillMeterResponse,
+  BrainMemoryStats,
+  CostBreakdownResponse,
+  OperatingScoreHistoryResponse,
+  PersonaDispatchSummaryResponse,
+} from "@/lib/brain-client";
 import { collectRenderAndVercelProbes } from "@/lib/infra-probes";
 
 export type { InfraStatus, InfrastructureView, PlatformHealthSummary } from "@/lib/infra-types";
@@ -322,6 +329,140 @@ export async function getBrainPersonas(): Promise<BrainPersonasFetchResult> {
     };
   }
   return { personas: data.data?.personas ?? [] };
+}
+
+/** ``GET /api/v1/admin/memory-stats`` — Brain episode aggregates for Overview (never throws). */
+export async function getBrainMemoryStats(): Promise<{
+  data: BrainMemoryStats | null;
+  error?: string;
+}> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) {
+    return {
+      data: null,
+      error: "Brain not configured — set BRAIN_API_URL and BRAIN_API_SECRET.",
+    };
+  }
+  const data = await fetchJson<{ success?: boolean; data?: BrainMemoryStats }>(
+    `${apiRoot}/admin/memory-stats`,
+    { headers: { "X-Brain-Secret": secret } },
+  );
+  if (data == null) {
+    return { data: null, error: "Could not load memory stats from Brain." };
+  }
+  if (data.success === false) {
+    return { data: null, error: "Brain returned an error for memory-stats." };
+  }
+  return { data: data.data ?? null };
+}
+
+/** ``GET /api/v1/admin/persona-dispatch-summary`` */
+export async function getBrainPersonaDispatchSummary(): Promise<{
+  data: PersonaDispatchSummaryResponse | null;
+  error?: string;
+}> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) {
+    return {
+      data: null,
+      error: "Brain not configured — set BRAIN_API_URL and BRAIN_API_SECRET.",
+    };
+  }
+  const data = await fetchJson<{
+    success?: boolean;
+    data?: PersonaDispatchSummaryResponse;
+  }>(`${apiRoot}/admin/persona-dispatch-summary`, {
+    headers: { "X-Brain-Secret": secret },
+  });
+  if (data == null) {
+    return { data: null, error: "Could not load persona dispatch summary from Brain." };
+  }
+  if (data.success === false) {
+    return { data: null, error: "Brain returned an error for persona-dispatch-summary." };
+  }
+  return { data: data.data ?? null };
+}
+
+/** ``GET /api/v1/admin/operating-score/history`` — daily POS series for charts. */
+export async function getBrainOperatingScoreHistory(days = 30): Promise<{
+  data: OperatingScoreHistoryResponse | null;
+  error?: string;
+}> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) {
+    return {
+      data: null,
+      error: "Brain not configured — set BRAIN_API_URL and BRAIN_API_SECRET.",
+    };
+  }
+  const qs = new URLSearchParams({ days: String(days) });
+  const data = await fetchJson<{ success?: boolean; data?: OperatingScoreHistoryResponse }>(
+    `${apiRoot}/admin/operating-score/history?${qs}`,
+    { headers: { "X-Brain-Secret": secret } },
+  );
+  if (data == null) {
+    return { data: null, error: "Could not load operating score history from Brain." };
+  }
+  if (data.success === false) {
+    return { data: null, error: "Brain returned an error for operating-score/history." };
+  }
+  return { data: data.data ?? null };
+}
+
+/** ``GET /api/v1/admin/cost-breakdown`` — token-derived LLM spend estimates. */
+export async function getBrainCostBreakdown(days = 30): Promise<{
+  data: CostBreakdownResponse | null;
+  error?: string;
+}> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) {
+    return {
+      data: null,
+      error: "Brain not configured — set BRAIN_API_URL and BRAIN_API_SECRET.",
+    };
+  }
+  const qs = new URLSearchParams({ days: String(days) });
+  const data = await fetchJson<{ success?: boolean; data?: CostBreakdownResponse }>(
+    `${apiRoot}/admin/cost-breakdown?${qs}`,
+    { headers: { "X-Brain-Secret": secret } },
+  );
+  if (data == null) {
+    return { data: null, error: "Could not load cost breakdown from Brain." };
+  }
+  if (data.success === false) {
+    return { data: null, error: "Brain returned an error for cost-breakdown." };
+  }
+  return { data: data.data ?? null };
+}
+
+/** ``GET /api/v1/admin/brain-fill-meter`` — memory tier utilization. */
+export async function getBrainFillMeter(): Promise<{
+  data: BrainFillMeterResponse | null;
+  error?: string;
+}> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) {
+    return {
+      data: null,
+      error: "Brain not configured — set BRAIN_API_URL and BRAIN_API_SECRET.",
+    };
+  }
+  const data = await fetchJson<{ success?: boolean; data?: BrainFillMeterResponse }>(
+    `${apiRoot}/admin/brain-fill-meter`,
+    { headers: { "X-Brain-Secret": secret } },
+  );
+  if (data == null) {
+    return { data: null, error: "Could not load brain fill meter from Brain." };
+  }
+  if (data.success === false) {
+    return { data: null, error: "Brain returned an error for brain-fill-meter." };
+  }
+  return { data: data.data ?? null };
 }
 
 export type N8nMirrorPerJob = {

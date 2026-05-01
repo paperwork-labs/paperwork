@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import subprocess
+from contextlib import suppress
 from datetime import UTC, datetime, timedelta
 from datetime import date as date_type
 from pathlib import Path
@@ -12,7 +13,7 @@ from typing import Any
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import Date, case, cast, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.services.anomaly_detection as anomaly_detection_svc
@@ -537,6 +538,117 @@ async def get_agent_dispatch_log(
     return success_response({"dispatches": rows, "count": len(rows), "source_path": src})
 
 
+def _load_dispatch_rows_all(max_rows: int = 10_000) -> tuple[list[dict[str, Any]], str]:
+    """Read dispatch log entries (newest first), capped for aggregation."""
+
+    log_path = _agent_dispatch_log_path()
+    if not log_path.is_file():
+        return [], str(log_path)
+    try:
+        raw = json.loads(log_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return [], str(log_path)
+    dispatches = raw.get("dispatches") if isinstance(raw, dict) else None
+    if not isinstance(dispatches, list):
+        return [], str(log_path)
+    rows = [d for d in dispatches if isinstance(d, dict)]
+    rows.sort(key=lambda d: str(d.get("dispatched_at") or ""), reverse=True)
+    return rows[:max_rows], str(log_path)
+
+
+def _dispatch_success_flag(row: dict[str, Any]) -> bool | None:
+    outcome = row.get("outcome")
+    if not isinstance(outcome, dict):
+        return None
+    merged_at = outcome.get("merged_at")
+    if not merged_at:
+        return None
+    return outcome.get("reverted") is not True
+
+
+@router.get("/persona-dispatch-summary")
+async def get_persona_dispatch_summary(
+    _auth: None = Depends(_require_admin),
+):
+    """Roll-up of dispatch counts and success signals per persona (Studio personas page)."""
+
+    def _build() -> dict[str, Any]:
+        rows, src = _load_dispatch_rows_all()
+        since_cutoff = (datetime.now(UTC) - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        recent_cutoff_rows = [r for r in rows if str(r.get("dispatched_at") or "") >= since_cutoff]
+
+        by_persona: dict[str, dict[str, Any]] = {}
+        for r in rows:
+            slug = str(r.get("persona_slug") or r.get("persona") or "unknown").strip() or "unknown"
+            bucket = by_persona.setdefault(
+                slug,
+                {
+                    "persona_slug": slug,
+                    "dispatch_count": 0,
+                    "success_count": 0,
+                    "failure_count": 0,
+                    "pending_outcome_count": 0,
+                    "last_dispatch_at": None,
+                    "recent_dispatch_count_30d": 0,
+                },
+            )
+            bucket["dispatch_count"] += 1
+            flag = _dispatch_success_flag(r)
+            if flag is True:
+                bucket["success_count"] += 1
+            elif flag is False:
+                bucket["failure_count"] += 1
+            else:
+                bucket["pending_outcome_count"] += 1
+            ts = str(r.get("dispatched_at") or "")
+            if ts and (bucket["last_dispatch_at"] is None or ts > bucket["last_dispatch_at"]):
+                bucket["last_dispatch_at"] = ts
+
+        for r in recent_cutoff_rows:
+            slug = str(r.get("persona_slug") or r.get("persona") or "unknown").strip() or "unknown"
+            if slug in by_persona:
+                by_persona[slug]["recent_dispatch_count_30d"] += 1
+
+        personas_out: list[dict[str, Any]] = []
+        for _slug, b in by_persona.items():
+            resolved = b["success_count"] + b["failure_count"]
+            success_rate = round(b["success_count"] / resolved, 4) if resolved else None
+            personas_out.append(
+                {
+                    **b,
+                    "success_rate": success_rate,
+                }
+            )
+        personas_out.sort(key=lambda x: x["dispatch_count"], reverse=True)
+
+        tail = sorted(rows, key=lambda d: str(d.get("dispatched_at") or ""), reverse=True)[:15]
+        recent_activity = [
+            {
+                "dispatched_at": d.get("dispatched_at"),
+                "persona_slug": d.get("persona_slug") or d.get("persona"),
+                "workstream_id": d.get("workstream_id"),
+                "task_summary": d.get("task_summary"),
+                "outcome": d.get("outcome"),
+            }
+            for d in tail
+        ]
+
+        return {
+            "source_path": src,
+            "window_days": 30,
+            "dispatch_total": len(rows),
+            "personas": personas_out,
+            "recent_activity": recent_activity,
+            "notes": (
+                "success_rate counts resolved merges only (merged_at set, not reverted); "
+                "pending_outcome_count covers open dispatches."
+            ),
+        }
+
+    payload = await asyncio.to_thread(_build)
+    return success_response(payload)
+
+
 @router.get("/blitz-status")
 async def get_blitz_status(
     _auth: None = Depends(_require_admin),
@@ -689,6 +801,67 @@ async def list_memory_episodes(
         for ep in rows
     ]
     return success_response({"count": len(episodes), "episodes": episodes})
+
+
+@router.get("/memory-stats")
+async def get_memory_stats(
+    organization_id: str = Query("paperwork-labs"),
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Aggregate episode counts and a coarse storage estimate for Studio overview."""
+
+    total_stmt = select(func.count(Episode.id)).where(Episode.organization_id == organization_id)
+    total_episodes = int((await db.execute(total_stmt)).scalar_one() or 0)
+
+    by_src_stmt = (
+        select(Episode.source, func.count(Episode.id))
+        .where(Episode.organization_id == organization_id)
+        .group_by(Episode.source)
+    )
+    by_src_rows = (await db.execute(by_src_stmt)).all()
+    by_src_rows.sort(key=lambda row: int(row[1] or 0), reverse=True)
+    top_sources = [{"source": row[0], "count": int(row[1])} for row in by_src_rows[:50]]
+    top_count = sum(r["count"] for r in top_sources)
+    other_sources_episode_count = max(0, total_episodes - top_count)
+
+    cutoff_30 = datetime.now(UTC) - timedelta(days=30)
+    cnt_30_stmt = select(func.count(Episode.id)).where(
+        Episode.organization_id == organization_id,
+        Episode.created_at >= cutoff_30,
+    )
+    episodes_last_30_days = int((await db.execute(cnt_30_stmt)).scalar_one() or 0)
+    average_per_day_trailing_30 = round(episodes_last_30_days / 30.0, 4)
+
+    text_stmt = select(
+        func.coalesce(func.sum(func.char_length(Episode.summary)), 0),
+        func.coalesce(func.sum(func.char_length(Episode.full_context)), 0),
+        func.sum(case((Episode.embedding.is_not(None), 1536 * 4), else_=0)),
+    ).where(Episode.organization_id == organization_id)
+    sum_summary, sum_full, emb_placeholder = (await db.execute(text_stmt)).one()
+    text_bytes = int(sum_summary or 0) + int(sum_full or 0)
+    embedding_assumed_bytes = int(emb_placeholder or 0)
+    metadata_overhead = total_episodes * 512
+    storage_estimate_bytes = text_bytes + embedding_assumed_bytes + metadata_overhead
+
+    return success_response(
+        {
+            "organization_id": organization_id,
+            "total_episodes": total_episodes,
+            "episodes_by_source": top_sources,
+            "other_sources_episode_count": other_sources_episode_count,
+            "trailing_30_days": {
+                "episode_count": episodes_last_30_days,
+                "average_per_day": average_per_day_trailing_30,
+            },
+            "storage_estimate_bytes": storage_estimate_bytes,
+            "storage_estimate_note": (
+                "Coarse estimate: UTF-8 column lengths for summary/full_context, "
+                "1536-dim embedding assumed 4 bytes/float when embedding present, "
+                "plus fixed metadata overhead per row."
+            ),
+        }
+    )
 
 
 def _parse_iso_dt(raw: str) -> datetime:
@@ -1004,6 +1177,239 @@ async def get_operating_score(
         "gates": gate_payload,
     }
     return success_response(jsonable_encoder(payload))
+
+
+@router.get("/operating-score/history")
+async def get_operating_score_daily_history(
+    days: int = Query(30, ge=1, le=90),
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Daily POS series for Studio charts (forward-filled from weekly snapshots)."""
+
+    blob = operating_score_svc.read_operating_file()
+    entries: list[tuple[datetime, float]] = []
+    for e in blob.history:
+        try:
+            entries.append((_parse_iso_dt(e.computed_at), float(e.total)))
+        except Exception:
+            continue
+    if blob.current:
+        with suppress(Exception):
+            entries.append(
+                (_parse_iso_dt(blob.current.computed_at), float(blob.current.total)),
+            )
+    entries.sort(key=lambda x: x[0])
+    by_day: dict[date_type, float] = {}
+    for dt, total in entries:
+        by_day[dt.date()] = total
+    sorted_known = sorted(by_day.keys())
+    anchor = datetime.now(UTC).date()
+    series: list[dict[str, Any]] = []
+    for i in range(days - 1, -1, -1):
+        day = anchor - timedelta(days=i)
+        total: float | None = None
+        for kd in reversed(sorted_known):
+            if kd <= day:
+                total = by_day[kd]
+                break
+        series.append({"date": day.isoformat(), "total": total})
+    return success_response(
+        {
+            "days": days,
+            "series": series,
+            "source": "operating_score.json",
+            "granularity": "daily_forward_fill",
+        }
+    )
+
+
+@router.get("/cost-breakdown")
+async def get_llm_cost_breakdown(
+    organization_id: str = Query("paperwork-labs"),
+    days: int = Query(30, ge=1, le=90),
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Token-derived LLM spend estimates by persona, model, and day (Studio infra cost tab).
+
+    Uses conservative placeholder $/MTok rates until a unified LLM ledger lands.
+    """
+
+    in_usd_per_mtok = 3.0
+    out_usd_per_mtok = 15.0
+    cutoff = datetime.now(UTC) - timedelta(days=days)
+    base_where = (Episode.organization_id == organization_id, Episode.created_at >= cutoff)
+    tok_sum = func.coalesce(Episode.tokens_in, 0) + func.coalesce(Episode.tokens_out, 0)
+
+    persona_stmt = (
+        select(
+            func.coalesce(Episode.persona, "(unknown)").label("persona"),
+            func.sum(func.coalesce(Episode.tokens_in, 0)),
+            func.sum(func.coalesce(Episode.tokens_out, 0)),
+        )
+        .where(*base_where)
+        .group_by(func.coalesce(Episode.persona, "(unknown)"))
+        .order_by(func.sum(tok_sum).desc())
+    )
+    model_stmt = (
+        select(
+            func.coalesce(Episode.model_used, "(unknown)").label("model"),
+            func.sum(func.coalesce(Episode.tokens_in, 0)),
+            func.sum(func.coalesce(Episode.tokens_out, 0)),
+        )
+        .where(*base_where)
+        .group_by(func.coalesce(Episode.model_used, "(unknown)"))
+        .order_by(func.sum(tok_sum).desc())
+    )
+    day_stmt = (
+        select(
+            cast(Episode.created_at, Date).label("day"),
+            func.sum(func.coalesce(Episode.tokens_in, 0)),
+            func.sum(func.coalesce(Episode.tokens_out, 0)),
+        )
+        .where(*base_where)
+        .group_by(cast(Episode.created_at, Date))
+        .order_by(cast(Episode.created_at, Date))
+    )
+
+    persona_rows = (await db.execute(persona_stmt)).all()
+    model_rows = (await db.execute(model_stmt)).all()
+    day_rows = (await db.execute(day_stmt)).all()
+
+    def _usd(t_in: int, t_out: int) -> float:
+        return (t_in / 1_000_000.0) * in_usd_per_mtok + (t_out / 1_000_000.0) * out_usd_per_mtok
+
+    by_persona = []
+    total_in = 0
+    total_out = 0
+    total_usd = 0.0
+    for persona, t_in, t_out in persona_rows:
+        ti = int(t_in or 0)
+        to = int(t_out or 0)
+        u = round(_usd(ti, to), 6)
+        total_in += ti
+        total_out += to
+        total_usd += u
+        by_persona.append(
+            {
+                "persona": str(persona),
+                "tokens_in": ti,
+                "tokens_out": to,
+                "estimated_usd": u,
+            },
+        )
+
+    by_model = []
+    for model, t_in, t_out in model_rows:
+        ti = int(t_in or 0)
+        to = int(t_out or 0)
+        by_model.append(
+            {
+                "model": str(model),
+                "tokens_in": ti,
+                "tokens_out": to,
+                "estimated_usd": round(_usd(ti, to), 6),
+            }
+        )
+
+    by_day: list[dict[str, Any]] = []
+    for day, t_in, t_out in day_rows:
+        ti = int(t_in or 0)
+        to = int(t_out or 0)
+        if day is None:
+            continue
+        by_day.append(
+            {
+                "date": day.isoformat() if hasattr(day, "isoformat") else str(day),
+                "tokens_in": ti,
+                "tokens_out": to,
+                "estimated_usd": round(_usd(ti, to), 6),
+            }
+        )
+
+    return success_response(
+        {
+            "organization_id": organization_id,
+            "window_days": days,
+            "currency": "USD",
+            "estimated": True,
+            "pricing_note": (
+                f"Blend placeholder: ${in_usd_per_mtok}/1M input tokens, "
+                f"${out_usd_per_mtok}/1M output tokens from episode ledger rows."
+            ),
+            "by_persona": by_persona,
+            "by_model": by_model,
+            "by_day": by_day,
+            "totals": {
+                "tokens_in": total_in,
+                "tokens_out": total_out,
+                "estimated_usd": round(total_usd, 6),
+            },
+        }
+    )
+
+
+@router.get("/brain-fill-meter")
+async def get_brain_fill_meter(
+    organization_id: str = Query("paperwork-labs"),
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+):
+    """Tier utilization snapshot for episodic / procedural / semantic memory."""
+
+    total_stmt = select(func.count(Episode.id)).where(Episode.organization_id == organization_id)
+    embedded_stmt = select(func.count(Episode.id)).where(
+        Episode.organization_id == organization_id,
+        Episode.embedding.is_not(None),
+    )
+    total_episodes = int((await db.execute(total_stmt)).scalar_one() or 0)
+    embedded_episodes = int((await db.execute(embedded_stmt)).scalar_one() or 0)
+
+    rules = load_rules()
+    procedural_rules = len(rules)
+
+    episodic_capacity = 500_000
+    procedural_capacity = 5_000
+    semantic_embedding_target = max(total_episodes, 1)
+
+    episodic_pct = round(min(100.0, (total_episodes / episodic_capacity) * 100.0), 2)
+    procedural_pct = round(min(100.0, (procedural_rules / procedural_capacity) * 100.0), 2)
+    semantic_pct = round(min(100.0, (embedded_episodes / semantic_embedding_target) * 100.0), 2)
+    overall = round((episodic_pct + procedural_pct + semantic_pct) / 3.0, 2)
+
+    return success_response(
+        {
+            "organization_id": organization_id,
+            "overall_utilization_pct": overall,
+            "tiers": {
+                "episodic": {
+                    "label": "Episodic (episode rows)",
+                    "used_units": total_episodes,
+                    "capacity_units": episodic_capacity,
+                    "utilization_pct": episodic_pct,
+                },
+                "procedural": {
+                    "label": "Procedural (YAML rules)",
+                    "used_units": procedural_rules,
+                    "capacity_units": procedural_capacity,
+                    "utilization_pct": procedural_pct,
+                },
+                "semantic": {
+                    "label": "Semantic (embedded episodes)",
+                    "used_units": embedded_episodes,
+                    "capacity_units": semantic_embedding_target,
+                    "utilization_pct": semantic_pct,
+                    "note": (
+                        "Capacity mirrors live episode count; "
+                        "embedding coverage vs corpus size."
+                    ),
+                },
+            },
+            "notes": (
+                "Caps are planning defaults for Studio; tune when formal quotas exist."
+            ),
+        }
+    )
 
 
 @router.post("/operating-score/recompute")

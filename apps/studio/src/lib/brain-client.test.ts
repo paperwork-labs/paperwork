@@ -114,6 +114,28 @@ describe("BrainClient", () => {
     });
   });
 
+  describe("getOperatingScoreHistory", () => {
+    it("requests history with days query param", async () => {
+      globalThis.fetch = mockFetch(
+        envelope({
+          days: 14,
+          series: [],
+          source: "operating_score.json",
+          granularity: "daily_forward_fill",
+        }),
+      );
+
+      await client.getOperatingScoreHistory(14);
+
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        `${FAKE_ROOT}/admin/operating-score/history?days=14`,
+        expect.objectContaining({
+          headers: { "X-Brain-Secret": FAKE_SECRET },
+        }),
+      );
+    });
+  });
+
   // ----- getDispatchLog ---------------------------------------------------
 
   describe("getDispatchLog", () => {
