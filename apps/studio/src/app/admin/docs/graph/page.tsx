@@ -23,6 +23,10 @@ export default function DocsKnowledgeGraphPage() {
         eyebrow="Knowledge"
         title="Knowledge graph"
         subtitle="Obsidian-style view of doc relationships. Node size reflects inbound links; dashed rose rings flag stale, highly-linked pages (hot zones)."
+        breadcrumbs={[
+          { label: "Docs", href: "/admin/docs" },
+          { label: "Knowledge graph" },
+        ]}
       />
       <DocsKnowledgeGraphClient payload={payload} />
     </div>
