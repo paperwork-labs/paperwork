@@ -69,12 +69,29 @@ describe("ConversationsClient", () => {
     expect(screen.getByText(/brain is not configured/i)).toBeTruthy();
   });
 
-  it("renders setup error with retry when founder-actions / backfill failed", () => {
+  it("renders inline setup warning for disk/backfill issues without blocking inbox", async () => {
+    const conv = makeConv({ title: "Visible thread" });
+    global.fetch = mockFetch(makePage([conv]));
+    render(
+      <ConversationsClient
+        brainConfigured
+        initialPage={makePage([conv])}
+        setupWarning="founder-actions.json not found on disk (expected under apps/studio/src/data/)."
+      />,
+    );
+    expect(screen.getByTestId("conversations-setup-warning")).toBeTruthy();
+    expect(screen.queryByTestId("conversations-setup-error")).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByText("Visible thread")).toBeTruthy();
+    });
+  });
+
+  it("renders setup error with retry when inbox failed to load", () => {
     render(
       <ConversationsClient
         brainConfigured
         initialPage={null}
-        setupError="Could not read founder-actions.json: invalid JSON"
+        setupError="Failed to load conversations (503)"
       />,
     );
     expect(screen.getByTestId("conversations-setup-error")).toBeTruthy();
