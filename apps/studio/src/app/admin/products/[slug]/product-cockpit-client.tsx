@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ExternalLink, FileText, UserCircle, UsersRound, Wallet } from "lucide-react";
+import { cn } from "@paperwork-labs/ui";
 
 import { ProductSupportPanel } from "@/app/admin/products/[slug]/product-support-panel";
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
@@ -10,6 +11,7 @@ import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import type { ProductPlanDocRef } from "@/lib/product-cockpit-docs";
+import type { HeroRollup } from "@/lib/product-health-brain";
 import type { ProductRegistryEntry } from "@/lib/products-registry";
 import {
   formatCurrencyUsd,
@@ -23,7 +25,41 @@ function formatTierPrice(priceMonthlyUsd: number | null): string {
   return `${formatCurrencyUsd(priceMonthlyUsd)}/mo`;
 }
 
-function OverviewPanel({ product }: { product: ProductRegistryEntry }) {
+function heroRollupDotClass(rollup: HeroRollup): string {
+  switch (rollup) {
+    case "healthy":
+      return "bg-emerald-400";
+    case "degraded":
+      return "bg-amber-400";
+    case "down":
+      return "bg-rose-500";
+    default:
+      return "bg-zinc-500";
+  }
+}
+
+function heroRollupShortLabel(rollup: HeroRollup): string {
+  switch (rollup) {
+    case "healthy":
+      return "Healthy";
+    case "degraded":
+      return "Degraded";
+    case "down":
+      return "Down";
+    default:
+      return "Unknown";
+  }
+}
+
+function OverviewPanel({
+  product,
+  healthRollup,
+  healthNarrative,
+}: {
+  product: ProductRegistryEntry;
+  healthRollup: HeroRollup;
+  healthNarrative: string;
+}) {
   const stage = parseProductStatus(product.status);
   const stageLabel = productStageLabel(stage);
 
@@ -66,6 +102,25 @@ function OverviewPanel({ product }: { product: ProductRegistryEntry }) {
 
   return (
     <div className="space-y-8">
+      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
+            <h3 className="text-sm font-semibold text-zinc-100">Health</h3>
+            <span className="inline-flex items-center gap-1.5 text-xs text-zinc-300">
+              <span className={cn("h-2 w-2 shrink-0 rounded-full", heroRollupDotClass(healthRollup))} />
+              {heroRollupShortLabel(healthRollup)}
+            </span>
+          </div>
+          <Link
+            href={`/admin/products/${product.slug}/health`}
+            className="shrink-0 text-xs text-sky-400 hover:underline"
+          >
+            View probes →
+          </Link>
+        </div>
+        <p className="mt-2 text-xs text-zinc-400">{healthNarrative}</p>
+      </div>
+
       <section
         className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-5"
         aria-label="Product summary"
@@ -258,9 +313,13 @@ function PricingPanel({ product }: { product: ProductRegistryEntry }) {
 export function ProductCockpitClient({
   product,
   planDocs,
+  healthRollup,
+  healthNarrative,
 }: {
   product: ProductRegistryEntry;
   planDocs: ProductPlanDocRef[];
+  healthRollup: HeroRollup;
+  healthNarrative: string;
 }) {
   const stage = parseProductStatus(product.status);
 
@@ -268,7 +327,13 @@ export function ProductCockpitClient({
     {
       id: "overview" as const,
       label: "Overview",
-      content: <OverviewPanel product={product} />,
+      content: (
+        <OverviewPanel
+          product={product}
+          healthRollup={healthRollup}
+          healthNarrative={healthNarrative}
+        />
+      ),
     },
     {
       id: "plans" as const,

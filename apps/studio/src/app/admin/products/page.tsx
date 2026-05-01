@@ -1,11 +1,43 @@
 import productsData from "@/data/products.json";
+import { countOpenIssuesForProductLabel } from "@/lib/command-center";
+import {
+  deriveHeroRollup,
+  heroRollupToProductPulse,
+  loadProductHealthBrainState,
+} from "@/lib/product-health-brain";
+import type { ProductRegistryEntry, ProductsRegistryFile } from "@/lib/products-registry";
+import { getLatestReleaseShippedIso } from "@/lib/products-registry";
 
+import type { ProductIndexSummaryBySlug } from "./products-page-client";
 import { ProductsPageClient } from "./products-page-client";
-import type { ProductsRegistryFile } from "@/lib/products-registry";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
-export default function ProductsIndexPage() {
+async function buildSummaryMap(products: ProductRegistryEntry[]): Promise<ProductIndexSummaryBySlug> {
+  const entries = await Promise.all(
+    products.map(async (p) => {
+      const [openIssues, brainState] = await Promise.all([
+        countOpenIssuesForProductLabel(p.slug),
+        loadProductHealthBrainState(p.slug),
+      ]);
+      const { rollup } = deriveHeroRollup(brainState);
+      const health = heroRollupToProductPulse(rollup);
+      const lastShipped = getLatestReleaseShippedIso(p);
+      return [
+        p.slug,
+        {
+          openIssues,
+          health,
+          lastShipped,
+        },
+      ] as const;
+    }),
+  );
+  return Object.fromEntries(entries);
+}
+
+export default async function ProductsIndexPage() {
   const data = productsData as ProductsRegistryFile;
-  return <ProductsPageClient products={data.products} />;
+  const summaryBySlug = await buildSummaryMap(data.products);
+  return <ProductsPageClient products={data.products} summaryBySlug={summaryBySlug} />;
 }

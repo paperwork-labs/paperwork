@@ -10,6 +10,16 @@ import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 
 export type HeroRollup = "healthy" | "degraded" | "down" | "unknown";
 
+/** Compact pulse for product cards (`healthy` → `ok`). */
+export type ProductHealthPulse = "ok" | "degraded" | "down";
+
+export function heroRollupToProductPulse(rollup: HeroRollup): ProductHealthPulse | null {
+  if (rollup === "healthy") return "ok";
+  if (rollup === "degraded") return "degraded";
+  if (rollup === "down") return "down";
+  return null;
+}
+
 export type CujProbeRow = {
   id: string;
   name: string;

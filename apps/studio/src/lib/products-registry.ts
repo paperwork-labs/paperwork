@@ -10,6 +10,13 @@ export type ProductPricingTier = {
   blurb?: string;
 };
 
+/** Optional ship history on a registry row — any ISO-like date field is accepted. */
+export type ProductReleaseEntry = {
+  published_at?: string;
+  date?: string;
+  shipped_at?: string;
+};
+
 export type ProductRegistryEntry = {
   slug: string;
   name: string;
@@ -22,6 +29,7 @@ export type ProductRegistryEntry = {
   url: string | null;
   admin_url: string;
   pricing_tiers?: ProductPricingTier[];
+  releases?: ProductReleaseEntry[];
 };
 
 export type ProductsRegistryFile = {
@@ -91,4 +99,23 @@ export function formatCurrencyUsd(n: number): string {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(n);
+}
+
+/** Latest ship timestamp from `releases` entries, or null when absent / unparsable. */
+export function getLatestReleaseShippedIso(product: ProductRegistryEntry): string | null {
+  const list = product.releases;
+  if (!list?.length) return null;
+  let best: number | null = null;
+  let bestIso: string | null = null;
+  for (const r of list) {
+    const raw = r.published_at ?? r.date ?? r.shipped_at;
+    if (!raw) continue;
+    const t = Date.parse(raw);
+    if (!Number.isFinite(t)) continue;
+    if (best === null || t > best) {
+      best = t;
+      bestIso = raw;
+    }
+  }
+  return bestIso;
 }

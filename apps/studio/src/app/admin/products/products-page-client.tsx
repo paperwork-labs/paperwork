@@ -3,11 +3,14 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Layers, MousePointer2, Radar, UserPlus, UsersRound, Wallet } from "lucide-react";
+import { cn } from "@paperwork-labs/ui";
 
+import { formatRelativeActivity } from "@/app/admin/workstreams/display-utils";
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
+import type { ProductHealthPulse } from "@/lib/product-health-brain";
 import {
   type ProductRegistryEntry,
   type ProductStageFilter,
@@ -19,6 +22,27 @@ import {
   statusPillToneClass,
 } from "@/lib/products-registry";
 
+export type ProductIndexSummaryBySlug = Record<
+  string,
+  {
+    openIssues: number | null;
+    health: ProductHealthPulse | null;
+    lastShipped: string | null;
+  }
+>;
+
+const healthColor: Record<ProductHealthPulse, string> = {
+  ok: "bg-emerald-400",
+  degraded: "bg-amber-400",
+  down: "bg-rose-500",
+};
+
+const healthLabel: Record<ProductHealthPulse, string> = {
+  ok: "Healthy",
+  degraded: "Degraded",
+  down: "Down",
+};
+
 const FILTERS: { id: ProductStageFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "concept", label: "Concept" },
@@ -27,7 +51,13 @@ const FILTERS: { id: ProductStageFilter; label: string }[] = [
   { id: "ga", label: "GA" },
 ];
 
-function DirectoryTab({ products }: { products: ProductRegistryEntry[] }) {
+function DirectoryTab({
+  products,
+  summaryBySlug,
+}: {
+  products: ProductRegistryEntry[];
+  summaryBySlug: ProductIndexSummaryBySlug;
+}) {
   const [filter, setFilter] = useState<ProductStageFilter>("all");
   const visible = useMemo(() => filterProductsByStage(products, filter), [products, filter]);
   const rollup = useMemo(() => computeProductsRollup(products), [products]);
@@ -87,7 +117,11 @@ function DirectoryTab({ products }: { products: ProductRegistryEntry[] }) {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {visible.map((product) => (
-          <ProductCard key={product.slug} product={product} />
+          <ProductCard
+            key={product.slug}
+            product={product}
+            summary={summaryBySlug[product.slug]}
+          />
         ))}
       </div>
     </div>
@@ -169,12 +203,18 @@ function ProductGtmTab({ products }: { products: ProductRegistryEntry[] }) {
   );
 }
 
-export function ProductsPageClient({ products }: { products: ProductRegistryEntry[] }) {
+export function ProductsPageClient({
+  products,
+  summaryBySlug,
+}: {
+  products: ProductRegistryEntry[];
+  summaryBySlug: ProductIndexSummaryBySlug;
+}) {
   const tabs = [
     {
       id: "directory" as const,
       label: "Directory",
-      content: <DirectoryTab products={products} />,
+      content: <DirectoryTab products={products} summaryBySlug={summaryBySlug} />,
     },
     {
       id: "gtm" as const,
@@ -196,8 +236,20 @@ export function ProductsPageClient({ products }: { products: ProductRegistryEntr
   );
 }
 
-function ProductCard({ product }: { product: ProductRegistryEntry }) {
+function ProductCard({
+  product,
+  summary,
+}: {
+  product: ProductRegistryEntry;
+  summary?: ProductIndexSummaryBySlug[string];
+}) {
   const stage = parseProductStatus(product.status);
+  const openIssues = summary?.openIssues ?? null;
+  const health = summary?.health ?? null;
+  const lastShipped = summary?.lastShipped ?? null;
+  const showSummaryStrip =
+    openIssues != null || Boolean(health) || Boolean(lastShipped);
+
   return (
     <Link
       href={`/admin/products/${product.slug}`}
@@ -221,6 +273,24 @@ function ProductCard({ product }: { product: ProductRegistryEntry }) {
               {productStageLabel(stage)}
             </span>
           </div>
+          {showSummaryStrip ? (
+            <div className="mt-3 flex flex-wrap gap-3 text-xs text-zinc-400">
+              {openIssues != null ? (
+                <span>
+                  {openIssues} open issue{openIssues === 1 ? "" : "s"}
+                </span>
+              ) : null}
+              {health ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <span className={cn("h-1.5 w-1.5 rounded-full", healthColor[health])} />
+                  {healthLabel[health]}
+                </span>
+              ) : null}
+              {lastShipped ? (
+                <span>Shipped {formatRelativeActivity(lastShipped)}</span>
+              ) : null}
+            </div>
+          ) : null}
           <p className="mt-1 line-clamp-2 text-sm text-zinc-500 group-hover:text-zinc-400">
             {product.tagline}
           </p>
