@@ -129,11 +129,11 @@ summary: "Read-only Studio admin UX audit for WS-76 Wave L PR-A — 56 findings 
 
 **P1**
 
-- **F-031** [P1] `tone()` maps unknown pill strings to `paused` (`apps/studio/src/app/admin/sprints/page.tsx:77-88`), which can mis-label unusual tracker tokens. **Fix (PR-C):** Explicit `unknown` badge + telemetry when slug unseen.
+- **F-031** [P1] `tone()` maps unknown pill strings to `paused` (`apps/studio/src/app/admin/sprints/sprints-overview-tab.tsx:85-99`), which can mis-label unusual tracker tokens. **Fix (PR-C):** Explicit `unknown` badge + telemetry when slug unseen.
 
 **P2**
 
-- **F-032** [P2] Expandable sprint `<summary>` relies on chevron rotation only (`apps/studio/src/app/admin/sprints/page.tsx:580-585`) — add `aria-expanded` via `details` is implicit ok, but chevron lacks text for SR; consider Radix `Collapsible` for parity with design system guidance in Axiom audit (`UX_AUDIT_2026Q2.md` SC-03 pattern).
+- **F-032** [P2] Expandable sprint `<summary>` relies on chevron rotation only (`apps/studio/src/app/admin/sprints/sprints-overview-tab.tsx:561-566`) — add `aria-expanded` via `details` is implicit ok, but chevron lacks text for SR; consider Radix `Collapsible` for parity with design system guidance in Axiom audit (`UX_AUDIT_2026Q2.md` SC-03 pattern).
 
 ### `/admin/workstreams`
 
@@ -363,7 +363,7 @@ Land on branch `wave-l-pr-c/page-polish` via commit **`1f8052d46b3142db306168c63
 - `apps/studio/src/components/pwa/PushSubscribeCard.tsx`
 - `apps/studio/src/app/admin/workstreams/page.tsx`
 - `apps/studio/src/app/admin/workstreams/workstreams-client.tsx`
-- `apps/studio/src/app/admin/sprints/page.tsx`
+- `apps/studio/src/app/admin/sprints/sprints-overview-tab.tsx`
 - `apps/studio/src/app/admin/architecture/page.tsx`
 - `apps/studio/src/app/admin/architecture/tabs/overview-tab.tsx`
 - `apps/studio/src/app/admin/architecture/architecture-client.tsx` (partial)

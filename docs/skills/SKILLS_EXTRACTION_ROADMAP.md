@@ -268,7 +268,7 @@ Broker-specific: `SchwabOAuthAdapter`, `TastytradeOAuthAdapter`, `IbkrFlexAdapte
 **TS**
 
 - **`react-plaid-link`** — already in `apps/axiomfolio` (`^4.1.1`).
-- Extract `PlaidLink.tsx` + `services/plaid.ts` patterns into `@paperwork-labs/skills-banking` or scoped `@paperwork/skills/banking`.
+- Extract `PlaidLink.tsx` + `packages/skills/banking-plaid/src/client.ts` patterns into `@paperwork-labs/skills-banking` or scoped `@paperwork/skills/banking`.
 
 **Python**
 
