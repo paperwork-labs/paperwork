@@ -27,37 +27,39 @@ export async function GET() {
           getBrainPRReviews(50),
           getRecentSlackActivity(15),
         ]);
-    const prsWithReview = prsResult.data.map((pr) => {
-      const review = brainReviews.get(pr.number);
-      return review
-        ? {
-            ...pr,
-            brain_review: {
-              verdict: review.verdict,
-              head_sha: review.head_sha,
-              model: review.model,
-              summary: review.summary,
-              created_at: review.created_at,
-            },
-          }
-        : pr;
-    });
-        return {
-          workflows,
-          executions,
-          prs: prsWithReview,
-          infrastructure,
-          ciRuns: ciRunsResult.data,
-          githubPrMissingCred: prsResult.missingCred,
-          githubCiMissingCred: ciRunsResult.missingCred,
-          slackActivity,
-          n8nConfigured: isN8nIntegrationConfigured(),
-          slackDailyBriefingHref:
-            process.env.NEXT_PUBLIC_SLACK_DAILY_BRIEFING_URL?.trim() ||
-            process.env.SLACK_DAILY_BRIEFING_URL?.trim() ||
-            null,
-        };
+      const prsWithReview = prsResult.data.map((pr) => {
+        const review = brainReviews.get(pr.number);
+        return review
+          ? {
+              ...pr,
+              brain_review: {
+                verdict: review.verdict,
+                head_sha: review.head_sha,
+                model: review.model,
+                summary: review.summary,
+                created_at: review.created_at,
+              },
+            }
+          : pr;
       });
+      return {
+        workflows,
+        executions,
+        prs: prsWithReview,
+        infrastructure,
+        ciRuns: ciRunsResult.data,
+        githubPrMissingCred: prsResult.missingCred,
+        githubCiMissingCred: ciRunsResult.missingCred,
+        githubPrFetchError: prsResult.fetchError,
+        githubCiFetchError: ciRunsResult.fetchError,
+        slackActivity,
+        n8nConfigured: isN8nIntegrationConfigured(),
+        slackDailyBriefingHref:
+          process.env.NEXT_PUBLIC_SLACK_DAILY_BRIEFING_URL?.trim() ||
+          process.env.SLACK_DAILY_BRIEFING_URL?.trim() ||
+          null,
+      };
+  });
 
   return NextResponse.json({
     ...data,
