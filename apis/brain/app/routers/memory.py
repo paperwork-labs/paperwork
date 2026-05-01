@@ -24,6 +24,10 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
+if TYPE_CHECKING:
+    from redis.asyncio import Redis
+    from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.config import settings
 from app.database import get_db
 from app.models.episode import Episode
@@ -32,9 +36,6 @@ from app.schemas.base import success_response
 from app.services import memory as memory_svc
 from app.services import pr_outcomes as pr_outcomes_svc
 from app.services import procedural_memory as proc_mem_svc
-
-if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ def _require_internal(
         raise HTTPException(status_code=401, detail="Invalid or missing X-Brain-Secret")
 
 
-def _get_redis_optional():
+def _get_redis_optional() -> Redis | None:
     try:
         return get_redis()
     except RuntimeError:
