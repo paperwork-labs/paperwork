@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { DocsHubClient } from "./docs-hub-client";
 import { loadDocHubEntries } from "@/lib/docs";
 import { getReadingPathsWithResolvedDocs } from "@/lib/reading-paths";
@@ -16,5 +18,9 @@ export default function DocsHubPage() {
     firstSlug: p.resolved[0]?.slug ?? null,
   }));
 
-  return <DocsHubClient entries={entries} readingPaths={readingPaths} />;
+  return (
+    <Suspense fallback={<div className="text-sm text-zinc-500">Loading docs hub…</div>}>
+      <DocsHubClient entries={entries} readingPaths={readingPaths} />
+    </Suspense>
+  );
 }
