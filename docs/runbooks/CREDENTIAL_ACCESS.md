@@ -8,6 +8,8 @@ status: living
 
 # Credential Access Runbook
 
+**TL;DR:** How Brain and agents fetch Render, Vercel, and Cloudflare credentials without founder dashboard work. Use this when you need API keys, DNS fixes, or env changes.
+
 Brain and agents have programmatic access to all infrastructure credentials. **Never ask the founder to manually set env vars or DNS** — use the APIs documented here.
 
 ## Credential Locations

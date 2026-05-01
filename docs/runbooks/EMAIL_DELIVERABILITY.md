@@ -1,5 +1,7 @@
 # Email deliverability (SPF + DMARC)
 
+**TL;DR:** What SPF and DMARC do for `paperworklabs.com`, how to apply records from this repo, and how to tighten DMARC after a soak. Read before changing mail-related DNS.
+
 ## Why this exists
 
 **SPF (Sender Policy Framework)** is a DNS TXT record at the domain apex that lists which mail systems are allowed to send email *as* your domain. Receiving servers use it to detect spoofing.

@@ -8,6 +8,8 @@ status: living
 
 # Day-0 Founder Actions Worksheet (WS-82)
 
+**TL;DR:** Founder checklist for WS-82 setup. Open it for Wave 0 items (urgent), Week 1 critical path, vendor setups, and the `axiomfolio-frontend` retirement steps.
+
 This worksheet is the single source of truth for founder-owned setup. Two tiers: **WS-82 Wave 0 P0** items are bleeding wounds — do today. **Critical path** items run in parallel to engineering through Week 1.
 
 ## WS-82 Wave 0 P0 — ALL COMPLETED (2026-04-30)

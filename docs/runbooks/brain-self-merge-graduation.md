@@ -1,5 +1,7 @@
 # Brain Self-Merge Graduation
 
+**TL;DR:** Tier rules for Brain self-merge (`data-only` → `brain-code` → `app-code`) and how promotion and reverts interact. Check here before interpreting self-merge status.
+
 Brain self-merge starts in a narrow data-only tier and graduates only after a clean track record. The source of truth is `apis/brain/data/self_merge_promotions.json`, with service logic in `apis/brain/app/services/self_merge_gate.py`.
 
 ## Tiers

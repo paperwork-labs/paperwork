@@ -1,5 +1,7 @@
 # Runbook: FileFree — Clerk Auth Env Vars for All Vercel Environments
 
+**TL;DR:** Set `NEXT_PUBLIC_CLERK_*` URLs in Vercel for Preview and Production so middleware uses your sign-in shell instead of the hosted Clerk page.
+
 ## Problem
 
 Without `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_SIGN_UP_URL` set in the Vercel

@@ -1,6 +1,8 @@
 # Cloudflare Per-Zone Write Tokens
 
-**Status:** Active — WS-47 (Phase C Wallet)  
+**TL;DR:** Replace one account-wide Cloudflare token with per-zone write tokens to limit blast radius. Use when you rotate secrets or finish the WS-47 migration.
+
+**Status:** Active — WS-47 (Phase C Wallet)
 **Owner:** ops-engineer  
 **Last updated:** 2026-04-28
 

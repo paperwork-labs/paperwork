@@ -1,5 +1,7 @@
 # pwl CLI Runbook
 
+**TL;DR:** Operator commands for listing apps, doctor checks, scaffolding APIs, and rebuilding `app_registry.json`. Open when you onboard a service or refresh the manifest.
+
 `pwl` is the Paperwork Labs monorepo CLI. It gives operators one place to inspect apps, scaffold new services, and keep Brain's app manifest current.
 
 ## Commands

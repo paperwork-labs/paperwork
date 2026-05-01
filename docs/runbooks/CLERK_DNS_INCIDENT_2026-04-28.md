@@ -10,6 +10,8 @@ tags: [clerk, cloudflare, dns, studio, auth, incident]
 
 # Clerk + Cloudflare DNS incident (2026-04-28)
 
+**TL;DR:** Post-mortem for Studio sign-in breaking after Cloudflare migration, how DNS was repaired, temporary redirect rules, and the guardrails (`reconcile_clerk_dns`, pre-deploy) that prevent repeats.
+
 ## Executive summary
 
 On **2026-04-28 ~20:45 UTC**, Studio’s Clerk sign-in flow broke after the **Cloudflare account migration** (personal → work account) for `paperworklabs.com`. Cloudflare’s **auto-import** recreated many DNS rows but **silently omitted** several CNAMEs pointing at Clerk’s `*.clerk.services` targets and two ops records (`brain.paperworklabs.com`, `social.paperworklabs.com`). DNS was repaired via the Cloudflare API, a **temporary** Single Redirect was added for `accounts.paperworklabs.com`, and this repository now ships **automation + runbooks** so the same class of failure is caught before the next deploy.
