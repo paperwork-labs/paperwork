@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 
 import { BrainChatPanel } from "@/components/BrainChatPanel";
+import { ErrorMemoryBootstrap } from "@/components/providers/ErrorMemoryBootstrap";
 import { ClerkTokenBridge } from "@/components/providers/ClerkTokenBridge";
 import { AccountProvider } from "@/context/AccountContext";
 import { ColorModeProvider } from "@/theme/colorMode";
@@ -14,6 +15,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <ColorModeProvider>
+      <ErrorMemoryBootstrap />
       <QueryClientProvider client={queryClient}>
         <ClerkTokenBridge />
         <AccountProvider>

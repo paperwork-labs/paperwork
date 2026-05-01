@@ -881,6 +881,106 @@ async def list_memory_episodes(
     return success_response({"count": len(episodes), "episodes": episodes})
 
 
+_ERROR_CAPTURE_IMPORTANCE: dict[str, float] = {
+    "info": 0.3,
+    "warning": 0.5,
+    "error": 0.7,
+    "critical": 0.9,
+}
+
+
+class ErrorCaptureBody(BaseModel):
+    source: str = Field(..., min_length=1, max_length=100)
+    summary: str = Field(..., min_length=1, max_length=500)
+    fingerprint: str = Field(..., min_length=1, max_length=200)
+    environment: str = Field("production", max_length=20)
+    severity: str = Field("error", pattern=r"^(info|warning|error|critical)$")
+    url: str | None = Field(None, max_length=500)
+    user_agent: str | None = Field(None, max_length=300)
+    stack: str | None = Field(None, max_length=4000)
+    metadata: dict[str, Any] | None = None
+
+
+@router.post("/memory/error-capture")
+async def capture_client_error_to_memory(
+    body: ErrorCaptureBody,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+    organization_id: str = Query("paperwork-labs"),
+):
+    """Create or roll up a client/server error as an episodic memory row (prod feedback loop)."""
+    now = datetime.now(UTC)
+    cutoff = now - timedelta(hours=1)
+    episode_source = f"error:capture:{body.source}"
+    importance = _ERROR_CAPTURE_IMPORTANCE.get(body.severity, 0.7)
+
+    stmt = (
+        select(Episode)
+        .where(
+            Episode.organization_id == organization_id,
+            Episode.source == episode_source,
+            Episode.created_at >= cutoff,
+            Episode.metadata_.contains({"fingerprint": body.fingerprint}),
+        )
+        .order_by(Episode.created_at.desc())
+        .limit(1)
+    )
+    existing = (await db.execute(stmt)).scalar_one_or_none()
+    if existing is not None:
+        meta = dict(existing.metadata_ or {})
+        meta["occurrence_count"] = int(meta.get("occurrence_count", 1)) + 1
+        meta["last_seen_at"] = _rfc3339_utc_z(now)
+        if body.metadata:
+            merged_extra = meta.get("client_metadata") or {}
+            if not isinstance(merged_extra, dict):
+                merged_extra = {}
+            merged_extra.update(body.metadata)
+            meta["client_metadata"] = merged_extra
+        existing.metadata_ = meta
+        existing.importance = max(float(existing.importance or 0.0), importance)
+        await db.flush()
+        return success_response(
+            {
+                "deduplicated": True,
+                "episode_id": existing.id,
+                "occurrence_count": meta["occurrence_count"],
+            },
+        )
+
+    meta_out: dict[str, Any] = {
+        "fingerprint": body.fingerprint,
+        "environment": body.environment,
+        "severity": body.severity,
+        "occurrence_count": 1,
+        "first_seen_at": _rfc3339_utc_z(now),
+        "last_seen_at": _rfc3339_utc_z(now),
+    }
+    if body.url:
+        meta_out["url"] = body.url
+    if body.user_agent:
+        meta_out["user_agent"] = body.user_agent
+    if body.metadata:
+        meta_out["client_metadata"] = body.metadata
+
+    ep = await memory_svc.store_episode(
+        db,
+        organization_id=organization_id,
+        source=episode_source,
+        summary=body.summary,
+        full_context=body.stack,
+        importance=importance,
+        metadata=meta_out,
+        skip_embedding=True,
+    )
+    return success_response(
+        {
+            "deduplicated": False,
+            "episode_id": ep.id,
+            "occurrence_count": 1,
+        },
+    )
+
+
 class MemorySearchBody(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     limit: int = Field(10, ge=1, le=50)
