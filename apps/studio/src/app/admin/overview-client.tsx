@@ -11,13 +11,9 @@ import {
   GitPullRequest,
   GitBranch,
   Shield,
-  Radio,
   ArrowRight,
   Workflow,
   Clock,
-  ChevronDown,
-  Zap,
-  Activity,
   Layers3,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -75,23 +71,21 @@ type CIRun = {
   updatedAt: string;
 };
 
-type SlackActivityEntry = {
-  id: number;
-  persona: string;
-  channel_id: string;
-  summary: string;
-  created_at: string;
-  model: string;
-  persona_pinned: boolean;
-};
-
 type OverviewData = {
   workflows: N8nWorkflow[];
   executions: N8nExecution[];
   prs: PullRequest[];
   infrastructure: InfraService[];
   ciRuns: CIRun[];
-  slackActivity?: SlackActivityEntry[];
+  slackActivity?: {
+    id: number;
+    persona: string;
+    channel_id: string;
+    summary: string;
+    created_at: string;
+    model: string;
+    persona_pinned: boolean;
+  }[];
   fetchedAt: string;
   githubPrMissingCred?: "GITHUB_TOKEN";
   githubCiMissingCred?: "GITHUB_TOKEN";
@@ -180,45 +174,17 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
     return () => clearInterval(interval);
   }, [refresh]);
 
-  const { workflows, executions, prs, infrastructure, ciRuns, fetchedAt } = data;
-  const slackActivity = data.slackActivity ?? [];
+  const { prs, infrastructure, ciRuns, fetchedAt } = data;
   const githubPrMissingCred = data.githubPrMissingCred;
   const githubCiMissingCred = data.githubCiMissingCred;
   const githubPrFetchError = data.githubPrFetchError;
   const githubCiFetchError = data.githubCiFetchError;
-  const n8nConfigured = data.n8nConfigured ?? false;
-  const slackDailyBriefingHref = data.slackDailyBriefingHref ?? null;
 
   const githubAnyMissingCred = Boolean(githubPrMissingCred || githubCiMissingCred);
   const githubFetchErrorLines = Array.from(
     new Set([githubPrFetchError, githubCiFetchError].filter(Boolean) as string[]),
   );
   const githubPrDegraded = Boolean(githubPrMissingCred || githubPrFetchError);
-  const githubCiDegraded = Boolean(githubCiMissingCred || githubCiFetchError);
-
-  const activeWorkflows = workflows.filter((w) => w.active).length;
-  const workflowNameById = useMemo(
-    () => new Map(workflows.map((w) => [w.id, w.name])),
-    [workflows],
-  );
-
-  const now = Date.now();
-  const dayAgo = now - 24 * 60 * 60 * 1000;
-  const executionsLastDay = useMemo(
-    () =>
-      executions.filter((e) => {
-        const ts = parseTs(e.startedAt) || parseTs(e.stoppedAt);
-        return ts >= dayAgo;
-      }),
-    [executions, dayAgo],
-  );
-  const successfulLastDay = executionsLastDay.filter(
-    (e) => (e.status ?? "").toLowerCase() === "success",
-  ).length;
-  const failedLastDay = executionsLastDay.filter((e) => {
-    const s = (e.status ?? "").toLowerCase();
-    return s === "error" || s === "failed" || s === "crashed";
-  }).length;
 
   const healthyInfra = infrastructure.filter((s) => s.healthy).length;
   const degradedInfra = infrastructure.filter((s) => s.configured && !s.healthy).length;
@@ -288,15 +254,6 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
       },
     }[ventureHealth];
 
-  // Daily briefing detection — find the most recent EA workflow execution
-  const lastBriefingExec = useMemo(() => {
-    return executions.find((e) => {
-      const name = workflowNameById.get(e.workflowId ?? "") ?? "";
-      return name.toLowerCase().includes("daily") || name.toLowerCase().includes("briefing");
-    });
-  }, [executions, workflowNameById]);
-
-  // PR + GitHub Actions first; n8n runs live under Legacy integrations.
   const activity: ActivityItem[] = useMemo(() => {
     const items: ActivityItem[] = [
       ...prs.slice(0, 10).map((pr) => {
@@ -695,160 +652,6 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           </div>
         </section>
       </div>
-
-      <details className="group rounded-xl border border-zinc-800 bg-zinc-950 ring-1 ring-zinc-800 open:ring-zinc-700">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
-          <span className="flex items-center gap-2 text-sm font-medium text-zinc-200">
-            <ChevronDown className="h-4 w-4 shrink-0 text-zinc-500 transition group-open:rotate-180" />
-            Legacy integrations
-          </span>
-          <span className="text-xs text-zinc-500">n8n · Slack</span>
-        </summary>
-        <div className="space-y-4 border-t border-zinc-800/80 px-5 pb-5 pt-4">
-          {!n8nConfigured ? (
-            <div
-              data-testid="overview-n8n-misconfig-banner"
-              className="rounded-xl border border-zinc-700/80 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 ring-1 ring-zinc-800"
-              role="status"
-            >
-              <span className="font-medium text-[var(--status-info)]">Optional: </span>
-              n8n is not configured here (set{" "}
-              <code className="rounded bg-black/30 px-1 font-mono text-xs">N8N_API_URL</code> and API
-              credentials). Legacy workflow tiles stay empty until wired.
-            </div>
-          ) : null}
-
-          {lastBriefingExec ? (
-            <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4 ring-1 ring-zinc-800 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2.5">
-                <Radio className="h-4 w-4 text-zinc-500" />
-                <p className="text-sm text-zinc-300">
-                  Daily briefing (n8n) last ran{" "}
-                  <span className="font-medium text-zinc-100">
-                    {relativeTime(lastBriefingExec.startedAt || lastBriefingExec.stoppedAt)}
-                  </span>
-                  {lastBriefingExec.status ? (
-                    <span
-                      className={`ml-1.5 ${
-                        lastBriefingExec.status === "success"
-                          ? "text-[var(--status-success)]"
-                          : "text-[var(--status-danger)]"
-                      }`}
-                    >
-                      ({lastBriefingExec.status})
-                    </span>
-                  ) : null}
-                </p>
-              </div>
-              <a
-                href={slackDailyBriefingHref || "https://app.slack.com/client"}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-zinc-500 transition hover:text-zinc-300"
-                title={
-                  slackDailyBriefingHref
-                    ? "Open Slack"
-                    : "Set NEXT_PUBLIC_SLACK_DAILY_BRIEFING_URL for a deep link to #daily-briefing"
-                }
-              >
-                Slack · #daily-briefing
-              </a>
-            </div>
-          ) : null}
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Link
-              href="/admin/architecture?tab=flows"
-              className={STAT_CARD_LINK}
-              aria-label="Open automation flows in architecture"
-            >
-              <HqStatCard
-                variant="default"
-                status={workflows.length > 0 && activeWorkflows === workflows.length ? "success" : "neutral"}
-                icon={<Zap className="h-4 w-4 text-zinc-500" />}
-                label="n8n workflows"
-                value={workflows.length > 0 ? `${activeWorkflows}/${workflows.length}` : "—"}
-                helpText="Legacy automation editor · flows tab"
-              />
-            </Link>
-            <Link
-              href="/admin/architecture?tab=flows"
-              className={STAT_CARD_LINK}
-              aria-label="Open automation architecture flows"
-            >
-              <HqStatCard
-                variant="default"
-                status={failedLastDay > 0 ? "danger" : "neutral"}
-                icon={<Activity className="h-4 w-4 text-zinc-500" />}
-                label="n8n · 24h executions"
-                value={String(executionsLastDay.length)}
-                helpText={`${successfulLastDay} success / ${failedLastDay} failed`}
-              />
-            </Link>
-          </div>
-
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Slack activity mirror
-            </p>
-            <div className="max-h-72 space-y-1.5 overflow-y-auto rounded-xl border border-zinc-800/80 bg-zinc-950/50 p-3 ring-1 ring-zinc-800/60">
-              {slackActivity.length === 0 ? (
-                <p className="py-2 text-sm text-zinc-500">
-                  No mirrored Slack threads in Brain memory yet.
-                </p>
-              ) : (
-                slackActivity.map((entry) => (
-                  <div key={entry.id} className="rounded-md bg-zinc-800/40 px-3 py-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--status-info)]" />
-                      <span className="font-medium text-zinc-100">{entry.persona}</span>
-                      {entry.persona_pinned ? (
-                        <span className="rounded-full bg-[var(--status-info-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--status-info)]">
-                          pinned
-                        </span>
-                      ) : null}
-                      <span className="truncate text-xs text-zinc-500">#{entry.channel_id}</span>
-                      <span className="ml-auto shrink-0 text-xs text-zinc-600">
-                        {relativeTime(entry.created_at)}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 truncate pl-[14px] text-xs text-zinc-400">{entry.summary}</p>
-                    {entry.model ? (
-                      <p className="pl-[14px] text-[10px] text-zinc-600">{entry.model}</p>
-                    ) : null}
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
-              Provider shortcuts
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { label: "n8n Editor", href: "https://n8n.paperworklabs.com" },
-                { label: "Render", href: "https://dashboard.render.com" },
-                { label: "Vercel", href: "https://vercel.com/paperwork-labs" },
-                { label: "GitHub", href: "https://github.com/paperwork-labs/paperwork" },
-                { label: "Neon", href: "https://console.neon.tech" },
-              ].map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5 text-xs text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200"
-                >
-                  {link.label}
-                  <ExternalLink className="h-3 w-3 text-zinc-600" />
-                </a>
-              ))}
-            </div>
-          </div>
-        </div>
-      </details>
     </div>
   );
 }

@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { BrainImprovementGauge } from "@/components/admin/BrainImprovementGauge";
 import { OperatingScoreGauge } from "@/components/admin/OperatingScoreGauge";
 import { SprintVelocityTile } from "@/components/admin/SprintVelocityTile";
 import {
+  getBrainPersonaDispatchSummary,
   getBrainPRReviews,
   getInfrastructureStatus,
   getN8nExecutions,
@@ -11,6 +13,11 @@ import {
   getRecentSlackActivity,
   isN8nIntegrationConfigured,
 } from "@/lib/command-center";
+import {
+  brainNarrative,
+  personaDispatchSummaryFromResponse,
+  type PersonaDispatchSummary,
+} from "./brain-overview-narrative";
 import { PushSubscribeCard } from "@/components/pwa/PushSubscribeCard";
 import { TrackersRail } from "./_components/trackers-rail";
 import OverviewClient from "./overview-client";
@@ -18,17 +25,53 @@ import OverviewClient from "./overview-client";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function BrainSaysOverviewCard({ summary }: { summary: PersonaDispatchSummary | null }) {
+  const pendingReview = summary?.pendingReview ?? 0;
+  return (
+    <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-4 ring-1 ring-zinc-800">
+      <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">Brain says</p>
+      <p className="mt-2 text-sm text-zinc-200">{brainNarrative(summary)}</p>
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+        <Link
+          href="/admin/autopilot"
+          className="text-zinc-400 underline-offset-2 transition hover:text-zinc-200 hover:underline"
+        >
+          → View Autopilot
+        </Link>
+        {pendingReview > 0 ? (
+          <Link
+            href="/admin/autopilot"
+            className="text-zinc-400 underline-offset-2 transition hover:text-zinc-200 hover:underline"
+          >
+            → Review pending
+          </Link>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 export default async function AdminOverviewPage() {
-  const [workflows, executions, prsResult, infrastructure, ciRunsResult, brainReviews, slackActivity] =
-    await Promise.all([
-      getN8nWorkflows(),
-      getN8nExecutions(50),
-      getRecentPullRequests(10),
-      getInfrastructureStatus(),
-      getRecentCIRuns(8),
-      getBrainPRReviews(50),
-      getRecentSlackActivity(15),
-    ]);
+  const [
+    workflows,
+    executions,
+    prsResult,
+    infrastructure,
+    ciRunsResult,
+    brainReviews,
+    slackActivity,
+    personaDispatchRaw,
+  ] = await Promise.all([
+    getN8nWorkflows(),
+    getN8nExecutions(50),
+    getRecentPullRequests(10),
+    getInfrastructureStatus(),
+    getRecentCIRuns(8),
+    getBrainPRReviews(50),
+    getRecentSlackActivity(15),
+    getBrainPersonaDispatchSummary(),
+  ]);
+  const personaDispatchSummary = personaDispatchSummaryFromResponse(personaDispatchRaw.data);
   const prsWithReview = prsResult.data.map((pr) => {
     const review = brainReviews.get(pr.number);
     return review
@@ -53,6 +96,7 @@ export default async function AdminOverviewPage() {
   return (
     <div className="space-y-6">
       <PushSubscribeCard />
+      <BrainSaysOverviewCard summary={personaDispatchSummary} />
       <TrackersRail />
       <section className="space-y-4">
         <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-zinc-950 to-zinc-950/80 p-1 shadow-[0_0_0_1px_rgba(39,39,42,0.6)] ring-1 ring-zinc-800/90 lg:p-2">
