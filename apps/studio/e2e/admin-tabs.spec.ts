@@ -89,6 +89,9 @@ test.describe("/admin/brain/personas — tab panels stay populated", () => {
       return;
     }
 
+    await expect(page).toHaveURL(/\/admin\/people/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/view=workspace/, { timeout: 15_000 });
+
     await waitForStudioTabShellHydrated(page);
     await expectActivePanelContains(page, /Persona id/);
 

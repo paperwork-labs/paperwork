@@ -205,6 +205,8 @@ test.describe("Brain bucket stub pages (WS-69 PR C)", () => {
       test.skip();
       return;
     }
+    await expect(page).toHaveURL(/\/admin\/people/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/view=workspace/, { timeout: 15_000 });
     const bodyText = await page.locator("body").innerText();
     if (
       bodyText.includes("YAMLException") ||
@@ -225,6 +227,8 @@ test.describe("Brain bucket stub pages (WS-69 PR C)", () => {
       test.skip();
       return;
     }
+    await expect(page).toHaveURL(/\/admin\/people/, { timeout: 15_000 });
+    await expect(page).toHaveURL(/view=workspace/, { timeout: 15_000 });
     const bodyText = await page.locator("body").innerText();
     if (
       bodyText.includes("YAMLException") ||
