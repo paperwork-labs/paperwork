@@ -14,7 +14,6 @@ import {
   Building2,
   ChartColumnBig,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   FileText,
   Layers,
@@ -30,6 +29,7 @@ import {
 } from "lucide-react";
 import type {
   Conversation,
+  ConversationParticipant,
   ConversationSpace,
   ConversationsListPage,
   FilterChip,
@@ -154,6 +154,32 @@ function getThreadContext(messages: ThreadMessage[], anchorId: string) {
   return { root, replies };
 }
 
+/** Oldest → newest: root message then its direct replies. */
+function getOrderedThreadMessages(messages: ThreadMessage[], anchorId: string): ThreadMessage[] | null {
+  const ctx = getThreadContext(messages, anchorId);
+  if (!ctx) return null;
+  return [ctx.root, ...ctx.replies];
+}
+
+/**
+ * TODO(PB-8): Set to true when Brain implements POST /api/v1/admin/conversations/{id}/reply
+ * ({ persona_slug, content }). Verified missing in apis/brain/app/routers/conversations.py (2026-05-01).
+ */
+const BRAIN_CONVERSATION_PERSONA_REPLY_READY = false;
+
+function ParticipantAvatar({ participant }: { participant: ConversationParticipant }) {
+  const label = participant.display_name ?? participant.id;
+  const initial = label.trim().charAt(0).toUpperCase() || "?";
+  return (
+    <div
+      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-medium text-zinc-200"
+      aria-hidden
+    >
+      {initial}
+    </div>
+  );
+}
+
 function attachmentDescription(
   att: Conversation["messages"][0]["attachments"][0],
 ): string {
@@ -243,6 +269,67 @@ function MessageBubble({ msg }: { msg: ThreadMessage }) {
   );
 }
 
+function ThreadPanelMessageRow({
+  msg,
+  isAnchor,
+  isPending,
+}: {
+  msg: ThreadMessage;
+  isAnchor: boolean;
+  isPending?: boolean;
+}) {
+  return (
+    <div
+      data-testid={`thread-panel-message-${msg.id}`}
+      className={`rounded-xl border px-3 py-2 ${
+        isAnchor
+          ? "border-sky-500/50 bg-sky-950/30 ring-1 ring-sky-500/30"
+          : "border-zinc-800/80 bg-zinc-900/40"
+      } ${isPending ? "opacity-85" : ""}`}
+    >
+      <div className="flex gap-3">
+        <ParticipantAvatar participant={msg.author} />
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-zinc-200">
+              {msg.author.display_name ?? msg.author.id}
+            </span>
+            <span className="text-[10px] text-zinc-500">
+              {new Date(msg.created_at).toLocaleString()}
+            </span>
+            {isPending ? (
+              <span className="text-[10px] font-medium text-amber-300/90">Sending…</span>
+            ) : null}
+          </div>
+          <div className="prose prose-invert prose-sm max-w-none text-zinc-300 prose-p:my-1 prose-a:text-sky-400 prose-code:rounded prose-code:bg-zinc-800 prose-code:px-1">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.body_md}</ReactMarkdown>
+          </div>
+          {msg.attachments.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {msg.attachments.map((att) => (
+                <AttachmentThumb key={att.id} att={att} />
+              ))}
+            </div>
+          )}
+          {Object.keys(msg.reactions).length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {Object.entries(msg.reactions).map(([emoji, reactors]) => (
+                <span
+                  key={emoji}
+                  className="rounded-full bg-zinc-800 px-2 py-0.5 text-sm"
+                  title={reactors.join(", ")}
+                >
+                  {emoji} {reactors.length}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 async function apiFetch(path: string, opts?: RequestInit) {
   const res = await fetch(path, opts);
   return res.json();
@@ -290,14 +377,21 @@ export function ConversationsClient({
   const [snoozingId, setSnoozingId] = useState<string | null>(null);
   const [composerError, setComposerError] = useState<string | null>(null);
   const [threadAnchorId, setThreadAnchorId] = useState<string | null>(null);
-  const [threadPanelEntered, setThreadPanelEntered] = useState(false);
+  const [composeInitialPersonaSlug, setComposeInitialPersonaSlug] = useState<string | null>(null);
   const [threadReplyText, setThreadReplyText] = useState("");
+  const [threadReplyPersonaSlug, setThreadReplyPersonaSlug] = useState("");
   const [threadReplyLoading, setThreadReplyLoading] = useState(false);
+  const [threadReplyError, setThreadReplyError] = useState<string | null>(null);
+  const [threadOptimisticMessages, setThreadOptimisticMessages] = useState<ThreadMessage[]>([]);
   const [spaceFilter, setSpaceFilter] = useState<ConversationSpace | "all">("all");
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (searchParams.get("compose") !== "1") return;
+    const compose = searchParams.get("compose");
+    const openCompose = compose === "true" || compose === "1";
+    if (!openCompose) return;
+    const slug = searchParams.get("persona")?.trim() ?? null;
+    setComposeInitialPersonaSlug(slug && slug.length > 0 ? slug : null);
     setShowCompose(true);
     router.replace(pathname, { scroll: false });
   }, [searchParams, router, pathname]);
@@ -408,15 +502,28 @@ export function ConversationsClient({
     setSelected((s) => (s?.id === conversationId ? patch(s) : s));
   }, []);
 
-  const closeThreadPanel = () => {
-    setThreadPanelEntered(false);
-    window.setTimeout(() => setThreadAnchorId(null), 280);
-  };
-
   const threadCtx = useMemo(() => {
     if (!selected || !threadAnchorId) return null;
     return getThreadContext(selected.messages, threadAnchorId);
   }, [selected, threadAnchorId]);
+
+  const threadOrderedMessages = useMemo(() => {
+    if (!selected || !threadAnchorId) return null;
+    return getOrderedThreadMessages(selected.messages, threadAnchorId);
+  }, [selected, threadAnchorId]);
+
+  useEffect(() => {
+    setThreadAnchorId(null);
+    setThreadOptimisticMessages([]);
+    setThreadReplyError(null);
+    setThreadReplyText("");
+    setThreadReplyPersonaSlug("");
+  }, [selected?.id]);
+
+  useEffect(() => {
+    setThreadOptimisticMessages([]);
+    setThreadReplyError(null);
+  }, [threadAnchorId]);
 
   const handleStatusAction = async (
     conversationId: string,
@@ -500,6 +607,58 @@ export function ConversationsClient({
       }
     } finally {
       setReplyLoading(false);
+    }
+  };
+
+  const handleThreadPanelReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!BRAIN_CONVERSATION_PERSONA_REPLY_READY) return;
+    if (!selected || !threadAnchorId || !threadReplyPersonaSlug || !threadReplyText.trim()) return;
+    const trimmed = threadReplyText.trim();
+    const personaMeta = replyPersonas.find((p) => p.id === threadReplyPersonaSlug);
+    const rootId = threadCtx?.root.id;
+    const optimistic: ThreadMessage = {
+      id: `pending-${crypto.randomUUID()}`,
+      author: {
+        id: threadReplyPersonaSlug,
+        kind: "persona",
+        display_name: personaMeta?.label ?? threadReplyPersonaSlug,
+      },
+      body_md: trimmed,
+      attachments: [],
+      created_at: new Date().toISOString(),
+      reactions: {},
+      parent_message_id: rootId ?? null,
+    };
+
+    setThreadReplyLoading(true);
+    setThreadReplyError(null);
+    setThreadOptimisticMessages((prev) => [...prev, optimistic]);
+    setThreadReplyText("");
+
+    try {
+      const res = await fetch(`/api/admin/conversations/${selected.id}/reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          persona_slug: threadReplyPersonaSlug,
+          content: trimmed,
+        }),
+      });
+      const json: { success?: boolean; error?: string } = await res.json().catch(() => ({}));
+      if (!res.ok || !json.success) {
+        setThreadOptimisticMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+        setThreadReplyError(json.error ?? `Reply failed (${res.status})`);
+        return;
+      }
+      setThreadOptimisticMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+      const convJson = await apiFetch(`/api/admin/conversations/${selected.id}`);
+      if (convJson.success && convJson.data) updateSelectedFromList(convJson.data);
+    } catch (err) {
+      setThreadOptimisticMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+      setThreadReplyError(err instanceof Error ? err.message : "Unexpected error sending reply");
+    } finally {
+      setThreadReplyLoading(false);
     }
   };
 
@@ -871,11 +1030,116 @@ export function ConversationsClient({
                 </div>
               ) : null}
 
-              {/* Messages */}
-              <div className="flex min-h-0 flex-1 flex-col-reverse gap-4 overflow-y-auto p-4">
-                {[...selected.messages].reverse().map((msg) => (
-                  <MessageBubble key={msg.id} msg={msg} />
-                ))}
+              {/* Messages + optional thread sub-panel */}
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+                <div className="flex min-h-[200px] flex-1 flex-col md:min-h-0">
+                  <div className="flex min-h-0 flex-1 flex-col-reverse gap-4 overflow-y-auto p-4">
+                    {[...selected.messages].reverse().map((msg) => (
+                      <button
+                        key={msg.id}
+                        type="button"
+                        data-testid={`conversation-message-${msg.id}`}
+                        className={`w-full rounded-lg text-left outline-none ring-offset-2 ring-offset-zinc-900 transition hover:bg-zinc-800/30 focus-visible:ring-2 focus-visible:ring-sky-500/50 ${
+                          threadAnchorId === msg.id ? "bg-zinc-800/40 ring-1 ring-sky-500/30" : ""
+                        }`}
+                        onClick={() => setThreadAnchorId(msg.id)}
+                      >
+                        <MessageBubble msg={msg} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {threadAnchorId && threadOrderedMessages ? (
+                  <div
+                    data-testid="conversation-thread-subpanel"
+                    className="flex max-h-[50vh] w-full shrink-0 flex-col border-t border-zinc-800/80 bg-zinc-950/40 md:max-h-none md:h-auto md:w-[min(100%,22rem)] md:border-l md:border-t-0"
+                  >
+                    <div className="flex items-center justify-between border-b border-zinc-800/60 px-3 py-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                        Thread
+                      </p>
+                      <button
+                        type="button"
+                        aria-label="Close thread panel"
+                        className="rounded p-1 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
+                        onClick={() => setThreadAnchorId(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+                      {threadOrderedMessages.map((msg) => (
+                        <ThreadPanelMessageRow
+                          key={msg.id}
+                          msg={msg}
+                          isAnchor={msg.id === threadAnchorId}
+                        />
+                      ))}
+                      {threadOptimisticMessages.map((msg) => (
+                        <ThreadPanelMessageRow
+                          key={msg.id}
+                          msg={msg}
+                          isAnchor={false}
+                          isPending={msg.id.startsWith("pending-")}
+                        />
+                      ))}
+                    </div>
+                    <form
+                      data-testid="thread-panel-reply-form"
+                      className="border-t border-zinc-800/60 p-3"
+                      onSubmit={(e) => void handleThreadPanelReply(e)}
+                    >
+                      {threadReplyError ? (
+                        <p className="mb-2 text-xs text-red-400">{threadReplyError}</p>
+                      ) : null}
+                      <label htmlFor="thread-reply-persona" className="mb-1 block text-xs font-medium text-zinc-500">
+                        Reply as
+                      </label>
+                      <select
+                        id="thread-reply-persona"
+                        data-testid="thread-panel-reply-persona"
+                        value={threadReplyPersonaSlug}
+                        onChange={(e) => setThreadReplyPersonaSlug(e.target.value)}
+                        className="mb-2 w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1.5 text-sm text-zinc-200 outline-none focus:border-sky-500/50"
+                      >
+                        <option value="">Select persona…</option>
+                        {replyPersonas.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                      <textarea
+                        id="thread-reply-body"
+                        data-testid="thread-panel-reply-text"
+                        value={threadReplyText}
+                        onChange={(e) => setThreadReplyText(e.target.value)}
+                        placeholder="Write your reply..."
+                        rows={3}
+                        className="mb-2 w-full resize-none rounded-lg border border-zinc-800 bg-zinc-900 p-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-sky-500/50"
+                      />
+                      <button
+                        type="submit"
+                        data-testid="thread-panel-reply-send"
+                        disabled={
+                          threadReplyLoading ||
+                          !BRAIN_CONVERSATION_PERSONA_REPLY_READY ||
+                          !threadReplyPersonaSlug ||
+                          !threadReplyText.trim()
+                        }
+                        title={
+                          BRAIN_CONVERSATION_PERSONA_REPLY_READY
+                            ? undefined
+                            : "Reply backend not yet wired (PB-X)"
+                        }
+                        className="rounded-lg bg-sky-500/20 px-3 py-1.5 text-sm font-medium text-sky-300 ring-1 ring-sky-500/30 transition hover:bg-sky-500/30 disabled:opacity-40"
+                      >
+                        {threadReplyLoading ? "Sending…" : "Send"}
+                      </button>
+                    </form>
+                  </div>
+                ) : null}
               </div>
 
               {/* Reply box */}
@@ -909,7 +1173,11 @@ export function ConversationsClient({
       {showCompose && (
         <ComposeModal
           personaOptions={composePersonaOptions}
-          onClose={() => setShowCompose(false)}
+          initialPersonaSlug={composeInitialPersonaSlug}
+          onClose={() => {
+            setShowCompose(false);
+            setComposeInitialPersonaSlug(null);
+          }}
           onSuccess={handleComposeSuccess}
         />
       )}

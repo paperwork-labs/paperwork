@@ -1,7 +1,18 @@
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, act, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { Conversation, ConversationsListPage } from "@/types/conversations";
+
+const searchParamsState = vi.hoisted(() => ({
+  qs: "",
+}));
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () => new URLSearchParams(searchParamsState.qs),
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  usePathname: () => "/admin/brain/conversations",
+}));
+
 import { ConversationsClient } from "../conversations-client";
 
 // ---------------------------------------------------------------------------
@@ -55,7 +66,9 @@ function mockFetch(page: ConversationsListPage) {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
+  cleanup();
   vi.resetAllMocks();
+  searchParamsState.qs = "";
   global.fetch = mockFetch(makePage([]));
 });
 
@@ -245,5 +258,75 @@ describe("ConversationsClient", () => {
     await waitFor(() => {
       expect(screen.getByText("New conversation")).toBeTruthy();
     });
+  });
+
+  it("clicking a message opens thread sub-panel with messages and reply form", async () => {
+    const user = userEvent.setup();
+    const rootId = "fixture-msg-root";
+    const replyId = "fixture-msg-reply";
+    const conv = makeConv({
+      messages: [
+        {
+          id: rootId,
+          author: { id: "founder", kind: "founder", display_name: "Founder" },
+          body_md: "Root content",
+          attachments: [],
+          created_at: "2026-01-01T12:00:00.000Z",
+          reactions: {},
+          parent_message_id: null,
+        },
+        {
+          id: replyId,
+          author: { id: "cfo", kind: "persona", display_name: "CFO Persona" },
+          body_md: "Nested reply text",
+          attachments: [],
+          created_at: "2026-01-02T12:00:00.000Z",
+          reactions: {},
+          parent_message_id: rootId,
+        },
+      ],
+    });
+    global.fetch = mockFetch(makePage([conv]));
+    render(
+      <ConversationsClient
+        brainConfigured
+        initialPage={makePage([conv])}
+        replyPersonas={[{ id: "cfo", label: "CFO" }]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByText("Test conversation")).toBeTruthy();
+    });
+    await user.click(screen.getByText("Test conversation"));
+    await user.click(screen.getByTestId(`conversation-message-${replyId}`));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("conversation-thread-subpanel")).toBeTruthy();
+    });
+    const panel = screen.getByTestId("conversation-thread-subpanel");
+    expect(within(panel).getByText("Root content")).toBeTruthy();
+    expect(within(panel).getByText("Nested reply text")).toBeTruthy();
+    expect(panel.querySelector('textarea[placeholder="Write your reply..."]')).toBeTruthy();
+    expect(within(panel).getByTestId("thread-panel-reply-form")).toBeTruthy();
+  });
+
+  it("?compose=true&persona=cfo opens compose modal with CFO participant checked", async () => {
+    searchParamsState.qs = "compose=true&persona=cfo";
+    render(
+      <ConversationsClient
+        brainConfigured
+        initialPage={makePage([])}
+        composePersonaOptions={[
+          { id: "cfo", label: "CFO" },
+          { id: "ea", label: "EA" },
+        ]}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getAllByTestId("compose-modal").length).toBeGreaterThanOrEqual(1);
+    });
+    const modal = screen.getAllByTestId("compose-modal")[0]!;
+    const cfo = within(modal).getByTestId("compose-persona-cfo") as HTMLInputElement;
+    expect(cfo.checked).toBe(true);
   });
 });

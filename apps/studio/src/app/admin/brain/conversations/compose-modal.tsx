@@ -43,9 +43,17 @@ interface Props {
   onSuccess: (conv: Conversation) => void;
   personaOptions: ComposePersonaOption[];
   prefill?: ComposeModalPrefill | null;
+  /** Deep-link / query-param: pre-check this persona id (slug) in Participants. */
+  initialPersonaSlug?: string | null;
 }
 
-export function ComposeModal({ onClose, onSuccess, personaOptions, prefill }: Props) {
+export function ComposeModal({
+  onClose,
+  onSuccess,
+  personaOptions,
+  prefill,
+  initialPersonaSlug = null,
+}: Props) {
   const [title, setTitle] = useState("");
   const [bodyMd, setBodyMd] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -59,6 +67,16 @@ export function ComposeModal({ onClose, onSuccess, personaOptions, prefill }: Pr
   const spaceManualRef = useRef(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
+  const appliedPersonaSeedRef = useRef(false);
+
+  useEffect(() => {
+    if (appliedPersonaSeedRef.current) return;
+    const slug = initialPersonaSlug?.trim();
+    if (!slug) return;
+    if (!personaOptions.some((p) => p.id === slug)) return;
+    setPersonaIds(new Set([slug]));
+    appliedPersonaSeedRef.current = true;
+  }, [initialPersonaSlug, personaOptions]);
 
   useEffect(() => {
     if (spaceManualRef.current) return;
