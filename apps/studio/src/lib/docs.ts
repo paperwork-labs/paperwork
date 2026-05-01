@@ -250,3 +250,25 @@ export function searchDocs(query: string): DocEntry[] {
     .filter((r) => r.score > 0)
     .map((r) => r.entry);
 }
+
+/** Client-side filter for hub entries; matches {@link searchDocs} scoring. */
+export function filterHubEntriesByQuery(entries: DocHubEntry[], query: string): DocHubEntry[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return entries
+    .map((entry) => {
+      const haystack = [
+        entry.title,
+        entry.summary,
+        entry.slug,
+        entry.tags.join(" "),
+        entry.owners.join(" "),
+      ]
+        .join(" ")
+        .toLowerCase();
+      const score = haystack.includes(q) ? 1 : 0;
+      return { entry, score };
+    })
+    .filter((r) => r.score > 0)
+    .map((r) => r.entry);
+}

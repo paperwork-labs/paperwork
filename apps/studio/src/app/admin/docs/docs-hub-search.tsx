@@ -3,13 +3,21 @@
 import { useState } from "react";
 import { Loader2, Search } from "lucide-react";
 
-/** F-051 — visible busy state while GET navigates to search results. */
-export function DocsHubSearchForm() {
+export type DocsHubSearchFormProps = {
+  defaultQuery?: string;
+  hubView?: "category" | "persona";
+};
+
+/** Submit to hub with optional `view` preserved for persona mode. */
+export function DocsHubSearchForm({
+  defaultQuery = "",
+  hubView = "category",
+}: DocsHubSearchFormProps) {
   const [pending, setPending] = useState(false);
 
   return (
     <form
-      action="/admin/docs/search"
+      action="/admin/docs"
       method="GET"
       onSubmit={() => setPending(true)}
       className="flex max-w-xl items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2"
@@ -18,10 +26,12 @@ export function DocsHubSearchForm() {
       <input
         type="text"
         name="q"
+        defaultValue={defaultQuery}
         placeholder="Search titles, tags, owners…"
         className="min-w-0 flex-1 bg-transparent text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none"
         disabled={pending}
       />
+      {hubView === "persona" ? <input type="hidden" name="view" value="persona" /> : null}
       <button
         type="submit"
         disabled={pending}
