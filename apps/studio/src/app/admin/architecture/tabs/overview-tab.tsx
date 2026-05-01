@@ -104,6 +104,10 @@ export default async function OverviewTab() {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-zinc-500">
           Live system graph
         </h2>
+        <p className="mb-4 max-w-2xl text-xs text-zinc-500">
+          Nodes show health, hosting badges, and deploy times where live data is wired. Click through to Studio;
+          Shift+click keeps the detail drawer for deep dives.
+        </p>
         <ArchitectureClient
           graph={systemGraph}
           initialHealth={health}

@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Edge, Node } from "@xyflow/react";
 import {
@@ -27,6 +28,12 @@ import {
 import type { LiveDataMeta, NodeLiveView } from "@/lib/get-architecture-payload";
 import { LiveDataBadge } from "@/components/admin/LiveDataBadge";
 import type { CardNodeData, DagTone } from "@/components/dag/InteractiveDag";
+import {
+  deployPlatformForSystemNode,
+  layerBandForSystemNode,
+  studioPathForSystemNode,
+} from "@/lib/architecture-graph-studio";
+import { NODE_VERCEL_PROJECT } from "@/lib/architecture-vercel-projects";
 
 const InteractiveDag = dynamic(
   () =>
@@ -143,6 +150,7 @@ export default function ArchitectureClient({
   const [askingId, setAskingId] = useState<string | null>(null);
   const [askResponse, setAskResponse] = useState<string>("");
   const [catalogView, setCatalogView] = useState<"dag" | "layers">("dag");
+  const router = useRouter();
 
   const nodesByLayer = useMemo(() => {
     const map = new Map<SystemLayer, SystemNode[]>();
@@ -174,6 +182,7 @@ export default function ArchitectureClient({
     return graph.nodes.map((n) => {
       const h = healthById.get(n.id);
       const live = nodeLiveById.get(n.id);
+      const path = studioPathForSystemNode(n);
       return {
         id: n.id,
         type: "card",
@@ -183,9 +192,16 @@ export default function ArchitectureClient({
           subtitle: `${KIND_BADGE[n.kind]} · ${LAYER_LABELS[n.layer]}`,
           tone: architectureLayerToTone(n.layer),
           pill: n.llm_backed ? "LLM" : undefined,
-          status: h?.configured ? h.status : undefined,
+          status: h?.configured ? h.status : "gray",
           liveFrame: live?.liveFrame,
           liveSubtext: live?.liveSubtext,
+          layerBand: layerBandForSystemNode(n),
+          deployPlatform: deployPlatformForSystemNode(n),
+          deployRelative:
+            NODE_VERCEL_PROJECT[n.id] != null
+              ? (live?.deployRelative ?? "unknown")
+              : (live?.deployRelative ?? null),
+          navigable: path != null,
         },
       };
     });
@@ -201,7 +217,6 @@ export default function ArchitectureClient({
           id: `dep-${i++}`,
           source: dep,
           target: n.id,
-          style: { stroke: "rgb(113 113 122)", strokeWidth: 1.5 },
         });
       }
     }
@@ -209,10 +224,17 @@ export default function ArchitectureClient({
   }, [graph.nodes, nodeIdSet]);
 
   const onDagNodeClick = useCallback(
-    (_e: React.MouseEvent, node: Node<CardNodeData, "card">) => {
+    (e: React.MouseEvent, node: Node<CardNodeData, "card">) => {
+      const sysNode = graph.nodes.find((x) => x.id === node.id);
+      if (!sysNode) return;
+      const path = studioPathForSystemNode(sysNode);
+      if (path && !e.shiftKey) {
+        router.push(path);
+        return;
+      }
       setSelectedId(node.id);
     },
-    [],
+    [graph.nodes, router],
   );
 
   const summary = useMemo(() => {
@@ -487,8 +509,11 @@ export default function ArchitectureClient({
             <p className="mt-1 max-w-3xl text-[11px] text-zinc-500">
               Left-to-right layout from{" "}
               <code className="rounded bg-zinc-800/80 px-1 font-mono">depends_on</code> in
-              the system graph. Pan, zoom, and minimap; click a node to open the same
-              detail drawer as the layered cards. Refresh health to update status dots.
+              the system graph. Platform badges and deploy times use live signals where
+              configured. Click a node to jump to its Studio surface (Brain →
+              conversations, infra nodes → infrastructure, products → cockpit).{" "}
+              <span className="text-zinc-400">Shift+click</span> opens the detail drawer.
+              Refresh health to update status dots.
             </p>
           </div>
           <div className="flex h-[min(72vh,620px)] min-h-[380px] w-full flex-col">
@@ -497,7 +522,8 @@ export default function ArchitectureClient({
               edges={dagEdges}
               direction="LR"
               onNodeClick={onDagNodeClick}
-              fitViewPadding={0.18}
+              fitViewPadding={0.07}
+              fitMinZoom={0.52}
             />
           </div>
         </section>

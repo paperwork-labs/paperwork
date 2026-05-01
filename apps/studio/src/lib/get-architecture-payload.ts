@@ -1,4 +1,5 @@
 import { N8N_MIRROR_SPEC_META } from "@/lib/n8n-mirror-spec-meta";
+import { NODE_VERCEL_PROJECT } from "@/lib/architecture-vercel-projects";
 import { getN8nMirrorSchedulerStatus, type N8nMirrorPerJob } from "@/lib/command-center";
 import { systemGraph, probeAll, type NodeHealth, type SystemNode } from "@/lib/system-graph";
 
@@ -22,15 +23,6 @@ export const NODE_SCHEDULE_MIRROR_KEYS: Record<string, readonly string[] | "all"
   ],
 };
 
-/** Vite/Next app nodes on Vercel — project names under the org (see `vercel.com/paperwork-labs/{name}`). */
-export const NODE_VERCEL_PROJECT: Partial<Record<string, string>> = {
-  "studio.frontend": "studio",
-  "filefree.frontend": "filefree",
-  "launchfree.frontend": "launchfree",
-  "distill.frontend": "distill",
-  "trinkets.frontend": "trinkets",
-};
-
 export type LiveDataMeta = {
   available: boolean;
   fetched_at: string;
@@ -43,6 +35,8 @@ export type NodeLiveView = {
   liveFrame?: "emerald" | "amber" | "zinc" | "rose";
   /** Compact live signals: health time, deploy, schedule ownership. */
   liveSubtext?: string;
+  /** Relative deploy time for Vercel-mapped frontends (from production API). */
+  deployRelative?: string | null;
 };
 
 type VercelDeployMap = Record<string, string | null>;
@@ -114,10 +108,6 @@ export function buildNodeLiveViews(args: {
       parts.push(`Health ${rel}`);
     }
     const proj = NODE_VERCEL_PROJECT[node.id];
-    if (proj) {
-      const d = args.deploys[node.id];
-      parts.push(d ? `Deploy ${d}` : "Deploy unknown");
-    }
     if (keys.length > 0) {
       if (args.mirrorRetired) {
         parts.push("Schedule Brain-first (n8n mirror retired)");
@@ -137,7 +127,9 @@ export function buildNodeLiveViews(args: {
       }
     }
     const liveSubtext = parts.length > 0 ? parts.join(" · ") : undefined;
-    return { id: node.id, liveFrame, liveSubtext };
+    const deployRelative =
+      proj != null ? (args.deploys[node.id] ?? null) : undefined;
+    return { id: node.id, liveFrame, liveSubtext, deployRelative };
   });
 }
 
