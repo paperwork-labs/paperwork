@@ -8,20 +8,17 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  Activity,
   GitPullRequest,
   GitBranch,
-  Zap,
   Shield,
   Radio,
   ArrowRight,
-  Globe,
-  Server,
-  Database,
-  Cpu,
   Workflow,
   Clock,
-  Info,
+  ChevronDown,
+  Zap,
+  Activity,
+  Layers3,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -146,13 +143,6 @@ function formatTimePT(iso: string): string {
   }
 }
 
-function statusColor(s: string | undefined) {
-  const status = (s ?? "").toLowerCase();
-  if (status === "success") return "success" as const;
-  if (status === "error" || status === "failed" || status === "crashed") return "error" as const;
-  return "neutral" as const;
-}
-
 const stagger = {
   hidden: {},
   show: { transition: { staggerChildren: 0.05 } },
@@ -232,45 +222,69 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
 
   const healthyInfra = infrastructure.filter((s) => s.healthy).length;
   const degradedInfra = infrastructure.filter((s) => s.configured && !s.healthy).length;
+  const unconfiguredInfra = useMemo(
+    () => infrastructure.filter((s) => !s.configured).length,
+    [infrastructure],
+  );
+  const ciFailureCount = useMemo(
+    () => ciRuns.filter((r) => r.conclusion === "failure").length,
+    [ciRuns],
+  );
+  const ciSuccessCount = useMemo(
+    () => ciRuns.filter((r) => r.conclusion === "success").length,
+    [ciRuns],
+  );
+  const prsNeedingChanges = useMemo(
+    () => prs.filter((p) => p.brain_review?.verdict === "REQUEST_CHANGES").length,
+    [prs],
+  );
 
-  // Traffic light — "standby" = n8n not wired but nothing else degraded (F-020)
-  const ventureHealth: "green" | "yellow" | "red" | "standby" = useMemo(() => {
-    if (degradedInfra > 0 || failedLastDay > 3) return "red";
-    if (infrastructure.some((s) => !s.configured) || failedLastDay > 0) return "yellow";
-    if (!n8nConfigured && workflows.length === 0) return "standby";
-    if (workflows.length === 0) return "yellow";
+  /** Venture health from GitHub CI, infra probes, and Brain PR review — not n8n workflow volume. */
+  const ventureHealth: "green" | "yellow" | "red" = useMemo(() => {
+    if (degradedInfra > 0 || ciFailureCount >= 2) return "red";
+    if (
+      Boolean(githubPrMissingCred) ||
+      Boolean(githubCiMissingCred) ||
+      unconfiguredInfra > 0 ||
+      ciFailureCount === 1 ||
+      prsNeedingChanges > 0
+    )
+      return "yellow";
     return "green";
-  }, [degradedInfra, failedLastDay, infrastructure, n8nConfigured, workflows.length]);
+  }, [
+    degradedInfra,
+    ciFailureCount,
+    githubPrMissingCred,
+    githubCiMissingCred,
+    unconfiguredInfra,
+    prsNeedingChanges,
+  ]);
 
   const trafficLightConfig =
     {
       green: {
-        label: "All Systems Operational",
+        label: "Shipping pipeline healthy",
+        subtitle: "Infra probes green · CI and Brain reviews on track",
         bg: "border-[var(--status-success)]/40 bg-[var(--status-success-bg)]",
         text: "text-[var(--status-success)]",
         dotColor: "bg-[var(--status-success)]",
         Icon: CheckCircle2,
       },
       yellow: {
-        label: "Partially Degraded",
+        label: "Attention needed",
+        subtitle: "Review CI, infra configuration, or PRs requesting changes",
         bg: "border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)]",
         text: "text-[var(--status-warning)]",
         dotColor: "bg-[var(--status-warning)]",
         Icon: AlertTriangle,
       },
       red: {
-        label: "Service Issues Detected",
+        label: "Critical issues",
+        subtitle: "Unhealthy infra or multiple failing CI runs on main",
         bg: "border-[var(--status-danger)]/40 bg-[var(--status-danger-bg)]",
         text: "text-[var(--status-danger)]",
         dotColor: "bg-[var(--status-danger)]",
         Icon: XCircle,
-      },
-      standby: {
-        label: "Automation integrations on standby",
-        bg: "border-[var(--status-info)]/35 bg-[var(--status-info-bg)]",
-        text: "text-[var(--status-info)]",
-        dotColor: "bg-[var(--status-info)]",
-        Icon: Info,
       },
     }[ventureHealth];
 
@@ -282,24 +296,9 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
     });
   }, [executions, workflowNameById]);
 
-  // Build activity feed
+  // PR + GitHub Actions first; n8n runs live under Legacy integrations.
   const activity: ActivityItem[] = useMemo(() => {
     const items: ActivityItem[] = [
-      ...executions.slice(0, 20).map((e) => {
-        const status = statusColor(e.status);
-        const label = e.status
-          ? `Workflow ${e.status}`
-          : e.finished
-            ? "Workflow finished"
-            : "Workflow running";
-        return {
-          id: `exec-${e.id}`,
-          timestamp: e.startedAt ?? e.stoppedAt ?? "",
-          label,
-          detail: `${workflowNameById.get(e.workflowId ?? "") ?? "Unknown"} (#${e.id})`,
-          status,
-        };
-      }),
       ...prs.slice(0, 10).map((pr) => {
         const verdictTag = pr.brain_review
           ? pr.brain_review.verdict === "APPROVE"
@@ -324,23 +323,42 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
               : "neutral") as "error" | "success" | "neutral",
         };
       }),
+      ...ciRuns.slice(0, 8).map((run) => ({
+        id: `ci-${run.id}`,
+        timestamp: run.updatedAt,
+        label:
+          run.status === "in_progress" || run.status === "queued"
+            ? `CI ${run.status.replace(/_/g, " ")}`
+            : run.conclusion === "success"
+              ? "CI passed"
+              : run.conclusion === "failure"
+                ? "CI failed"
+                : `CI ${run.conclusion ?? run.status}`,
+        detail: run.name,
+        href: run.url,
+        status: (run.conclusion === "failure"
+          ? "error"
+          : run.conclusion === "success"
+            ? "success"
+            : "neutral") as "error" | "success" | "neutral",
+      })),
     ]
       .filter((item) => Boolean(item.timestamp))
       .sort((a, b) => parseTs(b.timestamp) - parseTs(a.timestamp))
       .slice(0, 12);
 
     return items;
-  }, [executions, prs, workflowNameById]);
+  }, [prs, ciRuns]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-3xl font-semibold tracking-tight text-transparent">
-            Command Center
+            Company HQ
           </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            Executive overview — venture health at a glance.
+            Brain-led operating picture — shipping, health, and what needs a decision.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -360,19 +378,6 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           </button>
         </div>
       </div>
-
-      {!n8nConfigured ? (
-        <div
-          data-testid="overview-n8n-misconfig-banner"
-          className="rounded-xl border border-zinc-700/80 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 ring-1 ring-zinc-800"
-          role="status"
-        >
-          <span className="font-medium text-[var(--status-info)]">Automation data optional: </span>
-          n8n is not configured in this environment (set{" "}
-          <code className="rounded bg-black/30 px-1 font-mono text-xs">N8N_API_URL</code> and API
-          credentials). Dashboard tiles below will stay empty until wired.
-        </div>
-      ) : null}
 
       {githubAnyMissingCred || githubFetchErrorLines.length > 0 ? (
         <div
@@ -403,13 +408,13 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         </div>
       ) : null}
 
-      {/* Traffic Light */}
+      {/* Traffic light — GitHub CI, infra, Brain PR signals (not n8n volume) */}
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        className={`flex items-center gap-3 rounded-xl border px-5 py-4 ring-1 ring-zinc-800/90 transition hover:ring-zinc-700 ${trafficLightConfig.bg}`}
+        className={`flex items-center gap-4 rounded-xl border px-5 py-4 ring-1 ring-zinc-800/90 transition hover:ring-zinc-700 ${trafficLightConfig.bg}`}
       >
-        <span className="relative inline-block h-3 w-3">
+        <span className="relative inline-block h-3 w-3 shrink-0">
           {ventureHealth === "green" ? (
             <span
               className={`absolute inset-0 motion-safe:animate-ping rounded-full ${trafficLightConfig.dotColor} opacity-40`}
@@ -417,97 +422,25 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           ) : null}
           <span className={`relative inline-block h-3 w-3 rounded-full ${trafficLightConfig.dotColor}`} />
         </span>
-        <trafficLightConfig.Icon className={`h-5 w-5 ${trafficLightConfig.text}`} />
-        <span className={`font-medium ${trafficLightConfig.text}`}>
-          {trafficLightConfig.label}
-        </span>
-        <span className="ml-auto text-xs text-zinc-500">
-          {formatTimePT(fetchedAt)} PT
-        </span>
+        <trafficLightConfig.Icon className={`h-5 w-5 shrink-0 ${trafficLightConfig.text}`} />
+        <div className="min-w-0 flex-1">
+          <span className={`block font-medium ${trafficLightConfig.text}`}>
+            {trafficLightConfig.label}
+          </span>
+          <span className="mt-0.5 block text-xs text-zinc-500">{trafficLightConfig.subtitle}</span>
+        </div>
+        <span className="shrink-0 text-xs text-zinc-500">{formatTimePT(fetchedAt)} PT</span>
       </motion.div>
 
       <BrainFreshnessTile />
 
-      {/* Daily Briefing Widget */}
-      {lastBriefingExec && (
-        <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4 ring-1 ring-zinc-800 transition hover:border-zinc-700 hover:ring-zinc-700">
-          <div className="flex items-center gap-2.5">
-            <Radio className="h-4 w-4 text-zinc-500" />
-            <p className="text-sm text-zinc-300">
-              Daily briefing last ran{" "}
-              <span className="font-medium text-zinc-100">
-                {relativeTime(lastBriefingExec.startedAt || lastBriefingExec.stoppedAt)}
-              </span>
-              {lastBriefingExec.status && (
-                <span
-                  className={`ml-1.5 ${
-                    lastBriefingExec.status === "success"
-                      ? "text-[var(--status-success)]"
-                      : "text-[var(--status-danger)]"
-                  }`}
-                >
-                  ({lastBriefingExec.status})
-                </span>
-              )}
-            </p>
-          </div>
-          <a
-            href={slackDailyBriefingHref || "https://app.slack.com/client"}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs text-zinc-500 transition hover:text-zinc-300"
-            title={
-              slackDailyBriefingHref
-                ? "Open Slack"
-                : "Set NEXT_PUBLIC_SLACK_DAILY_BRIEFING_URL for a deep link to #daily-briefing"
-            }
-          >
-            {slackDailyBriefingHref ? "#daily-briefing" : "Slack · #daily-briefing"}
-          </a>
-        </div>
-      )}
-
-      {/* Stat cards */}
+      {/* Stat cards — PRs, CI, infra, products */}
       <motion.section
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
         variants={stagger}
         initial="hidden"
         animate="show"
       >
-        <motion.div variants={fadeUp}>
-          <Link
-            href="/admin/architecture?tab=flows"
-            className={STAT_CARD_LINK}
-            aria-label="Open workflows and automation flows"
-          >
-            <HqStatCard
-              variant="default"
-              status={workflows.length > 0 && activeWorkflows === workflows.length ? "success" : "neutral"}
-              icon={<Zap className="h-4 w-4 text-zinc-500" />}
-              label="Active workflows"
-              value={workflows.length > 0 ? `${activeWorkflows}/${workflows.length}` : "—"}
-              helpText="n8n workflows enabled · click to open flows"
-            />
-          </Link>
-        </motion.div>
-
-        <motion.div variants={fadeUp}>
-          <Link
-            href="/admin/architecture?tab=flows"
-            className={STAT_CARD_LINK}
-            aria-label="Open automation architecture"
-          >
-            <HqStatCard
-              variant="default"
-              status={failedLastDay > 0 ? "danger" : "neutral"}
-              icon={<Activity className="h-4 w-4 text-zinc-500" />}
-              label="24h executions"
-              value={executionsLastDay.length}
-              helpText={`${successfulLastDay} success / ${failedLastDay} failed`}
-            />
-          </Link>
-        </motion.div>
-
         <motion.div variants={fadeUp}>
           <Link
             href={
@@ -524,7 +457,9 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           >
             <HqStatCard
               variant="default"
-              status={githubPrDegraded ? "warning" : "neutral"}
+              status={
+                githubPrDegraded ? "warning" : prsNeedingChanges > 0 ? "danger" : "neutral"
+              }
               icon={<GitPullRequest className="h-4 w-4 text-zinc-500" />}
               label="Open PRs"
               value={githubPrDegraded ? "—" : prs.length}
@@ -537,6 +472,41 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
               }
             />
           </Link>
+        </motion.div>
+
+        <motion.div variants={fadeUp}>
+          <a
+            href="https://github.com/paperwork-labs/paperwork/actions?query=branch%3Amain"
+            className={STAT_CARD_LINK}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open GitHub Actions for main branch"
+          >
+            <HqStatCard
+              variant="default"
+              status={
+                githubCiMissingCred
+                  ? "warning"
+                  : ciFailureCount > 0
+                    ? "danger"
+                    : ciRuns.length > 0 && ciSuccessCount === ciRuns.length
+                      ? "success"
+                      : "neutral"
+              }
+              icon={<GitBranch className="h-4 w-4 text-zinc-500" />}
+              label="CI on main"
+              value={githubCiMissingCred ? "—" : ciRuns.length === 0 ? "—" : `${ciSuccessCount}/${ciRuns.length}`}
+              helpText={
+                githubCiMissingCred
+                  ? "Connect GITHUB_TOKEN to load workflow runs."
+                  : ciRuns.length === 0
+                    ? "No recent runs loaded."
+                    : ciFailureCount > 0
+                      ? `${ciFailureCount} failing · recent runs below`
+                      : "Recent runs below"
+              }
+            />
+          </a>
         </motion.div>
 
         <motion.div variants={fadeUp}>
@@ -553,13 +523,26 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
               icon={<Shield className="h-4 w-4 text-zinc-500" />}
               label="Infra health"
               value={infrastructure.length > 0 ? `${healthyInfra}/${infrastructure.length}` : "—"}
-              helpText="Provider checks passing · click for detail"
+              helpText="Provider checks · Brain, APIs, frontends"
+            />
+          </Link>
+        </motion.div>
+
+        <motion.div variants={fadeUp}>
+          <Link href="/admin/products" className={STAT_CARD_LINK} aria-label="Open products catalog">
+            <HqStatCard
+              variant="default"
+              status="neutral"
+              icon={<Layers3 className="h-4 w-4 text-zinc-500" />}
+              label="Products"
+              value="Catalog"
+              helpText="Ship matrix, plans, and product health"
             />
           </Link>
         </motion.div>
       </motion.section>
 
-      {/* Architecture link + CI Runs */}
+      {/* Architecture + CI */}
       <div className="grid gap-4 md:grid-cols-2">
         <Link
           href="/admin/architecture"
@@ -568,32 +551,29 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           <div>
             <div className="mb-3 flex items-center gap-2">
               <Workflow className="h-4 w-4 text-zinc-500" />
-              <p className="text-sm font-medium text-zinc-200">System architecture</p>
+              <p className="text-sm font-medium text-zinc-200">Architecture</p>
               <ArrowRight className="ml-auto h-3.5 w-3.5 text-zinc-600 transition group-hover:translate-x-0.5 group-hover:text-zinc-300" />
             </div>
             <p className="text-sm leading-relaxed text-zinc-400">
-              Layered service catalog with health probes — bronze, silver, gold,
-              execution, frontend, platform, infra. Click any service for the dependency
-              drawer; full interactive graph at the architecture page link.
+              System map and dependencies — services, probes, and how Brain ties to what ships.
+              Open the graph for the full interactive view.
             </p>
           </div>
-          <div className="mt-5 flex items-center gap-3 text-xs text-zinc-500">
+          <div className="mt-5 flex flex-wrap items-center gap-3 text-xs text-zinc-500">
             <span className="rounded-md bg-zinc-800/60 px-2 py-1 font-mono text-zinc-300">
-              {infrastructure.length} infra probes
+              {infrastructure.length} probes
             </span>
             <span className="rounded-md bg-zinc-800/60 px-2 py-1 font-mono text-zinc-300">
               {healthyInfra}/{infrastructure.length} healthy
             </span>
-            <span className="ml-auto text-zinc-600 group-hover:text-zinc-400">
-              Open →
-            </span>
+            <span className="ml-auto text-zinc-600 group-hover:text-zinc-400">Open →</span>
           </div>
         </Link>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
           <div className="mb-3 flex items-center gap-2">
             <GitBranch className="h-4 w-4 text-zinc-500" />
-            <p className="text-sm font-medium text-zinc-200">Recent CI Runs</p>
+            <p className="text-sm font-medium text-zinc-200">Recent CI on main</p>
             <a
               href="https://github.com/paperwork-labs/paperwork/actions"
               target="_blank"
@@ -603,7 +583,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
               All runs <ExternalLink className="ml-1 inline h-3 w-3" />
             </a>
           </div>
-          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+          <div className="max-h-72 space-y-1.5 overflow-y-auto">
             {githubCiMissingCred ? (
               <p className="py-2 text-sm text-zinc-500">
                 Recent runs are not loaded — set <code className="font-mono text-xs">GITHUB_TOKEN</code> (see
@@ -651,64 +631,16 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         </section>
       </div>
 
-      {/* Slack Activity + Activity Feed + Quick Links */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm font-medium text-zinc-200">Brain · Slack activity</p>
-          <span className="text-[10px] uppercase tracking-wide text-zinc-500">
-            {slackActivity.length} recent
-          </span>
-        </div>
-        <div className="space-y-1.5 max-h-72 overflow-y-auto">
-          {slackActivity.length === 0 ? (
-            <p className="py-2 text-sm text-zinc-500">
-              No Slack conversations in memory yet. Brain posts here when personas
-              reply in threads or proactive cadences fire.
-            </p>
-          ) : (
-            slackActivity.map((entry) => (
-              <div key={entry.id} className="rounded-md bg-zinc-800/40 px-3 py-2 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--status-info)]" />
-                  <span className="font-medium text-zinc-100">
-                    {entry.persona}
-                  </span>
-                  {entry.persona_pinned ? (
-                    <span className="rounded-full bg-[var(--status-info-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--status-info)]">
-                      pinned
-                    </span>
-                  ) : null}
-                  <span className="truncate text-xs text-zinc-500">
-                    #{entry.channel_id}
-                  </span>
-                  <span className="ml-auto shrink-0 text-xs text-zinc-600">
-                    {relativeTime(entry.created_at)}
-                  </span>
-                </div>
-                <p className="mt-0.5 truncate pl-[14px] text-xs text-zinc-400">
-                  {entry.summary}
-                </p>
-                {entry.model ? (
-                  <p className="pl-[14px] text-[10px] text-zinc-600">{entry.model}</p>
-                ) : null}
-              </div>
-            ))
-          )}
-        </div>
-      </section>
-
       <div className="grid gap-4 md:grid-cols-2">
         <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
-          <p className="mb-3 text-sm font-medium text-zinc-200">Activity Feed</p>
-          <div className="space-y-1.5 max-h-96 overflow-y-auto">
+          <p className="mb-3 text-sm font-medium text-zinc-200">Shipping activity</p>
+          <p className="mb-3 text-xs text-zinc-500">Pull requests and GitHub Actions — newest first.</p>
+          <div className="max-h-96 space-y-1.5 overflow-y-auto">
             {activity.length === 0 ? (
-              <p className="py-2 text-sm text-zinc-500">No recent activity.</p>
+              <p className="py-2 text-sm text-zinc-500">No recent PR or CI activity.</p>
             ) : (
               activity.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-md bg-zinc-800/40 px-3 py-2 text-sm"
-                >
+                <div key={item.id} className="rounded-md bg-zinc-800/40 px-3 py-2 text-sm">
                   <div className="flex items-center gap-2">
                     <span
                       className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
@@ -734,9 +666,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
                       {item.detail}
                     </a>
                   ) : (
-                    <p className="mt-0.5 truncate pl-[14px] text-xs text-zinc-500">
-                      {item.detail}
-                    </p>
+                    <p className="mt-0.5 truncate pl-[14px] text-xs text-zinc-500">{item.detail}</p>
                   )}
                 </div>
               ))
@@ -745,13 +675,13 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         </section>
 
         <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
-          <p className="mb-3 text-sm font-medium text-zinc-200">Quick Links</p>
+          <p className="mb-3 text-sm font-medium text-zinc-200">Quick links</p>
           <div className="space-y-1">
             {[
-              { label: "Workflows", href: "/admin/architecture?tab=flows", internal: true },
-              { label: "Sprint tracker", href: "/admin/sprints", internal: true },
-              { label: "Infrastructure", href: "/admin/infrastructure", internal: true },
-              { label: "Secrets vault", href: "/admin/infrastructure?tab=secrets", internal: true },
+              { label: "Brain conversations", href: "/admin/brain/conversations" },
+              { label: "Workstreams", href: "/admin/workstreams" },
+              { label: "Products", href: "/admin/products" },
+              { label: "Architecture", href: "/admin/architecture" },
             ].map((link) => (
               <Link
                 key={link.href}
@@ -762,30 +692,163 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
                 <ArrowRight className="h-3.5 w-3.5 text-zinc-600" />
               </Link>
             ))}
-
-            <div className="my-2 border-t border-zinc-800/60" />
-
-            {[
-              { label: "n8n Editor", href: "https://n8n.paperworklabs.com" },
-              { label: "Render Dashboard", href: "https://dashboard.render.com" },
-              { label: "Vercel Dashboard", href: "https://vercel.com/paperwork-labs" },
-              { label: "GitHub Repository", href: "https://github.com/paperwork-labs/paperwork" },
-              { label: "Neon Console", href: "https://console.neon.tech" },
-            ].map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between rounded-md px-3 py-2 text-sm text-zinc-400 transition hover:bg-zinc-800/60 hover:text-zinc-200"
-              >
-                {link.label}
-                <ExternalLink className="h-3.5 w-3.5 text-zinc-600" />
-              </a>
-            ))}
           </div>
         </section>
       </div>
+
+      <details className="group rounded-xl border border-zinc-800 bg-zinc-950 ring-1 ring-zinc-800 open:ring-zinc-700">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4 [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-2 text-sm font-medium text-zinc-200">
+            <ChevronDown className="h-4 w-4 shrink-0 text-zinc-500 transition group-open:rotate-180" />
+            Legacy integrations
+          </span>
+          <span className="text-xs text-zinc-500">n8n · Slack</span>
+        </summary>
+        <div className="space-y-4 border-t border-zinc-800/80 px-5 pb-5 pt-4">
+          {!n8nConfigured ? (
+            <div
+              data-testid="overview-n8n-misconfig-banner"
+              className="rounded-xl border border-zinc-700/80 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 ring-1 ring-zinc-800"
+              role="status"
+            >
+              <span className="font-medium text-[var(--status-info)]">Optional: </span>
+              n8n is not configured here (set{" "}
+              <code className="rounded bg-black/30 px-1 font-mono text-xs">N8N_API_URL</code> and API
+              credentials). Legacy workflow tiles stay empty until wired.
+            </div>
+          ) : null}
+
+          {lastBriefingExec ? (
+            <div className="flex flex-col gap-3 rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4 ring-1 ring-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2.5">
+                <Radio className="h-4 w-4 text-zinc-500" />
+                <p className="text-sm text-zinc-300">
+                  Daily briefing (n8n) last ran{" "}
+                  <span className="font-medium text-zinc-100">
+                    {relativeTime(lastBriefingExec.startedAt || lastBriefingExec.stoppedAt)}
+                  </span>
+                  {lastBriefingExec.status ? (
+                    <span
+                      className={`ml-1.5 ${
+                        lastBriefingExec.status === "success"
+                          ? "text-[var(--status-success)]"
+                          : "text-[var(--status-danger)]"
+                      }`}
+                    >
+                      ({lastBriefingExec.status})
+                    </span>
+                  ) : null}
+                </p>
+              </div>
+              <a
+                href={slackDailyBriefingHref || "https://app.slack.com/client"}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-zinc-500 transition hover:text-zinc-300"
+                title={
+                  slackDailyBriefingHref
+                    ? "Open Slack"
+                    : "Set NEXT_PUBLIC_SLACK_DAILY_BRIEFING_URL for a deep link to #daily-briefing"
+                }
+              >
+                Slack · #daily-briefing
+              </a>
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Link
+              href="/admin/architecture?tab=flows"
+              className={STAT_CARD_LINK}
+              aria-label="Open automation flows in architecture"
+            >
+              <HqStatCard
+                variant="default"
+                status={workflows.length > 0 && activeWorkflows === workflows.length ? "success" : "neutral"}
+                icon={<Zap className="h-4 w-4 text-zinc-500" />}
+                label="n8n workflows"
+                value={workflows.length > 0 ? `${activeWorkflows}/${workflows.length}` : "—"}
+                helpText="Legacy automation editor · flows tab"
+              />
+            </Link>
+            <Link
+              href="/admin/architecture?tab=flows"
+              className={STAT_CARD_LINK}
+              aria-label="Open automation architecture flows"
+            >
+              <HqStatCard
+                variant="default"
+                status={failedLastDay > 0 ? "danger" : "neutral"}
+                icon={<Activity className="h-4 w-4 text-zinc-500" />}
+                label="n8n · 24h executions"
+                value={String(executionsLastDay.length)}
+                helpText={`${successfulLastDay} success / ${failedLastDay} failed`}
+              />
+            </Link>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Slack activity mirror
+            </p>
+            <div className="max-h-72 space-y-1.5 overflow-y-auto rounded-xl border border-zinc-800/80 bg-zinc-950/50 p-3 ring-1 ring-zinc-800/60">
+              {slackActivity.length === 0 ? (
+                <p className="py-2 text-sm text-zinc-500">
+                  No mirrored Slack threads in Brain memory yet.
+                </p>
+              ) : (
+                slackActivity.map((entry) => (
+                  <div key={entry.id} className="rounded-md bg-zinc-800/40 px-3 py-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--status-info)]" />
+                      <span className="font-medium text-zinc-100">{entry.persona}</span>
+                      {entry.persona_pinned ? (
+                        <span className="rounded-full bg-[var(--status-info-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--status-info)]">
+                          pinned
+                        </span>
+                      ) : null}
+                      <span className="truncate text-xs text-zinc-500">#{entry.channel_id}</span>
+                      <span className="ml-auto shrink-0 text-xs text-zinc-600">
+                        {relativeTime(entry.created_at)}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 truncate pl-[14px] text-xs text-zinc-400">{entry.summary}</p>
+                    {entry.model ? (
+                      <p className="pl-[14px] text-[10px] text-zinc-600">{entry.model}</p>
+                    ) : null}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+              Provider shortcuts
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { label: "n8n Editor", href: "https://n8n.paperworklabs.com" },
+                { label: "Render", href: "https://dashboard.render.com" },
+                { label: "Vercel", href: "https://vercel.com/paperwork-labs" },
+                { label: "GitHub", href: "https://github.com/paperwork-labs/paperwork" },
+                { label: "Neon", href: "https://console.neon.tech" },
+              ].map((link) => (
+                <a
+                  key={link.href}
+                  href={link.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-md border border-zinc-800 bg-zinc-900/50 px-2.5 py-1.5 text-xs text-zinc-400 transition hover:border-zinc-700 hover:text-zinc-200"
+                >
+                  {link.label}
+                  <ExternalLink className="h-3 w-3 text-zinc-600" />
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
