@@ -12,37 +12,39 @@ This worksheet is the single source of truth for founder-owned setup. Two tiers:
 
 ## WS-82 Wave 0 P0 (DO TODAY — bleeding wounds)
 
-These cannot be auto-dispatched (require dashboard clicks). All other Wave 0 PRs are running via cheap agents.
+These require dashboard clicks. All other Wave 0 PRs are running via cheap agents.
 
-### A0. AxiomFolio login + DNS (founder cannot login to axiomfolio.com)
+### A0. AxiomFolio login + DNS (Error 1000 blocking axiomfolio.com)
 
-**Render env vars (axiomfolio-api service)**:
-1. `render dashboard` → axiomfolio-api → Environment
+**Render env vars (axiomfolio-api service)** — needed for Clerk auth:
+1. Render Dashboard → axiomfolio-api → Environment
 2. Add `CLERK_JWT_ISSUER` = (Clerk → API Keys → Frontend API URL — copy the `https://...clerk.accounts.dev` or production Clerk URL)
 3. Add `CLERK_SECRET_KEY` = (Clerk → API Keys → Secret keys → copy production key)
 4. Save → service auto-redeploys
-5. Also add both to `render.yaml` so the Render Blueprint enforces (see PR-A3 of WS-82 if open).
 
 **Cloudflare DNS (axiomfolio.com)**:
 1. Cloudflare Dashboard → axiomfolio.com → DNS
-2. Delete any A records for `@` or `axiomfolio.com` that point to Cloudflare IPs (162.159.x.x, 172.66.x.x — these are causing Error 1000 loops)
-3. Set apex `A` → `76.76.21.21` (Vercel anycast IP), Proxy status: **DNS only** (gray cloud, NOT orange)
+2. Delete any A records for `@` or `axiomfolio.com` that point to Cloudflare IPs (162.159.x.x, 172.66.x.x — these cause Error 1000)
+3. Set apex `A` → `76.76.21.21` (Vercel anycast IP), Proxy status: **DNS only** (gray cloud)
 4. Set `www` `CNAME` → `cname.vercel-dns.com`, Proxy status: **DNS only**
-5. Wait ~2min for propagation, then test: `dig axiomfolio.com +short` should return `76.76.21.21`
-6. Browser test: `https://axiomfolio.com` should hit Vercel; `https://axiomfolio.com/sign-in` should show Clerk widget
+5. Wait ~2min then test: `dig axiomfolio.com +short` should return `76.76.21.21`
+6. Browser test: `https://axiomfolio.com` should load
 
-### A1. Studio Vercel env wiring (kills "Brain unreachable" + missing-cred banners)
+### A1. Brain Render env vars (for quota monitoring)
 
-1. Vercel Dashboard → paperwork-labs → studio → Settings → Environment Variables
-2. Add (Production + Preview):
-   - `BRAIN_API_URL` = `https://brain-api.onrender.com` (or current Brain URL)
-   - `BRAIN_API_SECRET` = (vault → BRAIN_API_INTERNAL_TOKEN)
-   - `VERCEL_MONOREPO_PROJECT_NAMES` = `studio,axiomfolio,filefree,launchfree,distill,trinkets,paperworklabs`
-3. **Brain (Render)** → brain-api service → Environment Variables, add:
-   - `VERCEL_API_TOKEN` = (Vercel → Account Settings → Tokens → create "brain-api-quota-monitor")
-   - `RENDER_API_KEY` = (Render → Account Settings → API Keys → create "brain-api-quota-monitor")
-4. Redeploy Studio so env vars are picked up.
-5. Verify: `/admin` should NOT show "Brain unreachable"; `/admin/infrastructure?tab=services` should show per-project Vercel cards.
+**Render Dashboard (brain-api service)**:
+1. Render Dashboard → brain-api → Environment
+2. Add `VERCEL_API_TOKEN` = (Vercel → Account Settings → Tokens → create "brain-api-quota-monitor")
+3. Add `RENDER_API_KEY` = (Render → Account Settings → API Keys → create "brain-api-quota-monitor")
+4. Save → service auto-redeploys
+
+---
+
+## DONE via CLI (2026-04-30)
+
+- **Item 19**: `VERCEL_MONOREPO_PROJECT_NAMES` set on Studio via `vercel env add`
+
+---
 
 ## Critical path (do these in Week 1, parallel to engineering)
 
@@ -79,15 +81,5 @@ Post–WS-02 cutover, the AxiomFolio frontend lives on **Vercel**. The legacy Re
 
 1. `render services list --output json | jq '.[] | select(.name == "axiomfolio-frontend")'`
 2. `render services delete <service-id>` (confirm workspace)
-
-### Item 19 — Set `VERCEL_MONOREPO_PROJECT_NAMES` on Studio (Vercel)
-
-<a id="item-19--set-vercel_monorepo_project_names"></a>
-
-Studio `/admin/infrastructure` reads this comma-separated list to know which Vercel project slugs to probe. Without it, the Services tab shows a single remediation card instead of per-project cards.
-
-1. In Vercel → **paperwork-labs** → **studio** → **Settings** → **Environment Variables**, add `VERCEL_MONOREPO_PROJECT_NAMES` for Production (and Preview if you use preview deploys for admin).
-2. Suggested value: `studio,axiomfolio,filefree,launchfree,distill,trinkets,axiomfolio-marketing,paperworklabs` (adjust slugs to match your team).
-3. Redeploy Studio so the var is live.
 
 > **TODO (WS-76):** Register Brain audit `founder_actions_pending` (weekly cadence; count open checkboxes) in `audit_registry.json` seed when a lightweight runner exists.
