@@ -6,6 +6,7 @@ import type {
   OperatingScoreHistoryResponse,
   PersonaDispatchSummaryResponse,
 } from "@/lib/brain-client";
+import type { OperatingScoreEntry } from "@/types/operating-score";
 import { collectRenderAndVercelProbes } from "@/lib/infra-probes";
 
 export type { InfraStatus, InfrastructureView, PlatformHealthSummary } from "@/lib/infra-types";
@@ -1163,4 +1164,22 @@ export async function getInfrastructureView(): Promise<InfrastructureView> {
 
 export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
   return (await getInfrastructureView()).services;
+}
+
+/**
+ * `GET /api/v1/admin/operating-score/history` — chronological POS totals for Overview sparklines.
+ * Returns null if Brain is not configured or the request fails.
+ */
+export async function getBrainOperatingScoreHistory(limit = 52): Promise<OperatingScoreEntry[] | null> {
+  const apiRoot = getBrainApiRoot();
+  const secret = process.env.BRAIN_API_SECRET?.trim();
+  if (!apiRoot || !secret) return null;
+  const u = new URL(`${apiRoot}/admin/operating-score/history`);
+  if (limit > 0) u.searchParams.set("limit", String(limit));
+  const envelope = await fetchJson<{
+    success?: boolean;
+    data?: OperatingScoreEntry[];
+  }>(u.toString(), { headers: { "X-Brain-Secret": secret } });
+  if (!envelope || envelope.success === false || !Array.isArray(envelope.data)) return null;
+  return envelope.data;
 }

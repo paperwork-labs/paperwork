@@ -1,26 +1,26 @@
-import goalsData from "@/data/goals.json";
 import { BrainClient } from "@/lib/brain-client";
 import type { GoalsJson } from "@/lib/goals-metrics";
-import { GoalsClient } from "./goals-client";
+import { GoalsBrainDisconnected, GoalsClient } from "./goals-client";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Goals & OKRs — Studio" };
 
 export default async function GoalsPage() {
-  let data: GoalsJson = goalsData;
-  let brainUnavailable = true;
+  let liveGoals: GoalsJson | null = null;
 
   const brain = BrainClient.fromEnv();
   if (brain) {
     try {
-      data = await brain.getGoals();
-      brainUnavailable = false;
+      liveGoals = await brain.getGoals();
     } catch {
-      data = goalsData;
-      brainUnavailable = true;
+      liveGoals = null;
     }
   }
 
-  return <GoalsClient data={data} brainUnavailable={brainUnavailable} />;
+  return liveGoals ? (
+    <GoalsClient data={liveGoals} />
+  ) : (
+    <GoalsBrainDisconnected brainConfigured={brain != null} />
+  );
 }

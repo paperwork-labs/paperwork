@@ -130,6 +130,25 @@ describe("OperatingScoreGaugeBody", () => {
     expect(rows.length).toBe(OPERATING_SCORE_PILLAR_ORDER.length + 1);
   });
 
+  it("renders trend sparkline when operatingScoreHistory has ≥2 points", () => {
+    const e1 = entryWithTotal(62);
+    e1.computed_at = "2026-04-20T10:00:00Z";
+    const e2 = entryWithTotal(64);
+    e2.computed_at = "2026-04-27T10:00:00Z";
+    const e3 = entryWithTotal(65);
+    e3.computed_at = "2026-04-30T10:00:00Z";
+    const data: OperatingScoreResponse = {
+      current: e3,
+      history_last_12: [],
+      gates: e3.gates,
+    };
+    render(
+      <OperatingScoreGaugeBody data={data} brainConfigured operatingScoreHistory={[e1, e2, e3]} />,
+    );
+    expect(screen.getByTestId("operating-score-sparkline-wrap")).toBeTruthy();
+    expect(screen.getByRole("img", { name: /Operating score trend/i })).toBeTruthy();
+  });
+
   it("trend arrows from history (last two entries)", () => {
     const older = entryWithTotal(70, { autonomy: 60 });
     older.computed_at = "2026-04-01T10:00:00Z";

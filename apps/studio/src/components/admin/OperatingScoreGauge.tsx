@@ -1,4 +1,5 @@
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
+import { getBrainOperatingScoreHistory } from "@/lib/command-center";
 import type { OperatingScoreResponse } from "@/types/operating-score";
 
 import { OperatingScoreGaugeBody } from "./OperatingScoreGaugeBody";
@@ -14,13 +15,22 @@ function emptyOperatingResponse(): OperatingScoreResponse {
 export async function OperatingScoreGauge() {
   const auth = getBrainAdminFetchOptions();
   if (!auth.ok) {
-    return <OperatingScoreGaugeBody data={emptyOperatingResponse()} brainConfigured={false} />;
+    return (
+      <OperatingScoreGaugeBody
+        data={emptyOperatingResponse()}
+        brainConfigured={false}
+        operatingScoreHistory={null}
+      />
+    );
   }
 
-  const res = await fetch(`${auth.root}/admin/operating-score`, {
-    headers: { "X-Brain-Secret": auth.secret },
-    cache: "no-store",
-  });
+  const [res, operatingScoreHistory] = await Promise.all([
+    fetch(`${auth.root}/admin/operating-score`, {
+      headers: { "X-Brain-Secret": auth.secret },
+      cache: "no-store",
+    }),
+    getBrainOperatingScoreHistory(52),
+  ]);
 
   if (!res.ok) {
     return (
@@ -54,5 +64,11 @@ export async function OperatingScoreGauge() {
     );
   }
 
-  return <OperatingScoreGaugeBody data={json.data} brainConfigured />;
+  return (
+    <OperatingScoreGaugeBody
+      data={json.data}
+      brainConfigured
+      operatingScoreHistory={operatingScoreHistory}
+    />
+  );
 }
