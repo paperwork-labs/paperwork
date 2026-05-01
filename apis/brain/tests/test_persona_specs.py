@@ -45,8 +45,10 @@ def test_get_spec_missing_returns_none():
 
 
 def test_get_spec_handles_bad_input():
-    assert get_spec("") is None
-    assert get_spec("../../etc/passwd") is None
+    with pytest.raises(ValueError, match="invalid persona slug"):
+        get_spec("")
+    with pytest.raises(ValueError, match="invalid persona slug"):
+        get_spec("../../etc/passwd")
 
 
 def test_escalate_if_rejects_unknown_tags():

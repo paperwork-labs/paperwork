@@ -523,7 +523,10 @@ async def create_persona_autopilot_dispatch(
     ``autopilot`` and ``metadata.status=pending``; ``POST /admin/dispatch/{id}/approve``
     or ``veto`` transitions the task.
     """
-    spec = get_spec(persona_slug)
+    try:
+        spec = get_spec(persona_slug)
+    except ValueError:
+        raise HTTPException(status_code=404, detail=f"Unknown persona: {persona_slug}") from None
     if spec is None:
         raise HTTPException(status_code=404, detail=f"Unknown persona: {persona_slug}")
 

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
@@ -67,6 +69,49 @@ async def test_persona_dispatch_happy_path(client: AsyncClient, db_session) -> N
     assert meta["created_by"] == "cfo"
     assert meta["ticket"] == "PB-3"
     assert meta["created_at"] == data["created_at"]
+
+
+@pytest.mark.asyncio
+async def test_persona_dispatch_path_traversal_slug_returns_404(client: AsyncClient) -> None:
+    """Traversal in a single path segment must not read outside specs dir."""
+    slug = quote("../../etc/passwd", safe="")
+    r = await client.post(
+        f"/api/v1/admin/personas/{slug}/dispatch",
+        headers=_headers(),
+        json={"task_title": "x", "task_description": "y"},
+    )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_persona_dispatch_multi_segment_traversal_url(client: AsyncClient) -> None:
+    """Bare ``..`` in URL may not match the dispatch route; any non-success is fine."""
+    r = await client.post(
+        "/api/v1/admin/personas/../../etc/passwd/dispatch",
+        headers=_headers(),
+        json={"task_title": "x", "task_description": "y"},
+    )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_persona_dispatch_invalid_slug_uppercase_returns_404(client: AsyncClient) -> None:
+    r = await client.post(
+        "/api/v1/admin/personas/UPPERCASE/dispatch",
+        headers=_headers(),
+        json={"task_title": "x", "task_description": "y"},
+    )
+    assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_persona_dispatch_invalid_slug_spaces_returns_404(client: AsyncClient) -> None:
+    r = await client.post(
+        "/api/v1/admin/personas/with%20spaces/dispatch",
+        headers=_headers(),
+        json={"task_title": "x", "task_description": "y"},
+    )
+    assert r.status_code == 404
 
 
 @pytest.mark.asyncio
