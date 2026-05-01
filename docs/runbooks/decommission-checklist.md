@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Domain / App Decommission Checklist
 
 **TL;DR:** Steps to remove a domain or app safely while keeping audit history (archive Vercel, DNS cleanup, registry updates). Follow before you tear down production URLs.

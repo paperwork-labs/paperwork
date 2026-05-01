@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Studio tracker reconcile — WS-69 PR A (2026 Q2)
 
 ## Rationale

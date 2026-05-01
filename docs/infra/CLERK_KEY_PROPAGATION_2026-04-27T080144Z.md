@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Clerk key propagation audit — 2026-04-27T080144Z
 
 **Agent:** P (composer-2-fast)  

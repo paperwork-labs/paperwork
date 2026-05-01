@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Clerk SSO — Paperwork Studio (Next.js)
 
 Runbook for the Studio app (`apps/studio`) identity stack: Clerk (primary SSO) with Basic Auth as a documented operator escape hatch until that path is removed by an explicit follow-up.

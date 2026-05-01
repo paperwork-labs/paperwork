@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Stack audit — 2026 Q2 (WS-73 Batch B)
 
 Snapshot date: **2026-04-30**. Sources: root `package.json` engines, workspace `package.json` files, `pnpm-lock.yaml` resolution hints (`pnpm outdated -r`), `npm view` / registry metadata, `apis/brain/requirements.txt` + `uv pip compile`, PyPI JSON for `openai`, `render.yaml` + `apis/brain/Dockerfile` for runtime Python.

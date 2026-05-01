@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Studio vault — read / write helpers
 
 The Studio app exposes a Postgres-backed encrypted secrets store. These shell helpers call the Studio HTTP API so you do not need to hand-craft `curl` and JSON.

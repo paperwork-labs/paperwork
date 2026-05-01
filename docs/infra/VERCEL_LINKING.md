@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Vercel linking (monorepo)
 
 Every app deployed on Vercel needs a local **link** so the CLI knows which team and project to use. That state lives in `apps/<name>/.vercel/project.json`, which is **gitignored** (it contains IDs that differ per developer and must never be committed).

@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Chromatic visual regression
 
 Chromatic is wired into the `apps/design` Storybook canvas. It builds Storybook

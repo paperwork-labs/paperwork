@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Clerk SSO — Trinkets (Next.js)
 
 Runbook for the Trinkets app (`apps/trinkets`) identity layer: **Clerk** for interactive SSO (`/sign-in`, `/sign-up`) and global `ClerkProvider` appearance. The app is a **public** utility surface (home and future tool routes stay ungated in middleware); there is **no** legacy session cookie, **no** Basic Auth escape hatch, and **no** admin gate in this app—match LaunchFree/Studio only when you add protected routes later.

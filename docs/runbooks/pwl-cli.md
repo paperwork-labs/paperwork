@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # pwl CLI Runbook
 
 **TL;DR:** Operator commands for listing apps, doctor checks, scaffolding APIs, and rebuilding `app_registry.json`. Open when you onboard a service or refresh the manifest.

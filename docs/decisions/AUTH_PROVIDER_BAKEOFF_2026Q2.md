@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Auth Provider Bakeoff — 2026 Q2
 
 **Context:** Vercel-hosted Next.js monorepo; six sub-products (Studio, AxiomFolio-next, FileFree, LaunchFree, Distill, Trinkets) on Clerk via Vercel Marketplace; ~1 week integration sunk; Clerk Hobby (free) with “Powered/Secured by Clerk” on prebuilt UIs; Pro removes branding at **$25/mo** ($240/yr on annual) per [Clerk pricing](https://clerk.com/pricing). Vercel’s own auth skill still positions **Clerk** as the default for fastest Vercel setup and **Auth0** for deep enterprise identity ([Vercel auth skill, local cache](https://vercel.com)).
@@ -26,7 +30,7 @@ Scale **1–5** (5 = best on that axis). “**Migration**” = ease of *leaving*
 
 \*Auth.js: maintainers (Better Auth) recommend **new** projects use Better Auth; v5 = security/urgent fixes, not aggressive feature roadmaps ([Better Auth, Sep 2025](https://www.better-auth.com/blog/authjs-joins-better-auth), [Auth.js v5 release/migration](https://authjs.dev/getting-started/migrating-to-v5?authentication-method=middleware)). **Stack Auth** self-host is strong; **hosted** “custom branding / OIDC / SAML” is paid (Team $49, Growth $299) per [Stack pricing](https://stack-auth.com/pricing) as of 2026. †No third-party “Supabase” logo on *your* UI; auth is your DB + their infra. ‡Tied to Supabase project/egress/MAU org caps ([Supabase usage docs](https://supabase.com/docs/guides/platform/billing-on-supabase)). §SSO/SCIM for **SSO users** and quotas is a paid/Team concern per Supabase’s billing table—don’t use Free for serious SAML without reading current docs. ¶B2B/SSO via plugins/enterprise infra tier ([Better Auth pricing](https://www.better-auth.com/pricing)): **$299/mo Business** product lists self-service SSO (verify feature list at ship time). **Stytch** email branding: pay to remove per third-party writeups; free tier 10K MAU + 5 SSO/SCIM connections on [Stytch pricing](https://stytch.com/pricing) / [changelog Nov 2024](https://changelog.stytch.com/announcements/2024-11-22-updated-self-serve-pricing).
 
-**How Vercel frames it (first-party):** The shipped **auth** skill’s decision matrix: fastest on Vercel + prebuilt UI → **Clerk**; enterprise / SAML / multi-tenant depth → **Auth0**; passwordless/flow builder → **Descope** (not in your ten-candidate list but relevant peer). ([Local Vercel auth skill, read in workspace](file:///Users/paperworklabs/.cursor/plugins/cache/cursor-public/vercel/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/auth/SKILL.md))
+**How Vercel frames it (first-party):** The shipped **auth** skill’s decision matrix: fastest on Vercel + prebuilt UI → **Clerk**; enterprise / SAML / multi-tenant depth → **Auth0**; passwordless/flow builder → **Descope** (not in your ten-candidate list but relevant peer). ([Vercel Marketplace integrations](https://vercel.com/docs/integrations))
 
 ## Key questions (short answers)
 
@@ -104,7 +108,7 @@ Scale **1–5** (5 = best on that axis). “**Migration**” = ease of *leaving*
 ## Sources (core)
 
 - [Clerk pricing](https://clerk.com/pricing)  
-- [Vercel auth skill (local): Clerk, Auth0, Descope](file:///Users/paperworklabs/.cursor/plugins/cache/cursor-public/vercel/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/auth/SKILL.md)  
+- [Vercel Marketplace integrations](https://vercel.com/docs/integrations)
 - [Better Auth: Auth.js joins Better Auth, Sep 2025](https://www.better-auth.com/blog/authjs-joins-better-auth)  
 - [Auth.js migrating to v5](https://authjs.dev/getting-started/migrating-to-v5?authentication-method=middleware)  
 - [Stack Auth pricing](https://stack-auth.com/pricing) · [GitHub](https://github.com/stack-auth/stack-auth)  

@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Brain deploy recovery (Render / Postgres / Docker)
 
 **TL;DR:** Merge-time guards for Brain Alembic heads, Dockerfile healthchecks, and import path safety. Read this when Render boot fails after a migration or Dockerfile change.

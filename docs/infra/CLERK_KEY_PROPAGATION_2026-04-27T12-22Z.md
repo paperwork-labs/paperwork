@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Clerk key propagation — audit report (v2)
 
 **Run:** 2026-04-27 (Agent P-v2)  

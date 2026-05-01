@@ -107,7 +107,7 @@ Other exported workflows in the same folder (e.g. decision logger, data monitors
 - Never send SSNs, full account numbers, or other unmasked PII to any LLM.
 - “Brand voice” and “compliance” routing follow **this registry + PersonaSpec** and the decision tree, not ad-hoc n8n defaults.
 
-**n8n operational notes** (import paths, creds, env for non-Brain nodes): [infra/hetzner/workflows/README.md](../../infra/hetzner/workflows/README.md#model-configuration).
+**n8n operational notes** (import paths, creds, env for non-Brain nodes): [infra/hetzner/README.md](../infra/hetzner/README.md).
 
 ## Update protocol
 

@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Email deliverability (SPF + DMARC)
 
 **TL;DR:** What SPF and DMARC do for `paperworklabs.com`, how to apply records from this repo, and how to tighten DMARC after a soak. Read before changing mail-related DNS.

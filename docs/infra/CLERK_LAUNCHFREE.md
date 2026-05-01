@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Clerk SSO — LaunchFree (Next.js)
 
 Runbook for the LaunchFree app (`apps/launchfree`) identity stack: Clerk (primary SSO) with the legacy `session` cookie on `/dashboard`, plus Basic Auth as an operator escape hatch on `/admin` and `/api/admin` in production until removed by an explicit follow-up.

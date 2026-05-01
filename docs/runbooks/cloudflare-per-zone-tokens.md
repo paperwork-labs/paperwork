@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Cloudflare Per-Zone Write Tokens
 
 **TL;DR:** Replace one account-wide Cloudflare token with per-zone write tokens to limit blast radius. Use when you rotate secrets or finish the WS-47 migration.

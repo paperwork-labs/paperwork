@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Hetzner VPS — Social Automation Repurpose
 
 **TL;DR:** Plan to clean legacy n8n on the Hetzner box, reinstall for social automation behind Cloudflare Tunnel, then wire Wave M. Use during PR-11 / PR-30 / Wave M work.
