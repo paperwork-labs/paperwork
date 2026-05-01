@@ -17,8 +17,8 @@ import {
   KeyRound,
   Building2,
   FileText,
-  Network,
   Bot,
+  ClipboardCheck,
 } from "lucide-react";
 
 export type NavItem = {
@@ -67,12 +67,6 @@ export function buildNavGroups(
       ],
     },
     {
-      label: "Operations",
-      items: [
-        { href: "/admin/runbook", label: "Runbook", icon: BookOpen },
-      ],
-    },
-    {
       label: "Trust",
       items: [
         { href: "/admin/circles", label: "Circles", icon: UserCircle2 },
@@ -84,7 +78,7 @@ export function buildNavGroups(
       items: [
         { href: "/admin/architecture", label: "Architecture", icon: Workflow },
         { href: "/admin/docs", label: "Docs", icon: BookOpen },
-        { href: "/admin/docs/graph", label: "Knowledge Graph", icon: Network },
+        { href: "/admin/runbook", label: "Day-0 checklist", icon: ClipboardCheck },
         { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
       ],
     },
