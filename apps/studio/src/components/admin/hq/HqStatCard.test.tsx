@@ -118,4 +118,21 @@ describe("HqStatCard", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("renders as a button with aria-pressed when interactive", () => {
+    stubMatchMedia(true);
+    render(
+      <HqStatCard
+        label="Completed"
+        value={5}
+        variant="compact"
+        status="success"
+        onClick={() => {}}
+        selected
+      />,
+    );
+    const btn = screen.getByRole("button", { name: /completed/i });
+    expect(btn.getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("hq-stat-value").textContent).toBe("5");
+  });
 });

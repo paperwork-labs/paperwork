@@ -33,6 +33,7 @@ import {
   WorkstreamOwnerSchema,
   WorkstreamStatusSchema,
 } from "@/lib/workstreams/schema";
+import { normalizedWorkstreamStatusForKpi } from "@/lib/tracker-reconcile";
 
 import { moveOrderedIds } from "./move-order";
 import { SortableWorkstreamRow } from "./sortable-workstream-row";
@@ -54,15 +55,7 @@ export type WorkstreamsBoardClientProps = {
 const reorderEnabled =
   process.env.NEXT_PUBLIC_WORKSTREAMS_REORDER_ENABLED === "true";
 
-const STATUS_OPTIONS: ("all" | WorkstreamStatus)[] = [
-  "all",
-  "pending",
-  "in_progress",
-  "blocked",
-  "completed",
-  "cancelled",
-  "deferred",
-];
+type BoardStatusFilter = "all" | "active" | WorkstreamStatus;
 
 const OWNER_OPTIONS: ("all" | WorkstreamOwner)[] = [
   "all",
@@ -117,12 +110,14 @@ export function WorkstreamsBoardClient({
   }, [parsedFile.workstreams]);
 
   const rawStatus = searchParams.get("status") ?? "";
-  const statusFilter: "all" | WorkstreamStatus =
+  const statusFilter: BoardStatusFilter =
     rawStatus === "" || rawStatus === "all"
       ? "all"
-      : WorkstreamStatusSchema.safeParse(rawStatus).success
-        ? (rawStatus as WorkstreamStatus)
-        : "all";
+      : rawStatus === "active"
+        ? "active"
+        : WorkstreamStatusSchema.safeParse(rawStatus).success
+          ? (rawStatus as WorkstreamStatus)
+          : "all";
 
   const rawOwner = searchParams.get("owner") ?? "";
   const ownerFilter: "all" | WorkstreamOwner =
@@ -157,12 +152,14 @@ export function WorkstreamsBoardClient({
   );
 
   const pickStatus = useCallback(
-    (opt: (typeof STATUS_OPTIONS)[number]) => {
+    (opt: BoardStatusFilter) => {
       if (opt === "all") {
         setQuery({ status: null });
         return;
       }
-      if (statusFilter === opt) setQuery({ status: null });
+      const matches =
+        opt === "active" ? statusFilter === "active" : statusFilter === opt;
+      if (matches) setQuery({ status: null });
       else setQuery({ status: opt });
     },
     [setQuery, statusFilter],
@@ -196,7 +193,12 @@ export function WorkstreamsBoardClient({
     return orderedIds.filter((id) => {
       const w = byId.get(id);
       if (!w) return false;
-      if (statusFilter !== "all" && w.status !== statusFilter) return false;
+      const wNorm = normalizedWorkstreamStatusForKpi(w);
+      if (statusFilter === "active") {
+        if (wNorm !== "pending" && wNorm !== "in_progress") return false;
+      } else if (statusFilter !== "all" && wNorm !== statusFilter) {
+        return false;
+      }
       if (ownerFilter !== "all" && w.owner !== ownerFilter) return false;
       if (trackFilter !== "all" && w.track !== trackFilter) return false;
       return true;
@@ -307,27 +309,65 @@ export function WorkstreamsBoardClient({
           </div>
         ) : null}
 
+        <div className="space-y-2">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
+            Status · click a card to filter the board
+          </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <HqStatCard
+              variant="compact"
+              label="Total"
+              value={kpis.total}
+              onClick={() => pickStatus("all")}
+              selected={statusFilter === "all"}
+            />
+            <HqStatCard
+              variant="compact"
+              label="Active"
+              value={kpis.active}
+              status="warning"
+              onClick={() => pickStatus("active")}
+              selected={statusFilter === "active"}
+            />
+            <HqStatCard
+              variant="compact"
+              label="Blocked"
+              value={kpis.blocked}
+              status="danger"
+              onClick={() => pickStatus("blocked")}
+              selected={statusFilter === "blocked"}
+            />
+            <HqStatCard
+              variant="compact"
+              label="Completed"
+              value={kpis.completed}
+              status="success"
+              onClick={() => pickStatus("completed")}
+              selected={statusFilter === "completed"}
+            />
+            <HqStatCard
+              variant="compact"
+              label="Cancelled"
+              value={kpis.cancelled}
+              status="danger"
+              onClick={() => pickStatus("cancelled")}
+              selected={statusFilter === "cancelled"}
+            />
+            <HqStatCard
+              variant="compact"
+              label="Deferred"
+              value={kpis.deferred}
+              status="info"
+              onClick={() => pickStatus("deferred")}
+              selected={statusFilter === "deferred"}
+            />
+          </div>
+        </div>
+
         <div className="space-y-3 rounded-xl border border-zinc-800/80 bg-zinc-950/30 p-4">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-            Filters · URL shareable
+            Refine · URL shareable
           </p>
-          <div className="flex flex-wrap gap-2">
-            <span className="mr-1 self-center text-[11px] text-zinc-500">Status</span>
-            {STATUS_OPTIONS.map((opt) => {
-              const active =
-                opt === "all" ? statusFilter === "all" : statusFilter === opt;
-              return (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => pickStatus(opt)}
-                  className={`rounded-full border px-2.5 py-1 text-xs font-medium transition ${chipClass(active)}`}
-                >
-                  {opt === "all" ? "All" : opt.replace(/_/g, " ")}
-                </button>
-              );
-            })}
-          </div>
           <div className="flex flex-wrap gap-2">
             <span className="mr-1 self-center text-[11px] text-zinc-500">Owner</span>
             {OWNER_OPTIONS.map((opt) => {
@@ -368,21 +408,6 @@ export function WorkstreamsBoardClient({
               );
             })}
           </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <HqStatCard variant="compact" label="Total" value={kpis.total} />
-          <HqStatCard variant="compact" label="Active workstreams" value={kpis.active} />
-          <HqStatCard variant="compact" label="Blocked" value={kpis.blocked} status="danger" />
-          <HqStatCard variant="compact" label="Cancelled" value={kpis.cancelled} />
-          <HqStatCard variant="compact" label="Deferred" value={kpis.deferred} />
-          <HqStatCard variant="compact" label="Completed" value={kpis.completed} status="success" />
-          <HqStatCard
-            variant="compact"
-            label="Avg progress (in-flight)"
-            value={`${kpis.avg_percent_done}%`}
-            status="info"
-          />
         </div>
 
         <section
