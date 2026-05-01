@@ -14,7 +14,7 @@ medallion: ops
 
 import logging
 
-from sqlalchemy import select, text
+from sqlalchemy import Text, cast, or_, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.episode import Episode
@@ -262,3 +262,200 @@ async def mark_recalled(redis_client, organization_id: str, episode_ids: list[in
         await redis_client.expire(key, 86400)
     except Exception:
         logger.warning("Failed to mark fatigue IDs in Redis", exc_info=True)
+
+
+def _rank_based_keyword_scores(n: int) -> list[float]:
+    """Scores for keyword hits in sort order (first = strongest)."""
+    if n <= 0:
+        return []
+    if n == 1:
+        return [1.0]
+    return [1.0 - (i / (n - 1)) for i in range(n)]
+
+
+async def _admin_keyword_search(
+    db: AsyncSession,
+    *,
+    organization_id: str,
+    query: str,
+    source_prefix: str | None,
+    min_importance: float | None,
+    fetch_limit: int,
+) -> list[tuple[Episode, float]]:
+    pattern = f"%{query}%"
+    stmt = select(Episode).where(
+        Episode.organization_id == organization_id,
+        or_(
+            Episode.summary.ilike(pattern),
+            cast(Episode.metadata_, Text).ilike(pattern),
+        ),
+    )
+    if source_prefix:
+        stmt = stmt.where(Episode.source.like(f"{source_prefix}%"))
+    if min_importance is not None:
+        stmt = stmt.where(Episode.importance >= min_importance)
+    stmt = stmt.order_by(Episode.created_at.desc(), Episode.importance.desc()).limit(fetch_limit)
+    result = await db.execute(stmt)
+    rows = list(result.scalars().all())
+    scores = _rank_based_keyword_scores(len(rows))
+    return list(zip(rows, scores, strict=True))
+
+
+async def _admin_semantic_search(
+    db: AsyncSession,
+    *,
+    organization_id: str,
+    query_embedding: list[float],
+    source_prefix: str | None,
+    min_importance: float | None,
+    fetch_limit: int,
+) -> list[tuple[int, float]]:
+    conditions = [
+        "organization_id = :org_id",
+        "embedding IS NOT NULL",
+    ]
+    params: dict[str, object] = {
+        "embedding": str(query_embedding),
+        "org_id": organization_id,
+        "limit_val": fetch_limit,
+    }
+    if source_prefix:
+        conditions.append("source LIKE :src_prefix")
+        params["src_prefix"] = f"{source_prefix}%"
+    if min_importance is not None:
+        conditions.append("importance >= :min_imp")
+        params["min_imp"] = min_importance
+
+    where_sql = " AND ".join(conditions)
+    vector_sql = text(
+        f"""
+        SELECT id,
+               1 - (embedding <=> CAST(:embedding AS vector)) AS similarity
+        FROM agent_episodes
+        WHERE {where_sql}
+        ORDER BY embedding <=> CAST(:embedding AS vector)
+        LIMIT :limit_val
+        """
+    )
+    result = await db.execute(vector_sql, params)
+    out: list[tuple[int, float]] = []
+    for row in result.fetchall():
+        eid = int(row[0])
+        sim = float(row[1] or 0.0)
+        out.append((eid, sim))
+    return out
+
+
+async def _episodes_by_ids_ordered(
+    db: AsyncSession,
+    *,
+    organization_id: str,
+    ids: list[int],
+) -> dict[int, Episode]:
+    if not ids:
+        return {}
+    res = await db.execute(
+        select(Episode).where(
+            Episode.organization_id == organization_id,
+            Episode.id.in_(ids),
+        )
+    )
+    return {e.id: e for e in res.scalars().all()}
+
+
+async def admin_memory_search(
+    db: AsyncSession,
+    *,
+    organization_id: str,
+    query: str,
+    limit: int,
+    source_prefix: str | None,
+    min_importance: float | None,
+    mode: str,
+) -> tuple[list[tuple[Episode, float]], str, bool]:
+    """Admin memory search: keyword, semantic (pgvector), or hybrid fusion.
+
+    Returns ``(scored_episodes, mode_used, set_keyword_fallback_header)``.
+    When query embedding cannot be produced, semantic/hybrid fall back to keyword
+    search only and ``mode_used`` becomes ``"keyword"``.
+    """
+    fetch_cap = min(max(limit * 8, limit), 200)
+    keyword_fallback = False
+
+    if mode == "keyword":
+        rows = await _admin_keyword_search(
+            db,
+            organization_id=organization_id,
+            query=query,
+            source_prefix=source_prefix,
+            min_importance=min_importance,
+            fetch_limit=fetch_cap,
+        )
+        return rows[:limit], "keyword", False
+
+    query_embedding = await embed_text(query)
+    if query_embedding is None:
+        keyword_fallback = True
+        rows = await _admin_keyword_search(
+            db,
+            organization_id=organization_id,
+            query=query,
+            source_prefix=source_prefix,
+            min_importance=min_importance,
+            fetch_limit=fetch_cap,
+        )
+        return rows[:limit], "keyword", keyword_fallback
+
+    if mode == "semantic":
+        sem_hits = await _admin_semantic_search(
+            db,
+            organization_id=organization_id,
+            query_embedding=query_embedding,
+            source_prefix=source_prefix,
+            min_importance=min_importance,
+            fetch_limit=fetch_cap,
+        )
+        id_order = [eid for eid, _ in sem_hits][:limit]
+        ep_map = await _episodes_by_ids_ordered(db, organization_id=organization_id, ids=id_order)
+        sim_map = dict(sem_hits)
+        out: list[tuple[Episode, float]] = []
+        for eid in id_order:
+            ep = ep_map.get(eid)
+            if ep is not None:
+                out.append((ep, float(sim_map.get(eid, 0.0))))
+        return out, "semantic", False
+
+    kw_pairs = await _admin_keyword_search(
+        db,
+        organization_id=organization_id,
+        query=query,
+        source_prefix=source_prefix,
+        min_importance=min_importance,
+        fetch_limit=fetch_cap,
+    )
+    sem_hits = await _admin_semantic_search(
+        db,
+        organization_id=organization_id,
+        query_embedding=query_embedding,
+        source_prefix=source_prefix,
+        min_importance=min_importance,
+        fetch_limit=fetch_cap,
+    )
+    sem_map = dict(sem_hits)
+    kw_map = {ep.id: score for ep, score in kw_pairs}
+    all_ids = list(dict.fromkeys([*sem_map.keys(), *kw_map.keys()]))
+    fused: list[tuple[int, float]] = []
+    for eid in all_ids:
+        s = sem_map.get(eid, 0.0)
+        k = kw_map.get(eid, 0.0)
+        fused.append((eid, 0.7 * s + 0.3 * k))
+    fused.sort(key=lambda x: x[1], reverse=True)
+    top_ids = [eid for eid, _ in fused[:limit]]
+    ep_map = await _episodes_by_ids_ordered(db, organization_id=organization_id, ids=top_ids)
+    score_by_id = dict(fused)
+    out_hybrid: list[tuple[Episode, float]] = []
+    for eid in top_ids:
+        ep = ep_map.get(eid)
+        if ep is not None:
+            out_hybrid.append((ep, float(score_by_id.get(eid, 0.0))))
+    return out_hybrid, "hybrid", False
