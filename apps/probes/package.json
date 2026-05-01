@@ -1,0 +1,18 @@
+{
+  "name": "@paperwork/probes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Wave PROBE — synthetic UX probe runner for all Paperwork products",
+  "scripts": {
+    "test": "playwright test",
+    "test:filefree": "playwright test specs/filefree.spec.ts",
+    "test:axiomfolio": "playwright test specs/axiomfolio.spec.ts",
+    "test:launchfree": "playwright test specs/launchfree.spec.ts",
+    "test:distill": "playwright test specs/distill.spec.ts",
+    "test:studio": "playwright test specs/studio.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "tsx": "^4.19.2"
+  }
+}

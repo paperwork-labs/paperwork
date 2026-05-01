@@ -1,0 +1,3 @@
+# Playwright probe run output files are written here by ux_probe_runner.py.
+# Files are named <product>-<timestamp>.json and parsed by the Brain scheduler.
+# This directory is excluded from git history via .gitignore except for this file.

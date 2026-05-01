@@ -1,0 +1,8 @@
+{
+  "_comment": "Production URLs for Wave PROBE synthetic UX probes. Verify against render.yaml + Vercel project settings before promoting to prod runs. Last verified: 2026-04-30.",
+  "filefree": "https://filefree.ai",
+  "axiomfolio": "https://axiomfolio.com",
+  "launchfree": "https://launchfree.ai",
+  "distill": "https://distill.ai",
+  "studio": "https://studio.paperworklabs.com"
+}
