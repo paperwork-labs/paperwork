@@ -35,6 +35,7 @@ from app.routers import (
     expenses,
     health,
     infra_registry,
+    memory,
     vendors,
     voice_system,
     webhooks,
@@ -217,6 +218,7 @@ app.include_router(admin_logs.router, prefix="/api/v1")
 app.include_router(voice_system.router, prefix="/api/v1")
 app.include_router(error_ingest.router, prefix="/v1")
 app.include_router(error_ingest.router, prefix="/api/v1")
+app.include_router(memory.router, prefix="/api/v1")
 
 
 @app.get("/internal/schedulers", tags=["internal"])
