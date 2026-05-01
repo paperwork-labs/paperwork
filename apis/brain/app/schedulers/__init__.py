@@ -99,4 +99,10 @@ def start_scheduler() -> AsyncIOScheduler | None:
         ux_probe_runner.install(scheduler)
     except Exception:
         logger.exception("Failed to install ux_probe_runner job")
+    try:
+        from app.schedulers import probe_failure_dispatcher
+
+        probe_failure_dispatcher.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install probe_failure_dispatcher job")
     return scheduler
