@@ -86,6 +86,7 @@ module = [
   "app.main",
   "app.mcp_server",
   "app.routers.admin",
+  "app.routers.persona_review",
   "app.routers.brain",
   "app.schedulers.cost_dashboard",
   "app.schedulers.data_deep_validator",

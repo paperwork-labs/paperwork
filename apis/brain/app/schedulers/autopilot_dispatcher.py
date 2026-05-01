@@ -218,7 +218,7 @@ def dispatch_entry(
 
     entry = DispatchEntry(
         task_id=task_id,
-        source=source_raw,  # type: ignore[arg-type]
+        source=source_raw,
         description=str(raw.get("error_message", ""))[:500],
         product=str(raw.get("product", "")),
         persona_id=persona,
