@@ -227,7 +227,20 @@ export function DocsKnowledgeGraphClient({ payload }: DocsKnowledgeGraphClientPr
           onEngineStop={scheduleRefresh}
           onNodeClick={(n) => {
             const node = n as KnowledgeGraphVizNode;
-            router.push(`/admin/docs/${node.slug}`);
+            router.push(`/admin/docs/${encodeURIComponent(node.slug)}`);
+          }}
+          nodePointerAreaPaint={(n, color, ctx, globalScale) => {
+            const node = n as FGNode;
+            if (node.x === undefined || node.y === undefined) return;
+            const r = nodeCanvasRadius(node) / globalScale;
+            const ringPad =
+              (matchIds?.has(node.id) ? 8 : 0) +
+              (isKnowHotZoneNode(node as KnowledgeGraphVizNode) ? 12 : 4);
+            const hitR = r + ringPad / globalScale;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, hitR, 0, 2 * Math.PI, false);
+            ctx.fillStyle = color;
+            ctx.fill();
           }}
           nodeCanvasObjectMode={() => "after"}
           nodeCanvasObject={(n, ctx, globalScale) => {

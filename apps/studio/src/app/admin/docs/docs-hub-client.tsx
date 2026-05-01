@@ -153,19 +153,17 @@ export function DocsHubClient({ entries, readingPaths }: DocsHubClientProps) {
         {filtered.map((doc) => {
           const isImmutable = doc.category === "philosophy";
           return (
-            <article
+            <Link
               key={doc.slug}
+              href={`/admin/docs/${doc.slug}`}
               data-testid="docs-hub-card"
               data-hub-category={doc.hubCategory}
-              className="flex flex-col rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-4 transition hover:border-zinc-700 hover:bg-zinc-900/70"
+              className="group flex flex-col rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-4 transition hover:border-zinc-700 hover:bg-zinc-900/70"
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
-                <Link
-                  href={`/admin/docs/${doc.slug}`}
-                  className="text-sm font-semibold text-zinc-100 hover:text-white"
-                >
+                <span className="text-sm font-semibold text-zinc-100 group-hover:text-white">
                   {doc.title}
-                </Link>
+                </span>
                 {!doc.exists ? (
                   <span
                     title="File missing on disk — update docs/_index.yaml or restore the doc."
@@ -231,7 +229,7 @@ export function DocsHubClient({ entries, readingPaths }: DocsHubClientProps) {
                   </span>
                 ))}
               </div>
-            </article>
+            </Link>
           );
         })}
       </div>
