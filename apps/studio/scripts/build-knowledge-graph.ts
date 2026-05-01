@@ -87,6 +87,7 @@ function main(): void {
   const parsed = yaml.load(rawIdx) as IndexFile;
 
   const slugSet = new Set(parsed.docs.map((d) => d.slug));
+  const pathToSlug = new Map(parsed.docs.map((d) => [d.path, d.slug]));
 
   const edgeMap = new Map<string, KGEdge>();
   const facetsBySlug = new Map<
@@ -137,7 +138,7 @@ function main(): void {
     const lastReviewed = readFrontmatterString(fm, "last_reviewed", "lastReviewed");
     const wc = content.split(/\s+/).filter(Boolean).length;
 
-    const rel = extractDocRelations(content);
+    const rel = extractDocRelations(content, { sourcePath: doc.path, pathToSlug });
     mergeFacet(doc.slug, rel);
 
     const sourceId = slugToKnowledgeNodeId(doc.slug);

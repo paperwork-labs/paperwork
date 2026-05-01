@@ -1,29 +1,15 @@
-import { z } from "zod";
-
 import graphJson from "@/data/knowledge-graph.json";
-import { docKindToHubCategory, HUB_CATEGORY_LABEL, type HubDocCategory } from "./doc-metadata";
-
-const FreshnessSchema = z.enum(["fresh", "aging", "stale", "unknown"]);
-
-const RawNodeSchema = z.object({
-  id: z.string(),
-  slug: z.string(),
-  title: z.string(),
-  category: z.string(),
-  read_minutes: z.number(),
-  links_in: z.number(),
-  freshness: FreshnessSchema,
-});
-
-const LinkSchema = z.object({
-  source: z.string(),
-  target: z.string(),
-});
-
-const FileSchema = z.object({
-  nodes: z.array(RawNodeSchema),
-  links: z.array(LinkSchema),
-});
+import {
+  parseKnowledgeGraphFile,
+  vizEdgesFromKnowledgeGraph,
+  type KnowledgeGraphFileParsed,
+} from "@/lib/knowledge-graph-data";
+import {
+  docKindToHubCategory,
+  HUB_CATEGORY_LABEL,
+  type FreshnessLevel,
+  type HubDocCategory,
+} from "./doc-metadata";
 
 export const KNOW_HOT_ZONE_MIN_LINKS = 4;
 
@@ -54,7 +40,7 @@ export type KnowledgeGraphVizNode = {
   category: HubDocCategory;
   read_minutes: number;
   links_in: number;
-  freshness: z.infer<typeof FreshnessSchema>;
+  freshness: FreshnessLevel;
 };
 
 export type KnowledgeGraphVizPayload = {
@@ -66,22 +52,32 @@ export function isKnowHotZoneNode(node: KnowledgeGraphVizNode): boolean {
   return node.freshness === "stale" && node.links_in >= KNOW_HOT_ZONE_MIN_LINKS;
 }
 
+function toVizPayload(parsed: KnowledgeGraphFileParsed): KnowledgeGraphVizPayload {
+  const links = vizEdgesFromKnowledgeGraph(parsed).map((e) => ({
+    source: e.source,
+    target: e.target,
+  }));
+  const nodes: KnowledgeGraphVizNode[] = parsed.nodes.map((n) => ({
+    id: n.id,
+    slug: n.slug,
+    title: n.title,
+    category: docKindToHubCategory(n.kind),
+    read_minutes: n.read_time_min,
+    links_in: n.links_in,
+    freshness: n.freshness,
+  }));
+  return { nodes, links };
+}
+
 let cached: KnowledgeGraphVizPayload | null = null;
 
 export function getKnowledgeGraphVizPayload(): KnowledgeGraphVizPayload {
   if (cached) return cached;
-  const parsed = FileSchema.parse(graphJson);
-  cached = {
-    nodes: parsed.nodes.map((n) => ({
-      id: n.id,
-      slug: n.slug,
-      title: n.title,
-      category: docKindToHubCategory(n.category),
-      read_minutes: n.read_minutes,
-      links_in: n.links_in,
-      freshness: n.freshness,
-    })),
-    links: parsed.links,
-  };
+  const parsed = parseKnowledgeGraphFile(graphJson);
+  cached = toVizPayload(parsed);
   return cached;
+}
+
+export function __resetKnowledgeGraphVizCacheForTests(): void {
+  cached = null;
 }

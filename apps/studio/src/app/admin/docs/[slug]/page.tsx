@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Lock } from "lucide-react";
+import type { Components } from "react-markdown";
 
 import { DocKnowledgeRail } from "@/components/admin/docs/doc-knowledge-rail";
 import { GithubMarkIcon } from "@/components/github-mark-icon";
@@ -8,6 +9,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { loadDocContent, loadDocsIndex } from "@/lib/docs";
+import { computeReadTime } from "@/lib/doc-metadata";
+import { resolveMarkdownHrefToIndexedPath } from "@/lib/knowledge-graph-patterns";
 
 export const dynamic = "force-static";
 export const revalidate = 300;
@@ -28,6 +31,45 @@ export default async function DocPage({ params }: { params: Params }) {
   const { entry, markdown, lastModified, wordCount } = doc;
   const isImmutable = entry.category === "philosophy";
   const githubUrl = `https://github.com/paperwork-labs/paperwork/blob/main/${entry.path}`;
+
+  const { entries: indexEntries } = loadDocsIndex();
+  const pathToSlug = new Map(indexEntries.map((e) => [e.path, e.slug]));
+
+  const markdownComponents: Components = {
+    a: ({ href, children, className, ...rest }) => {
+      if (!href) return <span className={className}>{children}</span>;
+      const stripped = href.trim();
+      if (/^https?:\/\//i.test(stripped) || stripped.startsWith("mailto:")) {
+        return (
+          <a
+            href={stripped}
+            className={className}
+            target="_blank"
+            rel="noreferrer"
+            {...rest}
+          >
+            {children}
+          </a>
+        );
+      }
+      const resolved = resolveMarkdownHrefToIndexedPath(entry.path, stripped);
+      if (resolved) {
+        const targetSlug = pathToSlug.get(resolved);
+        if (targetSlug) {
+          return (
+            <Link href={`/admin/docs/${targetSlug}`} className={className} {...rest}>
+              {children}
+            </Link>
+          );
+        }
+      }
+      return (
+        <a href={stripped} className={className} {...rest}>
+          {children}
+        </a>
+      );
+    },
+  };
 
   return (
     <div className="space-y-6">
@@ -93,7 +135,9 @@ export default async function DocPage({ params }: { params: Params }) {
           ))}
         </div>
         <div className="flex gap-4 pt-2 text-[10px] text-zinc-500">
-          <span>{wordCount.toLocaleString()} words</span>
+          <span>
+            ~{computeReadTime(wordCount)} min read · {wordCount.toLocaleString()} words
+          </span>
           {lastModified ? (
             <span>
               last modified {new Date(lastModified).toLocaleDateString()}
@@ -119,7 +163,9 @@ export default async function DocPage({ params }: { params: Params }) {
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(220px,280px)] lg:items-start lg:gap-8">
         <article className="rounded-xl border border-zinc-800 bg-zinc-950/40 p-6">
           <div className="prose prose-invert prose-zinc max-w-none prose-headings:text-zinc-100 prose-a:text-sky-400 prose-code:text-amber-300 prose-code:before:content-[''] prose-code:after:content-[''] prose-pre:bg-zinc-900/80 prose-pre:border prose-pre:border-zinc-800 prose-table:my-6 prose-thead:border-zinc-800 prose-th:border-b prose-th:border-zinc-800 prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:text-zinc-300 prose-td:border-b prose-td:border-zinc-900 prose-td:px-3 prose-td:py-2 prose-td:text-zinc-300 prose-tr:border-zinc-800">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {markdown}
+            </ReactMarkdown>
           </div>
         </article>
         <DocKnowledgeRail slug={entry.slug} markdownBody={markdown} />

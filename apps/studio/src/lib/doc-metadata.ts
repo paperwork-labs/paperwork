@@ -44,6 +44,7 @@ export function docKindToHubCategory(docKindRaw: unknown): HubDocCategory {
   if (!k) return "uncategorized";
   if (k === "philosophy") return "philosophy";
   if (k === "architecture") return "architecture";
+  if (k === "handbook") return "playbook";
   if (k === "strategy" || k === "plan" || k === "sprint") return "strategy";
   if (k === "runbook") return "runbook";
   if (k === "playbook" || k === "handoff" || k === "checklist" || k === "template") return "playbook";

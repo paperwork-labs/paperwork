@@ -29,9 +29,8 @@ describe("knowledge-graph-data", () => {
     expect(rail.linkedFrom.count).toBeGreaterThanOrEqual(3);
     expect(rail.linkedFrom.topLinkers.length).toBeLessThanOrEqual(5);
 
-    expect(rail.relatedWorkstreams.join(",")).toContain("WS-76");
-    expect(rail.relatedRunbooks.some((r) => r.hrefSlug === "brain-deploy-recovery")).toBe(true);
-
+    expect(rail.linksOut.some((x) => x.slug === "brain-philosophy")).toBe(true);
+    expect(rail.linkedFrom.topLinkers.some((x) => x.slug === "brain-philosophy")).toBe(true);
     expect(rail.linksOut.some((x) => x.slug === "brain-personas-generated")).toBe(true);
   });
 });

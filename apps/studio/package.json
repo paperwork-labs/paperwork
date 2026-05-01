@@ -6,7 +6,7 @@
     "node": ">=20.9.0"
   },
   "scripts": {
-    "prebuild": "node scripts/sync-founder-actions.mjs && tsx scripts/snapshot-runbook.ts && tsx scripts/snapshot-personas.ts && tsx scripts/snapshot-docs.ts",
+    "prebuild": "node scripts/sync-founder-actions.mjs && tsx scripts/snapshot-runbook.ts && tsx scripts/snapshot-personas.ts && tsx scripts/snapshot-docs.ts && tsx scripts/build-knowledge-graph.ts",
     "dev": "next dev --turbopack --port 3004",
     "dev:e2e": "STUDIO_E2E_FIXTURE=1 next dev --turbopack --port 3004",
     "build": "next build",
