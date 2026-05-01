@@ -5,10 +5,11 @@ from __future__ import annotations
 from unittest.mock import AsyncMock
 
 import pytest
+from httpx import ASGITransport, AsyncClient
+
 from app.api import probe_results as probe_results_module
 from app.database import get_db
 from app.main import app
-from httpx import ASGITransport, AsyncClient
 
 
 @pytest.fixture(autouse=True)
