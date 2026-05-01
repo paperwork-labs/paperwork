@@ -180,28 +180,30 @@ export async function TrackersRail() {
             Expenses
           </span>
         </div>
-        {expensesOverview.status === "ok" ? (
-          <>
-            <p className="mt-3 text-2xl font-semibold text-zinc-100">
-              {expensesOverview.pendingCount}
-            </p>
-            <p className="text-xs text-zinc-500">
-              pending · {formatCentsBrief(expensesOverview.monthCents)} this month
-            </p>
-          </>
-        ) : expensesOverview.status === "unconfigured" ? (
-          <>
-            <p className="mt-3 text-2xl font-semibold text-zinc-100">—</p>
-            <p className="text-xs text-zinc-500">
-              Set BRAIN_API_URL and BRAIN_API_SECRET
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="mt-3 text-2xl font-semibold text-zinc-100">—</p>
-            <p className="text-xs text-rose-400/90">{expensesOverview.message}</p>
-          </>
-        )}
+        <div className="mt-3 min-h-[3.25rem]">
+          {expensesOverview.status === "ok" ? (
+            <>
+              <p className="text-2xl font-semibold text-zinc-100">
+                {expensesOverview.pendingCount}
+              </p>
+              <p className="text-xs text-zinc-500">
+                pending · {formatCentsBrief(expensesOverview.monthCents)} this month
+              </p>
+            </>
+          ) : expensesOverview.status === "unconfigured" ? (
+            <>
+              <p className="text-2xl font-semibold text-zinc-100">—</p>
+              <p className="text-xs text-zinc-500">
+                Set BRAIN_API_URL and BRAIN_API_SECRET
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-semibold text-zinc-100">—</p>
+              <p className="text-xs text-rose-400/90">{expensesOverview.message}</p>
+            </>
+          )}
+        </div>
         <p className="mt-3 text-xs text-zinc-400 group-hover:text-zinc-200">
           Expenses →
         </p>

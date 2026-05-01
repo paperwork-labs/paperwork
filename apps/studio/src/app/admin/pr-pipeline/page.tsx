@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { GitBranch, GitPullRequest, AlertTriangle, Activity } from "lucide-react";
 
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
@@ -235,14 +234,14 @@ export async function PrPipelineContent({ showHeader = true }: PrPipelineContent
         </ul>
         <p className="text-xs text-zinc-600">
           Docs:{" "}
-          <Link
+          <a
             href="https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/PR_PIPELINE_AUTOMATION.md"
             className="text-[var(--status-info)] hover:underline"
             target="_blank"
             rel="noreferrer"
           >
             PR_PIPELINE_AUTOMATION.md
-          </Link>
+          </a>
         </p>
       </section>
     </div>
