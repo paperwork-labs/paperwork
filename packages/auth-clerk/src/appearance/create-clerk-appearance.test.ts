@@ -51,6 +51,25 @@ describe("createClerkAppearance", () => {
     expect(elements.footer).toBe("hidden");
   });
 
+  it("uses current Clerk variable names (not deprecated colorText / colorInputBackground)", () => {
+    const appearance = createClerkAppearance({ primary: "#336699" });
+    const variables = appearance.variables as Record<string, string>;
+    expect(variables.colorForeground).toBe("hsl(var(--foreground))");
+    expect(variables.colorInput).toBe("hsl(var(--input))");
+    expect(variables.colorPrimaryForeground).toBe("hsl(var(--primary-foreground))");
+    expect(variables.colorText).toBeUndefined();
+    expect(variables.colorInputBackground).toBeUndefined();
+  });
+
+  it("sets colorRing from accent by default", () => {
+    const appearance = createClerkAppearance({
+      primary: "#336699",
+      accent: "#ff00ff",
+    });
+    const variables = appearance.variables as Record<string, string>;
+    expect(variables.colorRing).toBe("#ff00ff");
+  });
+
   it("uses the dark base theme by default", () => {
     const appearance = createClerkAppearance({ primary: "#000" });
     expect(appearance.baseTheme).toBeDefined();
