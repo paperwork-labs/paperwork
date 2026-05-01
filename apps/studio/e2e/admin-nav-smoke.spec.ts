@@ -30,7 +30,11 @@ const navItems = [
   { href: "/admin/goals", navLabel: "Goals", heading: /Goals & OKRs/ },
   { href: "/admin/architecture", navLabel: "Architecture", heading: "Architecture" },
   { href: "/admin/infrastructure", navLabel: "Infrastructure", heading: "Infrastructure" },
-  { href: "/admin/runbook", navLabel: "Day-0 checklist", heading: "Runbook" },
+  {
+    href: "/admin/docs/day-0-founder-actions",
+    navLabel: "Day-0 checklist",
+    heading: /Day-0 Founder Actions Worksheet/,
+  },
   { href: "/admin/docs", navLabel: "Docs", heading: "Docs" },
   { href: "/admin/expenses", navLabel: "Expenses", heading: "Expenses" },
   { href: "/admin/vendors", navLabel: "Vendors", heading: "Vendors" },

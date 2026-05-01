@@ -71,7 +71,7 @@ export function buildNavGroups(
         { href: "/admin/architecture", label: "Architecture", icon: Workflow },
         { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
         {
-          href: "/admin/runbook",
+          href: "/admin/docs/day-0-founder-actions",
           label: "Day-0 checklist",
           icon: ClipboardCheck,
         },

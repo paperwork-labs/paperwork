@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { AlertTriangle, BookOpen, Lock, Route } from "lucide-react";
+import { AlertTriangle, ArrowRight, BookOpen, Lock, Route } from "lucide-react";
 
 import { DocsHubSearchForm } from "./docs-hub-search";
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
@@ -81,6 +81,24 @@ export function DocsHubClient({ entries, readingPaths }: DocsHubClientProps) {
           </span>
         }
       />
+
+      <Link
+        href="/admin/docs/day-0-founder-actions"
+        className="block rounded-xl border border-emerald-900/40 bg-emerald-950/20 p-4 transition-colors hover:bg-emerald-950/30"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400">
+              Founder Quick Start
+            </p>
+            <h2 className="mt-1 text-lg font-semibold text-zinc-100">Day-0 founder actions</h2>
+            <p className="mt-1 text-sm text-zinc-400">
+              First-day checklist: keys, accounts, dispatches, reviews.
+            </p>
+          </div>
+          <ArrowRight className="h-5 w-5 shrink-0 text-emerald-400" />
+        </div>
+      </Link>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
         <DocsHubSearchForm />
