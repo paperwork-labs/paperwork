@@ -47,7 +47,8 @@ def _load_results() -> list[dict[str, Any]]:
     if not _PROBE_RESULTS_JSON.exists():
         return []
     payload = json.loads(_PROBE_RESULTS_JSON.read_text(encoding="utf-8"))
-    return payload.get("results", [])
+    results: list[dict[str, Any]] = payload.get("results", [])
+    return results
 
 
 @router.get("/results")
