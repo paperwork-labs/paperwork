@@ -24,8 +24,8 @@ function renderAdminLayout(ui: ReactElement) {
   return render(<BrainContextProvider>{ui}</BrainContextProvider>);
 }
 
-describe("AdminLayoutClient (WS-82 PR-IA1 unified Workstreams nav)", () => {
-  it("sidebar link count matches buildNavGroups + Money, Trust, Trackers, Calendar", () => {
+describe("AdminLayoutClient (WS-82 nav reorder — Brain, SYSTEMS, Money demoted)", () => {
+  it("sidebar link count matches buildNavGroups; Brain/SYSTEMS/Money headings; hides Tasks/Calendar/Trust", () => {
     renderAdminLayout(
       <AdminLayoutClient
         founderPending={{ count: 4, hasCritical: true }}
@@ -53,26 +53,40 @@ describe("AdminLayoutClient (WS-82 PR-IA1 unified Workstreams nav)", () => {
     expect(screen.getAllByText("Money", { exact: true }).some((el) => el.tagName === "P")).toBe(
       true,
     );
-    expect(screen.getAllByText("Trust", { exact: true }).some((el) => el.tagName === "P")).toBe(
+    expect(screen.getAllByText("Brain", { exact: true }).some((el) => el.tagName === "P")).toBe(
       true,
     );
-    expect(screen.getAllByText("Trackers").some((el) => el.tagName === "P")).toBe(true);
-    const archLabels = within(nav).getAllByText("Architecture");
-    expect(archLabels.some((el) => el.tagName === "P")).toBe(true);
+    expect(
+      screen.getAllByText("SYSTEMS", { exact: true }).some((el) => el.tagName === "P"),
+    ).toBe(true);
+
+    expect(
+      within(nav).queryByRole("link", { name: /Tasks \(company\)/i }),
+    ).toBeNull();
+    expect(within(nav).queryByRole("link", { name: /^Calendar$/i })).toBeNull();
+    expect(within(nav).queryByRole("link", { name: /^Circles$/ })).toBeNull();
+    expect(within(nav).queryByRole("link", { name: /Delegated access/i })).toBeNull();
+
     expect(
       within(nav).getByRole("link", { name: /^Architecture$/ }).getAttribute("href"),
     ).toBe("/admin/architecture");
-    expect(screen.getAllByText("Brain", { exact: true }).length).toBeGreaterThan(0);
+    expect(within(nav).getByRole("link", { name: /^Docs$/ }).getAttribute("href")).toBe(
+      "/admin/docs",
+    );
+    expect(
+      within(nav).getByRole("link", { name: /^Goals$/ }).getAttribute("href"),
+    ).toBe("/admin/goals");
+    expect(
+      within(nav).getByRole("link", { name: /^Products$/ }).getAttribute("href"),
+    ).toBe("/admin/products");
 
     expect(
       within(nav).getByRole("link", { name: /^People$/ }).getAttribute("href"),
     ).toBe("/admin/people");
 
-    const trackersHeading = within(nav).getByText("Trackers", { exact: true });
-    const trackersGroup = trackersHeading.parentElement as HTMLElement;
-    expect(
-      within(nav).getByRole("link", { name: /^Calendar$/i }).getAttribute("href"),
-    ).toBe("/admin/calendar");
+    expect(within(nav).queryByText("Trackers", { exact: true })).toBeNull();
+    expect(within(nav).queryByText("Trust", { exact: true })).toBeNull();
+
     const expensesInNav = within(nav).getByRole("link", {
       name: /Expenses/i,
     });
@@ -91,13 +105,6 @@ describe("AdminLayoutClient (WS-82 PR-IA1 unified Workstreams nav)", () => {
     expect(
       within(nav).queryByRole("link", { name: /Founder actions/i }),
     ).toBeNull();
-
-    expect(within(nav).getByRole("link", { name: /^Circles$/ }).getAttribute("href")).toBe(
-      "/admin/circles",
-    );
-    expect(
-      within(nav).getByRole("link", { name: /Delegated access/i }).getAttribute("href"),
-    ).toBe("/admin/delegated");
 
     const convoLink = within(nav).getByRole("link", { name: /Conversations/i });
     expect(convoLink.getAttribute("href")).toBe("/admin/conversations");

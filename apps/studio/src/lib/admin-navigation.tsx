@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Shield,
   Target,
-  ListChecks,
   Boxes,
   BookOpen,
   Sparkles,
@@ -12,9 +11,6 @@ import {
   Receipt,
   Users,
   MessageSquare,
-  Calendar as CalendarIcon,
-  UserCircle2,
-  KeyRound,
   Building2,
   FileText,
   Bot,
@@ -44,6 +40,48 @@ export function buildNavGroups(
       items: [{ href: "/admin", label: "Overview", icon: LayoutDashboard }],
     },
     {
+      label: "Brain",
+      items: [
+        {
+          href: "/admin/conversations",
+          label: "Conversations",
+          icon: MessageSquare,
+          pendingBadge: founderPending,
+        },
+        { href: "/admin/autopilot", label: "Autopilot", icon: Bot },
+        { href: "/admin/people", label: "People", icon: Users },
+        {
+          href: "/admin/brain/self-improvement",
+          label: "Self-improvement",
+          icon: Sparkles,
+        },
+      ],
+    },
+    {
+      label: null,
+      items: [
+        { href: "/admin/workstreams", label: "Workstreams", icon: Kanban },
+        { href: "/admin/products", label: "Products", icon: Boxes },
+        { href: "/admin/goals", label: "Goals", icon: Target },
+      ],
+    },
+    {
+      label: "SYSTEMS",
+      items: [
+        { href: "/admin/architecture", label: "Architecture", icon: Workflow },
+        { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
+        {
+          href: "/admin/runbook",
+          label: "Day-0 checklist",
+          icon: ClipboardCheck,
+        },
+      ],
+    },
+    {
+      label: null,
+      items: [{ href: "/admin/docs", label: "Docs", icon: BookOpen }],
+    },
+    {
       label: "Money",
       items: [
         {
@@ -54,50 +92,6 @@ export function buildNavGroups(
         },
         { href: "/admin/vendors", label: "Vendors", icon: Building2 },
         { href: "/admin/bills", label: "Bills", icon: FileText },
-      ],
-    },
-    {
-      label: "Trackers",
-      items: [
-        { href: "/admin/tasks", label: "Tasks (company)", icon: ListChecks },
-        { href: "/admin/goals", label: "Goals", icon: Target },
-        { href: "/admin/calendar", label: "Calendar", icon: CalendarIcon },
-        { href: "/admin/products", label: "Products", icon: Boxes },
-        { href: "/admin/workstreams", label: "Workstreams", icon: Kanban },
-      ],
-    },
-    {
-      label: "Trust",
-      items: [
-        { href: "/admin/circles", label: "Circles", icon: UserCircle2 },
-        { href: "/admin/delegated", label: "Delegated access", icon: KeyRound },
-      ],
-    },
-    {
-      label: "Architecture",
-      items: [
-        { href: "/admin/architecture", label: "Architecture", icon: Workflow },
-        { href: "/admin/docs", label: "Docs", icon: BookOpen },
-        { href: "/admin/runbook", label: "Day-0 checklist", icon: ClipboardCheck },
-        { href: "/admin/infrastructure", label: "Infrastructure", icon: Shield },
-      ],
-    },
-    {
-      label: "Brain",
-      items: [
-        { href: "/admin/autopilot", label: "Autopilot", icon: Bot },
-        { href: "/admin/people", label: "People", icon: Users },
-        {
-          href: "/admin/conversations",
-          label: "Conversations",
-          icon: MessageSquare,
-          pendingBadge: founderPending,
-        },
-        {
-          href: "/admin/brain/self-improvement",
-          label: "Self-improvement",
-          icon: Sparkles,
-        },
       ],
     },
   ];

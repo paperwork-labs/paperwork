@@ -1,27 +1,28 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Admin sidebar (E2E — STUDIO_E2E_FIXTURE=1 dev server)", () => {
-  test("WS-82 PR-IA1: Money + Trackers + Trust + Brain, unified Workstreams nav, 18 nav links, 6 vendor footer links", async ({
+  test("WS-82 PR-4: Overview + Brain + Workstreams/Products/Goals + SYSTEMS + Docs + Money; 15 nav links; Tasks/Calendar/Trust hidden", async ({
     page,
   }) => {
     await page.goto("/admin", { waitUntil: "domcontentloaded" });
     const nav = page.getByRole("navigation", { name: "Admin" }).first();
-    await expect(nav.getByRole("link")).toHaveCount(18);
+    await expect(nav.getByRole("link")).toHaveCount(15);
     await expect(nav.getByText("Money", { exact: true })).toBeVisible();
-    await expect(nav.getByText("Trackers", { exact: true })).toBeVisible();
     await expect(nav.getByText("Brain", { exact: true })).toBeVisible();
-    await expect(nav.getByText("Trust", { exact: true })).toBeVisible();
-    await expect(nav.getByRole("link", { name: /^Circles$/ })).toHaveAttribute("href", "/admin/circles");
-    await expect(nav.getByRole("link", { name: /Delegated access/i })).toHaveAttribute(
-      "href",
-      "/admin/delegated",
-    );
+    await expect(nav.getByText("SYSTEMS", { exact: true })).toBeVisible();
+    await expect(nav.getByRole("link", { name: /^Circles$/ })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: /Delegated access/i })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: /Tasks \(company\)/i })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: /^Calendar$/ })).toHaveCount(0);
     await expect(
       nav.getByRole("link", { name: /Expenses/i }),
     ).toHaveAttribute("href", "/admin/expenses");
     await expect(nav.getByRole("link", { name: /^Vendors$/ })).toHaveAttribute("href", "/admin/vendors");
     await expect(nav.getByRole("link", { name: /^Bills$/ })).toHaveAttribute("href", "/admin/bills");
-    await expect(nav.getByRole("link", { name: /^Workstreams$/ })).toHaveAttribute("href", "/admin/workstreams");
+    await expect(nav.getByRole("link", { name: /^Workstreams$/ })).toHaveAttribute(
+      "href",
+      "/admin/workstreams",
+    );
     await expect(nav.getByRole("link", { name: /^Sprints$/ })).toHaveCount(0);
     await expect(nav.getByRole("link", { name: /^PR pipeline$/i })).toHaveCount(0);
     await expect(
