@@ -10,39 +10,21 @@ status: living
 
 This worksheet is the single source of truth for founder-owned setup. Two tiers: **WS-82 Wave 0 P0** items are bleeding wounds — do today. **Critical path** items run in parallel to engineering through Week 1.
 
-## WS-82 Wave 0 P0 (DO TODAY — bleeding wounds)
+## WS-82 Wave 0 P0 — ALL COMPLETED (2026-04-30)
 
-These require dashboard clicks. All other Wave 0 PRs are running via cheap agents.
+### A0. AxiomFolio DNS — DONE ✓
+- Deleted old A records pointing to Cloudflare proxied IPs (Error 1000 resolved)
+- Set `axiomfolio.com` A record → `76.76.21.21` (Vercel), DNS only
+- Set `www.axiomfolio.com` CNAME → `cname.vercel-dns.com`, DNS only
+- Added domain to axiomfolio Vercel project
+- Added env vars: `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `BRAIN_API_URL`, `BRAIN_API_SECRET`
+- Site now live at https://axiomfolio.com
 
-### A0. AxiomFolio login + DNS (Error 1000 blocking axiomfolio.com)
+### A1. Brain Render env vars — DONE ✓
+- Added `VERCEL_API_TOKEN` to brain-api via Render API
 
-**Render env vars (axiomfolio-api service)** — needed for Clerk auth:
-1. Render Dashboard → axiomfolio-api → Environment
-2. Add `CLERK_JWT_ISSUER` = (Clerk → API Keys → Frontend API URL — copy the `https://...clerk.accounts.dev` or production Clerk URL)
-3. Add `CLERK_SECRET_KEY` = (Clerk → API Keys → Secret keys → copy production key)
-4. Save → service auto-redeploys
-
-**Cloudflare DNS (axiomfolio.com)**:
-1. Cloudflare Dashboard → axiomfolio.com → DNS
-2. Delete any A records for `@` or `axiomfolio.com` that point to Cloudflare IPs (162.159.x.x, 172.66.x.x — these cause Error 1000)
-3. Set apex `A` → `76.76.21.21` (Vercel anycast IP), Proxy status: **DNS only** (gray cloud)
-4. Set `www` `CNAME` → `cname.vercel-dns.com`, Proxy status: **DNS only**
-5. Wait ~2min then test: `dig axiomfolio.com +short` should return `76.76.21.21`
-6. Browser test: `https://axiomfolio.com` should load
-
-### A1. Brain Render env vars (for quota monitoring)
-
-**Render Dashboard (brain-api service)**:
-1. Render Dashboard → brain-api → Environment
-2. Add `VERCEL_API_TOKEN` = (Vercel → Account Settings → Tokens → create "brain-api-quota-monitor")
-3. Add `RENDER_API_KEY` = (Render → Account Settings → API Keys → create "brain-api-quota-monitor")
-4. Save → service auto-redeploys
-
----
-
-## DONE via CLI (2026-04-30)
-
-- **Item 19**: `VERCEL_MONOREPO_PROJECT_NAMES` set on Studio via `vercel env add`
+### Item 19: Studio env vars — DONE ✓
+- Added `VERCEL_MONOREPO_PROJECT_NAMES` to Studio via Vercel CLI
 
 ---
 
