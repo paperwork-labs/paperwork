@@ -24,8 +24,10 @@ export async function OperatingScoreGauge() {
 
   if (!res.ok) {
     return (
-      <div className="rounded-xl border border-rose-900/40 bg-rose-950/20 p-5">
-        <p className="text-xs uppercase tracking-wide text-rose-300/80">Operating score</p>
+      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 ring-1 ring-rose-500/25">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-300/90">
+          Operating score
+        </p>
         <p className="mt-2 text-sm text-rose-200">
           Could not load Operating Score from Brain (HTTP {res.status}).
         </p>
@@ -41,8 +43,10 @@ export async function OperatingScoreGauge() {
 
   if (json.success === false || json.data == null) {
     return (
-      <div className="rounded-xl border border-rose-900/40 bg-rose-950/20 p-5">
-        <p className="text-xs uppercase tracking-wide text-rose-300/80">Operating score</p>
+      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 ring-1 ring-rose-500/25">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-300/90">
+          Operating score
+        </p>
         <p className="mt-2 text-sm text-rose-200">
           {json.error ?? "Brain returned an invalid Operating Score payload."}
         </p>

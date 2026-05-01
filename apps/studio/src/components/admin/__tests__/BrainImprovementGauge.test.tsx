@@ -58,27 +58,28 @@ describe("BrainImprovementGaugeBody", () => {
       expect(screen.getByText(/insufficient data/i)).toBeTruthy();
     });
 
-    it("renders red gauge arc when score=0", () => {
+    it("renders gradient gauge arc when score=0", () => {
       const current = makeCurrent({ score: 0 });
       render(<BrainImprovementGaugeBody data={makeResponse(current)} brainConfigured />);
       const arc = screen.getByTestId("brain-improvement-gauge-arc");
-      expect(arc.getAttribute("data-gauge-stroke")).toBe("#f87171");
+      expect(arc.getAttribute("data-gauge-stroke")).toBe("gradient");
+      expect(arc.getAttribute("stroke")).toMatch(/^url\(#/);
     });
   });
 
   describe("populated state", () => {
-    it("renders amber gauge arc when score=55", () => {
+    it("renders gradient gauge arc when score=55", () => {
       const current = makeCurrent({ score: 55 });
       render(<BrainImprovementGaugeBody data={makeResponse(current)} brainConfigured />);
       const arc = screen.getByTestId("brain-improvement-gauge-arc");
-      expect(arc.getAttribute("data-gauge-stroke")).toBe("#fbbf24");
+      expect(arc.getAttribute("data-gauge-stroke")).toBe("gradient");
     });
 
-    it("renders green gauge arc when score=75", () => {
+    it("renders gradient gauge arc when score=75", () => {
       const current = makeCurrent({ score: 75 });
       render(<BrainImprovementGaugeBody data={makeResponse(current)} brainConfigured />);
       const arc = screen.getByTestId("brain-improvement-gauge-arc");
-      expect(arc.getAttribute("data-gauge-stroke")).toBe("#4ade80");
+      expect(arc.getAttribute("data-gauge-stroke")).toBe("gradient");
     });
 
     it("displays score value correctly", () => {

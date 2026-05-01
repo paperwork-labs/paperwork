@@ -16,38 +16,40 @@ function relativeComputedAt(iso?: string): string {
   return `${days}d ago`;
 }
 
-function gaugeStrokeColor(score: number): string {
-  if (score < 40) return "#f87171";
-  if (score < 70) return "#fbbf24";
-  return "#4ade80";
-}
-
 function GaugeRing({ score }: { score: number }) {
   const r = 52;
   const c = 2 * Math.PI * r;
   const pct = Math.min(100, Math.max(0, score)) / 100;
   const dash = pct * c;
-  const color = gaugeStrokeColor(score);
+  const gid = "brain-improvement-ring-gradient";
   return (
     <svg
       viewBox="0 0 120 120"
-      className="h-36 w-36 shrink-0"
+      className="h-40 w-40 shrink-0 drop-shadow-[0_0_20px_rgba(251,191,36,0.1)]"
       aria-hidden
       data-testid="brain-improvement-gauge-svg"
     >
-      <circle cx="60" cy="60" r={r} fill="none" stroke="#27272a" strokeWidth="8" />
+      <defs>
+        <linearGradient id={gid} x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#ef4444" />
+          <stop offset="50%" stopColor="#fbbf24" />
+          <stop offset="80%" stopColor="#34d399" />
+          <stop offset="100%" stopColor="#22d3ee" />
+        </linearGradient>
+      </defs>
+      <circle cx="60" cy="60" r={r} fill="none" stroke="#18181b" strokeWidth="10" />
       <circle
         cx="60"
         cy="60"
         r={r}
         fill="none"
-        stroke={color}
-        strokeWidth="8"
+        stroke={`url(#${gid})`}
+        strokeWidth="10"
         strokeLinecap="round"
         strokeDasharray={`${dash} ${c}`}
         transform="rotate(-90 60 60)"
         data-testid="brain-improvement-gauge-arc"
-        data-gauge-stroke={color}
+        data-gauge-stroke="gradient"
       />
     </svg>
   );
@@ -133,7 +135,7 @@ function Sparkline({ history }: { history: BrainImprovementHistoryEntry[] }) {
     <div className="mt-3" data-testid="brain-improvement-sparkline">
       <p className="mb-1 text-xs text-zinc-500">12-week trend</p>
       <svg viewBox={`0 0 ${w} ${h}`} className="w-full" aria-hidden>
-        <polyline points={points} fill="none" stroke="#6366f1" strokeWidth="1.5" />
+        <polyline points={points} fill="none" stroke="#22d3ee" strokeOpacity={0.85} strokeWidth="1.5" />
       </svg>
     </div>
   );
@@ -151,11 +153,11 @@ export function BrainImprovementGaugeBody({ data, brainConfigured }: BrainImprov
   if (!brainConfigured) {
     return (
       <div
-        className="rounded-xl border border-rose-900/40 bg-rose-950/20 p-5"
+        className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 ring-1 ring-zinc-800"
         data-testid="brain-improvement-not-configured"
       >
         <p className="text-xs uppercase tracking-wide text-rose-300/80">Brain growth</p>
-        <p className="mt-2 text-sm text-rose-200">
+        <p className="mt-2 text-sm text-rose-300">
           Brain is not configured for Studio (BRAIN_API_URL / BRAIN_API_SECRET).
         </p>
       </div>
@@ -163,19 +165,29 @@ export function BrainImprovementGaugeBody({ data, brainConfigured }: BrainImprov
   }
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5" data-testid="brain-improvement-tile">
-      <p className="text-xs uppercase tracking-wide text-zinc-400">Brain growth</p>
-      <p className="mt-1 text-xs text-zinc-500">
-        Proxied from Brain{" "}
-        <code className="text-zinc-400">/api/v1/admin/brain-improvement-index</code>
-      </p>
+    <div
+      className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 ring-1 ring-zinc-800"
+      data-testid="brain-improvement-tile"
+    >
+      <div className="flex flex-col gap-1">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          Brain growth
+        </p>
+        <p className="bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-lg font-semibold tracking-tight text-transparent">
+          Learning velocity
+        </p>
+        <p className="text-xs text-zinc-500">
+          Proxied from Brain{" "}
+          <code className="text-zinc-400">/api/v1/admin/brain-improvement-index</code>
+        </p>
+      </div>
 
-      <div className="mt-4 flex flex-col items-center gap-2 md:flex-row md:items-start md:justify-center md:gap-10">
-        <div className="relative flex flex-col items-center">
+      <div className="mt-5 flex flex-col items-center gap-4 md:flex-row md:items-start md:justify-between md:gap-8">
+        <div className="relative mx-auto flex flex-col items-center md:mx-0">
           <GaugeRing score={current.score} />
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center pt-1">
             <span
-              className="text-3xl font-semibold tabular-nums text-zinc-100"
+              className="text-4xl font-semibold tabular-nums tracking-tight text-zinc-50"
               data-testid="brain-improvement-score"
             >
               {current.score}
@@ -184,23 +196,23 @@ export function BrainImprovementGaugeBody({ data, brainConfigured }: BrainImprov
         </div>
         <div className="flex min-w-0 flex-1 flex-col items-center md:items-stretch md:pt-4">
           {current.note ? (
-            <p className="text-xs text-amber-400/80" data-testid="brain-improvement-note">
+            <p className="text-xs text-amber-400/90" data-testid="brain-improvement-note">
               {current.note}
             </p>
           ) : null}
           <div className="mt-2 flex justify-center md:justify-start">
             <Link
               href="/admin/brain/self-improvement"
-              className="text-xs text-indigo-400 hover:text-indigo-300 hover:underline"
+              className="rounded-md text-xs font-medium text-emerald-400/90 ring-1 ring-emerald-500/30 transition hover:bg-emerald-500/10 hover:text-emerald-300 hover:ring-emerald-500/45 px-2 py-1"
               data-testid="brain-improvement-cta"
             >
-              Brain growth →
+              Open Brain growth →
             </Link>
           </div>
         </div>
       </div>
 
-      <p className="mt-4 text-center text-xs text-zinc-500 md:text-left">
+      <p className="mt-5 text-xs text-zinc-500 md:text-left">
         Last computed:{" "}
         <span className="text-zinc-400">{relativeComputedAt(current.computed_at)}</span>
       </p>
