@@ -2,3 +2,4 @@ packages:
   - "apps/*"
   - "!apps/_archive/**"
   - "packages/*"
+  - "packages/skills/*"
