@@ -197,6 +197,29 @@ describe("BrainClient", () => {
     });
   });
 
+  // ----- getGoals ---------------------------------------------------------
+
+  describe("getGoals", () => {
+    it("calls /admin/goals and returns goals payload", async () => {
+      const payload = {
+        quarter: "2026-Q2",
+        objectives: [],
+      };
+      globalThis.fetch = mockFetch(envelope(payload));
+
+      const result = await client.getGoals();
+
+      expect(result.quarter).toBe("2026-Q2");
+      expect(result.objectives).toEqual([]);
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        `${FAKE_ROOT}/admin/goals`,
+        expect.objectContaining({
+          headers: { "X-Brain-Secret": FAKE_SECRET },
+        }),
+      );
+    });
+  });
+
   // ----- Network errors ---------------------------------------------------
 
   describe("network errors", () => {

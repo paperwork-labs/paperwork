@@ -13,6 +13,7 @@ import {
   type BrainAdminAuth,
   getBrainAdminFetchOptions,
 } from "@/lib/brain-admin-proxy";
+import type { GoalsJson } from "@/lib/goals-metrics";
 import type { BrainEnvelope } from "@/lib/quota-monitor-types";
 
 // ---------------------------------------------------------------------------
@@ -161,6 +162,11 @@ export class BrainClient {
   /** Fetch the persona registry from the Brain API. */
   async getPersonas(): Promise<PersonasResponse> {
     return this.get<PersonasResponse>("/admin/personas", "personas");
+  }
+
+  /** Fetch goals / OKRs payload for Studio admin (same shape as static goals.json). */
+  async getGoals(): Promise<GoalsJson> {
+    return this.get<GoalsJson>("/admin/goals", "goals");
   }
 
   // -----------------------------------------------------------------------
