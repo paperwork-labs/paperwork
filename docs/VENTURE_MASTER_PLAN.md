@@ -5,7 +5,7 @@ doc_kind: plan
 domain: company
 status: active
 ---
-# Paperwork Labs — Venture Master Plan v1
+# Venture Master Plan v1
 
 **Date**: March 12, 2026 (last meaningful refresh) | **Supersedes**: All prior strategy plans including deep_research_tightening (5 plans archived). The previous standalone summary (archived as `docs/archive/VMP-SUMMARY-2026-03-18.md`) was folded into the **TL;DR** below on 2026-04-25.
 

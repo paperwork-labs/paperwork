@@ -4,7 +4,7 @@ last_reviewed: 2026-04-24
 version: "8.0"
 ---
 
-# Paperwork Labs — Product Requirements Document
+# Product Requirements Document
 
 **Status**: Venture-level PRD
 

@@ -5,7 +5,7 @@ doc_kind: reference
 domain: other
 status: active
 ---
-# Paperwork Labs — Google Drive Setup
+# Google Drive Setup
 
 **Purpose**: Central hub for agent outputs (briefings, trinket one-pagers, competitive intel). Cursor can read via GDrive MCP. Create this structure in Drive to prove connection + organize outputs.
 

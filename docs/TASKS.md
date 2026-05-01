@@ -5,7 +5,7 @@ doc_kind: plan
 domain: company
 status: active
 ---
-# Paperwork Labs — Venture Build Tasks
+# Venture Build Tasks
 
 **Version**: 11.0 | **Updated**: 2026-03-22
 

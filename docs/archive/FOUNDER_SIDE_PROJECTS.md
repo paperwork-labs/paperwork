@@ -1,4 +1,4 @@
-# Paperwork Labs — Founder Side Projects Evaluation
+# Founder Side Projects Evaluation
 
 **Owner**: Strategy + CFO agents
 **Last updated**: March 2026

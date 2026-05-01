@@ -1,4 +1,4 @@
-# Paperwork Labs — Archive Index
+# Archive Index
 
 Archived documents preserved for reference. Content here has been superseded by or merged into active docs. Search terms included for discoverability.
 

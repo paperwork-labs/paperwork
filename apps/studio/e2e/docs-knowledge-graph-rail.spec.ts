@@ -12,7 +12,7 @@ test.describe("Doc knowledge rail (backlinks)", () => {
   }) => {
     await page.goto("/admin/docs/brain-architecture", { waitUntil: "domcontentloaded" });
 
-    const panel = page.getByTestId("doc-backlinks-panel");
+    const panel = page.getByTestId("doc-backlinks-panel").first();
     await expect(panel).toBeVisible();
 
     await expect(panel.getByTestId("doc-linked-from-count")).toContainText("backlink");

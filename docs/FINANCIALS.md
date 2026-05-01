@@ -5,7 +5,7 @@ doc_kind: reference
 domain: company
 status: active
 ---
-# Paperwork Labs — Financial Tracker
+# Financial Tracker
 
 **Maintained by**: Executive Assistant agent (`ea.mdc`)
 **Last updated**: 2026-03-16

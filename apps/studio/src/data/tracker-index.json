@@ -76,11 +76,11 @@
     ],
     "owner": "agent-ops",
     "path": "docs/TASKS.md",
-    "title": "Paperwork Labs \u2014 Venture Build Tasks",
+    "title": "Venture Build Tasks",
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "116e0d9ebba3",
+  "content_hash": "9ffc7ccdb26c",
   "products": [
     {
       "label": "AxiomFolio",

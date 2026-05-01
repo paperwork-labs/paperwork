@@ -1,4 +1,4 @@
-# Paperwork Labs — Knowledge Base Archive
+# Knowledge Base Archive
 
 Historical decisions, learnings, and patterns archived from KNOWLEDGE.md per D52 (Doc Hygiene rules). These entries are baked into the current architecture and no longer require daily reference. Full context preserved here; one-line summaries remain in the main KNOWLEDGE.md.
 

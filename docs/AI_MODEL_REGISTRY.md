@@ -6,7 +6,7 @@ domain: ai-models
 status: active
 ---
 
-# Paperwork Labs — AI model registry
+# AI model registry
 
 This file is the single source of truth for which AI model serves which workflow at Paperwork Labs. Update it whenever routing, persona defaults, or n8n wiring change. **Authority for routing policy:** the AI Operations Lead rules in [`.cursor/rules/agent-ops.mdc`](../.cursor/rules/agent-ops.mdc) (use the **decision tree** below, not the legacy “Current Model Assignments (March 2026)” table in that file).
 
