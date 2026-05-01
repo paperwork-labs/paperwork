@@ -4,7 +4,8 @@ import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, Settings2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { GitBranch, Globe, Menu, Sparkles } from "lucide-react";
 
 import { BrainContextPicker } from "@/components/admin/BrainContextPicker";
 import { HqPageContainer } from "@/components/admin/hq/HqPageContainer";
@@ -17,10 +18,12 @@ const SIDEBAR_FOCUS_SURFACE =
 
 const FOOTER_VENDOR_LINKS: {
   category: string;
+  icon: LucideIcon;
   links: { label: string; href: string }[];
 }[] = [
   {
     category: "Hosting",
+    icon: Globe,
     links: [
       { label: "Vercel", href: "https://vercel.com/paperwork-labs" },
       { label: "Render", href: "https://dashboard.render.com" },
@@ -29,10 +32,12 @@ const FOOTER_VENDOR_LINKS: {
   },
   {
     category: "Code",
+    icon: GitBranch,
     links: [{ label: "GitHub", href: "https://github.com/paperwork-labs" }],
   },
   {
     category: "AI cost",
+    icon: Sparkles,
     links: [
       { label: "Anthropic console", href: "https://console.anthropic.com" },
       { label: "OpenAI usage", href: "https://platform.openai.com/usage" },
@@ -124,9 +129,9 @@ function AdminSidebarPanel({
                   key={item.href}
                   href={item.href}
                   onClick={onNavLinkClick}
-                  className={`flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm motion-safe:transition-colors ${
+                  className={`flex items-center justify-between gap-2 border-l-2 border-transparent rounded-lg px-3 py-2 text-sm motion-safe:transition-colors ${
                     isActive
-                      ? "border-l-2 border-zinc-400 bg-zinc-800/80 font-medium text-zinc-100"
+                      ? "border-zinc-400 bg-zinc-800/80 font-medium text-zinc-100"
                       : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
                   }`}
                 >
@@ -191,7 +196,10 @@ function AdminSidebarPanel({
                     onClick={onNavLinkClick}
                     className="flex items-center gap-2 text-zinc-400 motion-safe:transition-colors hover:text-zinc-300"
                   >
-                    <Settings2 className="h-3 w-3 shrink-0" />
+                    <section.icon
+                      className="h-3 w-3 shrink-0 opacity-80"
+                      aria-hidden
+                    />
                     {link.label}
                   </a>
                 ))}

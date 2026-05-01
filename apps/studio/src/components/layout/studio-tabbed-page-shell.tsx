@@ -56,8 +56,8 @@ class TabPanelErrorBoundary extends React.Component<
     return { hasError: true };
   }
 
-  componentDidCatch() {
-    // Surface via fallback UI; callers may attach logging in a future revision.
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("[StudioTabbedPageShell] tab panel render failed:", error, errorInfo);
   }
 
   render() {
