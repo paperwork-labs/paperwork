@@ -96,7 +96,8 @@ def _load_results() -> list[dict[str, Any]]:
         return []
     try:
         payload = json.loads(_PROBE_RESULTS_JSON.read_text(encoding="utf-8"))
-        return payload.get("results", [])
+        results: list[dict[str, Any]] = payload.get("results", [])
+        return results
     except (json.JSONDecodeError, OSError) as exc:
         logger.warning("probe_results.json unreadable (%s); starting fresh", exc)
         return []
@@ -133,7 +134,8 @@ def _parse_playwright_json(product: str) -> dict[str, Any] | None:
     if not files:
         return None
     try:
-        return json.loads(Path(files[-1]).read_text(encoding="utf-8"))
+        result: dict[str, Any] = json.loads(Path(files[-1]).read_text(encoding="utf-8"))
+        return result
     except (json.JSONDecodeError, OSError) as exc:
         logger.warning("Could not parse Playwright JSON for %s: %s", product, exc)
         return None
