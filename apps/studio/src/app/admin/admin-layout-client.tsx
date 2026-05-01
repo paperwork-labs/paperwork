@@ -119,7 +119,6 @@ function AdminSidebarPanel({
               const Icon = item.icon;
               const badge = item.pendingBadge;
               const showPendingBadge = badge && badge.count > 0;
-              const staticCount = item.staticPendingCount;
               return (
                 <Link
                   key={item.href}
@@ -163,14 +162,6 @@ function AdminSidebarPanel({
                         title="Pending founder-only items"
                       >
                         {badge.count} pending
-                      </span>
-                    ) : null}
-                    {staticCount !== undefined ? (
-                      <span
-                        className="rounded-full bg-zinc-800/90 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-zinc-400"
-                        title="Expense approvals — live count in PR N"
-                      >
-                        {staticCount} pending
                       </span>
                     ) : null}
                   </span>

@@ -217,14 +217,55 @@ export function isN8nIntegrationConfigured(): boolean {
   return Boolean(getN8nApiRoot() && getN8nHeaders());
 }
 
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T | null> {
+export type FetchJsonOk<T> = { ok: true; data: T };
+export type FetchJsonErr = { ok: false; error: string; status?: number };
+export type FetchJsonResult<T> = FetchJsonOk<T> | FetchJsonErr;
+
+function truncateFetchDetail(raw: string, max = 280): string {
+  const t = raw.trim().replace(/\s+/g, " ");
+  return t.length <= max ? t : `${t.slice(0, max)}…`;
+}
+
+/** Typed HTTP+JSON fetch — surfaces HTTP, network, and parse failures (F-005 / no-silent-fallback). */
+export async function fetchJsonResult<T>(url: string, init?: RequestInit): Promise<FetchJsonResult<T>> {
   try {
     const res = await fetch(url, { ...init, cache: "no-store" });
-    if (!res.ok) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
+    const text = await res.text();
+
+    if (!res.ok) {
+      let detail = "";
+      try {
+        const j = JSON.parse(text) as { message?: string };
+        if (typeof j?.message === "string" && j.message.trim()) detail = j.message.trim();
+      } catch {
+        if (text.trim()) detail = text.trim().slice(0, 200);
+      }
+      return {
+        ok: false,
+        error: detail ? `HTTP ${res.status}: ${truncateFetchDetail(detail)}` : `HTTP ${res.status}`,
+        status: res.status,
+      };
+    }
+
+    if (!text.trim()) {
+      return { ok: false, error: "Empty response body" };
+    }
+
+    try {
+      return { ok: true, data: JSON.parse(text) as T };
+    } catch {
+      return { ok: false, error: "Response was not valid JSON" };
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Network request failed";
+    return { ok: false, error: message };
   }
+}
+
+/** Legacy helper: callers lose error detail — prefer {@link fetchJsonResult} for user-facing flows. */
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T | null> {
+  const r = await fetchJsonResult<T>(url, init);
+  return r.ok ? r.data : null;
 }
 
 export type BrainPersonaSpec = {
@@ -320,17 +361,20 @@ export type MissingGithubCredential = "GITHUB_TOKEN";
 export type RecentPullRequestsResult = {
   data: PullRequestSummary[];
   missingCred?: MissingGithubCredential;
+  /** Token is set but the GitHub request failed or the response shape was unexpected. */
+  fetchError?: string;
 };
 
 export type RecentCIRunsResult = {
   data: CIRun[];
   missingCred?: MissingGithubCredential;
+  fetchError?: string;
 };
 
 export async function getRecentPullRequests(limit = 5): Promise<RecentPullRequestsResult> {
-  const token = process.env.GITHUB_TOKEN;
+  const token = process.env.GITHUB_TOKEN?.trim();
   if (!token) return { data: [], missingCred: "GITHUB_TOKEN" };
-  const data = await fetchJson<PullRequestSummary[]>(
+  const result = await fetchJsonResult<PullRequestSummary[]>(
     `https://api.github.com/repos/paperwork-labs/paperwork/pulls?state=open&per_page=${limit}`,
     {
       headers: {
@@ -339,7 +383,14 @@ export async function getRecentPullRequests(limit = 5): Promise<RecentPullReques
       },
     },
   );
-  return { data: data ?? [] };
+  if (!result.ok) return { data: [], fetchError: result.error };
+  if (!Array.isArray(result.data)) {
+    return {
+      data: [],
+      fetchError: "GitHub returned an unexpected response (expected a JSON array of pull requests).",
+    };
+  }
+  return { data: result.data };
 }
 
 export type BrainPRReview = {
@@ -563,9 +614,9 @@ export type CIRun = {
 };
 
 export async function getRecentCIRuns(limit = 10): Promise<RecentCIRunsResult> {
-  const token = process.env.GITHUB_TOKEN;
+  const token = process.env.GITHUB_TOKEN?.trim();
   if (!token) return { data: [], missingCred: "GITHUB_TOKEN" };
-  const data = await fetchJson<{ workflow_runs?: Array<{
+  const result = await fetchJsonResult<{ workflow_runs?: Array<{
     id: number;
     name: string;
     status: string;
@@ -582,8 +633,16 @@ export async function getRecentCIRuns(limit = 10): Promise<RecentCIRunsResult> {
       },
     },
   );
+  if (!result.ok) return { data: [], fetchError: result.error };
+  const runs = result.data?.workflow_runs;
+  if (!Array.isArray(runs)) {
+    return {
+      data: [],
+      fetchError: "GitHub returned an unexpected response (expected workflow_runs array).",
+    };
+  }
   return {
-    data: (data?.workflow_runs ?? []).map((r) => ({
+    data: runs.map((r) => ({
       id: r.id,
       name: r.name,
       status: r.status,

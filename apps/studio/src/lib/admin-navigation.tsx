@@ -27,8 +27,6 @@ export type NavItem = {
   icon: LucideIcon;
   /** Pending founder-only items (Conversations nav — data from founder-actions sync until PR E) */
   pendingBadge?: { count: number; hasCritical: boolean } | null;
-  /** Static sidebar count; always rendered including 0 (PR N wires Expenses) */
-  staticPendingCount?: number;
 };
 
 export type NavGroup = {

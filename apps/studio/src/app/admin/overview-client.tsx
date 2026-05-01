@@ -98,6 +98,8 @@ type OverviewData = {
   fetchedAt: string;
   githubPrMissingCred?: "GITHUB_TOKEN";
   githubCiMissingCred?: "GITHUB_TOKEN";
+  githubPrFetchError?: string;
+  githubCiFetchError?: string;
   n8nConfigured?: boolean;
   slackDailyBriefingHref?: string | null;
 };
@@ -192,8 +194,17 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
   const slackActivity = data.slackActivity ?? [];
   const githubPrMissingCred = data.githubPrMissingCred;
   const githubCiMissingCred = data.githubCiMissingCred;
+  const githubPrFetchError = data.githubPrFetchError;
+  const githubCiFetchError = data.githubCiFetchError;
   const n8nConfigured = data.n8nConfigured ?? false;
   const slackDailyBriefingHref = data.slackDailyBriefingHref ?? null;
+
+  const githubAnyMissingCred = Boolean(githubPrMissingCred || githubCiMissingCred);
+  const githubFetchErrorLines = Array.from(
+    new Set([githubPrFetchError, githubCiFetchError].filter(Boolean) as string[]),
+  );
+  const githubPrDegraded = Boolean(githubPrMissingCred || githubPrFetchError);
+  const githubCiDegraded = Boolean(githubCiMissingCred || githubCiFetchError);
 
   const activeWorkflows = workflows.filter((w) => w.active).length;
   const workflowNameById = useMemo(
@@ -362,6 +373,35 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         </div>
       ) : null}
 
+      {githubAnyMissingCred || githubFetchErrorLines.length > 0 ? (
+        <div
+          data-testid="overview-github-honesty-banner"
+          className="space-y-3"
+          role="status"
+        >
+          {githubAnyMissingCred ? (
+            <HqMissingCredCard
+              service="GitHub (PRs & Actions)"
+              envVar="GITHUB_TOKEN"
+              reconnectAction={{
+                label: "Reconnect",
+                href: "https://vercel.com/docs/projects/environment-variables",
+              }}
+              docsLink="https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/PR_PIPELINE_AUTOMATION.md"
+              description="Open PR and CI widgets cannot load from the GitHub API because GITHUB_TOKEN is not set in this environment. Set the env var in Vercel / Render then redeploy."
+            />
+          ) : null}
+          {githubFetchErrorLines.map((line) => (
+            <p
+              key={line}
+              className="rounded-lg border border-[var(--status-warning)]/30 bg-[var(--status-warning-bg)] px-3 py-2 text-sm text-[var(--status-warning)]"
+            >
+              GitHub data could not be loaded: {line}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
       {/* Traffic Light */}
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
@@ -470,25 +510,29 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         <motion.div variants={fadeUp}>
           <Link
             href={
-              githubPrMissingCred
+              githubPrDegraded
                 ? "/admin/infrastructure"
                 : "https://github.com/paperwork-labs/paperwork/pulls"
             }
             className={STAT_CARD_LINK}
-            target={githubPrMissingCred ? undefined : "_blank"}
-            rel={githubPrMissingCred ? undefined : "noreferrer"}
-            aria-label={githubPrMissingCred ? "Open infrastructure to connect GitHub" : "Open GitHub pull requests"}
+            target={githubPrDegraded ? undefined : "_blank"}
+            rel={githubPrDegraded ? undefined : "noreferrer"}
+            aria-label={
+              githubPrDegraded ? "Open infrastructure to connect GitHub" : "Open GitHub pull requests"
+            }
           >
             <HqStatCard
               variant="default"
-              status={githubPrMissingCred ? "warning" : "neutral"}
+              status={githubPrDegraded ? "warning" : "neutral"}
               icon={<GitPullRequest className="h-4 w-4 text-zinc-500" />}
               label="Open PRs"
-              value={githubPrMissingCred ? "—" : prs.length}
+              value={githubPrDegraded ? "—" : prs.length}
               helpText={
                 githubPrMissingCred
                   ? "Connect GITHUB_TOKEN to load pull requests."
-                  : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
+                  : githubPrFetchError
+                    ? githubPrFetchError
+                    : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
               }
             />
           </Link>
@@ -560,16 +604,12 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           </div>
           <div className="space-y-1.5 max-h-72 overflow-y-auto">
             {githubCiMissingCred ? (
-              <HqMissingCredCard
-                service="GitHub Actions"
-                envVar="GITHUB_TOKEN"
-                reconnectAction={{
-                  label: "Reconnect",
-                  href: "https://vercel.com/docs/projects/environment-variables",
-                }}
-                docsLink="https://github.com/paperwork-labs/paperwork/blob/main/docs/infra/PR_PIPELINE_AUTOMATION.md"
-                description="We can't load recent workflow runs because GITHUB_TOKEN is not set in this environment. Set the env var in Vercel / Render then redeploy."
-              />
+              <p className="py-2 text-sm text-zinc-500">
+                Recent runs are not loaded — set <code className="font-mono text-xs">GITHUB_TOKEN</code> (see
+                the banner above).
+              </p>
+            ) : githubCiFetchError ? (
+              <p className="py-2 text-sm text-[var(--status-warning)]">{githubCiFetchError}</p>
             ) : ciRuns.length === 0 ? (
               <p className="py-2 text-sm text-zinc-500">No CI runs found.</p>
             ) : (

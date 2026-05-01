@@ -68,6 +68,8 @@ export default async function AdminOverviewPage() {
           ciRuns: ciRunsResult.data,
           githubPrMissingCred: prsResult.missingCred,
           githubCiMissingCred: ciRunsResult.missingCred,
+          githubPrFetchError: prsResult.fetchError,
+          githubCiFetchError: ciRunsResult.fetchError,
           slackActivity,
           n8nConfigured: isN8nIntegrationConfigured(),
           slackDailyBriefingHref,
