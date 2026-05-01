@@ -240,6 +240,13 @@ docs:
     tags: [cloudflare, dns, migration, security]
     owners: [infra-ops]
     category: runbooks
+  - slug: credential-access
+    path: docs/runbooks/CREDENTIAL_ACCESS.md
+    title: Credential Access Runbook
+    summary: Brain and agents have programmatic access to all infrastructure credentials. **Never ask the founder to manually set env vars or DNS** — use the APIs documented here.
+    tags: [ops, runbook]
+    owners: [brain]
+    category: runbooks
   - slug: credentials
     path: docs/CREDENTIALS.md
     title: Credential Rotation
