@@ -205,10 +205,11 @@ describe("BrainClient", () => {
         .fn()
         .mockRejectedValue(new Error("ECONNREFUSED"));
 
-      const err = await client
+      const result = await client
         .getOperatingScore()
         .catch((e: unknown) => e as BrainClientError);
-      expect(err).toBeInstanceOf(BrainClientError);
+      expect(result).toBeInstanceOf(BrainClientError);
+      const err = result as BrainClientError;
       expect(err.status).toBe(0);
       expect(err.message).toContain("ECONNREFUSED");
     });
