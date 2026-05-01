@@ -1,402 +1,2492 @@
 {
   "nodes": [
     {
-      "id": "ARCHITECTURE",
-      "slug": "architecture",
-      "title": "Architecture",
-      "category": "architecture",
-      "read_minutes": 25,
-      "freshness": "stale",
-      "links_in": 9
+      "id": "AGENT_SPRINT_PLANNING",
+      "slug": "agent-sprint-planning",
+      "title": "Cheap-agent sprint planning (Brain)",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0
     },
     {
       "id": "AI_MODEL_PHILOSOPHY",
       "slug": "ai-model-philosophy",
       "title": "AI Model Philosophy",
+      "kind": "philosophy",
       "category": "philosophy",
-      "read_minutes": 12,
-      "freshness": "stale",
-      "links_in": 8
+      "read_time_min": 7,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 1
     },
     {
-      "id": "INFRA_PHILOSOPHY",
-      "slug": "infra-philosophy",
-      "title": "Infra Philosophy",
-      "category": "philosophy",
-      "read_minutes": 10,
-      "freshness": "stale",
-      "links_in": 7
-    },
-    {
-      "id": "BRAIN_PHILOSOPHY",
-      "slug": "brain-philosophy",
-      "title": "Brain Philosophy",
-      "category": "philosophy",
-      "read_minutes": 15,
-      "freshness": "fresh",
-      "links_in": 7
-    },
-    {
-      "id": "DATA_PHILOSOPHY",
-      "slug": "data-philosophy",
-      "title": "Data Philosophy",
-      "category": "philosophy",
-      "read_minutes": 8,
-      "freshness": "aging",
-      "links_in": 5
-    },
-    {
-      "id": "AXIOMFOLIO_ARCHITECTURE",
-      "slug": "axiomfolio-architecture",
-      "title": "AxiomFolio Architecture",
+      "id": "AI_MODEL_REGISTRY",
+      "slug": "ai-model-registry",
+      "title": "AI Model Registry",
+      "kind": "reference",
       "category": "architecture",
-      "read_minutes": 20,
-      "freshness": "stale",
-      "links_in": 5
+      "read_time_min": 7,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 2,
+      "facets": {
+        "personas": [
+          "n8n/n8n-nodes-langchain"
+        ]
+      }
     },
     {
-      "id": "BRAIN_ARCHITECTURE",
-      "slug": "brain-architecture",
-      "title": "Brain Architecture",
+      "id": "ARCHITECTURE",
+      "slug": "architecture",
+      "title": "Paperwork Architecture",
+      "kind": "architecture",
       "category": "architecture",
-      "read_minutes": 18,
-      "freshness": "fresh",
-      "links_in": 4
-    },
-    {
-      "id": "GROUND_TRUTH",
-      "slug": "ground-truth",
-      "title": "Ground Truth",
-      "category": "philosophy",
-      "read_minutes": 6,
-      "freshness": "fresh",
-      "links_in": 4
-    },
-    {
-      "id": "SECRETS",
-      "slug": "secrets",
-      "title": "Secrets",
-      "category": "runbook",
-      "read_minutes": 11,
-      "freshness": "stale",
-      "links_in": 6
-    },
-    {
-      "id": "BRAIN_DEPLOY_RECOVERY",
-      "slug": "brain-deploy-recovery",
-      "title": "Brain Deploy Recovery",
-      "category": "runbook",
-      "read_minutes": 14,
-      "freshness": "stale",
-      "links_in": 4
-    },
-    {
-      "id": "VENTURE_MASTER_PLAN",
-      "slug": "venture-master-plan",
-      "title": "Venture Master Plan",
-      "category": "strategy",
-      "read_minutes": 30,
-      "freshness": "aging",
-      "links_in": 5
-    },
-    {
-      "id": "AGENT_SPRINT_PLANNING",
-      "slug": "agent-sprint-planning",
-      "title": "Agent Sprint Planning",
-      "category": "strategy",
-      "read_minutes": 12,
-      "freshness": "fresh",
-      "links_in": 3
-    },
-    {
-      "id": "STACK_AUDIT_2026_Q2",
-      "slug": "stack-audit-2026-q2",
-      "title": "Stack Audit 2026 Q2",
-      "category": "strategy",
-      "read_minutes": 15,
-      "freshness": "stale",
-      "links_in": 2
-    },
-    {
-      "id": "PRODUCT_SPEC",
-      "slug": "product-spec",
-      "title": "Product Spec",
-      "category": "strategy",
-      "read_minutes": 40,
-      "freshness": "fresh",
-      "links_in": 2
-    },
-    {
-      "id": "RENDER_INVENTORY",
-      "slug": "render-inventory",
-      "title": "Render Inventory",
-      "category": "runbook",
-      "read_minutes": 9,
-      "freshness": "fresh",
-      "links_in": 2
-    },
-    {
-      "id": "STUDIO_ENV",
-      "slug": "studio-env",
-      "title": "Studio Env",
-      "category": "runbook",
-      "read_minutes": 6,
-      "freshness": "aging",
-      "links_in": 4
-    },
-    {
-      "id": "PR_PIPELINE_AUTOMATION",
-      "slug": "pr-pipeline-automation",
-      "title": "PR Pipeline Automation",
-      "category": "runbook",
-      "read_minutes": 10,
-      "freshness": "fresh",
-      "links_in": 3
-    },
-    {
-      "id": "DAY_0_FOUNDER_ACTIONS",
-      "slug": "day-0-founder-actions",
-      "title": "Day 0 Founder Actions",
-      "category": "playbook",
-      "read_minutes": 5,
-      "freshness": "fresh",
-      "links_in": 3
-    },
-    {
-      "id": "DECOMMISSION_CHECKLIST",
-      "slug": "decommission-checklist",
-      "title": "Decommission Checklist",
-      "category": "playbook",
-      "read_minutes": 8,
-      "freshness": "fresh",
-      "links_in": 2
-    },
-    {
-      "id": "FOUNDER_ACTIONS",
-      "slug": "founder-actions",
-      "title": "Founder Actions",
-      "category": "playbook",
-      "read_minutes": 7,
-      "freshness": "fresh",
-      "links_in": 3
-    },
-    {
-      "id": "HOW_TO_NAVIGATE",
-      "slug": "how-to-navigate",
-      "title": "How to Navigate",
-      "category": "playbook",
-      "read_minutes": 4,
-      "freshness": "fresh",
-      "links_in": 5
+      "read_time_min": 13,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 6,
+      "facets": {
+        "personas": [
+          "paperwork-labs/auth-clerk"
+        ]
+      }
     },
     {
       "id": "AUTH_PROVIDER_BAKEOFF_2026Q2",
       "slug": "auth-provider-bakeoff-2026q2",
-      "title": "Auth Provider Bakeoff 2026Q2",
-      "category": "decision",
-      "read_minutes": 22,
-      "freshness": "aging",
-      "links_in": 2
-    },
-    {
-      "id": "CANON",
-      "slug": "canon",
-      "title": "Canon",
-      "category": "philosophy",
-      "read_minutes": 9,
-      "freshness": "fresh",
-      "links_in": 3
+      "title": "Auth Provider Bakeoff — 2026 Q2",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 10,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "paperwork/auth"
+        ]
+      }
     },
     {
       "id": "AUTOMATION_PHILOSOPHY",
       "slug": "automation-philosophy",
       "title": "Automation Philosophy",
+      "kind": "philosophy",
       "category": "philosophy",
-      "read_minutes": 7,
-      "freshness": "fresh",
-      "links_in": 3
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 2
     },
     {
-      "id": "CLERK_STUDIO",
-      "slug": "clerk-studio",
-      "title": "Clerk Studio",
-      "category": "runbook",
-      "read_minutes": 5,
-      "freshness": "fresh",
-      "links_in": 2
+      "id": "AUTOMATION_STATE",
+      "slug": "automation-state",
+      "title": "Automation state (single source of truth)",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 7,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 3
     },
     {
-      "id": "PRE_DEPLOY_GUARD",
-      "slug": "pre-deploy-guard",
-      "title": "Pre-deploy Guard",
-      "category": "runbook",
-      "read_minutes": 8,
-      "freshness": "fresh",
-      "links_in": 3
+      "id": "AXIOMFOLIO_ARCHITECTURE",
+      "slug": "axiomfolio-architecture",
+      "title": "AxiomFolio Architecture",
+      "kind": "architecture",
+      "category": "architecture",
+      "read_time_min": 27,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 2
+    },
+    {
+      "id": "AXIOMFOLIO_GAPS",
+      "slug": "axiomfolio-gaps",
+      "title": "AxiomFolio Gaps 2026 Q2",
+      "kind": "plan",
+      "category": "plans",
+      "read_time_min": 80,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1,
+      "facets": {
+        "personas": [
+          "abstractmethod",
+          "celery",
+          "dataclass",
+          "router"
+        ]
+      }
+    },
+    {
+      "id": "AXIOMFOLIO_INTEGRATION",
+      "slug": "axiomfolio-integration",
+      "title": "AxiomFolio Integration (generated)",
+      "kind": "generated",
+      "category": "generated",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "AXIOMFOLIO_MASTER_PLAN",
+      "slug": "axiomfolio-master-plan",
+      "title": "AxiomFolio Master Plan 2026",
+      "kind": "plan",
+      "category": "plans",
+      "read_time_min": 32,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 1,
+      "facets": {
+        "personas": [
+          "copilot",
+          "dnd-kit",
+          "require"
+        ]
+      }
+    },
+    {
+      "id": "AXIOMFOLIO_NEXTJS_MIGRATION",
+      "slug": "axiomfolio-nextjs-migration",
+      "title": "AxiomFolio Next.js migration (completed 2026-04-27)",
+      "kind": "plan",
+      "category": "plans",
+      "read_time_min": 12,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "paperwork-labs",
+          "paperwork-labs/axiomfolio",
+          "paperwork-labs/pwa",
+          "paperwork-labs/ui",
+          "tailwindcss/vite",
+          "vitejs/plugin-react"
+        ]
+      }
+    },
+    {
+      "id": "AXIOMFOLIO_PHASE_3_RUNBOOK",
+      "slug": "axiomfolio-phase-3-runbook",
+      "title": "AxiomFolio Phase 3 — DNS & custom-domain cutover runbook",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "AXIOMFOLIO_PORT_INVENTORY_2026Q2",
+      "slug": "axiomfolio-port-inventory-2026q2",
+      "title": "AxiomFolio port inventory (2026 Q2)",
+      "kind": "plan",
+      "category": "plans",
+      "read_time_min": 12,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 1
+    },
+    {
+      "id": "BILLING_VENDOR_CHECKLIST",
+      "slug": "billing-vendor-checklist",
+      "title": "Billing + Vendor Checklist",
+      "kind": "reference",
+      "category": "reference",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "BRAIN_AMBIENT_LEARNING_J1_TONIGHT",
+      "slug": "brain-ambient-learning-j1-tonight",
+      "title": "Tonight: Brain ambient learning env vars on `brain-api` (J1)",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "BRAIN_ARCHITECTURE",
+      "slug": "brain-architecture",
+      "title": "Brain Architecture",
+      "kind": "architecture",
+      "category": "architecture",
+      "read_time_min": 135,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 5,
+      "links_out": 2,
+      "facets": {
+        "personas": [
+          "dukelovestaxes",
+          "olga",
+          "sarah"
+        ]
+      }
+    },
+    {
+      "id": "BRAIN_CONTINUOUS_LEARNING_2026Q3",
+      "slug": "brain-continuous-learning-2026q3",
+      "title": "Brain continuous learning (ambient signals)",
+      "kind": "sprint",
+      "category": "sprints",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0
+    },
+    {
+      "id": "BRAIN_DEPLOY_RECOVERY",
+      "slug": "brain-deploy-recovery",
+      "title": "Brain deploy recovery (Render / Postgres / Docker)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 1,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "BRAIN_PERSONAS_GENERATED",
+      "slug": "brain-personas-generated",
+      "title": "Brain Personas (generated)",
+      "kind": "reference",
+      "category": "generated",
+      "read_time_min": 8,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 0
+    },
+    {
+      "id": "BRAIN_PHILOSOPHY",
+      "slug": "brain-philosophy",
+      "title": "Brain Philosophy",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 7,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 6
     },
     {
       "id": "BRAIN_PR_REVIEW",
       "slug": "brain-pr-review",
       "title": "Brain PR Review",
+      "kind": "reference",
       "category": "architecture",
-      "read_minutes": 11,
-      "freshness": "fresh",
-      "links_in": 3
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 1
+    },
+    {
+      "id": "BRAIN_SCHEDULER",
+      "slug": "brain-scheduler",
+      "title": "Brain APScheduler — SQLAlchemy job store and n8n shadow mirrors",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 7,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 7,
+      "links_out": 5
+    },
+    {
+      "id": "BRAIN_SECRETS_INTELLIGENCE",
+      "slug": "brain-secrets-intelligence",
+      "title": "Brain secrets operational intelligence",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "BRAIN_SELF_MERGE_GRADUATION",
+      "slug": "brain-self-merge-graduation",
+      "title": "Brain Self-Merge Graduation",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "BRAIN_SELF_PRIORITIZATION",
+      "slug": "brain-self-prioritization",
+      "title": "Brain Self-Prioritization",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "BRAIN_WEEKLY_RETRO",
+      "slug": "brain-weekly-retro",
+      "title": "Brain Weekly Retro",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "BRAND_DESIGN_DEEPDIVE_2026Q2",
+      "slug": "brand-design-deepdive-2026q2",
+      "title": "Brand & design system deep-dive (2026 Q2)",
+      "kind": "sprint",
+      "category": "sprints",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 2
+    },
+    {
+      "id": "CANON",
+      "slug": "canon",
+      "title": "Brand canon",
+      "kind": "reference",
+      "category": "reference",
+      "read_time_min": 9,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 0
+    },
+    {
+      "id": "CHROMATIC_VRT",
+      "slug": "chromatic-vrt",
+      "title": "Chromatic visual regression",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "paperwork-labs/design"
+        ]
+      }
+    },
+    {
+      "id": "CLERK_ACCOUNTS_DNS_TONIGHT",
+      "slug": "clerk-accounts-dns-tonight",
+      "title": "Tonight: `accounts.paperworklabs.com` — Clerk primary + DNS (H1)",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 2
+    },
+    {
+      "id": "CLERK_AXIOMFOLIO",
+      "slug": "clerk-axiomfolio",
+      "title": "Clerk SSO — AxiomFolio (Next.js)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "clerk/themes",
+          "paperwork-labs/auth-clerk",
+          "paperwork-labs/axiomfolio",
+          "theme"
+        ]
+      }
+    },
+    {
+      "id": "CLERK_DISTILL",
+      "slug": "clerk-distill",
+      "title": "Clerk SSO — Distill (Next.js)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 4,
+      "facets": {
+        "personas": [
+          "clerk/themes",
+          "paperwork-labs/distill"
+        ]
+      }
+    },
+    {
+      "id": "CLERK_DNS_INCIDENT_2026_04_28",
+      "slug": "clerk-dns-incident-2026-04-28",
+      "title": "Clerk + Cloudflare DNS incident (2026-04-28)",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 0
+    },
+    {
+      "id": "CLERK_DNS_SPACESHIP",
+      "slug": "clerk-dns-spaceship",
+      "title": "Clerk production DNS for `paperworklabs.com` (Cloudflare zone)",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 1
+    },
+    {
+      "id": "CLERK_FILEFREE",
+      "slug": "clerk-filefree",
+      "title": "Clerk SSO — FileFree (Next.js)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 4,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "clerk/themes",
+          "paperwork-labs/filefree",
+          "theme"
+        ]
+      }
+    },
+    {
+      "id": "CLERK_KEY_PROPAGATION_2026_04_27T080144Z",
+      "slug": "clerk-key-propagation-2026-04-27t080144z",
+      "title": "Clerk key propagation audit — 2026-04-27T080144Z",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "CLERK_KEY_PROPAGATION_2026_04_27T12_22Z",
+      "slug": "clerk-key-propagation-2026-04-27t12-22z",
+      "title": "Clerk key propagation — audit report (v2)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "CLERK_LAUNCHFREE",
+      "slug": "clerk-launchfree",
+      "title": "Clerk SSO — LaunchFree (Next.js)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "clerk/themes"
+        ]
+      }
+    },
+    {
+      "id": "CLERK_SATELLITE_TOPOLOGY",
+      "slug": "clerk-satellite-topology",
+      "title": "Clerk multi-domain satellite topology",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 10,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 5,
+      "links_out": 8,
+      "facets": {
+        "personas": [
+          "paperwork-labs/auth"
+        ]
+      }
+    },
+    {
+      "id": "CLERK_STUDIO",
+      "slug": "clerk-studio",
+      "title": "Clerk SSO — Paperwork Studio (Next.js)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 4,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "clerk/themes",
+          "theme"
+        ]
+      }
+    },
+    {
+      "id": "CLERK_TRINKETS",
+      "slug": "clerk-trinkets",
+      "title": "Clerk SSO — Trinkets (Next.js)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "clerk/themes",
+          "paperwork-labs/trinkets",
+          "paperwork-labs/ui"
+        ]
+      }
+    },
+    {
+      "id": "CLOUDFLARE_OWNERSHIP",
+      "slug": "cloudflare-ownership",
+      "title": "Cloudflare account ownership + migration",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 10,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "CLOUDFLARE_PER_ZONE_TOKENS",
+      "slug": "cloudflare-per-zone-tokens",
+      "title": "Cloudflare Per-Zone Write Tokens",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "CLOUDFLARE_TOKEN_INVENTORY",
+      "slug": "cloudflare-token-inventory",
+      "title": "Cloudflare token inventory (WS-57 batch A)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 1,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "CLOUDFLARE_ZONE_DECOMMISSION",
+      "slug": "cloudflare-zone-decommission",
+      "title": "Cloudflare — decommission zones on former personal account",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "CREDENTIAL_ACCESS",
+      "slug": "credential-access",
+      "title": "Credential Access Runbook",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "CREDENTIALS",
+      "slug": "credentials",
+      "title": "Credential Rotation",
+      "kind": "reference",
+      "category": "runbooks",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "DATA_PHILOSOPHY",
+      "slug": "data-philosophy",
+      "title": "Data Philosophy",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 1
+    },
+    {
+      "id": "DAY_0_FOUNDER_ACTIONS",
+      "slug": "day-0-founder-actions",
+      "title": "Day-0 Founder Actions Worksheet (WS-76)",
+      "kind": "strategy",
+      "category": "reference",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "DECOMMISSION_CHECKLIST",
+      "slug": "decommission-checklist",
+      "title": "Domain / App Decommission Checklist",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 2
+    },
+    {
+      "id": "DEPENDABOT",
+      "slug": "dependabot",
+      "title": "Dependabot Runbook",
+      "kind": "reference",
+      "category": "runbooks",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 1
+    },
+    {
+      "id": "DESIGN_CANVAS_DEPLOY",
+      "slug": "design-canvas-deploy",
+      "title": "Design Canvas (Storybook) deploy",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "paperwork-labs/design"
+        ]
+      }
+    },
+    {
+      "id": "DOCS_STREAMLINE_2026Q2",
+      "slug": "docs-streamline-2026q2",
+      "title": "Docs Streamline 2026 Q2",
+      "kind": "audit",
+      "category": "plans",
+      "read_time_min": 8,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 4,
+      "links_out": 1
+    },
+    {
+      "id": "EFIN_FILING",
+      "slug": "efin-filing",
+      "title": "EFIN Filing Instructions",
+      "kind": "reference",
+      "category": "runbooks",
+      "read_time_min": 8,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0
+    },
+    {
+      "id": "EMAIL_DELIVERABILITY",
+      "slug": "email-deliverability",
+      "title": "Email deliverability (SPF + DMARC)",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "FILEFREE_PREVIEW_CLERK_ENVS",
+      "slug": "filefree-preview-clerk-envs",
+      "title": "Runbook: FileFree — Clerk Auth Env Vars for All Vercel Environments",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "FINANCIALS",
+      "slug": "financials",
+      "title": "Financials",
+      "kind": "reference",
+      "category": "reference",
+      "read_time_min": 11,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "FORMATION_PHILOSOPHY",
+      "slug": "formation-philosophy",
+      "title": "Formation Philosophy",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0
+    },
+    {
+      "id": "FOUNDER_ACTIONS",
+      "slug": "founder-actions",
+      "title": "Founder-Only Actions",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 11,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 2,
+      "facets": {
+        "personas": [
+          "paperwork-labs/auth-clerk"
+        ]
+      }
+    },
+    {
+      "id": "GITHUB_ACTIONS_QUOTA_AUDIT_2026Q2",
+      "slug": "github-actions-quota-audit-2026q2",
+      "title": "GitHub Actions quota audit (2026 Q2)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 17,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "founder"
+        ]
+      }
+    },
+    {
+      "id": "GROUND_TRUTH",
+      "slug": "ground-truth",
+      "title": "Ground Truth",
+      "kind": "audit",
+      "category": "philosophy",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "paperwork"
+        ]
+      }
+    },
+    {
+      "id": "HANDOFF_2026_04_29_L4_BLITZ_CLOSEOUT",
+      "slug": "handoff-2026-04-29-l4-blitz-closeout",
+      "title": "Handoff — End of L4/L5 Blitz Chat → New Work",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 8,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "paperwork-labs/auth-clerk"
+        ]
+      }
+    },
+    {
+      "id": "HETZNER_SOCIALS_REPURPOSE",
+      "slug": "hetzner-socials-repurpose",
+      "title": "Hetzner VPS — Social Automation Repurpose",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 2
+    },
+    {
+      "id": "HOW_TO_NAVIGATE",
+      "slug": "how-to-navigate",
+      "title": "Navigate `docs/` (Obsidian vault)",
+      "kind": "reference",
+      "category": "reference",
+      "read_time_min": 1,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "INFRA",
+      "slug": "infra",
+      "title": "Infra Overview",
+      "kind": "architecture",
+      "category": "reference",
+      "read_time_min": 13,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 7,
+      "links_out": 8,
+      "facets": {
+        "personas": [
+          "paperwork-labs/axiomfolio"
+        ]
+      }
+    },
+    {
+      "id": "INFRA_PHILOSOPHY",
+      "slug": "infra-philosophy",
+      "title": "Infra Philosophy",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 1
+    },
+    {
+      "id": "ISSUE_QUEUE_2026_04_27",
+      "slug": "issue-queue-2026-04-27",
+      "title": "Open issue queue — `paperwork-labs/paperwork`",
+      "kind": "checklist",
+      "category": "runbooks",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "KNOWLEDGE",
+      "slug": "knowledge",
+      "title": "Company Knowledge",
+      "kind": "reference",
+      "category": "philosophy",
+      "read_time_min": 27,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 7,
+      "links_out": 1,
+      "facets": {
+        "personas": [
+          "paperwork-labs/auth-clerk"
+        ]
+      }
+    },
+    {
+      "id": "L4_AUTONOMY_L5_SEEDS_2026Q2",
+      "slug": "l4-autonomy-l5-seeds-2026q2",
+      "title": "Level 4 Autonomy + L5 Self-Improvement Blitz — 2026-04-28/29",
+      "kind": "sprint",
+      "category": "sprints",
+      "read_time_min": 9,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "paperwork-labs/auth-clerk"
+        ]
+      }
+    },
+    {
+      "id": "LAUNCHFREE_API_HEALTH",
+      "slug": "launchfree-api-health",
+      "title": "LaunchFree API health (`/health`)",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 1,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "N8N_DECOMMISSION_INVENTORY",
+      "slug": "n8n-decommission-inventory",
+      "title": "WS-69 PR J — n8n Decommission Inventory",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0
+    },
+    {
+      "id": "N8N_DEPRECATED_CLEANUP",
+      "slug": "n8n-deprecated-cleanup",
+      "title": "Deprecated n8n Workflows (Hetzner) — Retired",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 3
+    },
+    {
+      "id": "PAPERWORK_LABS_DRIVE_SETUP",
+      "slug": "paperwork-labs-drive-setup",
+      "title": "Google Drive Setup",
+      "kind": "reference",
+      "category": "runbooks",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "modelcontextprotocol/server-gdrive"
+        ]
+      }
+    },
+    {
+      "id": "PARTNERSHIPS",
+      "slug": "partnerships",
+      "title": "Partnerships",
+      "kind": "reference",
+      "category": "reference",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0
+    },
+    {
+      "id": "PHILOSOPHY_INDEX",
+      "slug": "philosophy-index",
+      "title": "Philosophy Index",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 18
+    },
+    {
+      "id": "PITCH_PACKAGE",
+      "slug": "pitch-package",
+      "title": "Pitch Package",
+      "kind": "plan",
+      "category": "reference",
+      "read_time_min": 1,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "PR_PIPELINE_AUTOMATION",
+      "slug": "pr-pipeline-automation",
+      "title": "PR pipeline automation",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 8,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1,
+      "facets": {
+        "personas": [
+          "founder"
+        ]
+      }
     },
     {
       "id": "PRD",
       "slug": "prd",
-      "title": "PRD",
+      "title": "Paperwork PRD",
+      "kind": "spec",
       "category": "reference",
-      "read_minutes": 35,
-      "freshness": "aging",
-      "links_in": 2
+      "read_time_min": 55,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 4,
+      "facets": {
+        "personas": [
+          "ai-sdk/react",
+          "clerk/nextjs",
+          "paperwork-labs/auth-clerk",
+          "react-pdf/renderer",
+          "tanstack/react-query"
+        ]
+      }
+    },
+    {
+      "id": "PRE_DEPLOY_GUARD",
+      "slug": "pre-deploy-guard",
+      "title": "Pre-deploy guard (Vercel quota + env vars)",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 2
+    },
+    {
+      "id": "PRODUCT_SPEC",
+      "slug": "product-spec",
+      "title": "Product Spec",
+      "kind": "spec",
+      "category": "reference",
+      "read_time_min": 60,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "axe-core/react",
+          "filefree",
+          "react-pdf/renderer",
+          "sentry/nextjs",
+          "tanstack/react-table",
+          "vercel/og"
+        ]
+      }
+    },
+    {
+      "id": "PWL_CLI",
+      "slug": "pwl-cli",
+      "title": "pwl CLI Runbook",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "README",
+      "slug": "readme",
+      "title": "Paperwork Labs brand asset registry",
+      "kind": "reference",
+      "category": "reference",
+      "read_time_min": 1,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 2
+    },
+    {
+      "id": "RENDER_INVENTORY",
+      "slug": "render-inventory",
+      "title": "Render Inventory",
+      "kind": "reference",
+      "category": "runbooks",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 7,
+      "links_out": 0
+    },
+    {
+      "id": "RENDER_QUOTA_AUDIT_2026Q2",
+      "slug": "render-quota-audit-2026q2",
+      "title": "Render pipeline minutes — quota audit (2026 Q2)",
+      "kind": "audit",
+      "category": "reference",
+      "read_time_min": 11,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 1
+    },
+    {
+      "id": "RENDER_REPOINT",
+      "slug": "render-repoint",
+      "title": "Render Repoint Runbook",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 4,
+      "links_out": 1,
+      "facets": {
+        "personas": [
+          "brain",
+          "paperwork"
+        ]
+      }
+    },
+    {
+      "id": "RENDER_REPOINT_TONIGHT",
+      "slug": "render-repoint-tonight",
+      "title": "Repoint AxiomFolio Render services to the monorepo (I1) — reference",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 2
+    },
+    {
+      "id": "RUNBOOK_TEMPLATE",
+      "slug": "runbook-template",
+      "title": "Runbook Template",
+      "kind": "reference",
+      "category": "reference",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "SECRET_INTAKE",
+      "slug": "secret-intake",
+      "title": "Secret intake (Studio)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "SECRETS",
+      "slug": "secrets",
+      "title": "Secrets Inventory",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 3,
+      "links_out": 0
+    },
+    {
+      "id": "SECRETS_OPS",
+      "slug": "secrets-ops",
+      "title": "Studio vault — read / write helpers",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "SKILLS_EXTRACTION_ROADMAP",
+      "slug": "skills-extraction-roadmap",
+      "title": "Skills extraction roadmap (WS-82 Wave 6)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 11,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "paperwork-labs/document-processing",
+          "paperwork-labs/skills-banking",
+          "paperwork/skills"
+        ]
+      }
+    },
+    {
+      "id": "SPRINT_AUTOMATION_2026Q3",
+      "slug": "sprint-automation-2026q3",
+      "title": "Sprint Automation (2026 Q3)",
+      "kind": "sprint",
+      "category": "sprints",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "SPRINT_DOCS_STREAMLINE_AND_TRACKERS_2026Q2",
+      "slug": "sprint-docs-streamline-and-trackers-2026q2",
+      "title": "Docs Streamline + Trackers Spine (2026 Q2)",
+      "kind": "sprint",
+      "category": "sprints",
+      "read_time_min": 11,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 4,
+      "facets": {
+        "personas": [
+          "paperwork-labs/founders"
+        ]
+      }
+    },
+    {
+      "id": "SPRINT_INFRA_AUTOMATION_HARDENING_2026Q2",
+      "slug": "sprint-infra-automation-hardening-2026q2",
+      "title": "Infra & Automation Hardening (2026 Q2)",
+      "kind": "sprint",
+      "category": "sprints",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "STACK_AUDIT_2026_Q2",
+      "slug": "stack-audit-2026-q2",
+      "title": "Paperwork Labs Stack Audit - 2026 Q2",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 22,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "ai-sdk/openai",
+          "ai-sdk/react",
+          "clerk/nextjs",
+          "hookform/resolvers",
+          "neondatabase/serverless",
+          "paperwork-labs/analytics",
+          "paperwork-labs/pwa",
+          "paperwork-labs/ui",
+          "sentry/nextjs",
+          "storybook/react-vite",
+          "tailwindcss/postcss"
+        ]
+      }
+    },
+    {
+      "id": "STACK_AUDIT_2026Q2",
+      "slug": "stack-audit-2026q2",
+      "title": "Stack audit — 2026 Q2 (WS-73 Batch B)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "ai-sdk",
+          "clerk/nextjs",
+          "paperwork-labs/data",
+          "sentry/nextjs",
+          "types"
+        ]
+      }
+    },
+    {
+      "id": "STREAMLINE_SSO_DAGS_2026Q2",
+      "slug": "streamline-sso-dags-2026q2",
+      "title": "Streamline + SSO + Real DAGs (2026 Q2)",
+      "kind": "sprint",
+      "category": "sprints",
+      "read_time_min": 12,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 4,
+      "links_out": 12,
+      "facets": {
+        "personas": [
+          "clerk/nextjs",
+          "clerk/themes",
+          "paperwork-labs/auth-clerk",
+          "xyflow/react"
+        ]
+      }
+    },
+    {
+      "id": "STUDIO_ENV",
+      "slug": "studio-env",
+      "title": "Studio Vercel environment variables — setup runbook",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 3
+    },
+    {
+      "id": "STUDIO_IA_REORG_BRIEF",
+      "slug": "studio-ia-reorg-brief",
+      "title": "WS-69 — Studio IA Reorg + Sprint/Plan Data Reconcile",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "docs/strategy"
+        ]
+      }
+    },
+    {
+      "id": "STUDIO_TRACKER_RECONCILE_2026Q2",
+      "slug": "studio-tracker-reconcile-2026q2",
+      "title": "Studio tracker reconcile — WS-69 PR A (2026 Q2)",
+      "kind": "strategy",
+      "category": "sprints",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
+    },
+    {
+      "id": "STUDIO_UX_AUDIT_2026Q2",
+      "slug": "studio-ux-audit-2026q2",
+      "title": "Studio UX Audit — 2026 Q2 (WS-76 Wave L PR-A)",
+      "kind": "strategy",
+      "category": "reference",
+      "read_time_min": 20,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "paperwork-labs/ui"
+        ]
+      }
+    },
+    {
+      "id": "TASKS",
+      "slug": "tasks",
+      "title": "Company Tasks (TASKS.md)",
+      "kind": "plan",
+      "category": "plans",
+      "read_time_min": 61,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 6,
+      "facets": {
+        "personas": [
+          "launchfree",
+          "react-pdf/renderer",
+          "venture/distill"
+        ]
+      }
+    },
+    {
+      "id": "TAX_PHILOSOPHY",
+      "slug": "tax-philosophy",
+      "title": "Tax Philosophy",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 5,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0
+    },
+    {
+      "id": "TIMEZONE_STANDARDS",
+      "slug": "timezone-standards",
+      "title": "Timezone standards (Paperwork Labs)",
+      "kind": "runbook",
+      "category": "runbooks",
+      "read_time_min": 6,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 2,
+      "facets": {
+        "personas": [
+          "paperwork-labs/ui"
+        ]
+      }
+    },
+    {
+      "id": "TRADING_PRINCIPLES",
+      "slug": "trading-principles",
+      "title": "Trading Principles (AxiomFolio)",
+      "kind": "philosophy",
+      "category": "philosophy",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 0
+    },
+    {
+      "id": "VENTURE_MASTER_PLAN",
+      "slug": "venture-master-plan",
+      "title": "Venture Master Plan",
+      "kind": "plan",
+      "category": "philosophy",
+      "read_time_min": 188,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 2,
+      "links_out": 5,
+      "facets": {
+        "personas": [
+          "clerk/nextjs",
+          "filefree",
+          "filefreetax",
+          "launchfree",
+          "paperwork-labs/auth-clerk",
+          "react-pdf/renderer",
+          "venture/distill"
+        ]
+      }
+    },
+    {
+      "id": "VERCEL_AUTO_PROMOTE",
+      "slug": "vercel-auto-promote",
+      "title": "Vercel auto-promote on merge",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 9,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 1,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "paperwork-labs"
+        ]
+      }
+    },
+    {
+      "id": "VERCEL_LINKING",
+      "slug": "vercel-linking",
+      "title": "Vercel linking (monorepo)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 3,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 1
+    },
+    {
+      "id": "VERCEL_PROJECTS",
+      "slug": "vercel-projects",
+      "title": "Vercel projects (monorepo)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 4,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "axiomfolio",
+          "paperwork-labs/design",
+          "paperwork-labs/trinkets"
+        ]
+      }
+    },
+    {
+      "id": "VERCEL_QUOTA_AUDIT_2026Q2",
+      "slug": "vercel-quota-audit-2026q2",
+      "title": "Vercel quota audit (2026 Q2)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 14,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 2
+    },
+    {
+      "id": "WORKSTREAMS_BOARD",
+      "slug": "workstreams-board",
+      "title": "Workstreams board (Track Z)",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 7,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "dnd-kit/core",
+          "dnd-kit/sortable"
+        ]
+      }
+    },
+    {
+      "id": "WS_67_BRAIN_COACH",
+      "slug": "ws-67-brain-coach",
+      "title": "WS-67 — Brain coach for Opus",
+      "kind": "handbook",
+      "category": "reference",
+      "read_time_min": 7,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
     }
   ],
-  "links": [
-    {
-      "source": "BRAIN_PHILOSOPHY",
-      "target": "ARCHITECTURE"
-    },
+  "edges": [
     {
       "source": "AI_MODEL_PHILOSOPHY",
-      "target": "ARCHITECTURE"
-    },
-    {
-      "source": "AI_MODEL_PHILOSOPHY",
-      "target": "BRAIN_ARCHITECTURE"
-    },
-    {
-      "source": "INFRA_PHILOSOPHY",
-      "target": "ARCHITECTURE"
-    },
-    {
-      "source": "DATA_PHILOSOPHY",
-      "target": "ARCHITECTURE"
-    },
-    {
-      "source": "GROUND_TRUTH",
-      "target": "ARCHITECTURE"
-    },
-    {
-      "source": "CANON",
-      "target": "GROUND_TRUTH"
+      "target": "AI_MODEL_REGISTRY",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
       "source": "AUTOMATION_PHILOSOPHY",
-      "target": "BRAIN_PHILOSOPHY"
+      "target": "BRAIN_PR_REVIEW",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "ARCHITECTURE",
-      "target": "AXIOMFOLIO_ARCHITECTURE"
+      "source": "AUTOMATION_PHILOSOPHY",
+      "target": "DEPENDABOT",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "ARCHITECTURE",
-      "target": "BRAIN_ARCHITECTURE"
+      "source": "BRAIN_PHILOSOPHY",
+      "target": "BRAIN_ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "ARCHITECTURE",
-      "target": "BRAIN_PR_REVIEW"
+      "source": "BRAIN_PHILOSOPHY",
+      "target": "BRAIN_PERSONAS_GENERATED",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "VENTURE_MASTER_PLAN",
-      "target": "ARCHITECTURE"
+      "source": "BRAIN_PHILOSOPHY",
+      "target": "DOCS_STREAMLINE_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "VENTURE_MASTER_PLAN",
-      "target": "PRODUCT_SPEC"
+      "source": "BRAIN_PHILOSOPHY",
+      "target": "KNOWLEDGE",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "STACK_AUDIT_2026_Q2",
-      "target": "ARCHITECTURE"
+      "source": "BRAIN_PHILOSOPHY",
+      "target": "SECRETS",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "AGENT_SPRINT_PLANNING",
-      "target": "VENTURE_MASTER_PLAN"
+      "source": "BRAIN_PHILOSOPHY",
+      "target": "TRADING_PRINCIPLES",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "AGENT_SPRINT_PLANNING",
-      "target": "PR_PIPELINE_AUTOMATION"
+      "source": "KNOWLEDGE",
+      "target": "AUTH_PROVIDER_BAKEOFF_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "ARCHITECTURE",
-      "target": "SECRETS"
-    },
-    {
-      "source": "BRAIN_ARCHITECTURE",
-      "target": "BRAIN_DEPLOY_RECOVERY"
-    },
-    {
-      "source": "BRAIN_ARCHITECTURE",
-      "target": "STUDIO_ENV"
-    },
-    {
-      "source": "BRAIN_ARCHITECTURE",
-      "target": "BRAIN_PHILOSOPHY"
-    },
-    {
-      "source": "STUDIO_ENV",
-      "target": "CLERK_STUDIO"
+      "source": "DATA_PHILOSOPHY",
+      "target": "INFRA",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
       "source": "INFRA_PHILOSOPHY",
-      "target": "RENDER_INVENTORY"
+      "target": "INFRA",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "RENDER_INVENTORY",
-      "target": "PRE_DEPLOY_GUARD"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "AI_MODEL_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "ARCHITECTURE",
-      "target": "PR_PIPELINE_AUTOMATION"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "AI_MODEL_REGISTRY",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "DAY_0_FOUNDER_ACTIONS",
-      "target": "HOW_TO_NAVIGATE"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "FOUNDER_ACTIONS",
-      "target": "DAY_0_FOUNDER_ACTIONS"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "AUTOMATION_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "HOW_TO_NAVIGATE",
-      "target": "ARCHITECTURE"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "BRAIN_ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "DECOMMISSION_CHECKLIST",
-      "target": "INFRA_PHILOSOPHY"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "BRAIN_PERSONAS_GENERATED",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "AUTH_PROVIDER_BAKEOFF_2026Q2",
-      "target": "CLERK_STUDIO"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "BRAIN_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "BRAIN_DEPLOY_RECOVERY",
-      "target": "SECRETS"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "BRAIN_PR_REVIEW",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "PRD",
-      "target": "PRODUCT_SPEC"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "DATA_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "PRD",
-      "target": "VENTURE_MASTER_PLAN"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "DEPENDABOT",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "PRE_DEPLOY_GUARD",
-      "target": "PR_PIPELINE_AUTOMATION"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "DOCS_STREAMLINE_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "BRAIN_PR_REVIEW",
-      "target": "PR_PIPELINE_AUTOMATION"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "FORMATION_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
-      "source": "AI_MODEL_PHILOSOPHY",
-      "target": "BRAIN_PHILOSOPHY"
+      "source": "PHILOSOPHY_INDEX",
+      "target": "GROUND_TRUTH",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PHILOSOPHY_INDEX",
+      "target": "INFRA",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PHILOSOPHY_INDEX",
+      "target": "INFRA_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PHILOSOPHY_INDEX",
+      "target": "TAX_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PHILOSOPHY_INDEX",
+      "target": "TRADING_PRINCIPLES",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PHILOSOPHY_INDEX",
+      "target": "VENTURE_MASTER_PLAN",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VENTURE_MASTER_PLAN",
+      "target": "AI_MODEL_REGISTRY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VENTURE_MASTER_PLAN",
+      "target": "BRAIN_ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VENTURE_MASTER_PLAN",
+      "target": "INFRA",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VENTURE_MASTER_PLAN",
+      "target": "KNOWLEDGE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VENTURE_MASTER_PLAN",
+      "target": "TASKS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AI_MODEL_REGISTRY",
+      "target": "AI_MODEL_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AI_MODEL_REGISTRY",
+      "target": "STREAMLINE_SSO_DAGS_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
     },
     {
       "source": "AXIOMFOLIO_ARCHITECTURE",
-      "target": "VENTURE_MASTER_PLAN"
+      "target": "AXIOMFOLIO_MASTER_PLAN",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AXIOMFOLIO_ARCHITECTURE",
+      "target": "AXIOMFOLIO_PORT_INVENTORY_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_ARCHITECTURE",
+      "target": "BRAIN_PERSONAS_GENERATED",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_ARCHITECTURE",
+      "target": "BRAIN_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_PR_REVIEW",
+      "target": "DEPENDABOT",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "AXIOMFOLIO_ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "BRAIN_ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "BRAIN_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "DOCS_STREAMLINE_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "INFRA",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "ARCHITECTURE",
+      "target": "INFRA_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AUTOMATION_STATE",
+      "target": "BRAIN_SCHEDULER",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AUTOMATION_STATE",
+      "target": "RENDER_INVENTORY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AUTOMATION_STATE",
+      "target": "STREAMLINE_SSO_DAGS_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_SCHEDULER",
+      "target": "AGENT_SPRINT_PLANNING",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_SCHEDULER",
+      "target": "BRAIN_SECRETS_INTELLIGENCE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_SCHEDULER",
+      "target": "KNOWLEDGE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_SCHEDULER",
+      "target": "STREAMLINE_SSO_DAGS_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_SCHEDULER",
+      "target": "TIMEZONE_STANDARDS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_SECRETS_INTELLIGENCE",
+      "target": "BRAIN_SCHEDULER",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_SATELLITE_TOPOLOGY",
+      "target": "CLERK_AXIOMFOLIO",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_SATELLITE_TOPOLOGY",
+      "target": "CLERK_DISTILL",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_SATELLITE_TOPOLOGY",
+      "target": "CLERK_DNS_SPACESHIP",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_SATELLITE_TOPOLOGY",
+      "target": "CLERK_FILEFREE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_SATELLITE_TOPOLOGY",
+      "target": "CLERK_LAUNCHFREE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_SATELLITE_TOPOLOGY",
+      "target": "CLERK_STUDIO",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_SATELLITE_TOPOLOGY",
+      "target": "CLERK_TRINKETS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_SATELLITE_TOPOLOGY",
+      "target": "KNOWLEDGE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_DNS_SPACESHIP",
+      "target": "CLERK_SATELLITE_TOPOLOGY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLOUDFLARE_OWNERSHIP",
+      "target": "CLERK_DNS_INCIDENT_2026_04_28",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "DEPENDABOT",
+      "target": "BRAIN_PR_REVIEW",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "N8N_DEPRECATED_CLEANUP",
+      "target": "DECOMMISSION_CHECKLIST",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "N8N_DEPRECATED_CLEANUP",
+      "target": "HETZNER_SOCIALS_REPURPOSE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "N8N_DEPRECATED_CLEANUP",
+      "target": "N8N_DECOMMISSION_INVENTORY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "FOUNDER_ACTIONS",
+      "target": "BRAIN_SCHEDULER",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "FOUNDER_ACTIONS",
+      "target": "KNOWLEDGE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "HETZNER_SOCIALS_REPURPOSE",
+      "target": "DECOMMISSION_CHECKLIST",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "HETZNER_SOCIALS_REPURPOSE",
+      "target": "N8N_DEPRECATED_CLEANUP",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PR_PIPELINE_AUTOMATION",
+      "target": "BRAIN_SCHEDULER",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PRE_DEPLOY_GUARD",
+      "target": "BRAIN_DEPLOY_RECOVERY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PRE_DEPLOY_GUARD",
+      "target": "CLERK_DNS_INCIDENT_2026_04_28",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "RENDER_REPOINT",
+      "target": "RENDER_INVENTORY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "RENDER_REPOINT_TONIGHT",
+      "target": "RENDER_INVENTORY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "RENDER_REPOINT_TONIGHT",
+      "target": "RENDER_REPOINT",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STUDIO_ENV",
+      "target": "RENDER_INVENTORY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STUDIO_ENV",
+      "target": "SECRETS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STUDIO_ENV",
+      "target": "VERCEL_AUTO_PROMOTE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "TIMEZONE_STANDARDS",
+      "target": "BRAIN_SCHEDULER",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "TIMEZONE_STANDARDS",
+      "target": "RENDER_INVENTORY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_ACCOUNTS_DNS_TONIGHT",
+      "target": "CLERK_SATELLITE_TOPOLOGY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_ACCOUNTS_DNS_TONIGHT",
+      "target": "INFRA",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_AMBIENT_LEARNING_J1_TONIGHT",
+      "target": "BRAIN_CONTINUOUS_LEARNING_2026Q3",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAIN_DEPLOY_RECOVERY",
+      "target": "PRE_DEPLOY_GUARD",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_DISTILL",
+      "target": "CLERK_FILEFREE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_DISTILL",
+      "target": "CLERK_LAUNCHFREE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_DISTILL",
+      "target": "CLERK_STUDIO",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "CLERK_DISTILL",
+      "target": "STREAMLINE_SSO_DAGS_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "DECOMMISSION_CHECKLIST",
+      "target": "HETZNER_SOCIALS_REPURPOSE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "DECOMMISSION_CHECKLIST",
+      "target": "N8N_DEPRECATED_CLEANUP",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "INFRA",
+      "target": "ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "INFRA",
+      "target": "AXIOMFOLIO_NEXTJS_MIGRATION",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "INFRA",
+      "target": "AXIOMFOLIO_PORT_INVENTORY_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "INFRA",
+      "target": "CLERK_SATELLITE_TOPOLOGY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "INFRA",
+      "target": "DATA_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "INFRA",
+      "target": "INFRA_PHILOSOPHY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "INFRA",
+      "target": "RENDER_INVENTORY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "INFRA",
+      "target": "RENDER_REPOINT",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "HOW_TO_NAVIGATE",
+      "target": "INFRA",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "README",
+      "target": "BRAND_DESIGN_DEEPDIVE_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "README",
+      "target": "CANON",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PRD",
+      "target": "CLERK_FILEFREE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PRD",
+      "target": "CLERK_SATELLITE_TOPOLOGY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PRD",
+      "target": "CLERK_STUDIO",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "PRD",
+      "target": "KNOWLEDGE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "RENDER_QUOTA_AUDIT_2026Q2",
+      "target": "RENDER_REPOINT",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VERCEL_LINKING",
+      "target": "SECRETS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VERCEL_QUOTA_AUDIT_2026Q2",
+      "target": "GITHUB_ACTIONS_QUOTA_AUDIT_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "VERCEL_QUOTA_AUDIT_2026Q2",
+      "target": "RENDER_QUOTA_AUDIT_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AXIOMFOLIO_GAPS",
+      "target": "AXIOMFOLIO_MASTER_PLAN",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AXIOMFOLIO_MASTER_PLAN",
+      "target": "AXIOMFOLIO_GAPS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "AXIOMFOLIO_PORT_INVENTORY_2026Q2",
+      "target": "AXIOMFOLIO_NEXTJS_MIGRATION",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "TASKS",
+      "target": "BRAIN_ARCHITECTURE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "TASKS",
+      "target": "EFIN_FILING",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "TASKS",
+      "target": "PARTNERSHIPS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "TASKS",
+      "target": "PRD",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "TASKS",
+      "target": "PRODUCT_SPEC",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "TASKS",
+      "target": "VENTURE_MASTER_PLAN",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "DOCS_STREAMLINE_2026Q2",
+      "target": "AXIOMFOLIO_MASTER_PLAN",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAND_DESIGN_DEEPDIVE_2026Q2",
+      "target": "CANON",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "BRAND_DESIGN_DEEPDIVE_2026Q2",
+      "target": "README",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "SPRINT_DOCS_STREAMLINE_AND_TRACKERS_2026Q2",
+      "target": "AXIOMFOLIO_NEXTJS_MIGRATION",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "SPRINT_DOCS_STREAMLINE_AND_TRACKERS_2026Q2",
+      "target": "DOCS_STREAMLINE_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "SPRINT_DOCS_STREAMLINE_AND_TRACKERS_2026Q2",
+      "target": "RENDER_INVENTORY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "SPRINT_DOCS_STREAMLINE_AND_TRACKERS_2026Q2",
+      "target": "RENDER_REPOINT",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "SPRINT_AUTOMATION_2026Q3",
+      "target": "BRAIN_SCHEDULER",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "BRAIN_SCHEDULER",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "CLERK_ACCOUNTS_DNS_TONIGHT",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "CLERK_AXIOMFOLIO",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "CLERK_DISTILL",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "CLERK_DNS_SPACESHIP",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "CLERK_FILEFREE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "CLERK_LAUNCHFREE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "CLERK_SATELLITE_TOPOLOGY",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "CLERK_STUDIO",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "CLERK_TRINKETS",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "KNOWLEDGE",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "STREAMLINE_SSO_DAGS_2026Q2",
+      "target": "SPRINT_DOCS_STREAMLINE_AND_TRACKERS_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
     }
   ]
 }

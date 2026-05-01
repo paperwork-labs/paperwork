@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import graphJson from "@/data/knowledge-graph.json";
-import { findDocBySlug } from "@/lib/docs";
+import { findDocBySlug, loadDocsIndex } from "@/lib/docs";
 import {
   extractDocRelations,
   knowledgeNodeIdToSlugGuess,
@@ -136,7 +136,13 @@ export function getKnowledgeRailForSlug(slug: string, markdownBody: string): Kno
   const g = loadKnowledgeGraphIndexed();
   const nodeId = slugToKnowledgeNodeId(slug);
   const nodeRec = g.nodeById.get(nodeId);
-  const live = extractDocRelations(markdownBody);
+  const { entries } = loadDocsIndex();
+  const pathToSlug = new Map(entries.map((e) => [e.path, e.slug]));
+  const srcEntry = findDocBySlug(slug);
+  const live = extractDocRelations(
+    markdownBody,
+    srcEntry ? { sourcePath: srcEntry.path, pathToSlug } : undefined,
+  );
 
   const explicitIn = g.raw.edges.filter(
     (e) => e.target === nodeId && e.kind === "explicit-link",
