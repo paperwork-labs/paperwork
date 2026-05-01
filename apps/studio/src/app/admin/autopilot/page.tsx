@@ -34,14 +34,48 @@ async function fetchDispatchLog(): Promise<DispatchLog | null> {
   if (!auth.ok) return null;
 
   try {
-    const res = await fetch(`${auth.root}/v1/memory/dispatch-log`, {
+    const res = await fetch(`${auth.root}/admin/memory/episodes?source_prefix=autopilot&limit=50`, {
       headers: { "X-Brain-Secret": auth.secret },
       cache: "no-store",
     });
     if (!res.ok) return null;
     const json = await res.json();
-    if (!json.success) return null;
-    return json.data as DispatchLog;
+    const data = json.success ? json.data : json;
+    if (!data?.episodes) return null;
+
+    type EpisodeRow = {
+      id: number;
+      source: string;
+      persona: string | null;
+      summary: string;
+      model_used: string | null;
+      created_at: string | null;
+      metadata: Record<string, unknown>;
+    };
+    const episodes: EpisodeRow[] = data.episodes ?? [];
+    const items: DispatchItem[] = episodes.map((ep) => ({
+      id: String(ep.id),
+      description: ep.summary,
+      persona: ep.persona ?? "brain",
+      model: ep.model_used ?? "unknown",
+      status: ((ep.metadata?.status as string) ?? "completed") as DispatchItem["status"],
+      created_at: ep.created_at ?? new Date().toISOString(),
+    }));
+
+    const completed = items.filter((i) => i.status === "completed").length;
+    const failed = items.filter((i) => i.status === "failed").length;
+    const pending = items.filter((i) => i.status === "pending").length;
+
+    return {
+      items,
+      summary: {
+        total_dispatched: items.length,
+        completed,
+        failed,
+        pending,
+        operating_score: 0,
+      },
+    };
   } catch {
     return null;
   }
@@ -95,7 +129,11 @@ export default async function AutopilotPage() {
         ) : (
           <div className="flex items-center gap-2 text-sm text-zinc-500">
             <AlertTriangle className="h-4 w-4" />
-            <span>Unable to reach Brain API — configure BRAIN_API_URL and BRAIN_API_SECRET</span>
+            <span>
+              {getBrainAdminFetchOptions().ok
+                ? "Brain API reachable but no dispatch episodes found yet."
+                : "Unable to reach Brain API — configure BRAIN_API_URL and BRAIN_API_SECRET"}
+            </span>
           </div>
         )}
       </section>
