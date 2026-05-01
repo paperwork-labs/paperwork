@@ -160,6 +160,9 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 };
 
+const STAT_CARD_LINK =
+  "block h-full rounded-xl ring-1 ring-zinc-800 outline-none transition duration-200 ease-out hover:scale-[1.02] hover:ring-zinc-700 active:scale-[0.99] focus-visible:ring-2 focus-visible:ring-amber-500/45";
+
 export default function OverviewClient({ initial }: { initial: OverviewData }) {
   const [data, setData] = useState(initial);
   const [refreshing, setRefreshing] = useState(false);
@@ -326,7 +329,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
             Command Center
           </h1>
           <p className="mt-1 text-sm text-zinc-400">
-            Venture-wide health at a glance.
+            Executive overview — venture health at a glance.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -349,7 +352,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
       {!n8nConfigured ? (
         <div
           data-testid="overview-n8n-misconfig-banner"
-          className="rounded-xl border border-[var(--status-info)]/35 bg-[var(--status-info-bg)] px-4 py-3 text-sm text-[color-mix(in_srgb,var(--status-info)_88%,white)]"
+          className="rounded-xl border border-zinc-700/80 bg-zinc-950 px-4 py-3 text-sm text-zinc-300 ring-1 ring-zinc-800"
           role="status"
         >
           <span className="font-medium text-[var(--status-info)]">Automation data optional: </span>
@@ -363,7 +366,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        className={`flex items-center gap-3 rounded-xl border px-5 py-4 ${trafficLightConfig.bg}`}
+        className={`flex items-center gap-3 rounded-xl border px-5 py-4 ring-1 ring-zinc-800/90 transition hover:ring-zinc-700 ${trafficLightConfig.bg}`}
       >
         <span className="relative inline-block h-3 w-3">
           {ventureHealth === "green" ? (
@@ -386,7 +389,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
 
       {/* Daily Briefing Widget */}
       {lastBriefingExec && (
-        <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-900/60 px-5 py-3">
+        <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950 px-5 py-4 ring-1 ring-zinc-800 transition hover:border-zinc-700 hover:ring-zinc-700">
           <div className="flex items-center gap-2.5">
             <Radio className="h-4 w-4 text-zinc-500" />
             <p className="text-sm text-zinc-300">
@@ -431,57 +434,83 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         animate="show"
       >
         <motion.div variants={fadeUp}>
-          <HqStatCard
-            variant="default"
-            status={workflows.length > 0 && activeWorkflows === workflows.length ? "success" : "neutral"}
-            icon={<Zap className="h-4 w-4 text-zinc-500" />}
-            label="Active workflows"
-            value={workflows.length > 0 ? `${activeWorkflows}/${workflows.length}` : "—"}
-            helpText="n8n workflows enabled"
-          />
+          <Link
+            href="/admin/architecture?tab=flows"
+            className={STAT_CARD_LINK}
+            aria-label="Open workflows and automation flows"
+          >
+            <HqStatCard
+              variant="default"
+              status={workflows.length > 0 && activeWorkflows === workflows.length ? "success" : "neutral"}
+              icon={<Zap className="h-4 w-4 text-zinc-500" />}
+              label="Active workflows"
+              value={workflows.length > 0 ? `${activeWorkflows}/${workflows.length}` : "—"}
+              helpText="n8n workflows enabled · click to open flows"
+            />
+          </Link>
         </motion.div>
 
         <motion.div variants={fadeUp}>
-          <HqStatCard
-            variant="default"
-            status={failedLastDay > 0 ? "danger" : "neutral"}
-            icon={<Activity className="h-4 w-4 text-zinc-500" />}
-            label="24h executions"
-            value={executionsLastDay.length}
-            helpText={`${successfulLastDay} success / ${failedLastDay} failed`}
-          />
+          <Link
+            href="/admin/architecture?tab=flows"
+            className={STAT_CARD_LINK}
+            aria-label="Open automation architecture"
+          >
+            <HqStatCard
+              variant="default"
+              status={failedLastDay > 0 ? "danger" : "neutral"}
+              icon={<Activity className="h-4 w-4 text-zinc-500" />}
+              label="24h executions"
+              value={executionsLastDay.length}
+              helpText={`${successfulLastDay} success / ${failedLastDay} failed`}
+            />
+          </Link>
         </motion.div>
 
         <motion.div variants={fadeUp}>
-          <HqStatCard
-            variant="default"
-            status={githubPrMissingCred ? "warning" : "neutral"}
-            icon={<GitPullRequest className="h-4 w-4 text-zinc-500" />}
-            label="Open PRs"
-            value={githubPrMissingCred ? "—" : prs.length}
-            helpText={
+          <Link
+            href={
               githubPrMissingCred
-                ? "Connect GITHUB_TOKEN to load pull requests."
-                : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
+                ? "/admin/infrastructure"
+                : "https://github.com/paperwork-labs/paperwork/pulls"
             }
-          />
+            className={STAT_CARD_LINK}
+            target={githubPrMissingCred ? undefined : "_blank"}
+            rel={githubPrMissingCred ? undefined : "noreferrer"}
+            aria-label={githubPrMissingCred ? "Open infrastructure to connect GitHub" : "Open GitHub pull requests"}
+          >
+            <HqStatCard
+              variant="default"
+              status={githubPrMissingCred ? "warning" : "neutral"}
+              icon={<GitPullRequest className="h-4 w-4 text-zinc-500" />}
+              label="Open PRs"
+              value={githubPrMissingCred ? "—" : prs.length}
+              helpText={
+                githubPrMissingCred
+                  ? "Connect GITHUB_TOKEN to load pull requests."
+                  : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
+              }
+            />
+          </Link>
         </motion.div>
 
         <motion.div variants={fadeUp}>
-          <HqStatCard
-            variant="default"
-            status={
-              healthyInfra === infrastructure.length && infrastructure.length > 0
-                ? "success"
-                : degradedInfra > 0
-                  ? "danger"
-                  : "neutral"
-            }
-            icon={<Shield className="h-4 w-4 text-zinc-500" />}
-            label="Infra health"
-            value={infrastructure.length > 0 ? `${healthyInfra}/${infrastructure.length}` : "—"}
-            helpText="provider checks passing"
-          />
+          <Link href="/admin/infrastructure" className={STAT_CARD_LINK} aria-label="Open infrastructure status">
+            <HqStatCard
+              variant="default"
+              status={
+                healthyInfra === infrastructure.length && infrastructure.length > 0
+                  ? "success"
+                  : degradedInfra > 0
+                    ? "danger"
+                    : "neutral"
+              }
+              icon={<Shield className="h-4 w-4 text-zinc-500" />}
+              label="Infra health"
+              value={infrastructure.length > 0 ? `${healthyInfra}/${infrastructure.length}` : "—"}
+              helpText="Provider checks passing · click for detail"
+            />
+          </Link>
         </motion.div>
       </motion.section>
 
@@ -489,7 +518,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
       <div className="grid gap-4 md:grid-cols-2">
         <Link
           href="/admin/architecture"
-          className="group flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-900/60 p-5 transition hover:border-zinc-700 hover:bg-zinc-900/80"
+          className="group flex flex-col justify-between rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800 transition duration-200 ease-out hover:scale-[1.01] hover:border-zinc-700 hover:ring-zinc-700 active:scale-[0.995]"
         >
           <div>
             <div className="mb-3 flex items-center gap-2">
@@ -516,7 +545,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           </div>
         </Link>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
           <div className="mb-3 flex items-center gap-2">
             <GitBranch className="h-4 w-4 text-zinc-500" />
             <p className="text-sm font-medium text-zinc-200">Recent CI Runs</p>
@@ -582,7 +611,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
       </div>
 
       {/* Slack Activity + Activity Feed + Quick Links */}
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+      <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-sm font-medium text-zinc-200">Brain · Slack activity</p>
           <span className="text-[10px] uppercase tracking-wide text-zinc-500">
@@ -628,7 +657,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
       </section>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
           <p className="mb-3 text-sm font-medium text-zinc-200">Activity Feed</p>
           <div className="space-y-1.5 max-h-96 overflow-y-auto">
             {activity.length === 0 ? (
@@ -674,7 +703,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           </div>
         </section>
 
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+        <section className="rounded-xl border border-zinc-800 bg-zinc-950 p-5 ring-1 ring-zinc-800">
           <p className="mb-3 text-sm font-medium text-zinc-200">Quick Links</p>
           <div className="space-y-1">
             {[

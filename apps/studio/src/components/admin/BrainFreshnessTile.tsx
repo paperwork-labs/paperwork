@@ -80,7 +80,7 @@ export function BrainFreshnessTile() {
 
   if (loading && data == null && !error) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
+      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 ring-1 ring-zinc-800">
         <p className="text-sm text-zinc-500">Loading Brain freshness…</p>
       </div>
     );
@@ -88,8 +88,10 @@ export function BrainFreshnessTile() {
 
   if (error) {
     return (
-      <div className="rounded-xl border border-rose-900/40 bg-rose-950/20 p-5">
-        <p className="text-xs uppercase tracking-wide text-rose-300/80">Brain freshness</p>
+      <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 ring-1 ring-rose-500/25">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-rose-300/90">
+          Brain freshness
+        </p>
         <p className="mt-2 text-sm text-rose-200">{error}</p>
       </div>
     );
@@ -100,8 +102,10 @@ export function BrainFreshnessTile() {
   const pr = d.last_pr_opened;
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5">
-      <p className="text-xs uppercase tracking-wide text-zinc-400">Brain freshness</p>
+    <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-6 ring-1 ring-zinc-800">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+        Brain freshness
+      </p>
       <p className="mt-1 text-xs text-zinc-500">
         Proxied Live from Brain <code className="text-zinc-400">/api/v1/admin/system-health</code>
       </p>

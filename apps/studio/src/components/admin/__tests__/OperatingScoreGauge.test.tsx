@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { OPERATING_SCORE_PILLAR_ORDER } from "@/lib/operating-score-pillars";
@@ -70,7 +70,7 @@ describe("OperatingScoreGaugeBody", () => {
     ).toBeTruthy();
   });
 
-  it("renders gauge arc amber when score=85", () => {
+  it("renders gauge arc with gradient stroke when score=85", async () => {
     const current = entryWithTotal(85);
     const data: OperatingScoreResponse = {
       current,
@@ -79,11 +79,14 @@ describe("OperatingScoreGaugeBody", () => {
     };
     render(<OperatingScoreGaugeBody data={data} brainConfigured />);
     const arc = screen.getByTestId("operating-score-gauge-arc");
-    expect(arc.getAttribute("data-gauge-stroke")).toBe("#fbbf24");
-    expect(screen.getByTestId("operating-score-total").textContent).toBe("85.0");
+    expect(arc.getAttribute("data-gauge-stroke")).toBe("gradient");
+    expect(arc.getAttribute("stroke")).toMatch(/^url\(#/);
+    await waitFor(() => {
+      expect(screen.getByTestId("operating-score-total").textContent).toBe("85.0");
+    });
   });
 
-  it("renders gauge arc green when score=92", () => {
+  it("renders gauge arc with gradient stroke when score=92", () => {
     const current = entryWithTotal(92);
     const data: OperatingScoreResponse = {
       current,
@@ -92,7 +95,7 @@ describe("OperatingScoreGaugeBody", () => {
     };
     render(<OperatingScoreGaugeBody data={data} brainConfigured />);
     expect(screen.getByTestId("operating-score-gauge-arc").getAttribute("data-gauge-stroke")).toBe(
-      "#4ade80",
+      "gradient",
     );
   });
 
@@ -121,14 +124,17 @@ describe("OperatingScoreGaugeBody", () => {
       gates: current.gates,
     };
     render(<OperatingScoreGaugeBody data={data} brainConfigured />);
+    expect(screen.getByTestId("operating-score-pillar-bars")).toBeTruthy();
     const tbl = screen.getByTestId("operating-score-pillar-table");
-    const rows = within(tbl).getAllByRole("row");
+    const rows = within(tbl).getAllByRole("row", { hidden: true });
     expect(rows.length).toBe(OPERATING_SCORE_PILLAR_ORDER.length + 1);
   });
 
   it("trend arrows from history (last two entries)", () => {
     const older = entryWithTotal(70, { autonomy: 60 });
+    older.computed_at = "2026-04-01T10:00:00Z";
     const newer = entryWithTotal(72, { autonomy: 72 });
+    newer.computed_at = "2026-04-28T10:00:00Z";
     const current = newer;
     const data: OperatingScoreResponse = {
       current,
@@ -138,7 +144,7 @@ describe("OperatingScoreGaugeBody", () => {
     render(<OperatingScoreGaugeBody data={data} brainConfigured />);
     const tbl = screen.getByTestId("operating-score-pillar-table");
     const autonomyRow = within(tbl)
-      .getAllByRole("row")
+      .getAllByRole("row", { hidden: true })
       .find((r) => r.textContent?.includes("Autonomy"));
     expect(autonomyRow).toBeTruthy();
     expect(autonomyRow!.textContent).toContain("↑");
