@@ -393,7 +393,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
 
       {/* Stat cards — PRs, CI, infra, products */}
       <motion.section
-        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
         variants={stagger}
         initial="hidden"
         animate="show"
