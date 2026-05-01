@@ -51,7 +51,7 @@ summary: "Read-only Studio admin UX audit for WS-76 Wave L PR-A — 56 findings 
 
 - **F-006** [P1] Admin layout fetches expense pending counts and returns `0` on any failure (`apps/studio/src/app/admin/layout.tsx:9-38`), so sidebar badges lie silently. **Fix (PR-B):** Distinguish `unknown` vs `0` and render a muted warning chip instead of suppressing.
 
-- **F-007** [P1] `Suspense` fallback is `null` for all admin children (`apps/studio/src/app/admin/layout.tsx:71-74`), so route transitions show no loading skeleton. **Fix (PR-C):** Shared `AdminRouteFallback` skeleton consistent with `PersonasFallback` (`apps/studio/src/app/admin/brain/personas/page.tsx:11-18`).
+- **F-007** [P1] `Suspense` fallback is `null` for all admin children (`apps/studio/src/app/admin/layout.tsx:71-74`), so route transitions show no loading skeleton. **Fix (PR-C):** Shared `AdminRouteFallback` skeleton consistent with historic personas loading UX (`apps/studio/src/app/admin/brain/personas/personas-tabs-client.tsx:56-63`; `/admin/brain/personas` now redirects via `apps/studio/src/app/admin/brain/personas/page.tsx:5-6`).
 
 - **F-008** [P1] Sidebar is a fixed `w-60` column with no mobile drawer pattern (`apps/studio/src/app/admin/admin-layout-client.tsx:129-131`), collapsing content on phones per `ux.mdc` mobile-first guidance. **Fix (PR-C):** Collapsible nav with focus trap and visible menu affordance.
 
@@ -163,7 +163,7 @@ summary: "Read-only Studio admin UX audit for WS-76 Wave L PR-A — 56 findings 
 
 **P2**
 
-- **F-038** [P2] `PersonasFallback` width (`max-w-[1200px]`) differs from admin default `max-w-7xl` shell (`apps/studio/src/app/admin/brain/personas/page.tsx:13-16` vs `apps/studio/src/app/admin/admin-layout-client.tsx:130`). **Fix (PR-D):** Normalize max width tokens.
+- **F-038** [P2] HQ shell width (`max-w-[1200px]` via `HqPageContainer`) differs from admin default `max-w-7xl` shell (`apps/studio/src/components/admin/hq/HqPageContainer.tsx:12` vs `apps/studio/src/app/admin/admin-layout-client.tsx:130`). **Fix (PR-D):** Normalize max width tokens.
 
 ### `/admin/brain/conversations`
 

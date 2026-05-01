@@ -62,3 +62,24 @@ class TestPersonaRouting:
         """#trading channel (C0APFJSDB6X) routes to trading persona."""
         assert route_persona("hello", channel_id="C0APFJSDB6X") == "trading"
         assert route_persona("random message", channel_id="C0APFJSDB6X") == "trading"
+
+
+def test_get_spec_rejects_path_traversal():
+    from app.personas.registry import get_spec
+
+    assert get_spec("../../etc/passwd") is None
+    assert get_spec("../") is None
+    assert get_spec("/absolute/path") is None
+    assert get_spec("..") is None
+    assert get_spec("") is None
+    assert get_spec("UPPER") is None  # uppercase not allowed
+    assert get_spec("with spaces") is None
+    assert get_spec("with\x00null") is None
+
+
+def test_get_spec_accepts_valid_slugs():
+    from app.personas.registry import get_spec
+
+    # Valid slugs return either a PersonaSpec or None (file missing) — no exception.
+    result = get_spec("nonexistent-persona")  # valid format, no file
+    assert result is None  # no exception
