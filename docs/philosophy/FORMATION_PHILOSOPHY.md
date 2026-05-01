@@ -61,13 +61,13 @@ Formation PII (founder SSN/ITIN, address, EIN, banking) inherits all rules from 
 
 These auto-page the founder + `legal` persona owner via Slack DM:
 
-| Trigger | Why |
-|---|---|
-| State filing rejected for any user | response window varies by state |
-| User-reported registered agent service failure (notice not delivered) | regulatory consequence |
-| KYC failure pattern — same applicant flagged ≥ 2 times in 7 days | possible identity fraud signal |
-| Any LaunchFree user receives a state notice for "doing business without registration" in a state we facilitated | systemic risk |
-| Subpoena, civil investigative demand, or government inquiry to LaunchFree | engages company legal |
+| Trigger                                                                                                         | Why                             |
+|-----------------------------------------------------------------------------------------------------------------|---------------------------------|
+| State filing rejected for any user                                                                              | response window varies by state |
+| User-reported registered agent service failure (notice not delivered)                                           | regulatory consequence          |
+| KYC failure pattern — same applicant flagged ≥ 2 times in 7 days                                                | possible identity fraud signal  |
+| Any LaunchFree user receives a state notice for "doing business without registration" in a state we facilitated | systemic risk                   |
+| Subpoena, civil investigative demand, or government inquiry to LaunchFree                                       | engages company legal           |
 
 ## 7. What we will NOT do
 

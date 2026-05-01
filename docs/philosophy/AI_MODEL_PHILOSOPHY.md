@@ -24,12 +24,12 @@ Immutable rules for choosing, chaining, and budgeting LLM calls. Edits require f
 
 **Implemented today:** Provider fallback and circuit breaking live in `apis/brain/app/services/router.py` (`FALLBACK_MAP`, `CircuitBreaker`). Example: Anthropic down → map Sonnet/Opus to `gpt-4o` for some paths; Google down → `gpt-4o-mini`.
 
-| Class | Primary (code) | Fallback (code) |
-|---|---|---|
-| Tool / MCP orchestration | `claude-sonnet-4-20250514` | `gpt-4o` (per `FALLBACK_MAP`) |
-| Cheap text / classify | `gemini-2.5-flash`, `gpt-4o-mini` | Cross-provider map in `FALLBACK_MAP` |
-| Tax / reasoning slice | `o4-mini` | `claude-sonnet-4-20250514` via map |
-| PR review (no MCP) | `claude-haiku-4-5-20251001` | **STALE** — code escalates to `claude-sonnet-4-20250514` on critical paths; see `pr_review.py` |
+| Class                    | Primary (code)                    | Fallback (code)                                                                                |
+|--------------------------|-----------------------------------|------------------------------------------------------------------------------------------------|
+| Tool / MCP orchestration | `claude-sonnet-4-20250514`        | `gpt-4o` (per `FALLBACK_MAP`)                                                                  |
+| Cheap text / classify    | `gemini-2.5-flash`, `gpt-4o-mini` | Cross-provider map in `FALLBACK_MAP`                                                           |
+| Tax / reasoning slice    | `o4-mini`                         | `claude-sonnet-4-20250514` via map                                                             |
+| PR review (no MCP)       | `claude-haiku-4-5-20251001`       | **STALE** — code escalates to `claude-sonnet-4-20250514` on critical paths; see `pr_review.py` |
 
 **STALE (aspirational — not implemented as stated in Brain):** Prior text named “GPT-5.5 medium,” “Composer-2-fast,” and “Cohere” as fallbacks. **No such vendors appear in `apis/brain` routing.** If we add a second vendor for a class, document it in `FALLBACK_MAP` + `AI_MODEL_REGISTRY.md` in the same PR.
 
@@ -115,12 +115,12 @@ The following is the pre-2026-04-24 body text, kept so nothing is “lost” in 
 
 ### Multi-vendor (original table)
 
-| Class | Primary | Fallback |
-|---|---|---|
-| Reasoning (Sonnet-class) | Anthropic Claude Sonnet | OpenAI GPT-5.5 medium |
-| Cheap chat / classify (Haiku-class) | Anthropic Claude Haiku | OpenAI GPT-5.5 mini / Composer-2-fast |
-| Cheap extract / OCR | Google Gemini Flash | Anthropic Claude Haiku |
-| Embeddings | OpenAI text-embedding-3 | Cohere |
+| Class                               | Primary                 | Fallback                              |
+|-------------------------------------|-------------------------|---------------------------------------|
+| Reasoning (Sonnet-class)            | Anthropic Claude Sonnet | OpenAI GPT-5.5 medium                 |
+| Cheap chat / classify (Haiku-class) | Anthropic Claude Haiku  | OpenAI GPT-5.5 mini / Composer-2-fast |
+| Cheap extract / OCR                 | Google Gemini Flash     | Anthropic Claude Haiku                |
+| Embeddings                          | OpenAI text-embedding-3 | Cohere                                |
 
 If the primary is down, the fallback handles within 30 seconds (circuit breaker auto-trip in `app/services/router.py`). We do NOT add a 3rd vendor "just in case" — the maintenance tax is real.
 

@@ -69,13 +69,13 @@ When we are the e-file transmitter (post-EFIN approval):
 
 These auto-page the founder + `cpa` persona owner via Slack DM:
 
-| Trigger | Why |
-|---|---|
-| IRS notice received for any user | response window is short |
-| Return rejected by IRS MeF for the same reason ≥ 3 times in 24h | systemic issue |
-| User reports a math error post-filing | refile or amendment may be needed |
-| Any FileFree tier-1 service down for > 5 min during filing season (Jan 15 – Apr 30) | revenue + user trust event |
-| Any single user's PII unmasked in a UI, log, or API response | P0 |
+| Trigger                                                                             | Why                               |
+|-------------------------------------------------------------------------------------|-----------------------------------|
+| IRS notice received for any user                                                    | response window is short          |
+| Return rejected by IRS MeF for the same reason ≥ 3 times in 24h                     | systemic issue                    |
+| User reports a math error post-filing                                               | refile or amendment may be needed |
+| Any FileFree tier-1 service down for > 5 min during filing season (Jan 15 – Apr 30) | revenue + user trust event        |
+| Any single user's PII unmasked in a UI, log, or API response                        | P0                                |
 
 ## 7. What we will NOT do
 

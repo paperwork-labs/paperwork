@@ -45,39 +45,39 @@ Organizational memory for Paperwork Labs (FileFree, LaunchFree, Distill, Trinket
 
 Full text in [docs/archive/KNOWLEDGE-ARCHIVE.md](archive/KNOWLEDGE-ARCHIVE.md).
 
-| D# | Summary | Date |
-|----|---------|------|
-| D1 | PaddleOCR → Cloud Vision for OCR | 2026-03-09 |
-| D2 | Railway → Render for backend hosting | 2026-03-09 |
-| D3 | Render Standard → Starter ($7/mo, 512MB) | 2026-03-09 |
-| D4 | Own IRS MeF Transmitter as North Star | 2026-03-09 |
-| D5 | Column Tax as interim e-file partner | 2026-03-09 |
-| D6 | Skip Claude Code, stay on Cursor | 2026-03-09 |
-| D7 | GitHub Issues + Projects (not Linear) | 2026-03-09 |
-| D8 | Tiered OCR architecture (3 tiers) | 2026-03-09 |
-| D9 | Docker Compose dev-only, managed prod | 2026-03-09 |
-| D10 | Self-host Postiz + n8n on Hetzner | 2026-03-09 |
-| D11 | Postiz only (no Buffer) | 2026-03-09 |
+| D#  | Summary                                    | Date       |
+|-----|--------------------------------------------|------------|
+| D1  | PaddleOCR → Cloud Vision for OCR           | 2026-03-09 |
+| D2  | Railway → Render for backend hosting       | 2026-03-09 |
+| D3  | Render Standard → Starter ($7/mo, 512MB)   | 2026-03-09 |
+| D4  | Own IRS MeF Transmitter as North Star      | 2026-03-09 |
+| D5  | Column Tax as interim e-file partner       | 2026-03-09 |
+| D6  | Skip Claude Code, stay on Cursor           | 2026-03-09 |
+| D7  | GitHub Issues + Projects (not Linear)      | 2026-03-09 |
+| D8  | Tiered OCR architecture (3 tiers)          | 2026-03-09 |
+| D9  | Docker Compose dev-only, managed prod      | 2026-03-09 |
+| D10 | Self-host Postiz + n8n on Hetzner          | 2026-03-09 |
+| D11 | Postiz only (no Buffer)                    | 2026-03-09 |
 | D12 | TikTok Spark Ads + Meta Boost (tax season) | 2026-03-09 |
-| D13 | n8n as persona automation layer | 2026-03-09 |
-| D14 | Revenue: refund-moment monetization | 2026-03-09 |
-| D15 | Tax Optimization Plan $29/yr | 2026-03-09 |
-| D16 | Co-founder: Product/Eng + Partnerships | 2026-03-09 |
-| D17 | Tiered partnership strategy | 2026-03-09 |
-| D18 | Docker dev environment complete | 2026-03-09 |
-| D19 | Project structure cleanup | 2026-03-09 |
-| D20 | Multi-persona review + ops stack | 2026-03-09 |
-| D21 | Production infrastructure complete | 2026-03-09 |
-| D22 | Auth: Google One-Tap + Apple + email | 2026-03-09 |
-| D23 | Sprint 1 complete | 2026-03-09 |
-| D24 | PostHog analytics foundation | 2026-03-10 |
-| D25 | Legal pages live (needs counsel review) | 2026-03-10 |
-| D26 | Agent autonomy: n8n workflows wired | 2026-03-10 |
-| D27 | TASKS.md v8 checkbox overhaul | 2026-03-10 |
-| D28 | Temporal: PostgreSQL → Elasticsearch | 2026-03-10 |
-| D29 | Brand assets removed (pending regen) | 2026-03-10 |
-| D30 | Postiz MCP activated | 2026-03-10 |
-| D36 | ~~Wyoming LLC~~ → SUPERSEDED by D54 (CA) | 2026-03-12 |
+| D13 | n8n as persona automation layer            | 2026-03-09 |
+| D14 | Revenue: refund-moment monetization        | 2026-03-09 |
+| D15 | Tax Optimization Plan $29/yr               | 2026-03-09 |
+| D16 | Co-founder: Product/Eng + Partnerships     | 2026-03-09 |
+| D17 | Tiered partnership strategy                | 2026-03-09 |
+| D18 | Docker dev environment complete            | 2026-03-09 |
+| D19 | Project structure cleanup                  | 2026-03-09 |
+| D20 | Multi-persona review + ops stack           | 2026-03-09 |
+| D21 | Production infrastructure complete         | 2026-03-09 |
+| D22 | Auth: Google One-Tap + Apple + email       | 2026-03-09 |
+| D23 | Sprint 1 complete                          | 2026-03-09 |
+| D24 | PostHog analytics foundation               | 2026-03-10 |
+| D25 | Legal pages live (needs counsel review)    | 2026-03-10 |
+| D26 | Agent autonomy: n8n workflows wired        | 2026-03-10 |
+| D27 | TASKS.md v8 checkbox overhaul              | 2026-03-10 |
+| D28 | Temporal: PostgreSQL → Elasticsearch       | 2026-03-10 |
+| D29 | Brand assets removed (pending regen)       | 2026-03-10 |
+| D30 | Postiz MCP activated                       | 2026-03-10 |
+| D36 | ~~Wyoming LLC~~ → SUPERSEDED by D54 (CA)   | 2026-03-12 |
 
 ---
 

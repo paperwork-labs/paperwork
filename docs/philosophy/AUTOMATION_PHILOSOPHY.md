@@ -29,13 +29,13 @@ Major version bumps NEVER auto-merge. Brain triages them and posts a summary to 
 
 The following events freeze all auto-merge and disable **scheduled** automation (Brain APScheduler registrations in production; remaining n8n webhooks are paused only when those flows are disabled or incident protocol says so):
 
-| Trigger | What happens |
-|---|---|
-| Production incident open in `#infra` (P0/P1) | All auto-merge paused |
-| Founder posts `:freeze:` in any infra channel | All auto-merge + cron paused |
-| Brain itself reports degraded status (cb open > 5 min) | Brain-side automation paused; review remaining n8n webhooks per runbook |
-| AxiomFolio market-hours window (9:30–16:00 ET, M–F) | Trading-related auto-merge paused; rest continues |
-| Vendor-wide outage (Render / GitHub / Anthropic) reported in `#infra` | All auto-merge paused until "all clear" posted |
+| Trigger                                                               | What happens                                                            |
+|-----------------------------------------------------------------------|-------------------------------------------------------------------------|
+| Production incident open in `#infra` (P0/P1)                          | All auto-merge paused                                                   |
+| Founder posts `:freeze:` in any infra channel                         | All auto-merge + cron paused                                            |
+| Brain itself reports degraded status (cb open > 5 min)                | Brain-side automation paused; review remaining n8n webhooks per runbook |
+| AxiomFolio market-hours window (9:30–16:00 ET, M–F)                   | Trading-related auto-merge paused; rest continues                       |
+| Vendor-wide outage (Render / GitHub / Anthropic) reported in `#infra` | All auto-merge paused until "all clear" posted                          |
 
 Resume requires an explicit `agent-ops` persona Slack post with a reason.
 
@@ -54,13 +54,13 @@ These categories of PRs always require a human merge (no auto, no Brain-side aut
 
 Every merge — auto or human — emits a Slack post to the relevant channel:
 
-| Channel | When |
-|---|---|
-| `#dependabot` | dependency PRs (auto or manual) |
-| `#brain-dev` | `apis/brain/**` PRs |
-| `#axiomfolio-dev` | `apis/axiomfolio/**` and `apps/axiomfolio*/**` PRs |
-| `#infra` | infra/, render.yaml, workflow PRs |
-| `#qa` | weekly digest of all merges with cost & golden-suite stats |
+| Channel           | When                                                       |
+|-------------------|------------------------------------------------------------|
+| `#dependabot`     | dependency PRs (auto or manual)                            |
+| `#brain-dev`      | `apis/brain/**` PRs                                        |
+| `#axiomfolio-dev` | `apis/axiomfolio/**` and `apps/axiomfolio*/**` PRs         |
+| `#infra`          | infra/, render.yaml, workflow PRs                          |
+| `#qa`             | weekly digest of all merges with cost & golden-suite stats |
 
 A merge with no Slack post = an audit-failure event. The post is written by the Brain `engineering` persona on PR-merged webhook.
 

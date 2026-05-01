@@ -68,12 +68,12 @@ The minimal check set is:
 
 Brain auto-pages the founder via Slack DM when any of the following happens:
 
-| Trigger | Channel | Why |
-|---|---|---|
-| Constitutional check vetoes 3 calls in 60 minutes | DM | something is asking us to do something we shouldn't |
-| Daily cost > 90% cap | DM + `#qa` | budget alarm <!-- STALE 2026-04-24: 90% org-wide cap paging not verified in `apis/brain` schedulers — may be product intent only. --> |
-| AxiomFolio `risk_gate_activated` webhook | DM + `#trading` | a real-money safety event |
-| Brain itself goes degraded (cb open > 5 min) | DM + `#infra` | self-monitor <!-- STALE 2026-04-24: wire-up with on-call + circuit metrics TBD. --> |
+| Trigger                                           | Channel         | Why                                                                                                                                   |
+|---------------------------------------------------|-----------------|---------------------------------------------------------------------------------------------------------------------------------------|
+| Constitutional check vetoes 3 calls in 60 minutes | DM              | something is asking us to do something we shouldn't                                                                                   |
+| Daily cost > 90% cap                              | DM + `#qa`      | budget alarm <!-- STALE 2026-04-24: 90% org-wide cap paging not verified in `apis/brain` schedulers — may be product intent only. --> |
+| AxiomFolio `risk_gate_activated` webhook          | DM + `#trading` | a real-money safety event                                                                                                             |
+| Brain itself goes degraded (cb open > 5 min)      | DM + `#infra`   | self-monitor <!-- STALE 2026-04-24: wire-up with on-call + circuit metrics TBD. -->                                                   |
 
 ## Lineage & versioning
 

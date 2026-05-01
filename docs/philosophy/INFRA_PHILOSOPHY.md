@@ -45,13 +45,13 @@ If the answer is "I want a new service because the existing one feels messy," th
 
 Every infra change carries a blast-radius score:
 
-| Score | Examples | Approval bar |
-|---|---|---|
-| 1 | env var change in Render preview | self-merge after CI |
-| 2 | Render service config change (scaling, region) | infra-ops persona ack |
-| 3 | DNS / CDN / TLS / cloudflared change | founder ack |
-| 4 | Database schema change in production | founder + on-call human |
-| 5 | Vendor migration (e.g. Render account move) | sprint-level event with documented rollback |
+| Score | Examples                                       | Approval bar                                |
+|-------|------------------------------------------------|---------------------------------------------|
+| 1     | env var change in Render preview               | self-merge after CI                         |
+| 2     | Render service config change (scaling, region) | infra-ops persona ack                       |
+| 3     | DNS / CDN / TLS / cloudflared change           | founder ack                                 |
+| 4     | Database schema change in production           | founder + on-call human                     |
+| 5     | Vendor migration (e.g. Render account move)    | sprint-level event with documented rollback |
 
 Brain auto-tags PRs with the implied blast-radius score from the diff (`scripts/blast_radius.py` — TODO).
 
