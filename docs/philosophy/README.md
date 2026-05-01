@@ -12,19 +12,19 @@ This folder holds Paperwork Labs' **immutable rules** — the doctrines that con
 
 These docs are intentionally **low-churn, CODEOWNERS-locked**, and exempt from the 90-day freshness check that applies to architecture/runbook docs. If you find yourself wanting to change one, that's a sprint-level event.
 
-| Domain | Architecture (mutable "how") | Philosophy (immutable "why / what we won't do") |
-|---|---|---|
-| company | [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) | [`docs/VENTURE_MASTER_PLAN.md`](../VENTURE_MASTER_PLAN.md) |
-| brain | [`docs/BRAIN_ARCHITECTURE.md`](../BRAIN_ARCHITECTURE.md) | [`BRAIN_PHILOSOPHY.md`](./BRAIN_PHILOSOPHY.md) |
-| infra | [`docs/INFRA.md`](../INFRA.md) | [`INFRA_PHILOSOPHY.md`](./INFRA_PHILOSOPHY.md) |
-| data | [`docs/axiomfolio/MARKET_DATA.md`](../axiomfolio/MARKET_DATA.md) | [`DATA_PHILOSOPHY.md`](./DATA_PHILOSOPHY.md) |
-| trading | [`docs/axiomfolio/TRADING.md`](../axiomfolio/TRADING.md) | [`docs/axiomfolio/TRADING_PRINCIPLES.md`](../axiomfolio/TRADING_PRINCIPLES.md) (product-local, indexed here) |
-| tax / FileFree | _stub deferred — see PRD_ | [`TAX_PHILOSOPHY.md`](./TAX_PHILOSOPHY.md) |
-| formation / LaunchFree | _stub deferred — see PRD_ | [`FORMATION_PHILOSOPHY.md`](./FORMATION_PHILOSOPHY.md) |
-| personas | [`docs/BRAIN_PERSONAS.md`](../BRAIN_PERSONAS.md) | [`docs/GROUND_TRUTH.md`](../GROUND_TRUTH.md) (de-facto; explicit philosophy doc deferred) |
-| automation | [`docs/DEPENDABOT.md`](../DEPENDABOT.md) + [`docs/BRAIN_PR_REVIEW.md`](../BRAIN_PR_REVIEW.md) | [`AUTOMATION_PHILOSOPHY.md`](./AUTOMATION_PHILOSOPHY.md) |
-| design | [`docs/axiomfolio/DESIGN_SYSTEM.md`](../axiomfolio/DESIGN_SYSTEM.md) | _deferred — pending unified design system across Studio/AxiomFolio/FileFree_ |
-| ai-models | [`docs/AI_MODEL_REGISTRY.md`](../AI_MODEL_REGISTRY.md) | [`AI_MODEL_PHILOSOPHY.md`](./AI_MODEL_PHILOSOPHY.md) |
+| Domain                 | Architecture (mutable "how")                                                                  | Philosophy (immutable "why / what we won't do")                                                              |
+|------------------------|-----------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------|
+| company                | [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md)                                                  | [`docs/VENTURE_MASTER_PLAN.md`](../VENTURE_MASTER_PLAN.md)                                                   |
+| brain                  | [`docs/BRAIN_ARCHITECTURE.md`](../BRAIN_ARCHITECTURE.md)                                      | [`BRAIN_PHILOSOPHY.md`](./BRAIN_PHILOSOPHY.md)                                                               |
+| infra                  | [`docs/INFRA.md`](../INFRA.md)                                                                | [`INFRA_PHILOSOPHY.md`](./INFRA_PHILOSOPHY.md)                                                               |
+| data                   | [`docs/axiomfolio/MARKET_DATA.md`](../axiomfolio/MARKET_DATA.md)                              | [`DATA_PHILOSOPHY.md`](./DATA_PHILOSOPHY.md)                                                                 |
+| trading                | [`docs/axiomfolio/TRADING.md`](../axiomfolio/TRADING.md)                                      | [`docs/axiomfolio/TRADING_PRINCIPLES.md`](../axiomfolio/TRADING_PRINCIPLES.md) (product-local, indexed here) |
+| tax / FileFree         | _stub deferred — see PRD_                                                                     | [`TAX_PHILOSOPHY.md`](./TAX_PHILOSOPHY.md)                                                                   |
+| formation / LaunchFree | _stub deferred — see PRD_                                                                     | [`FORMATION_PHILOSOPHY.md`](./FORMATION_PHILOSOPHY.md)                                                       |
+| personas               | [`docs/BRAIN_PERSONAS.md`](../BRAIN_PERSONAS.md)                                              | [`docs/GROUND_TRUTH.md`](../GROUND_TRUTH.md) (de-facto; explicit philosophy doc deferred)                    |
+| automation             | [`docs/DEPENDABOT.md`](../DEPENDABOT.md) + [`docs/BRAIN_PR_REVIEW.md`](../BRAIN_PR_REVIEW.md) | [`AUTOMATION_PHILOSOPHY.md`](./AUTOMATION_PHILOSOPHY.md)                                                     |
+| design                 | [`docs/axiomfolio/DESIGN_SYSTEM.md`](../axiomfolio/DESIGN_SYSTEM.md)                          | _deferred — pending unified design system across Studio/AxiomFolio/FileFree_                                 |
+| ai-models              | [`docs/AI_MODEL_REGISTRY.md`](../AI_MODEL_REGISTRY.md)                                        | [`AI_MODEL_PHILOSOPHY.md`](./AI_MODEL_PHILOSOPHY.md)                                                         |
 
 ## How to use these docs
 

@@ -31,13 +31,13 @@ Violations:
 
 When two sources conflict, the higher layer wins. The hierarchy:
 
-| Layer | Examples | Wins when conflicting with |
-|---|---|---|
-| Broker / IRS / state filing API | IBKR, Plaid, MeF | everything below |
-| Bronze table | `bronze.broker_positions`, `bronze.market_quotes_raw` | silver, gold, app cache |
-| Silver table | `silver.positions`, `silver.market_quotes_clean` | gold, app cache |
-| Gold materialization | `gold.portfolio_snapshot`, dashboard rollups | app cache only |
-| App-level cache | Redis, in-memory | nothing — cache is invalidated, never authoritative |
+| Layer                           | Examples                                              | Wins when conflicting with                          |
+|---------------------------------|-------------------------------------------------------|-----------------------------------------------------|
+| Broker / IRS / state filing API | IBKR, Plaid, MeF                                      | everything below                                    |
+| Bronze table                    | `bronze.broker_positions`, `bronze.market_quotes_raw` | silver, gold, app cache                             |
+| Silver table                    | `silver.positions`, `silver.market_quotes_clean`      | gold, app cache                                     |
+| Gold materialization            | `gold.portfolio_snapshot`, dashboard rollups          | app cache only                                      |
+| App-level cache                 | Redis, in-memory                                      | nothing — cache is invalidated, never authoritative |
 
 When in doubt, **re-fetch from the highest layer that owns the field**. Never paper over a discrepancy with a manual UPDATE — it'll come back.
 
