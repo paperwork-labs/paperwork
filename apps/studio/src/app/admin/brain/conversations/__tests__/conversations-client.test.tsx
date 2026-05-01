@@ -1,6 +1,6 @@
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import type { Conversation, ConversationsListPage } from "@/types/conversations";
 import { ConversationsClient } from "../conversations-client";
 
@@ -131,6 +131,14 @@ function createFetchMock(
     };
   }) as unknown as typeof fetch;
 }
+
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
+
+afterEach(() => {
+  cleanup();
+});
 
 // ---------------------------------------------------------------------------
 // Mock fetch
