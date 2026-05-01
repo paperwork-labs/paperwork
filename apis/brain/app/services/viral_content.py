@@ -1,6 +1,6 @@
 """Viral content engine for social platforms.
 
-medallion: ops
+medallion: execution
 """
 
 from __future__ import annotations
@@ -39,7 +39,10 @@ class ContentIdea:
 
 
 class ViralContentEngine:
-    """Generate, rank, and adapt viral content ideas."""
+    """Generate, rank, and adapt viral content ideas.
+
+    medallion: social
+    """
 
     def __init__(self) -> None:
         self._genres: list[ViralGenre] = []

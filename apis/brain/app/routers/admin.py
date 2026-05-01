@@ -502,7 +502,10 @@ def _agent_dispatch_log_path() -> Path:
 @router.get("/agent-dispatch-log")
 async def get_agent_dispatch_log(
     limit: int = Query(100, ge=1, le=500),
-    since: str | None = Query(None, description="ISO-8601 lower bound for dispatched_at (inclusive)"),
+    since: str | None = Query(
+        None,
+        description="ISO-8601 lower bound for dispatched_at (inclusive)",
+    ),
     _auth: None = Depends(_require_admin),
 ):
     """Recent persona dispatch rows from ``agent_dispatch_log.json`` (newest first)."""
