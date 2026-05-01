@@ -271,6 +271,7 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @paperwork/observability build
       - run: pnpm --filter @paperwork-labs/filefree exec tsc --noEmit
       - run: pnpm --filter @paperwork-labs/launchfree exec tsc --noEmit
       - run: pnpm --filter @paperwork-labs/trinkets exec tsc --noEmit
@@ -323,4 +324,5 @@ jobs:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @paperwork/observability build
       - run: pnpm --filter ${{ matrix.app }} build

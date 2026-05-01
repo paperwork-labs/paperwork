@@ -31,6 +31,7 @@
     "@paperwork-labs/auth-clerk": "workspace:*",
     "@paperwork-labs/pwa": "workspace:*",
     "@paperwork-labs/ui": "workspace:*",
+    "@paperwork/observability": "workspace:*",
     "@tanstack/react-query": "^5.100.6",
     "@tiptap/extension-link": "^3.22.5",
     "@tiptap/extension-placeholder": "^3.22.5",

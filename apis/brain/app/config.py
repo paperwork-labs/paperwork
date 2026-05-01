@@ -115,6 +115,8 @@ class Settings(BaseSettings):
     VERCEL_TEAM_ID: str = ""
     # Internal Bearer for Studio → Brain webhooks and `/internal/secrets/*` (set on both sides).
     BRAIN_INTERNAL_TOKEN: str = ""
+    # Internal Bearer for unified product error ingestion (`/v1/errors/*`).
+    BRAIN_API_INTERNAL_TOKEN: str = ""
     # JSON: app slug → Vercel project id or name, e.g. `{"studio":"prj_xxx"}`.
     BRAIN_SECRETS_VERCEL_APP_PROJECTS: str = ""
     # JSON: service label → Render service id, e.g. `{"brain-api":"srv-xxx"}`.
