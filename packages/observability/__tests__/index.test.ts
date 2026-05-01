@@ -52,6 +52,36 @@ describe("@paperwork/observability", () => {
     expect(body.stack).toContain("boom");
   });
 
+  it("posts memory episode when memoryReportPath is configured", async () => {
+    vi.stubGlobal("window", {
+      location: { href: "https://studio.test/admin" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    });
+    vi.stubGlobal("navigator", { userAgent: "vitest-agent" });
+
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, statusText: "OK" });
+    vi.stubGlobal("fetch", fetchMock);
+
+    initObservability({
+      product: "studio",
+      brainUrl: "https://brain.test/",
+      brainToken: "test-token",
+      env: "production",
+      memoryReportPath: "/api/admin/error-report",
+    });
+    captureError(new Error("memory ping"), {});
+    await flushMicrotasks();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const memCall = fetchMock.mock.calls.find((c) => c[0] === "/api/admin/error-report");
+    expect(memCall).toBeDefined();
+    const memoryBody = JSON.parse(memCall![1].body);
+    expect(memoryBody.source).toBe("studio");
+    expect(memoryBody.severity).toBe("error");
+    expect(memoryBody.fingerprint.startsWith("fp:")).toBe(true);
+  });
+
   it("maps development captures to preview before posting", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200, statusText: "OK" });
     vi.stubGlobal("fetch", fetchMock);

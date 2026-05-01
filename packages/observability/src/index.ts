@@ -10,6 +10,7 @@ export interface ObservabilityOptions {
   brainUrl: string;
   brainToken: string;
   env?: string;
+  memoryReportPath?: string;
 }
 
 type BrainEnv = "production" | "preview";
@@ -20,6 +21,7 @@ type ObservabilityConfig = {
   brainUrl: string;
   brainToken: string;
   env: BrainEnv;
+  memoryReportPath?: string;
 };
 
 type ErrorPayload = {
@@ -69,6 +71,50 @@ function currentUserAgent(): string | undefined {
   return navigator.userAgent;
 }
 
+function fingerprintForMemoryReport(p: ErrorPayload): string {
+  const raw = `${p.product}|${p.message}|${p.stack ?? ""}|${p.url ?? ""}`;
+  let h = 0;
+  for (let i = 0; i < raw.length; i++) h = (Math.imul(31, h) + raw.charCodeAt(i)) | 0;
+  const unsigned = h >>> 0;
+  const hex = unsigned.toString(16);
+  return `fp:${p.product}:${hex}`.slice(0, 200);
+}
+
+async function postMemoryEpisodeFromPayload(payload: ErrorPayload): Promise<void> {
+  const active = config;
+  const path = active?.memoryReportPath?.trim();
+  if (!path || typeof window === "undefined") {
+    return;
+  }
+  try {
+    const envLabel = payload.env === "production" ? "production" : "preview";
+    const body = {
+      source: payload.product,
+      summary: payload.message.slice(0, 500),
+      fingerprint: fingerprintForMemoryReport(payload),
+      environment: envLabel,
+      severity: payload.severity === "warning" ? "warning" : "error",
+      url: payload.url,
+      user_agent: payload.user_agent,
+      stack: payload.stack?.slice(0, 4000),
+      metadata: payload.context,
+    };
+    const response = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      keepalive: true,
+    });
+    if (!response.ok) {
+      console.error(
+        `@paperwork/observability memory report responded ${response.status} ${response.statusText}`,
+      );
+    }
+  } catch (err) {
+    console.error("@paperwork/observability memory report failed.", err);
+  }
+}
+
 async function postError(payload: ErrorPayload): Promise<void> {
   const active = config;
   if (!active) {
@@ -87,6 +133,7 @@ async function postError(payload: ErrorPayload): Promise<void> {
   }
 
   try {
+    const memoryOp = postMemoryEpisodeFromPayload(payload);
     const response = await fetch(`${active.brainUrl}/v1/errors/ingest`, {
       method: "POST",
       headers: {
@@ -96,6 +143,7 @@ async function postError(payload: ErrorPayload): Promise<void> {
       body: JSON.stringify(payload),
       keepalive: true,
     });
+    await memoryOp;
     if (!response.ok) {
       console.error(
         `@paperwork/observability failed to capture error: ${response.status} ${response.statusText}`,
@@ -135,6 +183,7 @@ export function initObservability(opts: ObservabilityOptions): void {
     brainUrl: normalizeBrainUrl(opts.brainUrl),
     brainToken: opts.brainToken.trim(),
     env: toBrainEnv(opts.env),
+    memoryReportPath: opts.memoryReportPath?.trim() || undefined,
   };
 
   if (!config.brainUrl || !config.brainToken) {

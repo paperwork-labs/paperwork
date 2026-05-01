@@ -14,6 +14,7 @@ export function ObservabilityBootstrap(props: {
       brainUrl: props.brainUrl,
       brainToken: props.brainToken,
       env: props.env,
+      memoryReportPath: "/api/admin/error-report",
     });
   }, [props.brainToken, props.brainUrl, props.env]);
 
