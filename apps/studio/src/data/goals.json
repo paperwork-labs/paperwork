@@ -8,9 +8,9 @@
       "key_results": [
         {
           "id": "kr-1-1",
-          "title": "18+ PRs merged for WS-76",
+          "title": "32+ PRs merged for WS-76/82",
           "target": 40,
-          "current": 18,
+          "current": 32,
           "unit": "PRs",
           "source_url": null
         },

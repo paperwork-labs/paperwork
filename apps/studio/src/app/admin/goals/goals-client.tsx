@@ -60,12 +60,27 @@ function ownerBadgeClass(owner: string): string {
   return "border-zinc-600 bg-zinc-800/80 text-zinc-300";
 }
 
-export function GoalsClient({ data }: { data: GoalsJson }) {
+export function GoalsClient({
+  data,
+  brainUnavailable = false,
+}: {
+  data: GoalsJson;
+  brainUnavailable?: boolean;
+}) {
   const { objectives } = data;
   const rollup = computeGoalsRollup(objectives);
 
   return (
     <div className="space-y-8">
+      {brainUnavailable ? (
+        <div
+          role="status"
+          className="rounded-lg bg-zinc-800 px-3 py-2 text-xs text-amber-400"
+        >
+          Goals data is static — Brain API not connected
+        </div>
+      ) : null}
+
       <HqPageHeader
         title="Goals & OKRs"
         subtitle="Q2 2026 objectives and key results"
