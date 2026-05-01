@@ -1,5 +1,6 @@
 import asyncio
 import hmac
+import json
 import logging
 import os
 import subprocess
@@ -489,6 +490,51 @@ async def list_personas(
             "personas": [spec.model_dump() for spec in specs],
         }
     )
+
+
+def _agent_dispatch_log_path() -> Path:
+    env = os.environ.get("BRAIN_AGENT_DISPATCH_LOG_JSON", "").strip()
+    if env:
+        return Path(env)
+    return _monorepo_root() / "apis" / "brain" / "data" / "agent_dispatch_log.json"
+
+
+@router.get("/agent-dispatch-log")
+async def get_agent_dispatch_log(
+    limit: int = Query(100, ge=1, le=500),
+    since: str | None = Query(
+        None,
+        description="ISO-8601 lower bound for dispatched_at (inclusive)",
+    ),
+    _auth: None = Depends(_require_admin),
+):
+    """Recent persona dispatch rows from ``agent_dispatch_log.json`` (newest first)."""
+
+    def _load() -> tuple[list[dict[str, Any]], str]:
+        log_path = _agent_dispatch_log_path()
+        if not log_path.is_file():
+            return [], str(log_path)
+        try:
+            raw = json.loads(log_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"Cannot read dispatch log: {exc}") from exc
+        dispatches = raw.get("dispatches") if isinstance(raw, dict) else None
+        if not isinstance(dispatches, list):
+            return [], str(log_path)
+        rows = [d for d in dispatches if isinstance(d, dict)]
+        rows.sort(
+            key=lambda d: str(d.get("dispatched_at") or ""),
+            reverse=True,
+        )
+        if since:
+            rows = [r for r in rows if str(r.get("dispatched_at") or "") >= since]
+        return rows[:limit], str(log_path)
+
+    try:
+        rows, src = await asyncio.to_thread(_load)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    return success_response({"dispatches": rows, "count": len(rows), "source_path": src})
 
 
 @router.get("/blitz-status")

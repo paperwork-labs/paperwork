@@ -125,6 +125,7 @@ describe("BrainClient", () => {
 
       const calledUrl = (globalThis.fetch as ReturnType<typeof vi.fn>).mock
         .calls[0][0] as string;
+      expect(calledUrl).toContain("/admin/agent-dispatch-log");
       expect(calledUrl).toContain("limit=50");
       expect(calledUrl).toContain("since=2026-04-01T00%3A00%3A00Z");
     });

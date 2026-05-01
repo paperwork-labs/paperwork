@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildActivityTargetLabel,
   extractModelAssignmentSection,
+  inferActivityActionType,
   parseEaTagRouting,
   parseMarkdownTables,
   parsePersonaEstCostPerRunUsd,
@@ -22,6 +24,37 @@ describe("resolvePersonasTab", () => {
     expect(resolvePersonasTab("cost")).toBe("cost");
     expect(resolvePersonasTab("routing")).toBe("routing");
     expect(resolvePersonasTab("model-registry")).toBe("model-registry");
+  });
+});
+
+describe("inferActivityActionType", () => {
+  it("classifies explicit PR number as review", () => {
+    expect(inferActivityActionType({ pr_number: 42 })).toBe("review");
+  });
+
+  it("classifies escalation phrases", () => {
+    expect(inferActivityActionType({ task_summary: "Escalate to founder for approval" })).toBe(
+      "escalate",
+    );
+  });
+
+  it("defaults to dispatch", () => {
+    expect(
+      inferActivityActionType({
+        workstream_type: "platform-cli",
+        task_summary: "Run codegen task",
+      }),
+    ).toBe("dispatch");
+  });
+});
+
+describe("buildActivityTargetLabel", () => {
+  it("prefers PR number when set", () => {
+    expect(buildActivityTargetLabel({ pr_number: 99, workstream_type: "x" })).toBe("PR #99");
+  });
+
+  it("falls back to workstream fields", () => {
+    expect(buildActivityTargetLabel({ workstream_type: "drift-detector" })).toBe("drift-detector");
   });
 });
 
