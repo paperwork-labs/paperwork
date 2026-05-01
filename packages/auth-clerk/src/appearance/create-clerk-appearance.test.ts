@@ -1,6 +1,81 @@
 import { describe, expect, it } from "vitest";
 
 import { createClerkAppearance } from "./create-clerk-appearance";
+import {
+  accountsAppearance,
+  axiomfolioAppearance,
+  distillAppearance,
+  fileFreeAppearance,
+  launchFreeAppearance,
+  studioAppearance,
+  trinketsAppearance,
+} from "./presets";
+
+const SKY = "hsl(199 89% 48%)";
+
+const V7_KEYS = [
+  "colorPrimary",
+  "colorBackground",
+  "colorInput",
+  "colorForeground",
+  "colorInputForeground",
+  "colorMutedForeground",
+  "colorPrimaryForeground",
+  "colorDanger",
+  "colorRing",
+  "borderRadius",
+  "fontFamily",
+] as const;
+
+function assertNoDeprecatedClerkVars(variables: Record<string, unknown>) {
+  expect(variables.colorText).toBeUndefined();
+  expect(variables.colorInputBackground).toBeUndefined();
+}
+
+function assertV7Shape(variables: Record<string, unknown>) {
+  for (const key of V7_KEYS) {
+    expect(variables[key], `missing ${key}`).toBeDefined();
+    expect(typeof variables[key]).toBe("string");
+  }
+  assertNoDeprecatedClerkVars(variables);
+}
+
+describe("named appearance presets (Clerk v7 variables + brand colors)", () => {
+  it.each([
+    ["accountsAppearance", accountsAppearance, { colorPrimary: SKY, colorRing: SKY }],
+    ["fileFreeAppearance", fileFreeAppearance, { colorPrimary: "hsl(var(--primary))", colorRing: SKY }],
+    ["launchFreeAppearance", launchFreeAppearance, { colorPrimary: "hsl(var(--primary))", colorRing: SKY }],
+    ["distillAppearance", distillAppearance, { colorPrimary: "#0F766E", colorRing: SKY }],
+    ["studioAppearance", studioAppearance, { colorPrimary: "hsl(var(--primary))", colorRing: SKY }],
+    ["trinketsAppearance", trinketsAppearance, { colorPrimary: "#6366F1", colorRing: SKY }],
+    ["axiomfolioAppearance", axiomfolioAppearance, { colorPrimary: "var(--primary)", colorRing: SKY }],
+  ] as const)("preset %s uses v7 vars and expected primary/ring", (_name, appearance, expected) => {
+    const variables = appearance.variables as Record<string, unknown>;
+    assertV7Shape(variables);
+    expect(variables.colorPrimary).toBe(expected.colorPrimary);
+    expect(variables.colorRing).toBe(expected.colorRing);
+  });
+
+  it("accounts preset uses Paperwork sky primary (not slate gray)", () => {
+    const v = accountsAppearance.variables as Record<string, string>;
+    expect(v.colorPrimary).toBe(SKY);
+    expect(v.colorAccent).toBe("hsl(199 89% 60%)");
+  });
+
+  it("distill preset keeps teal + amber brand (accent)", () => {
+    const v = distillAppearance.variables as Record<string, string>;
+    expect(v.colorAccent).toBe("#C2410C");
+  });
+
+  it("axiomfolio preset threads theme CSS variables for surfaces", () => {
+    const v = axiomfolioAppearance.variables as Record<string, string>;
+    expect(v.colorBackground).toBe("var(--background)");
+    expect(v.colorForeground).toBe("var(--foreground)");
+    expect(v.colorPrimaryForeground).toBe("var(--primary-foreground)");
+    expect(v.colorNeutral).toBe("var(--muted-foreground)");
+    expect(v.colorBorder).toBe("var(--border)");
+  });
+});
 
 describe("createClerkAppearance", () => {
   it("hides the footer/badge slots by default (kills 'Secured by Clerk')", () => {
