@@ -57,6 +57,11 @@ const nextConfig = {
         destination: "/admin/workstreams?tab=pr-pipeline",
         permanent: true,
       },
+      {
+        source: "/admin/money/bills",
+        destination: "/admin/bills",
+        permanent: true,
+      },
     ];
   },
   async headers() {
