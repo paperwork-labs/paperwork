@@ -18,12 +18,11 @@ import asyncio
 import hmac
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
@@ -31,8 +30,11 @@ from app.models.episode import Episode
 from app.redis import get_redis
 from app.schemas.base import success_response
 from app.services import memory as memory_svc
-from app.services import procedural_memory as proc_mem_svc
 from app.services import pr_outcomes as pr_outcomes_svc
+from app.services import procedural_memory as proc_mem_svc
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -105,23 +107,25 @@ async def recall_decisions(
     if episodes:
         await memory_svc.mark_recalled(redis_client, organization_id, [e.id for e in episodes])
 
-    return success_response({
-        "query": query,
-        "organization_id": organization_id,
-        "results": [
-            {
-                "id": ep.id,
-                "summary": ep.summary,
-                "source": ep.source,
-                "persona": ep.persona,
-                "importance": ep.importance,
-                "created_at": ep.created_at.isoformat() if ep.created_at else None,
-                "metadata": ep.metadata_ or {},
-            }
-            for ep in episodes
-        ],
-        "count": len(episodes),
-    })
+    return success_response(
+        {
+            "query": query,
+            "organization_id": organization_id,
+            "results": [
+                {
+                    "id": ep.id,
+                    "summary": ep.summary,
+                    "source": ep.source,
+                    "persona": ep.persona,
+                    "importance": ep.importance,
+                    "created_at": ep.created_at.isoformat() if ep.created_at else None,
+                    "metadata": ep.metadata_ or {},
+                }
+                for ep in episodes
+            ],
+            "count": len(episodes),
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -189,7 +193,9 @@ async def recall_pr_history(
             "workstream_ids": outcome.workstream_ids or [],
             "workstream_types": outcome.workstream_types or [],
             "outcome_h1": (
-                outcome.outcomes.h1.model_dump() if outcome.outcomes and outcome.outcomes.h1 else None
+                outcome.outcomes.h1.model_dump()
+                if outcome.outcomes and outcome.outcomes.h1
+                else None
             ),
             "outcome_h24": (
                 outcome.outcomes.h24.model_dump()
@@ -201,12 +207,14 @@ async def recall_pr_history(
         if len(matched) >= limit:
             break
 
-    return success_response({
-        "keywords": kw_list,
-        "days": days,
-        "results": matched,
-        "count": len(matched),
-    })
+    return success_response(
+        {
+            "keywords": kw_list,
+            "days": days,
+            "results": matched,
+            "count": len(matched),
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -245,24 +253,28 @@ async def episodic_themes(
     for ep in episodes:
         # D23 classification via source prefix
         theme = (ep.source or "unknown").split(":")[0]
-        themes.setdefault(theme, []).append({
-            "id": ep.id,
-            "summary": ep.summary,
-            "persona": ep.persona,
-            "importance": ep.importance,
-            "created_at": ep.created_at.isoformat() if ep.created_at else None,
-            "source": ep.source,
-        })
+        themes.setdefault(theme, []).append(
+            {
+                "id": ep.id,
+                "summary": ep.summary,
+                "persona": ep.persona,
+                "importance": ep.importance,
+                "created_at": ep.created_at.isoformat() if ep.created_at else None,
+                "source": ep.source,
+            }
+        )
 
-    return success_response({
-        "days": days,
-        "organization_id": organization_id,
-        "episode_count": len(episodes),
-        "themes": {
-            theme: {"count": len(items), "top": items[:5]}
-            for theme, items in sorted(themes.items(), key=lambda x: -len(x[1]))
-        },
-    })
+    return success_response(
+        {
+            "days": days,
+            "organization_id": organization_id,
+            "episode_count": len(episodes),
+            "themes": {
+                theme: {"count": len(items), "top": items[:5]}
+                for theme, items in sorted(themes.items(), key=lambda x: -len(x[1]))
+            },
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -286,23 +298,25 @@ async def procedural_rules(
     keywords = [k.strip() for k in domain.replace(",", " ").split() if k.strip()]
     matched = proc_mem_svc.find_rules_for_context(keywords)
 
-    return success_response({
-        "domain": domain,
-        "keywords_used": keywords,
-        "rules": [
-            {
-                "id": r.id,
-                "when": r.when,
-                "do": r.do,
-                "confidence": r.confidence,
-                "applies_to": list(r.applies_to),
-                "learned_at": r.learned_at.isoformat() if r.learned_at else None,
-                "source": r.source,
-            }
-            for r in matched
-        ],
-        "count": len(matched),
-    })
+    return success_response(
+        {
+            "domain": domain,
+            "keywords_used": keywords,
+            "rules": [
+                {
+                    "id": r.id,
+                    "when": r.when,
+                    "do": r.do,
+                    "confidence": r.confidence,
+                    "applies_to": list(r.applies_to),
+                    "learned_at": r.learned_at.isoformat() if r.learned_at else None,
+                    "source": r.source,
+                }
+                for r in matched
+            ],
+            "count": len(matched),
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -358,12 +372,14 @@ async def cross_context(
     pairs = await asyncio.gather(*[_search_one(org_id) for org_id in context_list])
     results_by_context = dict(pairs)
 
-    return success_response({
-        "query": query,
-        "contexts": context_list,
-        "results_by_context": results_by_context,
-        "total_results": sum(len(v) for v in results_by_context.values()),
-    })
+    return success_response(
+        {
+            "query": query,
+            "contexts": context_list,
+            "results_by_context": results_by_context,
+            "total_results": sum(len(v) for v in results_by_context.values()),
+        }
+    )
 
 
 # ---------------------------------------------------------------------------

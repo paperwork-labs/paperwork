@@ -7,8 +7,6 @@ response shape rather than retrieval correctness (which lives in test_memory.py)
 
 from __future__ import annotations
 
-from textwrap import dedent
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -54,8 +52,12 @@ def _patch_redis():
 @pytest.fixture(autouse=True)
 def _patch_memory_svc():
     with (
-        patch("app.routers.memory.memory_svc.search_episodes", new_callable=AsyncMock) as mock_search,
-        patch("app.routers.memory.memory_svc.get_fatigue_ids", new_callable=AsyncMock) as mock_fatigue,
+        patch(
+            "app.routers.memory.memory_svc.search_episodes", new_callable=AsyncMock
+        ) as mock_search,
+        patch(
+            "app.routers.memory.memory_svc.get_fatigue_ids", new_callable=AsyncMock
+        ) as mock_fatigue,
         patch("app.routers.memory.memory_svc.mark_recalled", new_callable=AsyncMock),
         patch("app.routers.memory.memory_svc.store_episode", new_callable=AsyncMock) as mock_store,
     ):
@@ -85,9 +87,7 @@ def _headers(secret: str = _SECRET) -> dict[str, str]:
 
 @pytest.mark.asyncio
 async def test_recall_decisions_returns_200():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/v1/memory/recall-decisions",
             params={"query": "architecture decisions"},
@@ -102,9 +102,7 @@ async def test_recall_decisions_returns_200():
 
 @pytest.mark.asyncio
 async def test_recall_decisions_missing_query_returns_422():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/v1/memory/recall-decisions",
             headers=_headers(),
@@ -114,9 +112,7 @@ async def test_recall_decisions_missing_query_returns_422():
 
 @pytest.mark.asyncio
 async def test_recall_decisions_bad_auth_returns_401():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/v1/memory/recall-decisions",
             params={"query": "test"},
@@ -127,9 +123,7 @@ async def test_recall_decisions_bad_auth_returns_401():
 
 @pytest.mark.asyncio
 async def test_recall_pr_history_returns_200():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/v1/memory/recall-pr-history",
             params={"keywords": "ws-82,memory-layer", "days": "14"},
@@ -145,9 +139,7 @@ async def test_recall_pr_history_returns_200():
 
 @pytest.mark.asyncio
 async def test_recall_pr_history_missing_keywords_returns_422():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/v1/memory/recall-pr-history",
             headers=_headers(),
@@ -157,9 +149,7 @@ async def test_recall_pr_history_missing_keywords_returns_422():
 
 @pytest.mark.asyncio
 async def test_episodic_themes_returns_200():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/v1/memory/episodic-themes",
             params={"days": "7"},
@@ -174,9 +164,7 @@ async def test_episodic_themes_returns_200():
 
 @pytest.mark.asyncio
 async def test_procedural_rules_returns_200():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/v1/memory/procedural-rules",
             params={"domain": "cpa tax filing"},
@@ -191,9 +179,7 @@ async def test_procedural_rules_returns_200():
 
 @pytest.mark.asyncio
 async def test_procedural_rules_missing_domain_returns_422():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/v1/memory/procedural-rules",
             headers=_headers(),
@@ -203,9 +189,7 @@ async def test_procedural_rules_missing_domain_returns_422():
 
 @pytest.mark.asyncio
 async def test_cross_context_returns_200():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/v1/memory/cross-context",
             params={"query": "deploy budget", "contexts": "paperwork-labs,sankalp-personal"},
@@ -220,9 +204,7 @@ async def test_cross_context_returns_200():
 
 @pytest.mark.asyncio
 async def test_cross_context_empty_contexts_returns_422():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.get(
             "/api/v1/memory/cross-context",
             params={"query": "test", "contexts": "  ,  "},
@@ -233,9 +215,7 @@ async def test_cross_context_empty_contexts_returns_422():
 
 @pytest.mark.asyncio
 async def test_remember_episodic_returns_201():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.post(
             "/api/v1/memory/remember",
             json={
@@ -254,9 +234,7 @@ async def test_remember_episodic_returns_201():
 
 @pytest.mark.asyncio
 async def test_remember_semantic_returns_201():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.post(
             "/api/v1/memory/remember",
             json={
@@ -273,9 +251,7 @@ async def test_remember_semantic_returns_201():
 
 @pytest.mark.asyncio
 async def test_remember_invalid_type_returns_422():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.post(
             "/api/v1/memory/remember",
             json={"type": "unknown", "content": {"summary": "test"}},
@@ -286,9 +262,7 @@ async def test_remember_invalid_type_returns_422():
 
 @pytest.mark.asyncio
 async def test_remember_missing_summary_returns_422():
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         res = await client.post(
             "/api/v1/memory/remember",
             json={"type": "episodic", "content": {"importance": 0.9}},

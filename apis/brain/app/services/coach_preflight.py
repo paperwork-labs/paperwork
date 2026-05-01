@@ -333,7 +333,6 @@ def get_coach_preflight_for_task(
                 files_touched=task_keywords,  # abuse files_touched for keyword matching
                 personas=[persona_id],
             )
-            from app.schemas.coach_preflight import MatchedRule as _MatchedRule
             extra_matched = _match_rules(rules, extra_req)
             existing_ids = {r.id for r in response.matched_rules}
             for rule in extra_matched:

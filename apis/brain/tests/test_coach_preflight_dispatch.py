@@ -7,14 +7,11 @@ these tests focus on the task-oriented wrapper.
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from textwrap import dedent
 
 import pytest
 
 from app.services import coach_preflight as svc
-
 
 _MINIMAL_YAML = dedent("""\
     version: 1

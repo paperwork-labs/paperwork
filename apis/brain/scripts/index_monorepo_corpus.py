@@ -37,9 +37,7 @@ from app.services.memory import store_episode
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-_DEFAULT_REPO_ROOT = str(
-    Path(__file__).resolve().parent.parent.parent.parent
-)
+_DEFAULT_REPO_ROOT = str(Path(__file__).resolve().parent.parent.parent.parent)
 
 SOURCE_TAG = "corpus:monorepo"
 ORG_ID = "paperwork-labs"
@@ -158,12 +156,14 @@ async def run(
                     skipped += 1
                     continue
 
-                batch.append({
-                    "ref": ref,
-                    "rel_path": rel_path,
-                    "header": chunk["header"],
-                    "content": chunk["content"],
-                })
+                batch.append(
+                    {
+                        "ref": ref,
+                        "rel_path": rel_path,
+                        "header": chunk["header"],
+                        "content": chunk["content"],
+                    }
+                )
 
             # Flush batch
             while len(batch) >= BATCH_SIZE:
@@ -186,7 +186,11 @@ async def run(
                     )
                     created += 1
                 await db.commit()
-                logger.info("Committed batch of %d episodes (total created=%d)", BATCH_SIZE, created)
+                logger.info(
+                    "Committed batch of %d episodes (total created=%d)",
+                    BATCH_SIZE,
+                    created,
+                )
 
         # Flush remainder
         for item in batch:
@@ -223,7 +227,7 @@ def main() -> None:
     skip_embedding = os.environ.get("SKIP_EMBEDDING", "").lower() in ("1", "true", "yes")
     logger.info("Indexing monorepo corpus from %s (skip_embedding=%s)", repo_root, skip_embedding)
     result = asyncio.run(run(repo_root, skip_embedding=skip_embedding))
-    print(f"Done: {result}")
+    logger.info("Done: %s", result)
 
 
 if __name__ == "__main__":
