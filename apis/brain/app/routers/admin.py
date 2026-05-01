@@ -10,7 +10,7 @@ from datetime import date as date_type
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Header, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, Field
 from sqlalchemy import Date, case, cast, func, select
@@ -35,6 +35,7 @@ from app.schemas.base import success_response
 from app.schemas.coach_preflight import CoachPreflightRequest, CoachPreflightResponse, CostPredict
 from app.services import decommissions as decommissions_svc
 from app.services import iac_drift
+from app.services import memory as memory_svc
 from app.services.auto_revert import list_incidents
 from app.services.blitz_progress_poster import blitz_status_snapshot
 from app.services.continuous_learning import (
@@ -801,6 +802,144 @@ async def list_memory_episodes(
         for ep in rows
     ]
     return success_response({"count": len(episodes), "episodes": episodes})
+
+
+AUTOPILOT_EPISODE_PREFIX = "autopilot"
+
+
+class DispatchDecisionBody(BaseModel):
+    """Optional founder note. ``reason`` is accepted for veto (Studio compat)."""
+
+    note: str | None = None
+    reason: str | None = None
+
+
+def _require_pending_autopilot_dispatch(ep: Episode) -> dict[str, Any]:
+    src = (ep.source or "").strip()
+    if not src.startswith(AUTOPILOT_EPISODE_PREFIX):
+        raise HTTPException(status_code=404, detail="Unknown dispatch task_id")
+    meta = dict(ep.metadata_ or {})
+    if meta.get("status") != "pending":
+        cur = meta.get("status")
+        raise HTTPException(
+            status_code=409,
+            detail=f"Dispatch is not pending (current status: {cur!r})",
+        )
+    return meta
+
+
+async def _get_dispatch_episode(
+    db: AsyncSession,
+    *,
+    task_id: str,
+    organization_id: str,
+) -> Episode:
+    try:
+        ep_id = int(task_id.strip(), 10)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Unknown dispatch task_id") from exc
+    stmt = select(Episode).where(
+        Episode.id == ep_id,
+        Episode.organization_id == organization_id,
+    )
+    ep = (await db.execute(stmt)).scalar_one_or_none()
+    if ep is None:
+        raise HTTPException(status_code=404, detail="Unknown dispatch task_id")
+    return ep
+
+
+@router.post("/dispatch/{task_id}/approve")
+async def approve_autopilot_dispatch(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+    organization_id: str = Query("paperwork-labs"),
+    body: DispatchDecisionBody | None = Body(default=None),
+):
+    """Founder approves a pending autopilot dispatch (episode id from memory episodes)."""
+    ep = await _get_dispatch_episode(db, task_id=task_id, organization_id=organization_id)
+    meta = _require_pending_autopilot_dispatch(ep)
+    note = body.note if body else None
+    approved_at = _rfc3339_utc_z(datetime.now(UTC))
+    meta.update(
+        {
+            "status": "approved",
+            "approved_at": approved_at,
+            "approved_by": "founder",
+            "approval_note": note,
+        }
+    )
+    ep.metadata_ = meta
+    await memory_svc.store_episode(
+        db,
+        organization_id=organization_id,
+        source="autopilot:approval",
+        summary=f"Founder approved autopilot dispatch episode {ep.id}",
+        source_ref=str(ep.id),
+        importance=0.75,
+        metadata={
+            "dispatch_episode_id": ep.id,
+            "dispatch_source": ep.source,
+            "approval_note": note,
+        },
+        skip_embedding=True,
+    )
+    return success_response(
+        {
+            "task_id": str(ep.id),
+            "status": "approved",
+            "approved_at": approved_at,
+            "approved_by": "founder",
+        },
+    )
+
+
+@router.post("/dispatch/{task_id}/veto")
+async def veto_autopilot_dispatch(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+    organization_id: str = Query("paperwork-labs"),
+    body: DispatchDecisionBody | None = Body(default=None),
+):
+    """Founder vetoes a pending autopilot dispatch."""
+    ep = await _get_dispatch_episode(db, task_id=task_id, organization_id=organization_id)
+    meta = _require_pending_autopilot_dispatch(ep)
+    note = body.note if body else None
+    reason = note or (body.reason if body else None)
+    vetoed_at = _rfc3339_utc_z(datetime.now(UTC))
+    meta.update(
+        {
+            "status": "vetoed",
+            "vetoed_at": vetoed_at,
+            "vetoed_by": "founder",
+            "veto_reason": reason,
+        }
+    )
+    ep.metadata_ = meta
+    await memory_svc.store_episode(
+        db,
+        organization_id=organization_id,
+        source="autopilot:veto",
+        summary=f"Founder vetoed autopilot dispatch episode {ep.id}",
+        source_ref=str(ep.id),
+        importance=0.75,
+        metadata={
+            "dispatch_episode_id": ep.id,
+            "dispatch_source": ep.source,
+            "veto_reason": reason,
+        },
+        skip_embedding=True,
+    )
+    return success_response(
+        {
+            "task_id": str(ep.id),
+            "status": "vetoed",
+            "vetoed_at": vetoed_at,
+            "vetoed_by": "founder",
+            "veto_reason": reason,
+        },
+    )
 
 
 @router.get("/memory-stats")
