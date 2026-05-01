@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Clerk SSO — Distill (Next.js)
 
 Runbook for the Distill app (`apps/distill`) identity stack: **Clerk** (SSO) for interactive sign-in. There is **no** legacy session cookie or Basic Auth layer in this app — `clerkMiddleware` only enforces a Clerk session on `/dashboard`; the home page and auth routes stay public.

@@ -1949,7 +1949,7 @@ MARKETPLACE -- USER SIDE (the matching output):
 
 Every user action with intelligence value captured as an immutable UserEvent. 7 event categories: Acquisition (signup, attribution, referral), FileFree (W2 upload/OCR, filing lifecycle, partner CTAs, e-file), LaunchFree (formation lifecycle, RA, banking/payroll CTAs), Trinkets (tool usage, cross-sell), Credit Score (opt-in, pull, changes), Cross-Product (consent, email lifecycle, notifications), and Marketplace (partner product views/clicks, fit scores, partner-side bidding).
 
-**Full event taxonomy**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Section "4C Event Taxonomy"
+**Full event taxonomy**: [docs/archive/VMP-ARCHIVE.md](archive/VMP-ARCHIVE.md) Section "4C Event Taxonomy"
 
 ### 4D. Segments (Rules-Based, Growing to ML)
 
@@ -2000,7 +2000,7 @@ Add opt-in soft credit pull. "Want personalized financial recommendations? Let u
 
 4 campaign rules handle cross-product engagement (post-filing LLC nudge, post-formation tax nudge, abandoned formation recovery, RA credit upsell). Marketplace engine handles product matching on Refund Plan screen.
 
-**Full recommendation engine spec + campaign rules**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Section "4E Recommendation Engine"
+**Full recommendation engine spec + campaign rules**: [docs/archive/VMP-ARCHIVE.md](archive/VMP-ARCHIVE.md) Section "4E Recommendation Engine"
 
 ### 4F. Journey Mapping
 
@@ -3015,13 +3015,13 @@ LaunchFree Compliance Bot (monthly) --> user emails
 
 **EA Split**: EA Interactive (ea.mdc, Cursor) handles decisions/queries. EA Ops Monitor (**Brain APScheduler** — legacy docs may say n8n) handles briefings. They do NOT overlap responsibilities.
 
-**Full org chart, agent status table, governance protocol, overlap resolution**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Section "6I Agent Org Chart"
+**Full org chart, agent status table, governance protocol, overlap resolution**: [docs/archive/VMP-ARCHIVE.md](archive/VMP-ARCHIVE.md) Section "6I Agent Org Chart"
 
 ### 6J. Agent Interaction Model
 
 Three patterns: (1) **Cursor Personas** — activate via file globs or domain questions, real-time collaborators during coding/strategy; (2) **Scheduled Brain jobs** (APScheduler; historically some n8n crons) — EA briefing, social/content cadence, infra/filing health, compliance, strategy/intel; (3) **On-demand / webhook automation** — Slack slash commands and remaining n8n **non-cron** flows for trinket discovery, support, competitive checks, EA queries. Daily founder time: ~15-20 minutes.
 
-**Full interaction model with schedules and commands**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Section "6J Agent Interaction Model"
+**Full interaction model with schedules and commands**: [docs/archive/VMP-ARCHIVE.md](archive/VMP-ARCHIVE.md) Section "6J Agent Interaction Model"
 
 
 ### 6J1. Executive Assistant Agent (#32) -- Detail Spec
@@ -3489,7 +3489,7 @@ The Infra Health Monitor (Agent #25) needs a clear alerting hierarchy:
 
 5 rounds of self-review (all personas) produced 30+ findings. All but 2 LOW findings are FIXED. Open items: F19 (CCPA "sale" analysis for Stage 3 aggregate data) and F24 (score existing partner hit list against 5-factor matrix when outreach begins).
 
-**Full review findings**: [docs/archive/VMP-ARCHIVE.md](../archive/VMP-ARCHIVE.md) Sections 9 and 10
+**Full review findings**: [docs/archive/VMP-ARCHIVE.md](archive/VMP-ARCHIVE.md) Sections 9 and 10
 
 ---
 

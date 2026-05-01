@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # GitHub Actions quota audit (2026 Q2)
 
 Founder switched `paperwork-labs/paperwork` to **public** after exhausting GitHub Actions minutes on **private** repos (public OSS repos currently receive **effectively unlimited** Actions minutes under GitHub Free for standard hosted runners).

@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Clerk SSO — FileFree (Next.js)
 
 Runbook for the FileFree app (`apps/filefree`) identity layer: **Clerk** (primary SSO) for admin surfaces, with **Basic Auth** as an operator escape hatch until removed in a follow-up. **Legacy session cookies** for `/file` and `/auth/*` are unchanged.

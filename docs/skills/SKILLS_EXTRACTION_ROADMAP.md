@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Skills extraction roadmap (`packages/skills/*`)
 
 Canonical plan for turning shared integrations into reusable workspace packages so new apps (Brain B2C, Money MVP, Studio, FileFree) can adopt them without copying `apis/*` internals.

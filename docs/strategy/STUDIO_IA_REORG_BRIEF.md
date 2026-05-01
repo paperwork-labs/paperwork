@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # WS-69 — Studio IA Reorg + Sprint/Plan Data Reconcile
 
 **Status**: brief / not yet planned

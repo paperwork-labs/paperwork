@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Brain Self-Merge Graduation
 
 **TL;DR:** Tier rules for Brain self-merge (`data-only` → `brain-code` → `app-code`) and how promotion and reverts interact. Check here before interpreting self-merge status.

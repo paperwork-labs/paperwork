@@ -122,7 +122,7 @@ What is **not** the family thread:
 
 ## 6. Brain as B2C meta-product (unchanged strategy)
 
-Per `docs/BRAIN_ARCHITECTURE.md` (D49, F90, G01): Brain is the B2C surface that other products join as **skills**. Naming/domain still **TBD**; **visual = brain glyph**, not droplets. Two orbital/fill exploration prompts are **optional** in [`PROMPTS.md`](../brand/PROMPTS.md) only if the primary brain line prompt is insufficient.
+Per `docs/BRAIN_ARCHITECTURE.md` (D49, F90, G01): Brain is the B2C surface that other products join as **skills**. Naming/domain still **TBD**; **visual = brain glyph**, not droplets. Two orbital/fill exploration prompts are **optional** in [`CANON.md`](../brand/CANON.md) only if the primary brain line prompt is insufficient.
 
 ---
 

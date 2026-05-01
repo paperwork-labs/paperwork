@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Clerk SSO — AxiomFolio (Next.js)
 
 Runbook for the AxiomFolio Next.js app (`apps/axiomfolio`, package `@paperwork-labs/axiomfolio`) identity stack: Clerk SDK foundation (T6c) alongside the existing **`qm_token`** session in `localStorage`. Per-app Clerk theming (T3.4) uses the Appearance API; see [Theming](#theming) below.

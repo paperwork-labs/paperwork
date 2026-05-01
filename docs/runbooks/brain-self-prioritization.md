@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Brain Self-Prioritization
 
 **TL;DR:** How Brain proposes workstream candidates from objectives, POS, and other signals before they become tracker entries. Read when you promote or reject a candidate via the admin API.

@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Deprecated n8n Workflows (Hetzner) — Retired
 
 **TL;DR:** Lists legacy Brain-mirror n8n flows that must stay off. Read before touching the Hetzner n8n host or Wave M social automation.

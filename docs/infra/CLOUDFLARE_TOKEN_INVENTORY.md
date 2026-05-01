@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Cloudflare token inventory (WS-57 batch A)
 
 Scoped-token posture follows WS-47 (`apis/brain/app/services/cloudflare_token_resolver.py`). This table documents **direct** use of `CLOUDFLARE_API_TOKEN` / env reads outside the resolver.

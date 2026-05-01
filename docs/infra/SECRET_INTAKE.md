@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Secret intake (Studio)
 
 ## Why this exists

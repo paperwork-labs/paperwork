@@ -80,7 +80,7 @@
     "updated": "2026-03-22",
     "version": "11.0"
   },
-  "content_hash": "9ffc7ccdb26c",
+  "content_hash": "602bcc297071",
   "products": [
     {
       "label": "AxiomFolio",
@@ -656,7 +656,7 @@
       "end": null,
       "followups": [],
       "goal": null,
-      "last_reviewed": null,
+      "last_reviewed": "2026-05-01",
       "lessons": [],
       "outcome_bullets": [],
       "owner": null,

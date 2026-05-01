@@ -11,7 +11,7 @@ status: active
 
 Work through these in phase order. Each task is scoped for one PR. Reference [PRD.md](PRD.md) for business context, [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md) for Brain technical spec, [PRODUCT_SPEC.md](PRODUCT_SPEC.md) for FileFree UX specs, [VENTURE_MASTER_PLAN.md](VENTURE_MASTER_PLAN.md) for deep strategy, [PARTNERSHIPS.md](PARTNERSHIPS.md) for partner playbook, [.cursorrules](../.cursorrules) for coding conventions.
 
-**Historical MVP tasks**: Sprint 0-6 detailed specs archived in [TASKS-ARCHIVE.md](TASKS-ARCHIVE.md). All completed work (Tasks 0.1-2.7, B.1-B.11, I.1) preserved there for reference.
+**Historical MVP tasks**: Sprint 0-6 detailed specs archived in [TASKS-ARCHIVE.md](archive/TASKS-ARCHIVE.md). All completed work (Tasks 0.1-2.7, B.1-B.11, I.1) preserved there for reference.
 
 **Founding team**: Two co-founders. Founder 1 (Product/Engineering) owns all code tasks. Founder 2 (Partnerships/Revenue) owns partner outreach tasks. See [PARTNERSHIPS.md](PARTNERSHIPS.md) for the full playbook.
 

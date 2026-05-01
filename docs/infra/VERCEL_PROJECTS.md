@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Vercel projects (monorepo)
 
 This document tracks which Vercel projects are **connected to the git repository** (automatic previews + production deploys from pushes) versus **orphaned** (manual deploy only, dashboard shows "Connect Git Repository").

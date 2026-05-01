@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # AxiomFolio Phase 3 — DNS & custom-domain cutover runbook
 
 Phase 3 moves `axiomfolio.com`, `www.axiomfolio.com`, and `api.axiomfolio.com` from the founder’s **personal** Render workspace to **Paperwork Labs (org)** services, and points Cloudflare at the new `*.onrender.com` targets.

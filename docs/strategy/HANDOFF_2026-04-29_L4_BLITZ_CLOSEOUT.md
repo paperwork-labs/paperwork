@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Handoff — End of L4/L5 Blitz Chat → New Work
 
 **Date**: 2026-04-29

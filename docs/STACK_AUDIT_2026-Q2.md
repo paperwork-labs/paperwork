@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # Stack Audit - 2026 Q2
 
 **Audit date:** 2026-04-29  

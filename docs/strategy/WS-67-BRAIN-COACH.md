@@ -1,3 +1,7 @@
+---
+last_reviewed: 2026-05-01
+---
+
 # WS-67 — Brain coach for Opus
 
 > Status: design (2026-04-28). Implementation will be split into sub-PRs.
