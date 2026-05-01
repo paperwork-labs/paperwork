@@ -1,9 +1,7 @@
-import { parseDay0Runbook } from "@/lib/day0-runbook";
-import { RunbookClient } from "./runbook-client";
+import { redirect } from "next/navigation";
 
-export const metadata = { title: "Runbook — Studio" };
+export const dynamic = "force-dynamic";
 
-export default async function RunbookPage() {
-  const data = await parseDay0Runbook();
-  return <RunbookClient data={data} />;
+export default function RunbookRedirect() {
+  redirect("/admin/docs/day-0-founder-actions");
 }
