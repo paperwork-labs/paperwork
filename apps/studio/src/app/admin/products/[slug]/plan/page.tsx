@@ -1,19 +1,15 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 
-import { findProduct } from "@/lib/tracker";
+import { findProduct, listTrackerProducts } from "@/lib/tracker";
+
+import { PlanCardTitle } from "./plan-card-title";
+import { ProductPlanBreadcrumb } from "./product-plan-breadcrumb";
 
 export const dynamic = "force-static";
 
 export function generateStaticParams() {
-  return [
-    { slug: "axiomfolio" },
-    { slug: "filefree" },
-    { slug: "launchfree" },
-    { slug: "distill" },
-    { slug: "trinkets" },
-  ];
+  return listTrackerProducts().map((p) => ({ slug: p.slug }));
 }
 
 export default async function ProductPlanPage({
@@ -25,17 +21,17 @@ export default async function ProductPlanPage({
   const product = findProduct(slug);
   if (!product) notFound();
 
+  const productCrumbs = listTrackerProducts()
+    .map((p) => ({
+      slug: p.slug,
+      label: p.label,
+    }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/admin/products"
-            className="text-xs text-zinc-500 transition hover:text-zinc-300"
-          >
-            ← Products
-          </Link>
-        </div>
+        <ProductPlanBreadcrumb currentSlug={slug} products={productCrumbs} />
         <h1 className="text-2xl font-semibold tracking-tight">
           {product.label} — Plans
         </h1>
@@ -75,12 +71,10 @@ export default async function ProductPlanPage({
               className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-5"
             >
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="truncate text-lg font-semibold text-zinc-100">
-                    {plan.title}
-                  </h2>
-                  <p className="mt-1 truncate text-xs text-zinc-500">
-                    <code>{plan.path}</code>
+                <div className="min-w-0 flex-1 pr-2">
+                  <PlanCardTitle title={plan.title} />
+                  <p className="mt-1 break-all text-xs text-zinc-500">
+                    <code className="text-[11px]">{plan.path}</code>
                     {plan.last_reviewed ? <> · reviewed {plan.last_reviewed}</> : null}
                   </p>
                 </div>
