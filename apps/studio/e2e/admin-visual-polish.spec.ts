@@ -10,7 +10,7 @@ const ROUTES = [
   "/admin/workstreams",
   "/admin/sprints",
   "/admin/infrastructure",
-  "/admin/brain/conversations",
+  "/admin/conversations",
 ] as const;
 
 test.describe("Admin visual baseline (WS-76 PR-C)", () => {

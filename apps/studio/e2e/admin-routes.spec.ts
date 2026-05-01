@@ -229,8 +229,8 @@ test.describe("Brain bucket stub pages (WS-69 PR C)", () => {
     await expect(page.getByRole("tab", { name: /model registry/i })).toBeVisible();
   });
 
-  test("/admin/brain/conversations renders without 5xx and shows PR E copy", async ({ page }) => {
-    const resp = await page.goto("/admin/brain/conversations", { waitUntil: "domcontentloaded" });
+  test("/admin/conversations renders without 5xx and shows PR E copy", async ({ page }) => {
+    const resp = await page.goto("/admin/conversations", { waitUntil: "domcontentloaded" });
     expect(resp?.status()).toBeLessThan(500);
     await expect(
       page
@@ -240,10 +240,10 @@ test.describe("Brain bucket stub pages (WS-69 PR C)", () => {
     ).toBeVisible({ timeout: 30_000 });
   });
 
-  test("/admin/brain/conversations accepts ?filter=needs-action without error", async ({
+  test("/admin/conversations accepts ?filter=needs-action without error", async ({
     page,
   }) => {
-    const resp = await page.goto("/admin/brain/conversations?filter=needs-action", {
+    const resp = await page.goto("/admin/conversations?filter=needs-action", {
       waitUntil: "domcontentloaded",
     });
     expect(resp?.status()).toBeLessThan(500);

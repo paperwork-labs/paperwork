@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Conversations spaces (WS-76 PR-21 — STUDIO_E2E_FIXTURE=1)", () => {
   test("space filter narrows inbox vs All", async ({ page }) => {
-    await page.goto("/admin/brain/conversations", { waitUntil: "domcontentloaded" });
+    await page.goto("/admin/conversations", { waitUntil: "domcontentloaded" });
     const list = page.getByTestId("conversations-inbox-list");
     await expect(list).toBeVisible({ timeout: 30_000 });
     const countAll = await list.getByRole("listitem").count();
@@ -19,7 +19,7 @@ test.describe("Conversations spaces (WS-76 PR-21 — STUDIO_E2E_FIXTURE=1)", () 
   });
 
   test("compose infers AxiomFolio space from title and shows chip after create", async ({ page }) => {
-    await page.goto("/admin/brain/conversations", { waitUntil: "domcontentloaded" });
+    await page.goto("/admin/conversations", { waitUntil: "domcontentloaded" });
 
     await page.getByRole("button", { name: "Compose" }).click();
     await expect(page.getByTestId("compose-modal")).toBeVisible({ timeout: 15_000 });

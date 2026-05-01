@@ -172,7 +172,7 @@ export function ProductSupportPanel({ productSlug, productName }: Props) {
           {sorted.map((c) => (
             <li key={c.id}>
               <Link
-                href={`/admin/brain/conversations/${c.id}`}
+                href={`/admin/conversations/${c.id}`}
                 data-testid="support-ticket-row"
                 className="flex flex-col gap-2 rounded-xl border border-zinc-800/90 bg-zinc-950/45 px-4 py-3 transition hover:border-zinc-700/90 hover:bg-zinc-950/70"
               >

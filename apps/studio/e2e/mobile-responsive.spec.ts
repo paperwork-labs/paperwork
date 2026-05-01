@@ -53,7 +53,7 @@ test.describe("Admin mobile responsive (iPhone 12 viewport)", () => {
   });
 
   test("conversations shows inbox list without thread pane initially", async ({ page }) => {
-    await page.goto("/admin/brain/conversations", { waitUntil: "domcontentloaded" });
+    await page.goto("/admin/conversations", { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("admin-shell")).toBeVisible({ timeout: 30_000 });
     await assertNoHorizontalOverflowScoped(page);
 

@@ -131,7 +131,7 @@ export function SelfImprovementClient({ payload, brainConfigured }: SelfImprovem
               </p>
             </div>
             <Link
-              href="/admin/brain/conversations"
+              href="/admin/conversations"
               className="shrink-0 rounded-lg border border-zinc-700 bg-zinc-900/60 px-3 py-2 text-sm text-zinc-200 hover:border-zinc-500"
             >
               Brain inbox →

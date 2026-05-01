@@ -64,6 +64,10 @@ describe("AdminLayoutClient (WS-82 PR-IA1 unified Workstreams nav)", () => {
     ).toBe("/admin/architecture");
     expect(screen.getAllByText("Brain", { exact: true }).length).toBeGreaterThan(0);
 
+    expect(
+      within(nav).getByRole("link", { name: /^People$/ }).getAttribute("href"),
+    ).toBe("/admin/people");
+
     const trackersHeading = within(nav).getByText("Trackers", { exact: true });
     const trackersGroup = trackersHeading.parentElement as HTMLElement;
     expect(
@@ -75,7 +79,7 @@ describe("AdminLayoutClient (WS-82 PR-IA1 unified Workstreams nav)", () => {
     expect(expensesInNav.getAttribute("href")).toBe("/admin/expenses");
     expect(
       within(nav).getByRole("link", { name: /^Bills$/ }).getAttribute("href"),
-    ).toBe("/admin/bills");
+    ).toBe("/admin/money/bills");
     expect(
       within(nav).getByRole("link", { name: /^Vendors$/ }).getAttribute("href"),
     ).toBe("/admin/vendors");
@@ -96,7 +100,7 @@ describe("AdminLayoutClient (WS-82 PR-IA1 unified Workstreams nav)", () => {
     ).toBe("/admin/delegated");
 
     const convoLink = within(nav).getByRole("link", { name: /Conversations/i });
-    expect(convoLink.getAttribute("href")).toBe("/admin/brain/conversations");
+    expect(convoLink.getAttribute("href")).toBe("/admin/conversations");
     expect(within(convoLink).getByText("4 pending")).toBeTruthy();
 
     const footer = screen.getAllByTestId("admin-vendor-footer")[1]!;
