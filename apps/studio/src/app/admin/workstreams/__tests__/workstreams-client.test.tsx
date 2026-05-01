@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import workstreamsJson from "@/data/workstreams.json";
@@ -16,7 +17,7 @@ vi.mock("next/link", () => ({
     href,
     className,
   }: {
-    children: unknown;
+    children: ReactNode;
     href: string;
     className?: string;
   }) => (
