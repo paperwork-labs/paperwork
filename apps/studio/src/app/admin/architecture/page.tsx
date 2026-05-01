@@ -1,8 +1,6 @@
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import OverviewTab from "./tabs/overview-tab";
 import AnalyticsTab from "./tabs/analytics-tab";
-import FlowsTab from "./tabs/flows-tab";
-import DataSourcesTab from "./tabs/data-sources-tab";
 
 export const dynamic = "force-dynamic";
 
@@ -18,16 +16,6 @@ export default function ArchitecturePage() {
       label: "Analytics",
       content: <AnalyticsTab />,
     },
-    {
-      id: "flows" as const,
-      label: "Flows",
-      content: <FlowsTab />,
-    },
-    {
-      id: "data-sources" as const,
-      label: "Data Sources",
-      content: <DataSourcesTab />,
-    },
   ] as const;
 
   return (
@@ -37,7 +25,7 @@ export default function ArchitecturePage() {
           Architecture
         </h1>
         <p className="mt-1 text-sm text-zinc-400">
-          System graph, analytics, automation flows, and data sources.
+          Interactive system graph and dependency analytics.
         </p>
       </header>
       <TabbedPageShell tabs={tabs} defaultTab="overview" />

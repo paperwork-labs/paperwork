@@ -249,6 +249,11 @@ export default function ArchitectureClient({
     };
   }, [graph, health]);
 
+  const liveEnrichmentIncomplete = useMemo(() => {
+    if (!liveData.available) return true;
+    return liveData.partial_failures.length > 0;
+  }, [liveData.available, liveData.partial_failures]);
+
   const selected = selectedId
     ? graph.nodes.find((n) => n.id === selectedId) ?? null
     : null;
@@ -415,13 +420,13 @@ export default function ArchitectureClient({
 
   return (
     <div className="space-y-8">
-      {!liveData.available && (
+      {refreshError && (
         <div
           className="rounded-lg border border-amber-800/50 bg-amber-950/25 px-4 py-3 text-sm text-amber-100/90"
-          role="status"
+          role="alert"
         >
-          Live data unavailable, showing last known structure. Schedule ownership and deploy
-          timestamps may be missing; the graph shape comes from the bundled system catalog.
+          Live data unavailable — could not refresh architecture status. Showing the last loaded
+          snapshot; health dots and deploy timestamps may be stale. Try again or reload the page.
         </div>
       )}
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -462,10 +467,11 @@ export default function ArchitectureClient({
             Checked {formatRelative(checkedAt)} · commit{" "}
             <span className="font-mono text-zinc-400">{graph.commit_sha}</span>
           </div>
-          {refreshError && (
-            <div className="rounded-full border border-rose-800/40 bg-rose-950/20 px-2 py-0.5 text-xs text-rose-300">
-              Health probe failed: {refreshError}
-            </div>
+          {!refreshError && liveEnrichmentIncomplete && (
+            <p className="max-w-xs text-[11px] leading-snug text-zinc-500" role="status">
+              Showing cached service map from the bundled catalog; live schedule or deploy times may
+              be missing.
+            </p>
           )}
         </div>
       </header>
