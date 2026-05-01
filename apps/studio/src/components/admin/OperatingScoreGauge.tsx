@@ -1,5 +1,5 @@
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
-import { getBrainOperatingScoreHistory } from "@/lib/command-center";
+import { getBrainOperatingScoreHistoryEntries } from "@/lib/command-center";
 import type { OperatingScoreResponse } from "@/types/operating-score";
 
 import { OperatingScoreGaugeBody } from "./OperatingScoreGaugeBody";
@@ -29,7 +29,7 @@ export async function OperatingScoreGauge() {
       headers: { "X-Brain-Secret": auth.secret },
       cache: "no-store",
     }),
-    getBrainOperatingScoreHistory(52),
+    getBrainOperatingScoreHistoryEntries(52),
   ]);
 
   if (!res.ok) {

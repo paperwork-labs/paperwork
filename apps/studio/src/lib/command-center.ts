@@ -1168,18 +1168,12 @@ export async function getInfrastructureStatus(): Promise<InfraStatus[]> {
 
 /**
  * `GET /api/v1/admin/operating-score/history` — chronological POS totals for Overview sparklines.
- * Returns null if Brain is not configured or the request fails.
+ * Adapts Phase D daily-series response into OperatingScoreEntry[] for the sparkline component.
  */
-export async function getBrainOperatingScoreHistory(limit = 52): Promise<OperatingScoreEntry[] | null> {
-  const apiRoot = getBrainApiRoot();
-  const secret = process.env.BRAIN_API_SECRET?.trim();
-  if (!apiRoot || !secret) return null;
-  const u = new URL(`${apiRoot}/admin/operating-score/history`);
-  if (limit > 0) u.searchParams.set("limit", String(limit));
-  const envelope = await fetchJson<{
-    success?: boolean;
-    data?: OperatingScoreEntry[];
-  }>(u.toString(), { headers: { "X-Brain-Secret": secret } });
-  if (!envelope || envelope.success === false || !Array.isArray(envelope.data)) return null;
-  return envelope.data;
+export async function getBrainOperatingScoreHistoryEntries(limit = 52): Promise<OperatingScoreEntry[] | null> {
+  const result = await getBrainOperatingScoreHistory(limit);
+  if (!result.data?.series) return null;
+  return result.data.series
+    .filter((s): s is { date: string; total: number } => s.total != null)
+    .map((s) => ({ computed_at: s.date, total: s.total }) as OperatingScoreEntry);
 }
