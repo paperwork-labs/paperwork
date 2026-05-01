@@ -55,7 +55,7 @@ export function buildNavGroups(
           pendingBadge: expensesPending,
         },
         { href: "/admin/vendors", label: "Vendors", icon: Building2 },
-        { href: "/admin/bills", label: "Bills", icon: FileText },
+        { href: "/admin/money/bills", label: "Bills", icon: FileText },
       ],
     },
     {
