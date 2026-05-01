@@ -21,7 +21,7 @@ import WorkflowsRoster from "../../workflows/workflows-roster";
 import { N8nGraphList } from "../../workflows/n8n-graph";
 
 export default async function WorkflowsTab() {
-  const [workflows, executions, personas, slack, github, vercel] = await Promise.all([
+  const [workflows, executions, brainPersonas, slack, github, vercel] = await Promise.all([
     getN8nWorkflows(),
     getN8nExecutions(50),
     getBrainPersonas(),
@@ -41,10 +41,13 @@ export default async function WorkflowsTab() {
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-widest text-zinc-500">
           Workflow roster
         </h2>
+        {brainPersonas.error ? (
+          <p className="mb-3 text-sm text-amber-300/90">{brainPersonas.error}</p>
+        ) : null}
         <WorkflowsRoster
           workflows={workflows}
           executions={executions}
-          personas={personas}
+          personas={brainPersonas.personas}
           workflowMeta={WORKFLOW_META}
           filterWorkflowId={undefined}
           sort="desc"

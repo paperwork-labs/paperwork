@@ -10,12 +10,15 @@ import {
   shippedSprintsForUi,
 } from "@/lib/tracker-reconcile";
 
-async function fetchExpensesOverview(): Promise<{
-  pendingCount: number;
-  monthCents: number;
-} | null> {
+type ExpensesRailOverview =
+  | { status: "ok"; pendingCount: number; monthCents: number }
+  | { status: "unconfigured" }
+  | { status: "error"; message: string };
+
+async function fetchExpensesOverview(): Promise<ExpensesRailOverview> {
   const auth = getBrainAdminFetchOptions();
-  if (!auth.ok) return null;
+  if (!auth.ok) return { status: "unconfigured" };
+
   try {
     const now = new Date();
     const [pendingRes, rollupRes] = await Promise.all([
@@ -25,17 +28,55 @@ async function fetchExpensesOverview(): Promise<{
       }),
       fetch(
         `${auth.root}/admin/expenses/rollup?year=${now.getFullYear()}&month=${now.getMonth() + 1}`,
-        { headers: { "X-Brain-Secret": auth.secret }, cache: "no-store" }
+        { headers: { "X-Brain-Secret": auth.secret }, cache: "no-store" },
       ),
     ]);
-    const pendingJson = pendingRes.ok ? await pendingRes.json() : null;
-    const rollupJson = rollupRes.ok ? await rollupRes.json() : null;
-    return {
-      pendingCount: pendingJson?.success ? (pendingJson.data?.total ?? 0) : 0,
-      monthCents: rollupJson?.success ? (rollupJson.data?.total_cents ?? 0) : 0,
+
+    if (!pendingRes.ok) {
+      return {
+        status: "error",
+        message: `Pending count request failed (HTTP ${pendingRes.status}).`,
+      };
+    }
+    if (!rollupRes.ok) {
+      return {
+        status: "error",
+        message: `Expense rollup request failed (HTTP ${rollupRes.status}).`,
+      };
+    }
+
+    const pendingJson = (await pendingRes.json()) as {
+      success?: boolean;
+      data?: { total?: number };
     };
-  } catch {
-    return null;
+    const rollupJson = (await rollupRes.json()) as {
+      success?: boolean;
+      data?: { total_cents?: number };
+    };
+
+    if (!pendingJson.success) {
+      return {
+        status: "error",
+        message: "Brain rejected pending expense count response.",
+      };
+    }
+    if (!rollupJson.success) {
+      return {
+        status: "error",
+        message: "Brain rejected expense rollup response.",
+      };
+    }
+
+    return {
+      status: "ok",
+      pendingCount: pendingJson.data?.total ?? 0,
+      monthCents: rollupJson.data?.total_cents ?? 0,
+    };
+  } catch (e) {
+    return {
+      status: "error",
+      message: e instanceof Error ? e.message : "Expense overview request failed.",
+    };
   }
 }
 
@@ -139,7 +180,7 @@ export async function TrackersRail() {
             Expenses
           </span>
         </div>
-        {expensesOverview !== null ? (
+        {expensesOverview.status === "ok" ? (
           <>
             <p className="mt-3 text-2xl font-semibold text-zinc-100">
               {expensesOverview.pendingCount}
@@ -148,10 +189,17 @@ export async function TrackersRail() {
               pending · {formatCentsBrief(expensesOverview.monthCents)} this month
             </p>
           </>
+        ) : expensesOverview.status === "unconfigured" ? (
+          <>
+            <p className="mt-3 text-2xl font-semibold text-zinc-100">—</p>
+            <p className="text-xs text-zinc-500">
+              Set BRAIN_API_URL and BRAIN_API_SECRET
+            </p>
+          </>
         ) : (
           <>
             <p className="mt-3 text-2xl font-semibold text-zinc-100">—</p>
-            <p className="text-xs text-zinc-500">Brain API unavailable</p>
+            <p className="text-xs text-rose-400/90">{expensesOverview.message}</p>
           </>
         )}
         <p className="mt-3 text-xs text-zinc-400 group-hover:text-zinc-200">

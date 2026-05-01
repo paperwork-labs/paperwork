@@ -5,6 +5,7 @@ import matter from "gray-matter";
 
 import { brainApiV1Root, getBrainAdminFetchOptions } from "./brain-admin-proxy";
 import { BrainClient, BrainClientError } from "./brain-client";
+import { getBrainPersonas } from "./command-center";
 
 import {
   avgTokensFromOutcomes,
@@ -27,6 +28,7 @@ import type {
   ActivityFeedRow,
   AgentDispatchFile,
   BrainDataSourceStatus,
+  BrainPersonasFromApi,
   CostTabPayload,
   DispatchRecord,
   EaRoutingRow,
@@ -640,6 +642,12 @@ export async function loadPersonasPageData(): Promise<PersonasPagePayload> {
     );
   }
 
+  const brainPersonasLive = await getBrainPersonas();
+  const brainPersonasFromApi: BrainPersonasFromApi = {
+    specs: brainPersonasLive.personas,
+    ...(brainPersonasLive.error ? { error: brainPersonasLive.error } : {}),
+  };
+
   const auth = getBrainAdminFetchOptions();
   const apiRoot = brainApiV1Root() ?? `${brainApiUrl.replace(/\/+$/, "")}/api/v1`;
   const dispatchEndpoint = `${apiRoot}/admin/agent-dispatch-log`;
@@ -647,6 +655,7 @@ export async function loadPersonasPageData(): Promise<PersonasPagePayload> {
   if (!auth.ok) {
     return {
       ...base,
+      brainPersonasFromApi,
       activity: {
         source: {
           ok: false,
@@ -684,6 +693,7 @@ export async function loadPersonasPageData(): Promise<PersonasPagePayload> {
 
     return {
       ...base,
+      brainPersonasFromApi,
       dashboard,
       activity: {
         source: { ok: true, path: dispatchEndpoint },
@@ -697,6 +707,7 @@ export async function loadPersonasPageData(): Promise<PersonasPagePayload> {
       e instanceof BrainClientError ? e.message : e instanceof Error ? e.message : String(e);
     return {
       ...base,
+      brainPersonasFromApi,
       activity: {
         source: {
           ok: false,
