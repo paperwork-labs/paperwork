@@ -169,6 +169,7 @@ function WorkflowDagPanel({
       direction="TB"
       showMiniMap={showMiniMap}
       fitViewPadding={0.15}
+      animateEdges={false}
       className={className}
     />
   );

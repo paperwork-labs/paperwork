@@ -3,11 +3,16 @@
 import "@xyflow/react/dist/style.css";
 
 import dagre from "dagre";
+import type {
+  ArchitectureLayerBand,
+  DeployPlatformBadge,
+} from "@/lib/architecture-graph-studio";
 import {
   Background,
   BackgroundVariant,
   Controls,
   Handle,
+  MarkerType,
   MiniMap,
   Position,
   ReactFlow,
@@ -20,8 +25,8 @@ import {
 } from "@xyflow/react";
 import { useCallback, useEffect, useMemo } from "react";
 
-const NODE_W = 228;
-const NODE_H = 92;
+const NODE_W = 252;
+const NODE_H = 124;
 
 export type DagTone =
   | "core"
@@ -36,6 +41,8 @@ export type DagTone =
   | "ai"
   | "default";
 
+export type { ArchitectureLayerBand, DeployPlatformBadge };
+
 export type CardNodeData = {
   label: string;
   tone: DagTone;
@@ -46,6 +53,14 @@ export type CardNodeData = {
   liveFrame?: "emerald" | "amber" | "zinc" | "rose";
   /** Second line under subtitle for deploy + schedule hints. */
   liveSubtext?: string;
+  /** Swimlane tint (architecture graph). */
+  layerBand?: ArchitectureLayerBand;
+  /** Hosting / console badge. */
+  deployPlatform?: DeployPlatformBadge;
+  /** Last production deploy (e.g. Vercel), when known. */
+  deployRelative?: string | null;
+  /** Cursor hint when parent handles in-app navigation. */
+  navigable?: boolean;
   /** Layout for handle positions (matches graph direction). */
   handleLayout?: "horizontal" | "vertical";
   compact?: boolean;
@@ -79,6 +94,48 @@ const STATUS_DOT: Record<NonNullable<CardNodeData["status"]>, string> = {
   gray: "bg-zinc-600",
 };
 
+const LAYER_BAND_SURFACE: Record<ArchitectureLayerBand, string> = {
+  frontend:
+    "bg-gradient-to-br from-indigo-950/[0.42] via-indigo-950/[0.14] to-transparent",
+  api: "bg-gradient-to-br from-sky-950/[0.38] via-sky-950/[0.12] to-transparent",
+  workers:
+    "bg-gradient-to-br from-orange-950/[0.4] via-orange-950/[0.14] to-transparent",
+  database:
+    "bg-gradient-to-br from-violet-950/[0.42] via-violet-950/[0.14] to-transparent",
+  ops: "bg-gradient-to-br from-zinc-800/[0.45] via-zinc-900/[0.2] to-transparent",
+};
+
+const PLATFORM_BADGE: Record<
+  DeployPlatformBadge,
+  { label: string; className: string }
+> = {
+  vercel: {
+    label: "Vercel",
+    className:
+      "border-black/20 bg-zinc-100 text-zinc-900 ring-1 ring-white/30 dark:bg-zinc-950 dark:text-zinc-50 dark:ring-zinc-700",
+  },
+  render: {
+    label: "Render",
+    className: "border-emerald-900/50 bg-emerald-950/75 text-emerald-100 ring-1 ring-emerald-700/40",
+  },
+  neon: {
+    label: "Neon",
+    className: "border-emerald-900/40 bg-emerald-950/55 text-emerald-50 ring-1 ring-emerald-600/35",
+  },
+  upstash: {
+    label: "Upstash",
+    className: "border-violet-900/45 bg-violet-950/65 text-violet-100 ring-1 ring-violet-600/35",
+  },
+  github: {
+    label: "GitHub",
+    className: "border-zinc-600/50 bg-zinc-900/90 text-zinc-100 ring-1 ring-zinc-500/30",
+  },
+  hetzner: {
+    label: "Hetzner",
+    className: "border-red-900/40 bg-red-950/55 text-red-100 ring-1 ring-red-700/35",
+  },
+};
+
 function NodeCard({ data, selected }: NodeProps<Node<CardNodeData, "card">>) {
   const vertical = data.handleLayout === "vertical";
   const targetPos = vertical ? Position.Top : Position.Left;
@@ -87,14 +144,25 @@ function NodeCard({ data, selected }: NodeProps<Node<CardNodeData, "card">>) {
   const baseRing = TONE_RING[tone];
   const ring = data.liveFrame ? LIVE_FRAME_RING[data.liveFrame] : baseRing;
   const compact = data.compact ?? false;
+  const layerBand = data.layerBand;
+  const bandSurface =
+    layerBand && layerBand in LAYER_BAND_SURFACE
+      ? LAYER_BAND_SURFACE[layerBand]
+      : "";
+  const statusKey = data.status ?? "gray";
+  const platformMeta = data.deployPlatform
+    ? PLATFORM_BADGE[data.deployPlatform]
+    : null;
 
   return (
     <div
       className={[
-        "relative rounded-lg border px-3 py-2 shadow-sm ring-1 transition-colors",
+        "relative overflow-hidden rounded-lg border px-3 py-2 shadow-sm ring-1 transition-colors",
         ring,
+        bandSurface,
         selected ? "ring-2 ring-zinc-300/50" : "hover:border-zinc-600/80",
-        compact ? "min-w-[160px] max-w-[200px]" : "min-w-[200px] max-w-[240px]",
+        data.navigable ? "cursor-pointer" : "",
+        compact ? "min-w-[160px] max-w-[200px]" : "min-w-[218px] max-w-[268px]",
       ].join(" ")}
     >
       <Handle
@@ -105,11 +173,14 @@ function NodeCard({ data, selected }: NodeProps<Node<CardNodeData, "card">>) {
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            {data.status && (
-              <span
-                className={`inline-block h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[data.status]}`}
-              />
-            )}
+            <span
+              className={`inline-block h-2 w-2 shrink-0 rounded-full ${STATUS_DOT[statusKey]}`}
+              title={
+                statusKey === "gray"
+                  ? "Health not probed or no endpoint"
+                  : `Status: ${statusKey}`
+              }
+            />
             <span
               className={`truncate font-medium text-zinc-100 ${compact ? "text-[11px] leading-tight" : "text-xs"}`}
             >
@@ -131,12 +202,33 @@ function NodeCard({ data, selected }: NodeProps<Node<CardNodeData, "card">>) {
             </p>
           )}
         </div>
-        {data.pill && (
-          <span className="shrink-0 rounded-full border border-zinc-700/80 bg-zinc-950/60 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-zinc-400">
-            {data.pill}
-          </span>
-        )}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {platformMeta && (
+            <span
+              className={`rounded px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide ${platformMeta.className}`}
+            >
+              {platformMeta.label}
+            </span>
+          )}
+          {data.pill && (
+            <span className="rounded-full border border-zinc-700/80 bg-zinc-950/60 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-zinc-400">
+              {data.pill}
+            </span>
+          )}
+        </div>
       </div>
+      {data.deployRelative != null && data.deployRelative !== "" && (
+        <p
+          className={`mt-1 truncate font-mono text-zinc-400 ${compact ? "text-[8px]" : "text-[9px]"}`}
+        >
+          Deploy{" "}
+          {data.deployRelative === "unknown" ? (
+            <span className="text-zinc-500">unknown</span>
+          ) : (
+            data.deployRelative
+          )}
+        </p>
+      )}
       <Handle
         type="source"
         position={sourcePos}
@@ -190,14 +282,26 @@ function layoutWithDagre(
   });
 }
 
-function DagFitView({ padding, revision }: { padding: number; revision: number }) {
+function DagFitView({
+  padding,
+  minZoom,
+  revision,
+}: {
+  padding: number;
+  minZoom?: number;
+  revision: number;
+}) {
   const { fitView } = useReactFlow();
   useEffect(() => {
     const t = requestAnimationFrame(() => {
-      fitView({ padding, duration: 200 });
+      fitView({
+        padding,
+        duration: 220,
+        ...(typeof minZoom === "number" ? { minZoom } : {}),
+      });
     });
     return () => cancelAnimationFrame(t);
-  }, [fitView, padding, revision]);
+  }, [fitView, padding, minZoom, revision]);
   return null;
 }
 
@@ -209,7 +313,18 @@ export type InteractiveDagProps = {
   onNodeClick?: (event: React.MouseEvent, node: Node<CardNodeData, "card">) => void;
   showMiniMap?: boolean;
   fitViewPadding?: number;
+  /** Minimum zoom after fit — keeps the graph readable (architecture DAG). */
+  fitMinZoom?: number;
+  /** Subtle motion on edges (disable for very busy workflow graphs). */
+  animateEdges?: boolean;
 };
+
+const EDGE_MARKER = {
+  type: MarkerType.ArrowClosed,
+  width: 16,
+  height: 16,
+  color: "rgb(161 161 170)",
+} as const;
 
 export function InteractiveDag({
   nodes: inputNodes,
@@ -218,7 +333,9 @@ export function InteractiveDag({
   className = "",
   onNodeClick,
   showMiniMap = true,
-  fitViewPadding = 0.12,
+  fitViewPadding = 0.06,
+  fitMinZoom,
+  animateEdges = true,
 }: InteractiveDagProps) {
   const handleLayout: "horizontal" | "vertical" =
     direction === "TB" ? "vertical" : "horizontal";
@@ -241,16 +358,31 @@ export function InteractiveDag({
     [preparedNodes, inputEdges, direction],
   );
 
+  const flowEdges = useMemo(
+    () =>
+      inputEdges.map((e) => ({
+        ...e,
+        animated: animateEdges,
+        markerEnd: e.markerEnd ?? EDGE_MARKER,
+        style: {
+          stroke: "rgb(139 139 150)",
+          strokeWidth: 1.35,
+          ...e.style,
+        },
+      })),
+    [inputEdges, animateEdges],
+  );
+
   const [nodes, setNodes, onNodesChange] = useNodesState(laidOut);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(inputEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(flowEdges);
 
   useEffect(() => {
     setNodes(layoutWithDagre(preparedNodes, inputEdges, direction));
   }, [preparedNodes, inputEdges, direction, setNodes]);
 
   useEffect(() => {
-    setEdges(inputEdges);
-  }, [inputEdges, setEdges]);
+    setEdges(flowEdges);
+  }, [flowEdges, setEdges]);
 
   const onNodeClickCb = useCallback(
     (event: React.MouseEvent, node: Node<CardNodeData, "card">) => {
@@ -270,8 +402,13 @@ export function InteractiveDag({
         onEdgesChange={onEdgesChange}
         nodeTypes={nodeTypes}
         onNodeClick={onNodeClickCb}
-        minZoom={0.15}
-        maxZoom={1.85}
+        minZoom={0.28}
+        maxZoom={2.15}
+        defaultEdgeOptions={{
+          animated: animateEdges,
+          style: { stroke: "rgb(139 139 150)", strokeWidth: 1.35 },
+          markerEnd: EDGE_MARKER,
+        }}
         proOptions={{ hideAttribution: true }}
         className="!min-h-[260px] !flex-1 !bg-zinc-950"
       >
@@ -291,7 +428,11 @@ export function InteractiveDag({
             nodeColor={() => "rgb(82 82 91)"}
           />
         )}
-        <DagFitView padding={fitViewPadding} revision={laidOut.length + inputEdges.length} />
+        <DagFitView
+          padding={fitViewPadding}
+          minZoom={fitMinZoom}
+          revision={laidOut.length + inputEdges.length}
+        />
       </ReactFlow>
     </div>
   );
