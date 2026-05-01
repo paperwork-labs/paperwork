@@ -288,17 +288,40 @@ function getBrainApiRoot() {
   return raw.endsWith("/api/v1") ? raw : `${raw}/api/v1`;
 }
 
-export async function getBrainPersonas(): Promise<BrainPersonaSpec[]> {
+export type BrainPersonasFetchResult = {
+  personas: BrainPersonaSpec[];
+  /** Present when credentials are missing, the request fails, or Brain reports failure — not an empty catalog. */
+  error?: string;
+};
+
+export async function getBrainPersonas(): Promise<BrainPersonasFetchResult> {
   const apiRoot = getBrainApiRoot();
   const secret = process.env.BRAIN_API_SECRET?.trim();
-  if (!apiRoot || !secret) return [];
+  if (!apiRoot || !secret) {
+    return {
+      personas: [],
+      error: "Brain not configured — set BRAIN_API_URL and BRAIN_API_SECRET.",
+    };
+  }
   const data = await fetchJson<{
     success?: boolean;
     data?: { count: number; personas: BrainPersonaSpec[] };
   }>(`${apiRoot}/admin/personas`, {
     headers: { "X-Brain-Secret": secret },
   });
-  return data?.data?.personas ?? [];
+  if (data == null) {
+    return {
+      personas: [],
+      error: "Could not load personas from Brain (request failed or unreachable).",
+    };
+  }
+  if (data.success === false) {
+    return {
+      personas: [],
+      error: "Brain returned an error for the personas list.",
+    };
+  }
+  return { personas: data.data?.personas ?? [] };
 }
 
 export type N8nMirrorPerJob = {

@@ -12,7 +12,7 @@ export const COMPOSE_PERSONA_FALLBACK: ComposePersonaOption[] = [
 ];
 
 export async function resolveComposePersonaOptions(): Promise<ComposePersonaOption[]> {
-  const personas = await getBrainPersonas();
+  const { personas } = await getBrainPersonas();
   if (personas.length === 0) return COMPOSE_PERSONA_FALLBACK;
   return personas.map((p) => ({ id: p.name, label: p.name }));
 }

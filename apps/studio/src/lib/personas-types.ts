@@ -1,3 +1,5 @@
+import type { BrainPersonaSpec } from "@/lib/command-center";
+
 export type PersonaRegistryRow = {
   personaId: string;
   name: string;
@@ -122,6 +124,12 @@ export type SelfMergePromotionsFile = {
   [key: string]: unknown;
 };
 
+export type BrainPersonasFromApi = {
+  specs: BrainPersonaSpec[];
+  /** Missing credentials, HTTP failure, or Brain error — distinct from an empty persona catalog. */
+  error?: string;
+};
+
 export type PersonasPagePayload = {
   repoRoot: string;
   dashboard: PeopleDashboardStats;
@@ -141,5 +149,10 @@ export type PersonasPagePayload = {
    * Pages should render an error banner. Null means no error.
    */
   brainApiError?: string | null;
+  /**
+   * Live `GET /admin/personas` when `BRAIN_API_URL` is set. Omitted in snapshot/bootstrap path.
+   * Empty `specs` without `error` means Brain returned zero personas.
+   */
+  brainPersonasFromApi?: BrainPersonasFromApi;
 };
 

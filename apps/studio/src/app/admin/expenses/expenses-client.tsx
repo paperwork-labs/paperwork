@@ -129,7 +129,12 @@ export function ExpensesClient({ initialExpenses, initialTotal, rules }: Props) 
     setSelectedExpense(updated);
   }
 
-  // Filter multi-status inbox client-side (pending + flagged)
+  // Inbox uses multiple statuses (`pending` + `flagged`). We only send `status` when the tab
+  // maps to exactly one status; for inbox we omit it and Brain returns a combined page, then
+  // we filter client-side to the tab’s statuses. The API `total` is for that unfiltered page,
+  // so with multi-status tabs it can exceed the number of visible rows after filtering — use
+  // `total` as a server-reported page total / upper bound, not an exact match for filtered rows.
+
   const visibleExpenses =
     tabStatuses && tabStatuses.length > 1
       ? expenses.filter((e) => tabStatuses.includes(e.status))
