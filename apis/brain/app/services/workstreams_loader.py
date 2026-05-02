@@ -1,4 +1,4 @@
-"""Load and parse ``apps/studio/src/data/workstreams.json`` from the monorepo checkout.
+"""Load workstreams from Brain DB (epics) or legacy ``workstreams.json``.
 
 medallion: ops
 """
@@ -7,11 +7,22 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import time
+import warnings
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
-from app.schemas.workstream import WorkstreamsFile
+from sqlalchemy import select
 
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.epic_hierarchy import Epic
+from app.schemas.workstream import Workstream, WorkstreamsFile
+
+_TRACK_RE = re.compile(r"^[A-Z][0-9A-Z]{0,2}$")
 _WORKSTREAMS_REL = Path("apps/studio/src/data/workstreams.json")
 
 _cache_file: WorkstreamsFile | None = None
@@ -22,12 +33,7 @@ _CACHE_TTL_SEC = 60.0
 def _repo_root() -> Path:
     """Best-effort root of the monorepo checkout where Brain's ``app/`` lives.
 
-    In dev: ``apis/brain/app/services/this_file.py`` → ``parents[4]`` is the
-    monorepo root. In the Brain Docker image the layout is flat (``/app/app/``),
-    so ``parents[4]`` does NOT exist and the old code raised ``IndexError`` at
-    module import. We now honour ``$REPO_ROOT``, then walk parents looking for
-    ``apps/studio/src/data/workstreams.json``, then finally fall back to ``/app``
-    (the container WORKDIR — see ``apis/brain/Dockerfile``).
+    Kept for legacy ``load_workstreams_file`` and path helpers elsewhere.
     """
     env = os.environ.get("REPO_ROOT")
     if env:
@@ -43,8 +49,123 @@ def workstreams_json_path() -> Path:
     return _repo_root() / _WORKSTREAMS_REL
 
 
+def _dt_activity_iso(dt: datetime | None) -> str:
+    """RFC3339 Zulu for ``Workstream.last_activity`` — schema requires a string."""
+    d = dt or datetime(1970, 1, 1, tzinfo=UTC)
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=UTC)
+    return d.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _dt_dispatch_iso(dt: datetime | None) -> str | None:
+    if dt is None:
+        return None
+    d = dt
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=UTC)
+    return d.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _blockers_as_str_list(raw: object) -> list[str]:
+    if raw is None:
+        return []
+    if isinstance(raw, list):
+        out: list[str] = []
+        for x in raw:
+            s = str(x).strip()
+            if len(s) >= 3:
+                out.append(s)
+        return out
+    if isinstance(raw, dict):
+        out: list[str] = []
+        for k, v in raw.items():
+            s = f"{k}: {v}" if v not in (None, "") else str(k)
+            if len(s) >= 3:
+                out.append(s)
+        return out
+    return []
+
+
+def _epic_status_to_workstream(status: str) -> str:
+    """Map DB epic status to ``Workstream`` status (dispatch layer expects pending/in_progress)."""
+    s = (status or "").strip().lower()
+    if s == "active":
+        return "pending"
+    return "in_progress"
+
+
+def _owner_slug_to_workstream_owner(slug: str) -> str:
+    s = (slug or "").strip().lower()
+    if s == "brain":
+        return "brain"
+    if s == "opus":
+        return "opus"
+    return "founder"
+
+
+def _safe_title(raw: str, epic_id: str) -> str:
+    t = (raw or "").strip() or epic_id
+    if len(t) < 3:
+        t = f"{t} ({epic_id})"
+    return t[:100]
+
+
+def epic_to_workstream(epic: Epic, *, priority_rank: int) -> Workstream:
+    """Map one ``Epic`` row to legacy ``Workstream`` shape (stable unique ``priority_rank``)."""
+    md: dict[str, Any] = epic.metadata_ or {}
+    track_raw = str(md.get("track", "Z")).strip().upper()[:3] or "Z"
+    track = track_raw if _TRACK_RE.match(track_raw) else "Z"
+    wf_raw = md.get("github_actions_workflow")
+    github_wf = str(wf_raw).strip() if wf_raw not in (None, "") else "agent-sprint-runner"
+    est = md.get("estimated_pr_count", 1)
+    try:
+        est_pr = int(est) if est is not None else 1
+    except (TypeError, ValueError):
+        est_pr = 1
+    if est_pr <= 0:
+        est_pr = 1
+
+    return Workstream(
+        id=epic.id,
+        title=_safe_title(epic.title, epic.id),
+        track=track,
+        priority=priority_rank,
+        status=_epic_status_to_workstream(epic.status),  # type: ignore[arg-type]
+        percent_done=epic.percent_done,
+        owner=_owner_slug_to_workstream_owner(epic.owner_employee_slug),  # type: ignore[arg-type]
+        brief_tag=epic.brief_tag,
+        blockers=_blockers_as_str_list(epic.blockers),
+        last_pr=None,
+        last_activity=_dt_activity_iso(epic.last_activity),
+        last_dispatched_at=_dt_dispatch_iso(epic.last_dispatched_at),
+        notes=(epic.description or "")[:500],
+        estimated_pr_count=est_pr,
+        github_actions_workflow=github_wf,
+        related_plan=epic.related_plan,
+    )
+
+
+async def load_epics_from_db(db: AsyncSession) -> WorkstreamsFile:
+    """Load ``in_progress`` and ``active`` epics and map them to ``WorkstreamsFile``."""
+    stmt = (
+        select(Epic)
+        .where(Epic.status.in_(("in_progress", "active")))
+        .order_by(Epic.priority.asc(), Epic.id.asc())
+    )
+    rows = list((await db.scalars(stmt)).all())
+    updated = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+    workstreams = [epic_to_workstream(e, priority_rank=i) for i, e in enumerate(rows)]
+    return WorkstreamsFile(version=1, updated=updated, workstreams=workstreams)
+
+
 def load_workstreams_file(*, bypass_cache: bool = False) -> WorkstreamsFile:
-    """Read JSON from disk; memoised per process for 60 seconds unless ``bypass_cache``."""
+    """Deprecated: use ``load_epics_from_db``. Reads JSON from disk if the file still exists."""
+    warnings.warn(
+        "load_workstreams_file is deprecated; hierarchy lives in Brain DB "
+        "(use load_epics_from_db).",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     global _cache_file, _cache_at
     now = time.monotonic()
     if not bypass_cache and _cache_file is not None and (now - _cache_at) < _CACHE_TTL_SEC:
