@@ -274,6 +274,8 @@ export type EpicItem = {
   status: string;
   priority: number;
   percent_done: number;
+  /** ISO timestamp when Brain last recorded activity (optional on older payloads). */
+  last_activity?: string | null;
   owner_employee_slug: string;
   brief_tag: string;
   /** Explicit Studio product link; falls back to ``brief_tag`` when absent. */
