@@ -1,18 +1,13 @@
 import { notFound } from "next/navigation";
 
-import productsData from "@/data/products.json";
-import type { ProductsRegistryFile } from "@/lib/products-registry";
+import { BrainClientError } from "@/lib/brain-client";
+import { loadProductRegistryBySlug } from "@/lib/products-brain";
 import { deriveHeroRollup, loadProductHealthBrainState } from "@/lib/product-health-brain";
 
 import { ProductHealthShell } from "./product-health-shell";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-export function generateStaticParams() {
-  const { products } = productsData as ProductsRegistryFile;
-  return products.map((p) => ({ slug: p.slug }));
-}
 
 function formatIso(iso: string | null): string | null {
   if (!iso) return null;
@@ -31,9 +26,14 @@ export default async function ProductHealthPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const { products } = productsData as ProductsRegistryFile;
-  const product = products.find((p) => p.slug === slug);
-  if (!product) notFound();
+  let productName: string;
+  try {
+    const product = await loadProductRegistryBySlug(slug);
+    productName = product.name;
+  } catch (err) {
+    if (err instanceof BrainClientError && err.status === 404) notFound();
+    throw err;
+  }
 
   const state = await loadProductHealthBrainState(slug);
   const { rollup, narrative } = deriveHeroRollup(state);
@@ -49,7 +49,7 @@ export default async function ProductHealthPage({
   return (
     <div className="min-h-0 space-y-6 pb-10">
       <ProductHealthShell
-        productName={product.name}
+        productName={productName}
         state={state}
         heroRollup={rollup}
         narrative={narrative}

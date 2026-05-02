@@ -39,6 +39,7 @@ from app.routers import (
     infra_registry,
     memory,
     persona_review,
+    products,
     transcripts,
     vendors,
     voice_system,
@@ -219,6 +220,7 @@ app.include_router(internal_secrets_router)
 app.include_router(workstreams.router, prefix="/api/v1")
 app.include_router(conversations.router, prefix="/api/v1")
 app.include_router(employees.router, prefix="/api/v1")
+app.include_router(products.router, prefix="/api/v1")
 app.include_router(expenses.router, prefix="/api/v1")
 app.include_router(bills.router, prefix="/api/v1")
 app.include_router(cost_monitor.router, prefix="/api/v1")

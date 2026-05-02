@@ -1,4 +1,3 @@
-import productsData from "@/data/products.json";
 import { countOpenIssuesForProductLabel } from "@/lib/command-center";
 import { loadDocsIndex } from "@/lib/docs";
 import {
@@ -13,7 +12,8 @@ import {
   filterEpicsForProductSlug,
   hubSignalsToTuple,
 } from "@/lib/product-hub-signals";
-import type { ProductRegistryEntry, ProductsRegistryFile } from "@/lib/products-registry";
+import { loadProductsRegistry } from "@/lib/products-brain";
+import type { ProductRegistryEntry } from "@/lib/products-registry";
 import { getLatestReleaseShippedIso } from "@/lib/products-registry";
 
 import type { ProductIndexSummaryBySlug } from "./products-page-client";
@@ -58,7 +58,7 @@ async function buildSummaryMap(products: ProductRegistryEntry[]): Promise<Produc
 }
 
 export default async function ProductsIndexPage() {
-  const data = productsData as ProductsRegistryFile;
-  const summaryBySlug = await buildSummaryMap(data.products);
-  return <ProductsPageClient products={data.products} summaryBySlug={summaryBySlug} />;
+  const products = await loadProductsRegistry();
+  const summaryBySlug = await buildSummaryMap(products);
+  return <ProductsPageClient products={products} summaryBySlug={summaryBySlug} />;
 }

@@ -9,6 +9,7 @@ from app.models.epic_hierarchy import Epic, Goal, Sprint, Task
 from app.models.episode import Episode
 from app.models.github_actions_quota_snapshot import GitHubActionsQuotaSnapshot
 from app.models.organization import Organization, Team, TeamMember
+from app.models.product import Product
 from app.models.quota_snapshot import VercelQuotaSnapshot
 from app.models.render_quota_snapshot import RenderQuotaSnapshot
 from app.models.scheduler_run import SchedulerRun
@@ -37,6 +38,7 @@ __all__ = [
     "GitHubActionsQuotaSnapshot",
     "Goal",
     "Organization",
+    "Product",
     "RenderQuotaSnapshot",
     "SchedulerRun",
     "Skill",

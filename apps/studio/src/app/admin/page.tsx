@@ -1,5 +1,4 @@
 import Link from "next/link";
-import productsData from "@/data/products.json";
 import { BrainImprovementGauge } from "@/components/admin/BrainImprovementGauge";
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { OperatingScoreGauge } from "@/components/admin/OperatingScoreGauge";
@@ -39,7 +38,7 @@ import {
   personaDispatchSummaryFromResponse,
   type PersonaDispatchSummary,
 } from "./brain-overview-narrative";
-import type { ProductsRegistryFile } from "@/lib/products-registry";
+import { loadProductsRegistry } from "@/lib/products-brain";
 import { PushSubscribeCard } from "@/components/pwa/PushSubscribeCard";
 import { TrackersRail } from "./_components/trackers-rail";
 import OverviewClient from "./overview-client";
@@ -74,7 +73,7 @@ function BrainSaysOverviewCard({ summary }: { summary: PersonaDispatchSummary | 
 }
 
 export default async function AdminOverviewPage() {
-  const products = (productsData as ProductsRegistryFile).products;
+  const products = await loadProductsRegistry();
 
   const client = BrainClient.fromEnv();
   const [
