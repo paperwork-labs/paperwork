@@ -246,6 +246,17 @@ const WAVES: WaveDef[] = [
       { id: "task-ws-82-pr-637", title: "Rename Hetzner boxes", status: "merged", githubPr: 637 },
     ],
   },
+  {
+    id: "sprint-ws-82-wave-12",
+    title: "Seed expansion + OKR routes + epic API hardening",
+    status: "shipped",
+    ordinal: 12,
+    tasks: [
+      { id: "task-ws-82-pr-638", title: "feat: expand WS-82 seed with Waves 6-11", status: "merged", githubPr: 638 },
+      { id: "task-ws-82-pr-639", title: "fix(brain): rename OKR goals routes to /okr/goals", status: "merged", githubPr: 639 },
+      { id: "task-ws-82-pr-641", title: "fix(brain): serialize datetimes in epic hierarchy responses + harden stats", status: "merged", githubPr: 641 },
+    ],
+  },
 ];
 
 async function main(): Promise<void> {

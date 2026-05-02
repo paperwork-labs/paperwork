@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import selectinload, with_loader_criteria
 
 from app.database import get_db
@@ -134,6 +134,29 @@ async def update_goal(
     return success_response(GoalResponse.model_validate(goal).model_dump(mode="json"))
 
 
+@router.delete("/goals/{goal_id}")
+async def delete_goal(
+    goal_id: str,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Delete a goal. Fails with 409 if any epics are still linked."""
+    goal = await db.get(Goal, goal_id)
+    if not goal:
+        raise HTTPException(status_code=404, detail=f"Goal id={goal_id!r} not found")
+    linked = (
+        await db.execute(select(func.count()).select_from(Epic).where(Epic.goal_id == goal_id))
+    ).scalar_one()
+    if linked > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Goal id={goal_id!r} has linked epics; remove or reassign them first",
+        )
+    db.delete(goal)
+    await db.commit()
+    return success_response({"deleted": True, "id": goal_id})
+
+
 # ---------------------------------------------------------------------------
 # Epics
 # ---------------------------------------------------------------------------
@@ -245,6 +268,30 @@ async def update_epic(
     return success_response(EpicResponse.model_validate(epic).model_dump(mode="json"))
 
 
+@router.delete("/epics/{epic_id}")
+async def delete_epic(
+    epic_id: str,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Delete an epic: remove tasks tied to epic/sprints; DB cascades sprint rows."""
+    epic = await db.get(Epic, epic_id)
+    if not epic:
+        raise HTTPException(status_code=404, detail=f"Epic id={epic_id!r} not found")
+    sprint_ids = select(Sprint.id).where(Sprint.epic_id == epic_id)
+    await db.execute(
+        delete(Task).where(
+            or_(
+                Task.epic_id == epic_id,
+                Task.sprint_id.in_(sprint_ids),
+            ),
+        ),
+    )
+    db.delete(epic)
+    await db.commit()
+    return success_response({"deleted": True, "id": epic_id})
+
+
 # ---------------------------------------------------------------------------
 # Sprints
 # ---------------------------------------------------------------------------
@@ -318,6 +365,21 @@ async def update_sprint(
     await db.commit()
     await db.refresh(sprint)
     return success_response(SprintResponse.model_validate(sprint).model_dump(mode="json"))
+
+
+@router.delete("/sprints/{sprint_id}")
+async def delete_sprint(
+    sprint_id: str,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Delete a sprint. Tasks linked by sprint_id get sprint_id set NULL (FK)."""
+    sprint = await db.get(Sprint, sprint_id)
+    if not sprint:
+        raise HTTPException(status_code=404, detail=f"Sprint id={sprint_id!r} not found")
+    db.delete(sprint)
+    await db.commit()
+    return success_response({"deleted": True, "id": sprint_id})
 
 
 # ---------------------------------------------------------------------------
@@ -397,3 +459,18 @@ async def update_task(
     await db.commit()
     await db.refresh(task)
     return success_response(TaskResponse.model_validate(task).model_dump(mode="json"))
+
+
+@router.delete("/tasks/{task_id}")
+async def delete_task(
+    task_id: str,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+) -> Any:
+    """Delete a task."""
+    task = await db.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail=f"Task id={task_id!r} not found")
+    db.delete(task)
+    await db.commit()
+    return success_response({"deleted": True, "id": task_id})
