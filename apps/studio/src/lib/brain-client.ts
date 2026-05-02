@@ -644,31 +644,31 @@ export type HierarchyTaskPatchInput = {
   metadata?: Record<string, unknown> | null;
 };
 
-/** POST ``/admin/goals`` — create objective + optional KRs; sets top-level quarter. */
+/** POST ``/admin/okr/goals`` — create objective + optional KRs; sets top-level quarter. */
 export async function createGoal(input: CreateGoalInput): Promise<Objective> {
-  return brainAdminMutationJson<Objective>("goals/create", "/admin/goals", "POST", input);
+  return brainAdminMutationJson<Objective>("goals/create", "/admin/okr/goals", "POST", input);
 }
 
-/** PUT ``/admin/goals/{goal_id}`` — partial update (replace ``key_results`` when supplied). */
+/** PUT ``/admin/okr/goals/{goal_id}`` — partial update (replace ``key_results`` when supplied). */
 export async function updateGoal(goalId: string, input: UpdateGoalInput): Promise<Objective> {
   return brainAdminMutationJson<Objective>(
     "goals/update",
-    `/admin/goals/${encodeURIComponent(goalId)}`,
+    `/admin/okr/goals/${encodeURIComponent(goalId)}`,
     "PUT",
     input,
   );
 }
 
-/** DELETE ``/admin/goals/{goal_id}`` — soft-delete (``archived_at``). */
+/** DELETE ``/admin/okr/goals/{goal_id}`` — soft-delete (``archived_at``). */
 export async function archiveGoal(goalId: string): Promise<{ id: string; archived_at: string }> {
   return brainAdminMutationJson<{ id: string; archived_at: string }>(
     "goals/archive",
-    `/admin/goals/${encodeURIComponent(goalId)}`,
+    `/admin/okr/goals/${encodeURIComponent(goalId)}`,
     "DELETE",
   );
 }
 
-/** PATCH ``/admin/goals/{goal_id}/key-results/{kr_id}`` — set KR ``current`` from ``current_value``. */
+/** PATCH ``/admin/okr/goals/{goal_id}/key-results/{kr_id}`` — set KR ``current`` from ``current_value``. */
 export async function updateKRProgress(
   goalId: string,
   krId: string,
@@ -681,7 +681,7 @@ export async function updateKRProgress(
   }
   return brainAdminMutationJson<KeyResultProgressResponse>(
     "goals/kr-progress",
-    `/admin/goals/${encodeURIComponent(goalId)}/key-results/${encodeURIComponent(krId)}`,
+    `/admin/okr/goals/${encodeURIComponent(goalId)}/key-results/${encodeURIComponent(krId)}`,
     "PATCH",
     body,
   );
@@ -789,7 +789,7 @@ export class BrainClient {
 
   /** Fetch goals / OKRs payload for Studio admin (same shape as static goals.json). */
   async getGoals(): Promise<GoalsJson> {
-    return this.get<GoalsJson>("/admin/goals", "goals");
+    return this.get<GoalsJson>("/admin/okr/goals", "goals");
   }
 
   /** Nested goals → epics → sprints → tasks for the Studio Epics tree. */

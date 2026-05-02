@@ -2187,7 +2187,7 @@ def _patch_key_result_inplace(
     return patched
 
 
-@router.get("/goals")
+@router.get("/okr/goals")
 async def get_goals(
     _auth: None = Depends(_require_admin),
 ) -> Any:
@@ -2204,7 +2204,7 @@ async def get_goals(
     return success_response(jsonable_encoder(payload))
 
 
-@router.post("/goals")
+@router.post("/okr/goals")
 async def post_goal(body: GoalCreateBody, _auth: None = Depends(_require_admin)) -> Any:
     """Create one objective plus key results; sets top-level quarter from the payload."""
 
@@ -2236,7 +2236,7 @@ async def post_goal(body: GoalCreateBody, _auth: None = Depends(_require_admin))
     return success_response(jsonable_encoder(created))
 
 
-@router.put("/goals/{goal_id}")
+@router.put("/okr/goals/{goal_id}")
 async def put_goal(goal_id: str, body: GoalPatchBody, _auth: None = Depends(_require_admin)) -> Any:
     """Merge fields into one objective by id (full ``key_results`` replace when supplied)."""
 
@@ -2275,7 +2275,7 @@ async def put_goal(goal_id: str, body: GoalPatchBody, _auth: None = Depends(_req
     return success_response(jsonable_encoder(updated))
 
 
-@router.delete("/goals/{goal_id}")
+@router.delete("/okr/goals/{goal_id}")
 async def delete_goal_archive(goal_id: str, _auth: None = Depends(_require_admin)) -> Any:
     """Soft-delete one objective — sets ``archived_at`` UTC timestamp."""
 
@@ -2303,7 +2303,7 @@ async def delete_goal_archive(goal_id: str, _auth: None = Depends(_require_admin
     return success_response(jsonable_encoder(out))
 
 
-@router.patch("/goals/{goal_id}/key-results/{kr_id}")
+@router.patch("/okr/goals/{goal_id}/key-results/{kr_id}")
 async def patch_key_result_progress(
     goal_id: str,
     kr_id: str,
