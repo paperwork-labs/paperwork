@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse  # noqa: TC002 — return type
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002 — FastAPI DI
 
 from app.config import settings
@@ -52,7 +53,7 @@ async def ingest_one_transcript(
     body: TranscriptIngestRequest,
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
-) -> dict[str, object]:
+) -> JSONResponse:
     """Ingest one Cursor JSONL transcript by path or uuid under configured root."""
     path = _resolved_path_for_request(body)
     result = await transcript_ingest_svc.ingest_transcript(db, str(path))
@@ -64,7 +65,7 @@ async def ingest_transcripts_batch(
     body: TranscriptIngestBatchRequest,
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
-) -> dict[str, object]:
+) -> JSONResponse:
     """Scan a directory recursively for ``*.jsonl`` and ingest each transcript once."""
     directory = body.directory.strip()
     root = Path(directory).expanduser()
