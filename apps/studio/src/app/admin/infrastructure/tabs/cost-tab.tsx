@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, DollarSign, RefreshCw } from "lucide-react";
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
+import { HETZNER_BOXES, HETZNER_TOTAL_MONTHLY_EUR } from "@/lib/hetzner-boxes";
 
 type VendorRow = {
   vendor: string;
@@ -42,6 +43,48 @@ function currentMonthUtc(): string {
 
 function titleCaseVendor(name: string): string {
   return name.length ? name[0].toUpperCase() + name.slice(1) : name;
+}
+
+function HetznerCostSubsection() {
+  return (
+    <div className="space-y-3" data-testid="infra-cost-hetzner">
+      <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Hetzner</p>
+      <div className="overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950/40">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-zinc-800 text-left text-xs uppercase tracking-wide text-zinc-500">
+              <th className="px-4 py-3 font-medium">Hostname</th>
+              <th className="px-4 py-3 font-medium">Plan</th>
+              <th className="px-4 py-3 font-medium tabular-nums">Monthly cost</th>
+              <th className="px-4 py-3 font-medium">Role</th>
+            </tr>
+          </thead>
+          <tbody>
+            {HETZNER_BOXES.map((box) => (
+              <tr key={box.hostname} className="border-b border-zinc-800/80 text-zinc-300 last:border-b-0">
+                <td className="px-4 py-3 font-mono text-zinc-200">{box.hostname}</td>
+                <td className="px-4 py-3 text-zinc-400">{box.plan}</td>
+                <td className="px-4 py-3 tabular-nums text-zinc-300">${box.monthlyCostEur.toFixed(2)}</td>
+                <td className="px-4 py-3 text-zinc-400">{box.role}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-zinc-700 bg-zinc-900/50 font-medium text-zinc-100">
+              <td className="px-4 py-3" colSpan={2}>
+                Total (estimate)
+              </td>
+              <td className="px-4 py-3 tabular-nums">${HETZNER_TOTAL_MONTHLY_EUR.toFixed(2)}</td>
+              <td className="px-4 py-3 text-xs font-normal text-zinc-500">3 servers · Helsinki</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className="text-xs text-zinc-500">
+        Billed to billing@paperworklabs.com · Helsinki DC
+      </p>
+    </div>
+  );
 }
 
 export default function CostTab() {
@@ -120,11 +163,14 @@ export default function CostTab() {
 
   if (noLedgerData) {
     return (
-      <HqEmptyState
-        icon={<DollarSign className="mx-auto h-10 w-10 text-zinc-600" />}
-        title="No ledger entries for this month"
-        description='Add rows to apis/brain/data/cost_ledger.json (or wire vendor billing APIs) to populate this view.'
-      />
+      <div className="space-y-8" data-testid="infra-cost-tab">
+        <HetznerCostSubsection />
+        <HqEmptyState
+          icon={<DollarSign className="mx-auto h-10 w-10 text-zinc-600" />}
+          title="No ledger entries for this month"
+          description='Add rows to apis/brain/data/cost_ledger.json (or wire vendor billing APIs) to populate this view.'
+        />
+      </div>
     );
   }
 
@@ -264,6 +310,8 @@ export default function CostTab() {
           })}
         </div>
       </div>
+
+      <HetznerCostSubsection />
     </div>
   );
 }

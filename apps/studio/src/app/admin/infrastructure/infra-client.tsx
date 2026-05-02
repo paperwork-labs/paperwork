@@ -25,6 +25,7 @@ import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 import { SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES_CSV } from "@/lib/infra-probes";
+import { HETZNER_BOXES } from "@/lib/hetzner-boxes";
 import LogsTab from "./tabs/logs-tab";
 
 type InfraService = InfraStatus;
@@ -331,7 +332,7 @@ function SectionHeader({
 }: {
   title: string;
   pill: string;
-  icon: typeof Globe;
+  icon: typeof Globe | typeof Server;
 }) {
   return (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -693,6 +694,77 @@ function InfraClientImpl({
               <SupplementaryCard key={svc.service} svc={svc} />
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Hetzner */}
+      <section className="space-y-4" aria-label="Hetzner dedicated servers">
+        <SectionHeader title="Hetzner" icon={Server} pill="3 boxes" />
+        <p className="text-xs text-zinc-500">
+          Dedicated VMs in Helsinki — status is assumed (no browser-side SSH). Compose references are repo paths.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {HETZNER_BOXES.map((box) => (
+            <Card key={box.hostname} className="border border-zinc-800">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-zinc-100">{box.hostname}</p>
+                    <p className="mt-1 flex flex-wrap items-center gap-2">
+                      <span className="rounded border border-zinc-600 bg-zinc-900/80 px-2 py-0.5 font-mono text-xs text-zinc-300">
+                        {box.plan}
+                      </span>
+                      <span className="text-xs text-zinc-500">
+                        {box.vcpus} vCPU · {box.memoryGb} GB RAM
+                      </span>
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="relative inline-block h-2.5 w-2.5">
+                      <span className="absolute inset-0 motion-safe:animate-ping rounded-full bg-[var(--status-success)] opacity-40" />
+                      <span className="relative inline-block h-2.5 w-2.5 rounded-full bg-[var(--status-success)]" />
+                    </span>
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--status-success)]">
+                      Assumed up
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-2 font-mono text-sm text-zinc-300">{box.ip}</p>
+                <p className="mt-2 text-sm text-zinc-400">{box.role}</p>
+                <p className="mt-2 text-xs text-zinc-500">
+                  Last probed: N/A — SSH-only
+                </p>
+                <p className="mt-1 text-xs text-zinc-600">
+                  <span className="font-mono text-zinc-500">{box.composeFile}</span>
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <a
+                    href="https://console.hetzner.cloud/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-zinc-500 transition hover:text-zinc-300"
+                  >
+                    Hetzner Cloud console <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <span className="text-xs tabular-nums text-zinc-500">
+                    ~${box.monthlyCostEur.toFixed(2)}/mo est.
+                  </span>
+                </div>
+                {box.dockerServices.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {box.dockerServices.map((name) => (
+                      <span
+                        key={name}
+                        className="rounded-full border border-zinc-700 bg-zinc-900/60 px-2 py-0.5 font-mono text-[10px] text-zinc-400"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </section>
 
