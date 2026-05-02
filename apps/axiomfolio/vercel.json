@@ -8,9 +8,7 @@
     "iad1"
   ],
   "git": {
-    "deploymentEnabled": {
-      "main": true
-    }
+    "deploymentEnabled": false
   },
   "ignoreCommand": "bash ../../scripts/vercel-should-build.sh @paperwork-labs/axiomfolio"
 }
