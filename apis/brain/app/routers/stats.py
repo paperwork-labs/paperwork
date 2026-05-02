@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi.responses import JSONResponse  # noqa: TC002 — return type
 from sqlalchemy import func, not_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002 — FastAPI DI
 
@@ -96,7 +97,7 @@ _DONE_EPIC = ("completed", "done", "shipped")
 async def admin_dashboard_stats(
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
-):
+) -> JSONResponse:
     """Roll-up counts across Brain DB tables + canonical JSON stores."""
     prod_total = int((await db.scalar(select(func.count()).select_from(Product))) or 0)
     prod_active = int(
@@ -167,7 +168,7 @@ async def admin_dashboard_stats(
 async def admin_dashboard_attention(
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
-):
+) -> JSONResponse:
     """Short lists of blocked work, stale cadence, inbox, and failed dispatches."""
     stale_cutoff = datetime.now(UTC) - timedelta(days=7)
 
