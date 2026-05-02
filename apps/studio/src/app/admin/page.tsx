@@ -1,7 +1,27 @@
 import Link from "next/link";
+import productsData from "@/data/products.json";
 import { BrainImprovementGauge } from "@/components/admin/BrainImprovementGauge";
+import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { OperatingScoreGauge } from "@/components/admin/OperatingScoreGauge";
 import { SprintVelocityTile } from "@/components/admin/SprintVelocityTile";
+import {
+  buildAttentionItems,
+  NeedsAttentionSection,
+  OverviewSectionChrome,
+  QuickPulseSection,
+  RecentActivitySection,
+  SectionDivider,
+} from "@/app/admin/_components/overview-founder-sections";
+import {
+  infraHealthyCounts,
+  loadBrainFillPulse,
+  loadEpicHierarchyPulse,
+  loadOperatingScorePulse,
+  loadPeoplePulse,
+  loadProductHealthRollup,
+  loadRecentDispatches,
+  readingPathsUnresolvedSummary,
+} from "@/app/admin/_lib/overview-founder-data";
 import {
   getBrainPersonaDispatchSummary,
   getBrainPRReviews,
@@ -13,11 +33,13 @@ import {
   getRecentSlackActivity,
   isN8nIntegrationConfigured,
 } from "@/lib/command-center";
+import { BrainClient } from "@/lib/brain-client";
 import {
   brainNarrative,
   personaDispatchSummaryFromResponse,
   type PersonaDispatchSummary,
 } from "./brain-overview-narrative";
+import type { ProductsRegistryFile } from "@/lib/products-registry";
 import { PushSubscribeCard } from "@/components/pwa/PushSubscribeCard";
 import { TrackersRail } from "./_components/trackers-rail";
 import OverviewClient from "./overview-client";
@@ -52,6 +74,9 @@ function BrainSaysOverviewCard({ summary }: { summary: PersonaDispatchSummary | 
 }
 
 export default async function AdminOverviewPage() {
+  const products = (productsData as ProductsRegistryFile).products;
+
+  const client = BrainClient.fromEnv();
   const [
     workflows,
     executions,
@@ -61,6 +86,12 @@ export default async function AdminOverviewPage() {
     brainReviews,
     slackActivity,
     personaDispatchRaw,
+    operatingScore,
+    epicPulse,
+    peoplePulse,
+    brainFill,
+    dispatches,
+    productRollup,
   ] = await Promise.all([
     getN8nWorkflows(),
     getN8nExecutions(50),
@@ -70,7 +101,14 @@ export default async function AdminOverviewPage() {
     getBrainPRReviews(50),
     getRecentSlackActivity(15),
     getBrainPersonaDispatchSummary(),
+    loadOperatingScorePulse(client),
+    loadEpicHierarchyPulse(client),
+    loadPeoplePulse(client),
+    loadBrainFillPulse(client),
+    loadRecentDispatches(client, 5),
+    loadProductHealthRollup(products),
   ]);
+
   const personaDispatchSummary = personaDispatchSummaryFromResponse(personaDispatchRaw.data);
   const prsWithReview = prsResult.data.map((pr) => {
     const review = brainReviews.get(pr.number);
@@ -93,8 +131,44 @@ export default async function AdminOverviewPage() {
     process.env.SLACK_DAILY_BRIEFING_URL?.trim() ||
     null;
 
+  const { healthy: infraHealthy, total: infraTotal } = infraHealthyCounts(infrastructure);
+  const infraFailingRows = infrastructure.filter(
+    (s) => s.configured && !s.healthy && !s.deprecated,
+  );
+  const readingPaths = readingPathsUnresolvedSummary();
+
+  const attentionItems = buildAttentionItems({
+    epicPulse,
+    productBad: productRollup.degradedOrDown,
+    infraFailing: infraFailingRows,
+    readingPaths,
+  });
+
   return (
     <div className="space-y-6">
+      <HqPageHeader
+        title="Overview"
+        eyebrow="Studio HQ"
+        subtitle="Monday morning founder view — health, blockers, and what Brain shipped recently."
+        breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Overview" }]}
+      />
+
+      <OverviewSectionChrome>
+        <QuickPulseSection
+          operatingScore={operatingScore}
+          productRollup={productRollup}
+          epicPulse={epicPulse}
+          peoplePulse={peoplePulse}
+          infraHealthy={infraHealthy}
+          infraTotal={infraTotal}
+          brainFill={brainFill}
+        />
+        <SectionDivider />
+        <NeedsAttentionSection items={attentionItems} />
+        <SectionDivider />
+        <RecentActivitySection dispatches={dispatches} />
+      </OverviewSectionChrome>
+
       <PushSubscribeCard />
       <BrainSaysOverviewCard summary={personaDispatchSummary} />
       <TrackersRail />
