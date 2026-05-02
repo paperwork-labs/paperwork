@@ -1,7 +1,7 @@
 /**
  * Build-time snapshot of the docs/ tree.
- * Reads docs/_index.yaml, then reads frontmatter + body for the first 100
- * docs (in _index.yaml order), and writes apps/studio/src/data/docs-snapshot.json.
+ * Reads docs/_index.yaml, then reads frontmatter + body for each indexed doc
+ * (in _index.yaml order, capped by MAX_DOCS), and writes apps/studio/src/data/docs-snapshot.json.
  *
  * Run via: tsx scripts/snapshot-docs.ts
  * Auto-run during: prebuild (see package.json)
@@ -21,7 +21,8 @@ const REPO_ROOT = path.join(STUDIO_ROOT, "..", "..");
 const INDEX_PATH = path.join(REPO_ROOT, "docs", "_index.yaml");
 const OUT_PATH = path.join(STUDIO_ROOT, "src/data/docs-snapshot.json");
 
-const MAX_DOCS = 100;
+/** Keep in sync with docs/_index.yaml length so hub slugs and reading paths resolve. */
+const MAX_DOCS = 512;
 
 // ─── types ─────────────────────────────────────────────────────────────────
 

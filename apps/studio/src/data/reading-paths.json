@@ -3,23 +3,52 @@
     "id": "onboarding",
     "title": "Onboarding for Brain personas",
     "docs": [
-      "BRAIN_PHILOSOPHY",
-      "AGENTS",
-      "BRAIN_ARCHITECTURE",
-      "BRAIN_PERSONAS"
+      "brain-philosophy",
+      "brain-architecture",
+      "brain-personas-generated",
+      "ai-model-registry"
     ],
     "est_minutes": 45
   },
   {
     "id": "dispatch",
     "title": "How to dispatch a cheap-agent PR",
-    "docs": ["cheap-agent-fleet", "delegation", "workflows", "git-workflow"],
+    "docs": [
+      "agent-sprint-planning",
+      "workstreams-board",
+      "pr-pipeline-automation",
+      "brain-self-prioritization"
+    ],
     "est_minutes": 20
   },
   {
     "id": "money",
     "title": "How money flows",
-    "docs": ["cfo", "expense-schemas", "vendor-schemas", "revenue-engineer"],
+    "docs": ["financials", "billing-vendor-checklist", "venture-master-plan"],
     "est_minutes": 25
+  },
+  {
+    "id": "infra-overview",
+    "title": "Infrastructure overview",
+    "docs": [
+      "infra",
+      "studio-env",
+      "pre-deploy-guard",
+      "vercel-inventory",
+      "render-inventory"
+    ],
+    "est_minutes": 35
+  },
+  {
+    "id": "product-development",
+    "title": "Product development",
+    "docs": ["prd", "product-spec", "venture-master-plan", "tasks"],
+    "est_minutes": 40
+  },
+  {
+    "id": "security-compliance",
+    "title": "Security & compliance",
+    "docs": ["secrets", "credentials", "credential-access", "secret-intake"],
+    "est_minutes": 30
   }
 ]
