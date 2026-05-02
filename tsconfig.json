@@ -12,5 +12,5 @@
     "declaration": false,
     "noEmit": true
   },
-  "include": []
+  "include": ["scripts/seed-epic-hierarchy.ts"]
 }

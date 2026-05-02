@@ -31,13 +31,16 @@
     "clean": "pnpm -r exec rm -rf node_modules .next out dist",
     "generate:pwl-favicon-ico": "node scripts/generate-pwl-favicon-ico.mjs",
     "gh:keyring": "bash scripts/gh-keyring.sh",
-    "employees:sync": "tsx scripts/employees-sync.ts"
+    "employees:sync": "tsx scripts/employees-sync.ts",
+    "seed:epics": "tsx scripts/seed-epic-hierarchy.ts"
   },
   "devDependencies": {
+    "@types/node": "^22.19.17",
     "sharp": "^0.34.5",
     "to-ico": "^1.1.5",
     "tsx": "^4.21.0",
-    "turbo": "^2.9.6"
+    "turbo": "^2.9.6",
+    "typescript": "5.7.3"
   },
   "engines": {
     "node": ">=20.9.0",
