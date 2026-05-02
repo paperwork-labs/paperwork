@@ -95,7 +95,7 @@ def _parse_response(raw: str) -> NamingCeremonyResult | None:
 
 async def _call_model(model: str, prompt: str) -> str:
     """Call the LLM and return the raw text response."""
-    import litellm  # type: ignore[import-untyped]
+    import litellm
 
     response = await litellm.acompletion(
         model=model,
