@@ -60,6 +60,7 @@ class Epic(Base):
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     goal_id: Mapped[str | None] = mapped_column(Text, ForeignKey("goals.id"))
+    product_slug: Mapped[str | None] = mapped_column(Text)
     owner_employee_slug: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False)
     priority: Mapped[int] = mapped_column(Integer, nullable=False)

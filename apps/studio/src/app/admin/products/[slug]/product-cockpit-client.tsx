@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import Link from "next/link";
 import {
   Activity,
@@ -32,6 +31,8 @@ import type { ProductRegistryEntry } from "@/lib/products-registry";
 import {
   formatCurrencyUsd,
   getLatestReleaseShippedIso,
+  githubRepoBrowseUrl,
+  vercelDashboardProjectUrl,
 } from "@/lib/products-registry";
 
 const SIGNAL_DOT: Record<HubSignalKind, string> = {
@@ -61,48 +62,154 @@ function SignalDot({ kind }: { kind: HubSignalKind }) {
   );
 }
 
+function countLinkedEpics(goals: EpicHierarchyResponse): number {
+  return goals.reduce((n, g) => n + g.epics.length, 0);
+}
+
+function countActiveSprints(goals: EpicHierarchyResponse): number {
+  const active = new Set(["active", "in_progress", "planned"]);
+  let n = 0;
+  for (const g of goals) {
+    for (const e of g.epics) {
+      for (const s of e.sprints ?? []) {
+        if (active.has((s.status || "").toLowerCase())) n += 1;
+      }
+    }
+  }
+  return n;
+}
+
 function OverviewPanel({
   product,
   openIssues,
   healthRollup,
   healthNarrative,
+  filteredGoals,
+  docCount,
 }: {
   product: ProductRegistryEntry;
   openIssues: number | null;
   healthRollup: HeroRollup;
   healthNarrative: string;
+  filteredGoals: EpicHierarchyResponse;
+  docCount: number;
 }) {
   const metricWires = overviewMetricWiring({ product, openIssues });
   const lastShippedIso = getLatestReleaseShippedIso(product);
   const openIssuesDisplay = openIssues === null ? "—" : String(openIssues);
+  const linkedEpics = countLinkedEpics(filteredGoals);
+  const activeSprints = countActiveSprints(filteredGoals);
+  const vercelTeam =
+    typeof process.env.NEXT_PUBLIC_VERCEL_TEAM_SLUG === "string" &&
+    process.env.NEXT_PUBLIC_VERCEL_TEAM_SLUG.trim()
+      ? process.env.NEXT_PUBLIC_VERCEL_TEAM_SLUG.trim()
+      : null;
 
-  const quickLinks: { label: string; href: string; external?: boolean; icon: ReactNode }[] = [
-    {
-      label: "Monorepo",
-      href: "https://github.com/paperwork-labs/paperwork",
-      external: true,
-      icon: <GitBranch className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    },
-    ...(product.url
-      ? [
-          {
-            label: "Production",
-            href: product.url,
-            external: true as const,
-            icon: <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-          },
-        ]
-      : []),
-    {
-      label: "Vercel",
-      href: "https://vercel.com/dashboard",
-      external: true,
-      icon: <Rocket className="h-3.5 w-3.5 opacity-70" aria-hidden />,
-    },
-  ];
+  const domainHref =
+    product.url ??
+    (product.domain && !product.domain.includes("://")
+      ? `https://${product.domain}`
+      : product.domain);
+
+  const repoHref = product.repo_path ? githubRepoBrowseUrl(product.repo_path) : null;
+  const vercelHref = product.vercel_project
+    ? vercelDashboardProjectUrl(product.vercel_project, vercelTeam)
+    : null;
 
   return (
     <div className="space-y-8" data-testid="product-hub-overview">
+      <section className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-5 space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline" className="border-zinc-600 text-zinc-200">
+            {product.status}
+          </Badge>
+          {domainHref ? (
+            <a
+              href={domainHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-sm font-medium text-[var(--status-info)] hover:underline"
+            >
+              <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
+              {product.domain ?? domainHref.replace(/^https?:\/\//, "")}
+            </a>
+          ) : (
+            <span className="text-xs text-zinc-500">No domain on Brain row</span>
+          )}
+        </div>
+        {product.tagline ? <p className="text-sm text-zinc-400">{product.tagline}</p> : null}
+
+        {product.tech_stack.length ? (
+          <div className="flex flex-wrap gap-1.5">
+            {product.tech_stack.map((t) => (
+              <span
+                key={t}
+                className="rounded-md border border-zinc-700/90 bg-zinc-900/50 px-2 py-0.5 text-[11px] text-zinc-300"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-500">No tech stack entries on Brain row.</p>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          {repoHref ? (
+            <a
+              href={repoHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800/90 bg-zinc-950/50 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-zinc-600"
+            >
+              <GitBranch className="h-3.5 w-3.5 opacity-70" aria-hidden />
+              Repo
+              <ExternalLink className="h-3 w-3 opacity-50" aria-hidden />
+            </a>
+          ) : (
+            <span className="text-xs text-zinc-500">No repo_path on Brain row</span>
+          )}
+          {vercelHref ? (
+            <a
+              href={vercelHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800/90 bg-zinc-950/50 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-zinc-600"
+            >
+              <Rocket className="h-3.5 w-3.5 opacity-70" aria-hidden />
+              Vercel ({product.vercel_project})
+              <ExternalLink className="h-3 w-3 opacity-50" aria-hidden />
+            </a>
+          ) : (
+            <span className="text-xs text-zinc-500">No vercel_project on Brain row</span>
+          )}
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <HqStatCard
+          label="Linked epics"
+          value={linkedEpics}
+          icon={<Target className="h-3.5 w-3.5 text-zinc-500" />}
+          variant="compact"
+          helpText="From Brain — product filter"
+        />
+        <HqStatCard
+          label="Indexed docs"
+          value={docCount}
+          icon={<BookOpen className="h-3.5 w-3.5 text-zinc-500" />}
+          variant="compact"
+          helpText="docs/_index.yaml tags + path fallback"
+        />
+        <HqStatCard
+          label="Active sprints"
+          value={activeSprints}
+          icon={<Activity className="h-3.5 w-3.5 text-zinc-500" />}
+          variant="compact"
+          helpText="Sprints marked active / in progress / planned"
+        />
+      </div>
+
       <section className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-zinc-100">Health snapshot</h2>
@@ -182,27 +289,6 @@ function OverviewPanel({
           </CardContent>
         </Card>
       </section>
-
-      <section aria-label="Quick links">
-        <h3 className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-          Quick links
-        </h3>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {quickLinks.map((l) => (
-            <a
-              key={l.label}
-              href={l.href}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-800/90 bg-zinc-950/50 px-3 py-2 text-xs font-medium text-zinc-200 hover:border-zinc-600 hover:bg-zinc-900/50"
-            >
-              {l.icon}
-              {l.label}
-              {l.external ? <ExternalLink className="h-3 w-3 opacity-50" aria-hidden /> : null}
-            </a>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }
@@ -235,8 +321,8 @@ function PlansSprintsPanel({
   if (filteredGoals.length === 0) {
     return (
       <HqEmptyState
-        title="No epics for this product"
-        description={`No goals contain epics with brief_tag "${productSlug}". Tag epics in Brain to see plans here.`}
+        title="No linked epics"
+        description={`No Brain epics match product "${productSlug}" (product_slug or brief_tag). Link epics in Brain to see plans here.`}
       />
     );
   }
@@ -258,6 +344,7 @@ function PlansSprintsPanel({
                     {epic.status} · {epic.percent_done ?? 0}%
                   </span>
                 </div>
+                <Progress value={epic.percent_done ?? 0} className="mt-2 h-1.5 bg-zinc-800" />
                 {epic.sprints?.length ? (
                   <ul className="mt-2 space-y-1 border-t border-zinc-800/60 pt-2">
                     {epic.sprints.map((sp) => (
@@ -287,7 +374,7 @@ function DocsHubPanel({ entries }: { entries: DocEntry[] }) {
     return (
       <HqEmptyState
         title="No indexed docs"
-        description="No documentation entries matched this product slug or name in the docs snapshot."
+        description="No documentation entries matched this product tag in docs/_index.yaml (or path/name fallback)."
       />
     );
   }
@@ -306,7 +393,20 @@ function DocsHubPanel({ entries }: { entries: DocEntry[] }) {
             >
               {doc.title}
             </Link>
-            <p className="font-mono text-xs text-zinc-500">{doc.path}</p>
+            <p className="font-mono text-[11px] text-zinc-500">/{doc.slug}</p>
+            {doc.tags.length ? (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {doc.tags.map((t) => (
+                  <span
+                    key={t}
+                    className="rounded border border-zinc-800/80 bg-zinc-950/60 px-1.5 py-0.5 text-[10px] text-zinc-400"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <p className="mt-1 font-mono text-[10px] text-zinc-600">{doc.path}</p>
           </div>
         </li>
       ))}
@@ -401,6 +501,8 @@ export function ProductCockpitClient({
           openIssues={openIssues}
           healthRollup={healthRollup}
           healthNarrative={healthNarrative}
+          filteredGoals={filteredGoals}
+          docCount={docEntries.length}
         />
       ),
     },

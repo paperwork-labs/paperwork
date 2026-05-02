@@ -2,13 +2,13 @@ import { notFound } from "next/navigation";
 
 import { BrainClientError } from "@/lib/brain-client";
 import { countOpenIssuesForProductLabel } from "@/lib/command-center";
-import { loadDocsIndex } from "@/lib/docs";
+import { loadDocsEntriesWithYamlTags } from "@/lib/docs-yaml-tags";
 import {
   deriveHeroRollup,
   loadProductHealthBrainState,
 } from "@/lib/product-health-brain";
-import { loadProductPlansBrainState } from "@/lib/product-hub-plans";
-import { filterDocEntriesForProduct, filterEpicsForProductSlug } from "@/lib/product-hub-signals";
+import { loadProductPlansBrainStateForSlug } from "@/lib/product-hub-plans";
+import { filterDocEntriesForProduct } from "@/lib/product-hub-signals";
 import { loadProductRegistryBySlug } from "@/lib/products-brain";
 
 import { ProductCockpitClient } from "./product-cockpit-client";
@@ -29,9 +29,9 @@ export default async function ProductCockpitPage({
     throw err;
   }
 
-  const plansLoad = await loadProductPlansBrainState();
-  const { goals: filteredGoals } = filterEpicsForProductSlug(plansLoad.hierarchy, slug);
-  const docEntries = filterDocEntriesForProduct(loadDocsIndex().entries, product);
+  const plansLoad = await loadProductPlansBrainStateForSlug(slug);
+  const filteredGoals = plansLoad.hierarchy ?? [];
+  const docEntries = filterDocEntriesForProduct(loadDocsEntriesWithYamlTags(), product);
   const [openIssues, healthState] = await Promise.all([
     countOpenIssuesForProductLabel(slug),
     loadProductHealthBrainState(slug),

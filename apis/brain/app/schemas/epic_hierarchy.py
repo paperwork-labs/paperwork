@@ -122,6 +122,7 @@ class EpicCreate(BaseModel):
     id: str = Field(..., min_length=1)
     title: str = Field(..., min_length=1)
     goal_id: str | None = None
+    product_slug: str | None = None
     owner_employee_slug: str
     status: str
     priority: int = Field(..., ge=0)
@@ -138,6 +139,7 @@ class EpicCreate(BaseModel):
 class EpicUpdate(BaseModel):
     title: str | None = None
     goal_id: str | None = None
+    product_slug: str | None = None
     owner_employee_slug: str | None = None
     status: str | None = None
     priority: int | None = None
@@ -157,6 +159,7 @@ class EpicResponse(BaseModel):
     id: str
     title: str
     goal_id: str | None
+    product_slug: str | None = None
     owner_employee_slug: str
     status: str
     priority: int

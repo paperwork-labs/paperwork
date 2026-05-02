@@ -1,5 +1,5 @@
 import { countOpenIssuesForProductLabel } from "@/lib/command-center";
-import { loadDocsIndex } from "@/lib/docs";
+import { loadDocsEntriesWithYamlTags } from "@/lib/docs-yaml-tags";
 import {
   deriveHeroRollup,
   heroRollupToProductPulse,
@@ -23,7 +23,7 @@ export const dynamic = "force-dynamic";
 
 async function buildSummaryMap(products: ProductRegistryEntry[]): Promise<ProductIndexSummaryBySlug> {
   const plansLoad = await loadProductPlansBrainState();
-  const { entries: docEntries } = loadDocsIndex();
+  const docEntries = loadDocsEntriesWithYamlTags();
   const entries = await Promise.all(
     products.map(async (p) => {
       const [openIssues, brainState] = await Promise.all([

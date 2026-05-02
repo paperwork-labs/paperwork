@@ -27,9 +27,11 @@ export function filterEpicsForProductSlug(
   const lower = slug.trim().toLowerCase();
   const goals: EpicHierarchyResponse = [];
   for (const g of hierarchy) {
-    const epics = g.epics.filter(
-      (e) => (e.brief_tag || "").trim().toLowerCase() === lower,
-    );
+    const epics = g.epics.filter((e) => {
+      const bt = (e.brief_tag || "").trim().toLowerCase();
+      const ps = (e.product_slug || "").trim().toLowerCase();
+      return bt === lower || ps === lower;
+    });
     if (epics.length) {
       goals.push({ ...g, epics });
     }
@@ -46,6 +48,10 @@ export function filterDocEntriesForProduct(
   product: ProductRegistryEntry,
 ): DocEntry[] {
   const slugLower = product.slug.toLowerCase();
+  const tagMatches = entries.filter((e) =>
+    e.tags.some((t) => t.trim().toLowerCase() === slugLower),
+  );
+  if (tagMatches.length > 0) return tagMatches;
   const nameLower = product.name.toLowerCase();
   return entries.filter((e) => {
     const p = e.path.toLowerCase();
@@ -68,7 +74,7 @@ export function plansTabSignal(
   if (!res.configured) return "muted";
   if (res.fetchError) return "danger";
   if (filteredEpicCount > 0) return "success";
-  return "warning";
+  return "muted";
 }
 
 export function healthTabSignal(state: ProductHealthBrainState, rollup: HeroRollup): HubSignalKind {
@@ -85,7 +91,7 @@ export function docsTabSignal(docCount: number): HubSignalKind {
 }
 
 export function gtmTabSignal(): HubSignalKind {
-  return "warning";
+  return "muted";
 }
 
 function metricOpenIssuesSignal(openIssues: number | null): HubSignalKind {
@@ -102,8 +108,21 @@ function metricRegistryPlaceholderSignal(): HubSignalKind {
   return "warning";
 }
 
+/** Brain-native fields — success when the row has more than name/tagline. */
+function metricBrainProfileSignal(product: ProductRegistryEntry): HubSignalKind {
+  if (
+    product.tech_stack.length > 0 ||
+    Boolean(product.repo_path) ||
+    Boolean(product.vercel_project) ||
+    Boolean(product.domain)
+  ) {
+    return "success";
+  }
+  return "warning";
+}
+
 export type OverviewMetricWire = {
-  id: "mrr" | "active_users" | "open_issues" | "last_shipped";
+  id: "mrr" | "active_users" | "open_issues" | "last_shipped" | "brain_profile";
   label: string;
   signal: HubSignalKind;
 };
@@ -113,6 +132,11 @@ export function overviewMetricWiring(args: {
   openIssues: number | null;
 }): OverviewMetricWire[] {
   return [
+    {
+      id: "brain_profile",
+      label: "Brain product profile",
+      signal: metricBrainProfileSignal(args.product),
+    },
     {
       id: "mrr",
       label: "MRR",

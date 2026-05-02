@@ -11,8 +11,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy import func, or_, select
+from sqlalchemy.orm import selectinload, with_loader_criteria
 
 from app.database import get_db
 from app.models.epic_hierarchy import Epic, Goal, Sprint, Task
@@ -47,13 +47,38 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 @router.get("/goals")
 async def list_goals(
     status: str | None = Query(None),
+    product: str | None = Query(
+        None,
+        description="When set, return goals that have epics linked to this product "
+        "(via epic.product_slug or epic.brief_tag, case-insensitive).",
+    ),
+    include: str | None = Query(
+        None,
+        description="Ignored; Studio sends `include=epics.sprints.tasks` for compatibility.",
+    ),
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
 ) -> Any:
-    """List all goals, optionally filtered by status."""
-    stmt = select(Goal).options(selectinload(Goal.epics))
+    """List goals with nested epics → sprints → tasks. Optionally filter epics by product slug."""
+    nested = selectinload(Goal.epics).selectinload(Epic.sprints).selectinload(Sprint.tasks)
+    epic_filter = None
+    if product and product.strip():
+        slug_l = product.strip().lower()
+        epic_filter = or_(
+            func.lower(Epic.product_slug) == slug_l,
+            func.lower(Epic.brief_tag) == slug_l,
+        )
+
+    stmt = select(Goal)
+    opts: list[Any] = [nested]
+    if epic_filter is not None:
+        stmt = stmt.join(Goal.epics).where(epic_filter).distinct()
+        opts.insert(0, with_loader_criteria(Epic, epic_filter, include_aliases=True))
+
+    stmt = stmt.options(*opts)
     if status:
         stmt = stmt.where(Goal.status == status)
+
     stmt = stmt.order_by(Goal.created_at.desc())
     result = await db.execute(stmt)
     goals = result.scalars().all()
@@ -119,10 +144,14 @@ async def list_epics(
     goal_id: str | None = Query(None),
     status: str | None = Query(None),
     owner: str | None = Query(None),
+    product: str | None = Query(
+        None,
+        description="Filter epics where product_slug or brief_tag matches (case-insensitive).",
+    ),
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
 ) -> Any:
-    """List epics with optional filters for goal_id, status, and owner."""
+    """List epics with optional filters for goal_id, status, owner, and product slug."""
     stmt = select(Epic).options(selectinload(Epic.sprints).selectinload(Sprint.tasks))
     if goal_id:
         stmt = stmt.where(Epic.goal_id == goal_id)
@@ -130,6 +159,14 @@ async def list_epics(
         stmt = stmt.where(Epic.status == status)
     if owner:
         stmt = stmt.where(Epic.owner_employee_slug == owner)
+    if product and product.strip():
+        slug_l = product.strip().lower()
+        stmt = stmt.where(
+            or_(
+                func.lower(Epic.product_slug) == slug_l,
+                func.lower(Epic.brief_tag) == slug_l,
+            ),
+        )
     stmt = stmt.order_by(Epic.priority)
     result = await db.execute(stmt)
     epics = result.scalars().all()
@@ -169,6 +206,7 @@ async def create_epic(
         id=body.id,
         title=body.title,
         goal_id=body.goal_id,
+        product_slug=body.product_slug,
         owner_employee_slug=body.owner_employee_slug,
         status=body.status,
         priority=body.priority,
