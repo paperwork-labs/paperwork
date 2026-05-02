@@ -123,6 +123,57 @@ export type EmployeeListData = {
 /** ``GET /admin/employees`` — convenience alias for the unwrapped list body. */
 export type EmployeeListResponse = EmployeeListData;
 
+export type EmployeeDetail = EmployeeListItem & {
+  description: string;
+  default_model: string;
+  escalation_model: string | null;
+  escalate_if: string[];
+  requires_tools: boolean;
+  daily_cost_ceiling_usd: number | null;
+  owner_channel: string | null;
+  mode: string | null;
+  tone_prefix: string | null;
+  proactive_cadence: string | null;
+  max_output_tokens: number | null;
+  requests_per_minute: number | null;
+  cursor_description: string | null;
+  cursor_globs: string[];
+  cursor_always_apply: boolean;
+  owned_rules: string[];
+  owned_runbooks: string[];
+  owned_workflows: string[];
+  owned_skills: string[];
+  body_markdown: string | null;
+  manages: string[];
+  voice_signature: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Inner ``data`` for ``GET /admin/employees/{slug}``. */
+export type EmployeeDetailPayload = {
+  employee: EmployeeDetail;
+};
+
+function normalizeEmployeeDetail(raw: EmployeeDetail): EmployeeDetail {
+  return {
+    ...raw,
+    description: typeof raw.description === "string" ? raw.description : "",
+    default_model: typeof raw.default_model === "string" ? raw.default_model : "",
+    requires_tools: Boolean(raw.requires_tools),
+    cursor_always_apply: Boolean(raw.cursor_always_apply),
+    escalate_if: Array.isArray(raw.escalate_if) ? raw.escalate_if : [],
+    cursor_globs: Array.isArray(raw.cursor_globs) ? raw.cursor_globs : [],
+    owned_rules: Array.isArray(raw.owned_rules) ? raw.owned_rules : [],
+    owned_runbooks: Array.isArray(raw.owned_runbooks) ? raw.owned_runbooks : [],
+    owned_workflows: Array.isArray(raw.owned_workflows) ? raw.owned_workflows : [],
+    owned_skills: Array.isArray(raw.owned_skills) ? raw.owned_skills : [],
+    manages: Array.isArray(raw.manages) ? raw.manages : [],
+    created_at: typeof raw.created_at === "string" ? raw.created_at : "",
+    updated_at: typeof raw.updated_at === "string" ? raw.updated_at : "",
+  };
+}
+
 /** ``GET /admin/memory-stats`` — episode aggregates + storage estimate (WS-82 Phase D). */
 export type BrainMemoryStats = {
   organization_id: string;
@@ -635,6 +686,13 @@ export class BrainClient {
   async getEmployees(): Promise<EmployeeListItem[]> {
     const body = await this.get<EmployeeListData>("/admin/employees", "employees");
     return body.employees;
+  }
+
+  /** Single employee record with extended Brain + Cursor fields (WS-82). */
+  async getEmployee(slug: string): Promise<EmployeeDetail> {
+    const path = `/admin/employees/${encodeURIComponent(slug)}`;
+    const body = await this.get<EmployeeDetailPayload>(path, "employees/detail");
+    return normalizeEmployeeDetail(body.employee);
   }
 
   /** Fetch goals / OKRs payload for Studio admin (same shape as static goals.json). */

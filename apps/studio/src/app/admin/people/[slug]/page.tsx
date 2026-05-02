@@ -1,0 +1,119 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { ArrowLeft } from "lucide-react";
+
+import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
+import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
+import { BrainClient, BrainClientError } from "@/lib/brain-client";
+
+import { EmployeeProfileTabsClient } from "./employee-profile-tabs-client";
+
+export const dynamic = "force-dynamic";
+
+type PageProps = { params: Promise<{ slug: string }> };
+
+export default async function EmployeeProfilePage({ params }: PageProps) {
+  const { slug } = await params;
+
+  const client = BrainClient.fromEnv();
+  if (!client) {
+    return (
+      <div className="space-y-8">
+        <HqPageHeader
+          breadcrumbs={[
+            { label: "Admin", href: "/admin" },
+            { label: "People", href: "/admin/people" },
+            { label: slug },
+          ]}
+          title="Employee profile"
+          subtitle="Load a teammate from Brain to see org context, persona config, and ownership."
+        />
+        <HqMissingCredCard
+          service="Brain admin API"
+          envVar="BRAIN_API_SECRET"
+          description="Set BRAIN_API_URL and BRAIN_API_SECRET in Vercel / Render, redeploy, then reload this profile. Employee detail uses GET /admin/employees/{slug}."
+          reconnectAction={{
+            label: "Open environment docs",
+            href: "https://vercel.com/docs/projects/environment-variables",
+          }}
+        />
+      </div>
+    );
+  }
+
+  let employee;
+  try {
+    employee = await client.getEmployee(slug);
+  } catch (err) {
+    if (err instanceof BrainClientError && err.status === 404) {
+      notFound();
+    }
+    const message =
+      err instanceof BrainClientError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Unknown error talking to Brain";
+    return (
+      <div className="space-y-8">
+        <HqPageHeader
+          breadcrumbs={[
+            { label: "Admin", href: "/admin" },
+            { label: "People", href: "/admin/people" },
+            { label: slug },
+          ]}
+          title="Employee profile"
+          subtitle={`Could not load “${slug}”.`}
+          actions={
+            <Link
+              href="/admin/people"
+              className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-800"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Back to People
+            </Link>
+          }
+        />
+        <div
+          className="rounded-lg border border-red-700/45 bg-red-950/25 px-4 py-3 text-sm text-red-100"
+          role="alert"
+        >
+          <p className="font-semibold text-red-200">Brain unavailable or error</p>
+          <p className="mt-1 text-red-100/90">{message}</p>
+          <p className="mt-3 text-xs text-red-300/85">
+            Check BRAIN_API_URL / BRAIN_API_SECRET and Brain health; then reconnect and refresh.
+            Listing still works when only this slug fails — try returning to People and opening another card.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const headline = employee.display_name?.trim() || employee.role_title || employee.slug;
+
+  return (
+    <div className="space-y-8">
+      <HqPageHeader
+        breadcrumbs={[
+          { label: "Admin", href: "/admin" },
+          { label: "People", href: "/admin/people" },
+          { label: headline },
+        ]}
+        title={headline}
+        subtitle={employee.tagline?.trim() || `${employee.role_title} · ${employee.team}`}
+        actions={
+          <Link
+            href="/admin/people"
+            className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-900/80 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-800"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Directory
+          </Link>
+        }
+      />
+
+      <EmployeeProfileTabsClient employee={employee} />
+    </div>
+  );
+}
