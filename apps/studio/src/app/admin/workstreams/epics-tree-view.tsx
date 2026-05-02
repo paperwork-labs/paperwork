@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Pencil,
   Plus,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "sonner";
@@ -83,6 +84,123 @@ function taskIsDone(status: string): boolean {
     n === "complete" ||
     n === "closed"
   );
+}
+
+type SortMode = "priority" | "activity" | "percent" | "alpha";
+
+type StatusFilterKey = "active" | "completed" | "blocked" | "draft";
+
+const STATUS_FILTER_KEYS: readonly StatusFilterKey[] = [
+  "active",
+  "completed",
+  "blocked",
+  "draft",
+] as const;
+
+const STATUS_FILTER_LABEL: Record<StatusFilterKey, string> = {
+  active: "Active",
+  completed: "Completed",
+  blocked: "Blocked",
+  draft: "Draft",
+};
+
+function fuzzyMatch(query: string, haystack: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const h = haystack.trim().toLowerCase();
+  if (!h) return false;
+  if (h.includes(q)) return true;
+  let qi = 0;
+  for (let i = 0; i < h.length && qi < q.length; i++) {
+    if (h[i] === q[qi]) qi++;
+  }
+  return qi === q.length;
+}
+
+function filterEpicBySearch(epic: EpicItem, goal: GoalItem, query: string): EpicItem | null {
+  const trimmed = query.trim();
+  if (!trimmed) return epic;
+  if (fuzzyMatch(trimmed, goal.objective) || fuzzyMatch(trimmed, epic.title)) {
+    return epic;
+  }
+  const nextSprints: SprintItem[] = [];
+  for (const sp of epic.sprints ?? []) {
+    if (fuzzyMatch(trimmed, sp.title)) {
+      nextSprints.push(sp);
+      continue;
+    }
+    const tasks = (sp.tasks ?? []).filter((t) => fuzzyMatch(trimmed, t.title));
+    if (tasks.length) {
+      nextSprints.push({ ...sp, tasks });
+    }
+  }
+  if (!nextSprints.length) return null;
+  return { ...epic, sprints: nextSprints };
+}
+
+function epicStatusFilterKey(status: string): StatusFilterKey {
+  const n = normStatus(status);
+  if (n === "blocked") return "blocked";
+  if (n === "done" || n === "complete" || n === "closed") return "completed";
+  if (n === "backlog") return "draft";
+  return "active";
+}
+
+function epicActivityMs(epic: EpicItem): number {
+  const raw = epic.last_activity;
+  if (typeof raw === "string" && raw.length > 0) {
+    const t = Date.parse(raw);
+    if (!Number.isNaN(t)) return t;
+  }
+  return 0;
+}
+
+function sortEpicList(epics: EpicItem[], mode: SortMode): EpicItem[] {
+  const out = [...epics];
+  out.sort((a, b) => {
+    if (mode === "priority") {
+      const d = a.priority - b.priority;
+      if (d !== 0) return d;
+      return a.title.localeCompare(b.title);
+    }
+    if (mode === "activity") {
+      const d = epicActivityMs(b) - epicActivityMs(a);
+      if (d !== 0) return d;
+      return a.title.localeCompare(b.title);
+    }
+    if (mode === "percent") {
+      const d = (b.percent_done ?? 0) - (a.percent_done ?? 0);
+      if (d !== 0) return d;
+      return a.title.localeCompare(b.title);
+    }
+    return a.title.localeCompare(b.title);
+  });
+  return out;
+}
+
+function buildOpenMap(goals: GoalItem[], expandEpicAndSprint: boolean): Record<string, boolean> {
+  const o: Record<string, boolean> = {};
+  for (const g of goals) {
+    o[`g:${g.id}`] = true;
+    for (const e of g.epics ?? []) {
+      o[`e:${e.id}`] = expandEpicAndSprint;
+      for (const s of e.sprints ?? []) {
+        o[`s:${s.id}`] = expandEpicAndSprint;
+      }
+    }
+  }
+  return o;
+}
+
+function collectOwners(goals: GoalItem[]): string[] {
+  const slugs = new Set<string>();
+  for (const g of goals) {
+    for (const e of g.epics ?? []) {
+      const slug = (e.owner_employee_slug ?? "").trim();
+      if (slug) slugs.add(slug);
+    }
+  }
+  return [...slugs].sort((a, b) => a.localeCompare(b));
 }
 
 function quickStatusChoices(entity: HierarchyEntityKind): readonly string[] {
@@ -552,6 +670,50 @@ export type EpicsTreeViewProps = {
 
 export function EpicsTreeView({ goals }: EpicsTreeViewProps) {
   const [draft, setDraft] = useState<EpicCrudDraft | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("priority");
+  const [ownerFilter, setOwnerFilter] = useState("");
+  const [statusFilters, setStatusFilters] = useState<Set<StatusFilterKey>>(() => new Set());
+
+  const statusFilterDep = [...statusFilters].sort().join(",");
+
+  const ownerOptions = useMemo(() => collectOwners(goals), [goals]);
+
+  const filteredGoals = useMemo(() => {
+    const result: GoalItem[] = [];
+    for (const g of goals) {
+      let epics = (g.epics ?? []).filter((e) => {
+        if (ownerFilter && (e.owner_employee_slug ?? "").trim() !== ownerFilter) return false;
+        if (statusFilters.size && !statusFilters.has(epicStatusFilterKey(e.status))) {
+          return false;
+        }
+        return true;
+      });
+      epics = epics
+        .map((e) => filterEpicBySearch(e, g, searchQuery))
+        .filter((e): e is EpicItem => e != null);
+      epics = sortEpicList(epics, sortMode);
+      if (epics.length) {
+        result.push({ ...g, epics });
+      }
+    }
+    if (sortMode === "alpha") {
+      result.sort((a, b) => a.objective.localeCompare(b.objective));
+    }
+    return result;
+  }, [goals, searchQuery, sortMode, ownerFilter, statusFilterDep]);
+
+  const totalEpicCount = useMemo(
+    () => goals.reduce((n, g) => n + (g.epics?.length ?? 0), 0),
+    [goals],
+  );
+  const filteredEpicCount = useMemo(
+    () => filteredGoals.reduce((n, g) => n + (g.epics?.length ?? 0), 0),
+    [filteredGoals],
+  );
+
+  const searchOrConstraintActive =
+    searchQuery.trim().length > 0 || statusFilters.size > 0 || ownerFilter.length > 0;
 
   const initialOpen = useMemo(() => {
     const o: Record<string, boolean> = {};
@@ -573,6 +735,27 @@ export function EpicsTreeView({ goals }: EpicsTreeViewProps) {
     setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
+  const toggleStatusFilter = useCallback((key: StatusFilterKey) => {
+    setStatusFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }, []);
+
+  const clearStatusFilters = useCallback(() => setStatusFilters(new Set()), []);
+
+  const expandAll = useCallback(() => {
+    setOpen(buildOpenMap(filteredGoals, true));
+  }, [filteredGoals]);
+
+  const collapseAll = useCallback(() => {
+    setOpen(buildOpenMap(filteredGoals, false));
+  }, [filteredGoals]);
+
+  const clearSearch = useCallback(() => setSearchQuery(""), []);
+
   const closeDraft = useCallback(() => setDraft(null), []);
 
   if (!goals.length) {
@@ -587,69 +770,191 @@ export function EpicsTreeView({ goals }: EpicsTreeViewProps) {
     <div data-testid="epics-tree" className="space-y-1">
       <Toaster richColors theme="dark" position="bottom-right" />
       <EpicHierarchyCrudModal draft={draft} onClose={closeDraft} />
-      <div className="mb-2 flex justify-end rounded-lg border border-zinc-800/80 bg-zinc-950/30 px-2 py-1.5">
-        <button
-          type="button"
-          title="Add goal"
-          className={cn(ghostIconButtonCls(), "h-8 w-8 gap-1 text-xs")}
-          onClick={() =>
-            setDraft({
-              mode: "create",
-              entity: "goal",
-              defaults: {},
-            })
-          }
-        >
-          <Plus className="h-4 w-4" aria-hidden />
-          <span className="hidden sm:inline font-medium text-[11px] uppercase tracking-wide text-zinc-500">
-            Goal
+
+      <div className="mb-3 flex flex-col gap-3 rounded-lg border border-zinc-800/80 bg-zinc-950/40 px-3 py-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[12rem] flex-1">
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search goals, epics, sprints, tasks…"
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 py-1.5 pl-3 pr-9 text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+              aria-label="Search epics tree"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={clearSearch}
+                className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" aria-hidden />
+              </button>
+            ) : null}
+          </div>
+          <span className="text-xs tabular-nums text-zinc-500">
+            {searchOrConstraintActive && totalEpicCount > 0
+              ? `${filteredEpicCount} of ${totalEpicCount} epics match`
+              : `${totalEpicCount} epic${totalEpicCount === 1 ? "" : "s"}`}
           </span>
-        </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+            Status
+          </span>
+          <button
+            type="button"
+            onClick={clearStatusFilters}
+            className={cn(
+              "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+              statusFilters.size === 0
+                ? "border-violet-500 bg-violet-500/20 text-violet-200"
+                : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-zinc-600",
+            )}
+          >
+            All
+          </button>
+          {STATUS_FILTER_KEYS.map((k) => {
+            const on = statusFilters.has(k);
+            return (
+              <button
+                key={k}
+                type="button"
+                onClick={() => toggleStatusFilter(k)}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  on
+                    ? "border-violet-500 bg-violet-500/20 text-violet-200"
+                    : "border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-zinc-600",
+                )}
+              >
+                {STATUS_FILTER_LABEL[k]}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="sr-only" htmlFor="epics-owner-filter">
+            Owner
+          </label>
+          <select
+            id="epics-owner-filter"
+            value={ownerFilter}
+            onChange={(e) => setOwnerFilter(e.target.value)}
+            className="h-8 min-w-[10rem] rounded-md border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-100 focus:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+          >
+            <option value="">All owners</option>
+            {ownerOptions.map((slug) => (
+              <option key={slug} value={slug}>
+                @{slug}
+              </option>
+            ))}
+          </select>
+
+          <label className="sr-only" htmlFor="epics-sort">
+            Sort
+          </label>
+          <select
+            id="epics-sort"
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            className="h-8 min-w-[9.5rem] rounded-md border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-100 focus:border-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/40"
+          >
+            <option value="priority">Priority</option>
+            <option value="activity">Recent activity</option>
+            <option value="percent">Percent done</option>
+            <option value="alpha">Alphabetical</option>
+          </select>
+
+          <div className="ml-auto flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={expandAll}
+              className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-[11px] font-medium text-zinc-200 hover:border-zinc-600 hover:bg-zinc-800/80"
+            >
+              Expand all
+            </button>
+            <button
+              type="button"
+              onClick={collapseAll}
+              className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-1 text-[11px] font-medium text-zinc-200 hover:border-zinc-600 hover:bg-zinc-800/80"
+            >
+              Collapse all
+            </button>
+            <button
+              type="button"
+              title="Add goal"
+              className={cn(ghostIconButtonCls(), "h-8 w-8 gap-1 text-xs")}
+              onClick={() =>
+                setDraft({
+                  mode: "create",
+                  entity: "goal",
+                  defaults: {},
+                })
+              }
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              <span className="hidden font-medium text-[11px] uppercase tracking-wide text-zinc-500 sm:inline">
+                Goal
+              </span>
+            </button>
+          </div>
+        </div>
       </div>
+
       <div className="space-y-1 rounded-lg border border-zinc-800 bg-zinc-950/40 px-3 py-2">
-        {goals.map((goal) => (
-          <GoalBlock
-            key={goal.id}
-            goal={goal}
-            open={open[`g:${goal.id}`] ?? true}
-            onToggle={() => toggle(`g:${goal.id}`)}
-            setDraft={setDraft}
-            renderEpics={() =>
-              (goal.epics ?? []).map((epic) => (
-                <EpicBlock
-                  key={epic.id}
-                  epic={epic}
-                  open={open[`e:${epic.id}`] ?? true}
-                  onToggle={() => toggle(`e:${epic.id}`)}
-                  setDraft={setDraft}
-                  renderSprints={() =>
-                    (epic.sprints ?? []).map((sprint) => (
-                      <SprintBlock
-                        key={sprint.id}
-                        sprint={sprint}
-                        epicId={epic.id}
-                        open={open[`s:${sprint.id}`] ?? true}
-                        onToggle={() => toggle(`s:${sprint.id}`)}
-                        setDraft={setDraft}
-                        renderTasks={() =>
-                          (sprint.tasks ?? []).map((task) => (
-                            <TaskRow
-                              key={task.id}
-                              task={task}
-                              epicId={epic.id}
-                              sprintId={sprint.id}
-                              setDraft={setDraft}
-                            />
-                          ))
-                        }
-                      />
-                    ))
-                  }
-                />
-              ))
-            }
-          />
-        ))}
+        {!filteredGoals.length ? (
+          <p className="text-sm text-zinc-500" data-testid="epics-tree-filtered-empty">
+            No epics match the current filters.
+          </p>
+        ) : (
+          filteredGoals.map((goal) => (
+            <GoalBlock
+              key={goal.id}
+              goal={goal}
+              open={open[`g:${goal.id}`] ?? true}
+              onToggle={() => toggle(`g:${goal.id}`)}
+              setDraft={setDraft}
+              renderEpics={() =>
+                (goal.epics ?? []).map((epic) => (
+                  <EpicBlock
+                    key={epic.id}
+                    epic={epic}
+                    open={open[`e:${epic.id}`] ?? true}
+                    onToggle={() => toggle(`e:${epic.id}`)}
+                    setDraft={setDraft}
+                    renderSprints={() =>
+                      (epic.sprints ?? []).map((sprint) => (
+                        <SprintBlock
+                          key={sprint.id}
+                          sprint={sprint}
+                          epicId={epic.id}
+                          open={open[`s:${sprint.id}`] ?? true}
+                          onToggle={() => toggle(`s:${sprint.id}`)}
+                          setDraft={setDraft}
+                          renderTasks={() =>
+                            (sprint.tasks ?? []).map((task) => (
+                              <TaskRow
+                                key={task.id}
+                                task={task}
+                                epicId={epic.id}
+                                sprintId={sprint.id}
+                                setDraft={setDraft}
+                              />
+                            ))
+                          }
+                        />
+                      ))
+                    }
+                  />
+                ))
+              }
+            />
+          ))
+        )}
       </div>
     </div>
   );
