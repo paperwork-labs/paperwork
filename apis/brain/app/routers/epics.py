@@ -152,7 +152,7 @@ async def delete_goal(
             status_code=409,
             detail=f"Goal id={goal_id!r} has linked epics; remove or reassign them first",
         )
-    db.delete(goal)
+    await db.delete(goal)
     await db.commit()
     return success_response({"deleted": True, "id": goal_id})
 
@@ -287,7 +287,7 @@ async def delete_epic(
             ),
         ),
     )
-    db.delete(epic)
+    await db.delete(epic)
     await db.commit()
     return success_response({"deleted": True, "id": epic_id})
 
@@ -377,7 +377,7 @@ async def delete_sprint(
     sprint = await db.get(Sprint, sprint_id)
     if not sprint:
         raise HTTPException(status_code=404, detail=f"Sprint id={sprint_id!r} not found")
-    db.delete(sprint)
+    await db.delete(sprint)
     await db.commit()
     return success_response({"deleted": True, "id": sprint_id})
 
@@ -471,6 +471,6 @@ async def delete_task(
     task = await db.get(Task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail=f"Task id={task_id!r} not found")
-    db.delete(task)
+    await db.delete(task)
     await db.commit()
     return success_response({"deleted": True, "id": task_id})
