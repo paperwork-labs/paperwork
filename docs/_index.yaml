@@ -324,6 +324,13 @@ docs:
     tags: [infra, runbook]
     owners: [infra-ops]
     category: runbooks
+  - slug: hetzner-bootstrap
+    path: docs/runbooks/hetzner-bootstrap.md
+    title: Hetzner Bootstrap — 3-box provisioning
+    summary: Bootstrap Hetzner servers (ops, build, workers) with Docker, firewall, and GHA runners.
+    tags: [hetzner, infra, docker, gha, bootstrap]
+    owners: [infra-ops]
+    category: runbooks
   - slug: pre-deploy-guard
     path: docs/runbooks/pre-deploy-guard.md
     title: Pre-deploy guard (Vercel quota + env vars)

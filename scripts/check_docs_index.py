@@ -50,6 +50,9 @@ EXCLUDED_FILES = {
     # Folder-level READMEs that document the schema for agents but
     # aren't standalone docs we want to surface in /admin/docs.
     "docs/sprints/README.md",
+    # Runbook meta-files: template and folder README (index).
+    "docs/runbooks/README.md",
+    "docs/runbooks/_TEMPLATE.md",
 }
 
 
