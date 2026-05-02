@@ -34,7 +34,8 @@
     "employees:sync": "tsx scripts/employees-sync.ts",
     "seed:employees": "tsx scripts/seed-employees.ts",
     "seed:epics": "tsx scripts/seed-epic-hierarchy.ts",
-    "seed:products": "tsx scripts/seed-products.ts"
+    "seed:products": "tsx scripts/seed-products.ts",
+    "backfill:transcripts": "tsx scripts/backfill-transcripts.ts"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
