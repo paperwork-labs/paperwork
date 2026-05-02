@@ -18,6 +18,8 @@ type Props = {
   personas: BrainPersonaOption[];
   disabled?: boolean;
   placeholder?: string;
+  /** Override for secondary composers (e.g. thread panel). */
+  textareaTestId?: string;
 };
 
 export function ConversationComposer({
@@ -27,6 +29,7 @@ export function ConversationComposer({
   personas,
   disabled,
   placeholder = "Reply…",
+  textareaTestId = "conversation-reply-textarea",
 }: Props) {
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const [caret, setCaret] = useState(0);
@@ -232,7 +235,7 @@ export function ConversationComposer({
 
       <textarea
         ref={taRef}
-        data-testid="conversation-reply-textarea"
+        data-testid={textareaTestId}
         value={value}
         disabled={disabled}
         placeholder={placeholder}

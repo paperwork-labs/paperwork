@@ -11,9 +11,11 @@ import {
   Bell,
   BellOff,
   BookMarked,
+  Bot,
   Building2,
   ChartColumnBig,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   FileText,
   Layers,
@@ -38,6 +40,7 @@ import type {
   UrgencyLevel,
 } from "@/types/conversations";
 import type { ComposePersonaOption } from "@/lib/compose-persona-options";
+import type { EmployeeListItem } from "@/lib/brain-client";
 import {
   CONVERSATION_SPACES,
   effectiveConversationSpace,
@@ -140,6 +143,123 @@ const QUICK_REACTION_EMOJIS = ["👍", "❤️", "✅", "👀", "🚀"] as const
 
 const FOUNDER_PARTICIPANT_ID = "founder";
 
+function rosterBySlugMap(roster: EmployeeListItem[]): Map<string, EmployeeListItem> {
+  const m = new Map<string, EmployeeListItem>();
+  for (const e of roster) m.set(e.slug, e);
+  return m;
+}
+
+type ParticipantEnrichment = { avatarEmoji: string | null; displayLabel: string };
+
+function enrichParticipant(
+  p: ConversationParticipant,
+  bySlug: Map<string, EmployeeListItem>,
+): ParticipantEnrichment {
+  const fallback = p.display_name ?? p.id;
+  if (p.kind !== "persona") {
+    return { avatarEmoji: null, displayLabel: fallback };
+  }
+  const emp = bySlug.get(p.id);
+  return {
+    avatarEmoji: emp?.avatar_emoji ?? null,
+    displayLabel: emp?.display_name ?? fallback,
+  };
+}
+
+const MENTION_IN_BODY_RE = /@([\w-]+)/g;
+
+function engagedPersonaSlugsForContext(
+  messages: ThreadMessage[],
+  replyPersonaIds: Set<string>,
+  bySlug: Map<string, EmployeeListItem>,
+): string[] {
+  const slugs = new Set<string>();
+  for (const m of messages) {
+    if (m.author.kind === "persona") slugs.add(m.author.id);
+    let mm: RegExpExecArray | null;
+    const re = new RegExp(MENTION_IN_BODY_RE.source, "g");
+    while ((mm = re.exec(m.body_md)) !== null) slugs.add(mm[1]!);
+  }
+  return [...slugs].filter(
+    (s) => replyPersonaIds.has(s) || bySlug.get(s)?.kind === "ai_persona",
+  );
+}
+
+function PersonaContextPanel({
+  slugs,
+  bySlug,
+  personaDispatchBySlug,
+  replyPersonas,
+}: {
+  slugs: string[];
+  bySlug: Map<string, EmployeeListItem>;
+  personaDispatchBySlug: Record<string, number>;
+  replyPersonas: BrainPersonaOption[];
+}) {
+  if (slugs.length === 0) return null;
+  const labelLookup = new Map(replyPersonas.map((p) => [p.id, p.label]));
+
+  return (
+    <details
+      data-testid="persona-context-panel"
+      className="group border-b border-zinc-800/60 bg-zinc-950/35"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2 text-xs font-medium text-zinc-400 transition hover:bg-zinc-900/50 hover:text-zinc-200 [&::-webkit-details-marker]:hidden">
+        <ChevronDown className="h-3.5 w-3.5 shrink-0 transition group-open:rotate-180" />
+        <Bot className="h-3.5 w-3.5 text-violet-400/90" aria-hidden />
+        <span>
+          Persona context ({slugs.length}) — mentioned or active in this thread
+        </span>
+      </summary>
+      <div className="space-y-2 border-t border-zinc-800/40 px-4 pb-3 pt-2">
+        {slugs.map((slug) => {
+          const emp = bySlug.get(slug);
+          const recent = personaDispatchBySlug[slug];
+          const name = emp?.display_name ?? labelLookup.get(slug) ?? slug;
+          return (
+            <div
+              key={slug}
+              className="rounded-lg border border-zinc-800/70 bg-zinc-900/50 px-3 py-2 text-xs text-zinc-300"
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                {emp?.avatar_emoji ? (
+                  <span className="text-base" aria-hidden>
+                    {emp.avatar_emoji}
+                  </span>
+                ) : null}
+                <span className="font-medium text-zinc-100">{name}</span>
+                <span className="rounded-full bg-violet-500/20 px-1.5 py-px text-[10px] font-medium text-violet-300">
+                  AI
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] text-zinc-500">
+                {emp?.role_title ? (
+                  <>
+                    <span className="text-zinc-400">{emp.role_title}</span>
+                    {emp.team ? " · " : ""}
+                  </>
+                ) : null}
+                {emp?.team ? <span>{emp.team}</span> : null}
+                {!emp?.role_title && !emp?.team ? (
+                  <span className="font-mono text-zinc-500">@{slug}</span>
+                ) : null}
+              </p>
+              {recent !== undefined ? (
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  Recent activity (30d): <span className="tabular-nums text-zinc-400">{recent}</span>{" "}
+                  dispatches
+                </p>
+              ) : (
+                <p className="mt-1 text-[11px] text-zinc-500">Recent activity: not available</p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </details>
+  );
+}
+
 function getThreadContext(messages: ThreadMessage[], anchorId: string) {
   const byId = new Map(messages.map((m) => [m.id, m]));
   const anchor = byId.get(anchorId);
@@ -167,9 +287,26 @@ function getOrderedThreadMessages(messages: ThreadMessage[], anchorId: string): 
  */
 const BRAIN_CONVERSATION_PERSONA_REPLY_READY = false;
 
-function ParticipantAvatar({ participant }: { participant: ConversationParticipant }) {
+function ParticipantAvatar({
+  participant,
+  avatarEmoji,
+}: {
+  participant: ConversationParticipant;
+  avatarEmoji?: string | null;
+}) {
   const label = participant.display_name ?? participant.id;
   const initial = label.trim().charAt(0).toUpperCase() || "?";
+  if (avatarEmoji) {
+    return (
+      <div
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-lg leading-none"
+        aria-hidden
+        title={label}
+      >
+        {avatarEmoji}
+      </div>
+    );
+  }
   return (
     <div
       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-medium text-zinc-200"
@@ -177,6 +314,14 @@ function ParticipantAvatar({ participant }: { participant: ConversationParticipa
     >
       {initial}
     </div>
+  );
+}
+
+function AiBadge() {
+  return (
+    <span className="rounded-full bg-violet-500/20 px-1.5 py-px text-[10px] font-medium text-violet-300">
+      AI
+    </span>
   );
 }
 
@@ -229,18 +374,35 @@ function AttachmentThumb({ att }: { att: Conversation["messages"][0]["attachment
   );
 }
 
-function MessageBubble({ msg }: { msg: ThreadMessage }) {
+function MessageBubble({
+  msg,
+  enrichment,
+}: {
+  msg: ThreadMessage;
+  enrichment: ParticipantEnrichment;
+}) {
+  const isPersona = msg.author.kind === "persona";
   return (
     <div className="space-y-1">
-      <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-zinc-300">
-          {msg.author.display_name ?? msg.author.id}
-        </span>
+      <div className="flex flex-wrap items-center gap-2">
+        {enrichment.avatarEmoji ? (
+          <span className="text-sm" aria-hidden>
+            {enrichment.avatarEmoji}
+          </span>
+        ) : null}
+        <span className="text-xs font-medium text-zinc-300">{enrichment.displayLabel}</span>
+        {isPersona ? <AiBadge /> : null}
         <span className="text-[10px] text-zinc-600">
           {new Date(msg.created_at).toLocaleString()}
         </span>
       </div>
-      <div className="rounded-xl border border-zinc-800/80 bg-zinc-900/60 px-4 py-3">
+      <div
+        className={`rounded-xl border px-4 py-3 ${
+          isPersona
+            ? "border-zinc-800/80 border-l-2 border-l-violet-500/30 bg-zinc-900/60"
+            : "border-zinc-800/80 bg-zinc-900/60"
+        }`}
+      >
         <div className="prose prose-invert prose-sm max-w-none text-zinc-300 prose-p:my-1 prose-a:text-sky-400 prose-code:rounded prose-code:bg-zinc-800 prose-code:px-1">
           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.body_md}</ReactMarkdown>
         </div>
@@ -273,27 +435,31 @@ function ThreadPanelMessageRow({
   msg,
   isAnchor,
   isPending,
+  enrichment,
 }: {
   msg: ThreadMessage;
   isAnchor: boolean;
   isPending?: boolean;
+  enrichment: ParticipantEnrichment;
 }) {
+  const isPersona = msg.author.kind === "persona";
   return (
     <div
       data-testid={`thread-panel-message-${msg.id}`}
       className={`rounded-xl border px-3 py-2 ${
         isAnchor
           ? "border-sky-500/50 bg-sky-950/30 ring-1 ring-sky-500/30"
-          : "border-zinc-800/80 bg-zinc-900/40"
+          : isPersona
+            ? "border-zinc-800/80 border-l-2 border-l-violet-500/30 bg-zinc-900/60"
+            : "border-zinc-800/80 bg-zinc-900/40"
       } ${isPending ? "opacity-85" : ""}`}
     >
       <div className="flex gap-3">
-        <ParticipantAvatar participant={msg.author} />
+        <ParticipantAvatar participant={msg.author} avatarEmoji={enrichment.avatarEmoji} />
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-zinc-200">
-              {msg.author.display_name ?? msg.author.id}
-            </span>
+            <span className="text-xs font-medium text-zinc-200">{enrichment.displayLabel}</span>
+            {isPersona ? <AiBadge /> : null}
             <span className="text-[10px] text-zinc-500">
               {new Date(msg.created_at).toLocaleString()}
             </span>
@@ -344,6 +510,10 @@ interface Props {
   setupWarning?: string | null;
   composePersonaOptions?: ComposePersonaOption[];
   replyPersonas?: BrainPersonaOption[];
+  /** Brain `/admin/employees` — enriches persona avatars + context sidebar. */
+  employeeRoster?: EmployeeListItem[];
+  /** From `getPersonaDispatchSummary()` keyed by `persona_slug`. */
+  personaDispatchBySlug?: Record<string, number>;
 }
 
 export function ConversationsClient({
@@ -353,6 +523,8 @@ export function ConversationsClient({
   setupWarning = null,
   composePersonaOptions = [],
   replyPersonas = [],
+  employeeRoster = [],
+  personaDispatchBySlug = {},
 }: Props) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -385,6 +557,26 @@ export function ConversationsClient({
   const [threadOptimisticMessages, setThreadOptimisticMessages] = useState<ThreadMessage[]>([]);
   const [spaceFilter, setSpaceFilter] = useState<ConversationSpace | "all">("all");
   const searchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [requestReplySlug, setRequestReplySlug] = useState("");
+  const [requestReplyLoading, setRequestReplyLoading] = useState(false);
+  const [requestReplyNotice, setRequestReplyNotice] = useState<{
+    kind: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  const employeeBySlug = useMemo(() => rosterBySlugMap(employeeRoster), [employeeRoster]);
+  const replyPersonaIdSet = useMemo(
+    () => new Set(replyPersonas.map((p) => p.id)),
+    [replyPersonas],
+  );
+  const contextPersonaSlugs = useMemo(() => {
+    if (!selected) return [];
+    return engagedPersonaSlugsForContext(
+      selected.messages,
+      replyPersonaIdSet,
+      employeeBySlug,
+    );
+  }, [selected, replyPersonaIdSet, employeeBySlug]);
 
   useEffect(() => {
     const compose = searchParams.get("compose");
@@ -518,6 +710,9 @@ export function ConversationsClient({
     setThreadReplyError(null);
     setThreadReplyText("");
     setThreadReplyPersonaSlug("");
+    setRequestReplySlug("");
+    setRequestReplyLoading(false);
+    setRequestReplyNotice(null);
   }, [selected?.id]);
 
   useEffect(() => {
@@ -659,6 +854,62 @@ export function ConversationsClient({
       setThreadReplyError(err instanceof Error ? err.message : "Unexpected error sending reply");
     } finally {
       setThreadReplyLoading(false);
+    }
+  };
+
+  const handleRequestPersonaReply = async () => {
+    if (!selected || !requestReplySlug.trim()) return;
+    const slug = requestReplySlug.trim();
+    setRequestReplyLoading(true);
+    setRequestReplyNotice(null);
+    try {
+      const res = await fetch(`/api/admin/conversations/${selected.id}/request-reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ persona_slug: slug }),
+      });
+      const json: {
+        success?: boolean;
+        error?: string;
+        message?: string;
+        data?: { message?: string };
+      } | null = await res.json().catch(() => null);
+      if (!res.ok) {
+        const errText =
+          json !== null && typeof json.error === "string" && json.error
+            ? json.error
+            : `Request failed (${res.status})`;
+        setRequestReplyNotice({ kind: "error", text: errText });
+        return;
+      }
+      if (json !== null && json.success === false) {
+        setRequestReplyNotice({
+          kind: "error",
+          text: json.error ?? "Request failed",
+        });
+        return;
+      }
+      const dataMsg =
+        json !== null &&
+        json.data &&
+        typeof json.data === "object" &&
+        typeof json.data.message === "string"
+          ? json.data.message
+          : undefined;
+      const msg =
+        json !== null && typeof json.message === "string"
+          ? json.message
+          : dataMsg ?? "Persona reply requested.";
+      setRequestReplyNotice({ kind: "success", text: msg });
+      const convJson = await apiFetch(`/api/admin/conversations/${selected.id}`);
+      if (convJson.success && convJson.data) updateSelectedFromList(convJson.data);
+    } catch (err) {
+      setRequestReplyNotice({
+        kind: "error",
+        text: err instanceof Error ? err.message : "Request failed",
+      });
+    } finally {
+      setRequestReplyLoading(false);
     }
   };
 
@@ -944,7 +1195,7 @@ export function ConversationsClient({
           {selected ? (
             <>
               {/* Thread header */}
-              <div className="flex items-center justify-between gap-3 border-b border-zinc-800/60 p-4">
+              <div className="flex items-start justify-between gap-3 border-b border-zinc-800/60 p-4">
                 <div className="flex min-w-0 flex-1 items-start gap-2">
                   <button
                     type="button"
@@ -981,7 +1232,72 @@ export function ConversationsClient({
                   </div>
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1.5">
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  {requestReplyLoading ? (
+                    <p
+                      data-testid="request-persona-reply-loading"
+                      className="max-w-[14rem] text-right text-[11px] text-violet-300/90"
+                    >
+                      Requesting reply from @{requestReplySlug}…
+                    </p>
+                  ) : null}
+                  {requestReplyNotice && !requestReplyLoading ? (
+                    <p
+                      data-testid={
+                        requestReplyNotice.kind === "error"
+                          ? "request-persona-reply-error"
+                          : "request-persona-reply-success"
+                      }
+                      className={`max-w-[14rem] text-right text-[11px] ${
+                        requestReplyNotice.kind === "error" ? "text-red-400" : "text-emerald-400"
+                      }`}
+                    >
+                      {requestReplyNotice.text}
+                    </p>
+                  ) : null}
+                  <div
+                    className="flex flex-wrap items-center justify-end gap-1.5"
+                    data-testid="request-persona-reply-controls"
+                  >
+                    <label className="flex items-center gap-1 text-[10px] text-zinc-500">
+                      <Bot className="h-3 w-3 text-violet-400/80" aria-hidden />
+                      <span className="sr-only">Persona for reply request</span>
+                      <select
+                        value={requestReplySlug}
+                        onChange={(e) => {
+                          setRequestReplySlug(e.target.value);
+                          setRequestReplyNotice(null);
+                        }}
+                        disabled={requestReplyLoading || replyPersonas.length === 0}
+                        className="max-w-[9rem] rounded-lg border border-zinc-800 bg-zinc-900 py-1 pl-2 pr-6 text-[11px] text-zinc-200 outline-none focus:border-violet-500/40 disabled:opacity-40"
+                      >
+                        <option value="">Request reply as…</option>
+                        {replyPersonas.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      data-testid="request-persona-reply-submit"
+                      disabled={requestReplyLoading || !requestReplySlug || replyPersonas.length === 0}
+                      onClick={() => void handleRequestPersonaReply()}
+                      className="flex items-center gap-1 rounded-lg bg-violet-500/15 px-2 py-1.5 text-[11px] font-medium text-violet-200 ring-1 ring-violet-500/35 transition hover:bg-violet-500/25 disabled:opacity-40"
+                    >
+                      {requestReplyLoading ? (
+                        <>Requesting…</>
+                      ) : (
+                        <>
+                          <Bot className="h-3.5 w-3.5" aria-hidden />
+                          <span className="hidden sm:inline">Request reply</span>
+                          <span className="sm:hidden">Request</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
                   {selected.status !== "resolved" && (
                     <ActionButton
                       icon={<CheckCircle2 className="h-4 w-4" />}
@@ -1015,6 +1331,7 @@ export function ConversationsClient({
                     onClick={() => void handleStatusAction(selected.id, "archived")}
                   />
                 </div>
+                </div>
               </div>
 
               {selected.links?.expense_id ? (
@@ -1030,6 +1347,13 @@ export function ConversationsClient({
                 </div>
               ) : null}
 
+              <PersonaContextPanel
+                slugs={contextPersonaSlugs}
+                bySlug={employeeBySlug}
+                personaDispatchBySlug={personaDispatchBySlug}
+                replyPersonas={replyPersonas}
+              />
+
               {/* Messages + optional thread sub-panel */}
               <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
                 <div className="flex min-h-[200px] flex-1 flex-col md:min-h-0">
@@ -1044,7 +1368,10 @@ export function ConversationsClient({
                         }`}
                         onClick={() => setThreadAnchorId(msg.id)}
                       >
-                        <MessageBubble msg={msg} />
+                        <MessageBubble
+                          msg={msg}
+                          enrichment={enrichParticipant(msg.author, employeeBySlug)}
+                        />
                       </button>
                     ))}
                   </div>
@@ -1074,6 +1401,7 @@ export function ConversationsClient({
                           key={msg.id}
                           msg={msg}
                           isAnchor={msg.id === threadAnchorId}
+                          enrichment={enrichParticipant(msg.author, employeeBySlug)}
                         />
                       ))}
                       {threadOptimisticMessages.map((msg) => (
@@ -1082,6 +1410,7 @@ export function ConversationsClient({
                           msg={msg}
                           isAnchor={false}
                           isPending={msg.id.startsWith("pending-")}
+                          enrichment={enrichParticipant(msg.author, employeeBySlug)}
                         />
                       ))}
                     </div>
@@ -1110,15 +1439,19 @@ export function ConversationsClient({
                           </option>
                         ))}
                       </select>
-                      <textarea
-                        id="thread-reply-body"
-                        data-testid="thread-panel-reply-text"
-                        value={threadReplyText}
-                        onChange={(e) => setThreadReplyText(e.target.value)}
-                        placeholder="Write your reply..."
-                        rows={3}
-                        className="mb-2 w-full resize-none rounded-lg border border-zinc-800 bg-zinc-900 p-2 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-sky-500/50"
-                      />
+                      <div className="mb-2">
+                        <ConversationComposer
+                          value={threadReplyText}
+                          onChange={setThreadReplyText}
+                          slashCommands={slashCommandsRegistry}
+                          personas={replyPersonas}
+                          disabled={
+                            threadReplyLoading || !BRAIN_CONVERSATION_PERSONA_REPLY_READY
+                          }
+                          placeholder="Write your reply..."
+                          textareaTestId="thread-panel-reply-text"
+                        />
+                      </div>
                       <button
                         type="submit"
                         data-testid="thread-panel-reply-send"
@@ -1144,12 +1477,24 @@ export function ConversationsClient({
 
               {/* Reply box */}
               <div className="border-t border-zinc-800/60 p-4">
-                <textarea
+                {composerError ? (
+                  <p
+                    className="mb-2 text-sm text-red-400"
+                    data-testid="conversation-composer-error"
+                  >
+                    {composerError}
+                  </p>
+                ) : null}
+                <ConversationComposer
                   value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
+                  onChange={(v) => {
+                    setReplyText(v);
+                    setComposerError(null);
+                  }}
+                  slashCommands={slashCommandsRegistry}
+                  personas={replyPersonas}
+                  disabled={replyLoading}
                   placeholder="Reply… (markdown supported)"
-                  rows={3}
-                  className="w-full resize-none rounded-lg border border-zinc-800 bg-zinc-900 p-3 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-sky-500/50"
                 />
                 <div className="mt-2 flex justify-end">
                   <button

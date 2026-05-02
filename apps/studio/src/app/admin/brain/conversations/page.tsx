@@ -1,3 +1,4 @@
+import { BrainClient, type EmployeeListItem } from "@/lib/brain-client";
 import { resolveComposePersonaOptions } from "@/lib/compose-persona-options";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 import {
@@ -84,6 +85,30 @@ async function fetchListPage(
   }
 }
 
+async function loadPersonaContextEnrichment(): Promise<{
+  employeeRoster: EmployeeListItem[];
+  personaDispatchBySlug: Record<string, number>;
+}> {
+  const client = BrainClient.fromEnv();
+  if (!client) return { employeeRoster: [], personaDispatchBySlug: {} };
+  let employeeRoster: EmployeeListItem[] = [];
+  let personaDispatchBySlug: Record<string, number> = {};
+  try {
+    employeeRoster = await client.getEmployees();
+  } catch {
+    /* roster optional — inbox still works */
+  }
+  try {
+    const summary = await client.getPersonaDispatchSummary();
+    for (const row of summary.personas) {
+      personaDispatchBySlug[row.persona_slug] = row.recent_dispatch_count_30d;
+    }
+  } catch {
+    /* dispatch summary optional */
+  }
+  return { employeeRoster, personaDispatchBySlug };
+}
+
 export default async function ConversationsPage() {
   const composePersonaOptions = await resolveComposePersonaOptions();
   const auth = getBrainAdminFetchOptions();
@@ -98,6 +123,8 @@ export default async function ConversationsPage() {
         setupWarning={null}
         composePersonaOptions={composePersonaOptions}
         replyPersonas={replyPersonas}
+        employeeRoster={[]}
+        personaDispatchBySlug={{}}
       />
     );
   }
@@ -111,6 +138,8 @@ export default async function ConversationsPage() {
         setupWarning={null}
         composePersonaOptions={composePersonaOptions}
         replyPersonas={replyPersonas}
+        employeeRoster={[]}
+        personaDispatchBySlug={{}}
       />
     );
   }
@@ -149,6 +178,7 @@ export default async function ConversationsPage() {
   const setupError =
     listed.error && !listed.page ? listed.error : null;
   const initialPage = listed.page;
+  const { employeeRoster, personaDispatchBySlug } = await loadPersonaContextEnrichment();
 
   return (
     <ConversationsClient
@@ -158,6 +188,8 @@ export default async function ConversationsPage() {
       setupWarning={setupWarning}
       composePersonaOptions={composePersonaOptions}
       replyPersonas={replyPersonas}
+      employeeRoster={employeeRoster}
+      personaDispatchBySlug={personaDispatchBySlug}
     />
   );
 }
