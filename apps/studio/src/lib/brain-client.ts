@@ -131,6 +131,50 @@ export type PersonaDispatchSummaryResponse = {
   notes: string;
 };
 
+// ---------------------------------------------------------------------------
+// Epic hierarchy (Studio Epics tree — `GET /admin/goals?include=epics.sprints.tasks`)
+// ---------------------------------------------------------------------------
+
+export type TaskItem = {
+  id: string;
+  title: string;
+  status: string;
+  github_pr: number | null;
+  github_pr_url: string | null;
+  owner_employee_slug: string | null;
+  ordinal: number | null;
+};
+
+export type SprintItem = {
+  id: string;
+  title: string;
+  status: string;
+  ordinal: number;
+  tasks: TaskItem[];
+};
+
+export type EpicItem = {
+  id: string;
+  title: string;
+  status: string;
+  priority: number;
+  percent_done: number;
+  owner_employee_slug: string;
+  brief_tag: string;
+  description: string | null;
+  sprints: SprintItem[];
+};
+
+export type GoalItem = {
+  id: string;
+  objective: string;
+  status: string;
+  horizon: string;
+  epics: EpicItem[];
+};
+
+export type EpicHierarchyResponse = GoalItem[];
+
 /** ``GET /admin/operating-score/history`` */
 export type OperatingScoreHistoryResponse = {
   days: number;
@@ -426,6 +470,14 @@ export class BrainClient {
   /** Fetch goals / OKRs payload for Studio admin (same shape as static goals.json). */
   async getGoals(): Promise<GoalsJson> {
     return this.get<GoalsJson>("/admin/goals", "goals");
+  }
+
+  /** Nested goals → epics → sprints → tasks for the Studio Epics tree. */
+  async getEpicHierarchy(): Promise<EpicHierarchyResponse> {
+    return this.get<EpicHierarchyResponse>(
+      "/admin/goals?include=epics.sprints.tasks",
+      "epic-hierarchy",
+    );
   }
 
   /** Memory layer statistics for Overview health tiles. */

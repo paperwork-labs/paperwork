@@ -8,10 +8,8 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
   usePathname: () => "/admin/workstreams",
 }));
-import {
-  WorkstreamsFileSchema,
-  computeKpis,
-} from "@/lib/workstreams/schema";
+
+import { WorkstreamsFileSchema, computeKpis } from "@/lib/workstreams/schema";
 
 vi.mock("next/headers", () => ({
   headers: async () =>
@@ -21,13 +19,48 @@ vi.mock("next/headers", () => ({
     }),
 }));
 
-function brainEnvelopePayload() {
+function epicHierarchyPayload() {
   return {
-    ...workstreamsJson,
-    generated_at: "2026-04-28T12:00:00Z",
-    source: "brain-writeback" as const,
-    ttl_seconds: 60,
-    writeback_last_run_at: null,
+    success: true as const,
+    data: [
+      {
+        id: "goal-1",
+        objective: "Ship Studio as Company HQ",
+        status: "active",
+        horizon: "Q2-2026",
+        epics: [
+          {
+            id: "WS-82",
+            title: "Studio HQ Complete Overhaul",
+            status: "in_progress",
+            priority: 1,
+            percent_done: 85,
+            owner_employee_slug: "dev",
+            brief_tag: "hq",
+            description: null,
+            sprints: [
+              {
+                id: "sp-1",
+                title: "Wave 0: Stop the bleed",
+                status: "shipped",
+                ordinal: 0,
+                tasks: [
+                  {
+                    id: "t-1",
+                    title: "PR-0a Vercel narrow cuts",
+                    status: "merged",
+                    github_pr: 598,
+                    github_pr_url: "https://github.com/paperwork-labs/paperwork/pull/598",
+                    owner_employee_slug: "dev",
+                    ordinal: 0,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
   };
 }
 
@@ -41,9 +74,8 @@ describe("/admin/workstreams page module", () => {
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockImplementation(async (url: string | URL) => {
       const u = String(url);
-      /* Server-side loader hits Brain directly (no Studio /api/admin proxy). */
-      if (u.includes("/admin/workstreams-board")) {
-        return new Response(JSON.stringify(brainEnvelopePayload()), {
+      if (u.includes("/admin/goals") && u.includes("include=epics.sprints.tasks")) {
+        return new Response(JSON.stringify(epicHierarchyPayload()), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         });
@@ -63,28 +95,25 @@ describe("/admin/workstreams page module", () => {
     expect(kpis.total).toBeGreaterThan(0);
   });
 
-  it("default export resolves to rendered markup when Brain proxy returns JSON", async () => {
+  it("default export renders Epics tree when Brain returns hierarchy", async () => {
     vi.stubEnv("BRAIN_API_URL", "http://brain.test");
     vi.stubEnv("BRAIN_API_SECRET", "test-secret");
     const { default: AdminWorkstreamsPage } = await import("../page");
     const tree = await AdminWorkstreamsPage();
     expect(tree).toBeTruthy();
     render(tree);
-    expect(screen.getByRole("tab", { name: "Board" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Sprints" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Cycles" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "Tree" })).toBeTruthy();
     expect(screen.getByRole("tab", { name: "PR Pipeline" })).toBeTruthy();
-    expect(screen.queryByTestId("workstreams-stale-banner")).toBeNull();
-    expect((await screen.findByTestId("workstreams-brain-freshness-banner")).textContent).toMatch(
-      /Last sync:/,
-    );
+    expect(screen.queryByRole("tab", { name: "Board" })).toBeNull();
+    expect(await screen.findByText(/Ship Studio as Company HQ/)).toBeTruthy();
+    expect(await screen.findByTestId("epics-tree")).toBeTruthy();
   });
 
-  it("surfaces error when Brain is configured and proxy returns 5xx", async () => {
+  it("surfaces error when Brain is configured and goals hierarchy returns 5xx", async () => {
     vi.stubEnv("BRAIN_API_URL", "http://brain.test");
     vi.stubEnv("BRAIN_API_SECRET", "test-secret");
     fetchMock.mockImplementation(async (url: string | URL) => {
-      if (String(url).includes("/admin/workstreams-board")) {
+      if (String(url).includes("/admin/goals") && String(url).includes("include=epics")) {
         return new Response("", { status: 503 });
       }
       return new Response("not found", { status: 404 });
@@ -92,6 +121,7 @@ describe("/admin/workstreams page module", () => {
     const { default: AdminWorkstreamsPage } = await import("../page");
     const tree = await AdminWorkstreamsPage();
     render(tree);
-    expect(screen.getByText(/Brain workstreams unavailable \(HTTP 503\)/)).toBeTruthy();
+    expect(await screen.findByTestId("epics-brain-error")).toBeTruthy();
+    expect(await screen.findByText(/Brain epic-hierarchy: HTTP 503/)).toBeTruthy();
   });
 });
