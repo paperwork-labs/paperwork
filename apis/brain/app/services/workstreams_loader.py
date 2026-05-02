@@ -83,6 +83,7 @@ def _blockers_as_str_list(raw: object) -> list[str]:
             if len(s) >= 3:
                 out2.append(s)
         return out2
+    return []
 
 
 def _epic_status_to_workstream(status: str) -> str:
