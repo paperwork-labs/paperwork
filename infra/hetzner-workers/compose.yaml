@@ -1,0 +1,7 @@
+services:
+  # Brain background workers will be added in PR-8d
+  # Cursor transcript ingest timer will be added in PR-7c
+  healthcheck:
+    image: alpine:3.21
+    restart: unless-stopped
+    command: ["sh", "-c", "while true; do echo 'hetzner-workers alive'; sleep 300; done"]

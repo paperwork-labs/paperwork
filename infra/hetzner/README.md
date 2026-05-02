@@ -1,91 +1,115 @@
-# Paperwork Labs Ops Stack — Hetzner VPS
+# Paperwork Labs — Hetzner Infrastructure
 
-Agent brain + social automation stack running on Hetzner Cloud CX33.
+Three-box architecture running all non-Vercel workloads on Hetzner Cloud (Helsinki, billing@paperworklabs.com).
 
-## Services
+## Box Summary
+
+| Hostname | Plan | IP | Role |
+|---|---|---|---|
+| **paperwork-ops** | CX33 (4 vCPU / 8 GB) | 204.168.147.100 | State + social: Postgres, Redis, Postiz, Temporal |
+| **hetzner-build** | CX43 (8 vCPU / 16 GB) | 89.167.34.68 | CI: GHA self-hosted runners, Vercel --prebuilt |
+| **hetzner-workers** | CX43 (8 vCPU / 16 GB) | 204.168.165.156 | Brain background: schedulers, dispatcher, transcript ingest |
+
+## paperwork-ops (`infra/hetzner/compose.yaml`)
+
+Runs persistent state and social media services. **Do not run production workloads here.**
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| **n8n** | 5678 | Agent brain — Slack bot workflows, daily briefings, PR summaries, persona routing |
 | **Postiz** | 5000 | Social media scheduler (TikTok, Instagram, Twitter/X) |
-| **PostgreSQL** | 5432 | Shared database for n8n + Postiz |
-| **Redis** | 6379 | Shared cache/queue for n8n + Postiz |
+| **PostgreSQL** | 5432 | Shared database for Postiz |
+| **Redis** | 6379 | Shared cache/queue for Postiz + Temporal |
+| **Temporal** | 7233 | Workflow orchestration for Postiz |
 
-## Server Details
+> **n8n removed**: Brain (Render-hosted FastAPI + LLM) replaced n8n for all agent workflows in 2026-Q1. The n8n and n8n-worker services have been removed from this compose.
 
-- **Provider**: Hetzner Cloud
-- **Plan**: CX33 (4 vCPU, 8GB RAM, 80GB SSD) — EUR 5.49/mo
-- **OS**: Ubuntu 24.04
-- **Reverse Proxy**: Caddy (auto TLS via Let's Encrypt)
-- **Account**: billing@paperworklabs.com
-
-## Quick Start
-
-### 1. Bootstrap the server
+### Quick Start
 
 ```bash
 chmod +x infra/hetzner/setup.sh
-./infra/hetzner/setup.sh <server-ip>
+./infra/hetzner/setup.sh 204.168.147.100
 ```
 
-This installs Docker, Caddy, configures the firewall, and copies deployment files.
+### Env file location
 
-### 2. Configure environment
+`/opt/paperwork-ops/.env` — populated from Studio Vault.
+
+---
+
+## hetzner-build (`infra/hetzner-build/`)
+
+Runs 5 GitHub Actions self-hosted runners (4 cheap-agent slots + 1 heavy-ci slot).
+
+See [`infra/hetzner-build/`](../hetzner-build/) for compose and setup script.
+
+### Quick Start
 
 ```bash
-ssh root@<server-ip>
-cd /opt/paperwork-ops
-nano .env  # fill in all REQUIRED values
+chmod +x infra/hetzner-build/setup.sh
+./infra/hetzner-build/setup.sh 89.167.34.68
 ```
 
-### 3. Start services
+Then configure `/opt/paperwork-build/.env` with a GitHub PAT and run `docker compose up -d`.
+
+### Runner labels
+
+| Runner name | Labels |
+|---|---|
+| hetzner-build-slot-1 | `self-hosted,hetzner-build,cheap-agent-slot-1` |
+| hetzner-build-slot-2 | `self-hosted,hetzner-build,cheap-agent-slot-2` |
+| hetzner-build-slot-3 | `self-hosted,hetzner-build,cheap-agent-slot-3` |
+| hetzner-build-slot-4 | `self-hosted,hetzner-build,cheap-agent-slot-4` |
+| hetzner-build-heavy-ci | `self-hosted,hetzner-build,heavy-ci` |
+
+---
+
+## hetzner-workers (`infra/hetzner-workers/`)
+
+Placeholder for Brain background workers (added in Wave 8 PRs).
+
+See [`infra/hetzner-workers/`](../hetzner-workers/) for compose and setup script.
+
+### Quick Start
 
 ```bash
-docker compose up -d
-docker compose logs -f  # verify all healthy
+chmod +x infra/hetzner-workers/setup.sh
+./infra/hetzner-workers/setup.sh 204.168.165.156
 ```
 
-### 4. Configure Caddy reverse proxy
+---
 
-Edit `/etc/caddy/Caddyfile`:
+## SSH Access
 
+From founder laptop: `ssh root@<ip>` (no `-i` flag needed — uses `~/.ssh/` default key).
+
+```bash
+ssh root@204.168.147.100   # paperwork-ops
+ssh root@89.167.34.68      # hetzner-build
+ssh root@204.168.165.156   # hetzner-workers
 ```
-n8n.paperworklabs.com {
-    reverse_proxy localhost:5678
-}
-
-social.paperworklabs.com {
-    reverse_proxy localhost:5000
-}
-```
-
-Then reload: `systemctl reload caddy`
-
-### 5. DNS Records
-
-Add A records pointing to the server IP:
-
-| Record | Type | Value |
-|--------|------|-------|
-| `n8n.paperworklabs.com` | A | `<server-ip>` |
-| `social.paperworklabs.com` | A | `<server-ip>` |
 
 ## Maintenance
 
 ```bash
 ssh root@<server-ip>
-cd /opt/paperwork-ops
+cd /opt/<app-dir>
 
-docker compose logs -f          # tail all logs
-docker compose ps               # check service status
-docker compose pull && docker compose up -d  # update images
-docker compose down              # stop all
+docker compose logs -f                         # tail all logs
+docker compose ps                              # check service status
+docker compose pull && docker compose up -d    # update images
+docker compose down                            # stop all
 ```
 
 ## Backups
 
-PostgreSQL data is stored in a Docker volume. To backup:
+PostgreSQL data is in a Docker volume on paperwork-ops:
 
 ```bash
+ssh root@204.168.147.100
+cd /opt/paperwork-ops
 docker compose exec postgres pg_dumpall -U ops > backup_$(date +%Y%m%d).sql
 ```
+
+## Runbook
+
+See [`docs/runbooks/hetzner-bootstrap.md`](../../docs/runbooks/hetzner-bootstrap.md) for full provisioning and operations runbook.
