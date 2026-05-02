@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { type ReactNode } from "react";
 
-import { Activity, Radio } from "lucide-react";
+import { MessageSquare, Radio } from "lucide-react";
 
 import { Badge, Card, CardContent, cn } from "@paperwork-labs/ui";
 
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { TabbedPageShell, type StudioTabDef } from "@/components/layout/TabbedPageShellNext";
 import { SprintMarkdown } from "@/components/sprint/SprintMarkdown";
-import type { EmployeeDetail } from "@/lib/brain-client";
+import type { EmployeeActivityPayload, EmployeeDetail } from "@/lib/brain-client";
 
 import { EmployeeNamingCeremonyButton } from "./employee-naming-ceremony-button";
 
@@ -38,6 +38,177 @@ function formatNamedAt(iso: string | null): string | null {
   } catch {
     return iso;
   }
+}
+
+/** Relative label for timeline rows ("2 hours ago", "yesterday"). */
+function formatActivityRelative(iso: string | null): string {
+  if (!iso) return "unknown time";
+  const ts = Date.parse(iso);
+  if (Number.isNaN(ts)) return iso;
+  const diffMs = Date.now() - ts;
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) {
+    return minutes === 1 ? "1 minute ago" : `${minutes} minutes ago`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
+  const d = new Date(ts);
+  const today = new Date();
+  const y = new Date(today);
+  y.setDate(y.getDate() - 1);
+  if (
+    d.getFullYear() === y.getFullYear() &&
+    d.getMonth() === y.getMonth() &&
+    d.getDate() === y.getDate()
+  ) {
+    return "yesterday";
+  }
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days} days ago`;
+  return d.toLocaleDateString(undefined, { dateStyle: "medium" });
+}
+
+type TimelineKind = "dispatch" | "conversation" | "transcript";
+
+type TimelineRow = {
+  key: string;
+  kind: TimelineKind;
+  sortMs: number;
+  iso: string | null;
+  title: string;
+  subtitle: string;
+  href: string | null;
+};
+
+const EPICS_ACTIVITY_HREF = "/admin/workstreams";
+const BRAIN_CONVERSATIONS_HREF = "/admin/brain/conversations";
+
+function buildActivityTimelineRows(act: EmployeeActivityPayload): TimelineRow[] {
+  const rows: TimelineRow[] = [];
+
+  for (const d of act.dispatches) {
+    const iso = d.dispatched_at;
+    rows.push({
+      key: `d:${d.epic_id}:${iso ?? "na"}`,
+      kind: "dispatch",
+      sortMs: iso ? Date.parse(iso) || 0 : 0,
+      iso,
+      title: d.title,
+      subtitle: `Dispatch · ${d.epic_id} · ${d.status}`,
+      href: EPICS_ACTIVITY_HREF,
+    });
+  }
+
+  for (const c of act.conversations) {
+    const iso = c.last_message_at;
+    rows.push({
+      key: `c:${c.conversation_id}`,
+      kind: "conversation",
+      sortMs: iso ? Date.parse(iso) || 0 : 0,
+      iso,
+      title: c.title,
+      subtitle: `Conversation · ${c.message_count} message${c.message_count === 1 ? "" : "s"}`,
+      href: BRAIN_CONVERSATIONS_HREF,
+    });
+  }
+
+  for (const t of act.transcript_episodes) {
+    const iso = t.created_at;
+    rows.push({
+      key: `t:${t.transcript_id}:${iso ?? t.title}`,
+      kind: "transcript",
+      sortMs: iso ? Date.parse(iso) || 0 : 0,
+      iso,
+      title: t.title,
+      subtitle: `Transcript · ${t.transcript_id}`,
+      href: null,
+    });
+  }
+
+  rows.sort((a, b) => b.sortMs - a.sortMs);
+  return rows;
+}
+
+function EmployeeActivityTimeline({ activity }: { activity: EmployeeActivityPayload }) {
+  const rows = buildActivityTimelineRows(activity);
+  if (rows.length === 0) {
+    return (
+      <HqEmptyState
+        icon={<MessageSquare className="h-8 w-8" aria-hidden />}
+        title="Activity"
+        description="No activity recorded."
+      />
+    );
+  }
+
+  const renderRowBody = (row: TimelineRow) => {
+    const kindEmoji =
+      row.kind === "dispatch" ? "📤" : row.kind === "conversation" ? "💬" : "📋";
+    return (
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <div className="flex flex-wrap items-baseline gap-2">
+          <span aria-hidden className="select-none text-base leading-none">
+            {kindEmoji}
+          </span>
+          {row.href ? (
+            <Link
+              href={row.href}
+              className="text-sm font-medium text-sky-400 hover:text-sky-300"
+            >
+              {row.title}
+            </Link>
+          ) : (
+            <span className="text-sm font-medium text-zinc-100">{row.title}</span>
+          )}
+        </div>
+        <p className="pl-[1.625rem] text-xs text-zinc-500">{row.subtitle}</p>
+        <p className="pl-[1.625rem] text-xs text-zinc-600">{formatActivityRelative(row.iso)}</p>
+      </div>
+    );
+  };
+
+  return (
+    <Card className="border-zinc-800/90 bg-zinc-950/40 shadow-none">
+      <CardContent className="space-y-0 p-5">
+        <h3 className="mb-4 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+          Recent timeline
+        </h3>
+        <div className="space-y-0" role="list" aria-label="Employee activity timeline">
+          {rows.map((row, index) => {
+            const isLast = index === rows.length - 1;
+            const dotClass =
+              row.kind === "dispatch"
+                ? "bg-violet-400"
+                : row.kind === "conversation"
+                  ? "bg-sky-400"
+                  : "bg-amber-400";
+            return (
+              <div key={row.key} className="flex gap-3 pb-10 last:pb-0" role="listitem">
+                <div className="flex w-10 shrink-0 flex-col items-center pt-1">
+                  <span
+                    aria-hidden
+                    className={cn(
+                      "h-2.5 w-2.5 rounded-full ring-2 ring-zinc-950",
+                      dotClass,
+                    )}
+                  />
+                  {!isLast ? (
+                    <span
+                      aria-hidden
+                      className="mt-2 mb-[-0.125rem] w-px shrink-0 grow bg-zinc-800/95"
+                      style={{ minHeight: "2.75rem" }}
+                    />
+                  ) : null}
+                </div>
+                {renderRowBody(row)}
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 function ConfigKV({ label, value }: { label: string; value: ReactNode }) {
@@ -80,8 +251,10 @@ function OwnershipCard({
 
 export function EmployeeProfileTabsClient({
   employee: e,
+  activity,
 }: {
   employee: EmployeeDetail;
+  activity: EmployeeActivityPayload;
 }) {
   const isHuman = e.kind === "human";
   const displayHeadline = e.display_name?.trim() || e.role_title;
@@ -374,13 +547,7 @@ export function EmployeeProfileTabsClient({
     </div>
   );
 
-  const activityTab = (
-    <HqEmptyState
-      icon={<Activity className="h-8 w-8" aria-hidden />}
-      title="Activity"
-      description="Activity feed coming soon — will show dispatch history, conversation participation, and PR contributions."
-    />
-  );
+  const activityTab = <EmployeeActivityTimeline activity={activity} />;
 
   const tabs: StudioTabDef<EmployeeProfileTabId>[] = [];
   tabs.push({ id: "overview", label: "Overview", content: overviewTab });

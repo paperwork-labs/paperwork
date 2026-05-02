@@ -180,6 +180,34 @@ export type EmployeeDetailPayload = {
   employee: EmployeeDetail;
 };
 
+/** ``GET /admin/employees/{slug}/activity`` — dispatch rows, mirrored threads, transcripts. */
+export type EmployeeActivityDispatch = {
+  epic_id: string;
+  title: string;
+  dispatched_at: string | null;
+  status: string;
+};
+
+export type EmployeeActivityConversation = {
+  conversation_id: string;
+  title: string;
+  last_message_at: string | null;
+  message_count: number;
+};
+
+export type EmployeeActivityTranscriptEpisode = {
+  transcript_id: string;
+  title: string;
+  role: string;
+  created_at: string | null;
+};
+
+export type EmployeeActivityPayload = {
+  dispatches: EmployeeActivityDispatch[];
+  conversations: EmployeeActivityConversation[];
+  transcript_episodes: EmployeeActivityTranscriptEpisode[];
+};
+
 function normalizeEmployeeDetail(raw: EmployeeDetail): EmployeeDetail {
   return {
     ...raw,
@@ -737,6 +765,12 @@ export class BrainClient {
     const path = `/admin/employees/${encodeURIComponent(slug)}`;
     const body = await this.get<EmployeeDetailPayload>(path, "employees/detail");
     return normalizeEmployeeDetail(body.employee);
+  }
+
+  /** Recent activity for roster profile (Brain SQL-backed). */
+  async getEmployeeActivity(slug: string): Promise<EmployeeActivityPayload> {
+    const path = `/admin/employees/${encodeURIComponent(slug)}/activity`;
+    return this.get<EmployeeActivityPayload>(path, "employees/activity");
   }
 
   /** Product registry rows (WS-82 — Brain ``products`` table). */

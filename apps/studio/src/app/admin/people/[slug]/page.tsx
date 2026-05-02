@@ -5,13 +5,21 @@ import { ArrowLeft } from "lucide-react";
 
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
-import { BrainClient, BrainClientError } from "@/lib/brain-client";
+import { BrainClient, BrainClientError, type EmployeeActivityPayload } from "@/lib/brain-client";
 
 import { EmployeeProfileTabsClient } from "./employee-profile-tabs-client";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = { params: Promise<{ slug: string }> };
+
+function emptyEmployeeActivity(): EmployeeActivityPayload {
+  return {
+    dispatches: [],
+    conversations: [],
+    transcript_episodes: [],
+  };
+}
 
 export default async function EmployeeProfilePage({ params }: PageProps) {
   const { slug } = await params;
@@ -90,6 +98,13 @@ export default async function EmployeeProfilePage({ params }: PageProps) {
     );
   }
 
+  let activity: EmployeeActivityPayload = emptyEmployeeActivity();
+  try {
+    activity = await client.getEmployeeActivity(slug);
+  } catch {
+    activity = emptyEmployeeActivity();
+  }
+
   const trimmedDisplay = employee.display_name?.trim() ?? "";
   const trimmedTagline = employee.tagline?.trim() ?? "";
   const primaryHeadline =
@@ -148,7 +163,7 @@ export default async function EmployeeProfilePage({ params }: PageProps) {
         }
       />
 
-      <EmployeeProfileTabsClient employee={employee} />
+      <EmployeeProfileTabsClient employee={employee} activity={activity} />
     </div>
   );
 }
