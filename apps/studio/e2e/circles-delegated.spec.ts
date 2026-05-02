@@ -1,14 +1,11 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Circles & delegated access (WS-76 PR-28 — STUDIO_E2E_FIXTURE=1)", () => {
-  test("circles page shows seed household card and members", async ({ page }) => {
+  test("circles page renders Circles HQ (Brain teams)", async ({ page }) => {
     await page.goto("/admin/circles", { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("admin-circles-page")).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByTestId("circle-card-circle-1")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Sharma Family" })).toBeVisible();
-    const members = page.getByTestId("circle-members-circle-1");
-    await expect(members.getByText("Sankalp")).toBeVisible();
-    await expect(members.getByText("Olga")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: /^Circles$/ })).toBeVisible();
+    await expect(page.getByTestId("hq-missing-cred-card").or(page.getByTestId("circles-org-stats"))).toBeVisible();
   });
 
   test("delegated page lists active share; revoke hides row (UI only)", async ({ page }) => {
