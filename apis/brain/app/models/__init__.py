@@ -1,4 +1,5 @@
 from app.models.api_key import ApiKey
+from app.models.employee import Employee
 from app.models.audit import AdminAuditLog, AuditLog
 from app.models.base import Base
 from app.models.connection import Connection
@@ -20,6 +21,7 @@ from app.models.workstream_board import WorkstreamDispatchLog, WorkstreamProgres
 __all__ = [
     "AdminAuditLog",
     "ApiKey",
+    "Employee",
     "AuditLog",
     "Base",
     "BrainSecretsEpisode",
