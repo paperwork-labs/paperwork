@@ -1,15 +1,20 @@
 /**
- * Semantic status tokens (WS-76) — align with Tailwind emerald.500 / amber.400 /
- * red.400 / sky.400; `--status-muted` lightened for ~4.5:1 on zinc-950 backgrounds.
+ * Semantic status CSS variables — global UX design system (WS-82 PR-11a).
+ *
+ * Imported from `globals.css` after Tailwind directives. Consumed via:
+ * - Tailwind arbitrary values: `bg-[var(--status-success)]`
+ * - `src/styles/design-tokens.ts`: `STATUS_COLORS` / `STATUS_CLASSES`
+ *
+ * Success uses emerald‑400-ish (`#34d399`); backgrounds are translucent for dark zinc shells.
  */
 :root {
-  --status-success: #10b981;
+  --status-success: #34d399;
+  --status-success-bg: rgb(6 78 59 / 0.25);
   --status-warning: #fbbf24;
+  --status-warning-bg: rgb(120 53 15 / 0.25);
   --status-danger: #f87171;
+  --status-danger-bg: rgb(127 29 29 / 0.25);
   --status-info: #38bdf8;
-  --status-muted: #a1a1aa;
-  --status-success-bg: rgb(16 185 129 / 0.1);
-  --status-warning-bg: rgb(251 191 36 / 0.1);
-  --status-danger-bg: rgb(248 113 113 / 0.1);
-  --status-info-bg: rgb(56 189 248 / 0.1);
+  --status-info-bg: rgb(12 74 110 / 0.22);
+  --status-muted: #71717a;
 }

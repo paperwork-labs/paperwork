@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
+/* Semantic `--status-*` tokens: definitions + docs in ../styles/tokens.css */
 @import "../styles/tokens.css";
 @import "@paperwork-labs/ui/themes.css";
 @plugin "@tailwindcss/typography";
