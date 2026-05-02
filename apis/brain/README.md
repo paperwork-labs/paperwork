@@ -26,4 +26,4 @@ If you deliberately need an exception for a Dockerfile change, migrate path, or 
 
 Before triggering a **production Vercel deploy** (workflow, agent, or CLI), run [`scripts/check_pre_deploy.py`](/scripts/check_pre_deploy.py): it enforces remaining hobby deploy budget via Brain [`GET /api/v1/admin/vercel-quota`](/apis/brain/app/routers/admin.py) and verifies required env vars from [`apis/brain/data/required_env_vars.yaml`](/apis/brain/data/required_env_vars.yaml). This is the **runtime** sibling to the merge-time scripts above — CI blocks bad merges; this blocks bad deploys.
 
-Runbook: [`docs/runbooks/PRE_DEPLOY_GUARD.md`](/docs/runbooks/PRE_DEPLOY_GUARD.md).
+Runbook: [`docs/runbooks/pre-deploy-guard.md`](/docs/runbooks/pre-deploy-guard.md).

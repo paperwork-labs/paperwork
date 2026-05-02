@@ -18,7 +18,7 @@ per-zone ``CLOUDFLARE_TOKEN_<ZONE_SLUG_UPPERCASE>`` tokens and falls back to
 ``CLOUDFLARE_API_TOKEN`` with a deprecation warning.  Callers must pass the
 zone apex so the resolver can pick the narrowest-scoped token.
 
-See ``docs/runbooks/cloudflare-per-zone-tokens.md``.
+See ``docs/runbooks/cloudflare-ownership.md`` (**Per-zone write tokens**).
 
 medallion: ops
 """

@@ -15,7 +15,7 @@ related_runbooks:
 
 **Goal:** Add the **primary** Clerk production domain `accounts.paperworklabs.com` and prove DNS so Clerk can issue TLS. Satellites (`filefree.ai`, etc.) come **after** verify — and **application code** must stay on the current Clerk integration until Track H4 ships `apps/accounts/` (see ordering below).
 
-**DNS for `paperworklabs.com`:** **Cloudflare** (Paperwork Labs work account — zone ID `6efe0c9f87c80a21617ff040fa2e55dd`; see `docs/runbooks/CLOUDFLARE_OWNERSHIP.md`). **Spaceship** is the registrar (NS delegation to Cloudflare). Use the Cloudflare steps below — do **not** add apex-zone records only in Spaceship unless you intentionally bypass Cloudflare (we do not).
+**DNS for `paperworklabs.com`:** **Cloudflare** (Paperwork Labs work account — zone ID `6efe0c9f87c80a21617ff040fa2e55dd`; see `docs/runbooks/cloudflare-ownership.md`). **Spaceship** is the registrar (NS delegation to Cloudflare). Use the Cloudflare steps below — do **not** add apex-zone records only in Spaceship unless you intentionally bypass Cloudflare (we do not).
 
 ## 0. Pick the correct Clerk instance (production only)
 
@@ -61,7 +61,7 @@ In the **same** Clerk **production** instance:
 1. **Domains** → **Satellite domains** (wording may vary).
 2. For each production app host, add as satellite, e.g. `filefree.ai`, `launchfree.ai`, `distill.tax`, `paperworklabs.com` (Studio), `tools.filefree.ai`, and the public AxiomFolio hostname — **exact hostnames users type**.
 
-Each satellite will get **its own** DNS instructions (often `clerk.<apex>` in **that** zone). As of **2026-04-28**, all five brand apex zones live on the **same** work Cloudflare account — complete those records in the matching zone when you cut over app-by-app (`docs/runbooks/CLOUDFLARE_OWNERSHIP.md`).
+Each satellite will get **its own** DNS instructions (often `clerk.<apex>` in **that** zone). As of **2026-04-28**, all five brand apex zones live on the **same** work Cloudflare account — complete those records in the matching zone when you cut over app-by-app (`docs/runbooks/cloudflare-ownership.md`).
 
 ## 5. Code / deploy ordering (critical)
 

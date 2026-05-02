@@ -171,7 +171,7 @@ Nameservers (delegation at **Spaceship** registrar → Cloudflare zone on work a
 - `janet.ns.cloudflare.com`
 - `noel.ns.cloudflare.com`
 
-Canonical account + zone IDs: `docs/runbooks/CLOUDFLARE_OWNERSHIP.md`.
+Canonical account + zone IDs: `docs/runbooks/cloudflare-ownership.md`.
 
 DNS records (configured in Cloudflare dashboard):
 

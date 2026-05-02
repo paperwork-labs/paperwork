@@ -6,7 +6,7 @@ Idempotent: lists existing records per zone, creates missing, PATCHes mismatched
 
 Also optionally enforces **ops** records on ``paperworklabs.com`` (Brain Render
 CNAME + social landing A) that Cloudflare auto-import can drop alongside Clerk
-CNAMEs — see ``docs/runbooks/CLERK_DNS_INCIDENT_2026-04-28.md``.
+CNAMEs — see ``docs/runbooks/clerk-dns-incident-2026-04-28.md``.
 
 Secrets: ``CLERK_SECRET_KEY``, ``CLOUDFLARE_API_TOKEN`` (or legacy ``CF_TOKEN``).
 Fallback: ``scripts/vault-get.sh <NAME>`` when env vars are empty.

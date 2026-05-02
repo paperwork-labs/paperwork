@@ -186,7 +186,7 @@ Correct procedure:
 
 ## Autonomous Infrastructure Operations (CRITICAL)
 
-**NEVER ask the founder for dashboard clicks.** Brain and agents have programmatic access to all infrastructure credentials. See `docs/runbooks/CREDENTIAL_ACCESS.md` for full details.
+**NEVER ask the founder for dashboard clicks.** Brain and agents have programmatic access to all infrastructure credentials. See `docs/runbooks/credential-access.md` for full details.
 
 Quick reference:
 - **Vercel CLI**: Already authenticated, just run commands

@@ -27,7 +27,7 @@ has blast radius spanning every property.  Per-zone tokens are scoped to
 exactly one zone with only the permissions required (Zone:Read, DNS:Edit,
 Cache Purge:Edit).  If leaked, the damage is limited to that zone.
 
-See ``docs/runbooks/cloudflare-per-zone-tokens.md``.
+See ``docs/runbooks/cloudflare-ownership.md`` (**Per-zone write tokens**).
 
 medallion: ops
 """

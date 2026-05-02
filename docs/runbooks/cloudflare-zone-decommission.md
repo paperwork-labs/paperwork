@@ -1,6 +1,6 @@
 ---
 title: Cloudflare — decommission zones on former personal account
-last_reviewed: 2026-04-28
+last_reviewed: 2026-05-02
 owner: infra-ops
 status: active
 domain: infra
@@ -11,6 +11,11 @@ tags: [cloudflare, dns, migration, security]
 
 # Cloudflare zone decommission (old personal account)
 
+> **Category**: decommission
+> **Owner**: @infra-ops
+> **Last verified**: 2026-05-02
+> **Status**: active
+
 **TL;DR:** After NS soak, delete duplicate zones from the founder’s old personal Cloudflare account using `scripts/cloudflare_decommission_zones.py`. Run only when the work account already serves production.
 
 ## When to run
@@ -19,7 +24,7 @@ tags: [cloudflare, dns, migration, security]
    (soak ended **~2026-04-29 21:00 UTC** for the 2026-04-28 migration).
 2. Confirm production is healthy on the **work** account (HTTP checks, Clerk, email
    DNS) and global resolvers show the **new** delegation (see
-   `docs/runbooks/CLOUDFLARE_OWNERSHIP.md`).
+   `docs/runbooks/cloudflare-ownership.md`).
 
 Do **not** run early: if public NS still matches the old zone's Cloudflare
 `name_servers`, the script **refuses** to delete (precondition failure).
@@ -27,7 +32,7 @@ Do **not** run early: if public NS still matches the old zone's Cloudflare
 ## Old-account API token
 
 1. Log into the **former** personal Cloudflare account (migrated-from; see
-   `CLOUDFLARE_OWNERSHIP.md`).
+   `cloudflare-ownership.md`).
 2. **My Profile → API Tokens → Create Token** (custom).
 3. Permissions: **Zone → Zone → Read** (to list zones via the API) and
    **Zone → Zone → Delete** (required for `DELETE /zones/{id}`). Optionally add
@@ -79,4 +84,4 @@ zone does **not** change delegation once migration is complete.
 * `scripts/cloudflare_decommission_zones.py` — implementation.
 * `scripts/cloudflare_issue_readonly_tokens.py` — per-zone read tokens on the
   **work** account (separate concern; run manually after merge, not in CI).
-* `docs/runbooks/CLOUDFLARE_OWNERSHIP.md` — canonical zone IDs and account IDs.
+* `docs/runbooks/cloudflare-ownership.md` — canonical zone IDs and account IDs.

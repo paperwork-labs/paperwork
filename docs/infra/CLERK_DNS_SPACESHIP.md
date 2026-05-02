@@ -10,7 +10,7 @@ tags: [clerk, dns, spaceship, infra, founder]
 
 # Clerk production DNS for `paperworklabs.com`
 
-> **2026-04-28:** Authoritative DNS for `paperworklabs.com` is the **Paperwork Labs work Cloudflare** zone (NS `janet` + `noel`; see `docs/runbooks/CLOUDFLARE_OWNERSHIP.md`). **Spaceship** remains the **registrar** only. Enter the CNAME rows below in **Cloudflare → DNS → Records** (same **name** / **target** semantics as the legacy Spaceship column labels). For the primary `accounts` host step-by-step, see `docs/infra/CLERK_ACCOUNTS_DNS_TONIGHT.md`.
+> **2026-04-28:** Authoritative DNS for `paperworklabs.com` is the **Paperwork Labs work Cloudflare** zone (NS `janet` + `noel`; see `docs/runbooks/cloudflare-ownership.md`). **Spaceship** remains the **registrar** only. Enter the CNAME rows below in **Cloudflare → DNS → Records** (same **name** / **target** semantics as the legacy Spaceship column labels). For the primary `accounts` host step-by-step, see `docs/infra/CLERK_ACCOUNTS_DNS_TONIGHT.md`.
 
 **Purpose:** Add the **five CNAME records** below so Clerk can verify domain ownership, serve the **Frontend API** on `clerk.paperworklabs.com`, **auto-host the Account Portal** on `accounts.paperworklabs.com`, and configure **Clerk email** (mail subdomain + DKIM).
 

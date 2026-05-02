@@ -1,8 +1,14 @@
 ---
-last_reviewed: 2026-05-01
+last_reviewed: 2026-05-02
+doc_kind: runbook
 ---
 
 # Brain deploy recovery (Render / Postgres / Docker)
+
+> **Category**: ops
+> **Owner**: @engineering
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** Merge-time guards for Brain Alembic heads, Dockerfile healthchecks, and import path safety. Read this when Render boot fails after a migration or Dockerfile change.
 
@@ -20,7 +26,7 @@ Operational notes for incidents that surfaced in April 2026 and the guardrails t
 - Workflow runbook path: [.github/workflows/brain-pre-merge-guards.yml](../../.github/workflows/brain-pre-merge-guards.yml)
 - Script sources: `scripts/check_alembic_heads.py`, `scripts/check_dockerfile_healthcheck.py`, `scripts/check_parents_import_safety.py`
 - Brain overview: [`apis/brain/README.md`](../../apis/brain/README.md)
-- **Vercel pre-deploy** (quota + required env vars before production deploy): [PRE_DEPLOY_GUARD.md](PRE_DEPLOY_GUARD.md) and [`scripts/check_pre_deploy.py`](../../scripts/check_pre_deploy.py)
+- **Vercel pre-deploy** (quota + required env vars before production deploy): [pre-deploy-guard.md](pre-deploy-guard.md) and [`scripts/check_pre_deploy.py`](../../scripts/check_pre_deploy.py)
 
 ## Local verification (run from repo root)
 

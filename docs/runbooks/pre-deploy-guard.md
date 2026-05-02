@@ -1,6 +1,6 @@
 ---
 title: Pre-deploy guard (Vercel quota + env vars + Clerk DNS)
-last_reviewed: 2026-04-28
+last_reviewed: 2026-05-02
 owner: infra-ops
 status: active
 domain: infra
@@ -10,6 +10,11 @@ tags: [vercel, brain, ci, deploy, quota, secrets, clerk, cloudflare, dns]
 ---
 
 # Pre-deploy guard (Vercel quota + env vars + Clerk DNS)
+
+> **Category**: ops
+> **Owner**: @infra-ops
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** Run `scripts/check_pre_deploy.py` before a production Vercel deploy so hobby quota, required env vars, and Clerk DNS cannot take production offline.
 
@@ -27,9 +32,9 @@ Typical failure modes this prevents:
 
 - **Hobby deploy cap** — 100 production deploys per UTC day; exhausting it mid-session blocks all apps on the team until reset.
 - **Missing Clerk (or API) env vars** — deploying without required keys yields HTTP 500 and `MIDDLEWARE_INVOCATION_FAILED` on edge/middleware.
-- **Clerk ↔ Cloudflare DNS drift** — Cloudflare zone migrations or bad imports can drop `*.clerk.services` CNAMEs while Vercel env vars still look fine (2026-04-28 incident — [CLERK_DNS_INCIDENT_2026-04-28.md](CLERK_DNS_INCIDENT_2026-04-28.md)).
+- **Clerk ↔ Cloudflare DNS drift** — Cloudflare zone migrations or bad imports can drop `*.clerk.services` CNAMEs while Vercel env vars still look fine (2026-04-28 incident — [Clerk DNS incident (2026-04-28)](clerk-dns-incident-2026-04-28.md)).
 
-Recovery patterns for Brain-on-Render boot issues remain in [Brain deploy recovery](BRAIN_DEPLOY_RECOVERY.md); this runbook is the **runtime Vercel** sibling.
+Recovery patterns for Brain-on-Render boot issues remain in [Brain deploy recovery](brain-deploy-recovery.md); this runbook is the **runtime Vercel** sibling.
 
 ## Requirements
 
@@ -92,7 +97,7 @@ Workflows that deploy should set `BRAIN_ADMIN_TOKEN` from repository secrets and
 
 ## See also
 
-- [Brain deploy recovery](BRAIN_DEPLOY_RECOVERY.md) — merge-time and Render boot guards.
+- [Brain deploy recovery](brain-deploy-recovery.md) — merge-time and Render boot guards.
 - [`scripts/check_pre_deploy.py`](../../scripts/check_pre_deploy.py) — implementation.
 - [`scripts/reconcile_clerk_dns.py`](../../scripts/reconcile_clerk_dns.py) — Clerk + Cloudflare DNS reconcile / check-only.
-- [Clerk DNS incident (2026-04-28)](CLERK_DNS_INCIDENT_2026-04-28.md) — post-mortem and temp redirect removal criteria.
+- [Clerk DNS incident (2026-04-28)](clerk-dns-incident-2026-04-28.md) — post-mortem and temp redirect removal criteria.

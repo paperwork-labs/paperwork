@@ -1,8 +1,14 @@
 ---
-last_reviewed: 2026-05-01
+last_reviewed: 2026-05-02
+doc_kind: runbook
 ---
 
 # Email deliverability (SPF + DMARC)
+
+> **Category**: setup
+> **Owner**: @infra-ops
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** What SPF and DMARC do for `paperworklabs.com`, how to apply records from this repo, and how to tighten DMARC after a soak. Read before changing mail-related DNS.
 

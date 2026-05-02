@@ -1,8 +1,14 @@
 ---
-last_reviewed: 2026-05-01
+last_reviewed: 2026-05-02
+doc_kind: runbook
 ---
 
 # pwl CLI Runbook
+
+> **Category**: setup
+> **Owner**: @engineering
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** Operator commands for listing apps, doctor checks, scaffolding APIs, and rebuilding `app_registry.json`. Open when you onboard a service or refresh the manifest.
 

@@ -1,14 +1,19 @@
 ---
 owner: infra-ops
-last_reviewed: 2026-05-01
+last_reviewed: 2026-05-02
 doc_kind: runbook
 domain: infra
 status: active
 severity_default: yellow
 related_runbooks:
-  - docs/runbooks/CREDENTIAL_ACCESS.md
+  - docs/runbooks/credential-access.md
 ---
 # Runbook: Hetzner Bootstrap & Operations
+
+> **Category**: ops
+> **Owner**: @infra-ops
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 > Provision and operate the three-box Hetzner infrastructure (paperwork-ops, hetzner-build, hetzner-workers). Use this when adding a new box, recovering from a failed service, or onboarding a new engineer to infrastructure ops.
 
@@ -222,6 +227,45 @@ Expected: All containers in `Up` state; 5 runners with `status: online`.
 - Add a row to `docs/KNOWLEDGE.md` under "Recent incidents" with pattern and resolution.
 - If a new guard is needed, file a `.cursor/rules/*.mdc` update PR.
 - Bump `last_reviewed` in this file's frontmatter.
+
+## Repurposing (legacy Social VPS)
+
+> **Merged from:** former `hetzner-socials-repurpose.md`. **Context:** a historical **CX22** box once hosted deprecated Brain-mirror **n8n** workflows; n8n was later removed from the production automation path (**WS-69**). Treat the notes below as **archival procedure** if you ever repurpose **a** small Hetzner VPS for experimentation — not as current required ops for the three-box fleet above.
+
+**TL;DR:** If you clean legacy automation off a leftover VPS and reinstall tooling behind **Cloudflare Tunnel**, follow phased cleanup → install → wiring. Validate against [n8n-deprecated-cleanup.md](n8n-deprecated-cleanup.md) (deprecated) and [decommission-checklist.md](decommission-checklist.md).
+
+### Historical context
+
+- **VPS:** Hetzner CX22-class host, historically used for deprecated Brain-mirror n8n (Slack adapter, error notifications, infra slash command).
+- **Exposure target:** UI and webhooks secured via **Cloudflare Tunnel** + **Zero Trust** (no raw public automation ports).
+
+### Phase 1: Cleanup
+
+Operational checklist when taking a leftover box from legacy mode into a clean slate:
+
+- [ ] Take VPS snapshot (insurance backup).
+- [ ] Stop and remove deprecated n8n containers (and orphan volumes if safe).
+- [ ] Remove deprecated Brain-mirror workflow configs from disk (see [n8n-deprecated-cleanup.md](n8n-deprecated-cleanup.md)).
+- [ ] Document current VPS state: `docker ps -a`, disk use, open ports (should be minimal pre-tunnel), kernel/hostname, and snapshot ID.
+
+### Phase 2: Fresh install (if reviving automation on a box)
+
+- [ ] **Docker Compose:** pinned images + tunnel sidecar (or separate tunnel container).
+- [ ] **Cloudflare Zero Trust:** operator UI hostname + separate webhook hostname (narrow access / WAF as needed).
+- [ ] **Backups:** daily export of app data to agreed object storage.
+- [ ] **Health check:** lightweight HTTP endpoint monitored from Brain or external probe.
+
+### Phase 3: Product wiring
+
+- [ ] Platform API tokens in Vault (or sanctioned secret store).
+- [ ] Publishing pipeline contracts (webhook or queue — define in product spec).
+- [ ] Scheduling, idempotency, failure alerts via agreed channels.
+
+### Access / rollback
+
+- **SSH:** documented in Vault (Hetzner project + host key pinning per team practice).
+- **Dashboard:** prefer Cloudflare Tunnel hostname over raw public IP.
+- **Rollback:** restore from Phase 1 snapshot if repurpose fails mid-flight; leave legacy stack **stopped** until a second maintenance window.
 
 ## Appendix
 

@@ -8,7 +8,7 @@ This document tracks which Vercel projects are **connected to the git repository
 
 Source of truth for app roots: `apps/*/vercel.json` and root `package.json` / `pnpm-workspace.yaml`.
 
-Team: `team_RwfzJ9ySyLuVcoWdKJfXC7h5` (Paperwork Labs, Hobby tier — see `docs/runbooks/PRE_DEPLOY_GUARD.md` for the 100/day deploy cap and how to avoid hitting it).
+Team: `team_RwfzJ9ySyLuVcoWdKJfXC7h5` (Paperwork Labs, Hobby tier — see `docs/runbooks/pre-deploy-guard.md` for the 100/day deploy cap and how to avoid hitting it).
 
 ## Connected (git-linked)
 
@@ -67,7 +67,7 @@ The latest Vercel build failed with rolldown 1.0.0-rc.17 `[UNLOADABLE_DEPENDENCY
 
 ## Pre-deploy enforcement
 
-Any workflow or agent triggering a Vercel deploy MUST first call `scripts/check_pre_deploy.py` (shipped in WS-34 / PR #365, runbook at `docs/runbooks/PRE_DEPLOY_GUARD.md`). The script refuses to proceed if:
+Any workflow or agent triggering a Vercel deploy MUST first call `scripts/check_pre_deploy.py` (shipped in WS-34 / PR #365, runbook at `docs/runbooks/pre-deploy-guard.md`). The script refuses to proceed if:
 
 - Brain `/admin/vercel-quota` reports `< 5` deploys remaining for the day, OR
 - Required env vars per `apis/brain/data/required_env_vars.yaml` are missing on the target environment, OR
@@ -79,5 +79,5 @@ This closes the 2026-04-28 incidents where (a) the daily Hobby quota was exhaust
 
 - `docs/infra/VERCEL_LINKING.md` — linking and env workflows.
 - `docs/infra/VERCEL_AUTO_PROMOTE.md` — production promotion.
-- `docs/runbooks/CLOUDFLARE_OWNERSHIP.md` — DNS account ownership.
-- `docs/runbooks/PRE_DEPLOY_GUARD.md` — pre-deploy quota + env-var enforcement (WS-34).
+- `docs/runbooks/cloudflare-ownership.md` — DNS account ownership.
+- `docs/runbooks/pre-deploy-guard.md` — pre-deploy quota + env-var enforcement (WS-34).

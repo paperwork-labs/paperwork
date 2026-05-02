@@ -1,8 +1,14 @@
 ---
-last_reviewed: 2026-05-01
+last_reviewed: 2026-05-02
+doc_kind: runbook
 ---
 
 # Brain Self-Prioritization
+
+> **Category**: brain
+> **Owner**: @engineering
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** How Brain proposes workstream candidates from objectives, POS, and other signals before they become tracker entries. Read when you promote or reject a candidate via the admin API.
 

@@ -289,7 +289,7 @@
       "last_pr": null,
       "last_activity": "2026-04-28T20:30:00.000Z",
       "last_dispatched_at": null,
-      "notes": "Superseded 2026-04-28: production CNAME for accounts.paperworklabs.com must target accounts.clerk.services (Clerk Account Portal), not cname.vercel-dns.com. Incident + recovery: docs/runbooks/CLERK_DNS_INCIDENT_2026-04-28.md. WS-37 adds automated reconcile + pre-deploy guard.",
+      "notes": "Superseded 2026-04-28: production CNAME for accounts.paperworklabs.com must target accounts.clerk.services (Clerk Account Portal), not cname.vercel-dns.com. Incident + recovery: docs/runbooks/clerk-dns-incident-2026-04-28.md. WS-37 adds automated reconcile + pre-deploy guard.",
       "estimated_pr_count": null,
       "github_actions_workflow": null,
       "related_plan": "sso_customer_unification_2026q2"
@@ -599,7 +599,7 @@
       "last_pr": 363,
       "last_activity": "2026-04-28T20:35:00.000Z",
       "last_dispatched_at": null,
-      "notes": "COMPLETED 2026-04-28 (WS-33). All five production zones on Billing@paperworklabs.com work Cloudflare (account 7e8976a674c66193992c04d61d5a6747). Zone IDs: paperworklabs.com 6efe0c9f87c80a21617ff040fa2e55dd; others in docs/runbooks/CLOUDFLARE_OWNERSHIP.md. NS janet+noel; Spaceship updated; resolvers OK; HTTP 200 all domains. Brain API token in vault+Render+GHA. Delete former personal-account migrated zones after 24h soak ~2026-04-29 21Z.",
+      "notes": "COMPLETED 2026-04-28 (WS-33). All five production zones on Billing@paperworklabs.com work Cloudflare (account 7e8976a674c66193992c04d61d5a6747). Zone IDs: paperworklabs.com 6efe0c9f87c80a21617ff040fa2e55dd; others in docs/runbooks/cloudflare-ownership.md. NS janet+noel; Spaceship updated; resolvers OK; HTTP 200 all domains. Brain API token in vault+Render+GHA. Delete former personal-account migrated zones after 24h soak ~2026-04-29 21Z.",
       "estimated_pr_count": 1,
       "github_actions_workflow": null,
       "related_plan": null
@@ -635,7 +635,7 @@
       "last_pr": null,
       "last_activity": "2026-04-29T12:00:00.000Z",
       "last_dispatched_at": null,
-      "notes": "Follow-up after WS-15 cancellation: delete apps/accounts Next.js scaffold, remove Vercel project prj_DidXdCyMrnrigX5us9Sv4noysUil, scrub required_env_vars.yaml accounts entry, and archive dashboard DNS notes that pointed at Vercel. Do NOT remove the Cloudflare Single Redirect for accounts.paperworklabs.com until Clerk custom hostname is healthy — see docs/runbooks/CLERK_DNS_INCIDENT_2026-04-28.md.\n\nClosed 2026-04-29: completed — accounts app dropped from Vercel; companion to WS-15",
+      "notes": "Follow-up after WS-15 cancellation: delete apps/accounts Next.js scaffold, remove Vercel project prj_DidXdCyMrnrigX5us9Sv4noysUil, scrub required_env_vars.yaml accounts entry, and archive dashboard DNS notes that pointed at Vercel. Do NOT remove the Cloudflare Single Redirect for accounts.paperworklabs.com until Clerk custom hostname is healthy — see docs/runbooks/clerk-dns-incident-2026-04-28.md.\n\nClosed 2026-04-29: completed — accounts app dropped from Vercel; companion to WS-15",
       "estimated_pr_count": null,
       "github_actions_workflow": null,
       "related_plan": null
@@ -653,7 +653,7 @@
       "last_pr": 372,
       "last_activity": "2026-04-29T12:00:00.000Z",
       "last_dispatched_at": null,
-      "notes": "Ships scripts/reconcile_clerk_dns.py (Clerk API cname_targets + Cloudflare reconcile/check-only), wires check_pre_deploy.py for studio/axiomfolio/filefree, APScheduler clerk_dns_reconcile_watch every 30m with Slack alert on drift, Dockerfile COPY for Render, and incident runbook docs/runbooks/CLERK_DNS_INCIDENT_2026-04-28.md.",
+      "notes": "Ships scripts/reconcile_clerk_dns.py (Clerk API cname_targets + Cloudflare reconcile/check-only), wires check_pre_deploy.py for studio/axiomfolio/filefree, APScheduler clerk_dns_reconcile_watch every 30m with Slack alert on drift, Dockerfile COPY for Render, and incident runbook docs/runbooks/clerk-dns-incident-2026-04-28.md.",
       "estimated_pr_count": 1,
       "github_actions_workflow": null,
       "related_plan": null
@@ -730,7 +730,7 @@
       "last_pr": null,
       "last_activity": "2026-04-29T12:00:00.000Z",
       "last_dispatched_at": null,
-      "notes": "After soak + production health on the work account, run scripts/cloudflare_decommission_zones.py (dry-run then --apply) with CLOUDFLARE_OLD_API_TOKEN to remove duplicate zones from the former personal account. Runbook: docs/runbooks/CLOUDFLARE_ZONE_DECOMMISSION.md.\n\nClosed 2026-04-29: completed via Cloudflare dashboard (founder action)",
+      "notes": "After soak + production health on the work account, run scripts/cloudflare_decommission_zones.py (dry-run then --apply) with CLOUDFLARE_OLD_API_TOKEN to remove duplicate zones from the former personal account. Runbook: docs/runbooks/cloudflare-zone-decommission.md.\n\nClosed 2026-04-29: completed via Cloudflare dashboard (founder action)",
       "estimated_pr_count": null,
       "github_actions_workflow": null,
       "related_plan": null
@@ -838,7 +838,7 @@
       "last_pr": null,
       "last_activity": "2026-04-28T02:21:00.000Z",
       "last_dispatched_at": "2026-04-28T02:21:00.000Z",
-      "notes": "Shipped: cloudflare_token_resolver.py resolves per-zone CLOUDFLARE_TOKEN_<ZONE_SLUG> write tokens with fallback to CLOUDFLARE_API_TOKEN + warning. cloudflare_client.py write path updated to use resolver. Config extended with per-zone vars. Runbook at docs/runbooks/cloudflare-per-zone-tokens.md. Tests at apis/brain/tests/test_cloudflare_token_resolver.py. Procedural memory rule added. Zone rotation (monthly scheduled job) deferred to Phase H Brain self-dispatch.",
+      "notes": "Shipped: cloudflare_token_resolver.py resolves per-zone CLOUDFLARE_TOKEN_<ZONE_SLUG> write tokens with fallback to CLOUDFLARE_API_TOKEN + warning. cloudflare_client.py write path updated to use resolver. Config extended with per-zone vars. Runbook section: docs/runbooks/cloudflare-ownership.md#per-zone-write-tokens (per-zone CLOUDFLARE_TOKEN_<ZONE_SLUG> write tokens; merged from former cloudflare-per-zone-tokens runbook). Tests at apis/brain/tests/test_cloudflare_token_resolver.py. Procedural memory rule added. Zone rotation (monthly scheduled job) deferred to Phase H Brain self-dispatch.",
       "estimated_pr_count": 2,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"
@@ -966,7 +966,7 @@
       "last_pr": null,
       "last_activity": "2026-04-29T12:00:00.000Z",
       "last_dispatched_at": null,
-      "notes": "Every WS-54 registry entry must have a runbook covering: outage diagnosis, rollback, common breakage modes. Template: docs/runbooks/CLERK_DNS_INCIDENT_2026-04-28.md.\n\nPhase E (remaining) — remaining Phase E — runbook audit cheap-agent dispatchable now",
+      "notes": "Every WS-54 registry entry must have a runbook covering: outage diagnosis, rollback, common breakage modes. Template: docs/runbooks/clerk-dns-incident-2026-04-28.md.\n\nPhase E (remaining) — remaining Phase E — runbook audit cheap-agent dispatchable now",
       "estimated_pr_count": 2,
       "github_actions_workflow": null,
       "related_plan": "level_4_autonomy_+_platform"
