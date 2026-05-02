@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { BrainStatusBanner } from "@/components/admin/hq/BrainStatusBanner";
 import { AdminRouteFallback } from "./admin-route-fallback";
 import { AdminLayoutClient } from "./admin-layout-client";
 import { BrainContextProvider } from "@/lib/brain-context";
@@ -111,7 +112,12 @@ export default async function AdminLayout({
         expensesPending={expensesPending}
         expensesCountsUnknown={expensesCountsUnknown}
       >
-        <Suspense fallback={<AdminRouteFallback />}>{children}</Suspense>
+        <>
+          <Suspense fallback={null}>
+            <BrainStatusBanner />
+          </Suspense>
+          <Suspense fallback={<AdminRouteFallback />}>{children}</Suspense>
+        </>
       </AdminLayoutClient>
     </BrainContextProvider>
   );
