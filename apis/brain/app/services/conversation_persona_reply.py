@@ -148,7 +148,7 @@ async def mirror_persona_message_to_pg(
         conv_tbl = ConversationRecord.__table__
 
         await db.execute(
-            pg_insert(conv_tbl)
+            pg_insert(conv_tbl)  # type: ignore[arg-type]
             .values(
                 {
                     conv_tbl.c.id: cid,
