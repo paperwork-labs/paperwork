@@ -143,8 +143,14 @@ async def admin_dashboard_stats(
     def _conv_metrics() -> tuple[int, int]:
         return conv_svc.admin_conversation_counts()
 
-    rows = await asyncio.to_thread(_load_dispatch_rows)
-    conv_total, conv_today = await asyncio.to_thread(_conv_metrics)
+    try:
+        rows = await asyncio.to_thread(_load_dispatch_rows)
+    except Exception:
+        rows = []
+    try:
+        conv_total, conv_today = await asyncio.to_thread(_conv_metrics)
+    except Exception:
+        conv_total, conv_today = 0, 0
     _, disp_today, last_disp = _dispatch_metrics(rows)
 
     payload = {
@@ -221,7 +227,10 @@ async def admin_dashboard_attention(
         for c in unreplied_page.items
     ]
 
-    rows = await asyncio.to_thread(_load_dispatch_rows)
+    try:
+        rows = await asyncio.to_thread(_load_dispatch_rows)
+    except Exception:
+        rows = []
     failed_dispatches: list[dict[str, Any]] = []
     for r in rows:
         if _dispatch_success_flag(r) is not False:

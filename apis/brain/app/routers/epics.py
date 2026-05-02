@@ -39,6 +39,21 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+def _goal_eager_opts() -> Any:
+    """Eager-load chain: Goal → Epics → Sprints → Tasks."""
+    return selectinload(Goal.epics).selectinload(Epic.sprints).selectinload(Sprint.tasks)
+
+
+def _epic_eager_opts() -> Any:
+    """Eager-load chain: Epic → Sprints → Tasks."""
+    return selectinload(Epic.sprints).selectinload(Sprint.tasks)
+
+
+def _sprint_eager_opts() -> Any:
+    """Eager-load chain: Sprint → Tasks."""
+    return selectinload(Sprint.tasks)
+
+
 # ---------------------------------------------------------------------------
 # Goals
 # ---------------------------------------------------------------------------
@@ -60,7 +75,7 @@ async def list_goals(
     _auth: None = Depends(_require_admin),
 ) -> Any:
     """List goals with nested epics → sprints → tasks. Optionally filter epics by product slug."""
-    nested = selectinload(Goal.epics).selectinload(Epic.sprints).selectinload(Sprint.tasks)
+    nested = _goal_eager_opts()
     epic_filter = None
     if product and product.strip():
         slug_l = product.strip().lower()
@@ -82,7 +97,9 @@ async def list_goals(
     stmt = stmt.order_by(Goal.created_at.desc())
     result = await db.execute(stmt)
     goals = result.scalars().all()
-    return success_response([GoalResponse.model_validate(g).model_dump() for g in goals])
+    return success_response(
+        [GoalResponse.model_validate(g).model_dump(mode="json") for g in goals],
+    )
 
 
 @router.post("/goals")
@@ -110,8 +127,12 @@ async def create_goal(
     )
     db.add(goal)
     await db.commit()
-    await db.refresh(goal)
-    return success_response(GoalResponse.model_validate(goal).model_dump(), status_code=201)
+    stmt = select(Goal).where(Goal.id == body.id).options(_goal_eager_opts())
+    goal = (await db.execute(stmt)).scalar_one()
+    return success_response(
+        GoalResponse.model_validate(goal).model_dump(mode="json"),
+        status_code=201,
+    )
 
 
 @router.patch("/goals/{goal_id}")
@@ -130,8 +151,9 @@ async def update_goal(
         attr = "metadata_" if field == "metadata" else field
         setattr(goal, attr, value)
     await db.commit()
-    await db.refresh(goal)
-    return success_response(GoalResponse.model_validate(goal).model_dump())
+    stmt = select(Goal).where(Goal.id == goal_id).options(_goal_eager_opts())
+    goal = (await db.execute(stmt)).scalar_one()
+    return success_response(GoalResponse.model_validate(goal).model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +174,7 @@ async def list_epics(
     _auth: None = Depends(_require_admin),
 ) -> Any:
     """List epics with optional filters for goal_id, status, owner, and product slug."""
-    stmt = select(Epic).options(selectinload(Epic.sprints).selectinload(Sprint.tasks))
+    stmt = select(Epic).options(_epic_eager_opts())
     if goal_id:
         stmt = stmt.where(Epic.goal_id == goal_id)
     if status:
@@ -170,7 +192,9 @@ async def list_epics(
     stmt = stmt.order_by(Epic.priority)
     result = await db.execute(stmt)
     epics = result.scalars().all()
-    return success_response([EpicResponse.model_validate(e).model_dump() for e in epics])
+    return success_response(
+        [EpicResponse.model_validate(e).model_dump(mode="json") for e in epics],
+    )
 
 
 @router.get("/epics/{epic_id}")
@@ -183,13 +207,13 @@ async def get_epic(
     stmt = (
         select(Epic)
         .where(Epic.id == epic_id)
-        .options(selectinload(Epic.sprints).selectinload(Sprint.tasks))
+        .options(_epic_eager_opts())
     )
     result = await db.execute(stmt)
     epic = result.scalar_one_or_none()
     if not epic:
         raise HTTPException(status_code=404, detail=f"Epic id={epic_id!r} not found")
-    return success_response(EpicResponse.model_validate(epic).model_dump())
+    return success_response(EpicResponse.model_validate(epic).model_dump(mode="json"))
 
 
 @router.post("/epics")
@@ -221,8 +245,12 @@ async def create_epic(
     )
     db.add(epic)
     await db.commit()
-    await db.refresh(epic)
-    return success_response(EpicResponse.model_validate(epic).model_dump(), status_code=201)
+    stmt = select(Epic).where(Epic.id == body.id).options(_epic_eager_opts())
+    epic = (await db.execute(stmt)).scalar_one()
+    return success_response(
+        EpicResponse.model_validate(epic).model_dump(mode="json"),
+        status_code=201,
+    )
 
 
 @router.patch("/epics/{epic_id}")
@@ -241,8 +269,9 @@ async def update_epic(
         attr = "metadata_" if field == "metadata" else field
         setattr(epic, attr, value)
     await db.commit()
-    await db.refresh(epic)
-    return success_response(EpicResponse.model_validate(epic).model_dump())
+    stmt = select(Epic).where(Epic.id == epic_id).options(_epic_eager_opts())
+    epic = (await db.execute(stmt)).scalar_one()
+    return success_response(EpicResponse.model_validate(epic).model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -258,7 +287,7 @@ async def list_sprints(
     _auth: None = Depends(_require_admin),
 ) -> Any:
     """List sprints with optional filters for epic_id and status."""
-    stmt = select(Sprint).options(selectinload(Sprint.tasks))
+    stmt = select(Sprint).options(_sprint_eager_opts())
     if epic_id:
         stmt = stmt.where(Sprint.epic_id == epic_id)
     if status:
@@ -266,7 +295,9 @@ async def list_sprints(
     stmt = stmt.order_by(Sprint.epic_id, Sprint.ordinal)
     result = await db.execute(stmt)
     sprints = result.scalars().all()
-    return success_response([SprintResponse.model_validate(s).model_dump() for s in sprints])
+    return success_response(
+        [SprintResponse.model_validate(s).model_dump(mode="json") for s in sprints],
+    )
 
 
 @router.post("/sprints")
@@ -296,8 +327,12 @@ async def create_sprint(
     )
     db.add(sprint)
     await db.commit()
-    await db.refresh(sprint)
-    return success_response(SprintResponse.model_validate(sprint).model_dump(), status_code=201)
+    stmt = select(Sprint).where(Sprint.id == body.id).options(_sprint_eager_opts())
+    sprint = (await db.execute(stmt)).scalar_one()
+    return success_response(
+        SprintResponse.model_validate(sprint).model_dump(mode="json"),
+        status_code=201,
+    )
 
 
 @router.patch("/sprints/{sprint_id}")
@@ -316,8 +351,9 @@ async def update_sprint(
         attr = "metadata_" if field == "metadata" else field
         setattr(sprint, attr, value)
     await db.commit()
-    await db.refresh(sprint)
-    return success_response(SprintResponse.model_validate(sprint).model_dump())
+    stmt = select(Sprint).where(Sprint.id == sprint_id).options(_sprint_eager_opts())
+    sprint = (await db.execute(stmt)).scalar_one()
+    return success_response(SprintResponse.model_validate(sprint).model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -344,7 +380,9 @@ async def list_tasks(
     stmt = stmt.order_by(Task.ordinal.nullslast(), Task.created_at)
     result = await db.execute(stmt)
     tasks = result.scalars().all()
-    return success_response([TaskResponse.model_validate(t).model_dump() for t in tasks])
+    return success_response(
+        [TaskResponse.model_validate(t).model_dump(mode="json") for t in tasks],
+    )
 
 
 @router.post("/tasks")
@@ -376,7 +414,10 @@ async def create_task(
     db.add(task)
     await db.commit()
     await db.refresh(task)
-    return success_response(TaskResponse.model_validate(task).model_dump(), status_code=201)
+    return success_response(
+        TaskResponse.model_validate(task).model_dump(mode="json"),
+        status_code=201,
+    )
 
 
 @router.patch("/tasks/{task_id}")
@@ -396,4 +437,4 @@ async def update_task(
         setattr(task, attr, value)
     await db.commit()
     await db.refresh(task)
-    return success_response(TaskResponse.model_validate(task).model_dump())
+    return success_response(TaskResponse.model_validate(task).model_dump(mode="json"))

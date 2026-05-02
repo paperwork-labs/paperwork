@@ -68,7 +68,7 @@ class Epic(Base):
     brief_tag: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     related_plan: Mapped[str | None] = mapped_column(Text)
-    blockers: Mapped[dict[str, Any]] = mapped_column(JSONB, server_default=_JSONB_ARR)
+    blockers: Mapped[list[Any]] = mapped_column(JSONB, server_default=_JSONB_ARR)
     last_activity: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
