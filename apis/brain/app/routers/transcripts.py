@@ -52,7 +52,7 @@ async def ingest_one_transcript(
     body: TranscriptIngestRequest,
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
-):
+) -> dict[str, object]:
     """Ingest one Cursor JSONL transcript by path or uuid under configured root."""
     path = _resolved_path_for_request(body)
     result = await transcript_ingest_svc.ingest_transcript(db, str(path))
@@ -64,7 +64,7 @@ async def ingest_transcripts_batch(
     body: TranscriptIngestBatchRequest,
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
-):
+) -> dict[str, object]:
     """Scan a directory recursively for ``*.jsonl`` and ingest each transcript once."""
     directory = body.directory.strip()
     root = Path(directory).expanduser()
