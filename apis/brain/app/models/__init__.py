@@ -5,6 +5,7 @@ from app.models.base import Base
 from app.models.connection import Connection
 from app.models.cost import Cost
 from app.models.entity import Entity, EntityEdge
+from app.models.epic_hierarchy import Epic, Goal, Sprint, Task
 from app.models.episode import Episode
 from app.models.github_actions_quota_snapshot import GitHubActionsQuotaSnapshot
 from app.models.organization import Organization, Team, TeamMember
@@ -30,13 +31,17 @@ __all__ = [
     "Cost",
     "Entity",
     "EntityEdge",
+    "Epic",
     "Episode",
+    "Goal",
     "GitHubActionsQuotaSnapshot",
     "Organization",
     "RenderQuotaSnapshot",
     "SchedulerRun",
     "Skill",
+    "Sprint",
     "Summary",
+    "Task",
     "Team",
     "TeamMember",
     "UserProfile",

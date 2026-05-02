@@ -32,6 +32,7 @@ from app.routers import (
     conversations,
     cost_monitor,
     employees,
+    epics,
     error_ingest,
     expenses,
     health,
@@ -204,6 +205,7 @@ app.include_router(infra_registry.router, prefix="/api/v1")
 app.include_router(brain.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(epics.router, prefix="/api/v1")
 app.include_router(persona_review.router, prefix="/api/v1")
 app.include_router(admin_learning.router, prefix="/api/v1")
 app.include_router(admin_audits.router, prefix="/api/v1")
