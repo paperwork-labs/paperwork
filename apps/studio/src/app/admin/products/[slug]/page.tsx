@@ -1,8 +1,14 @@
 import { notFound } from "next/navigation";
 
 import productsData from "@/data/products.json";
-import { listProductMarkdownDocs } from "@/lib/product-cockpit-docs";
-import { deriveHeroRollup, loadProductHealthBrainState } from "@/lib/product-health-brain";
+import { countOpenIssuesForProductLabel } from "@/lib/command-center";
+import { loadDocsIndex } from "@/lib/docs";
+import {
+  deriveHeroRollup,
+  loadProductHealthBrainState,
+} from "@/lib/product-health-brain";
+import { loadProductPlansBrainState } from "@/lib/product-hub-plans";
+import { filterDocEntriesForProduct, filterEpicsForProductSlug } from "@/lib/product-hub-signals";
 import type { ProductsRegistryFile } from "@/lib/products-registry";
 
 import { ProductCockpitClient } from "./product-cockpit-client";
@@ -23,19 +29,30 @@ export default async function ProductCockpitPage({
   const { products } = productsData as ProductsRegistryFile;
   const product = products.find((p) => p.slug === slug);
   if (!product) notFound();
-  const planDocs = listProductMarkdownDocs(slug);
-  const healthState = await loadProductHealthBrainState(slug);
-  const { rollup: healthRollup, narrative: derivedNarrative } = deriveHeroRollup(healthState);
+
+  const plansLoad = await loadProductPlansBrainState();
+  const { goals: filteredGoals } = filterEpicsForProductSlug(plansLoad.hierarchy, slug);
+  const docEntries = filterDocEntriesForProduct(loadDocsIndex().entries, product);
+  const [openIssues, healthState] = await Promise.all([
+    countOpenIssuesForProductLabel(slug),
+    loadProductHealthBrainState(slug),
+  ]);
+
+  const { narrative: derivedNarrative } = deriveHeroRollup(healthState);
   const brainUnreachable =
     !healthState.brainConfigured || Boolean(healthState.brainDataPlaneError);
   const healthNarrative = brainUnreachable
     ? "Health probes unreachable. Check brain status."
     : derivedNarrative;
+
   return (
     <ProductCockpitClient
       product={product}
-      planDocs={planDocs}
-      healthRollup={healthRollup}
+      openIssues={openIssues}
+      plansLoad={plansLoad}
+      filteredGoals={filteredGoals}
+      docEntries={docEntries}
+      healthState={healthState}
       healthNarrative={healthNarrative}
     />
   );
