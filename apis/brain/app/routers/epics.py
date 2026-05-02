@@ -82,7 +82,7 @@ async def list_goals(
     stmt = stmt.order_by(Goal.created_at.desc())
     result = await db.execute(stmt)
     goals = result.scalars().all()
-    return success_response([GoalResponse.model_validate(g).model_dump() for g in goals])
+    return success_response([GoalResponse.model_validate(g).model_dump(mode="json") for g in goals])
 
 
 @router.post("/goals")
@@ -111,7 +111,7 @@ async def create_goal(
     db.add(goal)
     await db.commit()
     await db.refresh(goal)
-    return success_response(GoalResponse.model_validate(goal).model_dump(), status_code=201)
+    return success_response(GoalResponse.model_validate(goal).model_dump(mode="json"), status_code=201)
 
 
 @router.patch("/goals/{goal_id}")
@@ -131,7 +131,7 @@ async def update_goal(
         setattr(goal, attr, value)
     await db.commit()
     await db.refresh(goal)
-    return success_response(GoalResponse.model_validate(goal).model_dump())
+    return success_response(GoalResponse.model_validate(goal).model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +170,7 @@ async def list_epics(
     stmt = stmt.order_by(Epic.priority)
     result = await db.execute(stmt)
     epics = result.scalars().all()
-    return success_response([EpicResponse.model_validate(e).model_dump() for e in epics])
+    return success_response([EpicResponse.model_validate(e).model_dump(mode="json") for e in epics])
 
 
 @router.get("/epics/{epic_id}")
@@ -189,7 +189,7 @@ async def get_epic(
     epic = result.scalar_one_or_none()
     if not epic:
         raise HTTPException(status_code=404, detail=f"Epic id={epic_id!r} not found")
-    return success_response(EpicResponse.model_validate(epic).model_dump())
+    return success_response(EpicResponse.model_validate(epic).model_dump(mode="json"))
 
 
 @router.post("/epics")
@@ -222,7 +222,7 @@ async def create_epic(
     db.add(epic)
     await db.commit()
     await db.refresh(epic)
-    return success_response(EpicResponse.model_validate(epic).model_dump(), status_code=201)
+    return success_response(EpicResponse.model_validate(epic).model_dump(mode="json"), status_code=201)
 
 
 @router.patch("/epics/{epic_id}")
@@ -242,7 +242,7 @@ async def update_epic(
         setattr(epic, attr, value)
     await db.commit()
     await db.refresh(epic)
-    return success_response(EpicResponse.model_validate(epic).model_dump())
+    return success_response(EpicResponse.model_validate(epic).model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -266,7 +266,7 @@ async def list_sprints(
     stmt = stmt.order_by(Sprint.epic_id, Sprint.ordinal)
     result = await db.execute(stmt)
     sprints = result.scalars().all()
-    return success_response([SprintResponse.model_validate(s).model_dump() for s in sprints])
+    return success_response([SprintResponse.model_validate(s).model_dump(mode="json") for s in sprints])
 
 
 @router.post("/sprints")
@@ -297,7 +297,7 @@ async def create_sprint(
     db.add(sprint)
     await db.commit()
     await db.refresh(sprint)
-    return success_response(SprintResponse.model_validate(sprint).model_dump(), status_code=201)
+    return success_response(SprintResponse.model_validate(sprint).model_dump(mode="json"), status_code=201)
 
 
 @router.patch("/sprints/{sprint_id}")
@@ -317,7 +317,7 @@ async def update_sprint(
         setattr(sprint, attr, value)
     await db.commit()
     await db.refresh(sprint)
-    return success_response(SprintResponse.model_validate(sprint).model_dump())
+    return success_response(SprintResponse.model_validate(sprint).model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------
@@ -344,7 +344,7 @@ async def list_tasks(
     stmt = stmt.order_by(Task.ordinal.nullslast(), Task.created_at)
     result = await db.execute(stmt)
     tasks = result.scalars().all()
-    return success_response([TaskResponse.model_validate(t).model_dump() for t in tasks])
+    return success_response([TaskResponse.model_validate(t).model_dump(mode="json") for t in tasks])
 
 
 @router.post("/tasks")
@@ -376,7 +376,7 @@ async def create_task(
     db.add(task)
     await db.commit()
     await db.refresh(task)
-    return success_response(TaskResponse.model_validate(task).model_dump(), status_code=201)
+    return success_response(TaskResponse.model_validate(task).model_dump(mode="json"), status_code=201)
 
 
 @router.patch("/tasks/{task_id}")
@@ -396,4 +396,4 @@ async def update_task(
         setattr(task, attr, value)
     await db.commit()
     await db.refresh(task)
-    return success_response(TaskResponse.model_validate(task).model_dump())
+    return success_response(TaskResponse.model_validate(task).model_dump(mode="json"))
