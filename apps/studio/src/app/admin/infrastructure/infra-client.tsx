@@ -11,25 +11,41 @@ import {
   HardDrive,
   Cpu,
   Radio,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
   Layers,
+  Workflow,
 } from "lucide-react";
 import type { InfraStatus, PlatformHealthSummary } from "@/lib/infra-types";
+import {
+  formatRelativeMinutesAgo,
+  formatVendorRollup,
+  infraRowToProbeResult,
+  infraVendorLabel,
+  probeRowAccentClass,
+  scanIsStale,
+  serviceStatusLevel,
+  tallyProbeStatuses,
+  type ServiceProbeResult,
+  type ServiceStatus,
+} from "@/lib/infra-status";
 import QuotaGitHubActionsPanel from "./quota-github-actions-panel";
 import QuotaRenderPanel from "./quota-render-panel";
 import QuotaVercelPanel from "./quota-vercel-panel";
-import { Card, CardContent } from "@paperwork-labs/ui";
+import { Card, CardContent, cn } from "@paperwork-labs/ui";
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 import { StatusDot } from "@/components/admin/hq/StatusDot";
+import { StatusBadge } from "@/components/admin/hq/StatusBadge";
+import { STATUS_CLASSES } from "@/styles/design-tokens";
 import { SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES_CSV } from "@/lib/infra-probes";
 import { HETZNER_BOXES } from "@/lib/hetzner-boxes";
 import LogsTab from "./tabs/logs-tab";
 
 type InfraService = InfraStatus;
+
+function infraRowKey(s: InfraService): string {
+  return `${s.probeKind ?? "std"}:${s.service}:${s.anchorId ?? ""}`;
+}
 
 const RENDER_APIS_WEB = new Set([
   "brain-api",
@@ -81,16 +97,21 @@ function formatTimePT(iso: string): string {
   }
 }
 
-function InfraHealthStatusDot({
-  healthy,
-  configured,
-}: {
-  healthy: boolean;
-  configured: boolean;
-}) {
-  if (!configured) return <StatusDot status="warning" size="lg" />;
-  if (healthy) return <StatusDot status="success" size="lg" pulse />;
-  return <StatusDot status="danger" size="lg" />;
+function statusWordLabel(status: ServiceStatus): string {
+  switch (status) {
+    case "ok":
+      return "OK";
+    case "degraded":
+      return "Degraded";
+    case "down":
+      return "Down";
+    case "missing_cred":
+      return "Credentials needed";
+    case "stale":
+      return "Stale";
+    default:
+      return "Unknown";
+  }
 }
 
 function latencyColor(ms: number | null): string {
@@ -100,45 +121,39 @@ function latencyColor(ms: number | null): string {
   return "text-[var(--status-danger)]";
 }
 
-function StatusIcon({ healthy, configured }: { healthy: boolean; configured: boolean }) {
-  if (!configured)
-    return <AlertTriangle className="h-4 w-4 text-[var(--status-warning)]" />;
-  if (healthy) return <CheckCircle2 className="h-4 w-4 text-[var(--status-success)]" />;
-  return <XCircle className="h-4 w-4 text-[var(--status-danger)]" />;
-}
-
-function platformStateBadgeClass(st?: string): string {
-  if (st === "live" || st === "ready")
-    return "border-[var(--status-success)]/50 bg-[var(--status-success-bg)] text-[var(--status-success)]";
-  if (st === "building")
-    return "border-[var(--status-warning)]/50 bg-[var(--status-warning-bg)] text-[var(--status-warning)]";
-  if (st === "failed" || st === "suspended")
-    return "border-[var(--status-danger)]/50 bg-[var(--status-danger-bg)] text-[var(--status-danger)]";
-  return "border-zinc-700 bg-zinc-900/80 text-zinc-300";
+function ProbeStatusCluster({ probe }: { probe: ServiceProbeResult }) {
+  const level = serviceStatusLevel(probe.status);
+  const stale = probe.status === "stale";
+  return (
+    <div className={`flex flex-col items-end gap-1 ${stale ? "opacity-75" : ""}`}>
+      <div className="flex items-center gap-2">
+        <StatusDot status={level} size="lg" pulse={probe.status === "ok"} className={stale ? "opacity-80" : undefined} />
+        <StatusBadge status={level} size="sm" className={stale ? "!normal-case border-dashed opacity-90" : "!normal-case"}>
+          {statusWordLabel(probe.status)}
+        </StatusBadge>
+      </div>
+      {probe.error && probe.status === "down" ? (
+        <span className="max-w-[14rem] text-right text-[10px] font-medium text-[var(--status-danger)]" title={probe.error}>
+          {probe.error}
+        </span>
+      ) : null}
+      {probe.error && probe.status === "missing_cred" ? (
+        <span className="text-right text-[10px] font-medium text-zinc-400">{probe.error}</span>
+      ) : null}
+      {probe.error && probe.status === "degraded" ? (
+        <span className="text-right text-[10px] font-medium text-[var(--status-warning)]">{probe.error}</span>
+      ) : null}
+      {probe.error && probe.status === "stale" ? (
+        <span className="text-right text-[10px] font-medium text-[var(--status-warning)]/90">{probe.error}</span>
+      ) : null}
+    </div>
+  );
 }
 
 function platformProbeBadgeLabel(svc: InfraService): string {
   const raw = (svc.deployState ?? "").trim();
   if (raw && raw !== "?") return raw.replace(/_/g, " ");
   return svc.stateLabel ?? "?";
-}
-
-function platformProbeBadgeTone(svc: InfraService): string {
-  const d = (svc.deployState ?? "").toLowerCase();
-  if (d === "live" || d === "ready") return "live";
-  if (
-    d.includes("progress") ||
-    d === "building" ||
-    d === "queued" ||
-    d === "initializing" ||
-    d === "deploying" ||
-    d === "analyzing"
-  )
-    return "building";
-  if (d === "missing") return "failed";
-  if (svc.stateLabel === "suspended") return "suspended";
-  if (svc.stateLabel === "failed") return "failed";
-  return svc.stateLabel ?? "";
 }
 
 function deriveSummary(services: InfraService[], fallback?: PlatformHealthSummary): PlatformHealthSummary {
@@ -184,31 +199,9 @@ function InfraClientSuspenseFallback() {
   );
 }
 
-function renderRollupPill(rows: InfraService[]): string {
-  const active = rows.filter((r) => !r.deprecated);
-  const depBad = rows.filter((r) => r.deprecated && !r.healthy);
-  const healthyN = active.filter((r) => r.healthy).length;
-  const totalN = active.length;
-  if (totalN === 0) return "No Render rows";
-  let s = `${healthyN} of ${totalN} healthy`;
-  if (depBad.length) s += ` · ${depBad.length} deprecated (non-blocking)`;
-  return s;
-}
-
-function vercelRollupPill(v: PlatformHealthSummary["vercel"], hasNames: boolean): string {
-  if (!hasNames) return "Set env to list projects";
-  if (v.total === 0) return "No Vercel rows";
-  return `${v.live} of ${v.total} live`;
-}
-
-function ServiceCard({ svc }: { svc: InfraService }) {
+function ServiceCard({ svc, probe }: { svc: InfraService; probe: ServiceProbeResult }) {
   const isVercel = svc.probeKind === "vercel";
-  const badgeTone = platformProbeBadgeTone(svc);
-  const borderCls = !svc.configured
-    ? "border-zinc-800"
-    : svc.healthy
-      ? "border-[var(--status-success)]/20"
-      : "border-[var(--status-danger)]/30";
+  const borderCls = `border ${probeRowAccentClass(probe.status)}`;
   return (
     <Card className={borderCls} id={svc.anchorId}>
       <CardContent className="p-4">
@@ -216,7 +209,7 @@ function ServiceCard({ svc }: { svc: InfraService }) {
           <div>
             <p className="font-medium text-zinc-100">{svc.service}</p>
             <p className="mt-0.5 text-xs text-zinc-500">
-              {isVercel ? "Vercel" : "Render"} · {svc.platformType ?? "—"}
+              {isVercel ? "Vercel" : "Render"} · {svc.platformType ?? "—"} · {platformProbeBadgeLabel(svc)}
               {svc.deprecated ? (
                 <span className="ml-2 text-[var(--status-warning)]/90">
                   · Scheduled for retirement (WS-02 Vercel cutover)
@@ -224,16 +217,7 @@ function ServiceCard({ svc }: { svc: InfraService }) {
               ) : null}
             </p>
           </div>
-          <span
-            className={`shrink-0 rounded border px-2 py-0.5 text-xs font-medium uppercase ${platformStateBadgeClass(
-              badgeTone,
-            )}`}
-            data-testid="infra-probe-state"
-          >
-            {svc.deprecated && (svc.deployState ?? "").toLowerCase().includes("fail")
-              ? "BUILD FAILED"
-              : platformProbeBadgeLabel(svc)}
-          </span>
+          <ProbeStatusCluster probe={probe} />
         </div>
         <p className="mt-2 text-sm text-zinc-400">{svc.detail}</p>
         {svc.commitSha ? <p className="mt-1 font-mono text-xs text-zinc-500">SHA {svc.commitSha}</p> : null}
@@ -257,30 +241,53 @@ function ServiceCard({ svc }: { svc: InfraService }) {
   );
 }
 
-function SupplementaryCard({ svc }: { svc: InfraService }) {
+function SupplementaryCard({ svc, probe }: { svc: InfraService; probe: ServiceProbeResult }) {
+  const borderCls = `border ${probeRowAccentClass(probe.status)}`;
   return (
-    <Card
-      className={
-        !svc.configured ? "border-zinc-800" : svc.healthy ? "border-[var(--status-success)]/30" : "border-[var(--status-danger)]/30"
-      }
-    >
+    <Card className={borderCls}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <InfraHealthStatusDot healthy={svc.healthy} configured={svc.configured} />
+            <div className={probe.status === "stale" ? "opacity-80" : undefined}>
+              <StatusDot
+                status={serviceStatusLevel(probe.status)}
+                size="lg"
+                pulse={probe.status === "ok"}
+              />
+            </div>
             <p className="font-medium text-zinc-100">{svc.service}</p>
           </div>
-          <div className="flex items-center gap-2">
-            {svc.latencyMs !== null ? (
-              <span className={`font-mono text-xs tabular-nums ${latencyColor(svc.latencyMs)}`}>
-                {svc.latencyMs}ms
+          <div className="flex flex-col items-end gap-1">
+            <div className="flex items-center gap-2">
+              {svc.latencyMs !== null ? (
+                <span className={`font-mono text-xs tabular-nums ${latencyColor(svc.latencyMs)}`}>
+                  {svc.latencyMs}ms
+                </span>
+              ) : (
+                <span className="font-mono text-xs text-zinc-600">—</span>
+              )}
+              <StatusBadge status={serviceStatusLevel(probe.status)} size="sm" className="!normal-case">
+                {statusWordLabel(probe.status)}
+              </StatusBadge>
+            </div>
+            {probe.error ? (
+              <span
+                className={`max-w-[14rem] text-right text-[10px] font-medium ${
+                  probe.status === "down"
+                    ? "text-[var(--status-danger)]"
+                    : probe.status === "missing_cred"
+                      ? "text-zinc-400"
+                      : "text-[var(--status-warning)]"
+                }`}
+              >
+                {probe.error}
               </span>
             ) : null}
-            <StatusIcon healthy={svc.healthy} configured={svc.configured} />
           </div>
         </div>
         <p className="mt-2 text-sm text-zinc-400">{svc.detail}</p>
-        {svc.service === "LaunchFree API" && !svc.healthy && /404/i.test(svc.detail) ? (
+        <p className="mt-1 text-[10px] text-zinc-500">Last checked · {formatRelativeMinutesAgo(probe.lastChecked)}</p>
+        {svc.service === "LaunchFree API" && probe.status === "down" && /404/i.test(svc.detail) ? (
           <p className="mt-2 text-xs text-[var(--status-danger)]">
             error:{" "}
             {svc.detail.includes("→ HTTP") ? svc.detail : `GET /health → ${svc.detail}`}
@@ -307,7 +314,7 @@ function SupplementaryCard({ svc }: { svc: InfraService }) {
               Console <ExternalLink className="h-3 w-3" />
             </a>
           ) : null}
-          {svc.service === "LaunchFree API" && !svc.healthy && /404/i.test(svc.detail) ? (
+          {svc.service === "LaunchFree API" && probe.status === "down" && /404/i.test(svc.detail) ? (
             <a
               href="https://github.com/paperwork-labs/paperwork/blob/main/docs/runbooks/launchfree-api-health.md"
               target="_blank"
@@ -380,6 +387,13 @@ function InfraClientImpl({
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const [quotaRefresh, setQuotaRefresh] = useState(0);
+  const [staleClock, setStaleClock] = useState(0);
+  const [githubProbe, setGithubProbe] = useState<ServiceProbeResult | null>(null);
+
+  useEffect(() => {
+    const id = setInterval(() => setStaleClock((c) => c + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const { platformRows, otherRows } = useMemo(() => {
     const platformRowsInner = services.filter(
@@ -428,6 +442,129 @@ function InfraClientImpl({
     [otherRows],
   );
 
+  const probeMap = useMemo(() => {
+    void staleClock;
+    const scanStale = scanIsStale(checkedAt);
+    const m = new Map<string, ServiceProbeResult>();
+    for (const s of services) {
+      m.set(infraRowKey(s), infraRowToProbeResult(s, checkedAt, { scanStale }));
+    }
+    return m;
+  }, [services, checkedAt, staleClock]);
+
+  const probeOf = useCallback(
+    (s: InfraService) => probeMap.get(infraRowKey(s))!,
+    [probeMap],
+  );
+
+  const vercelProbes = useMemo(() => vercelRows.map(probeOf), [vercelRows, probeOf]);
+  const renderProbes = useMemo(() => renderRows.map(probeOf), [renderRows, probeOf]);
+
+  const hetznerDedicatedProbes = useMemo((): ServiceProbeResult[] => {
+    const scanStale = scanIsStale(checkedAt);
+    return HETZNER_BOXES.map((box) => ({
+      service: box.hostname,
+      vendor: "Hetzner",
+      status: scanStale ? "stale" : ("ok" as const),
+      latencyMs: null,
+      lastChecked: checkedAt,
+      error: scanStale ? `last checked ${formatRelativeMinutesAgo(checkedAt)}` : null,
+      url: null,
+    }));
+  }, [checkedAt, staleClock]);
+
+  const githubFounderProbe = useMemo(
+    (): ServiceProbeResult =>
+      githubProbe ?? {
+        service: "GitHub Actions (quota)",
+        vendor: "GitHub",
+        status: "unknown",
+        latencyMs: null,
+        lastChecked: checkedAt,
+        error: null,
+        url: null,
+      },
+    [githubProbe, checkedAt],
+  );
+
+  const founderTally = useMemo(
+    () =>
+      tallyProbeStatuses([
+        ...services.map((s) => probeMap.get(infraRowKey(s))!),
+        ...hetznerDedicatedProbes,
+        githubFounderProbe,
+      ]),
+    [services, probeMap, hetznerDedicatedProbes, githubFounderProbe],
+  );
+
+  const tableRows = useMemo(
+    () =>
+      [...services].sort((a, b) => {
+        const va = infraVendorLabel(a).localeCompare(infraVendorLabel(b));
+        if (va !== 0) return va;
+        return a.service.localeCompare(b.service);
+      }),
+    [services],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/admin/quota/github-actions")
+      .then(async (r) => {
+        const scanStale = scanIsStale(checkedAt);
+        const common = {
+          service: "GitHub Actions (quota)",
+          vendor: "GitHub",
+          latencyMs: null as number | null,
+          lastChecked: checkedAt,
+          url: null as string | null,
+        };
+        if (r.status === 503) {
+          if (!cancelled) {
+            setGithubProbe({
+              ...common,
+              status: "missing_cred",
+              error: "credentials needed",
+            });
+          }
+          return;
+        }
+        if (!r.ok) {
+          if (!cancelled) {
+            setGithubProbe({
+              ...common,
+              status: "down",
+              error: `HTTP ${r.status}`,
+            });
+          }
+          return;
+        }
+        if (!cancelled) {
+          setGithubProbe({
+            ...common,
+            status: scanStale ? "stale" : "ok",
+            error: scanStale ? `last checked ${formatRelativeMinutesAgo(checkedAt)}` : null,
+          });
+        }
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setGithubProbe({
+            service: "GitHub Actions (quota)",
+            vendor: "GitHub",
+            status: "down",
+            latencyMs: null,
+            lastChecked: checkedAt,
+            error: e instanceof Error ? e.message : "Quota fetch failed",
+            url: null,
+          });
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [checkedAt, quotaRefresh, staleClock]);
+
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -458,9 +595,13 @@ function InfraClientImpl({
     return () => clearInterval(interval);
   }, [autoRefresh, refresh]);
 
-  const healthyCount = supplementaryRows.filter((s) => s.healthy).length;
-  const configuredCount = supplementaryRows.filter((s) => s.configured).length;
-  const degradedCount = supplementaryRows.filter((s) => s.configured && !s.healthy).length;
+  const supplementaryProbes = useMemo(
+    () => supplementaryRows.map((s) => probeOf(s)),
+    [supplementaryRows, probeOf],
+  );
+
+  const healthyCount = supplementaryProbes.filter((p) => p.status === "ok").length;
+  const degradedCount = supplementaryProbes.filter((p) => p.status === "degraded").length;
 
   const r = summary.render;
   const v = summary.vercel;
@@ -480,8 +621,9 @@ function InfraClientImpl({
       ? "Vercel: (no API data — set VERCEL_API_TOKEN + team)"
       : "Vercel: set VERCEL_MONOREPO_PROJECT_NAMES to enable project cards";
 
-  const allHealthy = degradedCount === 0 && supplementaryRows.length > 0 && healthyCount === supplementaryRows.length;
-  const hasDegraded = degradedCount > 0;
+  const allHealthy =
+    supplementaryRows.length > 0 && supplementaryProbes.every((p) => p.status === "ok");
+  const hasDegraded = supplementaryRows.length > 0 && !allHealthy;
 
   const grouped = new Map<string, InfraService[]>();
   const supplementaryForCategories = supplementaryRows.filter((s) => !CORE_HEALTH_PROBE_NAMES.has(s.service));
@@ -497,6 +639,36 @@ function InfraClientImpl({
 
   const showVercelMissingCred = !vercelMonorepoNamesConfigured;
   const vercelCardsToShow = showVercelMissingCred ? [] : vercelRows;
+
+  const vercelPillText = showVercelMissingCred
+    ? "credentials needed"
+    : vercelCardsToShow.length === 0
+      ? "no rows"
+      : formatVendorRollup(vercelProbes);
+
+  const renderPillText = (() => {
+    if (!hasRender) return "credentials needed";
+    if (renderRows.length === 0) return "no rows";
+    const base = formatVendorRollup(renderProbes);
+    const depBad = renderRows.filter((r) => r.deprecated && r.stateLabel !== "live");
+    if (depBad.length) return `${base} · ${depBad.length} deprecated (non-blocking)`;
+    return base;
+  })();
+
+  const githubPillText = githubProbe ? formatVendorRollup([githubProbe]) : "checking quota…";
+
+  const founderAlertParts: string[] = [];
+  if (founderTally.degraded) founderAlertParts.push(`⚠ ${founderTally.degraded} DEGRADED`);
+  if (founderTally.stale) founderAlertParts.push(`⌛ ${founderTally.stale} STALE`);
+  if (founderTally.down) founderAlertParts.push(`❌ ${founderTally.down} DOWN`);
+  if (founderTally.missingCred) founderAlertParts.push(`⏸ ${founderTally.missingCred} MISSING CRED`);
+
+  const founderBannerStatus: "success" | "warning" | "danger" =
+    founderTally.down > 0
+      ? "danger"
+      : founderTally.ok === founderTally.total
+        ? "success"
+        : "warning";
 
   const router = useRouter();
   const pathname = usePathname() ?? "/admin/infrastructure";
@@ -555,6 +727,109 @@ function InfraClientImpl({
       ) : (
         <>
           <section
+            aria-label="Infrastructure health summary"
+            data-testid="infra-founder-summary"
+            className={cn(
+              "rounded-xl border p-4 ring-2 ring-inset",
+              founderBannerStatus === "success" && STATUS_CLASSES.success.ring,
+              founderBannerStatus === "warning" && STATUS_CLASSES.warning.ring,
+              founderBannerStatus === "danger" && STATUS_CLASSES.danger.ring,
+            )}
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              <HqStatCard
+                label="Infrastructure health"
+                value={`${founderTally.ok} of ${founderTally.total} OK`}
+                helpText={
+                  founderAlertParts.length > 0
+                    ? founderAlertParts.join(" · ")
+                    : "All tracked services nominal"
+                }
+                status={founderBannerStatus}
+                variant="compact"
+              />
+              <HqStatCard
+                label="Last full scan"
+                value={formatRelativeMinutesAgo(checkedAt)}
+                helpText={
+                  supplementaryRows.some((s) => s.latencyMs != null)
+                    ? "Synthetic HTTP probes include latency-aware degraded states"
+                    : "Platform APIs + Brain quota checks share this timestamp"
+                }
+                status={founderTally.stale > 0 ? "warning" : "neutral"}
+                variant="compact"
+              />
+            </div>
+          </section>
+
+          <section aria-label="All services" className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Globe className="h-3.5 w-3.5 text-zinc-500" />
+                <h2 className="text-sm font-semibold text-zinc-200">Service matrix</h2>
+              </div>
+              <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
+                Latency-aware · last checked · status colors
+              </span>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-zinc-800">
+              <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                <thead className="border-b border-zinc-800 bg-zinc-950/80 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                  <tr>
+                    <th className="px-3 py-2">Service</th>
+                    <th className="px-3 py-2">Vendor</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Latency</th>
+                    <th className="px-3 py-2">Last checked</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tableRows.map((svc) => {
+                    const p = probeOf(svc);
+                    return (
+                      <tr
+                        key={infraRowKey(svc)}
+                        className={cn("border-b border-zinc-900/90", probeRowAccentClass(p.status))}
+                      >
+                        <td className="whitespace-nowrap px-3 py-2 font-medium text-zinc-100">{svc.service}</td>
+                        <td className="whitespace-nowrap px-3 py-2 text-zinc-400">{infraVendorLabel(svc)}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex min-w-[10rem] flex-wrap items-center gap-2">
+                            <StatusDot
+                              status={serviceStatusLevel(p.status)}
+                              size="sm"
+                              className={p.status === "stale" ? "opacity-70" : undefined}
+                            />
+                            <StatusBadge status={serviceStatusLevel(p.status)} size="sm" className="!normal-case">
+                              {statusWordLabel(p.status)}
+                            </StatusBadge>
+                            {p.error ? (
+                              <span className="max-w-[14rem] truncate text-xs text-zinc-500" title={p.error}>
+                                {p.error}
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
+                        <td
+                          className={cn(
+                            "whitespace-nowrap px-3 py-2 font-mono text-xs tabular-nums",
+                            latencyColor(svc.latencyMs),
+                          )}
+                        >
+                          {svc.latencyMs != null ? `${svc.latencyMs}ms` : "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2 text-xs tabular-nums text-zinc-500">
+                          {formatRelativeMinutesAgo(p.lastChecked)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section
             className="rounded-xl border border-zinc-800 p-4"
             data-testid="infra-health-summary"
             aria-label="Platform health summary"
@@ -595,7 +870,7 @@ function InfraClientImpl({
         <SectionHeader
           title="Vercel"
           icon={Globe}
-          pill={vercelRollupPill(v, vercelMonorepoNamesConfigured)}
+          pill={vercelPillText}
         />
         {showVercelMissingCred ? (
           <HqMissingCredCard
@@ -616,7 +891,7 @@ function InfraClientImpl({
                 key={svc.service + (svc.anchorId ?? "") + (svc.probeKind ?? "")}
                 data-testid="infra-probe-row"
               >
-                <ServiceCard svc={svc} />
+                <ServiceCard svc={svc} probe={probeOf(svc)} />
               </div>
             ))}
           </div>
@@ -632,7 +907,7 @@ function InfraClientImpl({
 
       {/* Render */}
       <section className="space-y-4" aria-label="Render backends and data">
-        <SectionHeader title="Render" icon={Layers} pill={renderRollupPill(renderRows)} />
+        <SectionHeader title="Render" icon={Layers} pill={renderPillText} />
         <div className="space-y-6">
           {renderBySubgroup.apis.length ? (
             <div>
@@ -640,7 +915,7 @@ function InfraClientImpl({
               <div className="grid gap-3 md:grid-cols-2">
                 {renderBySubgroup.apis.map((svc) => (
                   <div key={svc.anchorId} data-testid="infra-probe-row">
-                    <ServiceCard svc={svc} />
+                    <ServiceCard svc={svc} probe={probeOf(svc)} />
                   </div>
                 ))}
               </div>
@@ -652,7 +927,7 @@ function InfraClientImpl({
               <div className="grid gap-3 md:grid-cols-2">
                 {renderBySubgroup.workers.map((svc) => (
                   <div key={svc.anchorId} data-testid="infra-probe-row">
-                    <ServiceCard svc={svc} />
+                    <ServiceCard svc={svc} probe={probeOf(svc)} />
                   </div>
                 ))}
               </div>
@@ -664,7 +939,7 @@ function InfraClientImpl({
               <div className="grid gap-3 md:grid-cols-2">
                 {renderBySubgroup.data.map((svc) => (
                   <div key={svc.anchorId} data-testid="infra-probe-row">
-                    <ServiceCard svc={svc} />
+                    <ServiceCard svc={svc} probe={probeOf(svc)} />
                   </div>
                 ))}
               </div>
@@ -676,7 +951,7 @@ function InfraClientImpl({
               <div className="grid gap-3 md:grid-cols-2">
                 {renderBySubgroup.other.map((svc) => (
                   <div key={svc.anchorId} data-testid="infra-probe-row">
-                    <ServiceCard svc={svc} />
+                    <ServiceCard svc={svc} probe={probeOf(svc)} />
                   </div>
                 ))}
               </div>
@@ -689,7 +964,7 @@ function InfraClientImpl({
           <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">Health probes</p>
           <div className="grid gap-3 md:grid-cols-2">
             {coreHealthRows.map((svc) => (
-              <SupplementaryCard key={svc.service} svc={svc} />
+              <SupplementaryCard key={svc.service} svc={svc} probe={probeOf(svc)} />
             ))}
           </div>
         </div>
@@ -697,13 +972,15 @@ function InfraClientImpl({
 
       {/* Hetzner */}
       <section className="space-y-4" aria-label="Hetzner dedicated servers">
-        <SectionHeader title="Hetzner" icon={Server} pill="3 boxes" />
+        <SectionHeader title="Hetzner" icon={Server} pill={formatVendorRollup(hetznerDedicatedProbes)} />
         <p className="text-xs text-zinc-500">
           Dedicated VMs in Helsinki — status is assumed (no browser-side SSH). Compose references are repo paths.
         </p>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {HETZNER_BOXES.map((box) => (
-            <Card key={box.hostname} className="border border-zinc-800">
+          {HETZNER_BOXES.map((box, i) => {
+            const p = hetznerDedicatedProbes[i];
+            return (
+            <Card key={box.hostname} className={cn("border", probeRowAccentClass(p?.status ?? "ok"))}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -718,10 +995,29 @@ function InfraClientImpl({
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <StatusDot status="success" size="lg" pulse />
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--status-success)]">
-                      Assumed up
-                    </span>
+                    <div className={p?.status === "stale" ? "opacity-75" : undefined}>
+                      <StatusDot
+                        status={serviceStatusLevel(p?.status ?? "ok")}
+                        size="lg"
+                        pulse={p?.status === "ok"}
+                      />
+                    </div>
+                    <StatusBadge
+                      status={serviceStatusLevel(p?.status ?? "ok")}
+                      size="sm"
+                      className="!normal-case"
+                    >
+                      {p ? statusWordLabel(p.status) : "OK"}
+                    </StatusBadge>
+                    {p?.error ? (
+                      <span className="text-center text-[10px] font-medium text-[var(--status-warning)]">
+                        {p.error}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--status-success)]">
+                        Assumed up
+                      </span>
+                    )}
                   </div>
                 </div>
                 <p className="mt-2 font-mono text-sm text-zinc-300">{box.ip}</p>
@@ -759,7 +1055,8 @@ function InfraClientImpl({
                 ) : null}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -793,13 +1090,24 @@ function InfraClientImpl({
                 : "border border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)] text-[var(--status-warning)]"
           }`}
         >
-          <InfraHealthStatusDot healthy={allHealthy} configured={
-            supplementaryRows.length === 0 || configuredCount === supplementaryRows.length
-          } />
+          <StatusDot
+            status={
+              supplementaryRows.length === 0
+                ? "neutral"
+                : allHealthy
+                  ? "success"
+                  : supplementaryProbes.some((p) => p.status === "down" || p.status === "missing_cred")
+                    ? "danger"
+                    : "warning"
+            }
+            size="md"
+          />
           {allHealthy
             ? "All supplementary checks green"
             : hasDegraded
-              ? `${degradedCount} check${degradedCount > 1 ? "s" : ""} degraded (below)`
+              ? `${supplementaryProbes.filter((p) => p.status !== "ok").length} check${
+                  supplementaryProbes.filter((p) => p.status !== "ok").length > 1 ? "s" : ""
+                } need attention (below)`
               : "Supplementary checks"}
         </div>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
@@ -844,13 +1152,43 @@ function InfraClientImpl({
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   {catServices.map((svc) => (
-                    <SupplementaryCard key={svc.service} svc={svc} />
+                    <SupplementaryCard key={svc.service} svc={svc} probe={probeOf(svc)} />
                   ))}
                 </div>
               </div>
             );
           })}
         </div>
+      </section>
+
+      <section className="space-y-4" aria-label="GitHub">
+        <SectionHeader title="GitHub" icon={Workflow} pill={githubPillText} />
+        <p className="text-xs text-zinc-500">
+          Actions quotas and runners roll up via the Brain admin API ({githubProbe?.status === "missing_cred" ? "configure Brain to activate" : "live when Brain is reachable"}).
+        </p>
+        {githubProbe ? (
+          <div
+            className={cn(
+              "flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3",
+              probeRowAccentClass(githubProbe.status),
+            )}
+          >
+            <div className="flex items-center gap-2">
+              <StatusDot status={serviceStatusLevel(githubProbe.status)} size="md" pulse={githubProbe.status === "ok"} />
+              <p className="text-sm font-medium text-zinc-100">GitHub Actions quota feed</p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <StatusBadge status={serviceStatusLevel(githubProbe.status)} size="sm" className="!normal-case">
+                {statusWordLabel(githubProbe.status)}
+              </StatusBadge>
+              {githubProbe.error ? (
+                <span className="text-[10px] text-zinc-500">{githubProbe.error}</span>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-zinc-500">Contacting Brain for GitHub quota snapshot…</p>
+        )}
       </section>
 
       <section
