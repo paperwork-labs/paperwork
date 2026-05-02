@@ -178,6 +178,74 @@ const WAVES: WaveDef[] = [
       { id: "task-ws-82-pr-617", title: "PR-10a Overview dashboard", status: "merged", githubPr: 617 },
     ],
   },
+  {
+    id: "sprint-ws-82-wave-6",
+    title: "Design tokens + nav polish",
+    status: "shipped",
+    ordinal: 6,
+    tasks: [
+      { id: "task-ws-82-pr-618", title: "PR-11a Design system tokens + StatusDot/StatusBadge", status: "merged", githubPr: 618 },
+      { id: "task-ws-82-pr-619", title: "PR-12a Seed epic hierarchy script", status: "merged", githubPr: 619 },
+    ],
+  },
+  {
+    id: "sprint-ws-82-wave-7",
+    title: "Brain status + sidebar + teams",
+    status: "shipped",
+    ordinal: 7,
+    tasks: [
+      { id: "task-ws-82-pr-620", title: "Global Brain status banner", status: "merged", githubPr: 620 },
+      { id: "task-ws-82-pr-621", title: "Admin nav sidebar polish", status: "merged", githubPr: 621 },
+      { id: "task-ws-82-pr-622", title: "Seed Brain employees from persona specs", status: "merged", githubPr: 622 },
+      { id: "task-ws-82-pr-623", title: "Circles (Teams) page", status: "merged", githubPr: 623 },
+    ],
+  },
+  {
+    id: "sprint-ws-82-wave-8",
+    title: "Brain dispatch + command palette",
+    status: "shipped",
+    ordinal: 8,
+    tasks: [
+      { id: "task-ws-82-pr-624", title: "Dispatcher uses DB epics", status: "merged", githubPr: 624 },
+      { id: "task-ws-82-pr-625", title: "Command palette + keyboard shortcuts", status: "merged", githubPr: 625 },
+      { id: "task-ws-82-pr-626", title: "Wire Products to Brain DB", status: "merged", githubPr: 626 },
+    ],
+  },
+  {
+    id: "sprint-ws-82-wave-9",
+    title: "Naming ceremony + infra + overview",
+    status: "shipped",
+    ordinal: 9,
+    tasks: [
+      { id: "task-ws-82-pr-627", title: "Naming ceremony trigger", status: "merged", githubPr: 627 },
+      { id: "task-ws-82-pr-628", title: "Honest infrastructure status model", status: "merged", githubPr: 628 },
+      { id: "task-ws-82-pr-629", title: "Overview dashboard live Brain pulse", status: "merged", githubPr: 629 },
+    ],
+  },
+  {
+    id: "sprint-ws-82-wave-10",
+    title: "Product hub + conversations + backfill",
+    status: "shipped",
+    ordinal: 10,
+    tasks: [
+      { id: "task-ws-82-pr-630", title: "Product hub with live data tabs", status: "merged", githubPr: 630 },
+      { id: "task-ws-82-pr-631", title: "Conversation persona reply wired to Brain", status: "merged", githubPr: 631 },
+      { id: "task-ws-82-pr-632", title: "Transcript backfill script", status: "merged", githubPr: 632 },
+    ],
+  },
+  {
+    id: "sprint-ws-82-wave-11",
+    title: "Employee activity + epics search + fixes",
+    status: "shipped",
+    ordinal: 11,
+    tasks: [
+      { id: "task-ws-82-pr-633", title: "Employee activity timeline", status: "merged", githubPr: 633 },
+      { id: "task-ws-82-pr-634", title: "Epics tree search + filter", status: "merged", githubPr: 634 },
+      { id: "task-ws-82-pr-635", title: "Fix Alembic revision duplicate + CI guard", status: "merged", githubPr: 635 },
+      { id: "task-ws-82-pr-636", title: "Stop Vercel double-build", status: "merged", githubPr: 636 },
+      { id: "task-ws-82-pr-637", title: "Rename Hetzner boxes", status: "merged", githubPr: 637 },
+    ],
+  },
 ];
 
 async function main(): Promise<void> {
@@ -222,7 +290,7 @@ async function main(): Promise<void> {
     owner_employee_slug: owner,
     status: "in_progress",
     priority: 1,
-    percent_done: 85,
+    percent_done: 95,
     brief_tag: "studio",
     description: null as string | null,
     related_plan: null as string | null,
