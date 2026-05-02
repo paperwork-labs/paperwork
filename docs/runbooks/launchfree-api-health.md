@@ -1,12 +1,17 @@
 ---
 owner: ops
-last_reviewed: 2026-04-29
+last_reviewed: 2026-05-02
 doc_kind: runbook
 domain: launchfree
 status: stub
 ---
 
 # LaunchFree API health (`/health`)
+
+> **Category**: ops
+> **Owner**: @ops
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** Triage when Studio shows LaunchFree `/health` as failing (often 404). Check env, Render logs, and the real URL before you change probes.
 

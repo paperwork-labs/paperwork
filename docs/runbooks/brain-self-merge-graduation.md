@@ -1,8 +1,14 @@
 ---
-last_reviewed: 2026-05-01
+last_reviewed: 2026-05-02
+doc_kind: runbook
 ---
 
 # Brain Self-Merge Graduation
+
+> **Category**: brain
+> **Owner**: @engineering
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** Tier rules for Brain self-merge (`data-only` → `brain-code` → `app-code`) and how promotion and reverts interact. Check here before interpreting self-merge status.
 

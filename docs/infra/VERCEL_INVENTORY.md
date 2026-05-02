@@ -54,4 +54,4 @@ status: active
 - `docs/infra/VERCEL_PROJECTS.md` — detailed project documentation
 - `docs/infra/VERCEL_LINKING.md` — linking and env workflows
 - `docs/infra/VERCEL_AUTO_PROMOTE.md` — production promotion
-- `docs/runbooks/PRE_DEPLOY_GUARD.md` — quota enforcement
+- `docs/runbooks/pre-deploy-guard.md` — quota enforcement

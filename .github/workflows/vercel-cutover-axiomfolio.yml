@@ -11,7 +11,7 @@ name: Vercel cutover — axiomfolio (legacy → Next.js)
 #   - Idempotent: Step A skips PATCH if framework is already nextjs (this is
 #     useful when the PATCH already landed but the deploy was rate-limited).
 #   - Pre-deploy guard (Brain quota + required env vars) runs before the
-#     cutover script — see docs/runbooks/PRE_DEPLOY_GUARD.md.
+#     cutover script — see docs/runbooks/pre-deploy-guard.md.
 #
 # After this runs successfully:
 #   - axiomfolio.com / www.axiomfolio.com (already verified on the legacy

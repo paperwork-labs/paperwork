@@ -1,12 +1,17 @@
 ---
 owner: brain
-last_reviewed: 2026-04-30
+last_reviewed: 2026-05-02
 doc_kind: runbook
 domain: ops
-status: living
+status: active
 ---
 
 # Credential Access Runbook
+
+> **Category**: ops
+> **Owner**: @brain
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** How Brain and agents fetch Render, Vercel, and Cloudflare credentials without founder dashboard work. Use this when you need API keys, DNS fixes, or env changes.
 

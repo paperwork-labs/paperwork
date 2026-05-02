@@ -1,8 +1,14 @@
 ---
-last_reviewed: 2026-05-01
+last_reviewed: 2026-05-02
+doc_kind: runbook
 ---
 
 # Domain / App Decommission Checklist
+
+> **Category**: decommission
+> **Owner**: @infra-ops
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** Steps to remove a domain or app safely while keeping audit history (archive Vercel, DNS cleanup, registry updates). Follow before you tear down production URLs.
 
@@ -218,4 +224,4 @@ confirm zero active integrations.
 
 ### Hetzner VPS — repurpose (not shutdown)
 
-The Hetzner CX22 instance is **repurposed** for **Wave M** social automation (fresh n8n + Cloudflare Tunnel), not destroyed. Legacy Brain-mirror n8n is cleaned up per [hetzner-socials-repurpose.md](./hetzner-socials-repurpose.md) and [n8n-deprecated-cleanup.md](./n8n-deprecated-cleanup.md). Stop deprecated containers and remove old workflow configs as part of Phase 1; Slack workspace billing remains a separate founder action if the workspace is still active.
+The Hetzner CX22 instance may be **repurposed** per historical planning (fresh automation + Cloudflare Tunnel), not necessarily destroyed — see **[hetzner-bootstrap.md → Repurposing (legacy Social VPS)](./hetzner-bootstrap.md#repurposing-legacy-social-vps)**. Legacy Brain-mirror n8n is cleaned up per [n8n-deprecated-cleanup.md](./n8n-deprecated-cleanup.md) (**deprecated**). Stop deprecated containers and remove old workflow configs as part of Phase 1; Slack workspace billing remains a separate founder action if the workspace is still active.

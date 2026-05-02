@@ -206,7 +206,7 @@ docs:
     owners: [infra-ops, ux-lead]
     category: runbooks
   - slug: clerk-dns-incident-2026-04-28
-    path: docs/runbooks/CLERK_DNS_INCIDENT_2026-04-28.md
+    path: docs/runbooks/clerk-dns-incident-2026-04-28.md
     title: Clerk + Cloudflare DNS incident (2026-04-28)
     summary: "Post-mortem for Cloudflare migration impact on Clerk CNAMEs, Studio sign-in outages, temporary single redirect rule, validation, reconcile_clerk_dns.py integration, and removal criteria."
     tags: [clerk, cloudflare, dns, incident, runbook]
@@ -227,21 +227,21 @@ docs:
     owners: [infra-ops]
     category: runbooks
   - slug: cloudflare-ownership
-    path: docs/runbooks/CLOUDFLARE_OWNERSHIP.md
+    path: docs/runbooks/cloudflare-ownership.md
     title: Cloudflare account ownership + migration
     summary: "Completed 2026-04-28: all production zones on Paperwork Labs work Cloudflare account (former founder personal account migrated-from) + token rotation and ongoing DNS ops."
     tags: [cloudflare, dns, secrets, migration, security]
     owners: [infra-ops]
     category: runbooks
   - slug: cloudflare-zone-decommission
-    path: docs/runbooks/CLOUDFLARE_ZONE_DECOMMISSION.md
+    path: docs/runbooks/cloudflare-zone-decommission.md
     title: Cloudflare — decommission zones on former personal account
     summary: "After NS soak, delete migrated duplicate zones from the old personal Cloudflare account using scripts/cloudflare_decommission_zones.py (dry-run then --apply)."
     tags: [cloudflare, dns, migration, security]
     owners: [infra-ops]
     category: runbooks
   - slug: credential-access
-    path: docs/runbooks/CREDENTIAL_ACCESS.md
+    path: docs/runbooks/credential-access.md
     title: Credential Access Runbook
     summary: Brain and agents have programmatic access to all infrastructure credentials. **Never ask the founder to manually set env vars or DNS** — use the APIs documented here.
     tags: [ops, runbook]
@@ -283,7 +283,7 @@ docs:
     owners: [tax-domain, legal]
     category: runbooks
   - slug: email-deliverability
-    path: docs/runbooks/EMAIL_DELIVERABILITY.md
+    path: docs/runbooks/email-deliverability.md
     title: Email deliverability (SPF + DMARC)
     summary: "SPF and DMARC for paperworklabs.com (Google Workspace + Clerk via Postmark), how to extend SPF, read DMARC reports, and tighten from p=quarantine to p=reject."
     tags: [dns, email, dmarc, spf, clerk, postmark]
@@ -302,13 +302,6 @@ docs:
     summary: Shared drive topology + MCP wiring.
     tags: [runbook, drive, mcp]
     owners: [agent-ops, ea]
-    category: runbooks
-  - slug: hetzner-socials-repurpose
-    path: docs/runbooks/hetzner-socials-repurpose.md
-    title: Hetzner VPS — Social Automation Repurpose
-    summary: "Repurpose CX22 from deprecated Brain-mirror n8n to fresh n8n + Cloudflare Tunnel for Wave M social automation (phased cleanup, install, wiring)."
-    tags: [hetzner, n8n, cloudflare, runbook, social, infra]
-    owners: [infra-ops]
     category: runbooks
   - slug: launchfree-api-health
     path: docs/runbooks/launchfree-api-health.md
@@ -332,7 +325,7 @@ docs:
     owners: [infra-ops]
     category: runbooks
   - slug: pre-deploy-guard
-    path: docs/runbooks/PRE_DEPLOY_GUARD.md
+    path: docs/runbooks/pre-deploy-guard.md
     title: Pre-deploy guard (Vercel quota + env vars)
     summary: Run scripts/check_pre_deploy.py before any production Vercel deploy so hobby quota and missing Clerk/API env vars cannot take production offline.
     tags: [vercel, brain, ci, deploy, quota, secrets]
@@ -417,7 +410,7 @@ docs:
     owners: [cfo]
     category: reference
   - slug: brain-deploy-recovery
-    path: docs/runbooks/BRAIN_DEPLOY_RECOVERY.md
+    path: docs/runbooks/brain-deploy-recovery.md
     title: Brain deploy recovery (Render / Postgres / Docker)
     summary: Operational notes for incidents that surfaced in April 2026 and the guardrails that now block repeats at merge time.
     tags: []
@@ -504,13 +497,6 @@ docs:
     path: docs/infra/CLERK_TRINKETS.md
     title: Clerk SSO — Trinkets (Next.js)
     summary: "Runbook for the Trinkets app (`apps/trinkets`) identity layer: **Clerk** for interactive SSO (`/sign-in`, `/sign-up`) and global `ClerkProvider` appearance. The app is a **public** utility surface…"
-    tags: []
-    owners: [strategy]
-    category: reference
-  - slug: cloudflare-per-zone-tokens
-    path: docs/runbooks/cloudflare-per-zone-tokens.md
-    title: Cloudflare Per-Zone Write Tokens
-    summary: "**Status:** Active — WS-47 (Phase C Wallet) **Owner:** ops-engineer **Last updated:** 2026-04-28"
     tags: []
     owners: [strategy]
     category: reference

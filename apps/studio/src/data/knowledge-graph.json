@@ -267,13 +267,18 @@
       "id": "BRAIN_DEPLOY_RECOVERY",
       "slug": "brain-deploy-recovery",
       "title": "Brain deploy recovery (Render / Postgres / Docker)",
-      "kind": "handbook",
+      "kind": "runbook",
       "category": "reference",
-      "read_time_min": 1,
+      "read_time_min": 2,
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 1,
-      "links_out": 1
+      "links_out": 1,
+      "facets": {
+        "personas": [
+          "engineering"
+        ]
+      }
     },
     {
       "id": "BRAIN_PERSONAS_GENERATED",
@@ -339,25 +344,35 @@
       "id": "BRAIN_SELF_MERGE_GRADUATION",
       "slug": "brain-self-merge-graduation",
       "title": "Brain Self-Merge Graduation",
-      "kind": "handbook",
+      "kind": "runbook",
       "category": "reference",
       "read_time_min": 2,
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 0,
-      "links_out": 0
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "engineering"
+        ]
+      }
     },
     {
       "id": "BRAIN_SELF_PRIORITIZATION",
       "slug": "brain-self-prioritization",
       "title": "Brain Self-Prioritization",
-      "kind": "handbook",
+      "kind": "runbook",
       "category": "reference",
       "read_time_min": 2,
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 0,
-      "links_out": 0
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "engineering"
+        ]
+      }
     },
     {
       "id": "BRAIN_WEEKLY_RETRO",
@@ -369,7 +384,12 @@
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 0,
-      "links_out": 0
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "brain"
+        ]
+      }
     },
     {
       "id": "BRAND_DESIGN_DEEPDIVE_2026Q2",
@@ -472,7 +492,12 @@
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 2,
-      "links_out": 0
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "infra-ops"
+        ]
+      }
     },
     {
       "id": "CLERK_DNS_SPACESHIP",
@@ -606,23 +631,16 @@
       "title": "Cloudflare account ownership + migration",
       "kind": "runbook",
       "category": "runbooks",
-      "read_time_min": 10,
+      "read_time_min": 15,
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 0,
-      "links_out": 1
-    },
-    {
-      "id": "CLOUDFLARE_PER_ZONE_TOKENS",
-      "slug": "cloudflare-per-zone-tokens",
-      "title": "Cloudflare Per-Zone Write Tokens",
-      "kind": "handbook",
-      "category": "reference",
-      "read_time_min": 5,
-      "last_reviewed": null,
-      "freshness": "unknown",
-      "links_in": 0,
-      "links_out": 0
+      "links_out": 1,
+      "facets": {
+        "personas": [
+          "infra-ops"
+        ]
+      }
     },
     {
       "id": "CLOUDFLARE_TOKEN_INVENTORY",
@@ -646,7 +664,12 @@
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 0,
-      "links_out": 0
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "infra-ops"
+        ]
+      }
     },
     {
       "id": "CREDENTIAL_ACCESS",
@@ -654,11 +677,16 @@
       "title": "Credential Access Runbook",
       "kind": "runbook",
       "category": "runbooks",
-      "read_time_min": 6,
+      "read_time_min": 7,
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 0,
-      "links_out": 0
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "brain"
+        ]
+      }
     },
     {
       "id": "CREDENTIALS",
@@ -700,13 +728,18 @@
       "id": "DECOMMISSION_CHECKLIST",
       "slug": "decommission-checklist",
       "title": "Domain / App Decommission Checklist",
-      "kind": "handbook",
+      "kind": "runbook",
       "category": "reference",
       "read_time_min": 6,
       "last_reviewed": null,
       "freshness": "unknown",
-      "links_in": 2,
-      "links_out": 2
+      "links_in": 1,
+      "links_out": 1,
+      "facets": {
+        "personas": [
+          "infra-ops"
+        ]
+      }
     },
     {
       "id": "DEPENDABOT",
@@ -771,19 +804,29 @@
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 0,
-      "links_out": 0
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "infra-ops"
+        ]
+      }
     },
     {
       "id": "FILEFREE_PREVIEW_CLERK_ENVS",
       "slug": "filefree-preview-clerk-envs",
       "title": "Runbook: FileFree — Clerk Auth Env Vars for All Vercel Environments",
-      "kind": "handbook",
+      "kind": "runbook",
       "category": "reference",
       "read_time_min": 3,
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 0,
-      "links_out": 0
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "infra-ops"
+        ]
+      }
     },
     {
       "id": "FINANCIALS",
@@ -878,18 +921,6 @@
       }
     },
     {
-      "id": "HETZNER_SOCIALS_REPURPOSE",
-      "slug": "hetzner-socials-repurpose",
-      "title": "Hetzner VPS — Social Automation Repurpose",
-      "kind": "runbook",
-      "category": "runbooks",
-      "read_time_min": 2,
-      "last_reviewed": null,
-      "freshness": "unknown",
-      "links_in": 2,
-      "links_out": 2
-    },
-    {
       "id": "HOW_TO_NAVIGATE",
       "slug": "how-to-navigate",
       "title": "Navigate `docs/` (Obsidian vault)",
@@ -982,11 +1013,16 @@
       "title": "LaunchFree API health (`/health`)",
       "kind": "runbook",
       "category": "runbooks",
-      "read_time_min": 1,
+      "read_time_min": 2,
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 0,
-      "links_out": 0
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "ops"
+        ]
+      }
     },
     {
       "id": "N8N_DECOMMISSION_INVENTORY",
@@ -1009,8 +1045,13 @@
       "read_time_min": 2,
       "last_reviewed": null,
       "freshness": "unknown",
-      "links_in": 2,
-      "links_out": 3
+      "links_in": 1,
+      "links_out": 2,
+      "facets": {
+        "personas": [
+          "infra-ops"
+        ]
+      }
     },
     {
       "id": "PAPERWORK_LABS_DRIVE_SETUP",
@@ -1113,7 +1154,12 @@
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 1,
-      "links_out": 2
+      "links_out": 2,
+      "facets": {
+        "personas": [
+          "infra-ops"
+        ]
+      }
     },
     {
       "id": "PRODUCT_SPEC",
@@ -1141,18 +1187,23 @@
       "id": "PWL_CLI",
       "slug": "pwl-cli",
       "title": "pwl CLI Runbook",
-      "kind": "handbook",
+      "kind": "runbook",
       "category": "reference",
       "read_time_min": 2,
       "last_reviewed": null,
       "freshness": "unknown",
       "links_in": 0,
-      "links_out": 0
+      "links_out": 0,
+      "facets": {
+        "personas": [
+          "engineering"
+        ]
+      }
     },
     {
       "id": "README",
       "slug": "readme",
-      "title": "Paperwork Labs brand asset registry",
+      "title": "Brand asset registry",
       "kind": "reference",
       "category": "reference",
       "read_time_min": 1,
@@ -1326,7 +1377,7 @@
     {
       "id": "STACK_AUDIT_2026_Q2",
       "slug": "stack-audit-2026-q2",
-      "title": "Paperwork Labs Stack Audit - 2026 Q2",
+      "title": "Stack Audit -- 2026 Q2",
       "kind": "handbook",
       "category": "reference",
       "read_time_min": 22,
@@ -1483,7 +1534,7 @@
     {
       "id": "TIMEZONE_STANDARDS",
       "slug": "timezone-standards",
-      "title": "Timezone standards (Paperwork Labs)",
+      "title": "Timezone standards",
       "kind": "runbook",
       "category": "runbooks",
       "read_time_min": 6,
@@ -1548,6 +1599,18 @@
           "paperwork-labs"
         ]
       }
+    },
+    {
+      "id": "VERCEL_INVENTORY",
+      "slug": "vercel-inventory",
+      "title": "Vercel Inventory — 2026-04-30",
+      "kind": "reference",
+      "category": "reference",
+      "read_time_min": 2,
+      "last_reviewed": null,
+      "freshness": "unknown",
+      "links_in": 0,
+      "links_out": 0
     },
     {
       "id": "VERCEL_LINKING",
@@ -2040,12 +2103,6 @@
     },
     {
       "source": "N8N_DEPRECATED_CLEANUP",
-      "target": "HETZNER_SOCIALS_REPURPOSE",
-      "kind": "explicit-link",
-      "strength": 1
-    },
-    {
-      "source": "N8N_DEPRECATED_CLEANUP",
       "target": "N8N_DECOMMISSION_INVENTORY",
       "kind": "explicit-link",
       "strength": 1
@@ -2059,18 +2116,6 @@
     {
       "source": "FOUNDER_ACTIONS",
       "target": "KNOWLEDGE",
-      "kind": "explicit-link",
-      "strength": 1
-    },
-    {
-      "source": "HETZNER_SOCIALS_REPURPOSE",
-      "target": "DECOMMISSION_CHECKLIST",
-      "kind": "explicit-link",
-      "strength": 1
-    },
-    {
-      "source": "HETZNER_SOCIALS_REPURPOSE",
-      "target": "N8N_DEPRECATED_CLEANUP",
       "kind": "explicit-link",
       "strength": 1
     },
@@ -2165,6 +2210,18 @@
       "strength": 1
     },
     {
+      "source": "README",
+      "target": "BRAND_DESIGN_DEEPDIVE_2026Q2",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
+      "source": "README",
+      "target": "CANON",
+      "kind": "explicit-link",
+      "strength": 1
+    },
+    {
       "source": "CLERK_DISTILL",
       "target": "CLERK_FILEFREE",
       "kind": "explicit-link",
@@ -2185,12 +2242,6 @@
     {
       "source": "CLERK_DISTILL",
       "target": "STREAMLINE_SSO_DAGS_2026Q2",
-      "kind": "explicit-link",
-      "strength": 1
-    },
-    {
-      "source": "DECOMMISSION_CHECKLIST",
-      "target": "HETZNER_SOCIALS_REPURPOSE",
       "kind": "explicit-link",
       "strength": 1
     },
@@ -2251,18 +2302,6 @@
     {
       "source": "HOW_TO_NAVIGATE",
       "target": "INFRA",
-      "kind": "explicit-link",
-      "strength": 1
-    },
-    {
-      "source": "README",
-      "target": "BRAND_DESIGN_DEEPDIVE_2026Q2",
-      "kind": "explicit-link",
-      "strength": 1
-    },
-    {
-      "source": "README",
-      "target": "CANON",
       "kind": "explicit-link",
       "strength": 1
     },

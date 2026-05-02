@@ -1,6 +1,6 @@
 ---
 title: Clerk + Cloudflare DNS incident (2026-04-28)
-last_reviewed: 2026-04-28
+last_reviewed: 2026-05-02
 owner: infra-ops
 status: active
 doc_kind: runbook
@@ -9,6 +9,11 @@ tags: [clerk, cloudflare, dns, studio, auth, incident]
 ---
 
 # Clerk + Cloudflare DNS incident (2026-04-28)
+
+> **Category**: incident
+> **Owner**: @infra-ops
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** Post-mortem for Studio sign-in breaking after Cloudflare migration, how DNS was repaired, temporary redirect rules, and the guardrails (`reconcile_clerk_dns`, pre-deploy) that prevent repeats.
 
@@ -52,7 +57,7 @@ On **2026-04-28 ~20:45 UTC**, Studio’s Clerk sign-in flow broke after the **Cl
 | `scripts/check_pre_deploy.py` | For **`studio`**, **`axiomfolio`**, **`filefree`**: runs `reconcile_clerk_dns.py --check-only` unless `--skip-clerk-dns`. Exit **6** on drift. |
 | Brain APScheduler | `clerk_dns_reconcile_watch` runs **every 30 minutes**, same check-only path; **Slack** alert to `#engineering` on failure (via `slack_outbound`), loud logs if Slack is not configured. |
 | Docker image | `apis/brain/Dockerfile` copies `scripts/reconcile_clerk_dns.py` into `/app/scripts/` so Render can execute the job. |
-| Docs | This post-mortem; `CLOUDFLARE_OWNERSHIP.md` checklist; `VERCEL_PROJECTS.md` de-emphasises redundant `accounts` project (**WS-36**). |
+| Docs | This post-mortem; `cloudflare-ownership.md` checklist; `VERCEL_PROJECTS.md` de-emphasises redundant `accounts` project (**WS-36**). |
 
 ## Temporary measures still in place (do not remove silently)
 
@@ -105,6 +110,6 @@ Until then, the redirect is **load-bearing** for user sign-in.
 ## References
 
 - `scripts/reconcile_clerk_dns.py` — automation entry point.
-- `docs/runbooks/CLOUDFLARE_OWNERSHIP.md` — post-migration DNS checklist.
-- `docs/runbooks/PRE_DEPLOY_GUARD.md` — pre-deploy guard behaviour and exit codes.
+- `docs/runbooks/cloudflare-ownership.md` — post-migration DNS checklist.
+- `docs/runbooks/pre-deploy-guard.md` — pre-deploy guard behaviour and exit codes.
 - `docs/infra/VERCEL_PROJECTS.md` — Vercel project inventory (accounts row slated for removal).

@@ -1,5 +1,5 @@
 ---
-last_reviewed: 2026-05-01
+last_reviewed: 2026-05-02
 doc_kind: runbook
 owner: brain
 tags:
@@ -11,6 +11,11 @@ summary: How Brain computes, records, and recomputes weekly self-improvement ret
 ---
 
 # Brain Weekly Retro
+
+> **Category**: brain
+> **Owner**: @brain
+> **Last verified**: 2026-05-02
+> **Status**: active
 
 **TL;DR:** How Brain builds the weekly retro JSON from POS, PRs, incidents, and related data. Use when you recompute a week or interpret `weekly_retros.json`.
 

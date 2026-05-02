@@ -551,7 +551,7 @@ flowchart TB
 
 ### Cloudflare Configuration
 
-- **Nameservers**: `janet.ns.cloudflare.com`, `noel.ns.cloudflare.com` (delegation configured at registrar **Spaceship**; DNS zone on Paperwork Labs work Cloudflare account — see `docs/runbooks/CLOUDFLARE_OWNERSHIP.md`)
+- **Nameservers**: `janet.ns.cloudflare.com`, `noel.ns.cloudflare.com` (delegation configured at registrar **Spaceship**; DNS zone on Paperwork Labs work Cloudflare account — see `docs/runbooks/cloudflare-ownership.md`)
 - **SSL Mode**: Full (strict)
 - **Proxy**: All records proxied (orange cloud)
 - **Tunnel**: Token-based tunnel available for routing `api.axiomfolio.com` to local dev machine
