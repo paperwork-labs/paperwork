@@ -12,6 +12,8 @@ import { TabbedPageShell, type StudioTabDef } from "@/components/layout/TabbedPa
 import { SprintMarkdown } from "@/components/sprint/SprintMarkdown";
 import type { EmployeeDetail } from "@/lib/brain-client";
 
+import { EmployeeNamingCeremonyButton } from "./employee-naming-ceremony-button";
+
 export type EmployeeProfileTabId = "overview" | "config" | "ownership" | "activity";
 
 function ruleViewerHref(rule: string): string {
@@ -86,6 +88,21 @@ export function EmployeeProfileTabsClient({
   const tagline = e.tagline?.trim() || null;
   const selfNamingDate = e.named_by_self ? formatNamedAt(e.named_at) : null;
 
+  const namingCeremonyPanel =
+    !isHuman ? (
+      <Card className="border-zinc-800/90 bg-zinc-950/40 shadow-none">
+        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <h3 className="text-sm font-semibold text-zinc-200">Naming ceremony</h3>
+            <p className="text-xs text-zinc-500">
+              Re-run persona self-name, tagline, and avatar emoji (calls the persona model).
+            </p>
+          </div>
+          <EmployeeNamingCeremonyButton slug={e.slug} />
+        </CardContent>
+      </Card>
+    ) : null;
+
   const overviewTab = (
     <div className="space-y-8">
       <section
@@ -108,6 +125,9 @@ export function EmployeeProfileTabsClient({
             <h2 className="text-2xl font-semibold tracking-tight text-zinc-100 md:text-3xl">
               {displayHeadline}
             </h2>
+            {e.display_name?.trim() ? (
+              <p className="text-sm text-zinc-400">{e.role_title}</p>
+            ) : null}
             {tagline ? <p className="text-base text-zinc-400">{tagline}</p> : null}
           </div>
           <Badge
@@ -186,6 +206,7 @@ export function EmployeeProfileTabsClient({
 
   const configTab = (
     <div className="space-y-6">
+      {namingCeremonyPanel}
       <Card className="border-zinc-800/90 bg-zinc-950/40 shadow-none">
         <CardContent className="p-0 px-4">
           <h3 className="border-b border-zinc-800/80 pb-3 pt-4 text-sm font-semibold text-zinc-200">
