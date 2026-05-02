@@ -231,6 +231,21 @@ export type PersonaDispatchSummaryResponse = {
   notes: string;
 };
 
+/** ``POST /admin/conversations/{id}/persona-reply`` */
+export type PersonaReplyRequestBody = {
+  persona_slug: string;
+  message?: string;
+};
+
+/** Inner ``data`` for ``POST /admin/conversations/{id}/persona-reply``. */
+export type PersonaReplyResult = {
+  reply: string;
+  persona_slug: string;
+  model_used: string;
+  tokens_used: number;
+  message_id: string;
+};
+
 // ---------------------------------------------------------------------------
 // Epic hierarchy (Studio Epics tree — `GET /admin/goals?include=epics.sprints.tasks`)
 // ---------------------------------------------------------------------------

@@ -11,17 +11,14 @@ function notConfigured() {
   );
 }
 
-/**
- * Proxies POST /admin/conversations/{id}/request-reply (body: { persona_slug }) to Brain.
- * Brain may return 404 until the endpoint is implemented — Studio surfaces the status to the UI.
- */
+/** Proxies ``POST /admin/conversations/{id}/persona-reply`` to Brain (litellm). */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const auth = getBrainAdminFetchOptions();
   if (!auth.ok) return notConfigured();
 
   const reqBody = await req.text();
-  const res = await fetch(`${auth.root}/admin/conversations/${id}/request-reply`, {
+  const res = await fetch(`${auth.root}/admin/conversations/${id}/persona-reply`, {
     method: "POST",
     headers: {
       "X-Brain-Secret": auth.secret,

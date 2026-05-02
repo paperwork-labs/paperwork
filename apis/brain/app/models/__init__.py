@@ -2,6 +2,7 @@ from app.models.api_key import ApiKey
 from app.models.audit import AdminAuditLog, AuditLog
 from app.models.base import Base
 from app.models.connection import Connection
+from app.models.conversation_mirror import ConversationMessageRecord, ConversationRecord
 from app.models.cost import Cost
 from app.models.employee import Employee
 from app.models.entity import Entity, EntityEdge
@@ -29,6 +30,8 @@ __all__ = [
     "BrainSecretsEpisode",
     "BrainSecretsRegistry",
     "Connection",
+    "ConversationMessageRecord",
+    "ConversationRecord",
     "Cost",
     "Employee",
     "Entity",

@@ -9,7 +9,7 @@ Endpoints:
   POST /admin/conversations/{id}/status  — update status
   POST /admin/conversations/{id}/snooze  — snooze
   POST /admin/conversations/{id}/messages/{msg_id}/react — add/remove reaction
-  POST /admin/conversations/_search      — full-text search
+  POST /admin/conversations/{id}/persona-reply — generate persona reply (litellm)
 
 All endpoints require the ``X-Brain-Secret`` admin header via ``_require_admin``.
 """
@@ -21,20 +21,28 @@ import logging
 from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 import app.services.conversations as conv_svc
 import app.services.expenses as expense_svc
+from app.database import get_db
 from app.dependencies.auth import get_brain_user_context
 from app.schemas.base import error_response, success_response
 from app.schemas.brain_user_context import BrainUserContext  # noqa: TC001
 from app.schemas.conversation import (  # noqa: TC001
     AppendMessageRequest,
     ConversationCreate,
+    PersonaReplyRequest,
     ReactRequest,
     SnoozeRequest,
     StatusUpdateRequest,
 )
 from app.schemas.expenses import ExpenseConversationResolveBody  # noqa: TC001
+from app.services.conversation_persona_reply import (
+    UnknownPersonaError,
+    conversation_uuid,
+    run_conversation_persona_reply,
+)
 
 if TYPE_CHECKING:
     from fastapi.responses import JSONResponse
@@ -197,6 +205,41 @@ def append_message(
     except ValueError as exc:
         return error_response(str(exc), status_code=400)
     return success_response(msg.model_dump(mode="json"), status_code=201)
+
+
+@router.post("/conversations/{conversation_id}/persona-reply")
+async def persona_reply(
+    conversation_id: str,
+    body: PersonaReplyRequest,
+    ctx: BrainUserContext = Depends(get_brain_user_context),
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+) -> JSONResponse:
+    """Synthesize an in-character reply via litellm and append ``ThreadMessage``.
+
+    Mirrors the message into Postgres (``conversation_messages``) when migrated.
+    """
+    try:
+        conversation_uuid(conversation_id)
+    except ValueError as exc:
+        return error_response(str(exc), status_code=400)
+    try:
+        payload = await run_conversation_persona_reply(
+            db,
+            conversation_id=conversation_id,
+            persona_slug=body.persona_slug,
+            user_message=body.message,
+            organization_id=ctx.organization_id,
+        )
+    except UnknownPersonaError as exc:
+        return error_response(f"Unknown persona_slug: {exc.persona_slug!r}", status_code=404)
+    except KeyError:
+        return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
+    except PermissionError:
+        return error_response(f"Conversation {conversation_id!r} not found", status_code=404)
+    except RuntimeError as exc:
+        return error_response(str(exc), status_code=502)
+    return success_response(payload.model_dump(mode="json"))
 
 
 # ---------------------------------------------------------------------------

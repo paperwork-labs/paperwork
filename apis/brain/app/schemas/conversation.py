@@ -119,3 +119,26 @@ class SnoozeRequest(BaseModel):
 
 class StatusUpdateRequest(BaseModel):
     status: StatusLevel
+
+
+class PersonaReplyRequest(BaseModel):
+    persona_slug: str = Field(
+        ...,
+        min_length=1,
+        max_length=64,
+        pattern=r"^[a-z0-9_\-]+$",
+        description="Persona slug matching registry YAML (lowercase hyphen/underscore).",
+    )
+    message: str = Field(
+        default=("Review this conversation thread and reply with actionable guidance."),
+        min_length=1,
+        max_length=32000,
+    )
+
+
+class PersonaReplyResponse(BaseModel):
+    reply: str
+    persona_slug: str
+    model_used: str
+    tokens_used: int
+    message_id: str
