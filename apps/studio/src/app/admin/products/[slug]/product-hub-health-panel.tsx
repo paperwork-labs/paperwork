@@ -163,6 +163,36 @@ export function ProductHubHealthPanel({
           </ul>
         ) : null}
       </section>
+
+      <section className="rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-4">
+        <h3 className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+          Uptime & deploy clock
+        </h3>
+        {(() => {
+          const spark = state.probeResultsSpark;
+          const passed = spark.filter((x) => x.pass).length;
+          const pct = spark.length ? Math.round((100 * passed) / spark.length) : null;
+          return (
+            <div className="mt-3 space-y-2 text-sm text-zinc-300">
+              {spark.length === 0 ? (
+                <p className="text-zinc-500">No command-center probe spark data for this product yet.</p>
+              ) : (
+                <p>
+                  <span className="font-medium text-zinc-200">{passed}</span>
+                  <span className="text-zinc-500"> / {spark.length} recent probe ticks passing</span>
+                  {pct !== null ? (
+                    <span className="text-zinc-500"> ({pct}% — indicative, not contractual uptime)</span>
+                  ) : null}
+                </p>
+              )}
+              <p className="text-xs text-zinc-500">
+                Last production deploy time: <span className="text-zinc-400">placeholder</span> — wire
+                Vercel deployment finishedAt in a follow-up.
+              </p>
+            </div>
+          );
+        })()}
+      </section>
     </div>
   );
 }

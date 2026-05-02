@@ -261,6 +261,8 @@ export type EpicItem = {
   percent_done: number;
   owner_employee_slug: string;
   brief_tag: string;
+  /** Explicit Studio product link; falls back to ``brief_tag`` when absent. */
+  product_slug?: string | null;
   description: string | null;
   sprints: SprintItem[];
 };
@@ -504,6 +506,7 @@ export type HierarchyEpicCreateInput = {
   id: string;
   title: string;
   goal_id?: string | null;
+  product_slug?: string | null;
   owner_employee_slug: string;
   status: string;
   priority: number;
@@ -521,6 +524,7 @@ export type HierarchyEpicCreateInput = {
 export type HierarchyEpicPatchInput = {
   title?: string | null;
   goal_id?: string | null;
+  product_slug?: string | null;
   owner_employee_slug?: string | null;
   status?: string | null;
   priority?: number | null;
@@ -742,6 +746,18 @@ export class BrainClient {
     return this.get<EpicHierarchyResponse>(
       "/admin/goals?include=epics.sprints.tasks",
       "epic-hierarchy",
+    );
+  }
+
+  /** Goals + epics filtered to a product (``epic.product_slug`` or ``epic.brief_tag``). */
+  async getEpicHierarchyForProduct(productSlug: string): Promise<EpicHierarchyResponse> {
+    const params = new URLSearchParams({
+      include: "epics.sprints.tasks",
+      product: productSlug,
+    });
+    return this.get<EpicHierarchyResponse>(
+      `/admin/goals?${params.toString()}`,
+      "epic-hierarchy-product",
     );
   }
 

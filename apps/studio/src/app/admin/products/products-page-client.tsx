@@ -34,12 +34,19 @@ export type ProductIndexSummaryBySlug = Record<
   }
 >;
 
-const hubSignalDotClass: Record<HubSignalKind, string> = {
-  success: "bg-[var(--status-success)]",
-  warning: "bg-[var(--status-warning)]",
-  danger: "bg-[var(--status-danger)]",
-  muted: "bg-zinc-600",
-};
+/** Product index cards: green / amber / gray (treat ``danger`` as amber — partial/problem). */
+function hubSignalDotClassForCard(s: HubSignalKind): string {
+  switch (s) {
+    case "success":
+      return "bg-[var(--status-success)]";
+    case "warning":
+    case "danger":
+      return "bg-[var(--status-warning)]";
+    case "muted":
+    default:
+      return "bg-zinc-600";
+  }
+}
 
 const healthColor: Record<ProductHealthPulse, string> = {
   ok: "bg-emerald-400",
@@ -62,7 +69,7 @@ function ProductHubSignalsRow({ signals }: { signals: readonly HubSignalKind[] }
         <span
           key={`${i}-${s}`}
           title={`${labels[i]}: ${s}`}
-          className={cn("h-1.5 w-1.5 rounded-full", hubSignalDotClass[s])}
+          className={cn("h-1.5 w-1.5 rounded-full", hubSignalDotClassForCard(s))}
         />
       ))}
     </div>

@@ -28,7 +28,13 @@ export type ProductRegistryEntry = {
   mrr: number;
   active_users: number;
   owner_persona: string;
+  /** Public site URL (metadata override or https:// + Brain ``domain``). */
   url: string | null;
+  /** Brain ``domain`` field — hostname or URL-ish string; may duplicate ``url`` source. */
+  domain: string | null;
+  repo_path: string | null;
+  vercel_project: string | null;
+  tech_stack: string[];
   admin_url: string;
   pricing_tiers?: ProductPricingTier[];
   releases?: ProductReleaseEntry[];
@@ -50,6 +56,13 @@ function parseReleases(meta: Record<string, unknown>): ProductReleaseEntry[] | u
   return raw as ProductReleaseEntry[];
 }
 
+function normalizeTechStack(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((x) => (typeof x === "string" ? x.trim() : ""))
+    .filter((s) => s.length > 0);
+}
+
 /**
  * Map a Brain ``/admin/products`` row to the richer ``ProductRegistryEntry`` the Studio UI expects.
  * Registry-only fields (accent, MRR, tiers, …) live under ``metadata`` on the Brain row.
@@ -57,8 +70,16 @@ function parseReleases(meta: Record<string, unknown>): ProductReleaseEntry[] | u
 export function brainProductToRegistryEntry(p: BrainProduct): ProductRegistryEntry {
   const meta = p.metadata ?? {};
   const domain = p.domain?.trim() || null;
-  const urlFromDomain = domain && !domain.includes("://") ? `https://${domain}` : null;
+  const urlFromDomain =
+    domain && !domain.includes("://")
+      ? `https://${domain}`
+      : domain && domain.includes("://")
+        ? domain
+        : null;
   const metaUrl = meta.url;
+  const repoPath = typeof p.repo_path === "string" && p.repo_path.trim() ? p.repo_path.trim() : null;
+  const vercelProject =
+    typeof p.vercel_project === "string" && p.vercel_project.trim() ? p.vercel_project.trim() : null;
   return {
     slug: p.id,
     name: p.name,
@@ -75,6 +96,10 @@ export function brainProductToRegistryEntry(p: BrainProduct): ProductRegistryEnt
         ? meta.owner_persona
         : "founder",
     url: typeof metaUrl === "string" && metaUrl.trim() ? metaUrl : urlFromDomain,
+    domain,
+    repo_path: repoPath,
+    vercel_project: vercelProject,
+    tech_stack: normalizeTechStack(p.tech_stack),
     admin_url:
       typeof meta.admin_url === "string" && meta.admin_url.trim()
         ? meta.admin_url
@@ -82,6 +107,21 @@ export function brainProductToRegistryEntry(p: BrainProduct): ProductRegistryEnt
     pricing_tiers: parsePricingTiers(meta),
     releases: parseReleases(meta),
   };
+}
+
+/** GitHub browse URL for a Brain ``repo_path`` (``owner/repo`` or absolute URL). */
+export function githubRepoBrowseUrl(repoPath: string): string {
+  const t = repoPath.trim();
+  if (t.startsWith("http://") || t.startsWith("https://")) return t;
+  return `https://github.com/${t.replace(/^\/+/, "")}`;
+}
+
+const DEFAULT_VERCEL_TEAM_SLUG = "paperwork-labs";
+
+export function vercelDashboardProjectUrl(projectSlug: string, teamSlug?: string | null): string {
+  const team = (teamSlug ?? DEFAULT_VERCEL_TEAM_SLUG).trim() || DEFAULT_VERCEL_TEAM_SLUG;
+  const proj = projectSlug.trim();
+  return `https://vercel.com/${encodeURIComponent(team)}/${encodeURIComponent(proj)}`;
 }
 
 export type ProductStageFilter = "all" | ProductStage;

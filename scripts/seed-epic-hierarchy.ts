@@ -218,6 +218,7 @@ async function main(): Promise<void> {
     id: EPIC_ID,
     title: "WS-82 Studio HQ Complete Overhaul",
     goal_id: GOAL_ID,
+    product_slug: "studio",
     owner_employee_slug: owner,
     status: "in_progress",
     priority: 1,
@@ -231,6 +232,7 @@ async function main(): Promise<void> {
   const epicPatch = {
     title: epicCreate.title,
     goal_id: epicCreate.goal_id,
+    product_slug: epicCreate.product_slug,
     owner_employee_slug: epicCreate.owner_employee_slug,
     status: epicCreate.status,
     priority: epicCreate.priority,
