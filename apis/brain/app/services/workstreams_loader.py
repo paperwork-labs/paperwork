@@ -77,13 +77,12 @@ def _blockers_as_str_list(raw: object) -> list[str]:
                 out.append(s)
         return out
     if isinstance(raw, dict):
-        out: list[str] = []
+        out2: list[str] = []
         for k, v in raw.items():
             s = f"{k}: {v}" if v not in (None, "") else str(k)
             if len(s) >= 3:
-                out.append(s)
-        return out
-    return []
+                out2.append(s)
+        return out2
 
 
 def _epic_status_to_workstream(status: str) -> str:
@@ -130,9 +129,9 @@ def epic_to_workstream(epic: Epic, *, priority_rank: int) -> Workstream:
         title=_safe_title(epic.title, epic.id),
         track=track,
         priority=priority_rank,
-        status=_epic_status_to_workstream(epic.status),  # type: ignore[arg-type]
+        status=_epic_status_to_workstream(epic.status),
         percent_done=epic.percent_done,
-        owner=_owner_slug_to_workstream_owner(epic.owner_employee_slug),  # type: ignore[arg-type]
+        owner=_owner_slug_to_workstream_owner(epic.owner_employee_slug),
         brief_tag=epic.brief_tag,
         blockers=_blockers_as_str_list(epic.blockers),
         last_pr=None,
