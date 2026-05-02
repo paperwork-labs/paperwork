@@ -1,13 +1,13 @@
 """Add nullable product_slug to epics for Studio product hub linking.
 
-Revision ID: 012
-Revises: 011
+Revision ID: 013
+Revises: 012
 """
 
 from alembic import op
 
-revision = "012"
-down_revision = "011"
+revision = "013"
+down_revision = "012"
 branch_labels = None
 depends_on = None
 
