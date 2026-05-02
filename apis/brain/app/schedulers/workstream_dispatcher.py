@@ -1,7 +1,9 @@
 """Workstream dispatcher — top-N ``workflow_dispatch`` cadence (Track Z).
 
 Runs every 30 minutes. Selection mirrors ``dispatchableWorkstreams`` in
-``apps/studio/src/lib/workstreams/schema.ts``.
+``apps/studio/src/lib/workstreams/schema.ts``. Loads candidates from DB epics.
+
+medallion: ops
 """
 
 from __future__ import annotations
@@ -15,14 +17,16 @@ from apscheduler.triggers.cron import CronTrigger
 
 from app.config import settings
 from app.database import async_session_factory
+from app.models.epic_hierarchy import Epic
 from app.models.workstream_board import WorkstreamDispatchLog
 from app.schedulers._history import run_with_scheduler_record
 from app.schemas.workstream import dispatchable_workstreams
 from app.services import workstream_github as wh
-from app.services.workstreams_loader import load_workstreams_file
+from app.services.workstreams_loader import load_epics_from_db
 
 if TYPE_CHECKING:
     from apscheduler.schedulers.asyncio import AsyncIOScheduler
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -45,14 +49,13 @@ def _now_ms(now: datetime | None) -> int:
     return int(dt.timestamp() * 1000)
 
 
-async def run_workstream_dispatcher(now: datetime | None = None) -> WorkstreamDispatcherResult:
-    """Load workstreams, select dispatchable rows, fire GitHub Actions, log to Postgres."""
-    if not settings.BRAIN_SCHEDULER_ENABLED:
-        return WorkstreamDispatcherResult(skipped=True, skip_reason="BRAIN_SCHEDULER_ENABLED=false")
-
-    data = load_workstreams_file()
+async def _dispatch_with_session(
+    session: AsyncSession,
+    *,
+    now: datetime | None,
+) -> WorkstreamDispatcherResult:
+    data = await load_epics_from_db(session)
     candidates = dispatchable_workstreams(data, n=_TOP_N, now_ms=_now_ms(now))
-
     result = WorkstreamDispatcherResult()
     if not candidates:
         return result
@@ -78,22 +81,46 @@ async def run_workstream_dispatcher(now: datetime | None = None) -> WorkstreamDi
             "related_plan": ws.related_plan or "",
         }
         dispatched_at = datetime.now(UTC)
-        async with async_session_factory() as db:
-            row = WorkstreamDispatchLog(
-                workstream_id=ws.id,
-                dispatched_at=dispatched_at,
-                github_workflow=wf_name,
-                inputs_json=inputs,
-                github_run_id=None,
-            )
-            db.add(row)
-            await db.commit()
-            await db.refresh(row)
+        row = WorkstreamDispatchLog(
+            workstream_id=ws.id,
+            dispatched_at=dispatched_at,
+            github_workflow=wf_name,
+            inputs_json=inputs,
+            github_run_id=None,
+        )
+        session.add(row)
+        epic_row = await session.get(Epic, ws.id)
+        if epic_row is not None:
+            epic_row.last_dispatched_at = dispatched_at
+        await session.commit()
+        await session.refresh(row)
         result.dispatched_workstream_ids.append(ws.id)
         result.dispatch_log_ids.append(int(row.id))
         logger.info("workstream_dispatcher: dispatched %s workflow=%s", ws.id, wf_name)
 
     return result
+
+
+async def run_workstream_dispatcher(
+    now: datetime | None = None,
+    db: AsyncSession | None = None,
+) -> WorkstreamDispatcherResult:
+    """Load epics from Postgres, select dispatchable rows, dispatch workflows, log + cooldown."""
+    if not settings.BRAIN_SCHEDULER_ENABLED:
+        return WorkstreamDispatcherResult(skipped=True, skip_reason="BRAIN_SCHEDULER_ENABLED=false")
+
+    if db is not None:
+        return await _dispatch_with_session(db, now=now)
+
+    try:
+        async with async_session_factory() as session:
+            return await _dispatch_with_session(session, now=now)
+    except Exception:
+        logger.warning(
+            "workstream_dispatcher: skipping run (no DB session / connection failed)",
+            exc_info=True,
+        )
+        return WorkstreamDispatcherResult()
 
 
 async def _dispatcher_job_body() -> None:
