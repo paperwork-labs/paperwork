@@ -30,7 +30,8 @@
     "format": "pnpm -r --if-present format",
     "clean": "pnpm -r exec rm -rf node_modules .next out dist",
     "generate:pwl-favicon-ico": "node scripts/generate-pwl-favicon-ico.mjs",
-    "gh:keyring": "bash scripts/gh-keyring.sh"
+    "gh:keyring": "bash scripts/gh-keyring.sh",
+    "employees:sync": "tsx scripts/employees-sync.ts"
   },
   "devDependencies": {
     "sharp": "^0.34.5",
