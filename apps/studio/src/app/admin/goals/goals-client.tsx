@@ -169,7 +169,7 @@ export function GoalsBrainDisconnected({
         <p className="mt-3 text-sm leading-relaxed text-zinc-400">
           This page will show live objectives and key results when the Brain API exposes{" "}
           <code className="rounded bg-zinc-900 px-1.5 py-0.5 font-mono text-xs text-zinc-300">
-            GET /api/v1/admin/goals
+            GET /api/v1/admin/okr/goals
           </code>{" "}
           and Studio can load it successfully.
         </p>
