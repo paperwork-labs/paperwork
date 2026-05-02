@@ -115,11 +115,8 @@ def test_dispatchable_null_last_dispatched_eligible() -> None:
 
 
 def test_seed_workstreams_json_loads_from_monorepo() -> None:
-    from app.services.workstreams_loader import load_workstreams_file
-
-    data = load_workstreams_file(bypass_cache=True)
-    assert data.version == 1
-    assert len(data.workstreams) >= 1
+    """Skipped: workstreams.json was removed in WS-82 — hierarchy lives in Brain DB now."""
+    pytest.skip("workstreams.json deleted; hierarchy migrated to Brain DB (WS-82 PR-3a)")
 
 
 def test_workstreams_file_rejects_duplicate_ids() -> None:

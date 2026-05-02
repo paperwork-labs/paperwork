@@ -202,6 +202,7 @@ async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSON
 
 
 app.include_router(health.router)
+app.include_router(health.router, prefix="/api/v1")
 app.include_router(infra_registry.router, prefix="/api/v1")
 app.include_router(brain.router, prefix="/api/v1")
 app.include_router(webhooks.router, prefix="/api/v1")
