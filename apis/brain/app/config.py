@@ -166,6 +166,9 @@ class Settings(BaseSettings):
     CLERK_JWT_ISSUER: str = ""
     CLERK_JWT_AUDIENCE: str = ""
     BRAIN_ALLOW_UNVERIFIED_CLERK_JWT: bool = False
+    # Parent directory of Cursor ``agent-transcripts/<uuid>/<uuid>.jsonl`` trees.
+    # Required when calling ``POST /admin/transcripts/ingest`` with ``transcript_id``.
+    BRAIN_CURSOR_AGENT_TRANSCRIPTS_DIR: str = ""
 
     @field_validator("BRAIN_TOOLS_USER_ID", mode="before")
     @classmethod
