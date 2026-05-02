@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Admin sidebar (E2E — STUDIO_E2E_FIXTURE=1 dev server)", () => {
-  test("WS-82 PR-4: Overview + Brain + Workstreams/Products/Goals + SYSTEMS + Docs + Money; 15 nav links; Tasks/Calendar/Trust hidden", async ({
+  test("WS-82 PR-4: Overview + Brain + Epics/Products/Goals + SYSTEMS + Docs + Money; 15 nav links; Tasks/Calendar/Trust hidden", async ({
     page,
   }) => {
     await page.goto("/admin", { waitUntil: "domcontentloaded" });
@@ -19,7 +19,7 @@ test.describe("Admin sidebar (E2E — STUDIO_E2E_FIXTURE=1 dev server)", () => {
     ).toHaveAttribute("href", "/admin/expenses");
     await expect(nav.getByRole("link", { name: /^Vendors$/ })).toHaveAttribute("href", "/admin/vendors");
     await expect(nav.getByRole("link", { name: /^Bills$/ })).toHaveAttribute("href", "/admin/bills");
-    await expect(nav.getByRole("link", { name: /^Workstreams$/ })).toHaveAttribute(
+    await expect(nav.getByRole("link", { name: /^Epics$/ })).toHaveAttribute(
       "href",
       "/admin/workstreams",
     );
@@ -29,7 +29,7 @@ test.describe("Admin sidebar (E2E — STUDIO_E2E_FIXTURE=1 dev server)", () => {
       nav.getByRole("link", { name: /Founder actions/i }),
     ).toHaveCount(0);
     const footer = page.getByTestId("admin-vendor-footer").first();
-    await expect(footer.getByRole("link")).toHaveCount(6);
+    await expect(footer.getByRole("link")).toHaveCount(7);
     await expect(footer.getByText("Hosting")).toBeVisible();
     await expect(footer.getByText("AI cost")).toBeVisible();
   });

@@ -98,9 +98,9 @@ describe("AdminLayoutClient (WS-82 nav reorder — Brain, SYSTEMS, Money demoted
     expect(
       within(nav).getByRole("link", { name: /^Vendors$/ }).getAttribute("href"),
     ).toBe("/admin/vendors");
-    expect(
-      within(nav).getByRole("link", { name: /^Workstreams$/ }).getAttribute("href"),
-    ).toBe("/admin/workstreams");
+    expect(within(nav).getByRole("link", { name: /^Epics$/ }).getAttribute("href")).toBe(
+      "/admin/workstreams",
+    );
     expect(within(nav).queryByRole("link", { name: /^Sprints$/ })).toBeNull();
     expect(within(nav).queryByRole("link", { name: /^PR pipeline$/i })).toBeNull();
     expect(
@@ -113,7 +113,7 @@ describe("AdminLayoutClient (WS-82 nav reorder — Brain, SYSTEMS, Money demoted
 
     const footer = screen.getByTestId("admin-vendor-footer");
     const vendorAnchors = within(footer).getAllByRole("link");
-    expect(vendorAnchors).toHaveLength(6);
+    expect(vendorAnchors).toHaveLength(7);
 
     expect(within(footer).getByText("Hosting")).toBeTruthy();
     expect(within(footer).getByText("Code")).toBeTruthy();

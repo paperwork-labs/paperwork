@@ -13,8 +13,8 @@ test.describe("Command palette (E2E — STUDIO_E2E_FIXTURE=1)", () => {
     const input = page.getByPlaceholder("Search Studio...");
     await expect(input).toBeFocused();
 
-    await input.fill("workstream");
-    await expect(dialog.getByText("Workstreams", { exact: true })).toBeVisible();
+    await input.fill("epic");
+    await expect(dialog.getByText("Epics", { exact: true })).toBeVisible();
     await expect(dialog.getByText("Overview", { exact: true })).toHaveCount(0);
   });
 });

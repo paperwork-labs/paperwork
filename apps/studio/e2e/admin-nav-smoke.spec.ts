@@ -25,7 +25,7 @@ const navItems = [
   { href: "/admin/autopilot", navLabel: "Autopilot", heading: "Autopilot" },
   { href: "/admin/people", navLabel: "People", heading: "People" },
   { href: "/admin/brain/self-improvement", navLabel: "Self-improvement", heading: /Self-improvement/ },
-  { href: "/admin/workstreams", navLabel: "Workstreams", heading: "Workstreams" },
+  { href: "/admin/workstreams", navLabel: "Epics", heading: "Epics" },
   { href: "/admin/products", navLabel: "Products", heading: "Products" },
   { href: "/admin/goals", navLabel: "Goals", heading: /Goals & OKRs/ },
   { href: "/admin/architecture", navLabel: "Architecture", heading: "Architecture" },
