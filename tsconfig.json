@@ -12,5 +12,10 @@
     "declaration": false,
     "noEmit": true
   },
-  "include": ["scripts/seed-epic-hierarchy.ts", "scripts/seed-employees.ts"]
+  "include": [
+    "scripts/seed-epic-hierarchy.ts",
+    "scripts/seed-employees.ts",
+    "scripts/backfill-transcripts.ts",
+    "scripts/backfill-transcripts-batch.ts"
+  ]
 }
