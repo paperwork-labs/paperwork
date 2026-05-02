@@ -22,6 +22,63 @@ export type ReadingPathClient = {
   firstSlug: string | null;
 };
 
+function ReadingPathCard(p: ReadingPathClient) {
+  const availability = `${p.resolvedCount} of ${p.docCount} docs available`;
+  const partial = p.resolvedCount > 0 && p.resolvedCount < p.docCount;
+  const empty = p.resolvedCount === 0;
+
+  const meta = (
+    <>
+      <p className="mt-2 text-xs text-zinc-500">{availability}</p>
+      <p className="mt-0.5 text-xs text-zinc-500">~{p.est_minutes} min</p>
+      {partial ? (
+        <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-amber-400">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          Some steps are not in the docs index yet
+        </p>
+      ) : null}
+    </>
+  );
+
+  if (empty || !p.firstSlug) {
+    return (
+      <div
+        data-testid={`reading-path-${p.id}`}
+        className="rounded-xl border border-zinc-800/60 bg-zinc-950/40 p-4 opacity-60"
+        aria-label={`${p.title}, coming soon`}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <p className="text-sm font-medium text-zinc-400">{p.title}</p>
+          <span className="shrink-0 rounded-full bg-zinc-800/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            Coming soon
+          </span>
+        </div>
+        {meta}
+      </div>
+    );
+  }
+
+  const href = `/admin/docs/${p.firstSlug}`;
+  return (
+    <Link
+      href={href}
+      data-testid={`reading-path-${p.id}`}
+      className="rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-4 transition hover:border-sky-500/40 hover:bg-zinc-900"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <p className="text-sm font-medium text-zinc-100">{p.title}</p>
+        {partial ? (
+          <span className="text-amber-400" title="Not every listed doc resolves in the index">
+            <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+            <span className="sr-only">Partial path: some listed docs are missing from the index</span>
+          </span>
+        ) : null}
+      </div>
+      {meta}
+    </Link>
+  );
+}
+
 const FILTER_ORDER: Array<{ id: HubDocCategory | "all"; label: string }> = [
   { id: "all", label: "All" },
   { id: "philosophy", label: "Philosophy" },
@@ -201,21 +258,9 @@ export function DocsHubClient({ entries, readingPaths }: DocsHubClientProps) {
           </h2>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {readingPaths.map((p) => {
-            const href = p.firstSlug ? `/admin/docs/${p.firstSlug}` : "#reading-paths";
-            return (
-              <Link
-                key={p.id}
-                href={href}
-                className="rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-4 transition hover:border-sky-500/40 hover:bg-zinc-900"
-              >
-                <p className="text-sm font-medium text-zinc-100">{p.title}</p>
-                <p className="mt-2 text-xs text-zinc-500">
-                  {p.docCount} docs · ~{p.est_minutes} min
-                </p>
-              </Link>
-            );
-          })}
+          {readingPaths.map((p) => (
+            <ReadingPathCard key={p.id} {...p} />
+          ))}
         </div>
       </section>
 
