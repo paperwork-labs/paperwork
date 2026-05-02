@@ -1,0 +1,251 @@
+# Vercel prebuilt production deploy (Build Output API / --prebuilt)
+#
+# WHY
+# ---
+# On Vercel Pro, billed Build CPU accumulates whenever Vercel's builders compile the
+# app. `vercel deploy --prebuilt` uploads a local `.vercel/output` tree so Vercel
+# skips its remote build entirely — billed build minutes should trend toward zero for
+# this path while production still receives a full framework build (just on our runner).
+#
+# HOW
+# ---
+# This workflow runs on every push to `main`. Paths are classified with the same
+# `dorny/paths-filter` rules as `.github/workflows/ci.yaml` (`changes` job), plus an
+# `accountsWeb` filter for `apps/accounts/**` (not present in CI today).
+#
+# For each deployed app, GitHub Actions: `pnpm install --frozen-lockfile`, then pulls
+# production env/config via `vercel pull`, runs `vercel build --prod`, then
+# `vercel deploy --prebuilt --prod`. Today this uses `ubuntu-latest`; the intent is to
+# move execution to self-hosted Hetzner runners later (same YAML, swap `runs-on`).
+#
+# COST IMPACT
+# ---
+# Shifting compilation off Vercel and onto GH-hosted or self-hosted CPU should sharply
+# reduce Vercel Build CPU line items while keeping previews on the existing Git
+# integration (unchanged — we do not strip `buildCommand` from individual `vercel.json`
+# files on purpose).
+#
+# SECRETS (repository → Settings → Secrets and variables → Actions)
+# ---
+# Configure at minimum:
+#
+# - VERCEL_TOKEN — Vercel personal token (Account Settings → Tokens) with permission
+#   to deploy linked projects for this repo.
+#
+# - VERCEL_ORG_ID — Team/org id (`team_…`) matching the CLI `VERCEL_ORG_ID`; same as
+#   used elsewhere in infra docs (often documented as TEAM_ID alongside Vercel API).
+#
+# - One optional secret per app, only if that project isn't handled by fallback:
+#       VERCEL_PROJECT_ID_STUDIO
+#       VERCEL_PROJECT_ID_FILEFREE
+#       VERCEL_PROJECT_ID_LAUNCHFREE
+#       VERCEL_PROJECT_ID_DISTILL
+#       VERCEL_PROJECT_ID_AXIOMFOLIO
+#       VERCEL_PROJECT_ID_ACCOUNTS
+#
+#   Deploy steps are skipped until each secret holds a valid `prj_…` id (avoid
+#   deploying preview IDs or placeholders into production unintentionally).
+#
+
+name: Vercel prebuilt (production)
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".cursor/**"
+      - "*.mdc"
+
+concurrency:
+  group: vercel-prebuilt-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect changed areas (Vercel apps)
+    runs-on: ubuntu-latest
+    outputs:
+      filefreeWeb: ${{ steps.filter.outputs.filefreeWeb }}
+      launchfreeWeb: ${{ steps.filter.outputs.launchfreeWeb }}
+      studioWeb: ${{ steps.filter.outputs.studioWeb }}
+      distillWeb: ${{ steps.filter.outputs.distillWeb }}
+      axiomfolioWeb: ${{ steps.filter.outputs.axiomfolioWeb }}
+      accountsWeb: ${{ steps.filter.outputs.accountsWeb }}
+      sharedPackages: ${{ steps.filter.outputs.sharedPackages }}
+      infra: ${{ steps.filter.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            filefreeWeb:
+              - 'apps/filefree/**'
+            launchfreeWeb:
+              - 'apps/launchfree/**'
+            studioWeb:
+              - 'apps/studio/**'
+            distillWeb:
+              - 'apps/distill/**'
+            axiomfolioWeb:
+              - 'apps/axiomfolio/**'
+            accountsWeb:
+              - 'apps/accounts/**'
+            sharedPackages:
+              - 'packages/**'
+              - 'pnpm-workspace.yaml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'turbo.json'
+            infra:
+              - 'infra/**'
+              - 'Makefile'
+              - '.github/workflows/**'
+
+  deploy-apps:
+    name: Deploy prebuilt (${{ matrix.app-name }})
+    needs: changes
+    if: >-
+      needs.changes.outputs.filefreeWeb == 'true' ||
+      needs.changes.outputs.launchfreeWeb == 'true' ||
+      needs.changes.outputs.studioWeb == 'true' ||
+      needs.changes.outputs.distillWeb == 'true' ||
+      needs.changes.outputs.axiomfolioWeb == 'true' ||
+      needs.changes.outputs.accountsWeb == 'true' ||
+      needs.changes.outputs.sharedPackages == 'true' ||
+      needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app-name: studio
+          - app-name: filefree
+          - app-name: launchfree
+          - app-name: distill
+          - app-name: axiomfolio
+          - app-name: accounts
+
+    env:
+      STUDIO_WEB: ${{ needs.changes.outputs.studioWeb }}
+      FILEFREE_WEB: ${{ needs.changes.outputs.filefreeWeb }}
+      LAUNCHFREE_WEB: ${{ needs.changes.outputs.launchfreeWeb }}
+      DISTILL_WEB: ${{ needs.changes.outputs.distillWeb }}
+      AXIOMFOLIO_WEB: ${{ needs.changes.outputs.axiomfolioWeb }}
+      ACCOUNTS_WEB: ${{ needs.changes.outputs.accountsWeb }}
+      SHARED_PACKAGES: ${{ needs.changes.outputs.sharedPackages }}
+      INFRA: ${{ needs.changes.outputs.infra }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Gate — skip matrix leg unless app or shared/infra touched
+        id: gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="${{ matrix.app-name }}"
+          touched=false
+
+          deploy_if_common() {
+            if [ "${SHARED_PACKAGES:-}" = "true" ] || [ "${INFRA:-}" = "true" ]; then
+              return 0
+            fi
+            return 1
+          }
+
+          if deploy_if_common; then
+            touched=true
+          else
+            case "$app" in
+              studio) [ "${STUDIO_WEB:-}" = "true" ] && touched=true ;;
+              filefree) [ "${FILEFREE_WEB:-}" = "true" ] && touched=true ;;
+              launchfree) [ "${LAUNCHFREE_WEB:-}" = "true" ] && touched=true ;;
+              distill) [ "${DISTILL_WEB:-}" = "true" ] && touched=true ;;
+              axiomfolio) [ "${AXIOMFOLIO_WEB:-}" = "true" ] && touched=true ;;
+              accounts) [ "${ACCOUNTS_WEB:-}" = "true" ] && touched=true ;;
+              *) ;;
+            esac
+          fi
+
+          if [ "$touched" != true ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No deploy for $app on this SHA (paths filter)."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v6
+        if: steps.gate.outputs.skip != 'true'
+        with:
+          node-version: 20
+
+      - uses: pnpm/action-setup@v6
+        if: steps.gate.outputs.skip != 'true'
+
+      - name: Install dependencies
+        if: steps.gate.outputs.skip != 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Ensure Vercel CLI
+        if: steps.gate.outputs.skip != 'true'
+        run: npm i -g vercel@latest
+
+      - name: Resolve project id (repository secrets only)
+        if: steps.gate.outputs.skip != 'true'
+        id: proj
+        env:
+          PID_STUDIO: ${{ secrets.VERCEL_PROJECT_ID_STUDIO }}
+          PID_FILEFREE: ${{ secrets.VERCEL_PROJECT_ID_FILEFREE }}
+          PID_LAUNCHFREE: ${{ secrets.VERCEL_PROJECT_ID_LAUNCHFREE }}
+          PID_DISTILL: ${{ secrets.VERCEL_PROJECT_ID_DISTILL }}
+          PID_AXIOMFOLIO: ${{ secrets.VERCEL_PROJECT_ID_AXIOMFOLIO }}
+          PID_ACCOUNTS: ${{ secrets.VERCEL_PROJECT_ID_ACCOUNTS }}
+        run: |
+          set -euo pipefail
+          app="${{ matrix.app-name }}"
+          project_id=""
+          case "$app" in
+            studio) project_id="${PID_STUDIO:-}" ;;
+            filefree) project_id="${PID_FILEFREE:-}" ;;
+            launchfree) project_id="${PID_LAUNCHFREE:-}" ;;
+            distill) project_id="${PID_DISTILL:-}" ;;
+            axiomfolio) project_id="${PID_AXIOMFOLIO:-}" ;;
+            accounts) project_id="${PID_ACCOUNTS:-}" ;;
+          esac
+
+          slug_upper=$(echo "$app" | tr '[:lower:]-' '[:upper:]_')
+          if [ -z "$project_id" ]; then
+            echo "::notice::Skipping $app — VERCEL_PROJECT_ID_${slug_upper} secret is unset."
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          case "$project_id" in prj_*) ;;
+            *)
+              echo "::warning::Skipping $app — VERCEL_PROJECT_ID_${slug_upper} does not look like a Vercel project id."
+              echo "deploy=false" >> "$GITHUB_OUTPUT"
+              exit 0 ;;
+          esac
+
+          echo "deploy=true" >> "$GITHUB_OUTPUT"
+          echo "::add-mask::$project_id"
+          echo "project_id=$project_id" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy (Vercel prebuilt)
+        if: >-
+          steps.gate.outputs.skip != 'true'
+          && steps.proj.outputs.deploy == 'true'
+        uses: ./.github/actions/vercel-prebuilt
+        with:
+          app-name: ${{ matrix.app-name }}
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ steps.proj.outputs.project_id }}
+          production: "true"

@@ -1,0 +1,49 @@
+name: "Vercel Prebuilt Deploy"
+description: "Build locally and deploy to Vercel using --prebuilt"
+
+inputs:
+  app-name:
+    description: "The app directory name (e.g., studio)"
+    required: true
+  vercel-token:
+    description: "Vercel API token"
+    required: true
+  vercel-org-id:
+    description: "Vercel organization ID"
+    required: true
+  vercel-project-id:
+    description: "Vercel project ID for this app"
+    required: true
+  production:
+    description: "Deploy to production (true/false)"
+    default: "true"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Pull Vercel environment
+      shell: bash
+      run: |
+        cd "${GITHUB_WORKSPACE}/apps/${{ inputs.app-name }}"
+        npx vercel pull --yes --environment=${{ inputs.production == 'true' && 'production' || 'preview' }} --token=${{ inputs.vercel-token }}
+      env:
+        VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
+
+    - name: Build with Vercel
+      shell: bash
+      run: |
+        cd "${GITHUB_WORKSPACE}/apps/${{ inputs.app-name }}"
+        npx vercel build ${{ inputs.production == 'true' && '--prod' || '' }} --token=${{ inputs.vercel-token }}
+      env:
+        VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
+
+    - name: Deploy prebuilt
+      shell: bash
+      run: |
+        cd "${GITHUB_WORKSPACE}/apps/${{ inputs.app-name }}"
+        npx vercel deploy --prebuilt ${{ inputs.production == 'true' && '--prod' || '' }} --token=${{ inputs.vercel-token }}
+      env:
+        VERCEL_ORG_ID: ${{ inputs.vercel-org-id }}
+        VERCEL_PROJECT_ID: ${{ inputs.vercel-project-id }}
