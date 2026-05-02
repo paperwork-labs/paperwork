@@ -3,7 +3,8 @@
   "installCommand": "bash ../../scripts/vercel-install.sh @paperwork-labs/launchfree",
   "git": {
     "deploymentEnabled": {
-      "main": true
+      "main": true,
+      "preview": false
     }
   },
   "ignoreCommand": "bash ../../scripts/vercel-should-build.sh @paperwork-labs/launchfree"
