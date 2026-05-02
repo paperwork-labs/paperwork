@@ -2,9 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "installCommand": "bash ../../scripts/vercel-install.sh @paperwork-labs/trinkets",
   "git": {
-    "deploymentEnabled": {
-      "main": true
-    }
+    "deploymentEnabled": false
   },
   "ignoreCommand": "bash ../../scripts/vercel-should-build.sh @paperwork-labs/trinkets"
 }
