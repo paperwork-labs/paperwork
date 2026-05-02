@@ -1,19 +1,17 @@
-import { Suspense } from "react";
+import { Suspense, type ReactNode } from "react";
 
 import { Skeleton } from "@paperwork-labs/ui";
 
-import {
-  loadPersonaBrainYamlMap,
-  personaAutonomyLabel,
-  personaDomainLabel,
-} from "@/lib/persona-brain-yaml";
+import { BrainClient, BrainClientError } from "@/lib/brain-client";
 import { loadPersonasPageData } from "@/lib/personas";
-import type { ActivityFeedRow } from "@/lib/personas-types";
 
 import { PersonasTabsClient } from "../brain/personas/personas-tabs-client";
 
+import {
+  EmployeeOrgGrid,
+  PeopleDirectoryBrainError,
+} from "./employee-org-grid";
 import { PeopleAdminShell } from "./people-admin-shell";
-import { PeopleEmployeesClient, type PeopleEmployeeRow } from "./people-employees-client";
 
 export const dynamic = "force-dynamic";
 
@@ -29,50 +27,35 @@ function PersonasWorkspaceFallback() {
   );
 }
 
-function activityMatchesPersona(row: ActivityFeedRow, personaId: string): boolean {
-  const p = row.persona.toLowerCase();
-  const id = personaId.toLowerCase();
-  if (p === id) return true;
-  if (p.includes(id)) return true;
-  const stripped = p.replace(/^model:/, "");
-  if (stripped.includes(id)) return true;
-  return false;
-}
-
-function buildEmployeeRows(
-  registry: Awaited<ReturnType<typeof loadPersonasPageData>>["registry"],
-  activityRows: ActivityFeedRow[],
-  yamlMap: ReturnType<typeof loadPersonaBrainYamlMap>,
-): PeopleEmployeeRow[] {
-  return registry.map((r) => {
-    const y = yamlMap.get(r.personaId.toLowerCase());
-    const recent = activityRows
-      .filter((row) => activityMatchesPersona(row, r.personaId))
-      .slice(0, 3);
-    return {
-      personaId: r.personaId,
-      displayName: r.name,
-      description: r.description,
-      domainLabel: personaDomainLabel(r.personaId, y),
-      autonomyLabel: personaAutonomyLabel(y),
-      routingActive: r.routingActive,
-      recentActivity: recent,
-    };
-  });
+async function renderDirectory(): Promise<ReactNode> {
+  const client = BrainClient.fromEnv();
+  if (!client) {
+    return (
+      <PeopleDirectoryBrainError message="Brain admin API not configured (BRAIN_API_URL / BRAIN_API_SECRET)." />
+    );
+  }
+  try {
+    const employees = await client.getEmployees();
+    return <EmployeeOrgGrid employees={employees} />;
+  } catch (err) {
+    const message =
+      err instanceof BrainClientError
+        ? err.message
+        : err instanceof Error
+          ? err.message
+          : "Unknown error talking to Brain";
+    return <PeopleDirectoryBrainError message={message} />;
+  }
 }
 
 export default async function AdminPeoplePage({ searchParams }: PageProps) {
   const { view } = await searchParams;
-  const data = await loadPersonasPageData();
-  const yamlMap = loadPersonaBrainYamlMap();
-  const employees = buildEmployeeRows(data.registry, data.activity.rows, yamlMap);
+  const [directory, data] = await Promise.all([renderDirectory(), loadPersonasPageData()]);
 
   return (
     <PeopleAdminShell
       view={view}
-      directory={
-        <PeopleEmployeesClient employees={employees} brainApiError={data.brainApiError ?? null} />
-      }
+      directory={directory}
       workspace={
         <Suspense fallback={<PersonasWorkspaceFallback />}>
           <PersonasTabsClient data={data} />
