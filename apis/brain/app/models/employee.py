@@ -3,10 +3,13 @@
 Brain DB owns this. Two file types are generated from it:
 - .cursor/rules/<slug>.mdc (Cursor IDE needs physical files)
 - apis/brain/app/personas/specs/<slug>.yaml (Brain cold-start)
+
+medallion: ops
 """
+
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime  # noqa: TC003 — needed at runtime by SQLAlchemy
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Integer, Numeric, Text, func, text
@@ -64,9 +67,7 @@ class Employee(Base):
     # Body markdown for .mdc generation
     body_markdown: Mapped[str | None] = mapped_column(Text)
 
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )

@@ -1,10 +1,11 @@
 from app.models.api_key import ApiKey
-from app.models.employee import Employee
 from app.models.audit import AdminAuditLog, AuditLog
 from app.models.base import Base
 from app.models.connection import Connection
 from app.models.cost import Cost
+from app.models.employee import Employee
 from app.models.entity import Entity, EntityEdge
+from app.models.epic_hierarchy import Epic, Goal, Sprint, Task
 from app.models.episode import Episode
 from app.models.github_actions_quota_snapshot import GitHubActionsQuotaSnapshot
 from app.models.organization import Organization, Team, TeamMember
@@ -21,22 +22,26 @@ from app.models.workstream_board import WorkstreamDispatchLog, WorkstreamProgres
 __all__ = [
     "AdminAuditLog",
     "ApiKey",
-    "Employee",
     "AuditLog",
     "Base",
     "BrainSecretsEpisode",
     "BrainSecretsRegistry",
     "Connection",
     "Cost",
+    "Employee",
     "Entity",
     "EntityEdge",
+    "Epic",
     "Episode",
     "GitHubActionsQuotaSnapshot",
+    "Goal",
     "Organization",
     "RenderQuotaSnapshot",
     "SchedulerRun",
     "Skill",
+    "Sprint",
     "Summary",
+    "Task",
     "Team",
     "TeamMember",
     "UserProfile",

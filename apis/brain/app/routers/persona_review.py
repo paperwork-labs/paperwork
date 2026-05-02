@@ -4,7 +4,7 @@ Resolves the persona YAML spec, retrieves relevant memory (same hybrid search as
 ``GET /api/v1/memory/recall-decisions``), and returns a structured review.
 LLM synthesis is stubbed until Wave follow-up.
 
-medallion: brain-autopilot
+medallion: ops-autopilot
 """
 
 from __future__ import annotations

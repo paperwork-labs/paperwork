@@ -1,5 +1,7 @@
 """Naming ceremony service (WS-82 PR-2a).
 
+medallion: ops
+
 Called the FIRST time a persona is invoked and display_name IS NULL.
 The persona picks its own name, tagline, and avatar emoji using its own
 default_model. Result is written to the employees table immediately.
@@ -12,6 +14,7 @@ Flow:
   5. If invalid, re-prompt once with simpler instructions
   6. Write to DB and return NamingCeremonyResult
 """
+
 from __future__ import annotations
 
 import logging
@@ -76,10 +79,7 @@ def validate_name(name: str, role_title: str) -> bool:
     role_words = {w for w in role_title.lower().split() if len(w) > 3}
     if any(w in lower for w in role_words):
         return False
-    for pat in CRINGE_PATTERNS:
-        if re.search(pat, lower):
-            return False
-    return True
+    return all(not re.search(pat, lower) for pat in CRINGE_PATTERNS)
 
 
 def _parse_response(raw: str) -> NamingCeremonyResult | None:
@@ -94,30 +94,22 @@ def _parse_response(raw: str) -> NamingCeremonyResult | None:
 
 
 async def _call_model(model: str, prompt: str) -> str:
-    """Call the LLM and return the raw text response.
+    """Call the LLM and return the raw text response."""
+    import litellm
 
-    Imports are deferred to avoid circular imports with the agent layer.
-    """
-    try:
-        from app.services.agent import call_model_simple  # type: ignore[import]
-
-        return await call_model_simple(model=model, prompt=prompt)
-    except ImportError:
-        # Fallback: use litellm directly if the agent abstraction isn't wired yet
-        import litellm  # type: ignore[import]
-
-        response = await litellm.acompletion(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=64,
-            temperature=0.9,
-        )
-        return response.choices[0].message.content or ""
+    response = await litellm.acompletion(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=64,
+        temperature=0.9,
+    )
+    content: str = response.choices[0].message.content or ""
+    return content
 
 
 async def run_naming_ceremony(
-    employee: "Employee",
-    db: "AsyncSession",
+    employee: Employee,
+    db: AsyncSession,
 ) -> NamingCeremonyResult:
     """Run the naming ceremony for a persona that has no display_name yet.
 
@@ -164,7 +156,7 @@ async def run_naming_ceremony(
     return result
 
 
-async def get_or_name(slug: str, db: "AsyncSession") -> "Employee":
+async def get_or_name(slug: str, db: AsyncSession) -> Employee:
     """Return the Employee, running naming ceremony if display_name is not set."""
     from app.models.employee import Employee
 
