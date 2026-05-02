@@ -56,7 +56,10 @@ def _agent_dispatch_log_path() -> Path:
 
 
 def _load_dispatch_rows() -> list[dict[str, Any]]:
-    log_path = _agent_dispatch_log_path()
+    try:
+        log_path = _agent_dispatch_log_path()
+    except RuntimeError:
+        return []
     if not log_path.is_file():
         return []
     try:

@@ -199,7 +199,12 @@ async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSON
     logger.exception("Unhandled exception: %s", str(exc))
     return JSONResponse(
         status_code=500,
-        content={"success": False, "error": "An unexpected error occurred"},
+        content={
+            "success": False,
+            "error": "An unexpected error occurred",
+            "error_type": type(exc).__name__,
+            "detail": str(exc)[:300],
+        },
     )
 
 
