@@ -549,6 +549,32 @@ def unread_count(status_filter: str = "needs-action", *, organization_id: str | 
     return page.total
 
 
+def admin_conversation_counts(
+    *,
+    organization_id: str | None = None,
+) -> tuple[int, int]:
+    """Return (total conversations, count updated today UTC) for admin stats.
+
+    Scans JSON-backed rows — acceptable for operator dashboards (WS-82).
+    """
+    now = datetime.now(UTC)
+    today = now.date()
+    total = 0
+    today_updated = 0
+    for cid in _list_all_ids():
+        conv = _load_conversation(cid)
+        if conv is None:
+            continue
+        if not _conversation_matches_organization(conv, organization_id):
+            continue
+        total += 1
+        u = conv.updated_at
+        u_day = u.astimezone(UTC).date() if u.tzinfo else u.replace(tzinfo=UTC).date()
+        if u_day == today:
+            today_updated += 1
+    return total, today_updated
+
+
 def needs_action_badge_metrics(
     status_filter: str = "needs-action",
     *,
