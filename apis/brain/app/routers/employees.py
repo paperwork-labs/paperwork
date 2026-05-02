@@ -18,6 +18,7 @@ from app.database import get_db
 from app.models.employee import Employee
 from app.schemas.base import error_response, success_response
 from app.schemas.employee import EmployeeCreate, EmployeeListItem, EmployeeResponse, EmployeeUpdate
+from app.services.naming_ceremony import run_naming_ceremony
 
 if TYPE_CHECKING:
     from fastapi.responses import JSONResponse
@@ -160,6 +161,33 @@ async def create_employee(
     await db.commit()
     await db.refresh(emp)
     return success_response({"employee": _employee_to_response(emp)}, status_code=201)
+
+
+@router.post("/{slug}/name-ceremony")
+async def run_name_ceremony_for_employee(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+) -> JSONResponse:
+    """Run LLM naming for an ai_persona; writes display_name, tagline, avatar_emoji."""
+    emp = await db.get(Employee, slug)
+    if emp is None:
+        return error_response(f"Employee '{slug}' not found", status_code=404)
+    if emp.kind == "human":
+        return error_response(
+            "Naming ceremony is not available for human employees.",
+            status_code=400,
+        )
+    if emp.kind != "ai_persona":
+        return error_response(
+            "Naming ceremony only applies to ai_persona employees.",
+            status_code=400,
+        )
+    try:
+        result = await run_naming_ceremony(emp, db)
+    except RuntimeError as exc:
+        return error_response(str(exc), status_code=502)
+    return success_response({"naming": result.model_dump(mode="json")})
 
 
 @router.patch("/{slug}")

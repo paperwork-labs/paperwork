@@ -90,7 +90,42 @@ export default async function EmployeeProfilePage({ params }: PageProps) {
     );
   }
 
-  const headline = employee.display_name?.trim() || employee.role_title || employee.slug;
+  const trimmedDisplay = employee.display_name?.trim() ?? "";
+  const trimmedTagline = employee.tagline?.trim() ?? "";
+  const primaryHeadline =
+    trimmedDisplay ||
+    employee.role_title?.trim() ||
+    employee.slug;
+  const emojiDisplay = employee.avatar_emoji?.trim() || "◇";
+
+  const mutedContextSubtitle =
+    !trimmedTagline && trimmedDisplay
+      ? `${employee.team}`.trim()
+      : !trimmedTagline && !trimmedDisplay
+        ? `${employee.role_title} · ${employee.team}`
+        : undefined;
+
+  const titleContent = (
+    <div className="flex flex-wrap items-start gap-3 md:gap-4">
+      <span
+        className="select-none text-4xl leading-none md:text-[2.75rem]"
+        aria-hidden
+      >
+        {emojiDisplay}
+      </span>
+      <div className="min-w-0 space-y-1">
+        <span className="block text-lg font-semibold tracking-tight text-zinc-100 md:text-xl lg:text-2xl">
+          {primaryHeadline}
+        </span>
+        {trimmedDisplay ? (
+          <span className="block text-sm text-zinc-400">{employee.role_title}</span>
+        ) : null}
+        {trimmedTagline ? (
+          <span className="block text-sm text-zinc-400">{trimmedTagline}</span>
+        ) : null}
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-8">
@@ -98,10 +133,10 @@ export default async function EmployeeProfilePage({ params }: PageProps) {
         breadcrumbs={[
           { label: "Admin", href: "/admin" },
           { label: "People", href: "/admin/people" },
-          { label: headline },
+          { label: primaryHeadline },
         ]}
-        title={headline}
-        subtitle={employee.tagline?.trim() || `${employee.role_title} · ${employee.team}`}
+        title={titleContent}
+        subtitle={mutedContextSubtitle}
         actions={
           <Link
             href="/admin/people"
