@@ -15,6 +15,7 @@ import {
   FileText,
   Bot,
   ClipboardCheck,
+  Orbit,
 } from "lucide-react";
 
 export type NavItem = {
@@ -49,12 +50,18 @@ export function buildNavGroups(
           pendingBadge: founderPending,
         },
         { href: "/admin/autopilot", label: "Autopilot", icon: Bot },
-        { href: "/admin/people", label: "People", icon: Users },
         {
           href: "/admin/brain/self-improvement",
           label: "Self-improvement",
           icon: Sparkles,
         },
+      ],
+    },
+    {
+      label: "Organization",
+      items: [
+        { href: "/admin/people", label: "People", icon: Users },
+        { href: "/admin/circles", label: "Circles", icon: Orbit },
       ],
     },
     {
