@@ -28,6 +28,9 @@ import type { EpicItem, GoalItem, SprintItem, TaskItem } from "@/lib/brain-clien
 import { EpicHierarchyCrudModal } from "./epic-crud-modal";
 import type { EpicCrudDraft, HierarchyEntityKind } from "./epic-crud-modal";
 import { epicHierarchyMutateJson } from "./epic-hierarchy-api";
+import { StatusBadge } from "@/components/admin/hq/StatusBadge";
+import { StatusDot } from "@/components/admin/hq/StatusDot";
+import { STATUS_CLASSES, type StatusLevel } from "@/styles/design-tokens";
 
 const GOAL_STATUS_OPTIONS = ["active", "paused", "completed"] as const;
 
@@ -37,27 +40,27 @@ const SPRINT_STATUS_OPTIONS = ["planned", "active", "shipped", "paused"] as cons
 
 const TASK_STATUS_OPTIONS = ["todo", "in_progress", "merged", "done"] as const;
 
+const NEUTRAL_BADGE_BUCKET = new Set(["backlog", "pending", "planned", "todo"]);
+
 type DraftSetter = Dispatch<SetStateAction<EpicCrudDraft | null>>;
 
 function normStatus(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, "_");
 }
 
-function statusDotClass(status: string): string {
+function hierarchyStatusLevel(status: string): StatusLevel {
   const n = normStatus(status);
-  if (n === "blocked") {
-    return "bg-[var(--status-danger)] ring-[var(--status-danger)]/40";
-  }
+  if (n === "blocked") return "danger";
   if (
     n === "in_progress" ||
     n === "active" ||
     n === "in-progress" ||
     n === "started"
   ) {
-    return "bg-[var(--status-warning)] ring-[var(--status-warning)]/40";
+    return "warning";
   }
   if (n === "backlog" || n === "pending" || n === "planned" || n === "todo") {
-    return "bg-zinc-500 ring-zinc-400/30";
+    return "neutral";
   }
   if (
     n === "done" ||
@@ -66,37 +69,9 @@ function statusDotClass(status: string): string {
     n === "complete" ||
     n === "closed"
   ) {
-    return "bg-[var(--status-success)] ring-[var(--status-success)]/40";
+    return "success";
   }
-  return "bg-zinc-500 ring-zinc-400/30";
-}
-
-function statusBadgeClass(status: string): string {
-  const n = normStatus(status);
-  if (n === "blocked") {
-    return "border-[var(--status-danger)]/50 bg-[var(--status-danger-bg)] text-[var(--status-danger)]";
-  }
-  if (
-    n === "in_progress" ||
-    n === "active" ||
-    n === "in-progress" ||
-    n === "started"
-  ) {
-    return "border-[var(--status-warning)]/50 bg-[var(--status-warning-bg)] text-[var(--status-warning)]";
-  }
-  if (n === "backlog" || n === "pending" || n === "planned" || n === "todo") {
-    return "border-zinc-600 bg-zinc-800/70 text-zinc-300";
-  }
-  if (
-    n === "done" ||
-    n === "shipped" ||
-    n === "merged" ||
-    n === "complete" ||
-    n === "closed"
-  ) {
-    return "border-[var(--status-success)]/50 bg-[var(--status-success-bg)] text-[var(--status-success)]";
-  }
-  return "border-zinc-600 bg-zinc-800/60 text-zinc-400";
+  return "neutral";
 }
 
 function taskIsDone(status: string): boolean {
@@ -140,6 +115,7 @@ function StatusBadgeInteractive({
   status: string;
 }) {
   const router = useRouter();
+  const level = hierarchyStatusLevel(status);
 
   const onPick = async (next: string) => {
     if (next === status) return;
@@ -161,13 +137,19 @@ function StatusBadgeInteractive({
           type="button"
           title="Change status"
           onPointerDown={(e) => e.stopPropagation()}
-          className={cn(
-            "inline-flex shrink-0 items-center rounded border px-1.5 py-0 capitalize shadow-sm outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--status-info)]",
-            statusBadgeClass(status),
-            "text-[10px] font-medium tracking-tight",
-          )}
+          className="inline-flex shrink-0 outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-[var(--status-info)]"
         >
-          {status.replace(/_/g, " ")}
+          <StatusBadge
+            status={level}
+            size="sm"
+            className={cn(
+              level === "neutral" &&
+                !NEUTRAL_BADGE_BUCKET.has(normStatus(status)) &&
+                "bg-zinc-800/60 text-zinc-400",
+            )}
+          >
+            {status.replace(/_/g, " ")}
+          </StatusBadge>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -315,20 +297,23 @@ function EpicBlock({
   setDraft: DraftSetter;
 }) {
   const pct = Math.min(100, Math.max(0, epic.percent_done ?? 0));
+  const epicLevel = hierarchyStatusLevel(epic.status);
   return (
     <div>
       <ToggleRow open={open} onToggle={onToggle} depthClass="pl-4">
         <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
           <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-              <span
-                className={cn(
-                  "inline-block h-2 w-2 shrink-0 rounded-full ring-2 ring-offset-0 ring-offset-zinc-950",
-                  statusDotClass(epic.status),
-                )}
-                title={epic.status}
-                aria-hidden
-              />
+              <span title={epic.status} aria-hidden>
+                <StatusDot
+                  status={epicLevel}
+                  size="md"
+                  className={cn(
+                    "ring-2 ring-offset-0 ring-offset-zinc-950",
+                    STATUS_CLASSES[epicLevel].ring,
+                  )}
+                />
+              </span>
               <span className="font-mono text-xs text-violet-300">{epic.id}</span>
               <span className="text-sm text-zinc-200">— {epic.title}</span>
               <span className="text-xs tabular-nums text-zinc-500">[{pct}%]</span>

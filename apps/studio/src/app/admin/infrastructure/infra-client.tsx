@@ -24,6 +24,7 @@ import { Card, CardContent } from "@paperwork-labs/ui";
 import { HqEmptyState } from "@/components/admin/hq/HqEmptyState";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
+import { StatusDot } from "@/components/admin/hq/StatusDot";
 import { SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES_CSV } from "@/lib/infra-probes";
 import { HETZNER_BOXES } from "@/lib/hetzner-boxes";
 import LogsTab from "./tabs/logs-tab";
@@ -80,6 +81,18 @@ function formatTimePT(iso: string): string {
   }
 }
 
+function InfraHealthStatusDot({
+  healthy,
+  configured,
+}: {
+  healthy: boolean;
+  configured: boolean;
+}) {
+  if (!configured) return <StatusDot status="warning" size="lg" />;
+  if (healthy) return <StatusDot status="success" size="lg" pulse />;
+  return <StatusDot status="danger" size="lg" />;
+}
+
 function latencyColor(ms: number | null): string {
   if (ms === null) return "text-zinc-500";
   if (ms < 300) return "text-[var(--status-success)]";
@@ -92,21 +105,6 @@ function StatusIcon({ healthy, configured }: { healthy: boolean; configured: boo
     return <AlertTriangle className="h-4 w-4 text-[var(--status-warning)]" />;
   if (healthy) return <CheckCircle2 className="h-4 w-4 text-[var(--status-success)]" />;
   return <XCircle className="h-4 w-4 text-[var(--status-danger)]" />;
-}
-
-function StatusDot({ healthy, configured }: { healthy: boolean; configured: boolean }) {
-  if (!configured)
-    return (
-      <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--status-warning)]" />
-    );
-  if (healthy)
-    return (
-      <span className="relative inline-block h-2.5 w-2.5">
-        <span className="absolute inset-0 motion-safe:animate-ping rounded-full bg-[var(--status-success)] opacity-50" />
-        <span className="relative inline-block h-2.5 w-2.5 rounded-full bg-[var(--status-success)]" />
-      </span>
-    );
-  return <span className="inline-block h-2.5 w-2.5 rounded-full bg-[var(--status-danger)]" />;
 }
 
 function platformStateBadgeClass(st?: string): string {
@@ -269,7 +267,7 @@ function SupplementaryCard({ svc }: { svc: InfraService }) {
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <StatusDot healthy={svc.healthy} configured={svc.configured} />
+            <InfraHealthStatusDot healthy={svc.healthy} configured={svc.configured} />
             <p className="font-medium text-zinc-100">{svc.service}</p>
           </div>
           <div className="flex items-center gap-2">
@@ -720,10 +718,7 @@ function InfraClientImpl({
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className="relative inline-block h-2.5 w-2.5">
-                      <span className="absolute inset-0 motion-safe:animate-ping rounded-full bg-[var(--status-success)] opacity-40" />
-                      <span className="relative inline-block h-2.5 w-2.5 rounded-full bg-[var(--status-success)]" />
-                    </span>
+                    <StatusDot status="success" size="lg" pulse />
                     <span className="text-[10px] font-medium uppercase tracking-wide text-[var(--status-success)]">
                       Assumed up
                     </span>
@@ -798,10 +793,9 @@ function InfraClientImpl({
                 : "border border-[var(--status-warning)]/40 bg-[var(--status-warning-bg)] text-[var(--status-warning)]"
           }`}
         >
-          <StatusDot
-            healthy={allHealthy}
-            configured={supplementaryRows.length === 0 || configuredCount === supplementaryRows.length}
-          />
+          <InfraHealthStatusDot healthy={allHealthy} configured={
+            supplementaryRows.length === 0 || configuredCount === supplementaryRows.length
+          } />
           {allHealthy
             ? "All supplementary checks green"
             : hasDegraded
