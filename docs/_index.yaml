@@ -303,6 +303,13 @@ docs:
     tags: [runbook, drive, mcp]
     owners: [agent-ops, ea]
     category: runbooks
+  - slug: hetzner-bootstrap
+    path: docs/runbooks/hetzner-bootstrap.md
+    title: Hetzner Bootstrap — 3-box provisioning
+    summary: "Bootstrap Hetzner servers (ops, build, workers) with Docker, firewall, and GHA runners."
+    tags: [hetzner, infra, docker, gha, bootstrap]
+    owners: [infra-ops]
+    category: runbooks
   - slug: launchfree-api-health
     path: docs/runbooks/launchfree-api-health.md
     title: LaunchFree API health (`/health`)
@@ -388,6 +395,13 @@ docs:
     owners: [infra-ops]
     category: runbooks
   # ── Reference ─────────────────────────────────────────
+  - slug: template
+    path: docs/runbooks/_TEMPLATE.md
+    title: "[Title]"
+    summary: One-sentence description of when to use this runbook.
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: auth-provider-bakeoff-2026q2
     path: docs/decisions/AUTH_PROVIDER_BAKEOFF_2026Q2.md
     title: Auth Provider Bakeoff — 2026 Q2
@@ -413,21 +427,21 @@ docs:
     path: docs/runbooks/brain-deploy-recovery.md
     title: Brain deploy recovery (Render / Postgres / Docker)
     summary: Operational notes for incidents that surfaced in April 2026 and the guardrails that now block repeats at merge time.
-    tags: []
+    tags: [runbook]
     owners: [strategy]
     category: reference
   - slug: brain-self-merge-graduation
     path: docs/runbooks/brain-self-merge-graduation.md
     title: Brain Self-Merge Graduation
     summary: "Brain self-merge starts in a narrow data-only tier and graduates only after a clean track record. The source of truth is `apis/brain/data/self_merge_promotions.json`, with service logic in…"
-    tags: []
+    tags: [runbook]
     owners: [strategy]
     category: reference
   - slug: brain-self-prioritization
     path: docs/runbooks/brain-self-prioritization.md
     title: Brain Self-Prioritization
     summary: Brain self-prioritization is the Phase G2 loop that proposes workstreams before they become real tracker entries. It writes proposals to `apis/brain/data/workstream_candidates.json`; the founder…
-    tags: []
+    tags: [runbook]
     owners: [strategy]
     category: reference
   - slug: readme
@@ -518,7 +532,7 @@ docs:
     path: docs/runbooks/decommission-checklist.md
     title: Domain / App Decommission Checklist
     summary: "**Owner:** ops-engineer **Last updated:** 2026-04-28 **Source of truth for completed decommissions:** `apis/brain/data/decommissions.json` **Admin endpoint:** `GET /api/v1/admin/decommissions`"
-    tags: []
+    tags: [runbook]
     owners: [strategy]
     category: reference
   - slug: financials
@@ -588,7 +602,7 @@ docs:
     path: docs/runbooks/pwl-cli.md
     title: pwl CLI Runbook
     summary: "`pwl` is the Paperwork Labs monorepo CLI. It gives operators one place to inspect apps, scaffold new services, and keep Brain's app manifest current."
-    tags: []
+    tags: [runbook]
     owners: [strategy]
     category: reference
   - slug: render-quota-audit-2026q2
@@ -609,6 +623,13 @@ docs:
     path: docs/runbooks/filefree-preview-clerk-envs.md
     title: "Runbook: FileFree — Clerk Auth Env Vars for All Vercel Environments"
     summary: "Without `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_SIGN_UP_URL` set in the Vercel environment, Clerk's server-side middleware does not know where the embedded auth pages live. It falls…"
+    tags: [runbook]
+    owners: [strategy]
+    category: reference
+  - slug: readme
+    path: docs/runbooks/README.md
+    title: Runbooks
+    summary: "Operational runbooks live in this directory. [**Standard template**](_TEMPLATE.md) — category, owner, verification, rollback."
     tags: []
     owners: [strategy]
     category: reference
