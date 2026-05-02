@@ -10,12 +10,16 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002 — used at runtime by FastAPI DI
 
 from app.config import settings
 from app.database import get_db
+from app.models.conversation_mirror import ConversationMessageRecord, ConversationRecord
 from app.models.employee import Employee
+from app.models.epic_hierarchy import Epic
+from app.models.transcript_episode import TranscriptEpisode
+from app.models.workstream_board import WorkstreamDispatchLog
 from app.schemas.base import error_response, success_response
 from app.schemas.employee import EmployeeCreate, EmployeeListItem, EmployeeResponse, EmployeeUpdate
 from app.services.naming_ceremony import run_naming_ceremony
@@ -99,6 +103,105 @@ async def list_employees(
     result = await db.execute(select(Employee).order_by(Employee.team, Employee.slug))
     employees = result.scalars().all()
     return success_response({"employees": [_employee_to_list_item(e) for e in employees]})
+
+
+def _transcript_activity_title(summary: str | None, user_message: str) -> str:
+    s = (summary or "").strip()
+    if s:
+        return s
+    text = user_message.strip().replace("\n", " ")
+    if not text:
+        return "(no title)"
+    suf = "…" if len(text) > 120 else ""
+    return text[:120] + suf
+
+
+@router.get("/{slug}/activity")
+async def get_employee_activity(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    _auth: None = Depends(_require_admin),
+) -> JSONResponse:
+    """Recent dispatch log, mirrored conversations, and transcript mentions."""
+    emp = await db.get(Employee, slug)
+    if emp is None:
+        return error_response(f"Employee '{slug}' not found", status_code=404)
+
+    ddispatch = WorkstreamDispatchLog.dispatched_at
+    dq = (
+        select(Epic.id, Epic.title, Epic.status, ddispatch)
+        .join(WorkstreamDispatchLog, WorkstreamDispatchLog.workstream_id == Epic.id)
+        .where(Epic.owner_employee_slug == slug)
+        .order_by(ddispatch.desc())
+        .limit(20)
+    )
+    drows = (await db.execute(dq)).all()
+    dispatches = [
+        {
+            "epic_id": rid,
+            "title": ttl,
+            "dispatched_at": ts.isoformat() if ts else None,
+            "status": st,
+        }
+        for rid, ttl, st, ts in drows
+    ]
+
+    lcm = ConversationMessageRecord.created_at
+    cq = (
+        select(
+            ConversationMessageRecord.conversation_id,
+            ConversationRecord.title,
+            func.max(lcm).label("last_message_at"),
+            func.count().label("message_count"),
+        )
+        .join(
+            ConversationRecord,
+            ConversationRecord.id == ConversationMessageRecord.conversation_id,
+        )
+        .where(ConversationMessageRecord.persona_slug == slug)
+        .group_by(ConversationMessageRecord.conversation_id, ConversationRecord.title)
+        .order_by(func.max(lcm).desc())
+        .limit(20)
+    )
+    crows = (await db.execute(cq)).all()
+    conversations = [
+        {
+            "conversation_id": str(cid),
+            "title": ttl,
+            "last_message_at": last_at.isoformat() if last_at else None,
+            "message_count": int(mc or 0),
+        }
+        for cid, ttl, last_at, mc in crows
+    ]
+
+    tq = (
+        select(
+            TranscriptEpisode.transcript_id,
+            TranscriptEpisode.summary,
+            TranscriptEpisode.user_message,
+            TranscriptEpisode.ingested_at,
+        )
+        .where(TranscriptEpisode.persona_slugs.contains([slug]))
+        .order_by(TranscriptEpisode.ingested_at.desc())
+        .limit(20)
+    )
+    trows = (await db.execute(tq)).all()
+    transcript_episodes = [
+        {
+            "transcript_id": tid,
+            "title": _transcript_activity_title(summ, usr),
+            "role": "mentioned",
+            "created_at": ing.isoformat() if ing else None,
+        }
+        for tid, summ, usr, ing in trows
+    ]
+
+    payload = {
+        "dispatches": dispatches,
+        "conversations": conversations,
+        "transcript_episodes": transcript_episodes,
+    }
+    return success_response(payload)
 
 
 @router.get("/{slug}")
