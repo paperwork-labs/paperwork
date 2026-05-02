@@ -7,8 +7,8 @@ Three-box architecture running all non-Vercel workloads on Hetzner Cloud (Helsin
 | Hostname | Plan | IP | Role |
 |---|---|---|---|
 | **paperwork-ops** | CX33 (4 vCPU / 8 GB) | 204.168.147.100 | State + social: Postgres, Redis, Postiz, Temporal |
-| **hetzner-build** | CX43 (8 vCPU / 16 GB) | 89.167.34.68 | CI: GHA self-hosted runners, Vercel --prebuilt |
-| **hetzner-workers** | CX43 (8 vCPU / 16 GB) | 204.168.165.156 | Brain background: schedulers, dispatcher, transcript ingest |
+| **paperwork-builders** | CX43 (8 vCPU / 16 GB) | 89.167.34.68 | CI: GHA self-hosted runners, Vercel --prebuilt |
+| **paperwork-workers** | CX43 (8 vCPU / 16 GB) | 204.168.165.156 | Brain background: schedulers, dispatcher, transcript ingest |
 
 ## paperwork-ops (`infra/hetzner/compose.yaml`)
 
@@ -36,7 +36,7 @@ chmod +x infra/hetzner/setup.sh
 
 ---
 
-## hetzner-build (`infra/hetzner-build/`)
+## paperwork-builders (`infra/hetzner-build/`)
 
 Runs 5 GitHub Actions self-hosted runners (4 cheap-agent slots + 1 heavy-ci slot).
 
@@ -55,15 +55,15 @@ Then configure `/opt/paperwork-build/.env` with a GitHub PAT and run `docker com
 
 | Runner name | Labels |
 |---|---|
-| hetzner-build-slot-1 | `self-hosted,hetzner-build,cheap-agent-slot-1` |
-| hetzner-build-slot-2 | `self-hosted,hetzner-build,cheap-agent-slot-2` |
-| hetzner-build-slot-3 | `self-hosted,hetzner-build,cheap-agent-slot-3` |
-| hetzner-build-slot-4 | `self-hosted,hetzner-build,cheap-agent-slot-4` |
-| hetzner-build-heavy-ci | `self-hosted,hetzner-build,heavy-ci` |
+| paperwork-builders-slot-1 | `self-hosted,paperwork-builders,cheap-agent-slot-1` |
+| paperwork-builders-slot-2 | `self-hosted,paperwork-builders,cheap-agent-slot-2` |
+| paperwork-builders-slot-3 | `self-hosted,paperwork-builders,cheap-agent-slot-3` |
+| paperwork-builders-slot-4 | `self-hosted,paperwork-builders,cheap-agent-slot-4` |
+| paperwork-builders-heavy-ci | `self-hosted,paperwork-builders,heavy-ci` |
 
 ---
 
-## hetzner-workers (`infra/hetzner-workers/`)
+## paperwork-workers (`infra/hetzner-workers/`)
 
 Placeholder for Brain background workers (added in Wave 8 PRs).
 
@@ -84,8 +84,8 @@ From founder laptop: `ssh root@<ip>` (no `-i` flag needed — uses `~/.ssh/` def
 
 ```bash
 ssh root@204.168.147.100   # paperwork-ops
-ssh root@89.167.34.68      # hetzner-build
-ssh root@204.168.165.156   # hetzner-workers
+ssh root@89.167.34.68      # paperwork-builders
+ssh root@204.168.165.156   # paperwork-workers
 ```
 
 ## Maintenance

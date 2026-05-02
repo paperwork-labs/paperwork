@@ -1,0 +1,48 @@
+---
+description: "Hetzner SSH + provisioning conventions for all 3 boxes. Active when touching infra/hetzner*, scripts/*hetzner*, or any deployment work."
+globs: ["infra/hetzner*/**", "scripts/*hetzner*", "scripts/env-check.sh", ".github/workflows/deploy-*.yaml"]
+owner: infra-ops
+---
+
+# Hetzner Access
+
+## Boxes (all Helsinki, same Hetzner account billing@paperworklabs.com)
+
+| Hostname | Plan | IP | Role | Provisioned |
+|---|---|---|---|---|
+| paperwork-ops | CX33 (4 vCPU / 8 GB) | 204.168.147.100 | State + social: Postgres, Redis, Postiz, Temporal | 2026-03 |
+| paperwork-builders | CX43 (8 vCPU / 16 GB) | 89.167.34.68 | CI: GHA self-hosted runners, snapshot cron, Vercel --prebuilt | 2026-05-01 |
+| paperwork-workers | CX43 (8 vCPU / 16 GB) | 204.168.165.156 | Brain background: schedulers, dispatcher, transcript ingest | 2026-05-01 |
+
+## SSH
+
+From founder laptop: `ssh root@<ip>` — uses default `~/.ssh/` key (no `-i` flag).
+
+For CI/CD: GitHub Actions secrets `HETZNER_HOST`, `HETZNER_SSH_KEY`, `HETZNER_HOST_FINGERPRINT` (currently point to paperwork-ops; update for new boxes as needed).
+
+## Secrets per box
+
+| Box | Env file path | Populated from |
+|---|---|---|
+| paperwork-ops | `/opt/paperwork-ops/.env` | Studio Vault (existing) |
+| paperwork-builders | `/opt/paperwork-build/.env` | Studio Vault via `make secrets` |
+| paperwork-workers | `/opt/paperwork-workers/.env` | Studio Vault via `make secrets` |
+
+## Hetzner API token
+
+If programmatic management needed (rescale, snapshot, list servers): look up `HETZNER_API_TOKEN` in Studio Vault. If missing, generate at console.hetzner.cloud > Security > API Tokens, store in vault.
+
+## Scaling triggers (do NOT buy another box until one of these is true)
+
+1. Sustained >70% CPU on paperwork-builders for 7 consecutive days
+2. Sustained >70% RAM on paperwork-workers for 7 consecutive days
+3. AxiomFolio walk-forward batches move to Hetzner (WS-83)
+4. Brain B2C launch needs separate background box
+5. CX53 stock returns in Helsinki — in-place rescale paperwork-workers CX43 → CX53 (brief reboot, same IP)
+
+## Don't
+
+- Never paste secrets into compose files (read from .env)
+- Never put SSH private keys in repo (always vault or GH secrets)
+- Never enable password auth on these boxes (key-only)
+- Never run production workloads on paperwork-ops (it's state + social only)

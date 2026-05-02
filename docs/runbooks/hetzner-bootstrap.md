@@ -15,7 +15,7 @@ related_runbooks:
 > **Last verified**: 2026-05-02
 > **Status**: active
 
-> Provision and operate the three-box Hetzner infrastructure (paperwork-ops, hetzner-build, hetzner-workers). Use this when adding a new box, recovering from a failed service, or onboarding a new engineer to infrastructure ops.
+> Provision and operate the three-box Hetzner infrastructure (paperwork-ops, paperwork-builders, paperwork-workers). Use this when adding a new box, recovering from a failed service, or onboarding a new engineer to infrastructure ops.
 
 ## When this fires
 
@@ -42,15 +42,15 @@ related_runbooks:
 | Hostname | Plan | IP | App dir | Compose file |
 |---|---|---|---|---|
 | paperwork-ops | CX33 (4 vCPU / 8 GB) | 204.168.147.100 | `/opt/paperwork-ops` | `infra/hetzner/compose.yaml` |
-| hetzner-build | CX43 (8 vCPU / 16 GB) | 89.167.34.68 | `/opt/paperwork-build` | `infra/hetzner-build/compose.yaml` |
-| hetzner-workers | CX43 (8 vCPU / 16 GB) | 204.168.165.156 | `/opt/paperwork-workers` | `infra/hetzner-workers/compose.yaml` |
+| paperwork-builders | CX43 (8 vCPU / 16 GB) | 89.167.34.68 | `/opt/paperwork-build` | `infra/hetzner-build/compose.yaml` |
+| paperwork-workers | CX43 (8 vCPU / 16 GB) | 204.168.165.156 | `/opt/paperwork-workers` | `infra/hetzner-workers/compose.yaml` |
 
 ## SSH Access
 
 ```bash
 ssh root@204.168.147.100   # paperwork-ops
-ssh root@89.167.34.68      # hetzner-build
-ssh root@204.168.165.156   # hetzner-workers
+ssh root@89.167.34.68      # paperwork-builders
+ssh root@204.168.165.156   # paperwork-workers
 ```
 
 ## Triage (≤5 min)
@@ -79,13 +79,13 @@ Use this when you buy a fresh CX-series box from Hetzner Cloud.
 
 3. Run the bootstrap script for the appropriate role:
 
-   **For hetzner-build:**
+   **For paperwork-builders:**
    ```bash
    chmod +x infra/hetzner-build/setup.sh
    ./infra/hetzner-build/setup.sh <new-ip>
    ```
 
-   **For hetzner-workers:**
+   **For paperwork-workers:**
    ```bash
    chmod +x infra/hetzner-workers/setup.sh
    ./infra/hetzner-workers/setup.sh <new-ip>
@@ -114,7 +114,7 @@ Use this when you buy a fresh CX-series box from Hetzner Cloud.
 
 ## Path: Register GHA Runners
 
-Use this when runners need to be registered or re-registered on hetzner-build.
+Use this when runners need to be registered or re-registered on paperwork-builders.
 
 1. Obtain a GitHub PAT with `repo` scope (or use a time-limited RUNNER_TOKEN):
    ```bash
@@ -122,7 +122,7 @@ Use this when runners need to be registered or re-registered on hetzner-build.
    gh api -X POST repos/paperwork-labs/paperwork/actions/runners/registration-token --jq '.token'
    ```
 
-2. SSH into hetzner-build and configure the `.env`:
+2. SSH into paperwork-builders and configure the `.env`:
    ```bash
    ssh root@89.167.34.68
    cd /opt/paperwork-build
@@ -178,7 +178,7 @@ To add more runner slots (e.g., runner-5, runner-6):
 
 1. Edit `infra/hetzner-build/compose.yaml` — copy a `runner-N` service block and increment names/labels/volumes.
 2. Commit and push.
-3. Deploy to hetzner-build:
+3. Deploy to paperwork-builders:
    ```bash
    scp infra/hetzner-build/compose.yaml root@89.167.34.68:/opt/paperwork-build/
    ssh root@89.167.34.68 'cd /opt/paperwork-build && docker compose up -d'
@@ -193,10 +193,10 @@ To add more runner slots (e.g., runner-5, runner-6):
 # All services running on paperwork-ops
 ssh root@204.168.147.100 'docker ps --format "table {{.Names}}\t{{.Status}}"'
 
-# All services running on hetzner-build
+# All services running on paperwork-builders
 ssh root@89.167.34.68 'docker ps --format "table {{.Names}}\t{{.Status}}"'
 
-# All services running on hetzner-workers
+# All services running on paperwork-workers
 ssh root@204.168.165.156 'docker ps --format "table {{.Names}}\t{{.Status}}"'
 
 # GHA runners online (requires gh auth)
@@ -281,13 +281,13 @@ Operational checklist when taking a leftover box from legacy mode into a clean s
 | Box | Env file | Populated from |
 |---|---|---|
 | paperwork-ops | `/opt/paperwork-ops/.env` | Studio Vault |
-| hetzner-build | `/opt/paperwork-build/.env` | Studio Vault (`GHA_RUNNER_PAT`) |
-| hetzner-workers | `/opt/paperwork-workers/.env` | Studio Vault |
+| paperwork-builders | `/opt/paperwork-build/.env` | Studio Vault (`GHA_RUNNER_PAT`) |
+| paperwork-workers | `/opt/paperwork-workers/.env` | Studio Vault |
 
 ### Scaling reference
 
 | Signal | Action |
 |---|---|
-| hetzner-build CPU >70% for 7d | Add more runner slots OR upgrade to CX53 |
-| hetzner-workers RAM >70% for 7d | Upgrade to CX53 (same IP, brief reboot) |
+| paperwork-builders CPU >70% for 7d | Add more runner slots OR upgrade to CX53 |
+| paperwork-workers RAM >70% for 7d | Upgrade to CX53 (same IP, brief reboot) |
 | AxiomFolio walk-forward moves to Hetzner | Provision dedicated box or rescale workers |

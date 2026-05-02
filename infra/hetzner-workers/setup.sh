@@ -3,7 +3,7 @@ set -euo pipefail
 
 SERVER_IP="${1:?Usage: ./setup.sh <server-ip>}"
 
-echo "=== hetzner-workers Bootstrap ==="
+echo "=== paperwork-workers Bootstrap ==="
 echo "Target: $SERVER_IP"
 echo ""
 

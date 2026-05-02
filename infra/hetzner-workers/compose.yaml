@@ -4,4 +4,4 @@ services:
   healthcheck:
     image: alpine:3.21
     restart: unless-stopped
-    command: ["sh", "-c", "while true; do echo 'hetzner-workers alive'; sleep 300; done"]
+    command: ["sh", "-c", "while true; do echo 'paperwork-workers alive'; sleep 300; done"]
