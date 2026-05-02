@@ -111,20 +111,27 @@ services:
     name: brain-api
     runtime: docker
     region: oregon
-    plan: starter
+    plan: standard
     numInstances: 1
     buildFilter:
       paths:
         - apis/brain/**
         - packages/auth-clerk/src/python/**
         - .cursor/rules/**
+        # Dockerfile COPY — redeploy Brain when bundled repo snapshots change.
+        - docs/.doc-drift-baseline.json
+        - apps/studio/src/data/workstreams.json
+        - apps/studio/src/data/tracker-index.json
+        - scripts/reconcile_clerk_dns.py
     dockerfilePath: apis/brain/Dockerfile
     # Track F / H12: build from repo root so Dockerfile can COPY .cursor/rules/*.mdc
     # into the image. Without this, persona instructions required a live GitHub round
     # trip on every cold start (and silently fell back to empty instructions when
     # the GITHUB_TOKEN was rate-limited).
     dockerContext: .
-    healthCheckPath: /health
+    # Image WORKDIR is /app (contents of apis/brain), not apis/brain in the filesystem.
+    preDeployCommand: alembic upgrade head
+    healthCheckPath: /api/v1/health
     envVars:
       - key: DATABASE_URL
         sync: false

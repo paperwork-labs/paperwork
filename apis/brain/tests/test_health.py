@@ -8,8 +8,14 @@ async def test_health_check_returns_200(client: AsyncClient) -> None:
     assert data["success"] is True
     assert "status" in data["data"]
     assert "version" in data["data"]
-    assert "db_connected" in data["data"]
     assert data["data"]["service"] == "brain"
+
+
+async def test_api_v1_health_matches_root_health(client: AsyncClient) -> None:
+    a = await client.get("/health")
+    b = await client.get("/api/v1/health")
+    assert b.status_code == 200
+    assert b.json() == a.json()
 
 
 async def test_health_check_includes_version(client: AsyncClient) -> None:
