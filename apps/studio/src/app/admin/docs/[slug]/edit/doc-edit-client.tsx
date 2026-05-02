@@ -7,11 +7,13 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast, Toaster } from "sonner";
 
+import { createDocMarkdownComponents } from "@/components/admin/docs/doc-markdown";
 import { MarkdownEditor } from "@/components/admin/MarkdownEditor";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
 import { HqPageContainer } from "@/components/admin/hq/HqPageContainer";
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import type { DocEntry } from "@/lib/docs";
+import { loadDocsIndex } from "@/lib/docs";
 import {
   composeStudioDocFile,
   splitDocRaw,
@@ -50,6 +52,15 @@ export function DocEditClient({
   );
 
   const previewBodyMd = bodyMd.trim() ? bodyMd : "*Nothing to preview yet.*";
+
+  const markdownComponents = useMemo(() => {
+    const { entries } = loadDocsIndex();
+    const pathToSlug = new Map(entries.map((e) => [e.path, e.slug]));
+    return createDocMarkdownComponents({
+      sourcePath: entry.path,
+      pathToSlug,
+    });
+  }, [entry.path]);
 
   async function handleSaveAsPr() {
     setSaveError(null);
@@ -205,7 +216,9 @@ export function DocEditClient({
             </p>
             <div className="markdown-preview-pane max-h-[min(70vh,640px)] overflow-y-auto rounded-lg border border-zinc-800 bg-zinc-950/60 p-4">
               <div className="prose prose-invert prose-sm max-w-none text-zinc-200 prose-headings:text-zinc-50 prose-a:text-sky-400 prose-code:text-amber-300 prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-zinc-800">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{previewBodyMd}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+                  {previewBodyMd}
+                </ReactMarkdown>
               </div>
             </div>
             <details className="rounded-lg border border-zinc-800/80 bg-zinc-900/30 text-xs text-zinc-500">

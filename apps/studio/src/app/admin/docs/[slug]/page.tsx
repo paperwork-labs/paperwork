@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AlertTriangle, ArrowLeft, Lock } from "lucide-react";
-import type { Components } from "react-markdown";
 
+import { createDocMarkdownComponents } from "@/components/admin/docs/doc-markdown";
 import { DocKnowledgeRail } from "@/components/admin/docs/doc-knowledge-rail";
 import { GithubMarkIcon } from "@/components/github-mark-icon";
 import ReactMarkdown from "react-markdown";
@@ -10,7 +10,6 @@ import remarkGfm from "remark-gfm";
 
 import { loadDocContent, loadDocsIndex } from "@/lib/docs";
 import { computeReadTime } from "@/lib/doc-metadata";
-import { resolveMarkdownHrefToIndexedPath } from "@/lib/knowledge-graph-patterns";
 
 const PWL_DOC_TITLE_PREFIX = "Paperwork Labs ";
 
@@ -44,41 +43,10 @@ export default async function DocPage({ params }: { params: Params }) {
   const { entries: indexEntries } = loadDocsIndex();
   const pathToSlug = new Map(indexEntries.map((e) => [e.path, e.slug]));
 
-  const markdownComponents: Components = {
-    a: ({ href, children, className, ...rest }) => {
-      if (!href) return <span className={className}>{children}</span>;
-      const stripped = href.trim();
-      if (/^https?:\/\//i.test(stripped) || stripped.startsWith("mailto:")) {
-        return (
-          <a
-            href={stripped}
-            className={className}
-            target="_blank"
-            rel="noreferrer"
-            {...rest}
-          >
-            {children}
-          </a>
-        );
-      }
-      const resolved = resolveMarkdownHrefToIndexedPath(entry.path, stripped);
-      if (resolved) {
-        const targetSlug = pathToSlug.get(resolved);
-        if (targetSlug) {
-          return (
-            <Link href={`/admin/docs/${targetSlug}`} className={className} {...rest}>
-              {children}
-            </Link>
-          );
-        }
-      }
-      return (
-        <a href={stripped} className={className} {...rest}>
-          {children}
-        </a>
-      );
-    },
-  };
+  const markdownComponents = createDocMarkdownComponents({
+    sourcePath: entry.path,
+    pathToSlug,
+  });
 
   return (
     <div className="space-y-6">
