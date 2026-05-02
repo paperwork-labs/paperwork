@@ -1,0 +1,67 @@
+services:
+  runner-1:
+    image: myoung34/github-runner:ubuntu-noble
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      RUNNER_NAME: hetzner-build-slot-1
+      RUNNER_LABELS: self-hosted,hetzner-build,cheap-agent-slot-1
+      RUNNER_WORKDIR: /tmp/runner-1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-1-work:/tmp/runner-1
+
+  runner-2:
+    image: myoung34/github-runner:ubuntu-noble
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      RUNNER_NAME: hetzner-build-slot-2
+      RUNNER_LABELS: self-hosted,hetzner-build,cheap-agent-slot-2
+      RUNNER_WORKDIR: /tmp/runner-2
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-2-work:/tmp/runner-2
+
+  runner-3:
+    image: myoung34/github-runner:ubuntu-noble
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      RUNNER_NAME: hetzner-build-slot-3
+      RUNNER_LABELS: self-hosted,hetzner-build,cheap-agent-slot-3
+      RUNNER_WORKDIR: /tmp/runner-3
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-3-work:/tmp/runner-3
+
+  runner-4:
+    image: myoung34/github-runner:ubuntu-noble
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      RUNNER_NAME: hetzner-build-slot-4
+      RUNNER_LABELS: self-hosted,hetzner-build,cheap-agent-slot-4
+      RUNNER_WORKDIR: /tmp/runner-4
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-4-work:/tmp/runner-4
+
+  runner-heavy:
+    image: myoung34/github-runner:ubuntu-noble
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      RUNNER_NAME: hetzner-build-heavy-ci
+      RUNNER_LABELS: self-hosted,hetzner-build,heavy-ci
+      RUNNER_WORKDIR: /tmp/runner-heavy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - runner-heavy-work:/tmp/runner-heavy
+
+volumes:
+  runner-1-work:
+  runner-2-work:
+  runner-3-work:
+  runner-4-work:
+  runner-heavy-work:
