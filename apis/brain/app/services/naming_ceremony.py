@@ -1,6 +1,6 @@
 """Naming ceremony service (WS-82 PR-2a).
 
-medallion: brain
+medallion: ops
 
 Called the FIRST time a persona is invoked and display_name IS NULL.
 The persona picks its own name, tagline, and avatar emoji using its own
@@ -94,25 +94,17 @@ def _parse_response(raw: str) -> NamingCeremonyResult | None:
 
 
 async def _call_model(model: str, prompt: str) -> str:
-    """Call the LLM and return the raw text response.
+    """Call the LLM and return the raw text response."""
+    import litellm  # type: ignore[import-untyped]
 
-    Imports are deferred to avoid circular imports with the agent layer.
-    """
-    try:
-        from app.services.agent import call_model_simple  # type: ignore[import]
-
-        return await call_model_simple(model=model, prompt=prompt)
-    except ImportError:
-        # Fallback: use litellm directly if the agent abstraction isn't wired yet
-        import litellm  # type: ignore[import]
-
-        response = await litellm.acompletion(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=64,
-            temperature=0.9,
-        )
-        return response.choices[0].message.content or ""
+    response = await litellm.acompletion(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=64,
+        temperature=0.9,
+    )
+    content: str = response.choices[0].message.content or ""
+    return content
 
 
 async def run_naming_ceremony(

@@ -3,7 +3,7 @@
 Brain is the single source of truth; Studio reads these via the admin API.
 All endpoints are protected by the shared _require_admin dependency.
 
-medallion: brain
+medallion: ops
 """
 
 from __future__ import annotations

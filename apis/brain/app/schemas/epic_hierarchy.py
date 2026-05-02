@@ -1,6 +1,6 @@
 """Pydantic schemas for the Goal → Epic → Sprint → Task hierarchy CRUD API.
 
-medallion: brain
+medallion: ops
 """
 
 from __future__ import annotations

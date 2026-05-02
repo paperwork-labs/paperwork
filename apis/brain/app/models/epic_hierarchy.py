@@ -3,7 +3,7 @@
 Replaces the old workstreams.json flat-file approach with proper relational
 storage. Brain is the single source of truth; Studio reads via admin API.
 
-medallion: brain
+medallion: ops
 """
 
 from __future__ import annotations

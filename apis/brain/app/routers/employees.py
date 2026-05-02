@@ -1,6 +1,6 @@
 """Admin CRUD endpoints for the unified employees table (WS-82 PR-2a).
 
-medallion: brain
+medallion: ops
 """
 
 from __future__ import annotations

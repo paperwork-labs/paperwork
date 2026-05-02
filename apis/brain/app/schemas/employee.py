@@ -3,7 +3,7 @@
 Covers create / update / response / list-item shapes for the employees table,
 plus the parsed result from the naming ceremony LLM call.
 
-medallion: brain
+medallion: ops
 """
 
 from __future__ import annotations

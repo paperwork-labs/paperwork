@@ -1,6 +1,6 @@
 """Request/response models for persona-driven PR review (Brain Autopilot).
 
-medallion: brain-autopilot
+medallion: ops-autopilot
 """
 
 from __future__ import annotations

@@ -4,7 +4,7 @@ Brain DB owns this. Two file types are generated from it:
 - .cursor/rules/<slug>.mdc (Cursor IDE needs physical files)
 - apis/brain/app/personas/specs/<slug>.yaml (Brain cold-start)
 
-medallion: brain
+medallion: ops
 """
 
 from __future__ import annotations
