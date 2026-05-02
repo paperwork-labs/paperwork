@@ -123,9 +123,7 @@ async def list_epics(
     _auth: None = Depends(_require_admin),
 ) -> Any:
     """List epics with optional filters for goal_id, status, and owner."""
-    stmt = select(Epic).options(
-        selectinload(Epic.sprints).selectinload(Sprint.tasks)
-    )
+    stmt = select(Epic).options(selectinload(Epic.sprints).selectinload(Sprint.tasks))
     if goal_id:
         stmt = stmt.where(Epic.goal_id == goal_id)
     if status:
@@ -148,9 +146,7 @@ async def get_epic(
     stmt = (
         select(Epic)
         .where(Epic.id == epic_id)
-        .options(
-            selectinload(Epic.sprints).selectinload(Sprint.tasks)
-        )
+        .options(selectinload(Epic.sprints).selectinload(Sprint.tasks))
     )
     result = await db.execute(stmt)
     epic = result.scalar_one_or_none()

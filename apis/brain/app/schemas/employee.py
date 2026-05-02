@@ -5,6 +5,7 @@ plus the parsed result from the naming ceremony LLM call.
 
 medallion: brain
 """
+
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003 — needed at runtime by Pydantic

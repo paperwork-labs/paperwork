@@ -2,6 +2,7 @@
 
 medallion: brain
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime  # noqa: TC003 — needed at runtime by Pydantic

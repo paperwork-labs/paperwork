@@ -5,6 +5,7 @@ storage. Brain is the single source of truth; Studio reads via admin API.
 
 medallion: brain
 """
+
 from __future__ import annotations
 
 from datetime import date, datetime  # noqa: TC003 — needed at runtime by SQLAlchemy
@@ -33,15 +34,19 @@ class Goal(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False, server_default="active")
     owner_employee_slug: Mapped[str | None] = mapped_column(Text)
     written_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False,
+        DateTime(timezone=True),
+        nullable=False,
     )
     review_cadence_days: Mapped[int | None] = mapped_column(Integer)
     notes: Mapped[str | None] = mapped_column(Text)
     metadata_: Mapped[dict[str, Any]] = mapped_column(
-        "metadata", JSONB, server_default=_JSONB_OBJ,
+        "metadata",
+        JSONB,
+        server_default=_JSONB_OBJ,
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(),
+        DateTime(timezone=True),
+        server_default=func.now(),
     )
 
     epics: Mapped[list[Epic]] = relationship(back_populates="goal", lazy="selectin")
@@ -66,15 +71,20 @@ class Epic(Base):
     last_activity: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(),
+        DateTime(timezone=True),
+        server_default=func.now(),
     )
     metadata_: Mapped[dict[str, Any]] = mapped_column(
-        "metadata", JSONB, server_default=_JSONB_OBJ,
+        "metadata",
+        JSONB,
+        server_default=_JSONB_OBJ,
     )
 
     goal: Mapped[Goal | None] = relationship(back_populates="epics")
     sprints: Mapped[list[Sprint]] = relationship(
-        back_populates="epic", lazy="selectin", order_by="Sprint.ordinal",
+        back_populates="epic",
+        lazy="selectin",
+        order_by="Sprint.ordinal",
     )
     tasks: Mapped[list[Task]] = relationship(back_populates="epic", lazy="noload")
 
@@ -86,7 +96,9 @@ class Sprint(Base):
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     epic_id: Mapped[str] = mapped_column(
-        Text, ForeignKey("epics.id", ondelete="CASCADE"), nullable=False,
+        Text,
+        ForeignKey("epics.id", ondelete="CASCADE"),
+        nullable=False,
     )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     goal: Mapped[str | None] = mapped_column(Text)
@@ -96,12 +108,16 @@ class Sprint(Base):
     lead_employee_slug: Mapped[str | None] = mapped_column(Text)
     ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
     metadata_: Mapped[dict[str, Any]] = mapped_column(
-        "metadata", JSONB, server_default=_JSONB_OBJ,
+        "metadata",
+        JSONB,
+        server_default=_JSONB_OBJ,
     )
 
     epic: Mapped[Epic] = relationship(back_populates="sprints")
     tasks: Mapped[list[Task]] = relationship(
-        back_populates="sprint", lazy="selectin", order_by="Task.ordinal",
+        back_populates="sprint",
+        lazy="selectin",
+        order_by="Task.ordinal",
     )
 
 
@@ -112,7 +128,8 @@ class Task(Base):
 
     id: Mapped[str] = mapped_column(Text, primary_key=True)
     sprint_id: Mapped[str | None] = mapped_column(
-        Text, ForeignKey("sprints.id", ondelete="SET NULL"),
+        Text,
+        ForeignKey("sprints.id", ondelete="SET NULL"),
     )
     epic_id: Mapped[str | None] = mapped_column(Text, ForeignKey("epics.id"))
     title: Mapped[str] = mapped_column(Text, nullable=False)
@@ -125,11 +142,14 @@ class Task(Base):
     ordinal: Mapped[int | None] = mapped_column(Integer)
     estimated_minutes: Mapped[int | None] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(),
+        DateTime(timezone=True),
+        server_default=func.now(),
     )
     merged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     metadata_: Mapped[dict[str, Any]] = mapped_column(
-        "metadata", JSONB, server_default=_JSONB_OBJ,
+        "metadata",
+        JSONB,
+        server_default=_JSONB_OBJ,
     )
 
     sprint: Mapped[Sprint | None] = relationship(back_populates="tasks")

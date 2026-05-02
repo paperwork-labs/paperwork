@@ -14,6 +14,7 @@ Flow:
   5. If invalid, re-prompt once with simpler instructions
   6. Write to DB and return NamingCeremonyResult
 """
+
 from __future__ import annotations
 
 import logging
