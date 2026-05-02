@@ -5,7 +5,7 @@ import workstreamsJson from "@/data/workstreams.json";
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
   usePathname: () => "/admin/workstreams",
 }));
 

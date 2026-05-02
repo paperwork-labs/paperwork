@@ -303,6 +303,39 @@ export type KeyResultProgressResponse = {
   progress_pct: number;
 };
 
+async function brainAdminMutateWithSecret<T>(
+  label: string,
+  root: string,
+  secret: string,
+  path: string,
+  method: string,
+  body?: unknown,
+): Promise<T> {
+  const headers: Record<string, string> = { "X-Brain-Secret": secret };
+  if (body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
+
+  const url = `${root}${path}`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      cache: "no-store",
+    });
+  } catch (err) {
+    throw new BrainClientError(
+      label,
+      0,
+      err instanceof Error ? err.message : "network error",
+    );
+  }
+
+  return parseBrainAdminResponse<T>(label, res);
+}
+
 async function parseBrainAdminResponse<T>(label: string, res: Response): Promise<T> {
   if (!res.ok) {
     const body = await res.text().catch(() => "");
@@ -354,30 +387,137 @@ async function brainAdminMutationJson<T>(
     );
   }
 
-  const headers: Record<string, string> = { "X-Brain-Secret": auth.secret };
-  if (body !== undefined) {
-    headers["Content-Type"] = "application/json";
-  }
-
-  const url = `${auth.root}${path}`;
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-      cache: "no-store",
-    });
-  } catch (err) {
-    throw new BrainClientError(
-      label,
-      0,
-      err instanceof Error ? err.message : "network error",
-    );
-  }
-
-  return parseBrainAdminResponse<T>(label, res);
+  return brainAdminMutateWithSecret<T>(label, auth.root, auth.secret, path, method, body);
 }
+
+// ---------------------------------------------------------------------------
+// Epic hierarchy mutations (Brain SQL router — `/admin/goals`, `/admin/epics`, …)
+// ---------------------------------------------------------------------------
+
+/** Mirrors Brain ``GoalCreate`` (``app/schemas/epic_hierarchy.py``). */
+export type HierarchyGoalCreateInput = {
+  id: string;
+  objective: string;
+  horizon: string;
+  metric: string;
+  target: string;
+  status?: string;
+  owner_employee_slug?: string | null;
+  written_at: string;
+  review_cadence_days?: number | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+/** Mirrors Brain ``GoalUpdate``. */
+export type HierarchyGoalPatchInput = {
+  objective?: string | null;
+  horizon?: string | null;
+  metric?: string | null;
+  target?: string | null;
+  status?: string | null;
+  owner_employee_slug?: string | null;
+  written_at?: string | null;
+  review_cadence_days?: number | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+/** Mirrors Brain ``EpicCreate``. */
+export type HierarchyEpicCreateInput = {
+  id: string;
+  title: string;
+  goal_id?: string | null;
+  owner_employee_slug: string;
+  status: string;
+  priority: number;
+  percent_done?: number;
+  brief_tag: string;
+  description?: string | null;
+  related_plan?: string | null;
+  blockers?: unknown[];
+  last_activity?: string | null;
+  last_dispatched_at?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+/** Mirrors Brain ``EpicUpdate``. */
+export type HierarchyEpicPatchInput = {
+  title?: string | null;
+  goal_id?: string | null;
+  owner_employee_slug?: string | null;
+  status?: string | null;
+  priority?: number | null;
+  percent_done?: number | null;
+  brief_tag?: string | null;
+  description?: string | null;
+  related_plan?: string | null;
+  blockers?: unknown[] | null;
+  last_activity?: string | null;
+  last_dispatched_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+/** Mirrors Brain ``SprintCreate``. */
+export type HierarchySprintCreateInput = {
+  id: string;
+  epic_id: string;
+  title: string;
+  goal?: string | null;
+  status: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  lead_employee_slug?: string | null;
+  ordinal: number;
+  metadata?: Record<string, unknown>;
+};
+
+/** Mirrors Brain ``SprintUpdate``. */
+export type HierarchySprintPatchInput = {
+  title?: string | null;
+  goal?: string | null;
+  status?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  lead_employee_slug?: string | null;
+  ordinal?: number | null;
+  metadata?: Record<string, unknown> | null;
+};
+
+/** Mirrors Brain ``TaskCreate``. */
+export type HierarchyTaskCreateInput = {
+  id: string;
+  title: string;
+  status: string;
+  sprint_id?: string | null;
+  epic_id?: string | null;
+  github_pr?: number | null;
+  github_pr_url?: string | null;
+  owner_employee_slug?: string | null;
+  assignee?: string | null;
+  brief_tag?: string | null;
+  ordinal?: number | null;
+  estimated_minutes?: number | null;
+  merged_at?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+/** Mirrors Brain ``TaskUpdate``. */
+export type HierarchyTaskPatchInput = {
+  title?: string | null;
+  status?: string | null;
+  sprint_id?: string | null;
+  epic_id?: string | null;
+  github_pr?: number | null;
+  github_pr_url?: string | null;
+  owner_employee_slug?: string | null;
+  assignee?: string | null;
+  brief_tag?: string | null;
+  ordinal?: number | null;
+  estimated_minutes?: number | null;
+  merged_at?: string | null;
+  metadata?: Record<string, unknown> | null;
+};
 
 /** POST ``/admin/goals`` — create objective + optional KRs; sets top-level quarter. */
 export async function createGoal(input: CreateGoalInput): Promise<Objective> {
@@ -551,6 +691,102 @@ export class BrainClient {
     return this.get<BrainFillMeterResponse>(
       `/admin/brain-fill-meter?${params}`,
       "brain-fill-meter",
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Epic hierarchy mutations (Brain SQL-backed `/admin/goals|epics|sprints|tasks`)
+  // -----------------------------------------------------------------------
+
+  async hierarchyCreateGoal(input: HierarchyGoalCreateInput): Promise<unknown> {
+    return brainAdminMutateWithSecret<unknown>(
+      "epic-hierarchy/goal-create",
+      this.root,
+      this.secret,
+      "/admin/goals",
+      "POST",
+      input,
+    );
+  }
+
+  async hierarchyPatchGoal(goalId: string, input: HierarchyGoalPatchInput): Promise<unknown> {
+    const path = `/admin/goals/${encodeURIComponent(goalId)}`;
+    return brainAdminMutateWithSecret<unknown>(
+      "epic-hierarchy/goal-patch",
+      this.root,
+      this.secret,
+      path,
+      "PATCH",
+      input,
+    );
+  }
+
+  async hierarchyCreateEpic(input: HierarchyEpicCreateInput): Promise<unknown> {
+    return brainAdminMutateWithSecret<unknown>(
+      "epic-hierarchy/epic-create",
+      this.root,
+      this.secret,
+      "/admin/epics",
+      "POST",
+      input,
+    );
+  }
+
+  async hierarchyPatchEpic(epicId: string, input: HierarchyEpicPatchInput): Promise<unknown> {
+    const path = `/admin/epics/${encodeURIComponent(epicId)}`;
+    return brainAdminMutateWithSecret<unknown>(
+      "epic-hierarchy/epic-patch",
+      this.root,
+      this.secret,
+      path,
+      "PATCH",
+      input,
+    );
+  }
+
+  async hierarchyCreateSprint(input: HierarchySprintCreateInput): Promise<unknown> {
+    return brainAdminMutateWithSecret<unknown>(
+      "epic-hierarchy/sprint-create",
+      this.root,
+      this.secret,
+      "/admin/sprints",
+      "POST",
+      input,
+    );
+  }
+
+  async hierarchyPatchSprint(sprintId: string, input: HierarchySprintPatchInput): Promise<unknown> {
+    const path = `/admin/sprints/${encodeURIComponent(sprintId)}`;
+    return brainAdminMutateWithSecret<unknown>(
+      "epic-hierarchy/sprint-patch",
+      this.root,
+      this.secret,
+      path,
+      "PATCH",
+      input,
+    );
+  }
+
+  async hierarchyCreateTask(input: HierarchyTaskCreateInput): Promise<unknown> {
+    return brainAdminMutateWithSecret<unknown>(
+      "epic-hierarchy/task-create",
+      this.root,
+      this.secret,
+      "/admin/tasks",
+      "POST",
+      input,
+    );
+  }
+
+  async hierarchyPatchTask(taskId: string, input: HierarchyTaskPatchInput): Promise<unknown> {
+    const path = `/admin/tasks/${encodeURIComponent(taskId)}`;
+    return brainAdminMutateWithSecret<unknown>(
+      "epic-hierarchy/task-patch",
+      this.root,
+      this.secret,
+      path,
+      "PATCH",
+      input,
     );
   }
 
