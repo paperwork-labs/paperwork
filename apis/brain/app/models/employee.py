@@ -3,10 +3,12 @@
 Brain DB owns this. Two file types are generated from it:
 - .cursor/rules/<slug>.mdc (Cursor IDE needs physical files)
 - apis/brain/app/personas/specs/<slug>.yaml (Brain cold-start)
+
+medallion: brain
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime  # noqa: TC003 — needed at runtime by SQLAlchemy
 from typing import Any
 
 from sqlalchemy import Boolean, DateTime, Integer, Numeric, Text, func, text

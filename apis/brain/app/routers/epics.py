@@ -2,6 +2,8 @@
 
 Brain is the single source of truth; Studio reads these via the admin API.
 All endpoints are protected by the shared _require_admin dependency.
+
+medallion: brain
 """
 
 from __future__ import annotations
@@ -9,7 +11,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -33,7 +34,6 @@ from app.schemas.epic_hierarchy import (
 )
 
 if TYPE_CHECKING:
-    from fastapi.responses import JSONResponse
     from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/admin", tags=["admin"])

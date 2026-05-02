@@ -1,5 +1,7 @@
 """Naming ceremony service (WS-82 PR-2a).
 
+medallion: brain
+
 Called the FIRST time a persona is invoked and display_name IS NULL.
 The persona picks its own name, tagline, and avatar emoji using its own
 default_model. Result is written to the employees table immediately.
@@ -76,10 +78,7 @@ def validate_name(name: str, role_title: str) -> bool:
     role_words = {w for w in role_title.lower().split() if len(w) > 3}
     if any(w in lower for w in role_words):
         return False
-    for pat in CRINGE_PATTERNS:
-        if re.search(pat, lower):
-            return False
-    return True
+    return all(not re.search(pat, lower) for pat in CRINGE_PATTERNS)
 
 
 def _parse_response(raw: str) -> NamingCeremonyResult | None:
@@ -116,8 +115,8 @@ async def _call_model(model: str, prompt: str) -> str:
 
 
 async def run_naming_ceremony(
-    employee: "Employee",
-    db: "AsyncSession",
+    employee: Employee,
+    db: AsyncSession,
 ) -> NamingCeremonyResult:
     """Run the naming ceremony for a persona that has no display_name yet.
 
@@ -164,7 +163,7 @@ async def run_naming_ceremony(
     return result
 
 
-async def get_or_name(slug: str, db: "AsyncSession") -> "Employee":
+async def get_or_name(slug: str, db: AsyncSession) -> Employee:
     """Return the Employee, running naming ceremony if display_name is not set."""
     from app.models.employee import Employee
 

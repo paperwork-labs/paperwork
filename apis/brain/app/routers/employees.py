@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002 — used at runtime by FastAPI DI
 
 from app.config import settings
 from app.database import get_db
@@ -52,7 +52,9 @@ def _employee_to_response(emp: Employee) -> dict[str, Any]:
         escalation_model=emp.escalation_model,
         escalate_if=emp.escalate_if or [],
         requires_tools=emp.requires_tools,
-        daily_cost_ceiling_usd=float(emp.daily_cost_ceiling_usd) if emp.daily_cost_ceiling_usd is not None else None,
+        daily_cost_ceiling_usd=(
+            float(emp.daily_cost_ceiling_usd) if emp.daily_cost_ceiling_usd is not None else None
+        ),
         owner_channel=emp.owner_channel,
         mode=emp.mode,
         tone_prefix=emp.tone_prefix,
@@ -92,7 +94,7 @@ def _employee_to_list_item(emp: Employee) -> dict[str, Any]:
 async def list_employees(
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
-) -> "JSONResponse":
+) -> JSONResponse:
     result = await db.execute(select(Employee).order_by(Employee.team, Employee.slug))
     employees = result.scalars().all()
     return success_response({"employees": [_employee_to_list_item(e) for e in employees]})
@@ -103,7 +105,7 @@ async def get_employee(
     slug: str,
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
-) -> "JSONResponse":
+) -> JSONResponse:
     emp = await db.get(Employee, slug)
     if emp is None:
         return error_response(f"Employee '{slug}' not found", status_code=404)
@@ -115,7 +117,7 @@ async def create_employee(
     body: EmployeeCreate,
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
-) -> "JSONResponse":
+) -> JSONResponse:
     existing = await db.get(Employee, body.slug)
     if existing is not None:
         return error_response(f"Employee '{body.slug}' already exists", status_code=409)
@@ -166,7 +168,7 @@ async def update_employee(
     body: EmployeeUpdate,
     db: AsyncSession = Depends(get_db),
     _auth: None = Depends(_require_admin),
-) -> "JSONResponse":
+) -> JSONResponse:
     emp = await db.get(Employee, slug)
     if emp is None:
         return error_response(f"Employee '{slug}' not found", status_code=404)

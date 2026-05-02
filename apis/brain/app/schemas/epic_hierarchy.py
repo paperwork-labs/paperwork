@@ -1,12 +1,13 @@
-"""Pydantic schemas for the Goal → Epic → Sprint → Task hierarchy CRUD API."""
+"""Pydantic schemas for the Goal → Epic → Sprint → Task hierarchy CRUD API.
 
+medallion: brain
+"""
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime  # noqa: TC003 — needed at runtime by Pydantic
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
-
 
 # ---------------------------------------------------------------------------
 # Task schemas

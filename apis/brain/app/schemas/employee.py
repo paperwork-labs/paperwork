@@ -2,10 +2,12 @@
 
 Covers create / update / response / list-item shapes for the employees table,
 plus the parsed result from the naming ceremony LLM call.
+
+medallion: brain
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime  # noqa: TC003 — needed at runtime by Pydantic
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -155,7 +157,7 @@ class EmployeeResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm_row(cls, row: Any) -> "EmployeeResponse":
+    def from_orm_row(cls, row: Any) -> EmployeeResponse:
         data = {c.key: getattr(row, c.key) for c in row.__table__.columns}
         # metadata_ -> metadata alias
         data["metadata"] = data.pop("metadata", {}) or {}
