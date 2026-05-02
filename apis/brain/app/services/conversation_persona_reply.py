@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Sequence  # noqa: TC003
 from typing import Any
 
-import litellm
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
@@ -58,7 +58,7 @@ def _usage_total(response: Any) -> int:
     return int(pr or 0) + int(ct or 0)
 
 
-def _fmt_thread(conv_messages: list[ThreadMessage]) -> str:
+def _fmt_thread(conv_messages: Sequence[ThreadMessage]) -> str:
     lines: list[str] = []
     for m in conv_messages:
         au = m.author
@@ -108,6 +108,8 @@ async def generate_persona_reply_text(
     )
 
     max_tokens = int(spec.max_output_tokens or 4096)
+    import litellm
+
     response = await litellm.acompletion(
         model=model_used,
         messages=[
