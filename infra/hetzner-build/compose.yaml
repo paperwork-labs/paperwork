@@ -4,8 +4,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      RUNNER_NAME: hetzner-build-slot-1
-      RUNNER_LABELS: self-hosted,hetzner-build,cheap-agent-slot-1
+      RUNNER_NAME: paperwork-builders-slot-1
+      RUNNER_LABELS: self-hosted,paperwork-builders,cheap-agent-slot-1
       RUNNER_WORKDIR: /tmp/runner-1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -16,8 +16,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      RUNNER_NAME: hetzner-build-slot-2
-      RUNNER_LABELS: self-hosted,hetzner-build,cheap-agent-slot-2
+      RUNNER_NAME: paperwork-builders-slot-2
+      RUNNER_LABELS: self-hosted,paperwork-builders,cheap-agent-slot-2
       RUNNER_WORKDIR: /tmp/runner-2
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -28,8 +28,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      RUNNER_NAME: hetzner-build-slot-3
-      RUNNER_LABELS: self-hosted,hetzner-build,cheap-agent-slot-3
+      RUNNER_NAME: paperwork-builders-slot-3
+      RUNNER_LABELS: self-hosted,paperwork-builders,cheap-agent-slot-3
       RUNNER_WORKDIR: /tmp/runner-3
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -40,8 +40,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      RUNNER_NAME: hetzner-build-slot-4
-      RUNNER_LABELS: self-hosted,hetzner-build,cheap-agent-slot-4
+      RUNNER_NAME: paperwork-builders-slot-4
+      RUNNER_LABELS: self-hosted,paperwork-builders,cheap-agent-slot-4
       RUNNER_WORKDIR: /tmp/runner-4
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -52,8 +52,8 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      RUNNER_NAME: hetzner-build-heavy-ci
-      RUNNER_LABELS: self-hosted,hetzner-build,heavy-ci
+      RUNNER_NAME: paperwork-builders-heavy-ci
+      RUNNER_LABELS: self-hosted,paperwork-builders,heavy-ci
       RUNNER_WORKDIR: /tmp/runner-heavy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
