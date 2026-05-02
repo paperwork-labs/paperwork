@@ -1124,7 +1124,7 @@ export async function getInfrastructureView(): Promise<InfrastructureView> {
     checkWithLatency(
       "AxiomFolio static (public URL)",
       "frontend",
-      `${normalizeBaseUrl(process.env.AXIOMFOLIO_WEB_URL) || "https://axiomfolio.paperworklabs.com"}/`,
+      `${normalizeBaseUrl(process.env.AXIOMFOLIO_WEB_URL) || "https://www.axiomfolio.com"}/`,
       "https://dashboard.render.com",
     ),
     checkWithLatency(
@@ -1142,7 +1142,7 @@ export async function getInfrastructureView(): Promise<InfrastructureView> {
     checkWithLatency(
       "Distill frontend",
       "frontend",
-      `${normalizeBaseUrl(process.env.DISTILL_URL) || "https://distill.paperworklabs.com"}/`,
+      `${normalizeBaseUrl(process.env.DISTILL_URL) || "https://distill.tax"}/`,
       `https://vercel.com/${vercelTeamSlug}/distill`,
     ),
     checkWithLatency(

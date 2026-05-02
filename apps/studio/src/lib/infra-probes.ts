@@ -39,8 +39,6 @@ export const SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES = [
   "launchfree",
   "distill",
   "trinkets",
-  "axiomfolio-marketing",
-  "paperworklabs",
 ] as const;
 
 export const SUGGESTED_VERCEL_MONOREPO_PROJECT_NAMES_CSV =
