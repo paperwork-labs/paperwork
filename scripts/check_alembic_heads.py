@@ -5,10 +5,15 @@ When multiple branches create revisions that share the same ``down_revision``, A
 can end up with multiple heads and ``alembic upgrade head`` / app boot fails at
 runtime (Brain incident PR #348).
 
+Also errors when two migration files declare the same ``revision =`` id (duplicate
+revision IDs — a linear chain can still have exactly one head while Alembic fails
+with ``RevisionError``).
+
 Run:
     python scripts/check_alembic_heads.py
 
-Exit 1 when any migrations directory reports more than one head. Stdlib only.
+Exit 1 when any migrations directory reports more than one head or duplicate
+revision IDs across files. Stdlib only.
 """
 
 from __future__ import annotations
@@ -120,6 +125,32 @@ def _heads_for_versions_dir(
     return head_ids, revision_to_down
 
 
+def _check_duplicate_revision_ids(versions: Path, root: Path) -> None:
+    """Fail fast if the same ``revision`` id is declared in more than one file."""
+
+    rev_to_files: dict[str, list[Path]] = {}
+    for py in sorted(versions.glob("*.py")):
+        if py.name.startswith("__"):
+            continue
+        rev, _ = _parse_migration(py, root)
+        rev_to_files.setdefault(rev, []).append(py)
+
+    dupes = {r: files for r, files in rev_to_files.items() if len(files) > 1}
+    if not dupes:
+        return
+
+    rel_versions = versions.relative_to(root)
+    lines = []
+    for rev, files in sorted(dupes.items()):
+        rel_paths = ", ".join(str(p.relative_to(root)) for p in files)
+        lines.append(f"  revision {rev!r} appears in {len(files)} files: {rel_paths}")
+    raise SystemExit(
+        f"{rel_versions}: duplicate revision ID(s) across migration files:\n"
+        + "\n".join(lines)
+        + "\nEach Alembic migration file must use a unique ``revision`` string.\n"
+    )
+
+
 def main() -> int:
     versions_dirs = _discover_versions_dirs(_REPO_ROOT)
     if not versions_dirs:
@@ -133,6 +164,7 @@ def main() -> int:
     for versions in versions_dirs:
         rel = versions.relative_to(_REPO_ROOT)
         try:
+            _check_duplicate_revision_ids(versions, _REPO_ROOT)
             heads, _ = _heads_for_versions_dir(versions, _REPO_ROOT)
         except SystemExit as e:
             print(e, file=sys.stderr)
