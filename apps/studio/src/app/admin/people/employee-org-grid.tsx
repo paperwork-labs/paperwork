@@ -72,7 +72,7 @@ function EmployeeNamedStatus({ namedAt }: { namedAt: string | null }) {
     <span
       className={cn(
         "absolute right-3 top-3 h-2 w-2 shrink-0 rounded-full ring-2 ring-zinc-950",
-        named ? "bg-emerald-400" : "bg-zinc-600",
+        named ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.45)]" : "bg-zinc-600",
       )}
       title={named ? "Named" : "Not yet named"}
       aria-label={named ? "Named" : "Not yet named"}
@@ -80,55 +80,40 @@ function EmployeeNamedStatus({ namedAt }: { namedAt: string | null }) {
   );
 }
 
-function EmployeeCard({
-  employee: e,
-  founder = false,
-}: {
-  employee: EmployeeListItem;
-  founder?: boolean;
-}) {
+function FounderOrgCard({ employee: e }: { employee: EmployeeListItem }) {
   const title = employeeLabel(e);
   return (
-    <Link
-      href={`/admin/people/${encodeURIComponent(e.slug)}`}
-      className={cn("group block min-w-[200px] max-w-md")}
-    >
+    <Link href={`/admin/people/${encodeURIComponent(e.slug)}`} className="group mx-auto block w-full max-w-lg">
       <Card
         className={cn(
-          "relative h-full min-h-[120px] border-zinc-800/90 bg-zinc-900/40 text-zinc-100 shadow-none motion-safe:transition-colors",
-          "hover:border-zinc-600/80 hover:bg-zinc-900/70",
-          founder &&
-            "min-h-[140px] border-amber-600/35 bg-zinc-900/60 ring-1 ring-amber-500/25",
+          "relative overflow-hidden border-2 border-amber-500/40 bg-gradient-to-b from-zinc-900/90 to-zinc-950/95 text-zinc-100 shadow-none",
+          "ring-2 ring-amber-400/15 ring-offset-2 ring-offset-zinc-950",
+          "motion-safe:transition-[border-color,box-shadow] hover:border-amber-400/55 hover:ring-amber-300/25",
         )}
       >
-        <CardContent className={cn("p-3", founder && "pb-4 pt-4")}>
+        <CardContent className="relative px-8 pb-8 pt-8 text-center md:px-10 md:pb-10 md:pt-10">
           <EmployeeNamedStatus namedAt={e.named_at} />
-          <div className="flex gap-3 pr-4">
-            <span
-              className={cn(
-                "select-none leading-none text-zinc-100",
-                founder ? "text-4xl" : "text-2xl",
-              )}
-              aria-hidden
-            >
-              {e.avatar_emoji ?? "◇"}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-zinc-100 group-hover:text-white">
-                {title}
-              </p>
-              <p className="truncate text-xs text-zinc-500">{e.role_title}</p>
-              {e.tagline ? (
-                <p className="mt-1 line-clamp-2 text-xs italic text-zinc-500">{e.tagline}</p>
-              ) : (
-                <p className="mt-1 text-xs italic text-zinc-600">—</p>
-              )}
-            </div>
-          </div>
-          <div className="mt-3 flex flex-wrap gap-1.5">
+          <span className="mb-4 block select-none text-5xl leading-none md:text-6xl" aria-hidden>
+            {e.avatar_emoji ?? "◇"}
+          </span>
+          <p className="text-xl font-semibold tracking-tight text-zinc-50 group-hover:text-white md:text-2xl">
+            {title}
+          </p>
+          <p className="mt-1 text-xs font-medium uppercase tracking-wider text-amber-500/85">
+            Founder
+          </p>
+          {e.role_title ? (
+            <p className="mt-2 text-sm text-zinc-400">{e.role_title}</p>
+          ) : null}
+          {e.tagline ? (
+            <p className="mx-auto mt-4 max-w-md text-sm leading-relaxed text-zinc-400">{e.tagline}</p>
+          ) : (
+            <p className="mt-4 text-sm italic text-zinc-600">—</p>
+          )}
+          <div className="mt-6 flex justify-center">
             <Badge
               variant="outline"
-              className="border-zinc-700 bg-zinc-950/40 text-[10px] font-medium text-zinc-400"
+              className="border-amber-700/40 bg-amber-950/30 text-[11px] font-medium text-amber-200/90"
             >
               {e.team}
             </Badge>
@@ -136,6 +121,75 @@ function EmployeeCard({
         </CardContent>
       </Card>
     </Link>
+  );
+}
+
+function TeamMemberCard({ employee: e }: { employee: EmployeeListItem }) {
+  const primary = employeeLabel(e);
+  const showRoleSubtitle = Boolean(e.role_title && e.role_title !== primary);
+
+  return (
+    <Link href={`/admin/people/${encodeURIComponent(e.slug)}`} className="group block min-w-0">
+      <Card
+        className={cn(
+          "relative h-full min-h-[124px] border border-zinc-800 bg-zinc-950/60 text-zinc-100 shadow-none",
+          "motion-safe:transition-colors hover:border-zinc-600 hover:bg-zinc-900/55",
+        )}
+      >
+        <CardContent className="p-4">
+          <EmployeeNamedStatus namedAt={e.named_at} />
+          <div className="flex gap-3 pr-5">
+            <span className="select-none text-3xl leading-none text-zinc-100" aria-hidden>
+              {e.avatar_emoji ?? "◇"}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-zinc-100 group-hover:text-white">{primary}</p>
+              {showRoleSubtitle ? (
+                <p className="truncate text-xs text-zinc-500">{e.role_title}</p>
+              ) : null}
+              {e.tagline ? (
+                <p className="mt-2 line-clamp-2 text-xs leading-snug text-zinc-500">{e.tagline}</p>
+              ) : (
+                <p className="mt-2 text-xs italic text-zinc-600">—</p>
+              )}
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <Badge
+              variant="outline"
+              className="border-zinc-700 bg-zinc-950/80 text-[10px] font-medium text-zinc-400"
+            >
+              {e.team}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
+}
+
+function slugifyTeam(team: string): string {
+  return team.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9_-]/g, "");
+}
+
+/** Decorative founder → teams connectors (CSS-only). */
+function OrgChartConnectors() {
+  return (
+    <div className="pointer-events-none relative flex w-full max-w-5xl flex-col items-center select-none">
+      <div
+        className="h-10 w-px shrink-0 bg-gradient-to-b from-amber-600/35 via-zinc-600 to-zinc-700"
+        aria-hidden
+      />
+      <div className="relative flex w-[min(100%,42rem)] items-center">
+        <div className="h-px flex-1 bg-zinc-700/85" aria-hidden />
+        <div
+          className="mx-2 size-2 shrink-0 rounded-full border border-zinc-600 bg-zinc-800 shadow-inner shadow-black/40"
+          aria-hidden
+        />
+        <div className="h-px flex-1 bg-zinc-700/85" aria-hidden />
+      </div>
+      <div className="h-8 w-px shrink-0 bg-zinc-700/90" aria-hidden />
+    </div>
   );
 }
 
@@ -156,41 +210,67 @@ export function EmployeeOrgGrid({ employees }: { employees: EmployeeListItem[] }
   }
 
   const teamOrder = sortTeamNames(new Set(byTeam.keys()));
+  const hasTeamMembers = teamOrder.some((t) => (byTeam.get(t)?.length ?? 0) > 0);
 
   return (
     <div className="space-y-10">
       <PeopleDirectoryHeader />
 
-      {founders.length > 0 ? (
-        <section aria-label="Leadership">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-            Founder
-          </h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {founders.map((e) => (
-              <EmployeeCard key={e.slug} employee={e} founder />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <div className="grid gap-10 lg:grid-cols-2 xl:grid-cols-3">
-        {teamOrder.map((team) => {
-          const members = byTeam.get(team);
-          if (!members?.length) return null;
-          return (
-            <section key={team} aria-label={team}>
-              <h2 className="mb-3 border-b border-zinc-800/80 pb-2 text-sm font-semibold text-zinc-200">
-                {team}
-              </h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {members.map((e) => (
-                  <EmployeeCard key={e.slug} employee={e} />
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 shadow-inner shadow-black/20 ring-1 ring-zinc-800/80 md:p-8">
+        <div className="flex flex-col items-center">
+          {founders.length > 0 ? (
+            <section aria-label="Leadership" className="w-full">
+              <h2 className="sr-only">Leadership</h2>
+              <div className="flex flex-col items-center gap-2">
+                {founders.map((e) => (
+                  <FounderOrgCard key={e.slug} employee={e} />
                 ))}
               </div>
             </section>
-          );
-        })}
+          ) : null}
+
+          {founders.length > 0 && hasTeamMembers ? <OrgChartConnectors /> : null}
+
+          {hasTeamMembers ? (
+            <div
+              className={cn("w-full space-y-12", founders.length > 0 ? "pt-2" : "pt-0")}
+            >
+              <div className="flex items-center gap-3 px-1">
+                <div className="h-px flex-1 bg-zinc-800" aria-hidden />
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-zinc-500">
+                  Teams
+                </span>
+                <div className="h-px flex-1 bg-zinc-800" aria-hidden />
+              </div>
+
+              {teamOrder.map((team) => {
+                const members = byTeam.get(team);
+                if (!members?.length) return null;
+                return (
+                  <section key={team} aria-label={team} className="relative">
+                    <div className="mb-4 flex flex-wrap items-center gap-3">
+                      <span
+                        className="rounded-md border border-zinc-700/90 bg-zinc-900/50 px-2.5 py-1 text-xs font-semibold text-zinc-200"
+                        id={`team-heading-${slugifyTeam(team)}`}
+                      >
+                        {team}
+                      </span>
+                      <span className="text-[11px] text-zinc-600">{members.length} members</span>
+                    </div>
+                    <div
+                      className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+                      aria-labelledby={`team-heading-${slugifyTeam(team)}`}
+                    >
+                      {members.map((e) => (
+                        <TeamMemberCard key={e.slug} employee={e} />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );
