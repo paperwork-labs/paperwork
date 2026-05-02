@@ -25,8 +25,9 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return target.isContentEditable;
 }
 
+/** Open Radix/shadcn dialog (role + data-state); plain `role="dialog"` shells without state are ignored. */
 function hasOpenDialog(): boolean {
-  return document.querySelectorAll('[role="dialog"][data-state="open"]').length > 0;
+  return document.querySelector('[role="dialog"][data-state="open"]') != null;
 }
 
 /**
@@ -51,7 +52,8 @@ export function useKeyboardShortcuts(): void {
       if (hasOpenDialog()) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      if (e.key === "?") {
+      const isHelpKey = e.key === "?" || (e.shiftKey && e.code === "Slash");
+      if (isHelpKey) {
         e.preventDefault();
         disarm();
         window.dispatchEvent(new CustomEvent(STUDIO_KEYBOARD_HELP_OPEN_EVENT));
@@ -80,10 +82,10 @@ export function useKeyboardShortcuts(): void {
       }
     };
 
-    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("keydown", onKeyDown, true);
     return () => {
       disarm();
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("keydown", onKeyDown, true);
     };
   }, [router]);
 }
