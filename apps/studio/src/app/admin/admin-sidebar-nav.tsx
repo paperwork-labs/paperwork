@@ -22,6 +22,7 @@ const FOOTER_VENDOR_LINKS: {
       { label: "Vercel", href: "https://vercel.com/paperwork-labs" },
       { label: "Render", href: "https://dashboard.render.com" },
       { label: "Cloudflare", href: "https://dash.cloudflare.com" },
+      { label: "Hetzner", href: "https://console.hetzner.cloud/" },
     ],
   },
   {
@@ -53,8 +54,12 @@ function navItemIsActive(
     }
     return true;
   }
-  if (itemHref === "/admin") return pathname === "/admin";
-  if (!pathname.startsWith(pathPart)) return false;
+  /** Prefix match only at segment boundaries (/admin/foo matches /admin/foo/bar, not /admin/foobar). */
+  const segmentMatches =
+    pathPart === "/admin"
+      ? pathname === "/admin"
+      : pathname === pathPart || pathname.startsWith(`${pathPart}/`);
+  if (!segmentMatches) return false;
   if (pathPart === "/admin/infrastructure" && searchParams.get("tab") === "cost") {
     return false;
   }
@@ -121,7 +126,7 @@ export function AdminSidebarNav({
                   onClick={onNavigate}
                   className={`flex max-lg:min-h-11 items-center justify-between gap-2 rounded-lg border-l-2 border-transparent px-3 py-2 text-sm motion-safe:transition-colors ${
                     isActive
-                      ? "border-zinc-400 bg-zinc-800/80 font-medium text-zinc-100"
+                      ? "border-emerald-400/85 bg-zinc-800/80 font-medium text-zinc-100"
                       : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
                   }`}
                 >

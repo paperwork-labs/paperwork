@@ -610,7 +610,7 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
           <div className="space-y-1">
             {[
               { label: "Brain conversations", href: "/admin/brain/conversations" },
-              { label: "Workstreams", href: "/admin/workstreams" },
+              { label: "Epics", href: "/admin/workstreams" },
               { label: "Products", href: "/admin/products" },
               { label: "Architecture", href: "/admin/architecture" },
             ].map((link) => (

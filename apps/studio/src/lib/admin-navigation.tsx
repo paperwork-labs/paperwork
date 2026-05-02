@@ -60,7 +60,7 @@ export function buildNavGroups(
     {
       label: null,
       items: [
-        { href: "/admin/workstreams", label: "Workstreams", icon: Kanban },
+        { href: "/admin/workstreams", label: "Epics", icon: Kanban },
         { href: "/admin/products", label: "Products", icon: Boxes },
         { href: "/admin/goals", label: "Goals", icon: Target },
       ],
