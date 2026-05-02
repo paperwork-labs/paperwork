@@ -11,6 +11,7 @@ import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { HqStatCard } from "@/components/admin/hq/HqStatCard";
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
 import type { ProductHealthPulse } from "@/lib/product-health-brain";
+import type { HubSignalKind } from "@/lib/product-hub-signals";
 import {
   type ProductRegistryEntry,
   type ProductStageFilter,
@@ -28,8 +29,17 @@ export type ProductIndexSummaryBySlug = Record<
     openIssues: number | null;
     health: ProductHealthPulse | null;
     lastShipped: string | null;
+    /** Overview, Plans, Docs, Health, GTM */
+    hubSignals: readonly HubSignalKind[];
   }
 >;
+
+const hubSignalDotClass: Record<HubSignalKind, string> = {
+  success: "bg-[var(--status-success)]",
+  warning: "bg-[var(--status-warning)]",
+  danger: "bg-[var(--status-danger)]",
+  muted: "bg-zinc-600",
+};
 
 const healthColor: Record<ProductHealthPulse, string> = {
   ok: "bg-emerald-400",
@@ -42,6 +52,22 @@ const healthLabel: Record<ProductHealthPulse, string> = {
   degraded: "Degraded",
   down: "Down",
 };
+
+function ProductHubSignalsRow({ signals }: { signals: readonly HubSignalKind[] }) {
+  if (signals.length !== 5) return null;
+  const labels = ["Overview", "Plans", "Docs", "Health", "GTM"] as const;
+  return (
+    <div className="flex items-center gap-1.5 pt-2" aria-label="Product hub tab wiring">
+      {signals.map((s, i) => (
+        <span
+          key={`${i}-${s}`}
+          title={`${labels[i]}: ${s}`}
+          className={cn("h-1.5 w-1.5 rounded-full", hubSignalDotClass[s])}
+        />
+      ))}
+    </div>
+  );
+}
 
 const FILTERS: { id: ProductStageFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -300,10 +326,11 @@ function ProductCard({
               {formatCurrencyUsd(product.mrr)}
             </span>
           </p>
-          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-zinc-800/80 pt-4">
+          <div className="mt-4 border-t border-zinc-800/80 pt-4">
             <span className="text-sm font-medium text-[var(--status-info)] group-hover:text-[rgb(186_230_253)]">
               Open cockpit →
             </span>
+            {summary?.hubSignals ? <ProductHubSignalsRow signals={summary.hubSignals} /> : null}
           </div>
         </div>
       </article>

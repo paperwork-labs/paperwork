@@ -21,6 +21,7 @@ import {
   StudioTabbedPageShell,
   type TabbedShellTabDef,
 } from "@/components/layout/studio-tabbed-page-shell";
+import type { HubSignalKind } from "@/lib/product-hub-signals";
 
 /**
  * Tab definition for studio pages. Accepts either:
@@ -33,6 +34,7 @@ import {
 export type StudioTabDef<T extends string> = {
   id: T;
   label: string;
+  signal?: HubSignalKind;
   Content?: LazyExoticComponent<ComponentType>;
   content?: ReactNode;
 };
@@ -79,11 +81,12 @@ function buildAdaptedTabs<T extends string>(
 ): TabbedShellTabDef<T>[] {
   return tabs.map((t) => {
     if (t.Content) {
-      return { id: t.id, label: t.label, Content: t.Content };
+      return { id: t.id, label: t.label, signal: t.signal, Content: t.Content };
     }
     return {
       id: t.id,
       label: t.label,
+      signal: t.signal,
       Content: getStableEagerTabLazy(routeKey, String(t.id)),
     };
   });

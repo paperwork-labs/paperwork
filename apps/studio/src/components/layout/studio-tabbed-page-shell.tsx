@@ -13,6 +13,22 @@ import * as React from "react";
 
 import { Skeleton, cn } from "@paperwork-labs/ui";
 
+import type { HubSignalKind } from "@/lib/product-hub-signals";
+
+const TAB_SIGNAL_DOT_CLASS: Record<HubSignalKind, string> = {
+  success: "bg-[var(--status-success)]",
+  warning: "bg-[var(--status-warning)]",
+  danger: "bg-[var(--status-danger)]",
+  muted: "bg-zinc-600",
+};
+
+const TAB_SIGNAL_LABEL: Record<HubSignalKind, string> = {
+  success: "Live data",
+  warning: "Not connected",
+  danger: "Source error",
+  muted: "Not configured",
+};
+
 const ActiveTabContext = React.createContext<string | null>(null);
 
 export function useActiveTab<T extends string>(): T {
@@ -26,6 +42,8 @@ export function useActiveTab<T extends string>(): T {
 export type TabbedShellTabDef<T extends string> = {
   id: T;
   label: string;
+  /** Small wiring indicator on the tab label (WS-82 hub). */
+  signal?: HubSignalKind;
   Content: React.LazyExoticComponent<React.ComponentType>;
 };
 
@@ -182,7 +200,19 @@ export function StudioTabbedPageShell<T extends string>({
                       queueMicrotask(() => tabTriggerRefs.current[nextIndex]?.focus());
                     }}
                   >
-                    {t.label}
+                    <span className="inline-flex items-center gap-1.5">
+                      {t.label}
+                      {t.signal ? (
+                        <span
+                          className={cn(
+                            "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                            TAB_SIGNAL_DOT_CLASS[t.signal],
+                          )}
+                          title={TAB_SIGNAL_LABEL[t.signal]}
+                          aria-label={TAB_SIGNAL_LABEL[t.signal]}
+                        />
+                      ) : null}
+                    </span>
                   </button>
                 );
               })}
