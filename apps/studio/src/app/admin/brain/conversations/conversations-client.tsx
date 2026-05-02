@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   FileText,
   Layers,
+  Loader2,
   MessageSquare,
   Paperclip,
   Plus,
@@ -29,6 +30,7 @@ import {
   User,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import type {
   Conversation,
   ConversationParticipant,
@@ -282,10 +284,10 @@ function getOrderedThreadMessages(messages: ThreadMessage[], anchorId: string): 
 }
 
 /**
- * TODO(PB-8): Set to true when Brain implements POST /api/v1/admin/conversations/{id}/reply
- * ({ persona_slug, content }). Verified missing in apis/brain/app/routers/conversations.py (2026-05-01).
+ * Thread panel still targets POST ``…/reply`` with ``{ persona_slug, content }`` —
+ * Brain exposes ``persona-reply`` on the main thread toolbar instead.
  */
-const BRAIN_CONVERSATION_PERSONA_REPLY_READY = false;
+const BRAIN_CONVERSATION_INLINE_PERSONA_REPLY_READY = false;
 
 function ParticipantAvatar({
   participant,
@@ -807,7 +809,7 @@ export function ConversationsClient({
 
   const handleThreadPanelReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!BRAIN_CONVERSATION_PERSONA_REPLY_READY) return;
+    if (!BRAIN_CONVERSATION_INLINE_PERSONA_REPLY_READY) return;
     if (!selected || !threadAnchorId || !threadReplyPersonaSlug || !threadReplyText.trim()) return;
     const trimmed = threadReplyText.trim();
     const personaMeta = replyPersonas.find((p) => p.id === threadReplyPersonaSlug);
@@ -863,50 +865,62 @@ export function ConversationsClient({
     setRequestReplyLoading(true);
     setRequestReplyNotice(null);
     try {
-      const res = await fetch(`/api/admin/conversations/${selected.id}/request-reply`, {
+      const res = await fetch(`/api/admin/conversations/${selected.id}/persona-reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ persona_slug: slug }),
       });
-      const json: {
+      const json = (await res.json().catch(() => null)) as {
         success?: boolean;
         error?: string;
         message?: string;
-        data?: { message?: string };
-      } | null = await res.json().catch(() => null);
+        data?: { reply?: string; model_used?: string; tokens_used?: number };
+      } | null;
       if (!res.ok) {
         const errText =
           json !== null && typeof json.error === "string" && json.error
             ? json.error
             : `Request failed (${res.status})`;
+        toast.error(errText);
         setRequestReplyNotice({ kind: "error", text: errText });
         return;
       }
       if (json !== null && json.success === false) {
+        const errText = json.error ?? "Request failed";
+        toast.error(errText);
         setRequestReplyNotice({
           kind: "error",
-          text: json.error ?? "Request failed",
+          text: errText,
         });
         return;
       }
-      const dataMsg =
+      const snippet =
         json !== null &&
         json.data &&
-        typeof json.data === "object" &&
-        typeof json.data.message === "string"
-          ? json.data.message
-          : undefined;
+        typeof json.data.reply === "string" &&
+        json.data.reply.trim()
+          ? json.data.reply.trim().replace(/\s+/g, " ").slice(0, 120)
+          : "";
+      const modelNote =
+        json !== null &&
+        json.data &&
+        typeof json.data.model_used === "string" &&
+        json.data.model_used
+          ? ` · ${json.data.model_used}`
+          : "";
       const msg =
-        json !== null && typeof json.message === "string"
-          ? json.message
-          : dataMsg ?? "Persona reply requested.";
+        snippet.length > 0
+          ? `Persona replied (${snippet}${snippet.length >= 120 ? "…" : ""})${modelNote}`
+          : `Persona reply saved.${modelNote}`;
       setRequestReplyNotice({ kind: "success", text: msg });
       const convJson = await apiFetch(`/api/admin/conversations/${selected.id}`);
       if (convJson.success && convJson.data) updateSelectedFromList(convJson.data);
     } catch (err) {
+      const errText = err instanceof Error ? err.message : "Request failed";
+      toast.error(errText);
       setRequestReplyNotice({
         kind: "error",
-        text: err instanceof Error ? err.message : "Request failed",
+        text: errText,
       });
     } finally {
       setRequestReplyLoading(false);
@@ -1238,7 +1252,7 @@ export function ConversationsClient({
                       data-testid="request-persona-reply-loading"
                       className="max-w-[14rem] text-right text-[11px] text-violet-300/90"
                     >
-                      Requesting reply from @{requestReplySlug}…
+                      Generating reply from @{requestReplySlug}…
                     </p>
                   ) : null}
                   {requestReplyNotice && !requestReplyLoading ? (
@@ -1287,10 +1301,17 @@ export function ConversationsClient({
                       className="flex items-center gap-1 rounded-lg bg-violet-500/15 px-2 py-1.5 text-[11px] font-medium text-violet-200 ring-1 ring-violet-500/35 transition hover:bg-violet-500/25 disabled:opacity-40"
                     >
                       {requestReplyLoading ? (
-                        <>Requesting…</>
+                        <>
+                          <Loader2
+                            className="h-3.5 w-3.5 shrink-0 animate-spin"
+                            aria-hidden
+                          />
+                          <span className="hidden sm:inline">Generating…</span>
+                          <span className="sm:hidden">Wait…</span>
+                        </>
                       ) : (
                         <>
-                          <Bot className="h-3.5 w-3.5" aria-hidden />
+                          <Bot className="h-3.5 w-3.5 shrink-0" aria-hidden />
                           <span className="hidden sm:inline">Request reply</span>
                           <span className="sm:hidden">Request</span>
                         </>
@@ -1446,7 +1467,7 @@ export function ConversationsClient({
                           slashCommands={slashCommandsRegistry}
                           personas={replyPersonas}
                           disabled={
-                            threadReplyLoading || !BRAIN_CONVERSATION_PERSONA_REPLY_READY
+                            threadReplyLoading || !BRAIN_CONVERSATION_INLINE_PERSONA_REPLY_READY
                           }
                           placeholder="Write your reply..."
                           textareaTestId="thread-panel-reply-text"
@@ -1457,14 +1478,14 @@ export function ConversationsClient({
                         data-testid="thread-panel-reply-send"
                         disabled={
                           threadReplyLoading ||
-                          !BRAIN_CONVERSATION_PERSONA_REPLY_READY ||
+                          !BRAIN_CONVERSATION_INLINE_PERSONA_REPLY_READY ||
                           !threadReplyPersonaSlug ||
                           !threadReplyText.trim()
                         }
                         title={
-                          BRAIN_CONVERSATION_PERSONA_REPLY_READY
+                          BRAIN_CONVERSATION_INLINE_PERSONA_REPLY_READY
                             ? undefined
-                            : "Reply backend not yet wired (PB-X)"
+                            : "Use Request reply (persona-reply); thread composer not wired."
                         }
                         className="rounded-lg bg-sky-500/20 px-3 py-1.5 text-sm font-medium text-sky-300 ring-1 ring-sky-500/30 transition hover:bg-sky-500/30 disabled:opacity-40"
                       >
