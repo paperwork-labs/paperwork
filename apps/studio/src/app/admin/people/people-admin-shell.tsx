@@ -22,7 +22,7 @@ export function PeopleAdminShell({
     <>
       <div className="mb-6 flex w-fit gap-1 rounded-lg border border-zinc-800 p-1">
         <Link href="/admin/people" className={!isWorkspace ? toggleActive : toggleInactive}>
-          Team directory
+          Directory
         </Link>
         <Link
           href="/admin/people?view=workspace"

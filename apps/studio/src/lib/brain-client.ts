@@ -99,6 +99,30 @@ export type PersonasResponse = {
   personas: PersonaSpec[];
 };
 
+export type EmployeeListItem = {
+  slug: string;
+  kind: string; // ai_persona | human | system
+  role_title: string;
+  team: string;
+  display_name: string | null;
+  tagline: string | null;
+  avatar_emoji: string | null;
+  named_at: string | null;
+  named_by_self: boolean;
+  reports_to: string | null;
+};
+
+/**
+ * Inner ``data`` payload for ``GET /admin/employees`` (wrapped in a Brain `{ success, data }`
+ * envelope). The list route returns `{ employees: [...] }`, not a bare array.
+ */
+export type EmployeeListData = {
+  employees: EmployeeListItem[];
+};
+
+/** ``GET /admin/employees`` — convenience alias for the unwrapped list body. */
+export type EmployeeListResponse = EmployeeListData;
+
 /** ``GET /admin/memory-stats`` — episode aggregates + storage estimate (WS-82 Phase D). */
 export type BrainMemoryStats = {
   organization_id: string;
@@ -421,6 +445,12 @@ export class BrainClient {
   /** Fetch the persona registry from the Brain API. */
   async getPersonas(): Promise<PersonasResponse> {
     return this.get<PersonasResponse>("/admin/personas", "personas");
+  }
+
+  /** Canonical org roster from the unified employees table (WS-82). */
+  async getEmployees(): Promise<EmployeeListItem[]> {
+    const body = await this.get<EmployeeListData>("/admin/employees", "employees");
+    return body.employees;
   }
 
   /** Fetch goals / OKRs payload for Studio admin (same shape as static goals.json). */
