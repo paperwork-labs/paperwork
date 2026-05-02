@@ -39,7 +39,7 @@ function statCardTone(successCond: boolean, warnCond: boolean, dangerCond: boole
   return "neutral";
 }
 
-function LinkPulseCard({
+export function LinkPulseCard({
   href,
   children,
 }: {
@@ -348,7 +348,6 @@ export function OverviewSectionChrome({
 }
 
 export function buildAttentionItems(params: {
-  epicPulse: OverviewEpicPulse;
   productBad: { slug: string; pulse: ProductHealthPulse }[];
   infraFailing: InfraStatus[];
   readingPaths: {
@@ -357,22 +356,6 @@ export function buildAttentionItems(params: {
   };
 }): FounderAttentionItem[] {
   const items: FounderAttentionItem[] = [];
-
-  if (params.epicPulse.ok === true) {
-    params.epicPulse.blockedEpics.slice(0, 8).forEach((b, idx) => {
-      items.push({
-        key: `epic-blocked-${idx}-${b.epicTitle}`,
-        severity: "warning",
-        message: (
-          <>
-            Blocked epic: <span className="text-zinc-100">{b.epicTitle}</span>
-            <span className="text-zinc-500"> · {b.goalObjective}</span>
-          </>
-        ),
-        href: "/admin/workstreams",
-      });
-    });
-  }
 
   for (const p of params.productBad.slice(0, 8)) {
     items.push({

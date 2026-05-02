@@ -3,24 +3,14 @@ import { BrainImprovementGauge } from "@/components/admin/BrainImprovementGauge"
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { OperatingScoreGauge } from "@/components/admin/OperatingScoreGauge";
 import { SprintVelocityTile } from "@/components/admin/SprintVelocityTile";
+import { buildAttentionItems } from "@/app/admin/_components/overview-founder-sections";
 import {
-  buildAttentionItems,
-  NeedsAttentionSection,
-  OverviewSectionChrome,
-  QuickPulseSection,
-  RecentActivitySection,
-  SectionDivider,
-} from "@/app/admin/_components/overview-founder-sections";
-import {
-  infraHealthyCounts,
-  loadBrainFillPulse,
-  loadEpicHierarchyPulse,
   loadOperatingScorePulse,
-  loadPeoplePulse,
   loadProductHealthRollup,
   loadRecentDispatches,
   readingPathsUnresolvedSummary,
 } from "@/app/admin/_lib/overview-founder-data";
+import { OverviewPulseAttentionClient } from "@/app/admin/overview-pulse-attention-client";
 import {
   getBrainPersonaDispatchSummary,
   getBrainPRReviews,
@@ -86,9 +76,6 @@ export default async function AdminOverviewPage() {
     slackActivity,
     personaDispatchRaw,
     operatingScore,
-    epicPulse,
-    peoplePulse,
-    brainFill,
     dispatches,
     productRollup,
   ] = await Promise.all([
@@ -101,9 +88,6 @@ export default async function AdminOverviewPage() {
     getRecentSlackActivity(15),
     getBrainPersonaDispatchSummary(),
     loadOperatingScorePulse(client),
-    loadEpicHierarchyPulse(client),
-    loadPeoplePulse(client),
-    loadBrainFillPulse(client),
     loadRecentDispatches(client, 5),
     loadProductHealthRollup(products),
   ]);
@@ -130,14 +114,12 @@ export default async function AdminOverviewPage() {
     process.env.SLACK_DAILY_BRIEFING_URL?.trim() ||
     null;
 
-  const { healthy: infraHealthy, total: infraTotal } = infraHealthyCounts(infrastructure);
   const infraFailingRows = infrastructure.filter(
     (s) => s.configured && !s.healthy && !s.deprecated,
   );
   const readingPaths = readingPathsUnresolvedSummary();
 
   const attentionItems = buildAttentionItems({
-    epicPulse,
     productBad: productRollup.degradedOrDown,
     infraFailing: infraFailingRows,
     readingPaths,
@@ -152,21 +134,11 @@ export default async function AdminOverviewPage() {
         breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Overview" }]}
       />
 
-      <OverviewSectionChrome>
-        <QuickPulseSection
-          operatingScore={operatingScore}
-          productRollup={productRollup}
-          epicPulse={epicPulse}
-          peoplePulse={peoplePulse}
-          infraHealthy={infraHealthy}
-          infraTotal={infraTotal}
-          brainFill={brainFill}
-        />
-        <SectionDivider />
-        <NeedsAttentionSection items={attentionItems} />
-        <SectionDivider />
-        <RecentActivitySection dispatches={dispatches} />
-      </OverviewSectionChrome>
+      <OverviewPulseAttentionClient
+        operatingScore={operatingScore}
+        staticAttentionItems={attentionItems}
+        initialDispatches={dispatches}
+      />
 
       <PushSubscribeCard />
       <BrainSaysOverviewCard summary={personaDispatchSummary} />
