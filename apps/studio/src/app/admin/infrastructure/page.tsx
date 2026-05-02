@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { TabbedPageShell } from "@/components/layout/TabbedPageShellNext";
+import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import ServicesTab from "./tabs/services-tab";
 import VendorsTab from "./tabs/vendors-tab";
 import SecretsTab from "./tabs/secrets-tab";
@@ -44,12 +45,11 @@ export default async function InfrastructurePage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-4">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight text-zinc-100">Infrastructure</h1>
-        <p className="mt-1 text-sm text-zinc-400">
-          Health, deploys, and cost across Vercel + Render + vendor quotas.
-        </p>
-      </header>
+      <HqPageHeader
+        eyebrow="Studio HQ"
+        title="Infrastructure"
+        subtitle="Health, deploys, and cost across Vercel + Render + Hetzner + GitHub, with honest latency and staleness cues."
+      />
       <TabbedPageShell tabs={tabs} defaultTab="services" />
     </div>
   );
