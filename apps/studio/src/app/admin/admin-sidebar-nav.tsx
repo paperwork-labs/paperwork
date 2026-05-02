@@ -175,6 +175,24 @@ export function AdminSidebarNav({
         className="mt-6 border-t border-zinc-800/60 pt-4"
         data-testid="admin-vendor-footer"
       >
+        <p
+          className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-zinc-500"
+          data-testid="admin-shortcuts-hint"
+        >
+          <span className="whitespace-nowrap">
+            <kbd className="rounded border border-zinc-700/60 bg-zinc-800/80 px-1 py-0.5 font-mono text-[10px] font-medium text-zinc-400">
+              ⌘K
+            </kbd>{" "}
+            Command palette
+          </span>
+          <span className="text-zinc-600">·</span>
+          <span className="whitespace-nowrap">
+            <kbd className="rounded border border-zinc-700/60 bg-zinc-800/80 px-1 py-0.5 font-mono text-[10px] font-medium text-zinc-400">
+              ?
+            </kbd>{" "}
+            Shortcuts
+          </span>
+        </p>
         <div className="space-y-3 text-xs">
           {FOOTER_VENDOR_LINKS.map((section) => (
             <div key={section.category} className="space-y-1">

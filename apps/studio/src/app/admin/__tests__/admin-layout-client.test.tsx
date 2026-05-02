@@ -9,7 +9,12 @@ import { buildNavGroups } from "@/lib/admin-navigation";
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/admin",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }),
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    prefetch: vi.fn(),
+    refresh: vi.fn(),
+  }),
   useSearchParams: () => new URLSearchParams(),
 }));
 

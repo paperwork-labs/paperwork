@@ -7,7 +7,12 @@ import { Menu } from "lucide-react";
 
 import { BrainContextPicker } from "@/components/admin/BrainContextPicker";
 import { HqPageContainer } from "@/components/admin/hq/HqPageContainer";
-import { CommandPalette, openCommandPalette } from "@/components/admin/CommandPalette";
+import {
+  CommandPalette,
+  KeyboardShortcutsHelpDialog,
+  openCommandPalette,
+} from "@/components/admin/command-palette";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { buildNavGroups } from "@/lib/admin-navigation";
 
 import { AdminSidebarNav } from "./admin-sidebar-nav";
@@ -25,6 +30,7 @@ export function AdminLayoutClient({
   expensesPending,
   expensesCountsUnknown = false,
 }: Props) {
+  useKeyboardShortcuts();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -62,6 +68,7 @@ export function AdminLayoutClient({
   return (
     <div data-testid="admin-shell" className="min-h-screen overflow-x-hidden bg-zinc-950 text-zinc-100">
       <CommandPalette />
+      <KeyboardShortcutsHelpDialog />
 
       <header className="sticky top-0 z-[60] flex items-center gap-3 border-b border-zinc-800 bg-zinc-950/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80 lg:hidden">
         <button
