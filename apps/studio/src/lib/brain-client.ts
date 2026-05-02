@@ -123,6 +123,31 @@ export type EmployeeListData = {
 /** ``GET /admin/employees`` — convenience alias for the unwrapped list body. */
 export type EmployeeListResponse = EmployeeListData;
 
+export type BrainProduct = {
+  id: string;
+  name: string;
+  tagline: string | null;
+  status: string;
+  domain: string | null;
+  repo_path: string | null;
+  vercel_project: string | null;
+  render_services: unknown[];
+  tech_stack: unknown[];
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown>;
+};
+
+/** Inner ``data`` for ``GET /admin/products``. */
+export type ProductListData = {
+  products: BrainProduct[];
+};
+
+/** Inner ``data`` for ``GET /admin/products/{slug}``. */
+export type ProductDetailPayload = {
+  product: BrainProduct;
+};
+
 export type EmployeeDetail = EmployeeListItem & {
   description: string;
   default_model: string;
@@ -693,6 +718,18 @@ export class BrainClient {
     const path = `/admin/employees/${encodeURIComponent(slug)}`;
     const body = await this.get<EmployeeDetailPayload>(path, "employees/detail");
     return normalizeEmployeeDetail(body.employee);
+  }
+
+  /** Product registry rows (WS-82 — Brain ``products`` table). */
+  async getProducts(): Promise<BrainProduct[]> {
+    const body = await this.get<ProductListData>("/admin/products", "products");
+    return body.products;
+  }
+
+  async getProduct(slug: string): Promise<BrainProduct> {
+    const path = `/admin/products/${encodeURIComponent(slug)}`;
+    const body = await this.get<ProductDetailPayload>(path, "products/detail");
+    return body.product;
   }
 
   /** Fetch goals / OKRs payload for Studio admin (same shape as static goals.json). */

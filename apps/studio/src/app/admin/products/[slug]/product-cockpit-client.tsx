@@ -155,7 +155,7 @@ function OverviewPanel({
           value={lastShippedIso ?? "—"}
           icon={<Activity className="h-3.5 w-3.5 text-zinc-500" />}
           variant="compact"
-          helpText={lastShippedIso ? "From products.json releases" : "No releases[] on product"}
+          helpText={lastShippedIso ? "From Brain product metadata releases" : "No releases[] on product"}
         />
       </div>
 

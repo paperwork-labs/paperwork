@@ -1,4 +1,6 @@
-/** Static product registry helpers — `@/data/products.json`. */
+/** Product registry helpers — Brain-backed rows mapped to Studio cockpit fields. */
+
+import type { BrainProduct } from "@/lib/brain-client";
 
 export type ProductStage = "concept" | "alpha" | "beta" | "ga";
 
@@ -35,6 +37,52 @@ export type ProductRegistryEntry = {
 export type ProductsRegistryFile = {
   products: ProductRegistryEntry[];
 };
+
+function parsePricingTiers(meta: Record<string, unknown>): ProductPricingTier[] | undefined {
+  const raw = meta.pricing_tiers;
+  if (!Array.isArray(raw)) return undefined;
+  return raw as ProductPricingTier[];
+}
+
+function parseReleases(meta: Record<string, unknown>): ProductReleaseEntry[] | undefined {
+  const raw = meta.releases;
+  if (!Array.isArray(raw)) return undefined;
+  return raw as ProductReleaseEntry[];
+}
+
+/**
+ * Map a Brain ``/admin/products`` row to the richer ``ProductRegistryEntry`` the Studio UI expects.
+ * Registry-only fields (accent, MRR, tiers, …) live under ``metadata`` on the Brain row.
+ */
+export function brainProductToRegistryEntry(p: BrainProduct): ProductRegistryEntry {
+  const meta = p.metadata ?? {};
+  const domain = p.domain?.trim() || null;
+  const urlFromDomain = domain && !domain.includes("://") ? `https://${domain}` : null;
+  const metaUrl = meta.url;
+  return {
+    slug: p.id,
+    name: p.name,
+    tagline: p.tagline?.trim() ?? "",
+    status: p.status,
+    color_accent: typeof meta.color_accent === "string" ? meta.color_accent : "#6366f1",
+    mrr: typeof meta.mrr === "number" && Number.isFinite(meta.mrr) ? meta.mrr : 0,
+    active_users:
+      typeof meta.active_users === "number" && Number.isFinite(meta.active_users)
+        ? meta.active_users
+        : 0,
+    owner_persona:
+      typeof meta.owner_persona === "string" && meta.owner_persona.trim()
+        ? meta.owner_persona
+        : "founder",
+    url: typeof metaUrl === "string" && metaUrl.trim() ? metaUrl : urlFromDomain,
+    admin_url:
+      typeof meta.admin_url === "string" && meta.admin_url.trim()
+        ? meta.admin_url
+        : `/admin/products/${p.id}`,
+    pricing_tiers: parsePricingTiers(meta),
+    releases: parseReleases(meta),
+  };
+}
 
 export type ProductStageFilter = "all" | ProductStage;
 
