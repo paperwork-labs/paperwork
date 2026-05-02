@@ -12,5 +12,5 @@
     "declaration": false,
     "noEmit": true
   },
-  "include": ["scripts/seed-epic-hierarchy.ts"]
+  "include": ["scripts/seed-epic-hierarchy.ts", "scripts/seed-employees.ts"]
 }
