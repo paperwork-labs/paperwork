@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import Link from "next/link";
 import {
   RefreshCw,
@@ -17,8 +17,7 @@ import { motion } from "framer-motion";
 
 import { BrainFreshnessTile } from "@/components/admin/BrainFreshnessTile";
 import { HqMissingCredCard } from "@/components/admin/hq/HqMissingCredCard";
-
-import { StatCard } from "@/components/admin/stat-card";
+import { HqStatCard, type HqStatCardStatus } from "@/components/admin/hq/HqStatCard";
 
 type N8nWorkflow = {
   id: string;
@@ -143,6 +142,32 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.3 } },
 };
 
+const hqStatCardLinkClass =
+  "group block h-full min-w-0 rounded-xl outline-none ring-offset-2 ring-offset-zinc-950 transition hover:brightness-[1.04] focus-visible:ring-2 focus-visible:ring-violet-400/70";
+
+function OverviewStatCardLink({
+  href,
+  external,
+  children,
+}: {
+  href: string;
+  external?: boolean;
+  children: ReactNode;
+}) {
+  if (external) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className={hqStatCardLinkClass}>
+        {children}
+      </a>
+    );
+  }
+  return (
+    <Link href={href} className={hqStatCardLinkClass}>
+      {children}
+    </Link>
+  );
+}
+
 export default function OverviewClient({ initial }: { initial: OverviewData }) {
   const [data, setData] = useState(initial);
   const [refreshing, setRefreshing] = useState(false);
@@ -198,6 +223,25 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
     () => prs.filter((p) => p.brain_review?.verdict === "REQUEST_CHANGES").length,
     [prs],
   );
+
+  const openPrsStatus: HqStatCardStatus = githubPrDegraded
+    ? "warning"
+    : prsNeedingChanges > 0
+      ? "danger"
+      : "neutral";
+  const ciStatus: HqStatCardStatus = githubCiMissingCred
+    ? "warning"
+    : ciFailureCount > 0
+      ? "danger"
+      : ciRuns.length > 0 && ciSuccessCount === ciRuns.length
+        ? "success"
+        : "neutral";
+  const infraStatus: HqStatCardStatus =
+    healthyInfra === infrastructure.length && infrastructure.length > 0
+      ? "success"
+      : degradedInfra > 0
+        ? "danger"
+        : "neutral";
 
   /** Venture health from GitHub CI, infra probes, and Brain PR review — not n8n workflow volume. */
   const ventureHealth: "green" | "yellow" | "red" = useMemo(() => {
@@ -393,80 +437,70 @@ export default function OverviewClient({ initial }: { initial: OverviewData }) {
         animate="show"
       >
         <motion.div variants={fadeUp} className="min-h-[1px] min-w-0">
-          <StatCard
-            label="Open PRs"
-            value={githubPrDegraded ? "—" : prs.length}
+          <OverviewStatCardLink
             href={
               githubPrDegraded
                 ? "/admin/infrastructure"
                 : "/admin/workstreams?status=in_progress"
             }
-            hint={
-              githubPrMissingCred
-                ? "Connect GITHUB_TOKEN to load pull requests."
-                : githubPrFetchError
-                  ? githubPrFetchError
-                  : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
-            }
-            className={
-              githubPrDegraded
-                ? "border-amber-500/35 bg-amber-950/15 ring-amber-500/25"
-                : prsNeedingChanges > 0
-                  ? "border-rose-500/35 bg-rose-950/15 ring-rose-500/25"
-                  : undefined
-            }
-          />
+          >
+            <HqStatCard
+              label="Open PRs"
+              value={githubPrDegraded ? "—" : prs.length}
+              helpText={
+                githubPrMissingCred
+                  ? "Connect GITHUB_TOKEN to load pull requests."
+                  : githubPrFetchError
+                    ? githubPrFetchError
+                    : `${prs.filter((pr) => pr.brain_review?.verdict === "APPROVE").length} approved · ${prs.filter((pr) => pr.brain_review?.verdict === "COMMENT").length} commented · ${prs.filter((pr) => pr.brain_review?.verdict === "REQUEST_CHANGES").length} changes · ${prs.filter((pr) => !pr.brain_review).length} unreviewed`
+              }
+              status={openPrsStatus}
+            />
+          </OverviewStatCardLink>
         </motion.div>
 
         <motion.div variants={fadeUp} className="min-h-[1px] min-w-0">
-          <StatCard
-            label="CI on main"
-            value={githubCiMissingCred ? "—" : ciRuns.length === 0 ? "—" : `${ciSuccessCount}/${ciRuns.length}`}
+          <OverviewStatCardLink
             href="https://github.com/paperwork-labs/paperwork/actions?query=branch%3Amain"
-            hint={
-              githubCiMissingCred
-                ? "Connect GITHUB_TOKEN to load workflow runs."
-                : ciRuns.length === 0
-                  ? "No recent runs loaded."
-                  : ciFailureCount > 0
-                    ? `${ciFailureCount} failing · recent runs below`
-                    : "Recent runs below"
-            }
-            className={
-              githubCiMissingCred
-                ? "border-amber-500/35 bg-amber-950/15 ring-amber-500/25"
-                : ciFailureCount > 0
-                  ? "border-rose-500/35 bg-rose-950/15 ring-rose-500/25"
-                  : ciRuns.length > 0 && ciSuccessCount === ciRuns.length
-                    ? "border-emerald-500/35 bg-emerald-950/15 ring-emerald-500/25"
-                    : undefined
-            }
-          />
+            external
+          >
+            <HqStatCard
+              label="CI on main"
+              value={githubCiMissingCred ? "—" : ciRuns.length === 0 ? "—" : `${ciSuccessCount}/${ciRuns.length}`}
+              helpText={
+                githubCiMissingCred
+                  ? "Connect GITHUB_TOKEN to load workflow runs."
+                  : ciRuns.length === 0
+                    ? "No recent runs loaded."
+                    : ciFailureCount > 0
+                      ? `${ciFailureCount} failing · recent runs below`
+                      : "Recent runs below"
+              }
+              status={ciStatus}
+            />
+          </OverviewStatCardLink>
         </motion.div>
 
         <motion.div variants={fadeUp} className="min-h-[1px] min-w-0">
-          <StatCard
-            label="Infra health"
-            value={infrastructure.length > 0 ? `${healthyInfra}/${infrastructure.length}` : "—"}
-            href="/admin/infrastructure"
-            hint="Provider checks · Brain, APIs, frontends"
-            className={
-              healthyInfra === infrastructure.length && infrastructure.length > 0
-                ? "border-emerald-500/35 bg-emerald-950/15 ring-emerald-500/25"
-                : degradedInfra > 0
-                  ? "border-rose-500/35 bg-rose-950/15 ring-rose-500/25"
-                  : undefined
-            }
-          />
+          <OverviewStatCardLink href="/admin/infrastructure">
+            <HqStatCard
+              label="Infra health"
+              value={infrastructure.length > 0 ? `${healthyInfra}/${infrastructure.length}` : "—"}
+              helpText="Provider checks · Brain, APIs, frontends"
+              status={infraStatus}
+            />
+          </OverviewStatCardLink>
         </motion.div>
 
         <motion.div variants={fadeUp} className="min-h-[1px] min-w-0">
-          <StatCard
-            label="Products"
-            value="Catalog"
-            href="/admin/products"
-            hint="Ship matrix, plans, and product health"
-          />
+          <OverviewStatCardLink href="/admin/products">
+            <HqStatCard
+              label="Products"
+              value="Catalog"
+              helpText="Ship matrix, plans, and product health"
+              status="neutral"
+            />
+          </OverviewStatCardLink>
         </motion.div>
       </motion.section>
 
