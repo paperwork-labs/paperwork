@@ -1,0 +1,65 @@
+name: Verify Data Schemas
+
+# Wave K3 schema-drift guard. Compares Zod schemas in packages/data/src/schemas/
+# against the Pydantic mirrors in packages/python/data-engine/src/data_engine/schemas/.
+# Required check on main; see scripts/verify_data_schemas.py for the algorithm.
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/data/src/schemas/**"
+      - "packages/python/data-engine/src/data_engine/schemas/**"
+      - "scripts/verify_data_schemas.py"
+      - ".github/workflows/verify-data-schemas.yml"
+  push:
+    branches: [main]
+    paths:
+      - "packages/data/src/schemas/**"
+      - "packages/python/data-engine/src/data_engine/schemas/**"
+      - "scripts/verify_data_schemas.py"
+
+concurrency:
+  group: verify-data-schemas-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Schema parity (Zod <-> Pydantic)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install data-engine (editable)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e packages/python/data-engine
+
+      - name: Run schema drift guard
+        run: python scripts/verify_data_schemas.py
+
+  no-tax-data-duplicates:
+    name: No apis/*/tax-data/ duplicates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Fail if any apis/*/tax-data/ directory exists
+        run: |
+          set -euo pipefail
+          if find apis -mindepth 2 -maxdepth 2 -type d -name 'tax-data' | grep -q .; then
+            echo "ERROR: do not duplicate canonical packages/data/src/tax/." >&2
+            echo "Use the data_engine package (packages/python/data-engine) instead." >&2
+            echo "See packages/python/data-engine/README.md and the Wave K3 PR." >&2
+            find apis -mindepth 2 -maxdepth 2 -type d -name 'tax-data' >&2
+            exit 1
+          fi
+          echo "OK: no apis/*/tax-data/ directories present"

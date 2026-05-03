@@ -32,6 +32,12 @@ httpx>=0.28.1
 slowapi>=0.1.9
 cryptography>=44.0.0
 
+# Wave K3 — shared canonical reference data (tax brackets, federal, formation).
+# Path-based pip install. After Wave K1+K2 ships the uv workspace, this
+# becomes a workspace dep declared in [tool.uv.workspace] and the -e line is
+# dropped. See packages/python/data-engine/README.md.
+-e ../../packages/python/data-engine
+
 # Dev / Test
 pytest>=9.0.3
 pytest-asyncio>=1.3.0

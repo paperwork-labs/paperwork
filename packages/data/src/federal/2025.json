@@ -1,0 +1,71 @@
+{
+  "tax_year": 2025,
+  "standard_deductions": [
+    { "filing_status": "single", "amount_cents": 1575000 },
+    { "filing_status": "married_filing_jointly", "amount_cents": 3150000 },
+    { "filing_status": "married_filing_separately", "amount_cents": 1575000 },
+    { "filing_status": "head_of_household", "amount_cents": 2362500 }
+  ],
+  "brackets": {
+    "single": [
+      { "min_income_cents": 0, "max_income_cents": 1192500, "rate_bps": 1000 },
+      { "min_income_cents": 1192500, "max_income_cents": 4847500, "rate_bps": 1200 },
+      { "min_income_cents": 4847500, "max_income_cents": 10335000, "rate_bps": 2200 },
+      { "min_income_cents": 10335000, "max_income_cents": 19730000, "rate_bps": 2400 },
+      { "min_income_cents": 19730000, "max_income_cents": 25052500, "rate_bps": 3200 },
+      { "min_income_cents": 25052500, "max_income_cents": 62635000, "rate_bps": 3500 },
+      { "min_income_cents": 62635000, "max_income_cents": null, "rate_bps": 3700 }
+    ],
+    "married_filing_jointly": [
+      { "min_income_cents": 0, "max_income_cents": 2385000, "rate_bps": 1000 },
+      { "min_income_cents": 2385000, "max_income_cents": 9695000, "rate_bps": 1200 },
+      { "min_income_cents": 9695000, "max_income_cents": 20670000, "rate_bps": 2200 },
+      { "min_income_cents": 20670000, "max_income_cents": 39460000, "rate_bps": 2400 },
+      { "min_income_cents": 39460000, "max_income_cents": 50105000, "rate_bps": 3200 },
+      { "min_income_cents": 50105000, "max_income_cents": 75190000, "rate_bps": 3500 },
+      { "min_income_cents": 75190000, "max_income_cents": null, "rate_bps": 3700 }
+    ],
+    "married_filing_separately": [
+      { "min_income_cents": 0, "max_income_cents": 1192500, "rate_bps": 1000 },
+      { "min_income_cents": 1192500, "max_income_cents": 4847500, "rate_bps": 1200 },
+      { "min_income_cents": 4847500, "max_income_cents": 10335000, "rate_bps": 2200 },
+      { "min_income_cents": 10335000, "max_income_cents": 19730000, "rate_bps": 2400 },
+      { "min_income_cents": 19730000, "max_income_cents": 25052500, "rate_bps": 3200 },
+      { "min_income_cents": 25052500, "max_income_cents": 37595000, "rate_bps": 3500 },
+      { "min_income_cents": 37595000, "max_income_cents": null, "rate_bps": 3700 }
+    ],
+    "head_of_household": [
+      { "min_income_cents": 0, "max_income_cents": 1700000, "rate_bps": 1000 },
+      { "min_income_cents": 1700000, "max_income_cents": 6455000, "rate_bps": 1200 },
+      { "min_income_cents": 6455000, "max_income_cents": 10335000, "rate_bps": 2200 },
+      { "min_income_cents": 10335000, "max_income_cents": 19730000, "rate_bps": 2400 },
+      { "min_income_cents": 19730000, "max_income_cents": 25052500, "rate_bps": 3200 },
+      { "min_income_cents": 25052500, "max_income_cents": 62635000, "rate_bps": 3500 },
+      { "min_income_cents": 62635000, "max_income_cents": null, "rate_bps": 3700 }
+    ]
+  },
+  "salt_cap_cents": 4000000,
+  "notes": "Source: Rev. Proc. 2024-40, as amended by P.L. 119-21 (One Big Beautiful Bill Act). Standard deductions per P.L. 119-21 Section 110101. SALT deduction cap raised from $10,000 to $40,000 for 2025+ per P.L. 119-21. Ported from apis/filefree/tax-data/2025.json on 2026-05-03 in Wave K3 (FileFree migration to canonical packages/data); rates converted from integer percent (e.g. 22) to integer basis points (e.g. 2200) and bracket boundaries collapsed (max==next.min, no +1 cent gap) to match the canonical state-tax schema in packages/data/src/schemas/tax.schema.ts.",
+  "verification": {
+    "last_verified": "2026-05-03T08:00:00Z",
+    "sources": [
+      {
+        "name": "Rev. Proc. 2024-40 (IRS) — annual inflation adjustments for 2025 tax year",
+        "url": "https://www.irs.gov/pub/irs-drop/rp-24-40.pdf",
+        "accessed_at": "2026-05-03T08:00:00Z"
+      },
+      {
+        "name": "Public Law 119-21 (One Big Beautiful Bill Act) — Section 110101 standard deductions",
+        "url": "https://www.congress.gov/119/plaws/publ21/PLAW-119publ21.pdf",
+        "accessed_at": "2026-05-03T08:00:00Z"
+      },
+      {
+        "name": "Internal port from apis/filefree/tax-data/2025.json (deleted in this PR)",
+        "url": "https://github.com/paperworklabs/paperwork/pull/0",
+        "accessed_at": "2026-05-03T08:00:00Z"
+      }
+    ],
+    "verified_by": "human_review",
+    "confidence": 0.99
+  }
+}
