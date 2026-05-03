@@ -36,7 +36,7 @@ async def find_uncalibrated_rows(db_session: object) -> list[dict]:
       - actual_cost_cents IS NULL
       - completed_at < NOW() - 24h
     """
-    from sqlalchemy import select, text
+    from sqlalchemy import select
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from app.models.agent_dispatch import AgentDispatch

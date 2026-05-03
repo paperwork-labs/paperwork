@@ -34,7 +34,6 @@ from app.models.dispatch import (
     CheapModel,
     DispatchEntry,
     DispatchResult,
-    LegacyDispatchEntry,
     normalize_legacy_model,
 )
 from app.schedulers._history import run_with_scheduler_record

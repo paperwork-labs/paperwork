@@ -127,7 +127,10 @@ export default async function CostPage() {
                 <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46" }}
-                  formatter={(v: number, name: string) => [`$${v.toFixed(2)}`, name]}
+                  formatter={(v, name) => [
+                    `$${Number(v ?? 0).toFixed(2)}`,
+                    String(name ?? ""),
+                  ]}
                 />
                 <Bar dataKey="estimated" name="Estimated" fill="#f59e0b" radius={[3, 3, 0, 0]} />
                 <Bar dataKey="actual" name="Actual" fill="#10b981" radius={[3, 3, 0, 0]} />
@@ -216,7 +219,10 @@ export default async function CostPage() {
                 <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
                 <Tooltip
                   contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46" }}
-                  formatter={(v: number, name: string) => [`$${v.toFixed(2)}`, name]}
+                  formatter={(v, name) => [
+                    `$${Number(v ?? 0).toFixed(2)}`,
+                    String(name ?? ""),
+                  ]}
                 />
                 <Line
                   type="monotone"

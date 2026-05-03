@@ -131,6 +131,11 @@ class LegacyDispatchEntry(BaseModel):
         model = self.agent_model
         if model not in _MODEL_TO_SIZE:
             model = "gpt-5.5-medium"
+        norm_status = (
+            self.status
+            if self.status in ("pending", "dispatched", "completed", "failed")
+            else "pending"
+        )
         return DispatchEntry(
             task_id=self.task_id,
             source=self.source if self.source in ("probe", "goal", "manual") else "probe",  # type: ignore[arg-type]
@@ -138,7 +143,7 @@ class LegacyDispatchEntry(BaseModel):
             product=self.product,
             persona_id=self.persona_id,
             agent_model=model,  # type: ignore[arg-type]
-            status=self.status if self.status in ("pending", "dispatched", "completed", "failed") else "pending",  # type: ignore[arg-type]
+            status=norm_status,  # type: ignore[arg-type]
             created_at=self.created_at,
             dispatched_at=self.dispatched_at,
         )

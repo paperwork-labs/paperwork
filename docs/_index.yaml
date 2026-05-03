@@ -444,6 +444,13 @@ docs:
     tags: [runbook]
     owners: [strategy]
     category: reference
+  - slug: pr-tshirt-sizing
+    path: docs/PR_TSHIRT_SIZING.md
+    title: PR T-Shirt sizing and agent dispatch cost
+    summary: "Taxonomy (XS-L), allowed models, hook enforcement, Brain API, and Studio cost dashboard."
+    tags: [agent-ops, cost, brain]
+    owners: [agent-ops]
+    category: reference
   - slug: readme
     path: docs/brand/README.md
     title: Brand asset registry

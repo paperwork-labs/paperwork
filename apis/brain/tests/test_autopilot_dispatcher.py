@@ -362,4 +362,3 @@ def test_dispatched_queue_entry_has_t_shirt_size(tmp_path: Path) -> None:
     run_autopilot_dispatch_sync(queue_path=q, log_path=log)
     loaded = load_dispatch_queue(q)
     assert loaded[0].get("t_shirt_size") == "XS"
-

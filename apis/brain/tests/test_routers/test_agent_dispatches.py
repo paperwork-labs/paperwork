@@ -86,7 +86,6 @@ async def dispatch_client(
         yield mock_session
 
     from app.database import get_db
-    from app.routers.agent_dispatches import router as dispatch_router
 
     app_copy = fastapi_app
     app_copy.dependency_overrides[get_db] = _override_get_db
@@ -120,7 +119,7 @@ def test_derive_t_shirt_size_l() -> None:
 
 
 def test_derive_t_shirt_size_opus_raises() -> None:
-    with pytest.raises(ValueError, match="opus.*FORBIDDEN"):
+    with pytest.raises(ValueError, match=r"opus.*FORBIDDEN"):
         derive_t_shirt_size("claude-4.5-opus-high-thinking")
 
 

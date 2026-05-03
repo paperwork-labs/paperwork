@@ -10,13 +10,16 @@ medallion: ops
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, DateTime, Index, Integer, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 ALLOWED_MODELS = frozenset(
     {

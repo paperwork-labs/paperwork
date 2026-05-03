@@ -21,13 +21,11 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
-from sqlalchemy import case, cast, func, select, text
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy import func, select, text
 
 from app.config import settings
 from app.database import get_db
 from app.models.agent_dispatch import (
-    CHEAP_MODELS,
     MODEL_TO_SIZE,
     SIZE_COST_CENTS,
     AgentDispatch,
@@ -79,7 +77,7 @@ class DispatchCreateRequest(BaseModel):
         if "opus" in model.lower():
             raise ValueError(
                 f"Model '{model}' contains 'opus' and is FORBIDDEN as a subagent dispatch. "
-                "Opus is orchestrator-only. Use a cheap model (XS–L). "
+                "Opus is orchestrator-only. Use a cheap model (XS-L). "
                 "See cheap-agent-fleet.mdc Rule #2."
             )
 
@@ -115,7 +113,7 @@ class DispatchResponse(BaseModel):
     model_config = {"from_attributes": True}
 
     @classmethod
-    def from_orm_row(cls, row: AgentDispatch) -> "DispatchResponse":
+    def from_orm_row(cls, row: AgentDispatch) -> DispatchResponse:
         return cls(
             id=str(row.id),
             organization_id=row.organization_id,
@@ -179,7 +177,7 @@ class CostSummaryResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# POST /v1/agents/dispatches
+# Route: create dispatch (POST)
 # ---------------------------------------------------------------------------
 
 
@@ -211,11 +209,11 @@ async def create_dispatch(
     db.add(row)
     await db.flush()
     await db.refresh(row)
-    return DispatchResponse.from_orm_row(row)
+    return DispatchResponse.model_validate(row)
 
 
 # ---------------------------------------------------------------------------
-# GET /v1/agents/dispatches
+# Route: list dispatches (GET)
 # ---------------------------------------------------------------------------
 
 
@@ -246,11 +244,11 @@ async def list_dispatches(
 
     result = await db.execute(stmt)
     rows = result.scalars().all()
-    return [DispatchResponse.from_orm_row(r) for r in rows]
+    return [DispatchResponse.model_validate(r) for r in rows]
 
 
 # ---------------------------------------------------------------------------
-# PATCH /v1/agents/dispatches/{id}
+# Route: update dispatch by id (PATCH)
 # ---------------------------------------------------------------------------
 
 
@@ -291,11 +289,11 @@ async def update_dispatch(
 
     await db.flush()
     await db.refresh(row)
-    return DispatchResponse.from_orm_row(row)
+    return DispatchResponse.model_validate(row)
 
 
 # ---------------------------------------------------------------------------
-# GET /v1/agents/dispatches/cost-summary
+# Route: cost summary (GET)
 # ---------------------------------------------------------------------------
 
 
@@ -364,22 +362,23 @@ async def cost_summary(
     ][:20]
 
     # --- by day (last 30 days) ---
-    day_stmt = select(
-        func.date_trunc("day", AgentDispatch.dispatched_at).label("day"),
-        func.coalesce(func.sum(AgentDispatch.estimated_cost_cents), 0).label("estimated"),
-        func.sum(AgentDispatch.actual_cost_cents).label("actual"),
-    ).where(
-        AgentDispatch.dispatched_at >= text("NOW() - INTERVAL '30 days'")
-    ).group_by(
-        func.date_trunc("day", AgentDispatch.dispatched_at)
-    ).order_by(
-        func.date_trunc("day", AgentDispatch.dispatched_at)
+    day_stmt = (
+        select(
+            func.date_trunc("day", AgentDispatch.dispatched_at).label("day"),
+            func.coalesce(func.sum(AgentDispatch.estimated_cost_cents), 0).label("estimated"),
+            func.sum(AgentDispatch.actual_cost_cents).label("actual"),
+        )
+        .where(AgentDispatch.dispatched_at >= text("NOW() - INTERVAL '30 days'"))
+        .group_by(func.date_trunc("day", AgentDispatch.dispatched_at))
+        .order_by(func.date_trunc("day", AgentDispatch.dispatched_at))
     )
 
     day_result = await db.execute(day_stmt)
     by_day = [
         DailySpend(
-            date=row.day.strftime("%Y-%m-%d") if hasattr(row.day, "strftime") else str(row.day)[:10],
+            date=(
+                row.day.strftime("%Y-%m-%d") if hasattr(row.day, "strftime") else str(row.day)[:10]
+            ),
             estimated_cents=row.estimated or 0,
             actual_cents=row.actual,
         )
