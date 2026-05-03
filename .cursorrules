@@ -270,7 +270,7 @@ Every product backend (FileFree, LaunchFree, AxiomFolio, future products) grows 
 
 ## Agent Dispatch Model Enforcement (Wave L)
 
-Every Task dispatch MUST specify the `model:` parameter. Allowed subagent models (XS–L only):
+Every Task dispatch MUST specify the `model:` parameter. Allowed subagent models (XS-L only):
 - `composer-1.5` (XS, ~$0.10/dispatch)
 - `composer-2-fast` (S, ~$0.40/dispatch)
 - `gpt-5.5-medium` (M, ~$1.00/dispatch)

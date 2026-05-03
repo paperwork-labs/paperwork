@@ -20,7 +20,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "googleapis": "^148.0.0",
+    "googleapis": "^171.4.0",
     "mailparser": "^3.7.1"
   },
   "devDependencies": {
