@@ -1,9 +1,18 @@
 """Autopilot dispatcher — the closed dispatch loop.
 
 Reads ``data/dispatch_queue.json`` for pending entries, selects a
-persona, chooses an agent model (cheap vs expensive based on
-complexity heuristics), creates dispatch records, and appends
-results to ``data/agent_dispatch_log.jsonl``.
+persona, chooses an agent model mapped to a T-Shirt size (cheap-agent-fleet
+Rule #2), creates dispatch records, and appends results to
+``data/agent_dispatch_log.jsonl``.
+
+T-Shirt size taxonomy (Wave L — locked):
+  XS: composer-1.5         ~$0.10  narrow scaffold, generator, README stub
+  S:  composer-2-fast      ~$0.40  single-file extraction, mechanical refactor
+  M:  gpt-5.5-medium       ~$1.00  moderate cross-file, simple multi-step
+  L:  claude-4.6-sonnet-medium-thinking  ~$3.00  cross-file reasoning, security
+
+Opus is FORBIDDEN as subagent. The hook at .cursor/hooks/enforce-cheap-agent-model.sh
+blocks such dispatches at the tool layer; this file enforces at the Python layer too.
 
 Runs every 5 minutes via APScheduler.
 
@@ -22,8 +31,11 @@ from typing import TYPE_CHECKING, Any
 from apscheduler.triggers.cron import CronTrigger
 
 from app.models.dispatch import (
+    CheapModel,
     DispatchEntry,
     DispatchResult,
+    LegacyDispatchEntry,
+    normalize_legacy_model,
 )
 from app.schedulers._history import run_with_scheduler_record
 from app.schedulers._kill_switch_guard import (
@@ -103,8 +115,15 @@ def select_persona(
 
 
 # ------------------------------------------------------------------
-# Agent model selection
+# Agent model selection — T-Shirt sized (Wave L)
 # ------------------------------------------------------------------
+
+_COMPLEXITY_TO_SIZE: dict[str, CheapModel] = {
+    "xs": "composer-1.5",
+    "s": "composer-2-fast",
+    "m": "gpt-5.5-medium",
+    "l": "claude-4.6-sonnet-medium-thinking",
+}
 
 _EXPENSIVE_KEYWORDS: list[str] = [
     "architecture",
@@ -118,19 +137,36 @@ _EXPENSIVE_KEYWORDS: list[str] = [
 
 def select_agent_model(
     entry: dict[str, Any],
-) -> str:
-    """Choose cheap or expensive agent based on complexity.
+) -> CheapModel:
+    """Choose a T-Shirt sized model from the cheap allow-list.
 
-    Entries whose description contains high-complexity keywords
-    get the expensive model; everything else uses cheap.
+    Priority order:
+    1. ``agent_model`` explicitly set in the queue entry and valid → use it
+    2. ``t_shirt_size`` explicitly set → map to model
+    3. High-complexity keywords in description → L (claude-4.6-sonnet-medium-thinking)
+    4. Default → S (composer-2-fast)
+
+    Opus models are NEVER returned — this function enforces at the Python layer.
+    The hook at .cursor/hooks/enforce-cheap-agent-model.sh enforces at the tool layer.
     """
+    raw_model: str = str(entry.get("agent_model", "")).strip()
+    normalized = normalize_legacy_model(raw_model)
+
+    if normalized and normalized in _COMPLEXITY_TO_SIZE.values():
+        return normalized  # type: ignore[return-value]
+
+    explicit_size: str = str(entry.get("t_shirt_size", "")).strip().lower()
+    if explicit_size in _COMPLEXITY_TO_SIZE:
+        return _COMPLEXITY_TO_SIZE[explicit_size]
+
     desc: str = str(entry.get("description", "")).lower()
     error_msg: str = str(entry.get("error_message", "")).lower()
     combined: str = f"{desc} {error_msg}"
     for kw in _EXPENSIVE_KEYWORDS:
         if kw in combined:
-            return "expensive"
-    return "cheap"
+            return "claude-4.6-sonnet-medium-thinking"
+
+    return "composer-2-fast"
 
 
 # ------------------------------------------------------------------
@@ -206,9 +242,12 @@ def pending_entries(
 def dispatch_entry(
     raw: dict[str, Any],
 ) -> tuple[DispatchEntry, DispatchResult]:
-    """Process one queue row into a typed entry + result."""
+    """Process one queue row into a typed entry + result.
+
+    agent_model MUST be set to a valid cheap model slug. No 'cheap'/'expensive' defaults.
+    """
     persona: str = select_persona(raw)
-    model: str = select_agent_model(raw)
+    model: CheapModel = select_agent_model(raw)
     now = datetime.now(UTC)
 
     task_id: str = str(raw.get("id", ""))
@@ -218,7 +257,7 @@ def dispatch_entry(
 
     entry = DispatchEntry(
         task_id=task_id,
-        source=source_raw,
+        source=source_raw,  # type: ignore[arg-type]
         description=str(raw.get("error_message", ""))[:500],
         product=str(raw.get("product", "")),
         persona_id=persona,
@@ -264,6 +303,7 @@ def run_autopilot_dispatch_sync(
         raw["dispatched_at"] = datetime.now(UTC).isoformat().replace("+00:00", "Z")
         raw["assigned_persona"] = _entry.persona_id
         raw["assigned_model"] = _entry.agent_model
+        raw["t_shirt_size"] = _entry.t_shirt_size
         append_dispatch_log(l_path, result)
         dispatched += 1
 

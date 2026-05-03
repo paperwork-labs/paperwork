@@ -1,6 +1,7 @@
 import { CheckCircle2, XCircle, Clock, Zap, AlertTriangle, Bot } from "lucide-react";
 
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
+import { TShirtSizeBadge, type TShirtSize } from "@/components/agent/TShirtSizeBadge";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 
 import { AutopilotActionsIfPending } from "./autopilot-actions-client";
@@ -84,6 +85,17 @@ async function fetchDispatchLog(): Promise<DispatchLog | null> {
   } catch {
     return null;
   }
+}
+
+function modelToSize(model: string): TShirtSize {
+  const map: Record<string, TShirtSize> = {
+    "composer-1.5": "XS",
+    "composer-2-fast": "S",
+    "gpt-5.5-medium": "M",
+    "claude-4.6-sonnet-medium-thinking": "L",
+  };
+  if (model?.toLowerCase().includes("opus")) return "XL";
+  return map[model] ?? "M";
 }
 
 function statusConfig(status: DispatchItem["status"]) {
@@ -198,6 +210,9 @@ export default async function AutopilotPage() {
                     <span className="rounded bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px]">
                       {item.model}
                     </span>
+                    <TShirtSizeBadge
+                      size={modelToSize(item.model)}
+                    />
                     <span className="ml-auto text-zinc-600">
                       {new Date(item.created_at).toLocaleTimeString()}
                     </span>

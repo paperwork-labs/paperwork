@@ -1,3 +1,4 @@
+from app.models.agent_dispatch import AgentDispatch
 from app.models.api_key import ApiKey
 from app.models.audit import AdminAuditLog, AuditLog
 from app.models.base import Base
@@ -24,6 +25,7 @@ from app.models.workstream_board import WorkstreamDispatchLog, WorkstreamProgres
 
 __all__ = [
     "AdminAuditLog",
+    "AgentDispatch",
     "ApiKey",
     "AuditLog",
     "Base",

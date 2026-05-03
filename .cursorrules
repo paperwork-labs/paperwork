@@ -267,3 +267,15 @@ Tax brackets, LLC formation rules, state portal configs, source registries, and 
 ### Every product backend exposes capabilities as an MCP server; Brain consumes via the `brain.invoke()` gateway
 
 Every product backend (FileFree, LaunchFree, AxiomFolio, future products) grows an MCP server at `apis/{product}/app/mcp/` exposing its capabilities as JSON-RPC 2.0 MCP tools with bearer auth, per-call user resolution, scope/quota enforcement. Reference implementation: `apis/axiomfolio/app/mcp/server.py` — copy-don't-reinvent. Brain consumes those capabilities through the universal `brain.invoke()` gateway (HTTP: `POST /v1/brain/invoke`), the same way it consumes external MCP servers (Gmail, GitHub, Stripe, etc.). **Do NOT build skills inside Brain (`apis/brain/app/skills/`) that duplicate product capabilities** — that splits ownership and breaks the contract that product backends are the source of truth for product capabilities. The `brain_skills` row is a pointer (`source_kind=mcp_server`, `source_ref=<product mcp endpoint>`), not an implementation. See `docs/BRAIN_ARCHITECTURE.md` (Brain Gateway Architecture + D62 IP-skills subsection).
+
+## Agent Dispatch Model Enforcement (Wave L)
+
+Every Task dispatch MUST specify the `model:` parameter. Allowed subagent models (XS–L only):
+- `composer-1.5` (XS, ~$0.10/dispatch)
+- `composer-2-fast` (S, ~$0.40/dispatch)
+- `gpt-5.5-medium` (M, ~$1.00/dispatch)
+- `claude-4.6-sonnet-medium-thinking` (L, ~$3.00/dispatch)
+
+Opus (any model slug containing "opus") is **FORBIDDEN** as a subagent. Opus is orchestrator-only.
+
+Enforced by `.cursor/hooks/enforce-cheap-agent-model.sh` (`failClosed: true`). Dispatch without a valid model will be **blocked**. See `.cursor/rules/cheap-agent-fleet.mdc` Rule #2 and `docs/PR_TSHIRT_SIZING.md` for full taxonomy and decision tree.

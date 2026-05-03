@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "subagentStart": [
+      {
+        "command": ".cursor/hooks/enforce-cheap-agent-model.sh",
+        "failClosed": true
+      }
+    ]
+  }
+}
