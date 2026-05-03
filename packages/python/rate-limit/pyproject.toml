@@ -1,0 +1,65 @@
+[project]
+name = "rate-limit"
+version = "0.1.0"
+description = "Shared SlowAPI-based rate limiting with Redis storage, fail-OPEN degradation reporting, and FastAPI ASGI middleware"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Paperwork Labs" }]
+dependencies = [
+  "fastapi>=0.110,<1.0",
+  "redis>=5,<8",
+  "slowapi>=0.1.9",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8",
+  "pytest-asyncio>=0.21",
+  "pytest-cov>=4",
+  "httpx>=0.27",
+  "fakeredis>=2.20",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/rate_limit"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DTZ", "SIM", "RUF", "ARG", "PIE", "C4"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+  "ARG001",
+  "ARG002",
+  "B008",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+branch = true
+source = ["rate_limit"]
+
+[tool.coverage.report]
+fail_under = 80
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+show_error_codes = true
+mypy_path = ["src"]
+packages = ["rate_limit"]
+
+[[tool.mypy.overrides]]
+module = ["slowapi.*", "limits.*"]
+ignore_missing_imports = true
