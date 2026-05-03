@@ -362,16 +362,15 @@ async def cost_summary(
     ][:20]
 
     # --- by day (last 30 days) ---
-    day_stmt = select(
-        func.date_trunc("day", AgentDispatch.dispatched_at).label("day"),
-        func.coalesce(func.sum(AgentDispatch.estimated_cost_cents), 0).label("estimated"),
-        func.sum(AgentDispatch.actual_cost_cents).label("actual"),
-    ).where(
-        AgentDispatch.dispatched_at >= text("NOW() - INTERVAL '30 days'")
-    ).group_by(
-        func.date_trunc("day", AgentDispatch.dispatched_at)
-    ).order_by(
-        func.date_trunc("day", AgentDispatch.dispatched_at)
+    day_stmt = (
+        select(
+            func.date_trunc("day", AgentDispatch.dispatched_at).label("day"),
+            func.coalesce(func.sum(AgentDispatch.estimated_cost_cents), 0).label("estimated"),
+            func.sum(AgentDispatch.actual_cost_cents).label("actual"),
+        )
+        .where(AgentDispatch.dispatched_at >= text("NOW() - INTERVAL '30 days'"))
+        .group_by(func.date_trunc("day", AgentDispatch.dispatched_at))
+        .order_by(func.date_trunc("day", AgentDispatch.dispatched_at))
     )
 
     day_result = await db.execute(day_stmt)
