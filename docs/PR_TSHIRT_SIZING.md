@@ -117,6 +117,70 @@ Task(
 ```
 Security-sensitive, cross-file (main.py + middleware + tests). $2.80 actual.
 
+## Decomposition Decision Tree
+
+When sizing a PR, run through this tree before dispatching. This extends the **Decompose for Composer** principle: prefer *N* small XS PRs over one big L PR for the same scope when work is independent or sequenceable (see doctrine context in **#664**, infra runway in **#665**, shared-package splits like **#666** / **#667**, and the sizing system in **#668**).
+
+```
+Q1: Is this work mechanical (rename, format, single-file refactor, dep bump)?
+  YES → XS (composer-1.5)
+  NO  → Q2
+
+Q2: Is this work a single-file extraction or scaffold (e.g. new package skeleton, test file, generator stub)?
+  YES → XS or S
+  NO  → Q3
+
+Q3: Does this work require cross-file reasoning across 2-3 files in the SAME area (e.g. add field to model + migration + admin form)?
+  YES → S (composer-2-fast) — but consider Q3a
+
+  Q3a: Can it be split into N independent commits (e.g. one PR per file)?
+    YES → N × XS (composer-1.5) — strongly preferred over 1 × S
+    NO  → S (composer-2-fast)
+
+Q4: Does this work require multi-file changes across DIFFERENT areas (router + service + tests + UI), or moderate domain reasoning?
+  YES → M (gpt-5.5-medium) — but consider Q4a
+
+  Q4a: Can it be decomposed into a scaffold-XS + per-area-XS pattern?
+    YES → 1 × XS (scaffold) + N × XS (per-area) — strongly preferred
+    NO  → M (gpt-5.5-medium)
+
+Q5: Does this work involve security-sensitive logic (auth, crypto, RLS, payment flow), production-critical integration (real money, real PII), OR complex novel reasoning (new algorithm, new architecture pattern)?
+  YES → L (claude-4.6-sonnet-medium-thinking)
+  NO  → If you reached Q5 and answered "no" to Q1-Q4, you may have over-scoped — re-decompose.
+
+NEVER use XL (Opus models) for subagent dispatch. The Cursor `subagentStart` hook will deny these. Opus is orchestrator-only.
+```
+
+### Worked example: Wave K shared packages
+
+**Original sizing thinking:**
+
+- "Build 6 shared Python packages" = M-sized monolithic dispatch ($1.00)
+
+**Decomposed sizing (what we actually did):**
+
+- 6 × XS (one per package: api-foundation, clerk-auth, money, observability, rate-limit, pii-scrubber) = $0.60 total
+- Each PR is independently reviewable, mergeable, and rollback-able
+- Cost saved: 40%
+- Time saved: ~2× (parallel dispatch vs sequential single-agent)
+
+A concrete precedent for splitting shared surface instead of one monolith: **#666** (uv workspace + shared `mcp-server` package + AxiomFolio migration) and **#667** (FileFree tax-data dedupe via shared Python `data-engine`) — both smaller, reviewable units rather than one oversized dispatch.
+
+### Worked example: Wave I3 FileFree MCP server
+
+**Original sizing thinking:**
+
+- "Build FileFree MCP server (mirror AxiomFolio pattern)" = L-sized ($3.00)
+
+**Decomposed sizing:**
+
+- I3a: scaffold (copy AxiomFolio MCP layout, swap names) = XS ($0.10)
+- I3b: define `TOOL_DEFINITIONS` schemas = XS ($0.10)
+- I3c: implement tax filing tool handlers = S ($0.40)
+- I3d: integration tests = S ($0.40)
+- Total = $1.00 (vs $3.00 monolithic)
+- Cost saved: 67%
+
 ## Cost Calibration Methodology
 
 ### Phase 1 (current): Estimated costs from midpoint heuristics
