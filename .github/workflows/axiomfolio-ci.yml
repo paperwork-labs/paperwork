@@ -194,7 +194,7 @@ jobs:
       - name: Setup pnpm
         # Version comes from packageManager field in root package.json;
         # specifying it here would conflict with ERR_PNPM_BAD_PM_VERSION.
-        uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e
+        uses: pnpm/action-setup@26f6d4f2c533a43e6b5da0b4a5dd983f98f7b49a
 
       - name: Install (from repo root; pnpm workspace)
         run: pnpm install --frozen-lockfile
