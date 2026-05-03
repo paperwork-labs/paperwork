@@ -15,4 +15,8 @@ limiter = create_limiter(
     redis_url=settings.RATE_LIMIT_STORAGE_URL or None,
     key_func=get_remote_address,
     default_limits=[settings.RATE_LIMIT_DEFAULT],
+    # Match legacy SlowAPI ``Limiter()`` default (``headers_enabled=False``).
+    # With headers on, ``@limiter.limit`` injects into ``response: Response``;
+    # many sync routes return Pydantic models only and omit that parameter.
+    headers_enabled=False,
 )
