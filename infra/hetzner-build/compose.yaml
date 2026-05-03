@@ -1,3 +1,10 @@
+# Self-hosted GHA runners on paperwork-builders (CX43, 8 vCPU / 16 GB).
+#
+# Labels: each runner advertises both the legacy (`paperwork-builders`,
+# `cheap-agent-slot-N`, `heavy-ci`) and infra-canonical (`hetzner`) labels.
+# Workflows can target this fleet with either `runs-on: [self-hosted, hetzner]`
+# (preferred for build/test that should land here) or the legacy slot labels.
+# `self-hosted`, `linux`, and `x64` are added automatically by the runner image.
 services:
   runner-1:
     image: myoung34/github-runner:ubuntu-noble
@@ -5,7 +12,7 @@ services:
     env_file: .env
     environment:
       RUNNER_NAME: paperwork-builders-slot-1
-      RUNNER_LABELS: self-hosted,paperwork-builders,cheap-agent-slot-1
+      RUNNER_LABELS: hetzner,paperwork-builders,cheap-agent-slot-1
       RUNNER_WORKDIR: /tmp/runner-1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -17,7 +24,7 @@ services:
     env_file: .env
     environment:
       RUNNER_NAME: paperwork-builders-slot-2
-      RUNNER_LABELS: self-hosted,paperwork-builders,cheap-agent-slot-2
+      RUNNER_LABELS: hetzner,paperwork-builders,cheap-agent-slot-2
       RUNNER_WORKDIR: /tmp/runner-2
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -29,7 +36,7 @@ services:
     env_file: .env
     environment:
       RUNNER_NAME: paperwork-builders-slot-3
-      RUNNER_LABELS: self-hosted,paperwork-builders,cheap-agent-slot-3
+      RUNNER_LABELS: hetzner,paperwork-builders,cheap-agent-slot-3
       RUNNER_WORKDIR: /tmp/runner-3
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -41,7 +48,7 @@ services:
     env_file: .env
     environment:
       RUNNER_NAME: paperwork-builders-slot-4
-      RUNNER_LABELS: self-hosted,paperwork-builders,cheap-agent-slot-4
+      RUNNER_LABELS: hetzner,paperwork-builders,cheap-agent-slot-4
       RUNNER_WORKDIR: /tmp/runner-4
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -53,7 +60,7 @@ services:
     env_file: .env
     environment:
       RUNNER_NAME: paperwork-builders-heavy-ci
-      RUNNER_LABELS: self-hosted,paperwork-builders,heavy-ci
+      RUNNER_LABELS: hetzner,paperwork-builders,heavy-ci
       RUNNER_WORKDIR: /tmp/runner-heavy
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock

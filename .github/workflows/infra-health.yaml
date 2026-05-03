@@ -1,8 +1,13 @@
 name: Infrastructure health check
 
 on:
-  schedule:
-    - cron: '0 */6 * * *'
+  # DISABLED: 2026-05-03 — n8n was removed from the production automation path
+  # in WS-69 (see docs/runbooks/hetzner-bootstrap.md "Repurposing (legacy Social
+  # VPS)"). The 6h cron was hitting `n8n.paperworklabs.com`, which no longer
+  # backs anything live. workflow_dispatch is preserved for manual one-off runs
+  # if a follow-up infra check is wired in.
+  # schedule:
+  #   - cron: '0 */6 * * *'
   workflow_dispatch: {}
 
 permissions:

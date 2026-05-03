@@ -116,32 +116,76 @@ Use this when you buy a fresh CX-series box from Hetzner Cloud.
 
 Use this when runners need to be registered or re-registered on paperwork-builders.
 
-1. Obtain a GitHub PAT with `repo` scope (or use a time-limited RUNNER_TOKEN):
+> **Token choice — known gotcha (2026-05-03 bootstrap)**
+>
+> The `myoung34/github-runner` image accepts either of two env vars:
+>
+> - `RUNNER_TOKEN` — short-lived registration token (valid 1h). The runner uses
+>   it once to register, then writes a permanent `.runner` config into the named
+>   docker volume. With `restart: unless-stopped` and the volume mounted, the
+>   container survives restarts and reboots without re-registering.
+> - `ACCESS_TOKEN` — long-lived GitHub PAT with `repo` scope. The runner mints
+>   its own registration tokens on every start. Useful only if you ever wipe the
+>   runner volume.
+>
+> **Do NOT use a key called `GHA_RUNNER_PAT` from the Studio Vault** — that
+> name was speculative; the vault only ships `GITHUB_PAT` (which has been
+> observed to be expired) and `GITHUB_PAT_FINEGRAINED`. Default to
+> `RUNNER_TOKEN` for a fresh bootstrap; if a vault PAT is available and you
+> want auto-recovery from a wiped volume, use `ACCESS_TOKEN` instead.
+
+1. Mint a registration token (valid 1h, no long-lived PAT needed):
    ```bash
-   # Generate registration token (valid 1h) — no long-lived PAT needed
    gh api -X POST repos/paperwork-labs/paperwork/actions/runners/registration-token --jq '.token'
    ```
 
 2. SSH into paperwork-builders and configure the `.env`:
    ```bash
    ssh root@89.167.34.68
+   mkdir -p /opt/paperwork-build
    cd /opt/paperwork-build
    cat > .env <<EOF
    REPO_URL=https://github.com/paperwork-labs/paperwork
-   ACCESS_TOKEN=<token-from-step-1>
+   RUNNER_TOKEN=<token-from-step-1>
    RUNNER_GROUP=default
    EOF
+   chmod 600 .env
    ```
 
-3. Start the runners:
+   > **Repo URL gotcha**: the GitHub org slug is `paperwork-labs` (with a
+   > hyphen). Internal docs sometimes write `paperworklabs` — that 404s.
+
+3. Start the runners (compose file lives at `infra/hetzner-build/compose.yaml`):
    ```bash
+   # From the founder laptop (not the box):
+   scp infra/hetzner-build/compose.yaml root@89.167.34.68:/opt/paperwork-build/
+
+   ssh root@89.167.34.68
+   cd /opt/paperwork-build
+   docker compose pull
    docker compose up -d
-   docker compose logs -f
+   docker compose logs -f      # Look for "√ Runner successfully added" + "Listening for Jobs"
    ```
 
 4. Verify in GitHub:
    - Go to https://github.com/paperwork-labs/paperwork/settings/actions/runners
-   - All 5 runners should appear as **Idle**
+   - All 5 runners should appear as **Idle**.
+   - Or check the API (see § Verification at the bottom).
+
+   Expected labels per runner (the runner image adds `self-hosted,Linux,X64`
+   automatically; `hetzner` + slot-specific labels come from `RUNNER_LABELS` in
+   `compose.yaml`):
+
+   ```text
+   self-hosted, Linux, X64, hetzner, paperwork-builders, cheap-agent-slot-1
+   self-hosted, Linux, X64, hetzner, paperwork-builders, cheap-agent-slot-2
+   self-hosted, Linux, X64, hetzner, paperwork-builders, cheap-agent-slot-3
+   self-hosted, Linux, X64, hetzner, paperwork-builders, cheap-agent-slot-4
+   self-hosted, Linux, X64, hetzner, paperwork-builders, heavy-ci
+   ```
+
+   Workflows can target this fleet via either the canonical
+   `runs-on: [self-hosted, hetzner]` or a legacy slot label.
 
 ## Path: Restarting a Service
 
@@ -189,6 +233,8 @@ To add more runner slots (e.g., runner-5, runner-6):
 
 ## Verification
 
+### Per-box service health
+
 ```bash
 # All services running on paperwork-ops
 ssh root@204.168.147.100 'docker ps --format "table {{.Names}}\t{{.Status}}"'
@@ -198,12 +244,37 @@ ssh root@89.167.34.68 'docker ps --format "table {{.Names}}\t{{.Status}}"'
 
 # All services running on paperwork-workers
 ssh root@204.168.165.156 'docker ps --format "table {{.Names}}\t{{.Status}}"'
-
-# GHA runners online (requires gh auth)
-gh api repos/paperwork-labs/paperwork/actions/runners --jq '.runners[] | {name, status, busy}'
 ```
 
-Expected: All containers in `Up` state; 5 runners with `status: online`.
+Expected: All containers in `Up` state.
+
+### GHA self-hosted runners
+
+```bash
+# Full picture — id, name, status, busy, labels
+gh api /repos/paperwork-labs/paperwork/actions/runners \
+  --jq '.runners[] | {id, name, status, busy, labels: [.labels[].name]}'
+
+# Quick "are at least N runners online" check (CI-friendly)
+gh api /repos/paperwork-labs/paperwork/actions/runners \
+  --jq '[.runners[] | select(.status == "online")] | length'
+```
+
+Expected: 5 runners, every one with `status: "online"`. Labels must include
+`self-hosted`, `Linux`, `X64`, `hetzner`, and `paperwork-builders`. Workflows
+that use `runs-on: [self-hosted, hetzner]` will not pick up jobs unless every
+listed label is present on at least one runner — if a registration drift
+removes the `hetzner` label, those jobs queue indefinitely.
+
+If `length` returns `0` after a fresh bootstrap, the most likely causes are:
+
+1. The registration token expired before `docker compose up -d` finished
+   pulling the image (the pull is ~600 MB on a fresh box). Mint a new token
+   and re-run.
+2. The repo URL in `.env` uses `paperworklabs/paperwork` instead of
+   `paperwork-labs/paperwork`.
+3. The runner volume from a previous bootstrap still exists with stale
+   credentials. Run `docker compose down -v` to wipe volumes, then start over.
 
 ## Rollback
 

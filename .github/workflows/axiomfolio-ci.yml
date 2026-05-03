@@ -94,7 +94,9 @@ jobs:
     name: AxiomFolio backend (pytest against shared stack)
     needs: changes
     if: needs.changes.outputs.backend == 'true'
-    runs-on: ubuntu-latest
+    # Heavy: docker compose (postgres + redis) + pytest + alembic head check.
+    # Moved to Hetzner CX43 (P0 cost work).
+    runs-on: [self-hosted, hetzner]
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -171,7 +173,9 @@ jobs:
     name: AxiomFolio frontend (lint/typecheck/test)
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
-    runs-on: ubuntu-latest
+    # Heavy: full pnpm install + Next.js workspace tests. Lint/typecheck happen
+    # here too, but the unit-test step is the cost driver — keep them together.
+    runs-on: [self-hosted, hetzner]
     timeout-minutes: 20
     steps:
       - name: Checkout

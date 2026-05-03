@@ -35,7 +35,10 @@ concurrency:
 jobs:
   golden:
     name: golden (${{ matrix.suite }})
-    runs-on: ubuntu-latest
+    # Heavy: pytest matrix (4 suites) for the Brain golden surface. Moved to
+    # Hetzner CX43; the Slack summary job below stays on ubuntu-latest because
+    # it is just a curl POST.
+    runs-on: [self-hosted, hetzner]
     timeout-minutes: 10
     strategy:
       fail-fast: false
