@@ -20,7 +20,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "stripe": "^17.7.0"
+    "stripe": "^22.1.0"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
