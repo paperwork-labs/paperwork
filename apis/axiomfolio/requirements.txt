@@ -70,6 +70,13 @@ responses==0.26.0
 # (Wave K2). For local pytest without Docker, prefer the monorepo uv
 # workspace (`uv sync` from repo root); fallback for plain pip:
 #   pip install -e ../../packages/python/mcp-server
+#
+# Wave K10 — shared FastAPI/OTel/rate-limit packages (pip -e from monorepo root):
+#   pip install -e ../../packages/python/api-foundation \
+#     -e ../../packages/python/observability -e ../../packages/python/rate-limit
+-e ../../packages/python/api-foundation
+-e ../../packages/python/observability
+-e ../../packages/python/rate-limit
 passlib[bcrypt]==1.7.4
 PyJWT==2.12.1
 email-validator==2.3.0

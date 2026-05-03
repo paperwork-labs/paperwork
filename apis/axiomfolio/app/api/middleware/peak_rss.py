@@ -26,6 +26,8 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from api_foundation.middleware import STATE_REQUEST_ID
+
 from app.config import settings
 from app.services.observability import peak_rss_store
 from app.utils.request_context import get_request_id
@@ -87,7 +89,7 @@ class PeakRssMiddleware(BaseHTTPMiddleware):
         if is_observability_bypass_path(path):
             return await call_next(request)
 
-        rid = get_request_id() or "-"
+        rid = getattr(request.state, STATE_REQUEST_ID, None) or get_request_id() or "-"
         if not should_sample_for_request_id(rid):
             return await call_next(request)
 
@@ -117,8 +119,10 @@ class PeakRssMiddleware(BaseHTTPMiddleware):
         method = (request.method or "GET").upper()
         r = _get_sync_redis()
         if r is not None:
+
             def _write() -> None:
                 peak_rss_store.record_peak_rss_sample(r, method, path_t, delta_kib)
+
             try:
                 await asyncio.to_thread(_write)
             except Exception as e:  # noqa: BLE001
@@ -148,6 +152,7 @@ def _get_sync_redis():
         return None
     try:
         from app.services.silver.market.market_data_service import infra
+
         return infra.redis_client
     except Exception as e:  # noqa: BLE001
         global _redis_fail_open_logged
