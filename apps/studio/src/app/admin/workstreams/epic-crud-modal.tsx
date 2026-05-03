@@ -65,7 +65,7 @@ const EPIC_STATUSES = ["backlog", "in_progress", "blocked", "paused", "done"] as
 
 const SPRINT_STATUSES = ["planned", "active", "shipped", "paused"] as const;
 
-const TASK_STATUSES = ["todo", "in_progress", "merged", "done"] as const;
+const TASK_STATUSES = ["open", "todo", "in_progress", "merged", "done"] as const;
 
 function studioEntityId(kind: string) {
   const r =

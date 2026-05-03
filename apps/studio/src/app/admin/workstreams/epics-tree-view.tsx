@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -39,9 +39,37 @@ const EPIC_STATUS_OPTIONS = ["backlog", "in_progress", "blocked", "paused", "don
 
 const SPRINT_STATUS_OPTIONS = ["planned", "active", "shipped", "paused"] as const;
 
-const TASK_STATUS_OPTIONS = ["todo", "in_progress", "merged", "done"] as const;
+const TASK_STATUS_OPTIONS = ["open", "todo", "in_progress", "merged", "done"] as const;
 
-const NEUTRAL_BADGE_BUCKET = new Set(["backlog", "pending", "planned", "todo"]);
+const NEUTRAL_BADGE_BUCKET = new Set([
+  "backlog",
+  "pending",
+  "planned",
+  "todo",
+  "open",
+]);
+
+/** Default monorepo PR base when Brain stores only ``github_pr`` (no URL). */
+const STUDIO_DEFAULT_PR_PULL = "https://github.com/paperwork-labs/paperwork/pull";
+
+const WAVE_TITLE_RE = /^wave\s*\d+\s*:/i;
+
+function formatSprintDisplayTitle(sprint: SprintItem): string {
+  const raw = (sprint.title ?? "").trim();
+  if (WAVE_TITLE_RE.test(raw)) return raw;
+  const waveNum = (sprint.ordinal ?? 0) + 1;
+  return raw ? `Wave ${waveNum}: ${raw}` : `Wave ${waveNum}`;
+}
+
+function taskGithubPrHref(task: TaskItem): string | null {
+  const url = task.github_pr_url?.trim();
+  if (url) return url;
+  const n = task.github_pr;
+  if (typeof n === "number" && Number.isFinite(n) && n > 0) {
+    return `${STUDIO_DEFAULT_PR_PULL}/${n}`;
+  }
+  return null;
+}
 
 type DraftSetter = Dispatch<SetStateAction<EpicCrudDraft | null>>;
 
@@ -60,7 +88,7 @@ function hierarchyStatusLevel(status: string): StatusLevel {
   ) {
     return "warning";
   }
-  if (n === "backlog" || n === "pending" || n === "planned" || n === "todo") {
+  if (n === "backlog" || n === "pending" || n === "planned" || n === "todo" || n === "open") {
     return "neutral";
   }
   if (
@@ -347,9 +375,10 @@ function GoalBlock({
       <ToggleRow open={open} onToggle={onToggle} depthClass="pl-0">
         <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
           <div className="flex min-w-[12rem] flex-1 flex-wrap items-center gap-2">
-            <span className="font-medium text-zinc-100">
-              Goal: {goal.objective}
+            <span className="text-base leading-none" aria-hidden>
+              🎯
             </span>
+            <span className="font-medium text-zinc-100">{goal.objective}</span>
             <HorizonBadge horizon={goal.horizon} />
           </div>
           <div className="flex shrink-0 items-center gap-1">
@@ -396,7 +425,9 @@ function GoalBlock({
           </div>
         </div>
       </ToggleRow>
-      {open ? <div className="mt-1 space-y-0.5">{renderEpics()}</div> : null}
+      {open ? (
+        <div className="ml-1 space-y-0.5 border-l border-zinc-800/70 pl-3">{renderEpics()}</div>
+      ) : null}
     </div>
   );
 }
@@ -422,6 +453,9 @@ function EpicBlock({
         <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
           <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
             <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <span className="text-base leading-none" aria-hidden>
+                📋
+              </span>
               <span title={epic.status} aria-hidden>
                 <StatusDot
                   status={epicLevel}
@@ -433,7 +467,7 @@ function EpicBlock({
                 />
               </span>
               <span className="font-mono text-xs text-violet-300">{epic.id}</span>
-              <span className="text-sm text-zinc-200">— {epic.title}</span>
+              <span className="text-sm text-zinc-200">{epic.title}</span>
               <span className="text-xs tabular-nums text-zinc-500">[{pct}%]</span>
             </div>
             <div className="flex max-w-xs min-w-[6rem] flex-1 items-center gap-2 sm:max-w-[12rem]">
@@ -493,7 +527,7 @@ function EpicBlock({
           </div>
         </div>
       </ToggleRow>
-      {open ? <div>{renderSprints()}</div> : null}
+      {open ? <div className="border-l border-zinc-800/50 pl-2">{renderSprints()}</div> : null}
     </div>
   );
 }
@@ -523,7 +557,10 @@ function SprintBlock({
       <ToggleRow open={open} onToggle={onToggle} depthClass="pl-8">
         <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 text-sm">
-            <span className="text-zinc-200">{sprint.title}</span>
+            <span className="text-base leading-none" aria-hidden>
+              🏃
+            </span>
+            <span className="text-zinc-200">{formatSprintDisplayTitle(sprint)}</span>
             <span className="text-xs text-zinc-500">
               ({count} task{count === 1 ? "" : "s"})
             </span>
@@ -575,9 +612,7 @@ function SprintBlock({
         </div>
       </ToggleRow>
       {open ? (
-        <div>
-          {renderTasks()}
-        </div>
+        <div className="ml-2 border-l border-zinc-800/50 pl-2">{renderTasks()}</div>
       ) : null}
     </div>
   );
@@ -595,8 +630,9 @@ function TaskRow({
   setDraft: DraftSetter;
 }) {
   const done = taskIsDone(task.status);
+  const prHref = taskGithubPrHref(task);
   return (
-    <div className="flex items-start gap-2 py-1 pl-12 pr-2 text-sm">
+    <div className="flex items-start gap-2 py-1.5 pl-[2.75rem] pr-2 text-sm sm:pl-14">
       {done ? (
         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[var(--status-success)]" aria-hidden />
       ) : (
@@ -639,19 +675,17 @@ function TaskRow({
             </button>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-x-2 text-xs text-zinc-500">
-          {task.github_pr_url ? (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
+          {prHref ? (
             <a
-              href={task.github_pr_url}
+              href={prHref}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-0.5 text-sky-400 hover:underline"
+              className="inline-flex items-center gap-0.5 font-mono text-sky-400 hover:underline"
             >
               #{task.github_pr ?? "PR"}
               <ExternalLink className="h-3 w-3" aria-hidden />
             </a>
-          ) : task.github_pr != null ? (
-            <span>(#{task.github_pr})</span>
           ) : null}
           {task.owner_employee_slug ? (
             <span className="text-[10px] uppercase tracking-wide text-zinc-500">
@@ -730,6 +764,16 @@ export function EpicsTreeView({ goals }: EpicsTreeViewProps) {
   }, [goals]);
 
   const [open, setOpen] = useState(initialOpen);
+
+  useEffect(() => {
+    setOpen((prev) => {
+      const next: Record<string, boolean> = { ...initialOpen };
+      for (const key of Object.keys(next)) {
+        if (key in prev) next[key] = prev[key]!;
+      }
+      return next;
+    });
+  }, [initialOpen]);
 
   const toggle = useCallback((key: string) => {
     setOpen((prev) => ({ ...prev, [key]: !prev[key] }));
