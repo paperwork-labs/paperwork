@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ async def run_calibration_pass() -> int:
     return 0
 
 
-async def find_uncalibrated_rows(db_session: object) -> list[dict]:
+async def find_uncalibrated_rows(db_session: object) -> list[dict[str, Any]]:
     """Query agent_dispatches rows that need actual_cost_cents filled.
 
     Rows are eligible if:

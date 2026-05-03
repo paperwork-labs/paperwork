@@ -138,12 +138,12 @@ class LegacyDispatchEntry(BaseModel):
         )
         return DispatchEntry(
             task_id=self.task_id,
-            source=self.source if self.source in ("probe", "goal", "manual") else "probe",  # type: ignore[arg-type]
+            source=self.source if self.source in ("probe", "goal", "manual") else "probe",
             description=self.description,
             product=self.product,
             persona_id=self.persona_id,
-            agent_model=model,  # type: ignore[arg-type]
-            status=norm_status,  # type: ignore[arg-type]
+            agent_model=model,
+            status=norm_status,
             created_at=self.created_at,
             dispatched_at=self.dispatched_at,
         )

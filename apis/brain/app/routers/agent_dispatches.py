@@ -314,12 +314,12 @@ async def cost_summary(
     size_result = await db.execute(size_stmt)
     by_size = [
         CostSummaryBySizeBucket(
-            t_shirt_size=row.t_shirt_size,
-            count=row.count,
-            estimated_total_cents=row.estimated_total or 0,
-            actual_total_cents=row.actual_total,
+            t_shirt_size=size_row.t_shirt_size,
+            count=size_row.count,
+            estimated_total_cents=size_row.estimated_total or 0,
+            actual_total_cents=size_row.actual_total,
         )
-        for row in size_result
+        for size_row in size_result
     ]
 
     # --- by workstream (top 20) ---
@@ -337,14 +337,14 @@ async def cost_summary(
     ws_result = await db.execute(ws_stmt)
 
     ws_map: dict[str | None, dict[str, Any]] = {}
-    for row in ws_result:
-        key = row.workstream_id
+    for ws_row in ws_result:
+        key = ws_row.workstream_id
         if key not in ws_map:
             ws_map[key] = {"count": 0, "estimated_total": 0, "breakdown": {}}
-        ws_map[key]["count"] += row.count
-        ws_map[key]["estimated_total"] += row.estimated_total or 0
-        ws_map[key]["breakdown"][row.t_shirt_size] = (
-            ws_map[key]["breakdown"].get(row.t_shirt_size, 0) + row.count
+        ws_map[key]["count"] += ws_row.count
+        ws_map[key]["estimated_total"] += ws_row.estimated_total or 0
+        ws_map[key]["breakdown"][ws_row.t_shirt_size] = (
+            ws_map[key]["breakdown"].get(ws_row.t_shirt_size, 0) + ws_row.count
         )
 
     by_workstream = [
@@ -377,12 +377,14 @@ async def cost_summary(
     by_day = [
         DailySpend(
             date=(
-                row.day.strftime("%Y-%m-%d") if hasattr(row.day, "strftime") else str(row.day)[:10]
+                day_row.day.strftime("%Y-%m-%d")
+                if hasattr(day_row.day, "strftime")
+                else str(day_row.day)[:10]
             ),
-            estimated_cents=row.estimated or 0,
-            actual_cents=row.actual,
+            estimated_cents=day_row.estimated or 0,
+            actual_cents=day_row.actual,
         )
-        for row in day_result
+        for day_row in day_result
     ]
 
     # --- calibration delta ---
@@ -394,15 +396,15 @@ async def cost_summary(
 
     cal_result = await db.execute(cal_stmt)
     calibration_delta = []
-    for row in cal_result:
+    for cal_row in cal_result:
         ratio: float | None = None
-        if row.actual_total and row.actual_total > 0 and row.estimated_total > 0:
-            ratio = round(row.estimated_total / row.actual_total, 3)
+        if cal_row.actual_total and cal_row.actual_total > 0 and cal_row.estimated_total > 0:
+            ratio = round(cal_row.estimated_total / cal_row.actual_total, 3)
         calibration_delta.append(
             CalibrationDelta(
-                t_shirt_size=row.t_shirt_size,
-                estimated_total_cents=row.estimated_total or 0,
-                actual_total_cents=row.actual_total,
+                t_shirt_size=cal_row.t_shirt_size,
+                estimated_total_cents=cal_row.estimated_total or 0,
+                actual_total_cents=cal_row.actual_total,
                 ratio=ratio,
             )
         )
