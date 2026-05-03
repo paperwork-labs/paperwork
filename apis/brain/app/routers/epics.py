@@ -111,10 +111,8 @@ async def create_goal(
     db.add(goal)
     await db.commit()
     await db.refresh(goal)
-    return success_response(
-        GoalResponse.model_validate(goal).model_dump(mode="json"),
-        status_code=201,
-    )
+    payload = GoalResponse.model_validate(goal).model_dump(mode="json")
+    return success_response(payload, status_code=201)
 
 
 @router.patch("/goals/{goal_id}")
@@ -248,10 +246,8 @@ async def create_epic(
     db.add(epic)
     await db.commit()
     await db.refresh(epic)
-    return success_response(
-        EpicResponse.model_validate(epic).model_dump(mode="json"),
-        status_code=201,
-    )
+    payload = EpicResponse.model_validate(epic).model_dump(mode="json")
+    return success_response(payload, status_code=201)
 
 
 @router.patch("/epics/{epic_id}")
@@ -319,9 +315,8 @@ async def list_sprints(
     stmt = stmt.order_by(Sprint.epic_id, Sprint.ordinal)
     result = await db.execute(stmt)
     sprints = result.scalars().all()
-    return success_response(
-        [SprintResponse.model_validate(s).model_dump(mode="json") for s in sprints],
-    )
+    payload = [SprintResponse.model_validate(s).model_dump(mode="json") for s in sprints]
+    return success_response(payload)
 
 
 @router.post("/sprints")
@@ -352,10 +347,8 @@ async def create_sprint(
     db.add(sprint)
     await db.commit()
     await db.refresh(sprint)
-    return success_response(
-        SprintResponse.model_validate(sprint).model_dump(mode="json"),
-        status_code=201,
-    )
+    payload = SprintResponse.model_validate(sprint).model_dump(mode="json")
+    return success_response(payload, status_code=201)
 
 
 @router.patch("/sprints/{sprint_id}")
@@ -449,10 +442,8 @@ async def create_task(
     db.add(task)
     await db.commit()
     await db.refresh(task)
-    return success_response(
-        TaskResponse.model_validate(task).model_dump(mode="json"),
-        status_code=201,
-    )
+    payload = TaskResponse.model_validate(task).model_dump(mode="json")
+    return success_response(payload, status_code=201)
 
 
 @router.patch("/tasks/{task_id}")
