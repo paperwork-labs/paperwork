@@ -1,3 +1,19 @@
+[project]
+# Brain API. Runtime deps live in `requirements.txt` (Docker still uses
+# pip). This `[project]` table exists so the monorepo's uv workspace
+# (`/pyproject.toml`) can discover this backend as a member.
+name = "brain"
+version = "0.0.0"
+description = "Brain API (Paperwork)"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests", "tests_lint"]
