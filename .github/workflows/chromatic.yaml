@@ -33,7 +33,9 @@ permissions:
 jobs:
   chromatic:
     name: Chromatic
-    runs-on: ubuntu-latest
+    # Heavy: full Storybook build with 4 GiB Node heap, then publish to
+    # Chromatic. Memory profile fits comfortably on the CX43 (16 GB).
+    runs-on: [self-hosted, hetzner]
     # Do not use `if: secrets.*` on the publish step (schema); detect token via step output instead.
     env:
       # 4 GiB headroom for the Storybook build on 30+ stories with theme variants.

@@ -124,7 +124,9 @@ jobs:
 
   api-test:
     name: API Tests
-    runs-on: ubuntu-latest
+    # Heavy: pytest + postgres + redis services. Moved to Hetzner CX43 to cut
+    # GHA-hosted minutes (P0 cost work). Lint jobs above stay on ubuntu-latest.
+    runs-on: [self-hosted, hetzner]
     needs: [changes, api-lint]
     if: needs.changes.outputs.filefreeApi == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
     defaults:
@@ -168,7 +170,8 @@ jobs:
 
   data-validate:
     name: Data Package Validate
-    runs-on: ubuntu-latest
+    # Heavy: typecheck + unit/integration tests + review CLI for the data package.
+    runs-on: [self-hosted, hetzner]
     needs: changes
     if: needs.changes.outputs.sharedPackages == 'true'
     steps:
@@ -230,7 +233,9 @@ jobs:
   # widening the full Brain Tests (mypy/pytest) matrix unless desired.
   brain-test:
     name: Brain Tests
-    runs-on: ubuntu-latest
+    # Heavy: ruff + format + mypy + pytest across apis/brain plus repo-root
+    # script tests. Moved to Hetzner CX43.
+    runs-on: [self-hosted, hetzner]
     needs: changes
     if: needs.changes.outputs.brainApi == 'true' || needs.changes.outputs.infra == 'true'
     defaults:
@@ -281,7 +286,9 @@ jobs:
 
   web-test:
     name: FileFree Web Tests
-    runs-on: ubuntu-latest
+    # Heavy: pnpm test against the FileFree web app. Lint stays on ubuntu-latest
+    # so we don't saturate the 5 self-hosted slots with quick checks.
+    runs-on: [self-hosted, hetzner]
     needs: [changes, web-lint]
     if: needs.changes.outputs.filefreeWeb == 'true' || needs.changes.outputs.sharedPackages == 'true' || needs.changes.outputs.infra == 'true'
     steps:
@@ -297,7 +304,9 @@ jobs:
 
   web-build:
     name: Web Build Matrix
-    runs-on: ubuntu-latest
+    # Heavy: 6x Next.js production builds. This is the single biggest GHA
+    # minute consumer in the repo — first thing to move off ubuntu-latest.
+    runs-on: [self-hosted, hetzner]
     needs: [changes, web-lint]
     strategy:
       fail-fast: false

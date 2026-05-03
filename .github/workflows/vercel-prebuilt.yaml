@@ -120,7 +120,12 @@ jobs:
       needs.changes.outputs.accountsWeb == 'true' ||
       needs.changes.outputs.sharedPackages == 'true' ||
       needs.changes.outputs.infra == 'true'
-    runs-on: ubuntu-latest
+    # P0 cost cut: build the Next.js apps on the Hetzner CX43 (8 vCPU / 16 GB)
+    # and ship the prebuilt `.vercel/output` tree via `vercel deploy --prebuilt`,
+    # so Vercel skips its remote build entirely. `changes` stays on ubuntu-latest
+    # because it is just `dorny/paths-filter`. See infra/hetzner-build/compose.yaml
+    # for runner labels (`self-hosted,linux,x64,hetzner,paperwork-builders,...`).
+    runs-on: [self-hosted, hetzner]
     timeout-minutes: 45
     strategy:
       fail-fast: false
