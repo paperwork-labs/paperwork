@@ -26,19 +26,37 @@ Routine examples that DO NOT escalate:
 
 If unsure whether something escalates, default to NOT escalating and document the decision in [apis/brain/data/procedural_memory.yaml](mdc:apis/brain/data/procedural_memory.yaml). Founder can override later.
 
-## 2. Never Opus as subagent (HARD)
+## 2. T-Shirt Sized Dispatch — Never Opus as subagent (HARD)
 
-Subagents always use cheap models. The Task tool `model:` parameter must resolve to:
+Every Task dispatch MUST specify the `model:` parameter. The Cursor hook at `.cursor/hooks/enforce-cheap-agent-model.sh` blocks dispatches missing `model:` or using any Opus model as subagent. The hook is `failClosed`.
 
+### The Taxonomy (locked — wave L PR T-Shirt Sizing System)
+
+| Size | Model slug | Est cost/dispatch | Use case |
+|------|-----------|-------------------|----------|
+| XS | `composer-1.5` | $0.05–0.15 | Narrow scaffold, generator, README stub |
+| S | `composer-2-fast` | $0.20–0.60 | Single-file extraction, mechanical refactor |
+| M | `gpt-5.5-medium` | $0.50–1.50 | Moderate cross-file, simple multi-step |
+| L | `claude-4.6-sonnet-medium-thinking` | $1–5 | Cross-file reasoning, security-sensitive |
+| XL | (Opus models) | **FORBIDDEN** | Orchestrator only, never as subagent |
+
+Size is **bijective** with model slug — if you know the model, you know the size, and vice versa. The hook and DB both enforce this bijection.
+
+Allowed model slugs (subagents only — XS through L):
 - `composer-1.5`
 - `composer-2-fast`
 - `gpt-5.5-medium`
 - `claude-4.6-sonnet-medium-thinking`
 
+Forbidden slugs (any model containing "opus" anywhere in the slug — reserved for orchestrator):
+- Any model whose slug contains the substring `opus`
+
+**Enforcement:** `.cursor/hooks/enforce-cheap-agent-model.sh` (project hook, `failClosed: true`, `subagentStart` event) blocks any Task dispatch where `model` is missing from the dispatch payload or where the model slug contains "opus". The hook returns `{"permission": "deny", ...}` with a remediation message. See [docs/PR_TSHIRT_SIZING.md](mdc:docs/PR_TSHIRT_SIZING.md) for the full canonical reference.
+
 Opus stays at orchestrator level only. Never dispatch Opus as a subagent. This rule applies to:
 
 - Manual `Task` tool invocations
-- Brain's automated agent dispatcher (`apis/brain/app/services/agent_dispatcher.py` and similar)
+- Brain's automated agent dispatcher (`apis/brain/app/schedulers/autopilot_dispatcher.py`)
 - Any future Phase H self-dispatch loop Brain runs against itself
 
 **Rationale:**

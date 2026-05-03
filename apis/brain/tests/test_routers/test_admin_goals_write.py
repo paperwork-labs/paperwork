@@ -1,4 +1,7 @@
-"""``/api/v1/admin/okr/goals`` JSON-backed read/write (PB-2)."""
+"""``/api/v1/admin/okr/goals`` JSON-backed read/write (PB-2).
+
+DB-backed tracker goals live under ``/api/v1/admin/goals`` (epics router).
+"""
 
 from __future__ import annotations
 

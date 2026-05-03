@@ -88,6 +88,12 @@ def start_scheduler() -> AsyncIOScheduler | None:
     except Exception:
         logger.exception("Failed to install app_log_pull_hourly job")
     try:
+        from app.schedulers import cost_calibration_scheduler
+
+        cost_calibration_scheduler.install(scheduler)
+    except Exception:
+        logger.exception("Failed to install cost_calibration monthly job")
+    try:
         from app.schedulers import expense_monthly_close
 
         expense_monthly_close.install(scheduler)

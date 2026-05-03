@@ -26,6 +26,7 @@ from app.routers import (
     admin_audits,
     admin_learning,
     admin_logs,
+    agent_dispatches,
     auto_distillation,
     bills,
     brain,
@@ -231,6 +232,7 @@ app.include_router(products.router, prefix="/api/v1")
 app.include_router(expenses.router, prefix="/api/v1")
 app.include_router(bills.router, prefix="/api/v1")
 app.include_router(cost_monitor.router, prefix="/api/v1")
+app.include_router(agent_dispatches.router, prefix="/api/v1")
 app.include_router(vendors.router, prefix="/api/v1")
 app.include_router(admin_logs.router, prefix="/api/v1")
 app.include_router(voice_system.router, prefix="/api/v1")

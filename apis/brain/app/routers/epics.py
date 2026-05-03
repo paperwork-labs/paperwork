@@ -319,9 +319,8 @@ async def list_sprints(
     stmt = stmt.order_by(Sprint.epic_id, Sprint.ordinal)
     result = await db.execute(stmt)
     sprints = result.scalars().all()
-    return success_response(
-        [SprintResponse.model_validate(s).model_dump(mode="json") for s in sprints],
-    )
+    payload = [SprintResponse.model_validate(s).model_dump(mode="json") for s in sprints]
+    return success_response(payload)
 
 
 @router.post("/sprints")

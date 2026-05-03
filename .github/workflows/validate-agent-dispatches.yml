@@ -1,0 +1,23 @@
+name: Validate Agent Dispatch Log
+
+on:
+  pull_request:
+    paths:
+      - "apis/brain/data/agent_dispatch_log.json"
+      - "apis/brain/data/agent_dispatch_log.jsonl"
+      - "scripts/validate_agent_dispatch_log.py"
+
+jobs:
+  validate-dispatch-log:
+    name: Check dispatch log for Opus/model violations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate agent_dispatch_log.json
+        run: python3 scripts/validate_agent_dispatch_log.py
