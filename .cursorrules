@@ -251,3 +251,19 @@ paperwork/
 - Linting: Ruff (Python), ESLint (TypeScript)
 - Type checking: mypy (Python), tsc --noEmit (TypeScript)
 - Dev commands: `make dev` (start), `make test` (run tests), `make lint` (check), `make format` (fix)
+
+## Brain-as-OS Doctrines (Bedrock — do not violate without founder approval)
+
+These three rules codify the "Brain = Curated Multi-Tenant Agent OS" thesis. Detail and rationale: `docs/BRAIN_ARCHITECTURE.md` (Reference Data Storage Doctrine + Brain Gateway Architecture sections), `packages/data/README.md`, and the locked plan at `/Users/paperworklabs/.cursor/plans/brain_=_curated_multi-tenant_agent_os_—_final_plan_4c44cfe9.plan.md`.
+
+### All backends are Python FastAPI
+
+Every Paperwork Labs backend is FastAPI + Python 3.11+. **New TypeScript backends require explicit founder approval.** TypeScript stays for frontends only (Next.js apps in `apps/*`) and shared types/schemas (Zod) for client validation that mirror Pydantic backend models. This codifies the rule already implicit in `apis/brain/`, `apis/axiomfolio/`, `apis/filefree/`, `apis/launchfree/` (all Python) and the deprecation path for backend code currently sitting in TS packages (`packages/tax-engine`, `packages/document-processing`, `packages/filing-engine`).
+
+### Reference data lives in `packages/data/src/**/*.json`, NOT in Postgres
+
+Tax brackets, LLC formation rules, state portal configs, source registries, and any other canonical state-by-state data live as JSON in `packages/data/src/**/*.json` under git PR review (CPA review for tax brackets, founder review for formation rules). Per-user, per-filing, per-tenant operational data lives in Postgres. **Do NOT move reference data to a DB without founder approval.** Do NOT duplicate reference data inside any backend's `tax-data/`, `formation-data/`, or similar directory — that creates silent drift and is a legal-risk class of bug. The duplicate at `apis/filefree/tax-data/` is being deleted in Wave K3; do not reintroduce that pattern. See `packages/data/README.md` and `docs/BRAIN_ARCHITECTURE.md` (Reference Data Storage Doctrine) for the full reasoning and the in-memory cache + Pydantic/Zod schema-drift CI guard pattern.
+
+### Every product backend exposes capabilities as an MCP server; Brain consumes via the `brain.invoke()` gateway
+
+Every product backend (FileFree, LaunchFree, AxiomFolio, future products) grows an MCP server at `apis/{product}/app/mcp/` exposing its capabilities as JSON-RPC 2.0 MCP tools with bearer auth, per-call user resolution, scope/quota enforcement. Reference implementation: `apis/axiomfolio/app/mcp/server.py` — copy-don't-reinvent. Brain consumes those capabilities through the universal `brain.invoke()` gateway (HTTP: `POST /v1/brain/invoke`), the same way it consumes external MCP servers (Gmail, GitHub, Stripe, etc.). **Do NOT build skills inside Brain (`apis/brain/app/skills/`) that duplicate product capabilities** — that splits ownership and breaks the contract that product backends are the source of truth for product capabilities. The `brain_skills` row is a pointer (`source_kind=mcp_server`, `source_ref=<product mcp endpoint>`), not an implementation. See `docs/BRAIN_ARCHITECTURE.md` (Brain Gateway Architecture + D62 IP-skills subsection).
