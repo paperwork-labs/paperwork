@@ -1,7 +1,7 @@
 # Web framework
 fastapi>=0.136.1
 uvicorn[standard]>=0.32.0
-gunicorn>=23.0.0
+gunicorn>=25.3.0
 
 # Database
 sqlalchemy[asyncio]>=2.0.49
