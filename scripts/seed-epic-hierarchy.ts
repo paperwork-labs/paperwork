@@ -257,6 +257,21 @@ const WAVES: WaveDef[] = [
       { id: "task-ws-82-pr-641", title: "fix(brain): serialize datetimes in epic hierarchy responses + harden stats", status: "merged", githubPr: 641 },
     ],
   },
+  {
+    id: "sprint-ws-82-wave-13",
+    title: "Org tree + shortcuts + products hardening + epics polish",
+    status: "shipped",
+    ordinal: 13,
+    tasks: [
+      { id: "task-ws-82-pr-642", title: "refactor(studio): unify stat cards to HqStatCard", status: "merged", githubPr: 642 },
+      { id: "task-ws-82-pr-643", title: "feat(brain): add DELETE endpoints for epic hierarchy", status: "merged", githubPr: 643 },
+      { id: "task-ws-82-pr-644", title: "fix(studio): capture-phase keyboard shortcuts (Cmd+K, ?)", status: "merged", githubPr: 644 },
+      { id: "task-ws-82-pr-645", title: "fix(brain): add litellm to requirements", status: "merged", githubPr: 645 },
+      { id: "task-ws-82-pr-646", title: "fix(studio): redesign employee org tree with hierarchy", status: "merged", githubPr: 646 },
+      { id: "task-ws-82-pr-647", title: "fix(studio): add error handling to products page", status: "merged", githubPr: 647 },
+      { id: "task-ws-82-pr-648", title: "improve(studio): polish workstreams/epics tree view", status: "merged", githubPr: 648 },
+    ],
+  },
 ];
 
 async function main(): Promise<void> {
