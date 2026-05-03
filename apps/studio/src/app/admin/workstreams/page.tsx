@@ -66,7 +66,7 @@ export default async function AdminWorkstreamsPage() {
     <div className="space-y-6">
       <HqPageHeader
         title="Epics"
-        subtitle="Goal → epic → sprint → task hierarchy from Brain, plus the GitHub PR pipeline."
+        subtitle="Goals → Epics → Sprints → Tasks — your project hierarchy"
         actions={
           <>
             <ListTree className="h-5 w-5 text-violet-300" aria-hidden />
