@@ -37,6 +37,8 @@ cryptography>=44.0.0
 # becomes a workspace dep declared in [tool.uv.workspace] and the -e line is
 # dropped. See packages/python/data-engine/README.md.
 -e ../../packages/python/data-engine
+-e ../../packages/python/api-foundation
+-e ../../packages/python/observability
 
 # Dev / Test
 pytest>=9.0.3
