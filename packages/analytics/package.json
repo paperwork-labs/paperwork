@@ -6,7 +6,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "dependencies": {
-    "posthog-js": "^1.372.5"
+    "posthog-js": "^1.372.6"
   },
   "peerDependencies": {
     "next": "^16.0.0",
