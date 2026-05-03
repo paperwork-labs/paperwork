@@ -17,6 +17,6 @@ async def test_health_check_includes_version(client: AsyncClient) -> None:
     assert data["data"]["version"] == "0.1.0"
 
 
-async def test_health_check_has_correlation_id(client: AsyncClient) -> None:
+async def test_health_check_has_request_id(client: AsyncClient) -> None:
     response = await client.get("/health")
-    assert "x-correlation-id" in response.headers
+    assert "x-request-id" in response.headers

@@ -1,11 +1,21 @@
 import logging
+import os
 import subprocess
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from api_foundation import (
+    LoggingMiddleware,
+    RequestIDMiddleware,
+    register_exception_handlers,
+    register_healthcheck,
+)
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from observability.logging import configure_structured_logging
+from observability.metrics import configure_metrics
+from observability.tracing import configure_tracing
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -15,11 +25,9 @@ from app.database import engine
 from app.rate_limit import limiter
 from app.redis import close_redis, init_redis
 from app.routers import auth, documents, filings, health, tax, waitlist
-from app.utils.correlation import CorrelationIdMiddleware
 from app.utils.exceptions import AppException, app_exception_handler
 from app.utils.pii_scrubber import setup_pii_scrubbing
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -49,6 +57,15 @@ def _run_migrations() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+    configure_structured_logging(
+        "filefree",
+        log_level="DEBUG" if settings.DEBUG else "INFO",
+        extra_fields={"environment": settings.ENVIRONMENT},
+    )
+    otlp = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "").strip() or None
+    configure_metrics("filefree", otlp_endpoint=otlp)
+    configure_tracing("filefree", otlp_endpoint=otlp)
+
     setup_pii_scrubbing()
     db_url = settings.DATABASE_URL
     masked = db_url[:30] + "..." if len(db_url) > 30 else db_url
@@ -83,32 +100,23 @@ if settings.FRONTEND_URL.startswith("https://"):
 if settings.ENVIRONMENT == "development" and settings.FRONTEND_URL != "http://localhost:3000":
     allowed_origins.append("http://localhost:3000")
 
-app.add_middleware(CorrelationIdMiddleware)
+app.state.limiter = limiter
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Correlation-ID"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-CSRF-Token",
+        "X-Correlation-ID",
+        "X-Request-Id",
+    ],
 )
-app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
-
-app.add_exception_handler(AppException, app_exception_handler)  # type: ignore[arg-type]
-app.add_exception_handler(
-    RateLimitExceeded,
-    _rate_limit_exceeded_handler,  # type: ignore[arg-type]
-)
-
-
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(_request: Request, exc: Exception) -> JSONResponse:
-    logger.exception("Unhandled exception: %s", str(exc))
-    return JSONResponse(
-        status_code=500,
-        content={"success": False, "error": "An unexpected error occurred"},
-    )
-
 
 app.include_router(health.router)
 app.include_router(waitlist.router, prefix="/api/v1")
@@ -116,3 +124,13 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(filings.router, prefix="/api/v1")
 app.include_router(documents.router, prefix="/api/v1")
 app.include_router(tax.router, prefix="/api/v1")
+
+FastAPIInstrumentor.instrument_app(app)
+register_exception_handlers(app)
+register_healthcheck(app)
+
+app.add_exception_handler(AppException, app_exception_handler)  # type: ignore[arg-type]
+app.add_exception_handler(
+    RateLimitExceeded,
+    _rate_limit_exceeded_handler,  # type: ignore[arg-type]
+)

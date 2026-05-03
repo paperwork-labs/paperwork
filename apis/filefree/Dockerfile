@@ -14,9 +14,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 # Copy the shared data-engine source first so the editable install in
 # requirements.txt can resolve it via ../../packages/python/data-engine.
 COPY packages/python/data-engine /build/packages/python/data-engine
+COPY packages/python/api-foundation /build/packages/python/api-foundation
+COPY packages/python/observability /build/packages/python/observability
+# Mirror axiomfolio: explicit installs from /tmp (also satisfied by -e in requirements).
+COPY packages/python/api-foundation /tmp/api-foundation
+COPY packages/python/observability /tmp/observability
 
 COPY apis/filefree/requirements.txt /build/apis/filefree/requirements.txt
-RUN pip install --no-cache-dir --prefix=/install -r /build/apis/filefree/requirements.txt
+RUN pip install --no-cache-dir --prefix=/install -r /build/apis/filefree/requirements.txt \
+    && pip install --no-cache-dir --prefix=/install /tmp/api-foundation /tmp/observability
 
 FROM python:3.11.9-slim
 WORKDIR /app
