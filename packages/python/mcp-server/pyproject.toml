@@ -1,0 +1,63 @@
+[project]
+name = "mcp-server"
+version = "0.1.0"
+description = "Shared JSON-RPC 2.0 MCP transport, bearer auth, and per-user daily quota for Paperwork Labs product backends"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Paperwork Labs" }]
+# Match the major versions used by every backend (axiomfolio's
+# requirements.txt is the reference; FileFree, LaunchFree, Brain are all
+# within the same majors). Broad-but-not-too-broad ranges so a backend
+# can pin tighter without conflicting with this package.
+dependencies = [
+  "fastapi>=0.110,<1.0",
+  "redis>=5,<8",
+  "sqlalchemy>=2.0,<3",
+  "pydantic>=2.7,<3",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8",
+  "pytest-asyncio>=0.21",
+  "fakeredis>=2.20",
+  "httpx>=0.27",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_server"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "DTZ", "SIM", "RUF", "ARG", "PIE", "C4"]
+
+[tool.ruff.lint.per-file-ignores]
+# FastAPI dependency injection idiom: Depends() must appear in default
+# argument values for the route layer to inject correctly.
+"src/mcp_server/auth.py" = ["B008"]
+# Tests intentionally use lambdas as compact stand-ins for tier
+# resolvers / db factories, take db+user_id positional fixture args
+# they do not always reference, and use Depends() in route
+# signatures for the FastAPI integration cases.
+"tests/**" = [
+  "ARG001",  # unused function argument (fixture indirection)
+  "ARG002",  # unused method argument (fixture indirection)
+  "ARG005",  # unused lambda argument
+  "B008",    # Depends() in default args (FastAPI idiom)
+  "B017",    # blind Exception in pytest.raises (frozen-dataclass mutate test)
+  "C408",    # dict() literal preference
+  "DTZ003",  # utcnow used to pair with sqlite naive datetime in test
+  "E731",    # lambda assignment used to inject a fake clock fixture
+  "SIM118",  # `key in dict.keys()` -- explicit form is clearer in test
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

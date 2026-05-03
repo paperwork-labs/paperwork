@@ -66,6 +66,10 @@ responses==0.26.0
 # Clerk session JWT: `paperwork-auth` is installed in Docker (see Dockerfile) from
 # `packages/auth-clerk/src/python`. For local pytest without Docker:
 #   pip install -e ../../packages/auth-clerk/src/python[fastapi]
+# Shared MCP transport: installed in Docker from `packages/python/mcp-server`
+# (Wave K2). For local pytest without Docker, prefer the monorepo uv
+# workspace (`uv sync` from repo root); fallback for plain pip:
+#   pip install -e ../../packages/python/mcp-server
 passlib[bcrypt]==1.7.4
 PyJWT==2.12.1
 email-validator==2.3.0
