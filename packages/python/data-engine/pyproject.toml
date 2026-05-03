@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "data-engine"
+version = "0.1.0"
+description = "Python loader + engine for canonical packages/data JSON (tax, formation, federal). Pydantic mirror of the Zod schemas in packages/data/src/schemas/."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "Paperwork Labs" }]
+dependencies = [
+    "pydantic>=2.13.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.0.3",
+    "ruff>=0.15.12",
+    "mypy>=1.13.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/data_engine"]
+include = ["src/data_engine/py.typed"]
+
+[tool.hatch.build.targets.wheel.sources]
+"src/data_engine" = "data_engine"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "N", "UP", "B", "SIM", "RUF", "DTZ", "PTH"]
+ignore = []
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

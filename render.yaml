@@ -27,6 +27,12 @@ services:
       paths:
         - apis/filefree/**
         - packages/auth-clerk/src/python/**
+        # Wave K3: FileFree consumes the shared data-engine + canonical
+        # reference data. Redeploy when either changes (annual tax-bracket
+        # updates, schema changes, federal table updates).
+        - packages/python/data-engine/**
+        - packages/data/src/tax/**
+        - packages/data/src/federal/**
     buildCommand: cd apis/filefree && pip install -r requirements.txt
     preDeployCommand: cd apis/filefree && alembic upgrade head
     startCommand: cd apis/filefree && gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
