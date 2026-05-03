@@ -1,3 +1,31 @@
+[project]
+# Virtual root for the Paperwork Labs Python workspace. Not a real
+# distribution -- never published. Only exists so uv has a place to
+# anchor `[tool.uv.workspace]`.
+name = "paperwork"
+version = "0.0.0"
+description = "Paperwork Labs monorepo (Python workspace root)"
+requires-python = ">=3.11"
+
+[tool.uv]
+# Workspace members declare their own deps in their own pyproject.toml;
+# the root never installs anything itself.
+package = false
+
+[tool.uv.workspace]
+# Every Python package and backend in the monorepo is a workspace
+# member. Members are discovered by the glob below; each must have a
+# `[project]` table in its pyproject.toml. Adding a new package under
+# packages/python/<name>/ or a new backend under apis/<name>/ requires
+# no further wiring here.
+members = ["apis/*", "packages/python/*"]
+
+# ----------------------------------------------------------------------
+# Repo-wide tooling config (preserved from the pre-uv-workspace root).
+# These configs apply to monorepo-level scripts/ and tests/ that don't
+# live inside any workspace member.
+# ----------------------------------------------------------------------
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100

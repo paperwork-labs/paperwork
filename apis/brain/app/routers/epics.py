@@ -321,8 +321,6 @@ async def list_sprints(
     sprints = result.scalars().all()
     payload = [SprintResponse.model_validate(s).model_dump(mode="json") for s in sprints]
     return success_response(payload)
-
-
 @router.post("/sprints")
 async def create_sprint(
     body: SprintCreate,

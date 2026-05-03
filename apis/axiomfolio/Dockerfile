@@ -11,11 +11,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Build context is the monorepo root (see render.yaml). Install Python deps +
-# paperwork-auth (Clerk JWT) from packages/auth-clerk.
+# paperwork-auth (Clerk JWT) from packages/auth-clerk + the shared mcp-server
+# workspace package (Wave K2 -- packages/python/mcp-server).
 COPY apis/axiomfolio/requirements.txt .
 COPY packages/auth-clerk/src/python /tmp/paperwork-auth
+COPY packages/python/mcp-server /tmp/mcp-server
 RUN pip install --no-cache-dir -r requirements.txt \
-    && pip install --no-cache-dir "/tmp/paperwork-auth[fastapi]"
+    && pip install --no-cache-dir "/tmp/paperwork-auth[fastapi]" \
+    && pip install --no-cache-dir /tmp/mcp-server
 
 # Application code: WORKDIR /app + COPY app/ ./app/ yields /app/app/ for `app.api.main:app`.
 COPY apis/axiomfolio/app/ ./app/
