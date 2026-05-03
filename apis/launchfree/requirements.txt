@@ -1,8 +1,13 @@
 fastapi>=0.136.1
 uvicorn[standard]>=0.46.0
+gunicorn>=23.0.0
 pydantic>=2.13.3
 pydantic-settings>=2.14.0
 python-multipart>=0.0.27
+
+# Wave K12 — shared FastAPI primitives + OTL/logging (K4/K7 packages)
+-e ../../packages/python/api-foundation
+-e ../../packages/python/observability
 
 # Database (ORM used under apis/launchfree/app/models/, apis/launchfree/app/database.py)
 sqlalchemy[asyncio]>=2.0.49

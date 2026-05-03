@@ -1,11 +1,23 @@
 """medallion: ops"""
 
+from api_foundation import (
+    LoggingMiddleware,
+    RequestIDMiddleware,
+    register_exception_handlers,
+    register_healthcheck,
+)
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from observability import configure_metrics, configure_tracing, instrument_fastapi
 
 from app.config import settings
 from app.routers import auth, formations, health
 from app.routes import filing_status
+
+_SERVICE_NAME = "launchfree-api"
+
+configure_metrics(_SERVICE_NAME)
+configure_tracing(_SERVICE_NAME)
 
 app = FastAPI(
     title="LaunchFree API",
@@ -15,6 +27,11 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
 )
 
+register_exception_handlers(app)
+register_healthcheck(app)
+
+instrument_fastapi(app, service_name=_SERVICE_NAME)
+
 allowed_origins = [settings.FRONTEND_URL]
 if settings.ENVIRONMENT == "development":
     origins_to_add = ["http://localhost:3002"]
@@ -22,12 +39,21 @@ if settings.ENVIRONMENT == "development":
         if origin != settings.FRONTEND_URL:
             allowed_origins.append(origin)
 
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(RequestIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-CSRF-Token", "X-Correlation-ID"],
+    allow_headers=[
+        "Content-Type",
+        "Authorization",
+        "X-CSRF-Token",
+        "X-Correlation-ID",
+        "X-Request-ID",
+        "x-request-id",
+    ],
 )
 
 app.include_router(health.router)

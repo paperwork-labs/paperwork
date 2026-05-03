@@ -201,3 +201,19 @@ rules:
     learned_at: "2026-04-29T14:26:00Z"
     confidence: high
     applies_to: [orchestrator, brain-self-dispatch, cheap-agents]
+
+  - id: orchestrator_must_be_on_main_before_dispatch
+    when: "orchestrator (Opus) dispatches multiple cheap agents in best-of-n-runner worktrees"
+    do: "orchestrator MUST run `git checkout main && git reset --hard origin/main` BEFORE dispatching any subagent that uses best-of-n-runner. The new worktree inherits the orchestrator's current branch state by default; if the orchestrator is on a feature/fix branch with uncommitted or local commits, those will leak into every dispatched agent's branch and show up in their PRs as unrelated diffs (e.g. epics.py + test_admin_goals_write.py + compose.dev.yaml + axiomfolio-ci.yml leaked into all 6 K4-K9 package PRs on 2026-05-03 because orchestrator was on `fix/brain-ci-unblock-combined`). The contamination triggers DIRTY merge state on every PR and requires a per-PR cleanup babysit to revert the leaked files (~$0.10/PR wasted)."
+    source: "Wave K4-K9 dispatch incident 2026-05-03 — 6 K-package PRs (#673-#678) all leaked the same 4 unrelated files because orchestrator was on a fix branch when dispatching. Required 6 cleanup babysits = $0.60 wasted (~$0.10 per PR). Cleanup PRs followed the pattern: git checkout origin/main -- <leaked files>; git commit --amend --no-edit; git rebase origin/main; git push --force-with-lease."
+    learned_at: "2026-05-03T10:25:00Z"
+    confidence: high
+    applies_to: [orchestrator]
+
+  - id: cheap_agents_must_verify_branch_diff_scope_before_push
+    when: "any cheap agent in a best-of-n-runner worktree finishes its work and is about to push"
+    do: "the agent MUST run `git diff origin/main --name-only` and verify that ONLY the files listed in its task prompt's scope are modified. If any unrelated files appear (especially files the agent did not edit but were pre-existing in the worktree from orchestrator contamination), the agent MUST `git checkout origin/main -- <unrelated-files>` and amend before pushing. This is defense-in-depth against `orchestrator_must_be_on_main_before_dispatch` violations: even if the orchestrator forgets, the agent catches the leak."
+    source: "Wave K4-K9 dispatch incident 2026-05-03 — agents pushed PRs with leaked files because they did not verify diff scope before push. Cleanup babysits had to revert leaked files in 6 separate PRs."
+    learned_at: "2026-05-03T10:25:00Z"
+    confidence: high
+    applies_to: [cheap-agents]

@@ -1,17 +1,33 @@
+# Wave K12: build from REPO ROOT so pip can resolve editable workspace packages
+# (api-foundation, observability). Invoke from repo root:
+#
+#   docker build -f apis/launchfree/Dockerfile -t launchfree-api .
+
 FROM python:3.11.9-slim AS builder
 WORKDIR /build
 RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+COPY packages/python/api-foundation /build/packages/python/api-foundation
+COPY packages/python/observability /build/packages/python/observability
+
+COPY apis/launchfree/requirements.txt /build/apis/launchfree/requirements.txt
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir --prefix=/install -r /build/apis/launchfree/requirements.txt
 
 FROM python:3.11.9-slim
 WORKDIR /app
 ENV TZ=UTC
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 RUN adduser --disabled-password --no-create-home appuser
 COPY --from=builder /install /usr/local
-COPY . .
+
+COPY apis/launchfree /app
+COPY packages/python/api-foundation /app/packages/python/api-foundation
+COPY packages/python/observability /app/packages/python/observability
+
 RUN chown -R appuser:appuser /app
 USER appuser
 EXPOSE 8000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/health')" || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/healthz')" || exit 1
 CMD ["sh", "-c", "exec gunicorn app.main:app -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 120"]
