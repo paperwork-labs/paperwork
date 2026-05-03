@@ -1,3 +1,5 @@
+import { HqErrorState } from "@/components/admin/hq/HqErrorState";
+import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { countOpenIssuesForProductLabel } from "@/lib/command-center";
 import { loadDocsEntriesWithYamlTags } from "@/lib/docs-yaml-tags";
 import {
@@ -57,8 +59,34 @@ async function buildSummaryMap(products: ProductRegistryEntry[]): Promise<Produc
   return Object.fromEntries(entries);
 }
 
+function toError(err: unknown): Error {
+  if (err instanceof Error) return err;
+  if (typeof err === "string") return new Error(err);
+  return new Error("Unknown error loading products");
+}
+
 export default async function ProductsIndexPage() {
-  const products = await loadProductsRegistry();
-  const summaryBySlug = await buildSummaryMap(products);
-  return <ProductsPageClient products={products} summaryBySlug={summaryBySlug} />;
+  try {
+    const products = await loadProductsRegistry();
+    const summaryBySlug = await buildSummaryMap(products);
+    return <ProductsPageClient products={products} summaryBySlug={summaryBySlug} />;
+  } catch (err) {
+    const error = toError(err);
+    return (
+      <div className="space-y-8">
+        <HqPageHeader
+          title="Products"
+          subtitle="All Paperwork Labs products"
+          breadcrumbs={[{ label: "Admin", href: "/admin" }, { label: "Products" }]}
+        />
+        <HqErrorState
+          title="Unable to load products — Brain API unavailable"
+          description={
+            "Check that Brain is running and reachable. Verify BRAIN_API_URL and BRAIN_API_SECRET are set in the Studio environment and match your Brain deployment."
+          }
+          error={error}
+        />
+      </div>
+    );
+  }
 }
