@@ -1,18 +1,8 @@
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
-
 import { HqPageHeader } from "@/components/admin/hq/HqPageHeader";
 import { TShirtSizeBadge, type TShirtSize } from "@/components/agent/TShirtSizeBadge";
 import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
+
+import { CostBarSection, CostLineSection } from "./cost-dashboard-charts";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Agent Cost Dashboard — Studio" };
@@ -73,6 +63,21 @@ async function fetchCostSummary(): Promise<CostSummary | null> {
 export default async function CostPage() {
   const data = await fetchCostSummary();
 
+  const barChartRows =
+    data?.by_size.map((r) => ({
+      size: r.t_shirt_size,
+      estimated: r.estimated_total_cents / 100,
+      actual: r.actual_total_cents != null ? r.actual_total_cents / 100 : null,
+      count: r.count,
+    })) ?? [];
+
+  const lineChartRows =
+    data?.by_day.map((r) => ({
+      date: r.date.slice(5),
+      estimated: r.estimated_cents / 100,
+      actual: r.actual_cents != null ? r.actual_cents / 100 : null,
+    })) ?? [];
+
   const totalEstimated = data?.by_size.reduce((s, r) => s + r.estimated_total_cents, 0) ?? 0;
   const totalActual = data?.by_size.reduce((s, r) => s + (r.actual_total_cents ?? 0), 0) ?? 0;
   const totalDispatches = data?.by_size.reduce((s, r) => s + r.count, 0) ?? 0;
@@ -111,32 +116,7 @@ export default async function CostPage() {
           Spend by T-Shirt Size (last 30 days)
         </h2>
         {data && data.by_size.length > 0 ? (
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={data.by_size.map((r) => ({
-                  size: r.t_shirt_size,
-                  estimated: r.estimated_total_cents / 100,
-                  actual: r.actual_total_cents != null ? r.actual_total_cents / 100 : null,
-                  count: r.count,
-                }))}
-                margin={{ top: 4, right: 16, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                <XAxis dataKey="size" tick={{ fill: "#a1a1aa", fontSize: 12 }} />
-                <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46" }}
-                  formatter={(v, name) => [
-                    `$${Number(v ?? 0).toFixed(2)}`,
-                    String(name ?? ""),
-                  ]}
-                />
-                <Bar dataKey="estimated" name="Estimated" fill="#f59e0b" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="actual" name="Actual" fill="#10b981" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <CostBarSection data={barChartRows} />
         ) : (
           <EmptyChart label="No dispatches recorded yet" />
         )}
@@ -204,46 +184,7 @@ export default async function CostPage() {
           Daily Spend — Last 30 Days
         </h2>
         {data && data.by_day.length > 0 ? (
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={data.by_day.map((r) => ({
-                  date: r.date.slice(5),
-                  estimated: r.estimated_cents / 100,
-                  actual: r.actual_cents != null ? r.actual_cents / 100 : null,
-                }))}
-                margin={{ top: 4, right: 16, left: 0, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                <XAxis dataKey="date" tick={{ fill: "#a1a1aa", fontSize: 11 }} />
-                <YAxis tick={{ fill: "#a1a1aa", fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: "#18181b", border: "1px solid #3f3f46" }}
-                  formatter={(v, name) => [
-                    `$${Number(v ?? 0).toFixed(2)}`,
-                    String(name ?? ""),
-                  ]}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="estimated"
-                  name="Estimated"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="actual"
-                  name="Actual"
-                  stroke="#10b981"
-                  strokeWidth={2}
-                  dot={false}
-                  strokeDasharray="4 4"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+          <CostLineSection data={lineChartRows} />
         ) : (
           <EmptyChart label="No daily data yet" />
         )}
