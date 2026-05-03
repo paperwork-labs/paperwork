@@ -3,6 +3,10 @@ name = "launchfree"
 version = "0.0.0"
 description = "Launchfree API (Paperwork)"
 requires-python = ">=3.11"
+dependencies = [
+  "api-foundation",
+  "observability",
+]
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -10,6 +14,10 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 packages = []
+
+[tool.uv.sources]
+api-foundation = { workspace = true }
+observability = { workspace = true }
 
 [tool.ruff]
 target-version = "py311"
