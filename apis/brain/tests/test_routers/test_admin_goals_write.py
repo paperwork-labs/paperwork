@@ -1,4 +1,7 @@
-"""``/api/v1/admin/goals`` JSON-backed read/write (PB-2)."""
+"""``/api/v1/admin/okr/goals`` JSON-backed read/write (PB-2).
+
+DB-backed tracker goals live under ``/api/v1/admin/goals`` (epics router).
+"""
 
 from __future__ import annotations
 
@@ -59,11 +62,11 @@ async def test_goals_requires_secret(
 ) -> None:
     monkeypatch.setattr(settings, "BRAIN_API_SECRET", "test-goals-secret")
     for method, path in [
-        ("GET", "/api/v1/admin/goals"),
-        ("POST", "/api/v1/admin/goals"),
-        ("PUT", "/api/v1/admin/goals/x"),
-        ("DELETE", "/api/v1/admin/goals/x"),
-        ("PATCH", "/api/v1/admin/goals/x/key-results/y"),
+        ("GET", "/api/v1/admin/okr/goals"),
+        ("POST", "/api/v1/admin/okr/goals"),
+        ("PUT", "/api/v1/admin/okr/goals/x"),
+        ("DELETE", "/api/v1/admin/okr/goals/x"),
+        ("PATCH", "/api/v1/admin/okr/goals/x/key-results/y"),
     ]:
         if method == "GET":
             res = await goals_client.get(path)
@@ -96,7 +99,7 @@ async def test_post_put_delete_patch_flow(
         "quarter": "2026-Q2",
         "key_results": [{"title": "Endpoints live", "target": 10.0, "current": 2.0, "unit": "ep"}],
     }
-    res = await goals_client.post("/api/v1/admin/goals", json=post_body, headers=_headers())
+    res = await goals_client.post("/api/v1/admin/okr/goals", json=post_body, headers=_headers())
     assert res.status_code == 200
     js = res.json()
     assert js["success"] is True
@@ -107,14 +110,14 @@ async def test_post_put_delete_patch_flow(
     kr_id = created["key_results"][0]["id"]
     assert created["key_results"][0]["current"] == 2.0
 
-    res_get = await goals_client.get("/api/v1/admin/goals", headers=_headers())
+    res_get = await goals_client.get("/api/v1/admin/okr/goals", headers=_headers())
     assert res_get.status_code == 200
     envelope = res_get.json()["data"]
     ids = [o["id"] for o in envelope["objectives"]]
     assert goal_id in ids
 
     put_res = await goals_client.put(
-        f"/api/v1/admin/goals/{goal_id}",
+        f"/api/v1/admin/okr/goals/{goal_id}",
         json={"objective": "Launch internal APIs", "owner": "eng"},
         headers=_headers(),
     )
@@ -124,7 +127,7 @@ async def test_post_put_delete_patch_flow(
     assert updated["owner"] == "eng"
 
     patch_res = await goals_client.patch(
-        f"/api/v1/admin/goals/{goal_id}/key-results/{kr_id}",
+        f"/api/v1/admin/okr/goals/{goal_id}/key-results/{kr_id}",
         json={"current_value": 5.0, "note": "halfway"},
         headers=_headers(),
     )
@@ -134,13 +137,13 @@ async def test_post_put_delete_patch_flow(
     assert patched["progress_pct"] == 50.0
     assert patched["note"] == "halfway"
 
-    del_res = await goals_client.delete(f"/api/v1/admin/goals/{goal_id}", headers=_headers())
+    del_res = await goals_client.delete(f"/api/v1/admin/okr/goals/{goal_id}", headers=_headers())
     assert del_res.status_code == 200
     arch = del_res.json()["data"]
     assert arch["id"] == goal_id
     assert arch.get("archived_at")
 
-    res_list = await goals_client.get("/api/v1/admin/goals", headers=_headers())
+    res_list = await goals_client.get("/api/v1/admin/okr/goals", headers=_headers())
     goals = res_list.json()["data"]["objectives"]
     archived = next(g for g in goals if g["id"] == goal_id)
     assert archived.get("archived_at") == arch["archived_at"]
@@ -157,19 +160,19 @@ async def test_goal_not_found_404(
     monkeypatch.setenv("BRAIN_GOALS_JSON", str(gpath))
 
     r1 = await goals_client.put(
-        "/api/v1/admin/goals/nonexistent-id",
+        "/api/v1/admin/okr/goals/nonexistent-id",
         json={"objective": "x"},
         headers=_headers(),
     )
     assert r1.status_code == 404
     assert "not found" in r1.json()["detail"].lower()
 
-    r2 = await goals_client.delete("/api/v1/admin/goals/nonexistent-id", headers=_headers())
+    r2 = await goals_client.delete("/api/v1/admin/okr/goals/nonexistent-id", headers=_headers())
     assert r2.status_code == 404
     assert "not found" in r2.json()["detail"].lower()
 
     r3 = await goals_client.patch(
-        "/api/v1/admin/goals/nonexistent-id/key-results/kr-x",
+        "/api/v1/admin/okr/goals/nonexistent-id/key-results/kr-x",
         json={"current_value": 1.0},
         headers=_headers(),
     )
@@ -203,7 +206,7 @@ async def test_key_result_not_found_404(
     monkeypatch.setenv("BRAIN_GOALS_JSON", str(gpath))
 
     r = await goals_client.patch(
-        "/api/v1/admin/goals/g1/key-results/bogus-kr",
+        "/api/v1/admin/okr/goals/g1/key-results/bogus-kr",
         json={"current_value": 9.0},
         headers=_headers(),
     )
