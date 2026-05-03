@@ -728,7 +728,22 @@ Initial skill registry:
 
 How skills grow over time: (1) Paperwork Labs builds Layer 1 skills as products ship. (2) Connections-as-skills via D26/D39 — each OAuth toggle is a new skill. (3) Procedural memory (D40) learns procedures for existing skills. (4) Nightly self-improvement (D35) optimizes quality. (5) Future: Zapier/Make integration at 100K+ users opens 5,000+ connections. Third-party Connector SDK only if developer ecosystem justifies it.
 
-Phase: P1 (schema + platform org seed), P2 (skill enablement logic), P9 (consumer skill marketplace UI).
+#### IP skills live in product backends as MCP servers; the registry stores pointers, not implementations
+
+Our own IP (tax filing, LLC formation, automated trading, portfolio analytics) is **never implemented inside the Brain repo**. Each IP skill lives in its product's Python FastAPI backend at `apis/{product}/app/mcp/` and is exposed over HTTP as a JSON-RPC 2.0 MCP server with bearer auth, per-call user resolution, and scope/quota enforcement. The reference implementation is [`apis/axiomfolio/app/mcp/server.py`](../apis/axiomfolio/app/mcp/server.py) — copy-don't-reinvent.
+
+The `brain_skills` row for an IP skill is a **pointer**, not the skill code:
+
+- `source_kind = 'mcp_server'`
+- `source_ref` = the product's MCP endpoint URL (e.g. `https://api.axiomfolio.com/mcp`)
+- `source_version` = the product backend's release tag at install time
+- `connector_id` = the D26 connector that provisions the per-user bearer token (mints via the product's admin endpoint, stores plaintext once in `brain_user_vault` per [D61](#d61-per-user-encrypted-vault))
+
+This means **Brain treats internal IP MCP servers identically to external third-party MCP servers (Gmail, GitHub, Stripe, etc.)** — same gateway code path, same auth model, same usage meter. Future external customers connecting our products to ChatGPT or Claude desktop hit the exact same MCP endpoints with the exact same token format. There is no privileged Brain-only access path to product capabilities. See the [Brain Gateway Architecture](#brain-gateway-architecture) section for the universal `brain.invoke()` dispatcher this depends on.
+
+**Anti-pattern (do not do this):** building a `tax-filing` skill module under `apis/brain/app/skills/tax_filing.py` that calls FileFree's tax calculator directly. That duplicates ownership, splits the audit trail, and breaks the rule that product backends are the source of truth for product capabilities. The MCP server is the contract.
+
+Phase: P1 (schema + platform org seed), P2 (skill enablement logic), P9 (consumer skill marketplace UI). IP MCP server build-out: Wave I3 (FileFree + LaunchFree mirror the AxiomFolio reference impl), gated on Wave K2 extracting the shared `mcp-server` Python package.
 
 ### D63. Browser Context Connector
 
@@ -759,6 +774,89 @@ Added to D39 Connection Roadmap as Tier 2.5 (P10, paid tier only). A Chrome Exte
 **Trinket Factory candidate:** The Chrome extension can start life as a Trinket (Phase 1.5 candidate) — a standalone "deal finder" browser extension at `tools.filefree.ai`. Standalone value (finds deals), feeds the Brain when connected. Users install it for deals; it becomes a Brain data source.
 
 Phase: Trinket v1 (Phase 1.5 candidate), Brain connector (P10, paid tier only).
+
+---
+
+## Reference Data Storage Doctrine
+
+**Rule.** Reference data — anything that has legal consequences if wrong, changes on a known cadence (annual federal tax brackets, legislative state changes, SOS portal URL updates), and is deterministically generated from authoritative upstream sources — lives as JSON in [`packages/data/src/**/*.json`](../packages/data/) under git PR review. It does **not** live in Postgres. Per-user, per-filing, per-tenant operational data lives in Postgres. Moving anything from one bucket to the other requires founder approval.
+
+**The bug this fixes.** [`apis/filefree/app/services/tax_calculator.py`](../apis/filefree/app/services/tax_calculator.py) currently reads from a hand-rolled duplicate at [`apis/filefree/tax-data/2025.json`](../apis/filefree/tax-data/) instead of the canonical [`packages/data/src/tax/{year}/{STATE}.json`](../packages/data/src/tax/) tree. When `packages/data` is updated for 2026 brackets, FileFree's backend silently won't see it. **Silent drift between the canonical reference and any backend that copies it is a legal risk** — wrong CA brackets in 2026 means wrong customer returns. Wave K3 deletes `apis/filefree/tax-data/`, ports a Python `data-engine` that reads `packages/data` directly, adds a CI schema-drift guard between the Pydantic and Zod schemas, and lints any new `apis/*/tax-data/` directory back out.
+
+### Why JSON-in-git, not a DB table
+
+| Dimension | JSON in `packages/data` (correct) | Postgres `tax_brackets` table (wrong for this category) |
+|---|---|---|
+| **Legal audit trail** | Every change is a PR diff with CPA reviewer recorded in git log. `git blame` on `packages/data/src/tax/2026/CA.json` answers "who approved this bracket and when, against what source." | An `UPDATE tax_brackets SET ...` row gives you a `changed_by` + `changed_at` if you remember to log it. No diff context, no PR review, no source-citation mechanism. |
+| **Rollback** | `git revert <sha> && redeploy`. Same primitive as any other code regression. Reproducible from any commit. | Emergency `UPDATE` against prod, or restore-from-backup. Both are ops-heavy and error-prone. |
+| **Read latency** | In-memory dict cache after first load (sub-microsecond per filing). Loader pattern is in [`packages/data/src/engine/loader.ts`](../packages/data/src/engine/loader.ts). | DB round-trip + connection pool contention on every tax calculation. Caching layer reinvents what the in-memory dict already does. |
+| **Frontend access** | Statically bundled into Next.js builds via `import` from `packages/data`. Zero SSR/runtime DB hit on tax forms. | Forms now require a DB hit at SSR or a separate read API. Adds a failure mode and a perf budget hit for nothing. |
+| **Cadence** | Annual federal updates + occasional state legislative updates = ~50-100 PRs/year. Fits a code-review cadence comfortably. | A DB ops surface (admin UI, schema migrations, audit table, rollback runbook) sized for hourly mutations is overkill for ~weekly mutations. |
+| **Reproducibility** | Re-run [`packages/data/scripts/parse-tax-foundation.ts`](../packages/data/scripts/parse-tax-foundation.ts) against the upstream XLSX fixture under `packages/data/scripts/fixtures/` (gitignored — contributors drop the XLSX locally) → byte-identical JSON. The parser IS the source-of-truth pipeline; the JSON is the cached deterministic output. | Re-run a parser → `INSERT/UPDATE` rows → diff what changed → write a remediation migration. Three steps where one would do. |
+| **Industry precedent** | TurboTax, Drake, Lacerte ship tax tables as bundled data, not DB lookups. This is how every desktop tax product has ever shipped. | No major tax product hot-path-reads brackets from a DB. The pattern doesn't exist because it's the wrong shape for the data. |
+| **Multi-language consumption** | TS frontends `import` from `packages/data`. Python backends will read the same JSON via `packages/python/data-engine` (Wave K3, future path) with Pydantic schemas mirroring the Zod ones, CI guard fails the build on schema drift. | Both languages would still need the same JSON-or-DB source-of-truth resolved; moving to a DB doesn't reduce the surface, it adds an ops dependency on top of it. |
+
+### What does live in Postgres
+
+Per-user filings, per-user line items, per-user W-2 entries, submission state, Brain ownership graph, conversations, memory episodes, runbooks, runs, per-tenant configs (multi-tenant isolation via RLS). See [Memory Schema](#2-memory-schema) below and [`apis/filefree/app/models/tax_calculation.py`](../apis/filefree/app/models/tax_calculation.py) for examples. The line is: **canonical reference (one row per state per year, identical for every customer) → JSON. Per-customer state (one row per filing, unique per customer) → Postgres.**
+
+### Codified in four places to prevent reintroduction
+
+This doctrine is codified in (1) this section, (2) [`.cursorrules`](../.cursorrules), (3) [`packages/data/README.md`](../packages/data/README.md), and (4) the locked-decision table in [`/Users/paperworklabs/.cursor/plans/brain_=_curated_multi-tenant_agent_os_—_final_plan_4c44cfe9.plan.md`](file:///Users/paperworklabs/.cursor/plans/brain_=_curated_multi-tenant_agent_os_%E2%80%94_final_plan_4c44cfe9.plan.md). A CI ripgrep guard fails the build on any new `apis/*/tax-data/` directory. Studio's `/admin/data` page (per VMP P4.10) is **read-only by design** — it surfaces the JSON for ops visibility without enabling edit-without-PR.
+
+---
+
+## Brain Gateway Architecture
+
+**Rule.** Every skill invocation — internal IP, Anthropic pre-built skill, third-party MCP server, OSS package, OpenAI tool — flows through one entry point: `brain.invoke(skill_id, tool, args, on_behalf_of)` (HTTP: `POST /v1/brain/invoke`). One call site, one auth check, one billing meter, model-agnostic, multi-tenant safe.
+
+```mermaid
+flowchart LR
+  Caller["Caller<br/>(Studio, Cursor IDE, FileFree app, Brain agent loop)"] --> Invoke["POST /v1/brain/invoke<br/>{skill_id, tool, args, on_behalf_of}"]
+  Invoke --> Auth["1. Auth: validate X-Brain-Tenant-Id<br/>matches on_behalf_of's org"]
+  Auth --> Lookup["2. Lookup: brain_skills row<br/>+ brain_user_skills enablement check"]
+  Lookup --> Vault["3. Credentials: fetch from<br/>brain_user_vault (D61) if requires_connection"]
+  Vault --> Route{"4. Route by source_kind"}
+  Route -->|anthropic_skill| AnthropicAPI["Anthropic API<br/>container.skill_id"]
+  Route -->|mcp_server| MCP["Internal IP MCP servers<br/>(apis/axiomfolio, apis/filefree, apis/launchfree)<br/>OR external MCP servers<br/>(Gmail, GitHub, Stripe, etc.)"]
+  Route -->|openai_tool| OpenAI["OpenAI Agents SDK"]
+  Route -->|oss_package| OSS["dynamic import + invoke"]
+  Route -->|builtin| Builtin["apis/brain/app/skills/{skill_id}.py<br/>(rare — only Brain-internal capabilities)"]
+  AnthropicAPI --> Meter
+  MCP --> Meter
+  OpenAI --> Meter
+  OSS --> Meter
+  Builtin --> Meter
+  Meter["5. Write usage_meter row<br/>(cost_usd, tokens, outcome_kind)"] --> Resp["6. Return result + cost"]
+```
+
+### Why one gateway, not per-skill SDKs
+
+| Problem if every caller hits the skill backend directly | How `brain.invoke()` solves it |
+|---|---|
+| Auth is reimplemented per skill (some bearer, some OAuth, some API key) | Gateway resolves credentials once via `brain_user_vault` (D61). Caller never handles secrets. |
+| Tenant isolation is checked in 30 places, with 30 different bugs | Gateway enforces `X-Brain-Tenant-Id` against `on_behalf_of` once. RLS on `brain_user_skills` enforces enablement. |
+| Cost tracking is best-effort (each skill backend optionally writes a metric) | Gateway writes one `usage_meter` row per invocation with normalized cost. Sierra-style outcome rows added by skill on completion. |
+| Switching from one MCP-server provider to another (e.g. Gmail-via-X to Gmail-via-Y) requires touching every caller | One row update in `brain_skills` (`source_ref` swap). Callers continue invoking `skill_id="gmail"`. |
+| Internal IP and external commodity skills look different to consumers | Gateway erases the distinction. The `automated-trading` skill (our IP, AxiomFolio MCP) and the `gmail` skill (external MCP) have identical call shape, identical billing, identical observability. |
+
+### Per-product MCP is the dominant pattern for IP skills
+
+Each product backend grows a `apis/{product}/app/mcp/` directory exposing its capabilities as MCP tools. The product backend is the source of truth — Brain consumes those capabilities through the gateway like any other client (ChatGPT, Claude desktop, future B2B agents). Status:
+
+| Product | MCP server status | Reference |
+|---|---|---|
+| AxiomFolio (`automated-trading`) | **Built** — JSON-RPC 2.0 dispatcher, HTTP transport, bearer auth, per-call user resolution from token, `TOOL_REQUIRED_SCOPE` fail-CLOSED gating, daily quota | [`apis/axiomfolio/app/mcp/server.py`](../apis/axiomfolio/app/mcp/server.py), [`apis/axiomfolio/app/mcp/auth.py`](../apis/axiomfolio/app/mcp/auth.py), [`apis/axiomfolio/app/mcp/tools/portfolio.py`](../apis/axiomfolio/app/mcp/tools/portfolio.py) |
+| FileFree (`tax-filing`) | **TODO** (Wave I3) — wraps [`apis/filefree/app/services/tax_calculator.py`](../apis/filefree/app/services/tax_calculator.py) + filing flows; mirror AxiomFolio's pattern verbatim, swap tools | `apis/filefree/app/mcp/` (target path) |
+| LaunchFree (`llc-formation`) | **TODO** (Wave I3, blocked on Python port of `packages/filing-engine`) | `apis/launchfree/app/mcp/` (target path) |
+
+The connector pattern (D26) provisions per-user bearer tokens: Brain calls the product's admin mint endpoint (service-auth) → product mints `mcp_<product>_<token>` → Brain stores plaintext in `brain_user_vault` per user → every subsequent invocation injects the token as bearer. Brain holds **a credential pointer**, never the secret in LLM context.
+
+### What this enables
+
+- **Evaluate-first procurement** (Operating Principle 1 in the [final plan](file:///Users/paperworklabs/.cursor/plans/brain_=_curated_multi-tenant_agent_os_%E2%80%94_final_plan_4c44cfe9.plan.md)): installing a new Anthropic skill or MCP server is one row in `brain_skills` + one entry in the `source_kind` switch. No new SDK, no new auth, no new billing wiring.
+- **Future B2B revenue**: external customers connecting to AxiomFolio MCP (or FileFree, or LaunchFree) hit the same endpoints. The B2B revenue model in the final plan ("curated skill set", "company OS pattern", "premium IP skills") is mechanically the same call path the founder uses internally.
+- **Sierra-style outcome pricing**: outcome hooks (`outcome_achieved` rows in `usage_meter`) attach to the gateway path, so e.g. "complex tax filing completed" is recorded on the same dispatch that ran the LLM and the MCP calls.
 
 ---
 

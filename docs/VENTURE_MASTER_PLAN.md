@@ -1015,7 +1015,7 @@ These three extensions leverage existing product data and infrastructure with mi
 
 **What**: After LLC formation, ongoing compliance management -- annual report reminders, franchise tax calculations, state deadline tracking, pre-filled renewal forms.
 
-**Why now**: LaunchFree already captures all state-specific formation data in the 50-state JSON configs (`packages/data`). Compliance deadlines and annual report requirements are a natural extension of the same data set. Zero new infrastructure -- it's calendar math + state fee lookups + email reminders via existing n8n pipeline.
+**Why now**: LaunchFree already captures all state-specific formation data in the 50-state JSON configs (`packages/data`). Compliance deadlines and annual report requirements are a natural extension of the same data set. Zero new infrastructure -- it's calendar math + state fee lookups + email reminders via existing n8n pipeline. (See [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md#reference-data-storage-doctrine) → Reference Data Storage Doctrine for why this stays JSON, not DB.)
 
 **Revenue model**:
 
@@ -1154,7 +1154,7 @@ HOLDING COMPANY:
 - W-2/1099 field extraction + Pydantic schemas -- shared with FileFree
 - Tax calculation engine (50-state) -- shared with FileFree
 - State Filing Engine (portal automation, state APIs) -- shared with LaunchFree
-- 50-state data layer (`packages/data/`) -- shared with FileFree + LaunchFree
+- 50-state data layer (`packages/data/`) -- shared with FileFree + LaunchFree (See [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md#reference-data-storage-doctrine) → Reference Data Storage Doctrine for why this stays JSON, not DB.)
 - Document storage (GCP Cloud Storage, 24hr lifecycle) -- shared
 - SSN isolation (regex extraction, never sent to LLMs) -- shared
 
@@ -1500,6 +1500,21 @@ Cadence: monthly runs starting October 2026. Results posted to `#ops-alerts` wit
 
 **2B.10 Progressive Rollout + Canary Deploys**: Feature flags (PostHog) for gradual rollout of new tax forms and calculation changes. Canary deploys via Render (deploy to 10% of traffic, monitor error rate, auto-promote or rollback). Critical for mid-season form releases (Schedule A in February 2027).
 
+### 2C. Brain Gateway Architecture (Per-Product MCP + Universal `brain.invoke()`)
+
+The Brain ([docs/BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md)) is the venture's agent runtime. Every product backend exposes its capabilities as an MCP server at `apis/{product}/app/mcp/` (JSON-RPC 2.0 over HTTP, bearer auth, per-call user resolution, scope/quota enforcement). The Brain consumes those capabilities through one universal entry point — `brain.invoke(skill_id, tool, args, on_behalf_of)` (HTTP: `POST /v1/brain/invoke`) — the same way it consumes external MCP servers (Gmail, GitHub, Stripe, Anthropic skills, OSS packages). **One call site, one auth check, one billing meter, model-agnostic, multi-tenant safe.**
+
+Reference implementation: [`apis/axiomfolio/app/mcp/server.py`](../apis/axiomfolio/app/mcp/server.py) (built). FileFree (`tax-filing`) and LaunchFree (`llc-formation`) MCP servers mirror this pattern verbatim, swapping only the tools module — see Wave I3 in [`/Users/paperworklabs/.cursor/plans/brain_=_curated_multi-tenant_agent_os_—_final_plan_4c44cfe9.plan.md`](file:///Users/paperworklabs/.cursor/plans/brain_=_curated_multi-tenant_agent_os_%E2%80%94_final_plan_4c44cfe9.plan.md).
+
+**Why per-product MCP, not Brain-internal skill modules:**
+
+- **Product backends own their capabilities.** Tax filing logic lives in FileFree's backend, not in `apis/brain/app/skills/tax_filing.py`. The MCP server is the contract between products and the Brain — and identically the contract between products and any external agent (ChatGPT, Claude desktop, future B2B Brain tenants).
+- **No privileged Brain access path.** Brain authenticates to AxiomFolio MCP with the same `mcp_axfolio_<token>` an external customer would use. Tokens are minted via the product's admin endpoint (service-auth), stored once in `brain_user_vault` per user, never enter LLM context.
+- **Cross-product flow is native, not "cross-sell".** When the founder asks Brain "file my Q3 estimated taxes using my AxiomFolio short-term gains," Brain dispatches `tax-filing` (FileFree MCP) and `automated-trading` (AxiomFolio MCP) through the same gateway. AxiomFolio is no longer a "product within the Paperwork ecosystem that cross-sells into FileFree" — it's a Brain-callable capability with its own UI surface. See [docs/axiomfolio/plans/MASTER_PLAN_2026.md](axiomfolio/plans/MASTER_PLAN_2026.md) for AxiomFolio's framing under this architecture.
+- **Future B2B revenue uses the same path.** External customers paying for "complex tax filing through Brain" hit the same `brain.invoke("tax-filing", ...)` → FileFree MCP path the founder uses internally. No bespoke enterprise SDK.
+
+The skill registry ([`brain_skills` table, D62](BRAIN_ARCHITECTURE.md#d62-platform-brain-and-skill-registry)) stores **pointers** (`source_kind=mcp_server`, `source_ref=<product mcp endpoint URL>`), not implementations. Anti-pattern: building a skill inside Brain that duplicates a product capability. The codified rule is in [`.cursorrules`](../.cursorrules) ("Brain-as-OS Doctrines" section).
+
 ---
 
 ## 3. paperworklabs.com: The Command Center (Detailed Spec)
@@ -1583,7 +1598,7 @@ The command center is the control plane for the entire venture. It is what makes
 - All 50 states with freshness indicators (green/yellow/red)
 - Last verified date, data sources, change history
 - Alert for states with stale data (>30 days since verification)
-- Data source: `packages/data/` JSON files + n8n validator results
+- Data source: `packages/data/` JSON files + n8n validator results (read-only by design — see [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md#reference-data-storage-doctrine) → Reference Data Storage Doctrine for why this stays JSON, not DB; edits via PR only)
 
 ### Tier 3 -- Build When Revenue Flows
 
@@ -1702,6 +1717,8 @@ This is an AI-powered data pipeline that populates, validates, and keeps fresh A
 
 ### Data Structures
 
+> Canonical reference data lives in git as JSON, not Postgres. See [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md#reference-data-storage-doctrine) → Reference Data Storage Doctrine for the full rationale (legal audit trail, rollback, perf, multi-language consumption via `packages/python/data-engine` Wave K3) and [packages/data/README.md](../packages/data/README.md) for contributor workflow. Do not duplicate this data inside any backend's `tax-data/` directory — that pattern is being deleted in Wave K3.
+
 **Formation Data** (`packages/data/states/formation/{STATE}.json`):
 
 ```json
@@ -1780,7 +1797,7 @@ This is an AI-powered data pipeline that populates, validates, and keeps fresh A
 
 ### Source Registry
 
-Each of the 50 states has a registered data source config:
+Each of the 50 states has a registered data source config. (Canonical JSON in git — see [BRAIN_ARCHITECTURE.md](BRAIN_ARCHITECTURE.md#reference-data-storage-doctrine) → Reference Data Storage Doctrine for why this stays JSON, not DB.)
 
 ```typescript
 // packages/data/src/sources/index.ts

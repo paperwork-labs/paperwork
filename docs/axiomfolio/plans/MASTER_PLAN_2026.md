@@ -69,9 +69,9 @@ status: active
 
 ### Product shape
 
-- **Standalone product** with own subscription tiers (Free / Pro / Pro+ / Quant Desk / Enterprise).
+- **Product within Paperwork Labs**, exposed to Brain via internal MCP server at `apis/axiomfolio/app/mcp/` (reference implementation: [`apis/axiomfolio/app/mcp/server.py`](../../../apis/axiomfolio/app/mcp/server.py); see [BRAIN_ARCHITECTURE.md](../../BRAIN_ARCHITECTURE.md#brain-gateway-architecture) → Brain Gateway Architecture). Has its own subscription tiers (Free / Pro / Pro+ / Quant Desk / Enterprise) and standalone web/PWA UI.
 - **Native AgentBrain chat panel** for Pro+ — not a separate app, lives in-product.
-- **Cross-sells into Paperwork ecosystem** (FileFree for taxes, Paperwork Brain for cross-domain conversational AI). Bundles available, not required.
+- **Cross-product flow is native**, not cross-sell. When a user asks Brain to "rebalance using my AxiomFolio short-term gains and pre-stage the FileFree estimated payment," Brain dispatches `automated-trading` (this product's MCP) and `tax-filing` (FileFree's MCP) through the same `brain.invoke()` gateway — same auth model, same billing meter as any external MCP server (Gmail, GitHub). Future external customers connecting AxiomFolio to ChatGPT or Claude desktop hit the same MCP endpoints with the same `mcp_axfolio_<token>` format Brain uses internally; no privileged Brain access path. Bundles for direct AxiomFolio/FileFree subscribers available, not required.
 
 ### Key personas
 
@@ -84,7 +84,7 @@ status: active
 
 | Milestone | Date | Definition |
 |-----------|------|------------|
-| **v1 Launch** | **2026-06-21** (10 weeks) | Paying users on Free / Pro / Pro+. Validated Picks live (founder + Twisted Slice). Native AgentBrain chat. Beautiful portfolio charts. TRIM/ADD/rebalance. Tax-aware exits. Email parser. PWA mobile. |
+| **v1 Launch** | **2026-06-21** (10 weeks) | Paying users on Free / Pro / Pro+. Validated Picks live (founder + Twisted Slice). Native AgentBrain chat (= Paperwork Brain rendered inside AxiomFolio's UI for the in-product agent surface; same `brain.invoke()` gateway as the standalone Brain web app, different host. See [BRAIN_ARCHITECTURE.md](../../BRAIN_ARCHITECTURE.md#brain-gateway-architecture) → Brain Gateway Architecture). Beautiful portfolio charts. TRIM/ADD/rebalance. Tax-aware exits. Email parser. PWA mobile. |
 | **World-Class Complete** | **2026-08-31** (20 weeks) | + 8 brokers via Plaid + hand-rolled. + Walk-forward + Monte Carlo + event-driven backtester. + Symbol master + multi-source quorum. + OpenTelemetry + SLOs + chaos engineering. + Trade Copy + AI Portfolio Optimizer. + Quant Desk tier with white-label. |
 
 ### Year 2 backlog (post-Aug 31)
