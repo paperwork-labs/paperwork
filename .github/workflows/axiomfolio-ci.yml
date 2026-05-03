@@ -95,8 +95,10 @@ jobs:
     needs: changes
     if: needs.changes.outputs.backend == 'true'
     # Heavy: docker compose (postgres + redis) + pytest + alembic head check.
-    # Moved to Hetzner CX43 (P0 cost work).
-    runs-on: [self-hosted, hetzner]
+    # Frontend stays on Hetzner; backend remains on ubuntu-latest: Docker on
+    # self-hosted intermittently bind-mounts the postgres init script as a
+    # directory inside the container ("Is a directory"), breaking initdb.
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout
@@ -108,6 +110,7 @@ jobs:
       - name: Boot shared postgres + redis
         working-directory: infra
         run: |
+          set -euo pipefail
           docker compose -f compose.dev.yaml up -d postgres redis
           # Wait for postgres to accept connections and init-test-db.sh to run.
           ready=false
@@ -181,16 +184,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
+      - name: Setup Node
+        # Self-hosted runners do not ship npm on PATH like ubuntu-latest; install
+        # Node first so pnpm/action-setup can bootstrap via npm.
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 20
+
       - name: Setup pnpm
         # Version comes from packageManager field in root package.json;
         # specifying it here would conflict with ERR_PNPM_BAD_PM_VERSION.
         uses: pnpm/action-setup@903f9c1a6ebcba6cf41d87230be49611ac97822e
-
-      - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
-        with:
-          node-version: 20
-          cache: pnpm
 
       - name: Install (from repo root; pnpm workspace)
         run: pnpm install --frozen-lockfile
