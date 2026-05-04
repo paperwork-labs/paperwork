@@ -5,6 +5,20 @@
       {
         "command": ".cursor/hooks/enforce-cheap-agent-model.sh",
         "failClosed": true
+      },
+      {
+        "command": ".cursor/hooks/enforce-worktree.sh",
+        "failClosed": true
+      },
+      {
+        "command": ".cursor/hooks/enforce-rules-attachment.sh",
+        "failClosed": true
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/enforce-no-direct-main-push.sh",
+        "failClosed": true
       }
     ]
   }

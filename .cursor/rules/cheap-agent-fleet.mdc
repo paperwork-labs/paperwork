@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Cheap-Agent Fleet Doctrine
 
-These six rules govern how Opus (the orchestrator) and Brain (in Phase H) dispatch, supervise, and learn from cheap-agent subagent fleets. They survive the 48-hour L4 blitz and become permanent operating doctrine.
+These seven rules govern how Opus (the orchestrator) and Brain (in Phase H) dispatch, supervise, and learn from cheap-agent subagent fleets. They survive the 48-hour L4 blitz and become permanent operating doctrine.
 
 Companion: [delegation.mdc](mdc:.cursor/rules/delegation.mdc) covers WHEN to delegate; this file covers HOW to operate the fleet at scale.
 
@@ -78,7 +78,7 @@ Required review pass (orchestrator runs through each):
 2. Are there silent fallbacks the agent introduced (`except Exception: pass`, defaulting to empty data, etc.)?
 3. Are there hardcoded values that should be config?
 4. Are tests present for new behavior?
-5. Does the agent's PR body honestly describe what's NOT done (per rule #5)?
+5. Does the agent's PR body honestly describe what's NOT done (per rule #6)?
 
 If any answer is "no" or "unclear":
 
@@ -126,7 +126,18 @@ State for the queue lives at [apis/brain/data/merge_queue.json](mdc:apis/brain/d
 
 Exception: PRs that touch ZERO shared files with the queue head can merge in parallel. Orchestrator decides.
 
-## 5. Honest scope overflow (HARD)
+## 5. Composer-first dispatch — justify non-composer (SOFT)
+
+Composer (`composer-1.5`, `composer-2-fast`) is the default path of least resistance (Founder ground truth #5 economics). Elevating dispatch to **`gpt-5.5-medium` (M)** or **`claude-4.6-sonnet-medium-thinking` (L)** requires explicit reasoning directly in the Task prompt via a **`# justification:`** line that explains why Composer is insufficient.
+
+- **Sizing still maps 1:1 to model slugs** — see Rule #2: M/L tiers remain allow-listed alongside XS/S.
+- Hook policy is deliberately **warn, not deny**: withholding justification does **not** block the fleet, but reviewers + Brain metrics should flag repeat offenders.
+
+**Enforcement:** `.cursor/hooks/enforce-cheap-agent-model.sh` (`subagentStart`, `failClosed: true`) emits `{"permission":"allow","user_message":...}` WARNING text when either non-composer allow-list slug dispatches **without** a case-insensitive `# justification:` substring anywhere in the prompt bundle (`.prompt`, `.input.prompt`, `.params.prompt`, `.task.prompt`, `.taskParams.prompt`). Composer slugs bypass this branch entirely. Missing `model`, Opus-containing slugs, or unknown models remain hard **deny** unchanged.
+
+Treat warnings as grooming debt: orchestrator SHOULD patch the dispatch template before the next rerun.
+
+## 6. Honest scope overflow (HARD)
 
 Cheap agents under deadline pressure are tempted to "claim done" on partial work. Anti-pattern.
 
@@ -151,7 +162,7 @@ Standard:
 
 This is "no silent fallback" applied to scope, not just data.
 
-## 6. Brain learns from hour 0, not hour N (HARD)
+## 7. Brain learns from hour 0, not hour N (HARD)
 
 Procedural memory + outcome measurement are FIRST-CLASS, not afterthoughts. Every cheap-agent PR merge MUST write to:
 
@@ -181,8 +192,8 @@ hour 36-48: Validation + L4 handoff
 ## When this rule applies
 
 - During the 48-hour L4 blitz: every dispatch.
-- After L4: Brain inherits this doctrine. Phase H Brain-self-dispatch loop must obey all 6 rules.
-- For ad-hoc Opus sessions: rules 2 (cheap subagents) and 3 (diff-review) always apply.
+- After L4: Brain inherits this doctrine. Phase H Brain-self-dispatch loop must obey all 7 rules.
+- For ad-hoc Opus sessions: rules 2 (cheap subagents), 5 (composer default), and 3 (diff-review) always apply.
 
 ## Source of truth
 
