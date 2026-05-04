@@ -140,7 +140,7 @@ for allowed in "${ALLOW_LIST[@]}"; do
         printf '{"permission":"allow"}\n'
         ;;
       gpt-5.5-medium | claude-4.6-sonnet-medium-thinking)
-        if printf '%s' "$PROMPT_BLOB" | grep -qiE '#[[:space:]]*justification'; then
+        if printf '%s' "$PROMPT_BLOB" | grep -qiE '#[[:space:]]*justification:'; then
           printf '{"permission":"allow"}\n'
         else
           PW_DISPATCH_MODEL="$MODEL" python3 <<'WARNPY'
