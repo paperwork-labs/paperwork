@@ -423,6 +423,20 @@ docs:
     tags: [finance, procurement]
     owners: [cfo]
     category: reference
+  - slug: brain-bible-gap-audit-2026-05-03
+    path: docs/audits/BRAIN_BIBLE_GAP_AUDIT_2026-05-03.md
+    title: Brain Architecture Bible — Gap Audit (2026-05-03)
+    summary: "**Auditor**: Opus orchestrator (Brain bible single-pass review, founder-approved exception to cheap-agent-only fleet rule) **Bible reviewed**: `docs/BRAIN_ARCHITECTURE.md` v10 — 2,771 lines, 60…"
+    tags: []
+    owners: [strategy]
+    category: reference
+  - slug: brain-as-company-os-as-service-2026
+    path: docs/strategy/BRAIN_AS_COMPANY_OS_AS_SERVICE_2026.md
+    title: Brain as Company OS as a Service — Strategic + Architectural Audit
+    summary: ---
+    tags: [brain, strategy]
+    owners: [strategy]
+    category: reference
   - slug: brain-deploy-recovery
     path: docs/runbooks/brain-deploy-recovery.md
     title: Brain deploy recovery (Render / Postgres / Docker)
@@ -570,6 +584,13 @@ docs:
     tags: [docs, obsidian]
     owners: [strategy]
     category: reference
+  - slug: paperwork-labs-2026q2-master-plan
+    path: docs/plans/PAPERWORK_LABS_2026Q2_MASTER_PLAN.md
+    title: Paperwork Labs 2026 Q2 Master Plan — Spine + L5 Brain
+    summary: "The single execution roadmap from now to L4 handoff + L5 brain steady state. Subsumes:"
+    tags: []
+    owners: [strategy]
+    category: reference
   - slug: prd
     path: docs/PRD.md
     title: Paperwork PRD
@@ -610,6 +631,27 @@ docs:
     title: pwl CLI Runbook
     summary: "`pwl` is the Paperwork Labs monorepo CLI. It gives operators one place to inspect apps, scaffold new services, and keep Brain's app manifest current."
     tags: [runbook]
+    owners: [strategy]
+    category: reference
+  - slug: q2-master-plan-ai-ceo-review-2026-05-04
+    path: docs/audits/Q2_MASTER_PLAN_AI_CEO_REVIEW_2026-05-04.md
+    title: Q2 Master Plan — AI CEO / Chief Strategy Officer Review
+    summary: "**Audience:** Founder + orchestrator **Inputs:** [`paperwork_2026q2_master_plan_f9ce7c63.plan.md`](file:///Users/paperworklabs/.cursor/plans/paperwork_2026q2_master_plan_f9ce7c63.plan.md),…"
+    tags: [strategy, audit]
+    owners: [strategy]
+    category: reference
+  - slug: q2-master-plan-principal-review-2026-05-03
+    path: docs/audits/Q2_MASTER_PLAN_PRINCIPAL_REVIEW_2026-05-03.md
+    title: Q2 Master Plan — Principal Engineer Review
+    summary: "**Reviewer**: Principal/Staff Engineer (Opus orchestrator, single-session review) **Plan reviewed**: `~/.cursor/plans/paperwork_2026q2_master_plan_f9ce7c63.plan.md` — 5 tracks, ~46 workstreams,…"
+    tags: []
+    owners: [strategy]
+    category: reference
+  - slug: q2-master-plan-principal-review-v2-2026-05-04
+    path: docs/audits/Q2_MASTER_PLAN_PRINCIPAL_REVIEW_V2_2026-05-04.md
+    title: Q2 Master Plan — Principal Engineer Review v2
+    summary: "**Subject:** [`~/.cursor/plans/paperwork_2026q2_master_plan_f9ce7c63.plan.md`](file:///Users/paperworklabs/.cursor/plans/paperwork_2026q2_master_plan_f9ce7c63.plan.md) **Reviewer:** Principal…"
+    tags: [brain, audit]
     owners: [strategy]
     category: reference
   - slug: render-quota-audit-2026q2
@@ -716,6 +758,41 @@ docs:
     summary: "Read-only audit of **Paperwork Labs** (`team_RwfzJ9ySyLuVcoWdKJfXC7h5`) deployment volume, build minutes, and deployment *source* attribution. Companion to the parallel **Render** and **GitHub…"
     tags: []
     owners: [infra]
+    category: reference
+  - slug: agent-dispatch
+    path: docs/audits/wave-1/agent-dispatch.md
+    title: "Wave 1 audit: Agent dispatch + outcomes"
+    summary: "Telemetry for cheap-agent dispatches is **spec-first but operationally hollow**: the Cursor hook blocks bad models, and Brain exposes **admin APIs + Postgres** for dispatches and **GitHub…"
+    tags: []
+    owners: [strategy]
+    category: reference
+  - slug: conversations-threads
+    path: docs/audits/wave-1/conversations-threads.md
+    title: "Wave 1 audit: Conversations + threaded replies"
+    summary: "The Conversations stack is **operationally wired** for create, list-with-filters (status/search/product), SSR load in Studio, founder replies via `POST …/messages`, and **optional** persona…"
+    tags: []
+    owners: [strategy]
+    category: reference
+  - slug: briefings
+    path: docs/audits/wave-1/briefings.md
+    title: "Wave 1 audit: Daily + weekly briefings"
+    summary: "Briefing cadence jobs **are implemented and registered** on the Brain APScheduler singleton (`brain_daily_briefing`, `brain_weekly_briefing`), but filenames and schedules follow **legacy n8n UTC…"
+    tags: []
+    owners: [strategy]
+    category: reference
+  - slug: people-sprints-epics
+    path: docs/audits/wave-1/people-sprints-epics.md
+    title: "Wave 1 audit: People + Sprints + Epics + Goals"
+    summary: "**People** — **Partial**: `employees` table and full Brain CRUD under `GET|POST|PATCH /api/v1/admin/employees` exist and are admin-secret gated; Studio `/admin/people` loads the roster from Brain.…"
+    tags: []
+    owners: [strategy]
+    category: reference
+  - slug: secrets-vault
+    path: docs/audits/wave-1/secrets-vault.md
+    title: "Wave 1 audit: Secrets Vault"
+    summary: "Studio’s vault is **implemented soundly at the persistence and crypto layer**: a Neon `secrets` row store with **`encrypted_value` + `iv` + `auth_tag`**, **`aes-256-gcm`** in…"
+    tags: []
+    owners: [strategy]
     category: reference
   - slug: workstreams-board
     path: docs/infra/WORKSTREAMS_BOARD.md
