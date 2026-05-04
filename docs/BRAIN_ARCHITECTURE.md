@@ -785,9 +785,19 @@ Phase: Trinket v1 (Phase 1.5 candidate), Brain connector (P10, paid tier only).
 
 Brain runs in **three modes** on the same FastAPI app, same Neon schema, same agent loop. Mode is determined by `organization_id` + `user_id` at request time.
 
-1. **Consumer Brain** (`organization_id` = per-user org / consumer tenant): the B2C life-intelligence product (D1–D63, D49 onward). Memory moat, Circles, referrals, consumer skills.
-2. **Company OS** (`organization_id = 'paperwork-labs'`): the **queryable graph of how Paperwork Labs runs** — goals, epics, sprints, tasks, decisions, conversations, transcripts, agent dispatches, people, skills, secrets. Same DB, exposed through Studio admin (`paperworklabs.com/admin/*`), mobile-first via Studio PWA. Not a second product or database. **Data model: D65. Surface contract: D70 / §8. Verification: D69, D72.**
-3. **Meta-product composition**: Brain invokes FileFree / LaunchFree / AxiomFolio / Distill via the [Brain Gateway](#brain-gateway-architecture) (D62) — F90 framing unchanged.
+*Verbatim baseline from gap audit (`docs/audits/BRAIN_BIBLE_GAP_AUDIT_2026-05-03.md`, T1.1 — D64 skeleton):*
+
+> Brain runs in three operating modes against a single backend, single schema, single agent loop. The mode is determined by `organization_id` and `user_id` resolution at request time:
+>
+> **Mode 1 — Consumer Brain** (`organization_id = 'user-{uuid}'`): the AI life-intelligence product specified across D1-D63. Memory Moat, Brain Fill Meter, Circle Sharing, financial referrals. End-user facing.
+>
+> **Mode 2 — Company OS** (`organization_id = 'paperwork-labs'`): the queryable graph of how Paperwork Labs runs itself. The founder uses this every day. Goals, Epics, Sprints, Tasks/PRs, Decisions, Conversations, Transcripts, AgentDispatches, Employees, Skills, Secrets — all live in Brain DB, all are observable from Studio admin (`paperworklabs.com/admin/*`), all are accessible to the founder on phone (Studio PWA) and desktop. This is not a separate product, not a separate service, not a separate database. It is the same Brain running with a different organization scope. The data model lives in D65 (Internal Operations Schema). The surface contract lives in D70 (Studio Admin Surface Coverage Matrix).
+>
+> **Mode 3 — Meta-Product** (per-user, but Brain composes across product MCP servers): Brain calls FileFree / LaunchFree / AxiomFolio / Distill MCP servers via the gateway (D62) on behalf of an end user. The bible's existing F90 framing covers this.
+>
+> **Why this matters (founder dogfood doctrine)**: Sankalp and Olga are not just the first customers of Consumer Brain (D54). They are also the only users of Company OS today, and they are the canary that catches half-wired features before any external user can. Every feature shipped against Mode 2 must be E2E verified by the founder on phone + desktop before being marked shipped (see D69). The Memory Moat thesis (D49) also applies recursively to the company itself: Brain accumulates years of company decisions, sprint history, persona dispatches, transcripts — that is the company's own switching cost away from running on Notion/Linear/Slack.
+>
+> **Anti-pattern this rules out**: building a company-OS feature inside Studio that calls third-party APIs (Linear, Notion, GitHub Projects) without first asking "should this entity live in Brain?" If the entity is part of how Paperwork Labs runs itself, the answer is yes — see D65.
 
 **Founder dogfood:** Sankalp and Olga are first users of Consumer Brain (D54) **and** the only full-time users of Company OS today. Features built for Mode 2 must satisfy D69 before being treated as shipped. **Memory Moat (D49) applies to the company**: years of decisions, sprints, dispatches, and transcripts are organizational switching cost vs. scattering ops across Notion/Linear/chat.
 
@@ -796,6 +806,8 @@ Brain runs in **three modes** on the same FastAPI app, same Neon schema, same ag
 ### D65. Internal Operations Schema — Goal → Epic → Sprint → Task/PR → Decision
 
 Company OS entities live in Brain DB, scoped by `organization_id = 'paperwork-labs'`, and are intended to be exposed via `/api/v1/admin/*` as each surface matures.
+
+**Canonical narrative, naming reconciliation, and hierarchy diagram:** [§2A Internal Operations Schema (Company OS)](#2a-internal-operations-schema-company-os).
 
 | Entity | Role | Primary Studio / API direction |
 |--------|------|----------------------------------|
@@ -815,19 +827,112 @@ Company OS entities live in Brain DB, scoped by `organization_id = 'paperwork-la
 
 ### D66. Conversations as the founder action surface
 
-In Company OS mode, **Conversations** are the primary loop for Brain-initiated items the founder completes (EA briefings, alerts, PR digest, expenses, session bookends). They use Brain admin APIs (`POST/GET/PATCH …/admin/conversations`, thread messages, status, snooze). **Tag taxonomy** matches `.cursor/rules/ea.mdc` (e.g. `daily-briefing`, `weekly-plan`, `decision`, `pr-review`, `alert`, `session-bookend`, `weekly-audit-digest`, expense tags) — **new tags require a bible PR** to avoid sprawl.
+In Company OS mode, **Conversations** are the primary loop for Brain-initiated items the founder completes (EA briefings, alerts, PR digest, expenses, session bookends). They use Brain admin APIs (`POST/GET/PATCH …/admin/conversations`, thread messages, status, snooze).
 
-**Doctrine:** If the founder cannot action a thread on **iPhone Studio PWA** in under ~30 seconds for routine flows, the surface is broken (pairs with D69). Persona routing stays as implemented in Brain + EA rules; product behavior is specified here so it cannot live only in `.mdc`.
+*Verbatim lifecycle + doctrine from gap audit (T1.3 — D66 skeleton):*
+
+> In Company OS mode (D64), Conversations are the **primary** surface where Brain communicates with the founder and the founder communicates back. They are the company-OS equivalent of the consumer chat in `apps/brain/` — both share the underlying `agent_conversations` + `thread_messages` schema, but conversations are designed for Brain-to-founder action items, not founder-to-Brain Q&A. The two coexist.
+>
+> **Conversation lifecycle**:
+>
+> 1. **Creation**: Brain creates a conversation via `POST /admin/conversations` (admin auth). Triggers include: scheduled briefings (EA daily/weekly via APScheduler), infra alerts (`tag: alert`), PR-ready summaries (`tag: pr-review`), expense approvals (`tag: expense-approval`), session bookends (`tag: session-bookend`), audit findings (`tag: weekly-audit-digest`). Each conversation is created with `persona`, `tags[]`, `urgency`, `title`, `body`. Brain MUST set the persona that owns the thread.
+> 2. **Threading**: Founder replies → `POST /admin/conversations/:id/messages` appends a `ThreadMessage`. Brain auto-routes the thread to the appropriate persona based on tag + content keywords (smart persona routing, see EA persona file). Persona response is appended as another `ThreadMessage`.
+> 3. **State**: Conversations have status `open | resolved | archived` and are snoozable. Snooze hides until a deadline. Resolve marks done. Archive deletes from inbox view.
+> 4. **Reactions**: Founder can react to a single message (emoji); reactions are signals for Brain's procedural-memory loop ("founder approved this kind of suggestion → do more like it").
+> 5. **Persona-reply**: An explicit endpoint to ask Brain to compose a persona response without the founder typing first — useful for reflective replies, summaries, or escalations. Currently feature-flagged off in Studio per `apps/studio/src/app/admin/brain/conversations/conversations-client.tsx:290`; this decision unblocks shipping it.
+>
+> **Tag taxonomy** (canonical; replaces the historical Slack channel directory in `.cursor/rules/ea.mdc`): `daily-briefing`, `weekly-plan`, `decision`, `pr-review`, `alert`, `filing-engine`, `company`, `general`, `deployment`, `social-content`, `tax-insights`, `trading`, `expense-approval`, `expense-monthly-close`, `expense-rule-change`, `session-bookend`, `weekly-audit-digest`. New tags require a bible PR — this prevents tag sprawl.
+>
+> **Urgency SLA**:
+>
+> | Urgency | Push notification | Founder action expected within | Auto-escalation if ignored |
+> |---|---|---|---|
+> | `info` | No | 24h | None |
+> | `low` | No | 24h | None |
+> | `medium` | In-app only | 12h | Surface in next daily briefing |
+> | `high` | PWA push | 4h | Re-notify after 4h, escalate to `urgent` after 24h |
+> | `urgent` | PWA push + email | 1h | Re-notify hourly until acknowledged |
+>
+> **Founder dogfood doctrine**: Conversations are the canary surface (D54 + D69). If the founder cannot action a conversation on their iPhone PWA in <30 seconds, the surface is broken — regardless of what works on desktop.
+
+**Doctrine (summary):** If the founder cannot action a thread on **iPhone Studio PWA** in under ~30 seconds for routine flows, the surface is broken (pairs with D69). Persona routing stays as implemented in Brain + EA rules; product behavior is specified here so it cannot live only in `.mdc`.
 
 ### D67. Transcripts as knowledge
 
 **TranscriptEpisode** rows capture ingested chunks (Cursor sessions, sprint markdown, plans, voice, external threads) and link into `agent_episodes` for retrieval. **Write path** includes `POST /admin/transcripts/ingest` where implemented. **Read paths** (list/detail API + `/admin/transcripts` Studio page) are required for this decision to be "done" — write-only ingest without query is a half-wired state. **Distinct from D66:** conversations are two-way founder workflow; transcripts are ingest + recall.
+
+*Verbatim specification from gap audit (T1.4 — D67 skeleton):*
+
+> A **TranscriptEpisode** is an ingested chunk of an external chat session — Cursor agent transcript, Slack thread, voice note, browser session — that becomes permanent Brain memory. Schema: `transcript_episodes` table with FK `source_kind` (`cursor_session` | `slack_thread` | `voice_note` | `external_doc`), `source_ref` (file path or URL), `body` (full text or chunk), `embedding` (for vector recall), `episode_id` (FK back to `agent_episodes` so transcripts are first-class memory).
+>
+> **Ingest paths**:
+>
+> - `POST /admin/transcripts/ingest` (existing, manual or automated) — accepts a payload with source_kind + source_ref + body. Chunks long bodies. Generates embeddings. Writes to `transcript_episodes` AND `agent_episodes` so retrieval works the same way.
+> - **Cursor session backfill** (planned): nightly job scans `/Users/paperworklabs/.cursor/projects/.../agent-transcripts/*.jsonl` for new sessions, ingests parent transcripts (NOT subagent transcripts per the citation rule), tags by date and parent uuid.
+> - **Sprint markdown ingest** (planned): on PR merge to `docs/sprints/*.md`, ingest the markdown body as a TranscriptEpisode with `source_kind = sprint_doc` and link to the corresponding Sprint row (D65).
+> - **Plan markdown ingest** (planned): scan `/Users/paperworklabs/.cursor/plans/*.plan.md` weekly, ingest as TranscriptEpisodes with `source_kind = plan_doc`. (The locked Brain plan at `4c44cfe9` should be the first ingested.)
+>
+> **Read paths** (all currently MISSING — must ship before this decision counts as built):
+>
+> - `GET /admin/transcripts` — paginated list with filter by source_kind, date range, search query.
+> - `GET /admin/transcripts/:id` — single transcript with chunks.
+> - `/admin/transcripts/` Studio page — renders the list, search, and individual transcript view.
+>
+> **Why this is separate from Conversations (D66)**: Conversations are designed for two-way founder ↔ Brain dialog with status, snooze, react. Transcripts are designed for one-way external-source ingestion with retrieval. They share the underlying `agent_episodes` memory but have different lifecycles, different Studio views, and different write-paths.
+>
+> **No-silent-fallback enforcement** (`.cursor/rules/no-silent-fallback.mdc`): if transcript ingest fails for one chunk in a 50-chunk session, the per-chunk failure MUST be logged + counted, and the session-level success MUST report `chunks_ingested=49 chunks_failed=1` not `success=true`.
 
 ### D68. Agent dispatch as a first-class entity
 
 Every **cheap-agent** `Task` dispatch (allowed models per `.cursor/rules/cheap-agent-fleet.mdc`) is recorded as an **AgentDispatch** row: model tier, cost, PR link, validator notes, `preflight_consulted`, outcome / not-done summary (Rule 5). **Autopilot/dispatcher** must run from production startup (`autopilot_dispatcher.install()` wiring is part of "shipped"). JSON files under `apis/brain/data/*` for dispatch outcomes are **transitional**; D73 governs promotion to DB.
 
 Phase H self-improvement reads recent dispatches into procedural memory and weekly audit Conversations — see D35 + cheap-agent Rule 6.
+
+*Verbatim specification from gap audit (T1.5 — D68 skeleton):*
+
+> Every dispatch of a Task-tool subagent (cheap-agent fleet — composer-1.5, composer-2-fast, gpt-5.5-medium, claude-4.6-sonnet-medium-thinking — never Opus per `.cursor/rules/cheap-agent-fleet.mdc` Rule 2) is recorded as one **AgentDispatch** row in Brain DB. This is the data substrate for Phase H Brain self-improvement.
+>
+> **Schema** (`agent_dispatches`, lives in Brain DB, scoped to `organization_id = 'paperwork-labs'` for the company-OS dispatcher; consumer dispatcher rows can coexist with `organization_id = 'user-{uuid}'`):
+>
+> - `id`, `created_at`, `parent_dispatch_id` (nullable, for Brain-self-dispatch loops), `epic_id` (FK to D65 Epic when the dispatch is workstream work)
+> - `persona_slug`, `model`, `model_size_tier` (XS/S/M/L per `docs/PR_TSHIRT_SIZING.md`)
+> - `prompt_tokens`, `completion_tokens`, `cost_usd_estimated`, `cost_usd_actual`
+> - `status` (`pending` | `running` | `completed` | `failed` | `vetoed_by_orchestrator`)
+> - `preflight_consulted` (boolean, set by `stamp_preflight` per `.cursor/rules/brain-coach.mdc`)
+> - `pr_url` (nullable, set when dispatch opens a PR), `pr_outcome` (`merged` | `closed_unmerged` | `auto_reverted`)
+> - `validator_notes` (text, mandatory orchestrator review per cheap-agent-fleet Rule 3)
+> - `outcome_summary` (one-line "what shipped"), `not_done_summary` (per cheap-agent-fleet Rule 5 — explicit scope-overflow disclosure)
+> - `parent_uuid` (nullable; for Cursor parent-session attribution)
+>
+> **Two write paths**:
+>
+> 1. **Inline (live)**: when Brain's autopilot scheduler dispatches a cheap-agent, it INSERTs an `agent_dispatches` row at dispatch start, UPDATEs at completion. Currently broken — `autopilot_dispatcher.install()` is never called. **Fix scope** (separate PR per Tier 3 T3.5 in the gap audit): wire `install()` into `apis/brain/app/main.py` startup.
+> 2. **Backfill (one-shot)**: migration 014's backfill from JSON file (per founder pre-audit notes) — re-runnable script that ingests `apis/brain/data/agent_dispatch_log.json` (or .jsonl) into the `agent_dispatches` table. The JSON files referenced in cheap-agent-fleet Rule 6 (`pr_outcomes.json`, `procedural_memory.yaml`, `self_merge_promotions.json`, `long_tail.json`, `merge_queue.json`) MUST migrate to corresponding Brain DB tables — see Cross-product implications section below.
+>
+> **Read paths** (currently partial — `/admin/autopilot` reads episodes not dispatches; must add direct dispatch endpoints):
+>
+> - `GET /admin/agent-dispatches?status=&persona=&model=&from_date=&to_date=&limit=` — paginated list.
+> - `GET /admin/agent-dispatches/:id` — single dispatch with full payload + validator notes + outcome.
+> - `/admin/agent-dispatches` or `/admin/autopilot` Studio page — renders list, allows orchestrator approve/veto on `pending` rows.
+>
+> **Brain self-improvement loop** (Phase H — define here, NOT in cheap-agent-fleet.mdc): the nightly self-improvement cron (D35) reads `agent_dispatches` from the past 24h and:
+>
+> - Computes per-(persona × model × workstream-type) acceptance rate. Updates `procedural_memory` rules accordingly.
+> - Identifies dispatch types where validator_notes show repeated criticism. Adds those patterns to `procedural_memory.yaml`.
+> - Surfaces the report in a `weekly-audit-digest` Conversation (D66).
+>
+> This subsumes the JSON-file substrate described in cheap-agent-fleet Rule 6: the JSON files are interim during the L4 blitz; the post-blitz substrate is `agent_dispatches` rows. The bible commits to that promotion timeline.
+
+**JSON file → DB mapping (gap audit CP3; substrate targets for D68 / D73):**
+
+| File | Target Brain DB table | Migration status |
+|------|----------------------|------------------|
+| `procedural_memory.yaml` | `agent_procedures` (per D40, T3.2) | T3.2 ships it |
+| `agent_dispatch_log.json` (or `.jsonl`) | `agent_dispatches` (per D68, T1.5) | T1.5 + T3.5 ships it |
+| `pr_outcomes.json` | new `pr_outcomes` table OR JSONB column on `agent_dispatches` | needs decision in D68 |
+| `merge_queue.json` | new `merge_queue` table OR redis list | currently no writer (per subagent) |
+| `long_tail.json` | new `long_tail_workstreams` table OR JSONB on `epics` | low-priority |
+| `self_merge_promotions.json` | new `self_merge_promotions` table | tied to `agent_dispatches.pr_outcome` |
 
 ### D69. End-to-end verification at the workstream layer (phone + desktop)
 
@@ -839,31 +944,102 @@ A workstream/Epic is **not shipped** until all of the following hold (PR hygiene
 4. **iPhone:** Founder round-trip on Studio PWA within **24h** of merge (open → act → see result).
 5. **Desktop:** Same round-trip within **24h** on desktop.
 
-**Emergency bypass:** If merged hot without verification, Sprint/Epic MUST record `shipped_unverified` (or equivalent) and open a `verification-debt` conversation — silent "done" is forbidden (workstream-level no-silent-fallback).
+*Verbatim rule + failure modes from gap audit (T1.6 — D69 skeleton):*
 
-**Auto-close:** Sprint markdown `closes_workstreams:` must not be the only closure signal; pair with an explicit verification signal (e.g. founder confirmation in-thread or `verification_completed_at` on Sprint when implemented).
+> **Rule.** A workstream (Epic — see D65 reconciliation) is NOT shipped until **all five** of the following are true:
+>
+> 1. **PR-layer verification passes** per `.cursor/rules/production-verification.mdc`: deploy live, /health 200, behavioral curl green, 5 minutes of clean logs.
+> 2. **DB row exists**: every Brain entity introduced or modified by the workstream has its rows visible via the corresponding `/api/v1/admin/*` endpoint with auth.
+> 3. **Studio page exists and is reachable from `paperworklabs.com/admin/*` nav** (D70 surface coverage). No orphaned components. If a tab component is built (e.g. `sprints-overview-tab.tsx`), it MUST be mounted on a `page.tsx` that is reachable from the admin nav within the same workstream.
+> 4. **Founder uses it round-trip on iPhone (Studio PWA)** within 24h of PR merge. Round-trip = open the page, take an action, see the result reflected. Voice-only or read-only access does not count. The founder is the primary canary; if the surface breaks on phone, the surface is not shipped.
+> 5. **Founder uses it round-trip on desktop** within 24h of PR merge. Same definition.
+>
+> **Failure modes** (none of these is "shipped"):
+>
+> - PR merged + deploy green + nav link missing → not shipped (component is orphaned).
+> - DB row exists + API exists + Studio page exists + founder hasn't opened it → not shipped (untested).
+> - Founder opened on desktop only → not shipped (mobile failure mode is the most expensive class of bug per `.cursor/rules/no-hallucinated-ui-labels.mdc` and the founder's own UX).
+> - PR merged + scheduler defined + scheduler never installed → not shipped (this is exactly the `autopilot_dispatcher` failure mode).
+>
+> **Auto-close discipline**: `apis/brain/app/services/sprint_md_auto_close.py` currently auto-closes workstreams from `closes_workstreams:` frontmatter on sprint markdown merge. **This is too lenient.** Auto-close should require BOTH frontmatter declaration AND a verification checklist completion event. Proposal: add a `verification_completed_at` timestamp column on the Sprint row (D65) that is only set when the founder posts a one-click "verified on phone + desktop" action in the corresponding Conversation thread (D66). Auto-close fires only when both `closes_workstreams:` is present AND `verification_completed_at IS NOT NULL`.
+>
+> **No-silent-fallback at the workstream layer**: if a workstream ships without verification — for example, an emergency fix at 2am — the Sprint row MUST be marked `status: shipped_unverified` and a follow-up Conversation tagged `verification-debt` MUST be auto-created. Silent "shipped" without verification is forbidden.
 
 ### D70. Studio Admin Surface Coverage Matrix
 
-**Full spec:** [§8 Studio Dashboard (admin / Company OS surface)](#8-studio-dashboard-admin--company-os-surface). Every Internal Ops entity (D65) is expected to graduate to: nav entry or justified exception, server data from Brain APIs, mobile-responsive PWA, and explicit loading/error/empty/data UI states per `.cursor/rules/no-silent-fallback.mdc`.
+**Full spec:** [§8 Studio Dashboard (admin / Company OS surface)](#8-studio-dashboard-admin--company-os-surface) — including the **Tier 5 coverage matrix** (gap audit). Every Internal Ops entity (D65) is expected to graduate to: nav entry or justified exception, server data from Brain APIs, mobile-responsive PWA, and explicit loading/error/empty/data UI states per `.cursor/rules/no-silent-fallback.mdc`.
+
+*Verbatim surface criteria + anti-patterns from gap audit (T1.7 — D70 skeleton):*
+
+> Studio admin (`paperworklabs.com/admin/*`) is the **canonical surface for Company OS mode** (D64). Every Brain entity that is part of the Internal Operations Schema (D65) MUST have a Studio page meeting all of the following criteria:
+>
+> 1. Reachable from `apps/studio/src/lib/admin-navigation.tsx` admin nav (no orphaned routes).
+> 2. Server-renders from a live Brain `/api/v1/admin/*` endpoint (no static snapshot fallbacks except for graceful degradation; if Brain is down, page shows "Brain unreachable" not stale data).
+> 3. Mobile-responsive at 375px and tested in Studio PWA on iPhone.
+> 4. Implements the four-state UX rule from `.cursor/rules/no-silent-fallback.mdc`: explicit `loading` / `error` / `empty` / `data` branches.
+> 5. Either fully read-only OR has a labeled action surface (no read-only-pretending-to-have-actions).
+>
+> **Coverage matrix** (filled by gap-audit Tier 5 below; this is the canonical structure — actual cell values live in Tier 5).
+>
+> **Anti-pattern this rules out**:
+>
+> - Building a snapshot file (`apps/studio/src/data/*.json`) that mirrors a Brain DB entity. The snapshot is fine as a build-time fallback but the live source MUST be Brain. The locked plan Wave E says "delete `apps/studio/src/data/*.json`" — this decision codifies that direction.
+> - Building a tab component without a `page.tsx`. If the work is real, mount the page in the same PR. If the page is deferred, the tab component MUST be archived under `apps/studio/src/app/_archive/` not left in the active tree.
+> - Mixing entities of different kinds in a single snapshot. The current `apps/studio/src/data/personas-snapshot.json` is the canonical example — 52 entries containing a mix of 47 employees/personas and 5 rule files (`cheap-agent-fleet`, `no-silent-fallback`, `git-workflow`, `code-quality-guardian`, `plan-mode-first`). This is forbidden going forward; rules and personas are different entities (D65) with different surfaces (`/admin/people` vs a future `/admin/doctrine`).
 
 ### D71. Reference knowledge pipeline
 
 These artifact classes **must** be ingested into Brain DB / episode memory so `recall_memory` and operators can answer "what did we decide" and "which sprint touched X": (1) plan files (local `.cursor/plans/*.plan.md` — backfill + delta), (2) `docs/sprints/*.md` on merge, (3) `docs/KNOWLEDGE.md` D## additions on merge, (4) `.cursor/rules/*.mdc` on Brain image build → rules table / episodes, (5) `docs/BRAIN_ARCHITECTURE.md` sections on merge. **Ingest failures** surface in `/admin/health` + tagged `alert` if stale \>24h — no silent staleness.
 
+*Verbatim five-category spec from gap audit (T1.8 — D71 skeleton):*
+
+> Five categories of company-internal knowledge MUST be ingested into Brain DB so Brain can answer historical questions:
+>
+> 1. **Plans** (`/Users/paperworklabs/.cursor/plans/*.plan.md` — gitignored locally, present on founder's machine): one-shot backfill via dedicated script, then nightly delta scan. Each plan becomes a TranscriptEpisode (D67) with `source_kind = plan_doc`.
+> 2. **Sprint markdown** (`docs/sprints/*.md`, in repo): on every PR merge that touches `docs/sprints/`, ingest the new/modified file as a TranscriptEpisode with `source_kind = sprint_doc` AND link to the corresponding Sprint row (D65) via `sprint_id`. The auto-close service (`sprint_md_auto_close.py`) already parses these files; extend it to also ingest the body.
+> 3. **Decision log** (`docs/KNOWLEDGE.md`, in repo): on every PR merge that touches the file, parse the diff for added `### D##` headings, INSERT into `decisions` table (D65), ingest the body as a TranscriptEpisode with `source_kind = decision_doc` linked via `decision_id`.
+> 4. **Rule files** (`.cursor/rules/*.mdc`, in repo, bundled into Brain Docker image already): on every Brain Docker build, parse the bundled `.mdc` files and upsert into a `rules` table with sha versioning. Rules are not Decisions — they are doctrine. Surface in a future `/admin/doctrine` page (Tier 5).
+> 5. **The bible itself** (`docs/BRAIN_ARCHITECTURE.md`): on every PR merge, ingest the diff section by section as TranscriptEpisodes with `source_kind = bible_doc`. This decision MUST be re-ingested first.
+>
+> **No-silent-fallback enforcement**: ingestion failures must be visible in `/admin/health` with per-source freshness ("Plans: last ingest 3h ago / 87 of 87 files current; Sprints: last ingest 30s ago / 142 of 142 files current; ..."). If ingest fails for any source for >24h, auto-create a Conversation tagged `alert` urgency `high`.
+
 ### D72. Founder dogfood mode (Company OS)
 
 In Mode 2 there is no larger user base than **Sankalp and Olga**. If it fails for them on phone + desktop within 24h of merge, it is not shipped (D69). Olga onboarding to Conversations is the stress test for mobile parity with desktop.
+
+*Verbatim from gap audit (T1.9 — D72 skeleton):*
+
+> In Company OS mode (D64), there are exactly two users: Sankalp and Olga. There is no other canary. Every Company OS workstream is shipped against their actual usage; if it doesn't work for them on phone + desktop within 24h of PR merge, it is not shipped (D69). The founder dogfood loop is the only signal Brain has for company-OS feature quality. Olga's onboarding to the Conversations surface (the Slack-decommission migration) is the explicit test of this doctrine: every feature she needs MUST exist on phone before her first session, or she falls back to Slack-style mental models that the company has already moved past. Brain procedural memory MUST treat "founder did not open this surface within 24h" as a failure signal and surface it in the weekly-audit-digest Conversation.
 
 ### D73. JSON-file-to-Brain-DB migration doctrine
 
 **Reference data:** annual cadence, legal risk → `packages/data` JSON (this bible + Reference Data section). **Continuous ops** (dispatches, merge queue, procedural memory deltas) → Brain DB tables, not unwritten JSON. Files under `apis/brain/data/*` remain only while an active writer or a dated migration plan exists; otherwise remove references from `.mdc` rules.
 
+*Verbatim from gap audit (T1.10 — D73 skeleton):*
+
+> The Reference Data Storage Doctrine (post-D63) says canonical reference data with annual cadence belongs in `packages/data/src/**/*.json`, not Postgres. The inverse is also doctrine: **continuous operational substrate belongs in Brain DB, not files**. The current state of `apis/brain/data/*` (`procedural_memory.yaml`, `agent_dispatch_log.json`, `pr_outcomes.json`, `merge_queue.json`, `long_tail.json`, `self_merge_promotions.json`) is a transitional artifact of the L4 blitz; per `.cursor/rules/cheap-agent-fleet.mdc` Rule 6 these files were the substrate during the 48-hour blitz, but the post-blitz substrate is rows in `agent_dispatches` (D68), `agent_procedures` (D40), `agent_episodes` (Section 2), and the audit log.
+>
+> **Migration rule**: every JSON file under `apis/brain/data/*` referenced by a `.mdc` rule MUST have either (a) an active writer in `apis/brain/app/` keeping it current, or (b) a documented migration path to a Brain DB table with a target ship date. If neither, the file is dead doctrine and the rule MUST be amended to remove the reference. Today, `merge_queue.json` and `agent_dispatch_log.json` (the .json variant) have neither — Tier 3 of this audit lists them as strike-or-implement.
+>
+> **No-silent-fallback enforcement**: if a `.mdc` rule references a JSON substrate file and the file is missing or stale (>7 days old without a planned cadence), Brain MUST surface this in `/admin/health` and create an `alert` Conversation. Silently degrading on missing substrate is forbidden.
+
 ### D74. Phase ↔ Wave ↔ Epic naming reconciliation
 
 Bible uses **P0–P10** phases; locked Brain plan uses **Waves A–K**; backlog uses **WS-NN / epic-ws-*** ids. **Canonical operational id:** Epic pattern `epic-ws-{NN}-{kebab}` aligned with Pydantic workstream schema once regex accepts it. Maintain a mapping table in `docs/KNOWLEDGE.md` or sprint docs when phases and waves diverge — do not invent a fourth naming system in new code.
 
+**Full naming doctrine:** [§20A Phase ↔ Wave ↔ Epic ↔ Workstream reconciliation](#20a-phase--wave--epic--workstream-reconciliation).
+
 ### D75. Brain ↔ Studio internal API contract — token taxonomy, CORS, admin auth
+
+*Verbatim token list from gap audit (T1.12 — D75 skeleton):*
+
+> Three internal auth tokens, each with a single canonical purpose:
+>
+> - `BRAIN_API_SECRET` — legacy n8n adapter token; deprecated; remove when n8n adapters are fully retired (per AGENTS.md "non-cron n8n workflows remain by design" carveout).
+> - `BRAIN_INTERNAL_TOKEN` (preferred name for `BRAIN_ADMIN_TOKEN`) — Studio's server-side service-to-Brain auth for `/api/v1/admin/*` endpoints. Used by `apps/studio/src/lib/brain-admin-proxy.ts` and by EA persona's `conversations-persona.sh` script per `.cursor/rules/ea.mdc`.
+> - `BRAIN_MCP_TOKEN` — per-call user resolution for the `/v1/brain/invoke` gateway (D62). External callers (ChatGPT, Claude desktop) and Brain itself use this format. Stored in `brain_user_vault` per D61.
+>
+> CORS: Brain admin endpoints accept Studio's origin (`paperworklabs.com`) only, not consumer Brain frontends. Consumer Brain endpoints (`/v1/brain/*`) accept their own product origins per D12. The bible MUST list every endpoint's auth requirement in a table; this section is that table.
 
 | Token / secret | Role |
 |----------------|------|
@@ -876,6 +1052,17 @@ Bible uses **P0–P10** phases; locked Brain plan uses **Waves A–K**; backlog 
 ### D76. Schema-to-surface co-shipping
 
 An Alembic migration that introduces a **Brain-admin-facing** entity must ship in the **same PR** with: SQLAlchemy model, at least list+read admin routes, and a Studio admin page **or** an explicit deferred annotation + tracker + date. **PR template:** "I will exercise this in Studio PWA on iPhone within 24h of merge" for founder-facing surfaces. CI may add guards (schema touch without `apps/studio/src/app/admin/**`).
+
+*Verbatim from gap audit (T1.13 — D76 skeleton):*
+
+> Every Brain Alembic migration that creates a public entity (i.e. an entity surfaced in Internal Operations Schema D65 or referenced by any rule file) MUST be accompanied in the same PR by:
+>
+> 1. The corresponding `apis/brain/app/models/*.py` SQLAlchemy model.
+> 2. The corresponding `apis/brain/app/routers/*.py` GET endpoint(s) — at minimum a paginated list and single-row read.
+> 3. The corresponding `apps/studio/src/app/admin/*/page.tsx` Studio page (or, if intentionally deferred, an `--archived` annotation in PR body explaining why and a tracker reference for the surface ship date).
+> 4. A founder-dogfood checklist item in the PR body (D72): "I will open this in Studio PWA on iPhone within 24h of merge."
+>
+> **Anti-pattern this rules out**: "I'll add the table now, surface comes later." That is the exact pattern that produced `brain_user_vault` and `transcript_episodes` orphans. CI guard: ripgrep on every Brain PR — if `apis/brain/alembic/versions/*.py` is modified and no `apps/studio/src/app/admin/**/page.tsx` is created or modified in the same PR, fail with "schema-to-surface co-shipping required (D76)."
 
 ---
 
@@ -1419,6 +1606,56 @@ INSERT INTO brain_skills (skill_id, name, category, tier, requires_connection) V
 
 ---
 
+## 2A. Internal Operations Schema (Company OS)
+
+**Anchors:** [D65](#d65-internal-operations-schema--goal--epic--sprint--taskpr--decision) in §1; Company OS mode in [D64](#d64-brain-as-company-os--operating-modes-on-one-backend).
+
+The following is the **canonical entity narrative** from gap audit `docs/audits/BRAIN_BIBLE_GAP_AUDIT_2026-05-03.md` (T1.2 — D65 skeleton), verbatim.
+
+> The Company OS mode (D64) has its own canonical entity hierarchy. These entities live in the same Brain DB as consumer episodes; they are scoped by `organization_id = 'paperwork-labs'` and exposed via `/api/v1/admin/*` endpoints. The hierarchy is a strict tree, top-down:
+>
+> **Goal** → multi-quarter venture objective (e.g. "Launch FileFree MeF Transmitter Jan 2027"). Owns 1-N Epics. Schema: `goals` table, FK from `epics.goal_id`. UI: `/admin/goals`.
+>
+> **Epic** → multi-week initiative scoped to one Goal (e.g. "WS-82 Studio HQ"). Owns 1-N Sprints. Schema: `epics` table — current id pattern is `epic-ws-{NN}-{kebab-slug}` (verified live in DB). UI: `/admin/workstreams` (renders Epics hierarchy despite the route name; see naming reconciliation below).
+>
+> **Sprint** → 1-3 day execution unit shipping 1-3 PRs (e.g. "WS-82 Wave A — schema bones"). Owns 1-N Tasks. Schema: `sprints` table, FK `sprint.epic_id`. Sprint markdown lives at `docs/sprints/*.md` with `closes_workstreams:` frontmatter; the auto-close service (`apis/brain/app/services/sprint_md_auto_close.py`) reconciles markdown → DB rows. UI: `/admin/sprints` (currently MISSING — `sprints-overview-tab.tsx` is orphaned, see T1.7 / Tier 5 in the gap audit).
+>
+> **Task / PR** → atomic unit of work. May or may not have a corresponding GitHub PR. Schema: `tasks` table, FK `task.sprint_id`, optional `task.pr_url`. UI: surfaced inline on Sprint and Epic detail pages.
+>
+> **Decision (D##)** → canonical strategic-decision record committed to `docs/KNOWLEDGE.md`. Each decision is also a row in Brain DB so it can be queried (`/api/v1/admin/decisions`) and back-referenced by Episodes. Schema: `decisions` table with `external_id` (e.g. "D85"), `title`, `body`, `created_at`, `references[]` (links to other entities). UI: `/admin/docs` already surfaces docs — Decisions need their own canonical view.
+>
+> **Conversation** → persistent thread of founder ↔ Brain interaction (see D66). Schema: `conversations` + `thread_messages`. UI: `/admin/conversations`.
+>
+> **TranscriptEpisode** → ingested chunk of an external chat session (e.g. Cursor agent session, Slack thread, voice note transcription) that becomes part of Brain memory (see D67). Schema: `transcript_episodes`. UI: `/admin/transcripts` (currently MISSING).
+>
+> **AgentDispatch** → record of one Task-tool dispatch to a cheap-agent subagent (see D68). Schema: `agent_dispatches`. UI: `/admin/autopilot` (partially exists, only surfaces Episode source-prefix `autopilot`, not the AgentDispatch table directly).
+>
+> **Employee / Persona** → the 17 employees in the company (16 personas + Founder). Schema: `employees` table in Brain DB (verified live, exposed via `GET /admin/employees`). UI: `/admin/people`. **NOT to be confused with the 35 rule files in `.cursor/rules/*.mdc`** — those are doctrines, not employees, and the current `apps/studio/src/data/personas-snapshot.json` mixes the two (see Tier 2 amendment T2.4 in the gap audit).
+>
+> **Skill** → Brain capability registered in `brain_skills` (D62). Either built-in or pointer to a product MCP server. UI: `/admin/architecture?tab=flows` (currently — should grow into `/admin/skills` per Wave G of locked plan).
+>
+> **Secret** → encrypted credential, lives in Studio Vault (canonical) with optional Brain registry overlay. Per-user credentials live in `brain_user_vault` (D61, currently dead-code per Tier 3 T3.1 in the gap audit). UI: `/admin/infrastructure?tab=secrets` + `/admin/secrets/intake/[token]`.
+>
+> **Naming reconciliation**: "Workstream" (used in `cheap-agent-fleet.mdc`, locked plan, `apis/brain/app/schemas/workstream.py`) and "Epic" (used in DB rows, `getEpicHierarchy()`, Studio nav label) refer to the same entity. The locked plan's id pattern `WS-NN-kebab` is a workstream alias for the epic; the DB's `epic-ws-82-studio-hq` is the canonical id. Going forward: **the canonical name is "Epic"; "Workstream" is deprecated as a synonym** (Brain MUST accept both id patterns until all rule files and schemas are reconciled — see follow-up patch in Tier 2 T2.5 in the gap audit). The Pydantic Workstream schema's regex `^WS-\d{2,3}-[a-z0-9-]+$` (`apis/brain/app/schemas/workstream.py:14`) is the source of the live ValidationError every minute on the workstream_dispatcher loop because it rejects `epic-ws-82-studio-hq` — fix scope is "extend regex to accept `^(WS-\d{2,3}|epic-ws-\d{2,3})-[a-z0-9-]+$` until rename completes."
+
+**Hierarchy (Mermaid):**
+
+```mermaid
+flowchart TD
+  G[Goal] --> E[Epic]
+  E --> S[Sprint]
+  S --> T[Task / PR]
+  E --> D[Decision D##]
+  E --> C[Conversation]
+  E --> X[TranscriptEpisode]
+  E --> A[AgentDispatch]
+  P[People] --- E
+  SK[Skill registry] --- E
+  V[Secret / Vault] --- E
+```
+
+---
+
 ## 3. Model Routing Matrix
 
 | Task class | Primary | Fallback | Chain? |
@@ -1578,6 +1815,29 @@ Studio at `paperworklabs.com/admin/*` is the **canonical UI for Company OS** (D6
 3. **Mobile:** 375px layouts; validate critical flows on **Studio PWA** (D69).  
 4. **UX states:** Loading / error / empty / data must be explicit (no `?? 0` masking failures for user-visible counts).  
 5. **Auth:** Server-side calls use `BRAIN_INTERNAL_TOKEN` per D75; never expose secrets to the client bundle.
+
+### Studio admin coverage matrix (Tier 5 — gap audit snapshot)
+
+Legend: ✅ live + canonical, ⚠️ partial / wrong shape / orphaned, ❌ missing.
+
+| Brain Entity | DB row | GET API | Studio page | Reachable from nav | E2E verified | Bible mentions |
+|---|---|---|---|---|---|---|
+| **Goal** | ✅ `goals` (verified — `getGoals()` exists in `BrainClient`) | ✅ exposed via `/api/admin/goals` (Studio proxy) | ✅ `/admin/goals` | ✅ in admin-navigation.tsx | ⚠️ unknown | ❌ zero mentions |
+| **Epic** (a.k.a. Workstream) | ✅ `epics` (1 row: `epic-ws-82-studio-hq`) | ✅ `getEpicHierarchy()` | ⚠️ `/admin/workstreams` route renders Epics; route name misleading | ✅ in admin-navigation.tsx (label "Epics") | ⚠️ unknown | ❌ zero mentions |
+| **Sprint** | ✅ `sprints` (14 rows) | ⚠️ inferred via Epic hierarchy / sprint markdown only | ❌ `/admin/sprints/page.tsx` MISSING; `sprints-overview-tab.tsx` orphaned | ❌ no nav link | ❌ no surface to verify | ❌ one passing mention ("sprint drift" in §17) |
+| **Task / PR** | ⚠️ partial | ⚠️ surfaced inline only | ⚠️ inline on Epic detail | n/a (always inline) | ⚠️ unknown | ❌ zero ops mentions |
+| **Decision (D##)** | ⚠️ in `docs/KNOWLEDGE.md` only — Brain DB table likely missing | ❌ no `/admin/decisions` API | ⚠️ `/admin/docs` surfaces docs but no canonical Decisions view | ⚠️ via /admin/docs only | ⚠️ partial | ⚠️ implicit only |
+| **Conversation** | ✅ `conversations` + `thread_messages` (live) | ✅ `/admin/conversations` GET + GET single + POST messages + status + snooze + persona-reply (feature-flagged) + react | ✅ `/admin/conversations` (proxy) + `/admin/brain/conversations` (canonical) | ✅ in admin-navigation.tsx | ✅ founder uses daily | ❌ as P9 deferred only |
+| **TranscriptEpisode** | ✅ `transcript_episodes` (per founder pre-audit) | ❌ no GET endpoint (POST ingest only per subagent) | ❌ `/admin/transcripts/` MISSING per subagent | ❌ no nav link | ❌ no surface | ❌ zero mentions |
+| **AgentDispatch** | ✅ `agent_dispatches` (migration 014 per founder pre-audit) | ⚠️ `/admin/autopilot` reads episodes, not dispatches table | ⚠️ `/admin/autopilot` exists; reads episodes with `source_prefix=autopilot` | ✅ in admin-navigation.tsx | ⚠️ unknown — dispatcher loop never installed (T3.5) | ❌ zero mentions |
+| **Employee / Persona** | ✅ `employees` (17 rows) | ✅ `GET /admin/employees` | ✅ `/admin/people` | ✅ in admin-navigation.tsx | ⚠️ contaminated by personas-snapshot.json mixing 5 rules with employees | ⚠️ via D24/D31, but mixed up |
+| **Skill** | ✅ `brain_skills` (seeded per Section 2) | ⚠️ partial — visible via `/admin/architecture` flow tab | ⚠️ no canonical `/admin/skills` page; lives inside Architecture | ⚠️ via /admin/architecture | ❌ orphaned redirect at `/admin/agents` → `/admin/architecture?tab=flows` | ✅ D62 (well-specified) |
+| **Secret** (vault) | ✅ Studio `secrets` table | ✅ `/api/admin/secrets` (with Brain registry overlay) | ✅ `/admin/infrastructure?tab=secrets` (read-only) | ✅ via /admin/infrastructure | ⚠️ partial — read-reveal-copy only; no create/edit/rotate UI per subagent | ❌ scattered (D81 + D86 + D87 in KNOWLEDGE.md, not in bible) |
+| **brain_user_vault** | ✅ table exists | ❌ no read endpoint | ❌ no Studio page | ❌ no nav link | ❌ no surface | ✅ D61 (fully specified, but **schema-only / dead code**) |
+
+**Rollup (from gap audit):** of 12 surfaced entities, only **3 are fully wired round-trip** (Goal, Conversation, partly Skill via architecture tab) — and only Conversation has explicit founder daily-use evidence. **5 entities are partially wired with significant gaps** (Epic/Workstream naming, Sprint missing page, AgentDispatch table unread, Decision no canonical view, Secret no admin actions). **3 entities are essentially missing on the surface side** (Sprint page, TranscriptEpisode page, brain_user_vault). **1 entity is dead code in the bible's own spec** (brain_user_vault per D61 — see Tier 3 T3.1 in the gap audit).
+
+> **Bible status note (2026-05-04):** Several "❌ bible mentions" cells above were true at audit time; D64–D76 now document Company OS architecture. Operational truth still follows the ✅/⚠️/❌ columns until implementation PRs close gaps.
 
 ### Relationship to consumer Brain UI
 
@@ -2633,6 +2893,20 @@ Branch: `feat/brain-phase-2-memory`
 - Creator outreach program, SEO content engine at scale
 - Enterprise admin controls, SSO, custom DPA
 - Scale: swap Protocol implementations as needed
+
+---
+
+## 20A. Phase ↔ Wave ↔ Epic ↔ Workstream reconciliation
+
+**Decision:** [D74](#d74-phase--wave--epic-naming-reconciliation).
+
+This section satisfies gap audit **T1.11 (D74)** placement (between §20 and §21). The audit calls for a single reconciliation table across bible phases (P0–P10), locked-plan waves (A–K), DB Epic ids, and rule-file workstream conventions.
+
+**Canonical rule (from gap audit T1.11 skeleton):**
+
+> Going forward, the canonical operational name is **Epic** with id pattern `epic-ws-{NN}-{kebab}`. Bible Phases stay as the consumer roadmap; Waves stay as the locked plan; **Workstream** / **WS-NN** is deprecated as a synonym for Epic and must be reconciled to it during ingestion.
+
+**Living mapping:** Detailed P0↔Wave row-by-row mapping is maintained in execution docs (e.g. `docs/plans/`, sprint markdown) as schedules shift — **not** duplicated here, to avoid stale copies. [D74](#d74-phase--wave--epic-naming-reconciliation) + `docs/KNOWLEDGE.md` remain the pointers.
 
 ---
 
