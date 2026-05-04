@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
+import { getBrainAdminFetchOptions } from "@/lib/brain-admin-proxy";
 import type { BrainSchedulerJob, BrainSchedulersBffPayload } from "@/types/brain-schedulers";
 
 export const dynamic = "force-dynamic";
 
-function brainAppOrigin(): string | null {
-  let raw = process.env.BRAIN_API_URL?.trim() ?? "";
-  if (!raw) return null;
-  raw = raw.replace(/\\n$/, "").replace(/\/+$/, "");
-  raw = raw.replace(/\/api\/v1$/i, "");
-  return raw.trim() !== "" ? raw : null;
+/** Base origin for Brain paths outside `/api/v1/*` (e.g. `GET /internal/schedulers`). */
+function brainAppOriginFromAdminRoot(apiV1Root: string): string {
+  return apiV1Root.replace(/\/api\/v1$/i, "").replace(/\/+$/, "");
 }
 
 function parseJobsPayload(rawUnknown: unknown): BrainSchedulerJob[] | null {
@@ -65,23 +63,29 @@ function parseJobsPayload(rawUnknown: unknown): BrainSchedulerJob[] | null {
   return out;
 }
 
-/** Proxy Brain `GET /internal/schedulers` (unauthenticated, read-only). */
+/**
+ * Proxy Brain `GET /internal/schedulers` (read-only on Brain; unauthenticated upstream).
+ * Studio gate matches other `/api/admin/brain/*` routes: `BRAIN_API_URL` + `BRAIN_API_SECRET`.
+ */
 export async function GET(): Promise<NextResponse<BrainSchedulersBffPayload>> {
-  const origin = brainAppOrigin();
-  if (!origin) {
+  const auth = getBrainAdminFetchOptions();
+  if (!auth.ok) {
     const body: BrainSchedulersBffPayload = {
       ok: false,
-      empty: true,
-      code: "unconfigured",
+      empty: false,
+      code: "upstream",
       message:
-        "Brain scheduler endpoint is not reachable from Studio (set BRAIN_API_URL). Track T1.7-followup: export last-run timestamps from Brain for staleness thresholds.",
+        "Brain is not configured for Studio (set BRAIN_API_URL and BRAIN_API_SECRET to proxy scheduler introspection).",
+      httpStatus: 503,
     };
-    return NextResponse.json(body, { status: 200 });
+    return NextResponse.json(body, { status: 503 });
   }
+
+  const origin = brainAppOriginFromAdminRoot(auth.root);
 
   let res: Response;
   try {
-    res = await fetch(`${origin.replace(/\/+$/, "")}/internal/schedulers`, {
+    res = await fetch(`${origin}/internal/schedulers`, {
       cache: "no-store",
     });
   } catch (e) {
