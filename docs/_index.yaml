@@ -437,12 +437,19 @@ docs:
     tags: [brain, strategy]
     owners: [strategy]
     category: reference
-  - slug: brain-data-inventory-2026-q2
-    path: docs/audits/BRAIN_DATA_INVENTORY_2026-Q2.md
-    title: Brain Data JSON Inventory — Q2 2026
-    summary: T3.0a inventory + classification of every file in `apis/brain/data/` (reference/seed vs ops state vs snapshot vs learning data). Feeds T3.0 stack audit and T2.10 snapshot kill scope.
+  - slug: bible-d64-d76-verification-2026-05-04
+    path: docs/audits/BIBLE_D64_D76_VERIFICATION_2026-05-04.md
+    title: Brain Bible D64–D76 Verification (2026-05-04)
+    summary: T1.1 cheap-agent verification of which D64–D76 patches landed in BRAIN_ARCHITECTURE.md per the 2026-05-03 gap audit. Lists PATCHED-in-this-PR vs PRESENT vs DEFERRED per Dxx with rationale.
     tags: []
     owners: [engineering]
+    category: reference
+  - slug: brain-data-inventory-2026-q2
+    path: docs/audits/BRAIN_DATA_INVENTORY_2026-Q2.md
+    title: Brain Data Inventory — Q2 2026
+    summary: "**Status**: PROPOSED **Date**: 2026-05-04 **Authored by**: T3.0a cheap-agent (composer-1.5) **Feeds**: T3.0 stack audit, T2.10 snapshot kill scope"
+    tags: []
+    owners: [strategy]
     category: reference
   - slug: brain-deploy-recovery
     path: docs/runbooks/brain-deploy-recovery.md
