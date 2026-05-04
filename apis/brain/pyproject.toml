@@ -17,6 +17,9 @@ packages = ["app"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests", "tests_lint"]
+markers = [
+  "no_pg_conv: opt out of the autouse pg_conv_setup fixture (test does not exercise the Conversations Postgres store, T1.0d).",
+]
 
 [tool.ruff]
 target-version = "py311"

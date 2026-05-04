@@ -5,8 +5,13 @@ from collections.abc import AsyncGenerator
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
+import app.database as _db_mod
 from app.database import get_db
 from app.main import app as fastapi_app
 from app.models import *  # noqa: F403 — register all models with Base.metadata
@@ -103,6 +108,58 @@ def fake_redis() -> FakeRedis:
 def redis_mock(fake_redis: FakeRedis) -> FakeRedis:
     """Alias for fake_redis for use in integration tests."""
     return fake_redis
+
+
+@pytest_asyncio.fixture()
+async def pg_conv_setup(monkeypatch: pytest.MonkeyPatch) -> AsyncGenerator[None, None]:
+    """Redirect Conversations service factory to test DB; skip if Postgres absent.
+
+    Wave T1.0d migrated the conversations service from JSON-on-disk + SQLite FTS
+    to a Postgres-canonical store. Tests that exercise the service (directly or
+    transitively via the expense pipeline, schedulers, audits, etc.) now require
+    Postgres at TEST_DATABASE_URL.
+
+    This fixture is autouse via the ``_pg_conv_autouse`` wrapper below so that
+    legacy tests which transitively call ``conversations.create_conversation``
+    keep working without per-test fixture wiring. If Postgres is not reachable,
+    affected tests skip cleanly (no silent fallback — the service still raises
+    in production).
+    """
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception:
+        await engine.dispose()
+        pytest.skip("Test database not available")
+
+    test_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    original_factory = _db_mod.async_session_factory
+    monkeypatch.setattr(_db_mod, "async_session_factory", test_factory)
+
+    yield
+
+    monkeypatch.setattr(_db_mod, "async_session_factory", original_factory)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+    except Exception:
+        pass
+    await engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def _pg_conv_autouse(request: pytest.FixtureRequest) -> None:
+    """Pull pg_conv_setup into every test that doesn't opt out.
+
+    Tests that don't touch the conversations service skip the fixture cost
+    quickly (Postgres reachability check is cheap when up). Tests can opt out
+    with ``@pytest.mark.no_pg_conv``.
+    """
+    if request.node.get_closest_marker("no_pg_conv") is not None:
+        return
+    request.getfixturevalue("pg_conv_setup")
 
 
 @pytest_asyncio.fixture

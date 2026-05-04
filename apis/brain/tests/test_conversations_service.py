@@ -1,94 +1,28 @@
 """Tests for the Postgres-canonical Conversations service (T1.0d Wave 0).
 
-All tests require a running Postgres instance.  If the test database is not
-reachable, every test in this module is automatically skipped (same pattern as
-other DB-backed tests in this suite via the ``db_session`` fixture).
+The autouse ``pg_conv_setup`` fixture in ``conftest.py`` redirects
+``app.database.async_session_factory`` at test database TEST_DATABASE_URL and
+runs ``Base.metadata.drop_all`` + ``create_all`` before each test (rollback +
+drop_all after). If Postgres is not reachable, the fixture skips the test.
 
 The service uses sync wrapper functions that internally call async DB helpers
-via ``_run()``.  In sync test functions (no running event loop), ``_run()``
+via ``_run()``. In sync test functions (no running event loop), ``_run()``
 uses ``asyncio.run()`` directly — no thread pool needed.
-
-Isolation strategy
-------------------
-The ``pg_conv_setup`` fixture (autouse) depends on ``db_session``, which runs
-``Base.metadata.drop_all`` + ``create_all`` before each test and rolls back
-after.  However, since the service commits its own sessions, we additionally
-redirect ``app.database.async_session_factory`` to a fresh test-specific
-factory connected to the test database.  Data committed during a test is
-cleared by ``drop_all`` at the start of the next test.
 """
 
 from __future__ import annotations
 
-import os
-from collections.abc import AsyncGenerator
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
-import pytest_asyncio
-from sqlalchemy.ext.asyncio import (
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
 
-import app.database as _db_mod
 import app.services.conversations as svc
-from app.models import *  # noqa: F403 — register ORM models with Base for create_all
-from app.models.base import Base
 from app.schemas.conversation import (
     AppendMessageRequest,
     ConversationCreate,
     ConversationParticipant,
 )
-
-TEST_DATABASE_URL = os.environ.get(
-    "TEST_DATABASE_URL",
-    "postgresql+asyncpg://brain:brain_dev@localhost:5432/brain_test",
-)
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest_asyncio.fixture()
-async def pg_conv_setup(monkeypatch: pytest.MonkeyPatch) -> AsyncGenerator[None, None]:
-    """Create test tables, redirect the service session factory, clean up after.
-
-    Uses ``db_session``-compatible engine (drop_all + create_all) so every test
-    starts with empty tables.  Skips if the test database is unavailable.
-    """
-    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-            await conn.run_sync(Base.metadata.create_all)
-    except Exception:
-        await engine.dispose()
-        pytest.skip("Test database not available")
-
-    test_factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-    original_factory = _db_mod.async_session_factory
-    monkeypatch.setattr(_db_mod, "async_session_factory", test_factory)
-
-    yield
-
-    monkeypatch.setattr(_db_mod, "async_session_factory", original_factory)
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
-    except Exception:
-        pass
-    await engine.dispose()
-
-
-@pytest.fixture(autouse=True)
-def _use_pg(pg_conv_setup: None) -> None:
-    """Pull pg_conv_setup into every test automatically."""
 
 
 def _make_create(
