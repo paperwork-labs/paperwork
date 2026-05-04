@@ -1,0 +1,63 @@
+name: No Tax Data Duplicates
+
+# Wave K3 follow-up (T5.1). Forbids any PR/push from re-introducing an
+# `apis/*/tax-data/` directory after the duplicate at apis/filefree/tax-data/
+# was killed in PR #667. All federal tax brackets + standard deductions
+# live at the canonical packages/data/src/tax/{year}.json + are loaded via
+# packages/python/data-engine. Re-creating a per-product tax-data dir =
+# silent drift = wrong customer returns = legal risk. See:
+#   - .cursor/rules/no-silent-fallback.mdc
+#   - packages/python/data-engine/README.md
+#   - packages/data/README.md (Brain bedrock — reference data lives in JSON, not Postgres)
+#
+# Fail-closed.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: no-tax-data-duplicates-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    name: Forbid apis/*/tax-data/ directories
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Detect forbidden tax-data directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Use find to list any directory named exactly `tax-data` under apis/.
+          # This catches any new product (apis/filefree/tax-data, apis/launchfree/tax-data, etc.).
+          violations="$(find apis -type d -name 'tax-data' -print 2>/dev/null || true)"
+
+          if [ -n "$violations" ]; then
+            echo "::error::Forbidden tax-data directory detected — Wave K3 guard"
+            echo ""
+            echo "The following apis/*/tax-data/ paths were introduced:"
+            echo "$violations" | sed 's/^/  - /'
+            echo ""
+            echo "Remediation: tax brackets + standard deductions live at the canonical"
+            echo "packages/data/src/tax/{year}.json. Load via packages/python/data-engine"
+            echo "(see apis/filefree/app/services/tax_calculator.py for the reference pattern)."
+            echo ""
+            echo "If you genuinely need product-specific tax data NOT covered by the"
+            echo "canonical schema, open a discussion before adding the directory —"
+            echo "this guard exists because per-product duplicates caused legal-risk"
+            echo "drift bugs (Wave K3 retro)."
+            exit 1
+          fi
+
+          echo "OK — no apis/*/tax-data/ directories found."
