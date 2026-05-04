@@ -217,3 +217,19 @@ rules:
     learned_at: "2026-05-03T10:25:00Z"
     confidence: high
     applies_to: [cheap-agents]
+
+  - id: docs_index_yaml_auto_generated_never_hand_edit
+    when: "any agent (cheap-agent or orchestrator) creates a new file under docs/ that the docs hub indexes (excludes EXCLUDED_FILES + EXCLUDED_SUBDIRS in scripts/check_docs_index.py)"
+    do: "agent MUST run `python3 scripts/generate_docs_index.py --write` to regenerate docs/_index.yaml AFTER creating the new doc. NEVER hand-edit docs/_index.yaml — the file enforces both content (check_docs_index.py: file-presence guard) AND format (generate_docs_index.py --check: exact-byte-equality guard against the auto-generator output). Hand-edited entries pass the first check but fail the second because the generator is opinionated about ordering, summary truncation, and quote style. After running --write, agent commits BOTH the new doc AND the regenerated docs/_index.yaml in the same commit."
+    source: "Q2-2026 Wave 0 parallel-dispatch slate (PRs #697 T3.0a, #699 T1.1, #700 T1.0d, #702 T3.1-pre): all 4 cheap-agents created new docs but did not know about docs/_index.yaml. Each PR failed `Docs index drift` workflow (generate_docs_index.py --check). Orchestrator triaged with hand-written stanzas (passed check_docs_index.py) but those still failed generate_docs_index.py --check until regenerated. ~6 minutes orchestrator time wasted across 4 PRs. Capturing as future-proof rule: agent prompts that create docs must include the regenerate command."
+    learned_at: "2026-05-04T08:35:00Z"
+    confidence: high
+    applies_to: [cheap-agents, orchestrator, brain-self-dispatch]
+
+  - id: cheap_agent_prompts_creating_docs_must_include_regenerate_command
+    when: "orchestrator (Opus) writes a Task dispatch prompt that instructs a cheap-agent to create one or more new docs under docs/"
+    do: "the prompt MUST include explicit instruction to run `python3 scripts/generate_docs_index.py --write` after creating the doc(s) and to commit the regenerated docs/_index.yaml in the same commit as the new doc. Without this, cheap-agents will follow their training intuition (hand-edit yaml) and the PR will fail CI on `Docs index drift`. Add the line to the 'PR opening' section of the prompt: `2.5. python3 scripts/generate_docs_index.py --write && git add docs/_index.yaml`."
+    source: "Same Q2-2026 incident as docs_index_yaml_auto_generated_never_hand_edit. Orchestrator wrote 4 dispatch prompts that did NOT include the regenerate command, so all 4 cheap-agents created docs without updating _index.yaml. Capturing as orchestrator-side rule (the dispatcher's responsibility, not the agent's)."
+    learned_at: "2026-05-04T08:35:00Z"
+    confidence: high
+    applies_to: [orchestrator]
