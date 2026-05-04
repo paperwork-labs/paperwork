@@ -16,6 +16,9 @@ def test_classification_for_job_id() -> None:
     assert classification_for_job_id("brain_data_source_monitor") == "cutover"
     assert classification_for_job_id("brain_data_deep_validator") == "cutover"
     assert classification_for_job_id("sprint_auto_logger") == "operational"
+    assert classification_for_job_id("brain_autopilot_dispatcher") == "operational"
+    assert classification_for_job_id("brain_probe_failure_dispatcher") == "operational"
+    assert classification_for_job_id("brain_sprint_planner") == "operational"
     assert classification_for_job_id("pr_sweep") == "net-new"
 
 
