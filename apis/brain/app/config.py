@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/1"
     SECRET_KEY: str = "change-me-to-a-random-64-char-string"
     ENCRYPTION_KEY: str = "change-me-generate-with-fernet"
+    # AES-256-GCM key for ``brain_user_vault`` (32 raw bytes, base64). Mirrors Studio
+    # ``SECRETS_ENCRYPTION_KEY`` — see ``apps/studio/src/lib/crypto.ts``.
+    BRAIN_USER_VAULT_ENCRYPTION_KEY: str = ""
+    SECRETS_ENCRYPTION_KEY: str = ""
 
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
