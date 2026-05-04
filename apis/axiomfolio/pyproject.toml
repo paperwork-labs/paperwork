@@ -9,6 +9,9 @@ description = "AxiomFolio API"
 requires-python = ">=3.11"
 dependencies = [
   "mcp-server",
+  "api-foundation",
+  "observability",
+  "rate-limit",
 ]
 
 [build-system]
@@ -22,6 +25,9 @@ packages = ["app"]
 
 [tool.uv.sources]
 mcp-server = { workspace = true }
+api-foundation = { workspace = true }
+observability = { workspace = true }
+rate-limit = { workspace = true }
 
 [tool.black]
 # Simple, clean code formatting

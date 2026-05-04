@@ -16,9 +16,15 @@ RUN apt-get update && apt-get install -y \
 COPY apis/axiomfolio/requirements.txt .
 COPY packages/auth-clerk/src/python /tmp/paperwork-auth
 COPY packages/python/mcp-server /tmp/mcp-server
+COPY packages/python/api-foundation /tmp/api-foundation
+COPY packages/python/observability /tmp/observability
+COPY packages/python/rate-limit /tmp/rate-limit
 RUN pip install --no-cache-dir -r requirements.txt \
     && pip install --no-cache-dir "/tmp/paperwork-auth[fastapi]" \
-    && pip install --no-cache-dir /tmp/mcp-server
+    && pip install --no-cache-dir /tmp/mcp-server \
+    && pip install --no-cache-dir /tmp/api-foundation \
+    && pip install --no-cache-dir /tmp/observability \
+    && pip install --no-cache-dir /tmp/rate-limit
 
 # Application code: WORKDIR /app + COPY app/ ./app/ yields /app/app/ for `app.api.main:app`.
 COPY apis/axiomfolio/app/ ./app/

@@ -1,17 +1,22 @@
 """
-SlowAPI limiter singleton.
+SlowAPI limiter singleton (shared rate-limit package).
 
 Defined here so route modules can import `limiter` without importing `main`
 (circular import: main loads routers which would load main again).
 """
 
-from slowapi import Limiter
 from slowapi.util import get_remote_address
+
+from rate_limit import create_limiter
 
 from app.config import settings
 
-limiter = Limiter(
+limiter = create_limiter(
+    redis_url=settings.RATE_LIMIT_STORAGE_URL or None,
     key_func=get_remote_address,
     default_limits=[settings.RATE_LIMIT_DEFAULT],
-    storage_uri=settings.RATE_LIMIT_STORAGE_URL or None,
+    # Match legacy SlowAPI ``Limiter()`` default (``headers_enabled=False``).
+    # With headers on, ``@limiter.limit`` injects into ``response: Response``;
+    # many sync routes return Pydantic models only and omit that parameter.
+    headers_enabled=False,
 )

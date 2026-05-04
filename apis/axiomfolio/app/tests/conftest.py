@@ -12,7 +12,6 @@ os.environ["AXIOMFOLIO_TESTING"] = "1"
 os.environ.setdefault("CLERK_JWT_ISSUER", "http://127.0.0.1:1")
 
 import pytest
-import sys
 import inspect as pyinspect
 
 from sqlalchemy import text
@@ -28,8 +27,9 @@ def _enable_fast_test_mode():
     os.environ.pop("AXIOMFOLIO_TESTING", None)
 
 
-# Add the backend directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+# Do not insert ``app/`` onto sys.path: it makes ``app/observability`` shadow the
+# workspace package ``observability`` (Wave K shared libs). ``PYTHONPATH=/app`` in
+# compose is enough for ``import app.*`` (package root is ``apis/axiomfolio`` → /app).
 
 # Fix imports to use correct model names from __init__.py
 try:

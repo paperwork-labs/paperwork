@@ -2,21 +2,26 @@
 AxiomFolio - FastAPI Application
 """
 
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Depends
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import asyncio
 import os
 import tracemalloc
 import logging
-import logging.config
 from datetime import UTC, datetime, timezone
-import uuid
 
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
+from api_foundation import (
+    LoggingMiddleware,
+    RequestIDMiddleware,
+    register_exception_handlers,
+    register_healthcheck,
+)
+from observability.fastapi_integration import instrument_fastapi
+from observability.logging import configure_structured_logging
+from observability.metrics import configure_metrics
+from observability.tracing import configure_tracing
+from rate_limit.middleware import RateLimitMiddleware
 
 from app.api.rate_limit import limiter
 
@@ -65,8 +70,10 @@ from app.api.routes import (
 )
 from app.api.routes import connections as connections_routes
 from app.api.routes import plaid as plaid_routes
+
 # Market data (from market/ package)
 from app.api.routes.market import router as market_router
+
 # Webhooks
 from app.api.routes.webhooks import router as webhooks_router
 from app.api.routes.risk import router as risk_router
@@ -104,13 +111,11 @@ from app.api.dependencies import require_non_market_access
 # Model imports
 from app.models import Base
 from app.database import engine, SessionLocal
-from app.config import settings, validate_production_settings, LOGGING_CONFIG
-from app.utils.request_context import set_request_id, reset_request_id
+from app.config import settings, validate_production_settings
 from app.models.user import User, UserRole
 from app.services.portfolio.account_config_service import account_config_service
 from app.api.routes.auth import get_password_hash
 
-logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
 
 # Create FastAPI app
@@ -122,31 +127,55 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# OpenTelemetry: install tracer + meter providers and attach
-# auto-instrumentation to this app instance. When OTEL_EXPORTER_OTLP_ENDPOINT
-# is unset the SDK runs in no-op mode (spans created, none exported) so dev
-# runs don't need a collector. See app/observability/tracing.py for
-# env-var configuration.
-#
-# Skip bootstrap during pytest (AXIOMFOLIO_TESTING): importing this module
-# would otherwise pin a global TracerProvider and patch httpx/SQLAlchemy
-# before observability tests install their own provider or before mocks run.
-if os.getenv("AXIOMFOLIO_TESTING") == "1":
-    pass
-else:
-    try:
-        from app.observability import init_metrics, init_tracing
+register_exception_handlers(app)
 
-        _otel_environment = "production" if not settings.DEBUG else "dev"
-        init_tracing(
-            service_name="axiomfolio-api",
-            environment=_otel_environment,
-            fastapi_app=app,
-        )
-        init_metrics(service_name="axiomfolio-api")
+
+def _healthcheck_db() -> bool:
+    from sqlalchemy import text
+
+    from app.database import SessionLocal
+
+    db = SessionLocal()
+    try:
+        db.execute(text("SELECT 1"))
+        return True
+    except Exception:
+        logger.exception("readiness_probe db check failed")
+        return False
+    finally:
+        db.close()
+
+
+def _healthcheck_redis() -> bool:
+    try:
+        from app.services.silver.market.market_data_service import infra
+
+        infra.redis_client.ping()
+        return True
+    except Exception:
+        logger.exception("readiness_probe redis check failed")
+        return False
+
+
+register_healthcheck(app, check_db=_healthcheck_db, check_redis=_healthcheck_redis)
+
+
+# Root JSON logging + global OTel providers (no FastAPI middleware yet).
+if os.getenv("AXIOMFOLIO_TESTING") != "1":
+    try:
+        _svc = "axiomfolio-api"
+        _log_level = "DEBUG" if settings.DEBUG else "INFO"
+        configure_structured_logging(_svc, log_level=_log_level)
+        _otlp_base = (os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT") or "").strip()
+        _otlp_traces = (os.getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") or "").strip()
+        _otlp_metrics = (os.getenv("OTEL_EXPORTER_OTLP_METRICS_ENDPOINT") or "").strip()
+        _trace_ep = _otlp_traces or _otlp_base or None
+        _metrics_ep = _otlp_metrics or _otlp_base or None
+        configure_tracing(_svc, otlp_endpoint=_trace_ep)
+        configure_metrics(_svc, otlp_endpoint=_metrics_ep)
     except Exception as _otel_exc:  # noqa: BLE001 — observability must never crash boot
         logger.warning(
-            "OTel initialization failed (continuing without instrumentation): %s",
+            "Observability bootstrap failed (continuing without full instrumentation): %s",
             _otel_exc,
             exc_info=True,
         )
@@ -177,7 +206,9 @@ def custom_openapi():
     )
     schema["paths"] = {
         path: dict(sorted(ops.items(), key=lambda item: _method_order(item[0])))
-        for path, ops in sorted(schema.get("paths", {}).items(), key=lambda item: item[0])
+        for path, ops in sorted(
+            schema.get("paths", {}).items(), key=lambda item: item[0]
+        )
     }
     app.openapi_schema = schema
     return app.openapi_schema
@@ -185,22 +216,36 @@ def custom_openapi():
 
 app.openapi = custom_openapi
 
+# HTTP middleware order: first registered = innermost. Observability ASGI shim first
+# so it sits closest to routes; outer layers see request.state.request_id.
+if os.getenv("AXIOMFOLIO_TESTING") != "1":
+    try:
+        instrument_fastapi(app, service_name="axiomfolio-api", configure_logging=False)
+    except Exception as _otel_exc:  # noqa: BLE001
+        logger.warning(
+            "FastAPI OTel instrumentation failed: %s",
+            _otel_exc,
+            exc_info=True,
+        )
+
 # Rate limiting (default limit applies to all routes; see settings.RATE_LIMIT_DEFAULT)
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # PeakRss (S2) is outer to RssObservability: each insert(0) prepends, so
-# Rss is innermost. Request: Peak -> Rss -> route. Both under request_id.
+# Rss is innermost. Request ingress: CORS -> … -> RequestID -> Logging ->
+# RateLimit -> PeakRss -> RssObs -> observability shim -> route.
 app.add_middleware(RssObservabilityMiddleware)
 app.add_middleware(PeakRssMiddleware)
-app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(RateLimitMiddleware, limiter=limiter)
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(RequestIDMiddleware)
 
 # Per-tenant rate limit (token-bucket, Redis-backed, fail-CLOSED).
-# Sits in front of SlowAPI so a per-tenant 429 wins over the global IP
-# default. Allowlists health/auth/webhooks (see middleware module).
+# Sits in front of global SlowAPI limits so a per-tenant 429 wins over the IP default.
 app.add_middleware(TenantRateLimitMiddleware)
 
 # GZip responses (>1KB)
 from starlette.middleware.gzip import GZipMiddleware
+
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # CORS middleware
@@ -215,18 +260,6 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
-
-
-@app.middleware("http")
-async def request_id_middleware(request: Request, call_next):
-    request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
-    token = set_request_id(request_id)
-    try:
-        response = await call_next(request)
-        response.headers["x-request-id"] = request_id
-        return response
-    finally:
-        reset_request_id(token)
 
 
 def _auto_warm_if_stale():
@@ -250,37 +283,54 @@ def _auto_warm_if_stale():
 
         if latest_ts:
             from datetime import timedelta
+
             age_minutes = (datetime.now(timezone.utc) - latest_ts).total_seconds() / 60
             if age_minutes < stale_threshold:
                 logger.info(
                     "Auto-warm: data is fresh (%.0f min old, threshold=%d min). Skipping.",
-                    age_minutes, stale_threshold,
+                    age_minutes,
+                    stale_threshold,
                 )
                 needs_warm = False
             else:
                 logger.info(
                     "Auto-warm: data is stale (%.0f min old, threshold=%d min). Queuing pipeline.",
-                    age_minutes, stale_threshold,
+                    age_minutes,
+                    stale_threshold,
                 )
         else:
-            logger.info("Auto-warm: empty DB (cold start). Queuing %d-year deep backfill.", settings.HISTORY_TARGET_YEARS)
+            logger.info(
+                "Auto-warm: empty DB (cold start). Queuing %d-year deep backfill.",
+                settings.HISTORY_TARGET_YEARS,
+            )
 
         if needs_warm:
             from app.tasks.celery_app import celery_app
+
             if latest_ts is None:
                 from datetime import date, timedelta
-                history_start = (datetime.now(UTC).date() - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)).isoformat()
+
+                history_start = (
+                    datetime.now(UTC).date()
+                    - timedelta(days=settings.HISTORY_TARGET_YEARS * 365)
+                ).isoformat()
                 result = celery_app.send_task(
                     "app.tasks.market.backfill.full_historical",
                     kwargs={"since_date": history_start},
                 )
-                logger.info("Auto-warm: deep backfill queued (since=%s, task_id=%s)", history_start, result.id)
+                logger.info(
+                    "Auto-warm: deep backfill queued (since=%s, task_id=%s)",
+                    history_start,
+                    result.id,
+                )
             else:
                 result = celery_app.send_task(
                     "app.tasks.market.coverage.daily_bootstrap",
                     kwargs={"history_days": 5, "history_batch_size": 25},
                 )
-                logger.info("Auto-warm: nightly pipeline queued (task_id=%s)", result.id)
+                logger.info(
+                    "Auto-warm: nightly pipeline queued (task_id=%s)", result.id
+                )
     finally:
         db.close()
 
@@ -306,20 +356,28 @@ def _run_migrations() -> None:
     try:
         from sqlalchemy import text as _text
         from alembic.script import ScriptDirectory
+
         with engine.connect() as conn:
-            current = conn.execute(_text("SELECT version_num FROM alembic_version LIMIT 1")).scalar()
+            current = conn.execute(
+                _text("SELECT version_num FROM alembic_version LIMIT 1")
+            ).scalar()
         if current:
             script = ScriptDirectory.from_config(cfg)
             head = script.get_current_head()
             if current == head:
                 logger.info("Alembic: already at head (%s), skipping upgrade", head)
                 return
-            logger.info("Alembic: DB at %s, head is %s -- running upgrade", current, head)
+            logger.info(
+                "Alembic: DB at %s, head is %s -- running upgrade", current, head
+            )
     except Exception as e:
         logger.info("Alembic fast-check skipped (%s), running full upgrade", e)
 
     from alembic import command as _alembic_command
-    logger.info("Starting Alembic migration (lock_timeout=10s, statement_timeout=30s)...")
+
+    logger.info(
+        "Starting Alembic migration (lock_timeout=10s, statement_timeout=30s)..."
+    )
     _alembic_command.upgrade(cfg, "head")
     logger.info("Alembic migrations applied (upgrade head)")
 
@@ -346,6 +404,7 @@ def _sync_deferred_startup() -> None:
         # Seed schedules from catalog
         try:
             from app.scripts.seed_schedules import seed
+
             _db = SessionLocal()
             try:
                 seed_result = seed(_db)
@@ -366,7 +425,10 @@ def _sync_deferred_startup() -> None:
                     try:
                         existing = (
                             db.query(User)
-                            .filter((User.username == admin_user) | (User.email == admin_email))
+                            .filter(
+                                (User.username == admin_user)
+                                | (User.email == admin_email)
+                            )
                             .first()
                         )
                         if not existing:
@@ -405,9 +467,12 @@ def _sync_deferred_startup() -> None:
         if getattr(settings, "SEED_ACCOUNTS_ON_STARTUP", False):
             try:
                 from app.services.bronze.ibkr.sync_service import portfolio_sync_service
+
                 db = SessionLocal()
                 try:
-                    norm = portfolio_sync_service.normalize_instruments_from_activity(db)
+                    norm = portfolio_sync_service.normalize_instruments_from_activity(
+                        db
+                    )
                     db.commit()
                     logger.info("Instrument normalization: %s", norm)
                 finally:
@@ -431,6 +496,7 @@ def _sync_deferred_startup() -> None:
         if getattr(settings, "BACKFILL_OPTION_TAX_LOTS_ON_STARTUP", False):
             try:
                 from app.tasks.celery_app import celery_app as _celery
+
                 res = _celery.send_task(
                     "app.tasks.portfolio.reconciliation.backfill_option_tax_lots",
                     kwargs={},
@@ -440,9 +506,7 @@ def _sync_deferred_startup() -> None:
                     res.id,
                 )
             except Exception as bf_e:
-                logger.warning(
-                    "OptionTaxLot startup backfill skipped/failed: %s", bf_e
-                )
+                logger.warning("OptionTaxLot startup backfill skipped/failed: %s", bf_e)
         else:
             logger.info(
                 "OptionTaxLot backfill disabled (BACKFILL_OPTION_TAX_LOTS_ON_STARTUP=false)"
@@ -450,7 +514,9 @@ def _sync_deferred_startup() -> None:
 
         # G11: log held-vs-tracked universe gaps; persist for /admin/health (non-fatal)
         try:
-            from app.services.silver.market.market_data_service import infra as _uc_infra
+            from app.services.silver.market.market_data_service import (
+                infra as _uc_infra,
+            )
             from app.services.ops.universe_coverage import (
                 persist_universe_coverage_to_redis,
                 run_universe_coverage_check,
@@ -459,7 +525,9 @@ def _sync_deferred_startup() -> None:
             _uc_db = SessionLocal()
             try:
                 _uc_payload = run_universe_coverage_check(_uc_db)
-                persist_universe_coverage_to_redis(_uc_payload, r=_uc_infra.redis_client)
+                persist_universe_coverage_to_redis(
+                    _uc_payload, r=_uc_infra.redis_client
+                )
             finally:
                 _uc_db.close()
         except Exception as uc_e:
@@ -500,7 +568,8 @@ async def startup_event():
     except Exception as mig_e:
         logger.error(
             "Alembic migration FAILED -- refusing to start with stale schema: %s",
-            mig_e, exc_info=True,
+            mig_e,
+            exc_info=True,
         )
         raise SystemExit(1)
 
@@ -548,11 +617,17 @@ async def health_check_full():
     try:
         db = SessionLocal()
         try:
-            result = db.execute(text("SELECT count(*) FROM information_schema.tables WHERE table_schema='public'"))
+            result = db.execute(
+                text(
+                    "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'"
+                )
+            )
             db_tables = result.scalar()
 
             try:
-                ver = db.execute(text("SELECT version_num FROM alembic_version LIMIT 1"))
+                ver = db.execute(
+                    text("SELECT version_num FROM alembic_version LIMIT 1")
+                )
                 row = ver.fetchone()
                 alembic_version = row[0] if row else "no-row"
             except Exception:
@@ -737,11 +812,11 @@ app.include_router(strategies, prefix="/api/v1/strategies", tags=["Strategies"])
 app.include_router(
     account_management, dependencies=[Depends(require_non_market_access)]
 )
-app.include_router(
-    historical_import, dependencies=[Depends(require_non_market_access)]
-)
+app.include_router(historical_import, dependencies=[Depends(require_non_market_access)])
 app.include_router(app_settings, prefix="/api/v1", tags=["Settings"])
-app.include_router(market_router, prefix="/api/v1/market-data", tags=["Market Data & Technicals"])
+app.include_router(
+    market_router, prefix="/api/v1/market-data", tags=["Market Data & Technicals"]
+)
 app.include_router(
     activity,
     prefix="/api/v1/portfolio",
@@ -952,42 +1027,6 @@ app.include_router(
     admin_costs_router,
     dependencies=[Depends(require_non_market_access)],
 )
-
-
-# Global error handler — inject CORS headers on unhandled errors so browsers
-# surface JSON instead of masking ALB/worker failures as "CORS blocked".
-@app.exception_handler(Exception)
-async def cors_safe_exception_handler(request: Request, exc: Exception):
-    logger.error(
-        "unhandled_exception path=%s error=%s",
-        request.url.path,
-        exc,
-        exc_info=True,
-    )
-    origin = request.headers.get("origin") or ""
-    allowed = [
-        o.strip()
-        for o in (settings.CORS_ORIGINS or "").split(",")
-        if o.strip()
-    ]
-    allow_origin = origin if origin in allowed else ""
-    cors_headers = (
-        {
-            "Access-Control-Allow-Origin": allow_origin,
-            "Access-Control-Allow-Credentials": "true",
-            "Vary": "Origin",
-        }
-        if allow_origin
-        else {}
-    )
-    return JSONResponse(
-        status_code=500,
-        content={
-            "detail": "internal_server_error",
-            "path": str(request.url.path),
-        },
-        headers=cors_headers,
-    )
 
 
 if __name__ == "__main__":
