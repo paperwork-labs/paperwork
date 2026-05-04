@@ -188,10 +188,10 @@ def _run(coro: Coroutine[Any, Any, _T]) -> _T:
     try:
         asyncio.get_running_loop()
         # Already inside an event loop — must use a separate thread.
-        return _tp.submit(asyncio.run, coro).result()  # type: ignore[return-value]
+        return _tp.submit(asyncio.run, coro).result()
     except RuntimeError:
         # No running loop — safe to call asyncio.run() directly.
-        return asyncio.run(coro)  # type: ignore[return-value]
+        return asyncio.run(coro)
 
 
 # ---------------------------------------------------------------------------
@@ -242,14 +242,14 @@ def _row_to_thread_message(row: ConversationMessageRecord) -> ThreadMessage:
             kind = "persona" if row.role == "persona" else "founder"
             author = ConversationParticipant(
                 id=row.persona_slug or "system",
-                kind=kind,  # type: ignore[arg-type]
+                kind=kind,
             )
     else:
         # Legacy row: reconstruct minimal author from role/persona_slug
         kind = "persona" if row.role == "persona" else "founder"
         author = ConversationParticipant(
             id=row.persona_slug or "system",
-            kind=kind,  # type: ignore[arg-type]
+            kind=kind,
         )
     attachments: list[Attachment] = []
     for a in meta.get("attachments", []):
@@ -1188,7 +1188,7 @@ def backfill_founder_actions_detailed(
             raw_urgency = item.get("urgency")
             urgency: UrgencyLevel = tier_urgency
             if raw_urgency in ("info", "normal", "high", "critical"):
-                urgency = raw_urgency  # type: ignore[assignment]
+                urgency = raw_urgency
 
             tags: list[str] = [tier_id, "founder-action"]
             src = item.get("source")
