@@ -40,18 +40,18 @@ def _brain_dir() -> Path:
     env = os.environ.get("BRAIN_PACKAGE_ROOT", "").strip()
     if env:
         return Path(env)
-    return Path(__file__).resolve().parents[3]
+    from app.utils.paths import brain_root
+
+    return brain_root()
 
 
 def _monorepo_root() -> Path:
     env = os.environ.get("BRAIN_REPO_ROOT", "").strip()
     if env:
         return Path(env)
-    here = Path(__file__).resolve()
-    for anc in here.parents:
-        if (anc / "apps").is_dir() and (anc / "docs").is_dir():
-            return anc
-    return here.parents[5]
+    from app.utils.paths import repo_root
+
+    return repo_root()
 
 
 # ---------------------------------------------------------------------------

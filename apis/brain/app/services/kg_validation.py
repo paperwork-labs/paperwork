@@ -39,7 +39,6 @@ from app.schemas.kg_validation import (
 logger = logging.getLogger(__name__)
 
 _ENV_KG_JSON = "BRAIN_KG_VALIDATION_JSON"
-_ENV_REPO_ROOT = "REPO_ROOT"
 
 _MAX_HISTORY = 30
 _STALE_DAYS = 180
@@ -54,15 +53,15 @@ _SYSTEM_ACTORS: frozenset[str] = frozenset({"brain", "opus", "founder", "communi
 
 
 def _repo_root() -> Path:
-    override = os.environ.get(_ENV_REPO_ROOT, "").strip()
-    if override:
-        return Path(override)
-    # apis/brain/app/services/kg_validation.py → 4 levels up = repo root
-    return Path(__file__).resolve().parents[4]
+    from app.utils.paths import repo_root
+
+    return repo_root()
 
 
 def _brain_data_dir() -> Path:
-    return Path(__file__).resolve().parents[2] / "data"
+    from app.utils.paths import brain_data_dir
+
+    return brain_data_dir()
 
 
 def kg_validation_file_path() -> Path:

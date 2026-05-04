@@ -56,10 +56,9 @@ class DriftSurface(Protocol):
 
 
 def _repo_root() -> Path:
-    env = os.environ.get("REPO_ROOT", "").strip()
-    if env:
-        return Path(env)
-    return Path(__file__).resolve().parents[4]
+    from app.utils.paths import repo_root
+
+    return repo_root()
 
 
 def _state_dir() -> Path:
@@ -70,7 +69,9 @@ def _state_dir() -> Path:
 
 
 def _brain_data_dir() -> Path:
-    return _repo_root() / "apis" / "brain" / "data"
+    from app.utils.paths import brain_data_dir
+
+    return brain_data_dir()
 
 
 def runs_path() -> Path:
