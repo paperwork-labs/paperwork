@@ -12,6 +12,8 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - ".github/workflows/code-quality.yaml"
+      - ".github/workflows/auto-merge*.yaml"
+      - ".github/scripts/auto-merge-body-guard.cjs"
   push:
     branches: [main]
     paths:
@@ -20,6 +22,8 @@ on:
       - "scripts/**"
       - "**/vercel.json"
       - ".github/workflows/code-quality.yaml"
+      - ".github/workflows/auto-merge*.yaml"
+      - ".github/scripts/auto-merge-body-guard.cjs"
 
 concurrency:
   group: code-quality-${{ github.ref }}
@@ -38,6 +42,8 @@ jobs:
         run: node scripts/verify-no-stories-in-packages.mjs
       - name: Verify vercel.json canonical install pattern
         run: node scripts/verify-vercel-json-canon.mjs
+      - name: Verify auto-merge body-guard regex (Wave 0 / T1.0c)
+        run: node scripts/check_auto_merge_body_guard.mjs
 
   lockfile-gate:
     name: pnpm-lock.yaml in sync with workspace

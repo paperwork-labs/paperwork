@@ -40,7 +40,12 @@ jobs:
         with:
           script: |
             const fs = require('fs');
+            const path = require('path');
             const { execFileSync } = require('child_process');
+            const { hasBlockingPhraseInBodyOrTitle } = require(
+              path.join(process.env.GITHUB_WORKSPACE, '.github', 'scripts', 'auto-merge-body-guard.cjs')
+            );
+
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const MAX_MERGES_PER_RUN = 8;
@@ -245,6 +250,11 @@ jobs:
               const blocking = labels.filter((l) => BLOCKING_LABELS.has(l));
               if (blocking.length) {
                 return { line: `#${num}: skip — blocking label: ${blocking.join(', ')}`, mergedDelta: 0 };
+              }
+
+              const bodyGuard = hasBlockingPhraseInBodyOrTitle(pr);
+              if (bodyGuard.blocked) {
+                return { line: `#${num}: skip — blocking phrase in title/body: ${bodyGuard.phrase}`, mergedDelta: 0 };
               }
 
               if (pr.mergeable === false) {
